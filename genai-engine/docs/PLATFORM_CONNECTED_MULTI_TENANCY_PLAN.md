@@ -2,11 +2,6 @@
 
 > **Status:** Research / design proposal (for adversarial review)
 > **Date:** 2026-06-17
-> **Source material:** Notion "2026 Engine Architecture Convo" (Convos 1–3), Fireflies transcripts
-> `01KT7C5884KREC51V5NAFAS4R9` (Convo 1 — business), `01KTCHXCADTZXRRCBDQ8B6HVWH` (Convo 2 —
-> architecture), `01KTS4893H7K9XE852CPRBS05J` (Convo 3 — finalizing),
-> `01KVB01Y95AT79MXSY1V5BX7EX` (Zach↔Nori 1:1, 2026-06-17), and direct code investigation of
-> `genai-engine/` and `ml-engine/`.
 > **Companion doc:** [`MULTI_TENANCY_DESIGN.md`](MULTI_TENANCY_DESIGN.md) (the shipped v1 org model this plan builds on).
 
 ---
@@ -17,14 +12,13 @@ This is a *research plan*, not an implementation spec. Every factual claim about
 current system has been checked against the code and is tagged:
 
 - ✅ **Validated** — confirmed in this repo, with file references.
-- ⚠️ **Partially true / needs care** — the meeting notes assert something the code only
-  partly supports.
+- ⚠️ **Partially true / needs care** — directionally right but the code only partly supports it.
 - ❓ **Unverifiable here** — depends on the platform / control-plane codebase, which is a
   **separate repository not available in this workspace**. Roughly half of the proposed
   architecture lives there and is therefore *unvalidated*.
 
-Section 9 (Assumptions Ledger) and Section 10 (Weak Spots & Open Questions) are the
-adversarial-review payload Ian asked for at the end of Convo 3.
+Section 9 (Assumptions Ledger) and Section 10 (Weak Spots & Open Questions) carry the
+adversarial-review payload.
 
 ---
 
@@ -32,13 +26,12 @@ adversarial-review payload Ian asked for at the end of Convo 3.
 
 ### 1.1 What problem are we actually solving?
 
-The business driver (Convo 1) is **unit economics for a SaaS land-and-expand motion**:
-sign up free → get a hosted engine in <60s → convert to Pro (~$200/mo) → Enterprise. The
-single requirement that most constrains *engine architecture* is unit economics; "easy to
-adopt," "data governance," and "land & expand" mostly drive platform/packaging, not the
-engine internals.
+The business driver is **unit economics for a SaaS land-and-expand motion**: sign up free →
+get a hosted engine in <60s → convert to Pro (~$200/mo) → Enterprise. The single requirement
+that most constrains *engine architecture* is unit economics; "easy to adopt," "data
+governance," and "land & expand" mostly drive platform/packaging, not the engine internals.
 
-Two distinct technical bets came out of that:
+Two distinct technical bets follow:
 
 1. **Multi-tenant inference / engine** (cost) — pull the expensive models out of the
    per-tenant engine into a shared, pooled inference service so a lightweight engine can run
@@ -52,7 +45,7 @@ Two distinct technical bets came out of that:
 
 ### 1.2 What is already done (do not re-build)
 
-The engine is **already multi-tenant at the org level** as of the May 2026 v1 work
+The engine is **already multi-tenant at the org level** as of the v1 work
 (`MULTI_TENANCY_DESIGN.md`, migrations `2026_05_19_*`). ✅ validated in code:
 
 - `organizations` table (`src/db_models/organization_models.py:10`), seeded `default`
@@ -71,7 +64,7 @@ already-multi-tenant engine to the platform's identity and authorization, build 
 solution (Keycloak-based SSO), turn org scope from a *scalar* into a *set* so the UI is a
 single unified view, and rework the ML-engine job path for cross-org fan-out."**
 
-### 1.3 The taxonomy (locked in Convo 3 and re-confirmed in the Nori 1:1)
+### 1.3 The taxonomy
 
 | Control Plane (platform) | GenAI Engine | Notes |
 |---|---|---|
@@ -85,17 +78,16 @@ this user reach?"* (1:1 project↔org), answered by the platform from SpiceDB. T
 filters its own data by that set of org IDs. The only engine state the platform must know about
 is **orgs** (via the project↔org and application↔task mappings it already holds).
 
-### 1.4 Two scope boundaries that the Nori 1:1 nailed down
+### 1.4 Two scope boundaries
 
-- **The engine UI stays in the engine.** An earlier idea (Convo 2) was to lift the engine UI
-  into the platform and make data planes API-only. That is **off the table** — *"the engine's
-  not moving."* The engine keeps its own UI and becomes a Keycloak client so it can drive SSO
+- **The engine UI stays in the engine.** It is not lifted into the platform; data planes do not
+  become API-only. The engine keeps its own UI and becomes a Keycloak client so it can drive SSO
   itself.
 - **SSO is the free/self-serviceable part; RBAC is the gated enterprise lever.** SSO is plain
   public OIDC spec — a self-hoster could wire it up themselves. The monetizable capability is
-  **RBAC**, which only works once the engine is connected to the platform. Standalone / Docker
-  / local installs keep working on admin API keys with **no RBAC**; connecting to the platform
-  is what unlocks org-scoped RBAC.
+  **RBAC**, which only works once the engine is connected to the platform. Standalone / Docker /
+  local installs keep working on admin API keys with **no RBAC**; connecting to the platform is
+  what unlocks org-scoped RBAC.
 
 ---
 
@@ -103,15 +95,14 @@ is **orgs** (via the project↔org and application↔task mappings it already ho
 
 ### 2.1 Authentication: we build a new Keycloak-based auth solution
 
-We are **building the auth solution end-to-end**, not inheriting one. The engine becomes a
-**Keycloak client** of the platform's Keycloak, so it can drive SSO directly: a user clicking
-in from the platform is transparently signed in (no API-key paste). The new auth entry point:
+We are **building the auth solution end-to-end**. The engine becomes a **Keycloak client** of
+the platform's Keycloak, so it can drive SSO directly: a user clicking in from the platform is
+transparently signed in (no API-key paste). The new auth entry point:
 
 - Validates platform-minted Keycloak tokens (RS256 against the platform-served JWKS).
 - Pins the engine's expected issuer + audience.
 - Is enabled only when the engine is configured with a platform URL; when unset, the engine
-  behaves as a standalone, API-key-only install (preserving the Docker/local path — a hard
-  requirement from Convo 2 and re-confirmed with Nori).
+  behaves as a standalone, API-key-only install (preserving the Docker/local path).
 - **Fails closed** on the authZ handoff (see §4.2): a token that authenticates but has not yet
   been scoped to any org grants **zero** access — never cross-org/admin.
 
@@ -120,8 +111,7 @@ The **admin API-key path is retained** for standalone installs and service calle
 ownership* when connecting to the platform (§7.2).
 
 ❓ **Platform dependency (not in this repo):** the platform proxying Keycloak's JWKS/metadata so
-the engine only needs the platform URL (Ian indicated this is live in Convo 3). Plausible;
-verify before relying.
+the engine only needs the platform URL. Plausible; verify before relying.
 
 ### 2.2 Org scope is a scalar threaded everywhere — the "~60 functions" claim is accurate
 
@@ -138,10 +128,8 @@ The filters are **scattered, not centralized** — every repo method inlines its
 
 **Feasibility of scalar → set (`org_id IN (...)`):** mechanically straightforward per call
 site, but there is no central helper to change, so it is a **wide** edit (60 + 11 + ~35 ≈ 106
-touch points). The denormalized `org_id` columns make the `IN` filter efficient. This is
-exactly the refactor Convo 3 weighed ("we now have to go back and edit all the code we
-changed… a couple hundred functions") — that estimate is right in order of magnitude. **This
-refactor is what enables the unified, single-pane UI (Section 5).**
+touch points). The denormalized `org_id` columns make the `IN` filter efficient. **This refactor
+is what enables the unified, single-pane UI (Section 5).**
 
 ### 2.3 Resource URLs mostly do not carry the org
 
@@ -226,7 +214,7 @@ Build a new auth handler that makes the engine a **Keycloak client** of the plat
    platform's proxied metadata endpoint), and pins issuer + audience.
 2. For browser flows, drives the OIDC redirect/sign-in so a user arriving from the platform is
    transparently authenticated (no API-key paste). Tokens live in the auth module's memory with
-   silent refresh — **not** localStorage (Convo 3).
+   silent refresh — **not** localStorage.
 3. On success, hands off to the authZ resolver (4.2) to obtain the caller's org set. **Until
    the resolver returns, the request is unscoped and gets zero access** (fail closed).
 4. Gated behind the platform-URL config; unset = standalone API-key-only behavior.
@@ -237,17 +225,16 @@ The API-key validation path is preserved for standalone/service callers.
 
 After a platform token authenticates, the engine makes a **backend-to-backend** call to a
 platform endpoint — *"which projects (→ engine org IDs) can this user access?"* — driven by
-SpiceDB, and sets the request scope to that **set of UUIDs**. This is the decision reached in
-Convo 3 and restated in the Nori 1:1: scope is resolved by querying the platform for the user's
-project access and mapping 1:1 to engine orgs. (Embedding the org list in the token was
-rejected — Keycloak can't be amended at mint time and JWTs blow past cookie limits at ~100–130
-UUIDs, the V3 failure.)
+SpiceDB, and sets the request scope to that **set of UUIDs**. Scope is resolved by querying the
+platform for the user's project access and mapping 1:1 to engine orgs. (Embedding the org list
+in the token is rejected — Keycloak can't be amended at mint time and JWTs blow past cookie
+limits at ~100–130 UUIDs.)
 
 Engine-side work:
 - New client module (e.g. `src/clients/platform_authz_client.py`) calling the platform authZ
-  endpoint with a **service credential** (not the user's browser token — must be unspoofable,
-  per Convo 3). Cache per-(user, short TTL); define an invalidation story for when project
-  access changes (§10.3).
+  endpoint with a **service credential** (not the user's browser token — must be unspoofable).
+  Cache per-(user, short TTL); define an invalidation story for when project access changes
+  (§10.2).
 - The request scope becomes `set[UUID] | None`. `None` stays "admin/unbounded."
 
 ❓ **Platform dependencies (must be built there):** the authZ endpoint backed by SpiceDB; the
@@ -294,7 +281,7 @@ admin/tenant render branch). No selector component is introduced.
 
 ## 6. Workstream D — ML engine cross-org jobs
 
-Per Convos 2–3 and the Nori 1:1, with §2.5 validation:
+With §2.5 validation:
 
 1. **Cross-org job queue / dequeue.** Refactor the platform `/jobs` API so a suitably-scoped ML
    engine can dequeue across workspaces/orgs (today `post_dequeue_job(data_plane_id)` is
@@ -311,7 +298,7 @@ Per Convos 2–3 and the Nori 1:1, with §2.5 validation:
 
 **AuthZ asymmetry to keep in mind:** the ML engine runs jobs with the **org-level API key**
 (sees *all* tasks in the org), while a human user's UI view is scoped to the orgs they can
-reach. This plan adopts **org-as-grain** (no sub-org/per-project task subsetting); see §10.4.
+reach. This plan adopts **org-as-grain** (no sub-org/per-project task subsetting); see §10.3.
 
 ---
 
@@ -328,10 +315,9 @@ When the engine is platform-connected:
 ### 7.2 Existing standalone engines connecting later
 - **Ownership proof = admin key.** A single-tenant engine's admin key (`org_id NULL`,
   cross-org) is something no SaaS tenant could ever hold, so the platform accepts it as proof
-  the connector owns the whole engine — *"as part of connecting the engine they'll have to say
-  this is the admin key for my engine, and that will allow them to link their engine to their
-  workspace."* ✅ The admin-key concept exists and the heuristic is sound. Onboarding then
-  auto-creates a default workspace + one project per existing engine org.
+  the connector owns the whole engine: connecting the engine requires supplying its admin key,
+  which links the engine to the workspace. ✅ The admin-key concept exists and the heuristic is
+  sound. Onboarding then auto-creates a default workspace + one project per existing engine org.
 - After onboarding, RBAC flows through the platform/SpiceDB; admin-key mode still works for
   backward compat (just without RBAC).
 
@@ -358,19 +344,19 @@ zero access, never admin.
 
 ---
 
-## 9. Assumptions Ledger (meetings vs. code)
+## 9. Assumptions Ledger
 
 | # | Assumption | Verdict | Reality |
 |---|---|---|---|
 | 1 | "~60 router functions inject single org." | ✅ Validated | 60 path + 11 query + ~35 repo ≈ 106 touch points, scalar org scope, scattered (no central helper). |
-| 2 | "Engine UI stays in the engine (not lifted to platform)." | ✅ Confirmed (Nori 1:1) | *"The engine's not moving."* Engine keeps its UI and becomes a KC client. |
-| 3 | "Project ↔ engine org is 1:1; tasks = applications." | ✅ Confirmed (Convo 3 + Nori 1:1) | Drives the authZ-by-proxy model; matches the v1 org/task data model. |
-| 4 | "SSO is self-serviceable; RBAC is the gated lever." | ✅ Confirmed (Nori 1:1) | Standalone keeps admin-key login w/o RBAC; connecting unlocks org-scoped RBAC. |
+| 2 | "Engine UI stays in the engine (not lifted to platform)." | ✅ Decided | Engine keeps its UI and becomes a KC client. |
+| 3 | "Project ↔ engine org is 1:1; tasks = applications." | ✅ Consistent with code | Drives the authZ-by-proxy model; matches the v1 org/task data model. |
+| 4 | "SSO is self-serviceable; RBAC is the gated lever." | ✅ Decided | Standalone keeps admin-key login w/o RBAC; connecting unlocks org-scoped RBAC. |
 | 5 | "Org creation endpoint is public; needs gating when connected." | ✅ Validated | `tenant/signup` is `@public_endpoint`, flag-gated. |
 | 6 | "Admin key proves single-tenant ownership on connect." | ✅ Sound | `org_id NULL` = cross-org admin; reasonable proof heuristic. |
-| 7 | "Engine already multi-tenant; orgs/tasks mapping held." | ✅ Validated | v1 shipped May 2026. |
+| 7 | "Engine already multi-tenant; orgs/tasks mapping held." | ✅ Validated | v1 shipped. |
 | 8 | "ML engine does token-exchange per job, via the connector." | ❓ Partly | Job has `project_id`; client-creds auth + connector-by-id fetch exist; **explicit token exchange not present** — needs `arthur_client` + platform support. |
-| 9 | "Platform proxies Keycloak JWKS/metadata (live)." | ❓ Unverifiable | Platform repo not present. Plausible; verify before relying. |
+| 9 | "Platform proxies Keycloak JWKS/metadata." | ❓ Unverifiable | Platform repo not present. Plausible; verify before relying. |
 | 10 | "Resources are task-centric, org derivable from URL." | ⚠️ Mostly false, but moot | By-id endpoints carry a bare resource id; the unified set-scope model makes this irrelevant. |
 | 11 | "Pull models into shared inference service for unit economics." | ❓ Out of scope here | Real and necessary for the $200/mo target, but a separate effort; this plan is auth/tenancy only. |
 
@@ -389,27 +375,26 @@ highest-severity correctness risk in the plan.
 A SpiceDB round trip per request is too slow; embedding orgs in the token is rejected (size).
 The middle path (cache the user's org set with a short TTL) needs a defined **invalidation
 story** when a user's project access changes — otherwise users see stale orgs (added or
-removed). Unspecified in the meetings; needs a decision (event-driven invalidation vs. short
-TTL vs. both).
+removed). Needs a decision (event-driven invalidation vs. short TTL vs. both).
 
 ### 10.3 Org-as-grain vs. project→subset-of-tasks
 The taxonomy says *project ↔ a subset of an org's tasks*, but the engine grain is *org* and the
 ML engine runs as the org key (sees all tasks). True project-level task subsetting would require
-either syncing task-level state to SpiceDB (explicitly rejected) or layering a user-scoped task
-filter on top of the org key for human reads while jobs stay org-scoped. **This plan ships
-org-as-grain and defers subsetting to v2.** If product needs project-level isolation at launch,
-it is a much bigger lift than the notes imply.
+either syncing task-level state to SpiceDB (rejected) or layering a user-scoped task filter on
+top of the org key for human reads while jobs stay org-scoped. **This plan ships org-as-grain
+and defers subsetting to v2.** If product needs project-level isolation at launch, it is a much
+bigger lift than it first appears.
 
 ### 10.4 "Unregistered agents" / tasks created directly in the engine
-Both convos liked the "task created in engine → appears as unregistered agent → user registers
-it into a project" workflow, but there is no "unregistered/unmapped task" concept in the data
-model today, and authZ-by-proxy means an unregistered task has no project to authorize against.
-Needs a defined default (personal/default project? hidden until registered?). Unspecified.
+There is an intended workflow: a task created directly in the engine appears as an "unregistered
+agent," and the user registers it into a project to access-control it. But there is no
+"unregistered/unmapped task" concept in the data model today, and authZ-by-proxy means an
+unregistered task has no project to authorize against. Needs a defined default (personal/default
+project? hidden until registered?).
 
 ### 10.5 Cross-VPC Keycloak connectivity — infra cost is a real constraint
-The GenAI engine must reach the platform's Keycloak, likely **cross-VPC**. Zach floated a
-private link; Nori flagged that **private link / VPN cost extra** and Zach backed off
-(*"then no, we probably don't do that"*). So the connectivity approach is **open and
+The GenAI engine must reach the platform's Keycloak, likely **cross-VPC**. Dedicated private
+networking (private link / VPN) **costs extra**, so the connectivity approach is **open and
 cost-sensitive** — prefer routing over the public proxied-metadata endpoint (TLS) rather than
 dedicated private networking, unless a customer's posture forces otherwise. Needs an explicit
 infra design + cost review before P3/P4.
@@ -417,7 +402,7 @@ infra design + cost review before P3/P4.
 ### 10.6 ML engine multiplexing & on-prem reachability
 A single SaaS ML engine serving many GenAI tenants works for SaaS but **cannot reach an on-prem
 GenAI engine behind a firewall** (outbound-only design). The "one cross-org ML engine" model
-needs an explicit carve-out for dedicated/on-prem engines. Still open.
+needs an explicit carve-out for dedicated/on-prem engines.
 
 ### 10.7 Token exchange is an `arthur_client` + platform dependency
 §2.5 / Assumption 8: the exchange is not in this repo. If `arthur_client` doesn't support
@@ -429,8 +414,8 @@ across two systems (engine `api_keys` table ↔ platform connector secret) is un
 classic "works until the key rotates" outage source.
 
 ### 10.9 Unit-economics math depends on the inference split, not this plan
-The 30–40-paying-tenant crossover (Convo 1) assumes models are pulled into a shared inference
-service. None of the auth/tenancy work here moves the cost curve. Be explicit with stakeholders:
+The 30–40-paying-tenant crossover assumes models are pulled into a shared inference service. None
+of the auth/tenancy work here moves the cost curve. Be explicit with stakeholders:
 "platform-connected multi-tenancy" ≠ "cheaper engine"; the latter is the inference-service
 project.
 
@@ -452,5 +437,5 @@ before committing estimates for P3/P5/P6.
    public proxied-metadata path, not private link.
 4. **Decide the authZ cache-invalidation strategy** (§10.2).
 5. **Confirm org-as-grain for launch** (§10.3); defer project-level task subsetting to v2.
-6. **Run this plan through an independent large-model adversarial review** (as Zach/Ian noted),
-   focusing on §10.1 (fail-closed) and §10.2 (authZ caching/invalidation).
+6. **Run this plan through an independent large-model adversarial review**, focusing on §10.1
+   (fail-closed) and §10.2 (authZ caching/invalidation).
