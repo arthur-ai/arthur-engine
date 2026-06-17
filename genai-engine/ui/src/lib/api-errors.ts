@@ -1,6 +1,6 @@
 // Shared error-shape predicates for backend responses.
 //
-// UP-4390 introduced a structured 402 body for the org-token quota gate:
+// UP-4390 introduced a structured 429 body for the org-token quota gate:
 //   { detail: { error_code: "TOKEN_LIMIT_EXCEEDED", message, tokens_limit, tokens_used } }
 // Multiple call sites need to detect it without depending on the exact
 // transport (axios vs. fetch) or whether the body has been pre-parsed.
@@ -23,7 +23,7 @@ const isTokenLimitDetail = (value: unknown): value is TokenLimitExceededDetail =
   (value as { error_code?: unknown }).error_code === TOKEN_LIMIT_EXCEEDED_CODE;
 
 /**
- * Returns true if `err` looks like a 402 TOKEN_LIMIT_EXCEEDED response from
+ * Returns true if `err` looks like a 429 TOKEN_LIMIT_EXCEEDED response from
  * the engine, regardless of whether the call used axios (generated client),
  * raw fetch (streaming endpoints), or hand-thrown a parsed Error.
  */
@@ -31,7 +31,7 @@ export const isTokenLimitExceededError = (err: unknown): boolean => {
   // Axios path: AxiosError with parsed response body.
   if (isAxiosError(err)) {
     const axErr = err as AxiosError<{ detail?: unknown }>;
-    if (axErr.response?.status !== 402) return false;
+    if (axErr.response?.status !== 429) return false;
     return isTokenLimitDetail(axErr.response?.data?.detail);
   }
   // Fetch / hand-thrown path: surface objects/strings carrying detail.
@@ -42,7 +42,7 @@ export const isTokenLimitExceededError = (err: unknown): boolean => {
 };
 
 /**
- * Extracts the structured detail payload from a 402 error, returning null
+ * Extracts the structured detail payload from a 429 error, returning null
  * if the shape doesn't match. Useful when a caller wants to surface the
  * specific `tokens_limit` / `tokens_used` values.
  */

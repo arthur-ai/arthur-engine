@@ -1,5 +1,5 @@
 // UP-4390: rendered at the app shell, opened by any call site that detects
-// a 402 TOKEN_LIMIT_EXCEEDED response from the engine. Centralises the
+// a 429 TOKEN_LIMIT_EXCEEDED response from the engine. Centralises the
 // "contact Arthur" message so we don't ship a different copy per surface.
 
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";

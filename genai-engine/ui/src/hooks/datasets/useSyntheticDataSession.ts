@@ -168,7 +168,7 @@ export function useSyntheticDataSession(datasetId: string, versionNumber: number
         }
       } catch (err) {
         console.error("Failed to generate synthetic data:", err);
-        // UP-4390: 402 quota errors go to the global dialog; everything
+        // UP-4390: 429 quota errors go to the global dialog; everything
         // else surfaces via the hook's `error` state for the caller to render.
         if (isTokenLimitExceededError(err)) {
           showOutOfCredits(getTokenLimitDetail(err));
@@ -258,7 +258,7 @@ export function useSyntheticDataSession(datasetId: string, versionNumber: number
         ]);
       } catch (err) {
         console.error("Failed to send message:", err);
-        // UP-4390: 402 quota errors go to the global dialog.
+        // UP-4390: 429 quota errors go to the global dialog.
         if (isTokenLimitExceededError(err)) {
           showOutOfCredits(getTokenLimitDetail(err));
         } else {

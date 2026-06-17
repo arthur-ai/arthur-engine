@@ -106,7 +106,7 @@ const useRunPrompt = ({ prompt, onError }: UseRunPromptOptions) => {
           onError: (error: string, cause?: unknown) => {
             console.error("Error streaming prompt:", error);
             isRunningRef.current = false;
-            // UP-4390: 402 TOKEN_LIMIT_EXCEEDED → show the global out-of-credits
+            // UP-4390: 429 TOKEN_LIMIT_EXCEEDED → show the global out-of-credits
             // dialog instead of the inline error string.
             if (isTokenLimitExceededError(cause)) {
               showOutOfCredits(getTokenLimitDetail(cause));
@@ -148,7 +148,7 @@ const useRunPrompt = ({ prompt, onError }: UseRunPromptOptions) => {
         isRunningRef.current = false;
         console.error("Error running prompt:", error);
 
-        // UP-4390: 402 TOKEN_LIMIT_EXCEEDED short-circuits to the global
+        // UP-4390: 429 TOKEN_LIMIT_EXCEEDED short-circuits to the global
         // out-of-credits dialog.
         if (isTokenLimitExceededError(error)) {
           showOutOfCredits(getTokenLimitDetail(error));

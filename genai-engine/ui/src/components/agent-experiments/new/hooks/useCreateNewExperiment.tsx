@@ -33,7 +33,7 @@ export const useCreateNewExperiment = ({ onSuccess }: Opts = {}) => {
       onSuccess?.(data);
     },
     onError: (error) => {
-      // UP-4390: route 402 quota errors to the global dialog before falling
+      // UP-4390: route 429 quota errors to the global dialog before falling
       // back to the generic snackbar.
       if (isTokenLimitExceededError(error)) {
         showOutOfCredits(getTokenLimitDetail(error));

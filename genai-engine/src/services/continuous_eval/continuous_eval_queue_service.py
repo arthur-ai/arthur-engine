@@ -170,7 +170,7 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
 
             # UP-4390: short-circuit if the owning org is out of LLM credits.
             # The upstream trace may have spans missing because the agent's
-            # own LLM calls were 402'd, and the eval itself would 402 too.
+            # own LLM calls were 429'd, and the eval itself would 429 too.
             # Surface the credit-limit message instead of leaving the user
             # to interpret a downstream "missing variables" or "unexpected
             # error" symptom.

@@ -36,14 +36,14 @@ TOKEN_LIMIT_EXCEEDED_MESSAGE = (
 
 
 def extract_token_limit_message(exc: BaseException) -> Optional[str]:
-    """Return the user-facing credit-limit message if `exc` is our 402, else None.
+    """Return the user-facing credit-limit message if `exc` is our 429, else None.
 
     Used by background workers (continuous evals, prompt experiments) to
     surface a clean message on result rows when the gate fires, instead of
     leaving a generic "failed" with no explanation. Returning None signals
     "not a token-limit error" so callers can fall through to other handling.
     """
-    if not isinstance(exc, HTTPException) or exc.status_code != 402:
+    if not isinstance(exc, HTTPException) or exc.status_code != 429:
         return None
     detail = exc.detail
     if (
@@ -55,7 +55,7 @@ def extract_token_limit_message(exc: BaseException) -> Optional[str]:
 
 
 def enforce_token_quota(org_id: uuid.UUID) -> None:
-    """Raise 402 if `org_id` has exhausted its lifetime token credit (UP-4390).
+    """Raise 429 if `org_id` has exhausted its lifetime token credit (UP-4390).
 
     Orgs with `tokens_limit IS NULL` are unmetered (default org, system org)
     and always pass. Called from `LLMClient.completion` / `.acompletion`
@@ -73,7 +73,7 @@ def enforce_token_quota(org_id: uuid.UUID) -> None:
     if status is None or not status.is_exhausted:
         return
     raise HTTPException(
-        status_code=402,
+        status_code=429,
         detail={
             "error_code": TOKEN_LIMIT_EXCEEDED_ERROR_CODE,
             "message": TOKEN_LIMIT_EXCEEDED_MESSAGE,

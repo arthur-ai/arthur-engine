@@ -192,9 +192,9 @@ export function useChatbot(taskId: string, options: UseChatbotOptions = {}): Use
 
           if (!response.ok) {
             const errorData = await response.json().catch(() => ({ detail: response.statusText }));
-            // UP-4390: surface the 402 out-of-credits dialog instead of an
+            // UP-4390: surface the 429 out-of-credits dialog instead of an
             // inline chat error so the user knows to contact Arthur.
-            if (response.status === 402 && isTokenLimitExceededError(errorData)) {
+            if (response.status === 429 && isTokenLimitExceededError(errorData)) {
               showOutOfCredits(getTokenLimitDetail(errorData));
               return;
             }

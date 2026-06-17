@@ -1,5 +1,5 @@
 // UP-4390: shared signal for "this org has exhausted its LLM token credits."
-// Any FE call site that triggers a backend completion can detect the 402
+// Any FE call site that triggers a backend completion can detect the 429
 // TOKEN_LIMIT_EXCEEDED response and open the global <OutOfCreditsDialog>
 // via this context — no need to render an ad-hoc inline error.
 
