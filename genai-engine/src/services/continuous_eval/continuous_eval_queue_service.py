@@ -13,7 +13,6 @@ from db_models.llm_eval_models import DatabaseContinuousEval
 from dependencies import get_db_session
 from repositories.evaluator_factory import get_evaluator
 from repositories.llm_evals_repository import LLMEvalsRepository
-from repositories.llm_evaluator import LLMEvaluator
 from repositories.metrics_repository import MetricRepository
 from repositories.span_repository import SpanRepository
 from repositories.tasks_metrics_repository import TasksMetricsRepository
@@ -305,16 +304,14 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
 
             # annotation.org_id is denormalized at enqueue time so the
             # background worker doesn't need to chase task → org each call.
-            evaluator_kwargs: dict[str, Any] = {
-                "task_id": continuous_eval.task_id,
-                "eval_name": eval_name,
-                "eval_version": eval_version,
-                "variable_mapping": continuous_eval.transform_variable_mapping,
-                "resolved_variables": resolved_variables,
-            }
-            if isinstance(evaluator, LLMEvaluator):
-                evaluator_kwargs["org_id"] = annotation.org_id
-            eval_run_result = evaluator.run(**evaluator_kwargs)
+            eval_run_result = evaluator.run(
+                task_id=continuous_eval.task_id,
+                eval_name=eval_name,
+                eval_version=eval_version,
+                variable_mapping=continuous_eval.transform_variable_mapping,
+                resolved_variables=resolved_variables,
+                org_id=annotation.org_id,
+            )
             run_status = (
                 ContinuousEvalRunStatus.PASSED.value
                 if eval_run_result.score

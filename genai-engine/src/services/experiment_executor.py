@@ -735,6 +735,7 @@ class BaseExperimentExecutor(ABC):
                         eval_version=str(eval_score.eval_version),
                         variable_mapping=[],
                         resolved_variables=variable_map,
+                        org_id=task_org_id,
                     )
                 elif isinstance(evaluator, LLMEvaluator):
                     completion_request = BaseCompletionRequest(

@@ -35,7 +35,7 @@ class LLMEvaluator(BaseEvaluator):
         llm_eval = self._repo.get_llm_item(task_id, eval_name, eval_version)
         return llm_eval.variables
 
-    def run(  # type: ignore[override]
+    def run(
         self,
         task_id: str,
         eval_name: str,
