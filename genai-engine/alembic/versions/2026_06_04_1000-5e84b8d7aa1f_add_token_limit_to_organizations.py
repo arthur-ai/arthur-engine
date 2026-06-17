@@ -9,15 +9,21 @@ Adds the tenant token-credit columns introduced for UP-4390.
   tokens_limit  BIGINT NULL                 -- NULL = unlimited.
   tokens_used   BIGINT NOT NULL DEFAULT 0   -- monotonic counter, never reset.
 
-Existing rows (default org, system org, and any pre-existing tenant orgs)
-keep tokens_limit = NULL on upgrade so nothing suddenly becomes credit-
-gated. New tenant signups populate tokens_limit from
+Default org and system org keep tokens_limit = NULL (unmetered).
+Existing tenant orgs are backfilled with the default credit allocation
+(`DEFAULT_TENANT_TOKEN_LIMIT`) so they don't suddenly become unmetered
+either. New tenant signups receive the same value via
 Config.default_tenant_token_limit() at creation time.
 """
 
 import sqlalchemy as sa
 
 from alembic import op
+from utils.constants import (
+    DEFAULT_ORG_ID,
+    DEFAULT_TENANT_TOKEN_LIMIT,
+    SYSTEM_ORG_ID,
+)
 
 # revision identifiers, used by Alembic.
 revision = "5e84b8d7aa1f"
@@ -39,6 +45,22 @@ def upgrade() -> None:
             nullable=False,
             server_default=sa.text("0"),
         ),
+    )
+
+    # Backfill: every pre-existing tenant org gets the default credit cap.
+    # Default and system orgs explicitly keep tokens_limit = NULL so they
+    # remain unmetered. UUIDs sourced from utils.constants for single
+    # source of truth with app code.
+    op.execute(
+        sa.text(
+            "UPDATE organizations "
+            "SET tokens_limit = :default_limit "
+            "WHERE id NOT IN (:default_org, :system_org)"
+        ).bindparams(
+            default_limit=DEFAULT_TENANT_TOKEN_LIMIT,
+            default_org=str(DEFAULT_ORG_ID),
+            system_org=str(SYSTEM_ORG_ID),
+        )
     )
 
 
