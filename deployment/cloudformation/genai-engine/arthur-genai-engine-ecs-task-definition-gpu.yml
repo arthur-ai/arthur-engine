@@ -203,6 +203,17 @@ Parameters:
       - 'OpenAI'
     Default: "Azure"
     Description: 'Provider of OpenAI LLMs'
+  GenaiEngineOpenAIVerifySSL:
+    Type: String
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Default: 'true'
+    Description: 'Verify TLS certificates when calling the LLM endpoint. Set to false to disable (insecure; dev/test only).'
+  GenaiEngineOpenAIPrivateCertDownloadURL:
+    Type: String
+    Default: ''
+    Description: 'Optional URL serving a private CA / self-signed cert (PEM) for the LLM endpoint. Downloaded at container startup and trusted as the CA.'
   GenaiEngineCacheTaskRulesCacheEnabled:
     Type: String
     Default: 'true'
@@ -353,6 +364,10 @@ Resources:
               Value: !Ref GenaiEngineUsePIIModelV2
             - Name: 'GENAI_ENGINE_OPENAI_PROVIDER'
               Value: !Ref GenaiEngineOpenAIProvider
+            - Name: 'GENAI_ENGINE_OPENAI_VERIFY_SSL'
+              Value: !Ref GenaiEngineOpenAIVerifySSL
+            - Name: 'GENAI_ENGINE_OPENAI_PRIVATE_CERT_DOWNLOAD_URL'
+              Value: !Ref GenaiEngineOpenAIPrivateCertDownloadURL
             - Name: 'ALLOW_ADMIN_KEY_GENERAL_ACCESS'
               Value: !Ref GenaiEngineAllowAdminKeyGeneralAccess
             - Name: 'WORKERS'
