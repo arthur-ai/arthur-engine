@@ -5,6 +5,7 @@ from typing import Any, Optional
 
 from arthur_common.models.common_schemas import VariableTemplateValue
 from arthur_common.models.enums import AgenticAnnotationType, ContinuousEvalRunStatus
+from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from db_models.agentic_annotation_models import DatabaseAgenticAnnotation
@@ -14,6 +15,11 @@ from dependencies import get_db_session
 from repositories.evaluator_factory import get_evaluator
 from repositories.llm_evals_repository import LLMEvalsRepository
 from repositories.metrics_repository import MetricRepository
+from repositories.organizations_repository import (
+    TOKEN_LIMIT_EXCEEDED_ERROR_CODE,
+    TOKEN_LIMIT_EXCEEDED_MESSAGE,
+    enforce_token_quota,
+)
 from repositories.span_repository import SpanRepository
 from repositories.tasks_metrics_repository import TasksMetricsRepository
 from repositories.trace_transform_repository import TraceTransformRepository
@@ -21,6 +27,20 @@ from schemas.enums import EvalKind, TestRunStatus
 from schemas.internal_schemas import ContinuousEval
 from services.base_queue_service import BaseQueueJob, BaseQueueService
 from utils.transform_executor import execute_transform
+
+
+def _token_limit_message(exc: BaseException) -> str:
+    """Extract the user-facing credit-limit message from a 402 HTTPException.
+
+    Falls back to `str(exc)` when the exception doesn't carry our structured
+    detail (e.g. some other 402 path or a non-HTTPException), so misuse never
+    silently swallows the underlying error.
+    """
+    if isinstance(exc, HTTPException) and exc.status_code == 402:
+        detail = exc.detail
+        if isinstance(detail, dict) and detail.get("error_code") == TOKEN_LIMIT_EXCEEDED_ERROR_CODE:
+            return str(detail.get("message", TOKEN_LIMIT_EXCEEDED_MESSAGE))
+    return str(exc)
 
 logger = logging.getLogger(__name__)
 
@@ -162,6 +182,23 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
                 raise ValueError(
                     f"Annotation {job.annotation_id} is running or has already finished executing",
                 )
+
+            # UP-4390: short-circuit if the owning org is out of LLM credits.
+            # The upstream trace may have spans missing because the agent's
+            # own LLM calls were 402'd, and the eval itself would 402 too.
+            # Surface the credit-limit message instead of leaving the user
+            # to interpret a downstream "missing variables" or "unexpected
+            # error" symptom.
+            try:
+                enforce_token_quota(annotation.org_id)
+            except HTTPException as exc:
+                self._update_annotation_status(
+                    db_session,
+                    job.annotation_id,
+                    ContinuousEvalRunStatus.ERROR.value,
+                    annotation_description=_token_limit_message(exc),
+                )
+                return
 
             # Load the continuous eval configuration
             db_continuous_eval = (
@@ -336,11 +373,18 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
                 f"Error executing job for trace {job.trace_id}: {e}",
                 exc_info=True,
             )
+            # Catch the gate firing mid-eval (e.g. the org crossed the limit
+            # between the pre-check and the eval's LLM call) and surface the
+            # structured credit-limit message instead of HTTPException(...)
+            # stringified verbatim.
+            description = (
+                _token_limit_message(e) if isinstance(e, HTTPException) else str(e)
+            )
             self._update_annotation_status(
                 db_session,
                 job.annotation_id,
                 ContinuousEvalRunStatus.ERROR.value,
-                annotation_description=str(e),
+                annotation_description=description,
             )
             raise e
         finally:
