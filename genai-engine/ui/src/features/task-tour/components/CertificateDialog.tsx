@@ -65,6 +65,9 @@ export function CertificateDialog({ open, recipientName = "Alex Rivera", issuedO
   const blobRef = useRef<Blob | null>(null);
   // Prevent triggering a second upload if the dialog is closed and reopened.
   const uploadedRef = useRef(false);
+  // Set when the user clicks download before the capture has finished, so the
+  // blob is downloaded as soon as it's ready rather than silently dropped.
+  const pendingDownloadRef = useRef(false);
 
   const shareText = `I completed Arthur AI's ${COURSE_NAME} course with the Arthur Evals Engine.`;
   const shareUrl = certificateUrl ?? "https://www.arthur.ai/";
@@ -75,6 +78,10 @@ export function CertificateDialog({ open, recipientName = "Alex Rivera", issuedO
     onSuccess: async (blob) => {
       if (!blob) return;
       blobRef.current = blob;
+      if (pendingDownloadRef.current) {
+        pendingDownloadRef.current = false;
+        downloadFile(blob, "certificate.png", "image/png");
+      }
       if (!uploadedRef.current) {
         uploadedRef.current = true;
         const url = await uploadCertificate(blob);
@@ -96,6 +103,7 @@ export function CertificateDialog({ open, recipientName = "Alex Rivera", issuedO
     if (blobRef.current) {
       downloadFile(blobRef.current, "certificate.png", "image/png");
     } else {
+      pendingDownloadRef.current = true;
       void convertToBlob();
     }
   };
