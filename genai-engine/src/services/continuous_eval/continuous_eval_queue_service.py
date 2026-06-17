@@ -38,9 +38,13 @@ def _token_limit_message(exc: BaseException) -> str:
     """
     if isinstance(exc, HTTPException) and exc.status_code == 402:
         detail = exc.detail
-        if isinstance(detail, dict) and detail.get("error_code") == TOKEN_LIMIT_EXCEEDED_ERROR_CODE:
+        if (
+            isinstance(detail, dict)
+            and detail.get("error_code") == TOKEN_LIMIT_EXCEEDED_ERROR_CODE
+        ):
             return str(detail.get("message", TOKEN_LIMIT_EXCEEDED_MESSAGE))
     return str(exc)
+
 
 logger = logging.getLogger(__name__)
 
