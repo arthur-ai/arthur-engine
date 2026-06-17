@@ -171,3 +171,124 @@ org-scoped token → fetch the project's connector → use its engine API key) i
 feasible with the current shape**, and `project_id` is already in place. The two genuinely new
 pieces are the **cross-org dequeue** and the **token exchange**, both platform + `arthur_client`
 work. ❓
+
+---
+
+## 3. Changes Required
+
+Each subsection is one change at a high level, followed by what has to happen for it to work.
+These are not ordered or phased — they are the full set of moving parts. Items tagged ❓ live in
+the platform / control-plane repo (not in this workspace) and are dependencies, not engine work.
+
+### 3.1 New Keycloak auth client in the engine
+
+Replace the engine's authentication entry point with a new Keycloak-client implementation so the
+engine validates platform-minted tokens and can drive SSO.
+
+- Register the engine as a Keycloak client of the platform's Keycloak.
+- Validate incoming platform tokens: fetch the platform-served JWKS, verify the RS256 signature,
+  and pin the expected issuer and audience.
+- Drive the OIDC redirect/sign-in for browser flows so a user arriving from the platform is
+  signed in transparently (no API-key paste). Hold tokens in the auth module's memory with
+  silent refresh; do not use localStorage.
+- Keep the admin / API-key validation path working for standalone and service callers.
+- Gate the whole platform path behind a platform-URL config value; when it is unset the engine
+  runs exactly as a standalone, API-key-only install.
+- Fail closed: a token that authenticates but is not yet org-scoped (see 3.2) must grant zero
+  access — never cross-org/admin.
+- ❓ Platform must proxy Keycloak's JWKS/metadata so the engine only needs the platform URL.
+
+### 3.2 Platform-driven authorization (resolve the user's engine orgs)
+
+After authentication, the engine learns which engine orgs the caller may reach by asking the
+platform, rather than reading scope off the token.
+
+- Add an engine-side client that calls a new platform endpoint — "which projects (→ engine org
+  IDs) can this user access?" — backend-to-backend using a service credential (never the user's
+  browser token, so it can't be spoofed).
+- Map the returned projects 1:1 to engine org IDs and set that as the caller's org scope for the
+  request/session.
+- Cache the result per user with a short TTL and define how the cache is invalidated when a
+  user's project access changes.
+- ❓ Platform must expose the authZ endpoint backed by SpiceDB, and register engine orgs in
+  SpiceDB as children of projects/workspaces so the lookup has data to answer from.
+
+### 3.3 Turn org scope from a single value into a set
+
+Change the engine's org scope from one org ID to the set of org IDs the user can reach, so all
+data access filters on membership in that set.
+
+- Introduce a central helper (e.g. `apply_org_filter(query, column, org_scope)`) that handles
+  `None` (admin / no filter), a single org, and a set of orgs.
+- Migrate `get_org_scope`, the `@enforce_org_scope` and `@enforce_query_org_scope` decorators,
+  and the ~35 resource-id repository methods to the set semantics and the helper (≈106 touch
+  points total).
+- Keep the API-key path emitting a singleton set so single-tenant behavior is unchanged and both
+  auth paths converge on one representation.
+- Extend the fuzz/coverage test so no task-scoped repository method can filter by a bare scalar
+  anymore.
+
+### 3.4 Unified engine UI (single pane, no selector)
+
+Make the engine UI show everything the user is authorized for across all their orgs at once.
+
+- Make the UI a Keycloak client: redirect to platform login when unauthenticated; keep the token
+  in auth-module memory with silent refresh.
+- Extend the existing `GET /users/me` + `AuthContext` plumbing to carry the user's set of orgs
+  and drive the admin/tenant render branch.
+- Add an `org_id` discriminator to list/aggregate response payloads (the v1 work already did this
+  for tasks; extend it to the other list/aggregate endpoints) so the UI can group and label
+  cross-org results.
+- Do not introduce an org-switcher component.
+
+### 3.5 Gate and re-home org creation when platform-connected
+
+When the engine is connected to the platform, org creation must be authenticated and mirrored
+into the platform.
+
+- Require authentication on the org-creation path (today `POST /api/v2/tenant/signup` is public);
+  it can no longer mint orgs anonymously once platform-governed.
+- On org creation, call the platform (with the user's bearer token) to create the corresponding
+  platform project, which registers the new engine org in SpiceDB.
+- ❓ Platform must expose the project-creation endpoint that performs the SpiceDB registration.
+
+### 3.6 Onboarding & ownership proof for existing standalone engines
+
+Let an engine that has been running API-key-only connect to the platform and prove it owns its
+orgs.
+
+- On connect, require the engine's admin key as proof of ownership (an admin key implies a
+  single-tenant engine, which no SaaS tenant could hold), and use it to link the engine to the
+  workspace.
+- Auto-create a default workspace and one project per existing engine org during onboarding.
+- After onboarding, route RBAC through the platform/SpiceDB while keeping admin-key mode working
+  for backward compatibility (without RBAC).
+- ❓ Platform must accept the admin key as ownership proof and run the workspace/project
+  bootstrap.
+
+### 3.7 Cross-org ML engine jobs
+
+Let one ML engine pick up and run jobs across many orgs instead of being bound to a single data
+plane/workspace.
+
+- ❓ Refactor the platform `/jobs` API to be cross-organization, and give the ML engine a
+  cross-org Keycloak client with permission to read the cross-org queue (today
+  `post_dequeue_job(data_plane_id)` is single-data-plane).
+- Ensure every relevant `JobSpec` carries the `project_id` (the `Job` object already does).
+- In the job runner, after dequeue: read the job's `project_id`, fetch that project's connector,
+  and use the connector's org-scoped engine API key to talk to the correct GenAI engine org.
+- Separately exchange the platform token for a workspace-scoped token to push results (metrics,
+  etc.) back into the workspace that owns the project.
+- ❓ Requires a platform token-exchange endpoint and `arthur_client` support for token exchange.
+
+### 3.8 Engine ↔ platform Keycloak connectivity
+
+Make sure the engine can actually reach the platform's Keycloak/JWKS at runtime, across network
+boundaries, without standing up expensive private networking by default.
+
+- Provide a connectivity path from the engine to the platform's proxied Keycloak metadata/JWKS
+  endpoint over TLS.
+- Avoid defaulting to private link / VPN (it costs extra); reserve dedicated private networking
+  for customers whose security posture requires it.
+- Produce an explicit infra design and cost review for cross-VPC reachability before the
+  platform-token paths go live.
