@@ -18,7 +18,7 @@ import Typography from "@mui/material/Typography";
 import { isAxiosError } from "axios";
 import React, { useEffect, useState } from "react";
 
-import type { CreateMLEvalRequest, EvalTypeInput } from "@/lib/api-client/api-client";
+import type { CreateMLEvalRequest, EvalKind } from "@/lib/api-client/api-client";
 
 const ML_EVAL_TYPES = [
   { value: "pii", label: "PII Detection (Strict)" },
@@ -62,7 +62,7 @@ interface MLEvalFormModalProps {
 
 const MLEvalFormModal = ({ open, onClose, onSubmit, isLoading = false, initialName, initialType, initialConfig }: MLEvalFormModalProps) => {
   const [evalName, setEvalName] = useState(initialName ?? "");
-  const [mlEvalType, setMlEvalType] = useState<EvalTypeInput>((initialType ?? "pii") as EvalTypeInput);
+  const [mlEvalType, setMlEvalType] = useState<EvalKind>((initialType ?? "pii") as EvalKind);
   const [toxicityThreshold, setToxicityThreshold] = useState(0.5);
   // All entities enabled by default (none disabled)
   const [disabledEntities, setDisabledEntities] = useState<Set<string>>(new Set());
@@ -71,7 +71,7 @@ const MLEvalFormModal = ({ open, onClose, onSubmit, isLoading = false, initialNa
   useEffect(() => {
     if (open) {
       setEvalName(initialName ?? "");
-      setMlEvalType((initialType ?? "pii") as EvalTypeInput);
+      setMlEvalType((initialType ?? "pii") as EvalKind);
       setToxicityThreshold(typeof initialConfig?.toxicity_threshold === "number" ? initialConfig.toxicity_threshold : 0.5);
       setDisabledEntities(Array.isArray(initialConfig?.disabled_pii_entities) ? new Set(initialConfig.disabled_pii_entities as string[]) : new Set());
       setError(null);
@@ -172,7 +172,7 @@ const MLEvalFormModal = ({ open, onClose, onSubmit, isLoading = false, initialNa
                   Evaluator Type
                 </Typography>
               </FormLabel>
-              <Select value={mlEvalType} onChange={(e) => setMlEvalType(e.target.value as EvalTypeInput)} size="small" disabled={isLoading}>
+              <Select value={mlEvalType} onChange={(e) => setMlEvalType(e.target.value as EvalKind)} size="small" disabled={isLoading}>
                 {ML_EVAL_TYPES.map((t) => (
                   <MenuItem key={t.value} value={t.value}>
                     {t.label}
