@@ -17,7 +17,7 @@ dependencies = [
   "boto3==1.42.78",
   "python-dotenv==1.0.1",
   "psycopg2-binary==2.9.12",
-  "sqlalchemy==2.0.48",
+  "sqlalchemy==2.0.50",
   "pgvector==0.4.2",
   "python-multipart==0.0.32",
   "pypdf==6.12.0",
