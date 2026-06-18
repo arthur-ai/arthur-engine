@@ -17,7 +17,11 @@ from tools.image_tools import (
 
 
 def test_is_supported_image_uri() -> None:
+    # assert supported
     assert is_supported_image_uri("gs://bucket/path/image.png")
+    assert is_supported_image_uri("s3://bucket/path/image.png")
+
+    # assert not supported
     assert not is_supported_image_uri("unsupported_uri://bucket/path/image.png")
     assert not is_supported_image_uri("data:image/png;base64,abc")
     assert not is_supported_image_uri("just a string")
@@ -25,13 +29,21 @@ def test_is_supported_image_uri() -> None:
 
 def test_get_connector_type_for_image_uri() -> None:
     assert get_connector_type_for_image_uri("gs://b/i.png") == ConnectorType.GCS
+    assert get_connector_type_for_image_uri("s3://b/i.png") == ConnectorType.S3
     assert get_connector_type_for_image_uri("unsupported_uri://b/i.png") is None
     assert get_connector_type_for_image_uri("not a uri") is None
 
 
 def test_get_bucket_from_uri() -> None:
+    # GCS
     assert get_bucket_from_uri("gs://my-bucket/path/image.png") == "my-bucket"
     assert get_bucket_from_uri("gs://my-bucket") == "my-bucket"
+
+    # S3
+    assert get_bucket_from_uri("s3://my-bucket/path/image.png") == "my-bucket"
+    assert get_bucket_from_uri("s3://my-bucket") == "my-bucket"
+
+    # No scheme
     assert get_bucket_from_uri("no-scheme") is None
     assert get_bucket_from_uri("gs://") is None
 
