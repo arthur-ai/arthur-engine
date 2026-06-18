@@ -126,27 +126,27 @@ Target latency per inference call to MIS: **20–80ms** (local network). Paralle
 
 ### Off-the-Shelf Options (OSS)
 
-**Recommended: FastAPI (custom, same stack as engine)**
+Prefer an off-the-shelf model server over rolling our own. A generic model server is a solved problem — we shouldn't be building and maintaining batching, concurrency tuning, model loading, and a versioning story ourselves when purpose-built servers ship all of it. Building our own means we own every serving bug and every performance gap for a component that is not our differentiator.
 
-Lowest friction. Team already owns the stack. Models loaded as module-level singletons, same pattern as `model_load.py` today. Uvicorn handles concurrency. Add a thread-pool executor for CPU-bound inference to avoid blocking the event loop.
+**Selection requirement — parallel model loading:** whichever server we pick must load (and download/pull) the models in parallel, not serially. This is both a startup-latency and an image-distribution concern: a serial pull where one fat layer contains everything is exactly why Shield takes so long to pull. Models should be separately addressable artifacts (per-model layers / mounts from the `model-upload` distribution) that the server fetches and loads concurrently.
 
-Tradeoffs: no automatic batching, manual concurrency tuning required. Sufficient for initial version.
+**Recommended: BentoML**
 
-**BentoML**
+Purpose-built for exactly this use case. Native HuggingFace support, handles model loading, dynamic batching, and serving out of the box. Strong packaging story (models + code bundled as a Bento) and a clean model versioning story without Triton's operational complexity. Supports loading multiple models/runners concurrently. Cost is a new dependency and abstraction the team learns once — far cheaper than maintaining a bespoke server.
 
-Purpose-built for exactly this use case. Native HuggingFace support, handles model loading, batching, and serving out of the box. Better packaging story (models + code bundled as a Bento). Adds a dependency and abstraction layer the team needs to learn.
+**Recommended: TorchServe**
 
-Good choice if you want built-in dynamic batching and a cleaner model versioning story without Triton's complexity.
+PyTorch-native, supports dynamic batch inference, and has a built-in model store with independently-registered model archives (`.mar`) that load in parallel. A good fit given our models are already PyTorch/transformers. Solid fallback if BentoML's packaging model doesn't fit; the main tradeoff is less community momentum than BentoML.
 
 **Triton Inference Server (NVIDIA)**
 
-Most production-grade option. Dynamic batching, multi-GPU, ONNX/TensorRT support, Prometheus metrics built in. Significant operational complexity — models need to be converted to Triton-compatible formats (ONNX or TorchScript). Overkill for six small classifiers but the right long-term answer if GPU utilization optimization becomes critical.
+Most production-grade option. Dynamic batching, multi-GPU, ONNX/TensorRT support, Prometheus metrics built in. Significant operational complexity — models need to be converted to Triton-compatible formats (ONNX or TorchScript). Overkill for six small classifiers today, but the right long-term answer if GPU utilization optimization becomes critical.
 
-**TorchServe**
+**FastAPI (custom) — not recommended**
 
-PyTorch-native, supports batch inference, has a model store concept. Middle ground between FastAPI and Triton. Less community momentum than BentoML currently.
+Technically lowest friction to start (same stack as the engine, models as module-level singletons like `model_load.py` today), but it ships none of the serving primitives: no automatic batching, manual concurrency tuning, and we'd hand-roll parallel model loading and versioning. That's exactly the build-and-maintain burden we're trying to avoid. Listed only as the baseline we are choosing against.
 
-**Recommendation:** Start with FastAPI (fast to ship, zero new dependencies). Migrate to BentoML when you need proper model versioning and batching. Triton only if GPU throughput becomes a bottleneck.
+**Recommendation:** Use an off-the-shelf server — **BentoML** as the primary choice (native HuggingFace support, dynamic batching, clean packaging/versioning), with **TorchServe** as the PyTorch-native alternative. Both must be configured for parallel model loading. Reserve Triton for when GPU throughput becomes the bottleneck. Do not build a custom FastAPI server.
 
 ---
 
