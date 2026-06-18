@@ -41,6 +41,16 @@ if [[ -n "$KEYCLOAK_USE_PRIVATE_CERT" ]]; then
   fi
 fi
 
+if [[ -n "$GENAI_ENGINE_OPENAI_PRIVATE_CERT_DOWNLOAD_URL" ]]; then
+  echo "==> Downloading OpenAI private SSL cert from $GENAI_ENGINE_OPENAI_PRIVATE_CERT_DOWNLOAD_URL"
+  python3 -c "import urllib.request; urllib.request.urlretrieve('"${GENAI_ENGINE_OPENAI_PRIVATE_CERT_DOWNLOAD_URL}"', 'openai-cert.pem')"
+  if [[ $? == 0 ]]; then
+    echo "OpenAI private SSL cert downloaded with success"
+  else
+    echo "Error downloading OpenAI private SSL cert";
+  fi
+fi
+
 export PYTHONPATH="src"
 
 echo "==> Running database migration"

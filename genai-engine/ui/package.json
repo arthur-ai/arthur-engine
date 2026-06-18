@@ -23,7 +23,7 @@
     "@amplitude/experiment-js-client": "^1.21.1",
     "@amplitude/plugin-session-replay-browser": "^1.31.1",
     "@arizeai/openinference-semantic-conventions": "2.1.7",
-    "@arthur/shared-components": "3.17.0",
+    "@arthur/shared-components": "3.18.0",
     "@base-ui/react": "1.2.0",
     "@dnd-kit/core": "6.3.1",
     "@dnd-kit/sortable": "10.0.0",

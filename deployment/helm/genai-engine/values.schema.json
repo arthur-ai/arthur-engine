@@ -136,6 +136,18 @@
             ],
             "description": "Provider of OpenAI LLMs"
         },
+        "genaiEngineOpenAIVerifySSL": {
+            "type": "string",
+            "enum": [
+                "true",
+                "false"
+            ],
+            "description": "Verify TLS certificates when calling the LLM endpoint. Set to 'false' to disable verification (insecure; dev/test only)."
+        },
+        "genaiEngineOpenAIPrivateCertDownloadURL": {
+            "type": "string",
+            "description": "Optional URL serving a private CA / self-signed cert (PEM) for the LLM endpoint. Downloaded at container startup and trusted as the CA."
+        },
         "genaiEngineAPIOnlyModeEnabled": {
             "type": "string",
             "enum": [
