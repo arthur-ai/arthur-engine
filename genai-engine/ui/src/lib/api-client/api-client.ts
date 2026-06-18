@@ -798,7 +798,7 @@ export interface AgenticPromptVersionResponse {
    * Eval kind discriminator (e.g. 'llm_as_a_judge', 'pii', 'toxicity')
    * @default "llm_as_a_judge"
    */
-  eval_kind?: SchemasEnumsEvalType;
+  eval_kind?: EvalKind;
   /**
    * Model Name
    * Model name chosen for this version of the llm eval. None for ML evals.
@@ -1905,7 +1905,7 @@ export interface CreateMLEvalRequest {
    */
   config: PIIEvalConfig | ToxicityEvalConfig | PromptInjectionEvalConfig;
   /** Type of ML eval (e.g. 'pii', 'toxicity', 'prompt_injection') */
-  eval_type: EvalTypeInput;
+  eval_type: EvalKind;
 }
 
 export type CreateNotebookApiV1TasksTaskIdNotebooksPostData = NotebookDetail;
@@ -2572,10 +2572,7 @@ export interface DisplaySettingsResponse {
    * @default "USD"
    */
   default_currency?: string;
-  /**
-   * Scope Url
-   * URL of the Arthur Platform (Scope) instance for this deployment. Null if not configured.
-   */
+  /** Scope Url */
   scope_url?: string | null;
 }
 
@@ -2794,6 +2791,12 @@ export interface EvalExecutionResult {
 }
 
 /**
+ * EvalKind
+ * Discriminator for all eval types stored in the llm_evals table.
+ */
+export type EvalKind = "llm_as_a_judge" | "pii" | "pii_v1" | "toxicity" | "prompt_injection";
+
+/**
  * EvalRef
  * Reference to an evaluation configuration
  */
@@ -2885,12 +2888,6 @@ export interface EvalRunResponse {
 
 /** EvalType */
 export type EvalType = "llm_eval" | "ml_eval";
-
-/**
- * EvalType
- * Discriminator for all eval types stored in the llm_evals table.
- */
-export type EvalTypeInput = "llm_as_a_judge" | "pii" | "pii_v1" | "toxicity" | "prompt_injection";
 
 /**
  * EvalVariableMapping
@@ -4889,7 +4886,7 @@ export interface LLMGetAllMetadataResponse {
    * Eval kind discriminator (e.g. 'llm_as_a_judge', 'pii', 'toxicity')
    * @default "llm_as_a_judge"
    */
-  eval_kind?: SchemasEnumsEvalType;
+  eval_kind?: EvalKind;
   /**
    * Latest Version Created At
    * Timestamp when the last version of the llm asset was created
@@ -5188,7 +5185,7 @@ export interface LLMVersionResponse {
    * Eval kind discriminator (e.g. 'llm_as_a_judge', 'pii', 'toxicity')
    * @default "llm_as_a_judge"
    */
-  eval_kind?: SchemasEnumsEvalType;
+  eval_kind?: EvalKind;
   /**
    * Model Name
    * Model name chosen for this version of the llm eval. None for ML evals.
@@ -6674,6 +6671,11 @@ export interface MetadataQuery {
    * @default false
    */
   last_update_time?: boolean;
+  /**
+   * Query Profile
+   * @default false
+   */
+  query_profile?: boolean;
   /**
    * Score
    * @default false
@@ -10321,12 +10323,6 @@ export interface SavedRagConfigOutput {
   version: number;
 }
 
-/**
- * EvalType
- * Discriminator for all eval types stored in the llm_evals table.
- */
-export type SchemasEnumsEvalType = "llm_as_a_judge" | "pii" | "pii_v1" | "toxicity" | "prompt_injection";
-
 /** SearchDatasetsResponse */
 export interface SearchDatasetsResponse {
   /**
@@ -12810,7 +12806,8 @@ export type WeaviateHybridSearchSettingsConfigurationRequestReturnMetadataEnum =
   | "certainty"
   | "score"
   | "explain_score"
-  | "is_consistent";
+  | "is_consistent"
+  | "query_profile";
 
 /** WeaviateHybridSearchSettingsConfigurationResponse */
 export interface WeaviateHybridSearchSettingsConfigurationResponse {
@@ -12902,7 +12899,8 @@ export type WeaviateHybridSearchSettingsConfigurationResponseReturnMetadataEnum 
   | "certainty"
   | "score"
   | "explain_score"
-  | "is_consistent";
+  | "is_consistent"
+  | "query_profile";
 
 /** WeaviateHybridSearchSettingsRequest */
 export interface WeaviateHybridSearchSettingsRequest {
@@ -12994,7 +12992,8 @@ export type WeaviateHybridSearchSettingsRequestReturnMetadataEnum =
   | "certainty"
   | "score"
   | "explain_score"
-  | "is_consistent";
+  | "is_consistent"
+  | "query_profile";
 
 /** WeaviateKeywordSearchSettingsConfigurationRequest */
 export interface WeaviateKeywordSearchSettingsConfigurationRequest {
@@ -13063,7 +13062,8 @@ export type WeaviateKeywordSearchSettingsConfigurationRequestReturnMetadataEnum 
   | "certainty"
   | "score"
   | "explain_score"
-  | "is_consistent";
+  | "is_consistent"
+  | "query_profile";
 
 /** WeaviateKeywordSearchSettingsConfigurationResponse */
 export interface WeaviateKeywordSearchSettingsConfigurationResponse {
@@ -13132,7 +13132,8 @@ export type WeaviateKeywordSearchSettingsConfigurationResponseReturnMetadataEnum
   | "certainty"
   | "score"
   | "explain_score"
-  | "is_consistent";
+  | "is_consistent"
+  | "query_profile";
 
 /** WeaviateKeywordSearchSettingsRequest */
 export interface WeaviateKeywordSearchSettingsRequest {
@@ -13201,7 +13202,8 @@ export type WeaviateKeywordSearchSettingsRequestReturnMetadataEnum =
   | "certainty"
   | "score"
   | "explain_score"
-  | "is_consistent";
+  | "is_consistent"
+  | "query_profile";
 
 /**
  * WeaviateQueryResult
@@ -13360,7 +13362,8 @@ export type WeaviateVectorSimilarityTextSearchSettingsConfigurationRequestReturn
   | "certainty"
   | "score"
   | "explain_score"
-  | "is_consistent";
+  | "is_consistent"
+  | "query_profile";
 
 /** WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse */
 export interface WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse {
@@ -13434,7 +13437,8 @@ export type WeaviateVectorSimilarityTextSearchSettingsConfigurationResponseRetur
   | "certainty"
   | "score"
   | "explain_score"
-  | "is_consistent";
+  | "is_consistent"
+  | "query_profile";
 
 /** WeaviateVectorSimilarityTextSearchSettingsRequest */
 export interface WeaviateVectorSimilarityTextSearchSettingsRequest {
@@ -13508,7 +13512,8 @@ export type WeaviateVectorSimilarityTextSearchSettingsRequestReturnMetadataEnum 
   | "certainty"
   | "score"
   | "explain_score"
-  | "is_consistent";
+  | "is_consistent"
+  | "query_profile";
 
 import type { AxiosInstance, AxiosRequestConfig, AxiosResponse, HeadersDefaults, ResponseType } from "axios";
 import axios from "axios";
@@ -13641,7 +13646,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.617
+ * @version 2.1.640
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {

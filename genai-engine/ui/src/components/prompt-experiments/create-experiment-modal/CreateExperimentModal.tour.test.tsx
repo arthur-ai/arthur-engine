@@ -58,9 +58,16 @@ vi.mock("react-router-dom", () => ({
 
 vi.mock("@tanstack/react-form", async () => {
   const actual = await vi.importActual<typeof import("@tanstack/react-form")>("@tanstack/react-form");
+  // `@tanstack/react-form` surfaces `formOptions` only via `export * from
+  // "@tanstack/form-core"`. When this hoisted mock factory runs, form-core
+  // hasn't finished evaluating yet, so the star re-export isn't enumerable and
+  // spreading `actual` drops `formOptions`. Pull it from form-core directly.
+  const formCore = await vi.importActual<typeof import("@tanstack/form-core")>("@tanstack/form-core");
 
   return {
+    ...formCore,
     ...actual,
+    formOptions: formCore.formOptions,
     useStore: (_store: unknown, selector: (state: { values: CreateExperimentModalFormValues }) => unknown) => selector({ values: formState.values! }),
   };
 });
