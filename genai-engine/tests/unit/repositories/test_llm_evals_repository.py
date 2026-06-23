@@ -25,6 +25,8 @@ from schemas.request_schemas import (
     LLMGetVersionsFilterRequest,
     LLMRequestConfigSettings,
 )
+from utils.constants import DEFAULT_ORG_ID
+
 from schemas.response_schemas import (
     EvalRunResponse,
     LLMEvalsVersionListResponse,
@@ -929,7 +931,7 @@ def test_run_saved_llm_eval(
         return_value=mock_llm_client,
     )
 
-    result = llm_evals_repo.run_llm_eval(task_id, eval_name)
+    result = llm_evals_repo.run_llm_eval(task_id, eval_name, org_id=DEFAULT_ORG_ID)
 
     assert isinstance(result, EvalRunResponse)
     assert (
@@ -964,7 +966,7 @@ def test_run_deleted_llm_eval_spawns_error(
     )
 
     with pytest.raises(ValueError) as exc_info:
-        llm_evals_repo.run_llm_eval(task_id, eval_name, version="1")
+        llm_evals_repo.run_llm_eval(task_id, eval_name, org_id=DEFAULT_ORG_ID, version="1")
     assert f"Cannot run this llm eval because it was deleted on" in str(exc_info.value)
 
     llm_evals_repo.delete_llm_item(task_id, eval_name)
@@ -998,7 +1000,7 @@ def test_run_saved_llm_eval_malformed_response_errors(
     )
 
     with pytest.raises(ValueError) as exc_info:
-        llm_evals_repo.run_llm_eval(task_id, eval_name, version="1")
+        llm_evals_repo.run_llm_eval(task_id, eval_name, org_id=DEFAULT_ORG_ID, version="1")
     assert (
         f"No structured output response from model {full_eval.model_name} with provider {full_eval.model_provider}"
         in str(exc_info.value)
@@ -1014,7 +1016,7 @@ def test_run_saved_llm_eval_malformed_response_errors(
     )
 
     with pytest.raises(TypeError) as exc_info:
-        llm_evals_repo.run_llm_eval(task_id, eval_name, version="1")
+        llm_evals_repo.run_llm_eval(task_id, eval_name, org_id=DEFAULT_ORG_ID, version="1")
     assert f"Structured output is not a ReasonedScore instance" in str(exc_info.value)
 
     llm_evals_repo.delete_llm_item(task_id, eval_name)

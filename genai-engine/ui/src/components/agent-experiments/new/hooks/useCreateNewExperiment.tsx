@@ -1,9 +1,11 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSnackbar } from "notistack";
 
+import { useOutOfCreditsDialog } from "@/contexts/OutOfCreditsContext";
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
 import { AgenticExperimentSummary, CreateAgenticExperimentRequest } from "@/lib/api-client/api-client";
+import { getTokenLimitDetail, isTokenLimitExceededError } from "@/lib/api-errors";
 import { queryKeys } from "@/lib/queryKeys";
 import { track } from "@/services/analytics";
 
@@ -17,6 +19,7 @@ export const useCreateNewExperiment = ({ onSuccess }: Opts = {}) => {
   const { api } = useApi()!;
 
   const { enqueueSnackbar } = useSnackbar();
+  const { show: showOutOfCredits } = useOutOfCreditsDialog();
 
   return useMutation({
     mutationFn: async (data: CreateAgenticExperimentRequest) => {
@@ -29,7 +32,13 @@ export const useCreateNewExperiment = ({ onSuccess }: Opts = {}) => {
       queryClient.invalidateQueries({ queryKey: [queryKeys.agentExperiments.all(task!.id)] });
       onSuccess?.(data);
     },
-    onError: () => {
+    onError: (error) => {
+      // UP-4390: route 429 quota errors to the global dialog before falling
+      // back to the generic snackbar.
+      if (isTokenLimitExceededError(error)) {
+        showOutOfCredits(getTokenLimitDetail(error));
+        return;
+      }
       enqueueSnackbar("Failed to create experiment. Please check the form and try again.", { variant: "error" });
     },
   });

@@ -5,6 +5,7 @@ from typing import Any, Optional
 
 from arthur_common.models.common_schemas import VariableTemplateValue
 from arthur_common.models.enums import AgenticAnnotationType, ContinuousEvalRunStatus
+from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from db_models.agentic_annotation_models import DatabaseAgenticAnnotation
@@ -14,6 +15,10 @@ from dependencies import get_db_session
 from repositories.evaluator_factory import get_evaluator
 from repositories.llm_evals_repository import LLMEvalsRepository
 from repositories.metrics_repository import MetricRepository
+from repositories.organizations_repository import (
+    enforce_token_quota,
+    extract_token_limit_message,
+)
 from repositories.span_repository import SpanRepository
 from repositories.tasks_metrics_repository import TasksMetricsRepository
 from repositories.trace_transform_repository import TraceTransformRepository
@@ -163,6 +168,23 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
                     f"Annotation {job.annotation_id} is running or has already finished executing",
                 )
 
+            # UP-4390: short-circuit if the owning org is out of LLM credits.
+            # The upstream trace may have spans missing because the agent's
+            # own LLM calls were 429'd, and the eval itself would 429 too.
+            # Surface the credit-limit message instead of leaving the user
+            # to interpret a downstream "missing variables" or "unexpected
+            # error" symptom.
+            try:
+                enforce_token_quota(annotation.org_id)
+            except HTTPException as exc:
+                self._update_annotation_status(
+                    db_session,
+                    job.annotation_id,
+                    ContinuousEvalRunStatus.ERROR.value,
+                    annotation_description=extract_token_limit_message(exc) or str(exc),
+                )
+                return
+
             # Load the continuous eval configuration
             db_continuous_eval = (
                 db_session.query(DatabaseContinuousEval)
@@ -302,12 +324,15 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
 
             db_session.expire_all()
 
+            # annotation.org_id is denormalized at enqueue time so the
+            # background worker doesn't need to chase task → org each call.
             eval_run_result = evaluator.run(
                 task_id=continuous_eval.task_id,
                 eval_name=eval_name,
                 eval_version=eval_version,
                 variable_mapping=continuous_eval.transform_variable_mapping,
                 resolved_variables=resolved_variables,
+                org_id=annotation.org_id,
             )
             run_status = (
                 ContinuousEvalRunStatus.PASSED.value
@@ -333,11 +358,16 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
                 f"Error executing job for trace {job.trace_id}: {e}",
                 exc_info=True,
             )
+            # Catch the gate firing mid-eval (e.g. the org crossed the limit
+            # between the pre-check and the eval's LLM call) and surface the
+            # structured credit-limit message instead of HTTPException(...)
+            # stringified verbatim.
+            description = extract_token_limit_message(e) or str(e)
             self._update_annotation_status(
                 db_session,
                 job.annotation_id,
                 ContinuousEvalRunStatus.ERROR.value,
-                annotation_description=str(e),
+                annotation_description=description,
             )
             raise e
         finally:

@@ -1,4 +1,5 @@
 import copy
+import uuid
 from typing import List, Type, cast
 
 from pydantic import BaseModel
@@ -114,6 +115,7 @@ class AgenticPromptRepository(
     async def run_unsaved_prompt(
         self,
         unsaved_prompt: CompletionRequest,
+        org_id: uuid.UUID,
     ) -> AgenticPromptRunResponse | StreamingResponse:
         llm_client = self.model_provider_repo.get_model_provider_client(
             provider=unsaved_prompt.model_provider,
@@ -125,6 +127,7 @@ class AgenticPromptRepository(
             llm_client,
             prompt,
             completion_request,
+            org_id=org_id,
         )
 
     async def run_saved_prompt(
@@ -133,6 +136,7 @@ class AgenticPromptRepository(
         prompt_name: str,
         prompt_version: str,
         completion_request: PromptCompletionRequest,
+        org_id: uuid.UUID,
     ) -> AgenticPromptRunResponse | StreamingResponse:
         prompt = self.get_llm_item(
             task_id,
@@ -146,6 +150,7 @@ class AgenticPromptRepository(
             llm_client,
             prompt,
             completion_request,
+            org_id=org_id,
         )
 
     def render_saved_prompt(
