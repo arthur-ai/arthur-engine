@@ -1,5 +1,5 @@
-import matter from "gray-matter";
 import type { ReactNode } from "react";
+import { parse as parseYaml, type ParseOptions, type SchemaOptions, type ToJSOptions } from "yaml";
 
 import { Markdown } from "../components/Markdown";
 import type { TaskTourItem, TaskTourSection } from "../data";
@@ -21,6 +21,19 @@ const rawSectionFiles = import.meta.glob("./*.md", {
 
 /** Pattern for a top-level body heading inside a section file. */
 const HEADING_PATTERN = /^##\s+(.+?)\s*$/;
+
+/** Hardened YAML parse options for author frontmatter (trusted but parsed on every build). */
+const FRONTMATTER_YAML_OPTIONS = {
+  strict: true,
+  schema: "core",
+  merge: false,
+  maxAliasCount: 0,
+} as const satisfies ParseOptions & SchemaOptions & ToJSOptions;
+
+type ParsedFrontmatter = {
+  data: Record<string, unknown>;
+  content: string;
+};
 
 /**
  * A failure during load surfaces as a clear, prefixed error so the Vite
@@ -139,16 +152,56 @@ function buildItems(wiring: SectionWiring, frontmatter: SectionFrontmatter, body
 }
 
 /**
- * Wrap `gray-matter` so YAML parse failures surface as our prefixed error
+ * Split Jekyll-style `---` frontmatter from the markdown body. Uses line-based
+ * delimiter detection (not regex) so BOM handling and missing closing fences
+ * produce precise author-facing errors.
+ */
+function splitFrontmatter(file: string, raw: string): { yamlBlock: string | null; body: string } {
+  const text = raw.replace(/^\uFEFF/, "");
+  const lines = text.split(/\r?\n/);
+  if (lines[0] !== "---") {
+    return { yamlBlock: null, body: text };
+  }
+
+  const closingIndex = lines.findIndex((line, index) => index > 0 && line === "---");
+  if (closingIndex === -1) {
+    fail(file, "frontmatter opens with --- but is missing a closing --- delimiter");
+  }
+
+  return {
+    yamlBlock: lines.slice(1, closingIndex).join("\n"),
+    body: lines.slice(closingIndex + 1).join("\n"),
+  };
+}
+
+/**
+ * Split Jekyll-style `---` frontmatter from the markdown body and parse the
+ * YAML block with `yaml`. Parse failures surface as our prefixed error
  * pointing at the offending file, rather than the library's stack trace.
  */
-function parseFrontmatter(file: string, raw: string): ReturnType<typeof matter> {
+export function parseFrontmatter(file: string, raw: string): ParsedFrontmatter {
+  const { yamlBlock, body } = splitFrontmatter(file, raw);
+  if (yamlBlock === null) {
+    return { data: {}, content: body };
+  }
+
+  if (yamlBlock.trim() === "") {
+    return { data: {}, content: body };
+  }
+
+  let data: unknown;
   try {
-    return matter(raw);
+    data = parseYaml(yamlBlock, FRONTMATTER_YAML_OPTIONS);
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err);
     fail(file, `failed to parse frontmatter (check YAML indentation and quoting): ${detail}`);
   }
+
+  if (data === null || typeof data !== "object" || Array.isArray(data)) {
+    fail(file, "frontmatter must be a YAML mapping (key: value), not a scalar or list");
+  }
+
+  return { data: data as Record<string, unknown>, content: body };
 }
 
 /**

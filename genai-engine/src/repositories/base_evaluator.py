@@ -1,3 +1,4 @@
+import uuid
 from abc import ABC, abstractmethod
 from typing import List
 
@@ -25,5 +26,6 @@ class BaseEvaluator(ABC):
         eval_version: str,
         variable_mapping: List[ContinuousEvalTransformVariableMapping],
         resolved_variables: dict[str, str],
+        org_id: uuid.UUID,
     ) -> EvalRunResponse:
         raise NotImplementedError

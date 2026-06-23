@@ -6,6 +6,7 @@ from litellm.types.utils import ModelResponse, TokenCountResponse
 from pydantic import BaseModel, Field
 
 from clients.llm.llm_client import LLMClient, LLMModelResponse
+from utils.constants import DEFAULT_ORG_ID
 
 
 def _make_token_count_response(total: int = 42) -> TokenCountResponse:
@@ -54,6 +55,7 @@ def test_llm_client_completion_response_format(
 
     response = llm_client.completion(
         model="openai/gpt-4o",
+        org_id=DEFAULT_ORG_ID,
         **completion_request,
     )
     assert isinstance(response, LLMModelResponse)
@@ -84,6 +86,7 @@ def test_llm_client_completion_response_format(
 
     response = llm_client.completion(
         model="openai/gpt-4o",
+        org_id=DEFAULT_ORG_ID,
         **completion_request,
     )
     assert isinstance(response, LLMModelResponse)
@@ -99,6 +102,7 @@ def test_llm_client_completion_response_format(
 
     response = llm_client.completion(
         model="openai/gpt-4o",
+        org_id=DEFAULT_ORG_ID,
         **completion_request,
     )
     assert isinstance(response, LLMModelResponse)

@@ -511,10 +511,24 @@ def db_session_context() -> Generator[Session, None, None]:
     """
     Context manager for database sessions using the FastAPI dependency.
 
+    Reuses ``SINGLETON_DB_ENGINE`` when it's already been initialized — by
+    tests via ``override_get_db_session`` or by an earlier prod request —
+    so we don't re-construct ``DatabaseConfig`` (which would fail in tests
+    where ``POSTGRES_*`` isn't set). Falls back to the full
+    ``get_db_session`` path on cold start.
+
     Usage:
         with db_session_context() as session:
             # use session
     """
+    if SINGLETON_DB_ENGINE is not None:
+        session = sessionmaker(SINGLETON_DB_ENGINE)()
+        try:
+            yield session
+        finally:
+            session.close()
+        return
+
     session_gen = get_db_session()
     session = next(session_gen)
     try:

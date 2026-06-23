@@ -1,4 +1,5 @@
-import { useCallback, useMemo, type ReactNode } from "react";
+import { useDebouncer } from "@tanstack/react-pacer";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { TASK_TOUR_SECTIONS, type TaskTourItem } from "../data";
 import { dismissOverlay } from "../dismissOverlay";
@@ -14,6 +15,41 @@ import {
   type StepRenderContext,
   type TourStatePlugin,
 } from "@/features/tour";
+
+/**
+ * Grace period before a missing target surfaces its "target lost" hint. Clicks
+ * inside an active step routinely detach and re-attach the highlighted node for
+ * a frame or two (list re-renders, drawer swaps), which momentarily resolves the
+ * target to null. Without this delay the red hint copy flashes on every such
+ * click (UP-4505). A genuinely missing target stays null past the window and the
+ * hint still appears.
+ */
+const TARGET_LOST_HINT_DELAY_MS = 200;
+
+/**
+ * Returns true only after `active` has stayed true continuously for `delayMs`.
+ * Flips back to false immediately when `active` becomes false, so the hint
+ * disappears the instant the target re-resolves — only the lost→shown edge is
+ * debounced (via TanStack Pacer), never shown→cleared.
+ */
+export function useDelayedFlag(active: boolean, delayMs: number): boolean {
+  const [flag, setFlag] = useState(false);
+  // Pacer debounces the trailing edge of `maybeExecute`, so a transient `active`
+  // blip shorter than `delayMs` is cancelled before it can flip the flag.
+  const showDebouncer = useDebouncer(setFlag, { wait: delayMs });
+
+  useEffect(() => {
+    if (active) {
+      showDebouncer.maybeExecute(true);
+    } else {
+      // Drop any pending show and clear immediately — no delay on this edge.
+      showDebouncer.cancel();
+      setFlag(false);
+    }
+  }, [active, showDebouncer]);
+
+  return flag;
+}
 
 export interface ChecklistController {
   /**
@@ -134,7 +170,10 @@ export function useChecklistController(statePlugin: TourStatePlugin): ChecklistC
   }, [activeStep, actions, engine.config.id]);
 
   const activeStepKey = state.status === "step" ? `${state.sectionId}.${state.stepId}` : null;
-  const targetLostHint = activeStepKey && !activeTarget ? (TASK_TOUR_TARGET_LOST_HINTS[activeStepKey] ?? null) : null;
+  // Debounce the lost→shown edge so a transient target swap on click doesn't
+  // flash the hint; see {@link useDelayedFlag} / UP-4505.
+  const targetMissing = useDelayedFlag(activeStepKey != null && !activeTarget, TARGET_LOST_HINT_DELAY_MS);
+  const targetLostHint = activeStepKey && targetMissing ? (TASK_TOUR_TARGET_LOST_HINTS[activeStepKey] ?? null) : null;
   // Occlusion is mutually exclusive with target-lost at the source (occlusion
   // only fires when an element resolved; target-lost only when none did).
   const occlusionHint = activeStepKey && occlusion ? (TASK_TOUR_OCCLUSION_HINTS[activeStepKey] ?? DEFAULT_OCCLUSION_HINT) : null;

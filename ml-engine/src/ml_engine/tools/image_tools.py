@@ -7,6 +7,7 @@ from arthur_common.models.schema_definitions import (
 
 IMAGE_CONNECTOR_PREFIX_TO_TYPE = {
     "gs://": ConnectorType.GCS,
+    "s3://": ConnectorType.S3,
 }
 IMAGE_CONNECTOR_PREFIX_TUPLE = tuple(IMAGE_CONNECTOR_PREFIX_TO_TYPE.keys())
 

@@ -1,3 +1,4 @@
+import uuid
 from typing import List, Optional, Type, Union, cast
 
 from arthur_common.models.llm_model_providers import (
@@ -172,6 +173,7 @@ class LLMEvalsRepository(
         self,
         task_id: str,
         eval_name: str,
+        org_id: uuid.UUID,
         version: str = "latest",
         completion_request: Optional[BaseCompletionRequest] = None,
     ) -> EvalRunResponse:
@@ -233,6 +235,7 @@ class LLMEvalsRepository(
                 agentic_prompt,
                 llm_client,
                 prompt_completion_request,
+                org_id=org_id,
             )
         )
 

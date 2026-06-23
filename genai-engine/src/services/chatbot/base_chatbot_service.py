@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import uuid
 from abc import ABC, abstractmethod
 from typing import AsyncGenerator, Dict, List, Optional, Tuple
 
@@ -40,10 +41,14 @@ class BaseChatbotService(ABC):
         db_session: Session,
         summarizer_prompt: AgenticPrompt,
         task_id: str,
+        org_id: uuid.UUID,
         enqueue_continuous_evals: bool = False,
     ):
         self.chat_completion_service = chat_completion_service
         self.summarizer_prompt = summarizer_prompt
+        # Org context for token-usage billing (UP-4390). Always the org
+        # that owns the task this chatbot session runs against.
+        self.org_id = org_id
         self.tracing = InternalTraceService(
             db_session,
             task_id=task_id,
@@ -116,6 +121,7 @@ class BaseChatbotService(ABC):
                     ),
                 ],
             ),
+            org_id=self.org_id,
         )
 
         summary_msg = OpenAIMessage(
@@ -233,6 +239,7 @@ class BaseChatbotService(ABC):
                     current_prompt,
                     llm_client,
                     PromptCompletionRequest(stream=True, strict=False),
+                    org_id=self.org_id,
                 ):
                     if event.startswith(f"event: {SSEEventType.FINAL_RESPONSE.value}"):
                         data = event.split("data: ", 1)[1].strip()
