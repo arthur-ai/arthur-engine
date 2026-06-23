@@ -155,10 +155,20 @@ class PermissionLevelsEnum(Enum):
             constants.TENANT_USER,
         ],
     )
+    # Trace ingestion (POST /api/v1/traces). This is INFERENCE_WRITE minus
+    # TENANT_USER. The write path has NO org-scope enforcement — the target
+    # task/org is read straight from the caller-controlled payload — so this
+    # frozenset is the *only* cross-org gate. Every role here must be a
+    # cross-org operator role (org_id IS NULL when the key is minted).
+    # TENANT_USER is deliberately excluded: it is the only org-scoped role, and
+    # admitting it would let an O1-scoped key write traces into O2's tasks.
+    # See test_trace_route_permissions.py for the enforced invariants.
     TRACES_WRITE = frozenset(
         [
             constants.ORG_ADMIN,
             constants.TASK_ADMIN,
+            constants.VALIDATION_USER,
+            constants.CHAT_USER,
         ],
     )
     USAGE_READ = frozenset(
