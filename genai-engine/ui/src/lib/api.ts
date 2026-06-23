@@ -67,4 +67,5 @@ export type {
   QueryTracesWithMetricsResponse,
   TraceResponse,
   NestedSpanWithMetricsResponse,
+  StatusCodeEnum,
 } from "./api-client/api-client";

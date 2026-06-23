@@ -25,7 +25,7 @@ import { PromptType, FrontendTool } from "../types";
 import getToolChoiceDisplayValue from "../utils/getToolChoiceDisplayValue";
 
 import { ToolChoiceEnum, ToolChoice } from "@/lib/api-client/api-client";
-import { track, EVENT_NAMES } from "@/services/amplitude";
+import { track } from "@/services/analytics";
 
 const validToolEnumValues = ["auto", "none", "required"] as const;
 
@@ -134,7 +134,7 @@ const ToolsDialog = ({ open, setOpen, prompt }: ToolsDialogProps) => {
       payload: { promptId: prompt.id },
     });
     // Track tool added event
-    track(EVENT_NAMES.TOOL_ADDED, {
+    track("Tool Added", {
       prompt_id: prompt.id,
       tool_count: prompt.tools.length + 1,
     });
@@ -161,7 +161,7 @@ const ToolsDialog = ({ open, setOpen, prompt }: ToolsDialogProps) => {
         payload: { promptId: prompt.id, toolId },
       });
       // Track tool removed event
-      track(EVENT_NAMES.TOOL_REMOVED, {
+      track("Tool Removed", {
         prompt_id: prompt.id,
         tool_name: toolToDelete?.function.name,
         tool_count: prompt.tools.length - 1,

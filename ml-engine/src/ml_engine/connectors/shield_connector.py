@@ -288,6 +288,9 @@ class ShieldBaseConnector(Connector, ABC):
             connection_check_outcome=ConnectorCheckOutcome.SUCCEEDED,
         )
 
+    def extract_image(self, image_uri: str) -> str:
+        return image_uri
+
     def list_datasets(self) -> PutAvailableDatasets:
         page_size, page = 250, 0
         datasets: PutAvailableDatasets = PutAvailableDatasets(available_datasets=[])

@@ -207,8 +207,8 @@ def get_continuous_eval_variables_and_mappings(
     eval_version: Annotated[
         str,
         Path(
-            description="The version of the llm eval to get the continuous eval variables and mappings for.",
-            title="LLM Eval Version",
+            description="The version of the eval to get the continuous eval variables and mappings for.",
+            title="Eval Version",
         ),
     ],
     db_session: Session = Depends(get_db_session),
@@ -217,25 +217,20 @@ def get_continuous_eval_variables_and_mappings(
     org_scope: UUID | None = Depends(get_org_scope),
 ) -> ContinuousEvalVariableMappingResponse:
     try:
-        # Validate the llm eval exists and hasn't been deleted
         llm_eval_repo = LLMEvalsRepository(db_session)
-        llm_eval = llm_eval_repo.get_llm_item(
-            task.id,
-            eval_name,
-            eval_version,
-        )
+        llm_eval = llm_eval_repo.get_llm_item(task.id, eval_name, eval_version)
         if llm_eval.deleted_at is not None:
             raise HTTPException(
                 status_code=400,
                 detail=f"LLM Eval {llm_eval.name} (version {llm_eval.version}) has been deleted.",
             )
+        eval_vars = set(llm_eval.variables)
 
         # Validate the transform exists and is in the caller's org
         transform_repo = TraceTransformRepository(db_session)
         _assert_transform_accessible(transform_repo, transform_id, org_scope)
 
         transform_definition = transform_repo.get_latest_definition(transform_id)
-        eval_vars = set(llm_eval.variables)
         transform_vars = {v.variable_name for v in transform_definition.variables}
         matching_vars = list(eval_vars & transform_vars)
 
@@ -284,7 +279,7 @@ def create_continuous_eval(
         llm_eval = llm_eval_repo.get_llm_item(
             task.id,
             create_request.llm_eval_name,
-            llm_eval_version,
+            llm_eval_version or "latest",
         )
 
         if llm_eval.deleted_at is not None:
@@ -317,6 +312,23 @@ def create_continuous_eval(
 
         continuous_eval_repo = ContinuousEvalsRepository(db_session)
 
+        llm_eval_repo = LLMEvalsRepository(db_session)
+        eval_version = (
+            str(create_request.llm_eval_version)
+            if create_request.llm_eval_version is not None
+            else "latest"
+        )
+        llm_eval = llm_eval_repo.get_llm_item(
+            task.id,
+            create_request.llm_eval_name,
+            eval_version,
+        )
+        if llm_eval.deleted_at is not None:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Eval {llm_eval.name} (version {llm_eval.version}) has been deleted.",
+            )
+        create_request.llm_eval_version = llm_eval.version
         continuous_eval_repo.validate_transform_variable_mapping(
             validation_definition,
             llm_eval,
@@ -365,7 +377,8 @@ def update_continuous_eval(
         transform_repo = TraceTransformRepository(db_session)
 
         existing_eval = continuous_eval_repo.get_continuous_eval_by_id(
-            eval_id, org_scope=org_scope
+            eval_id,
+            org_scope=org_scope,
         )
         llm_eval = None
         llm_eval_version: str | int | None = None
@@ -374,6 +387,12 @@ def update_continuous_eval(
             llm_eval_name = existing_eval.llm_eval_name
             if update_request.llm_eval_name is not None:
                 llm_eval_name = update_request.llm_eval_name
+
+            if llm_eval_name is None:
+                raise HTTPException(
+                    status_code=400,
+                    detail="llm_eval_name must be provided when updating llm_eval_version.",
+                )
 
             # Validate the llm eval exists and hasn't been deleted
             llm_eval_version = (
@@ -449,6 +468,11 @@ def update_continuous_eval(
                     if update_request.llm_eval_version is not None
                     else existing_eval.llm_eval_version
                 )
+                if llm_eval_name is None:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="llm_eval_name must be configured on the continuous eval.",
+                    )
                 llm_eval = llm_eval_repo.get_llm_item(
                     existing_eval.task_id,
                     llm_eval_name,
@@ -505,7 +529,8 @@ def rerun_continuous_eval(
     try:
         continuous_eval_repo = ContinuousEvalsRepository(db_session)
         return continuous_eval_repo.rerun_continuous_eval_by_annotation_id(
-            run_id, org_scope=org_scope
+            run_id,
+            org_scope=org_scope,
         )
     except HTTPException:
         raise
@@ -635,7 +660,8 @@ def create_test_run(
         # Look up the continuous eval (org-scoped for tenant callers) and get its task_id
         continuous_eval_repo = ContinuousEvalsRepository(db_session)
         continuous_eval = continuous_eval_repo.get_continuous_eval_by_id(
-            eval_id, org_scope=org_scope
+            eval_id,
+            org_scope=org_scope,
         )
 
         test_run_repo = ContinuousEvalTestRunRepository(db_session)
@@ -691,7 +717,8 @@ def list_test_runs(
         # Validate ownership of the parent continuous eval before listing test runs.
         if org_scope is not None:
             ContinuousEvalsRepository(db_session).get_continuous_eval_by_id(
-                eval_id, org_scope=org_scope
+                eval_id,
+                org_scope=org_scope,
             )
         test_run_repo = ContinuousEvalTestRunRepository(db_session)
         test_runs = test_run_repo.list_test_runs(

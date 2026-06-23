@@ -2,7 +2,9 @@ import { useApi } from "./useApi";
 import { useApiMutation } from "./useApiMutation";
 import { useApiQuery } from "./useApiQuery";
 
+import { useOutOfCreditsDialog } from "@/contexts/OutOfCreditsContext";
 import type { CreateRagExperimentRequest, RagExperimentDetail, RagExperimentSummary } from "@/lib/api-client/api-client";
+import { getTokenLimitDetail, isTokenLimitExceededError } from "@/lib/api-errors";
 import { pollWhileAnyInProgress, pollWhileInProgress, isInProgressStatus, POLL_INTERVAL } from "@/lib/polling";
 import { queryKeys } from "@/lib/queryKeys";
 
@@ -73,6 +75,7 @@ export function useRagExperimentWithPolling(experimentId: string | undefined, en
  */
 export function useCreateRagExperiment(taskId: string | undefined) {
   const api = useApi();
+  const { show: showOutOfCredits } = useOutOfCreditsDialog();
 
   return useApiMutation<RagExperimentSummary, CreateRagExperimentRequest>({
     mutationFn: async (request: CreateRagExperimentRequest) => {
@@ -86,6 +89,11 @@ export function useCreateRagExperiment(taskId: string | undefined) {
       { queryKey: queryKeys.ragNotebooks.historyAll() },
       { queryKey: queryKeys.ragNotebooks.listAll() },
     ],
+    onError: (error) => {
+      if (isTokenLimitExceededError(error)) {
+        showOutOfCredits(getTokenLimitDetail(error));
+      }
+    },
   });
 }
 

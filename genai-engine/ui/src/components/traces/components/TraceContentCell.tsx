@@ -4,7 +4,7 @@ import React, { useMemo, useState } from "react";
 
 import { TraceContentModal } from "./TraceContentModal";
 
-import { EVENT_NAMES, track } from "@/services/amplitude";
+import { track } from "@/services/analytics";
 
 interface TraceContentCellProps {
   value: unknown;
@@ -50,7 +50,7 @@ export const TraceContentCell: React.FC<TraceContentCellProps> = ({ value, title
   const handleOpenModal = (event: React.MouseEvent) => {
     event.stopPropagation();
     if (isTruncated) {
-      track(EVENT_NAMES.TRACING_CONTENT_MODAL_OPENED, {
+      track("tracing/content_modal_opened", {
         level: spanId ? "span" : "trace",
         trace_id: traceId,
         span_id: spanId,

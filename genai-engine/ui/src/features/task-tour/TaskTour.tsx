@@ -13,6 +13,7 @@ import {
   IntroWidget,
   OcclusionRecoveryWidget,
   PromptTargetWidget,
+  ScrollTargetIntoViewWidget,
   SectionCompleteWidget,
   SpotlightWidget,
   TaskTourFormPrefillWidget,
@@ -100,6 +101,7 @@ function TaskTourPortal({ taskId }: TaskTourPortalProps) {
       <TracesTargetWidget />
       <TracesTourCleanupWidget />
       <OcclusionRecoveryWidget />
+      <ScrollTargetIntoViewWidget />
       <TaskTourFormPrefillWidget />
       <IntroWidget />
       <SectionCompleteWidget />

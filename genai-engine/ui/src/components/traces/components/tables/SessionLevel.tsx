@@ -24,7 +24,7 @@ import { useTask } from "@/hooks/useTask";
 import { SessionMetadataResponse } from "@/lib/api-client/api-client";
 import { FETCH_SIZE } from "@/lib/constants";
 import { queryKeys } from "@/lib/queryKeys";
-import { EVENT_NAMES, track } from "@/services/amplitude";
+import { track, trackDynamic } from "@/services/analytics";
 import { getFilteredSessions } from "@/services/tracing";
 import { formatDateInTimezone } from "@/utils/formatters";
 
@@ -70,7 +70,7 @@ export const SessionLevel = ({ welcomeDismissed }: SessionLevelProps) => {
 
   const handleRowClick = useCallback(
     (row: { session_id: string }) => {
-      track(EVENT_NAMES.TRACING_DRAWER_OPENED, {
+      track("tracing/drawer_opened", {
         task_id: task?.id ?? "",
         level: "session",
         session_id: row.session_id,
@@ -85,7 +85,7 @@ export const SessionLevel = ({ welcomeDismissed }: SessionLevelProps) => {
     const deps: SharedColumnDependencies = {
       formatDate: (v) => formatDateInTimezone(v, timezone, { hour12: !use24Hour }),
       formatCurrency: () => "",
-      onTrack: track,
+      onTrack: trackDynamic,
       Chip: SharedCopyableChip,
       DurationCell: () => null,
       TraceContentCell: () => null,

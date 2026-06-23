@@ -27,7 +27,7 @@ import { useMRTPagination } from "@/hooks/useMRTPagination";
 import { SessionMetadataResponse, TraceMetadataResponse, TraceUserMetadataResponse } from "@/lib/api-client/api-client";
 import { FETCH_SIZE } from "@/lib/constants";
 import { queryKeys } from "@/lib/queryKeys";
-import { track } from "@/services/amplitude";
+import { trackDynamic } from "@/services/analytics";
 import { getFilteredSessions, getFilteredTraces } from "@/services/tracing";
 import { formatDateInTimezone } from "@/utils/formatters";
 
@@ -148,7 +148,7 @@ const UserTracesTable = ({ ids, taskId, onRowClick }: UserTableProps) => {
       createTraceLevelColumns({
         formatDate: (v) => formatDateInTimezone(v, timezone, { hour12: !use24Hour }),
         formatCurrency: () => "",
-        onTrack: track,
+        onTrack: trackDynamic,
         Chip: CopyableChip,
         DurationCell: () => null,
         TraceContentCell: () => null,
@@ -196,7 +196,7 @@ const UserTracesTable = ({ ids, taskId, onRowClick }: UserTableProps) => {
         onFiltersChange={handleFiltersChange}
         fieldConfig={USER_FILTERS}
         dynamicEnumArgMap={dynamicEnumArgMap}
-        onTrack={track}
+        onTrack={trackDynamic}
       />
       {traces.data?.count ? (
         <>
@@ -252,7 +252,7 @@ const UserSessionsTable = ({ ids, taskId, onRowClick }: UserTableProps) => {
       createSessionLevelColumns({
         formatDate: (v) => formatDateInTimezone(v, timezone, { hour12: !use24Hour }),
         formatCurrency: () => "",
-        onTrack: track,
+        onTrack: trackDynamic,
         Chip: CopyableChip,
         DurationCell: () => null,
         TraceContentCell: () => null,

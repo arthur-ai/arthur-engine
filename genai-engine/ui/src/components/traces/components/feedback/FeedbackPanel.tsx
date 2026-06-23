@@ -15,7 +15,7 @@ import { dispatchTourEvent, refreshTaskTourTarget, TASK_TOUR_EVENTS } from "@/fe
 import { useApi } from "@/hooks/useApi";
 import { AgenticAnnotationResponse, TraceResponse } from "@/lib/api-client/api-client";
 import { queryKeys } from "@/lib/queryKeys";
-import { EVENT_NAMES, track } from "@/services/amplitude";
+import { track } from "@/services/analytics";
 
 type Props = {
   containerRef: React.RefObject<HTMLDivElement | null>;
@@ -67,7 +67,7 @@ export const FeedbackPanel = ({ containerRef, annotations, traceId }: Props) => 
     onSuccess: () => {
       enqueueSnackbar("Feedback submitted", { variant: "success" });
       dispatchTourEvent(TASK_TOUR_EVENTS.feedbackAdded);
-      track(EVENT_NAMES.FEEDBACK_SUBMITTED, {
+      track("feedback/submitted", {
         trace_id: traceId,
         feedback_type: form.state.values.feedback,
         details_length: form.state.values.details?.length ?? 0,
@@ -77,7 +77,7 @@ export const FeedbackPanel = ({ containerRef, annotations, traceId }: Props) => 
     onError: (error, data, context) => {
       queryClient.setQueryData(queryKeys.traces.byId(traceId), context?.previousData);
       enqueueSnackbar("Failed to submit feedback", { variant: "error" });
-      track(EVENT_NAMES.FEEDBACK_ERROR, {
+      track("feedback/error", {
         trace_id: traceId,
         feedback_type: data.feedback,
         error_message: error instanceof Error ? error.message : "Failed to submit feedback",
@@ -107,14 +107,14 @@ export const FeedbackPanel = ({ containerRef, annotations, traceId }: Props) => 
     },
     onSuccess: () => {
       enqueueSnackbar("Feedback cleared", { variant: "success" });
-      track(EVENT_NAMES.FEEDBACK_CLEARED, {
+      track("feedback/cleared", {
         trace_id: traceId,
       });
     },
     onError: (error, data, context) => {
       queryClient.setQueryData(queryKeys.traces.byId(traceId), context?.previousData);
       enqueueSnackbar("Failed to clear feedback", { variant: "error" });
-      track(EVENT_NAMES.FEEDBACK_ERROR, {
+      track("feedback/error", {
         trace_id: traceId,
         error_message: error instanceof Error ? error.message : "Failed to clear feedback",
       });
@@ -152,7 +152,7 @@ export const FeedbackPanel = ({ containerRef, annotations, traceId }: Props) => 
 
   const handleOpenFeedback = (feedbackType: Feedback) => {
     window.requestAnimationFrame(() => refreshTaskTourTarget());
-    track(EVENT_NAMES.FEEDBACK_OPENED, {
+    track("feedback/opened", {
       trace_id: traceId,
       feedback_type: feedbackType,
     });

@@ -5,6 +5,7 @@ import random
 from datetime import datetime as dt
 from typing import Any, Callable
 
+import httpx
 import openai
 from arthur_common.models.common_schemas import LLMTokenConsumption
 from arthur_common.models.enums import RuleResultEnum
@@ -85,8 +86,28 @@ class LLMExecutor:
         self.embeddings_hosts = (
             llm_config.GENAI_ENGINE_OPENAI_EMBEDDINGS_NAMES_ENDPOINTS_KEYS
         )
+        # Resolve TLS verification for outbound LLM / proxy calls. When a private CA /
+        # self-signed cert is configured (e.g. a LiteLLM proxy fronted with TLS), build
+        # httpx clients that trust it once and reuse them across every langchain OpenAI
+        # client. When unset, the clients stay None and httpx's default (certifi)
+        # behavior is preserved.
+        ssl_verify = llm_config.get_ssl_verify()
+        self._http_client: httpx.Client | None = None
+        self._http_async_client: httpx.AsyncClient | None = None
+        if ssl_verify is not None:
+            self._http_client = httpx.Client(verify=ssl_verify)
+            self._http_async_client = httpx.AsyncClient(verify=ssl_verify)
         if self.azure_openai_enabled:
             self.api_version = llm_config.OPENAI_API_VERSION
+
+    def _http_client_kwargs(self) -> dict[str, Any]:
+        """http_client kwargs for langchain OpenAI clients, or empty to use defaults."""
+        if self._http_client is None:
+            return {}
+        return {
+            "http_client": self._http_client,
+            "http_async_client": self._http_async_client,
+        }
 
     @staticmethod
     def _get_random_connection_details(
@@ -129,6 +150,7 @@ class LLMExecutor:
                 api_key=key,
                 temperature=chat_temperature,
                 api_version=self.api_version,
+                **self._http_client_kwargs(),
             )
         elif self.openai_enabled:
             if endpoint:
@@ -146,12 +168,14 @@ class LLMExecutor:
                     base_url=endpoint,
                     api_key=key,
                     temperature=chat_temperature,
+                    **self._http_client_kwargs(),
                 )
             else:
                 return ChatOpenAI(
                     model=model_name,
                     api_key=key,
                     temperature=chat_temperature,
+                    **self._http_client_kwargs(),
                 )
         return None
 
@@ -202,6 +226,7 @@ class LLMExecutor:
                 model=model_name,
                 azure_endpoint=endpoint,
                 api_key=key,
+                **self._http_client_kwargs(),
             )
         elif self.openai_enabled:
             model = OpenAIEmbeddings(
@@ -209,6 +234,7 @@ class LLMExecutor:
                 base_url=endpoint,
                 api_key=key,
                 openai_api_type="openai",
+                **self._http_client_kwargs(),
             )
         return model
 

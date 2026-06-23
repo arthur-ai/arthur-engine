@@ -23,6 +23,7 @@ import pytest
 from arthur_common.models.enums import InferenceFeedbackTarget, RuleResultEnum
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
+from sqlalchemy import delete
 
 from db_models import (
     DatabaseInference,
@@ -222,7 +223,8 @@ PATTERN_A_CASES = [
         pattern="A",
         expected=404,
         invoke=lambda c, h, w: c.get(
-            f"/api/v1/tasks/{w.t2a.id}/continuous_evals", headers=h
+            f"/api/v1/tasks/{w.t2a.id}/continuous_evals",
+            headers=h,
         ),
     ),
     IsolationCase(
@@ -230,7 +232,8 @@ PATTERN_A_CASES = [
         pattern="A",
         expected=404,
         invoke=lambda c, h, w: c.get(
-            f"/api/v1/tasks/{w.t2a.id}/traces/transforms", headers=h
+            f"/api/v1/tasks/{w.t2a.id}/traces/transforms",
+            headers=h,
         ),
     ),
 ]
@@ -244,7 +247,8 @@ PATTERN_C_CASES = [
         pattern="C",
         expected=404,
         invoke=lambda c, h, w: c.get(
-            f"/api/v2/inferences/{w.t2a.inference_id}", headers=h
+            f"/api/v2/inferences/{w.t2a.inference_id}",
+            headers=h,
         ),
         # Admin's GET on a foreign inference also 404s — the inference repo's
         # per-id fetch applies org_scope even for admin. Either design intent
@@ -280,7 +284,8 @@ PATTERN_C_CASES = [
         pattern="C",
         expected=404,
         invoke=lambda c, h, w: c.get(
-            f"/api/v1/traces/annotations/{w.t2a_annotation_id}", headers=h
+            f"/api/v1/traces/annotations/{w.t2a_annotation_id}",
+            headers=h,
         ),
         requires_seed="t2a_annotation_id",
         skip_admin=True,
@@ -298,7 +303,8 @@ PATTERN_C_CASES = [
         pattern="C",
         expected=404,
         invoke=lambda c, h, w: c.get(
-            f"/api/v1/agentic_experiments/{w.t2a_experiment_id}", headers=h
+            f"/api/v1/agentic_experiments/{w.t2a_experiment_id}",
+            headers=h,
         ),
         requires_seed="t2a_experiment_id",
         skip_admin=True,
@@ -761,7 +767,12 @@ ADMIN_ONLY_CASES = [
     ids=lambda x: x if isinstance(x, str) else "",
 )
 def test_pattern_e_admin_only_blocks_tenant(
-    tenant_world: TenantWorld, name, verb, path, body, allowed
+    tenant_world: TenantWorld,
+    name,
+    verb,
+    path,
+    body,
+    allowed,
 ):
     """TENANT-USER must be blocked from admin-only surfaces. Canonical
     shape is 403 from `permission_checker`. Per-case overrides widen the
@@ -862,7 +873,8 @@ def test_get_tasks_list_filters_to_caller_org(tenant_world: TenantWorld):
 @pytest.mark.unit_tests
 def test_users_me_for_tenant(tenant_world: TenantWorld):
     response = tenant_world.client.base_client.get(
-        ME_URL, headers=tenant_world.headers_for(tenant_world.k1)
+        ME_URL,
+        headers=tenant_world.headers_for(tenant_world.k1),
     )
     assert response.status_code == 200
     body = response.json()
@@ -874,7 +886,8 @@ def test_users_me_for_tenant(tenant_world: TenantWorld):
 @pytest.mark.unit_tests
 def test_users_me_for_admin(tenant_world: TenantWorld):
     response = tenant_world.client.base_client.get(
-        ME_URL, headers=tenant_world.admin_headers
+        ME_URL,
+        headers=tenant_world.admin_headers,
     )
     assert response.status_code == 200
     body = response.json()
@@ -916,12 +929,14 @@ def test_signup_flag_on_returned_key_can_only_access_new_task(
         new_headers = {"Authorization": f"Bearer {sig['api_key']}"}
         # New tenant CANNOT see T1a
         cross = tenant_world.client.base_client.get(
-            f"/api/v2/tasks/{tenant_world.t1a.id}", headers=new_headers
+            f"/api/v2/tasks/{tenant_world.t1a.id}",
+            headers=new_headers,
         )
         assert cross.status_code == 404
         # New tenant CAN see its own task
         own = tenant_world.client.base_client.get(
-            f"/api/v2/tasks/{sig['task_id']}", headers=new_headers
+            f"/api/v2/tasks/{sig['task_id']}",
+            headers=new_headers,
         )
         assert own.status_code == 200
     finally:
@@ -1025,10 +1040,12 @@ def test_model_provider_read_returns_no_credentials(tenant_world: TenantWorld):
 def test_k1_reads_both_own_tasks(tenant_world: TenantWorld):
     h = tenant_world.headers_for(tenant_world.k1)
     a = tenant_world.client.base_client.get(
-        f"/api/v2/tasks/{tenant_world.t1a.id}", headers=h
+        f"/api/v2/tasks/{tenant_world.t1a.id}",
+        headers=h,
     )
     b = tenant_world.client.base_client.get(
-        f"/api/v2/tasks/{tenant_world.t1b.id}", headers=h
+        f"/api/v2/tasks/{tenant_world.t1b.id}",
+        headers=h,
     )
     assert a.status_code == 200
     assert b.status_code == 200
@@ -1074,7 +1091,7 @@ def _seed_dataset_with_version(db, task_id: str) -> tuple[uuid.UUID, int]:
             created_at=now,
             updated_at=now,
             latest_version_number=1,
-        )
+        ),
     )
     db.flush()
     db.add(
@@ -1082,7 +1099,7 @@ def _seed_dataset_with_version(db, task_id: str) -> tuple[uuid.UUID, int]:
             version_number=1,
             dataset_id=dataset_id,
             column_names=[],
-        )
+        ),
     )
     db.commit()
     return dataset_id, 1
@@ -1134,7 +1151,8 @@ def _cleanup_rows(db, pairs):
 
 @pytest.mark.unit_tests
 def test_attach_notebook_isolation_matrix(
-    tenant_world: TenantWorld, attach_notebook_seed
+    tenant_world: TenantWorld,
+    attach_notebook_seed,
 ):
     """Consolidated regression for the attach_notebook_to_experiment fix
     (commit e29225c5, PR #1693) across all three experiment repositories,
@@ -1170,7 +1188,7 @@ def test_attach_notebook_isolation_matrix(
             prompt_configs=[],
             prompt_variable_mapping=[],
             eval_configs=[],
-        )
+        ),
     )
     db.add(
         DatabaseNotebook(
@@ -1179,7 +1197,7 @@ def test_attach_notebook_isolation_matrix(
             name=f"mt-attach-prompt-nb-{_attach_suffix()}",
             created_at=now,
             updated_at=now,
-        )
+        ),
     )
     db.commit()
     try:
@@ -1226,7 +1244,7 @@ def test_attach_notebook_isolation_matrix(
             http_template={},
             template_variable_mapping=[],
             eval_configs=[],
-        )
+        ),
     )
     db.add(
         DatabaseAgenticNotebook(
@@ -1235,7 +1253,7 @@ def test_attach_notebook_isolation_matrix(
             name=f"mt-attach-agentic-nb-{_attach_suffix()}",
             created_at=now,
             updated_at=now,
-        )
+        ),
     )
     db.commit()
     try:
@@ -1248,7 +1266,7 @@ def test_attach_notebook_isolation_matrix(
             )
         assert exc_info.value.status_code == 404, sub
         assert f"Agentic notebook {notebook_id} not found." in str(
-            exc_info.value.detail
+            exc_info.value.detail,
         ), sub
 
         db.expire_all()
@@ -1283,7 +1301,7 @@ def test_attach_notebook_isolation_matrix(
             dataset_version=1,
             rag_configs=[],
             eval_configs=[],
-        )
+        ),
     )
     db.add(
         DatabaseRagNotebook(
@@ -1292,7 +1310,7 @@ def test_attach_notebook_isolation_matrix(
             name=f"mt-attach-rag-nb-{_attach_suffix()}",
             created_at=now,
             updated_at=now,
-        )
+        ),
     )
     db.commit()
     try:
@@ -1305,7 +1323,7 @@ def test_attach_notebook_isolation_matrix(
             )
         assert exc_info.value.status_code == 404, sub
         assert f"RAG notebook {notebook_id} not found." in str(
-            exc_info.value.detail
+            exc_info.value.detail,
         ), sub
 
         db.expire_all()
@@ -1344,7 +1362,7 @@ def test_attach_notebook_isolation_matrix(
             prompt_configs=[],
             prompt_variable_mapping=[],
             eval_configs=[],
-        )
+        ),
     )
     db.add(
         DatabaseNotebook(
@@ -1353,7 +1371,7 @@ def test_attach_notebook_isolation_matrix(
             name=f"mt-attach-prompt-nb-ok-{_attach_suffix()}",
             created_at=now,
             updated_at=now,
-        )
+        ),
     )
     db.commit()
     try:
@@ -1501,16 +1519,37 @@ def test_feedback_org_id_derived_from_inference_not_caller(
                 db.commit()
             except Exception:
                 db.rollback()
-        for model, ident in (
-            (DatabaseInferenceResponse, taskless_response_id),
-            (DatabaseInferencePrompt, taskless_prompt_id),
-            (DatabaseInference, taskless_inference_id),
-        ):
-            try:
-                stale_row = db.query(model).filter(model.id == ident).first()
-                if stale_row is not None:
-                    db.delete(stale_row)
-                db.commit()
-            except Exception:
-                db.rollback()
+        try:
+            # Use bulk deletes in FK-safe order to avoid SQLAlchemy trying to
+            # nullify NOT NULL FK columns on the content rows, which would fail.
+            db.execute(
+                delete(DatabaseInferenceResponseContent).where(
+                    DatabaseInferenceResponseContent.inference_response_id
+                    == taskless_response_id,
+                ),
+            )
+            db.execute(
+                delete(DatabaseInferencePromptContent).where(
+                    DatabaseInferencePromptContent.inference_prompt_id
+                    == taskless_prompt_id,
+                ),
+            )
+            db.execute(
+                delete(DatabaseInferenceResponse).where(
+                    DatabaseInferenceResponse.id == taskless_response_id,
+                ),
+            )
+            db.execute(
+                delete(DatabaseInferencePrompt).where(
+                    DatabaseInferencePrompt.id == taskless_prompt_id,
+                ),
+            )
+            db.execute(
+                delete(DatabaseInference).where(
+                    DatabaseInference.id == taskless_inference_id,
+                ),
+            )
+            db.commit()
+        except Exception:
+            db.rollback()
         db.close()

@@ -3,12 +3,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { CtaDialog } from ".";
 
-import { EVENT_NAMES, track } from "@/services/amplitude";
+import { track } from "@/services/analytics";
 
-// Stub `track` but keep the real `EVENT_NAMES` so assertions reference the
-// actual event-name constants rather than re-declaring them.
-vi.mock("@/services/amplitude", async (importActual) => {
-  const actual = await importActual<typeof import("@/services/amplitude")>();
+vi.mock("@/services/analytics", async (importActual) => {
+  const actual = await importActual<typeof import("@/services/analytics")>();
   return { ...actual, track: vi.fn() };
 });
 
@@ -42,7 +40,7 @@ describe("CtaDialog", () => {
 
     fireEvent.click(screen.getByRole("link", { name: /book a time/i }));
 
-    expect(track).toHaveBeenCalledWith(EVENT_NAMES.ONBOARDING_WIZARD_CTA_BOOK_CLICKED, { course: "Intro to Evals" });
+    expect(track).toHaveBeenCalledWith("onboarding/wizard_cta_book_clicked", { course: "Intro to Evals" });
   });
 
   it("dismisses from the Dismiss button", () => {

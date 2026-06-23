@@ -3,17 +3,19 @@ import { Skeleton } from "@mui/material";
 import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
 import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
-import { useCallback, useEffect, useEffectEvent, useMemo, useState } from "react";
+import { useCallback, useEffect, useEffectEvent, useMemo, useState, type RefObject } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { getSpanDetailsStrategy } from "../data/details-strategy";
 import { useDrawerTarget } from "../hooks/useDrawerTarget";
 import { useSelection } from "../hooks/useSelection";
 import { usePaginationContext } from "../stores/pagination-context";
+import { extractGuardrailInvocations } from "../utils/guardrails";
 import { flattenSpans } from "../utils/spans";
 
 import { AddToDatasetDrawer } from "./add-to-dataset/Drawer";
 import { ContinuousEvalDrawer } from "./continuous-eval/ContinuousEvalDrawer";
+import { GuardrailSummaryBar } from "./guardrail-bar/GuardrailSummaryBar";
 import { TraceDrawerAnnotationBar } from "./TraceDrawerAnnotationBar";
 
 import { TOUR_IDS } from "@/features/task-tour/selectors";
@@ -22,7 +24,7 @@ import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
 import type { AgenticAnnotationResponse } from "@/lib/api-client/api-client";
 import { queryKeys } from "@/lib/queryKeys";
-import { EVENT_NAMES, track } from "@/services/amplitude";
+import { track } from "@/services/analytics";
 import { computeTraceMetrics, getTrace } from "@/services/tracing";
 import { wait } from "@/utils";
 
@@ -53,7 +55,7 @@ export const TraceDrawerContent = ({ id }: Props) => {
       return data;
     },
     onMutate: () => {
-      track(EVENT_NAMES.TRACING_REFRESH_METRICS_CLICKED, {
+      track("tracing/refresh_metrics_clicked", {
         level: "trace",
         trace_id: id,
         task_id: task?.id ?? "",
@@ -61,7 +63,7 @@ export const TraceDrawerContent = ({ id }: Props) => {
     },
     onSuccess: (data) => {
       queryClient.setQueryData(["trace", id], data);
-      track(EVENT_NAMES.TRACING_REFRESH_METRICS_RESULT, {
+      track("tracing/refresh_metrics_result", {
         level: "trace",
         trace_id: id,
         task_id: task?.id ?? "",
@@ -69,7 +71,7 @@ export const TraceDrawerContent = ({ id }: Props) => {
       });
     },
     onError: (error) => {
-      track(EVENT_NAMES.TRACING_REFRESH_METRICS_RESULT, {
+      track("tracing/refresh_metrics_result", {
         level: "trace",
         trace_id: id,
         task_id: task?.id ?? "",
@@ -81,6 +83,8 @@ export const TraceDrawerContent = ({ id }: Props) => {
 
   // Flatten nested spans recursively
   const flatSpans = useMemo(() => flattenSpans(trace?.root_spans ?? []), [trace]);
+
+  const guardrailInvocations = useMemo(() => extractGuardrailInvocations(trace?.root_spans ?? []), [trace]);
 
   const rootSpan = trace?.root_spans?.[0];
 
@@ -104,7 +108,7 @@ export const TraceDrawerContent = ({ id }: Props) => {
   };
 
   const handleAddToDataset = () => {
-    track(EVENT_NAMES.DATASET_ADD_TO_DATASET_STARTED, {
+    track("dataset/add_to_dataset_started", {
       task_id: task?.id ?? "",
       trace_id: id,
       source: "trace_actions",
@@ -112,7 +116,7 @@ export const TraceDrawerContent = ({ id }: Props) => {
   };
 
   const handleOpenContinuousEvals = (traceId: string, taskId: string) => {
-    track(EVENT_NAMES.CONTINUOUS_EVALS_NEW_FROM_TRACE, {
+    track("continuous_evals/new_from_trace", {
       task_id: taskId,
       trace_id: traceId,
       source: "trace_actions",
@@ -130,6 +134,21 @@ export const TraceDrawerContent = ({ id }: Props) => {
       dispatchTourEvent(TASK_TOUR_EVENTS.spansReviewed);
     },
     [select]
+  );
+
+  const handleJumpToSpan = useCallback(
+    (spanId: string, containerRef: RefObject<HTMLDivElement | null>) => {
+      handleSelectSpan(spanId);
+      // The span tree is rendered inside the compiled drawer body: selecting a
+      // span marks its row with `data-selected` but does not scroll it into
+      // view. Best-effort scroll after the selection re-render, scoped to the
+      // spans column via its tour-id anchor.
+      requestAnimationFrame(() => {
+        const spansColumn = containerRef.current?.querySelector(`[data-tour-id="${TOUR_IDS.traceDrawerSpans}"]`);
+        spansColumn?.querySelector("[data-selected]")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      });
+    },
+    [handleSelectSpan]
   );
 
   // Task-tour anchors. `TraceDrawerBody`'s `slotProps` spreads each entry onto
@@ -174,6 +193,13 @@ export const TraceDrawerContent = ({ id }: Props) => {
       slotProps={tourSlotProps}
       renderAnnotationBar={({ annotations, traceId: tid, containerRef }) => (
         <TraceDrawerAnnotationBar annotations={(annotations ?? []) as AgenticAnnotationResponse[]} traceId={tid} containerRef={containerRef} />
+      )}
+      renderBelowAnnotationBar={({ containerRef }) => (
+        <GuardrailSummaryBar
+          invocations={guardrailInvocations}
+          selectedSpanId={selectedSpanId}
+          onJumpToSpan={(spanId) => handleJumpToSpan(spanId, containerRef)}
+        />
       )}
       renderAfterDrawer={() => (
         <>

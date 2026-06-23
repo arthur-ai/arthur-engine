@@ -2,7 +2,7 @@ import json
 
 from arthur_common.models.common_schemas import LLMTokenConsumption
 from arthur_common.models.enums import RuleResultEnum
-from langchain.schema import AIMessage, HumanMessage
+from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.prompts import FewShotPromptTemplate, PromptTemplate
 from langchain_openai import AzureChatOpenAI, ChatOpenAI
 
@@ -88,7 +88,7 @@ class SensitiveDataCustomExamples(RuleScorer):
         self.dynamic_prompt.examples = formatted_examples
 
         # Format and score the dynamic prompt
-        call = lambda: self.grader_llm(
+        call = lambda: self.grader_llm.invoke(
             [
                 HumanMessage(
                     content=self.dynamic_prompt.format(

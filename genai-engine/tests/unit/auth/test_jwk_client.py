@@ -3,6 +3,7 @@ from unittest.mock import MagicMock
 
 import jwt
 import pytest
+
 from auth.jwk_client import JWKClient
 from schemas.custom_exceptions import (
     BadCredentialsException,
@@ -97,7 +98,7 @@ def test_validate():
     )
     mock_jwks_client = MagicMock()
     mock_jwks_client.get_signing_key_from_jwt.return_value = MockedJWTReturn()
-    jwk_client = JWKClient("some_url")
+    jwk_client = JWKClient("https://example.com/.well-known/jwks.json")
     jwk_client.jwks_client = mock_jwks_client
     payload = jwk_client.validate(jwt_access_token_encrypted)
     assert payload == User(
@@ -118,7 +119,7 @@ def test_validate():
 def test_validate_error_handlers(mocked_exception, expected_exception):
     mock_jwks_client = MagicMock()
     mock_jwks_client.get_signing_key_from_jwt.side_effect = mocked_exception
-    jwk_client = JWKClient("some_url")
+    jwk_client = JWKClient("https://example.com/.well-known/jwks.json")
     jwk_client.jwks_client = mock_jwks_client
     with pytest.raises(expected_exception):
         payload = jwk_client.validate("some_token")

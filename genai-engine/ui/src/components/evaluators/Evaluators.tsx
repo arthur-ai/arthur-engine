@@ -9,19 +9,23 @@ import Typography from "@mui/material/Typography";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 
+import CreateEvalTypeModal from "./CreateEvalTypeModal";
 import EvalFormModal from "./EvalFormModal";
 import { EvaluatorAccordionList } from "./EvaluatorAccordionList";
 import EvaluatorsHeader from "./EvaluatorsHeader";
 import EvalFullScreenView from "./fullscreen/EvalFullScreenView";
 import { useCreateEvalMutation } from "./hooks/useCreateEvalMutation";
 import { useDeleteEvalMutation } from "./hooks/useDeleteEvalMutation";
+import { useDeleteMLEvalMutation } from "./hooks/useDeleteMLEvalMutation";
 import { useEvals } from "./hooks/useEvals";
 
 import { SearchBar } from "@/components/common/SearchBar";
+import { useCreateMlEvalMutation } from "@/components/ml-evaluators/hooks/useCreateMlEvalMutation";
+import MLEvalFormModal from "@/components/ml-evaluators/MLEvalFormModal";
 import { getContentHeight } from "@/constants/layout";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useTask } from "@/hooks/useTask";
-import { CreateEvalRequest } from "@/lib/api-client/api-client";
+import { CreateEvalRequest, CreateMLEvalRequest } from "@/lib/api-client/api-client";
 import type { LLMMetadataSortField, PaginationSortMethod } from "@/lib/api-client/api-client";
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
@@ -51,6 +55,11 @@ const Evaluators: React.FC<EvaluatorsProps> = ({ embedded = false, isCreateModal
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearchQuery = useDebouncedValue(searchQuery, 300);
 
+  // Type picker + per-type modal state
+  const [isTypePickerOpen, setIsTypePickerOpen] = useState(false);
+  const [isLLMModalOpen, setIsLLMModalOpen] = useState(false);
+  const [isMLModalOpen, setIsMLModalOpen] = useState(false);
+
   const isCreateModalOpen = embedded ? (externalOpen ?? false) : internalOpen;
   const setIsCreateModalOpen = (value: boolean) => {
     if (embedded) {
@@ -60,6 +69,18 @@ const Evaluators: React.FC<EvaluatorsProps> = ({ embedded = false, isCreateModal
       setInternalOpen(value);
     }
   };
+
+  // When the unified "create" trigger fires, open the type picker
+  const prevExternalOpen = React.useRef(false);
+  React.useEffect(() => {
+    if (isCreateModalOpen && !prevExternalOpen.current) {
+      setIsTypePickerOpen(true);
+      // Immediately close the external open signal so the picker manages its own state
+      setIsCreateModalOpen(false);
+    }
+    prevExternalOpen.current = isCreateModalOpen;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isCreateModalOpen]);
 
   // Reset to first page when search changes
   useEffect(() => {
@@ -97,21 +118,48 @@ const Evaluators: React.FC<EvaluatorsProps> = ({ embedded = false, isCreateModal
   }, [evals, debouncedSearchQuery]);
 
   const createMutation = useCreateEvalMutation(task?.id, (evalData) => {
-    setIsCreateModalOpen(false);
+    setIsLLMModalOpen(false);
     refetch();
     // Navigate to the newly created eval's detail page
     navigate(`/tasks/${taskId}/evaluators/${encodeURIComponent(evalData.name)}/versions/${evalData.version}`);
   });
 
-  const deleteMutation = useDeleteEvalMutation(task?.id, () => {
+  const createMLMutation = useCreateMlEvalMutation(task?.id, () => {
+    setIsMLModalOpen(false);
     refetch();
   });
+
+  const deleteLLMMutation = useDeleteEvalMutation(task?.id, () => {
+    refetch();
+  });
+  const deleteMLMutation = useDeleteMLEvalMutation(task?.id, () => {
+    refetch();
+  });
+
+  const handleDelete = useCallback(
+    async (evalName: string) => {
+      const evalMeta = filteredEvals.find((e) => e.name === evalName);
+      if (evalMeta?.eval_kind !== "llm_as_a_judge") {
+        await deleteMLMutation.mutateAsync(evalName);
+      } else {
+        await deleteLLMMutation.mutateAsync(evalName);
+      }
+    },
+    [filteredEvals, deleteLLMMutation, deleteMLMutation]
+  );
 
   const handleCreateEval = useCallback(
     async (evalName: string, data: CreateEvalRequest) => {
       await createMutation.mutateAsync({ evalName, data });
     },
     [createMutation]
+  );
+
+  const handleCreateMLEval = useCallback(
+    async (evalName: string, data: CreateMLEvalRequest) => {
+      await createMLMutation.mutateAsync({ evalName, data });
+    },
+    [createMLMutation]
   );
 
   const handleExpandToFullScreen = useCallback(
@@ -241,19 +289,14 @@ const Evaluators: React.FC<EvaluatorsProps> = ({ embedded = false, isCreateModal
                 <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
                   Get started by creating your first eval
                 </Typography>
-                <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={() => setIsCreateModalOpen(true)} size="large">
+                <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={() => setIsTypePickerOpen(true)} size="large">
                   Evaluator
                 </Button>
               </>
             )}
           </Box>
         ) : (
-          <EvaluatorAccordionList
-            evals={filteredEvals}
-            taskId={taskId!}
-            onExpandToFullScreen={handleExpandToFullScreen}
-            onDelete={deleteMutation.mutateAsync}
-          />
+          <EvaluatorAccordionList evals={filteredEvals} taskId={taskId!} onExpandToFullScreen={handleExpandToFullScreen} onDelete={handleDelete} />
         )}
       </Box>
 
@@ -279,11 +322,28 @@ const Evaluators: React.FC<EvaluatorsProps> = ({ embedded = false, isCreateModal
         </Box>
       )}
 
+      <CreateEvalTypeModal
+        open={isTypePickerOpen}
+        onClose={() => setIsTypePickerOpen(false)}
+        onSelectType={(type) => {
+          setIsTypePickerOpen(false);
+          if (type === "llm") setIsLLMModalOpen(true);
+          else setIsMLModalOpen(true);
+        }}
+      />
+
       <EvalFormModal
-        open={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
+        open={isLLMModalOpen}
+        onClose={() => setIsLLMModalOpen(false)}
         onSubmit={handleCreateEval}
         isLoading={createMutation.isPending}
+      />
+
+      <MLEvalFormModal
+        open={isMLModalOpen}
+        onClose={() => setIsMLModalOpen(false)}
+        onSubmit={handleCreateMLEval}
+        isLoading={createMLMutation.isPending}
       />
     </Box>
   );

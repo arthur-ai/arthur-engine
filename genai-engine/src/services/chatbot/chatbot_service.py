@@ -41,6 +41,7 @@ class ChatbotService(BaseChatbotService):
             db_session=db_session,
             summarizer_prompt=summarizer_prompt,
             task_id=constants.ARTHUR_SYSTEM_TASK_ID,
+            org_id=constants.SYSTEM_ORG_ID,
         )
         self.api_call_service = api_call_service
         self.api_index = api_index

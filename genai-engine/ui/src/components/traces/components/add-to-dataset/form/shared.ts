@@ -22,10 +22,14 @@ export type TransformDefinition = TraceTransformDefinition;
 export type TransformVariableDefinition = TraceTransformVariableDefinition;
 export type TraceTransform = TraceTransformResponse;
 
+export const MANUAL_TRANSFORM_ID = "manual";
+
+export const hasSelectedTransform = (transformId: string): boolean => transformId !== "" && transformId !== MANUAL_TRANSFORM_ID;
+
 export const addToDatasetFormOptions = formOptions({
   defaultValues: {
     dataset: "",
-    transform: "manual", // Selected transform ID or "manual"
+    transform: MANUAL_TRANSFORM_ID,
     columns: [] as Column[],
   },
 });
