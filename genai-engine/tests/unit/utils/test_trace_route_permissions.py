@@ -17,6 +17,9 @@ from pathlib import Path
 
 import pytest
 
+from schemas.enums import PermissionLevelsEnum
+from utils import constants
+
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _SRC = _REPO_ROOT / "src"
 
@@ -76,4 +79,53 @@ def test_trace_route_permission_gate(rel_path, func_name, expected):
         f"PermissionLevelsEnum.{actual}.value"
         if actual
         else f"{rel_path}::{func_name} has no permission_checker decorator"
+    )
+
+
+# --- TRACES_WRITE frozenset content invariants ----------------------------------
+#
+# The route-gate test above only asserts the route points at TRACES_WRITE; it
+# says nothing about which roles that frozenset contains. These tests lock the
+# *contents* because the trace ingest path has no org-scope enforcement (the
+# target task/org comes from the caller-controlled payload), so this frozenset
+# is the only thing preventing a cross-org trace write.
+
+
+@pytest.mark.unit_tests
+def test_traces_write_excludes_tenant_user():
+    """THE cross-org isolation invariant. TENANT-USER is the only org-scoped
+    role; every other role here is a cross-org operator key (org_id IS NULL).
+    Admitting TENANT-USER would let an O1-scoped key write traces into O2's
+    tasks, because the write path never checks the caller's org against the
+    payload's target task. Never add TENANT_USER to TRACES_WRITE.
+    """
+    assert (
+        constants.TENANT_USER not in PermissionLevelsEnum.TRACES_WRITE.value
+    ), "TENANT_USER must never be in TRACES_WRITE — it would allow cross-org trace writes"
+
+
+@pytest.mark.unit_tests
+def test_traces_write_restores_data_plane_ingest_roles():
+    """Regression guard for UP-4428. Trace ingest was unintentionally narrowed
+    to {ORG_ADMIN, TASK_ADMIN}, dropping the data-plane ingestion roles that
+    INFERENCE_WRITE has always granted. Application integration keys
+    (VALIDATION-USER) and chatbot keys (CHAT-USER) must keep trace-write.
+    """
+    traces_write = PermissionLevelsEnum.TRACES_WRITE.value
+    for role in (constants.VALIDATION_USER, constants.CHAT_USER):
+        assert role in traces_write, f"{role} must retain trace-write access"
+
+
+@pytest.mark.unit_tests
+def test_traces_write_equals_inference_write_minus_tenant_user():
+    """TRACES_WRITE is exactly INFERENCE_WRITE minus TENANT_USER. Trace ingest
+    and inference submission are the same data-plane action; the only role
+    trace ingest withholds is the org-scoped tenant role. If INFERENCE_WRITE
+    gains/loses a role, this forces a deliberate decision about TRACES_WRITE.
+    """
+    inference_write = PermissionLevelsEnum.INFERENCE_WRITE.value
+    expected = inference_write - {constants.TENANT_USER}
+    assert PermissionLevelsEnum.TRACES_WRITE.value == expected, (
+        "TRACES_WRITE drifted from INFERENCE_WRITE - {TENANT_USER}; "
+        f"expected {sorted(expected)}, got {sorted(PermissionLevelsEnum.TRACES_WRITE.value)}"
     )
