@@ -64,17 +64,29 @@ ARG RECAPTCHA_ENTERPRISE_SITE_KEY
 
 WORKDIR /app/ui
 
+# Yarn Berry instrumentation: stream per-package build output with timestamps
+# and fail fast on a stalled fetch from the private GitLab registry instead of
+# hanging silently. These are Yarn v4 knobs (v1-style flags are ignored).
+ENV YARN_ENABLE_INLINE_BUILDS=1 \
+    YARN_ENABLE_PROGRESS_BARS=false \
+    YARN_HTTP_TIMEOUT=120000 \
+    YARN_HTTP_RETRY=5
+
 # Copy UI source code
 COPY ui/ ./
 
-# Install UI dependencies (token only in this RUN, not persisted in image)
+# Install UI dependencies (token only in this RUN, not persisted in image).
+# Wrapped in a 20m hang timeout with timestamped markers so a stuck install
+# dies in minutes (exit 124) instead of running to GitHub's 6h cap.
 RUN if [ -z "${GITLAB_UNIFY_FRONTEND_TOKEN}" ]; then \
       echo "ERROR: GITLAB_UNIFY_FRONTEND_TOKEN build-arg is required for yarn install (private @arthur/* packages)." >&2; \
       exit 1; \
     fi \
     && export GITLAB_UNIFY_FRONTEND_TOKEN="${GITLAB_UNIFY_FRONTEND_TOKEN}" \
     && corepack enable \
-    && yarn install --immutable
+    && echo "[ui-build] yarn install start: $(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+    && timeout 20m yarn install --immutable --inline-builds \
+    && echo "[ui-build] yarn install done:  $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
 # Build the UI as static files
 ENV METICULOUS_RECORDING_TOKEN=${METICULOUS_RECORDING_TOKEN}
@@ -83,7 +95,11 @@ ENV AMPLITUDE_API_KEY=${AMPLITUDE_API_KEY}
 ENV VITE_AMPLITUDE_DEPLOYMENT_KEY=${VITE_AMPLITUDE_DEPLOYMENT_KEY}
 ENV VITE_AMPLITUDE_REPLAY_SAMPLE_RATE=${VITE_AMPLITUDE_REPLAY_SAMPLE_RATE}
 ENV RECAPTCHA_ENTERPRISE_SITE_KEY=${RECAPTCHA_ENTERPRISE_SITE_KEY}
-RUN yarn build
+# Wrapped in a 20m hang timeout with timestamped markers (see install above).
+RUN set -e; \
+    echo "[ui-build] yarn build start: $(date -u +%Y-%m-%dT%H:%M:%SZ)"; \
+    timeout 20m yarn build; \
+    echo "[ui-build] yarn build done:  $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
 # Copy the built static files
 RUN cp -r dist /app/ui-dist
