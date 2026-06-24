@@ -417,6 +417,7 @@ jobs:
             GITLAB_UNIFY_FRONTEND_TOKEN=${{ secrets.GITLAB_UNIFY_FRONTEND_TOKEN }}
             AMPLITUDE_API_KEY=${{ secrets.AMPLITUDE_API_KEY }}
             VITE_AMPLITUDE_DEPLOYMENT_KEY=${{ secrets.AMPLITUDE_DEPLOYMENT_KEY }}
+            VITE_AMPLITUDE_REPLAY_SAMPLE_RATE=${{ vars.AMPLITUDE_REPLAY_SAMPLE_RATE }}
             RECAPTCHA_ENTERPRISE_SITE_KEY=${{ secrets.RECAPTCHA_ENTERPRISE_SITE_KEY }}
           tags: |
             arthurplatform/genai-engine-${{ matrix.torch_device }}:${{ env.VERSION }}
