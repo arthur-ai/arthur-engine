@@ -1132,6 +1132,8 @@ class SpanQueryService:
         start_time: Optional[datetime] = None,
         end_time: Optional[datetime] = None,
         user_ids: Optional[list[str]] = None,
+        trace_ids: Optional[list[str]] = None,
+        session_ids: Optional[list[str]] = None,
         include_experiment_sessions: Optional[bool] = False,
     ) -> tuple[int, list[SessionMetadata]]:
         """Perform session-level aggregations with filtering."""
@@ -1193,6 +1195,31 @@ class SpanQueryService:
                 ),
             )
 
+        # Apply session_id filtering (exact match). Safe to apply directly
+        # because grouping is by session_id, so whole sessions are retained.
+        if session_ids:
+            query = query.where(DatabaseTraceMetadata.session_id.in_(session_ids))
+
+        # Apply trace_id filtering. Use a subquery to find session_ids that
+        # contain at least one matching trace, then filter by those session_ids.
+        # Filtering trace rows directly would corrupt the per-session aggregates
+        # (span_count, token totals, trace_ids list).
+        if trace_ids:
+            matching_session_ids = (
+                select(DatabaseTraceMetadata.session_id)
+                .where(
+                    and_(
+                        DatabaseTraceMetadata.task_id.in_(task_ids),
+                        DatabaseTraceMetadata.trace_id.in_(trace_ids),
+                        DatabaseTraceMetadata.session_id.is_not(None),
+                    ),
+                )
+                .distinct()
+            )
+            query = query.where(
+                DatabaseTraceMetadata.session_id.in_(matching_session_ids),
+            )
+
         # Group by session_id, task_id, and user_id to ensure proper session boundaries
         query = query.group_by(
             DatabaseTraceMetadata.session_id,
@@ -1214,16 +1241,16 @@ class SpanQueryService:
                 self.db_session.bind
                 and self.db_session.bind.dialect.name == "postgresql"
             ):
-                trace_ids = row.trace_ids  # Already a list from array_agg
+                row_trace_ids = row.trace_ids  # Already a list from array_agg
             else:  # SQLite - split the group_concat result
-                trace_ids = row.trace_ids.split(",") if row.trace_ids else []
+                row_trace_ids = row.trace_ids.split(",") if row.trace_ids else []
 
             sessions.append(
                 SessionMetadata(
                     session_id=row.session_id,
                     task_id=row.task_id,
                     user_id=row.user_id,
-                    trace_ids=trace_ids,
+                    trace_ids=row_trace_ids,
                     span_count=row.span_count,
                     earliest_start_time=row.earliest_start_time,
                     latest_end_time=row.latest_end_time,

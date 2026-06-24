@@ -2,6 +2,10 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 06/24/2026
+- **CHANGE** for **URL**: /api/v1/traces/sessions  added the new optional `query` request parameter `session_ids`
+- **CHANGE** for **URL**: /api/v1/traces/sessions  added the new optional `query` request parameter `trace_ids`
+
 # 06/16/2026
 - **BREAKING CHANGE** for **URL**: /api/chat/files  the 'file' request property type/format changed from 'string'/'binary' to 'string'/''
 - **BREAKING CHANGE** for **URL**: /api/v1/traces  the request's body type/format changed from 'string'/'binary' to 'string'/''
