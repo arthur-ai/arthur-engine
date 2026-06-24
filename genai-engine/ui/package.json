@@ -43,7 +43,7 @@
     "@tanstack/react-query-devtools": "5.91.3",
     "@tanstack/react-table": "8.21.3",
     "axios": "1.17.0",
-    "dayjs": "1.11.19",
+    "dayjs": "1.11.21",
     "framer-motion": "12.35.2",
     "html-to-image": "^1.11.13",
     "material-react-table": "3.2.1",
