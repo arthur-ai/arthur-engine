@@ -1,7 +1,7 @@
 export { useReactRouterNavigator } from "./adapters/reactRouter";
 export { TourEngineContext } from "./context";
 export { PreparationRunner } from "./PreparationRunner";
-export { QueryHookTargetRefresh } from "./QueryHookTargetRefresh";
+export { ActiveTargetRefresh } from "./ActiveTargetRefresh";
 export {
   applyBackdropAction,
   BackdropBlocker,
@@ -13,7 +13,9 @@ export {
   TourPortal,
   useActiveTarget,
   useElementRect,
+  useTargetOcclusion,
   type BackdropBlockerProps,
+  type OcclusionInfo,
   type PopoverAnchorProps,
   type SpotlightProps,
   type TargetTrackerProps,
@@ -22,12 +24,11 @@ export {
 } from "./primitives";
 export { TourHost, type TourHostProps } from "./TourHost";
 export { TourProvider, type TourProviderProps } from "./TourProvider";
+export { useRegisterOccluder } from "./useRegisterOccluder";
 export { useRegisterPreparation } from "./useRegisterPreparation";
 export { useRegisterQueryHook } from "./useRegisterQueryHook";
-export { useTour, useTourEngine, useTourState, useTourStore, type ActiveStep, type UseTourReturn } from "./useTour";
+export { useTour, useTourEngine, useTourStore, type ActiveStep, type UseTourReturn } from "./useTour";
 export { useTourAction } from "./useTourAction";
 export { useTourEvent } from "./useTourEvent";
 export { useTourLayer } from "./useTourLayer";
 export { useTourPluginStore } from "./useTourPluginStore";
-export { withTourActive } from "./withTourActive";
-export { withTourStep, type StepMatcher } from "./withTourStep";

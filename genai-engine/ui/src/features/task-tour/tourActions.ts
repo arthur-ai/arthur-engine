@@ -1,27 +1,26 @@
 /**
- * Typed action channel for the task tour. v1 replaces v0's untyped
- * `document.dispatchEvent(new CustomEvent(name))` pattern with a typed action
- * name dispatched onto the engine's mitt bus via `engine.emitAction(name)`.
+ * Typed action channel for the task tour. Product code dispatches a typed
+ * action name that the active engine advances on via `engine.emitAction(name)`.
  *
  * Two surfaces are exposed:
- *  - `TASK_TOUR_ACTIONS` and the `TaskTourAction` union — preferred entry
- *    point for new code. Use `useTourAction()(TASK_TOUR_ACTIONS.xxx)` from
- *    inside a `<TourProvider>` subtree.
- *  - `TASK_TOUR_EVENTS` and `dispatchTourEvent(name)` — kept as backward-
- *    compatible aliases for product code authored against v0. They emit onto
- *    the active engine's bus via {@link registerTaskTourActionBridge}, so the
- *    call sites don't have to change.
+ *  - `dispatchTourEvent(name)` + `TASK_TOUR_EVENTS` — the canonical product
+ *    entry point. Most dispatching components (sidebar, chat, trace drawer,
+ *    feedback popover, …) render OUTSIDE `<TourProvider>`, so they cannot use
+ *    the `useTourAction()` hook (it throws without the provider). The
+ *    `dispatchTourEvent` global bridge exists precisely for them: it forwards
+ *    onto the active engine's bus via {@link registerTaskTourActionBridge}.
+ *  - `useTourAction()(TASK_TOUR_ACTIONS.xxx)` — the in-provider equivalent for
+ *    widgets that already live under `<TourProvider>`. Same underlying bus.
  *
  * The bridge is initialised inside `TaskTour` once the engine is created and
  * torn down when the tour unmounts. If `dispatchTourEvent` is called outside
- * a tour lifecycle the call is a no-op rather than throwing — matches v0's
- * "fire and forget" semantics (where the engine just wasn't listening yet).
+ * a tour lifecycle the call is a no-op rather than throwing (the engine simply
+ * isn't listening yet).
  */
 export const TASK_TOUR_ACTIONS = {
   demoAgentOpened: "task-tour:demo-agent-opened",
   demoAgentMessageSent: "task-tour:demo-agent-message-sent",
   evaluateOpened: "task-tour:evaluate-opened",
-  evaluatorReviewed: "task-tour:evaluator-reviewed",
   evaluatorMaximized: "task-tour:evaluator-maximized",
   evaluateResultsOpened: "task-tour:evaluate-results-opened",
   evaluateResultDetailsReviewed: "task-tour:evaluate-result-details-reviewed",
@@ -35,7 +34,6 @@ export const TASK_TOUR_ACTIONS = {
   traceAddToDatasetOpened: "task-tour:trace-add-to-dataset-opened",
   traceAddedToDataset: "task-tour:trace-added-to-dataset",
   datasetRowVerified: "task-tour:dataset-row-verified",
-  syntheticDataGenerated: "task-tour:synthetic-data-generated",
   syntheticDataFinished: "task-tour:synthetic-data-finished",
   promptsOpened: "task-tour:prompts-opened",
   promptsManagementTabOpened: "task-tour:prompts-management-tab-opened",
@@ -48,8 +46,6 @@ export const TASK_TOUR_ACTIONS = {
   createExperimentInfoCompleted: "task-tour:create-experiment-info-completed",
   createExperimentPromptMappingsCompleted: "task-tour:create-experiment-prompt-mappings-completed",
   createExperimentCreated: "task-tour:create-experiment-created",
-  /** Backward-compatible alias for older prompt-run call sites. */
-  experimentRun: "task-tour:create-experiment-modal-opened",
   promptPromoted: "task-tour:prompt-promoted",
   deployVerified: "task-tour:deploy-verified",
 } as const;
@@ -57,15 +53,14 @@ export const TASK_TOUR_ACTIONS = {
 export type TaskTourAction = (typeof TASK_TOUR_ACTIONS)[keyof typeof TASK_TOUR_ACTIONS];
 
 /**
- * Kept as a name-compatible alias of {@link TASK_TOUR_ACTIONS} so v0 call
- * sites continue compiling without modification.
- *
- * @deprecated Use {@link TASK_TOUR_ACTIONS} in new code.
+ * Name-compatible alias of {@link TASK_TOUR_ACTIONS}. `TASK_TOUR_EVENTS` is the
+ * label product code imports when dispatching via {@link dispatchTourEvent};
+ * both point at the same typed action names.
  */
 export const TASK_TOUR_EVENTS = TASK_TOUR_ACTIONS;
 export type TaskTourEventName = TaskTourAction;
 
-type Bridge = (name: string) => void;
+type Bridge = (name: TaskTourAction) => void;
 
 let activeBridge: Bridge | null = null;
 let activeTargetRefreshBridge: (() => void) | null = null;
@@ -103,7 +98,7 @@ export function registerTaskTourTargetRefreshBridge(bridge: (() => void) | null)
  *
  * No-op when no tour is mounted, matching v0's silent-when-idle behaviour.
  */
-export function dispatchTourEvent(name: string): void {
+export function dispatchTourEvent(name: TaskTourAction): void {
   activeBridge?.(name);
 }
 
@@ -113,6 +108,9 @@ export function refreshTaskTourTarget(): void {
 
 /** Keys are `${sectionId}.${stepId}` — shown under the active checklist row when the spotlight target is missing. */
 export const TASK_TOUR_TARGET_LOST_HINTS: Partial<Record<string, string>> = {
+  "agent.review-agent-response": "Stay on the Demo Agent until the response finishes streaming, then continue.",
+  "prompts.review-experiment": "Open your experiment's results page to watch the run finish, then continue.",
+  "deploy.review-eval-result": "Open the latest trace and scroll to the eval annotations to confirm the Source Attribution Eval passes.",
   "traces.open-trace": "Click a trace row, or mark this step complete to open the top trace automatically.",
   "traces.review-spans": "Open a trace first — the highlight appears once the drawer is visible.",
   "traces.review-annotations": "Open a trace and scroll to the eval annotations to continue.",
@@ -131,7 +129,7 @@ export const TASK_TOUR_TARGET_LOST_HINTS: Partial<Record<string, string>> = {
   "datasets.verify-new-row": "Return to Datasets and open the dataset to confirm the new row landed.",
   "datasets.generate-synthetic": "Open the dataset detail page, then use Generate or skip this optional step.",
   "prompts.open-prompts-tab": "Open Prompt in the sidebar first, then click the Prompts tab.",
-  "prompts.inspect-prompt": "Open the Prompts tab, then click the first prompt row.",
+  "prompts.inspect-prompt": "Open the Prompts tab, then click the highlighted prompt row.",
   "prompts.open-in-playground": "Open a prompt detail view, then click Open in Playground.",
   "prompts.duplicate-prompt-in-playground": "Use Duplicate Prompt in the playground to copy the seeded prompt first.",
   "prompts.review-playground-prompt": "Duplicate a prompt first — the highlight moves to the newest prompt card once it appears.",
@@ -143,4 +141,22 @@ export const TASK_TOUR_TARGET_LOST_HINTS: Partial<Record<string, string>> = {
   "deploy.send-verification-message": "Send another Demo Agent message to create a fresh trace before checking evals.",
   "deploy.review-verification-message": "Stay on the Demo Agent until the fresh response finishes, then continue.",
   "deploy.verify-eval-passes": "Open Observe and inspect a fresh trace to confirm the eval passes.",
+};
+
+export interface OcclusionHint {
+  message: string;
+  actionLabel: string;
+}
+
+/**
+ * Optional per-step occlusion copy (keyed `${sectionId}.${stepId}`), shown with
+ * an actionable button under the active checklist row when the spotlight target
+ * is in the DOM but covered by another surface. Falls back to
+ * {@link DEFAULT_OCCLUSION_HINT}.
+ */
+export const TASK_TOUR_OCCLUSION_HINTS: Partial<Record<string, OcclusionHint>> = {};
+
+export const DEFAULT_OCCLUSION_HINT: OcclusionHint = {
+  message: "Something is covering this step. We can bring it back into view.",
+  actionLabel: "Bring this into view",
 };

@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 
+import { ActiveTargetRefresh } from "./ActiveTargetRefresh";
 import { PreparationRunner } from "./PreparationRunner";
 import { TourPortal } from "./primitives/TourPortal";
-import { QueryHookTargetRefresh } from "./QueryHookTargetRefresh";
 
 export interface TourHostProps {
   /**
@@ -27,7 +27,7 @@ export function TourHost({ container, children }: TourHostProps) {
   return (
     <>
       <PreparationRunner />
-      <QueryHookTargetRefresh />
+      <ActiveTargetRefresh />
       <TourPortal container={container}>{children}</TourPortal>
     </>
   );

@@ -1,7 +1,7 @@
 export { createTour, type TourEngine, type TourEngineOptions } from "./createTour";
 export { createTourEngine, type PreparationRequest } from "./engine";
 export { createTourEngineStore, DEFAULT_TOUR_LAYERS } from "./store";
-export { createTourBus, TOUR_EVENT_NAMES, type TourEventName } from "./events";
+export { createTourBus } from "./events";
 export { defaultMatchesRoute, defaultResolveRoute, matchesRouteWith, resolveRouteWith, toRouteSpec } from "./routes";
 export {
   findElementByExactText,
@@ -10,5 +10,6 @@ export {
   type FindElementByExactTextOptions,
   type ResolveTargetOptions,
 } from "./targets";
-export { createDefaultTriggerRegistry, createTriggerRegistry, type TriggerRegistry } from "./triggers";
+export { createDefaultTriggers } from "./triggers";
+export { describeOccluder, detectOcclusion, type OcclusionOptions, type OcclusionReason, type OcclusionResult } from "./occlusion";
 export type * from "./types";

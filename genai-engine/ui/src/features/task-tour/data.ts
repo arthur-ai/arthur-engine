@@ -1,14 +1,9 @@
 import type { ReactNode } from "react";
 
-import { TASK_TOUR_META, TASK_TOUR_SECTIONS } from "./content/loader";
+import { TASK_TOUR_META } from "./content/loader";
 import type { StepWiring, TaskSubRoute } from "./content/wiring";
 
 export type { TaskSubRoute } from "./content/wiring";
-
-export interface TaskTourSearchParams {
-  /** Optional query params appended to the route (`?section=evaluators` etc.). */
-  search?: Record<string, string>;
-}
 
 /**
  * One step inside a section. Engineering wiring (`targetId`, `route`,
@@ -38,6 +33,10 @@ export interface TaskTourItem {
   formPrefill?: StepWiring["formPrefill"];
   /** Overrides the default click-blocking backdrop; defaults to `true`. */
   blockInteraction?: StepWiring["blockInteraction"];
+  /** Occluder ids this step needs open (everything else is reconciled closed). */
+  surfacesOpen?: StepWiring["surfacesOpen"];
+  /** Occluder ids to leave untouched on entry. */
+  surfacesKeep?: StepWiring["surfacesKeep"];
 }
 
 /**
@@ -80,26 +79,18 @@ export interface TaskTourSection {
 
 export const TASK_TOUR_TITLE = TASK_TOUR_META.title;
 export const TASK_TOUR_SHORT_NAME = TASK_TOUR_META.shortName;
-export const TASK_TOUR_SUBTITLE = TASK_TOUR_META.subtitle;
 
 /**
  * Author-friendly representation of the tour. Each section maps 1:1 to an
  * engine `SectionConfig`; sections with `items.length === 0` collapse to a
  * stub step.
  *
- * The tour is anchored on a single worked example: an agent that is
- * consistently producing answers outside the readability bar this team set.
- * Every section's copy, scenario, and step instructions reinforce that
- * scenario — the user diagnoses the readability failures with traces +
- * continuous evals, captures them in a dataset, fixes them in the prompt
+ * The tour is anchored on a single worked example: an agent that answers
+ * questions from Wikipedia but never cites its source, so the Source
+ * Attribution Eval fails on every response. Every section's copy, scenario,
+ * and step instructions reinforce that scenario — the user diagnoses the
+ * citation failures with traces + continuous evals, captures them in a
+ * dataset, fixes the prompt so the agent attributes its answers in the prompt
  * playground, and ships the winning version.
  */
 export { TASK_TOUR_SECTIONS } from "./content/loader";
-
-export function findSection(sectionId: string): TaskTourSection | undefined {
-  return TASK_TOUR_SECTIONS.find((s) => s.id === sectionId);
-}
-
-export function findItem(sectionId: string, itemId: string): TaskTourItem | undefined {
-  return findSection(sectionId)?.items.find((i) => i.id === itemId);
-}

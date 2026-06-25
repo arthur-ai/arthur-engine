@@ -166,7 +166,7 @@ export default function PlaygroundHeader({
               </Popover.Trigger>
             </Badge>
             <Popover.Portal>
-              <Popover.Positioner side="bottom" align="start" sideOffset={6}>
+              <Popover.Positioner side="bottom" align="start" sideOffset={6} className="z-50">
                 <Popover.Popup
                   data-tour-id={TOUR_IDS.playgroundVariablesPanel}
                   render={<Paper className="outline-none" sx={{ width: 400, maxHeight: 500, overflow: "auto" }} />}

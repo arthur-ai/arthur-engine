@@ -2,6 +2,7 @@
 name: arthur-onboard-prompts
 description: Arthur onboarding sub-skill — Step 6: Extract prompts from the target repository and register them with Arthur Engine. Reads credentials from .arthur-engine.env.
 allowed-tools: Bash, Read, Task
+version: 1.0.0
 ---
 
 # Arthur Onboard — Step 6: Extract & Register Prompts

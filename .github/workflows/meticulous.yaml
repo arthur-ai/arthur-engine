@@ -24,6 +24,7 @@ jobs:
   test:
     name: Meticulous
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     env:
       GITLAB_UNIFY_FRONTEND_TOKEN: ${{ secrets.GITLAB_UNIFY_FRONTEND_TOKEN }}
 
@@ -55,8 +56,13 @@ jobs:
 
       - name: Install dependencies
         working-directory: genai-engine/ui
+        env:
+          YARN_ENABLE_INLINE_BUILDS: "1"
+          YARN_ENABLE_PROGRESS_BARS: "false"
+          YARN_HTTP_TIMEOUT: "120000"
+          YARN_HTTP_RETRY: "5"
         run: |
-          yarn install --immutable
+          yarn install --immutable --inline-builds
 
       - name: Build project
         working-directory: genai-engine/ui

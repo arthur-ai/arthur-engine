@@ -70,14 +70,14 @@ def get_output_of_openapi_diff(
     return zip(*(iter(raw_changelog[1:]),) * 3)
 
 
-def generate_new_openapi(path: str) -> None:
+def generate_new_openapi(path: str, version: str) -> None:
     logger.info("Getting current version of OpenAPI schema.")
     app = get_app_with_routes()
     with open(path, "w+") as f:
         json.dump(
             get_openapi(
                 title=app.title,
-                version=app.version,
+                version=version,
                 openapi_version=app.openapi_version,
                 description=app.description,
                 routes=app.routes,
@@ -97,7 +97,9 @@ def main():
         path_directory,
         "genai-engine/src/api_changelog.md",
     )
-    generate_new_openapi(new_openapi_path)
+    with open(old_openapi_path) as f:
+        existing_version = json.load(f)["info"]["version"]
+    generate_new_openapi(new_openapi_path, existing_version)
     changelog_md: list[str] = ["\n", f"# {datetime.today().strftime('%m/%d/%Y')}\n"]
     starting_length_of_changelog: int = len(changelog_md)
     index_of_new_changelog: int = 3

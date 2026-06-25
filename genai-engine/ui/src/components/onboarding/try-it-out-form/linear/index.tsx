@@ -23,12 +23,13 @@ import { useRef } from "react";
 
 import { ATTRIBUTION_OPTIONS, BRINGS_OPTIONS, COMPETITOR_OPTIONS, MATURITY_OPTIONS } from "../../onboarding-options";
 import { useAppForm } from "../hooks/form";
+import { OtherSpecifyField } from "../other-specify-field";
 import { chipSx, fieldErrorMessage, labelSx, radioCardSx, sectionLabelSx, textFieldSx } from "../styles";
 import type { TryItOutFormProps } from "../types";
 
 import { onboardingSchema } from "./schema";
 
-import { EVENT_NAMES, track } from "@/services/amplitude";
+import { track } from "@/services/analytics";
 
 export type { TryItOutSubmission } from "./schema";
 
@@ -53,12 +54,12 @@ export const TryItOutFormLinear: React.FC<TryItOutFormProps> = ({ onBack, onSubm
     validators: { onSubmit: onboardingSchema },
     listeners: {
       onMount: () => {
-        track(EVENT_NAMES.ONBOARDING_FORM_VIEWED, { variant: "linear" });
+        track("onboarding/form_viewed", { variant: "linear" });
       },
       onChange: () => {
         if (!formStartedRef.current) {
           formStartedRef.current = true;
-          track(EVENT_NAMES.ONBOARDING_FORM_STARTED, { variant: "linear" });
+          track("onboarding/form_started", { variant: "linear" });
         }
       },
     },
@@ -69,12 +70,12 @@ export const TryItOutFormLinear: React.FC<TryItOutFormProps> = ({ onBack, onSubm
       const invalidFields = Object.entries(formApi.state.fieldMeta)
         .filter(([, meta]) => (meta?.errors?.length ?? 0) > 0)
         .map(([name]) => name);
-      track(EVENT_NAMES.ONBOARDING_FORM_SUBMIT_FAILED, { variant: "linear", invalid_fields: invalidFields });
+      track("onboarding/form_submit_failed", { variant: "linear", invalid_fields: invalidFields });
     },
   });
 
   const handleBack = () => {
-    track(EVENT_NAMES.ONBOARDING_FORM_BACK_CLICKED, { variant: "linear" });
+    track("onboarding/form_back_clicked", { variant: "linear" });
     onBack();
   };
 
@@ -318,21 +319,7 @@ export const TryItOutFormLinear: React.FC<TryItOutFormProps> = ({ onBack, onSubm
         <form.Subscribe selector={(s) => s.values.brings === "other"}>
           {(show) =>
             show ? (
-              <form.AppField name="bringsOther">
-                {(field) => (
-                  <TextField
-                    placeholder="Please specify…"
-                    value={field.state.value}
-                    onBlur={field.handleBlur}
-                    onChange={(e) => field.handleChange(e.target.value)}
-                    error={field.state.meta.errors.length > 0}
-                    helperText={fieldErrorMessage(field)}
-                    size="small"
-                    fullWidth
-                    sx={{ ...textFieldSx, mt: -1 }}
-                  />
-                )}
-              </form.AppField>
+              <form.AppField name="bringsOther">{(field) => <OtherSpecifyField field={field} placeholder="Please specify…" />}</form.AppField>
             ) : null
           }
         </form.Subscribe>
@@ -380,19 +367,7 @@ export const TryItOutFormLinear: React.FC<TryItOutFormProps> = ({ onBack, onSubm
           {(show) =>
             show ? (
               <form.AppField name="competitorOther">
-                {(field) => (
-                  <TextField
-                    placeholder="Which other tool(s)?"
-                    value={field.state.value}
-                    onBlur={field.handleBlur}
-                    onChange={(e) => field.handleChange(e.target.value)}
-                    error={field.state.meta.errors.length > 0}
-                    helperText={fieldErrorMessage(field)}
-                    size="small"
-                    fullWidth
-                    sx={{ ...textFieldSx, mt: -1 }}
-                  />
-                )}
+                {(field) => <OtherSpecifyField field={field} placeholder="Which other tool(s)?" />}
               </form.AppField>
             ) : null
           }
@@ -423,21 +398,7 @@ export const TryItOutFormLinear: React.FC<TryItOutFormProps> = ({ onBack, onSubm
         <form.Subscribe selector={(s) => s.values.attribution === "other"}>
           {(show) =>
             show ? (
-              <form.AppField name="attributionOther">
-                {(field) => (
-                  <TextField
-                    placeholder="Please specify…"
-                    value={field.state.value}
-                    onBlur={field.handleBlur}
-                    onChange={(e) => field.handleChange(e.target.value)}
-                    error={field.state.meta.errors.length > 0}
-                    helperText={fieldErrorMessage(field)}
-                    size="small"
-                    fullWidth
-                    sx={{ ...textFieldSx, mt: -1 }}
-                  />
-                )}
-              </form.AppField>
+              <form.AppField name="attributionOther">{(field) => <OtherSpecifyField field={field} placeholder="Please specify…" />}</form.AppField>
             ) : null
           }
         </form.Subscribe>

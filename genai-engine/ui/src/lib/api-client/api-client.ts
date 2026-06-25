@@ -16,7 +16,7 @@ export type AddTagToAgenticPromptVersionApiV1TasksTaskIdPromptsPromptNameVersion
 
 export type AddTagToAgenticPromptVersionApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionTagsPutError = HTTPValidationError;
 
-export type AddTagToLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionTagsPutData = LLMEval;
+export type AddTagToLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionTagsPutData = Eval;
 
 export type AddTagToLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionTagsPutError = HTTPValidationError;
 
@@ -120,6 +120,8 @@ export interface AgenticAnnotationResponse {
    * Name of the eval the continuous eval used when scoring
    */
   eval_name?: string | null;
+  /** Type of eval: 'llm_eval' or 'ml_eval' */
+  eval_type?: EvalType | null;
   /**
    * Eval Version
    * Version of the eval the continuous eval used when scoring
@@ -793,15 +795,17 @@ export interface AgenticPromptVersionResponse {
    */
   deleted_at: string | null;
   /**
-   * Model Name
-   * Model name chosen for this version of the llm eval
+   * Eval kind discriminator (e.g. 'llm_as_a_judge', 'pii', 'toxicity')
+   * @default "llm_as_a_judge"
    */
-  model_name: string;
+  eval_kind?: EvalKind;
   /**
-   * Model Provider
-   * Model provider chosen for this version of the llm eval
+   * Model Name
+   * Model name chosen for this version of the llm eval. None for ML evals.
    */
-  model_provider: ModelProvider | "empty";
+  model_name?: string | null;
+  /** Model provider chosen for this version of the llm eval. None for ML evals. */
+  model_provider?: ModelProvider | null;
   /**
    * Num Messages
    * Number of messages in the prompt
@@ -1207,13 +1211,16 @@ export interface BodyAddTagToLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersi
   tag: string;
 }
 
+/** Body_upload_certificate_api_v2_demo_certificate_post */
+export interface BodyUploadCertificateApiV2DemoCertificatePost {
+  /** File */
+  file: string;
+}
+
 /** Body_upload_embeddings_file_api_chat_files_post */
 export interface BodyUploadEmbeddingsFileApiChatFilesPost {
-  /**
-   * File
-   * @format binary
-   */
-  file: File;
+  /** File */
+  file: string;
 }
 
 /**
@@ -1251,6 +1258,14 @@ export interface BuiltinValidationResponse {
    * One result per requested check, in the same order as the request.
    */
   results: ExternalRuleResult[];
+}
+
+/** CertificateUploadResponse */
+export interface CertificateUploadResponse {
+  /** Certificate Id */
+  certificate_id: string;
+  /** Certificate Url */
+  certificate_url: string;
 }
 
 /** ChatCompletionMessageToolCall */
@@ -1487,15 +1502,21 @@ export interface ContinuousEvalCreateRequest {
    */
   enabled?: boolean;
   /**
+   * Eval Type
+   * Type of evaluator: 'llm_eval' or 'ml_eval'.
+   * @default "llm_eval"
+   */
+  eval_type?: ContinuousEvalCreateRequestEvalTypeEnum;
+  /**
    * Llm Eval Name
-   * Name of the llm eval to create the continuous eval for
+   * Name of the eval to create the continuous eval for
    */
   llm_eval_name: string;
   /**
    * Llm Eval Version
-   * Version of the llm eval to create the continuous eval for. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag.
+   * Version of the eval. Can be 'latest', a version number, an ISO datetime string, or a tag.
    */
-  llm_eval_version: string | number;
+  llm_eval_version?: string | number | null;
   /**
    * Name
    * Name of the continuous eval
@@ -1518,6 +1539,13 @@ export interface ContinuousEvalCreateRequest {
    */
   transform_version_id?: string | null;
 }
+
+/**
+ * Eval Type
+ * Type of evaluator: 'llm_eval' or 'ml_eval'.
+ * @default "llm_eval"
+ */
+export type ContinuousEvalCreateRequestEvalTypeEnum = "llm_eval" | "ml_eval";
 
 /** ContinuousEvalRerunResponse */
 export interface ContinuousEvalRerunResponse {
@@ -1554,6 +1582,11 @@ export interface ContinuousEvalResponse {
    */
   enabled?: boolean;
   /**
+   * Type of evaluator: 'llm_eval' or 'ml_eval'.
+   * @default "llm_eval"
+   */
+  eval_type?: EvalType;
+  /**
    * Id
    * ID of the transform.
    * @format uuid
@@ -1561,14 +1594,14 @@ export interface ContinuousEvalResponse {
   id: string;
   /**
    * Llm Eval Name
-   * Name of the llm eval.
+   * Name of the eval.
    */
-  llm_eval_name: string;
+  llm_eval_name?: string | null;
   /**
    * Llm Eval Version
-   * Version of the llm eval.
+   * Version of the eval.
    */
-  llm_eval_version: number;
+  llm_eval_version?: number | null;
   /**
    * Name
    * Name of the continuous eval.
@@ -1856,6 +1889,17 @@ export interface CreateEvalRequest {
   model_name: string;
   /** Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure') */
   model_provider: ModelProvider;
+}
+
+/** CreateMLEvalRequest */
+export interface CreateMLEvalRequest {
+  /**
+   * MLEvalConfig
+   * Configuration for the ML eval. Valid fields depend on eval_type.
+   */
+  config: PIIEvalConfig | ToxicityEvalConfig | PromptInjectionEvalConfig;
+  /** Type of ML eval (e.g. 'pii', 'toxicity', 'prompt_injection') */
+  eval_type: EvalKind;
 }
 
 export type CreateNotebookApiV1TasksTaskIdNotebooksPostData = NotebookDetail;
@@ -2522,6 +2566,8 @@ export interface DisplaySettingsResponse {
    * @default "USD"
    */
   default_currency?: string;
+  /** Scope Url */
+  scope_url?: string | null;
 }
 
 /** DocumentStorageConfigurationResponse */
@@ -2633,6 +2679,65 @@ export interface EnrichedTaskResponse {
   updated_at: string;
 }
 
+/** Eval */
+export interface Eval {
+  /**
+   * EvalConfig
+   * Eval configuration. LLMBaseConfigSettings for LLM evals; type-specific dict for ML evals.
+   */
+  config?: LLMBaseConfigSettings | Record<string, any> | null;
+  /**
+   * Created At
+   * Timestamp when the llm eval was created.
+   * @format date-time
+   */
+  created_at: string;
+  /**
+   * Deleted At
+   * Time that this llm eval was deleted
+   */
+  deleted_at?: string | null;
+  /**
+   * Eval Kind
+   * Eval kind discriminator (e.g. 'llm_as_a_judge', 'pii', 'toxicity')
+   * @default "llm_as_a_judge"
+   */
+  eval_kind?: string;
+  /**
+   * Instructions
+   * Instructions for the llm eval. None for ML evals.
+   */
+  instructions?: string | null;
+  /**
+   * Model Name
+   * Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet'). None for ML evals.
+   */
+  model_name?: string | null;
+  /** Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure'). None for ML evals. */
+  model_provider?: ModelProvider | null;
+  /**
+   * Name
+   * Name of the llm eval
+   */
+  name: string;
+  /**
+   * Tags
+   * List of tags for this llm eval version
+   */
+  tags?: string[];
+  /**
+   * Variables
+   * List of variable names for the llm eval
+   */
+  variables?: string[];
+  /**
+   * Version
+   * Version of the llm eval
+   * @default 1
+   */
+  version?: number;
+}
+
 /**
  * EvalExecution
  * Details of an eval execution
@@ -2678,6 +2783,12 @@ export interface EvalExecutionResult {
    */
   score: number;
 }
+
+/**
+ * EvalKind
+ * Discriminator for all eval types stored in the llm_evals table.
+ */
+export type EvalKind = "llm_as_a_judge" | "pii" | "pii_v1" | "toxicity" | "prompt_injection";
 
 /**
  * EvalRef
@@ -2749,6 +2860,28 @@ export interface EvalResultSummary {
    */
   total_count: number;
 }
+
+/** EvalRunResponse */
+export interface EvalRunResponse {
+  /**
+   * Cost
+   * Cost of this llm completion
+   */
+  cost: string;
+  /**
+   * Reason
+   * Explanation for how the llm arrived at this answer.
+   */
+  reason: string;
+  /**
+   * Score
+   * Score for this llm eval
+   */
+  score: number;
+}
+
+/** EvalType */
+export type EvalType = "llm_eval" | "ml_eval";
 
 /**
  * EvalVariableMapping
@@ -3570,6 +3703,10 @@ export type GetApiKeyAuthApiKeysApiKeyIdGetData = ApiKeyResponse;
 
 export type GetApiKeyAuthApiKeysApiKeyIdGetError = HTTPValidationError;
 
+export type GetCertificateApiV2DemoCertificateCertIdGetData = any;
+
+export type GetCertificateApiV2DemoCertificateCertIdGetError = HTTPValidationError;
+
 export type GetChatbotConfigApiV1ChatbotConfigGetData = ChatbotConfigResponse;
 
 export type GetConfigurationApiV2ConfigurationGetData = ApplicationConfigurationResponse;
@@ -3795,11 +3932,11 @@ export type GetInferenceDocumentContextApiChatContextInferenceIdGetData = ChatDo
 
 export type GetInferenceDocumentContextApiChatContextInferenceIdGetError = HTTPValidationError;
 
-export type GetLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionGetData = LLMEval;
+export type GetLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionGetData = Eval;
 
 export type GetLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionGetError = HTTPValidationError;
 
-export type GetLlmEvalByTagApiV1TasksTaskIdLlmEvalsEvalNameVersionsTagsTagGetData = LLMEval;
+export type GetLlmEvalByTagApiV1TasksTaskIdLlmEvalsEvalNameVersionsTagsTagGetData = Eval;
 
 export type GetLlmEvalByTagApiV1TasksTaskIdLlmEvalsEvalNameVersionsTagsTagGetError = HTTPValidationError;
 
@@ -4231,6 +4368,14 @@ export interface GetTokenUsageApiV2UsageTokensGetParams {
 export type GetTraceByIdApiV1TracesTraceIdGetData = TraceResponse;
 
 export type GetTraceByIdApiV1TracesTraceIdGetError = HTTPValidationError;
+
+export type GetTracesOverviewApiV1TracesOverviewPostData = TraceOverviewListResponse;
+
+export type GetTracesOverviewApiV1TracesOverviewPostError = HTTPValidationError;
+
+export type GetTracesTimeseriesApiV1TracesOverviewTimeseriesPostData = TraceTimeSeriesResponse;
+
+export type GetTracesTimeseriesApiV1TracesOverviewTimeseriesPostError = HTTPValidationError;
 
 export type GetTransformApiV1TracesTransformsTransformIdGetData = TraceTransformResponse;
 
@@ -4690,75 +4835,6 @@ export interface LLMConfigSettings {
   top_p?: number | null;
 }
 
-/** LLMEval */
-export interface LLMEval {
-  /** LLM configurations for this eval (e.g. temperature, max_tokens, etc.) */
-  config?: LLMBaseConfigSettings | null;
-  /**
-   * Created At
-   * Timestamp when the llm eval was created.
-   * @format date-time
-   */
-  created_at: string;
-  /**
-   * Deleted At
-   * Time that this llm eval was deleted
-   */
-  deleted_at?: string | null;
-  /**
-   * Instructions
-   * Instructions for the llm eval
-   */
-  instructions: string;
-  /**
-   * Model Name
-   * Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet')
-   */
-  model_name: string;
-  /** Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure') */
-  model_provider: ModelProvider;
-  /**
-   * Name
-   * Name of the llm eval
-   */
-  name: string;
-  /**
-   * Tags
-   * List of tags for this llm eval version
-   */
-  tags?: string[];
-  /**
-   * Variables
-   * List of variable names for the llm eval
-   */
-  variables?: string[];
-  /**
-   * Version
-   * Version of the llm eval
-   * @default 1
-   */
-  version?: number;
-}
-
-/** LLMEvalRunResponse */
-export interface LLMEvalRunResponse {
-  /**
-   * Cost
-   * Cost of this llm completion
-   */
-  cost: string;
-  /**
-   * Reason
-   * Explanation for how the llm arrived at this answer.
-   */
-  reason: string;
-  /**
-   * Score
-   * Score for this llm eval
-   */
-  score: number;
-}
-
 /** LLMEvalsVersionListResponse */
 export interface LLMEvalsVersionListResponse {
   /**
@@ -4800,6 +4876,11 @@ export interface LLMGetAllMetadataResponse {
    * List of deleted versions of the llm asset
    */
   deleted_versions: number[];
+  /**
+   * Eval kind discriminator (e.g. 'llm_as_a_judge', 'pii', 'toxicity')
+   * @default "llm_as_a_judge"
+   */
+  eval_kind?: EvalKind;
   /**
    * Latest Version Created At
    * Timestamp when the last version of the llm asset was created
@@ -5095,15 +5176,17 @@ export interface LLMVersionResponse {
    */
   deleted_at: string | null;
   /**
-   * Model Name
-   * Model name chosen for this version of the llm eval
+   * Eval kind discriminator (e.g. 'llm_as_a_judge', 'pii', 'toxicity')
+   * @default "llm_as_a_judge"
    */
-  model_name: string;
+  eval_kind?: EvalKind;
   /**
-   * Model Provider
-   * Model provider chosen for this version of the llm eval
+   * Model Name
+   * Model name chosen for this version of the llm eval. None for ML evals.
    */
-  model_provider: ModelProvider | "empty";
+  model_name?: string | null;
+  /** Model provider chosen for this version of the llm eval. None for ML evals. */
+  model_provider?: ModelProvider | null;
   /**
    * Tags
    * List of tags for the llm asset
@@ -5652,6 +5735,11 @@ export interface ListSessionsMetadataApiV1TracesSessionsGetParams {
    */
   page_size?: number;
   /**
+   * Session Ids
+   * Session IDs to filter on. Optional.
+   */
+  session_ids?: string[];
+  /**
    * Sort the results (asc/desc)
    * @default "desc"
    */
@@ -5668,6 +5756,11 @@ export interface ListSessionsMetadataApiV1TracesSessionsGetParams {
    * @minItems 1
    */
   task_ids: string[];
+  /**
+   * Trace Ids
+   * Trace IDs to filter on. Returns sessions containing at least one matching trace. Optional.
+   */
+  trace_ids?: string[];
   /**
    * User Ids
    * User IDs to filter on. Optional.
@@ -7475,6 +7568,28 @@ export type PIIEntityTypes =
   | "US_PASSPORT"
   | "US_SSN";
 
+/**
+ * PIIEvalConfig
+ * Configuration for PII detection evals.
+ */
+export interface PIIEvalConfig {
+  /**
+   * Allow List
+   * List of values that should not be flagged as PII
+   */
+  allow_list?: string[] | null;
+  /**
+   * Disabled Pii Entities
+   * List of PII entity types to disable (e.g. ['EMAIL_ADDRESS', 'PHONE_NUMBER'])
+   */
+  disabled_pii_entities?: string[] | null;
+  /**
+   * Pii Confidence Threshold
+   * Minimum confidence score for a PII entity to be flagged
+   */
+  pii_confidence_threshold?: number | null;
+}
+
 /** Page[ConversationBaseResponse] */
 export interface PageConversationBaseResponse {
   /** Items */
@@ -7778,6 +7893,12 @@ export interface PromptExperimentSummary {
    */
   total_rows: number;
 }
+
+/**
+ * PromptInjectionEvalConfig
+ * Configuration for prompt injection detection evals.
+ */
+export type PromptInjectionEvalConfig = object;
 
 /**
  * PromptOutput
@@ -9883,21 +10004,15 @@ export type ReceiveTracesApiV1TracesPostData = any;
 
 export type ReceiveTracesApiV1TracesPostError = HTTPValidationError;
 
-/**
- * Body
- * @format binary
- */
-export type ReceiveTracesApiV1TracesPostPayload = File;
+/** Body */
+export type ReceiveTracesApiV1TracesPostPayload = string;
 
 export type ReceiveTracesV1TracesPostData = any;
 
 export type ReceiveTracesV1TracesPostError = HTTPValidationError;
 
-/**
- * Body
- * @format binary
- */
-export type ReceiveTracesV1TracesPostPayload = File;
+/** Body */
+export type ReceiveTracesV1TracesPostPayload = string;
 
 export type RedirectToTasksApiV2TaskPostData = any;
 
@@ -10109,7 +10224,7 @@ export type RunSavedAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPrompt
 
 export type RunSavedAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionCompletionsPostError = HTTPValidationError;
 
-export type RunSavedLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionCompletionsPostData = LLMEvalRunResponse;
+export type RunSavedLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionCompletionsPostData = EvalRunResponse;
 
 export type RunSavedLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionCompletionsPostError = HTTPValidationError;
 
@@ -10117,9 +10232,13 @@ export type SaveAgenticPromptApiV1TasksTaskIdPromptsPromptNamePostData = Agentic
 
 export type SaveAgenticPromptApiV1TasksTaskIdPromptsPromptNamePostError = HTTPValidationError;
 
-export type SaveLlmEvalApiV1TasksTaskIdLlmEvalsEvalNamePostData = LLMEval;
+export type SaveLlmEvalApiV1TasksTaskIdLlmEvalsEvalNamePostData = Eval;
 
 export type SaveLlmEvalApiV1TasksTaskIdLlmEvalsEvalNamePostError = HTTPValidationError;
+
+export type SaveMlEvalApiV2TasksTaskIdMlEvalsEvalNamePostData = Eval;
+
+export type SaveMlEvalApiV2TasksTaskIdMlEvalsEvalNamePostError = HTTPValidationError;
 
 /**
  * SavedPromptConfig
@@ -11037,6 +11156,12 @@ export interface SyntheticDataRowResponse {
   id: string;
 }
 
+/**
+ * TaskAnalyticsBucketSize
+ * Time bucket granularity for task analytics time-series metrics.
+ */
+export type TaskAnalyticsBucketSize = "hour" | "day" | "week";
+
 /** TaskResponse */
 export interface TaskResponse {
   /** Metadata to describe the creation source/provider for registered agents. */
@@ -11440,6 +11565,18 @@ export interface ToxicityDetailsResponse {
   toxicity_violation_type: ToxicityViolationType;
 }
 
+/**
+ * ToxicityEvalConfig
+ * Configuration for toxicity detection evals.
+ */
+export interface ToxicityEvalConfig {
+  /**
+   * Toxicity Threshold
+   * Minimum toxicity score for text to be flagged
+   */
+  toxicity_threshold?: number | null;
+}
+
 /** ToxicityViolationType */
 export type ToxicityViolationType = "benign" | "harmful_request" | "toxic_content" | "profanity" | "unknown";
 
@@ -11577,6 +11714,89 @@ export interface TraceMetadataResponse {
 }
 
 /**
+ * TraceOverviewListResponse
+ * Response for list of trace overviews
+ */
+export interface TraceOverviewListResponse {
+  /**
+   * Count
+   * Total number of trace overviews
+   */
+  count: number;
+  /**
+   * Overviews
+   * List of trace overviews
+   */
+  overviews: TraceOverviewResponse[];
+}
+
+/**
+ * TraceOverviewRequest
+ * Request schema for getting the overview of traces for each task
+ */
+export interface TraceOverviewRequest {
+  /**
+   * End Time
+   * End time of the traces to get the overview of
+   * @format date-time
+   */
+  end_time: string;
+  /**
+   * Start Time
+   * Start time of the traces to get the overview of
+   * @format date-time
+   */
+  start_time: string;
+  /**
+   * Task Ids
+   * Optional list of task IDs to get the overview of traces for
+   */
+  task_ids?: string[] | null;
+}
+
+/**
+ * TraceOverviewResponse
+ * Response for trace overview
+ */
+export interface TraceOverviewResponse {
+  /**
+   * Continuous Eval Success Rate
+   * Fraction of continuous-eval annotations that passed
+   */
+  continuous_eval_success_rate: number;
+  /**
+   * Eval Count
+   * Number of continuous-eval annotations
+   */
+  eval_count: number;
+  /**
+   * Last Active
+   * Most recent trace end time, or null if no traces in the window
+   */
+  last_active?: string | null;
+  /**
+   * Task Id
+   * Task ID
+   */
+  task_id: string;
+  /**
+   * Trace Count
+   * Number of traces
+   */
+  trace_count: number;
+  /**
+   * Trace Token Cost
+   * Total token cost across traces
+   */
+  trace_token_cost: number;
+  /**
+   * Trace Token Count
+   * Total number of tokens in traces
+   */
+  trace_token_count: number;
+}
+
+/**
  * TraceResponse
  * Response model for a single trace containing nested spans
  */
@@ -11653,6 +11873,86 @@ export interface TraceResponse {
 
 /** TraceSortBy */
 export type TraceSortBy = "start_time" | "total_token_count" | "total_token_cost" | "span_count";
+
+/**
+ * TraceTimeSeriesPoint
+ * Metrics for a single time bucket, one per Analyze-page chart series.
+ */
+export interface TraceTimeSeriesPoint {
+  /**
+   * Continuous Eval Success Rate
+   * Fraction of continuous-eval annotations that passed in the bucket
+   */
+  continuous_eval_success_rate: number;
+  /**
+   * Timestamp
+   * Inclusive start of the bucket
+   * @format date-time
+   */
+  timestamp: string;
+  /**
+   * Trace Count
+   * Number of traces in the bucket
+   */
+  trace_count: number;
+  /**
+   * Trace Token Cost
+   * Total token cost in the bucket
+   */
+  trace_token_cost: number;
+  /**
+   * Trace Token Count
+   * Total tokens in the bucket
+   */
+  trace_token_count: number;
+}
+
+/**
+ * TraceTimeSeriesRequest
+ * Request schema for time-bucketed trace metrics for a single task.
+ *
+ * The caller (frontend) owns interval -> window + bucket-size resolution and
+ * passes the resolved start_time, end_time, and bucket_size; the backend just
+ * buckets and zero-fills, mirroring the Analyze page aggregation.
+ */
+export interface TraceTimeSeriesRequest {
+  /** Size of each time bucket */
+  bucket_size: TaskAnalyticsBucketSize;
+  /**
+   * End Time
+   * Exclusive end boundary of the time window
+   * @format date-time
+   */
+  end_time: string;
+  /**
+   * Start Time
+   * Inclusive start boundary of the time window
+   * @format date-time
+   */
+  start_time: string;
+  /**
+   * Task Id
+   * Task ID to get time-series metrics for
+   */
+  task_id: string;
+}
+
+/**
+ * TraceTimeSeriesResponse
+ * Response for time-bucketed trace metrics for a single task.
+ */
+export interface TraceTimeSeriesResponse {
+  /**
+   * Points
+   * Time buckets ordered ascending by timestamp
+   */
+  points: TraceTimeSeriesPoint[];
+  /**
+   * Task Id
+   * Task ID
+   */
+  task_id: string;
+}
 
 /** TraceTransformDefinition */
 export interface TraceTransformDefinition {
@@ -12303,6 +12603,10 @@ export type UpdateTransformApiV1TracesTransformsTransformIdPatchData = TraceTran
 
 export type UpdateTransformApiV1TracesTransformsTransformIdPatchError = HTTPValidationError;
 
+export type UploadCertificateApiV2DemoCertificatePostData = CertificateUploadResponse;
+
+export type UploadCertificateApiV2DemoCertificatePostError = HTTPValidationError;
+
 export type UploadEmbeddingsFileApiChatFilesPostData = FileUploadResult;
 
 export type UploadEmbeddingsFileApiChatFilesPostError = HTTPValidationError;
@@ -12345,6 +12649,10 @@ export type ValidateResponseEndpointApiV2TasksTaskIdValidateResponseInferenceIdP
 
 /** ValidationError */
 export interface ValidationError {
+  /** Context */
+  ctx?: object;
+  /** Input */
+  input?: any;
   /** Location */
   loc: (string | number)[];
   /** Message */
@@ -13340,7 +13648,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.503
+ * @version 2.1.654
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
@@ -14977,6 +15285,22 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Retrieve a previously stored demo completion certificate PNG.
+     *
+     * @tags Demo
+     * @name GetCertificateApiV2DemoCertificateCertIdGet
+     * @summary Get Certificate
+     * @request GET:/api/v2/demo/certificate/{cert_id}
+     */
+    getCertificateApiV2DemoCertificateCertIdGet: (certId: string, params: RequestParams = {}) =>
+      this.request<GetCertificateApiV2DemoCertificateCertIdGetData, GetCertificateApiV2DemoCertificateCertIdGetError>({
+        path: `/api/v2/demo/certificate/${certId}`,
+        method: "GET",
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Returns the model provider, model name, blacklisted endpoints, and available endpoints.
      *
      * @tags Chatbot
@@ -15948,6 +16272,46 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Get overview of traces for each task including trace count, total tokens, and success rate.
+     *
+     * @tags Traces
+     * @name GetTracesOverviewApiV1TracesOverviewPost
+     * @summary Get Overview of Traces for each Task
+     * @request POST:/api/v1/traces/overview
+     * @secure
+     */
+    getTracesOverviewApiV1TracesOverviewPost: (data: TraceOverviewRequest, params: RequestParams = {}) =>
+      this.request<GetTracesOverviewApiV1TracesOverviewPostData, GetTracesOverviewApiV1TracesOverviewPostError>({
+        path: `/api/v1/traces/overview`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get time-bucketed trace metrics (count, tokens, cost, success rate) for a single task.
+     *
+     * @tags Traces
+     * @name GetTracesTimeseriesApiV1TracesOverviewTimeseriesPost
+     * @summary Get Time-Series Overview Data for a Task
+     * @request POST:/api/v1/traces/overview/timeseries
+     * @secure
+     */
+    getTracesTimeseriesApiV1TracesOverviewTimeseriesPost: (data: TraceTimeSeriesRequest, params: RequestParams = {}) =>
+      this.request<GetTracesTimeseriesApiV1TracesOverviewTimeseriesPostData, GetTracesTimeseriesApiV1TracesOverviewTimeseriesPostError>({
+        path: `/api/v1/traces/overview/timeseries`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Get a specific transform.
      *
      * @tags Transforms
@@ -16753,6 +17117,26 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Save an ML eval. If an eval with the same name exists, a new version is created.
+     *
+     * @tags ML Evals
+     * @name SaveMlEvalApiV2TasksTaskIdMlEvalsEvalNamePost
+     * @summary Save an ML eval
+     * @request POST:/api/v2/tasks/{task_id}/ml_evals/{eval_name}
+     * @secure
+     */
+    saveMlEvalApiV2TasksTaskIdMlEvalsEvalNamePost: (evalName: string, taskId: string, data: CreateMLEvalRequest, params: RequestParams = {}) =>
+      this.request<SaveMlEvalApiV2TasksTaskIdMlEvalsEvalNamePostData, SaveMlEvalApiV2TasksTaskIdMlEvalsEvalNamePostError>({
+        path: `/api/v2/tasks/${taskId}/ml_evals/${evalName}`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Search default and/or task rules.
      *
      * @tags Rules
@@ -17331,6 +17715,24 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         body: data,
         secure: true,
         type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Upload a demo completion certificate PNG to persistent storage.
+     *
+     * @tags Demo
+     * @name UploadCertificateApiV2DemoCertificatePost
+     * @summary Upload Certificate
+     * @request POST:/api/v2/demo/certificate
+     */
+    uploadCertificateApiV2DemoCertificatePost: (data: BodyUploadCertificateApiV2DemoCertificatePost, params: RequestParams = {}) =>
+      this.request<UploadCertificateApiV2DemoCertificatePostData, UploadCertificateApiV2DemoCertificatePostError>({
+        path: `/api/v2/demo/certificate`,
+        method: "POST",
+        body: data,
+        type: ContentType.FormData,
         format: "json",
         ...params,
       }),

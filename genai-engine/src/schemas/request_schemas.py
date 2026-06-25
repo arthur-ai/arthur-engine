@@ -42,10 +42,12 @@ from schemas.common_schemas import (
 )
 from schemas.enums import (
     DocumentStorageEnvironment,
+    EvalKind,
     RagAPIKeyAuthenticationProviderEnum,
     RagProviderAuthenticationMethodEnum,
     RagProviderEnum,
     RagSearchKind,
+    TaskAnalyticsBucketSize,
 )
 from utils.constants import ALLOWED_TRACE_RETENTION_DAYS
 
@@ -831,6 +833,138 @@ class CreateEvalRequest(BaseModel):
     )
 
 
+class PIIEvalConfig(BaseModel):
+    """Configuration for PII detection evals."""
+
+    disabled_pii_entities: Optional[List[str]] = Field(
+        default=None,
+        description="List of PII entity types to disable (e.g. ['EMAIL_ADDRESS', 'PHONE_NUMBER'])",
+    )
+    pii_confidence_threshold: Optional[float] = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description="Minimum confidence score for a PII entity to be flagged",
+    )
+    allow_list: Optional[List[str]] = Field(
+        default=None,
+        description="List of values that should not be flagged as PII",
+    )
+
+
+class ToxicityEvalConfig(BaseModel):
+    """Configuration for toxicity detection evals."""
+
+    toxicity_threshold: Optional[float] = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description="Minimum toxicity score for text to be flagged",
+    )
+
+
+class PromptInjectionEvalConfig(BaseModel):
+    """Configuration for prompt injection detection evals."""
+
+
+MLEvalConfig = Union[PIIEvalConfig, ToxicityEvalConfig, PromptInjectionEvalConfig]
+
+
+class CreateMLEvalRequest(BaseModel):
+    eval_type: EvalKind = Field(
+        description="Type of ML eval (e.g. 'pii', 'toxicity', 'prompt_injection')",
+    )
+    config: MLEvalConfig = Field(
+        title="MLEvalConfig",
+        description="Configuration for the ML eval. Valid fields depend on eval_type.",
+    )
+
+    @model_validator(mode="before")
+    @classmethod
+    def coerce_config(cls, values: Any) -> Any:
+        eval_type_val = str(values.get("eval_type", ""))
+        raw = values.get("config") or {}
+        if not isinstance(raw, dict):
+            return values
+        if eval_type_val in (EvalKind.PII.value, EvalKind.PII_V1.value):
+            values["config"] = PIIEvalConfig(**raw)
+        elif eval_type_val == EvalKind.TOXICITY.value:
+            values["config"] = ToxicityEvalConfig(**raw)
+        else:
+            values["config"] = PromptInjectionEvalConfig(**raw)
+        return values
+
+    @model_validator(mode="after")
+    def validate_ml_eval_type(self) -> "CreateMLEvalRequest":
+        if self.eval_type == EvalKind.LLM_AS_A_JUDGE:
+            raise ValueError(
+                f"eval_type '{EvalKind.LLM_AS_A_JUDGE.value}' is not valid here. "
+                "Use 'pii', 'pii_v1', 'toxicity', or 'prompt_injection'.",
+            )
+        return self
+
+
+class CreateAnyEvalRequest(BaseModel):
+    """Unified eval creation request used by the v2 /evals endpoints.
+
+    For llm_as_a_judge evals model_name, model_provider and instructions are required.
+    For ML evals (pii, toxicity, prompt_injection) only eval_type (and optionally config)
+    are needed. Valid config fields per eval_type are documented in PIIEvalConfig,
+    ToxicityEvalConfig, and PromptInjectionEvalConfig.
+    """
+
+    eval_type: EvalKind = Field(
+        description="Type of eval: 'llm_as_a_judge', 'pii', 'pii_v1', 'toxicity', 'prompt_injection'",
+    )
+    model_name: Optional[str] = Field(
+        default=None,
+        description="LLM model name — required for llm_as_a_judge evals",
+    )
+    model_provider: Optional[ModelProvider] = Field(
+        default=None,
+        description="LLM model provider — required for llm_as_a_judge evals",
+    )
+    instructions: Optional[str] = Field(
+        default=None,
+        description="Eval instructions — required for llm_as_a_judge evals",
+    )
+    config: Optional[Union[MLEvalConfig, LLMRequestConfigSettings]] = Field(
+        default=None,
+        description=(
+            "Optional configuration. For llm_as_a_judge: LLM settings (temperature, etc.). "
+            "For ML evals: see PIIEvalConfig, ToxicityEvalConfig, PromptInjectionEvalConfig."
+        ),
+    )
+
+    @model_validator(mode="before")
+    @classmethod
+    def coerce_config(cls, values: Any) -> Any:
+        eval_type_val = str(values.get("eval_type", ""))
+        raw = values.get("config")
+        if not isinstance(raw, dict):
+            return values
+        if eval_type_val == EvalKind.LLM_AS_A_JUDGE.value:
+            values["config"] = LLMRequestConfigSettings(**raw)
+        elif eval_type_val in (EvalKind.PII.value, EvalKind.PII_V1.value):
+            values["config"] = PIIEvalConfig(**raw)
+        elif eval_type_val == EvalKind.TOXICITY.value:
+            values["config"] = ToxicityEvalConfig(**raw)
+        else:
+            values["config"] = PromptInjectionEvalConfig(**raw)
+        return values
+
+    @model_validator(mode="after")
+    def validate_for_type(self) -> "CreateAnyEvalRequest":
+        if self.eval_type == EvalKind.LLM_AS_A_JUDGE:
+            if not self.model_name:
+                raise ValueError("model_name is required for llm_as_a_judge evals")
+            if not self.model_provider:
+                raise ValueError("model_provider is required for llm_as_a_judge evals")
+            if not self.instructions:
+                raise ValueError("instructions is required for llm_as_a_judge evals")
+        return self
+
+
 class CreateAgenticPromptRequest(BaseModel):
     model_config = ConfigDict(use_enum_values=True)
 
@@ -972,11 +1106,16 @@ class ContinuousEvalCreateRequest(BaseModel):
         default=None,
         description="Description of the continuous eval",
     )
-    llm_eval_name: str = Field(
-        description="Name of the llm eval to create the continuous eval for",
+    eval_type: Literal["llm_eval", "ml_eval"] = Field(
+        default="llm_eval",
+        description="Type of evaluator: 'llm_eval' or 'ml_eval'.",
     )
-    llm_eval_version: Union[str, int] = Field(
-        description="Version of the llm eval to create the continuous eval for. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag.",
+    llm_eval_name: str = Field(
+        description="Name of the eval to create the continuous eval for",
+    )
+    llm_eval_version: Optional[Union[str, int]] = Field(
+        default=None,
+        description="Version of the eval. Can be 'latest', a version number, an ISO datetime string, or a tag.",
     )
     transform_id: UUID = Field(
         description="ID of the transform to create the continuous eval for",
@@ -1448,4 +1587,39 @@ class SyntheticDataConversationRequest(BaseModel):
     config: Optional[LLMRequestConfigSettings] = Field(
         default=None,
         description="Optional LLM configuration settings (temperature, max_tokens, etc.).",
+    )
+
+
+class TraceOverviewRequest(BaseModel):
+    """Request schema for getting the overview of traces for each task"""
+
+    task_ids: Optional[List[str]] = Field(
+        default=None,
+        description="Optional list of task IDs to get the overview of traces for",
+    )
+    start_time: datetime = Field(
+        description="Start time of the traces to get the overview of",
+    )
+    end_time: datetime = Field(
+        description="End time of the traces to get the overview of",
+    )
+
+
+class TraceTimeSeriesRequest(BaseModel):
+    """Request schema for time-bucketed trace metrics for a single task.
+
+    The caller (frontend) owns interval -> window + bucket-size resolution and
+    passes the resolved start_time, end_time, and bucket_size; the backend just
+    buckets and zero-fills, mirroring the Analyze page aggregation.
+    """
+
+    task_id: str = Field(description="Task ID to get time-series metrics for")
+    start_time: datetime = Field(
+        description="Inclusive start boundary of the time window",
+    )
+    end_time: datetime = Field(
+        description="Exclusive end boundary of the time window",
+    )
+    bucket_size: TaskAnalyticsBucketSize = Field(
+        description="Size of each time bucket",
     )

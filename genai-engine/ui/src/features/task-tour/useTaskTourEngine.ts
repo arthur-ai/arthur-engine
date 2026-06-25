@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { createTaskTourHighlightsPlugin } from "./highlights";
+import { itemKey } from "./progress";
 import { buildTourConfig } from "./tour-config";
 
 import { createAnalyticsPlugin, createTour, createTourStatePlugin, type StepContext, type TourEngine, type TourStatePlugin } from "@/features/tour";
-import { track } from "@/services/amplitude";
+import { trackDynamic } from "@/services/analytics";
 
 export const TASK_TOUR_STORAGE_KEY = "arthur:task-tour:status";
 
@@ -35,7 +36,10 @@ export interface UseTaskTourEngineResult {
  *   point rather than stranding the panel).
  */
 export function useTaskTourEngine({ taskId, isEmpty }: UseTaskTourEngineOptions): UseTaskTourEngineResult {
-  const statePlugin = useMemo(() => createTourStatePlugin({ storageKey: TASK_TOUR_STORAGE_KEY }), []);
+  const statePlugin = useMemo(
+    () => createTourStatePlugin({ storageKey: TASK_TOUR_STORAGE_KEY, getKey: (event) => itemKey(event.sectionId, event.stepId) }),
+    []
+  );
   const highlightsPlugin = useMemo(() => createTaskTourHighlightsPlugin(), []);
   const isEmptyRef = useRef(isEmpty);
   isEmptyRef.current = isEmpty;
@@ -49,7 +53,7 @@ export function useTaskTourEngine({ taskId, isEmpty }: UseTaskTourEngineOptions)
     });
     const created = createTour({
       config,
-      plugins: [createAnalyticsPlugin({ track, prefix: "task-tour" }), statePlugin, highlightsPlugin],
+      plugins: [createAnalyticsPlugin({ track: trackDynamic, prefix: "task-tour" }), statePlugin, highlightsPlugin],
     });
     setEngine(created);
     return () => {

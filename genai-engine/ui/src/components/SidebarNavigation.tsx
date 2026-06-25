@@ -9,13 +9,15 @@ import {
   InsightsOutlined,
   ChevronRightOutlined,
   ChatOutlined,
+  SecurityOutlined,
 } from "@mui/icons-material";
 import { Link, Typography } from "@mui/material";
 import React from "react";
 import { useParams } from "react-router-dom";
 
 import { useDemoMode } from "@/contexts/EngineConfigContext";
-import { TOUR_IDS, dispatchTourEvent, TASK_TOUR_ACTIONS, type TaskTourEventName } from "@/features/task-tour";
+import { TOUR_IDS } from "@/features/task-tour/selectors";
+import { dispatchTourEvent, TASK_TOUR_ACTIONS, type TaskTourEventName } from "@/features/task-tour/tourEvents";
 
 interface SidebarNavigationProps {
   onBackToDashboard: () => void;
@@ -95,6 +97,7 @@ function buildNavigationSections(demoMode: boolean): NavigationSection[] {
           tourId: TOUR_IDS.navEvaluate,
           tourEvents: [TASK_TOUR_ACTIONS.evaluateOpened],
         },
+        { id: "guardrails", label: "Guardrails", icon: <SecurityOutlined /> },
         {
           id: "datasets",
           label: "Dataset",

@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.588"
+        "version": "2.1.659"
     },
     "paths": {
         "/api/v2/engine-config": {
@@ -2119,6 +2119,24 @@
                             "format": "uuid",
                             "title": "Task Id"
                         }
+                    },
+                    {
+                        "name": "traceparent",
+                        "in": "header",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Optional W3C traceparent header. When supplied, the emitted guardrail span joins that trace, nested under its parent span; otherwise a trace is derived from the inference ID. OpenTelemetry-instrumented callers send this automatically.",
+                            "title": "Traceparent"
+                        },
+                        "description": "Optional W3C traceparent header. When supplied, the emitted guardrail span joins that trace, nested under its parent span; otherwise a trace is derived from the inference ID. OpenTelemetry-instrumented callers send this automatically."
                     }
                 ],
                 "requestBody": {
@@ -2198,6 +2216,24 @@
                             "format": "uuid",
                             "title": "Task Id"
                         }
+                    },
+                    {
+                        "name": "traceparent",
+                        "in": "header",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Optional W3C traceparent header. When supplied, the emitted guardrail span joins that trace, nested under its parent span; otherwise it joins the trace derived from the inference ID, under its prompt span. OpenTelemetry-instrumented callers send this automatically.",
+                            "title": "Traceparent"
+                        },
+                        "description": "Optional W3C traceparent header. When supplied, the emitted guardrail span joins that trace, nested under its parent span; otherwise it joins the trace derived from the inference ID, under its prompt span. OpenTelemetry-instrumented callers send this automatically."
                     }
                 ],
                 "requestBody": {
@@ -2475,7 +2511,7 @@
                         "application/json": {
                             "schema": {
                                 "type": "string",
-                                "format": "binary",
+                                "contentMediaType": "application/octet-stream",
                                 "title": "Body"
                             }
                         }
@@ -4222,7 +4258,7 @@
                         "application/json": {
                             "schema": {
                                 "type": "string",
-                                "format": "binary",
+                                "contentMediaType": "application/octet-stream",
                                 "title": "Body"
                             }
                         }
@@ -5012,6 +5048,100 @@
                         }
                     }
                 }
+            }
+        },
+        "/api/v1/traces/overview": {
+            "post": {
+                "tags": [
+                    "Traces"
+                ],
+                "summary": "Get Overview of Traces for each Task",
+                "description": "Get overview of traces for each task including trace count, total tokens, and success rate.",
+                "operationId": "get_traces_overview_api_v1_traces_overview_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/TraceOverviewRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TraceOverviewListResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/traces/overview/timeseries": {
+            "post": {
+                "tags": [
+                    "Traces"
+                ],
+                "summary": "Get Time-Series Overview Data for a Task",
+                "description": "Get time-bucketed trace metrics (count, tokens, cost, success rate) for a single task.",
+                "operationId": "get_traces_timeseries_api_v1_traces_overview_timeseries_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/TraceTimeSeriesRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TraceTimeSeriesResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ]
             }
         },
         "/api/v1/traces/spans": {
@@ -6028,6 +6158,34 @@
                             "title": "User Ids"
                         },
                         "description": "User IDs to filter on. Optional."
+                    },
+                    {
+                        "name": "trace_ids",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Trace IDs to filter on. Returns sessions containing at least one matching trace. Optional.",
+                            "title": "Trace Ids"
+                        },
+                        "description": "Trace IDs to filter on. Returns sessions containing at least one matching trace. Optional."
+                    },
+                    {
+                        "name": "session_ids",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Session IDs to filter on. Optional.",
+                            "title": "Session Ids"
+                        },
+                        "description": "Session IDs to filter on. Optional."
                     },
                     {
                         "name": "include_experiment_sessions",
@@ -10582,7 +10740,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/LLMEval"
+                                    "$ref": "#/components/schemas/Eval"
                                 }
                             }
                         }
@@ -11145,7 +11303,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/LLMEvalRunResponse"
+                                    "$ref": "#/components/schemas/EvalRunResponse"
                                 }
                             }
                         }
@@ -11213,7 +11371,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/LLMEval"
+                                    "$ref": "#/components/schemas/Eval"
                                 }
                             }
                         }
@@ -11329,7 +11487,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/LLMEval"
+                                    "$ref": "#/components/schemas/Eval"
                                 }
                             }
                         }
@@ -11408,7 +11566,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/LLMEval"
+                                    "$ref": "#/components/schemas/Eval"
                                 }
                             }
                         }
@@ -11482,7 +11640,75 @@
                 ],
                 "responses": {
                     "204": {
-                        "description": "LLM eval version deleted."
+                        "description": "Tag removed."
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v2/tasks/{task_id}/ml_evals/{eval_name}": {
+            "post": {
+                "tags": [
+                    "ML Evals"
+                ],
+                "summary": "Save an ML eval",
+                "description": "Save an ML eval. If an eval with the same name exists, a new version is created.",
+                "operationId": "save_ml_eval_api_v2_tasks__task_id__ml_evals__eval_name__post",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "eval_name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Eval Name"
+                        }
+                    },
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Task Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateMLEvalRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Eval"
+                                }
+                            }
+                        }
                     },
                     "422": {
                         "description": "Validation Error",
@@ -15797,10 +16023,10 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "LLM Eval Version",
-                            "description": "The version of the llm eval to get the continuous eval variables and mappings for."
+                            "title": "Eval Version",
+                            "description": "The version of the eval to get the continuous eval variables and mappings for."
                         },
-                        "description": "The version of the llm eval to get the continuous eval variables and mappings for."
+                        "description": "The version of the eval to get the continuous eval variables and mappings for."
                     },
                     {
                         "name": "task_id",
@@ -16447,6 +16673,89 @@
                         }
                     }
                 },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v2/demo/certificate": {
+            "post": {
+                "tags": [
+                    "Demo"
+                ],
+                "summary": "Upload Certificate",
+                "description": "Upload a demo completion certificate PNG to persistent storage.",
+                "operationId": "upload_certificate_api_v2_demo_certificate_post",
+                "requestBody": {
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Body_upload_certificate_api_v2_demo_certificate_post"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CertificateUploadResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v2/demo/certificate/{cert_id}": {
+            "get": {
+                "tags": [
+                    "Demo"
+                ],
+                "summary": "Get Certificate",
+                "description": "Retrieve a previously stored demo completion certificate PNG.",
+                "operationId": "get_certificate_api_v2_demo_certificate__cert_id__get",
+                "parameters": [
+                    {
+                        "name": "cert_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Cert Id"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "Successful Response",
@@ -17528,6 +17837,17 @@
                         ],
                         "title": "Continuous Eval Name",
                         "description": "Name of the continuous eval this annotation belongs to"
+                    },
+                    "eval_type": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/EvalType"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Type of eval: 'llm_eval' or 'ml_eval'"
                     },
                     "eval_name": {
                         "anyOf": [
@@ -18741,6 +19061,11 @@
                         "title": "Version",
                         "description": "Version number of the llm eval"
                     },
+                    "eval_kind": {
+                        "$ref": "#/components/schemas/EvalKind",
+                        "description": "Eval kind discriminator (e.g. 'llm_as_a_judge', 'pii', 'toxicity')",
+                        "default": "llm_as_a_judge"
+                    },
                     "created_at": {
                         "type": "string",
                         "format": "date-time",
@@ -18766,17 +19091,22 @@
                                 "$ref": "#/components/schemas/ModelProvider"
                             },
                             {
-                                "type": "string",
-                                "const": "empty"
+                                "type": "null"
                             }
                         ],
-                        "title": "Model Provider",
-                        "description": "Model provider chosen for this version of the llm eval"
+                        "description": "Model provider chosen for this version of the llm eval. None for ML evals."
                     },
                     "model_name": {
-                        "type": "string",
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
                         "title": "Model Name",
-                        "description": "Model name chosen for this version of the llm eval"
+                        "description": "Model name chosen for this version of the llm eval. None for ML evals."
                     },
                     "tags": {
                         "items": {
@@ -18802,8 +19132,6 @@
                     "version",
                     "created_at",
                     "deleted_at",
-                    "model_provider",
-                    "model_name",
                     "num_messages",
                     "num_tools"
                 ],
@@ -19435,11 +19763,25 @@
                 ],
                 "title": "Body_add_tag_to_llm_eval_version_api_v1_tasks__task_id__llm_evals__eval_name__versions__eval_version__tags_put"
             },
+            "Body_upload_certificate_api_v2_demo_certificate_post": {
+                "properties": {
+                    "file": {
+                        "type": "string",
+                        "contentMediaType": "application/octet-stream",
+                        "title": "File"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "file"
+                ],
+                "title": "Body_upload_certificate_api_v2_demo_certificate_post"
+            },
             "Body_upload_embeddings_file_api_chat_files_post": {
                 "properties": {
                     "file": {
                         "type": "string",
-                        "format": "binary",
+                        "contentMediaType": "application/octet-stream",
                         "title": "File"
                     }
                 },
@@ -19533,6 +19875,24 @@
                     "results"
                 ],
                 "title": "BuiltinValidationResponse"
+            },
+            "CertificateUploadResponse": {
+                "properties": {
+                    "certificate_id": {
+                        "type": "string",
+                        "title": "Certificate Id"
+                    },
+                    "certificate_url": {
+                        "type": "string",
+                        "title": "Certificate Url"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "certificate_id",
+                    "certificate_url"
+                ],
+                "title": "CertificateUploadResponse"
             },
             "ChatCompletionMessageToolCall": {
                 "properties": {},
@@ -19901,10 +20261,20 @@
                         "title": "Description",
                         "description": "Description of the continuous eval"
                     },
+                    "eval_type": {
+                        "type": "string",
+                        "enum": [
+                            "llm_eval",
+                            "ml_eval"
+                        ],
+                        "title": "Eval Type",
+                        "description": "Type of evaluator: 'llm_eval' or 'ml_eval'.",
+                        "default": "llm_eval"
+                    },
                     "llm_eval_name": {
                         "type": "string",
                         "title": "Llm Eval Name",
-                        "description": "Name of the llm eval to create the continuous eval for"
+                        "description": "Name of the eval to create the continuous eval for"
                     },
                     "llm_eval_version": {
                         "anyOf": [
@@ -19913,10 +20283,13 @@
                             },
                             {
                                 "type": "integer"
+                            },
+                            {
+                                "type": "null"
                             }
                         ],
                         "title": "Llm Eval Version",
-                        "description": "Version of the llm eval to create the continuous eval for. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
+                        "description": "Version of the eval. Can be 'latest', a version number, an ISO datetime string, or a tag."
                     },
                     "transform_id": {
                         "type": "string",
@@ -19956,7 +20329,6 @@
                 "required": [
                     "name",
                     "llm_eval_name",
-                    "llm_eval_version",
                     "transform_id",
                     "transform_variable_mapping"
                 ],
@@ -20014,15 +20386,34 @@
                         "title": "Task Id",
                         "description": "ID of the parent task."
                     },
+                    "eval_type": {
+                        "$ref": "#/components/schemas/EvalType",
+                        "description": "Type of evaluator: 'llm_eval' or 'ml_eval'.",
+                        "default": "llm_eval"
+                    },
                     "llm_eval_name": {
-                        "type": "string",
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
                         "title": "Llm Eval Name",
-                        "description": "Name of the llm eval."
+                        "description": "Name of the eval."
                     },
                     "llm_eval_version": {
-                        "type": "integer",
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
                         "title": "Llm Eval Version",
-                        "description": "Version of the llm eval."
+                        "description": "Version of the eval."
                     },
                     "transform_id": {
                         "type": "string",
@@ -20075,8 +20466,6 @@
                     "id",
                     "name",
                     "task_id",
-                    "llm_eval_name",
-                    "llm_eval_version",
                     "transform_id",
                     "created_at",
                     "updated_at"
@@ -20484,6 +20873,35 @@
                     "instructions"
                 ],
                 "title": "CreateEvalRequest"
+            },
+            "CreateMLEvalRequest": {
+                "properties": {
+                    "eval_type": {
+                        "$ref": "#/components/schemas/EvalKind",
+                        "description": "Type of ML eval (e.g. 'pii', 'toxicity', 'prompt_injection')"
+                    },
+                    "config": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/PIIEvalConfig"
+                            },
+                            {
+                                "$ref": "#/components/schemas/ToxicityEvalConfig"
+                            },
+                            {
+                                "$ref": "#/components/schemas/PromptInjectionEvalConfig"
+                            }
+                        ],
+                        "title": "MLEvalConfig",
+                        "description": "Configuration for the ML eval. Valid fields depend on eval_type."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "eval_type",
+                    "config"
+                ],
+                "title": "CreateMLEvalRequest"
             },
             "CreateNotebookRequest": {
                 "properties": {
@@ -21290,6 +21708,17 @@
                         "type": "boolean",
                         "title": "Chatbot Enabled",
                         "default": true
+                    },
+                    "scope_url": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Scope Url"
                     }
                 },
                 "type": "object",
@@ -21569,6 +21998,119 @@
                 "title": "EnrichedTaskResponse",
                 "description": "Response model for agent-tasks endpoint with enriched metadata."
             },
+            "Eval": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Name of the llm eval"
+                    },
+                    "eval_kind": {
+                        "type": "string",
+                        "title": "Eval Kind",
+                        "description": "Eval kind discriminator (e.g. 'llm_as_a_judge', 'pii', 'toxicity')",
+                        "default": "llm_as_a_judge"
+                    },
+                    "model_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Model Name",
+                        "description": "Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet'). None for ML evals."
+                    },
+                    "model_provider": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ModelProvider"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure'). None for ML evals."
+                    },
+                    "instructions": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Instructions",
+                        "description": "Instructions for the llm eval. None for ML evals."
+                    },
+                    "variables": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Variables",
+                        "description": "List of variable names for the llm eval"
+                    },
+                    "tags": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Tags",
+                        "description": "List of tags for this llm eval version"
+                    },
+                    "config": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/LLMBaseConfigSettings"
+                            },
+                            {
+                                "additionalProperties": true,
+                                "type": "object"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "EvalConfig",
+                        "description": "Eval configuration. LLMBaseConfigSettings for LLM evals; type-specific dict for ML evals."
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Created At",
+                        "description": "Timestamp when the llm eval was created."
+                    },
+                    "deleted_at": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Deleted At",
+                        "description": "Time that this llm eval was deleted"
+                    },
+                    "version": {
+                        "type": "integer",
+                        "title": "Version",
+                        "description": "Version of the llm eval",
+                        "default": 1
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name",
+                    "created_at"
+                ],
+                "title": "Eval"
+            },
             "EvalExecution": {
                 "properties": {
                     "eval_name": {
@@ -21636,6 +22178,18 @@
                 ],
                 "title": "EvalExecutionResult",
                 "description": "Results from an eval execution"
+            },
+            "EvalKind": {
+                "type": "string",
+                "enum": [
+                    "llm_as_a_judge",
+                    "pii",
+                    "pii_v1",
+                    "toxicity",
+                    "prompt_injection"
+                ],
+                "title": "EvalKind",
+                "description": "Discriminator for all eval types stored in the llm_evals table."
             },
             "EvalRef-Input": {
                 "properties": {
@@ -21729,6 +22283,40 @@
                 ],
                 "title": "EvalResultSummary",
                 "description": "Results for a single eval"
+            },
+            "EvalRunResponse": {
+                "properties": {
+                    "reason": {
+                        "type": "string",
+                        "title": "Reason",
+                        "description": "Explanation for how the llm arrived at this answer."
+                    },
+                    "score": {
+                        "type": "integer",
+                        "title": "Score",
+                        "description": "Score for this llm eval"
+                    },
+                    "cost": {
+                        "type": "string",
+                        "title": "Cost",
+                        "description": "Cost of this llm completion"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "reason",
+                    "score",
+                    "cost"
+                ],
+                "title": "EvalRunResponse"
+            },
+            "EvalType": {
+                "type": "string",
+                "enum": [
+                    "llm_eval",
+                    "ml_eval"
+                ],
+                "title": "EvalType"
             },
             "EvalVariableMapping-Input": {
                 "properties": {
@@ -23402,116 +23990,6 @@
                 "type": "object",
                 "title": "LLMConfigSettings"
             },
-            "LLMEval": {
-                "properties": {
-                    "name": {
-                        "type": "string",
-                        "title": "Name",
-                        "description": "Name of the llm eval"
-                    },
-                    "model_name": {
-                        "type": "string",
-                        "title": "Model Name",
-                        "description": "Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet')"
-                    },
-                    "model_provider": {
-                        "$ref": "#/components/schemas/ModelProvider",
-                        "description": "Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure')"
-                    },
-                    "instructions": {
-                        "type": "string",
-                        "title": "Instructions",
-                        "description": "Instructions for the llm eval"
-                    },
-                    "variables": {
-                        "items": {
-                            "type": "string"
-                        },
-                        "type": "array",
-                        "title": "Variables",
-                        "description": "List of variable names for the llm eval"
-                    },
-                    "tags": {
-                        "items": {
-                            "type": "string"
-                        },
-                        "type": "array",
-                        "title": "Tags",
-                        "description": "List of tags for this llm eval version"
-                    },
-                    "config": {
-                        "anyOf": [
-                            {
-                                "$ref": "#/components/schemas/LLMBaseConfigSettings"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "description": "LLM configurations for this eval (e.g. temperature, max_tokens, etc.)"
-                    },
-                    "created_at": {
-                        "type": "string",
-                        "format": "date-time",
-                        "title": "Created At",
-                        "description": "Timestamp when the llm eval was created."
-                    },
-                    "deleted_at": {
-                        "anyOf": [
-                            {
-                                "type": "string",
-                                "format": "date-time"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Deleted At",
-                        "description": "Time that this llm eval was deleted"
-                    },
-                    "version": {
-                        "type": "integer",
-                        "title": "Version",
-                        "description": "Version of the llm eval",
-                        "default": 1
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "name",
-                    "model_name",
-                    "model_provider",
-                    "instructions",
-                    "created_at"
-                ],
-                "title": "LLMEval"
-            },
-            "LLMEvalRunResponse": {
-                "properties": {
-                    "reason": {
-                        "type": "string",
-                        "title": "Reason",
-                        "description": "Explanation for how the llm arrived at this answer."
-                    },
-                    "score": {
-                        "type": "integer",
-                        "title": "Score",
-                        "description": "Score for this llm eval"
-                    },
-                    "cost": {
-                        "type": "string",
-                        "title": "Cost",
-                        "description": "Cost of this llm completion"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "reason",
-                    "score",
-                    "cost"
-                ],
-                "title": "LLMEvalRunResponse"
-            },
             "LLMEvalsVersionListResponse": {
                 "properties": {
                     "versions": {
@@ -23564,6 +24042,11 @@
                         "type": "string",
                         "title": "Name",
                         "description": "Name of the llm asset"
+                    },
+                    "eval_kind": {
+                        "$ref": "#/components/schemas/EvalKind",
+                        "description": "Eval kind discriminator (e.g. 'llm_as_a_judge', 'pii', 'toxicity')",
+                        "default": "llm_as_a_judge"
                     },
                     "versions": {
                         "type": "integer",
@@ -24240,6 +24723,11 @@
                         "title": "Version",
                         "description": "Version number of the llm eval"
                     },
+                    "eval_kind": {
+                        "$ref": "#/components/schemas/EvalKind",
+                        "description": "Eval kind discriminator (e.g. 'llm_as_a_judge', 'pii', 'toxicity')",
+                        "default": "llm_as_a_judge"
+                    },
                     "created_at": {
                         "type": "string",
                         "format": "date-time",
@@ -24265,17 +24753,22 @@
                                 "$ref": "#/components/schemas/ModelProvider"
                             },
                             {
-                                "type": "string",
-                                "const": "empty"
+                                "type": "null"
                             }
                         ],
-                        "title": "Model Provider",
-                        "description": "Model provider chosen for this version of the llm eval"
+                        "description": "Model provider chosen for this version of the llm eval. None for ML evals."
                     },
                     "model_name": {
-                        "type": "string",
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
                         "title": "Model Name",
-                        "description": "Model name chosen for this version of the llm eval"
+                        "description": "Model name chosen for this version of the llm eval. None for ML evals."
                     },
                     "tags": {
                         "items": {
@@ -24290,9 +24783,7 @@
                 "required": [
                     "version",
                     "created_at",
-                    "deleted_at",
-                    "model_provider",
-                    "model_name"
+                    "deleted_at"
                 ],
                 "title": "LLMVersionResponse"
             },
@@ -26480,6 +26971,57 @@
                 ],
                 "title": "PIIEntityTypes"
             },
+            "PIIEvalConfig": {
+                "properties": {
+                    "disabled_pii_entities": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Disabled Pii Entities",
+                        "description": "List of PII entity types to disable (e.g. ['EMAIL_ADDRESS', 'PHONE_NUMBER'])"
+                    },
+                    "pii_confidence_threshold": {
+                        "anyOf": [
+                            {
+                                "type": "number",
+                                "maximum": 1.0,
+                                "minimum": 0.0
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Pii Confidence Threshold",
+                        "description": "Minimum confidence score for a PII entity to be flagged"
+                    },
+                    "allow_list": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Allow List",
+                        "description": "List of values that should not be flagged as PII"
+                    }
+                },
+                "type": "object",
+                "title": "PIIEvalConfig",
+                "description": "Configuration for PII detection evals."
+            },
             "Page_ConversationBaseResponse_": {
                 "properties": {
                     "items": {
@@ -26989,6 +27531,12 @@
                 ],
                 "title": "PromptExperimentSummary",
                 "description": "Summary of a prompt experiment"
+            },
+            "PromptInjectionEvalConfig": {
+                "properties": {},
+                "type": "object",
+                "title": "PromptInjectionEvalConfig",
+                "description": "Configuration for prompt injection detection evals."
             },
             "PromptOutput": {
                 "properties": {
@@ -31011,6 +31559,16 @@
                 "title": "SyntheticDataRowResponse",
                 "description": "A single generated row with a temporary client-side ID for tracking."
             },
+            "TaskAnalyticsBucketSize": {
+                "type": "string",
+                "enum": [
+                    "hour",
+                    "day",
+                    "week"
+                ],
+                "title": "TaskAnalyticsBucketSize",
+                "description": "Time bucket granularity for task analytics time-series metrics."
+            },
             "TaskResponse": {
                 "properties": {
                     "id": {
@@ -31731,6 +32289,27 @@
                 ],
                 "title": "ToxicityDetailsResponse"
             },
+            "ToxicityEvalConfig": {
+                "properties": {
+                    "toxicity_threshold": {
+                        "anyOf": [
+                            {
+                                "type": "number",
+                                "maximum": 1.0,
+                                "minimum": 0.0
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Toxicity Threshold",
+                        "description": "Minimum toxicity score for text to be flagged"
+                    }
+                },
+                "type": "object",
+                "title": "ToxicityEvalConfig",
+                "description": "Configuration for toxicity detection evals."
+            },
             "ToxicityViolationType": {
                 "type": "string",
                 "enum": [
@@ -31989,6 +32568,126 @@
                 "title": "TraceMetadataResponse",
                 "description": "Lightweight trace metadata for list operations"
             },
+            "TraceOverviewListResponse": {
+                "properties": {
+                    "overviews": {
+                        "items": {
+                            "$ref": "#/components/schemas/TraceOverviewResponse"
+                        },
+                        "type": "array",
+                        "title": "Overviews",
+                        "description": "List of trace overviews"
+                    },
+                    "count": {
+                        "type": "integer",
+                        "title": "Count",
+                        "description": "Total number of trace overviews"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "overviews",
+                    "count"
+                ],
+                "title": "TraceOverviewListResponse",
+                "description": "Response for list of trace overviews"
+            },
+            "TraceOverviewRequest": {
+                "properties": {
+                    "task_ids": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Task Ids",
+                        "description": "Optional list of task IDs to get the overview of traces for"
+                    },
+                    "start_time": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Start Time",
+                        "description": "Start time of the traces to get the overview of"
+                    },
+                    "end_time": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "End Time",
+                        "description": "End time of the traces to get the overview of"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "start_time",
+                    "end_time"
+                ],
+                "title": "TraceOverviewRequest",
+                "description": "Request schema for getting the overview of traces for each task"
+            },
+            "TraceOverviewResponse": {
+                "properties": {
+                    "task_id": {
+                        "type": "string",
+                        "title": "Task Id",
+                        "description": "Task ID"
+                    },
+                    "trace_count": {
+                        "type": "integer",
+                        "title": "Trace Count",
+                        "description": "Number of traces"
+                    },
+                    "trace_token_count": {
+                        "type": "integer",
+                        "title": "Trace Token Count",
+                        "description": "Total number of tokens in traces"
+                    },
+                    "trace_token_cost": {
+                        "type": "number",
+                        "title": "Trace Token Cost",
+                        "description": "Total token cost across traces"
+                    },
+                    "eval_count": {
+                        "type": "integer",
+                        "title": "Eval Count",
+                        "description": "Number of continuous-eval annotations"
+                    },
+                    "continuous_eval_success_rate": {
+                        "type": "number",
+                        "title": "Continuous Eval Success Rate",
+                        "description": "Fraction of continuous-eval annotations that passed"
+                    },
+                    "last_active": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Last Active",
+                        "description": "Most recent trace end time, or null if no traces in the window"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "task_id",
+                    "trace_count",
+                    "trace_token_count",
+                    "trace_token_cost",
+                    "eval_count",
+                    "continuous_eval_success_rate"
+                ],
+                "title": "TraceOverviewResponse",
+                "description": "Response for trace overview"
+            },
             "TraceResponse": {
                 "properties": {
                     "prompt_token_count": {
@@ -32147,6 +32846,104 @@
                     "span_count"
                 ],
                 "title": "TraceSortBy"
+            },
+            "TraceTimeSeriesPoint": {
+                "properties": {
+                    "timestamp": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Timestamp",
+                        "description": "Inclusive start of the bucket"
+                    },
+                    "trace_count": {
+                        "type": "integer",
+                        "title": "Trace Count",
+                        "description": "Number of traces in the bucket"
+                    },
+                    "trace_token_count": {
+                        "type": "integer",
+                        "title": "Trace Token Count",
+                        "description": "Total tokens in the bucket"
+                    },
+                    "trace_token_cost": {
+                        "type": "number",
+                        "title": "Trace Token Cost",
+                        "description": "Total token cost in the bucket"
+                    },
+                    "continuous_eval_success_rate": {
+                        "type": "number",
+                        "title": "Continuous Eval Success Rate",
+                        "description": "Fraction of continuous-eval annotations that passed in the bucket"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "timestamp",
+                    "trace_count",
+                    "trace_token_count",
+                    "trace_token_cost",
+                    "continuous_eval_success_rate"
+                ],
+                "title": "TraceTimeSeriesPoint",
+                "description": "Metrics for a single time bucket, one per Analyze-page chart series."
+            },
+            "TraceTimeSeriesRequest": {
+                "properties": {
+                    "task_id": {
+                        "type": "string",
+                        "title": "Task Id",
+                        "description": "Task ID to get time-series metrics for"
+                    },
+                    "start_time": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Start Time",
+                        "description": "Inclusive start boundary of the time window"
+                    },
+                    "end_time": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "End Time",
+                        "description": "Exclusive end boundary of the time window"
+                    },
+                    "bucket_size": {
+                        "$ref": "#/components/schemas/TaskAnalyticsBucketSize",
+                        "description": "Size of each time bucket"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "task_id",
+                    "start_time",
+                    "end_time",
+                    "bucket_size"
+                ],
+                "title": "TraceTimeSeriesRequest",
+                "description": "Request schema for time-bucketed trace metrics for a single task.\n\nThe caller (frontend) owns interval -> window + bucket-size resolution and\npasses the resolved start_time, end_time, and bucket_size; the backend just\nbuckets and zero-fills, mirroring the Analyze page aggregation."
+            },
+            "TraceTimeSeriesResponse": {
+                "properties": {
+                    "task_id": {
+                        "type": "string",
+                        "title": "Task Id",
+                        "description": "Task ID"
+                    },
+                    "points": {
+                        "items": {
+                            "$ref": "#/components/schemas/TraceTimeSeriesPoint"
+                        },
+                        "type": "array",
+                        "title": "Points",
+                        "description": "Time buckets ordered ascending by timestamp"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "task_id",
+                    "points"
+                ],
+                "title": "TraceTimeSeriesResponse",
+                "description": "Response for time-bucketed trace metrics for a single task."
             },
             "TraceTransformDefinition": {
                 "properties": {
@@ -33255,6 +34052,13 @@
                     "type": {
                         "type": "string",
                         "title": "Error Type"
+                    },
+                    "input": {
+                        "title": "Input"
+                    },
+                    "ctx": {
+                        "type": "object",
+                        "title": "Context"
                     }
                 },
                 "type": "object",

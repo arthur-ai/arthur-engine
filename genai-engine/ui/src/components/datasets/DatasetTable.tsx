@@ -24,7 +24,7 @@ import React, { useState } from "react";
 
 import { DatasetTableRow } from "./DatasetTableRow";
 
-import { TOUR_IDS } from "@/features/task-tour";
+import { TOUR_IDS } from "@/features/task-tour/selectors";
 import { DatasetVersionRowResponse } from "@/lib/api-client/api-client";
 
 interface DatasetTableProps {

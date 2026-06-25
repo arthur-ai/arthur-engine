@@ -24,7 +24,7 @@ import { useEvalVersions } from "../hooks/useEvalVersions";
 import type { EvalVersionDrawerProps } from "../types";
 
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
-import { TOUR_IDS } from "@/features/task-tour";
+import { TOUR_IDS } from "@/features/task-tour/selectors";
 import { formatDateInTimezone } from "@/utils/formatters";
 
 const EvalVersionDrawer = ({
@@ -253,7 +253,9 @@ const EvalVersionDrawer = ({
                             component="span"
                             sx={{ color: isDeleted ? "text.disabled" : "text.secondary" }}
                           >
-                            {version.model_provider} / {version.model_name}
+                            {version.model_provider && version.model_name
+                              ? `${version.model_provider} / ${version.model_name}`
+                              : (version.eval_kind ?? "")}
                           </Typography>
                           <Typography
                             variant="caption"

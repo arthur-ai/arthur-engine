@@ -1,5 +1,5 @@
 from re import Pattern
-from typing import List, Optional, Union
+from typing import List, Optional, TypedDict, Union
 
 from arthur_common.models.enums import (
     PIIEntityTypes,
@@ -78,3 +78,11 @@ class ScoreRequest(BaseModel):
     disabled_pii_entities: Optional[List[str]] = None
     pii_confidence_threshold: Optional[float] = None
     allow_list: Optional[List[str]] = None
+
+
+class DateTimeSpan(TypedDict):
+    entity: str
+    span: str
+    start: int
+    end: int
+    confidence: float

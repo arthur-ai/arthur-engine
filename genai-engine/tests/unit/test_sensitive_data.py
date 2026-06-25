@@ -3,12 +3,13 @@ from unittest import mock
 from unittest.mock import patch
 
 import pytest
-import utils.constants
-from langchain.schema import AIMessage
-from langchain_openai import AzureChatOpenAI
 from arthur_common.models.common_schemas import LLMTokenConsumption
-from schemas.custom_exceptions import LLMContentFilterException, LLMExecutionException
 from arthur_common.models.enums import RuleResultEnum, RuleType
+from langchain_core.messages import AIMessage
+from langchain_openai import AzureChatOpenAI
+
+import utils.constants
+from schemas.custom_exceptions import LLMContentFilterException, LLMExecutionException
 from schemas.scorer_schemas import Example, RuleScore, ScoreRequest
 from scorer.checks.sensitive_data.custom_examples import SensitiveDataCustomExamples
 
@@ -53,7 +54,7 @@ NO_EXAMPLES_REQUEST = ScoreRequest(
 
 
 @patch.object(AzureChatOpenAI, "__init__", lambda *args, **kwargs: None)
-@patch.object(AzureChatOpenAI, "__call__", lambda *args: AIMessage(content="no"))
+@patch.object(AzureChatOpenAI, "invoke", lambda *args: AIMessage(content="no"))
 @pytest.mark.unit_tests
 def test_score_no_sensitive_data():
     # Create the scorer object
@@ -66,7 +67,7 @@ def test_score_no_sensitive_data():
 
 
 @patch.object(AzureChatOpenAI, "__init__", lambda *args, **kwargs: None)
-@patch.object(AzureChatOpenAI, "__call__", lambda *args: AIMessage(content="yes"))
+@patch.object(AzureChatOpenAI, "invoke", lambda *args: AIMessage(content="yes"))
 @pytest.mark.unit_tests
 def test_score_sensitive_data():
     # Create the scorer object
@@ -79,7 +80,7 @@ def test_score_sensitive_data():
 
 
 @patch.object(AzureChatOpenAI, "__init__", lambda *args, **kwargs: None)
-@patch.object(AzureChatOpenAI, "__call__", lambda *args: AIMessage(content="no"))
+@patch.object(AzureChatOpenAI, "invoke", lambda *args: AIMessage(content="no"))
 @pytest.mark.unit_tests
 def test_score_no_sensitive_data_with_hint():
     # Create the scorer object
@@ -92,7 +93,7 @@ def test_score_no_sensitive_data_with_hint():
 
 
 @patch.object(AzureChatOpenAI, "__init__", lambda *args, **kwargs: None)
-@patch.object(AzureChatOpenAI, "__call__", lambda *args: AIMessage(content="yes"))
+@patch.object(AzureChatOpenAI, "invoke", lambda *args: AIMessage(content="yes"))
 @pytest.mark.unit_tests
 def test_score_sensitive_data_with_hint():
     # Create the scorer object

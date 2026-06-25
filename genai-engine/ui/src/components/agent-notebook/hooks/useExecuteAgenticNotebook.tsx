@@ -4,7 +4,7 @@ import { useAttachExperimentToAgenticNotebook } from "./useAttachExperimentToAge
 
 import { useCreateNewExperiment } from "@/components/agent-experiments/new/hooks/useCreateNewExperiment";
 import { CreateAgenticExperimentRequest } from "@/lib/api-client/api-client";
-import { EVENT_NAMES, track } from "@/services/amplitude";
+import { track } from "@/services/analytics";
 
 export const useExecuteAgenticNotebook = (notebookId: string) => {
   const { enqueueSnackbar } = useSnackbar();
@@ -21,7 +21,7 @@ export const useExecuteAgenticNotebook = (notebookId: string) => {
 
       enqueueSnackbar(`Experiment "${experiment.name}" attached to notebook successfully!`, { variant: "success" });
 
-      track(EVENT_NAMES.AGENT_NOTEBOOK_EXPERIMENT_RUN, { notebook_id: notebookId, experiment_id: experiment.id });
+      track("agent_notebook/experiment_run", { notebook_id: notebookId, experiment_id: experiment.id });
 
       return experiment.id;
     },

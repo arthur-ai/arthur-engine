@@ -2,6 +2,7 @@
 name: arthur-onboard-platform-workspace
 description: Arthur onboarding sub-skill — Platform Step 3: Select or create a workspace in Arthur Platform. Reads/writes .arthur-engine.env.
 allowed-tools: Bash, Read, Write
+version: 1.0.0
 ---
 
 # Arthur Onboard — Platform Step 3: Select or Create Workspace

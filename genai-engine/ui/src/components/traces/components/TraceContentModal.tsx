@@ -6,7 +6,7 @@ import React from "react";
 import { CopyableChip } from "@/components/common";
 import { Highlight } from "@/components/common/Highlight";
 import { useCopy } from "@/hooks/useCopy";
-import { EVENT_NAMES, track } from "@/services/amplitude";
+import { track } from "@/services/analytics";
 
 interface TraceContentModalProps {
   open: boolean;
@@ -47,7 +47,7 @@ export const TraceContentModal: React.FC<TraceContentModalProps> = ({ open, onCl
 
   const handleCopyClick = () => {
     handleCopy(content);
-    track(EVENT_NAMES.TRACING_CONTENT_COPIED, {
+    track("tracing/content_copied", {
       level: spanId ? "span" : "trace",
       trace_id: traceId,
       span_id: spanId,

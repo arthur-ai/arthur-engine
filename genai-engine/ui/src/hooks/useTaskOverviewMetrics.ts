@@ -3,7 +3,7 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useApi } from "./useApi";
 
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
-import type { TraceMetadataResponse } from "@/lib/api-client/api-client";
+import type { TaskAnalyticsBucketSize } from "@/lib/api-client/api-client";
 import { queryKeys } from "@/lib/queryKeys";
 import { getTimeWindowAndBucketing, TimeInterval } from "@/utils/timeWindows";
 
@@ -31,33 +31,6 @@ interface UseTaskOverviewMetricsParams {
   interval: TimeInterval;
 }
 
-function getTraceTokens(trace: TraceMetadataResponse): number {
-  return trace.total_token_count ?? (trace.prompt_token_count || 0) + (trace.completion_token_count || 0);
-}
-
-function getTraceCost(trace: TraceMetadataResponse): number {
-  return trace.total_token_cost ?? (trace.prompt_token_cost || 0) + (trace.completion_token_cost || 0);
-}
-
-function getTraceEvalStats(trace: TraceMetadataResponse): { total: number; passed: number } {
-  let total = 0;
-  let passed = 0;
-
-  // Count from annotations (continuous_eval type with a definitive run_status)
-  if (trace.annotations && Array.isArray(trace.annotations)) {
-    trace.annotations.forEach((annotation) => {
-      if (annotation.annotation_type === "continuous_eval" && annotation.run_status) {
-        total++;
-        if (annotation.run_status === "passed") {
-          passed++;
-        }
-      }
-    });
-  }
-
-  return { total, passed };
-}
-
 export const useTaskOverviewMetrics = ({ taskId, interval }: UseTaskOverviewMetricsParams) => {
   const api = useApi()!;
   const { timezone } = useDisplaySettings();
@@ -69,116 +42,39 @@ export const useTaskOverviewMetrics = ({ taskId, interval }: UseTaskOverviewMetr
       const queryTime = new Date();
       const timeWindow = getTimeWindowAndBucketing(interval, queryTime, { timezone });
 
-      const { start: startTime, end: endTime, bucketMs: bucketSize } = timeWindow;
+      const startTime = timeWindow.start.toISOString();
+      const endTime = timeWindow.end.toISOString();
+      const bucketSize = timeWindow.bucketSize as TaskAnalyticsBucketSize;
 
-      const startTimeMs = startTime.getTime();
-      const endTimeMs = endTime.getTime();
-
-      const durationMs = endTimeMs - startTimeMs;
-      const numBuckets = Math.max(1, Math.ceil(durationMs / bucketSize));
-
-      // Fetch all traces for the task within the time range
-      const pageSize = 1000;
-      let allTraces: TraceMetadataResponse[] = [];
-      let currentPage = 0;
-      let hasMore = true;
-
-      while (hasMore) {
-        const response = await api.api.listTracesMetadataApiV1TracesGet({
+      const [overviewResponse, timeseriesResponse] = await Promise.all([
+        api.api.getTracesOverviewApiV1TracesOverviewPost({
           task_ids: [taskId],
-          page: currentPage,
-          page_size: pageSize,
-          start_time: startTime.toISOString(),
-          sort: "desc",
-        });
+          start_time: startTime,
+          end_time: endTime,
+        }),
+        api.api.getTracesTimeseriesApiV1TracesOverviewTimeseriesPost({
+          task_id: taskId,
+          start_time: startTime,
+          end_time: endTime,
+          bucket_size: bucketSize,
+        }),
+      ]);
 
-        const traces = response.data.traces;
-        allTraces = [...allTraces, ...traces];
-
-        if (traces.length < pageSize) {
-          hasMore = false;
-        } else {
-          currentPage++;
-        }
-
-        if (allTraces.length >= 10000) {
-          hasMore = false;
-        }
-      }
-
-      // Aggregate metrics
-      let totalTokens = 0;
-      let totalCost = 0;
-      let totalEvalResults = 0;
-      let passedEvalResults = 0;
-
-      allTraces.forEach((trace) => {
-        totalTokens += getTraceTokens(trace);
-        totalCost += getTraceCost(trace);
-
-        const evalStats = getTraceEvalStats(trace);
-        totalEvalResults += evalStats.total;
-        passedEvalResults += evalStats.passed;
-      });
-
-      // Initialize time buckets
-      const buckets = new Map<number, { traces: TraceMetadataResponse[]; timestamp: number }>();
-      for (let i = 0; i < numBuckets; i++) {
-        const bucketTime = i === numBuckets - 1 ? endTimeMs : startTimeMs + i * bucketSize;
-        buckets.set(i, { traces: [], timestamp: bucketTime });
-      }
-
-      // Assign traces to buckets
-      allTraces.forEach((trace) => {
-        const traceTime = new Date(trace.created_at).getTime();
-
-        let bucketIndex = Math.floor((traceTime - startTimeMs) / bucketSize);
-        if (bucketIndex < 0) bucketIndex = 0;
-        if (bucketIndex >= numBuckets) bucketIndex = numBuckets - 1;
-
-        const bucket = buckets.get(bucketIndex);
-        if (bucket) {
-          bucket.traces.push(trace);
-        }
-      });
-
-      // Calculate metrics per bucket
-      const timeSeriesData: TimeSeriesDataPoint[] = Array.from(buckets.entries())
-        .sort((a, b) => a[0] - b[0])
-        .map(([_index, bucket]) => {
-          let bucketTokens = 0;
-          let bucketCost = 0;
-          let bucketEvalResults = 0;
-          let bucketPassedEvals = 0;
-
-          bucket.traces.forEach((trace) => {
-            bucketTokens += getTraceTokens(trace);
-            bucketCost += getTraceCost(trace);
-
-            const evalStats = getTraceEvalStats(trace);
-            bucketEvalResults += evalStats.total;
-            bucketPassedEvals += evalStats.passed;
-          });
-
-          const successRate = bucketEvalResults > 0 ? (bucketPassedEvals / bucketEvalResults) * 100 : 100;
-
-          return {
-            timestamp: new Date(bucket.timestamp).toISOString(),
-            tracesCount: bucket.traces.length,
-            tokens: bucketTokens,
-            cost: bucketCost,
-            successRate,
-          };
-        });
-
-      const successRate = totalEvalResults > 0 ? (passedEvalResults / totalEvalResults) * 100 : 100;
+      const overview = overviewResponse.data.overviews.find((o) => o.task_id === taskId);
+      const timeSeriesData: TimeSeriesDataPoint[] = timeseriesResponse.data.points.map((point) => ({
+        timestamp: point.timestamp,
+        tracesCount: point.trace_count,
+        tokens: point.trace_token_count,
+        cost: point.trace_token_cost,
+        successRate: point.continuous_eval_success_rate * 100,
+      }));
 
       return {
-        tracesCount: allTraces.length,
-        totalTokens,
-        totalCost,
-        evalsCount: totalEvalResults,
-        successRate,
+        tracesCount: overview?.trace_count ?? 0,
+        totalTokens: overview?.trace_token_count ?? 0,
+        totalCost: overview?.trace_token_cost ?? 0,
+        evalsCount: overview?.eval_count ?? 0,
+        successRate: (overview?.continuous_eval_success_rate ?? 1) * 100,
         timeSeriesData,
         xLabelFormat: timeWindow.xLabelFormat,
         tickStep: timeWindow.tickStep,

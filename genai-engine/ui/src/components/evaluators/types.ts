@@ -1,4 +1,4 @@
-import { LLMEval, CreateEvalRequest, LLMMetadataSortField } from "@/lib/api-client/api-client";
+import { Eval, CreateEvalRequest, LLMMetadataSortField } from "@/lib/api-client/api-client";
 
 interface EvalVersionDrawerProps {
   open: boolean;
@@ -18,7 +18,7 @@ interface EvalFullScreenViewProps {
 }
 
 interface EvalDetailViewProps {
-  evalData: LLMEval | undefined;
+  evalData: Eval | undefined;
   isLoading: boolean;
   error: Error | null;
   evalName: string;

@@ -25,11 +25,7 @@ vi.mock("./PreviewPromptModal", () => ({
   default: () => null,
 }));
 
-vi.mock("@/services/amplitude", () => ({
-  EVENT_NAMES: {
-    PROMPT_PREVIEW: "prompt_preview",
-    PROMPT_RUN: "prompt_run",
-  },
+vi.mock("@/services/analytics", () => ({
   track: vi.fn(),
 }));
 

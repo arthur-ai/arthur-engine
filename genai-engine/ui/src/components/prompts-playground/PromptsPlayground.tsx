@@ -30,7 +30,7 @@ import { useModelProviders, useAvailableModels } from "@/hooks/useModelProviders
 import { useNotebookHistory } from "@/hooks/useNotebooks";
 import { useTask } from "@/hooks/useTask";
 import { PromptVariableMappingOutput } from "@/lib/api-client/api-client";
-import { track, EVENT_NAMES } from "@/services/amplitude";
+import { track } from "@/services/analytics";
 
 const PromptsPlayground = ({ initialData }: { initialData: PlaygroundInitialData }) => {
   const [state, dispatch] = useReducer(promptsReducer, initialData, buildInitialReducerState);
@@ -86,7 +86,7 @@ const PromptsPlayground = ({ initialData }: { initialData: PlaygroundInitialData
     didMountRef.current = true;
 
     if (initialData.source.type === "blank") return;
-    track(EVENT_NAMES.NOTEBOOK_LOADED, {
+    track("Notebook Loaded", {
       notebook_id: notebookId,
       prompt_count: initialData.prompts.length,
       has_config: !!initialData.experimentConfig,
@@ -103,6 +103,7 @@ const PromptsPlayground = ({ initialData }: { initialData: PlaygroundInitialData
 
   const [configDrawerOpen, setConfigDrawerOpen] = useState(false);
   const toggleConfigDrawer = () => setConfigDrawerOpen((prev) => !prev);
+  const closeConfigDrawer = () => setConfigDrawerOpen(false);
 
   const handleAddPrompt = () => {
     dispatch({ type: "addPrompt" });
@@ -253,7 +254,7 @@ const PromptsPlayground = ({ initialData }: { initialData: PlaygroundInitialData
         {!config.configModeActive || !config.experimentConfig ? (
           <SetConfigDrawer
             open={configDrawerOpen}
-            onClose={toggleConfigDrawer}
+            onClose={closeConfigDrawer}
             taskId={task?.id}
             onLoadConfig={config.handleLoadConfig}
             onCreateNewConfig={config.handleCreateNewConfig}
@@ -262,7 +263,7 @@ const PromptsPlayground = ({ initialData }: { initialData: PlaygroundInitialData
         ) : (
           <ExperimentConfigDrawer
             open={configDrawerOpen}
-            onClose={toggleConfigDrawer}
+            onClose={closeConfigDrawer}
             experimentConfig={config.experimentConfig}
             notebookId={notebookId}
             runs={drawerRuns}

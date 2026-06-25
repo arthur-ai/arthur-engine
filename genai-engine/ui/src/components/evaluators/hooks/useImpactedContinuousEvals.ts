@@ -9,8 +9,11 @@ export const useImpactedContinuousEvals = (taskId: string | undefined) => {
   const api = useApi();
 
   const fetchImpactedCEs = useCallback(
-    async (evalName: string, newVersion: number): Promise<ContinuousEvalResponse[]> => {
+    async (evalName: string, newVersion: number, evalType: "llm" | "ml" = "llm"): Promise<ContinuousEvalResponse[]> => {
       if (!api || !taskId) return [];
+
+      // ML evals don't have version-based staleness — CEs always use "latest"
+      if (evalType === "ml") return [];
 
       const response = await api.api.listContinuousEvalsApiV1TasksTaskIdContinuousEvalsGet({
         taskId,
@@ -19,7 +22,7 @@ export const useImpactedContinuousEvals = (taskId: string | undefined) => {
       });
 
       const allCEs = response.data.evals ?? [];
-      return allCEs.filter((ce) => ce.llm_eval_version < newVersion);
+      return allCEs.filter((ce) => (ce.llm_eval_version ?? 0) < newVersion);
     },
     [api, taskId]
   );

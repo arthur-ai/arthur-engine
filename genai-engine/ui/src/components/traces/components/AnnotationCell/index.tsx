@@ -2,7 +2,6 @@ import OpenInFullIcon from "@mui/icons-material/OpenInFull";
 import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Tooltip, Typography } from "@mui/material";
 import { alpha, type Theme, useTheme } from "@mui/material/styles";
 import { motion } from "framer-motion";
-import type { HTMLAttributes } from "react";
 import { useState } from "react";
 import useMeasure from "react-use-measure";
 
@@ -10,7 +9,7 @@ import { Annotation, isContinuousEvalAnnotation } from "./schema";
 import { AnnotationsTable } from "./table";
 
 import { CopyableChip } from "@/components/common";
-import { TOUR_IDS } from "@/features/task-tour/selectors";
+import { TOUR_IDS, tourDataAttr } from "@/features/task-tour/selectors";
 import { dispatchTourEvent, refreshTaskTourTarget, TASK_TOUR_EVENTS } from "@/features/task-tour/tourEvents";
 import type { AgenticAnnotationResponse } from "@/lib/api-client/api-client";
 
@@ -126,7 +125,7 @@ export const AnnotationCell = ({ annotations, traceId, className }: Props) => {
         maxWidth="md"
         fullWidth
         onClick={(e) => e.stopPropagation()}
-        slotProps={{ paper: { ...({ "data-tour-id": TOUR_IDS.traceAnnotationsModal } as HTMLAttributes<HTMLDivElement>) } }}
+        slotProps={{ paper: { ...tourDataAttr(TOUR_IDS.traceAnnotationsModal) } }}
       >
         <DialogTitle className="flex items-center gap-2">
           <Typography variant="h6">Annotations for trace</Typography>

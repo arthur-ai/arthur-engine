@@ -1,6 +1,7 @@
 import os
 import uuid
 from logging import _nameToLevel as allowed_log_levels
+from typing import Optional
 
 from dotenv import load_dotenv
 
@@ -68,6 +69,25 @@ class Config:
         if not raw:
             return list(cls.DEFAULT_TENANT_MODEL_WHITELIST)
         return [name.strip() for name in raw.split(",") if name.strip()]
+
+    @classmethod
+    def default_tenant_token_limit(cls) -> Optional[int]:
+        # Lifetime token cap stamped onto new tenant orgs at signup time
+        # (UP-4390). Returns None when the env var is unset, so token
+        # limiting is opt-in per deployment — only deployments that set
+        # this env var to a positive integer apply caps to new tenants.
+        # Default / system orgs are never capped by signup.
+        raw = get_env_var(
+            constants.GENAI_ENGINE_DEFAULT_TENANT_TOKEN_LIMIT_ENV_VAR,
+            none_on_missing=True,
+        )
+        if not raw:
+            return None
+        try:
+            value = int(raw)
+        except ValueError:
+            return None
+        return value if value > 0 else None
 
     @classmethod
     def get_log_level(cls) -> str:
