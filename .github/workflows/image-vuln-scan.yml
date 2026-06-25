@@ -1,14 +1,15 @@
 name: Scheduled image vulnerability scan
 
-# Re-scans the published customer-facing images daily so newly-disclosed CVEs surface (and the
-# justification reports regenerate) even when no new release was built. Advisory only — this
-# workflow never gates anything. Findings land in Security -> Code scanning; SBOM + per-image
-# justification reports are uploaded as workflow artifacts.
+# Re-scans the published images daily so newly-disclosed CVEs surface (and the justification
+# reports regenerate) even when no new release was built. Advisory only — this workflow never
+# gates anything. Findings land in Security -> Code scanning; SBOM + per-image justification
+# reports are uploaded as workflow artifacts.
 #
-# Tag selection: by default we scan the PRODUCTION version, read from main's `version` file
-# (e.g. 2.1.656 -> arthurplatform/genai-engine-cpu:2.1.656). That is the version-pinned tag
-# customers run; we deliberately avoid the floating `latest` tag. Override via the `tag` input
-# (e.g. to scan a specific release or a `*-dev` staging tag).
+# Tag selection: by default we scan the latest `-dev` image, derived from the `version` file via
+# the set-version action. The workflow runs on the `dev` default branch, so set-version appends
+# `-dev` (e.g. 2.1.657 -> arthurplatform/genai-engine-cpu:2.1.657-dev) — the most recent dev
+# build, addressed by a version-pinned tag rather than the floating `latest-dev`. Override via
+# the `tag` input to scan a specific tag (e.g. a production release `2.1.656`).
 
 on:
   schedule:
@@ -17,7 +18,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Image tag to scan (default: production version from main's version file)"
+        description: "Image tag to scan (default: latest -dev image from the version file)"
         type: string
         required: false
         default: ""
@@ -43,19 +44,15 @@ jobs:
           - { image: arthurplatform/genai-engine-models-gcs, slug: models-gcs }
     steps:
       - uses: actions/checkout@v5
-      - name: Resolve image tag (production version from main's version file)
+      - uses: ./.github/workflows/composite-actions/set-version
+      - name: Resolve image tag (latest -dev image from the version file)
         id: tag
         shell: bash
         run: |
           set -euo pipefail
           OVERRIDE="${{ github.event.inputs.tag }}"
-          if [ -n "${OVERRIDE}" ]; then
-            TAG="${OVERRIDE}"
-          else
-            # Read the released production version from main (this branch may be ahead/-dev).
-            git fetch origin main --depth=1 >/dev/null 2>&1
-            TAG="$(git show origin/main:version)"
-          fi
+          # set-version exports VERSION = <version>-dev on the dev default branch.
+          TAG="${OVERRIDE:-${{ env.VERSION }}}"
           echo "Scanning tag: ${TAG}"
           echo "value=${TAG}" >> "$GITHUB_OUTPUT"
       - name: Log in to Docker Hub
