@@ -11,6 +11,7 @@ import { serializeDrawerTarget } from "@/components/traces/hooks/useDrawerTarget
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useTask } from "@/hooks/useTask";
 import type { AgenticTestCase, EvalExecution, InputVariable } from "@/lib/api-client/api-client";
+import { isEvalPass } from "@/utils/evals";
 import { formatCurrency } from "@/utils/formatters";
 import { tryFormatJson } from "@/utils/llm";
 
@@ -215,7 +216,7 @@ const EvalCard = ({ evalItem }: { evalItem: EvalExecution }) => {
   const { defaultCurrency } = useDisplaySettings();
   const { eval_name, eval_version, eval_results, eval_input_variables } = evalItem;
   const hasResults = !!eval_results;
-  const isPass = hasResults && eval_results.score === 1;
+  const isPass = hasResults && isEvalPass(eval_results.score);
 
   return (
     <Paper variant="outlined" className="p-4">
