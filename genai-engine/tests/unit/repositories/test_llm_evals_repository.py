@@ -11,7 +11,6 @@ from arthur_common.models.llm_model_providers import (
     LLMBaseConfigSettings,
     ModelProvider,
 )
-from arthur_common.models.task_eval_schemas import LLMEval
 from litellm.types.utils import ModelResponse
 from sqlalchemy.exc import IntegrityError
 
@@ -19,14 +18,17 @@ from clients.llm.llm_client import LLMClient, LLMModelResponse
 from db_models.llm_eval_models import DatabaseLLMEval, DatabaseLLMEvalVersionTag
 from repositories.llm_evals_repository import LLMEvalsRepository
 from schemas.enums import LLMMetadataSortField
+from schemas.llm_eval_schemas import Eval
 from schemas.request_schemas import (
     CreateEvalRequest,
     LLMGetAllFilterRequest,
     LLMGetVersionsFilterRequest,
     LLMRequestConfigSettings,
 )
+from utils.constants import DEFAULT_ORG_ID
+
 from schemas.response_schemas import (
-    LLMEvalRunResponse,
+    EvalRunResponse,
     LLMEvalsVersionListResponse,
     LLMGetAllMetadataListResponse,
     LLMGetAllMetadataResponse,
@@ -42,7 +44,7 @@ def llm_evals_repo():
 
 @pytest.fixture
 def sample_llm_eval():
-    return LLMEval(
+    return Eval(
         name="test_llm_eval",
         model_name="gpt-4o",
         model_provider="openai",
@@ -123,34 +125,36 @@ def test_save_llm_eval_with_llm_eval_object(
     sample_llm_eval,
     sample_create_eval_request,
 ):
-    """Test saving an LLMEval object to database"""
+    """Test saving an Eval object to database"""
     task_id = "test_task_id"
-    result = llm_evals_repo.save_llm_item(
-        task_id,
-        sample_llm_eval.name,
-        sample_create_eval_request,
-    )
+    try:
+        result = llm_evals_repo.save_llm_item(
+            task_id,
+            sample_llm_eval.name,
+            sample_create_eval_request,
+        )
 
-    # Compare was inserted to the database correctly
-    assert isinstance(result, LLMEval)
-    assert result.name == sample_llm_eval.name
-    assert result.model_name == sample_llm_eval.model_name
-    assert result.model_provider == sample_llm_eval.model_provider
-    assert result.instructions == sample_llm_eval.instructions
-    assert result.config == sample_llm_eval.config
-    assert result.version == sample_llm_eval.version
-    assert result.deleted_at is None
-
-    # clean up database
-    llm_evals_repo.delete_llm_item(task_id, sample_llm_eval.name)
+        # Compare was inserted to the database correctly
+        assert isinstance(result, Eval)
+        assert result.name == sample_llm_eval.name
+        assert result.model_name == sample_llm_eval.model_name
+        assert result.model_provider == sample_llm_eval.model_provider
+        assert result.instructions == sample_llm_eval.instructions
+        assert result.config.model_dump(
+            exclude_none=True,
+        ) == sample_create_eval_request.config.model_dump(exclude_none=True)
+        assert result.version == sample_llm_eval.version
+        assert result.deleted_at is None
+    finally:
+        llm_evals_repo.delete_llm_item(task_id, sample_llm_eval.name)
 
 
 @pytest.mark.unit_tests
 def test_llm_eval_repo_from_db_model(llm_evals_repo, sample_db_llm_eval):
-    """Test creating LLMEval from DatabaseLLMEval"""
+    """Test creating Eval from DatabaseLLMEval"""
     llm_eval = llm_evals_repo.from_db_model(sample_db_llm_eval)
 
-    assert isinstance(llm_eval, LLMEval)
+    assert isinstance(llm_eval, Eval)
     assert llm_eval.name == sample_db_llm_eval.name
     assert llm_eval.model_name == sample_db_llm_eval.model_name
     assert llm_eval.model_provider == sample_db_llm_eval.model_provider
@@ -163,7 +167,7 @@ def test_llm_eval_repo_from_db_model(llm_evals_repo, sample_db_llm_eval):
 
 @pytest.mark.unit_tests
 def test_llm_eval_model_dump(sample_llm_eval):
-    """Test converting LLMEval to dictionary"""
+    """Test converting Eval to dictionary"""
     llm_eval_dict = sample_llm_eval.model_dump(exclude_none=True)
 
     assert isinstance(llm_eval_dict, dict)
@@ -296,7 +300,7 @@ def test_soft_delete_eval_by_version_success(
         else:
             result = llm_evals_repo.get_llm_item(task_id, eval_name, eval_version)
 
-            assert isinstance(result, LLMEval)
+            assert isinstance(result, Eval)
             assert result.name == eval_name
             assert result.model_name == ""
             assert result.model_provider == "openai"
@@ -320,20 +324,22 @@ def test_get_eval_success(
     task_id = "test_task_id"
     eval_name = "test_llm_eval"
 
-    llm_evals_repo.save_llm_item(task_id, eval_name, sample_create_eval_request)
-    result = llm_evals_repo.get_llm_item(task_id, eval_name, "latest")
+    try:
+        llm_evals_repo.save_llm_item(task_id, eval_name, sample_create_eval_request)
+        result = llm_evals_repo.get_llm_item(task_id, eval_name, "latest")
 
-    assert isinstance(result, LLMEval)
-    assert result.name == sample_db_llm_eval.name
-    assert result.model_name == sample_db_llm_eval.model_name
-    assert result.model_provider == sample_db_llm_eval.model_provider
-    assert result.instructions == sample_db_llm_eval.instructions
-    assert result.config == sample_db_llm_eval.config
-    assert result.version == sample_db_llm_eval.version
-    assert result.deleted_at is None
-
-    # clean up database
-    llm_evals_repo.delete_llm_item(task_id, eval_name)
+        assert isinstance(result, Eval)
+        assert result.name == sample_db_llm_eval.name
+        assert result.model_name == sample_db_llm_eval.model_name
+        assert result.model_provider == sample_db_llm_eval.model_provider
+        assert result.instructions == sample_db_llm_eval.instructions
+        assert result.config.model_dump(
+            exclude_none=True,
+        ) == sample_create_eval_request.config.model_dump(exclude_none=True)
+        assert result.version == sample_db_llm_eval.version
+        assert result.deleted_at is None
+    finally:
+        llm_evals_repo.delete_llm_item(task_id, eval_name)
 
 
 @pytest.mark.unit_tests
@@ -376,12 +382,14 @@ def test_get_eval_different_version_types_success(
 
         result = llm_evals_repo.get_llm_item(task_id, eval_name, eval_version)
 
-        assert isinstance(result, LLMEval)
+        assert isinstance(result, Eval)
         assert result.name == sample_db_llm_eval.name
         assert result.model_name == sample_db_llm_eval.model_name
         assert result.model_provider == sample_db_llm_eval.model_provider
         assert result.instructions == sample_db_llm_eval.instructions
-        assert result.config == sample_db_llm_eval.config
+        assert result.config.model_dump(
+            exclude_none=True,
+        ) == sample_create_eval_request.config.model_dump(exclude_none=True)
         assert result.version == sample_db_llm_eval.version
         assert result.created_at == created_at_timestamp
         assert result.deleted_at is None
@@ -410,7 +418,7 @@ def test_get_soft_delete_eval_by_version_no_error(
         llm_evals_repo.soft_delete_llm_item_version(task_id, eval_name, "latest")
         result = llm_evals_repo.get_llm_item(task_id, eval_name, "1")
 
-        assert isinstance(result, LLMEval)
+        assert isinstance(result, Eval)
         assert result.deleted_at is not None
         assert result.model_name == ""
         assert result.instructions == ""
@@ -923,9 +931,9 @@ def test_run_saved_llm_eval(
         return_value=mock_llm_client,
     )
 
-    result = llm_evals_repo.run_llm_eval(task_id, eval_name)
+    result = llm_evals_repo.run_llm_eval(task_id, eval_name, org_id=DEFAULT_ORG_ID)
 
-    assert isinstance(result, LLMEvalRunResponse)
+    assert isinstance(result, EvalRunResponse)
     assert (
         result.reason
         == "This answer is true because it is supported by the ground truth."
@@ -958,7 +966,7 @@ def test_run_deleted_llm_eval_spawns_error(
     )
 
     with pytest.raises(ValueError) as exc_info:
-        llm_evals_repo.run_llm_eval(task_id, eval_name, version="1")
+        llm_evals_repo.run_llm_eval(task_id, eval_name, org_id=DEFAULT_ORG_ID, version="1")
     assert f"Cannot run this llm eval because it was deleted on" in str(exc_info.value)
 
     llm_evals_repo.delete_llm_item(task_id, eval_name)
@@ -992,7 +1000,7 @@ def test_run_saved_llm_eval_malformed_response_errors(
     )
 
     with pytest.raises(ValueError) as exc_info:
-        llm_evals_repo.run_llm_eval(task_id, eval_name, version="1")
+        llm_evals_repo.run_llm_eval(task_id, eval_name, org_id=DEFAULT_ORG_ID, version="1")
     assert (
         f"No structured output response from model {full_eval.model_name} with provider {full_eval.model_provider}"
         in str(exc_info.value)
@@ -1008,7 +1016,7 @@ def test_run_saved_llm_eval_malformed_response_errors(
     )
 
     with pytest.raises(TypeError) as exc_info:
-        llm_evals_repo.run_llm_eval(task_id, eval_name, version="1")
+        llm_evals_repo.run_llm_eval(task_id, eval_name, org_id=DEFAULT_ORG_ID, version="1")
     assert f"Structured output is not a ReasonedScore instance" in str(exc_info.value)
 
     llm_evals_repo.delete_llm_item(task_id, eval_name)
@@ -1050,7 +1058,7 @@ def test_get_llm_eval_by_tag_success(llm_evals_repo, sample_create_eval_request)
         )
         result = llm_evals_repo.get_llm_item_by_tag(task_id, eval_name, "test_tag")
 
-        assert isinstance(result, LLMEval)
+        assert isinstance(result, Eval)
         assert result.name == eval_name
         assert result.tags == ["test_tag"]
         assert result.version == created_eval.version
@@ -1117,7 +1125,7 @@ def test_add_tag_to_llm_eval_success(llm_evals_repo, sample_create_eval_request)
             "test_tag",
         )
 
-        assert isinstance(result, LLMEval)
+        assert isinstance(result, Eval)
         assert result.name == eval_name
         assert result.tags == ["test_tag"]
         assert result.version == created_eval.version
@@ -1148,7 +1156,7 @@ def test_add_duplicate_tags_does_not_error(llm_evals_repo, sample_create_eval_re
             "test_tag",
         )
 
-        assert isinstance(result, LLMEval)
+        assert isinstance(result, Eval)
         assert result.name == eval_name
         assert result.tags == ["test_tag"]
         assert result.version == 2
@@ -1156,7 +1164,7 @@ def test_add_duplicate_tags_does_not_error(llm_evals_repo, sample_create_eval_re
         # verify version 1 has no tags
         result = llm_evals_repo.get_llm_item(task_id, eval_name, "1")
 
-        assert isinstance(result, LLMEval)
+        assert isinstance(result, Eval)
         assert result.name == eval_name
         assert result.tags == []
         assert result.version == 1
@@ -1169,7 +1177,7 @@ def test_add_duplicate_tags_does_not_error(llm_evals_repo, sample_create_eval_re
             "test_tag",
         )
 
-        assert isinstance(result, LLMEval)
+        assert isinstance(result, Eval)
         assert result.name == eval_name
         assert result.tags == ["test_tag"]
         assert result.version == 1
@@ -1177,7 +1185,7 @@ def test_add_duplicate_tags_does_not_error(llm_evals_repo, sample_create_eval_re
         # verify that tag was removed from version 2
         result = llm_evals_repo.get_llm_item(task_id, eval_name, "2")
 
-        assert isinstance(result, LLMEval)
+        assert isinstance(result, Eval)
         assert result.name == eval_name
         assert result.tags == []
         assert result.version == 2
@@ -1445,7 +1453,7 @@ def test_remove_tag_from_llm_eval_version_success(
 
     # verify that the version still exists
     result = llm_evals_repo.get_llm_item(task_id, eval_name, str(created_eval.version))
-    assert isinstance(result, LLMEval)
+    assert isinstance(result, Eval)
     assert result.name == eval_name
     assert result.tags == []
     assert result.version == created_eval.version

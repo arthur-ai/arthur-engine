@@ -7,10 +7,16 @@ import { storeRecipientName } from "../recipientName";
 import { CertificateWidget } from "./CertificateWidget";
 
 import { createTourEngine, TourProvider } from "@/features/tour";
+import { track } from "@/services/analytics";
 
 vi.mock("@arthur/shared-components", () => ({
   downloadFile: vi.fn(),
 }));
+
+vi.mock("@/services/analytics", async (importActual) => {
+  const actual = await importActual<typeof import("@/services/analytics")>();
+  return { ...actual, track: vi.fn() };
+});
 
 // jsdom in this project ships a non-functional `localStorage` stub, so install
 // a fresh in-memory implementation per test.
@@ -54,6 +60,7 @@ describe("CertificateWidget", () => {
   afterEach(() => {
     cleanup();
     window.localStorage.clear();
+    vi.clearAllMocks();
   });
 
   it("shows the certificate only after the tour completes", () => {
@@ -66,6 +73,28 @@ describe("CertificateWidget", () => {
     });
 
     expect(screen.getByRole("dialog", { name: /certificate of achievement/i })).toBeTruthy();
+  });
+
+  it("tracks a certificate view when the tour completes", () => {
+    const engine = renderWidget();
+
+    expect(track).not.toHaveBeenCalledWith("onboarding/wizard_certificate_viewed", expect.anything());
+
+    act(() => {
+      engine.bus.emit("tour:end", { tourId: "task-tour", reason: "completed" });
+    });
+
+    expect(track).toHaveBeenCalledWith("onboarding/wizard_certificate_viewed", { course: "Intro to Evals" });
+  });
+
+  it("does not track a view when the tour ends without completing", () => {
+    const engine = renderWidget();
+
+    act(() => {
+      engine.bus.emit("tour:end", { tourId: "task-tour", reason: "skipped" });
+    });
+
+    expect(track).not.toHaveBeenCalledWith("onboarding/wizard_certificate_viewed", expect.anything());
   });
 
   it("names the recipient from the stored onboarding name", () => {
@@ -98,15 +127,16 @@ describe("CertificateWidget", () => {
 
     // Certificate is shown first; CTA is not yet visible.
     expect(screen.getByRole("dialog", { name: /certificate of achievement/i })).toBeTruthy();
-    expect(screen.queryByRole("dialog", { name: /talk to our cto about agent evals/i })).toBeNull();
+    expect(screen.queryByRole("dialog", { name: /zach, the cto at arthur/i })).toBeNull();
 
     // Closing the certificate advances to the CTA dialog.
     fireEvent.click(screen.getByRole("button", { name: /dismiss certificate/i }));
     expect(screen.queryByRole("dialog", { name: /certificate of achievement/i })).toBeNull();
-    expect(screen.getByRole("dialog", { name: /talk to our cto about agent evals/i })).toBeTruthy();
+    expect(screen.getByRole("dialog", { name: /zach, the cto at arthur/i })).toBeTruthy();
+    expect(track).toHaveBeenCalledWith("onboarding/wizard_cta_viewed", { course: "Intro to Evals" });
 
     // Dismissing the CTA ends the sequence (awaiting the exit transition).
     fireEvent.click(screen.getByRole("button", { name: /^dismiss$/i }));
-    await waitFor(() => expect(screen.queryByRole("dialog", { name: /talk to our cto about agent evals/i })).toBeNull());
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: /zach, the cto at arthur/i })).toBeNull());
   });
 });

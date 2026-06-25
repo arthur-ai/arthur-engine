@@ -187,6 +187,27 @@ export interface StepConfig {
    * drawers / etc.
    */
   prepare?: { key: string };
+  /**
+   * Declarative occluder state for reconcile-on-enter. On every step entry the
+   * engine closes every registered occluder NOT named in `open`/`keep`, then
+   * opens/asserts those in `open`. Surfaces absent from the registry (not
+   * currently mounted) are ignored. O(registry size) per step — one
+   * declaration per step, never O(N²) over transitions.
+   *
+   * Omit the whole key to get the safe default: **close every registered
+   * occluder**. Reconcile only acts on the delta — a surface a step declares
+   * `open` that is already open is left untouched (never close-reopened), so
+   * in-progress user input inside it is preserved.
+   */
+  surfaces?: {
+    /** Occluder ids that must be OPEN for this step. Everything else is closed. */
+    open?: Array<{ id: string; args?: unknown }>;
+    /**
+     * Occluder ids to leave untouched (neither force-closed nor opened) —
+     * escape hatch for a surface the step neither needs nor wants disturbed.
+     */
+    keep?: string[];
+  };
   fallback?: StepFallback;
   onEnter?: (ctx: StepContext) => void | Promise<void>;
   onExit?: (ctx: StepContext) => void | Promise<void>;
@@ -312,6 +333,20 @@ export interface TourActions {
    */
   refreshTarget: () => void;
   /**
+   * Re-run occlusion detection on the active step's target and emit a fresh
+   * `target:occluded` / `target:revealed` (de-duped). Driven by
+   * `ActiveTargetRefresh` after each refresh and by the occlusion-recovery
+   * widget after closing occluders. No-op when there's no active step / target.
+   */
+  recheckOcclusion: () => void;
+  /**
+   * Re-run occluder reconciliation for the active step (close registered
+   * surfaces it doesn't declare open/keep). Reconcile normally runs only on
+   * step entry; occlusion recovery calls this to close a registered panel that
+   * the user opened mid-step. No-op when there's no active step.
+   */
+  reconcileActiveSurfaces: () => void;
+  /**
    * Emit a typed action onto the engine bus. The `action` trigger listens for
    * matching names and advances the active step. Replaces v0's
    * `dispatchTourEvent(name)` + `document.addEventListener` round-trip.
@@ -331,7 +366,6 @@ export interface SectionEnterEvent {
 
 export type SectionExitEvent = SectionEnterEvent;
 export type SectionSkipEvent = SectionEnterEvent;
-export type StepLifecycleEvent = StepContext;
 
 export interface StepEnterEvent extends StepContext {
   rect: DOMRect | null;
@@ -410,6 +444,15 @@ export interface TourEvents extends Record<EventType, unknown> {
   "step:left": StepLeftEvent;
   "target:found": { tourId: string; sectionId: string; stepId: string; element: Element };
   "target:lost": { tourId: string; sectionId: string; stepId: string };
+  /**
+   * The resolved target is in the DOM but visually covered by another element
+   * (a modal/panel on top). Distinct from `target:lost` (target absent). The
+   * `occluderId` is an analytics-safe string identifier; `element`/`occluder`
+   * are DOM nodes for React consumers only (analytics strips non-serializables).
+   */
+  "target:occluded": { tourId: string; sectionId: string; stepId: string; element: Element; occluder: Element | null; occluderId: string };
+  /** The previously-occluded target is topmost again (recovered or user-resolved). */
+  "target:revealed": { tourId: string; sectionId: string; stepId: string; element: Element };
   "navigation:before": NavigationBeforeEvent;
   "navigation:after": NavigationAfterEvent;
   "action:emit": ActionEmitEvent;
@@ -463,6 +506,44 @@ export type PreparationHook = (ctx: { stepContext: StepContext; actions: TourAct
 export type QueryHookResolver = () => Element | null;
 
 // =============================================================================
+// Occluder surfaces
+// =============================================================================
+
+/**
+ * A dismissible UI surface (modal / drawer / side panel / popover) the engine
+ * can drive closed — and optionally open — during reconcile-on-enter. The
+ * engine closes every registered occluder a step does not declare in
+ * `StepConfig.surfaces.open`/`keep` before resolving the step's target, so a
+ * panel left open by a prior step (or by the user) can't occlude the next
+ * step's highlight.
+ *
+ * Registered from React via `useRegisterOccluder`. The callbacks must not call
+ * React hooks — read live state from refs/stores in the owning component and
+ * close over stable refs (the same discipline as {@link PreparationHook} /
+ * {@link QueryHookResolver}). All callbacks must be idempotent.
+ */
+export interface OccluderDescriptor {
+  /** Stable registry id, e.g. "task-tour.occluder.traceDrawer". */
+  id: string;
+  /** Pure synchronous read: is the surface currently open? */
+  isOpen: () => boolean;
+  /**
+   * Imperatively close the surface. Must be idempotent (no-op when already
+   * closed). May return a promise — URL-driven surfaces should return the
+   * router/nuqs update promise so the engine can await the param clear before
+   * its route-match check (see the reconcile phase in the engine). The resolved
+   * value is ignored.
+   */
+  close: () => void | Promise<unknown>;
+  /**
+   * Optional imperative open. `args` is the step-declared open payload
+   * (opaque to the engine). Omit for surfaces opened elsewhere (e.g. by a
+   * prepare hook that needs async app data). Must be idempotent.
+   */
+  open?: (args?: unknown) => void | Promise<unknown>;
+}
+
+// =============================================================================
 // Plugin contract
 // =============================================================================
 
@@ -473,6 +554,7 @@ export interface TourEngineStore {
   highlights: Map<string, HighlightRenderer>;
   preparations: Map<string, PreparationHook>;
   queryHooks: Map<string, QueryHookResolver>;
+  occluders: Map<string, OccluderDescriptor>;
   setState: (next: TourState) => void;
   setLayer: (name: string, z: number) => void;
   registerTrigger: (key: string, factory: TriggerFactory) => void;
@@ -481,6 +563,8 @@ export interface TourEngineStore {
   unregisterPreparation: (key: string) => void;
   registerQueryHook: (hookId: string, resolver: QueryHookResolver) => void;
   unregisterQueryHook: (hookId: string) => void;
+  registerOccluder: (descriptor: OccluderDescriptor) => void;
+  unregisterOccluder: (id: string) => void;
 }
 
 export interface TourPluginContext {
@@ -492,6 +576,7 @@ export interface TourPluginContext {
   registerPreparation: (key: string, hook: PreparationHook) => void;
   registerLayer: (name: string, zIndex: number) => void;
   registerQueryHook: (hookId: string, resolver: QueryHookResolver) => void;
+  registerOccluder: (descriptor: OccluderDescriptor) => void;
   use: (middleware: LifecycleMiddleware) => void;
 }
 

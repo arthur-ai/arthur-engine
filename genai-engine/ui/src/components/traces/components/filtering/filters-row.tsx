@@ -16,7 +16,7 @@ import { sharedFormOptions, validators } from "./shared";
 import { EnumOperators, Operator, Operators } from "./types";
 import { getFieldLabel, getOperatorLabel } from "./utils";
 
-import { EVENT_NAMES, track } from "@/services/amplitude";
+import { track } from "@/services/analytics";
 
 const ROW_SCROLL_OFFSET = 100;
 
@@ -72,14 +72,14 @@ export function createFilterRow<TFields extends Field[]>(fields: TFields, dynami
         const hadFilters = storeFilters.length > 0;
         const nextFilters = completeFilters.map(({ id: _, ...item }) => item) as IncomingFilter[];
         if (nextFilters.length > 0) {
-          track(EVENT_NAMES.TRACING_FILTERS_APPLIED, {
+          track("tracing/filters_applied", {
             filter_count: nextFilters.length,
             filter_fields: nextFilters.map((filter) => filter.name),
             filter_operators: nextFilters.map((filter) => filter.operator),
             source: "filters_row",
           });
         } else if (hadFilters) {
-          track(EVENT_NAMES.TRACING_FILTERS_CLEARED, {
+          track("tracing/filters_cleared", {
             previous_filter_count: storeFilters.length,
             source: "filters_row",
           });

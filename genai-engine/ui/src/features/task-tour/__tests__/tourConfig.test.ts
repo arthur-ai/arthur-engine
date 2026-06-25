@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { TASK_TOUR_QUERY_HOOKS } from "../content/wiring";
+import { TASK_TOUR_PREPARATIONS, TASK_TOUR_QUERY_HOOKS } from "../content/wiring";
 import { tourSelector, TOUR_IDS } from "../selectors";
 import { buildTourConfig } from "../tour-config";
 import { TASK_TOUR_ACTIONS } from "../tourActions";
@@ -11,6 +11,7 @@ describe("task tour config", () => {
     const agentSection = config.sections.find((section) => section.id === "agent");
     const openDemoAgentStep = agentSection?.steps.find((step) => step.id === "open-demo-agent");
     const sendMessageStep = agentSection?.steps.find((step) => step.id === "send-message");
+    const reviewResponseStep = agentSection?.steps.find((step) => step.id === "review-agent-response");
 
     expect(openDemoAgentStep).toMatchObject({
       route: {
@@ -29,6 +30,18 @@ describe("task tour config", () => {
         value: "What is an AI Agent?",
       },
       advanceOn: [{ type: "action", name: TASK_TOUR_ACTIONS.demoAgentMessageSent }],
+    });
+    // The closing beat holds the section open while the response streams in:
+    // it spotlights the chat window and advances only on an explicit Next, so
+    // the section-complete dialog can't appear before the answer arrives.
+    expect(reviewResponseStep).toMatchObject({
+      route: {
+        path: "/tasks/:taskId/chatbot",
+        params: { taskId: "task-id" },
+      },
+      target: { kind: "selector", selector: tourSelector(TOUR_IDS.chatWindow) },
+      advanceOn: [{ type: "manual" }],
+      popover: { showNext: true, nextLabel: "Next" },
     });
   });
 
@@ -93,13 +106,20 @@ describe("task tour config", () => {
       advanceOn: [{ type: "manual" }],
       popover: { showNext: true },
     });
+    // `Add to Dataset` lives inside the closed Trace Actions dropdown, so this
+    // step is action-only: clicking the trigger opens the menu without
+    // advancing; only the `traceAddToDatasetOpened` action (emitted once the
+    // menu item is clicked) advances the step.
     expect(openAddToDatasetStep).toMatchObject({
       target: { kind: "queryHook", hookId: TASK_TOUR_QUERY_HOOKS.traceAddToDatasetAction },
-      advanceOn: expect.arrayContaining([{ type: "click" }, { type: "action", name: TASK_TOUR_ACTIONS.traceAddToDatasetOpened }]),
+      advanceOn: [{ type: "action", name: TASK_TOUR_ACTIONS.traceAddToDatasetOpened }],
     });
+    // Spotlights the whole drawer; the backdrop doesn't trap clicks so the form
+    // and its portaled sub-dialogs stay usable while the popover instructs.
     expect(saveTraceToDatasetStep).toMatchObject({
       target: { kind: "queryHook", hookId: TASK_TOUR_QUERY_HOOKS.traceAddToDatasetDrawer },
       advanceOn: [{ type: "action", name: TASK_TOUR_ACTIONS.traceAddedToDataset }],
+      overlay: { blockInteraction: false },
     });
   });
 
@@ -113,9 +133,9 @@ describe("task tour config", () => {
     const versionsStep = datasetsSection?.steps.find((step) => step.id === "review-dataset-versions");
     const experimentsStep = datasetsSection?.steps.find((step) => step.id === "review-dataset-experiments");
 
-    // Every beat is a static-selector spotlight that waits for an explicit
-    // Next click. None carries a `route` — the prior step landed on the dynamic
-    // /datasets/:datasetId URL and a static route would strip it.
+    // Every beat waits for an explicit Next click. None carries a `route` — the
+    // prior step landed on the dynamic /datasets/:datasetId URL and a static
+    // route would strip it.
     expect(rowsStep).toMatchObject({
       target: { kind: "selector", selector: tourSelector(TOUR_IDS.datasetTable) },
       advanceOn: [{ type: "manual" }],
@@ -123,8 +143,11 @@ describe("task tour config", () => {
     });
     expect(rowsStep?.route).toBeUndefined();
 
+    // Columns follows the user into the Configure Columns modal once opened
+    // (preferred-modal queryHook), so it's a queryHook target, not a static
+    // selector — see the resolver in DatasetTargetWidget.
     expect(columnsStep).toMatchObject({
-      target: { kind: "selector", selector: tourSelector(TOUR_IDS.datasetConfigureColumns) },
+      target: { kind: "queryHook", hookId: TASK_TOUR_QUERY_HOOKS.datasetConfigureColumns },
       advanceOn: [{ type: "manual" }],
       popover: { showNext: true },
     });
@@ -251,6 +274,7 @@ describe("task tour config", () => {
     const promptMappingStep = promptsSection?.steps.find((step) => step.id === "complete-prompt-mapping");
     const explainEvalMappingStep = promptsSection?.steps.find((step) => step.id === "explain-eval-mapping");
     const createExperimentStep = promptsSection?.steps.find((step) => step.id === "create-experiment");
+    const reviewExperimentStep = promptsSection?.steps.find((step) => step.id === "review-experiment");
 
     expect(openCreateStep).toMatchObject({
       route: {
@@ -332,6 +356,30 @@ describe("task tour config", () => {
       overlay: { blockInteraction: false },
     });
     expect(createExperimentStep?.skipWhen).toBeDefined();
+
+    // Creating the run redirects to its detail page, so this beat is route-less
+    // (a static route would strip the dynamic /prompt-experiments/:id URL back
+    // to the list) and spotlights that auto-refreshing page, waiting for an
+    // explicit Next so the section-complete dialog can't appear mid-run. The
+    // `experimentDetailOpened` prep re-navigates on an out-of-order jump.
+    expect(reviewExperimentStep).toMatchObject({
+      target: { kind: "selector", selector: tourSelector(TOUR_IDS.promptExperimentDetail) },
+      advanceOn: [{ type: "manual" }],
+      popover: { showNext: true, nextLabel: "Next" },
+      prepare: { key: TASK_TOUR_PREPARATIONS.experimentDetailOpened },
+    });
+    expect(reviewExperimentStep?.route).toBeUndefined();
+
+    // Modal beats encode their internal step as the `experimentStep` search
+    // param so PromptExperimentsView opens the modal at the right step on a
+    // jump (open-create-experiment stays param-less — it teaches the button).
+    expect(openCreateStep?.route).not.toHaveProperty("search.experimentStep");
+    expect(infoNameStep?.route).toMatchObject({ search: { tab: "prompt-experiments", experimentStep: "info" } });
+    expect(reviewInfoStep?.route).toMatchObject({ search: { experimentStep: "info" } });
+    expect(explainPromptMappingStep?.route).toMatchObject({ search: { experimentStep: "prompts" } });
+    expect(promptMappingStep?.route).toMatchObject({ search: { experimentStep: "prompts" } });
+    expect(explainEvalMappingStep?.route).toMatchObject({ search: { experimentStep: "evals" } });
+    expect(createExperimentStep?.route).toMatchObject({ search: { experimentStep: "evals" } });
   });
 
   it("routes deploy back to the prompt detail before production tagging", () => {
@@ -364,6 +412,7 @@ describe("task tour config", () => {
     const reviewVerificationMessageStep = deploySection?.steps.find((step) => step.id === "review-verification-message");
     const verifyEvalStep = deploySection?.steps.find((step) => step.id === "verify-eval-passes");
     const reviewLatestTraceStep = deploySection?.steps.find((step) => step.id === "review-latest-trace");
+    const reviewEvalResultStep = deploySection?.steps.find((step) => step.id === "review-eval-result");
 
     expect(stepIds).toEqual([
       "open-production-prompt",
@@ -373,6 +422,7 @@ describe("task tour config", () => {
       "review-verification-message",
       "verify-eval-passes",
       "review-latest-trace",
+      "review-eval-result",
     ]);
     expect(reopenDemoAgentStep).toMatchObject({
       route: {
@@ -395,11 +445,16 @@ describe("task tour config", () => {
       advanceOn: [{ type: "action", name: TASK_TOUR_ACTIONS.demoAgentMessageSent }],
     });
     expect(reviewVerificationMessageStep).toMatchObject({
+      // Carries the chatbot route so it re-establishes the page on out-of-order
+      // entry (its target lives on /chatbot, reached by the prior message step).
+      route: {
+        path: "/tasks/:taskId/chatbot",
+        params: { taskId: "task-id" },
+      },
       target: { kind: "selector", selector: tourSelector(TOUR_IDS.chatWindow) },
       advanceOn: [{ type: "manual" }],
       popover: { showNext: true, nextLabel: "Next" },
     });
-    expect(reviewVerificationMessageStep?.route).toBeUndefined();
     expect(verifyEvalStep).toMatchObject({
       target: { kind: "selector", selector: tourSelector(TOUR_IDS.navObserve) },
       advanceOn: expect.arrayContaining([{ type: "click" }, { type: "action", name: TASK_TOUR_ACTIONS.deployVerified }]),
@@ -412,6 +467,19 @@ describe("task tour config", () => {
       },
       target: { kind: "queryHook", hookId: TASK_TOUR_QUERY_HOOKS.tracesFirstRow },
       advanceOn: expect.arrayContaining([{ type: "action", name: TASK_TOUR_ACTIONS.traceOpened }]),
+    });
+    // Closing beat: keep the trace drawer open (traceOpened prep) and wait on an
+    // explicit Next so the tour-complete dialog can't fire before the Source
+    // Attribution Eval finishes running on the fresh trace.
+    expect(reviewEvalResultStep).toMatchObject({
+      route: {
+        path: "/tasks/:taskId/traces",
+        params: { taskId: "task-id" },
+      },
+      target: { kind: "queryHook", hookId: TASK_TOUR_QUERY_HOOKS.traceDrawerEvals },
+      advanceOn: [{ type: "manual" }],
+      popover: { showNext: true, nextLabel: "Next" },
+      prepare: { key: TASK_TOUR_PREPARATIONS.traceOpened },
     });
   });
 });

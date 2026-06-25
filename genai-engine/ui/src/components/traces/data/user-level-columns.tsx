@@ -5,7 +5,7 @@ import { TokenCostTooltip, TokenCountTooltip } from "./common";
 
 import { CopyableChip } from "@/components/common";
 import { TraceUserMetadataResponse } from "@/lib/api-client/api-client";
-import { EVENT_NAMES, track } from "@/services/amplitude";
+import { track } from "@/services/analytics";
 import { formatDate } from "@/utils/formatters";
 
 const columnHelper = createMRTColumnHelper<TraceUserMetadataResponse>();
@@ -21,7 +21,7 @@ export const userLevelColumns = [
             <CopyableChip
               label={label}
               onCopy={(value) =>
-                track(EVENT_NAMES.TRACING_ID_COPIED, {
+                track("tracing/id_copied", {
                   level: "user",
                   id_type: "user",
                   id_value: value,

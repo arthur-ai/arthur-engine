@@ -20,7 +20,7 @@ import Radio from "@mui/material/Radio";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { useSnackbar } from "notistack";
-import { useState, useCallback, type HTMLAttributes } from "react";
+import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { useAddTagToPromptVersionMutation } from "../hooks/useAddTagToPromptVersionMutation";
@@ -28,7 +28,7 @@ import { useDeleteTagFromPromptVersionMutation } from "../hooks/useDeleteTagFrom
 import type { PromptDetailViewProps } from "../types";
 
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
-import { TOUR_IDS } from "@/features/task-tour/selectors";
+import { TOUR_IDS, tourDataAttr } from "@/features/task-tour/selectors";
 import { dispatchTourEvent, TASK_TOUR_EVENTS } from "@/features/task-tour/tourEvents";
 import { useApi } from "@/hooks/useApi";
 import { useCreateNotebookMutation, useSetNotebookStateMutation } from "@/hooks/useNotebooks";
@@ -50,6 +50,7 @@ const PromptDetailView = ({
   const [tagError, setTagError] = useState("");
   const [promoteToProduction, setPromoteToProduction] = useState(false);
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
+  const [isOpening, setIsOpening] = useState(false);
 
   const addTagMutation = useAddTagToPromptVersionMutation();
   const deleteTagMutation = useDeleteTagFromPromptVersionMutation();
@@ -153,6 +154,7 @@ const PromptDetailView = ({
   const handleOpenInPlayground = useCallback(async () => {
     if (!taskId || version === null || !apiClient) return;
 
+    setIsOpening(true);
     try {
       const notebookName = `${promptName} v${version}`;
 
@@ -216,6 +218,7 @@ const PromptDetailView = ({
     } catch (err) {
       console.error("Failed to open in playground:", err);
       enqueueSnackbar("Failed to open in playground", { variant: "error" });
+      setIsOpening(false);
     }
   }, [taskId, promptName, version, apiClient, createNotebookMutation, setNotebookStateMutation, navigate, enqueueSnackbar]);
 
@@ -289,11 +292,11 @@ const PromptDetailView = ({
               variant="outlined"
               size="small"
               onClick={handleOpenInPlayground}
-              disabled={createNotebookMutation.isPending || setNotebookStateMutation.isPending}
+              disabled={isOpening}
               data-tour-id={TOUR_IDS.promptOpenInPlayground}
               sx={{ minWidth: 80 }}
             >
-              {createNotebookMutation.isPending || setNotebookStateMutation.isPending ? "Opening..." : "Open in Playground"}
+              {isOpening ? "Opening..." : "Open in Playground"}
             </Button>
           )}
           {onClose && (
@@ -423,15 +426,15 @@ const PromptDetailView = ({
         onClose={handleAddTagClose}
         anchorOrigin={{
           vertical: "bottom",
-          horizontal: "left",
+          horizontal: "right",
         }}
         transformOrigin={{
           vertical: "top",
-          horizontal: "left",
+          horizontal: "right",
         }}
         slotProps={{
           paper: {
-            ...({ "data-tour-id": TOUR_IDS.promptTagsPopover } as HTMLAttributes<HTMLDivElement>),
+            ...tourDataAttr(TOUR_IDS.promptTagsPopover),
           },
         }}
       >

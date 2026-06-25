@@ -3,7 +3,8 @@ import { useCallback } from "react";
 import { useParams } from "react-router-dom";
 
 import { ChatPanel } from "@/components/chatbot/ChatPanel";
-import { dispatchTourEvent, TASK_TOUR_ACTIONS, TOUR_IDS } from "@/features/task-tour";
+import { TOUR_IDS } from "@/features/task-tour/selectors";
+import { dispatchTourEvent, TASK_TOUR_ACTIONS } from "@/features/task-tour/tourEvents";
 import { useChatbot } from "@/hooks/useChatbot";
 
 export function ChatbotPage() {

@@ -92,7 +92,7 @@ is an accepted outcome.
    }
    ```
 
-   Mount the widget under `TaskTourBody` inside `TaskTour.tsx`.
+   Mount the widget under `TaskTourPortal` inside `TaskTour.tsx`.
 
 6. Tag the trigger and the active surface.
 

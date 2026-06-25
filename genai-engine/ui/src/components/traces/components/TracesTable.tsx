@@ -1,7 +1,7 @@
 import { Box, LinearProgress, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TableSortLabel } from "@mui/material";
 import { flexRender, Row, type Table as TableType } from "@tanstack/react-table";
 
-import { TOUR_IDS } from "@/features/task-tour";
+import { TOUR_IDS } from "@/features/task-tour/selectors";
 
 type Props<TTable> = {
   table: TableType<TTable>;

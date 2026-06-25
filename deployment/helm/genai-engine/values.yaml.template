@@ -5,8 +5,17 @@
 postgresBYOEndpoint: ""
 # GenAI Engine application ingress DNS URL (e.g. arthur-genai-engine.mydomain.com)
 genaiEngineIngressURL: ""
+# Arthur Platform (Scope) frontend URL for this deployment (e.g. https://app.mydomain.arthur.ai)
+scopeFeIngressURI: ""
 # Provider of OpenAI LLMs (must be set to 'Azure' or 'OpenAI')
 genaiEngineOpenAIProvider: "Azure"
+# TLS verification for the LLM endpoint (e.g. an OpenAI-compatible LiteLLM proxy).
+# Set to "false" to disable certificate verification (insecure; dev/test only).
+genaiEngineOpenAIVerifySSL: "true"
+# Optional URL serving a private CA / self-signed cert (PEM) for the LLM endpoint. When set,
+# it is downloaded at container startup and trusted as the CA. Leave empty to use standard
+# verification.
+genaiEngineOpenAIPrivateCertDownloadURL: ""
 
 ###################################
 ## Additional Required Configurations For GPU Deployment
@@ -20,6 +29,16 @@ arthurGenaiEngineDeployment:
   genaiEnginePodNodeSelector: {}
   genaiEnginePodAffinity: {}
   genaiEnginePodTolerations: []
+  auditLog:
+    enabled: false
+    mountPath: "/home/nonroot/app/audit_logs"
+    # Size requested for the audit log PVC
+    storageSize: "10Gi"
+    # ReadWriteMany-capable storage class to back the audit log PVC (e.g. NFS, EFS, Azure Files)
+    storageClassName: ""
+    # (Optional) Group ID applied as the pod's fsGroup so the non-root container can write to the mounted PVC.
+    # Required on platforms that mount volumes as root (e.g. OpenShift - use a GID from the namespace's allowed range).
+    fsGroup: ""
 
 # CPU deployment - Comment out the below 4 lines
 gpuEnabled: false
@@ -92,7 +111,7 @@ ingress:
 ## Advanced - GenAI Engine
 ###################################
 # GenAI Engine version
-genaiEngineVersion: '2.1.588'
+genaiEngineVersion: '2.1.659'
 # Max number of tokens GenAI Engine can process against LLM for hallucination data checks
 genaiEngineHallucinationCheckMaxTokenLimit: 3000
 # Max number of tokens GenAI Engine can process against LLM for sensitive data checks

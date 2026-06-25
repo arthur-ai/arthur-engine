@@ -10,7 +10,7 @@ import { PromptExperimentsView } from "../prompt-experiments/PromptExperimentsVi
 import PromptsManagement from "../prompts-management/PromptsManagement";
 
 import { getContentHeight } from "@/constants/layout";
-import { TOUR_IDS } from "@/features/task-tour";
+import { TOUR_IDS } from "@/features/task-tour/selectors";
 import { dispatchTourEvent, refreshTaskTourTarget, TASK_TOUR_EVENTS } from "@/features/task-tour/tourEvents";
 
 const TAB_TITLES: Record<string, string> = {

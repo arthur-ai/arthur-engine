@@ -91,6 +91,7 @@ from db_models.transform_models import (
     DatabaseTraceTransformVersion,
 )
 from db_models.onboarding_models import DatabaseOnboardingSubmission
+from db_models.demo_certificate_models import DemoCertificate
 
 __all__ = [
     # Base classes
@@ -187,4 +188,6 @@ __all__ = [
     "DatabaseTaskPollingState",
     # Onboarding models
     "DatabaseOnboardingSubmission",
+    # Demo certificate models
+    "DemoCertificate",
 ]

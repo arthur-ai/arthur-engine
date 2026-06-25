@@ -19,7 +19,7 @@ import { useApi } from "@/hooks/useApi";
 import useSnackbar from "@/hooks/useSnackbar";
 import { useTask } from "@/hooks/useTask";
 import { AgenticPrompt } from "@/lib/api-client/api-client";
-import { track, EVENT_NAMES } from "@/services/amplitude";
+import { track } from "@/services/analytics";
 
 const SavePromptDialog = ({ open, setOpen, prompt, initialName = "" }: SavePromptDialogProps) => {
   const [nameInputValue, setNameInputValue] = useState("");
@@ -80,7 +80,7 @@ const SavePromptDialog = ({ open, setOpen, prompt, initialName = "" }: SavePromp
       // Immediately trigger notebook save to avoid transient "unsaved" flash
       triggerNotebookSave?.();
       // Track prompt saved event
-      track(EVENT_NAMES.PROMPT_SAVED, {
+      track("Prompt Saved", {
         prompt_name: nameInputValue,
         version: data.version,
         message_count: prompt.messages.length,

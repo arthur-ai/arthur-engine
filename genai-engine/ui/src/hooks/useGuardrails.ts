@@ -1,0 +1,88 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+
+import { taskQueryOptions } from "@/hooks/tasks/useTaskQuery";
+import { useApi } from "@/hooks/useApi";
+import type { BuiltinValidationRequest, BuiltinValidationResponse, NewRuleRequest, RuleResponse } from "@/lib/api-client/api-client";
+import { queryKeys } from "@/lib/queryKeys";
+
+export function useTaskRules(taskId: string) {
+  const api = useApi();
+
+  return useQuery({
+    ...taskQueryOptions({ api: api!, taskId }),
+    select: (task) => task.rules ?? [],
+    enabled: !!api && !!taskId,
+  });
+}
+
+export function useCreateRule(taskId: string) {
+  const api = useApi();
+  const queryClient = useQueryClient();
+
+  return useMutation<RuleResponse, Error, NewRuleRequest>({
+    mutationFn: async (rule) => {
+      if (!api) throw new Error("API client not available");
+      const response = await api.api.createTaskRuleApiV2TasksTaskIdRulesPost(taskId, rule);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.byId(taskId) });
+    },
+  });
+}
+
+export function useArchiveRule(taskId: string) {
+  const api = useApi();
+  const queryClient = useQueryClient();
+
+  return useMutation<void, Error, string>({
+    mutationFn: async (ruleId) => {
+      if (!api) throw new Error("API client not available");
+      await api.api.archiveTaskRuleApiV2TasksTaskIdRulesRuleIdDelete(taskId, ruleId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.byId(taskId) });
+    },
+  });
+}
+
+/**
+ * Commits a set of staged enable/disable changes ({ [ruleId]: enabled }) by firing the
+ * existing per-rule PATCH endpoint for each. Uses Promise.allSettled so a mid-batch
+ * failure surfaces an error instead of being swallowed, and always refetches the task's
+ * rules afterwards so the draft re-derives against fresh server state (saved toggles
+ * clear; failed ones stay dirty).
+ */
+export function useSaveRuleStates(taskId: string) {
+  const api = useApi();
+  const queryClient = useQueryClient();
+
+  return useMutation<void, Error, Record<string, boolean>>({
+    mutationFn: async (changes) => {
+      if (!api) throw new Error("API client not available");
+      const entries = Object.entries(changes);
+      const results = await Promise.allSettled(
+        entries.map(([ruleId, enabled]) => api.api.updateTaskRulesApiV2TasksTaskIdRulesRuleIdPatch(taskId, ruleId, { enabled }))
+      );
+      const failed = results.filter((r) => r.status === "rejected").length;
+      if (failed > 0) {
+        throw new Error(`${failed} of ${entries.length} rule change${entries.length === 1 ? "" : "s"} failed to save`);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.byId(taskId) });
+    },
+  });
+}
+
+export function useValidate() {
+  const api = useApi();
+
+  return useMutation<BuiltinValidationResponse, Error, BuiltinValidationRequest>({
+    mutationFn: async (request) => {
+      if (!api) throw new Error("API client not available");
+      const response = await api.api.statelessValidateApiV2ValidatePost(request);
+      return response.data;
+    },
+  });
+}

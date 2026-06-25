@@ -30,14 +30,15 @@ import { TracingFilterModal } from "./components/TracingFilterModal";
 
 import { TestRunDialog } from "@/components/live-evals/components/TestRunDialog";
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
-import { dispatchTourEvent, TASK_TOUR_EVENTS, TOUR_IDS } from "@/features/task-tour";
+import { TOUR_IDS } from "@/features/task-tour/selectors";
+import { dispatchTourEvent, TASK_TOUR_EVENTS } from "@/features/task-tour/tourEvents";
 import { useApi } from "@/hooks/useApi";
 import { useMRTPagination } from "@/hooks/useMRTPagination";
 import { useTask } from "@/hooks/useTask";
 import type { TraceSortBy, TraceMetadataResponse } from "@/lib/api-client/api-client";
 import { FETCH_SIZE, MAX_TRACES_PER_TEST_RUN } from "@/lib/constants";
 import { queryKeys } from "@/lib/queryKeys";
-import { EVENT_NAMES, track } from "@/services/amplitude";
+import { track, trackDynamic } from "@/services/analytics";
 import { getFilteredTraces } from "@/services/tracing";
 import { formatCurrency, formatDateInTimezone } from "@/utils/formatters";
 
@@ -159,7 +160,7 @@ export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
 
   const handleRowClick = useCallback(
     (row: TraceMetadataResponse) => {
-      track(EVENT_NAMES.TRACING_DRAWER_OPENED, {
+      track("tracing/drawer_opened", {
         task_id: task?.id ?? "",
         level: "trace",
         trace_id: row.trace_id,
@@ -183,7 +184,7 @@ export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
     const deps: SharedColumnDependencies = {
       formatDate: (v) => formatDateInTimezone(v, timezone, { hour12: !use24Hour }),
       formatCurrency: (amount: number) => formatCurrency(amount, displayCurrency),
-      onTrack: track,
+      onTrack: trackDynamic,
       Chip: SharedCopyableChip,
       DurationCell: DurationCellWithBucket,
       TraceContentCell,

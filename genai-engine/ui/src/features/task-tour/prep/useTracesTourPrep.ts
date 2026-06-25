@@ -1,15 +1,16 @@
 import { TIME_RANGES } from "@arthur/shared-components";
 import { useQueryClient } from "@tanstack/react-query";
-import { useCallback, useRef } from "react";
+import { useCallback, useMemo, useRef } from "react";
 
 import { TASK_TOUR_PREPARATIONS } from "../content/wiring";
+import { TASK_TOUR_OCCLUDERS } from "../occluders";
 import { tourSelector, TOUR_IDS, type TourId } from "../selectors";
 
 import { useDrawerTarget } from "@/components/traces/hooks/useDrawerTarget";
 import { usePaginationContext } from "@/components/traces/stores/pagination-context";
 import { resolveTargetAsync } from "@/features/tour";
-import { useRegisterPreparation } from "@/features/tour";
-import type { PreparationHook } from "@/features/tour";
+import { useRegisterOccluder, useRegisterPreparation } from "@/features/tour";
+import type { OccluderDescriptor, PreparationHook } from "@/features/tour";
 import { useApi } from "@/hooks/useApi";
 import type { TraceMetadataResponse } from "@/lib/api-client/api-client";
 import { FETCH_SIZE } from "@/lib/constants";
@@ -19,14 +20,29 @@ import { getFilteredTraces } from "@/services/tracing";
 /** Long enough for route mount + lazy drawer chunk + trace suspense query. */
 const TARGET_WAIT_MS = 20_000;
 
-const DRAWER_STEPS = new Set(["review-spans", "review-annotations", "add-feedback", "add-trace-to-dataset"]);
+// Every trace-section step whose target lives inside the trace drawer, so the
+// prep hook must open the first trace before resolving. Includes the
+// dataset-capture beats (review-trace-actions / open-add-to-dataset /
+// save-trace-to-dataset), which all declare `prepareKey: traceOpened` in
+// wiring.ts and depend on the drawer being open on resume / re-entry.
+const DRAWER_STEPS = new Set([
+  "review-spans",
+  "review-annotations",
+  "add-feedback",
+  "review-trace-actions",
+  "open-add-to-dataset",
+  "save-trace-to-dataset",
+]);
 
+// Static `data-tour-id` anchors the prep hook waits for before resolving. Only
+// listed for the selector-targeted steps — the dataset-capture beats above are
+// queryHook-resolved, so a static fallback wait here would block up to
+// TARGET_WAIT_MS before the engine's own awaitTarget even runs. Leave them out.
 const STEP_TARGET_FALLBACK: Record<string, TourId> = {
   "open-trace": TOUR_IDS.tracesFirstRow,
   "review-spans": TOUR_IDS.traceDrawerSpans,
   "review-annotations": TOUR_IDS.traceDrawerEvals,
   "add-feedback": TOUR_IDS.traceDrawerFeedback,
-  "add-trace-to-dataset": TOUR_IDS.traceDrawerAddToDataset,
 };
 
 type TracesListPayload = { traces?: TraceMetadataResponse[] };
@@ -37,7 +53,8 @@ export interface UseTracesTourPrepOptions {
 
 /**
  * Replaces v0's global `prepDeps` singleton with a properly scoped React
- * hook. Mounted by `TracesPrepWidget` inside `<TourHost>`:
+ * hook. Called directly from `TaskTourPortal` (in `TaskTour.tsx`) inside
+ * `<TourHost>`:
  *  - Reads trace-drawer + pagination state through their respective hooks.
  *  - Registers a preparation hook against the engine via
  *    {@link useRegisterPreparation} so trace-section steps run it before
@@ -143,4 +160,22 @@ export function useTracesTourPrep({ taskId }: UseTracesTourPrepOptions): void {
   );
 
   useRegisterPreparation(TASK_TOUR_PREPARATIONS.traceOpened, hook);
+
+  // Register the trace drawer as a close-only occluder. Opening stays owned by
+  // the prep hook (it needs an async-resolved trace id), so `open` is omitted —
+  // drawer steps declare it via `surfaces.open` (auto-derived from
+  // `prepareKey: traceOpened`) so reconcile leaves it alone, while every other
+  // step closes a stranded drawer on entry. Close clears the nuqs params with
+  // `history: "replace"` so it doesn't pollute the back button mid-tour, and
+  // returns the setter promise so reconcile can await the URL clear before the
+  // engine's same-route match check.
+  const occluder = useMemo<OccluderDescriptor>(
+    () => ({
+      id: TASK_TOUR_OCCLUDERS.traceDrawer,
+      isOpen: () => Boolean(drawerTargetRef.current.id),
+      close: () => setDrawerTargetRef.current({ id: null }, { history: "replace" }),
+    }),
+    []
+  );
+  useRegisterOccluder(occluder);
 }

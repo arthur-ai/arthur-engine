@@ -22,8 +22,9 @@ import { z } from "zod";
 
 import { DefaultValueSelector } from "./DefaultValueSelector";
 
+import { TOUR_IDS, tourDataAttr } from "@/features/task-tour/selectors";
 import { columnNameSchema } from "@/schemas/datasetSchemas";
-import { EVENT_NAMES, track } from "@/services/amplitude";
+import { track } from "@/services/analytics";
 import type { ColumnDefaultConfig, ColumnDefaults } from "@/types/dataset";
 
 interface ConfigureColumnsModalProps {
@@ -58,7 +59,7 @@ export const ConfigureColumnsModal: React.FC<ConfigureColumnsModalProps> = ({
       columns: currentColumns,
     },
     onSubmit: async ({ value }) => {
-      track(EVENT_NAMES.DATASET_COLUMNS_SAVED, { dataset_id: datasetId, task_id: taskId });
+      track("dataset/columns_saved", { dataset_id: datasetId, task_id: taskId });
       onSave(value.columns, columnDefaults, applyToExisting);
       onClose();
       setEditingIndex(null);
@@ -106,7 +107,7 @@ export const ConfigureColumnsModal: React.FC<ConfigureColumnsModalProps> = ({
 
     const currentColumns = form.getFieldValue("columns");
     form.setFieldValue("columns", [...currentColumns, newColumnName.trim()]);
-    track(EVENT_NAMES.DATASET_COLUMN_ADDED, { dataset_id: datasetId, task_id: taskId });
+    track("dataset/column_added", { dataset_id: datasetId, task_id: taskId });
     setNewColumnName("");
     setError(null);
   };
@@ -125,7 +126,7 @@ export const ConfigureColumnsModal: React.FC<ConfigureColumnsModalProps> = ({
     const updated = columns.map((col: string, idx: number) => (idx === index ? newColumnName : col));
     form.setFieldValue("columns", updated);
     if (oldColumnName !== newColumnName) {
-      track(EVENT_NAMES.DATASET_COLUMN_RENAMED, { dataset_id: datasetId, task_id: taskId });
+      track("dataset/column_renamed", { dataset_id: datasetId, task_id: taskId });
     }
 
     // Transfer defaults from old column name to new column name
@@ -149,7 +150,7 @@ export const ConfigureColumnsModal: React.FC<ConfigureColumnsModalProps> = ({
       "columns",
       columns.filter((_: string, idx: number) => idx !== index)
     );
-    track(EVENT_NAMES.DATASET_COLUMN_DELETED, { dataset_id: datasetId, task_id: taskId });
+    track("dataset/column_deleted", { dataset_id: datasetId, task_id: taskId });
     // Clean up the default config for the deleted column
     if (deletedColumn && columnDefaults[deletedColumn]) {
       setColumnDefaults((prev) => {
@@ -181,6 +182,7 @@ export const ConfigureColumnsModal: React.FC<ConfigureColumnsModalProps> = ({
       aria-labelledby="configure-columns-dialog-title"
       slotProps={{
         paper: {
+          ...tourDataAttr(TOUR_IDS.datasetConfigureColumnsModal),
           sx: {
             maxHeight: "90vh",
             display: "flex",

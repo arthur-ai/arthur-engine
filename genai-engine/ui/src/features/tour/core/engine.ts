@@ -1,10 +1,11 @@
 import type { StoreApi } from "zustand/vanilla";
 
 import { createTourBus } from "./events";
+import { describeOccluder, detectOcclusion } from "./occlusion";
 import { matchesRouteWith, resolveRouteWith, toRouteSpec } from "./routes";
 import { createTourEngineStore } from "./store";
 import { resolveTargetAsync, resolveTargetSync } from "./targets";
-import { createDefaultTriggerRegistry } from "./triggers";
+import { createDefaultTriggers } from "./triggers";
 import type {
   AdvanceTrigger,
   HighlightRenderer,
@@ -27,7 +28,6 @@ import type {
   TourNavigator,
   TourPlugin,
   TourState,
-  TriggerFactory,
 } from "./types";
 
 export interface TourEngineOptions {
@@ -55,8 +55,6 @@ export interface TourEngine extends TourActions {
   setNavigator: (navigator: TourNavigator | null) => void;
   /** Returns the highlight renderer registered for `key`, if any. */
   getHighlight: (key: string) => HighlightRenderer | undefined;
-  /** Returns the queryHook resolver registered for `hookId`, if any. */
-  getQueryHook: (hookId: string) => QueryHookResolver | undefined;
   /** Returns the preparation hook registered for `key`, if any. */
   getPreparation: (key: string) => PreparationHook | undefined;
   /**
@@ -94,15 +92,9 @@ interface SectionPosition {
 
 export function createTourEngine(options: TourEngineOptions): TourEngine {
   const { config } = options;
-  const triggersRegistry = createDefaultTriggerRegistry();
-  const initialTriggers: Record<string, TriggerFactory> = {};
-  for (const key of ["manual", "click", "visible", "action"] as const) {
-    const factory = triggersRegistry.get(key);
-    if (factory) initialTriggers[key] = factory;
-  }
   const store = createTourEngineStore({
     layers: options.layers,
-    initialTriggers,
+    initialTriggers: createDefaultTriggers(),
   });
   const bus = createTourBus();
   const middleware: LifecycleMiddleware[] = [];
@@ -114,6 +106,14 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
   let navigator: TourNavigator | null = options.navigator ?? null;
   let destroyed = false;
   let exitedStepKey: string | null = null;
+  // De-dup memo for target broadcasts (see emitTargetResolution). `undefined` =
+  // nothing emitted for the current step yet; `null` = last emitted a loss;
+  // Element = last emitted found.
+  let lastEmittedTarget: Element | null | undefined = undefined;
+  // De-dup memo for occlusion broadcasts, paralleling `lastEmittedTarget`.
+  // `undefined` = nothing emitted this step; `true` = last emitted occluded;
+  // `false` = last emitted revealed. Reset per step in `setState`.
+  let lastOcclusionState: boolean | undefined = undefined;
 
   const totalSteps = config.sections.reduce((acc, s) => acc + s.steps.length, 0);
 
@@ -126,7 +126,55 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
     `${state.sectionIndex}:${state.stepIndex}:${state.sectionId}:${state.stepId}`;
   const setState = (next: TourState) => {
     exitedStepKey = null;
+    // Any state transition (step change, dismiss, completion) resets the memos so
+    // the next step's first resolution / occlusion check always broadcasts.
+    lastEmittedTarget = undefined;
+    lastOcclusionState = undefined;
     store.getState().setState(next);
+  };
+
+  /**
+   * Broadcast the resolved target, de-duplicated. `refreshTarget` runs on every
+   * DOM mutation while a step is active (via `ActiveTargetRefresh`), so without
+   * this an unchanged target would re-emit `target:found` every frame. We emit
+   * only when the resolved element actually changes; the memo is reset per step
+   * in `setState`, so a freshly-entered step always emits once.
+   */
+  const emitTargetResolution = (element: Element | null, sectionId: string, stepId: string) => {
+    if (lastEmittedTarget !== undefined && lastEmittedTarget === element) return;
+    lastEmittedTarget = element;
+    if (element) {
+      bus.emit("target:found", { tourId: config.id, sectionId, stepId, element });
+    } else {
+      bus.emit("target:lost", { tourId: config.id, sectionId, stepId });
+    }
+  };
+
+  /**
+   * Hit-test the resolved target and broadcast `target:occluded` /
+   * `target:revealed`, de-duped via `lastOcclusionState`. No-op when there's no
+   * element (target-lost owns that case), when the element is detached, or when
+   * the result is off-screen / indeterminate (those aren't occlusion).
+   */
+  const checkOcclusion = (element: Element | null, sectionId: string, stepId: string) => {
+    if (typeof window === "undefined") return;
+    if (!element || !element.isConnected || element.getClientRects().length === 0) return;
+    const result = detectOcclusion(element, element.getBoundingClientRect());
+    if (result.reason === "offscreen" || result.reason === "indeterminate") return;
+    if (lastOcclusionState === result.occluded) return;
+    lastOcclusionState = result.occluded;
+    if (result.occluded) {
+      bus.emit("target:occluded", {
+        tourId: config.id,
+        sectionId,
+        stepId,
+        element,
+        occluder: result.occluder,
+        occluderId: describeOccluder(result.occluder),
+      });
+    } else {
+      bus.emit("target:revealed", { tourId: config.id, sectionId, stepId, element });
+    }
   };
 
   const stepContextAt = (pos: Position): StepContext => {
@@ -192,6 +240,7 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
       registerHighlight: (key, renderer) => store.getState().registerHighlight(key, renderer),
       registerPreparation: (key, hook) => store.getState().registerPreparation(key, hook),
       registerQueryHook: (hookId, resolver) => store.getState().registerQueryHook(hookId, resolver),
+      registerOccluder: (descriptor) => store.getState().registerOccluder(descriptor),
       registerLayer: (name, z) => store.getState().setLayer(name, z),
       use: (mw) => middleware.push(mw),
     });
@@ -314,6 +363,71 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
   };
 
   // ---------------------------------------------------------------------------
+  // Occluder reconciliation
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Reconcile registered occluder surfaces to the step's declared state on
+   * every step entry. Runs *before* navigation and target resolution so a
+   * panel left open by a prior step (or the user) can't occlude the next
+   * step's highlight — and so a URL-driven occluder's `close()` clears its
+   * stale query params before `navigateIfNeeded`'s route-match check.
+   *
+   * Delta-only and idempotent: a surface a step declares `open` (or `keep`)
+   * that is already open is never close-reopened, so in-progress user input
+   * inside it survives the transition. Final state is a pure function of the
+   * entering step's declaration — independent of how the user got here, which
+   * is what makes arbitrary checklist jumps safe.
+   */
+  const reconcileSurfaces = async (step: StepConfig, signal: AbortSignal): Promise<void> => {
+    if (signal.aborted) return;
+    const occluders = store.getState().occluders;
+    if (occluders.size === 0) return;
+
+    const declaredOpen = step.surfaces?.open ?? [];
+    const openIds = new Set(declaredOpen.map((entry) => entry.id));
+    const keepIds = new Set(step.surfaces?.keep ?? []);
+
+    // PASS 1 — close every registered occluder not kept/needed-open. Collect any
+    // promises (URL-driven surfaces flush their param update async) so we can
+    // await the clear before the engine's route-match check downstream.
+    const pendingCloses: Array<Promise<unknown>> = [];
+    for (const desc of occluders.values()) {
+      if (openIds.has(desc.id) || keepIds.has(desc.id)) continue;
+      try {
+        if (desc.isOpen()) {
+          const result = desc.close();
+          if (result) pendingCloses.push(result);
+        }
+      } catch (err) {
+        console.error("[tour] occluder.close threw", desc.id, err);
+      }
+    }
+    if (pendingCloses.length > 0) {
+      try {
+        await Promise.all(pendingCloses);
+      } catch (err) {
+        console.error("[tour] occluder.close rejected", err);
+      }
+    }
+    if (signal.aborted) return;
+
+    // PASS 2 — open/assert what this step needs, but only when not already open
+    // (never re-open an open surface — that would reset its internal state).
+    for (const { id, args } of declaredOpen) {
+      const desc = occluders.get(id);
+      if (!desc) continue;
+      try {
+        if (!desc.isOpen()) {
+          void desc.open?.(args);
+        }
+      } catch (err) {
+        console.error("[tour] occluder.open threw", id, err);
+      }
+    }
+  };
+
+  // ---------------------------------------------------------------------------
   // Step lifecycle
   // ---------------------------------------------------------------------------
 
@@ -322,6 +436,21 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
     if (!cause) return null;
     if (completedCausesSet.has(cause)) return cause as StepCompletedCause;
     return null;
+  };
+
+  /**
+   * Run a consumer lifecycle hook (section/step `onEnter`/`onExit`) as
+   * fire-and-forget: await it and swallow + log any throw so a buggy product
+   * hook can't break the engine's transition. Only for void hooks the engine
+   * doesn't branch on — navigation, preparation, `skipWhen`, and middleware keep
+   * their inline handling because they interleave abort / return control flow.
+   */
+  const runHook = async (label: string, run: () => void | Promise<void>): Promise<void> => {
+    try {
+      await run();
+    } catch (err) {
+      console.error(`[tour] ${label} threw`, err);
+    }
   };
 
   const exitCurrentStep = async (cause: StepLeftCause | undefined): Promise<boolean> => {
@@ -339,13 +468,7 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
       if (completed) bus.emit("step:completed", { ...ctx, cause: completed });
       bus.emit("step:left", { ...ctx, cause });
     }
-    if (step.onExit) {
-      try {
-        await step.onExit(ctx);
-      } catch (err) {
-        console.error("[tour] step.onExit threw", err);
-      }
-    }
+    await runHook("step.onExit", () => step.onExit?.(ctx));
     return true;
   };
 
@@ -361,14 +484,8 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
 
     if (opts.runSectionEnter) {
       bus.emit("section:enter", { tourId: config.id, sectionId: section.id, sectionIndex: pos.sectionIndex });
-      if (section.onEnter) {
-        try {
-          await section.onEnter({ tourId: config.id, sectionId: section.id });
-        } catch (err) {
-          console.error("[tour] section.onEnter threw", err);
-        }
-        if (signal.aborted) return;
-      }
+      await runHook("section.onEnter", () => section.onEnter?.({ tourId: config.id, sectionId: section.id }));
+      if (signal.aborted) return;
     }
 
     setState({
@@ -380,6 +497,12 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
       globalStepIndex: ctx.index.globalStepIndex,
       totalSteps,
     });
+
+    // Reconcile occluder surfaces before navigation / prep / target resolution:
+    // close panels a prior step (or the user) left open, and clear their URL
+    // params before the route-match check below.
+    await reconcileSurfaces(step, signal);
+    if (signal.aborted) return;
 
     for (const mw of middleware) {
       try {
@@ -418,14 +541,8 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
       }
     }
 
-    if (step.onEnter) {
-      try {
-        await step.onEnter(ctx);
-      } catch (err) {
-        console.error("[tour] step.onEnter threw", err);
-      }
-      if (signal.aborted) return;
-    }
+    await runHook("step.onEnter", () => step.onEnter?.(ctx));
+    if (signal.aborted) return;
 
     if (step.skipWhen) {
       try {
@@ -455,14 +572,21 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
     }
     if (signal.aborted) return;
 
-    if (element) {
-      bus.emit("target:found", { tourId: config.id, sectionId: section.id, stepId: step.id, element });
-    } else {
-      bus.emit("target:lost", { tourId: config.id, sectionId: section.id, stepId: step.id });
-    }
+    emitTargetResolution(element, section.id, step.id);
 
     bus.emit("step:enter", { ...ctx, rect: element?.getBoundingClientRect() ?? null });
     attachTriggers(step, ctx, element);
+
+    // Occlusion check on the next frame so the rect settles past any entrance
+    // animation. Guarded to the still-active step and cancelled on step exit.
+    if (element && typeof window !== "undefined") {
+      const occlusionFrame = window.requestAnimationFrame(() => {
+        const s = getState();
+        if (s.status !== "step" || s.sectionId !== ctx.sectionId || s.stepId !== ctx.stepId) return;
+        checkOcclusion(element, section.id, step.id);
+      });
+      activeTriggerCleanups.push(() => window.cancelAnimationFrame(occlusionFrame));
+    }
 
     // Auto-complete fallback (e.g. for transitional steps without a real
     // target — we schedule a one-shot `next("complete")` after `afterMs`).
@@ -503,13 +627,7 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
         sectionId: fromSection.id,
         sectionIndex: currentSectionIndex,
       });
-      if (fromSection.onExit) {
-        try {
-          await fromSection.onExit({ tourId: config.id, sectionId: fromSection.id });
-        } catch (err) {
-          console.error("[tour] section.onExit threw", err);
-        }
-      }
+      await runHook("section.onExit", () => fromSection.onExit?.({ tourId: config.id, sectionId: fromSection.id }));
     }
 
     if (section.introduction && !opts.skipIntro) {
@@ -518,13 +636,7 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
         sectionId: section.id,
         sectionIndex: sectionPos.sectionIndex,
       });
-      if (section.onEnter) {
-        try {
-          await section.onEnter({ tourId: config.id, sectionId: section.id });
-        } catch (err) {
-          console.error("[tour] section.onEnter threw", err);
-        }
-      }
+      await runHook("section.onEnter", () => section.onEnter?.({ tourId: config.id, sectionId: section.id }));
       setState({
         status: "intro",
         sectionId: section.id,
@@ -554,13 +666,7 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
       if (fromIndex !== null) {
         const fromSection = config.sections[fromIndex];
         bus.emit("section:exit", { tourId: config.id, sectionId: fromSection.id, sectionIndex: fromIndex });
-        if (fromSection.onExit) {
-          try {
-            await fromSection.onExit({ tourId: config.id, sectionId: fromSection.id });
-          } catch (err) {
-            console.error("[tour] section.onExit threw", err);
-          }
-        }
+        await runHook("section.onExit", () => fromSection.onExit?.({ tourId: config.id, sectionId: fromSection.id }));
       }
     }
     await enterStep(pos, { runSectionEnter: sectionChanging });
@@ -631,13 +737,7 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
         sectionId: section.id,
         sectionIndex: current.sectionIndex,
       });
-      if (section.onExit) {
-        try {
-          await section.onExit({ tourId: config.id, sectionId: section.id });
-        } catch (err) {
-          console.error("[tour] section.onExit threw", err);
-        }
-      }
+      await runHook("section.onExit", () => section.onExit?.({ tourId: config.id, sectionId: section.id }));
     }
     setState({ status: "completed" });
     bus.emit("tour:end", { tourId: config.id, reason: "completed" });
@@ -725,8 +825,12 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
     if (target.stepId) {
       const pos = findStepPosition(target.sectionId, target.stepId);
       if (!pos) return;
-      const cause: StepLeftCause =
-        s.status === "step" && pos.sectionIndex * 10000 + pos.stepIndex >= s.sectionIndex * 10000 + s.stepIndex ? "goTo-forward" : "goTo-backward";
+      // Forward iff we're on a step and the target is at or past the current
+      // position (compare section first, then step). Re-selecting the current
+      // step counts as forward (`>=`) to match the documented invariant.
+      const isForward =
+        s.status === "step" && (pos.sectionIndex !== s.sectionIndex ? pos.sectionIndex > s.sectionIndex : pos.stepIndex >= s.stepIndex);
+      const cause: StepLeftCause = isForward ? "goTo-forward" : "goTo-backward";
       await goToStep(pos, { cause });
       return;
     }
@@ -846,11 +950,24 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
     const current = getState();
     if (current.status !== "step") return;
     const element = resolveCurrentTarget();
-    if (element) {
-      bus.emit("target:found", { tourId: config.id, sectionId: current.sectionId, stepId: current.stepId, element });
-    } else {
-      bus.emit("target:lost", { tourId: config.id, sectionId: current.sectionId, stepId: current.stepId });
-    }
+    emitTargetResolution(element, current.sectionId, current.stepId);
+  };
+
+  const recheckOcclusion: TourActions["recheckOcclusion"] = () => {
+    if (destroyed) return;
+    const current = getState();
+    if (current.status !== "step") return;
+    checkOcclusion(resolveCurrentTarget(), current.sectionId, current.stepId);
+  };
+
+  const reconcileActiveSurfaces: TourActions["reconcileActiveSurfaces"] = () => {
+    if (destroyed) return;
+    const current = getState();
+    if (current.status !== "step") return;
+    const step = config.sections[current.sectionIndex].steps[current.stepIndex];
+    // Fresh, never-aborted signal: this is a one-off mid-step reconcile, not a
+    // transition the engine would supersede.
+    void reconcileSurfaces(step, new AbortController().signal);
   };
 
   // ---------------------------------------------------------------------------
@@ -899,7 +1016,6 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
     subscribe,
     setNavigator,
     getHighlight: (key) => store.getState().highlights.get(key),
-    getQueryHook: (hookId) => store.getState().queryHooks.get(hookId),
     getPreparation: (key) => store.getState().preparations.get(key),
     onPrepareRequested,
     destroy,
@@ -914,6 +1030,8 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
     acknowledgeIntroduction,
     continueFromSectionComplete,
     refreshTarget,
+    recheckOcclusion,
+    reconcileActiveSurfaces,
     emitAction,
   } satisfies TourEngine;
 }

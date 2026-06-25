@@ -8,6 +8,7 @@ from arthur_client.api_bindings import (
     Alert,
     AlertBound,
     AlertCheckJobSpec,
+    AlertLogStatus,
     AlertRule,
     AlertRuleInterval,
     CreatedAlerts,
@@ -23,7 +24,77 @@ from arthur_client.api_bindings import (
     PostJobKind,
 )
 
-from job_executors.alert_check_executor import AlertCheckExecutor
+from job_executors._interval_utils import alert_interval_to_timedelta
+from job_executors.alert_check_executor import (
+    AlertCheckExecutor,
+    get_expected_bucket_timestamps,
+)
+
+
+def expected_buckets(job_spec, alert_rule):
+    td = alert_interval_to_timedelta(alert_rule.interval)
+    return get_expected_bucket_timestamps(
+        job_spec.check_range_start_timestamp - td,
+        job_spec.check_range_end_timestamp - td,
+        td,
+        alert_rule.interval,
+    )
+
+
+def make_alert_rule(model_id: str, now: datetime) -> AlertRule:
+    return AlertRule(
+        id=str(uuid4()),
+        name="test_rule",
+        metric_name="test_metric",
+        query="test query",
+        threshold=100,
+        bound=AlertBound.UPPER_BOUND,
+        notification_webhooks=[],
+        interval=AlertRuleInterval(unit=IntervalUnit.HOURS, count=1),
+        model_id=model_id,
+        created_at=now,
+        updated_at=now,
+    )
+
+
+def make_job_and_spec(model_id: str, now: datetime):
+    start_time = now - timedelta(hours=1)
+    job_spec = AlertCheckJobSpec(
+        scope_model_id=model_id,
+        check_range_start_timestamp=start_time,
+        check_range_end_timestamp=now,
+    )
+    job = Job(
+        id=str(uuid4()),
+        kind=JobKind.ALERT_CHECK,
+        job_spec=JobSpec(job_spec),
+        state=JobState.RUNNING,
+        project_id=str(uuid4()),
+        data_plane_id=str(uuid4()),
+        queued_at=start_time,
+        ready_at=start_time,
+        trigger_type=JobTrigger.USER,
+        attempts=1,
+        max_attempts=1,
+        memory_requirements_mb=100,
+        job_priority=JobPriority.NUMBER_100,
+    )
+    return job, job_spec
+
+
+def make_executor(alerts_client, alert_rules_client, metrics_client):
+    jobs_client = Mock()
+    jobs_client.post_submit_jobs_batch.return_value = Mock(jobs=[Mock(id=str(uuid4()))])
+    policies_client = Mock()
+    policies_client.list_model_policy_assignments.return_value = Mock(records=[])
+    return AlertCheckExecutor(
+        alerts_client=alerts_client,
+        alert_rules_client=alert_rules_client,
+        jobs_client=jobs_client,
+        metrics_client=metrics_client,
+        policies_client=policies_client,
+        logger=Mock(),
+    )
 
 
 def test_alert_check_executor_fault_tolerance():
@@ -392,3 +463,141 @@ def test_alert_check_executor_fans_out_compliance_patch_when_assignment_id_is_no
             call.kwargs["policy_assignment_job_chain_patch"].compliance_job_id
             == spawned_compliance_job_id
         )
+
+
+def test_alert_rule_log_fired():
+    now = datetime.now(timezone.utc)
+    model_id = str(uuid4())
+    alert_rule = make_alert_rule(model_id, now)
+
+    alerts_client = Mock()
+    alert_rules_client = Mock()
+    metrics_client = Mock()
+
+    alert_rules_response = Mock()
+    alert_rules_response.records = [alert_rule]
+    alert_rules_client.get_model_alert_rules.return_value = alert_rules_response
+
+    job, job_spec = make_job_and_spec(model_id, now)
+    buckets = expected_buckets(job_spec, alert_rule)
+
+    metrics_client.post_model_metrics_query.return_value = MetricsQueryResult(
+        results=[{"metric_timestamp": buckets[0], "metric_value": 150}],
+    )
+    alerts_client.post_model_alerts.return_value = CreatedAlerts(
+        alerts=[
+            Alert(
+                id=str(uuid4()),
+                description="test",
+                timestamp=now,
+                value=150,
+                threshold=100,
+                bound=AlertBound.UPPER_BOUND,
+                dimensions={},
+                alert_rule_id=alert_rule.id,
+                job_id=None,
+                is_duplicate_of=None,
+                interval=alert_rule.interval,
+                created_at=now,
+                updated_at=now,
+                model_id=model_id,
+                alert_rule_name=alert_rule.name,
+                alert_rule_metric_name=alert_rule.metric_name,
+            )
+        ],
+        webhooks_called=[],
+    )
+
+    executor = make_executor(alerts_client, alert_rules_client, metrics_client)
+    executor.execute(job, job_spec)
+
+    alerts_client.post_model_alert_logs.assert_called_once()
+    posted = alerts_client.post_model_alert_logs.call_args.kwargs["post_alert_logs"]
+    fired = [log for log in posted.logs if log.status == AlertLogStatus.FIRED]
+    assert len(fired) == 1
+    assert fired[0].alert_rule_id == alert_rule.id
+    assert fired[0].job_id == job.id
+    assert fired[0].timestamp == buckets[0]
+
+
+def test_alert_rule_log_okay():
+    now = datetime.now(timezone.utc)
+    model_id = str(uuid4())
+    alert_rule = make_alert_rule(model_id, now)
+
+    alerts_client = Mock()
+    alert_rules_client = Mock()
+    metrics_client = Mock()
+
+    alert_rules_response = Mock()
+    alert_rules_response.records = [alert_rule]
+    alert_rules_client.get_model_alert_rules.return_value = alert_rules_response
+
+    job, job_spec = make_job_and_spec(model_id, now)
+    buckets = expected_buckets(job_spec, alert_rule)
+
+    # value below the threshold => data exists but no breach => OKAY
+    metrics_client.post_model_metrics_query.return_value = MetricsQueryResult(
+        results=[{"metric_timestamp": buckets[0], "metric_value": 50}],
+    )
+
+    executor = make_executor(alerts_client, alert_rules_client, metrics_client)
+    executor.execute(job, job_spec)
+
+    alerts_client.post_model_alert_logs.assert_called_once()
+    posted = alerts_client.post_model_alert_logs.call_args.kwargs["post_alert_logs"]
+    statuses = {log.timestamp: log.status for log in posted.logs}
+    assert statuses[buckets[0]] == AlertLogStatus.OKAY
+    alerts_client.post_model_alerts.assert_not_called()
+
+
+def test_alert_rule_log_no_data():
+    now = datetime.now(timezone.utc)
+    model_id = str(uuid4())
+    alert_rule = make_alert_rule(model_id, now)
+
+    alerts_client = Mock()
+    alert_rules_client = Mock()
+    metrics_client = Mock()
+
+    alert_rules_response = Mock()
+    alert_rules_response.records = [alert_rule]
+    alert_rules_client.get_model_alert_rules.return_value = alert_rules_response
+
+    metrics_client.post_model_metrics_query.return_value = MetricsQueryResult(
+        results=[],
+    )
+
+    job, job_spec = make_job_and_spec(model_id, now)
+    executor = make_executor(alerts_client, alert_rules_client, metrics_client)
+    executor.execute(job, job_spec)
+
+    alerts_client.post_model_alert_logs.assert_called_once()
+    posted = alerts_client.post_model_alert_logs.call_args.kwargs["post_alert_logs"]
+    assert all(log.status == AlertLogStatus.NO_DATA for log in posted.logs)
+    alerts_client.post_model_alerts.assert_not_called()
+
+
+def test_alert_rule_log_failure_does_not_raise():
+    now = datetime.now(timezone.utc)
+    model_id = str(uuid4())
+    alert_rule = make_alert_rule(model_id, now)
+
+    alerts_client = Mock()
+    alert_rules_client = Mock()
+    metrics_client = Mock()
+
+    alert_rules_response = Mock()
+    alert_rules_response.records = [alert_rule]
+    alert_rules_client.get_model_alert_rules.return_value = alert_rules_response
+
+    metrics_client.post_model_metrics_query.return_value = MetricsQueryResult(
+        results=[],
+    )
+    alerts_client.post_model_alert_logs.side_effect = Exception("log endpoint down")
+
+    job, job_spec = make_job_and_spec(model_id, now)
+    executor = make_executor(alerts_client, alert_rules_client, metrics_client)
+
+    # log failure should not propagate — it's a warning-only path
+    executor.execute(job, job_spec)

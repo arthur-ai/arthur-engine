@@ -73,6 +73,19 @@
             ],
             "description": "GenAI Engine application ingress DNS URL, can be empty"
         },
+        "scopeFeIngressURI": {
+            "oneOf": [
+                {
+                    "type": "string",
+                    "format": "uri"
+                },
+                {
+                    "type": "string",
+                    "maxLength": 0
+                }
+            ],
+            "description": "Arthur Platform (Scope) frontend URL for this deployment, can be empty"
+        },
         "postgresClientConnectionPoolSize": {
             "type": "integer",
             "minimum": 1,
@@ -122,6 +135,18 @@
                 "OpenAI"
             ],
             "description": "Provider of OpenAI LLMs"
+        },
+        "genaiEngineOpenAIVerifySSL": {
+            "type": "string",
+            "enum": [
+                "true",
+                "false"
+            ],
+            "description": "Verify TLS certificates when calling the LLM endpoint. Set to 'false' to disable verification (insecure; dev/test only)."
+        },
+        "genaiEngineOpenAIPrivateCertDownloadURL": {
+            "type": "string",
+            "description": "Optional URL serving a private CA / self-signed cert (PEM) for the LLM endpoint. Downloaded at container startup and trusted as the CA."
         },
         "genaiEngineAPIOnlyModeEnabled": {
             "type": "string",

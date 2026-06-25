@@ -14,11 +14,13 @@ import { AllTasks } from "./components/AllTasks";
 import { ApiKeysManagement } from "./components/ApiKeysManagement";
 import { ChatbotPage } from "./components/chatbot/ChatbotPage";
 import { EngineConfigGate } from "./components/common/engine-config-gate";
+import { OutOfCreditsDialog } from "./components/common/OutOfCreditsDialog";
 import { DatasetDetailView } from "./components/datasets/DatasetDetailView";
 import { DatasetExperimentsView } from "./components/datasets/DatasetExperimentsView";
 import { DatasetsView } from "./components/datasets/DatasetsView";
 import { EvaluateView } from "./components/evaluate/EvaluateView";
 import Evaluators from "./components/evaluators/Evaluators";
+import { GuardrailsView } from "./components/guardrails/GuardrailsView";
 import { LiveEvalDetail } from "./components/live-evals/[evalId]";
 import { LiveEvalsNew } from "./components/live-evals/new";
 import { LoginPage } from "./components/LoginPage";
@@ -45,6 +47,7 @@ import TransformsManagement from "./components/transforms/TransformsManagement";
 import { AuthProvider } from "./contexts/AuthContext";
 import { DisplaySettingsProvider } from "./contexts/DisplaySettingsContext";
 import { EngineConfigProvider, useDemoMode } from "./contexts/EngineConfigContext";
+import { OutOfCreditsProvider } from "./contexts/OutOfCreditsContext";
 import { queryClient } from "./lib/queryClient";
 import { AppThemeProvider } from "./theme/ThemeProvider";
 
@@ -125,6 +128,7 @@ function AppRoutes() {
         <Route path="datasets/:datasetId/experiments" element={<DatasetExperimentsView />} />
 
         <Route path="evaluate" element={<EvaluateView />} />
+        <Route path="guardrails" element={<GuardrailsView />} />
 
         {/* Legacy redirect: /evaluators → /evaluate */}
         <Route path="evaluators" element={<Navigate to="../evaluate" replace />} />
@@ -184,13 +188,16 @@ function App() {
                 <EngineConfigProvider>
                   <AuthProvider>
                     <DisplaySettingsProvider>
-                      <Router>
-                        <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-                          <EngineConfigGate>
-                            <AppRoutes />
-                          </EngineConfigGate>
-                        </div>
-                      </Router>
+                      <OutOfCreditsProvider>
+                        <Router>
+                          <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+                            <EngineConfigGate>
+                              <AppRoutes />
+                            </EngineConfigGate>
+                          </div>
+                        </Router>
+                        <OutOfCreditsDialog />
+                      </OutOfCreditsProvider>
                     </DisplaySettingsProvider>
                   </AuthProvider>
                 </EngineConfigProvider>

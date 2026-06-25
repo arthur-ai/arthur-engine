@@ -1,3 +1,5 @@
+import type { HTMLAttributes } from "react";
+
 /**
  * Single source of truth for every `data-tour-id` the task tour points at.
  *
@@ -62,6 +64,8 @@ export const TOUR_IDS = {
   datasetTable: "task-tour-dataset-table",
   /** Configure-columns button on the dataset detail header. */
   datasetConfigureColumns: "task-tour-dataset-configure-columns",
+  /** Configure-columns modal surface after the header trigger opens it. */
+  datasetConfigureColumnsModal: "task-tour-dataset-configure-columns-modal",
   /** Import / Generate / Add Row button group on the dataset detail header. */
   datasetDataActions: "task-tour-dataset-data-actions",
   /** Versions button on the dataset detail header. */
@@ -119,6 +123,12 @@ export const TOUR_IDS = {
   createExperimentEvalMappingsList: "task-tour-create-experiment-eval-mappings-list",
   /** Final Create Experiment action in the dialog. */
   createExperimentSubmit: "task-tour-create-experiment-submit",
+  /**
+   * Root of the experiment detail view (`/prompt-experiments/:id`). Creating an
+   * experiment redirects here, so it's spotlighted as the closing beat — the
+   * user watches the run finish before the section-complete dialog appears.
+   */
+  promptExperimentDetail: "task-tour-prompt-experiment-detail",
 } as const;
 
 export type TourId = (typeof TOUR_IDS)[keyof typeof TOUR_IDS];
@@ -126,4 +136,15 @@ export type TourId = (typeof TOUR_IDS)[keyof typeof TOUR_IDS];
 /** Build a `[data-tour-id="..."]` selector for use in `TargetSpec`. */
 export function tourSelector(id: TourId) {
   return `[data-tour-id="${id}"]` as const;
+}
+
+/**
+ * `data-tour-id` props for a portaled MUI surface (`slotProps.paper` / `root`).
+ * Centralizes the `as HTMLAttributes<HTMLDivElement>` cast that `data-*` keys
+ * require (they aren't in MUI's typed slot props) — a wrong slot/element
+ * generic otherwise compiles but silently fails to anchor at runtime. Spread
+ * alongside any other paper props: `paper: { ...tourDataAttr(id), sx }`.
+ */
+export function tourDataAttr(id: TourId): HTMLAttributes<HTMLDivElement> {
+  return { "data-tour-id": id } as HTMLAttributes<HTMLDivElement>;
 }

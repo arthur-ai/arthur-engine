@@ -1,13 +1,13 @@
 import { AutoAwesome, Close } from "@mui/icons-material";
 import { Box, Dialog, DialogContent, DialogTitle, IconButton, Typography } from "@mui/material";
-import React, { useCallback, useEffect, useRef, useState, type HTMLAttributes } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 
 import { SyntheticDataCanvas } from "./SyntheticDataCanvas";
 import { SyntheticDataConfigForm } from "./SyntheticDataConfigForm";
 import type { GenerationConfig } from "./types";
 
 import { ConfirmationModal } from "@/components/common/ConfirmationModal";
-import { TOUR_IDS } from "@/features/task-tour/selectors";
+import { TOUR_IDS, tourDataAttr } from "@/features/task-tour/selectors";
 import { dispatchTourEvent, refreshTaskTourTarget, TASK_TOUR_EVENTS } from "@/features/task-tour/tourActions";
 import { useSyntheticDataSession } from "@/hooks/datasets/useSyntheticDataSession";
 import type { DatasetVersionRowResponse } from "@/lib/api-client/api-client";
@@ -122,7 +122,7 @@ export const SyntheticDataModal: React.FC<SyntheticDataModalProps> = ({
       fullWidth
       slotProps={{
         paper: {
-          ...({ "data-tour-id": TOUR_IDS.datasetGenerateSyntheticModal } as HTMLAttributes<HTMLDivElement>),
+          ...tourDataAttr(TOUR_IDS.datasetGenerateSyntheticModal),
           sx: {
             height: phase === "canvas" ? "90vh" : "auto",
             maxHeight: phase === "canvas" ? "90vh" : "auto",

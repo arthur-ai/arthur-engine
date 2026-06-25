@@ -25,6 +25,7 @@ from weaviate.types import INCLUDE_VECTOR
 
 from schemas.enums import (
     ConnectionCheckOutcome,
+    EvalKind,
     RagAPIKeyAuthenticationProviderEnum,
     RagProviderAuthenticationMethodEnum,
     RagProviderEnum,
@@ -75,6 +76,7 @@ class DisplaySettingsResponse(BaseModel):
 
     default_currency: str = "USD"
     chatbot_enabled: bool = True
+    scope_url: str | None = None
 
 
 class ConversationBaseResponse(BaseModel):
@@ -705,6 +707,10 @@ class AgenticPromptMetadataResponse(BaseModel):
 
 class LLMGetAllMetadataResponse(BaseModel):
     name: str = Field(description="Name of the llm asset")
+    eval_kind: EvalKind = Field(
+        default=EvalKind.LLM_AS_A_JUDGE,
+        description="Eval kind discriminator (e.g. 'llm_as_a_judge', 'pii', 'toxicity')",
+    )
     versions: int = Field(description="Number of versions of the llm asset")
     tags: List[str] = Field(
         default_factory=list,
@@ -728,17 +734,23 @@ class LLMGetAllMetadataListResponse(BaseModel):
 
 class LLMVersionResponse(BaseModel):
     version: int = Field(description="Version number of the llm eval")
+    eval_kind: EvalKind = Field(
+        default=EvalKind.LLM_AS_A_JUDGE,
+        description="Eval kind discriminator (e.g. 'llm_as_a_judge', 'pii', 'toxicity')",
+    )
     created_at: datetime = Field(
         description="Timestamp when the llm eval version was created",
     )
     deleted_at: Optional[datetime] = Field(
         description="Timestamp when the llm eval version was deleted (None if not deleted)",
     )
-    model_provider: Union[ModelProvider, Literal["empty"]] = Field(
-        description="Model provider chosen for this version of the llm eval",
+    model_provider: Optional[ModelProvider] = Field(
+        default=None,
+        description="Model provider chosen for this version of the llm eval. None for ML evals.",
     )
-    model_name: str = Field(
-        description="Model name chosen for this version of the llm eval",
+    model_name: Optional[str] = Field(
+        default=None,
+        description="Model name chosen for this version of the llm eval. None for ML evals.",
     )
     tags: List[str] = Field(
         default_factory=list,
@@ -765,7 +777,7 @@ class LLMEvalsVersionListResponse(BaseModel):
     count: int = Field(description="Total number of llm evals matching filters")
 
 
-class LLMEvalRunResponse(BaseModel):
+class EvalRunResponse(BaseModel):
     reason: str = Field(
         ...,
         description="Explanation for how the llm arrived at this answer.",
@@ -969,3 +981,55 @@ class TransformDependents(BaseModel):
 
 class EngineConfigResponse(BaseModel):
     demo_mode: bool = Field(description="Whether the engine is running in demo mode.")
+
+
+class TraceOverviewResponse(BaseModel):
+    """Response for trace overview"""
+
+    task_id: str = Field(description="Task ID")
+    trace_count: int = Field(description="Number of traces")
+    trace_token_count: int = Field(description="Total number of tokens in traces")
+    trace_token_cost: float = Field(description="Total token cost across traces")
+    eval_count: int = Field(description="Number of continuous-eval annotations")
+    continuous_eval_success_rate: float = Field(
+        description="Fraction of continuous-eval annotations that passed",
+    )
+    last_active: Optional[datetime] = Field(
+        default=None,
+        description="Most recent trace end time, or null if no traces in the window",
+    )
+
+
+class TraceOverviewListResponse(BaseModel):
+    """Response for list of trace overviews"""
+
+    overviews: list[TraceOverviewResponse] = Field(
+        description="List of trace overviews",
+    )
+    count: int = Field(description="Total number of trace overviews")
+
+
+class TraceTimeSeriesPoint(BaseModel):
+    """Metrics for a single time bucket, one per Analyze-page chart series."""
+
+    timestamp: datetime = Field(description="Inclusive start of the bucket")
+    trace_count: int = Field(description="Number of traces in the bucket")
+    trace_token_count: int = Field(description="Total tokens in the bucket")
+    trace_token_cost: float = Field(description="Total token cost in the bucket")
+    continuous_eval_success_rate: float = Field(
+        description="Fraction of continuous-eval annotations that passed in the bucket",
+    )
+
+
+class TraceTimeSeriesResponse(BaseModel):
+    """Response for time-bucketed trace metrics for a single task."""
+
+    task_id: str = Field(description="Task ID")
+    points: list[TraceTimeSeriesPoint] = Field(
+        description="Time buckets ordered ascending by timestamp",
+    )
+
+
+class CertificateUploadResponse(BaseModel):
+    certificate_id: str
+    certificate_url: str

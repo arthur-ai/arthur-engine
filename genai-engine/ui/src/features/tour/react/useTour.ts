@@ -65,6 +65,8 @@ function cachedActions(engine: TourEngine): TourActions {
     acknowledgeIntroduction: engine.acknowledgeIntroduction,
     continueFromSectionComplete: engine.continueFromSectionComplete,
     refreshTarget: engine.refreshTarget,
+    recheckOcclusion: engine.recheckOcclusion,
+    reconcileActiveSurfaces: engine.reconcileActiveSurfaces,
     emitAction: engine.emitAction,
   };
   defaultActionsCache.set(engine, cached);
@@ -106,9 +108,4 @@ export function useTour(): UseTourReturn {
   }, [engine, state]);
 
   return { state, config: engine.config, actions, activeStep, activeSection };
-}
-
-/** Read the current state slice only. Cheaper than `useTour` when actions/config aren't needed. */
-export function useTourState(): TourState {
-  return useTourStore((s) => s.state);
 }

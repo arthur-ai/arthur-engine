@@ -369,7 +369,6 @@ Built-in plugins:
   cross-tab storage sync.
 - `createAnalyticsPlugin` for forwarding selected engine events to a tracker.
 - `createHighlightsPlugin` for registering custom highlight renderers.
-- `createPreparationPlugin` for a plugin-owned preparation registry.
 
 ## Testing New Tours
 
@@ -392,6 +391,22 @@ GITLAB_UNIFY_FRONTEND_TOKEN=placeholder yarn type-check
 GITLAB_UNIFY_FRONTEND_TOKEN=placeholder yarn lint
 GITLAB_UNIFY_FRONTEND_TOKEN=placeholder yarn format:check
 ```
+
+## Reserved Surfaces
+
+Some engine capabilities are extension points with **no consumer** in the single
+shipped tour (`task-tour`). They are intentional, not dead code — kept so a second
+tour can adopt them without re-litigating the design. Prune only if the
+reusable-engine goal is abandoned:
+
+- Section/step `onEnter`/`onExit` and lifecycle `use(middleware)` — no live tour
+  registers them; the engine runs the hooks fire-and-forget (see `runHook` in
+  `engine.ts`).
+- The `visible` (IntersectionObserver) and `click.selector` advance triggers.
+- `defineTourConfig` and the `Tour*Id` type helpers are **authoring aids** for a
+  config written as a `const` literal. `task-tour` builds its config from a
+  runtime `.map()` (typed as `TourConfig`), so the const-literal narrowing these
+  helpers provide is not exercised today — they remain for tours authored inline.
 
 ## Migration Notes From v0
 

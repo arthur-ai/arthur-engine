@@ -2,6 +2,7 @@
 name: arthur-onboard-instrument
 description: Arthur onboarding sub-skill — Step 5: Instrument the target repository with Arthur tracing (Python SDK, Mastra TS, or OpenInference). Reads detection results from .arthur-engine.env.
 allowed-tools: Bash, Read, Write, Edit, Task
+version: 1.1.0
 ---
 
 # Arthur Onboard — Step 5: Instrument Code
@@ -30,6 +31,8 @@ Based on detection results:
 - Other TypeScript/JavaScript or Python without arthur-sdk → `openinference`
 
 Show the planned changes and ask user to confirm before proceeding.
+
+> For copy-paste code examples by framework (LangChain, OpenAI, Anthropic, AutoGen, CrewAI, LiteLLM, Mastra, MCP, etc.) and by span pattern (Retrieval/RAG, Agent, Tool, Guardrail, Embedding, Streaming), see [`EXAMPLES.md`](./EXAMPLES.md) in this skill's directory.
 
 **Delegate to a Task sub-agent.** Replace `<PLACEHOLDERS>` with actual values from state.
 
@@ -127,7 +130,8 @@ PART B — SESSION + USER CONTEXT (CRITICAL — without this each LLM call is a 
                            user_id=user_id):  # omit this kwarg if not tracking users
         # all existing processing code here — LLM calls are recorded automatically
 
-    # Decorator form:
+    # Decorator form (only for functions that serve a single, fixed session — NOT for
+    # per-request handlers, because session_id is captured at decoration time, not call time):
     @arthur.attributes(session_id=session_id)
     def handle_request(message):
         ...
@@ -214,6 +218,52 @@ PART D — RETRIEVER SPANS (if app does RAG/vector search):
             retrieved.append(entry)
         # REQUIRED: set output.value so retrieved docs appear in Arthur Engine UI
         ret_span.set_attribute(SpanAttributes.OUTPUT_VALUE, json.dumps(retrieved))
+
+PART E — AGENT SPANS (if the app has an orchestrator or multi-agent structure):
+
+  Span kind guide:
+    CHAIN   — entry point or step coordinator (HTTP handler, main workflow function)
+    AGENT   — reasoning loop that autonomously decides which tools or agents to call
+    TOOL    — a single tool execution invoked by the LLM
+    LLM     — a single call to a model API
+
+  # Orchestrator node (LLM + tool loop that decides what to do):
+  with tracer.start_as_current_span("orchestrate") as agent_span:
+      agent_span.set_attribute(SpanAttributes.OPENINFERENCE_SPAN_KIND,
+                               OpenInferenceSpanKindValues.AGENT.value)
+      agent_span.set_attribute("agent.name", "<name>")
+      agent_span.set_attribute(SpanAttributes.INPUT_VALUE, user_input)
+      result = run_agent_loop(user_input)
+      agent_span.set_attribute(SpanAttributes.OUTPUT_VALUE, result)
+
+  # Subagent called by the orchestrator:
+  with tracer.start_as_current_span("<subagent_name>") as sub_span:
+      sub_span.set_attribute(SpanAttributes.OPENINFERENCE_SPAN_KIND,
+                             OpenInferenceSpanKindValues.AGENT.value)
+      sub_span.set_attribute("agent.name", "<subagent_name>")
+      sub_span.set_attribute(SpanAttributes.INPUT_VALUE, task_input)
+      result = run_subagent(task_input)
+      sub_span.set_attribute(SpanAttributes.OUTPUT_VALUE, result)
+
+PART F — MCP-BASED APPS (if the app calls MCP servers):
+
+  Python with arthur-sdk — use the mcp extra for automatic tracing:
+    arthur.instrument_mcp()
+    # Auto-traces every MCP tool call as a TOOL span with tool.name,
+    # mcp.server_name, and mcp.tool_name set automatically.
+
+  Manual approach (without the SDK extra):
+    with tracer.start_as_current_span(f"{server_name}.{tool_name}") as mcp_span:
+        mcp_span.set_attribute(SpanAttributes.OPENINFERENCE_SPAN_KIND,
+                               OpenInferenceSpanKindValues.TOOL.value)
+        mcp_span.set_attribute(SpanAttributes.TOOL_NAME, f"{server_name}/{tool_name}")
+        mcp_span.set_attribute("mcp.server_name", server_name)
+        mcp_span.set_attribute("mcp.tool_name", tool_name)
+        mcp_span.set_attribute(SpanAttributes.INPUT_VALUE, json.dumps(tool_input))
+        mcp_span.set_attribute(SpanAttributes.INPUT_MIME_TYPE, "application/json")
+        result = call_mcp_tool(server_name, tool_name, tool_input)
+        mcp_span.set_attribute(SpanAttributes.OUTPUT_VALUE, json.dumps(result))
+        mcp_span.set_attribute(SpanAttributes.OUTPUT_MIME_TYPE, "application/json")
 
 STEP 3 — VALIDATION:
   Install: pip install 'arthur-observability-sdk[<extra>]' (or: uv sync)
@@ -513,6 +563,46 @@ PART E — MANUAL LLM SPANS (only if the framework has no auto-instrumentor):
       llm_span.set_attribute("llm.token_count.total", response.usage.total_tokens)
       llm_span.set_attribute(SpanAttributes.OUTPUT_VALUE, response.text)
 
+PART F — AGENT SPANS (if the app has an orchestrator or multi-agent structure):
+
+  Span kind guide:
+    CHAIN   — entry point or step coordinator (HTTP handler, main workflow function)
+    AGENT   — reasoning loop that autonomously decides which tools or agents to call
+    TOOL    — a single tool execution invoked by the LLM
+    LLM     — a single call to a model API
+
+  # Orchestrator node:
+  with tracer.start_as_current_span("orchestrate") as agent_span:
+      agent_span.set_attribute(SpanAttributes.OPENINFERENCE_SPAN_KIND,
+                               OpenInferenceSpanKindValues.AGENT.value)
+      agent_span.set_attribute("agent.name", "<name>")
+      agent_span.set_attribute(SpanAttributes.INPUT_VALUE, user_input)
+      result = run_agent_loop(user_input)
+      agent_span.set_attribute(SpanAttributes.OUTPUT_VALUE, result)
+
+  # Subagent:
+  with tracer.start_as_current_span("<subagent_name>") as sub_span:
+      sub_span.set_attribute(SpanAttributes.OPENINFERENCE_SPAN_KIND,
+                             OpenInferenceSpanKindValues.AGENT.value)
+      sub_span.set_attribute("agent.name", "<subagent_name>")
+      sub_span.set_attribute(SpanAttributes.INPUT_VALUE, task_input)
+      result = run_subagent(task_input)
+      sub_span.set_attribute(SpanAttributes.OUTPUT_VALUE, result)
+
+PART G — MCP-BASED APPS (if the app calls MCP servers):
+
+  with tracer.start_as_current_span(f"{server_name}.{tool_name}") as mcp_span:
+      mcp_span.set_attribute(SpanAttributes.OPENINFERENCE_SPAN_KIND,
+                             OpenInferenceSpanKindValues.TOOL.value)
+      mcp_span.set_attribute(SpanAttributes.TOOL_NAME, f"{server_name}/{tool_name}")
+      mcp_span.set_attribute("mcp.server_name", server_name)
+      mcp_span.set_attribute("mcp.tool_name", tool_name)
+      mcp_span.set_attribute(SpanAttributes.INPUT_VALUE, json.dumps(tool_input))
+      mcp_span.set_attribute(SpanAttributes.INPUT_MIME_TYPE, "application/json")
+      result = call_mcp_tool(server_name, tool_name, tool_input)
+      mcp_span.set_attribute(SpanAttributes.OUTPUT_VALUE, json.dumps(result))
+      mcp_span.set_attribute(SpanAttributes.OUTPUT_MIME_TYPE, "application/json")
+
 ===== TYPESCRIPT / JAVASCRIPT IMPLEMENTATION =====
 
 PART A — Install packages:
@@ -592,6 +682,42 @@ PART D — Tool spans (TypeScript):
     return result;
   } finally {
     toolSpan.end();
+  }
+
+PART E — AGENT SPANS (if the app has an orchestrator or multi-agent structure):
+
+  // Orchestrator node:
+  const agentSpan = tracer.startSpan("orchestrate");
+  agentSpan.setAttribute(SemanticConventions.OPENINFERENCE_SPAN_KIND, "AGENT");
+  agentSpan.setAttribute("agent.name", "<name>");
+  agentSpan.setAttribute(SemanticConventions.INPUT_VALUE, userInput);
+
+  return context.with(trace.setSpan(context.active(), agentSpan), async () => {
+    try {
+      const result = await runAgentLoop(userInput);
+      agentSpan.setAttribute(SemanticConventions.OUTPUT_VALUE, result);
+      return result;
+    } finally {
+      agentSpan.end();
+    }
+  });
+
+PART F — MCP-BASED APPS (if the app calls MCP servers):
+
+  const mcpSpan = tracer.startSpan(`${serverName}.${toolName}`);
+  mcpSpan.setAttribute(SemanticConventions.OPENINFERENCE_SPAN_KIND, "TOOL");
+  mcpSpan.setAttribute(SemanticConventions.TOOL_NAME, `${serverName}/${toolName}`);
+  mcpSpan.setAttribute("mcp.server_name", serverName);
+  mcpSpan.setAttribute("mcp.tool_name", toolName);
+  mcpSpan.setAttribute(SemanticConventions.INPUT_VALUE, JSON.stringify(toolInput));
+  mcpSpan.setAttribute(SemanticConventions.INPUT_MIME_TYPE, "application/json");
+  try {
+    const result = await callMcpTool(serverName, toolName, toolInput);
+    mcpSpan.setAttribute(SemanticConventions.OUTPUT_VALUE, JSON.stringify(result));
+    mcpSpan.setAttribute(SemanticConventions.OUTPUT_MIME_TYPE, "application/json");
+    return result;
+  } finally {
+    mcpSpan.end();
   }
 
 STEP 3 — Add to .env and .env.example:

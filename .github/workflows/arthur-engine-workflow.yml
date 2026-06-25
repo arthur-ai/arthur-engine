@@ -19,13 +19,8 @@ on:
 
 jobs:
   run-genai-engine-linter:
-    if: |
-      (
-        github.event_name == 'pull_request' ||
-        (github.event_name == 'push' && github.ref_type == 'branch')
-      ) &&
-      github.ref != 'refs/heads/main' &&
-      github.ref != 'refs/heads/dev'
+    needs: check-genai-engine-changes
+    if: needs.check-genai-engine-changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     container: python:3.12.9-bullseye
     env:
@@ -69,13 +64,8 @@ jobs:
           exit 1
 
   run-ml-engine-linter:
-    if: |
-      (
-        github.event_name == 'pull_request' ||
-        (github.event_name == 'push' && github.ref_type == 'branch')
-      ) &&
-      github.ref != 'refs/heads/main' &&
-      github.ref != 'refs/heads/dev'
+    needs: check-ml-engine-changes
+    if: needs.check-ml-engine-changes.outputs.changed == 'true'
     runs-on: ubuntu-latest
     container: python:3.13-bullseye
     env:
@@ -125,11 +115,8 @@ jobs:
           exit 1
 
   run-genai-engine-changelog-cop:
-    if: |
-      (
-        github.event_name == 'pull_request' ||
-        (github.event_name == 'push' && github.ref_type == 'branch')
-      )
+    needs: check-genai-engine-changes
+    if: needs.check-genai-engine-changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     container: python:3.12.9-bullseye
     steps:
@@ -186,8 +173,44 @@ jobs:
             ui:
               - 'genai-engine/ui/**'
             backend:
-              - 'genai-engine/**'
-              - '!genai-engine/ui/**'
+              - 'genai-engine/src/**'
+              - 'genai-engine/tests/**'
+              - 'genai-engine/alembic/**'
+              - 'genai-engine/scripts/**'
+              - 'genai-engine/models/**'
+              - 'genai-engine/*.toml'
+              - 'genai-engine/*.cfg'
+              - 'genai-engine/*.ini'
+              - 'genai-engine/*.lock'
+              - 'genai-engine/*.txt'
+              - 'genai-engine/version'
+              - 'genai-engine/routes_security_check.py'
+              - 'genai-engine/changelog*'
+              - 'genai-engine/Dockerfile*'
+              - 'genai-engine/docker-compose.yml'
+              - 'arthur-observability-sdk/**'
+
+  check-ml-engine-changes:
+    if: |
+      (
+        github.event_name == 'pull_request' ||
+        (github.event_name == 'push' && github.ref_type == 'branch')
+      ) &&
+      github.ref != 'refs/heads/main' &&
+      github.ref != 'refs/heads/dev'
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.changes.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dorny/paths-filter@v2
+        id: changes
+        with:
+          filters: |
+            changed:
+              - 'ml-engine/**'
+              - 'arthur-observability-sdk/**'
+              - 'genai-engine/staging.openapi.json'
 
   run-genai-engine-ui-lint:
     needs: check-genai-engine-changes
@@ -200,6 +223,7 @@ jobs:
       github.ref != 'refs/heads/dev' &&
       needs.check-genai-engine-changes.outputs.ui == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     env:
       GITLAB_UNIFY_FRONTEND_TOKEN: ${{ secrets.GITLAB_UNIFY_FRONTEND_TOKEN }}
     defaults:
@@ -214,7 +238,12 @@ jobs:
       - name: Enable Corepack
         run: corepack enable
       - name: Install dependencies
-        run: yarn install --immutable
+        env:
+          YARN_ENABLE_INLINE_BUILDS: "1"
+          YARN_ENABLE_PROGRESS_BARS: "false"
+          YARN_HTTP_TIMEOUT: "120000"
+          YARN_HTTP_RETRY: "5"
+        run: yarn install --immutable --inline-builds
       - name: Run type-check
         id: type-check
         continue-on-error: true
@@ -283,11 +312,8 @@ jobs:
             pytest-coverage.txt
 
   run-genai-engine-alembic-migration-check:
-    if: |
-      (
-        github.event_name == 'pull_request' ||
-        (github.event_name == 'push' && github.ref_type == 'branch')
-      )
+    needs: check-genai-engine-changes
+    if: needs.check-genai-engine-changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     container: python:3.12.9-bullseye
     services:
@@ -325,13 +351,8 @@ jobs:
           uv run alembic upgrade head
 
   run-ml-engine-unit-tests:
-    if: |
-      (
-        github.event_name == 'pull_request' ||
-        (github.event_name == 'push' && github.ref_type == 'branch')
-      ) &&
-      github.ref != 'refs/heads/main' &&
-      github.ref != 'refs/heads/dev'
+    needs: check-ml-engine-changes
+    if: needs.check-ml-engine-changes.outputs.changed == 'true'
     runs-on: ubuntu-latest
     container: python:3.13-bullseye
     env:
@@ -364,6 +385,11 @@ jobs:
       contains(github.event.head_commit.message, 'Increment arthur-engine version') &&
       (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
     runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
     strategy:
       matrix:
         torch_device: [cpu, gpu]
@@ -402,6 +428,7 @@ jobs:
             GITLAB_UNIFY_FRONTEND_TOKEN=${{ secrets.GITLAB_UNIFY_FRONTEND_TOKEN }}
             AMPLITUDE_API_KEY=${{ secrets.AMPLITUDE_API_KEY }}
             VITE_AMPLITUDE_DEPLOYMENT_KEY=${{ secrets.AMPLITUDE_DEPLOYMENT_KEY }}
+            VITE_AMPLITUDE_REPLAY_SAMPLE_RATE=${{ vars.AMPLITUDE_REPLAY_SAMPLE_RATE }}
             RECAPTCHA_ENTERPRISE_SITE_KEY=${{ secrets.RECAPTCHA_ENTERPRISE_SITE_KEY }}
           tags: |
             arthurplatform/genai-engine-${{ matrix.torch_device }}:${{ env.VERSION }}
@@ -409,6 +436,13 @@ jobs:
             ${{ github.ref == 'refs/heads/dev' && format('arthurplatform/genai-engine-{0}:latest-dev', matrix.torch_device) || '' }}
           push: true
           platforms: ${{ matrix.torch_device == 'cpu' && 'linux/amd64,linux/arm64' || 'linux/amd64' }}
+      # Advisory vulnerability scan + justification docs (must never fail the release build).
+      - name: Scan image & generate justification docs
+        continue-on-error: true
+        uses: ./.github/workflows/composite-actions/vuln-report
+        with:
+          image: arthurplatform/genai-engine-${{ matrix.torch_device }}:${{ env.VERSION }}
+          slug: genai-${{ matrix.torch_device }}
 
   build-ml-engine-docker-images:
     environment: shared-protected-branch-secrets
@@ -416,6 +450,10 @@ jobs:
       contains(github.event.head_commit.message, 'Increment arthur-engine version') &&
       (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
     steps:
       - uses: mathio/gha-cleanup@v1
         with:
@@ -449,6 +487,13 @@ jobs:
             docker tag arthurplatform/ml-engine:${{ env.VERSION }} arthurplatform/ml-engine:latest-dev
             docker push arthurplatform/ml-engine:latest-dev
           fi
+      # Advisory vulnerability scan + justification docs (must never fail the release build).
+      - name: Scan image & generate justification docs
+        continue-on-error: true
+        uses: ./.github/workflows/composite-actions/vuln-report
+        with:
+          image: arthurplatform/ml-engine:${{ env.VERSION }}
+          slug: ml-engine
       - name: Login to Artifactory
         run: |
           docker logout

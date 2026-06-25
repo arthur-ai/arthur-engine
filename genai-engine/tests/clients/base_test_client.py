@@ -57,9 +57,9 @@ from arthur_common.models.response_schemas import (
 from arthur_common.models.task_eval_schemas import (
     ContinuousEvalResponse,
     ContinuousEvalVariableMappingResponse,
+    Eval,
     ListContinuousEvalsResponse,
     ListTraceTransformsResponse,
-    LLMEval,
     TraceTransformResponse,
 )
 from pydantic import TypeAdapter
@@ -130,6 +130,8 @@ from schemas.response_schemas import (
     SessionTracesResponse,
     SpanListResponse,
     TraceListResponse,
+    TraceOverviewListResponse,
+    TraceTimeSeriesResponse,
     TraceTransformVersionResponse,
     TraceUserListResponse,
     TraceUserMetadataResponse,
@@ -1482,7 +1484,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         resp = self.base_client.post(
             path,
             headers=self.authorized_org_admin_api_key_headers,
-            data=request_body.model_dump_json(),
+            json=request_body.model_dump(mode="json"),
         )
         log_response(resp)
 
@@ -1544,7 +1546,7 @@ class GenaiEngineTestClientBase(httpx.Client):
 
         resp = self.base_client.post(
             path,
-            data=password_request.model_dump_json(),
+            json=password_request.model_dump(mode="json"),
             headers=self.authorized_chat_headers,
         )
 
@@ -2343,6 +2345,62 @@ class GenaiEngineTestClientBase(httpx.Client):
             ),
         )
 
+    def trace_api_get_traces_overview(
+        self,
+        start_time: datetime,
+        end_time: datetime,
+        task_ids: list[str] | None = None,
+    ) -> tuple[int, TraceOverviewListResponse | str]:
+        """Get per-task trace overview metrics."""
+        body = {
+            "task_ids": task_ids,
+            "start_time": str(start_time),
+            "end_time": str(end_time),
+        }
+        resp = self.base_client.post(
+            "/api/v1/traces/overview",
+            json=body,
+            headers=self.authorized_user_api_key_headers,
+        )
+        log_response(resp)
+        return (
+            resp.status_code,
+            (
+                TraceOverviewListResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.text
+            ),
+        )
+
+    def trace_api_get_traces_timeseries(
+        self,
+        task_id: str,
+        start_time: datetime,
+        end_time: datetime,
+        bucket_size: str,
+    ) -> tuple[int, TraceTimeSeriesResponse | str]:
+        """Get time-bucketed trace metrics for a single task."""
+        body = {
+            "task_id": task_id,
+            "start_time": str(start_time),
+            "end_time": str(end_time),
+            "bucket_size": bucket_size,
+        }
+        resp = self.base_client.post(
+            "/api/v1/traces/overview/timeseries",
+            json=body,
+            headers=self.authorized_user_api_key_headers,
+        )
+        log_response(resp)
+        return (
+            resp.status_code,
+            (
+                TraceTimeSeriesResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.text
+            ),
+        )
+
     def trace_api_get_trace_by_id(
         self,
         trace_id: str,
@@ -2643,6 +2701,8 @@ class GenaiEngineTestClientBase(httpx.Client):
         page_size: int | None = None,
         sort: str | None = None,
         user_ids: list[str] | None = None,
+        trace_ids: list[str] | None = None,
+        session_ids: list[str] | None = None,
     ) -> tuple[int, SessionListResponse | str]:
         """Get session metadata with pagination and filtering.
 
@@ -2653,6 +2713,9 @@ class GenaiEngineTestClientBase(httpx.Client):
             page: Page number for pagination
             page_size: Number of items per page
             sort: Sort order ("asc" or "desc")
+            user_ids: User IDs to filter on
+            trace_ids: Trace IDs to filter on (sessions containing a matching trace)
+            session_ids: Session IDs to filter on
 
         Returns:
             tuple[int, SessionListResponse | str]: Status code and response
@@ -2670,6 +2733,10 @@ class GenaiEngineTestClientBase(httpx.Client):
             params["sort"] = sort
         if user_ids is not None:
             params["user_ids"] = user_ids
+        if trace_ids is not None:
+            params["trace_ids"] = trace_ids
+        if session_ids is not None:
+            params["session_ids"] = session_ids
 
         resp = self.base_client.get(
             f"/api/v1/traces/sessions?{urllib.parse.urlencode(params, doseq=True)}",
@@ -2968,7 +3035,7 @@ class GenaiEngineTestClientBase(httpx.Client):
 
         resp = self.base_client.post(
             f"/api/v2/datasets/{dataset_id}/versions",
-            data=request.model_dump_json(),
+            json=request.model_dump(mode="json"),
             headers=self.authorized_user_api_key_headers,
         )
 
@@ -3109,7 +3176,7 @@ class GenaiEngineTestClientBase(httpx.Client):
 
         resp = self.base_client.post(
             f"/api/v1/tasks/{task_id}/rag_providers",
-            data=request.model_dump_json(),
+            json=request.model_dump(mode="json"),
             headers=self.authorized_user_api_key_headers,
         )
 
@@ -3173,7 +3240,7 @@ class GenaiEngineTestClientBase(httpx.Client):
 
         resp = self.base_client.patch(
             f"/api/v1/rag_providers/{provider_id}",
-            data=request.model_dump_json(),
+            json=request.model_dump(mode="json"),
             headers=self.authorized_user_api_key_headers,
         )
 
@@ -3263,7 +3330,7 @@ class GenaiEngineTestClientBase(httpx.Client):
 
         resp = self.base_client.post(
             f"/api/v1/tasks/{task_id}/rag_providers/test_connection",
-            data=request.model_dump_json(),
+            json=request.model_dump(mode="json"),
             headers=self.authorized_user_api_key_headers,
         )
 
@@ -3313,7 +3380,7 @@ class GenaiEngineTestClientBase(httpx.Client):
 
         resp = self.base_client.post(
             f"/api/v1/rag_providers/{provider_id}/similarity_text_search",
-            data=request.model_dump_json(),
+            json=request.model_dump(mode="json"),
             headers=self.authorized_user_api_key_headers,
         )
 
@@ -3359,7 +3426,7 @@ class GenaiEngineTestClientBase(httpx.Client):
 
         resp = self.base_client.post(
             f"/api/v1/rag_providers/{provider_id}/keyword_search",
-            data=request.model_dump_json(),
+            json=request.model_dump(mode="json"),
             headers=self.authorized_user_api_key_headers,
         )
 
@@ -3425,7 +3492,7 @@ class GenaiEngineTestClientBase(httpx.Client):
 
         resp = self.base_client.post(
             f"/api/v1/rag_providers/{provider_id}/hybrid_search",
-            data=request.model_dump_json(),
+            json=request.model_dump(mode="json"),
             headers=self.authorized_user_api_key_headers,
         )
 
@@ -3484,7 +3551,7 @@ class GenaiEngineTestClientBase(httpx.Client):
 
         resp = self.base_client.post(
             f"/api/v1/tasks/{task_id}/rag_search_settings",
-            data=request.model_dump_json(),
+            json=request.model_dump(mode="json"),
             headers=self.authorized_user_api_key_headers,
         )
 
@@ -3536,7 +3603,7 @@ class GenaiEngineTestClientBase(httpx.Client):
 
         resp = self.base_client.patch(
             f"/api/v1/rag_search_settings/{setting_configuration_id}",
-            data=request.model_dump_json(),
+            json=request.model_dump(mode="json"),
             headers=self.authorized_user_api_key_headers,
         )
 
@@ -3640,7 +3707,7 @@ class GenaiEngineTestClientBase(httpx.Client):
 
         resp = self.base_client.post(
             f"/api/v1/tasks/{task_id}/rag_search_settings",
-            data=request.model_dump_json(),
+            json=request.model_dump(mode="json"),
             headers=self.authorized_user_api_key_headers,
         )
 
@@ -3694,7 +3761,7 @@ class GenaiEngineTestClientBase(httpx.Client):
 
         resp = self.base_client.post(
             f"/api/v1/tasks/{task_id}/rag_search_settings",
-            data=request.model_dump_json(),
+            json=request.model_dump(mode="json"),
             headers=self.authorized_user_api_key_headers,
         )
 
@@ -3723,7 +3790,7 @@ class GenaiEngineTestClientBase(httpx.Client):
 
         resp = self.base_client.post(
             f"/api/v1/rag_search_settings/{setting_configuration_id}/versions",
-            data=request.model_dump_json(),
+            json=request.model_dump(mode="json"),
             headers=self.authorized_user_api_key_headers,
         )
 
@@ -3818,7 +3885,7 @@ class GenaiEngineTestClientBase(httpx.Client):
 
         resp = self.base_client.patch(
             f"/api/v1/rag_search_settings/{setting_configuration_id}/versions/{version_number}",
-            data=request.model_dump_json(),
+            json=request.model_dump(mode="json"),
             headers=self.authorized_user_api_key_headers,
         )
 
@@ -3916,7 +3983,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         task_id: str,
         llm_eval_name: str,
         llm_eval_data: dict,
-    ) -> tuple[int, LLMEval]:
+    ) -> tuple[int, Eval]:
         """Save an llm eval."""
         resp = self.base_client.post(
             f"/api/v1/tasks/{task_id}/llm_evals/{llm_eval_name}",
@@ -3929,7 +3996,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         return (
             resp.status_code,
             (
-                LLMEval.model_validate(resp.json())
+                Eval.model_validate(resp.json())
                 if resp.status_code == 200
                 else resp.json()
             ),

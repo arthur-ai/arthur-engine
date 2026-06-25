@@ -1,12 +1,12 @@
-import matter from "gray-matter";
 import type { ReactNode } from "react";
+import { parse as parseYaml, type ParseOptions, type SchemaOptions, type ToJSOptions } from "yaml";
 
 import { Markdown } from "../components/Markdown";
 import type { TaskTourItem, TaskTourSection } from "../data";
 
 import { resolveAssetSrc } from "./assetMap";
 import { MetaFrontmatterSchema, SectionFrontmatterSchema, type MetaFrontmatter, type SectionFrontmatter } from "./schema";
-import { TASK_TOUR_WIRING } from "./wiring";
+import { TASK_TOUR_WIRING, type SectionWiring } from "./wiring";
 
 /**
  * Raw markdown sources for every section file, keyed by Vite-relative path
@@ -21,6 +21,19 @@ const rawSectionFiles = import.meta.glob("./*.md", {
 
 /** Pattern for a top-level body heading inside a section file. */
 const HEADING_PATTERN = /^##\s+(.+?)\s*$/;
+
+/** Hardened YAML parse options for author frontmatter (trusted but parsed on every build). */
+const FRONTMATTER_YAML_OPTIONS = {
+  strict: true,
+  schema: "core",
+  merge: false,
+  maxAliasCount: 0,
+} as const satisfies ParseOptions & SchemaOptions & ToJSOptions;
+
+type ParsedFrontmatter = {
+  data: Record<string, unknown>;
+  content: string;
+};
 
 /**
  * A failure during load surfaces as a clear, prefixed error so the Vite
@@ -94,12 +107,7 @@ function resolveHeroOrThrow(file: string, src: string): string {
  * are all identical (or all empty, for stub sections). Surfaces a precise
  * mismatch message so authors can fix the source of truth, not guess.
  */
-function checkStepConsistency(file: string, sectionId: string, frontmatterStepIds: readonly string[], bodyStepIds: readonly string[]): void {
-  const wiring = TASK_TOUR_WIRING[sectionId];
-  if (!wiring) {
-    fail(file, `section id "${sectionId}" has no entry in content/wiring.ts`);
-  }
-
+function checkStepConsistency(file: string, wiring: SectionWiring, frontmatterStepIds: readonly string[], bodyStepIds: readonly string[]): void {
   const wiringStepIds = Object.keys(wiring.steps);
 
   const sameSet = (a: readonly string[], b: readonly string[]): boolean => a.length === b.length && a.every((id) => b.includes(id));
@@ -119,8 +127,7 @@ function checkStepConsistency(file: string, sectionId: string, frontmatterStepId
  * wiring map (which holds the targetId / route / eventName / advance) and the
  * body's per-step prose (pre-rendered to ReactNode).
  */
-function buildItems(sectionId: string, frontmatter: SectionFrontmatter, bodyStepText: Record<string, string>): TaskTourItem[] {
-  const wiring = TASK_TOUR_WIRING[sectionId];
+function buildItems(wiring: SectionWiring, frontmatter: SectionFrontmatter, bodyStepText: Record<string, string>): TaskTourItem[] {
   return frontmatter.steps.map((step) => {
     const wired = wiring.steps[step.id];
     return {
@@ -138,21 +145,63 @@ function buildItems(sectionId: string, frontmatter: SectionFrontmatter, bodyStep
       popover: wired.popover,
       formPrefill: wired.formPrefill,
       blockInteraction: wired.blockInteraction,
+      surfacesOpen: wired.surfacesOpen,
+      surfacesKeep: wired.surfacesKeep,
     };
   });
 }
 
 /**
- * Wrap `gray-matter` so YAML parse failures surface as our prefixed error
+ * Split Jekyll-style `---` frontmatter from the markdown body. Uses line-based
+ * delimiter detection (not regex) so BOM handling and missing closing fences
+ * produce precise author-facing errors.
+ */
+function splitFrontmatter(file: string, raw: string): { yamlBlock: string | null; body: string } {
+  const text = raw.replace(/^\uFEFF/, "");
+  const lines = text.split(/\r?\n/);
+  if (lines[0] !== "---") {
+    return { yamlBlock: null, body: text };
+  }
+
+  const closingIndex = lines.findIndex((line, index) => index > 0 && line === "---");
+  if (closingIndex === -1) {
+    fail(file, "frontmatter opens with --- but is missing a closing --- delimiter");
+  }
+
+  return {
+    yamlBlock: lines.slice(1, closingIndex).join("\n"),
+    body: lines.slice(closingIndex + 1).join("\n"),
+  };
+}
+
+/**
+ * Split Jekyll-style `---` frontmatter from the markdown body and parse the
+ * YAML block with `yaml`. Parse failures surface as our prefixed error
  * pointing at the offending file, rather than the library's stack trace.
  */
-function parseFrontmatter(file: string, raw: string): ReturnType<typeof matter> {
+export function parseFrontmatter(file: string, raw: string): ParsedFrontmatter {
+  const { yamlBlock, body } = splitFrontmatter(file, raw);
+  if (yamlBlock === null) {
+    return { data: {}, content: body };
+  }
+
+  if (yamlBlock.trim() === "") {
+    return { data: {}, content: body };
+  }
+
+  let data: unknown;
   try {
-    return matter(raw);
+    data = parseYaml(yamlBlock, FRONTMATTER_YAML_OPTIONS);
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err);
     fail(file, `failed to parse frontmatter (check YAML indentation and quoting): ${detail}`);
   }
+
+  if (data === null || typeof data !== "object" || Array.isArray(data)) {
+    fail(file, "frontmatter must be a YAML mapping (key: value), not a scalar or list");
+  }
+
+  return { data: data as Record<string, unknown>, content: body };
 }
 
 /**
@@ -185,7 +234,7 @@ function parseSection(file: string, raw: string): TaskTourSection {
 
   checkStepConsistency(
     file,
-    frontmatter.id,
+    wiring,
     frontmatter.steps.map((s) => s.id),
     Object.keys(body.steps)
   );
@@ -220,7 +269,7 @@ function parseSection(file: string, raw: string): TaskTourSection {
             }
           : undefined,
     },
-    items: isIntroOnly ? [] : buildItems(frontmatter.id, frontmatter, body.steps),
+    items: isIntroOnly ? [] : buildItems(wiring, frontmatter, body.steps),
   };
 }
 
@@ -269,7 +318,7 @@ function loadSections(): TaskTourSection[] {
   return entries.map(([file, raw]) => parseSection(file, raw));
 }
 
-/** Top-level tour labels (title, short name, subtitle). */
+/** Top-level tour labels (title, short name). */
 export const TASK_TOUR_META: MetaFrontmatter = loadMeta();
 
 /** Ordered list of tour sections, ready to be consumed by `tour-config.ts`. */
