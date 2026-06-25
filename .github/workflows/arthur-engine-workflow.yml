@@ -386,6 +386,10 @@ jobs:
       (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
     runs-on: ubuntu-latest
     timeout-minutes: 90
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
     strategy:
       matrix:
         torch_device: [cpu, gpu]
@@ -432,6 +436,13 @@ jobs:
             ${{ github.ref == 'refs/heads/dev' && format('arthurplatform/genai-engine-{0}:latest-dev', matrix.torch_device) || '' }}
           push: true
           platforms: ${{ matrix.torch_device == 'cpu' && 'linux/amd64,linux/arm64' || 'linux/amd64' }}
+      # Advisory vulnerability scan + justification docs (must never fail the release build).
+      - name: Scan image & generate justification docs
+        continue-on-error: true
+        uses: ./.github/workflows/composite-actions/vuln-report
+        with:
+          image: arthurplatform/genai-engine-${{ matrix.torch_device }}:${{ env.VERSION }}
+          slug: genai-${{ matrix.torch_device }}
 
   build-ml-engine-docker-images:
     environment: shared-protected-branch-secrets
@@ -439,6 +450,10 @@ jobs:
       contains(github.event.head_commit.message, 'Increment arthur-engine version') &&
       (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
     steps:
       - uses: mathio/gha-cleanup@v1
         with:
@@ -472,6 +487,13 @@ jobs:
             docker tag arthurplatform/ml-engine:${{ env.VERSION }} arthurplatform/ml-engine:latest-dev
             docker push arthurplatform/ml-engine:latest-dev
           fi
+      # Advisory vulnerability scan + justification docs (must never fail the release build).
+      - name: Scan image & generate justification docs
+        continue-on-error: true
+        uses: ./.github/workflows/composite-actions/vuln-report
+        with:
+          image: arthurplatform/ml-engine:${{ env.VERSION }}
+          slug: ml-engine
       - name: Login to Artifactory
         run: |
           docker logout

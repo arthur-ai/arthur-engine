@@ -1,0 +1,54 @@
+name: Scheduled image vulnerability scan
+
+# Re-scans the published customer-facing images daily so newly-disclosed CVEs surface (and the
+# justification reports regenerate) even when no new release was built. Advisory only — this
+# workflow never gates anything. Findings land in Security -> Code scanning; SBOM + per-image
+# justification reports are uploaded as workflow artifacts.
+
+on:
+  schedule:
+    # Daily at 09:00 UTC
+    - cron: "0 9 * * *"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Image tag to scan (e.g. latest, latest-dev)"
+        type: string
+        required: false
+        default: "latest"
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
+jobs:
+  scan:
+    environment: shared-protected-branch-secrets
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { image: arthurplatform/genai-engine-cpu, slug: genai-cpu }
+          - { image: arthurplatform/genai-engine-gpu, slug: genai-gpu }
+          - { image: arthurplatform/ml-engine, slug: ml-engine }
+          - { image: arthurplatform/genai-engine-models-s3, slug: models-s3 }
+          - { image: arthurplatform/genai-engine-models-fs, slug: models-fs }
+          - { image: arthurplatform/genai-engine-models-gcs, slug: models-gcs }
+    steps:
+      - uses: actions/checkout@v5
+      - name: Resolve tag
+        id: tag
+        shell: bash
+        run: echo "value=${{ github.event.inputs.tag || 'latest' }}" >> "$GITHUB_OUTPUT"
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3.6.0
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+      - name: Scan image & generate justification docs
+        uses: ./.github/workflows/composite-actions/vuln-report
+        with:
+          image: ${{ matrix.image }}:${{ steps.tag.outputs.value }}
+          slug: ${{ matrix.slug }}
