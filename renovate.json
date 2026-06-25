@@ -21,6 +21,16 @@
     {
       "matchPackageNames": ["python", "torch", "numpy"],
       "enabled": false
+    },
+    {
+      "matchManagers": ["npm"],
+      "reviewers": ["TheLukaszNs-Blazity", "xV3rt", "martin-arthur-ai"],
+      "reviewersSampleSize": 1
+    },
+    {
+      "matchManagers": ["pep621"],
+      "reviewers": ["notthattal", "videetparekh", "mcgrawia"],
+      "reviewersSampleSize": 1
     }
   ]
 }

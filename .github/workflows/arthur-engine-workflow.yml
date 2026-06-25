@@ -223,6 +223,7 @@ jobs:
       github.ref != 'refs/heads/dev' &&
       needs.check-genai-engine-changes.outputs.ui == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     env:
       GITLAB_UNIFY_FRONTEND_TOKEN: ${{ secrets.GITLAB_UNIFY_FRONTEND_TOKEN }}
     defaults:
@@ -237,7 +238,12 @@ jobs:
       - name: Enable Corepack
         run: corepack enable
       - name: Install dependencies
-        run: yarn install --immutable
+        env:
+          YARN_ENABLE_INLINE_BUILDS: "1"
+          YARN_ENABLE_PROGRESS_BARS: "false"
+          YARN_HTTP_TIMEOUT: "120000"
+          YARN_HTTP_RETRY: "5"
+        run: yarn install --immutable --inline-builds
       - name: Run type-check
         id: type-check
         continue-on-error: true
@@ -379,6 +385,7 @@ jobs:
       contains(github.event.head_commit.message, 'Increment arthur-engine version') &&
       (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
     runs-on: ubuntu-latest
+    timeout-minutes: 90
     strategy:
       matrix:
         torch_device: [cpu, gpu]
@@ -417,6 +424,7 @@ jobs:
             GITLAB_UNIFY_FRONTEND_TOKEN=${{ secrets.GITLAB_UNIFY_FRONTEND_TOKEN }}
             AMPLITUDE_API_KEY=${{ secrets.AMPLITUDE_API_KEY }}
             VITE_AMPLITUDE_DEPLOYMENT_KEY=${{ secrets.AMPLITUDE_DEPLOYMENT_KEY }}
+            VITE_AMPLITUDE_REPLAY_SAMPLE_RATE=${{ vars.AMPLITUDE_REPLAY_SAMPLE_RATE }}
             RECAPTCHA_ENTERPRISE_SITE_KEY=${{ secrets.RECAPTCHA_ENTERPRISE_SITE_KEY }}
           tags: |
             arthurplatform/genai-engine-${{ matrix.torch_device }}:${{ env.VERSION }}
