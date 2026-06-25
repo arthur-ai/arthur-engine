@@ -1,14 +1,32 @@
-import { Add, Close, FilterList } from "@mui/icons-material";
-import { Box, Button, Chip, IconButton, Paper, Popover, Stack, TextField, Typography } from "@mui/material";
+import { FilterList } from "@mui/icons-material";
+import { Box, Button, Paper, Popover, Stack } from "@mui/material";
 import { useEffect, useRef, useState } from "react";
 
 import { useFilterStore } from "../../../stores/filter.store";
 import type { IncomingFilter } from "../../filtering/mapper";
 import { Operators } from "../../filtering/types";
 
+import { ChipListField } from "./ChipListField";
+
 interface FilterState {
+  traceIds: string[];
+  sessionIds: string[];
   userIds: string[];
 }
+
+const EMPTY_FILTER_STATE: FilterState = {
+  traceIds: [],
+  sessionIds: [],
+  userIds: [],
+};
+
+const SESSION_FILTER_FIELDS = [
+  { key: "traceIds", name: "trace_ids", label: "Trace ID", placeholder: "Enter Trace ID" },
+  { key: "sessionIds", name: "session_ids", label: "Session ID", placeholder: "Enter Session ID" },
+  { key: "userIds", name: "user_ids", label: "User ID", placeholder: "Enter User ID" },
+] as const satisfies readonly { key: keyof FilterState; name: string; label: string; placeholder: string }[];
+
+const FILTER_NAME_TO_KEY = new Map<string, keyof FilterState>(SESSION_FILTER_FIELDS.map((field) => [field.name, field.key]));
 
 export const SessionsFilterModal = () => {
   const anchorElRef = useRef<HTMLButtonElement | null>(null);
@@ -16,23 +34,18 @@ export const SessionsFilterModal = () => {
   const setFilters = useFilterStore((state) => state.setFilters);
   const currentFilters = useFilterStore((state) => state.filters);
 
-  const [filterState, setFilterState] = useState<FilterState>({
-    userIds: [],
-  });
-
-  const [userIdInput, setUserIdInput] = useState("");
+  const [filterState, setFilterState] = useState<FilterState>(EMPTY_FILTER_STATE);
   const [pendingFilters, setPendingFilters] = useState<IncomingFilter[] | null>(null);
 
   // Populate filter state from currentFilters when modal opens
   useEffect(() => {
     if (open) {
-      const newFilterState: FilterState = {
-        userIds: [],
-      };
+      const newFilterState: FilterState = { ...EMPTY_FILTER_STATE };
 
       currentFilters.forEach((filter) => {
-        if (filter.name === "user_ids") {
-          newFilterState.userIds = Array.isArray(filter.value) ? filter.value : [];
+        const key = FILTER_NAME_TO_KEY.get(filter.name);
+        if (key) {
+          newFilterState[key] = Array.isArray(filter.value) ? filter.value : [filter.value];
         }
       });
 
@@ -51,46 +64,38 @@ export const SessionsFilterModal = () => {
     }
   };
 
-  const handleAddUserId = (value: string) => {
-    if (value.trim()) {
-      setFilterState((prev) => ({
-        ...prev,
-        userIds: [...prev.userIds, value.trim()],
-      }));
-      setUserIdInput("");
-    }
+  const addId = (key: keyof FilterState, value: string) => {
+    setFilterState((prev) => (prev[key].includes(value) ? prev : { ...prev, [key]: [...prev[key], value] }));
   };
 
-  const handleRemoveUserId = (id: string) => {
-    setFilterState((prev) => ({
-      ...prev,
-      userIds: prev.userIds.filter((item) => item !== id),
-    }));
+  const removeId = (key: keyof FilterState, value: string) => {
+    setFilterState((prev) => ({ ...prev, [key]: prev[key].filter((item) => item !== value) }));
   };
 
   const handleApplyFilters = () => {
     const filters: IncomingFilter[] = [];
 
-    if (filterState.userIds.length > 0) {
-      filters.push({
-        name: "user_ids",
-        operator: Operators.IN,
-        value: filterState.userIds,
-      });
-    }
+    SESSION_FILTER_FIELDS.forEach((field) => {
+      const value = filterState[field.key];
+      if (value.length > 0) {
+        filters.push({
+          name: field.name,
+          operator: Operators.IN,
+          value,
+        });
+      }
+    });
 
     setPendingFilters(filters);
     handleClose();
   };
 
   const handleClearFilters = () => {
-    setFilterState({
-      userIds: [],
-    });
+    setFilterState(EMPTY_FILTER_STATE);
     setFilters([]);
   };
 
-  const hasActiveFilters = filterState.userIds.length > 0;
+  const hasActiveFilters = Object.values(filterState).some((ids) => ids.length > 0);
 
   return (
     <>
@@ -125,41 +130,16 @@ export const SessionsFilterModal = () => {
         <Paper sx={{ width: 400, maxHeight: 600, display: "flex", flexDirection: "column" }}>
           <Box sx={{ p: 2, overflowY: "auto", flex: 1 }}>
             <Stack spacing={3}>
-              {/* User IDs */}
-              <Box>
-                <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
-                  User ID
-                </Typography>
-                <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
-                  <TextField
-                    size="small"
-                    fullWidth
-                    value={userIdInput}
-                    onChange={(e) => setUserIdInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        handleAddUserId(userIdInput);
-                      }
-                    }}
-                    placeholder="Enter User ID"
-                    autoComplete="off"
-                    slotProps={{
-                      htmlInput: {
-                        "data-1p-ignore": true,
-                      },
-                    }}
-                  />
-                  <IconButton size="small" onClick={() => handleAddUserId(userIdInput)} disabled={!userIdInput.trim()} color="primary">
-                    <Add />
-                  </IconButton>
-                </Stack>
-                <Stack direction="row" flexWrap="wrap" gap={1}>
-                  {filterState.userIds.map((id) => (
-                    <Chip key={id} label={id} size="small" onDelete={() => handleRemoveUserId(id)} deleteIcon={<Close />} />
-                  ))}
-                </Stack>
-              </Box>
+              {SESSION_FILTER_FIELDS.map((field) => (
+                <ChipListField
+                  key={field.key}
+                  label={field.label}
+                  placeholder={field.placeholder}
+                  values={filterState[field.key]}
+                  onAdd={(value) => addId(field.key, value)}
+                  onRemove={(value) => removeId(field.key, value)}
+                />
+              ))}
             </Stack>
           </Box>
 
