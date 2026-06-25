@@ -13,7 +13,7 @@ ARG BACKEND=s3
 # =============================================================================
 # Stage 1: Download models (shared across all backends)
 # =============================================================================
-FROM python:3.12-slim AS downloader
+FROM python:3.14-slim AS downloader
 ARG BACKEND
 
 WORKDIR /app
@@ -33,7 +33,7 @@ RUN python download_models.py --output-dir /models --workers 4
 #   - gcs: google-cloud-storage
 #   - pvc: nothing (stdlib only)
 # =============================================================================
-FROM python:3.12-slim AS builder
+FROM python:3.14-slim AS builder
 ARG BACKEND
 
 WORKDIR /app
@@ -87,7 +87,7 @@ ENTRYPOINT ["python", "/app/upload_models.py"]
 # =============================================================================
 # Runtime: GCP / GCS  (slim — google-auth requires libffi)
 # =============================================================================
-FROM python:3.12-slim AS runtime-gcs
+FROM python:3.14-slim AS runtime-gcs
 
 RUN useradd --uid 65532 --no-create-home nonroot
 
