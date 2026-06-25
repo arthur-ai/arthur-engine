@@ -4,6 +4,11 @@ name: Scheduled image vulnerability scan
 # justification reports regenerate) even when no new release was built. Advisory only — this
 # workflow never gates anything. Findings land in Security -> Code scanning; SBOM + per-image
 # justification reports are uploaded as workflow artifacts.
+#
+# Tag selection: by default we scan the PRODUCTION version, read from main's `version` file
+# (e.g. 2.1.656 -> arthurplatform/genai-engine-cpu:2.1.656). That is the version-pinned tag
+# customers run; we deliberately avoid the floating `latest` tag. Override via the `tag` input
+# (e.g. to scan a specific release or a `*-dev` staging tag).
 
 on:
   schedule:
@@ -12,10 +17,10 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Image tag to scan (e.g. latest, latest-dev)"
+        description: "Image tag to scan (default: production version from main's version file)"
         type: string
         required: false
-        default: "latest"
+        default: ""
 
 permissions:
   contents: read
@@ -38,10 +43,21 @@ jobs:
           - { image: arthurplatform/genai-engine-models-gcs, slug: models-gcs }
     steps:
       - uses: actions/checkout@v5
-      - name: Resolve tag
+      - name: Resolve image tag (production version from main's version file)
         id: tag
         shell: bash
-        run: echo "value=${{ github.event.inputs.tag || 'latest' }}" >> "$GITHUB_OUTPUT"
+        run: |
+          set -euo pipefail
+          OVERRIDE="${{ github.event.inputs.tag }}"
+          if [ -n "${OVERRIDE}" ]; then
+            TAG="${OVERRIDE}"
+          else
+            # Read the released production version from main (this branch may be ahead/-dev).
+            git fetch origin main --depth=1 >/dev/null 2>&1
+            TAG="$(git show origin/main:version)"
+          fi
+          echo "Scanning tag: ${TAG}"
+          echo "value=${TAG}" >> "$GITHUB_OUTPUT"
       - name: Log in to Docker Hub
         uses: docker/login-action@v3.6.0
         with:
