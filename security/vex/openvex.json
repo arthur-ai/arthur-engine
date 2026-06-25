@@ -1,0 +1,22 @@
+{
+  "@context": "https://openvex.dev/ns/v0.2.0",
+  "@id": "https://arthur.ai/vex/arthur-engine",
+  "author": "Arthur Security <security@arthur.ai>",
+  "role": "Document Creator",
+  "timestamp": "2026-06-25T00:00:00.000000000-00:00",
+  "version": 1,
+  "statements": [
+    {
+      "_comment": "EXAMPLE / TEMPLATE statement. Replace with real triaged CVEs. One statement per (vulnerability, product). 'products' @id should match the image purl reported by the scanner, e.g. pkg:oci/genai-engine-cpu. Remove this example once real statements exist.",
+      "vulnerability": {
+        "name": "CVE-0000-00000"
+      },
+      "products": [
+        { "@id": "pkg:oci/genai-engine-cpu" },
+        { "@id": "pkg:oci/genai-engine-gpu" },
+        { "@id": "pkg:oci/ml-engine" }
+      ],
+      "status": "under_investigation"
+    }
+  ]
+}

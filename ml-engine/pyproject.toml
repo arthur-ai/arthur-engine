@@ -1,6 +1,6 @@
 [project]
 name = "ml-engine"
-version = "2.1.656"
+version = "2.1.663"
 description = ""
 authors = [{ name = "Arthur", email = "engineering@arthur.ai" }]
 license = "MIT"
@@ -20,7 +20,7 @@ dependencies = [
   "pymysql==1.1.2",
   "pyodbc==5.2.0",
   "pyyaml==6.0.3",
-  "requests==2.32.5",
+  "requests==2.33.0",
   "adlfs==2025.8.0",
   "s3fs==2025.12.0",
   "simple-settings==1.2.0",
