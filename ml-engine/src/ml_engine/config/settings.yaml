@@ -23,4 +23,4 @@ SEGMENTATION_COL_UNIQUE_VALUE_LIMIT: 100
 # Timeout increased to 10 minutes to allow for larger datasets and more complex aggregations
 ML_ENGINE_AGGREGATION_TIMEOUT: 600
 ###############################################
-KEYCLOAK_SSL_VERIFY: true
+ARTHUR_API_HOST_SSL_VERIFY: true
