@@ -413,8 +413,8 @@ jobs:
       - name: Log in to Docker Hub
         uses: docker/login-action@v3.6.0
         with:
-          username: ${{ secrets.DOCKER_HUB_USERNAME }}
-          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+          username: ${{ secrets.DOCKERHUB_ENTERPRISE_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_ENTERPRISE_TOKEN }}
       - name: Build and push docker image
         uses: docker/build-push-action@v6.18.0
         with:
@@ -443,8 +443,8 @@ jobs:
         with:
           image: arthurplatform/genai-engine-${{ matrix.torch_device }}:${{ env.VERSION }}
           slug: genai-${{ matrix.torch_device }}
-          dockerhub-username: ${{ secrets.DOCKER_HUB_USERNAME }}
-          dockerhub-token: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+          dockerhub-username: ${{ secrets.DOCKERHUB_ENTERPRISE_USERNAME }}
+          dockerhub-token: ${{ secrets.DOCKERHUB_ENTERPRISE_TOKEN }}
 
   build-ml-engine-docker-images:
     environment: shared-protected-branch-secrets
@@ -474,8 +474,8 @@ jobs:
       - name: Log in to Docker Hub
         uses: docker/login-action@v3.6.0
         with:
-          username: ${{ secrets.DOCKER_HUB_USERNAME }}
-          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+          username: ${{ secrets.DOCKERHUB_ENTERPRISE_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_ENTERPRISE_TOKEN }}
       - name: Build and push docker image (no buildx)
         run: |
           cd ml-engine
@@ -496,8 +496,8 @@ jobs:
         with:
           image: arthurplatform/ml-engine:${{ env.VERSION }}
           slug: ml-engine
-          dockerhub-username: ${{ secrets.DOCKER_HUB_USERNAME }}
-          dockerhub-token: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+          dockerhub-username: ${{ secrets.DOCKERHUB_ENTERPRISE_USERNAME }}
+          dockerhub-token: ${{ secrets.DOCKERHUB_ENTERPRISE_TOKEN }}
       - name: Login to Artifactory
         run: |
           docker logout
@@ -584,8 +584,8 @@ jobs:
       - name: Log in to Docker Hub
         uses: docker/login-action@v3.6.0
         with:
-          username: ${{ secrets.DOCKER_HUB_USERNAME }}
-          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+          username: ${{ secrets.DOCKERHUB_ENTERPRISE_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_ENTERPRISE_TOKEN }}
       - name: Retag previous models image with new version
         run: |
           SOURCE_TAG=${{ github.ref == 'refs/heads/main' && 'latest' || 'latest-dev' }}
@@ -629,8 +629,8 @@ jobs:
       - name: Log in to Docker Hub
         uses: docker/login-action@v3.6.0
         with:
-          username: ${{ secrets.DOCKER_HUB_USERNAME }}
-          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+          username: ${{ secrets.DOCKERHUB_ENTERPRISE_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_ENTERPRISE_TOKEN }}
       - name: Retag previous models fs image with new version
         run: |
           SOURCE_TAG=${{ github.ref == 'refs/heads/main' && 'latest' || 'latest-dev' }}
@@ -709,7 +709,7 @@ jobs:
           echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u ${{ github.actor }} --password-stdin
       - name: Login to Docker Hub
         run: |
-          echo "${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}" | helm registry login registry-1.docker.io -u ${{ secrets.DOCKER_HUB_USERNAME }} --password-stdin
+          echo "${{ secrets.DOCKERHUB_ENTERPRISE_TOKEN }}" | helm registry login registry-1.docker.io -u ${{ secrets.DOCKERHUB_ENTERPRISE_USERNAME }} --password-stdin
       - name: Package and Push Helm chart
         env:
           CHART_PATH_GENAI_ENGINE: "deployment/helm/genai-engine"
