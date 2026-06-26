@@ -1,3 +1,4 @@
+import { createTourEngine, TourProvider } from "@arthur/shared-components/tour";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -6,7 +7,6 @@ import { storeRecipientName } from "../recipientName";
 
 import { CertificateWidget } from "./CertificateWidget";
 
-import { createTourEngine, TourProvider } from "@/features/tour";
 import { track } from "@/services/analytics";
 
 vi.mock("@arthur/shared-components", () => ({
