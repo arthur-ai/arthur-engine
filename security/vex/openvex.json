@@ -5,6 +5,7 @@
   "role": "Document Creator",
   "timestamp": "2026-06-26T00:00:00.000000000-00:00",
   "version": 2,
+  "_comment": "Scope: CVEs a container image re-scan still reports for genai-engine/ml-engine but that are not fixed in the package metadata the scanner reads. CVEs that are fully remediated (python3.11 removed from the image; litellm >= 1.83.10) are intentionally excluded — see PR #1851 and CVE-JUSTIFICATIONS.md.",
   "statements": [
     {
       "_comment": "libssl3: the shipped libssl.so.3/libcrypto.so.3 is OpenSSL 3.0.20 (deb 3.0.20-1~deb12u2), copied from the apt-upgraded *-slim-bookworm build stage over the distroless base. Scanners read stale dpkg metadata (3.0.19-1~deb12u2) inherited from the distroless base. The shipped binary contains the fix. See CVE-JUSTIFICATIONS.md.",
@@ -117,30 +118,6 @@
       "status": "fixed"
     },
     {
-      "_comment": "python3.11: the unused Python 3.11 runtime inherited from the distroless base (the app runs Python 3.12/3.13 from /usr/local) was deleted from the image — files AND dpkg metadata — so the component is no longer present. Affects libpython3.11-minimal, libpython3.11-stdlib, python3.11-minimal.",
-      "vulnerability": { "name": "CVE-2025-8194" },
-      "products": [
-        { "@id": "pkg:oci/genai-engine-cpu", "subcomponents": [ { "@id": "pkg:deb/debian/python3.11-minimal@3.11.2-6+deb12u6?distro=debian-12" }, { "@id": "pkg:deb/debian/libpython3.11-minimal@3.11.2-6+deb12u6?distro=debian-12" }, { "@id": "pkg:deb/debian/libpython3.11-stdlib@3.11.2-6+deb12u6?distro=debian-12" } ] },
-        { "@id": "pkg:oci/genai-engine-gpu", "subcomponents": [ { "@id": "pkg:deb/debian/python3.11-minimal@3.11.2-6+deb12u6?distro=debian-12" }, { "@id": "pkg:deb/debian/libpython3.11-minimal@3.11.2-6+deb12u6?distro=debian-12" }, { "@id": "pkg:deb/debian/libpython3.11-stdlib@3.11.2-6+deb12u6?distro=debian-12" } ] },
-        { "@id": "pkg:oci/ml-engine", "subcomponents": [ { "@id": "pkg:deb/debian/python3.11-minimal@3.11.2-6+deb12u6?distro=debian-12" }, { "@id": "pkg:deb/debian/libpython3.11-minimal@3.11.2-6+deb12u6?distro=debian-12" }, { "@id": "pkg:deb/debian/libpython3.11-stdlib@3.11.2-6+deb12u6?distro=debian-12" } ] }
-      ],
-      "status": "not_affected",
-      "justification": "component_not_present",
-      "impact_statement": "The Python 3.11 interpreter and its standard library are removed from the final image (files and dpkg metadata). The application runs on Python 3.12 (genai-engine) / 3.13 (ml-engine) from /usr/local, which is unaffected by this CVE."
-    },
-    {
-      "_comment": "python3.11 removed from image — see CVE-2025-8194 statement.",
-      "vulnerability": { "name": "CVE-2025-13836" },
-      "products": [
-        { "@id": "pkg:oci/genai-engine-cpu", "subcomponents": [ { "@id": "pkg:deb/debian/python3.11-minimal@3.11.2-6+deb12u6?distro=debian-12" }, { "@id": "pkg:deb/debian/libpython3.11-minimal@3.11.2-6+deb12u6?distro=debian-12" }, { "@id": "pkg:deb/debian/libpython3.11-stdlib@3.11.2-6+deb12u6?distro=debian-12" } ] },
-        { "@id": "pkg:oci/genai-engine-gpu", "subcomponents": [ { "@id": "pkg:deb/debian/python3.11-minimal@3.11.2-6+deb12u6?distro=debian-12" }, { "@id": "pkg:deb/debian/libpython3.11-minimal@3.11.2-6+deb12u6?distro=debian-12" }, { "@id": "pkg:deb/debian/libpython3.11-stdlib@3.11.2-6+deb12u6?distro=debian-12" } ] },
-        { "@id": "pkg:oci/ml-engine", "subcomponents": [ { "@id": "pkg:deb/debian/python3.11-minimal@3.11.2-6+deb12u6?distro=debian-12" }, { "@id": "pkg:deb/debian/libpython3.11-minimal@3.11.2-6+deb12u6?distro=debian-12" }, { "@id": "pkg:deb/debian/libpython3.11-stdlib@3.11.2-6+deb12u6?distro=debian-12" } ] }
-      ],
-      "status": "not_affected",
-      "justification": "component_not_present",
-      "impact_statement": "The Python 3.11 interpreter and its standard library are removed from the final image (files and dpkg metadata). The application runs on Python 3.12 (genai-engine) / 3.13 (ml-engine) from /usr/local, which is unaffected by this CVE."
-    },
-    {
       "_comment": "libexpat1: the reported system library (pkg:deb libexpat1 2.5.0-1~deb12u2 from the distroless base) is not linked by the application runtime. CPython 3.12/3.13 (from /usr/local) statically bundle their own expat (2.7.4 / 2.8.1) and do not load the system libexpat.so.1. Its only consumer in the base image, Python 3.11, has been removed. No Debian bookworm fix is available yet (fixed upstream in expat 2.8.1). DoS-only (CWE-407, CVSS ~2.9). See residual-risk note in CVE-JUSTIFICATIONS.md regarding genai-engine's bundled expat 2.7.4.",
       "vulnerability": { "name": "CVE-2026-45186" },
       "products": [
@@ -151,16 +128,6 @@
       "status": "not_affected",
       "justification": "vulnerable_code_not_in_execute_path",
       "impact_statement": "The system libexpat1 is not loaded by the application: CPython 3.12/3.13 bundle their own expat statically and do not link /usr/lib/*/libexpat.so.1, and the only base-image consumer (Python 3.11) has been removed. The flaw is a denial-of-service (inefficient algorithmic complexity, CWE-407, CVSS ~2.9) reachable only by parsing attacker-controlled XML through this system library."
-    },
-    {
-      "_comment": "litellm CVE-2026-40217 is fixed in >= 1.83.10 (per GitLab/GitHub advisory). genai-engine ships 1.89.3 and ml-engine ships 1.88.0 — both are past the fix. The original scan flagged 1.88.0 with no fix version listed, i.e. a stale scanner-DB false positive.",
-      "vulnerability": { "name": "CVE-2026-40217" },
-      "products": [
-        { "@id": "pkg:oci/genai-engine-cpu", "subcomponents": [ { "@id": "pkg:pypi/litellm@1.89.3" } ] },
-        { "@id": "pkg:oci/genai-engine-gpu", "subcomponents": [ { "@id": "pkg:pypi/litellm@1.89.3" } ] },
-        { "@id": "pkg:oci/ml-engine", "subcomponents": [ { "@id": "pkg:pypi/litellm@1.88.0" } ] }
-      ],
-      "status": "fixed"
     }
   ]
 }
