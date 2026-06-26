@@ -35,15 +35,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@amplitude/analytics-client-common@npm:2.4.50, @amplitude/analytics-client-common@npm:>=1 <3":
-  version: 2.4.50
-  resolution: "@amplitude/analytics-client-common@npm:2.4.50"
+"@amplitude/analytics-client-common@npm:2.4.51":
+  version: 2.4.51
+  resolution: "@amplitude/analytics-client-common@npm:2.4.51"
   dependencies:
     "@amplitude/analytics-connector": "npm:^1.4.8"
-    "@amplitude/analytics-core": "npm:2.50.0"
+    "@amplitude/analytics-core": "npm:2.51.0"
     "@amplitude/analytics-types": "npm:2.11.1"
     tslib: "npm:^2.4.1"
-  checksum: 10c0/00bfaf8b35367e0371341df19322e1b583c3536ef7266e1f1229f8c74da3b26c2eb839ecea55829a913a8a24f52c2feab88c3cd3d060d82f6df5cfe49eb055e2
+  checksum: 10c0/1ca21443d086471b27a8d4ccc1047c4a68738fca44e582a0ae71b4f39479f7fcbe126fe12ed0b6a4e69b6986117f56667ffb2caacd7c65ac83b9f87ee530f5ef
   languageName: node
   linkType: hard
 
@@ -77,20 +77,20 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@amplitude/analytics-core@npm:2.50.0, @amplitude/analytics-core@npm:>=1 <3":
-  version: 2.50.0
-  resolution: "@amplitude/analytics-core@npm:2.50.0"
+"@amplitude/analytics-core@npm:2.51.0":
+  version: 2.51.0
+  resolution: "@amplitude/analytics-core@npm:2.51.0"
   dependencies:
     "@amplitude/analytics-connector": "npm:^1.6.4"
     "@types/zen-observable": "npm:0.8.3"
     safe-json-stringify: "npm:1.2.0"
     tslib: "npm:^2.4.1"
     zen-observable: "npm:0.10.0"
-  checksum: 10c0/cf09d7de24bbda9f939e95075819f39766f63af41997ae7dea5fb2281ed4f4bc9673debbac7c465f3a7f59d6227afadd9c41b3c8b006509f61773ac085c803dd
+  checksum: 10c0/c63a4b3a84c90bf744ca1a3b37565d8bceeb23b6956dc95afbe29a78ffe4235eb52987a786c1a4f65a8933c5fda9f086dc1d75ab2434dff9ee284d8d5a446c0f
   languageName: node
   linkType: hard
 
-"@amplitude/analytics-types@npm:2.11.1, @amplitude/analytics-types@npm:>=1 <3":
+"@amplitude/analytics-types@npm:2.11.1":
   version: 2.11.1
   resolution: "@amplitude/analytics-types@npm:2.11.1"
   checksum: 10c0/620fd98abcfa9569dd8897c0af0b7b15b83208fbb9c37a0c5905d0e358fe28552596efa2e80698150ae208ff00ed548ad1ba573452e68cf9522cc2870bbf2c19
@@ -209,18 +209,18 @@ __metadata:
   linkType: hard
 
 "@amplitude/plugin-session-replay-browser@npm:^1.31.1":
-  version: 1.32.1
-  resolution: "@amplitude/plugin-session-replay-browser@npm:1.32.1"
+  version: 1.32.3
+  resolution: "@amplitude/plugin-session-replay-browser@npm:1.32.3"
   dependencies:
-    "@amplitude/analytics-client-common": "npm:2.4.50"
-    "@amplitude/analytics-core": "npm:2.50.0"
+    "@amplitude/analytics-client-common": "npm:2.4.51"
+    "@amplitude/analytics-core": "npm:2.51.0"
     "@amplitude/analytics-types": "npm:2.11.1"
     "@amplitude/rrweb-plugin-console-record": "npm:2.0.0-alpha.40"
     "@amplitude/rrweb-record": "npm:2.0.0-alpha.40"
-    "@amplitude/session-replay-browser": "npm:1.46.0"
+    "@amplitude/session-replay-browser": "npm:1.46.2"
     idb-keyval: "npm:^6.2.1"
     tslib: "npm:^2.4.1"
-  checksum: 10c0/9c48faaf0b1902bf5bd73bad71e850cb71fdc94c49edb5e558bc1e76136e89c7a4067fe34fea5649bc9deea8096e14668c4b640130950ba9fc8e23316b9bcc64
+  checksum: 10c0/45621451fc15208be1f10cd276eabc524001cdaede6aace71e71f4f6324c1780914f2362965ac2c684c259778cc09630619231c810b650f28f441afc29805b0d
   languageName: node
   linkType: hard
 
@@ -337,12 +337,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@amplitude/session-replay-browser@npm:1.46.0":
-  version: 1.46.0
-  resolution: "@amplitude/session-replay-browser@npm:1.46.0"
+"@amplitude/session-replay-browser@npm:1.46.2":
+  version: 1.46.2
+  resolution: "@amplitude/session-replay-browser@npm:1.46.2"
   dependencies:
-    "@amplitude/analytics-client-common": "npm:2.4.50"
-    "@amplitude/analytics-core": "npm:2.50.0"
+    "@amplitude/analytics-client-common": "npm:2.4.51"
+    "@amplitude/analytics-core": "npm:2.51.0"
     "@amplitude/analytics-types": "npm:2.11.1"
     "@amplitude/experiment-core": "npm:0.7.2"
     "@amplitude/rrweb-packer": "npm:2.0.0-alpha.40"
@@ -350,25 +350,25 @@ __metadata:
     "@amplitude/rrweb-record": "npm:2.0.0-alpha.40"
     "@amplitude/rrweb-types": "npm:2.0.0-alpha.40"
     "@amplitude/rrweb-utils": "npm:2.0.0-alpha.40"
-    "@amplitude/targeting": "npm:0.2.0"
+    "@amplitude/targeting": "npm:0.3.1"
     "@rollup/plugin-replace": "npm:^6.0.1"
     idb: "npm:8.0.0"
     tslib: "npm:^2.4.1"
-  checksum: 10c0/8732bce537c6e6ac62015c27f6bcf564e87d1ce5083302033a7087badc344f3b0791d2cc44ad0b9f6302b5053ca954b38837aab8c3947f1b4eae64cdad9c0590
+  checksum: 10c0/b6c0be4315005022516662b7b64f12f97b35991beb0629d2c9ee31e5471788cc26f1cc9274cadda72df483d897f692b1cc40712a526725127a2e261403a2a8fd
   languageName: node
   linkType: hard
 
-"@amplitude/targeting@npm:0.2.0":
-  version: 0.2.0
-  resolution: "@amplitude/targeting@npm:0.2.0"
+"@amplitude/targeting@npm:0.3.1":
+  version: 0.3.1
+  resolution: "@amplitude/targeting@npm:0.3.1"
   dependencies:
-    "@amplitude/analytics-client-common": "npm:>=1 <3"
-    "@amplitude/analytics-core": "npm:>=1 <3"
-    "@amplitude/analytics-types": "npm:>=1 <3"
+    "@amplitude/analytics-client-common": "npm:2.4.51"
+    "@amplitude/analytics-core": "npm:2.51.0"
+    "@amplitude/analytics-types": "npm:2.11.1"
     "@amplitude/experiment-core": "npm:0.7.2"
-    idb: "npm:^8.0.0"
+    idb: "npm:8.0.0"
     tslib: "npm:^2.4.1"
-  checksum: 10c0/d959ad11b59d58b259eb114bd63665c4af4b796f68b9cefe529a7904be292ddb40046365d9c8b7af995c10e8c5e7a96a892495f266cb45e1b3c6b959fb567ef9
+  checksum: 10c0/edb730e31cdeb86d812e7b6abdb214fb69fb8dd38236fb99141baa7cef2329f28ee84a1f0ac20f7def295c593b895a8c22d51ab4f54eae14fe537962a7a05aff
   languageName: node
   linkType: hard
 
@@ -5285,13 +5285,6 @@ __metadata:
   version: 8.0.0
   resolution: "idb@npm:8.0.0"
   checksum: 10c0/d27547e03939d3d269cea38c3d4528569621ec134c717ebfc1ff816dce18e4f77372dba1d930384a9949ac56dc600e3790f98f1812a4164004e71fec302ee491
-  languageName: node
-  linkType: hard
-
-"idb@npm:^8.0.0":
-  version: 8.0.3
-  resolution: "idb@npm:8.0.3"
-  checksum: 10c0/421cd9a3281b7564528857031cc33fd9e95753f8191e483054cb25d1ceea7303a0d1462f4f69f5b41606f0f066156999e067478abf2460dfcf9cab80dae2a2b2
   languageName: node
   linkType: hard
 
