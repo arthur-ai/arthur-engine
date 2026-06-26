@@ -1,11 +1,11 @@
 # Chart.yaml
 apiVersion: v2
 name: arthur-engine
-version: 2.1.672
+version: 2.1.673
 dependencies:
   - name: arthur-genai-engine
-    version: 2.1.672
+    version: 2.1.673
     repository: oci://ghcr.io/arthur-ai/arthur-engine/charts
   - name: arthur-ml-engine
-    version: 2.1.672
+    version: 2.1.673
     repository: oci://ghcr.io/arthur-ai/arthur-engine/charts
