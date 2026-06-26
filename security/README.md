@@ -6,7 +6,7 @@ Arthur ships (`genai-engine-cpu`, `genai-engine-gpu`, `ml-engine`, `genai-engine
 Customers cannot accept HIGH/CRITICAL vulnerabilities, so for every such finding we maintain a
 documented position: either it is remediated (upgrade the package/base image) or it is
 **justified** via a [VEX](https://openvex.dev/) statement explaining why it is not exploitable
-/ acceptable. CI scans every image (Docker Scout + Trivy, **advisory — non-blocking**), publishes
+/ acceptable. CI scans every image (Trivy, **advisory — non-blocking**), publishes
 findings to the GitHub **Security tab**, and generates a per-image **justification report** with
 this VEX applied.
 
@@ -37,7 +37,7 @@ Both call the shared composite action `.github/workflows/composite-actions/vuln-
 
 ## Triaging a new HIGH/CRITICAL finding
 
-1. Find it in **Security → Code scanning** (categories `scout-*` / `trivy-*`) or in the report
+1. Find it in **Security → Code scanning** (categories `trivy-*`) or in the report
    artifact from the latest scan run.
 2. **If a fix exists** (the report shows a "Fixed" version): let Renovate bump it, or bump the
    dependency / Docker base image manually, and rebuild. Prefer fixing over justifying.
@@ -89,9 +89,6 @@ trivy image --severity HIGH,CRITICAL \
 
 # Render the human-readable justification report:
 python3 security/render_report.py /tmp/report.json /tmp/report.md arthurplatform/genai-engine-cpu:latest
-
-# Scout view (recommendations for base-image upgrades):
-docker scout cves arthurplatform/genai-engine-cpu:latest --only-severity critical,high
 ```
 
 ## Turning on enforcement (future)
@@ -99,8 +96,7 @@ docker scout cves arthurplatform/genai-engine-cpu:latest --only-severity critica
 When the backlog is triaged (every HIGH/CRITICAL is either fixed or has a VEX statement), make
 the build block on **fixable** HIGH/CRITICAL by editing the composite action's Trivy step:
 
-- set `--exit-code 1` and `--ignore-unfixed` on the Trivy scan, and/or
-- set Docker Scout's `exit-on: vulnerability` with `only-severities: critical,high`.
+- set `--exit-code 1` and `--ignore-unfixed` on the Trivy scan.
 
 `--ignore-unfixed` is important: it blocks only findings that have an available patch, so
 unfixable base-OS CVEs (documented via VEX) do not permanently block releases.
