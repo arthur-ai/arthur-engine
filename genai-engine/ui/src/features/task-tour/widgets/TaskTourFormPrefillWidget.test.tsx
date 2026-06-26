@@ -1,11 +1,10 @@
+import { createTourEngine, TourProvider } from "@arthur/shared-components/tour";
 import { act, render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { TASK_TOUR_FORM_PREFILL_EVENT, type TaskTourFormPrefill } from "../formPrefill";
 
 import { TaskTourFormPrefillWidget } from "./TaskTourFormPrefillWidget";
-
-import { createTourEngine, TourProvider } from "@/features/tour";
 
 describe("TaskTourFormPrefillWidget", () => {
   it("emits the active step form prefill when the step enters", async () => {

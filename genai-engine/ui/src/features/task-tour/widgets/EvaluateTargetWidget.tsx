@@ -1,3 +1,4 @@
+import { type OccluderDescriptor, useRegisterOccluder, useRegisterQueryHook } from "@arthur/shared-components/tour";
 import { parseAsString, useQueryState } from "nuqs";
 import { useMemo, useRef } from "react";
 
@@ -6,8 +7,6 @@ import { TASK_TOUR_OCCLUDERS } from "../occluders";
 import { TOUR_IDS, tourSelector } from "../selectors";
 
 import { makeDataTourIdResolver, makePreferredDataTourIdResolver } from "./resolvers";
-
-import { type OccluderDescriptor, useRegisterOccluder, useRegisterQueryHook } from "@/features/tour";
 
 /**
  * True when the Annotation Details dialog is actually rendered, detected by the
