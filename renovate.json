@@ -33,6 +33,11 @@
       "enabled": false
     },
     {
+      "matchManagers": ["dockerfile", "docker-compose"],
+      "matchPackageNames": ["python"],
+      "enabled": false
+    },
+    {
       "matchManagers": ["npm"],
       "reviewers": ["TheLukaszNs-Blazity", "xV3rt", "martin-arthur-ai"],
       "reviewersSampleSize": 1

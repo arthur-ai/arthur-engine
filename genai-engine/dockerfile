@@ -8,7 +8,7 @@
 ARG TORCH_DEVICE=cpu
 
 # Preinstall Stage: Install Python dependencies
-FROM python:3.14.6-slim-bookworm AS preinstall
+FROM python:3.12-slim-bookworm AS preinstall
 
 # Copy requirements files so this layer can be cached / reused when files are otherwise changed in the repo
 COPY pyproject.toml /app/
