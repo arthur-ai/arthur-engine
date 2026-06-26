@@ -30,8 +30,11 @@ RUN uv export --frozen \
     --index-strategy unsafe-best-match \
     -r /tmp/requirements.txt
 
-# install lsof for healthchecks
-RUN apt-get update && apt-get install -y lsof && apt-get clean && rm -rf /var/lib/apt/lists/*
+# Upgrade OS packages to pick up Debian security fixes (libssl3, libc6,
+# libexpat1, ...) and install lsof for healthchecks. These libraries live in
+# /usr/lib and are copied into the distroless final image below, so upgrading
+# here patches the shared objects that actually ship.
+RUN apt-get update && apt-get upgrade -y && apt-get install -y lsof && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 
 # GPU Install: Install PyTorch for GPU
@@ -163,6 +166,24 @@ COPY --from=install /etc/ld.so.cache /etc/ld.so.cache
 COPY --from=install --chown=nonroot:nonroot /app/ /home/nonroot/app/
 COPY --from=install --chown=nonroot:nonroot /home/nonroot/models /home/nonroot/models
 COPY --from=install --chown=nonroot:nonroot /home/nonroot/tiktoken /home/nonroot/tiktoken
+
+# Remove the unused Python 3.11 runtime inherited from the distroless base.
+# The app runs on Python 3.12 (from /usr/local); the distroless base ships a
+# separate, never-executed Python 3.11 that image scanners keep flagging
+# (e.g. CVE-2025-8194, CVE-2025-13836). Delete the files and their dpkg
+# metadata so neither the runtime nor the SBOM advertise it. distroless has no
+# `rm`, so copy it from the build stage and delete it again in the same layer.
+USER root
+COPY --from=install /usr/bin/rm /usr/bin/rm
+RUN /usr/bin/rm -rf \
+      /usr/lib/python3.11 \
+      /usr/bin/python3.11 \
+      /usr/lib/*-linux-gnu/libpython3.11.so* \
+      /var/lib/dpkg/status.d/python3.11-minimal \
+      /var/lib/dpkg/status.d/libpython3.11-minimal \
+      /var/lib/dpkg/status.d/libpython3.11-stdlib \
+    && /usr/bin/rm /usr/bin/rm
+USER nonroot
 
 ENV PATH="/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
 ENV PYTHONPATH="/home/nonroot/app/src"

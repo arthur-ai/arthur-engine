@@ -1,8 +1,12 @@
 FROM --platform=linux/amd64 python:3.13-slim-bookworm AS install
 
-# install uv and wget
+# install uv and wget; upgrade OS packages for Debian security fixes
+# (libssl3, libc6, libexpat1, ...). These libraries live in /usr/lib and are
+# copied into the distroless final image below, so upgrading here patches the
+# shared objects that actually ship.
 RUN pip install uv==0.11.7 && \
     apt-get update && \
+    apt-get upgrade -y && \
     apt-get install -y wget curl gnupg apt-transport-https && \
     rm -rf /var/lib/apt/lists/*
 
@@ -98,6 +102,25 @@ COPY --from=install /opt/microsoft/msodbcsql18 /opt/microsoft/msodbcsql18
 COPY --from=install /opt/microsoft/msodbcsql17 /opt/microsoft/msodbcsql17
 COPY --from=install /etc/odbcinst.ini /etc/odbcinst.ini
 COPY --from=install --chown=nonroot:nonroot /app/ /home/nonroot/app/
+
+# Remove the unused Python 3.11 runtime inherited from the distroless base.
+# The app runs on Python 3.13 (from /usr/local); the distroless base ships a
+# separate, never-executed Python 3.11 that image scanners keep flagging
+# (e.g. CVE-2025-8194, CVE-2025-13836). Delete the files and their dpkg
+# metadata so neither the runtime nor the SBOM advertise it. distroless has no
+# `rm`, so copy it from the build stage and delete it again in the same layer.
+USER root
+COPY --from=install /usr/bin/rm /usr/bin/rm
+RUN /usr/bin/rm -rf \
+      /usr/lib/python3.11 \
+      /usr/bin/python3.11 \
+      /usr/lib/*-linux-gnu/libpython3.11.so* \
+      /var/lib/dpkg/status.d/python3.11-minimal \
+      /var/lib/dpkg/status.d/libpython3.11-minimal \
+      /var/lib/dpkg/status.d/libpython3.11-stdlib \
+    && /usr/bin/rm /usr/bin/rm
+USER nonroot
+
 ENV PATH="/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
 ENV PYTHONPATH="$PYTHONPATH:/home/nonroot/app/src"
 ENV LD_LIBRARY_PATH="/opt/microsoft/msodbcsql18/lib64:/opt/microsoft/msodbcsql17/lib64:/opt/oracle/instantclient:${LD_LIBRARY_PATH}"
