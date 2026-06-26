@@ -128,6 +128,17 @@
       "status": "not_affected",
       "justification": "vulnerable_code_not_in_execute_path",
       "impact_statement": "The system libexpat1 is not loaded by the application: CPython 3.12/3.13 bundle their own expat statically and do not link /usr/lib/*/libexpat.so.1, and the only base-image consumer (Python 3.11) has been removed. The flaw is a denial-of-service (inefficient algorithmic complexity, CWE-407, CVSS ~2.9) reachable only by parsing attacker-controlled XML through this system library."
+    },
+    {
+      "_comment": "nltk: CVE-2026-54293 is a path-traversal bypass in nltk.data.load() via URL-encoded input, with no upstream fix available (affects nltk <= 3.9.4). genai-engine only imports PunktSentenceTokenizer (src/utils/claim_parser.py:7) and instantiates it once with no resource path (SENTENCE_TOKENIZER = PunktSentenceTokenizer()); nltk.data.load() is never called and no untrusted path reaches it. nltk is a genai-engine-only dependency (absent from ml-engine).",
+      "vulnerability": { "name": "CVE-2026-54293" },
+      "products": [
+        { "@id": "pkg:oci/genai-engine-cpu", "subcomponents": [ { "@id": "pkg:pypi/nltk@3.9.4" } ] },
+        { "@id": "pkg:oci/genai-engine-gpu", "subcomponents": [ { "@id": "pkg:pypi/nltk@3.9.4" } ] }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_in_execute_path",
+      "impact_statement": "The vulnerable function nltk.data.load() is never invoked. The sole nltk usage is PunktSentenceTokenizer, imported and instantiated with no resource path, so no attacker-controlled path can reach the path-traversal sink."
     }
   ]
 }
