@@ -27,7 +27,7 @@ def _score_to_response(rule_score: Any) -> EvalRunResponse:
     reason = (rule_score.details.message or "") if rule_score.details else ""
     if not reason:
         reason = "No issues detected." if passed else "Issues detected."
-    return EvalRunResponse(reason=reason, score=int(passed), cost="")
+    return EvalRunResponse(reason=reason, score=int(passed), cost="0")
 
 
 class PIIScorerV2(BaseMLScorer):

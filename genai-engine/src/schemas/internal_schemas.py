@@ -810,12 +810,14 @@ class AgenticAnnotation(BaseModel):
     @staticmethod
     def from_db_model(db_annotation: DatabaseAgenticAnnotation) -> "AgenticAnnotation":
         continuous_eval_name = None
+        eval_type = None
         eval_name = None
         eval_version = None
 
         if db_annotation.continuous_eval_id and db_annotation.continuous_eval:
             continuous_eval_name = db_annotation.continuous_eval.name
             ce = db_annotation.continuous_eval
+            eval_type = ce.eval_type
             eval_name = ce.llm_eval_name
             eval_version = ce.llm_eval_version
 
@@ -825,7 +827,7 @@ class AgenticAnnotation(BaseModel):
             trace_id=db_annotation.trace_id or "",
             continuous_eval_id=db_annotation.continuous_eval_id,
             continuous_eval_name=continuous_eval_name,
-            eval_type=None,
+            eval_type=eval_type,
             eval_name=eval_name,
             eval_version=eval_version,
             annotation_score=db_annotation.annotation_score,
