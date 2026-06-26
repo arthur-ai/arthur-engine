@@ -7,7 +7,7 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "2026-06-22T22:42:27.966565Z"
+exclude-newer = "2026-06-23T16:47:41.47841Z"
 exclude-newer-span = "P3D"
 
 [[package]]
@@ -160,7 +160,7 @@ wheels = [
 
 [[package]]
 name = "arthur-observability-sdk"
-version = "2.1.663"
+version = "2.1.672"
 source = { editable = "." }
 dependencies = [
     { name = "httpx" },
@@ -1313,7 +1313,7 @@ wheels = [
 
 [[package]]
 name = "litellm"
-version = "1.88.0"
+version = "1.89.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp", marker = "python_full_version >= '3.11'" },
@@ -1329,9 +1329,9 @@ dependencies = [
     { name = "tiktoken", marker = "python_full_version >= '3.11'" },
     { name = "tokenizers", marker = "python_full_version >= '3.11'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/9b/8c/6cfce5d15554e076b8438a955436e9e6e2a2bd39c76539656c1c3861c369/litellm-1.88.0.tar.gz", hash = "sha256:4ff794493e40bd86c6f13e91dcb3e1aad697403fd46a96902196d93356ba48f4", size = 13886026, upload-time = "2026-06-06T23:25:17.93Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/56/f1/f7cfead063f2ab1877c8fb465d0d7fe300b75f081bcb73525f6d550aeb1c/litellm-1.89.3.tar.gz", hash = "sha256:8fcdb2b7a0ef3381d41adf164443842e31ef9f0cd5bcda6fc3c0bd8bc2959510", size = 14080611, upload-time = "2026-06-20T22:42:26.997Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/da/71/deb6637475253b83eb4577c058863eec4b4ddaef2d08dcd93981b1aa4209/litellm-1.88.0-py3-none-any.whl", hash = "sha256:abd3037e0bf5703f833f5565c87bdfd93578d3de46cbcb36dfa108c3ef58021c", size = 15276203, upload-time = "2026-06-06T23:25:07.257Z" },
+    { url = "https://files.pythonhosted.org/packages/d1/f1/34d174ff1d84e459b30f971606ac9cb7078ad24cd7661e9786b25adf7def/litellm-1.89.3-py3-none-any.whl", hash = "sha256:414ef5aee504b2b3eb1b219d39f1c11902db399cbdbc06e5fb550c15d731abeb", size = 15495226, upload-time = "2026-06-20T22:42:23.156Z" },
 ]
 
 [[package]]

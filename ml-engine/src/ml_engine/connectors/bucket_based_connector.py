@@ -81,7 +81,12 @@ def read_file(
             with fs.open(file_name, "rb") as f:
                 return pq.ParquetFile(f).read().to_pylist()  # type: ignore
         case DatasetFileType.CSV:
-            with fs.open(file_name, "r") as f:
+            # Open in binary mode and let pandas handle decoding via the
+            # `encoding` kwarg. pandas 3.0's read_csv rejects a text buffer
+            # whose `.encoding` differs from the reader encoding even by case
+            # (e.g. buffer "UTF-8" vs config "utf-8"), so a text-mode handle
+            # would raise ValueError.
+            with fs.open(file_name, "rb") as f:
                 # Get pandas kwargs from CSVConfig
                 csv_kwargs = csv_config.to_pandas_kwargs() if csv_config else {}
 
@@ -379,7 +384,8 @@ class BucketBasedConnector(Connector, ABC):
         csv_config = None
         if file_type == DatasetFileType.CSV:
             csv_has_header_str = dataset_locator_fields.get(
-                CSV_HAS_HEADER_FIELD, "true"
+                CSV_HAS_HEADER_FIELD,
+                "true",
             )
             csv_has_header = (
                 csv_has_header_str.lower() == "true"
