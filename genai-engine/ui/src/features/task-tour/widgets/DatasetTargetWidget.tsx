@@ -1,11 +1,10 @@
+import { useRegisterQueryHook } from "@arthur/shared-components/tour";
 import { useMemo } from "react";
 
 import { TASK_TOUR_QUERY_HOOKS } from "../content/wiring";
 import { TOUR_IDS } from "../selectors";
 
 import { makePreferredDataTourIdResolver } from "./resolvers";
-
-import { useRegisterQueryHook } from "@/features/tour";
 
 /**
  * Registers dataset-specific composite targets. The generate-synthetic and

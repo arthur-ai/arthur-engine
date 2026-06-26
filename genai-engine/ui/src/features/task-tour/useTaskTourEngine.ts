@@ -1,10 +1,17 @@
+import {
+  createAnalyticsPlugin,
+  createTour,
+  createTourStatePlugin,
+  itemKey,
+  type StepContext,
+  type TourEngine,
+  type TourStatePlugin,
+} from "@arthur/shared-components/tour";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { createTaskTourHighlightsPlugin } from "./highlights";
-import { itemKey } from "./progress";
 import { buildTourConfig } from "./tour-config";
 
-import { createAnalyticsPlugin, createTour, createTourStatePlugin, type StepContext, type TourEngine, type TourStatePlugin } from "@/features/tour";
 import { trackDynamic } from "@/services/analytics";
 
 export const TASK_TOUR_STORAGE_KEY = "arthur:task-tour:status";
