@@ -35,15 +35,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@amplitude/analytics-client-common@npm:2.4.50, @amplitude/analytics-client-common@npm:>=1 <3":
-  version: 2.4.50
-  resolution: "@amplitude/analytics-client-common@npm:2.4.50"
+"@amplitude/analytics-client-common@npm:2.4.51":
+  version: 2.4.51
+  resolution: "@amplitude/analytics-client-common@npm:2.4.51"
   dependencies:
     "@amplitude/analytics-connector": "npm:^1.4.8"
-    "@amplitude/analytics-core": "npm:2.50.0"
+    "@amplitude/analytics-core": "npm:2.51.0"
     "@amplitude/analytics-types": "npm:2.11.1"
     tslib: "npm:^2.4.1"
-  checksum: 10c0/00bfaf8b35367e0371341df19322e1b583c3536ef7266e1f1229f8c74da3b26c2eb839ecea55829a913a8a24f52c2feab88c3cd3d060d82f6df5cfe49eb055e2
+  checksum: 10c0/1ca21443d086471b27a8d4ccc1047c4a68738fca44e582a0ae71b4f39479f7fcbe126fe12ed0b6a4e69b6986117f56667ffb2caacd7c65ac83b9f87ee530f5ef
   languageName: node
   linkType: hard
 
@@ -77,20 +77,20 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@amplitude/analytics-core@npm:2.50.0, @amplitude/analytics-core@npm:>=1 <3":
-  version: 2.50.0
-  resolution: "@amplitude/analytics-core@npm:2.50.0"
+"@amplitude/analytics-core@npm:2.51.0":
+  version: 2.51.0
+  resolution: "@amplitude/analytics-core@npm:2.51.0"
   dependencies:
     "@amplitude/analytics-connector": "npm:^1.6.4"
     "@types/zen-observable": "npm:0.8.3"
     safe-json-stringify: "npm:1.2.0"
     tslib: "npm:^2.4.1"
     zen-observable: "npm:0.10.0"
-  checksum: 10c0/cf09d7de24bbda9f939e95075819f39766f63af41997ae7dea5fb2281ed4f4bc9673debbac7c465f3a7f59d6227afadd9c41b3c8b006509f61773ac085c803dd
+  checksum: 10c0/c63a4b3a84c90bf744ca1a3b37565d8bceeb23b6956dc95afbe29a78ffe4235eb52987a786c1a4f65a8933c5fda9f086dc1d75ab2434dff9ee284d8d5a446c0f
   languageName: node
   linkType: hard
 
-"@amplitude/analytics-types@npm:2.11.1, @amplitude/analytics-types@npm:>=1 <3":
+"@amplitude/analytics-types@npm:2.11.1":
   version: 2.11.1
   resolution: "@amplitude/analytics-types@npm:2.11.1"
   checksum: 10c0/620fd98abcfa9569dd8897c0af0b7b15b83208fbb9c37a0c5905d0e358fe28552596efa2e80698150ae208ff00ed548ad1ba573452e68cf9522cc2870bbf2c19
@@ -209,18 +209,18 @@ __metadata:
   linkType: hard
 
 "@amplitude/plugin-session-replay-browser@npm:^1.31.1":
-  version: 1.32.1
-  resolution: "@amplitude/plugin-session-replay-browser@npm:1.32.1"
+  version: 1.32.3
+  resolution: "@amplitude/plugin-session-replay-browser@npm:1.32.3"
   dependencies:
-    "@amplitude/analytics-client-common": "npm:2.4.50"
-    "@amplitude/analytics-core": "npm:2.50.0"
+    "@amplitude/analytics-client-common": "npm:2.4.51"
+    "@amplitude/analytics-core": "npm:2.51.0"
     "@amplitude/analytics-types": "npm:2.11.1"
     "@amplitude/rrweb-plugin-console-record": "npm:2.0.0-alpha.40"
     "@amplitude/rrweb-record": "npm:2.0.0-alpha.40"
-    "@amplitude/session-replay-browser": "npm:1.46.0"
+    "@amplitude/session-replay-browser": "npm:1.46.2"
     idb-keyval: "npm:^6.2.1"
     tslib: "npm:^2.4.1"
-  checksum: 10c0/9c48faaf0b1902bf5bd73bad71e850cb71fdc94c49edb5e558bc1e76136e89c7a4067fe34fea5649bc9deea8096e14668c4b640130950ba9fc8e23316b9bcc64
+  checksum: 10c0/45621451fc15208be1f10cd276eabc524001cdaede6aace71e71f4f6324c1780914f2362965ac2c684c259778cc09630619231c810b650f28f441afc29805b0d
   languageName: node
   linkType: hard
 
@@ -337,12 +337,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@amplitude/session-replay-browser@npm:1.46.0":
-  version: 1.46.0
-  resolution: "@amplitude/session-replay-browser@npm:1.46.0"
+"@amplitude/session-replay-browser@npm:1.46.2":
+  version: 1.46.2
+  resolution: "@amplitude/session-replay-browser@npm:1.46.2"
   dependencies:
-    "@amplitude/analytics-client-common": "npm:2.4.50"
-    "@amplitude/analytics-core": "npm:2.50.0"
+    "@amplitude/analytics-client-common": "npm:2.4.51"
+    "@amplitude/analytics-core": "npm:2.51.0"
     "@amplitude/analytics-types": "npm:2.11.1"
     "@amplitude/experiment-core": "npm:0.7.2"
     "@amplitude/rrweb-packer": "npm:2.0.0-alpha.40"
@@ -350,25 +350,25 @@ __metadata:
     "@amplitude/rrweb-record": "npm:2.0.0-alpha.40"
     "@amplitude/rrweb-types": "npm:2.0.0-alpha.40"
     "@amplitude/rrweb-utils": "npm:2.0.0-alpha.40"
-    "@amplitude/targeting": "npm:0.2.0"
+    "@amplitude/targeting": "npm:0.3.1"
     "@rollup/plugin-replace": "npm:^6.0.1"
     idb: "npm:8.0.0"
     tslib: "npm:^2.4.1"
-  checksum: 10c0/8732bce537c6e6ac62015c27f6bcf564e87d1ce5083302033a7087badc344f3b0791d2cc44ad0b9f6302b5053ca954b38837aab8c3947f1b4eae64cdad9c0590
+  checksum: 10c0/b6c0be4315005022516662b7b64f12f97b35991beb0629d2c9ee31e5471788cc26f1cc9274cadda72df483d897f692b1cc40712a526725127a2e261403a2a8fd
   languageName: node
   linkType: hard
 
-"@amplitude/targeting@npm:0.2.0":
-  version: 0.2.0
-  resolution: "@amplitude/targeting@npm:0.2.0"
+"@amplitude/targeting@npm:0.3.1":
+  version: 0.3.1
+  resolution: "@amplitude/targeting@npm:0.3.1"
   dependencies:
-    "@amplitude/analytics-client-common": "npm:>=1 <3"
-    "@amplitude/analytics-core": "npm:>=1 <3"
-    "@amplitude/analytics-types": "npm:>=1 <3"
+    "@amplitude/analytics-client-common": "npm:2.4.51"
+    "@amplitude/analytics-core": "npm:2.51.0"
+    "@amplitude/analytics-types": "npm:2.11.1"
     "@amplitude/experiment-core": "npm:0.7.2"
-    idb: "npm:^8.0.0"
+    idb: "npm:8.0.0"
     tslib: "npm:^2.4.1"
-  checksum: 10c0/d959ad11b59d58b259eb114bd63665c4af4b796f68b9cefe529a7904be292ddb40046365d9c8b7af995c10e8c5e7a96a892495f266cb45e1b3c6b959fb567ef9
+  checksum: 10c0/edb730e31cdeb86d812e7b6abdb214fb69fb8dd38236fb99141baa7cef2329f28ee84a1f0ac20f7def295c593b895a8c22d51ab4f54eae14fe537962a7a05aff
   languageName: node
   linkType: hard
 
@@ -433,18 +433,19 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@arthur/shared-components@npm:3.18.0":
-  version: 3.18.0
-  resolution: "@arthur/shared-components@npm:3.18.0::__archiveUrl=https%3A%2F%2Fgitlab.com%2Fapi%2Fv4%2Fprojects%2F54848372%2Fpackages%2Fnpm%2F%40arthur%2Fshared-components%2F-%2F%40arthur%2Fshared-components-3.18.0.tgz"
+"@arthur/shared-components@npm:3.20.0":
+  version: 3.20.0
+  resolution: "@arthur/shared-components@npm:3.20.0::__archiveUrl=https%3A%2F%2Fgitlab.com%2Fapi%2Fv4%2Fprojects%2F54848372%2Fpackages%2Fnpm%2F%40arthur%2Fshared-components%2F-%2F%40arthur%2Fshared-components-3.20.0.tgz"
   dependencies:
     "@amplitude/analytics-browser": "npm:2.33.3"
     "@arizeai/openinference-semantic-conventions": "npm:2.1.0"
-    "@arthur/shield-types": "npm:^3.18.0"
-    "@arthur/unify-types": "npm:^3.18.0"
+    "@arthur/shield-types": "npm:^3.20.0"
+    "@arthur/unify-types": "npm:^3.20.0"
     "@base-ui/react": "npm:1.3.0"
     "@dnd-kit/core": "npm:6.3.1"
     "@dnd-kit/sortable": "npm:10.0.0"
     "@dnd-kit/utilities": "npm:3.2.2"
+    "@floating-ui/react": "npm:0.27.19"
     "@monaco-editor/react": "npm:4.7.0"
     "@tanstack/react-form": "npm:1.27.7"
     "@tanstack/react-query": "npm:5.90.17"
@@ -454,12 +455,14 @@ __metadata:
     dayjs: "npm:1.11.13"
     framer-motion: "npm:12.35.0"
     material-react-table: "npm:3.2.1"
+    mitt: "npm:3.0.1"
     prism-react-renderer: "npm:2.4.1"
     react-markdown: "npm:10.1.0"
     remark-gfm: "npm:4.0.0"
     tailwind-merge: "npm:3.5.0"
     uuid: "npm:13.0.0"
     zod: "npm:4.3.5"
+    zustand: "npm:5.0.7"
   peerDependencies:
     "@emotion/react": ^11.14.0
     "@emotion/styled": ^11.14.1
@@ -471,27 +474,28 @@ __metadata:
     i18next: ^26.2.0
     react: ^18.0.0 || ^19.0.0
     react-dom: ^18.0.0 || ^19.0.0
-    react-error-boundary: ^4.0.0
+    react-error-boundary: ^6.1.2
     react-i18next: ^16.5.3
-  checksum: 10c0/42030e513a673f79cc7fff0f47c6efbee186a21ca8a87fec6718c28f29ff3729bfcece6ecc58427f665f0872f7d7b3d91261096b9d8109bbf29f49dabf8b244f
+    react-router-dom: ^7.0.0
+  checksum: 10c0/dbbc5e09e08be9b6acaef58e550cbc5c60c99ef261fcb35a34dd56c922a752d836ba02b1965e4a15b99ebed08aeb79b47478593bec184cf6eefda2a676d9435b
   languageName: node
   linkType: hard
 
-"@arthur/shield-types@npm:^3.18.0":
-  version: 3.18.0
-  resolution: "@arthur/shield-types@npm:3.18.0::__archiveUrl=https%3A%2F%2Fgitlab.com%2Fapi%2Fv4%2Fprojects%2F54848372%2Fpackages%2Fnpm%2F%40arthur%2Fshield-types%2F-%2F%40arthur%2Fshield-types-3.18.0.tgz"
+"@arthur/shield-types@npm:^3.20.0":
+  version: 3.20.0
+  resolution: "@arthur/shield-types@npm:3.20.0::__archiveUrl=https%3A%2F%2Fgitlab.com%2Fapi%2Fv4%2Fprojects%2F54848372%2Fpackages%2Fnpm%2F%40arthur%2Fshield-types%2F-%2F%40arthur%2Fshield-types-3.20.0.tgz"
   dependencies:
     react: "npm:^19.1.1"
-  checksum: 10c0/bee05efae23761d68b1874cc593b4b0801258f4e38113d59f7df4e9cc7bee46c89cf34bd6b72135b4065a89b3a206bb259ccf35f3ad965a5588ba3d71352b296
+  checksum: 10c0/27caeaeed705fee7c7b6f1852535ea108bc9e5eeeb214979c62a51a674459931fc59f4f83bf904710063c5476487fb1668470104a86a23d1883bbfc70d10b46c
   languageName: node
   linkType: hard
 
-"@arthur/unify-types@npm:^3.18.0":
-  version: 3.18.0
-  resolution: "@arthur/unify-types@npm:3.18.0::__archiveUrl=https%3A%2F%2Fgitlab.com%2Fapi%2Fv4%2Fprojects%2F54848372%2Fpackages%2Fnpm%2F%40arthur%2Funify-types%2F-%2F%40arthur%2Funify-types-3.18.0.tgz"
+"@arthur/unify-types@npm:^3.20.0":
+  version: 3.20.0
+  resolution: "@arthur/unify-types@npm:3.20.0::__archiveUrl=https%3A%2F%2Fgitlab.com%2Fapi%2Fv4%2Fprojects%2F54848372%2Fpackages%2Fnpm%2F%40arthur%2Funify-types%2F-%2F%40arthur%2Funify-types-3.20.0.tgz"
   dependencies:
     react: "npm:19.2"
-  checksum: 10c0/d81cc6f647f2459c8ed1c448f2d101b8dcfa62a7638a087790e22ce3fc2707eedfcd8c9718e3be1fc8462b9d3e11f5ca86c22786e2d9524fd9c3736ce654e166
+  checksum: 10c0/d6fa6ab17201b667f4fb9929ed5505c4667aa21addca93f8477badac400dc3512daf323621cee8723d622d0eaaadf0963de11914ba55d4a69e325192d049916f
   languageName: node
   linkType: hard
 
@@ -1207,7 +1211,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@floating-ui/react@npm:^0.27.19":
+"@floating-ui/react@npm:0.27.19, @floating-ui/react@npm:^0.27.19":
   version: 0.27.19
   resolution: "@floating-ui/react@npm:0.27.19"
   dependencies:
@@ -5288,13 +5292,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"idb@npm:^8.0.0":
-  version: 8.0.3
-  resolution: "idb@npm:8.0.3"
-  checksum: 10c0/421cd9a3281b7564528857031cc33fd9e95753f8191e483054cb25d1ceea7303a0d1462f4f69f5b41606f0f066156999e067478abf2460dfcf9cab80dae2a2b2
-  languageName: node
-  linkType: hard
-
 "ieee754@npm:^1.1.13":
   version: 1.2.1
   resolution: "ieee754@npm:1.2.1"
@@ -6732,7 +6729,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"mitt@npm:^3.0.0, mitt@npm:^3.0.1":
+"mitt@npm:3.0.1, mitt@npm:^3.0.0, mitt@npm:^3.0.1":
   version: 3.0.1
   resolution: "mitt@npm:3.0.1"
   checksum: 10c0/3ab4fdecf3be8c5255536faa07064d05caa3dd332bd318ff02e04621f7b3069ca1de9106cfe8e7ced675abfc2bec2ce4c4ef321c4a1bb1fb29df8ae090741913
@@ -8852,7 +8849,7 @@ __metadata:
     "@amplitude/experiment-js-client": "npm:^1.21.1"
     "@amplitude/plugin-session-replay-browser": "npm:^1.31.1"
     "@arizeai/openinference-semantic-conventions": "npm:2.1.7"
-    "@arthur/shared-components": "npm:3.18.0"
+    "@arthur/shared-components": "npm:3.20.0"
     "@base-ui/react": "npm:1.2.0"
     "@dnd-kit/core": "npm:6.3.1"
     "@dnd-kit/sortable": "npm:10.0.0"
@@ -9609,6 +9606,27 @@ __metadata:
     use-sync-external-store:
       optional: true
   checksum: 10c0/89de0c8119f1e0861b2f896a0b4df0d67994a373ecee02628d4e7b97cee1885207f646917d3ede395c3a5083316d48846855cfbc84aced7cd23a6db3238930a8
+  languageName: node
+  linkType: hard
+
+"zustand@npm:5.0.7":
+  version: 5.0.7
+  resolution: "zustand@npm:5.0.7"
+  peerDependencies:
+    "@types/react": ">=18.0.0"
+    immer: ">=9.0.6"
+    react: ">=18.0.0"
+    use-sync-external-store: ">=1.2.0"
+  peerDependenciesMeta:
+    "@types/react":
+      optional: true
+    immer:
+      optional: true
+    react:
+      optional: true
+    use-sync-external-store:
+      optional: true
+  checksum: 10c0/8582cb7fb8251f69c88c9f804b15964cc32692e9e11842cd59c6592a59f72a3141a8c794ac42eefdb6c06401d687cf5a70fc7041e54c39b25892b77a361defe4
   languageName: node
   linkType: hard
 

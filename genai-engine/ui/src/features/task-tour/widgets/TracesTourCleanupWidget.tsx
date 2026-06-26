@@ -1,7 +1,7 @@
+import { useTourEngine } from "@arthur/shared-components/tour";
 import { useEffect } from "react";
 
 import { useDrawerTarget } from "@/components/traces/hooks/useDrawerTarget";
-import { useTourEngine } from "@/features/tour";
 
 export function TracesTourCleanupWidget() {
   const engine = useTourEngine();

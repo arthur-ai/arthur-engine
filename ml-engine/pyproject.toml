@@ -1,6 +1,6 @@
 [project]
 name = "ml-engine"
-version = "2.1.663"
+version = "2.1.668"
 description = ""
 authors = [{ name = "Arthur", email = "engineering@arthur.ai" }]
 license = "MIT"
@@ -25,7 +25,7 @@ dependencies = [
   "s3fs==2025.12.0",
   "simple-settings==1.2.0",
   "httpx==0.28.1",
-  "duckdb==1.5.3",
+  "duckdb==1.5.4",
   "fsspec==2025.12.0",
   "datasketches==5.2.0",
   "numpy==2.3.2",
