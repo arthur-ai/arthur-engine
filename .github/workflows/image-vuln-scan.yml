@@ -60,5 +60,5 @@ jobs:
         with:
           image: ${{ matrix.image }}:${{ steps.tag.outputs.value }}
           slug: ${{ matrix.slug }}
-          dockerhub-username: ${{ secrets.DOCKER_HUB_USERNAME }}
-          dockerhub-token: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+          dockerhub-username: ${{ secrets.DOCKERHUB_ENTERPRISE_USERNAME }}
+          dockerhub-token: ${{ secrets.DOCKERHUB_ENTERPRISE_TOKEN }}
