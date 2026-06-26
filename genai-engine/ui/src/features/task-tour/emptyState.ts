@@ -1,6 +1,7 @@
+import type { StepContext } from "@arthur/shared-components/tour";
+
 import { TASK_TOUR_SKIP_WHEN } from "./content/wiring";
 
-import type { StepContext } from "@/features/tour";
 import type { Api } from "@/lib/api";
 
 /**

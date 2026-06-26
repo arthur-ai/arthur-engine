@@ -1,11 +1,11 @@
+import { useRegisterPreparation } from "@arthur/shared-components/tour";
+import type { PreparationHook } from "@arthur/shared-components/tour";
 import { useCallback, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import { TASK_TOUR_PREPARATIONS } from "../content/wiring";
 import { DEMO_TASK_PROMPT_NAME } from "../widgets/PromptTargetWidget";
 
-import { useRegisterPreparation } from "@/features/tour";
-import type { PreparationHook } from "@/features/tour";
 import { useApi } from "@/hooks/useApi";
 import { buildFetchDatasetsParams } from "@/services/datasetService";
 

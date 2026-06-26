@@ -1,3 +1,4 @@
+import { useTourEvent } from "@arthur/shared-components/tour";
 import { useCallback, useState } from "react";
 
 import { CertificateDialog } from "../components/CertificateDialog";
@@ -5,7 +6,6 @@ import { CtaDialog } from "../components/cta-dialog";
 import { COURSE_NAME } from "../courseName";
 import { getStoredRecipientName } from "../recipientName";
 
-import { useTourEvent } from "@/features/tour";
 import { track } from "@/services/analytics";
 
 /** Which post-completion dialog is currently showing, if any. */
