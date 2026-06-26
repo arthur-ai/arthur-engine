@@ -1,6 +1,4 @@
-import { PulsingRing } from "./components/PulsingRing";
-
-import { Spotlight, type HighlightRenderer, type TourPlugin } from "@/features/tour";
+import { PulsingRing, Spotlight, type HighlightRenderer, type TourPlugin } from "@arthur/shared-components/tour";
 
 /**
  * Registry key for the task-tour brand highlight. Points at a renderer that
