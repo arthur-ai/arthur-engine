@@ -74,7 +74,7 @@ dependencies = [
   "google-cloud-aiplatform>=1.38",
   "google-cloud-trace>=1.11.0,<2",
   "opentelemetry-semantic-conventions>=0.60b1,<0.61",
-  "arthur-client==1.4.2191",
+  "arthur-client==1.4.2228",
 ]
 
 [project.scripts]
