@@ -17,10 +17,6 @@ inputs:
     description: "Platform to scan for multi-arch images"
     required: false
     default: "linux/amd64"
-  trivy-version:
-    description: "Trivy CLI version to install"
-    required: false
-    default: "0.58.1"
 
 runs:
   using: composite
@@ -50,16 +46,13 @@ runs:
         image: ${{ inputs.image }}
         platform: ${{ inputs.platform }}
 
-    # --- Install Trivy CLI (deterministic; no action-tag guessing) ---
+    # --- Install Trivy CLI (official action; always latest) ---
+    # Unpinned: GitHub only retains release assets for recent versions, so pinned tags eventually 404.
     - name: Install Trivy
-      shell: bash
-      run: |
-        set -euo pipefail
-        VER="${{ inputs.trivy-version }}"
-        curl -sfL "https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh" \
-          | sh -s -- -b "${RUNNER_TEMP}/bin" "v${VER}"
-        echo "${RUNNER_TEMP}/bin" >> "$GITHUB_PATH"
-        "${RUNNER_TEMP}/bin/trivy" --version
+      uses: aquasecurity/setup-trivy@v0.3.1
+      with:
+        version: latest
+        token: ${{ github.token }}
 
     # --- Trivy: single scan -> JSON, then convert to SARIF (advisory) ---
     - name: Trivy scan (advisory)
