@@ -443,6 +443,8 @@ jobs:
         with:
           image: arthurplatform/genai-engine-${{ matrix.torch_device }}:${{ env.VERSION }}
           slug: genai-${{ matrix.torch_device }}
+          dockerhub-username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          dockerhub-token: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
 
   build-ml-engine-docker-images:
     environment: shared-protected-branch-secrets
@@ -494,6 +496,8 @@ jobs:
         with:
           image: arthurplatform/ml-engine:${{ env.VERSION }}
           slug: ml-engine
+          dockerhub-username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          dockerhub-token: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
       - name: Login to Artifactory
         run: |
           docker logout

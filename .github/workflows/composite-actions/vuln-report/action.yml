@@ -2,9 +2,10 @@ name: "Vulnerability scan & justification report"
 description: >
   Advisory container vulnerability scan (Docker Scout + Trivy) for a single image. Uploads SARIF
   to the GitHub Security tab and generates an SBOM + a VEX-applied HIGH/CRITICAL justification
-  report, uploaded as a workflow artifact. Never fails the build (advisory). Requires the caller
-  to have already `docker login`'d and to have checked out the repo (for security/vex + renderer).
-  The caller job needs `permissions: { security-events: write }`.
+  report, uploaded as a workflow artifact. Never fails the build (advisory). Pass
+  dockerhub-username/dockerhub-token for authenticated pulls (otherwise the caller must already be
+  `docker login`'d). The caller must also have checked out the repo (for security/vex + renderer)
+  and the job needs `permissions: { security-events: write }`.
 
 inputs:
   image:
@@ -17,14 +18,36 @@ inputs:
     description: "Platform to scan for multi-arch images"
     required: false
     default: "linux/amd64"
-  trivy-version:
-    description: "Trivy CLI version to install"
+  dockerhub-username:
+    description: "Docker Hub username for authenticated image pulls (raises the pull rate limit)"
     required: false
-    default: "0.58.1"
+    default: ""
+  dockerhub-token:
+    description: "Docker Hub access token (or password) for authenticated image pulls"
+    required: false
+    default: ""
 
 runs:
   using: composite
   steps:
+    # --- Pull the image ONCE (authenticated) so Docker Scout and Trivy both scan the local
+    #     copy instead of each pulling it from the registry. Halves registry pulls per job and,
+    #     with the Docker Hub credentials, uses the authenticated (higher) rate limit — avoids the
+    #     TOOMANYREQUESTS errors that surface as "unable to find the specified image". ---
+    - name: Authenticate to Docker Hub & pull image
+      shell: bash
+      env:
+        DOCKERHUB_USERNAME: ${{ inputs.dockerhub-username }}
+        DOCKERHUB_TOKEN: ${{ inputs.dockerhub-token }}
+        IMAGE: ${{ inputs.image }}
+        PLATFORM: ${{ inputs.platform }}
+      run: |
+        set -euo pipefail
+        if [ -n "${DOCKERHUB_USERNAME}" ] && [ -n "${DOCKERHUB_TOKEN}" ]; then
+          echo "${DOCKERHUB_TOKEN}" | docker login -u "${DOCKERHUB_USERNAME}" --password-stdin
+        fi
+        docker pull --platform "${PLATFORM}" "${IMAGE}"
+
     # --- Docker Scout: CVEs -> SARIF (advisory) ---
     - name: Docker Scout CVE scan (advisory)
       uses: docker/scout-action@v1
@@ -50,16 +73,13 @@ runs:
         image: ${{ inputs.image }}
         platform: ${{ inputs.platform }}
 
-    # --- Install Trivy CLI (deterministic; no action-tag guessing) ---
+    # --- Install Trivy CLI (official action; always latest) ---
+    # Unpinned: GitHub only retains release assets for recent versions, so pinned tags eventually 404.
     - name: Install Trivy
-      shell: bash
-      run: |
-        set -euo pipefail
-        VER="${{ inputs.trivy-version }}"
-        curl -sfL "https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh" \
-          | sh -s -- -b "${RUNNER_TEMP}/bin" "v${VER}"
-        echo "${RUNNER_TEMP}/bin" >> "$GITHUB_PATH"
-        "${RUNNER_TEMP}/bin/trivy" --version
+      uses: aquasecurity/setup-trivy@v0.3.1
+      with:
+        version: latest
+        token: ${{ github.token }}
 
     # --- Trivy: single scan -> JSON, then convert to SARIF (advisory) ---
     - name: Trivy scan (advisory)
