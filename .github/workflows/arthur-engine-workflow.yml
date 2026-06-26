@@ -413,8 +413,8 @@ jobs:
       - name: Log in to Docker Hub
         uses: docker/login-action@v3.6.0
         with:
-          username: ${{ secrets.DOCKERHUB_ENTERPRISE_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_ENTERPRISE_TOKEN }}
+          username: ${{ secrets.DOCKERHUB_OSS_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_OSS_TOKEN }}
       - name: Build and push docker image
         uses: docker/build-push-action@v6.18.0
         with:
@@ -474,8 +474,8 @@ jobs:
       - name: Log in to Docker Hub
         uses: docker/login-action@v3.6.0
         with:
-          username: ${{ secrets.DOCKERHUB_ENTERPRISE_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_ENTERPRISE_TOKEN }}
+          username: ${{ secrets.DOCKERHUB_OSS_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_OSS_TOKEN }}
       - name: Build and push docker image (no buildx)
         run: |
           cd ml-engine
@@ -584,8 +584,8 @@ jobs:
       - name: Log in to Docker Hub
         uses: docker/login-action@v3.6.0
         with:
-          username: ${{ secrets.DOCKERHUB_ENTERPRISE_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_ENTERPRISE_TOKEN }}
+          username: ${{ secrets.DOCKERHUB_OSS_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_OSS_TOKEN }}
       - name: Retag previous models image with new version
         run: |
           SOURCE_TAG=${{ github.ref == 'refs/heads/main' && 'latest' || 'latest-dev' }}
@@ -629,8 +629,8 @@ jobs:
       - name: Log in to Docker Hub
         uses: docker/login-action@v3.6.0
         with:
-          username: ${{ secrets.DOCKERHUB_ENTERPRISE_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_ENTERPRISE_TOKEN }}
+          username: ${{ secrets.DOCKERHUB_OSS_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_OSS_TOKEN }}
       - name: Retag previous models fs image with new version
         run: |
           SOURCE_TAG=${{ github.ref == 'refs/heads/main' && 'latest' || 'latest-dev' }}
@@ -709,7 +709,7 @@ jobs:
           echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u ${{ github.actor }} --password-stdin
       - name: Login to Docker Hub
         run: |
-          echo "${{ secrets.DOCKERHUB_ENTERPRISE_TOKEN }}" | helm registry login registry-1.docker.io -u ${{ secrets.DOCKERHUB_ENTERPRISE_USERNAME }} --password-stdin
+          echo "${{ secrets.DOCKERHUB_OSS_TOKEN }}" | helm registry login registry-1.docker.io -u ${{ secrets.DOCKERHUB_OSS_USERNAME }} --password-stdin
       - name: Package and Push Helm chart
         env:
           CHART_PATH_GENAI_ENGINE: "deployment/helm/genai-engine"
