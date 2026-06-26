@@ -1,7 +1,7 @@
 name: arthur-genai-engine
 services:
   db:
-    image: postgres:15
+    image: postgres:18
     shm_size: 128mb
     environment:
       - POSTGRES_PASSWORD=changeme_pg_password
