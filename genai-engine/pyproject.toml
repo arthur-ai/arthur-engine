@@ -103,6 +103,13 @@ linters = [
 [tool.uv]
 exclude-newer = "3 days"
 exclude-newer-package = { torch = false, arthur-common = false, arthur-client = false }
+# Security: pin transitive hf-xet (its wheel vendors Rust crates) to >=1.5.1, which bundles
+# rustls-webpki 0.103.13 — fixing RUSTSEC-2026-0104 (HIGH: DoS panic in CRL parsing).
+# Accepted exception: hf-xet 1.5.1 still vendors quinn-proto 0.11.14 (RUSTSEC-2026-0185, HIGH:
+# remote memory exhaustion). No hf-xet release fixes it as of 2026-06-25 (xet-core main also pins
+# 0.11.14). Low risk here — hf-xet's QUIC is a client to HuggingFace's TLS-authenticated CAS
+# servers and the DoS needs a malicious QUIC peer. Re-bump hf-xet once upstream lands the fix.
+constraint-dependencies = ["hf-xet>=1.5.1"]
 
 [[tool.uv.index]]
 name = "PyPI"
