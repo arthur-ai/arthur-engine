@@ -8,7 +8,7 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "2026-06-23T14:19:53.248056Z"
+exclude-newer = "2026-06-23T15:08:40.257405Z"
 exclude-newer-span = "P3D"
 
 [options.exclude-newer-package]
@@ -140,7 +140,7 @@ wheels = [
 
 [[package]]
 name = "arthur-client"
-version = "1.4.2191"
+version = "1.4.2228"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "authlib" },
@@ -152,9 +152,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/5c/b8/d4b55fe34508788e4fce47adc7f992d41e38a9284de13316ea0372216abc/arthur_client-1.4.2191.tar.gz", hash = "sha256:d909b9564ef2a3405ea06ad8fd6808bd4c6024eaab87e96855c963bd6c2f78e5", size = 397186, upload-time = "2026-06-09T22:13:22.008Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/8e/77/a9c919e11c8fac67e70b01f4d6ad1d73c21cf0e16aeda24d0596a569e6d0/arthur_client-1.4.2228.tar.gz", hash = "sha256:dcc639d76eb871433761f8853d05a912b3c4e79327776efca2d894277966fcb7", size = 404102, upload-time = "2026-06-26T14:12:51.599Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/0a/9e/08685f59ec078c7f8ca067d53660c48d53a299d87edff35e0f9d3ad7ab3d/arthur_client-1.4.2191-py3-none-any.whl", hash = "sha256:de287273f9e5c32585c2e44ba20e4c958751b881eeaeb801c2cc54bb834c38e1", size = 1459590, upload-time = "2026-06-09T22:13:20.067Z" },
+    { url = "https://files.pythonhosted.org/packages/f2/6f/7827f5cac061ca679bbd9defb4810e2dab563a3e02c5e82273592319b2a1/arthur_client-1.4.2228-py3-none-any.whl", hash = "sha256:1083524a9cf0bacf767193af16078ae5ed0083f6700137022e89d7830a4cf794", size = 1481882, upload-time = "2026-06-26T14:12:49.985Z" },
 ]
 
 [[package]]
@@ -182,7 +182,7 @@ wheels = [
 
 [[package]]
 name = "arthur-genai-engine"
-version = "2.1.664"
+version = "2.1.670"
 source = { editable = "." }
 dependencies = [
     { name = "alembic" },
@@ -277,7 +277,7 @@ performance = [
 requires-dist = [
     { name = "alembic", specifier = "==1.17.2" },
     { name = "amplitude-analytics", specifier = ">=1.1.5,<2" },
-    { name = "arthur-client", specifier = "==1.4.2191" },
+    { name = "arthur-client", specifier = "==1.4.2228" },
     { name = "arthur-common", specifier = "==2.4.67" },
     { name = "authlib", specifier = "==1.6.12" },
     { name = "azure-storage-blob", specifier = "==12.27.1" },
