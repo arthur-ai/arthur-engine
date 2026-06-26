@@ -1,6 +1,6 @@
 name: "Vulnerability scan & justification report"
 description: >
-  Advisory container vulnerability scan (Docker Scout + Trivy) for a single image. Uploads SARIF
+  Advisory container vulnerability scan (Trivy) for a single image. Uploads SARIF
   to the GitHub Security tab and generates an SBOM + a VEX-applied HIGH/CRITICAL justification
   report, uploaded as a workflow artifact. Never fails the build (advisory). Pass
   dockerhub-username/dockerhub-token for authenticated pulls (otherwise the caller must already be
@@ -30,10 +30,10 @@ inputs:
 runs:
   using: composite
   steps:
-    # --- Pull the image ONCE (authenticated) so Docker Scout and Trivy both scan the local
-    #     copy instead of each pulling it from the registry. Halves registry pulls per job and,
-    #     with the Docker Hub credentials, uses the authenticated (higher) rate limit — avoids the
-    #     TOOMANYREQUESTS errors that surface as "unable to find the specified image". ---
+    # --- Pull the image (authenticated) so Trivy scans the local copy instead of pulling it from
+    #     the registry. With the Docker Hub credentials this uses the authenticated (higher) rate
+    #     limit — avoids the TOOMANYREQUESTS errors that surface as "unable to find the specified
+    #     image". ---
     - name: Authenticate to Docker Hub & pull image
       shell: bash
       env:
@@ -47,31 +47,6 @@ runs:
           echo "${DOCKERHUB_TOKEN}" | docker login -u "${DOCKERHUB_USERNAME}" --password-stdin
         fi
         docker pull --platform "${PLATFORM}" "${IMAGE}"
-
-    # --- Docker Scout: CVEs -> SARIF (advisory) ---
-    - name: Docker Scout CVE scan (advisory)
-      uses: docker/scout-action@v1
-      continue-on-error: true
-      with:
-        command: cves
-        image: ${{ inputs.image }}
-        platform: ${{ inputs.platform }}
-        only-severities: critical,high
-        sarif-file: scout-${{ inputs.slug }}.sarif
-    - name: Upload Scout SARIF
-      if: always() && hashFiles(format('scout-{0}.sarif', inputs.slug)) != ''
-      uses: github/codeql-action/upload-sarif@v3
-      with:
-        sarif_file: scout-${{ inputs.slug }}.sarif
-        category: scout-${{ inputs.slug }}
-    # --- Docker Scout: base-image upgrade recommendations (advisory, logs only) ---
-    - name: Docker Scout recommendations (advisory)
-      uses: docker/scout-action@v1
-      continue-on-error: true
-      with:
-        command: recommendations
-        image: ${{ inputs.image }}
-        platform: ${{ inputs.platform }}
 
     # --- Install Trivy CLI (official action; always latest) ---
     # Unpinned: GitHub only retains release assets for recent versions, so pinned tags eventually 404.
