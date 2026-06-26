@@ -1,6 +1,6 @@
 [project]
 name = "arthur-genai-engine"
-version = "2.1.664"
+version = "2.1.665"
 description = ""
 authors = [{ name = "Arthur", email = "engineering@arthur.ai" }]
 readme = "README.md"
