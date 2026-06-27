@@ -37,7 +37,7 @@ dependencies = [
   "arthur-common==2.4.67",
   "gunicorn>=23.0.0,<24",
   "sqlalchemy==2.0.50",
-  "snowflake-sqlalchemy==1.10.0",
+  "snowflake-sqlalchemy==1.10.2",
   "databricks-sqlalchemy>=2.0,<3",
   "databricks-sdk>=0.84.0,<1",
   "arthur-client==1.4.2228",
