@@ -10,17 +10,18 @@ documented position: either it is remediated (upgrade the package/base image) or
 findings to the GitHub **Security tab**, and generates a per-image **justification report** with
 this VEX applied.
 
-Two views, produced by two Trivy passes in the `vuln-report` action:
+**Every** HIGH/CRITICAL is surfaced — unfixed CVEs are not hidden. The expectation is that each one
+is triaged to a documented position (fix it, or justify it via VEX); we do **not** filter findings
+out with `--ignore-unfixed`. Two views:
 
-- **GitHub Security tab** (`trivy-*` categories) — VEX applied **and** `--ignore-unfixed`, so it
-  shows only **fixable, not-yet-justified** HIGH/CRITICAL: an actionable worklist. Findings that
-  are VEX-justified or have no upstream fix do **not** appear here.
-- **Justification report artifact** (`report-*.md`) — the **full** HIGH/CRITICAL picture: every
-  unresolved finding (incl. unfixed) plus a table of everything accepted via VEX.
+- **GitHub Security tab** (`trivy-*` categories) — VEX applied, so it shows the **not-yet-triaged
+  backlog**: every HIGH/CRITICAL (fixable or not) that does not yet have a VEX statement. A
+  VEX-accepted finding drops off here automatically.
+- **Justification report artifact** (`report-*.md`) — the **full** picture: every unresolved
+  finding plus a table of everything accepted via VEX, with status + justification.
 
-> The CI gate is intentionally **off** today (scans never fail the build). The SARIF pass already
-> uses `--ignore-unfixed`; flipping on enforcement is adding `--exit-code 1` — see "Turning on
-> enforcement".
+> The CI gate is intentionally **off** today (scans never fail the build). Flipping it on for
+> *fixable* HIGH/CRITICAL is a small change — see "Turning on enforcement".
 
 ## Layout
 
@@ -98,7 +99,7 @@ vexctl create \
 ## Verifying locally
 
 ```bash
-# Full picture for the justification report (HIGH/CRITICAL, incl. unfixed + VEX-suppressed):
+# Full picture (HIGH/CRITICAL, incl. unfixed + VEX-suppressed) — same scan CI runs:
 trivy image --severity HIGH,CRITICAL \
   --vex security/vex/openvex.json --show-suppressed \
   --format json -o /tmp/report.json arthurplatform/genai-engine-cpu:latest
@@ -106,10 +107,8 @@ trivy image --severity HIGH,CRITICAL \
 # Render the human-readable justification report:
 python3 security/render_report.py /tmp/report.json /tmp/report.md arthurplatform/genai-engine-cpu:latest
 
-# Reproduce exactly what reaches the GitHub Security tab (VEX applied + fixable-only):
-trivy image --severity HIGH,CRITICAL \
-  --vex security/vex/openvex.json --ignore-unfixed \
-  --format sarif -o /tmp/trivy.sarif arthurplatform/genai-engine-cpu:latest
+# What reaches the GitHub Security tab = the converted SARIF (VEX-accepted findings excluded):
+trivy convert --format sarif -o /tmp/trivy.sarif /tmp/report.json
 ```
 
 > Tip: to confirm a VEX statement actually matches, check that the CVE moves into
@@ -120,7 +119,9 @@ trivy image --severity HIGH,CRITICAL \
 ## Turning on enforcement (future)
 
 When the backlog is triaged (every HIGH/CRITICAL is either fixed or has a VEX statement), make
-the build block on **fixable** HIGH/CRITICAL by adding `--exit-code 1` to the SARIF scan step in
-the composite action. That scan already applies `--ignore-unfixed`, so enforcement would block
-only findings that have an available patch — unfixable base-OS CVEs (documented via VEX) never
-permanently block releases.
+the build block on **fixable** HIGH/CRITICAL by adding `--exit-code 1` **and** `--ignore-unfixed`
+to the Trivy scan step in the composite action.
+
+`--ignore-unfixed` is important *for enforcement* (not for the advisory Security-tab view): it
+blocks only findings that have an available patch, so unfixable base-OS CVEs (documented via VEX)
+do not permanently block releases.

@@ -3,8 +3,8 @@
   "@id": "https://arthur.ai/vex/arthur-engine",
   "author": "Arthur Security <security@arthur.ai>",
   "role": "Document Creator",
-  "timestamp": "2026-06-26T00:00:00.000000000-00:00",
-  "version": 2,
+  "timestamp": "2026-06-27T00:00:00.000000000-00:00",
+  "version": 3,
   "_comment": "Scope: HIGH/CRITICAL CVEs a container-image re-scan still reports for the genai-engine, ml-engine and genai-engine-models-* images, but which are remediated in the shipped binary (the apt-upgraded library is copied over the distroless base, whose stale dpkg metadata the scanner reads) or are not in the execute path. Fully remediated CVEs are intentionally excluded: python3.11 is removed from every image (its dpkg metadata deleted) and litellm/langsmith/msgpack are upgraded past their advisories. See genai-engine/dockerfile, ml-engine/Dockerfile, deployment/model-upload/Dockerfile and PR #1851.",
   "statements": [
     {
@@ -164,6 +164,231 @@
       "status": "not_affected",
       "justification": "vulnerable_code_not_in_execute_path",
       "impact_statement": "The vulnerable function nltk.data.load() is never invoked. The sole nltk usage is PunktSentenceTokenizer, imported and instantiated with no resource path, so no attacker-controlled path can reach the path-traversal sink."
+    },
+    {
+      "_comment": "zlib1g: The overflow is in MiniZip (zlib contrib/minizip), which upstream states is not a supported part of zlib. Debian's zlib1g shared library does not build or export the MiniZip code (the vulnerable zipOpenNewFileInZip4_64 symbol is absent); Arthur links only the core inflate/deflate API. Owner: security@arthur.ai. Review by: 2026-12-27.",
+      "vulnerability": { "name": "CVE-2023-45853" },
+      "products": [
+        { "@id": "pkg:oci/genai-engine-cpu", "subcomponents": [ { "@id": "pkg:deb/debian/zlib1g" } ] },
+        { "@id": "pkg:oci/genai-engine-gpu", "subcomponents": [ { "@id": "pkg:deb/debian/zlib1g" } ] },
+        { "@id": "pkg:oci/ml-engine", "subcomponents": [ { "@id": "pkg:deb/debian/zlib1g" } ] },
+        { "@id": "pkg:oci/genai-engine-models-s3", "subcomponents": [ { "@id": "pkg:deb/debian/zlib1g" } ] },
+        { "@id": "pkg:oci/genai-engine-models-fs", "subcomponents": [ { "@id": "pkg:deb/debian/zlib1g" } ] },
+        { "@id": "pkg:oci/genai-engine-models-gcs", "subcomponents": [ { "@id": "pkg:deb/debian/zlib1g" } ] }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "The overflow is in MiniZip (zlib contrib/minizip), which upstream states is not a supported part of zlib. Debian's zlib1g shared library does not build or export the MiniZip code (the vulnerable zipOpenNewFileInZip4_64 symbol is absent); Arthur links only the core inflate/deflate API.",
+      "timestamp": "2026-06-27T00:00:00Z"
+    },
+    {
+      "_comment": "libexpat1: Triggering requires parsing attacker-controlled XML through libexpat. Arthur's engines expose JSON/HTTP APIs and never parse untrusted XML via the system libexpat; it is a transitive base-OS dependency. Owner: security@arthur.ai. Review by: 2026-12-27.",
+      "vulnerability": { "name": "CVE-2025-59375" },
+      "products": [
+        { "@id": "pkg:oci/genai-engine-cpu", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] },
+        { "@id": "pkg:oci/genai-engine-gpu", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] },
+        { "@id": "pkg:oci/ml-engine", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] },
+        { "@id": "pkg:oci/genai-engine-models-s3", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] },
+        { "@id": "pkg:oci/genai-engine-models-fs", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_in_execute_path",
+      "impact_statement": "Triggering requires parsing attacker-controlled XML through libexpat. Arthur's engines expose JSON/HTTP APIs and never parse untrusted XML via the system libexpat; it is a transitive base-OS dependency.",
+      "timestamp": "2026-06-27T00:00:00Z"
+    },
+    {
+      "_comment": "python3.11 (system, unused): Flagged against the system Python 3.11 deb packages. The model-upload job runs on Python 3.12 from /usr/local (deployment/model-upload/Dockerfile); the inherited system 3.11 is removed and never executed. Owner: security@arthur.ai. Review by: 2026-12-27.",
+      "vulnerability": { "name": "CVE-2025-69534" },
+      "products": [
+        { "@id": "pkg:oci/genai-engine-models-s3", "subcomponents": [ { "@id": "pkg:deb/debian/libpython3.11-minimal" }, { "@id": "pkg:deb/debian/libpython3.11-stdlib" }, { "@id": "pkg:deb/debian/python3.11-minimal" } ] },
+        { "@id": "pkg:oci/genai-engine-models-fs", "subcomponents": [ { "@id": "pkg:deb/debian/libpython3.11-minimal" }, { "@id": "pkg:deb/debian/libpython3.11-stdlib" }, { "@id": "pkg:deb/debian/python3.11-minimal" } ] }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_in_execute_path",
+      "impact_statement": "Flagged against the system Python 3.11 deb packages. The model-upload job runs on Python 3.12 from /usr/local (deployment/model-upload/Dockerfile); the inherited system 3.11 is removed and never executed.",
+      "timestamp": "2026-06-27T00:00:00Z"
+    },
+    {
+      "_comment": "ncurses: The buffer overflow is in the infocmp CLI / terminfo handling. The images run a non-interactive service with no TTY; Arthur never invokes infocmp nor renders attacker-controlled terminal/terminfo data. Owner: security@arthur.ai. Review by: 2026-12-27.",
+      "vulnerability": { "name": "CVE-2025-69720" },
+      "products": [
+        { "@id": "pkg:oci/genai-engine-cpu", "subcomponents": [ { "@id": "pkg:deb/debian/libncursesw6" }, { "@id": "pkg:deb/debian/libtinfo6" } ] },
+        { "@id": "pkg:oci/genai-engine-gpu", "subcomponents": [ { "@id": "pkg:deb/debian/libncursesw6" }, { "@id": "pkg:deb/debian/libtinfo6" } ] },
+        { "@id": "pkg:oci/ml-engine", "subcomponents": [ { "@id": "pkg:deb/debian/libncursesw6" }, { "@id": "pkg:deb/debian/libtinfo6" } ] },
+        { "@id": "pkg:oci/genai-engine-models-s3", "subcomponents": [ { "@id": "pkg:deb/debian/libncursesw6" }, { "@id": "pkg:deb/debian/libtinfo6" } ] },
+        { "@id": "pkg:oci/genai-engine-models-fs", "subcomponents": [ { "@id": "pkg:deb/debian/libncursesw6" }, { "@id": "pkg:deb/debian/libtinfo6" } ] },
+        { "@id": "pkg:oci/genai-engine-models-gcs", "subcomponents": [ { "@id": "pkg:deb/debian/libncursesw6" }, { "@id": "pkg:deb/debian/libtinfo6" }, { "@id": "pkg:deb/debian/ncurses-base" }, { "@id": "pkg:deb/debian/ncurses-bin" } ] }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_in_execute_path",
+      "impact_statement": "The buffer overflow is in the infocmp CLI / terminfo handling. The images run a non-interactive service with no TTY; Arthur never invokes infocmp nor renders attacker-controlled terminal/terminfo data.",
+      "timestamp": "2026-06-27T00:00:00Z"
+    },
+    {
+      "_comment": "libsqlite3-0: Persistence uses PostgreSQL (pgvector); libsqlite3 is a transitive dependency that is never given attacker-controlled SQL. Exploitation requires executing crafted SQL (KeyInfoFromExprList), which is not in the engine's data path. Owner: security@arthur.ai. Review by: 2026-12-27.",
+      "vulnerability": { "name": "CVE-2025-7458" },
+      "products": [
+        { "@id": "pkg:oci/genai-engine-cpu", "subcomponents": [ { "@id": "pkg:deb/debian/libsqlite3-0" } ] },
+        { "@id": "pkg:oci/genai-engine-gpu", "subcomponents": [ { "@id": "pkg:deb/debian/libsqlite3-0" } ] },
+        { "@id": "pkg:oci/ml-engine", "subcomponents": [ { "@id": "pkg:deb/debian/libsqlite3-0" } ] },
+        { "@id": "pkg:oci/genai-engine-models-s3", "subcomponents": [ { "@id": "pkg:deb/debian/libsqlite3-0" } ] },
+        { "@id": "pkg:oci/genai-engine-models-fs", "subcomponents": [ { "@id": "pkg:deb/debian/libsqlite3-0" } ] },
+        { "@id": "pkg:oci/genai-engine-models-gcs", "subcomponents": [ { "@id": "pkg:deb/debian/libsqlite3-0" } ] }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_in_execute_path",
+      "impact_statement": "Persistence uses PostgreSQL (pgvector); libsqlite3 is a transitive dependency that is never given attacker-controlled SQL. Exploitation requires executing crafted SQL (KeyInfoFromExprList), which is not in the engine's data path.",
+      "timestamp": "2026-06-27T00:00:00Z"
+    },
+    {
+      "_comment": "libsqlite3-0: Persistence uses PostgreSQL; libsqlite3 is a transitive dependency. The vulnerability is in the FTS5 full-text-search extension, which Arthur never loads or queries with untrusted input. Owner: security@arthur.ai. Review by: 2026-12-27.",
+      "vulnerability": { "name": "CVE-2026-11822" },
+      "products": [
+        { "@id": "pkg:oci/genai-engine-cpu", "subcomponents": [ { "@id": "pkg:deb/debian/libsqlite3-0" } ] },
+        { "@id": "pkg:oci/genai-engine-gpu", "subcomponents": [ { "@id": "pkg:deb/debian/libsqlite3-0" } ] },
+        { "@id": "pkg:oci/ml-engine", "subcomponents": [ { "@id": "pkg:deb/debian/libsqlite3-0" } ] },
+        { "@id": "pkg:oci/genai-engine-models-s3", "subcomponents": [ { "@id": "pkg:deb/debian/libsqlite3-0" } ] },
+        { "@id": "pkg:oci/genai-engine-models-fs", "subcomponents": [ { "@id": "pkg:deb/debian/libsqlite3-0" } ] },
+        { "@id": "pkg:oci/genai-engine-models-gcs", "subcomponents": [ { "@id": "pkg:deb/debian/libsqlite3-0" } ] }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_in_execute_path",
+      "impact_statement": "Persistence uses PostgreSQL; libsqlite3 is a transitive dependency. The vulnerability is in the FTS5 full-text-search extension, which Arthur never loads or queries with untrusted input.",
+      "timestamp": "2026-06-27T00:00:00Z"
+    },
+    {
+      "_comment": "libsqlite3-0: Persistence uses PostgreSQL; libsqlite3 is a transitive dependency. The vulnerability is in the FTS5 full-text-search extension, which Arthur never loads or queries with untrusted input. Owner: security@arthur.ai. Review by: 2026-12-27.",
+      "vulnerability": { "name": "CVE-2026-11824" },
+      "products": [
+        { "@id": "pkg:oci/genai-engine-cpu", "subcomponents": [ { "@id": "pkg:deb/debian/libsqlite3-0" } ] },
+        { "@id": "pkg:oci/genai-engine-gpu", "subcomponents": [ { "@id": "pkg:deb/debian/libsqlite3-0" } ] },
+        { "@id": "pkg:oci/ml-engine", "subcomponents": [ { "@id": "pkg:deb/debian/libsqlite3-0" } ] },
+        { "@id": "pkg:oci/genai-engine-models-s3", "subcomponents": [ { "@id": "pkg:deb/debian/libsqlite3-0" } ] },
+        { "@id": "pkg:oci/genai-engine-models-fs", "subcomponents": [ { "@id": "pkg:deb/debian/libsqlite3-0" } ] },
+        { "@id": "pkg:oci/genai-engine-models-gcs", "subcomponents": [ { "@id": "pkg:deb/debian/libsqlite3-0" } ] }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_in_execute_path",
+      "impact_statement": "Persistence uses PostgreSQL; libsqlite3 is a transitive dependency. The vulnerability is in the FTS5 full-text-search extension, which Arthur never loads or queries with untrusted input.",
+      "timestamp": "2026-06-27T00:00:00Z"
+    },
+    {
+      "_comment": "libexpat1: Triggering requires parsing attacker-controlled XML through libexpat. Arthur's engines expose JSON/HTTP APIs and never parse untrusted XML via the system libexpat; it is a transitive base-OS dependency. Owner: security@arthur.ai. Review by: 2026-12-27.",
+      "vulnerability": { "name": "CVE-2026-25210" },
+      "products": [
+        { "@id": "pkg:oci/genai-engine-cpu", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] },
+        { "@id": "pkg:oci/genai-engine-gpu", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] },
+        { "@id": "pkg:oci/ml-engine", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] },
+        { "@id": "pkg:oci/genai-engine-models-s3", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] },
+        { "@id": "pkg:oci/genai-engine-models-fs", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_in_execute_path",
+      "impact_statement": "Triggering requires parsing attacker-controlled XML through libexpat. Arthur's engines expose JSON/HTTP APIs and never parse untrusted XML via the system libexpat; it is a transitive base-OS dependency.",
+      "timestamp": "2026-06-27T00:00:00Z"
+    },
+    {
+      "_comment": "python3.11 (system, unused): Flagged against the system Python 3.11 deb packages. The model-upload job runs on Python 3.12 from /usr/local; the inherited system 3.11 is removed and never executed. (http.cookies.Morsel is also not on the upload path.) Owner: security@arthur.ai. Review by: 2026-12-27.",
+      "vulnerability": { "name": "CVE-2026-3644" },
+      "products": [
+        { "@id": "pkg:oci/genai-engine-models-s3", "subcomponents": [ { "@id": "pkg:deb/debian/libpython3.11-minimal" }, { "@id": "pkg:deb/debian/libpython3.11-stdlib" }, { "@id": "pkg:deb/debian/python3.11-minimal" } ] },
+        { "@id": "pkg:oci/genai-engine-models-fs", "subcomponents": [ { "@id": "pkg:deb/debian/libpython3.11-minimal" }, { "@id": "pkg:deb/debian/libpython3.11-stdlib" }, { "@id": "pkg:deb/debian/python3.11-minimal" } ] }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_in_execute_path",
+      "impact_statement": "Flagged against the system Python 3.11 deb packages. The model-upload job runs on Python 3.12 from /usr/local; the inherited system 3.11 is removed and never executed. (http.cookies.Morsel is also not on the upload path.)",
+      "timestamp": "2026-06-27T00:00:00Z"
+    },
+    {
+      "_comment": "python3.11 (system, unused): Flagged against the system Python 3.11 deb packages. The model-upload job runs on Python 3.12 from /usr/local; the inherited system 3.11 is removed and never executed. Owner: security@arthur.ai. Review by: 2026-12-27.",
+      "vulnerability": { "name": "CVE-2026-4224" },
+      "products": [
+        { "@id": "pkg:oci/genai-engine-models-s3", "subcomponents": [ { "@id": "pkg:deb/debian/libpython3.11-minimal" }, { "@id": "pkg:deb/debian/libpython3.11-stdlib" }, { "@id": "pkg:deb/debian/python3.11-minimal" } ] },
+        { "@id": "pkg:oci/genai-engine-models-fs", "subcomponents": [ { "@id": "pkg:deb/debian/libpython3.11-minimal" }, { "@id": "pkg:deb/debian/libpython3.11-stdlib" }, { "@id": "pkg:deb/debian/python3.11-minimal" } ] }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_in_execute_path",
+      "impact_statement": "Flagged against the system Python 3.11 deb packages. The model-upload job runs on Python 3.12 from /usr/local; the inherited system 3.11 is removed and never executed.",
+      "timestamp": "2026-06-27T00:00:00Z"
+    },
+    {
+      "_comment": "perl-base: perl-base is a transitive base-OS package on the models-gcs image; no Arthur process invokes the Perl interpreter or Archive::Tar. The upload job runs a single Python entrypoint (upload_models.py). Owner: security@arthur.ai. Review by: 2026-12-27.",
+      "vulnerability": { "name": "CVE-2026-42496" },
+      "products": [
+        { "@id": "pkg:oci/genai-engine-models-gcs", "subcomponents": [ { "@id": "pkg:deb/debian/perl-base" } ] }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_in_execute_path",
+      "impact_statement": "perl-base is a transitive base-OS package on the models-gcs image; no Arthur process invokes the Perl interpreter or Archive::Tar. The upload job runs a single Python entrypoint (upload_models.py).",
+      "timestamp": "2026-06-27T00:00:00Z"
+    },
+    {
+      "_comment": "perl-base: perl-base is a transitive base-OS package on the models-gcs image; no Arthur process invokes the Perl interpreter or Archive::Tar. The upload job runs a single Python entrypoint (upload_models.py). Owner: security@arthur.ai. Review by: 2026-12-27.",
+      "vulnerability": { "name": "CVE-2026-42497" },
+      "products": [
+        { "@id": "pkg:oci/genai-engine-models-gcs", "subcomponents": [ { "@id": "pkg:deb/debian/perl-base" } ] }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_in_execute_path",
+      "impact_statement": "perl-base is a transitive base-OS package on the models-gcs image; no Arthur process invokes the Perl interpreter or Archive::Tar. The upload job runs a single Python entrypoint (upload_models.py).",
+      "timestamp": "2026-06-27T00:00:00Z"
+    },
+    {
+      "_comment": "perl-base: perl-base is a transitive base-OS package on the models-gcs image; no Arthur process invokes the Perl interpreter or IO::Compress/File::GlobMapper. The upload job runs a single Python entrypoint (upload_models.py). Owner: security@arthur.ai. Review by: 2026-12-27.",
+      "vulnerability": { "name": "CVE-2026-48962" },
+      "products": [
+        { "@id": "pkg:oci/genai-engine-models-gcs", "subcomponents": [ { "@id": "pkg:deb/debian/perl-base" } ] }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_in_execute_path",
+      "impact_statement": "perl-base is a transitive base-OS package on the models-gcs image; no Arthur process invokes the Perl interpreter or IO::Compress/File::GlobMapper. The upload job runs a single Python entrypoint (upload_models.py).",
+      "timestamp": "2026-06-27T00:00:00Z"
+    },
+    {
+      "_comment": "python3.11 (system, unused): Flagged against the system Python 3.11 deb packages. The model-upload job runs on Python 3.12 from /usr/local; the inherited system 3.11 is removed and never executed. Owner: security@arthur.ai. Review by: 2026-12-27.",
+      "vulnerability": { "name": "CVE-2026-6100" },
+      "products": [
+        { "@id": "pkg:oci/genai-engine-models-s3", "subcomponents": [ { "@id": "pkg:deb/debian/libpython3.11-minimal" }, { "@id": "pkg:deb/debian/libpython3.11-stdlib" }, { "@id": "pkg:deb/debian/python3.11-minimal" } ] },
+        { "@id": "pkg:oci/genai-engine-models-fs", "subcomponents": [ { "@id": "pkg:deb/debian/libpython3.11-minimal" }, { "@id": "pkg:deb/debian/libpython3.11-stdlib" }, { "@id": "pkg:deb/debian/python3.11-minimal" } ] }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_in_execute_path",
+      "impact_statement": "Flagged against the system Python 3.11 deb packages. The model-upload job runs on Python 3.12 from /usr/local; the inherited system 3.11 is removed and never executed.",
+      "timestamp": "2026-06-27T00:00:00Z"
+    },
+    {
+      "_comment": "python3.11 (system, unused): Flagged against the system Python 3.11 deb packages. The model-upload job runs on Python 3.12 from /usr/local; the inherited system 3.11 is removed and never executed. Owner: security@arthur.ai. Review by: 2026-12-27.",
+      "vulnerability": { "name": "CVE-2026-7210" },
+      "products": [
+        { "@id": "pkg:oci/genai-engine-models-s3", "subcomponents": [ { "@id": "pkg:deb/debian/libpython3.11-minimal" }, { "@id": "pkg:deb/debian/libpython3.11-stdlib" }, { "@id": "pkg:deb/debian/python3.11-minimal" } ] },
+        { "@id": "pkg:oci/genai-engine-models-fs", "subcomponents": [ { "@id": "pkg:deb/debian/libpython3.11-minimal" }, { "@id": "pkg:deb/debian/libpython3.11-stdlib" }, { "@id": "pkg:deb/debian/python3.11-minimal" } ] }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_in_execute_path",
+      "impact_statement": "Flagged against the system Python 3.11 deb packages. The model-upload job runs on Python 3.12 from /usr/local; the inherited system 3.11 is removed and never executed.",
+      "timestamp": "2026-06-27T00:00:00Z"
+    },
+    {
+      "_comment": "perl-base: perl-base is a transitive base-OS package on the models-gcs image; no Arthur process invokes the Perl interpreter (no untrusted regex compilation). The upload job runs a single Python entrypoint (upload_models.py). Owner: security@arthur.ai. Review by: 2026-12-27.",
+      "vulnerability": { "name": "CVE-2026-8376" },
+      "products": [
+        { "@id": "pkg:oci/genai-engine-models-gcs", "subcomponents": [ { "@id": "pkg:deb/debian/perl-base" } ] }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_in_execute_path",
+      "impact_statement": "perl-base is a transitive base-OS package on the models-gcs image; no Arthur process invokes the Perl interpreter (no untrusted regex compilation). The upload job runs a single Python entrypoint (upload_models.py).",
+      "timestamp": "2026-06-27T00:00:00Z"
+    },
+    {
+      "_comment": "perl-base: perl-base is a transitive base-OS package on the models-gcs image; no Arthur process invokes the Perl interpreter or Archive::Tar. The upload job runs a single Python entrypoint (upload_models.py). Owner: security@arthur.ai. Review by: 2026-12-27.",
+      "vulnerability": { "name": "CVE-2026-9538" },
+      "products": [
+        { "@id": "pkg:oci/genai-engine-models-gcs", "subcomponents": [ { "@id": "pkg:deb/debian/perl-base" } ] }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_in_execute_path",
+      "impact_statement": "perl-base is a transitive base-OS package on the models-gcs image; no Arthur process invokes the Perl interpreter or Archive::Tar. The upload job runs a single Python entrypoint (upload_models.py).",
+      "timestamp": "2026-06-27T00:00:00Z"
     }
   ]
 }
