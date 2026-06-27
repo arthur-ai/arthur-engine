@@ -10,15 +10,21 @@ documented position: either it is remediated (upgrade the package/base image) or
 findings to the GitHub **Security tab**, and generates a per-image **justification report** with
 this VEX applied.
 
-**Every** HIGH/CRITICAL is surfaced — unfixed CVEs are not hidden. The expectation is that each one
-is triaged to a documented position (fix it, or justify it via VEX); we do **not** filter findings
-out with `--ignore-unfixed`. Two views:
+**Every** HIGH/CRITICAL is surfaced — unfixed CVEs are **not** hidden. The expectation is that each
+one is triaged to a documented position (fix it, or justify it via VEX). Two views:
 
 - **GitHub Security tab** (`trivy-*` categories) — VEX applied, so it shows the **not-yet-triaged
   backlog**: every HIGH/CRITICAL (fixable or not) that does not yet have a VEX statement. A
   VEX-accepted finding drops off here automatically.
 - **Justification report artifact** (`report-*.md`) — the **full** picture: every unresolved
   finding plus a table of everything accepted via VEX, with status + justification.
+
+> **Why we don't use `--ignore-unfixed` on the scan.** Trivy's `--ignore-unfixed` drops every CVE
+> with no upstream patch — which is the bulk of base-OS findings. We deliberately leave it **off**:
+> an unfixed CVE still needs a human decision (is it exploitable in our images?) recorded as a VEX
+> statement, not silently filtered away. Hiding it would also mask the moment a fix later ships.
+> So the policy for an unfixed CVE is **justify it**, not drop it. `--ignore-unfixed` has exactly
+> one intended use here — the future enforcement gate (see below) — and none on the advisory scan.
 
 > The CI gate is intentionally **off** today (scans never fail the build). Flipping it on for
 > *fixable* HIGH/CRITICAL is a small change — see "Turning on enforcement".
@@ -122,6 +128,9 @@ When the backlog is triaged (every HIGH/CRITICAL is either fixed or has a VEX st
 the build block on **fixable** HIGH/CRITICAL by adding `--exit-code 1` **and** `--ignore-unfixed`
 to the Trivy scan step in the composite action.
 
-`--ignore-unfixed` is important *for enforcement* (not for the advisory Security-tab view): it
-blocks only findings that have an available patch, so unfixable base-OS CVEs (documented via VEX)
-do not permanently block releases.
+Here `--ignore-unfixed` acts as a **release safety net, not a visibility filter**. VEX-justified
+findings are already suppressed, so a gate without it would only ever fire on findings that are
+**both** fixable and not-yet-triaged — plus any *newly-disclosed unfixed* CVE, which no one can
+patch on the spot. `--ignore-unfixed` keeps that last category from hard-blocking every release
+until someone writes its VEX statement: it stays an advisory finding (still visible in the Security
+tab and the report) to be triaged, while the gate blocks only the genuinely fixable ones.
