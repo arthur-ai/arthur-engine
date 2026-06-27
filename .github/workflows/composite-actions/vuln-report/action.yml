@@ -56,7 +56,19 @@ runs:
         version: latest
         token: ${{ github.token }}
 
-    # --- Trivy: single scan -> JSON, then convert to SARIF (advisory) ---
+    # --- Trivy: two scans (advisory) ---
+    #   1. SARIF for the GitHub Security tab. VEX is applied and `--ignore-unfixed` is set, so only
+    #      *fixable, not-yet-justified* HIGH/CRITICAL surface — an actionable worklist rather than a
+    #      pile of unfixable base-OS noise. (`trivy convert` cannot filter unfixed, so the SARIF is
+    #      generated directly by the scan rather than converted from the JSON report.)
+    #   2. JSON for the human justification report + SBOM. Keeps the *full* HIGH/CRITICAL picture
+    #      (no --ignore-unfixed) and `--show-suppressed` so VEX-accepted findings stay documented.
+    #
+    #   VEX matching note: statements in security/vex/openvex.json scope subcomponents by *package
+    #   name only* (e.g. pkg:deb/debian/libssl3), NOT by pinned version/qualifiers. Trivy package
+    #   purls carry arch + distro point-release (?arch=amd64&distro=debian-12.13) that drift on every
+    #   base-image bump; a version-pinned subcomponent purl silently stops matching and the
+    #   suppression breaks. Keep subcomponent purls name-only.
     - name: Trivy scan (advisory)
       shell: bash
       env:
@@ -66,15 +78,19 @@ runs:
         trivy image \
           --severity HIGH,CRITICAL \
           --vex security/vex/openvex.json \
+          --ignore-unfixed \
+          --scanners vuln \
+          --format sarif \
+          --output "trivy-${{ inputs.slug }}.sarif" \
+          "${{ inputs.image }}"
+        trivy image \
+          --severity HIGH,CRITICAL \
+          --vex security/vex/openvex.json \
           --show-suppressed \
           --scanners vuln \
           --format json \
           --output "report-${{ inputs.slug }}.json" \
           "${{ inputs.image }}"
-        trivy convert \
-          --format sarif \
-          --output "trivy-${{ inputs.slug }}.sarif" \
-          "report-${{ inputs.slug }}.json"
     - name: Upload Trivy SARIF
       if: always() && hashFiles(format('trivy-{0}.sarif', inputs.slug)) != ''
       uses: github/codeql-action/upload-sarif@v3

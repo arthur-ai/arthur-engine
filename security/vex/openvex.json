@@ -11,11 +11,11 @@
       "_comment": "libssl3: the shipped libssl.so.3/libcrypto.so.3 is OpenSSL 3.0.20 (deb 3.0.20-1~deb12u2), copied from the apt-upgraded *-slim-bookworm build stage over the distroless base. Scanners read stale dpkg metadata (3.0.19-1~deb12u2) inherited from the distroless base. The shipped binary contains the fix. The genai-engine-models-s3/-fs images do the same via deployment/model-upload/Dockerfile.",
       "vulnerability": { "name": "CVE-2026-34182" },
       "products": [
-        { "@id": "pkg:oci/genai-engine-cpu", "subcomponents": [ { "@id": "pkg:deb/debian/libssl3@3.0.19-1~deb12u2?distro=debian-12" } ] },
-        { "@id": "pkg:oci/genai-engine-gpu", "subcomponents": [ { "@id": "pkg:deb/debian/libssl3@3.0.19-1~deb12u2?distro=debian-12" } ] },
-        { "@id": "pkg:oci/ml-engine", "subcomponents": [ { "@id": "pkg:deb/debian/libssl3@3.0.19-1~deb12u2?distro=debian-12" } ] },
-        { "@id": "pkg:oci/genai-engine-models-s3", "subcomponents": [ { "@id": "pkg:deb/debian/libssl3@3.0.19-1~deb12u2?distro=debian-12" } ] },
-        { "@id": "pkg:oci/genai-engine-models-fs", "subcomponents": [ { "@id": "pkg:deb/debian/libssl3@3.0.19-1~deb12u2?distro=debian-12" } ] }
+        { "@id": "pkg:oci/genai-engine-cpu", "subcomponents": [ { "@id": "pkg:deb/debian/libssl3" } ] },
+        { "@id": "pkg:oci/genai-engine-gpu", "subcomponents": [ { "@id": "pkg:deb/debian/libssl3" } ] },
+        { "@id": "pkg:oci/ml-engine", "subcomponents": [ { "@id": "pkg:deb/debian/libssl3" } ] },
+        { "@id": "pkg:oci/genai-engine-models-s3", "subcomponents": [ { "@id": "pkg:deb/debian/libssl3" } ] },
+        { "@id": "pkg:oci/genai-engine-models-fs", "subcomponents": [ { "@id": "pkg:deb/debian/libssl3" } ] }
       ],
       "status": "fixed"
     },
@@ -23,11 +23,11 @@
       "_comment": "libssl3 — shipped binary is OpenSSL 3.0.20-1~deb12u2; reported version is stale distroless dpkg metadata.",
       "vulnerability": { "name": "CVE-2026-34180" },
       "products": [
-        { "@id": "pkg:oci/genai-engine-cpu", "subcomponents": [ { "@id": "pkg:deb/debian/libssl3@3.0.19-1~deb12u2?distro=debian-12" } ] },
-        { "@id": "pkg:oci/genai-engine-gpu", "subcomponents": [ { "@id": "pkg:deb/debian/libssl3@3.0.19-1~deb12u2?distro=debian-12" } ] },
-        { "@id": "pkg:oci/ml-engine", "subcomponents": [ { "@id": "pkg:deb/debian/libssl3@3.0.19-1~deb12u2?distro=debian-12" } ] },
-        { "@id": "pkg:oci/genai-engine-models-s3", "subcomponents": [ { "@id": "pkg:deb/debian/libssl3@3.0.19-1~deb12u2?distro=debian-12" } ] },
-        { "@id": "pkg:oci/genai-engine-models-fs", "subcomponents": [ { "@id": "pkg:deb/debian/libssl3@3.0.19-1~deb12u2?distro=debian-12" } ] }
+        { "@id": "pkg:oci/genai-engine-cpu", "subcomponents": [ { "@id": "pkg:deb/debian/libssl3" } ] },
+        { "@id": "pkg:oci/genai-engine-gpu", "subcomponents": [ { "@id": "pkg:deb/debian/libssl3" } ] },
+        { "@id": "pkg:oci/ml-engine", "subcomponents": [ { "@id": "pkg:deb/debian/libssl3" } ] },
+        { "@id": "pkg:oci/genai-engine-models-s3", "subcomponents": [ { "@id": "pkg:deb/debian/libssl3" } ] },
+        { "@id": "pkg:oci/genai-engine-models-fs", "subcomponents": [ { "@id": "pkg:deb/debian/libssl3" } ] }
       ],
       "status": "fixed"
     },
@@ -35,11 +35,11 @@
       "_comment": "libssl3 — shipped binary is OpenSSL 3.0.20-1~deb12u2; reported version is stale distroless dpkg metadata.",
       "vulnerability": { "name": "CVE-2026-9076" },
       "products": [
-        { "@id": "pkg:oci/genai-engine-cpu", "subcomponents": [ { "@id": "pkg:deb/debian/libssl3@3.0.19-1~deb12u2?distro=debian-12" } ] },
-        { "@id": "pkg:oci/genai-engine-gpu", "subcomponents": [ { "@id": "pkg:deb/debian/libssl3@3.0.19-1~deb12u2?distro=debian-12" } ] },
-        { "@id": "pkg:oci/ml-engine", "subcomponents": [ { "@id": "pkg:deb/debian/libssl3@3.0.19-1~deb12u2?distro=debian-12" } ] },
-        { "@id": "pkg:oci/genai-engine-models-s3", "subcomponents": [ { "@id": "pkg:deb/debian/libssl3@3.0.19-1~deb12u2?distro=debian-12" } ] },
-        { "@id": "pkg:oci/genai-engine-models-fs", "subcomponents": [ { "@id": "pkg:deb/debian/libssl3@3.0.19-1~deb12u2?distro=debian-12" } ] }
+        { "@id": "pkg:oci/genai-engine-cpu", "subcomponents": [ { "@id": "pkg:deb/debian/libssl3" } ] },
+        { "@id": "pkg:oci/genai-engine-gpu", "subcomponents": [ { "@id": "pkg:deb/debian/libssl3" } ] },
+        { "@id": "pkg:oci/ml-engine", "subcomponents": [ { "@id": "pkg:deb/debian/libssl3" } ] },
+        { "@id": "pkg:oci/genai-engine-models-s3", "subcomponents": [ { "@id": "pkg:deb/debian/libssl3" } ] },
+        { "@id": "pkg:oci/genai-engine-models-fs", "subcomponents": [ { "@id": "pkg:deb/debian/libssl3" } ] }
       ],
       "status": "fixed"
     },
@@ -47,11 +47,11 @@
       "_comment": "libssl3 — shipped binary is OpenSSL 3.0.20-1~deb12u2; reported version is stale distroless dpkg metadata.",
       "vulnerability": { "name": "CVE-2026-7383" },
       "products": [
-        { "@id": "pkg:oci/genai-engine-cpu", "subcomponents": [ { "@id": "pkg:deb/debian/libssl3@3.0.19-1~deb12u2?distro=debian-12" } ] },
-        { "@id": "pkg:oci/genai-engine-gpu", "subcomponents": [ { "@id": "pkg:deb/debian/libssl3@3.0.19-1~deb12u2?distro=debian-12" } ] },
-        { "@id": "pkg:oci/ml-engine", "subcomponents": [ { "@id": "pkg:deb/debian/libssl3@3.0.19-1~deb12u2?distro=debian-12" } ] },
-        { "@id": "pkg:oci/genai-engine-models-s3", "subcomponents": [ { "@id": "pkg:deb/debian/libssl3@3.0.19-1~deb12u2?distro=debian-12" } ] },
-        { "@id": "pkg:oci/genai-engine-models-fs", "subcomponents": [ { "@id": "pkg:deb/debian/libssl3@3.0.19-1~deb12u2?distro=debian-12" } ] }
+        { "@id": "pkg:oci/genai-engine-cpu", "subcomponents": [ { "@id": "pkg:deb/debian/libssl3" } ] },
+        { "@id": "pkg:oci/genai-engine-gpu", "subcomponents": [ { "@id": "pkg:deb/debian/libssl3" } ] },
+        { "@id": "pkg:oci/ml-engine", "subcomponents": [ { "@id": "pkg:deb/debian/libssl3" } ] },
+        { "@id": "pkg:oci/genai-engine-models-s3", "subcomponents": [ { "@id": "pkg:deb/debian/libssl3" } ] },
+        { "@id": "pkg:oci/genai-engine-models-fs", "subcomponents": [ { "@id": "pkg:deb/debian/libssl3" } ] }
       ],
       "status": "fixed"
     },
@@ -59,11 +59,11 @@
       "_comment": "libssl3 — shipped binary is OpenSSL 3.0.20-1~deb12u2; reported version is stale distroless dpkg metadata.",
       "vulnerability": { "name": "CVE-2026-45447" },
       "products": [
-        { "@id": "pkg:oci/genai-engine-cpu", "subcomponents": [ { "@id": "pkg:deb/debian/libssl3@3.0.19-1~deb12u2?distro=debian-12" } ] },
-        { "@id": "pkg:oci/genai-engine-gpu", "subcomponents": [ { "@id": "pkg:deb/debian/libssl3@3.0.19-1~deb12u2?distro=debian-12" } ] },
-        { "@id": "pkg:oci/ml-engine", "subcomponents": [ { "@id": "pkg:deb/debian/libssl3@3.0.19-1~deb12u2?distro=debian-12" } ] },
-        { "@id": "pkg:oci/genai-engine-models-s3", "subcomponents": [ { "@id": "pkg:deb/debian/libssl3@3.0.19-1~deb12u2?distro=debian-12" } ] },
-        { "@id": "pkg:oci/genai-engine-models-fs", "subcomponents": [ { "@id": "pkg:deb/debian/libssl3@3.0.19-1~deb12u2?distro=debian-12" } ] }
+        { "@id": "pkg:oci/genai-engine-cpu", "subcomponents": [ { "@id": "pkg:deb/debian/libssl3" } ] },
+        { "@id": "pkg:oci/genai-engine-gpu", "subcomponents": [ { "@id": "pkg:deb/debian/libssl3" } ] },
+        { "@id": "pkg:oci/ml-engine", "subcomponents": [ { "@id": "pkg:deb/debian/libssl3" } ] },
+        { "@id": "pkg:oci/genai-engine-models-s3", "subcomponents": [ { "@id": "pkg:deb/debian/libssl3" } ] },
+        { "@id": "pkg:oci/genai-engine-models-fs", "subcomponents": [ { "@id": "pkg:deb/debian/libssl3" } ] }
       ],
       "status": "fixed"
     },
@@ -71,11 +71,11 @@
       "_comment": "libssl3 — shipped binary is OpenSSL 3.0.20-1~deb12u2; reported version is stale distroless dpkg metadata.",
       "vulnerability": { "name": "CVE-2026-45445" },
       "products": [
-        { "@id": "pkg:oci/genai-engine-cpu", "subcomponents": [ { "@id": "pkg:deb/debian/libssl3@3.0.19-1~deb12u2?distro=debian-12" } ] },
-        { "@id": "pkg:oci/genai-engine-gpu", "subcomponents": [ { "@id": "pkg:deb/debian/libssl3@3.0.19-1~deb12u2?distro=debian-12" } ] },
-        { "@id": "pkg:oci/ml-engine", "subcomponents": [ { "@id": "pkg:deb/debian/libssl3@3.0.19-1~deb12u2?distro=debian-12" } ] },
-        { "@id": "pkg:oci/genai-engine-models-s3", "subcomponents": [ { "@id": "pkg:deb/debian/libssl3@3.0.19-1~deb12u2?distro=debian-12" } ] },
-        { "@id": "pkg:oci/genai-engine-models-fs", "subcomponents": [ { "@id": "pkg:deb/debian/libssl3@3.0.19-1~deb12u2?distro=debian-12" } ] }
+        { "@id": "pkg:oci/genai-engine-cpu", "subcomponents": [ { "@id": "pkg:deb/debian/libssl3" } ] },
+        { "@id": "pkg:oci/genai-engine-gpu", "subcomponents": [ { "@id": "pkg:deb/debian/libssl3" } ] },
+        { "@id": "pkg:oci/ml-engine", "subcomponents": [ { "@id": "pkg:deb/debian/libssl3" } ] },
+        { "@id": "pkg:oci/genai-engine-models-s3", "subcomponents": [ { "@id": "pkg:deb/debian/libssl3" } ] },
+        { "@id": "pkg:oci/genai-engine-models-fs", "subcomponents": [ { "@id": "pkg:deb/debian/libssl3" } ] }
       ],
       "status": "fixed"
     },
@@ -83,11 +83,11 @@
       "_comment": "libc6: the shipped libc.so.6 is glibc 2.36-9+deb12u14, copied from the apt-upgraded *-slim-bookworm build stage over the distroless base. Scanners read stale dpkg metadata (2.36-9+deb12u13) inherited from the distroless base. The shipped binary contains the fix.",
       "vulnerability": { "name": "CVE-2026-4437" },
       "products": [
-        { "@id": "pkg:oci/genai-engine-cpu", "subcomponents": [ { "@id": "pkg:deb/debian/libc6@2.36-9+deb12u13?distro=debian-12" } ] },
-        { "@id": "pkg:oci/genai-engine-gpu", "subcomponents": [ { "@id": "pkg:deb/debian/libc6@2.36-9+deb12u13?distro=debian-12" } ] },
-        { "@id": "pkg:oci/ml-engine", "subcomponents": [ { "@id": "pkg:deb/debian/libc6@2.36-9+deb12u13?distro=debian-12" } ] },
-        { "@id": "pkg:oci/genai-engine-models-s3", "subcomponents": [ { "@id": "pkg:deb/debian/libc6@2.36-9+deb12u13?distro=debian-12" } ] },
-        { "@id": "pkg:oci/genai-engine-models-fs", "subcomponents": [ { "@id": "pkg:deb/debian/libc6@2.36-9+deb12u13?distro=debian-12" } ] }
+        { "@id": "pkg:oci/genai-engine-cpu", "subcomponents": [ { "@id": "pkg:deb/debian/libc6" } ] },
+        { "@id": "pkg:oci/genai-engine-gpu", "subcomponents": [ { "@id": "pkg:deb/debian/libc6" } ] },
+        { "@id": "pkg:oci/ml-engine", "subcomponents": [ { "@id": "pkg:deb/debian/libc6" } ] },
+        { "@id": "pkg:oci/genai-engine-models-s3", "subcomponents": [ { "@id": "pkg:deb/debian/libc6" } ] },
+        { "@id": "pkg:oci/genai-engine-models-fs", "subcomponents": [ { "@id": "pkg:deb/debian/libc6" } ] }
       ],
       "status": "fixed"
     },
@@ -95,11 +95,11 @@
       "_comment": "libc6 — shipped binary is glibc 2.36-9+deb12u14; reported version is stale distroless dpkg metadata.",
       "vulnerability": { "name": "CVE-2026-4046" },
       "products": [
-        { "@id": "pkg:oci/genai-engine-cpu", "subcomponents": [ { "@id": "pkg:deb/debian/libc6@2.36-9+deb12u13?distro=debian-12" } ] },
-        { "@id": "pkg:oci/genai-engine-gpu", "subcomponents": [ { "@id": "pkg:deb/debian/libc6@2.36-9+deb12u13?distro=debian-12" } ] },
-        { "@id": "pkg:oci/ml-engine", "subcomponents": [ { "@id": "pkg:deb/debian/libc6@2.36-9+deb12u13?distro=debian-12" } ] },
-        { "@id": "pkg:oci/genai-engine-models-s3", "subcomponents": [ { "@id": "pkg:deb/debian/libc6@2.36-9+deb12u13?distro=debian-12" } ] },
-        { "@id": "pkg:oci/genai-engine-models-fs", "subcomponents": [ { "@id": "pkg:deb/debian/libc6@2.36-9+deb12u13?distro=debian-12" } ] }
+        { "@id": "pkg:oci/genai-engine-cpu", "subcomponents": [ { "@id": "pkg:deb/debian/libc6" } ] },
+        { "@id": "pkg:oci/genai-engine-gpu", "subcomponents": [ { "@id": "pkg:deb/debian/libc6" } ] },
+        { "@id": "pkg:oci/ml-engine", "subcomponents": [ { "@id": "pkg:deb/debian/libc6" } ] },
+        { "@id": "pkg:oci/genai-engine-models-s3", "subcomponents": [ { "@id": "pkg:deb/debian/libc6" } ] },
+        { "@id": "pkg:oci/genai-engine-models-fs", "subcomponents": [ { "@id": "pkg:deb/debian/libc6" } ] }
       ],
       "status": "fixed"
     },
@@ -107,11 +107,11 @@
       "_comment": "libc6 — shipped binary is glibc 2.36-9+deb12u14; reported version is stale distroless dpkg metadata.",
       "vulnerability": { "name": "CVE-2026-0915" },
       "products": [
-        { "@id": "pkg:oci/genai-engine-cpu", "subcomponents": [ { "@id": "pkg:deb/debian/libc6@2.36-9+deb12u13?distro=debian-12" } ] },
-        { "@id": "pkg:oci/genai-engine-gpu", "subcomponents": [ { "@id": "pkg:deb/debian/libc6@2.36-9+deb12u13?distro=debian-12" } ] },
-        { "@id": "pkg:oci/ml-engine", "subcomponents": [ { "@id": "pkg:deb/debian/libc6@2.36-9+deb12u13?distro=debian-12" } ] },
-        { "@id": "pkg:oci/genai-engine-models-s3", "subcomponents": [ { "@id": "pkg:deb/debian/libc6@2.36-9+deb12u13?distro=debian-12" } ] },
-        { "@id": "pkg:oci/genai-engine-models-fs", "subcomponents": [ { "@id": "pkg:deb/debian/libc6@2.36-9+deb12u13?distro=debian-12" } ] }
+        { "@id": "pkg:oci/genai-engine-cpu", "subcomponents": [ { "@id": "pkg:deb/debian/libc6" } ] },
+        { "@id": "pkg:oci/genai-engine-gpu", "subcomponents": [ { "@id": "pkg:deb/debian/libc6" } ] },
+        { "@id": "pkg:oci/ml-engine", "subcomponents": [ { "@id": "pkg:deb/debian/libc6" } ] },
+        { "@id": "pkg:oci/genai-engine-models-s3", "subcomponents": [ { "@id": "pkg:deb/debian/libc6" } ] },
+        { "@id": "pkg:oci/genai-engine-models-fs", "subcomponents": [ { "@id": "pkg:deb/debian/libc6" } ] }
       ],
       "status": "fixed"
     },
@@ -119,11 +119,11 @@
       "_comment": "libc6 — shipped binary is glibc 2.36-9+deb12u14; reported version is stale distroless dpkg metadata.",
       "vulnerability": { "name": "CVE-2026-0861" },
       "products": [
-        { "@id": "pkg:oci/genai-engine-cpu", "subcomponents": [ { "@id": "pkg:deb/debian/libc6@2.36-9+deb12u13?distro=debian-12" } ] },
-        { "@id": "pkg:oci/genai-engine-gpu", "subcomponents": [ { "@id": "pkg:deb/debian/libc6@2.36-9+deb12u13?distro=debian-12" } ] },
-        { "@id": "pkg:oci/ml-engine", "subcomponents": [ { "@id": "pkg:deb/debian/libc6@2.36-9+deb12u13?distro=debian-12" } ] },
-        { "@id": "pkg:oci/genai-engine-models-s3", "subcomponents": [ { "@id": "pkg:deb/debian/libc6@2.36-9+deb12u13?distro=debian-12" } ] },
-        { "@id": "pkg:oci/genai-engine-models-fs", "subcomponents": [ { "@id": "pkg:deb/debian/libc6@2.36-9+deb12u13?distro=debian-12" } ] }
+        { "@id": "pkg:oci/genai-engine-cpu", "subcomponents": [ { "@id": "pkg:deb/debian/libc6" } ] },
+        { "@id": "pkg:oci/genai-engine-gpu", "subcomponents": [ { "@id": "pkg:deb/debian/libc6" } ] },
+        { "@id": "pkg:oci/ml-engine", "subcomponents": [ { "@id": "pkg:deb/debian/libc6" } ] },
+        { "@id": "pkg:oci/genai-engine-models-s3", "subcomponents": [ { "@id": "pkg:deb/debian/libc6" } ] },
+        { "@id": "pkg:oci/genai-engine-models-fs", "subcomponents": [ { "@id": "pkg:deb/debian/libc6" } ] }
       ],
       "status": "fixed"
     },
@@ -131,11 +131,11 @@
       "_comment": "libc6 — shipped binary is glibc 2.36-9+deb12u14; reported version is stale distroless dpkg metadata.",
       "vulnerability": { "name": "CVE-2025-15281" },
       "products": [
-        { "@id": "pkg:oci/genai-engine-cpu", "subcomponents": [ { "@id": "pkg:deb/debian/libc6@2.36-9+deb12u13?distro=debian-12" } ] },
-        { "@id": "pkg:oci/genai-engine-gpu", "subcomponents": [ { "@id": "pkg:deb/debian/libc6@2.36-9+deb12u13?distro=debian-12" } ] },
-        { "@id": "pkg:oci/ml-engine", "subcomponents": [ { "@id": "pkg:deb/debian/libc6@2.36-9+deb12u13?distro=debian-12" } ] },
-        { "@id": "pkg:oci/genai-engine-models-s3", "subcomponents": [ { "@id": "pkg:deb/debian/libc6@2.36-9+deb12u13?distro=debian-12" } ] },
-        { "@id": "pkg:oci/genai-engine-models-fs", "subcomponents": [ { "@id": "pkg:deb/debian/libc6@2.36-9+deb12u13?distro=debian-12" } ] }
+        { "@id": "pkg:oci/genai-engine-cpu", "subcomponents": [ { "@id": "pkg:deb/debian/libc6" } ] },
+        { "@id": "pkg:oci/genai-engine-gpu", "subcomponents": [ { "@id": "pkg:deb/debian/libc6" } ] },
+        { "@id": "pkg:oci/ml-engine", "subcomponents": [ { "@id": "pkg:deb/debian/libc6" } ] },
+        { "@id": "pkg:oci/genai-engine-models-s3", "subcomponents": [ { "@id": "pkg:deb/debian/libc6" } ] },
+        { "@id": "pkg:oci/genai-engine-models-fs", "subcomponents": [ { "@id": "pkg:deb/debian/libc6" } ] }
       ],
       "status": "fixed"
     },
@@ -143,12 +143,12 @@
       "_comment": "libexpat1: the reported system library (pkg:deb libexpat1 2.5.0-1~deb12u2 from the distroless base) is not linked by the application runtime. CPython 3.12/3.13 (from /usr/local) statically bundle their own expat (2.7.4 / 2.8.1) and do not load the system libexpat.so.1. Its only consumer in the base image, Python 3.11, has been removed. No Debian bookworm fix is available yet (fixed upstream in expat 2.8.1). DoS-only (CWE-407, CVSS ~2.9). Residual risk: the bundled CPython expat (2.7.4 on 3.12) is also affected, but is reachable only by parsing attacker-controlled XML, which these images do not do (the engines expose JSON APIs; the model-upload jobs parse no XML).",
       "vulnerability": { "name": "CVE-2026-45186" },
       "products": [
-        { "@id": "pkg:oci/genai-engine-cpu", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1@2.5.0-1+deb12u2?distro=debian-12" } ] },
-        { "@id": "pkg:oci/genai-engine-gpu", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1@2.5.0-1+deb12u2?distro=debian-12" } ] },
-        { "@id": "pkg:oci/ml-engine", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1@2.5.0-1+deb12u2?distro=debian-12" } ] },
-        { "@id": "pkg:oci/genai-engine-models-s3", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1@2.5.0-1+deb12u2?distro=debian-12" } ] },
-        { "@id": "pkg:oci/genai-engine-models-fs", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1@2.5.0-1+deb12u2?distro=debian-12" } ] },
-        { "@id": "pkg:oci/genai-engine-models-gcs", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1@2.5.0-1+deb12u2?distro=debian-12" } ] }
+        { "@id": "pkg:oci/genai-engine-cpu", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] },
+        { "@id": "pkg:oci/genai-engine-gpu", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] },
+        { "@id": "pkg:oci/ml-engine", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] },
+        { "@id": "pkg:oci/genai-engine-models-s3", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] },
+        { "@id": "pkg:oci/genai-engine-models-fs", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] },
+        { "@id": "pkg:oci/genai-engine-models-gcs", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] }
       ],
       "status": "not_affected",
       "justification": "vulnerable_code_not_in_execute_path",
@@ -158,8 +158,8 @@
       "_comment": "nltk: CVE-2026-54293 is a path-traversal bypass in nltk.data.load() via URL-encoded input, with no upstream fix available (affects nltk <= 3.9.4). genai-engine only imports PunktSentenceTokenizer (src/utils/claim_parser.py:7) and instantiates it once with no resource path (SENTENCE_TOKENIZER = PunktSentenceTokenizer()); nltk.data.load() is never called and no untrusted path reaches it. nltk is a genai-engine-only dependency (absent from ml-engine).",
       "vulnerability": { "name": "CVE-2026-54293" },
       "products": [
-        { "@id": "pkg:oci/genai-engine-cpu", "subcomponents": [ { "@id": "pkg:pypi/nltk@3.9.4" } ] },
-        { "@id": "pkg:oci/genai-engine-gpu", "subcomponents": [ { "@id": "pkg:pypi/nltk@3.9.4" } ] }
+        { "@id": "pkg:oci/genai-engine-cpu", "subcomponents": [ { "@id": "pkg:pypi/nltk" } ] },
+        { "@id": "pkg:oci/genai-engine-gpu", "subcomponents": [ { "@id": "pkg:pypi/nltk" } ] }
       ],
       "status": "not_affected",
       "justification": "vulnerable_code_not_in_execute_path",

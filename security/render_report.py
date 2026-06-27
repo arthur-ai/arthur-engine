@@ -59,8 +59,13 @@ def main() -> int:
         target = result.get("Target", "")
         for v in result.get("Vulnerabilities") or []:
             active.append((target, v))
-        # Trivy >= ~0.56 emits ModifiedFindings when --show-suppressed is set.
-        for mf in result.get("ModifiedFindings") or []:
+        # VEX/.trivyignore suppressions with --show-suppressed: Trivy ~0.56 used
+        # "ModifiedFindings"; >=0.71 renames it to "ExperimentalModifiedFindings".
+        for mf in (
+            result.get("ExperimentalModifiedFindings")
+            or result.get("ModifiedFindings")
+            or []
+        ):
             justified.append((target, mf))
 
     lines = []

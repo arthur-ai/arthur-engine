@@ -10,8 +10,17 @@ documented position: either it is remediated (upgrade the package/base image) or
 findings to the GitHub **Security tab**, and generates a per-image **justification report** with
 this VEX applied.
 
-> The CI gate is intentionally **off** today (scans never fail the build). Flipping it on for
-> *fixable* HIGH/CRITICAL is a one-line change per scan step — see "Turning on enforcement".
+Two views, produced by two Trivy passes in the `vuln-report` action:
+
+- **GitHub Security tab** (`trivy-*` categories) — VEX applied **and** `--ignore-unfixed`, so it
+  shows only **fixable, not-yet-justified** HIGH/CRITICAL: an actionable worklist. Findings that
+  are VEX-justified or have no upstream fix do **not** appear here.
+- **Justification report artifact** (`report-*.md`) — the **full** HIGH/CRITICAL picture: every
+  unresolved finding (incl. unfixed) plus a table of everything accepted via VEX.
+
+> The CI gate is intentionally **off** today (scans never fail the build). The SARIF pass already
+> uses `--ignore-unfixed`; flipping on enforcement is adding `--exit-code 1` — see "Turning on
+> enforcement".
 
 ## Layout
 
@@ -64,6 +73,13 @@ statement binds a vulnerability to one or more products and gives a status + jus
   `vulnerable_code_not_present`, `vulnerable_code_not_in_execute_path`,
   `vulnerable_code_cannot_be_controlled_by_adversary`, `inline_mitigations_already_exist`).
 - `products[].@id` must match the image purl the scanner reports (e.g. `pkg:oci/ml-engine`).
+- **Subcomponents: scope by package name only — never pin a version or qualifiers.** Use
+  `pkg:deb/debian/libssl3`, **not** `pkg:deb/debian/libssl3@3.0.19-1~deb12u2?distro=debian-12`.
+  Trivy's package purls carry `?arch=…&distro=debian-12.NN` (the distro **point release**), which
+  changes on every base-image bump. A version/qualifier-pinned subcomponent silently stops matching
+  the moment that drifts, and the suppression breaks with no error — the CVE just reappears as open.
+  A name-only subcomponent matches across rebuilds. (This is exactly what broke the VEX before:
+  every statement pinned `?distro=debian-12` and matched nothing.)
 - Include a **rationale + owner + review date** so the justification is auditable. Re-review
   `under_investigation` and `affected` entries regularly.
 
@@ -82,21 +98,29 @@ vexctl create \
 ## Verifying locally
 
 ```bash
-# Preview findings with the VEX applied (HIGH/CRITICAL only):
+# Full picture for the justification report (HIGH/CRITICAL, incl. unfixed + VEX-suppressed):
 trivy image --severity HIGH,CRITICAL \
   --vex security/vex/openvex.json --show-suppressed \
   --format json -o /tmp/report.json arthurplatform/genai-engine-cpu:latest
 
 # Render the human-readable justification report:
 python3 security/render_report.py /tmp/report.json /tmp/report.md arthurplatform/genai-engine-cpu:latest
+
+# Reproduce exactly what reaches the GitHub Security tab (VEX applied + fixable-only):
+trivy image --severity HIGH,CRITICAL \
+  --vex security/vex/openvex.json --ignore-unfixed \
+  --format sarif -o /tmp/trivy.sarif arthurplatform/genai-engine-cpu:latest
 ```
+
+> Tip: to confirm a VEX statement actually matches, check that the CVE moves into
+> `ExperimentalModifiedFindings` in the JSON report (or just disappears from `Vulnerabilities`).
+> If it's still under `Vulnerabilities`, the subcomponent purl didn't match — see the name-only
+> rule above. On Apple Silicon, add `--image-src remote` if a local `docker` layer export fails.
 
 ## Turning on enforcement (future)
 
 When the backlog is triaged (every HIGH/CRITICAL is either fixed or has a VEX statement), make
-the build block on **fixable** HIGH/CRITICAL by editing the composite action's Trivy step:
-
-- set `--exit-code 1` and `--ignore-unfixed` on the Trivy scan.
-
-`--ignore-unfixed` is important: it blocks only findings that have an available patch, so
-unfixable base-OS CVEs (documented via VEX) do not permanently block releases.
+the build block on **fixable** HIGH/CRITICAL by adding `--exit-code 1` to the SARIF scan step in
+the composite action. That scan already applies `--ignore-unfixed`, so enforcement would block
+only findings that have an available patch — unfixable base-OS CVEs (documented via VEX) never
+permanently block releases.
