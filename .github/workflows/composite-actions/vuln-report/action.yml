@@ -57,6 +57,16 @@ runs:
         token: ${{ github.token }}
 
     # --- Trivy: single scan -> JSON, then convert to SARIF (advisory) ---
+    # Every HIGH/CRITICAL is surfaced to the GitHub Security tab; findings accepted via VEX are
+    # suppressed (they move to ExperimentalModifiedFindings and are excluded from the converted
+    # SARIF), so the tab shows only the not-yet-triaged backlog. Unfixed CVEs are NOT hidden — the
+    # policy is to document each one with a VEX statement (see security/README.md), not to drop it.
+    #
+    # VEX matching note: statements in security/vex/openvex.json scope subcomponents by *package
+    # name only* (e.g. pkg:deb/debian/libssl3), NOT by pinned version/qualifiers. Trivy package
+    # purls carry arch + distro point-release (?arch=amd64&distro=debian-12.13) that drift on every
+    # base-image bump; a version-pinned subcomponent purl silently stops matching and the
+    # suppression breaks. Keep subcomponent purls name-only.
     - name: Trivy scan (advisory)
       shell: bash
       env:
