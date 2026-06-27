@@ -50,7 +50,7 @@ FROM preinstall AS cpu-install
 # Pinned to the build platform: `yarn build` emits architecture-independent
 # static assets (copied into both arch images below), so it must NOT run under
 # QEMU. Emulated arm64 Node crashes `yarn install` with SIGILL (exit 132).
-FROM --platform=$BUILDPLATFORM node:20-alpine AS ui-build
+FROM --platform=$BUILDPLATFORM node:24-alpine AS ui-build
 
 # Accept Meticulous tokens as build arguments
 ARG METICULOUS_RECORDING_TOKEN
