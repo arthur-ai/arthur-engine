@@ -47,7 +47,10 @@ RUN uv pip install --system --no-cache --reinstall -r /tmp/requirements-torch.tx
 FROM preinstall AS cpu-install
 
 # UI Build Stage: Build the React SPA
-FROM node:20-alpine AS ui-build
+# Pinned to the build platform: `yarn build` emits architecture-independent
+# static assets (copied into both arch images below), so it must NOT run under
+# QEMU. Emulated arm64 Node crashes `yarn install` with SIGILL (exit 132).
+FROM --platform=$BUILDPLATFORM node:20-alpine AS ui-build
 
 # Accept Meticulous tokens as build arguments
 ARG METICULOUS_RECORDING_TOKEN
