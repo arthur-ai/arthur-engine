@@ -389,6 +389,18 @@
       "justification": "vulnerable_code_not_in_execute_path",
       "impact_statement": "perl-base is a transitive base-OS package on the models-gcs image; no Arthur process invokes the Perl interpreter or Archive::Tar. The upload job runs a single Python entrypoint (upload_models.py).",
       "timestamp": "2026-06-27T00:00:00Z"
+    },
+    {
+      "_comment": "python3.11 (system, unused): Flagged against the system Python 3.11 deb packages. The model-upload job runs on Python 3.12 from /usr/local (deployment/model-upload/Dockerfile); the inherited system 3.11 is removed and never executed. A Debian fix exists but is moot — the package is removed, not upgraded, in these images. Owner: security@arthur.ai. Review by: 2026-12-27.",
+      "vulnerability": { "name": "CVE-2025-13836" },
+      "products": [
+        { "@id": "pkg:oci/genai-engine-models-s3", "subcomponents": [ { "@id": "pkg:deb/debian/libpython3.11-minimal" }, { "@id": "pkg:deb/debian/libpython3.11-stdlib" }, { "@id": "pkg:deb/debian/python3.11-minimal" } ] },
+        { "@id": "pkg:oci/genai-engine-models-fs", "subcomponents": [ { "@id": "pkg:deb/debian/libpython3.11-minimal" }, { "@id": "pkg:deb/debian/libpython3.11-stdlib" }, { "@id": "pkg:deb/debian/python3.11-minimal" } ] }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_in_execute_path",
+      "impact_statement": "Flagged against the system Python 3.11 deb packages. The model-upload job runs on Python 3.12 from /usr/local (deployment/model-upload/Dockerfile); the inherited system 3.11 is removed and never executed. A Debian fix exists but is moot — the package is removed, not upgraded, in these images.",
+      "timestamp": "2026-06-27T00:00:00Z"
     }
   ]
 }

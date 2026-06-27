@@ -22,7 +22,7 @@ FROM python:3.12-slim-bookworm AS downloader
 ARG BACKEND
 
 WORKDIR /app
-RUN pip install --no-cache-dir uv==0.11.7
+RUN pip install --no-cache-dir uv==0.11.25
 COPY pyproject.toml uv.lock* ./
 
 RUN uv export --frozen --no-emit-project --no-hashes -o /tmp/requirements.txt \
@@ -50,7 +50,7 @@ ARG BACKEND
 RUN apt-get update && apt-get upgrade -y && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-RUN pip install --no-cache-dir uv==0.11.7
+RUN pip install --no-cache-dir uv==0.11.25
 COPY pyproject.toml uv.lock* ./
 
 RUN if [ "$BACKEND" != "fs" ]; then \
