@@ -8,7 +8,7 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "2026-06-23T16:51:17.421201Z"
+exclude-newer = "0001-01-01T00:00:00Z" # This has no effect and is included for backwards compatibility when using relative exclude-newer values.
 exclude-newer-span = "P3D"
 
 [options.exclude-newer-package]
@@ -1418,7 +1418,7 @@ wheels = [
 
 [[package]]
 name = "ml-engine"
-version = "2.1.672"
+version = "2.1.681"
 source = { editable = "." }
 dependencies = [
     { name = "adlfs" },
@@ -1504,7 +1504,7 @@ requires-dist = [
     { name = "requests", specifier = "==2.33.0" },
     { name = "s3fs", specifier = "==2025.12.0" },
     { name = "simple-settings", specifier = "==1.2.0" },
-    { name = "snowflake-sqlalchemy", specifier = "==1.10.0" },
+    { name = "snowflake-sqlalchemy", specifier = "==1.10.2" },
     { name = "sqlalchemy", specifier = "==2.0.50" },
     { name = "types-croniter", specifier = "==6.0.0.20250809" },
     { name = "types-psutil", specifier = "==7.0.0.20251116" },
@@ -2470,15 +2470,15 @@ wheels = [
 
 [[package]]
 name = "snowflake-sqlalchemy"
-version = "1.10.0"
+version = "1.10.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "snowflake-connector-python" },
     { name = "sqlalchemy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/29/b8/7b7f235a05861c8e197b896be39b3f82f93047e46b774379ae17e24ed753/snowflake_sqlalchemy-1.10.0.tar.gz", hash = "sha256:70d0caf62ed429e080103211bfa7f221414d7ed7a08caa4c455538159e9b4520", size = 200780, upload-time = "2026-05-21T11:50:42.295Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/eb/9b/f90df69e93a05ed577b563dbb919451323184fea30c1f9898a49b08cb5f2/snowflake_sqlalchemy-1.10.2.tar.gz", hash = "sha256:084c51e38bdf700ce988e807fd7e24455a4e421bee4866574ebe0ba0895ecdd6", size = 204550, upload-time = "2026-06-22T07:48:49.727Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/68/a5/885ba93a9c312082a7a5c71037e1497e6a262c753e85db65b9a6909117ea/snowflake_sqlalchemy-1.10.0-py3-none-any.whl", hash = "sha256:e5c1c62d2a203b93beb4a813f6d07f2ea03f2151af90314037b7f4827734cdb0", size = 102467, upload-time = "2026-05-21T11:50:40.523Z" },
+    { url = "https://files.pythonhosted.org/packages/d0/4a/cb2fc9fa6831b54d66aac9c0241d4eedaeaa7f1f2d1f8f3c68961e433bf5/snowflake_sqlalchemy-1.10.2-py3-none-any.whl", hash = "sha256:9f29c9be344bcb45a0ec66fc388ef8ee87fd0c185edc7ce8b995f4db756d2baf", size = 102711, upload-time = "2026-06-22T07:48:48.218Z" },
 ]
 
 [[package]]
