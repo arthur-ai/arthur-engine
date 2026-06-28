@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.656"
+        "version": "2.1.683"
     },
     "paths": {
         "/api/v2/engine-config": {
@@ -6158,6 +6158,34 @@
                             "title": "User Ids"
                         },
                         "description": "User IDs to filter on. Optional."
+                    },
+                    {
+                        "name": "trace_ids",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Trace IDs to filter on. Returns sessions containing at least one matching trace. Optional.",
+                            "title": "Trace Ids"
+                        },
+                        "description": "Trace IDs to filter on. Returns sessions containing at least one matching trace. Optional."
+                    },
+                    {
+                        "name": "session_ids",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Session IDs to filter on. Optional.",
+                            "title": "Session Ids"
+                        },
+                        "description": "Session IDs to filter on. Optional."
                     },
                     {
                         "name": "include_experiment_sessions",

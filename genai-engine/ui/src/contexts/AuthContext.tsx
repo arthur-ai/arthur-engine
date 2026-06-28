@@ -1,7 +1,9 @@
 import { useQueryClient } from "@tanstack/react-query";
 import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
 
+import { useDemoMode } from "@/contexts/EngineConfigContext";
 import { AuthService, AuthState, deriveIsTenant, MeResponse } from "@/lib/auth";
+import { clearDemoSessionState, isDemoUser } from "@/lib/clearDemoSessionState";
 import { track, clearUser } from "@/services/analytics";
 
 interface AuthContextType extends AuthState {
@@ -54,6 +56,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const queryClient = useQueryClient();
   const authService = AuthService.getInstance();
+  const { demoMode } = useDemoMode();
 
   useEffect(() => {
     const initializeAuth = async () => {
@@ -134,6 +137,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const logout = () => {
+    if (isDemoUser(demoMode, authState.isTenant)) {
+      clearDemoSessionState();
+    }
+
     authService.logout();
 
     queryClient.clear();

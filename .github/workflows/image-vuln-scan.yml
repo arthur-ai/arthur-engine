@@ -1,0 +1,64 @@
+name: Scheduled image vulnerability scan
+
+# Re-scans the published images daily so newly-disclosed CVEs surface (and the justification
+# reports regenerate) even when no new release was built. Advisory only — this workflow never
+# gates anything. Findings land in Security -> Code scanning; SBOM + per-image justification
+# reports are uploaded as workflow artifacts.
+#
+# Tag selection: by default we scan the latest `-dev` image, derived from the `version` file via
+# the set-version action. The workflow runs on the `dev` default branch, so set-version appends
+# `-dev` (e.g. 2.1.657 -> arthurplatform/genai-engine-cpu:2.1.657-dev) — the most recent dev
+# build, addressed by a version-pinned tag rather than the floating `latest-dev`. Override via
+# the `tag` input to scan a specific tag (e.g. a production release `2.1.656`).
+
+on:
+  schedule:
+    # Daily at 09:00 UTC
+    - cron: "0 9 * * *"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Image tag to scan (default: latest -dev image from the version file)"
+        type: string
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
+jobs:
+  scan:
+    environment: shared-protected-branch-secrets
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { image: arthurplatform/genai-engine-cpu, slug: genai-cpu }
+          - { image: arthurplatform/genai-engine-gpu, slug: genai-gpu }
+          - { image: arthurplatform/ml-engine, slug: ml-engine }
+          - { image: arthurplatform/genai-engine-models-s3, slug: models-s3 }
+          - { image: arthurplatform/genai-engine-models-fs, slug: models-fs }
+          - { image: arthurplatform/genai-engine-models-gcs, slug: models-gcs }
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/workflows/composite-actions/set-version
+      - name: Resolve image tag (latest -dev image from the version file)
+        id: tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          OVERRIDE="${{ github.event.inputs.tag }}"
+          # set-version exports VERSION = <version>-dev on the dev default branch.
+          TAG="${OVERRIDE:-${{ env.VERSION }}}"
+          echo "Scanning tag: ${TAG}"
+          echo "value=${TAG}" >> "$GITHUB_OUTPUT"
+      - name: Scan image & generate justification docs
+        uses: ./.github/workflows/composite-actions/vuln-report
+        with:
+          image: ${{ matrix.image }}:${{ steps.tag.outputs.value }}
+          slug: ${{ matrix.slug }}
+          dockerhub-username: ${{ secrets.DOCKERHUB_ENTERPRISE_USERNAME }}
+          dockerhub-token: ${{ secrets.DOCKERHUB_ENTERPRISE_TOKEN }}

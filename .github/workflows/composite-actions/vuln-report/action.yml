@@ -1,0 +1,124 @@
+name: "Vulnerability scan & justification report"
+description: >
+  Advisory container vulnerability scan (Trivy) for a single image. Uploads SARIF
+  to the GitHub Security tab and generates an SBOM + a VEX-applied HIGH/CRITICAL justification
+  report, uploaded as a workflow artifact. Never fails the build (advisory). Pass
+  dockerhub-username/dockerhub-token for authenticated pulls (otherwise the caller must already be
+  `docker login`'d). The caller must also have checked out the repo (for security/vex + renderer)
+  and the job needs `permissions: { security-events: write }`.
+
+inputs:
+  image:
+    description: "Fully-qualified image ref to scan, e.g. arthurplatform/genai-engine-cpu:1.2.3"
+    required: true
+  slug:
+    description: "Short unique label for this image, e.g. genai-cpu (used for SARIF category & artifact name)"
+    required: true
+  platform:
+    description: "Platform to scan for multi-arch images"
+    required: false
+    default: "linux/amd64"
+  dockerhub-username:
+    description: "Docker Hub username for authenticated image pulls (raises the pull rate limit)"
+    required: false
+    default: ""
+  dockerhub-token:
+    description: "Docker Hub access token (or password) for authenticated image pulls"
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    # --- Pull the image (authenticated) so Trivy scans the local copy instead of pulling it from
+    #     the registry. With the Docker Hub credentials this uses the authenticated (higher) rate
+    #     limit — avoids the TOOMANYREQUESTS errors that surface as "unable to find the specified
+    #     image". ---
+    - name: Authenticate to Docker Hub & pull image
+      shell: bash
+      env:
+        DOCKERHUB_USERNAME: ${{ inputs.dockerhub-username }}
+        DOCKERHUB_TOKEN: ${{ inputs.dockerhub-token }}
+        IMAGE: ${{ inputs.image }}
+        PLATFORM: ${{ inputs.platform }}
+      run: |
+        set -euo pipefail
+        if [ -n "${DOCKERHUB_USERNAME}" ] && [ -n "${DOCKERHUB_TOKEN}" ]; then
+          echo "${DOCKERHUB_TOKEN}" | docker login -u "${DOCKERHUB_USERNAME}" --password-stdin
+        fi
+        docker pull --platform "${PLATFORM}" "${IMAGE}"
+
+    # --- Install Trivy CLI (official action; always latest) ---
+    # Unpinned: GitHub only retains release assets for recent versions, so pinned tags eventually 404.
+    - name: Install Trivy
+      uses: aquasecurity/setup-trivy@v0.3.1
+      with:
+        version: latest
+        token: ${{ github.token }}
+
+    # --- Trivy: single scan -> JSON, then convert to SARIF (advisory) ---
+    # Every HIGH/CRITICAL is surfaced to the GitHub Security tab; findings accepted via VEX are
+    # suppressed (they move to ExperimentalModifiedFindings and are excluded from the converted
+    # SARIF), so the tab shows only the not-yet-triaged backlog. Unfixed CVEs are NOT hidden — the
+    # policy is to document each one with a VEX statement (see security/README.md), not to drop it.
+    #
+    # VEX matching note: statements in security/vex/openvex.json scope subcomponents by *package
+    # name only* (e.g. pkg:deb/debian/libssl3), NOT by pinned version/qualifiers. Trivy package
+    # purls carry arch + distro point-release (?arch=amd64&distro=debian-12.13) that drift on every
+    # base-image bump; a version-pinned subcomponent purl silently stops matching and the
+    # suppression breaks. Keep subcomponent purls name-only.
+    - name: Trivy scan (advisory)
+      shell: bash
+      env:
+        TRIVY_PLATFORM: ${{ inputs.platform }}
+      run: |
+        set -euo pipefail
+        trivy image \
+          --severity HIGH,CRITICAL \
+          --vex security/vex/openvex.json \
+          --show-suppressed \
+          --scanners vuln \
+          --format json \
+          --output "report-${{ inputs.slug }}.json" \
+          "${{ inputs.image }}"
+        trivy convert \
+          --format sarif \
+          --output "trivy-${{ inputs.slug }}.sarif" \
+          "report-${{ inputs.slug }}.json"
+    - name: Upload Trivy SARIF
+      if: always() && hashFiles(format('trivy-{0}.sarif', inputs.slug)) != ''
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: trivy-${{ inputs.slug }}.sarif
+        category: trivy-${{ inputs.slug }}
+
+    # --- SBOM (CycloneDX) ---
+    - name: Generate SBOM (CycloneDX)
+      shell: bash
+      run: |
+        set -euo pipefail
+        trivy image \
+          --format cyclonedx \
+          --output "sbom-${{ inputs.slug }}.cdx.json" \
+          "${{ inputs.image }}"
+
+    # --- Human-readable justification report ---
+    - name: Render justification report
+      shell: bash
+      run: |
+        set -euo pipefail
+        python3 security/render_report.py \
+          "report-${{ inputs.slug }}.json" \
+          "report-${{ inputs.slug }}.md" \
+          "${{ inputs.image }}"
+
+    - name: Upload vulnerability docs
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: vuln-docs-${{ inputs.slug }}
+        path: |
+          sbom-${{ inputs.slug }}.cdx.json
+          report-${{ inputs.slug }}.json
+          report-${{ inputs.slug }}.md
+        if-no-files-found: warn
