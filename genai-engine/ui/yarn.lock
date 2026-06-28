@@ -728,13 +728,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@biomejs/js-api@npm:4.0.0":
-  version: 4.0.0
-  resolution: "@biomejs/js-api@npm:4.0.0"
+"@biomejs/js-api@npm:6.0.0":
+  version: 6.0.0
+  resolution: "@biomejs/js-api@npm:6.0.0"
   peerDependencies:
-    "@biomejs/wasm-bundler": ^2.3.0
-    "@biomejs/wasm-nodejs": ^2.3.0
-    "@biomejs/wasm-web": ^2.3.0
+    "@biomejs/wasm-bundler": ^2.5.0
+    "@biomejs/wasm-nodejs": ^2.5.0
+    "@biomejs/wasm-web": ^2.5.0
   peerDependenciesMeta:
     "@biomejs/wasm-bundler":
       optional: true
@@ -742,14 +742,14 @@ __metadata:
       optional: true
     "@biomejs/wasm-web":
       optional: true
-  checksum: 10c0/14699ac8f2910a32863ffdca6ebc2d5e625d23753a9496bbeb9dbaf7a0f35848133134b695564e537cb431c060a8c616de26e579d47633efefbd25126343c465
+  checksum: 10c0/35569f51747bad504b30f818556e2cdbfae74b6aa6d2113b576d810d14f1d3aa443fe82020f4d33b45244c7f9ff1e1eb7ebed6506a0079f537433d4aaef04841
   languageName: node
   linkType: hard
 
-"@biomejs/wasm-nodejs@npm:2.4.16":
-  version: 2.4.16
-  resolution: "@biomejs/wasm-nodejs@npm:2.4.16"
-  checksum: 10c0/8d6f2af6ca1f74b7b81718bdd373060f0b23d5354138aae8645b7d729072752de45d5305028afc3415374e08910dc6699202a6f90f10c950971b88513fdf86cd
+"@biomejs/wasm-nodejs@npm:2.5.0":
+  version: 2.5.0
+  resolution: "@biomejs/wasm-nodejs@npm:2.5.0"
+  checksum: 10c0/7575d7e0935cf440db6252eb15a246ea88b39248b39590322e139dbb87ffb99ed2e4601c61e77260620ed86d5e0346a133159ae55f0b14091db424901c250363
   languageName: node
   linkType: hard
 
@@ -4007,7 +4007,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"dayjs@npm:^1.11.20":
+"dayjs@npm:^1.11.21":
   version: 1.11.21
   resolution: "dayjs@npm:1.11.21"
   checksum: 10c0/bd97dfdc4bfea3c66268635690313828b386faa040fbc1f829ff42a2bd748b72c9d9b3c8f9616ce9e61fcb78923f1461a462c969c54b1084458ae1b715898fb0
@@ -4190,15 +4190,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"dompurify@npm:^3.4.1":
-  version: 3.4.10
-  resolution: "dompurify@npm:3.4.10"
+"dompurify@npm:^3.4.11":
+  version: 3.4.11
+  resolution: "dompurify@npm:3.4.11"
   dependencies:
     "@types/trusted-types": "npm:^2.0.7"
   dependenciesMeta:
     "@types/trusted-types":
       optional: true
-  checksum: 10c0/6ffbc564c09ae11f9e1ab97040d556f8fafb0a5221248fca02539378d442f4fbe737ebb72dd34309c46896f1093714622895cc6815a7a57599c4511e30e234ae
+  checksum: 10c0/31439481c7e8fc3805d40c376936fd66936620fb1b1a31a2ec097f6165412c37f2d868e082c9ceba62bb37661c1ea132a5db4d5213434317e30df68d4aca9cc9
   languageName: node
   linkType: hard
 
@@ -4399,9 +4399,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"es-toolkit@npm:^1.47.0":
-  version: 1.47.1
-  resolution: "es-toolkit@npm:1.47.1"
+"es-toolkit@npm:^1.48.1":
+  version: 1.49.0
+  resolution: "es-toolkit@npm:1.49.0"
   dependenciesMeta:
     "@trivago/prettier-plugin-sort-imports@4.3.0":
       unplugged: true
@@ -4409,7 +4409,7 @@ __metadata:
       unplugged: true
     vitepress-plugin-sandpack@1.1.4:
       unplugged: true
-  checksum: 10c0/d6dff140a71e15d22209f8482f1ce34bab433f449e569c28b9c535963b18b2c3b89b00d7cf7156b5c74cace4c5f96283f0a5fee3be8802dd2cf7481da90cfe0a
+  checksum: 10c0/ab0864bb0c5c494ed09043d53a74b58a0ab9df1b89b9b54bce72a63de2869152d7d65e489dc89ab671f0fea243728922c8a8f8c873f1b2a53350a23360b3e2df
   languageName: node
   linkType: hard
 
@@ -6778,12 +6778,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"nanoid@npm:^5.1.11, nanoid@npm:^5.1.7":
-  version: 5.1.11
-  resolution: "nanoid@npm:5.1.11"
+"nanoid@npm:^5.1.15, nanoid@npm:^5.1.16":
+  version: 5.1.16
+  resolution: "nanoid@npm:5.1.16"
   bin:
     nanoid: bin/nanoid.js
-  checksum: 10c0/91580d18c29263ac0e871734f0d86e7f906f523f974d3c30fc65354ccf387ccffd606c2a6c28acc2977a3950146347e790ce9e3f514133a48995af5ccdb308ce
+  checksum: 10c0/04b4f96237f5639716da0e98f453361b313bebaf458bb67dea2d384724fc8b3340a28f032a4373052150bcf3b801d122e291d81ae4fc522969f55c134f4401a3
   languageName: node
   linkType: hard
 
@@ -8454,29 +8454,29 @@ __metadata:
   linkType: hard
 
 "swagger-typescript-api@npm:^13.12.2":
-  version: 13.12.2
-  resolution: "swagger-typescript-api@npm:13.12.2"
+  version: 13.12.3
+  resolution: "swagger-typescript-api@npm:13.12.3"
   dependencies:
     "@apidevtools/swagger-parser": "npm:12.1.0"
-    "@biomejs/js-api": "npm:4.0.0"
-    "@biomejs/wasm-nodejs": "npm:2.4.16"
+    "@biomejs/js-api": "npm:6.0.0"
+    "@biomejs/wasm-nodejs": "npm:2.5.0"
     "@types/swagger-schema-official": "npm:^2.0.25"
     c12: "npm:^3.3.4"
     citty: "npm:^0.2.2"
     consola: "npm:^3.4.2"
-    es-toolkit: "npm:^1.47.0"
+    es-toolkit: "npm:^1.48.1"
     eta: "npm:^3.5.0"
-    nanoid: "npm:^5.1.11"
+    nanoid: "npm:^5.1.16"
     openapi-types: "npm:^12.1.3"
     swagger-schema-official: "npm:2.0.0-bab6bed"
     swagger2openapi: "npm:^7.0.8"
     type-fest: "npm:^5.7.0"
     typescript: "npm:^6.0.3"
     yaml: "npm:^2.9.0"
-    yummies: "npm:7.19.4"
+    yummies: "npm:7.20.1"
   bin:
     swagger-typescript-api: dist/cli.mjs
-  checksum: 10c0/0fb8d6cc74723b2c242740ef6b3417da945cef441d8e257d5c80f121e7fd1cef449689a45b473593d63ae2951e56476543e8cdf87bcf00a7bd54b0d4e62fdf56
+  checksum: 10c0/490992d0633f962d165abacd8f169ca7ae41220bcdf263fb364dffa025745665adea068460eb0a82ab7885fc2740ad21009057455e83f0075b79d3b0faf0515a
   languageName: node
   linkType: hard
 
@@ -8531,7 +8531,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"tailwind-merge@npm:^3.5.0":
+"tailwind-merge@npm:^3.6.0":
   version: 3.6.0
   resolution: "tailwind-merge@npm:3.6.0"
   checksum: 10c0/a728d929f4786bcb48641db4228cc8c006a7545491783a658fb4d24d177dab960620991d17805a047309228de50ab949ca8d9e112c30183da0432367796ae186
@@ -9529,16 +9529,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"yummies@npm:7.19.4":
-  version: 7.19.4
-  resolution: "yummies@npm:7.19.4"
+"yummies@npm:7.20.1":
+  version: 7.20.1
+  resolution: "yummies@npm:7.20.1"
   dependencies:
     class-variance-authority: "npm:^0.7.1"
     clsx: "npm:^2.1.1"
-    dayjs: "npm:^1.11.20"
-    dompurify: "npm:^3.4.1"
-    nanoid: "npm:^5.1.7"
-    tailwind-merge: "npm:^3.5.0"
+    dayjs: "npm:^1.11.21"
+    dompurify: "npm:^3.4.11"
+    nanoid: "npm:^5.1.15"
+    tailwind-merge: "npm:^3.6.0"
   peerDependencies:
     mobx: ^6.12.4
     react: ^18 || ^19
@@ -9547,7 +9547,7 @@ __metadata:
       optional: true
     react:
       optional: true
-  checksum: 10c0/bd12747d494ebf88530d55d37bc59498466292afd448ce4a9da24c821ab5539bfabd67fd61d6c54b0f6e647ba39c296ccc2269fe854dc9c5e1d699b504431bfc
+  checksum: 10c0/9098ea5df248c3623a9ce1b4ae8d4129eab0622aa2b0c22c9bed84f7c8963525c5b1ee06d56ab04eced87b0c8743113acb30b21eb204ae2fdd3b70d7a11543aa
   languageName: node
   linkType: hard
 
