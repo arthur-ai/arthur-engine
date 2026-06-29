@@ -1358,38 +1358,38 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@mui/core-downloads-tracker@npm:^7.3.9":
+"@mui/core-downloads-tracker@npm:^7.3.11":
   version: 7.3.11
   resolution: "@mui/core-downloads-tracker@npm:7.3.11"
   checksum: 10c0/7c184aba9ff673c44d21c72f4f553516e1a8ae14d7e2f648ab1e58dbb2ad74163e6cc31b1ec443cb232616b6cd650c932c44c30fc4aa22e154573c02289564a3
   languageName: node
   linkType: hard
 
-"@mui/icons-material@npm:7.3.9":
-  version: 7.3.9
-  resolution: "@mui/icons-material@npm:7.3.9"
+"@mui/icons-material@npm:7.3.11":
+  version: 7.3.11
+  resolution: "@mui/icons-material@npm:7.3.11"
   dependencies:
     "@babel/runtime": "npm:^7.28.6"
   peerDependencies:
-    "@mui/material": ^7.3.9
+    "@mui/material": ^7.3.11
     "@types/react": ^17.0.0 || ^18.0.0 || ^19.0.0
     react: ^17.0.0 || ^18.0.0 || ^19.0.0
   peerDependenciesMeta:
     "@types/react":
       optional: true
-  checksum: 10c0/2df04e1f3ee2e7a960bd9f0418ac90d33595ebecf30d121b86e0b84bbffa4b8f6bce803ef66f114b23b164f29ee6357d1e3290a867fd10b3a8db505088f06366
+  checksum: 10c0/eb3ac873e9dcb40273909ef44b669a751dc5cee893088422ff373796c2cfe59c1338263b5a59d5a453d37b00c4ec494dbb836b275d778d20ea335f6d029b4742
   languageName: node
   linkType: hard
 
-"@mui/material@npm:7.3.9":
-  version: 7.3.9
-  resolution: "@mui/material@npm:7.3.9"
+"@mui/material@npm:7.3.11":
+  version: 7.3.11
+  resolution: "@mui/material@npm:7.3.11"
   dependencies:
     "@babel/runtime": "npm:^7.28.6"
-    "@mui/core-downloads-tracker": "npm:^7.3.9"
-    "@mui/system": "npm:^7.3.9"
+    "@mui/core-downloads-tracker": "npm:^7.3.11"
+    "@mui/system": "npm:^7.3.11"
     "@mui/types": "npm:^7.4.12"
-    "@mui/utils": "npm:^7.3.9"
+    "@mui/utils": "npm:^7.3.11"
     "@popperjs/core": "npm:^2.11.8"
     "@types/react-transition-group": "npm:^4.4.12"
     clsx: "npm:^2.1.1"
@@ -1400,7 +1400,7 @@ __metadata:
   peerDependencies:
     "@emotion/react": ^11.5.0
     "@emotion/styled": ^11.3.0
-    "@mui/material-pigment-css": ^7.3.9
+    "@mui/material-pigment-css": ^7.3.11
     "@types/react": ^17.0.0 || ^18.0.0 || ^19.0.0
     react: ^17.0.0 || ^18.0.0 || ^19.0.0
     react-dom: ^17.0.0 || ^18.0.0 || ^19.0.0
@@ -1413,7 +1413,7 @@ __metadata:
       optional: true
     "@types/react":
       optional: true
-  checksum: 10c0/d486145016e026fda55e626a6e7fb1cf9f3e89c60d2d064e60551a03e7867f82ccc6c7921199f007a218e50aa1e45f5b215193ff6e33faa5fc9f7b55637ce95f
+  checksum: 10c0/ad2cca3f84a8c5f5b980d6126a0bf3dd35deb82438adc3bc29e125e19554c8fcf9f68cff5f471f18d8ca921524f3a312254041021ef49ee872ecc383da835805
   languageName: node
   linkType: hard
 
@@ -1457,7 +1457,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@mui/system@npm:^7.3.9":
+"@mui/system@npm:^7.3.11":
   version: 7.3.11
   resolution: "@mui/system@npm:7.3.11"
   dependencies:
@@ -1499,7 +1499,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@mui/utils@npm:^5.16.6 || ^6.0.0 || ^7.0.0, @mui/utils@npm:^7.3.11, @mui/utils@npm:^7.3.5, @mui/utils@npm:^7.3.9":
+"@mui/utils@npm:^5.16.6 || ^6.0.0 || ^7.0.0, @mui/utils@npm:^7.3.11, @mui/utils@npm:^7.3.5":
   version: 7.3.11
   resolution: "@mui/utils@npm:7.3.11"
   dependencies:
@@ -1519,9 +1519,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@mui/x-charts-vendor@npm:8.26.0":
-  version: 8.26.0
-  resolution: "@mui/x-charts-vendor@npm:8.26.0"
+"@mui/x-charts-vendor@npm:8.29.0":
+  version: 8.29.0
+  resolution: "@mui/x-charts-vendor@npm:8.29.0"
   dependencies:
     "@babel/runtime": "npm:^7.28.4"
     "@types/d3-array": "npm:^3.2.2"
@@ -1530,13 +1530,13 @@ __metadata:
     "@types/d3-interpolate": "npm:^3.0.4"
     "@types/d3-path": "npm:^3.1.1"
     "@types/d3-scale": "npm:^4.0.9"
-    "@types/d3-shape": "npm:^3.1.7"
+    "@types/d3-shape": "npm:^3.1.8"
     "@types/d3-time": "npm:^3.0.4"
     "@types/d3-time-format": "npm:^4.0.3"
     "@types/d3-timer": "npm:^3.0.2"
     d3-array: "npm:^3.2.4"
     d3-color: "npm:^3.1.0"
-    d3-format: "npm:^3.1.0"
+    d3-format: "npm:^3.1.2"
     d3-interpolate: "npm:^3.0.1"
     d3-path: "npm:^3.1.0"
     d3-scale: "npm:^4.0.2"
@@ -1546,19 +1546,19 @@ __metadata:
     d3-timer: "npm:^3.0.1"
     flatqueue: "npm:^3.0.0"
     internmap: "npm:^2.0.3"
-  checksum: 10c0/9fe72a5ff949cc2e3a7d19f30ccb79c21be91d69cb6489eb263180cb01954d373bfb019c4079bca425eba29bac5e15cdc34e9ee877e2af558e65fda0759e12e6
+  checksum: 10c0/6066a445d7980ea766873757f524722e54cee99aa5be06ae4144a14b4a34f9cb4340ecf1413872c682e5f236603048c19b0270cef3084c3c0c5132cfd88056f0
   languageName: node
   linkType: hard
 
-"@mui/x-charts@npm:8.27.4":
-  version: 8.27.4
-  resolution: "@mui/x-charts@npm:8.27.4"
+"@mui/x-charts@npm:8.29.0":
+  version: 8.29.0
+  resolution: "@mui/x-charts@npm:8.29.0"
   dependencies:
     "@babel/runtime": "npm:^7.28.4"
     "@mui/utils": "npm:^7.3.5"
-    "@mui/x-charts-vendor": "npm:8.26.0"
-    "@mui/x-internal-gestures": "npm:0.4.0"
-    "@mui/x-internals": "npm:8.26.0"
+    "@mui/x-charts-vendor": "npm:8.29.0"
+    "@mui/x-internal-gestures": "npm:0.5.0"
+    "@mui/x-internals": "npm:8.29.0"
     bezier-easing: "npm:^2.1.0"
     clsx: "npm:^2.1.1"
     prop-types: "npm:^15.8.1"
@@ -1576,7 +1576,7 @@ __metadata:
       optional: true
     "@emotion/styled":
       optional: true
-  checksum: 10c0/90db52fbf2ce97200ebeba1a0d2cc32c491908e8ccc44b0c80b16424f3110be0df34cbfa1bf7a85b4573a4f9d179308673b65f9404f5f4a5e30e5192b08b398f
+  checksum: 10c0/2d5050708af72abf2419dde99f91470bd5defb23cd513a839d35be51edc5a71cf7c7eb76ebfb6380675767465e8c511432cb03f364f2a11ae928cca1e0b2afd7
   languageName: node
   linkType: hard
 
@@ -1628,12 +1628,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@mui/x-internal-gestures@npm:0.4.0":
-  version: 0.4.0
-  resolution: "@mui/x-internal-gestures@npm:0.4.0"
+"@mui/x-internal-gestures@npm:0.5.0":
+  version: 0.5.0
+  resolution: "@mui/x-internal-gestures@npm:0.5.0"
   dependencies:
     "@babel/runtime": "npm:^7.28.4"
-  checksum: 10c0/29b278a8933b65acd9530a259fd95d6d4a721e4a5c9f34dfab818a13a50fb560959d56519c35fb9a4b5f924aaf38c8f44407b8e82b90754af255fcaad75d0118
+  checksum: 10c0/2fe5af91d2c95b661933112991adb41fe9679a32a35c018f3880b10695e7d4671a27bb7e0ffef185e2076fb3d333f5bc3d852079492d3485e8f22933e55f52b4
   languageName: node
   linkType: hard
 
@@ -1649,9 +1649,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@mui/x-internals@npm:8.26.0":
-  version: 8.26.0
-  resolution: "@mui/x-internals@npm:8.26.0"
+"@mui/x-internals@npm:8.29.0":
+  version: 8.29.0
+  resolution: "@mui/x-internals@npm:8.29.0"
   dependencies:
     "@babel/runtime": "npm:^7.28.4"
     "@mui/utils": "npm:^7.3.5"
@@ -1659,7 +1659,7 @@ __metadata:
     use-sync-external-store: "npm:^1.6.0"
   peerDependencies:
     react: ^17.0.0 || ^18.0.0 || ^19.0.0
-  checksum: 10c0/819564e1b1c7626f5e237edd81f716a3871df1479f2e2e9fbef45a5963df21c510eca4931f6af726fdcd9dc643a019e44c5d61657865b389ef0a2ab5abb10d6c
+  checksum: 10c0/7dd84c45084404426ec46dd20976ba81cceeb84011be900c07c1f02131fa8fb26049b5974577457552c78c24153b57e0b79c85f8eddca8c3a550ea837529eb74
   languageName: node
   linkType: hard
 
@@ -2459,7 +2459,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/d3-shape@npm:^3.1.7":
+"@types/d3-shape@npm:^3.1.8":
   version: 3.1.8
   resolution: "@types/d3-shape@npm:3.1.8"
   dependencies:
@@ -3880,7 +3880,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"d3-format@npm:1 - 3, d3-format@npm:^3.1.0":
+"d3-format@npm:1 - 3, d3-format@npm:^3.1.2":
   version: 3.1.2
   resolution: "d3-format@npm:3.1.2"
   checksum: 10c0/0de452ae07585238e7f01607a7e0066665c34609652188b6ac7dc9f424f69465a425e07d16d79bd0e5955202ac7f241c66d0c76f68a79fc6f4857c94cf420652
@@ -8860,9 +8860,9 @@ __metadata:
     "@floating-ui/react": "npm:^0.27.19"
     "@hugocxl/react-to-image": "npm:^0.0.9"
     "@monaco-editor/react": "npm:4.7.0"
-    "@mui/icons-material": "npm:7.3.9"
-    "@mui/material": "npm:7.3.9"
-    "@mui/x-charts": "npm:8.27.4"
+    "@mui/icons-material": "npm:7.3.11"
+    "@mui/material": "npm:7.3.11"
+    "@mui/x-charts": "npm:8.29.0"
     "@mui/x-date-pickers": "npm:7.29.4"
     "@rollup/rollup-linux-x64-gnu": "npm:4.54.0"
     "@tailwindcss/vite": "npm:4.3.0"
