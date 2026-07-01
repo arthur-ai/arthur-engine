@@ -1,4 +1,7 @@
 import { TIME_RANGES } from "@arthur/shared-components";
+import { resolveTargetAsync } from "@arthur/shared-components/tour";
+import { useRegisterOccluder, useRegisterPreparation } from "@arthur/shared-components/tour";
+import type { OccluderDescriptor, PreparationHook } from "@arthur/shared-components/tour";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo, useRef } from "react";
 
@@ -8,9 +11,6 @@ import { tourSelector, TOUR_IDS, type TourId } from "../selectors";
 
 import { useDrawerTarget } from "@/components/traces/hooks/useDrawerTarget";
 import { usePaginationContext } from "@/components/traces/stores/pagination-context";
-import { resolveTargetAsync } from "@/features/tour";
-import { useRegisterOccluder, useRegisterPreparation } from "@/features/tour";
-import type { OccluderDescriptor, PreparationHook } from "@/features/tour";
 import { useApi } from "@/hooks/useApi";
 import type { TraceMetadataResponse } from "@/lib/api-client/api-client";
 import { FETCH_SIZE } from "@/lib/constants";

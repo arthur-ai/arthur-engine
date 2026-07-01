@@ -6,12 +6,28 @@ Arthur ships (`genai-engine-cpu`, `genai-engine-gpu`, `ml-engine`, `genai-engine
 Customers cannot accept HIGH/CRITICAL vulnerabilities, so for every such finding we maintain a
 documented position: either it is remediated (upgrade the package/base image) or it is
 **justified** via a [VEX](https://openvex.dev/) statement explaining why it is not exploitable
-/ acceptable. CI scans every image (Docker Scout + Trivy, **advisory — non-blocking**), publishes
+/ acceptable. CI scans every image (Trivy, **advisory — non-blocking**), publishes
 findings to the GitHub **Security tab**, and generates a per-image **justification report** with
 this VEX applied.
 
+**Every** HIGH/CRITICAL is surfaced — unfixed CVEs are **not** hidden. The expectation is that each
+one is triaged to a documented position (fix it, or justify it via VEX). Two views:
+
+- **GitHub Security tab** (`trivy-*` categories) — VEX applied, so it shows the **not-yet-triaged
+  backlog**: every HIGH/CRITICAL (fixable or not) that does not yet have a VEX statement. A
+  VEX-accepted finding drops off here automatically.
+- **Justification report artifact** (`report-*.md`) — the **full** picture: every unresolved
+  finding plus a table of everything accepted via VEX, with status + justification.
+
+> **Why we don't use `--ignore-unfixed` on the scan.** Trivy's `--ignore-unfixed` drops every CVE
+> with no upstream patch — which is the bulk of base-OS findings. We deliberately leave it **off**:
+> an unfixed CVE still needs a human decision (is it exploitable in our images?) recorded as a VEX
+> statement, not silently filtered away. Hiding it would also mask the moment a fix later ships.
+> So the policy for an unfixed CVE is **justify it**, not drop it. `--ignore-unfixed` has exactly
+> one intended use here — the future enforcement gate (see below) — and none on the advisory scan.
+
 > The CI gate is intentionally **off** today (scans never fail the build). Flipping it on for
-> *fixable* HIGH/CRITICAL is a one-line change per scan step — see "Turning on enforcement".
+> *fixable* HIGH/CRITICAL is a small change — see "Turning on enforcement".
 
 ## Layout
 
@@ -37,7 +53,7 @@ Both call the shared composite action `.github/workflows/composite-actions/vuln-
 
 ## Triaging a new HIGH/CRITICAL finding
 
-1. Find it in **Security → Code scanning** (categories `scout-*` / `trivy-*`) or in the report
+1. Find it in **Security → Code scanning** (categories `trivy-*`) or in the report
    artifact from the latest scan run.
 2. **If a fix exists** (the report shows a "Fixed" version): let Renovate bump it, or bump the
    dependency / Docker base image manually, and rebuild. Prefer fixing over justifying.
@@ -64,6 +80,13 @@ statement binds a vulnerability to one or more products and gives a status + jus
   `vulnerable_code_not_present`, `vulnerable_code_not_in_execute_path`,
   `vulnerable_code_cannot_be_controlled_by_adversary`, `inline_mitigations_already_exist`).
 - `products[].@id` must match the image purl the scanner reports (e.g. `pkg:oci/ml-engine`).
+- **Subcomponents: scope by package name only — never pin a version or qualifiers.** Use
+  `pkg:deb/debian/libssl3`, **not** `pkg:deb/debian/libssl3@3.0.19-1~deb12u2?distro=debian-12`.
+  Trivy's package purls carry `?arch=…&distro=debian-12.NN` (the distro **point release**), which
+  changes on every base-image bump. A version/qualifier-pinned subcomponent silently stops matching
+  the moment that drifts, and the suppression breaks with no error — the CVE just reappears as open.
+  A name-only subcomponent matches across rebuilds. (This is exactly what broke the VEX before:
+  every statement pinned `?distro=debian-12` and matched nothing.)
 - Include a **rationale + owner + review date** so the justification is auditable. Re-review
   `under_investigation` and `affected` entries regularly.
 
@@ -82,7 +105,7 @@ vexctl create \
 ## Verifying locally
 
 ```bash
-# Preview findings with the VEX applied (HIGH/CRITICAL only):
+# Full picture (HIGH/CRITICAL, incl. unfixed + VEX-suppressed) — same scan CI runs:
 trivy image --severity HIGH,CRITICAL \
   --vex security/vex/openvex.json --show-suppressed \
   --format json -o /tmp/report.json arthurplatform/genai-engine-cpu:latest
@@ -90,17 +113,24 @@ trivy image --severity HIGH,CRITICAL \
 # Render the human-readable justification report:
 python3 security/render_report.py /tmp/report.json /tmp/report.md arthurplatform/genai-engine-cpu:latest
 
-# Scout view (recommendations for base-image upgrades):
-docker scout cves arthurplatform/genai-engine-cpu:latest --only-severity critical,high
+# What reaches the GitHub Security tab = the converted SARIF (VEX-accepted findings excluded):
+trivy convert --format sarif -o /tmp/trivy.sarif /tmp/report.json
 ```
+
+> Tip: to confirm a VEX statement actually matches, check that the CVE moves into
+> `ExperimentalModifiedFindings` in the JSON report (or just disappears from `Vulnerabilities`).
+> If it's still under `Vulnerabilities`, the subcomponent purl didn't match — see the name-only
+> rule above. On Apple Silicon, add `--image-src remote` if a local `docker` layer export fails.
 
 ## Turning on enforcement (future)
 
 When the backlog is triaged (every HIGH/CRITICAL is either fixed or has a VEX statement), make
-the build block on **fixable** HIGH/CRITICAL by editing the composite action's Trivy step:
+the build block on **fixable** HIGH/CRITICAL by adding `--exit-code 1` **and** `--ignore-unfixed`
+to the Trivy scan step in the composite action.
 
-- set `--exit-code 1` and `--ignore-unfixed` on the Trivy scan, and/or
-- set Docker Scout's `exit-on: vulnerability` with `only-severities: critical,high`.
-
-`--ignore-unfixed` is important: it blocks only findings that have an available patch, so
-unfixable base-OS CVEs (documented via VEX) do not permanently block releases.
+Here `--ignore-unfixed` acts as a **release safety net, not a visibility filter**. VEX-justified
+findings are already suppressed, so a gate without it would only ever fire on findings that are
+**both** fixable and not-yet-triaged — plus any *newly-disclosed unfixed* CVE, which no one can
+patch on the spot. `--ignore-unfixed` keeps that last category from hard-blocking every release
+until someone writes its VEX statement: it stays an advisory finding (still visible in the Security
+tab and the report) to be triaged, while the gate blocks only the genuinely fixable ones.
