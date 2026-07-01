@@ -52,7 +52,7 @@ from schemas.base_experiment_schemas import (
 from schemas.enums import AgenticExperimentGeneratorType
 from services.experiment_executor import BaseExperimentExecutor
 from services.prompt.chat_completion_service import ChatCompletionService
-from utils.constants import AGENT_EXPERIMENT_SESSION_PREFIX
+from utils.constants import AGENT_EXPERIMENT_SESSION_PREFIX, EVAL_PASS_THRESHOLD
 from utils.transform_executor import execute_transform
 
 logger = logging.getLogger(__name__)
@@ -885,8 +885,8 @@ class AgenticExperimentExecutor(BaseExperimentExecutor):
             # Build the summary structure using Pydantic models
             eval_summaries = []
             for (eval_name, eval_version), scores in sorted(results_by_eval.items()):
-                # Count how many passed (score >= 0.5, assuming 0-1 scale)
-                pass_count = sum(1 for s in scores if s >= 0.5)
+                # Count how many passed (score >= EVAL_PASS_THRESHOLD, 0-1 scale)
+                pass_count = sum(1 for s in scores if s >= EVAL_PASS_THRESHOLD)
                 total_count = len(scores)
 
                 # Get transform_id for this eval
