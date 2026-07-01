@@ -49,7 +49,11 @@ function EvalChip({ evalItem, status }: { evalItem: EvalExecution; status: TestC
 
 function EvalsCell({ evals, status }: { evals: EvalExecution[]; status: TestCaseStatus }) {
   if (evals.length === 0) {
-    return <Typography variant="body2" color="text.secondary">N/A</Typography>;
+    return (
+      <Typography variant="body2" color="text.secondary">
+        N/A
+      </Typography>
+    );
   }
 
   return (
