@@ -118,25 +118,25 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@amplitude/experiment-core@npm:^0.13.1":
-  version: 0.13.1
-  resolution: "@amplitude/experiment-core@npm:0.13.1"
+"@amplitude/experiment-core@npm:^0.13.2":
+  version: 0.13.2
+  resolution: "@amplitude/experiment-core@npm:0.13.2"
   dependencies:
     js-base64: "npm:^3.7.5"
-  checksum: 10c0/c80354c7f8ddfd463e43300302b0d4d2a44f773b256d9cc62d8af4c55e054d677d25996c3a95299fd1a731072ace923b36a7d1ca5c01e1315ee5b1cbdc0e0e4c
+  checksum: 10c0/7b8b1a625c2cd30c1bdbc465848b6c53f39c09e2e6822c6a9f888b4d0ff78cbd54abcbb371fb289bbe96fe3aec13f6691c1dc669505afa0befe1b9c9223f622f
   languageName: node
   linkType: hard
 
 "@amplitude/experiment-js-client@npm:^1.21.1":
-  version: 1.21.1
-  resolution: "@amplitude/experiment-js-client@npm:1.21.1"
+  version: 1.21.2
+  resolution: "@amplitude/experiment-js-client@npm:1.21.2"
   dependencies:
     "@amplitude/analytics-connector": "npm:^1.6.4"
-    "@amplitude/experiment-core": "npm:^0.13.1"
+    "@amplitude/experiment-core": "npm:^0.13.2"
     "@amplitude/ua-parser-js": "npm:^0.7.31"
     base64-js: "npm:1.5.1"
     unfetch: "npm:4.1.0"
-  checksum: 10c0/f9b784a2a869ec9daacf66ab13128486c559dec0225a1f35964784f428095627631cc74f2030cdf45f0bf0ab3481fc44450e06b7f9045986408ffbb346714f3b
+  checksum: 10c0/bda0734236b4c21d10cf98c7fdf7f5873b4c624c2b74cbf70d8fbefc80c66e64966e5d2a37e7cc6b47d3dff0616a15200696d200723e144e56fe8f9c439a88dc
   languageName: node
   linkType: hard
 
