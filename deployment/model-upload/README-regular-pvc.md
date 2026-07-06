@@ -198,8 +198,9 @@ kubectl -n arthur get pvc arthur-models-pvc   # expect: Bound
 The chart doesn't template the model volume, so add it to the GenAI Engine deployment (via Helm values that support it, or a `kubectl patch`). Because this is a single RWO volume:
 
 - **Run one replica** (`genaiEngineReplicaCount: 1`, HPA disabled). The PV carries zone node-affinity, so the scheduler automatically keeps the pod in the volume's zone. A second replica will get stuck (`Multi-Attach` / `FailedMount`).
+- **Use `strategy: type: Recreate`** on the engine Deployment. The default `RollingUpdate` starts the new pod before the old one releases the RWO volume, deadlocking every upgrade with a `Multi-Attach` error. `Recreate` tears the old pod down first (brief downtime is unavoidable with a single replica anyway).
 - **Mount read-write** (`readOnly: false`) — the model loader writes Hugging Face `*.lock` files under the model dir even with `HF_HUB_OFFLINE=1`; a read-only mount crashes the worker.
-- Set **`fsGroup: 65532`** on the engine pod too, and:
+- Set **`fsGroup: 65532`** on the engine pod too, with **`fsGroupChangePolicy: OnRootMismatch`** so kubelet skips the recursive chown of the ~25Gi model volume on every pod start, and:
 
 ```
 MODEL_STORAGE_PATH=/home/nonroot/models-output
@@ -207,20 +208,25 @@ HF_HUB_OFFLINE=1
 ```
 
 ```yaml
-# added to the genai-engine pod spec
+# added to the genai-engine Deployment
 spec:
-  securityContext:
-    fsGroup: 65532
-  volumes:
-  - name: models
-    persistentVolumeClaim:
-      claimName: arthur-models-pvc
-  containers:
-  - name: arthur-genai-engine
-    volumeMounts:
-    - name: models
-      mountPath: /home/nonroot/models-output   # matches MODEL_STORAGE_PATH
-      readOnly: false
+  strategy:
+    type: Recreate                     # Deployment.spec level — a sibling of template, not inside the pod spec
+  template:
+    spec:                              # the pod spec
+      securityContext:
+        fsGroup: 65532
+        fsGroupChangePolicy: OnRootMismatch   # don't re-chown ~25Gi of models on every start
+      volumes:
+      - name: models
+        persistentVolumeClaim:
+          claimName: arthur-models-pvc
+      containers:
+      - name: arthur-genai-engine
+        volumeMounts:
+        - name: models
+          mountPath: /home/nonroot/models-output   # matches MODEL_STORAGE_PATH
+          readOnly: false
 ```
 
 ---
@@ -229,10 +235,11 @@ spec:
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| Job pod `CreateContainerConfigError`, "permission denied" writing `/models-output` | non-root user can't write a fresh block volume | add `fsGroup: 65532` to the pod `securityContext` |
+| Job pod fails at runtime, "permission denied" writing `/models-output` in the logs | non-root user can't write a fresh block volume | add `fsGroup: 65532` to the pod `securityContext` |
 | Engine can't read models / permission denied | files written as a different uid than the engine (65532) | write with `runAsUser: 65532` (no access-point squash on block storage) |
 | Job pod `secret "arthurai-repo-creds" not found` | leftover `imagePullSecrets` on a public image | remove `imagePullSecrets` (done in the manifests above) |
 | Second engine replica stuck `Pending` / `Multi-Attach error` | RWO volume can attach to only one node | run a single replica, or switch to an EFS/RWX PVC |
+| Rollout hangs on upgrade: new pod stuck `ContainerCreating` with `Multi-Attach error` | default `RollingUpdate` surges a second pod against the RWO volume | `strategy: type: Recreate` on the engine Deployment |
 | Engine worker crashes: `[Errno 30] Read-only file system` | loader writes HF lock files | mount the volume **read-write** |
 | PVC stays `Pending` before the Job runs | `WaitForFirstConsumer` binding mode | expected — it binds once the Job pod schedules |
 
