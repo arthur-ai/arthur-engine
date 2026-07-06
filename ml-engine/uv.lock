@@ -146,7 +146,7 @@ wheels = [
 
 [[package]]
 name = "arthur-client"
-version = "1.4.2229"
+version = "1.4.2243"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "authlib" },
@@ -158,9 +158,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d3/2d/44bce54cc7b4235131ab94f2e3cf7b5cf0ce7aa5602ebf90c1d2b7cc6972/arthur_client-1.4.2229.tar.gz", hash = "sha256:459aaf7373bb2476aa56ff0408d8c11c29a6ae4d7fef21d53d8534d843219509", size = 404102, upload-time = "2026-06-26T15:14:37.673Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/65/81/a5f0b092b24eba4e3b5b7ed513a9912981730a5e0420120b96d511c4396b/arthur_client-1.4.2243.tar.gz", hash = "sha256:51f03c510c25ba5e9fb9df9d2221cefcea16482c07b1bca8043a915d3602f266", size = 404366, upload-time = "2026-07-02T15:16:36.711Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/4e/d1/cbbb5e125816f580329fddc0dc50a366fd114f8b55e1f981d3606594ff4b/arthur_client-1.4.2229-py3-none-any.whl", hash = "sha256:42cadd58188d1c28b774449003719ca093155255033ffb2478efdfb6ada822ab", size = 1481878, upload-time = "2026-06-26T15:14:35.744Z" },
+    { url = "https://files.pythonhosted.org/packages/df/3c/c1047ed4d433a430e5b5d671cc28bc7ccd7f99f9818e101da5d733b5cd3e/arthur_client-1.4.2243-py3-none-any.whl", hash = "sha256:0300c3d96fa6c62356c50e821c9f883f1731b39ae637ad4f89376508646cc0bb", size = 1482443, upload-time = "2026-07-02T15:16:35.019Z" },
 ]
 
 [[package]]
@@ -1418,7 +1418,7 @@ wheels = [
 
 [[package]]
 name = "ml-engine"
-version = "2.1.686"
+version = "2.1.687"
 source = { editable = "." }
 dependencies = [
     { name = "adlfs" },
@@ -1477,7 +1477,7 @@ linters = [
 [package.metadata]
 requires-dist = [
     { name = "adlfs", specifier = "==2025.8.0" },
-    { name = "arthur-client", specifier = "==1.4.2229" },
+    { name = "arthur-client", specifier = "==1.4.2243" },
     { name = "arthur-common", specifier = "==2.4.67" },
     { name = "croniter", specifier = "==6.0.0" },
     { name = "databricks-sdk", specifier = ">=0.84.0,<1" },
