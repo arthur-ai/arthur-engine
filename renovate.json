@@ -42,6 +42,11 @@
       "enabled": false
     },
     {
+      "matchManagers": ["dockerfile", "docker-compose"],
+      "matchPackageNames": ["postgres"],
+      "allowedVersions": "<17"
+    },
+    {
       "matchManagers": ["npm"],
       "reviewers": ["TheLukaszNs-Blazity", "xV3rt", "martin-arthur-ai"],
       "reviewersSampleSize": 1
