@@ -35,7 +35,7 @@
     "@monaco-editor/react": "4.7.0",
     "@mui/icons-material": "7.3.11",
     "@mui/material": "7.3.11",
-    "@mui/x-charts": "8.29.0",
+    "@mui/x-charts": "8.29.2",
     "@mui/x-date-pickers": "7.29.4",
     "@tanstack/react-form": "1.33.0",
     "@tanstack/react-pacer": "0.19.4",
