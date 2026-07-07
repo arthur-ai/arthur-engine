@@ -1570,15 +1570,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@mui/x-charts@npm:8.29.0":
-  version: 8.29.0
-  resolution: "@mui/x-charts@npm:8.29.0"
+"@mui/x-charts@npm:8.29.2":
+  version: 8.29.2
+  resolution: "@mui/x-charts@npm:8.29.2"
   dependencies:
     "@babel/runtime": "npm:^7.28.4"
     "@mui/utils": "npm:^7.3.5"
     "@mui/x-charts-vendor": "npm:8.29.0"
     "@mui/x-internal-gestures": "npm:0.5.0"
-    "@mui/x-internals": "npm:8.29.0"
+    "@mui/x-internals": "npm:8.29.2"
     bezier-easing: "npm:^2.1.0"
     clsx: "npm:^2.1.1"
     prop-types: "npm:^15.8.1"
@@ -1596,7 +1596,7 @@ __metadata:
       optional: true
     "@emotion/styled":
       optional: true
-  checksum: 10c0/2d5050708af72abf2419dde99f91470bd5defb23cd513a839d35be51edc5a71cf7c7eb76ebfb6380675767465e8c511432cb03f364f2a11ae928cca1e0b2afd7
+  checksum: 10c0/09829cc71dc3c61493eeb298ba4ffdd20289ea184c6e56b74c8a851d4b229118b7b30aca8eb7d0477be03f79ffd8c915e0e3ef040939539b9a8c160b06fe3faa
   languageName: node
   linkType: hard
 
@@ -1669,9 +1669,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@mui/x-internals@npm:8.29.0":
-  version: 8.29.0
-  resolution: "@mui/x-internals@npm:8.29.0"
+"@mui/x-internals@npm:8.29.2":
+  version: 8.29.2
+  resolution: "@mui/x-internals@npm:8.29.2"
   dependencies:
     "@babel/runtime": "npm:^7.28.4"
     "@mui/utils": "npm:^7.3.5"
@@ -1679,7 +1679,7 @@ __metadata:
     use-sync-external-store: "npm:^1.6.0"
   peerDependencies:
     react: ^17.0.0 || ^18.0.0 || ^19.0.0
-  checksum: 10c0/7dd84c45084404426ec46dd20976ba81cceeb84011be900c07c1f02131fa8fb26049b5974577457552c78c24153b57e0b79c85f8eddca8c3a550ea837529eb74
+  checksum: 10c0/2f43fc4305011b3b232e635de28b596ca259fcd641bc4097f686dd6ce4218413bf609d968f7d164f074547d0845eaf9cc4977543fd3ba86cd6fab12fa48c6370
   languageName: node
   linkType: hard
 
@@ -8868,7 +8868,7 @@ __metadata:
     "@monaco-editor/react": "npm:4.7.0"
     "@mui/icons-material": "npm:7.3.11"
     "@mui/material": "npm:7.3.11"
-    "@mui/x-charts": "npm:8.29.0"
+    "@mui/x-charts": "npm:8.29.2"
     "@mui/x-date-pickers": "npm:7.29.4"
     "@rollup/rollup-linux-x64-gnu": "npm:4.54.0"
     "@tailwindcss/vite": "npm:4.3.2"
