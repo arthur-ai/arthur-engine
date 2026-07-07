@@ -140,7 +140,7 @@ wheels = [
 
 [[package]]
 name = "arthur-client"
-version = "1.4.2243"
+version = "1.4.2244"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "authlib" },
@@ -152,9 +152,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/65/81/a5f0b092b24eba4e3b5b7ed513a9912981730a5e0420120b96d511c4396b/arthur_client-1.4.2243.tar.gz", hash = "sha256:51f03c510c25ba5e9fb9df9d2221cefcea16482c07b1bca8043a915d3602f266", size = 404366, upload-time = "2026-07-02T15:16:36.711Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/4a/03/b9719d8fb5601a12663e6ca1a7fd141c1b02945930e911ec4b67a3e76e49/arthur_client-1.4.2244.tar.gz", hash = "sha256:4f512cfbfc5bd1043c12fb45f2c7f27e30a8960872c55a22ca26ba76e2f210a3", size = 404366, upload-time = "2026-07-02T18:11:54.82Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/df/3c/c1047ed4d433a430e5b5d671cc28bc7ccd7f99f9818e101da5d733b5cd3e/arthur_client-1.4.2243-py3-none-any.whl", hash = "sha256:0300c3d96fa6c62356c50e821c9f883f1731b39ae637ad4f89376508646cc0bb", size = 1482443, upload-time = "2026-07-02T15:16:35.019Z" },
+    { url = "https://files.pythonhosted.org/packages/de/3e/84689694f5bce3cd5eaa064304f93c3d560ac1502dba79f7d52e9c164bfb/arthur_client-1.4.2244-py3-none-any.whl", hash = "sha256:bc4da0b137bf38e8bb847db773796ff014fcbe0e47bcce5e8df28c88cf2c18f1", size = 1482442, upload-time = "2026-07-02T18:11:53.257Z" },
 ]
 
 [[package]]
@@ -182,7 +182,7 @@ wheels = [
 
 [[package]]
 name = "arthur-genai-engine"
-version = "2.1.687"
+version = "2.1.688"
 source = { editable = "." }
 dependencies = [
     { name = "alembic" },
@@ -277,7 +277,7 @@ performance = [
 requires-dist = [
     { name = "alembic", specifier = "==1.17.2" },
     { name = "amplitude-analytics", specifier = ">=1.1.5,<2" },
-    { name = "arthur-client", specifier = "==1.4.2243" },
+    { name = "arthur-client", specifier = "==1.4.2244" },
     { name = "arthur-common", specifier = "==2.4.67" },
     { name = "authlib", specifier = "==1.6.12" },
     { name = "azure-storage-blob", specifier = "==12.27.1" },
