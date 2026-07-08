@@ -56,6 +56,24 @@ spec:
           ports:
             - containerPort: 3030
             - containerPort: {{ .Values.postgresBYOPort }}
+          {{- if .Values.probes.enabled }}
+          # Startup probe gives the app time to load models on first boot (slow when loading from
+          # an EFS-backed PVC) before readiness begins gating traffic. Readiness holds the load
+          # balancer off until gunicorn workers are actually serving, avoiding 502s during startup.
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 3030
+            periodSeconds: {{ .Values.probes.startupPeriodSeconds }}
+            failureThreshold: {{ .Values.probes.startupFailureThreshold }}
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3030
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          {{- end }}
           resources:
             requests:
               memory: "{{ .Values.genaiEngineContainerMemoryRequests }}"
