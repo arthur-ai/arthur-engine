@@ -14,7 +14,7 @@ provisioning, Pod Identity vs. IRSA, Auto Mode specifics).
 
 | Layer | Resources |
 |-------|-----------|
-| **EFS** | Encrypted filesystem (elastic throughput), one mount target per subnet, an access point pinned to uid/gid `1000760000` rooted at `/models` |
+| **EFS** | Encrypted filesystem (elastic throughput), one mount target per subnet, an access point pinned to uid/gid `65532` (the genai-engine nonroot uid) rooted at `/models` |
 | **Networking** | Security group allowing inbound NFS (TCP 2049) from the Auto Mode cluster security group |
 | **IAM** | Role for the EFS CSI driver + an EKS **Pod Identity** association (`kube-system/efs-csi-controller-sa`) |
 | **Add-on** | The `aws-efs-csi-driver` EKS add-on (not bundled with Auto Mode) |
@@ -51,7 +51,7 @@ Key inputs (see [`variables.tf`](./variables.tf) for all):
 | `arthur_resource_namespace` / `arthur_resource_name_suffix` | `arthur` / `""` | Names resources `${ns}-genai-engine${suffix}-…`. |
 | `namespace` | `default` | Must match the upload job + genai-engine namespace. |
 | `pvc_name` | `arthur-models-pvc` | Keep so the upload job manifests work unchanged. |
-| `access_point_uid` / `gid` | `1000760000` | Must match the upload job and genai-engine `runAsUser`. |
+| `access_point_uid` / `gid` | `65532` | The genai-engine distroless nonroot uid. The access point squashes all I/O (upload job + engine) to this uid, so pods' own `runAsUser` need not match. |
 | `existing_efs_file_system_id`, `byo_efs_security_group_ids`, `byo_efs_csi_role_arn` | empty | BYO overrides — skip creating that resource. |
 
 ### CI / long-running pipelines
@@ -84,17 +84,22 @@ provider "kubernetes" {
    kubectl -n <namespace> wait --for=condition=complete job/arthur-genai-engine-models-k8s --timeout=600s
    ```
 3. Point genai-engine at the PVC. The genai-engine Helm chart supports this natively via the
-   optional `modelPVC` values (off by default). Enable it:
+   optional `modelPVC` values — the online/offline model-loading toggle, off by default. Enable
+   offline loading:
    ```bash
    helm upgrade --install arthur-genai-engine ../../helm/genai-engine \
      --set modelPVC.enabled=true \
      --set modelPVC.claimName=arthur-models-pvc \
      --set modelPVC.mountPath=/home/nonroot/models-output
    ```
-   The chart mounts the claim read-only and sets `MODEL_STORAGE_PATH` + `HF_HUB_OFFLINE=1`.
+   The chart mounts the claim **read-write** (`modelPVC.readOnly` defaults to `false` — the
+   HuggingFace loaders write `.lock`/cache files under the mount even offline, so a read-only mount
+   fails with `[Errno 30] Read-only file system`) and sets `MODEL_STORAGE_PATH` + `HF_HUB_OFFLINE=1`.
    No pod `securityContext` change is needed — the EFS access point's `posix_user` enforces
-   uid/gid `1000760000` for all reads regardless of the pod's `runAsUser`. Run
-   `terraform output model_upload_hint` for the exact flags.
+   uid/gid `65532` for all I/O regardless of the pod's `runAsUser`. For the `arthur-engine`
+   umbrella chart, prefix the keys with `arthur-genai-engine.` (e.g.
+   `--set arthur-genai-engine.modelPVC.enabled=true`). Run `terraform output model_upload_hint` for
+   the exact flags.
 
 ## Verification
 
@@ -118,7 +123,7 @@ models are not deleted by accident. To intentionally remove the filesystem, firs
 
 ## Gotchas
 
-- **uid/gid:** the EFS access point's `posix_user` overrides the client uid/gid, so reads/writes through it always use `1000760000` — the genai-engine pod needs no special `runAsUser`. The upload jobs (`04-job.yaml`, `06-copy-config-job.yaml`) still set `runAsUser: 1000760000` to satisfy OpenShift's restricted SCC; keep `access_point_uid/gid` aligned with them.
+- **uid/gid:** defaults to `65532`, the genai-engine distroless nonroot uid, so on-disk ownership matches the engine even on non-access-point mounts. The access point's `posix_user` overrides the client uid/gid, so reads/writes through it always use `65532` regardless of the pod's `runAsUser` — the upload job and the engine both end up writing/reading as `65532`.
 - **Mount target per subnet:** Auto Mode does not tightly control node placement, so create mount targets in **all** private subnets where pods may schedule.
 - **StorageClass is not default:** the `efs-models` class must not displace the Auto Mode EBS default. This module never sets the default annotation.
 - **Cold cluster ordering:** the kubernetes provider needs a reachable cluster. The PV/PVC `depend_on` the add-on, so a single `apply` works on an existing cluster; against a brand-new cluster, stage the AWS resources first (`-target`).

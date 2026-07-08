@@ -25,8 +25,8 @@ namespace = "arthur"
 # storage_size       = "25Gi"
 # storage_class_name = "efs-models"
 # pvc_name           = "arthur-models-pvc"
-# access_point_uid   = 1000760000
-# access_point_gid   = 1000760000
+# access_point_uid   = 65532
+# access_point_gid   = 65532
 
 # --- Bring-your-own overrides (leave empty to create) ---
 # existing_efs_file_system_id = "fs-0123456789abcdef0"

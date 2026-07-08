@@ -11,7 +11,8 @@ per pod is slow and, in air-gapped environments, impossible. The intended patter
 manually in [`../../model-upload/README.md`](../../model-upload/README.md) — is:
 
 1. Upload the models **once** to a shared filesystem (a one-time Kubernetes Job).
-2. Mount that filesystem **read-only** into every genai-engine replica.
+2. Mount that filesystem into every genai-engine replica (**read-write** — the HuggingFace loaders
+   write `.lock`/cache files under the mount even offline).
 3. The engine loads models into memory at startup (`MODEL_STORAGE_PATH` + `HF_HUB_OFFLINE=1`),
    so filesystem latency only affects cold start, not inference.
 
@@ -75,16 +76,18 @@ native to the stack:
 ## How it feeds the rest of the deployment
 
 - **Upload jobs** (`../../model-upload/k8s/04-job.yaml`, `06-copy-config-job.yaml`) already reference
-  `claimName: arthur-models-pvc` and run as uid/gid `1000760000` — they work unchanged given the
-  default `pvc_name` and `access_point_uid/gid`.
+  `claimName: arthur-models-pvc` and work unchanged given the default `pvc_name`. Whatever uid they
+  run as, the access point squashes their writes to `access_point_uid` (65532), so the models end up
+  owned by the same uid the engine runs as.
 - **`01-pvc.yaml`** (the `ReadWriteOnce`, default-class PVC) must **not** be applied on EKS — this
   module owns the PVC.
-- **genai-engine deployment** — the Helm chart supports the mount natively via the optional
-  `modelPVC` values (`enabled`, `claimName`, `mountPath`, `readOnly`), wired into both the
-  Deployment and the GPU DaemonSet. It is **off by default** — genai-engine runs without a PVC and
-  downloads models normally — and when enabled the chart mounts the claim read-only and sets
-  `MODEL_STORAGE_PATH` + `HF_HUB_OFFLINE=1`. The access point's `posix_user` enforces the uid, so no
-  pod `securityContext` change is required.
+- **genai-engine deployment** — the Helm chart exposes `modelPVC` as the online/offline
+  model-loading toggle (`enabled`, `claimName`, `mountPath`, `readOnly`), wired into both the
+  Deployment and the GPU DaemonSet. It is **off by default** — genai-engine downloads models from
+  Hugging Face and runs without a PVC. When enabled, the chart mounts the claim **read-write**
+  (`readOnly` defaults to `false`; the loaders write `.lock`/cache files under the mount even
+  offline, so read-only fails with `[Errno 30]`) and sets `MODEL_STORAGE_PATH` + `HF_HUB_OFFLINE=1`.
+  The access point's `posix_user` enforces the uid, so no pod `securityContext` change is required.
 
 ## Known trade-offs / follow-ups
 

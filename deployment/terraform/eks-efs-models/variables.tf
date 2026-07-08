@@ -112,20 +112,23 @@ variable "performance_mode" {
 }
 
 # ---------------------------------------------------------------------------
-# Access point / POSIX identity — must match the upload job's runAsUser
-# (deployment/model-upload/k8s/04-job.yaml: 1000760000) and the genai-engine pod.
+# Access point / POSIX identity. The access point's posix_user squashes ALL I/O
+# through it to this uid/gid, so the pod's own runAsUser is irrelevant — both the
+# upload job and genai-engine read/write as this identity regardless. Defaults to
+# 65532, the genai-engine distroless "nonroot" uid (gcr.io/distroless/python3),
+# so ownership matches the engine even on non-access-point mounts.
 # ---------------------------------------------------------------------------
 
 variable "access_point_uid" {
   type        = number
-  default     = 1000760000
-  description = "POSIX uid the EFS access point enforces. Must match the upload job and genai-engine pod runAsUser."
+  default     = 65532
+  description = "POSIX uid the EFS access point enforces on all I/O. Defaults to 65532, the genai-engine distroless nonroot uid, so on-disk ownership matches the engine. The access point squashes every client (upload job and engine) to this uid, so pods' own runAsUser need not match."
 }
 
 variable "access_point_gid" {
   type        = number
-  default     = 1000760000
-  description = "POSIX gid the EFS access point enforces. Must match the upload job and genai-engine pod runAsGroup."
+  default     = 65532
+  description = "POSIX gid the EFS access point enforces on all I/O. Defaults to 65532, the genai-engine distroless nonroot gid. The access point squashes every client to this gid, so pods' own runAsGroup need not match."
 }
 
 variable "root_directory" {
