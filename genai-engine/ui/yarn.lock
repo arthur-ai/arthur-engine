@@ -766,10 +766,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@biomejs/wasm-nodejs@npm:2.5.0":
-  version: 2.5.0
-  resolution: "@biomejs/wasm-nodejs@npm:2.5.0"
-  checksum: 10c0/7575d7e0935cf440db6252eb15a246ea88b39248b39590322e139dbb87ffb99ed2e4601c61e77260620ed86d5e0346a133159ae55f0b14091db424901c250363
+"@biomejs/wasm-nodejs@npm:2.5.2":
+  version: 2.5.2
+  resolution: "@biomejs/wasm-nodejs@npm:2.5.2"
+  checksum: 10c0/cd8e019814b8240657b8e53a1a74144d71518fee75d0fbc4aae68a302c0fd0ba96cbc1e355225530790937c1f4fccdd253fe36cc21dd5191e3101e3feaa78cea
   languageName: node
   linkType: hard
 
@@ -4419,7 +4419,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"es-toolkit@npm:^1.48.1":
+"es-toolkit@npm:^1.49.0":
   version: 1.49.0
   resolution: "es-toolkit@npm:1.49.0"
   dependenciesMeta:
@@ -8467,17 +8467,17 @@ __metadata:
   linkType: hard
 
 "swagger-typescript-api@npm:^13.12.2":
-  version: 13.12.3
-  resolution: "swagger-typescript-api@npm:13.12.3"
+  version: 13.12.4
+  resolution: "swagger-typescript-api@npm:13.12.4"
   dependencies:
     "@apidevtools/swagger-parser": "npm:12.1.0"
     "@biomejs/js-api": "npm:6.0.0"
-    "@biomejs/wasm-nodejs": "npm:2.5.0"
+    "@biomejs/wasm-nodejs": "npm:2.5.2"
     "@types/swagger-schema-official": "npm:^2.0.25"
     c12: "npm:^3.3.4"
     citty: "npm:^0.2.2"
     consola: "npm:^3.4.2"
-    es-toolkit: "npm:^1.48.1"
+    es-toolkit: "npm:^1.49.0"
     eta: "npm:^3.5.0"
     nanoid: "npm:^5.1.16"
     openapi-types: "npm:^12.1.3"
@@ -8489,7 +8489,7 @@ __metadata:
     yummies: "npm:7.20.1"
   bin:
     swagger-typescript-api: dist/cli.mjs
-  checksum: 10c0/490992d0633f962d165abacd8f169ca7ae41220bcdf263fb364dffa025745665adea068460eb0a82ab7885fc2740ad21009057455e83f0075b79d3b0faf0515a
+  checksum: 10c0/8d340046ce155ae8102322b76d25ca8ceb6b58d08dd38e2c9035ae4f091a81425b01c05811709816cecc42b82fb8c74ce76c07f49cc99211a1ecee6b2ec72e43
   languageName: node
   linkType: hard
 
