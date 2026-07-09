@@ -82,6 +82,9 @@ jobs:
             ${{ github.ref == 'refs/heads/dev' && format('{0}:latest-dev', inputs.image) || '' }}
           push: ${{ inputs.push }}
           platforms: linux/amd64
+          # Attach a CycloneDX SBOM attestation to the pushed image, consumable via
+          # `docker buildx imagetools inspect <image> --format '{{ json .SBOM }}'`.
+          sbom: true
       - name: Update models manifest
         run: |
           cd deployment/model-upload
