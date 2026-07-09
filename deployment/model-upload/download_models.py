@@ -100,11 +100,13 @@ def download_file(
 ) -> tuple[str, str, bool, str]:
     """Download a single file from Hugging Face Hub."""
     try:
+        # huggingface_hub v1 removed the deprecated `local_dir_use_symlinks`
+        # argument; passing `local_dir` already copies real files into the
+        # target directory (no symlinks).
         cached_path = hf_hub_download(
             repo_id=model_name,
             filename=filename,
             local_dir=output_dir / model_name,
-            local_dir_use_symlinks=False,
         )
         return (model_name, filename, True, f"Downloaded to {cached_path}")
     except RepositoryNotFoundError:

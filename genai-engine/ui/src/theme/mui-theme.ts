@@ -1,10 +1,11 @@
 import { createTheme } from "@mui/material/styles";
 
 /**
- * Layout tokens for the onboarding tour's docked side panel ({@link
- * import('../features/task-tour/components/TourSidePanel').TourSidePanel}).
- * Centralized here so the collapsed-rail and expanded-content widths live
- * with the rest of the design system rather than as loose component constants.
+ * Layout tokens for the onboarding tour's docked side panel (the shared
+ * `TourSidePanel` from `@arthur/shared-components/tour`, fed these via
+ * `useTaskTourChromeConfig`). Centralized here so the collapsed-rail and
+ * expanded-content widths live with the rest of the design system rather than
+ * as loose component constants.
  */
 declare module "@mui/material/styles" {
   interface Theme {

@@ -1,6 +1,5 @@
+import { DEFAULT_TOUR_LAYERS } from "@arthur/shared-components/tour";
 import { createTheme, type Theme } from "@mui/material/styles";
-
-import { DEFAULT_TOUR_LAYERS } from "@/features/tour";
 
 /**
  * Dropdown popups — Autocomplete's `Popper` and Select's `Menu` — default to

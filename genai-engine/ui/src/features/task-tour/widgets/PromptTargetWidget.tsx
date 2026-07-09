@@ -1,7 +1,7 @@
+import { findElementByExactText, useRegisterQueryHook } from "@arthur/shared-components/tour";
+
 import { TASK_TOUR_QUERY_HOOKS } from "../content/wiring";
 import { tourSelector, TOUR_IDS, type TourId } from "../selectors";
-
-import { findElementByExactText, useRegisterQueryHook } from "@/features/tour";
 
 export const DEMO_TASK_PROMPT_NAME = "demo_task_prompt";
 

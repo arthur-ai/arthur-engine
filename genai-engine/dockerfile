@@ -8,14 +8,14 @@
 ARG TORCH_DEVICE=cpu
 
 # Preinstall Stage: Install Python dependencies
-FROM python:3.12.8-slim-bookworm AS preinstall
+FROM python:3.12-slim-bookworm AS preinstall
 
 # Copy requirements files so this layer can be cached / reused when files are otherwise changed in the repo
 COPY pyproject.toml /app/
 COPY uv.lock /app/
 
 # Install Python dependencies
-RUN pip3 install uv==0.11.7
+RUN pip3 install uv==0.11.25
 # Set working directory
 WORKDIR /app
 
@@ -30,8 +30,11 @@ RUN uv export --frozen \
     --index-strategy unsafe-best-match \
     -r /tmp/requirements.txt
 
-# install lsof for healthchecks
-RUN apt-get update && apt-get install -y lsof && apt-get clean && rm -rf /var/lib/apt/lists/*
+# Upgrade OS packages to pick up Debian security fixes (libssl3, libc6,
+# libexpat1, ...) and install lsof for healthchecks. These libraries live in
+# /usr/lib and are copied into the distroless final image below, so upgrading
+# here patches the shared objects that actually ship.
+RUN apt-get update && apt-get upgrade -y && apt-get install -y lsof && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 
 # GPU Install: Install PyTorch for GPU
@@ -44,7 +47,10 @@ RUN uv pip install --system --no-cache --reinstall -r /tmp/requirements-torch.tx
 FROM preinstall AS cpu-install
 
 # UI Build Stage: Build the React SPA
-FROM node:20-alpine AS ui-build
+# Pinned to the build platform: `yarn build` emits architecture-independent
+# static assets (copied into both arch images below), so it must NOT run under
+# QEMU. Emulated arm64 Node crashes `yarn install` with SIGILL (exit 132).
+FROM --platform=$BUILDPLATFORM node:20-alpine AS ui-build
 
 # Accept Meticulous tokens as build arguments
 ARG METICULOUS_RECORDING_TOKEN
@@ -163,6 +169,24 @@ COPY --from=install /etc/ld.so.cache /etc/ld.so.cache
 COPY --from=install --chown=nonroot:nonroot /app/ /home/nonroot/app/
 COPY --from=install --chown=nonroot:nonroot /home/nonroot/models /home/nonroot/models
 COPY --from=install --chown=nonroot:nonroot /home/nonroot/tiktoken /home/nonroot/tiktoken
+
+# Remove the unused Python 3.11 runtime inherited from the distroless base.
+# The app runs on Python 3.12 (from /usr/local); the distroless base ships a
+# separate, never-executed Python 3.11 that image scanners keep flagging
+# (e.g. CVE-2025-8194, CVE-2025-13836). Delete the files and their dpkg
+# metadata so neither the runtime nor the SBOM advertise it. distroless has no
+# `rm`, so copy it from the build stage and delete it again in the same layer.
+USER root
+COPY --from=install /usr/bin/rm /usr/bin/rm
+RUN /usr/bin/rm -rf \
+      /usr/lib/python3.11 \
+      /usr/bin/python3.11 \
+      /usr/lib/*-linux-gnu/libpython3.11.so* \
+      /var/lib/dpkg/status.d/python3.11-minimal \
+      /var/lib/dpkg/status.d/libpython3.11-minimal \
+      /var/lib/dpkg/status.d/libpython3.11-stdlib \
+    && /usr/bin/rm /usr/bin/rm
+USER nonroot
 
 ENV PATH="/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
 ENV PYTHONPATH="/home/nonroot/app/src"

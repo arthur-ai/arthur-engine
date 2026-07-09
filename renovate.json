@@ -18,6 +18,10 @@
     "**/docker-compose*.yaml"
   ],
   "osvVulnerabilityAlerts": true,
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["* 0-4 * * 1"]
+  },
   "dockerfile": {
     "managerFilePatterns": ["(^|/)[Dd]ockerfile$", "(^|/)Dockerfile_[a-zA-Z]+$"]
   },
@@ -31,6 +35,16 @@
       "matchManagers": ["pep621"],
       "matchPackageNames": ["python", "torch", "numpy"],
       "enabled": false
+    },
+    {
+      "matchManagers": ["dockerfile", "docker-compose"],
+      "matchPackageNames": ["python"],
+      "enabled": false
+    },
+    {
+      "matchManagers": ["dockerfile", "docker-compose"],
+      "matchPackageNames": ["postgres"],
+      "allowedVersions": "<17"
     },
     {
       "matchManagers": ["npm"],

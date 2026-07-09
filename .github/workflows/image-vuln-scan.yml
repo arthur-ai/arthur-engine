@@ -55,13 +55,10 @@ jobs:
           TAG="${OVERRIDE:-${{ env.VERSION }}}"
           echo "Scanning tag: ${TAG}"
           echo "value=${TAG}" >> "$GITHUB_OUTPUT"
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v3.6.0
-        with:
-          username: ${{ secrets.DOCKER_HUB_USERNAME }}
-          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
       - name: Scan image & generate justification docs
         uses: ./.github/workflows/composite-actions/vuln-report
         with:
           image: ${{ matrix.image }}:${{ steps.tag.outputs.value }}
           slug: ${{ matrix.slug }}
+          dockerhub-username: ${{ secrets.DOCKERHUB_ENTERPRISE_USERNAME }}
+          dockerhub-token: ${{ secrets.DOCKERHUB_ENTERPRISE_TOKEN }}

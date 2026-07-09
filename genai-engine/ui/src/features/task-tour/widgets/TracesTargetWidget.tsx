@@ -1,11 +1,10 @@
+import { findElementByExactText, useRegisterQueryHook } from "@arthur/shared-components/tour";
 import { useMemo } from "react";
 
 import { TASK_TOUR_QUERY_HOOKS } from "../content/wiring";
 import { tourSelector, TOUR_IDS } from "../selectors";
 
 import { makePreferredDataTourIdResolver } from "./resolvers";
-
-import { findElementByExactText, useRegisterQueryHook } from "@/features/tour";
 
 /**
  * Lookup chain that resolves the first trace row in the Observe table.

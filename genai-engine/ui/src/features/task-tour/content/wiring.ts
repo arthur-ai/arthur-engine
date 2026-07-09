@@ -1,8 +1,8 @@
+import type { StepFormPrefill, StepPopoverConfig } from "@arthur/shared-components/tour";
+
 import type { TaskTourOccluderId } from "../occluders";
 import { TOUR_IDS, type TourId } from "../selectors";
 import { TASK_TOUR_ACTIONS } from "../tourActions";
-
-import type { StepFormPrefill, StepPopoverConfig } from "@/features/tour";
 
 /**
  * Real-app sub-route under `/tasks/:taskId/`. The literal becomes the suffix of
