@@ -2078,6 +2078,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@tanstack/devtools-event-client@npm:^0.4.3":
+  version: 0.4.4
+  resolution: "@tanstack/devtools-event-client@npm:0.4.4"
+  bin:
+    intent: ./bin/intent.js
+  checksum: 10c0/81884dc159fb30f896a804f2c0da2c3de75da1a7686850d3d59dedce4d583ea533a0396f9d27fb72f04134116a6193d9e52396674c29adb8be31fb331224e746
+  languageName: node
+  linkType: hard
+
 "@tanstack/eslint-plugin-query@npm:5.91.4":
   version: 5.91.4
   resolution: "@tanstack/eslint-plugin-query@npm:5.91.4"
@@ -2131,13 +2140,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tanstack/pacer@npm:0.18.0":
-  version: 0.18.0
-  resolution: "@tanstack/pacer@npm:0.18.0"
+"@tanstack/pacer@npm:0.21.1":
+  version: 0.21.1
+  resolution: "@tanstack/pacer@npm:0.21.1"
   dependencies:
-    "@tanstack/devtools-event-client": "npm:^0.4.0"
-    "@tanstack/store": "npm:^0.8.0"
-  checksum: 10c0/0ac73f1a9808e6efb4ad996f97514271fe3fde72a3d4f7d54ba6dbd323a8e9e30d2e4134efcfceb45717b387b0e8e7c026af72ea4261a270fe4eabc3385168a3
+    "@tanstack/devtools-event-client": "npm:^0.4.3"
+    "@tanstack/store": "npm:^0.11.0"
+  checksum: 10c0/2b344ef1c43281c3fcb7f36f0afd7c60206cc10e0d65d762639df9243474affad7ecf50dd88c86234f7ca843561bad1ec21c6befdbdb25e388d1e0737ff9ca18
   languageName: node
   linkType: hard
 
@@ -2199,16 +2208,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tanstack/react-pacer@npm:0.19.4":
-  version: 0.19.4
-  resolution: "@tanstack/react-pacer@npm:0.19.4"
+"@tanstack/react-pacer@npm:0.22.1":
+  version: 0.22.1
+  resolution: "@tanstack/react-pacer@npm:0.22.1"
   dependencies:
-    "@tanstack/pacer": "npm:0.18.0"
-    "@tanstack/react-store": "npm:^0.8.0"
+    "@tanstack/pacer": "npm:0.21.1"
+    "@tanstack/react-store": "npm:^0.11.0"
   peerDependencies:
     react: ">=16.8"
     react-dom: ">=16.8"
-  checksum: 10c0/05152a11f015c35b13c1d156985f408c33f5970739a734859ebccedbd8f853f80209db0503adb78f9dc0e97762fced565ea1d34e44b9da94c90924ce39bc81ba
+  checksum: 10c0/e6af4346c5bc022fa081aae297fa29c2ae6fe66a1d283bd9d8c6d7c4fa12a205ce51c4e8d72b1395eb80dc0381d9a3c11bec1f708ac5bcdd92d72c8de01cb70d
   languageName: node
   linkType: hard
 
@@ -2327,7 +2336,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tanstack/store@npm:0.8.1, @tanstack/store@npm:^0.8.0":
+"@tanstack/store@npm:0.8.1":
   version: 0.8.1
   resolution: "@tanstack/store@npm:0.8.1"
   checksum: 10c0/344180b689f87c3afa6ac3ea1c7d9b14257a1b961afea916f3ac666b2752972caba33c12105d588d297a932767fe0d8d25567e220777ec99d4ca6b61b5b652af
@@ -8879,7 +8888,7 @@ __metadata:
     "@tailwindcss/vite": "npm:4.3.2"
     "@tanstack/eslint-plugin-query": "npm:5.91.4"
     "@tanstack/react-form": "npm:1.33.0"
-    "@tanstack/react-pacer": "npm:0.19.4"
+    "@tanstack/react-pacer": "npm:0.22.1"
     "@tanstack/react-query": "npm:5.90.21"
     "@tanstack/react-query-devtools": "npm:5.91.3"
     "@tanstack/react-table": "npm:8.21.3"
