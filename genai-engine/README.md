@@ -36,17 +36,17 @@ The GenAI Engine (formerly known as Arthur Shield) is **a tool for evaluating an
 
 There are a several ways to run the GenAI Engine:
 
-- [Docker Compose](docker-compose/README.md)
-- [Cloudformation](cloudformation/README.md) for AWS deployment with Elastic Container Service (ECS)
-- [Helm Chart](helm/README.md) for Kubernetes
+- [Docker Compose](../deployment/docker-compose/genai-engine/README.md)
+- [Cloudformation](../deployment/cloudformation/README.md) for AWS deployment with Elastic Container Service (ECS)
+- [Helm Chart](../deployment/helm/genai-engine/README.md) for Kubernetes
 
-Note: The GenAI Engine is currently limited to providing you with the guardrail features. The rest of the features are coming soon!
+Note: Beyond guardrails, the GenAI Engine also provides LLM evaluations, tracing/observability, prompt management, datasets, and agentic experiments. Explore the full API surface at `/docs` on your running instance.
 
 ### Quickstart
 
-1. Follow the [Docker Compose](../deployment/docker-compose/README.md) instructions to deploy the engine on your local machine
+1. Follow the [Docker Compose](../deployment/docker-compose/genai-engine/README.md) instructions to deploy the engine on your local machine
 2. Once your `genai-engine` is up and running, navigate to its interactive API documentation at `/docs` via a browser
-3. Create an API key by referring to [the API Authentication Guide](https://shield.docs.arthur.ai/docs/api-authentication-guide). Your admin key is the `GENAI_ENGINE_ADMIN_KEY` in the [docker-compose.yml](../deployment/docker-compose/genai-engine/docker-compose.yml) file. In the Docker Compose deployment, the admin key is also enabled to interact with all the API endpoints to quickly get started with exploring the capability.
+3. Create an API key by referring to [the API Keys guide](https://docs.arthur.ai/docs/api-keys-management). Your admin key is the `GENAI_ENGINE_ADMIN_KEY` in the [docker-compose.yml](../deployment/docker-compose/genai-engine/docker-compose.yml) file. In the Docker Compose deployment, the admin key is also enabled to interact with all the API endpoints to quickly get started with exploring the capability.
 4. Provide `/docs` the access to use the API endpoints by entering your new API key, via the "Authorize" button, located at the top right of the page
 5. Create a new task (use case/LLM application) by expanding the `POST /api/v2/task` endpoint on the `/docs` page. Click on "Try it out", provide a task name, and click "Execute".
 6. Configure evaluation rules in the newly created task with the `POST /api/v2/tasks/{task_id}/rules` endpoint
@@ -55,16 +55,16 @@ Note: The GenAI Engine is currently limited to providing you with the guardrail 
 
 ![Arthur GenAI Engine API](../docs/images/arthur-genai-api.png)
 
-For more information, refer to the [User Guide](https://shield.docs.arthur.ai).
+For more information, refer to the [Arthur documentation](https://docs.arthur.ai/docs/overview).
 
 ### Usage Examples
 
-- [GenAI Engine client example notebooks](https://github.com/arthur-ai/example-shield-notebooks)
-- [An example of protecting an Agentic Application with GenAI Engine](https://github.com/arthur-ai/shield-autogen-agent-demo)
+- [GenAI Engine client example notebooks](https://github.com/arthur-ai/example-engine-notebooks)
+- [An example of protecting an Agentic Application with GenAI Engine](https://github.com/arthur-ai/arthur-autogen-agentic-demo)
 
 ## Documentation
 
-- [User Guide](https://shield.docs.arthur.ai)
+- [Arthur documentation](https://docs.arthur.ai/docs/overview)
 - API Documentation - (`/docs` on your GenAI Engine instance)
 
 ## Multi-tenancy
