@@ -436,6 +436,12 @@ jobs:
             ${{ github.ref == 'refs/heads/dev' && format('arthurplatform/genai-engine-{0}:latest-dev', matrix.torch_device) || '' }}
           push: true
           platforms: ${{ matrix.torch_device == 'cpu' && 'linux/amd64,linux/arm64' || 'linux/amd64' }}
+          # Attach a CycloneDX SBOM attestation to the pushed image, consumable via
+          # `docker buildx imagetools inspect <image> --format '{{ json .SBOM }}'`.
+          # SBOM only — do NOT add `provenance: mode=max` here: the build-args above carry
+          # secrets (Meticulous/GitLab/Amplitude/reCAPTCHA tokens) and mode=max records
+          # build-arg values into the provenance attestation on this public image.
+          sbom: true
       # Advisory vulnerability scan + justification docs (must never fail the release build).
       - name: Scan image & generate justification docs
         continue-on-error: true
@@ -471,24 +477,28 @@ jobs:
           pip install 'openapi-generator-cli[jdk4py]==7.12'
           openapi-generator-cli generate -c ml-engine/scripts/openapitools.json
           sed -i 's/license = "NoLicense"/license = "Unlicense"/g' ./ml-engine/src/genai_client/pyproject.toml
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4.1.0
       - name: Log in to Docker Hub
         uses: docker/login-action@v3.6.0
         with:
           username: ${{ secrets.DOCKERHUB_OSS_USERNAME }}
           password: ${{ secrets.DOCKERHUB_OSS_TOKEN }}
-      - name: Build and push docker image (no buildx)
-        run: |
-          cd ml-engine
-          docker build -t arthurplatform/ml-engine:${{ env.VERSION }} .
-          docker push arthurplatform/ml-engine:${{ env.VERSION }}
-          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
-            docker tag arthurplatform/ml-engine:${{ env.VERSION }} arthurplatform/ml-engine:latest
-            docker push arthurplatform/ml-engine:latest
-          fi
-          if [ "${{ github.ref }}" = "refs/heads/dev" ]; then
-            docker tag arthurplatform/ml-engine:${{ env.VERSION }} arthurplatform/ml-engine:latest-dev
-            docker push arthurplatform/ml-engine:latest-dev
-          fi
+      # buildx (not plain `docker build`) so we can attach a CycloneDX SBOM attestation to the
+      # image — consumable via `docker buildx imagetools inspect --format '{{ json .SBOM }}'`.
+      # SBOM only (no provenance): keep parity with the genai-engine build.
+      - name: Build and push docker image
+        uses: docker/build-push-action@v6.18.0
+        with:
+          context: ml-engine
+          file: ml-engine/Dockerfile
+          tags: |
+            arthurplatform/ml-engine:${{ env.VERSION }}
+            ${{ github.ref == 'refs/heads/main' && 'arthurplatform/ml-engine:latest' || '' }}
+            ${{ github.ref == 'refs/heads/dev' && 'arthurplatform/ml-engine:latest-dev' || '' }}
+          push: true
+          platforms: linux/amd64
+          sbom: true
       # Advisory vulnerability scan + justification docs (must never fail the release build).
       - name: Scan image & generate justification docs
         continue-on-error: true
@@ -498,21 +508,29 @@ jobs:
           slug: ml-engine
           dockerhub-username: ${{ secrets.DOCKERHUB_ENTERPRISE_USERNAME }}
           dockerhub-token: ${{ secrets.DOCKERHUB_ENTERPRISE_TOKEN }}
+      # Do NOT `docker logout` here: `imagetools create` below reads the source image from
+      # Docker Hub (logged in above) and writes to Artifactory (logged in now). Both sessions
+      # coexist in the docker config.
       - name: Login to Artifactory
         run: |
-          docker logout
           echo "${{ secrets.NEXUS_REPOSITORY_PASSWORD }}" | docker login docker.arthur.ai -u "${{ secrets.NEXUS_REPOSITORY_USERNAME }}" --password-stdin
+      # imagetools copies the full image (incl. the SBOM attestation) registry-to-registry.
+      # Required because buildx `push: true` does not load the image into the local docker
+      # store, so the old `docker tag` on a local image would no longer find it.
       - name: Retag and push image to Artifactory
         run: |
-          docker tag arthurplatform/ml-engine:${{ env.VERSION }} docker.arthur.ai/arthur/scope/ml-engine:${{ env.VERSION }}
-          docker push docker.arthur.ai/arthur/scope/ml-engine:${{ env.VERSION }}
+          docker buildx imagetools create \
+            --tag docker.arthur.ai/arthur/scope/ml-engine:${{ env.VERSION }} \
+            arthurplatform/ml-engine:${{ env.VERSION }}
           if [ "${{ github.ref }}" = "refs/heads/main" ]; then
-            docker tag arthurplatform/ml-engine:${{ env.VERSION }} docker.arthur.ai/arthur/scope/ml-engine:latest
-            docker push docker.arthur.ai/arthur/scope/ml-engine:latest
+            docker buildx imagetools create \
+              --tag docker.arthur.ai/arthur/scope/ml-engine:latest \
+              arthurplatform/ml-engine:${{ env.VERSION }}
           fi
           if [ "${{ github.ref }}" = "refs/heads/dev" ]; then
-            docker tag arthurplatform/ml-engine:${{ env.VERSION }} docker.arthur.ai/arthur/scope/ml-engine:latest-dev
-            docker push docker.arthur.ai/arthur/scope/ml-engine:latest-dev
+            docker buildx imagetools create \
+              --tag docker.arthur.ai/arthur/scope/ml-engine:latest-dev \
+              arthurplatform/ml-engine:${{ env.VERSION }}
           fi
 
   check-models-updates:
