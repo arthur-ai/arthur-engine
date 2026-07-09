@@ -1,0 +1,36 @@
+name: Enforce Release Process
+
+on:
+  pull_request:
+    types: [opened, reopened]
+    branches: [main]
+
+jobs:
+  enforce:
+    if: |
+      github.head_ref == 'dev' &&
+      github.event.pull_request.user.login != 'arthur-github-automator-app[bot]'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Comment and close manual dev→main PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh pr comment "$PR_NUMBER" --repo "$REPO" --body \
+            "## ⚠️ Release process violation
+
+          This PR was created manually from \`dev\` to \`main\`, which bypasses version validation and risks broken or duplicate releases.
+
+          **Please use the \"Create Release PR\" GitHub Actions workflow instead:**
+
+          1. Go to **Actions → \"Create Release PR\" → Run workflow**
+          2. The workflow validates that versions differ and that no release PR already exists
+          3. It creates this PR automatically with the correct configuration
+
+          This PR has been closed automatically."
+
+          gh pr close "$PR_NUMBER" --repo "$REPO"

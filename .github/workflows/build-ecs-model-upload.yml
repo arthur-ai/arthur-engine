@@ -82,6 +82,9 @@ jobs:
             ${{ github.ref == 'refs/heads/dev' && format('{0}:latest-dev', inputs.image) || '' }}
           push: ${{ inputs.push }}
           platforms: linux/amd64
+          # Attach a CycloneDX SBOM attestation to the pushed image, consumable via
+          # `docker buildx imagetools inspect <image> --format '{{ json .SBOM }}'`.
+          sbom: true
       - name: Update models manifest
         run: |
           cd deployment/model-upload
@@ -90,7 +93,26 @@ jobs:
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add deployment/model-upload/models-manifest.json
           export GH_TOKEN=${{ steps.generate-token.outputs.token }}
-          git diff --staged --quiet || git commit --no-verify -m "Update models manifest [skip ci]"
-          git push origin ${{ github.ref_name }}
+          git add deployment/model-upload/models-manifest.json
+          # Nothing to do if another job already committed the same update.
+          if git diff --staged --quiet; then
+            echo "No manifest changes to commit."
+            exit 0
+          fi
+          # Commit BEFORE pulling so the working tree is clean and `pull --rebase` won't abort
+          # with "cannot pull with rebase: You have unstaged changes".
+          git commit --no-verify -m "Update models manifest [skip ci]"
+          # dev is a shared branch; rebase our commit onto any concurrent pushes, then push.
+          # Retry because the branch can advance again between the pull and the push.
+          for attempt in 1 2 3 4 5; do
+            if git pull --rebase origin "${{ github.ref_name }}" \
+               && git push origin "${{ github.ref_name }}"; then
+              echo "Manifest pushed (attempt ${attempt})."
+              exit 0
+            fi
+            echo "Push attempt ${attempt} failed (branch advanced?); retrying in 5s..."
+            sleep 5
+          done
+          echo "Failed to push manifest after retries." >&2
+          exit 1
