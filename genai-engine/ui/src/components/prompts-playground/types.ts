@@ -59,7 +59,7 @@ type PromptAction =
     }
   | {
       type: "editMessage";
-      payload: { parentId: string; id: string; content: string };
+      payload: { parentId: string; id: string; content: string | OpenAIMessageItem[] };
     }
   | {
       type: "editMessageToolCalls";
