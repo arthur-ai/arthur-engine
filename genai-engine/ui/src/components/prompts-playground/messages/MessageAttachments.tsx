@@ -11,7 +11,7 @@ import Stack from "@mui/material/Stack";
 import Tooltip from "@mui/material/Tooltip";
 import React, { useCallback } from "react";
 
-import { fileToAudioItem, fileToImageItem } from "../utils/messageUtils";
+import { fileToImageItem } from "../utils/messageUtils";
 
 import type { AttachmentDraft } from "./MessageComponent";
 
@@ -21,8 +21,6 @@ import useSnackbar from "@/hooks/useSnackbar";
 const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024; // 10 MB
 const MAX_ATTACHMENT_MB = MAX_ATTACHMENT_BYTES / (1024 * 1024);
 
-type AttachmentKind = "image" | "audio";
-
 interface MessageAttachmentsProps {
   attachments: AttachmentDraft[];
   onChange: (next: AttachmentDraft[]) => void;
@@ -31,20 +29,21 @@ interface MessageAttachmentsProps {
 export const MessageAttachments: React.FC<MessageAttachmentsProps> = ({ attachments, onChange }) => {
   const { showSnackbar, snackbarProps, alertProps } = useSnackbar();
 
+  // Audio uploads are intentionally omitted for now: the backend forwards
+  // input_audio blocks to non-audio-capable models, which fail. The audio
+  // conversion/render plumbing (messageUtils, the input_audio chip case below)
+  // is kept dormant so it can be re-enabled once the backend supports it.
   const handleFiles = useCallback(
-    async (event: React.ChangeEvent<HTMLInputElement>, kind: AttachmentKind) => {
+    async (event: React.ChangeEvent<HTMLInputElement>) => {
       const files = Array.from(event.target.files ?? []);
       // Reset so selecting the same file again re-fires the change event.
       event.target.value = "";
       if (files.length === 0) return;
 
-      const expectedPrefix = kind === "image" ? "image/" : "audio/";
-      const convert = kind === "image" ? fileToImageItem : fileToAudioItem;
-
       const drafts: AttachmentDraft[] = [];
       for (const file of files) {
-        if (file.type && !file.type.startsWith(expectedPrefix)) {
-          showSnackbar(`"${file.name}" is not a valid ${kind} file`, "error");
+        if (file.type && !file.type.startsWith("image/")) {
+          showSnackbar(`"${file.name}" is not a valid image file`, "error");
           continue;
         }
         if (file.size > MAX_ATTACHMENT_BYTES) {
@@ -52,7 +51,7 @@ export const MessageAttachments: React.FC<MessageAttachmentsProps> = ({ attachme
           continue;
         }
         try {
-          const item = await convert(file);
+          const item = await fileToImageItem(file);
           drafts.push({ id: crypto.randomUUID(), item });
         } catch (error) {
           const message = error instanceof Error ? error.message : `Failed to read "${file.name}"`;
@@ -142,11 +141,7 @@ export const MessageAttachments: React.FC<MessageAttachmentsProps> = ({ attachme
       <Stack direction="row" spacing={1}>
         <Button component="label" variant="outlined" size="small" startIcon={<ImageIcon />}>
           Add image
-          <input type="file" hidden accept="image/*" onChange={(event) => handleFiles(event, "image")} />
-        </Button>
-        <Button component="label" variant="outlined" size="small" startIcon={<AudioFileIcon />}>
-          Add audio
-          <input type="file" hidden accept="audio/*" onChange={(event) => handleFiles(event, "audio")} />
+          <input type="file" hidden accept="image/*" onChange={handleFiles} />
         </Button>
       </Stack>
       {attachments.length > 0 && (
