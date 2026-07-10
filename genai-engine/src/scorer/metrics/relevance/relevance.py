@@ -15,7 +15,7 @@ from torch import Tensor
 
 from schemas.internal_schemas import MetricResult
 from schemas.metric_schemas import MetricScoreDetails
-from scorer.llm_client import get_llm_executor
+from scorer.llm_client import extract_chain_model_name, get_llm_executor
 from scorer.metrics.relevance.prompt_templates import (
     RESPONSE_RELEVANCE_NON_STRUCTURED_PROMPT_TEMPLATE,
     RESPONSE_RELEVANCE_STRUCTURED_PROMPT_TEMPLATE,
@@ -147,6 +147,7 @@ class BaseRelevanceScorer(MetricScorer):
             llm_judge_response, token_consumption = get_llm_executor().execute(
                 chain_call,
                 f"{self.metric_type.value} Check",
+                model_name=extract_chain_model_name(relevance_chain),
             )
         except Exception:
             return None, None, None, 0, 0

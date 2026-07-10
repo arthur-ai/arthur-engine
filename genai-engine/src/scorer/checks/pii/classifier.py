@@ -12,6 +12,7 @@ import spacy
 from arthur_common.models.enums import PIIEntityTypes, RuleResultEnum
 from date_spacy import find_dates  # noqa: F401 - Import registers the component
 
+from monitoring.ai_activity import track_ml_model_invocation
 from schemas.scorer_schemas import (
     DateTimeSpan,
     RuleScore,
@@ -85,6 +86,10 @@ class BinaryPIIDataClassifier:
             for entity in self.gliner_entities
         ]
 
+    @track_ml_model_invocation(
+        model_name="presidio+urchade/gliner_multi_pii-v1",
+        operation="pii",
+    )
     def score(self, request: ScoreRequest) -> RuleScore:
         """Score text for PII detection using Presidio, GLiNER, and date_spacy."""
         text = sanitize(request.scoring_text or "")

@@ -3,6 +3,7 @@ import logging
 from arthur_common.models.enums import PIIEntityTypes, RuleResultEnum
 from presidio_analyzer import AnalyzerEngine
 
+from monitoring.ai_activity import track_ml_model_invocation
 from schemas.scorer_schemas import (
     RuleScore,
     ScoreRequest,
@@ -43,6 +44,10 @@ class BinaryPIIDataClassifierV1(RuleScorer):
             PresidioGlinerMapper.presidio_to_gliner(PIIEntityTypes.US_PASSPORT.value),
         ]
 
+    @track_ml_model_invocation(
+        model_name="presidio+urchade/gliner_multi_pii-v1",
+        operation="pii",
+    )
     def score(self, request: ScoreRequest) -> RuleScore:
         """Scores request for PII"""
         if request.pii_confidence_threshold is not None:
