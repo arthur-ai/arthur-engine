@@ -75,7 +75,7 @@ HF_HUB_OFFLINE=1
 
 ### FS
 
-The `fs` backend writes the pre-downloaded models to a mounted filesystem (a Kubernetes PVC or an AWS EFS volume) with a one-time job. The genai-engine pods then mount that same filesystem **read-only** and load models from it, so models are uploaded once and shared across all replicas.
+The `fs` backend writes the pre-downloaded models to a mounted filesystem (a Kubernetes PVC or an AWS EFS volume) with a one-time job. The genai-engine pods then mount that same filesystem and load models from it, so models are uploaded once and shared across all replicas. The mount must be **read-write**: the HuggingFace loaders write `.lock`/cache files under the mount even with `HF_HUB_OFFLINE=1`, so a read-only mount fails with `[Errno 30] Read-only file system`.
 
 > **PVC vs. EFS on EKS:** these are not alternatives — on EKS, EFS is what *backs* a shared PVC. An EBS-backed PVC is `ReadWriteOnce` (single node/AZ) and cannot be shared across genai-engine replicas. To share models across multiple pods/AZs you need a `ReadWriteMany` PVC, and on AWS that means backing it with EFS via the EFS CSI driver. See [AWS EKS + EFS](#aws-eks--efs) below.
 
@@ -103,7 +103,7 @@ HF_HUB_OFFLINE=1
 
 #### AWS EKS + EFS
 
-Use EFS when you run **more than one genai-engine replica** (HPA, multi-AZ). EFS gives you a `ReadWriteMany` volume that the upload job writes once and every engine pod mounts read-only. Models are read into memory at pod startup, so EFS latency only affects cold start, not inference.
+Use EFS when you run **more than one genai-engine replica** (HPA, multi-AZ). EFS gives you a `ReadWriteMany` volume that the upload job writes once and every engine pod mounts read-write (the loaders write lock/cache files even offline). Models are read into memory at pod startup, so EFS latency only affects cold start, not inference.
 
 **1. Install the EFS CSI driver** (once per cluster). Easiest via the EKS add-on:
 
@@ -193,7 +193,7 @@ kubectl apply -f k8s/06-copy-config-job.yaml
 kubectl wait --for=condition=complete job/arthur-genai-engine-models-k8s --timeout=600s
 ```
 
-**5. Mount the volume into genai-engine** (read-only) and point the engine at it. Add the PVC volume to the genai-engine deployment and set:
+**5. Mount the volume into genai-engine** (read-write) and point the engine at it. Add the PVC volume to the genai-engine deployment and set:
 
 ```
 MODEL_STORAGE_PATH=/home/nonroot/models-output
@@ -211,10 +211,10 @@ containers:
     volumeMounts:
       - name: models
         mountPath: /home/nonroot/models-output
-        readOnly: true
+        readOnly: false  # loaders write .lock/cache files even offline
 ```
 
-> The genai-engine Helm chart does not yet template a model PVC mount — it only wires `MODEL_REPOSITORY_URL` (the S3 path). Until it does, add the volume/volumeMount above to the deployment (e.g. via a patch/overlay) alongside the two env vars.
+> The genai-engine Helm chart supports this mount natively via the optional `modelPVC` values (the online/offline toggle, off by default): `--set modelPVC.enabled=true --set modelPVC.claimName=arthur-models-pvc --set modelPVC.mountPath=/home/nonroot/models-output`. The chart then adds the volume/volumeMount (read-write) and sets `MODEL_STORAGE_PATH` + `HF_HUB_OFFLINE=1` for you. On AWS EKS, provision the EFS-backed PVC with the Terraform module at [`../terraform/eks-efs-models`](../terraform/eks-efs-models).
 
 **IAM / networking checklist:**
 - EFS CSI driver IAM role attached (`AmazonEFSCSIDriverPolicy`).

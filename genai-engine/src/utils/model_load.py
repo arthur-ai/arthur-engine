@@ -63,6 +63,18 @@ def get_models_dir() -> str:
     return models_dir if models_dir is not None else DEFAULT_MODELS_DIR
 
 
+def models_loaded_offline() -> bool:
+    """Whether models are pre-populated on a mounted volume and downloads should be skipped.
+
+    Set by the Helm chart when the model PVC is mounted (modelPVC.enabled=true exports
+    HF_HUB_OFFLINE=1). In this mode the binaries already exist under MODEL_STORAGE_PATH, so the
+    startup download step is a no-op — skipping it avoids needless offline HuggingFace lookups and
+    write attempts into the (potentially read-only) shared volume.
+    """
+    offline = get_env_var(constants.HF_HUB_OFFLINE_ENV_VAR, default="0")
+    return offline.strip().lower() in ("1", "true", "yes", "on")
+
+
 def get_local_model_path(model_name: str) -> str:
     """Get the local filesystem path for a model.
 
@@ -263,6 +275,12 @@ def download_models(num_of_process: int) -> None:
     if skip_model_loading():
         logger.info(
             "Skipping model downloads - GENAI_ENGINE_SKIP_MODEL_LOADING is True",
+        )
+        return
+    if models_loaded_offline():
+        logger.info(
+            f"Offline mode (HF_HUB_OFFLINE) - loading pre-populated models from "
+            f"{get_models_dir()}, skipping downloads",
         )
         return
     models_to_download = get_models_to_download()
