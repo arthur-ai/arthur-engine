@@ -20,6 +20,8 @@ ARG BACKEND=s3
 # =============================================================================
 FROM python:3.12-slim-bookworm AS downloader
 ARG BACKEND
+# Stamped into metadata.component.version of the AI-BOM (passed as a build-arg in CI).
+ARG AIBOM_VERSION=unknown
 
 WORKDIR /app
 RUN pip install --no-cache-dir uv==0.11.25
@@ -28,9 +30,18 @@ COPY pyproject.toml uv.lock* ./
 RUN uv export --frozen --no-emit-project --no-hashes -o /tmp/requirements.txt \
     && uv pip install --system --no-cache -r /tmp/requirements.txt
 
-COPY download_models.py .
+COPY download_models.py generate_aibom.py models-manifest.json ./
 
 RUN python download_models.py --output-dir /models --workers 4
+
+# Generate the CycloneDX AI-BOM for the bundled models into /models so it ships to the
+# storage backend (S3/GCS/FS) alongside the weights via upload_models.py. Hashes are
+# computed locally from the freshly downloaded files; license/task come from HuggingFace.
+RUN python generate_aibom.py \
+      --models-dir /models \
+      --manifest models-manifest.json \
+      --engine-version "$AIBOM_VERSION" \
+      --output /models/aibom.cdx.json
 
 # =============================================================================
 # Stage 2: Install backend-specific runtime deps + apply Debian security fixes
