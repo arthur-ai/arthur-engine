@@ -56,6 +56,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@amplitude/analytics-connector@npm:^1.6.5":
+  version: 1.6.5
+  resolution: "@amplitude/analytics-connector@npm:1.6.5"
+  checksum: 10c0/ec6c8e11dde03f45de5c0bcee4d99527a825fe87394a3c9d5356b1343b5399e5b1253abb6a4a4c180c6954e5fb37dacf2d3d36aa7feef76d2728b3a437197706
+  languageName: node
+  linkType: hard
+
 "@amplitude/analytics-core@npm:2.35.2":
   version: 2.35.2
   resolution: "@amplitude/analytics-core@npm:2.35.2"
@@ -105,25 +112,25 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@amplitude/experiment-core@npm:^0.13.2":
-  version: 0.13.2
-  resolution: "@amplitude/experiment-core@npm:0.13.2"
+"@amplitude/experiment-core@npm:^0.13.3":
+  version: 0.13.3
+  resolution: "@amplitude/experiment-core@npm:0.13.3"
   dependencies:
     js-base64: "npm:^3.7.5"
-  checksum: 10c0/7b8b1a625c2cd30c1bdbc465848b6c53f39c09e2e6822c6a9f888b4d0ff78cbd54abcbb371fb289bbe96fe3aec13f6691c1dc669505afa0befe1b9c9223f622f
+  checksum: 10c0/f9e95bd568a6a1f0d0c6f872d7dae85fedbe310ba92e4303541444a0d54e24f031e7857f5a3213ced9cf760ebae1550969bb187220d0e24466a02fb0d34580d5
   languageName: node
   linkType: hard
 
 "@amplitude/experiment-js-client@npm:^1.21.1":
-  version: 1.21.2
-  resolution: "@amplitude/experiment-js-client@npm:1.21.2"
+  version: 1.21.3
+  resolution: "@amplitude/experiment-js-client@npm:1.21.3"
   dependencies:
-    "@amplitude/analytics-connector": "npm:^1.6.4"
-    "@amplitude/experiment-core": "npm:^0.13.2"
+    "@amplitude/analytics-connector": "npm:^1.6.5"
+    "@amplitude/experiment-core": "npm:^0.13.3"
     "@amplitude/ua-parser-js": "npm:^0.7.31"
     base64-js: "npm:1.5.1"
     unfetch: "npm:4.1.0"
-  checksum: 10c0/bda0734236b4c21d10cf98c7fdf7f5873b4c624c2b74cbf70d8fbefc80c66e64966e5d2a37e7cc6b47d3dff0616a15200696d200723e144e56fe8f9c439a88dc
+  checksum: 10c0/8746c4652452f8462a267ae54c1b53e8bb69360f3a088ec529876dc63323e396d3db0a897bd9643855a12396cc945c323bc4a466b7a655e3c00b683d77482a92
   languageName: node
   linkType: hard
 
