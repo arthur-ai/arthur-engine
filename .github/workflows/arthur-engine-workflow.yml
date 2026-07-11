@@ -760,6 +760,106 @@ jobs:
           aws s3 cp aibom.cdx.json s3://${{ env.BUCKET_NAME }}/${{ env.ARTIFACT_DIRECTORY }}/aibom/${{ env.VERSION }}/aibom.cdx.json --acl public-read
           aws s3 cp aibom.cdx.json s3://${{ env.BUCKET_NAME }}/${{ env.ARTIFACT_DIRECTORY }}/aibom/latest/aibom.cdx.json --acl public-read
 
+  # Publish a CycloneDX SBOM per published image to the public arthur-cft bucket, giving stable
+  # download URLs (versioned + `latest`). Modeled on push-all-cfts (same OIDC role + s3 sync).
+  # SBOMs are generated fresh here with Trivy so coverage is uniform across all six images
+  # regardless of whether a model image was freshly built or retagged (the retag path builds
+  # nothing, so there is no artifact to reuse), and independent of the build jobs' internals.
+  push-all-sboms:
+    needs:
+      - build-genai-engine-docker-images
+      - build-ml-engine-docker-images
+      - build-genai-engine-models-docker-image
+      - tag-genai-engine-models-docker-image
+      - build-genai-engine-models-fs-docker-image
+      - tag-genai-engine-models-fs-docker-image
+      - build-gcp-model-upload-docker-image
+    environment: shared-protected-branch-secrets
+    # `needs` on a skipped model build/tag job still enforces ordering (a skipped job counts as
+    # complete), so whichever of each build/tag pair ran will have published the <VERSION> tag.
+    # `!cancelled()` lets this run when the unused half of each pair is skipped; we only require
+    # the two engine builds to have succeeded.
+    if: |
+      !cancelled() &&
+      needs.build-genai-engine-docker-images.result == 'success' &&
+      needs.build-ml-engine-docker-images.result == 'success' &&
+      contains(github.event.head_commit.message, 'Increment arthur-engine version') &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    env:
+      AWS_REGION: us-east-2
+      BUCKET_NAME: arthur-cft
+    steps:
+      - uses: mathio/gha-cleanup@v1
+        with:
+          remove-browsers: true
+          verbose: true
+      - uses: actions/checkout@v5
+      - uses: ./.github/workflows/composite-actions/setup-git
+      - uses: ./.github/workflows/composite-actions/set-version
+      # Enterprise creds = higher pull-rate limit (same account vuln-report uses for pulls).
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3.6.0
+        with:
+          username: ${{ secrets.DOCKERHUB_ENTERPRISE_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_ENTERPRISE_TOKEN }}
+      # Unpinned latest: GitHub only retains recent release assets, so pinned tags eventually 404
+      # (matches composite-actions/vuln-report).
+      - name: Install Trivy
+        uses: aquasecurity/setup-trivy@v0.3.1
+        with:
+          version: latest
+          token: ${{ github.token }}
+      - name: Generate CycloneDX SBOMs
+        run: |
+          set -uo pipefail
+          mkdir -p sbom-out
+          # image repo (under arthurplatform/) -> output filename stem
+          IMAGES="
+          genai-engine-cpu
+          genai-engine-gpu
+          ml-engine
+          genai-engine-models-s3
+          genai-engine-models-fs
+          genai-engine-models-gcs
+          "
+          for repo in $IMAGES; do
+            ref="arthurplatform/${repo}:${VERSION}"
+            echo "::group::SBOM for ${ref}"
+            # Advisory: a single missing/failed image must not block publishing the rest.
+            if trivy image --format cyclonedx --output "sbom-out/sbom-${repo}.cdx.json" "${ref}"; then
+              echo "Generated sbom-${repo}.cdx.json"
+            else
+              echo "::warning::Failed to generate SBOM for ${ref}; skipping"
+              rm -f "sbom-out/sbom-${repo}.cdx.json"
+            fi
+            # Clear trivy's image analysis cache between images to bound peak disk (model images
+            # bundle large HF weights). Keeps the vuln/java DBs so they don't re-download.
+            trivy clean --scan-cache >/dev/null 2>&1 || true
+            echo "::endgroup::"
+          done
+          echo "SBOMs produced:"
+          ls -la sbom-out
+      - name: configure aws credentials
+        uses: aws-actions/configure-aws-credentials@5ebd15afc69e5abcd499614d3ced5d65dc34087f
+        with:
+          role-to-assume: ${{ secrets.AWS_S3_ROLE_ARN }}
+          role-session-name: ${{ secrets.AWS_S3_ROLE_SESSION_NAME }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Publish SBOMs to S3
+        run: |
+          set -euo pipefail
+          echo "Publishing SBOMs for ${VERSION}"
+          aws s3 sync ./sbom-out s3://${BUCKET_NAME}/arthur-engine/sbom/${VERSION} --acl public-read
+          # `latest` tracks the newest production release only: dev increments continuously, so
+          # pointing the public `latest` SBOM at a dev build would be misleading.
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            aws s3 sync ./sbom-out s3://${BUCKET_NAME}/arthur-engine/sbom/latest --acl public-read
+          fi
+
   push-all-helm-charts:
     needs: [build-genai-engine-docker-images, build-ml-engine-docker-images]
     environment: shared-protected-branch-secrets
