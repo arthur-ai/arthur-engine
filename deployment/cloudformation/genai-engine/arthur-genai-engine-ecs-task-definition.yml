@@ -252,6 +252,13 @@ Parameters:
     Type: String
     Description: 'Override path for audit log directory'
     Default: '/home/nonroot/audit_logs'
+  AuditLogIncludeAiActivity:
+    Type: String
+    Description: "Append the engine's own model invocations to each audit log entry. Opt-in; only consulted when AuditLogEnabled is 'true'."
+    Default: 'false'
+    AllowedValues:
+      - 'true'
+      - 'false'
 
 Conditions:
   EnableAuthService: !Equals [ !Ref GenaiEngineAPIOnlyModeEnabled, 'disabled' ]
@@ -432,6 +439,8 @@ Resources:
               Value: !Ref AuditLogOverridePath
             - Name: 'AUDIT_LOG_RETENTION_DAYS'
               Value: !Ref AuditLogRetentionPeriod
+            - Name: 'AUDIT_LOG_INCLUDE_AI_ACTIVITY'
+              Value: !Ref AuditLogIncludeAiActivity
           Secrets:
             - Name: 'GENAI_ENGINE_ADMIN_KEY'
               ValueFrom: !Ref GenaiEngineSecretAPIKeyARN
