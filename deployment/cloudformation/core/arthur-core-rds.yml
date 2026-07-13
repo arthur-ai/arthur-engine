@@ -43,11 +43,38 @@ Parameters:
   ArthurRDSPrivateSubnets:
     Type: List<AWS::EC2::Subnet::Id>
     Description: 'List of private subnets to use for the cluster'
+  EnableBackupVault:
+    Type: String
+    Default: 'false'
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Description: 'Enable AWS Backup with an immutable (Vault Lock) backup vault for the Aurora cluster. Opt-in and non-breaking: existing deployments are unaffected when left false. Only applies when Arthur provisions the database (not bring-your-own-DB).'
+  BackupRetentionDays:
+    Type: Number
+    Default: 60
+    MinValue: 7
+    MaxValue: 3650
+    Description: 'Retention (in days) for AWS Backup recovery points and the Vault Lock minimum-retention floor. Default 60 matches Arthur policy; the GDPR / Annex B minimum is 7 days. Note: Aurora native automated backups cap at 35 days, so retention beyond 35 days requires this AWS Backup path.'
+  BackupVaultLockChangeableForDays:
+    Type: Number
+    Default: 0
+    Description: 'Vault Lock mode selector. 0 = GOVERNANCE mode (immutability enforced but removable by privileged admins - the safe default). A value >= 3 enables COMPLIANCE mode with this many days of grace, after which the lock is PERMANENT and IRREVERSIBLE (recovery points cannot be deleted by anyone, including the account root, until retention expires). Only set >= 3 with explicit organizational approval.'
 
 Conditions:
   CreateRDS: !Equals
     - !Ref ArthurBringYourOwnDBEndpoint
     - ""
+  BackupVaultEnabled: !Equals
+    - !Ref EnableBackupVault
+    - 'true'
+  EnableBackup: !And
+    - !Condition CreateRDS
+    - !Condition BackupVaultEnabled
+  ComplianceModeLock: !Not
+    - !Equals
+      - !Ref BackupVaultLockChangeableForDays
+      - 0
 
 Resources:
   ArthurDBKMSKey:
@@ -102,6 +129,7 @@ Resources:
       MasterUsername: !Sub "{{resolve:secretsmanager:${ArthurDBSecretArn}:SecretString:username}}"
       MasterUserPassword: !Sub "{{resolve:secretsmanager:${ArthurDBSecretArn}:SecretString:password}}"
       DeletionProtection: true
+      CopyTagsToSnapshot: true
   ArthurRDSInstance:
     Type: AWS::RDS::DBInstance
     Condition: CreateRDS
@@ -116,6 +144,68 @@ Resources:
       EnablePerformanceInsights: true
       PerformanceInsightsRetentionPeriod: 7
 
+  # ---------------------------------------------------------------------------
+  # Optional immutable backups (AWS Backup + Vault Lock).
+  # Created only when EnableBackupVault=true AND Arthur provisions the database.
+  # Addresses GDPR / Annex B: immutable backups retained >= 7 days (default 60).
+  # Aurora's own 35-day automated backups remain in place; these resources add
+  # a write-once (WORM) recovery point that cannot be deleted before retention.
+  # ---------------------------------------------------------------------------
+  ArthurBackupVault:
+    Type: AWS::Backup::BackupVault
+    Condition: EnableBackup
+    Properties:
+      BackupVaultName: !Sub "${ArthurResourceNamespace}-db-backup-vault${ArthurResourceNameSuffix}"
+      EncryptionKeyArn: !GetAtt ArthurDBKMSKey.Arn
+      LockConfiguration:
+        MinRetentionDays: !Ref BackupRetentionDays
+        ChangeableForDays: !If
+          - ComplianceModeLock
+          - !Ref BackupVaultLockChangeableForDays
+          - !Ref "AWS::NoValue"
+
+  ArthurBackupRole:
+    Type: AWS::IAM::Role
+    Condition: EnableBackup
+    Properties:
+      RoleName: !Sub "${ArthurResourceNamespace}-db-backup-role${ArthurResourceNameSuffix}"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: backup.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/service-role/AWSBackupServiceRolePolicyForBackup"
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/service-role/AWSBackupServiceRolePolicyForRestores"
+
+  ArthurBackupPlan:
+    Type: AWS::Backup::BackupPlan
+    Condition: EnableBackup
+    Properties:
+      BackupPlan:
+        BackupPlanName: !Sub "${ArthurResourceNamespace}-db-backup-plan${ArthurResourceNameSuffix}"
+        BackupPlanRule:
+          - RuleName: 'DailyImmutableBackup'
+            TargetBackupVault: !Ref ArthurBackupVault
+            ScheduleExpression: 'cron(0 5 ? * * *)'
+            StartWindowMinutes: 60
+            CompletionWindowMinutes: 180
+            Lifecycle:
+              DeleteAfterDays: !Ref BackupRetentionDays
+
+  ArthurBackupSelection:
+    Type: AWS::Backup::BackupSelection
+    Condition: EnableBackup
+    Properties:
+      BackupPlanId: !Ref ArthurBackupPlan
+      BackupSelection:
+        SelectionName: !Sub "${ArthurResourceNamespace}-db-backup-selection${ArthurResourceNameSuffix}"
+        IamRoleArn: !GetAtt ArthurBackupRole.Arn
+        Resources:
+          - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster:${ArthurRDSCluster}"
+
 Outputs:
   RDSInstanceAddressOutput:
     Description: RDS Instance address.
@@ -126,3 +216,7 @@ Outputs:
   RDSClusterIdentifierOutput:
     Description: RDS Cluster identifier.
     Value: !If [ CreateRDS, !Ref ArthurRDSCluster, 'None' ]
+  ArthurBackupVaultArnOutput:
+    Condition: EnableBackup
+    Description: ARN of the immutable AWS Backup vault protecting the Arthur database.
+    Value: !GetAtt ArthurBackupVault.BackupVaultArn
