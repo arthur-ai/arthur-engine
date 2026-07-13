@@ -50,6 +50,8 @@ arthurGenaiEngineDeployment:
   auditLog:
     enabled: false
     mountPath: "/home/nonroot/app/audit_logs"
+    # Number of rotated daily audit log files to retain on the PVC before the oldest is deleted.
+    retentionDays: 365
     # Append the engine's own model invocations (LLM judge + ML classifier calls) to each audit
     # log entry. Opt-in; only takes effect when auditLog.enabled is true.
     includeAiActivity: false

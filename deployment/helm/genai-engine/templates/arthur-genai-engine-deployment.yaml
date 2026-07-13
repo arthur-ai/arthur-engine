@@ -212,6 +212,8 @@ spec:
               value: "true"
             - name: AUDIT_LOG_OVERRIDE_PATH
               value: {{ .Values.arthurGenaiEngineDeployment.auditLog.mountPath | quote }}
+            - name: AUDIT_LOG_RETENTION_DAYS
+              value: {{ .Values.arthurGenaiEngineDeployment.auditLog.retentionDays | default 365 | quote }}
             - name: AUDIT_LOG_INCLUDE_AI_ACTIVITY
               value: {{ .Values.arthurGenaiEngineDeployment.auditLog.includeAiActivity | default false | quote }}
             {{- end }}
