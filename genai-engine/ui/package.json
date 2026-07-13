@@ -4,6 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "packageManager": "yarn@4.12.0",
+  "resolutions": {
+    "@arizeai/openinference-semantic-conventions": "2.5.0"
+  },
   "scripts": {
     "dev": "vite --mode dev",
     "build": "tsc -b && vite build",
