@@ -20,20 +20,20 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@amplitude/analytics-browser@npm:2.44.4":
-  version: 2.44.4
-  resolution: "@amplitude/analytics-browser@npm:2.44.4"
+"@amplitude/analytics-browser@npm:2.44.5":
+  version: 2.44.5
+  resolution: "@amplitude/analytics-browser@npm:2.44.5"
   dependencies:
-    "@amplitude/analytics-core": "npm:2.52.0"
-    "@amplitude/plugin-autocapture-browser": "npm:1.28.2"
-    "@amplitude/plugin-custom-enrichment-browser": "npm:0.1.13"
-    "@amplitude/plugin-event-property-attribution-browser": "npm:0.2.5"
-    "@amplitude/plugin-network-capture-browser": "npm:1.10.5"
-    "@amplitude/plugin-page-url-enrichment-browser": "npm:0.7.15"
-    "@amplitude/plugin-page-view-tracking-browser": "npm:2.11.5"
-    "@amplitude/plugin-web-vitals-browser": "npm:1.1.37"
+    "@amplitude/analytics-core": "npm:2.52.1"
+    "@amplitude/plugin-autocapture-browser": "npm:1.28.3"
+    "@amplitude/plugin-custom-enrichment-browser": "npm:0.1.14"
+    "@amplitude/plugin-event-property-attribution-browser": "npm:0.2.6"
+    "@amplitude/plugin-network-capture-browser": "npm:1.10.6"
+    "@amplitude/plugin-page-url-enrichment-browser": "npm:0.7.16"
+    "@amplitude/plugin-page-view-tracking-browser": "npm:2.11.6"
+    "@amplitude/plugin-web-vitals-browser": "npm:1.1.38"
     tslib: "npm:^2.4.1"
-  checksum: 10c0/51a5332a8f187da95255a2a00fd4089ea85da694175bd582ddb469806cdadde9cf2aae5936e8694019838e5b8faf319c804d9584ab207bca80be912abe1b86ab
+  checksum: 10c0/9cee2933287ea5ff598dca1029129987c8d01caf3b9a26c5ff3ffec2b08134287ccdc9d7b2864561fced243b2044385517777a89de296c2fafc3b29f6e622732
   languageName: node
   linkType: hard
 
@@ -84,6 +84,19 @@ __metadata:
     tslib: "npm:^2.4.1"
     zen-observable: "npm:0.10.0"
   checksum: 10c0/1d82785b6331de26871b33947c4e2de09a131ee78c7cee07c0611cc386986f150d7cc72c9f3258a40da6549ec03566397bca35ea12d928b65c65e37752fd34b8
+  languageName: node
+  linkType: hard
+
+"@amplitude/analytics-core@npm:2.52.1":
+  version: 2.52.1
+  resolution: "@amplitude/analytics-core@npm:2.52.1"
+  dependencies:
+    "@amplitude/analytics-connector": "npm:^1.6.4"
+    "@types/zen-observable": "npm:0.8.3"
+    safe-json-stringify: "npm:1.2.0"
+    tslib: "npm:^2.4.1"
+    zen-observable: "npm:0.10.0"
+  checksum: 10c0/0449dae06aa94f4f210196fde063aa86a16f95c4e64b661f8b460d55faa06cbc070fe2db53e679fc85a504a736ac7f2f5ecf2d95d29d41f0f82bca3019b422c3
   languageName: node
   linkType: hard
 
@@ -144,44 +157,44 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@amplitude/plugin-autocapture-browser@npm:1.28.2":
-  version: 1.28.2
-  resolution: "@amplitude/plugin-autocapture-browser@npm:1.28.2"
+"@amplitude/plugin-autocapture-browser@npm:1.28.3":
+  version: 1.28.3
+  resolution: "@amplitude/plugin-autocapture-browser@npm:1.28.3"
   dependencies:
-    "@amplitude/analytics-core": "npm:2.52.0"
+    "@amplitude/analytics-core": "npm:2.52.1"
     "@amplitude/element-selector": "npm:0.2.0"
     tslib: "npm:^2.4.1"
-  checksum: 10c0/0e91da0c6ae21cebe6630f4181657c2ec0f1d0f7bfa2af800e13ac40ba788f1a66544eacffda6550428cb6a09322a55412fd9868f572a2101f31f455d33ab5d7
+  checksum: 10c0/dd4353d6d568ad864ed5cbd5e41f60eb999091126b5d44afe7830c9af16c01a87171bdf13af1a407b6157205c8375ffd43e34c32556474414be349959ef8fc22
   languageName: node
   linkType: hard
 
-"@amplitude/plugin-custom-enrichment-browser@npm:0.1.13":
-  version: 0.1.13
-  resolution: "@amplitude/plugin-custom-enrichment-browser@npm:0.1.13"
+"@amplitude/plugin-custom-enrichment-browser@npm:0.1.14":
+  version: 0.1.14
+  resolution: "@amplitude/plugin-custom-enrichment-browser@npm:0.1.14"
   dependencies:
-    "@amplitude/analytics-core": "npm:2.52.0"
+    "@amplitude/analytics-core": "npm:2.52.1"
     tslib: "npm:^2.4.1"
-  checksum: 10c0/d2f8679cc61d8359d3638a9fabf2223250341b4dab7e5b5404e7feecdcb9b271eb41acd93d2628cb9d04e7cfd3a6b106ad0521c8e582756d9fe7ca8f1cd65ccb
+  checksum: 10c0/d1e062c386b188634b86d2c7684b900453e6209fc3676a4fa4a9b4e5647273e34834064807b8d995dd8b11a83b6706f57fe2072dcd07993054c6ea800c98b607
   languageName: node
   linkType: hard
 
-"@amplitude/plugin-event-property-attribution-browser@npm:0.2.5":
-  version: 0.2.5
-  resolution: "@amplitude/plugin-event-property-attribution-browser@npm:0.2.5"
+"@amplitude/plugin-event-property-attribution-browser@npm:0.2.6":
+  version: 0.2.6
+  resolution: "@amplitude/plugin-event-property-attribution-browser@npm:0.2.6"
   dependencies:
-    "@amplitude/analytics-core": "npm:2.52.0"
+    "@amplitude/analytics-core": "npm:2.52.1"
     tslib: "npm:^2.4.1"
-  checksum: 10c0/9cc8ce5b0bd66f7ebb7e43dc823b86fe690989c1a5ab40a2c2602a7057ce9ad645293eb3cf1a542dc5282e359d3efb6caf2e57cbe0de87674f67ab417f635493
+  checksum: 10c0/d5f8f3f6983d5612208b0595041b206edc7dec4a9d9c0e71743c8430f45bb4bf4e1243f64a6ea5a4b377ebb3f2b1410ca8fa41e56fae010f7b397b7d57c4ed89
   languageName: node
   linkType: hard
 
-"@amplitude/plugin-network-capture-browser@npm:1.10.5":
-  version: 1.10.5
-  resolution: "@amplitude/plugin-network-capture-browser@npm:1.10.5"
+"@amplitude/plugin-network-capture-browser@npm:1.10.6":
+  version: 1.10.6
+  resolution: "@amplitude/plugin-network-capture-browser@npm:1.10.6"
   dependencies:
-    "@amplitude/analytics-core": "npm:2.52.0"
+    "@amplitude/analytics-core": "npm:2.52.1"
     tslib: "npm:^2.4.1"
-  checksum: 10c0/71eef8e7c2a1907f74bb8fb93662c55747a69718a5c522a5c7b93c48a283830e4de6b5e7ec0c3524fa0c970ce6000456f2e467543258c4e8a22817396263d188
+  checksum: 10c0/4f84b93460fa0ecb4a29c5448c3603222552106f944e9176b6a97989df18a6a9da258f2481c5e6e36b0a971932ca071263e52177a44ab140942a23d9f1779236
   languageName: node
   linkType: hard
 
@@ -205,23 +218,23 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@amplitude/plugin-page-url-enrichment-browser@npm:0.7.15":
-  version: 0.7.15
-  resolution: "@amplitude/plugin-page-url-enrichment-browser@npm:0.7.15"
+"@amplitude/plugin-page-url-enrichment-browser@npm:0.7.16":
+  version: 0.7.16
+  resolution: "@amplitude/plugin-page-url-enrichment-browser@npm:0.7.16"
   dependencies:
-    "@amplitude/analytics-core": "npm:2.52.0"
+    "@amplitude/analytics-core": "npm:2.52.1"
     tslib: "npm:^2.4.1"
-  checksum: 10c0/1ab16ee1471835cd65b266c3ec1e7f5c87a7760a90a1194511273a75583140efbdff9bdf31575811d5f29a805d96a67f16c22f75ccd75a90277722b520a3d5d0
+  checksum: 10c0/941d9acb2f4d4cb8a4f15986af2962621658df5a55425304213f39f9c3366ea7d9842744135a91aa6aa10a96b15414e605450c68fca3c6a813753a325cd53f94
   languageName: node
   linkType: hard
 
-"@amplitude/plugin-page-view-tracking-browser@npm:2.11.5":
-  version: 2.11.5
-  resolution: "@amplitude/plugin-page-view-tracking-browser@npm:2.11.5"
+"@amplitude/plugin-page-view-tracking-browser@npm:2.11.6":
+  version: 2.11.6
+  resolution: "@amplitude/plugin-page-view-tracking-browser@npm:2.11.6"
   dependencies:
-    "@amplitude/analytics-core": "npm:2.52.0"
+    "@amplitude/analytics-core": "npm:2.52.1"
     tslib: "npm:^2.4.1"
-  checksum: 10c0/ee83fb577d2cf06c9dbcfe1d277503e483207766f13db1887f0db1e9e33fea22db2430ed0e042289d3406344a5e7efb24104d3dd7631905f4688a5364adeaa6c
+  checksum: 10c0/5ca333074402836e55bed8dd9b4fd86a2f38d2fe477406bef27b98142446dd98cd7184932150bed674a14f6c990983b4517b8b4c26192415ea251efc4a35023c
   languageName: node
   linkType: hard
 
@@ -251,14 +264,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@amplitude/plugin-web-vitals-browser@npm:1.1.37":
-  version: 1.1.37
-  resolution: "@amplitude/plugin-web-vitals-browser@npm:1.1.37"
+"@amplitude/plugin-web-vitals-browser@npm:1.1.38":
+  version: 1.1.38
+  resolution: "@amplitude/plugin-web-vitals-browser@npm:1.1.38"
   dependencies:
-    "@amplitude/analytics-core": "npm:2.52.0"
+    "@amplitude/analytics-core": "npm:2.52.1"
     tslib: "npm:^2.4.1"
     web-vitals: "npm:5.1.0"
-  checksum: 10c0/e06160461b9e4798640a586a7db386d5b0f1278f17219f1595e53b44bf503ea4eab0368cd709005bae7dc03f0a6aca4ce546269ecaec8c54389bfc8828e9d422
+  checksum: 10c0/f091a3f22e5c27c44a9daabcdb80f2291547667f1ca1d16a74f9f531105c7586674bcd49010cd20f25265726dcd118b96c6f0265be8aea5d9bc374b3ee4063ee
   languageName: node
   linkType: hard
 
@@ -8872,7 +8885,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "ui@workspace:."
   dependencies:
-    "@amplitude/analytics-browser": "npm:2.44.4"
+    "@amplitude/analytics-browser": "npm:2.44.5"
     "@amplitude/experiment-js-client": "npm:^1.21.1"
     "@amplitude/plugin-session-replay-browser": "npm:^1.31.1"
     "@arizeai/openinference-semantic-conventions": "npm:2.1.7"
