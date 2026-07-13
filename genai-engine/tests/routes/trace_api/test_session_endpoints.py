@@ -194,6 +194,166 @@ def test_list_sessions_metadata_filtering_by_user_ids(
 
 
 @pytest.mark.unit_tests
+def test_list_sessions_metadata_filtering_by_session_ids(
+    client: GenaiEngineTestClientBase,
+    comprehensive_test_data,
+):
+    """Test filtering sessions by exact session IDs."""
+
+    # Filter by a single session
+    status_code, data = client.trace_api_list_sessions_metadata(
+        task_ids=["api_task1", "api_task2"],
+        session_ids=["session1"],
+    )
+    assert status_code == 200
+    assert data.count == 1
+    assert len(data.sessions) == 1
+    assert data.sessions[0].session_id == "session1"
+
+    # Filter by multiple sessions
+    status_code, data = client.trace_api_list_sessions_metadata(
+        task_ids=["api_task1", "api_task2"],
+        session_ids=["session1", "session2"],
+    )
+    assert status_code == 200
+    assert data.count == 2
+    returned_session_ids = {s.session_id for s in data.sessions}
+    assert returned_session_ids == {"session1", "session2"}
+
+    # Filter by non-existent session
+    status_code, data = client.trace_api_list_sessions_metadata(
+        task_ids=["api_task1", "api_task2"],
+        session_ids=["non_existent_session"],
+    )
+    assert status_code == 200
+    assert data.count == 0
+    assert len(data.sessions) == 0
+
+
+@pytest.mark.unit_tests
+def test_list_sessions_metadata_filtering_by_trace_ids(
+    client: GenaiEngineTestClientBase,
+    comprehensive_test_data,
+):
+    """Test filtering sessions by trace IDs returns full sessions containing a matching trace."""
+
+    # session1 contains api_trace1 and api_trace2. Filtering by api_trace1 alone
+    # should still return the full session1 with BOTH traces and the full span count.
+    status_code, data = client.trace_api_list_sessions_metadata(
+        task_ids=["api_task1", "api_task2"],
+        trace_ids=["api_trace1"],
+    )
+    assert status_code == 200
+    assert data.count == 1
+    assert len(data.sessions) == 1
+    session = data.sessions[0]
+    assert session.session_id == "session1"
+    # Aggregates must reflect ALL traces in the session, not just the matched one
+    assert set(session.trace_ids) == {"api_trace1", "api_trace2"}
+    assert session.span_count == 3
+    assert session.total_token_count == 450
+
+    # Filtering by traces from two different sessions returns both sessions
+    status_code, data = client.trace_api_list_sessions_metadata(
+        task_ids=["api_task1", "api_task2"],
+        trace_ids=["api_trace1", "api_trace3"],
+    )
+    assert status_code == 200
+    assert data.count == 2
+    returned_session_ids = {s.session_id for s in data.sessions}
+    assert returned_session_ids == {"session1", "session2"}
+
+    # Filter by non-existent trace
+    status_code, data = client.trace_api_list_sessions_metadata(
+        task_ids=["api_task1", "api_task2"],
+        trace_ids=["non_existent_trace"],
+    )
+    assert status_code == 200
+    assert data.count == 0
+    assert len(data.sessions) == 0
+
+
+@pytest.mark.unit_tests
+def test_list_sessions_metadata_combined_filters(
+    client: GenaiEngineTestClientBase,
+    comprehensive_test_data,
+):
+    """Test that session filters AND together."""
+
+    # session_id + user_id matching the same session -> 1 result
+    status_code, data = client.trace_api_list_sessions_metadata(
+        task_ids=["api_task1", "api_task2"],
+        session_ids=["session1"],
+        user_ids=["user1"],
+    )
+    assert status_code == 200
+    assert data.count == 1
+    assert data.sessions[0].session_id == "session1"
+    assert data.sessions[0].user_id == "user1"
+
+    # session_id + user_id that don't match the same session -> 0 results
+    status_code, data = client.trace_api_list_sessions_metadata(
+        task_ids=["api_task1", "api_task2"],
+        session_ids=["session1"],
+        user_ids=["user2"],
+    )
+    assert status_code == 200
+    assert data.count == 0
+    assert len(data.sessions) == 0
+
+    # trace_id + user_id matching the same session -> 1 result
+    status_code, data = client.trace_api_list_sessions_metadata(
+        task_ids=["api_task1", "api_task2"],
+        trace_ids=["api_trace3"],
+        user_ids=["user2"],
+    )
+    assert status_code == 200
+    assert data.count == 1
+    assert data.sessions[0].session_id == "session2"
+    assert data.sessions[0].user_id == "user2"
+
+    # trace_id + user_id that don't match the same session -> 0 results
+    status_code, data = client.trace_api_list_sessions_metadata(
+        task_ids=["api_task1", "api_task2"],
+        trace_ids=["api_trace1"],
+        user_ids=["user2"],
+    )
+    assert status_code == 200
+    assert data.count == 0
+    assert len(data.sessions) == 0
+
+    # trace_id + session_id matching the same session -> 1 result
+    status_code, data = client.trace_api_list_sessions_metadata(
+        task_ids=["api_task1", "api_task2"],
+        trace_ids=["api_trace1"],
+        session_ids=["session1"],
+    )
+    assert status_code == 200
+    assert data.count == 1
+    assert data.sessions[0].session_id == "session1"
+
+    # trace_id + session_id that don't match the same session -> 0 results
+    status_code, data = client.trace_api_list_sessions_metadata(
+        task_ids=["api_task1", "api_task2"],
+        trace_ids=["api_trace1"],
+        session_ids=["session2"],
+    )
+    assert status_code == 200
+    assert data.count == 0
+    assert len(data.sessions) == 0
+
+    # trace_id (session2) + session_id (session2) matching -> 1 result
+    status_code, data = client.trace_api_list_sessions_metadata(
+        task_ids=["api_task1", "api_task2"],
+        trace_ids=["api_trace3"],
+        session_ids=["session2"],
+    )
+    assert status_code == 200
+    assert data.count == 1
+    assert data.sessions[0].session_id == "session2"
+
+
+@pytest.mark.unit_tests
 def test_list_sessions_metadata_sorting_pagination_and_validation(
     client: GenaiEngineTestClientBase,
     comprehensive_test_data,

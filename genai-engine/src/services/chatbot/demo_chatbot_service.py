@@ -1,4 +1,5 @@
 import logging
+import uuid
 from typing import AsyncGenerator, Dict, List, Optional, Tuple
 
 from arthur_common.models.llm_model_providers import (
@@ -48,12 +49,14 @@ class DemoChatbotService(BaseChatbotService):
         db_session: Session,
         summarizer_prompt: AgenticPrompt,
         task_id: str,
+        org_id: uuid.UUID,
     ):
         super().__init__(
             chat_completion_service=chat_completion_service,
             db_session=db_session,
             summarizer_prompt=summarizer_prompt,
             task_id=task_id,
+            org_id=org_id,
             enqueue_continuous_evals=True,
         )
         self.task_id = task_id

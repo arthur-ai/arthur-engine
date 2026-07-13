@@ -185,10 +185,11 @@ def run_saved_llm_eval(
 ) -> EvalRunResponse:
     try:
         return LLMEvalsRepository(db_session).run_llm_eval(
-            task.id,
-            eval_name,
-            eval_version,
-            completion_request,
+            task_id=task.id,
+            eval_name=eval_name,
+            org_id=task.org_id,
+            version=eval_version,
+            completion_request=completion_request,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

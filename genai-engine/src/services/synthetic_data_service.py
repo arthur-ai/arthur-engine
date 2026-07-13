@@ -199,6 +199,7 @@ class SyntheticDataService:
         existing_rows: List[Dict[str, Any]],
         column_names: List[str],
         session_id: str,
+        org_id: uuid.UUID,
     ) -> SyntheticDataGenerationResponse:
         """
         Generate initial synthetic data based on the configuration.
@@ -270,6 +271,7 @@ class SyntheticDataService:
                 model=request.model_name,
                 messages=[m.model_dump(exclude_none=True) for m in messages],
                 response_format=SyntheticDataLLMOutput,
+                org_id=org_id,
                 **config_kwargs,
             )
         except Exception as e:
@@ -328,6 +330,7 @@ class SyntheticDataService:
         existing_rows: List[Dict[str, Any]],
         column_names: List[str],
         session_id: str,
+        org_id: uuid.UUID,
     ) -> SyntheticDataGenerationResponse:
         """
         Continue the synthetic data generation conversation.
@@ -426,6 +429,7 @@ class SyntheticDataService:
                 model=request.model_name,
                 messages=[m.model_dump(exclude_none=True) for m in messages],
                 response_format=SyntheticDataLLMOutput,
+                org_id=org_id,
                 **config_kwargs,
             )
         except Exception as e:

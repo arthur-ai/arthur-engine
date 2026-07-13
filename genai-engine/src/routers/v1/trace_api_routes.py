@@ -535,6 +535,14 @@ def list_sessions_metadata(
         None,
         description="User IDs to filter on. Optional.",
     ),
+    trace_ids: list[str] = Query(
+        None,
+        description="Trace IDs to filter on. Returns sessions containing at least one matching trace. Optional.",
+    ),
+    session_ids: list[str] = Query(
+        None,
+        description="Session IDs to filter on. Optional.",
+    ),
     include_experiment_sessions: bool = Query(
         default=False,
         description="Include sessions originating from Arthur experiments. Defaults to false for most uses.",
@@ -551,6 +559,8 @@ def list_sessions_metadata(
             start_time=start_time,
             end_time=end_time,
             user_ids=user_ids,
+            trace_ids=trace_ids,
+            session_ids=session_ids,
             pagination_parameters=pagination_parameters,
             include_experiment_sessions=include_experiment_sessions,
         )

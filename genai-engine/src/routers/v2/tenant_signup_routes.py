@@ -101,6 +101,7 @@ def create_tenant_signup(
                 db_org = orgs_repo.create_organization(
                     name=f"demo-{secrets.token_hex(4)}",
                     is_system=False,
+                    tokens_limit=Config.default_tenant_token_limit(),
                     commit=False,
                 )
                 break

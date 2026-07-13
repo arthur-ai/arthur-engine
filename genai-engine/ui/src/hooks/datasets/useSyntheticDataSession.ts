@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 
 import type { GenerationConfig, SyntheticRow } from "@/components/datasets/synthetic/types";
+import { useOutOfCreditsDialog } from "@/contexts/OutOfCreditsContext";
 import { useApi } from "@/hooks/useApi";
 import type {
   OpenAIMessageInput,
@@ -8,6 +9,7 @@ import type {
   NewDatasetVersionRowColumnItemRequest,
   DatasetVersionRowResponse,
 } from "@/lib/api-client/api-client";
+import { getTokenLimitDetail, isTokenLimitExceededError } from "@/lib/api-errors";
 import { generateTempRowId } from "@/utils/datasetRowUtils";
 
 export type { GenerationConfig, SyntheticRow };
@@ -105,6 +107,7 @@ function syntheticRowsToApiFormat(rows: SyntheticRow[]): { id?: string; data: Ne
 
 export function useSyntheticDataSession(datasetId: string, versionNumber: number, _columns: string[]): UseSyntheticDataSessionReturn {
   const api = useApi();
+  const { show: showOutOfCredits } = useOutOfCreditsDialog();
 
   const [rows, setRows] = useState<SyntheticRow[]>([]);
   const [conversation, setConversation] = useState<OpenAIMessageInput[]>([]);
@@ -165,12 +168,18 @@ export function useSyntheticDataSession(datasetId: string, versionNumber: number
         }
       } catch (err) {
         console.error("Failed to generate synthetic data:", err);
-        setError(err as Error);
+        // UP-4390: 429 quota errors go to the global dialog; everything
+        // else surfaces via the hook's `error` state for the caller to render.
+        if (isTokenLimitExceededError(err)) {
+          showOutOfCredits(getTokenLimitDetail(err));
+        } else {
+          setError(err as Error);
+        }
       } finally {
         setIsLoading(false);
       }
     },
-    [api, datasetId, versionNumber]
+    [api, datasetId, versionNumber, showOutOfCredits]
   );
 
   const sendMessage = useCallback(
@@ -249,12 +258,17 @@ export function useSyntheticDataSession(datasetId: string, versionNumber: number
         ]);
       } catch (err) {
         console.error("Failed to send message:", err);
-        setError(err as Error);
+        // UP-4390: 429 quota errors go to the global dialog.
+        if (isTokenLimitExceededError(err)) {
+          showOutOfCredits(getTokenLimitDetail(err));
+        } else {
+          setError(err as Error);
+        }
       } finally {
         setIsLoading(false);
       }
     },
-    [api, datasetId, versionNumber, rows, conversation]
+    [api, datasetId, versionNumber, rows, conversation, showOutOfCredits]
   );
 
   const updateRow = useCallback((id: string, data: Record<string, string>) => {

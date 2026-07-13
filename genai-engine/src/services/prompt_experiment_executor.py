@@ -22,8 +22,10 @@ from db_models.prompt_experiment_models import (
     DatabasePromptExperimentTestCase,
     DatabasePromptExperimentTestCasePromptResult,
 )
+from db_models.task_models import DatabaseTask
 from repositories.agentic_prompts_repository import AgenticPromptRepository
 from repositories.model_provider_repository import ModelProviderRepository
+from repositories.organizations_repository import extract_token_limit_message
 from repositories.prompt_experiment_repository import PromptExperimentRepository
 from schemas.agentic_experiment_schemas import RequestTimeParameter
 from schemas.base_experiment_schemas import (
@@ -371,10 +373,22 @@ class PromptExperimentExecutor(BaseExperimentExecutor):
                 ],
             )
 
+            # Background experiment thread: derive org from the owning task.
+            task_org_id = (
+                db_session.query(DatabaseTask.org_id)
+                .filter(DatabaseTask.id == experiment.task_id)
+                .scalar()
+            )
+            if task_org_id is None:
+                raise ValueError(
+                    f"Cannot determine org for experiment task {experiment.task_id}.",
+                )
+
             response = self.chat_completion_service.run_chat_completion(
                 prompt=prompt,
                 llm_client=llm_client,
                 completion_request=completion_request,
+                org_id=task_org_id,
             )
 
             # Save output to separate columns. Tool calls come back as
@@ -401,6 +415,21 @@ class PromptExperimentExecutor(BaseExperimentExecutor):
                 f"Error executing prompt {prompt_result.prompt_key}: {e}",
                 exc_info=True,
             )
+            # UP-4390: surface the credit-limit message on the prompt result
+            # so the FE has something to render instead of an unexplained
+            # "failed". Other failure modes stay log-only — we don't want
+            # raw stack traces showing up as a prompt's output.
+            limit_message = extract_token_limit_message(e)
+            if limit_message is not None:
+                try:
+                    prompt_result.output_content = limit_message
+                    db_session.commit()
+                except Exception:
+                    db_session.rollback()
+                    logger.exception(
+                        "Failed to persist token-limit message on prompt_result %s",
+                        prompt_result.id,
+                    )
             return False
 
     def _execute_evaluations(

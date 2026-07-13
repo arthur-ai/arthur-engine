@@ -58,13 +58,14 @@ async def stream_demo_chatbot(
             MetricRepository(db_session),
             application_config,
         )
-        tasks_repo.get_task_by_id(task_id)
+        task = tasks_repo.get_task_by_id(task_id)
 
         demo_task_repo = DemoTaskRepository(db_session)
         return demo_task_repo.stream_response(
             task_id,
             chatbot_request.history,
             current_user.id,
+            task.org_id,
             chatbot_request.session_id,
         )
     except ValueError as e:

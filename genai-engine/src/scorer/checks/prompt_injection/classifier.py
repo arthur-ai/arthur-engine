@@ -6,7 +6,7 @@ import torch
 import torch.nn.functional as F
 from arthur_common.models.enums import RuleResultEnum
 from transformers.modeling_utils import PreTrainedModel
-from transformers.tokenization_utils import PreTrainedTokenizerBase
+from transformers.tokenization_utils_base import PreTrainedTokenizerBase
 
 from schemas.scorer_schemas import RuleScore, ScoreRequest
 from scorer.scorer import RuleScorer

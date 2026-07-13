@@ -1,10 +1,9 @@
+import { createTourEngine, TourProvider } from "@arthur/shared-components/tour";
 import { render } from "@testing-library/react";
 import { act } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TracesTourCleanupWidget } from "./TracesTourCleanupWidget";
-
-import { createTourEngine, TourProvider } from "@/features/tour";
 
 const setDrawerTarget = vi.hoisted(() => vi.fn());
 

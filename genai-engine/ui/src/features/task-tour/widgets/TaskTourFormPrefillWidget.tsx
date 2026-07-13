@@ -1,9 +1,8 @@
+import { useTourEngine, useTourEvent } from "@arthur/shared-components/tour";
+import type { StepConfig } from "@arthur/shared-components/tour";
 import { useCallback } from "react";
 
 import { dispatchTaskTourFormPrefill } from "../formPrefill";
-
-import { useTourEngine, useTourEvent } from "@/features/tour";
-import type { StepConfig } from "@/features/tour";
 
 function findStep(steps: StepConfig[], stepId: string | undefined): StepConfig | undefined {
   return steps.find((step) => step.id === stepId);

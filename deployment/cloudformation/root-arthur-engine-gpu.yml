@@ -281,6 +281,10 @@ Parameters:
       - 'disabled'
     Default: 'disabled'
     Description: 'Enable GenAI Engine demo mode'
+  GenaiEngineDefaultTenantTokenLimit:
+    Type: String
+    Default: ''
+    Description: 'Lifetime LLM-token cap stamped onto new tenant orgs at signup time. Leave empty to disable token limiting (existing tenant orgs are also backfilled to this value when the schema migration runs).'
   RecaptchaEnterpriseProjectId:
     Type: String
     Default: ''
@@ -625,6 +629,7 @@ Metadata:
           - GenaiEngineToxicityCheckMaxTokenLimit
           - GenaiEngineUsePIIModelV2
           - GenaiEngineDemoMode
+          - GenaiEngineDefaultTenantTokenLimit
       - Label:
           default: 'Advanced - GenAI Engine (Internal Model Repository)'
         Parameters:
@@ -766,6 +771,8 @@ Metadata:
         default: 'GenAI Engine Use PII Model V2'
       GenaiEngineDemoMode:
         default: 'GenAI Engine Demo Mode'
+      GenaiEngineDefaultTenantTokenLimit:
+        default: 'GenAI Engine Default Tenant Token Limit'
       GenaiEngineOpenAIProvider:
         default: 'OpenAI Service Provider'
       GenaiEngineECSClusterGPUInstanceScheduledScaleInCron:
@@ -1048,6 +1055,7 @@ Resources:
         GenaiEngineToxicityCheckMaxTokenLimit: !Ref GenaiEngineToxicityCheckMaxTokenLimit
         GenaiEngineUsePIIModelV2: !Ref GenaiEngineUsePIIModelV2
         GenaiEngineDemoMode: !Ref GenaiEngineDemoMode
+        GenaiEngineDefaultTenantTokenLimit: !Ref GenaiEngineDefaultTenantTokenLimit
         RecaptchaEnterpriseProjectId: !Ref RecaptchaEnterpriseProjectId
         RecaptchaEnterpriseSiteKey: !Ref RecaptchaEnterpriseSiteKey
         GenaiEngineEC2TaskCPUValue: !Ref GenaiEngineEC2TaskCPUValue

@@ -2701,6 +2701,8 @@ class GenaiEngineTestClientBase(httpx.Client):
         page_size: int | None = None,
         sort: str | None = None,
         user_ids: list[str] | None = None,
+        trace_ids: list[str] | None = None,
+        session_ids: list[str] | None = None,
     ) -> tuple[int, SessionListResponse | str]:
         """Get session metadata with pagination and filtering.
 
@@ -2711,6 +2713,9 @@ class GenaiEngineTestClientBase(httpx.Client):
             page: Page number for pagination
             page_size: Number of items per page
             sort: Sort order ("asc" or "desc")
+            user_ids: User IDs to filter on
+            trace_ids: Trace IDs to filter on (sessions containing a matching trace)
+            session_ids: Session IDs to filter on
 
         Returns:
             tuple[int, SessionListResponse | str]: Status code and response
@@ -2728,6 +2733,10 @@ class GenaiEngineTestClientBase(httpx.Client):
             params["sort"] = sort
         if user_ids is not None:
             params["user_ids"] = user_ids
+        if trace_ids is not None:
+            params["trace_ids"] = trace_ids
+        if session_ids is not None:
+            params["session_ids"] = session_ids
 
         resp = self.base_client.get(
             f"/api/v1/traces/sessions?{urllib.parse.urlencode(params, doseq=True)}",

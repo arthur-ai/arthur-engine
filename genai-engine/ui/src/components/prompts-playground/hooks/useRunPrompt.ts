@@ -8,7 +8,9 @@ import { PromptType } from "@/components/prompts-playground/types";
 import { streamCompletions } from "@/components/prompts-playground/utils/streamCompletions";
 import toCompletionRequest from "@/components/prompts-playground/utils/toCompletionRequest";
 import { useAuth } from "@/contexts/AuthContext";
+import { useOutOfCreditsDialog } from "@/contexts/OutOfCreditsContext";
 import { AgenticPromptRunResponse, RunAgenticPromptApiV1CompletionsPostError } from "@/lib/api-client/api-client";
+import { getTokenLimitDetail, isTokenLimitExceededError } from "@/lib/api-errors";
 
 interface UseRunPromptOptions {
   prompt: PromptType;
@@ -24,6 +26,7 @@ const useRunPrompt = ({ prompt, onError }: UseRunPromptOptions) => {
   const { state, dispatch } = usePromptContext();
   const apiClient = useApi();
   const { token } = useAuth();
+  const { show: showOutOfCredits } = useOutOfCreditsDialog();
   const abortControllerRef = useRef<AbortController | null>(null);
   const isRunningRef = useRef<boolean>(false);
 
@@ -100,10 +103,16 @@ const useRunPrompt = ({ prompt, onError }: UseRunPromptOptions) => {
             });
             abortControllerRef.current = null;
           },
-          onError: (error: string) => {
+          onError: (error: string, cause?: unknown) => {
             console.error("Error streaming prompt:", error);
             isRunningRef.current = false;
-            onError?.(`${error}. Please check the console for more details.`);
+            // UP-4390: 429 TOKEN_LIMIT_EXCEEDED → show the global out-of-credits
+            // dialog instead of the inline error string.
+            if (isTokenLimitExceededError(cause)) {
+              showOutOfCredits(getTokenLimitDetail(cause));
+            } else {
+              onError?.(`${error}. Please check the console for more details.`);
+            }
             dispatch({
               type: "updatePrompt",
               payload: {
@@ -138,6 +147,21 @@ const useRunPrompt = ({ prompt, onError }: UseRunPromptOptions) => {
       } catch (error: unknown) {
         isRunningRef.current = false;
         console.error("Error running prompt:", error);
+
+        // UP-4390: 429 TOKEN_LIMIT_EXCEEDED short-circuits to the global
+        // out-of-credits dialog.
+        if (isTokenLimitExceededError(error)) {
+          showOutOfCredits(getTokenLimitDetail(error));
+          dispatch({
+            type: "updatePrompt",
+            payload: {
+              promptId: prompt.id,
+              prompt: { running: false, runResponse: null },
+            },
+          });
+          return;
+        }
+
         let errorMessage = "Error running prompt";
 
         // Axios throws AxiosError, with the typed error response in error.response.data
@@ -170,7 +194,7 @@ const useRunPrompt = ({ prompt, onError }: UseRunPromptOptions) => {
         });
       }
     }
-  }, [apiClient, prompt, state.keywords, dispatch, onError, token]);
+  }, [apiClient, prompt, state.keywords, dispatch, onError, token, showOutOfCredits]);
 
   return runPrompt;
 };

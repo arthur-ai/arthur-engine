@@ -1,10 +1,10 @@
+import type { AdvanceTrigger, RouteSpec, SectionConfig, StepConfig, StepContext, TargetSpec, TourConfig } from "@arthur/shared-components/tour";
+
 import { TASK_TOUR_PREPARATIONS } from "./content/wiring";
 import { TASK_TOUR_SECTIONS, type TaskTourItem } from "./data";
 import { TASK_TOUR_PULSE_HIGHLIGHT } from "./highlights";
 import { TASK_TOUR_OCCLUDERS } from "./occluders";
 import { tourSelector } from "./selectors";
-
-import type { AdvanceTrigger, RouteSpec, SectionConfig, StepConfig, StepContext, TargetSpec, TourConfig } from "@/features/tour";
 
 const STEP_TIMEOUT_MS = 4000;
 const PROMPT_DETAIL_STEP_TIMEOUT_MS = 10_000;

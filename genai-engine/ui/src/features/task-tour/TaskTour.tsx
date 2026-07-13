@@ -1,6 +1,19 @@
-import { useEffect, useMemo } from "react";
+import {
+  GuidedStepPopover,
+  IntroWidget,
+  OcclusionRecoveryWidget,
+  ScrollTargetIntoViewWidget,
+  SectionCompleteWidget,
+  SpotlightWidget,
+  TourChromeProvider,
+  TourHost,
+  TourProvider,
+  TourSidePanel,
+} from "@arthur/shared-components/tour";
+import { useReactRouterNavigator } from "@arthur/shared-components/tour/react-router";
+import { useCallback, useEffect, useMemo } from "react";
 
-import { TourSidePanel } from "./components/TourSidePanel";
+import { useTaskTourChromeConfig } from "./chromeConfig";
 import { createTaskTourEmptyStatePredicate } from "./emptyState";
 import { useDetailRouteTourPrep } from "./prep/useDetailRouteTourPrep";
 import { useTracesTourPrep } from "./prep/useTracesTourPrep";
@@ -10,19 +23,14 @@ import {
   CertificateWidget,
   DatasetTargetWidget,
   EvaluateTargetWidget,
-  IntroWidget,
-  OcclusionRecoveryWidget,
   PromptTargetWidget,
-  ScrollTargetIntoViewWidget,
-  SectionCompleteWidget,
-  SpotlightWidget,
   TaskTourFormPrefillWidget,
   TracesTargetWidget,
   TracesTourCleanupWidget,
 } from "./widgets";
 
-import { GuidedStepPopover, TourHost, TourProvider, useReactRouterNavigator } from "@/features/tour";
 import { useApi } from "@/hooks/useApi";
+import { trackDynamic } from "@/services/analytics";
 
 export interface TaskTourProps {
   /** Required: the task the tour should bind its routes against. */
@@ -50,6 +58,7 @@ export function TaskTour({ taskId }: TaskTourProps) {
   const api = useApi();
   const isEmpty = useMemo(() => createTaskTourEmptyStatePredicate(api, taskId), [api, taskId]);
   const { engine, statePlugin } = useTaskTourEngine({ taskId, isEmpty });
+  const chromeConfig = useTaskTourChromeConfig();
 
   // Wire the `dispatchTourEvent` bridge to the active engine. Keeps the
   // product-side call sites dispatching through the typed engine bus.
@@ -67,10 +76,12 @@ export function TaskTour({ taskId }: TaskTourProps) {
   // page renders independently in TaskLayout, so this never blanks the layout.
   if (!engine) return null;
   return (
-    <TourProvider tour={engine} navigator={navigator}>
-      <TourSidePanel statePlugin={statePlugin} />
-      <TaskTourPortal taskId={taskId} />
-    </TourProvider>
+    <TourChromeProvider value={chromeConfig}>
+      <TourProvider tour={engine} navigator={navigator}>
+        <TourSidePanel statePlugin={statePlugin} />
+        <TaskTourPortal taskId={taskId} />
+      </TourProvider>
+    </TourChromeProvider>
   );
 }
 
@@ -93,6 +104,11 @@ function TaskTourPortal({ taskId }: TaskTourPortalProps) {
   // out of order instead of stranding on the wrong page.
   useDetailRouteTourPrep({ taskId });
 
+  // Preserve the pre-extraction analytics event names: the shared
+  // OcclusionRecoveryWidget emits unprefixed outcomes; re-apply the `task-tour.`
+  // prefix the in-tree widget used.
+  const trackOcclusion = useCallback((name: string, props?: Record<string, unknown>) => trackDynamic(`task-tour.${name}`, props), []);
+
   return (
     <TourHost>
       <DatasetTargetWidget />
@@ -100,13 +116,13 @@ function TaskTourPortal({ taskId }: TaskTourPortalProps) {
       <PromptTargetWidget />
       <TracesTargetWidget />
       <TracesTourCleanupWidget />
-      <OcclusionRecoveryWidget />
+      <OcclusionRecoveryWidget track={trackOcclusion} />
       <ScrollTargetIntoViewWidget />
       <TaskTourFormPrefillWidget />
       <IntroWidget />
       <SectionCompleteWidget />
       <SpotlightWidget />
-      <GuidedStepPopover />
+      <GuidedStepPopover insetRight="--app-inset-right" />
       <CertificateWidget />
     </TourHost>
   );

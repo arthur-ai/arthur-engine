@@ -1213,20 +1213,14 @@ export interface BodyAddTagToLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersi
 
 /** Body_upload_certificate_api_v2_demo_certificate_post */
 export interface BodyUploadCertificateApiV2DemoCertificatePost {
-  /**
-   * File
-   * @format binary
-   */
-  file: File;
+  /** File */
+  file: string;
 }
 
 /** Body_upload_embeddings_file_api_chat_files_post */
 export interface BodyUploadEmbeddingsFileApiChatFilesPost {
-  /**
-   * File
-   * @format binary
-   */
-  file: File;
+  /** File */
+  file: string;
 }
 
 /**
@@ -5741,6 +5735,11 @@ export interface ListSessionsMetadataApiV1TracesSessionsGetParams {
    */
   page_size?: number;
   /**
+   * Session Ids
+   * Session IDs to filter on. Optional.
+   */
+  session_ids?: string[];
+  /**
    * Sort the results (asc/desc)
    * @default "desc"
    */
@@ -5757,6 +5756,11 @@ export interface ListSessionsMetadataApiV1TracesSessionsGetParams {
    * @minItems 1
    */
   task_ids: string[];
+  /**
+   * Trace Ids
+   * Trace IDs to filter on. Returns sessions containing at least one matching trace. Optional.
+   */
+  trace_ids?: string[];
   /**
    * User Ids
    * User IDs to filter on. Optional.
@@ -10000,21 +10004,15 @@ export type ReceiveTracesApiV1TracesPostData = any;
 
 export type ReceiveTracesApiV1TracesPostError = HTTPValidationError;
 
-/**
- * Body
- * @format binary
- */
-export type ReceiveTracesApiV1TracesPostPayload = File;
+/** Body */
+export type ReceiveTracesApiV1TracesPostPayload = string;
 
 export type ReceiveTracesV1TracesPostData = any;
 
 export type ReceiveTracesV1TracesPostError = HTTPValidationError;
 
-/**
- * Body
- * @format binary
- */
-export type ReceiveTracesV1TracesPostPayload = File;
+/** Body */
+export type ReceiveTracesV1TracesPostPayload = string;
 
 export type RedirectToTasksApiV2TaskPostData = any;
 
@@ -12651,6 +12649,10 @@ export type ValidateResponseEndpointApiV2TasksTaskIdValidateResponseInferenceIdP
 
 /** ValidationError */
 export interface ValidationError {
+  /** Context */
+  ctx?: object;
+  /** Input */
+  input?: any;
   /** Location */
   loc: (string | number)[];
   /** Message */
@@ -13646,7 +13648,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.640
+ * @version 2.1.654
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {

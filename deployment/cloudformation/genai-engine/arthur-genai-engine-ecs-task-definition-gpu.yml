@@ -141,6 +141,10 @@ Parameters:
       - 'enabled'
       - 'disabled'
     Default: 'disabled'
+  GenaiEngineDefaultTenantTokenLimit:
+    Type: String
+    Description: 'Lifetime LLM-token cap stamped onto new tenant orgs at signup time. Leave empty to disable token limiting (existing tenant orgs are also backfilled to this value when the schema migration runs).'
+    Default: ''
   TransferEncodingMiddlewareEnabled:
     Type: String
     Description: 'Set to enabled to add Transfer-Encoding: chunked header and strip Content-Length from all responses'
@@ -348,6 +352,8 @@ Resources:
               Value: !Ref GenaiEngineAPIOnlyModeEnabled
             - Name: 'GENAI_ENGINE_DEMO_MODE'
               Value: !Ref GenaiEngineDemoMode
+            - Name: 'GENAI_ENGINE_DEFAULT_TENANT_TOKEN_LIMIT'
+              Value: !Ref GenaiEngineDefaultTenantTokenLimit
             - Name: 'RECAPTCHA_ENTERPRISE_PROJECT_ID'
               Value: !Ref RecaptchaEnterpriseProjectId
             - Name: 'RECAPTCHA_ENTERPRISE_SITE_KEY'

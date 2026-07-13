@@ -1,5 +1,5 @@
 # Lightweight Dockerfile for changelog generation
-FROM python:3.12.8-slim-bookworm
+FROM python:3.12-slim-bookworm
 
 # Install system dependencies
 RUN apt-get update && \
@@ -14,7 +14,7 @@ WORKDIR /app
 COPY . /app/genai-engine/
 
 # Install uv
-RUN pip3 install uv==0.11.7
+RUN pip3 install uv==0.11.25
 
 # Set environment variables
 ENV PYTHONPATH="$PYTHONPATH:/app/genai-engine/src"

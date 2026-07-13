@@ -11,7 +11,7 @@ from arthur_client.api_bindings import (
     DatasetLocator,
     DatasetLocatorField,
     DatasetsV1Api,
-    LLMEval,
+    Eval,
     Model,
     ModelProblemType,
     ModelsV1Api,
@@ -209,7 +209,7 @@ class TaskManagementJobExecutor:
         self,
         connector: ShieldBaseConnector,
         task_id: str,
-    ) -> list[LLMEval]:
+    ) -> list[Eval]:
         """
         Retrieves LLM evals with their latest versions for a task.
 
@@ -228,9 +228,9 @@ class TaskManagementJobExecutor:
             )
 
             # For each eval, get the latest version
-            llm_evals_with_versions: list[LLMEval] = []
+            llm_evals_with_versions: list[Eval] = []
             self.logger.info(
-                f"Retrieved {len(llm_evals_response.llm_metadata)} LLM eval definitions"
+                f"Retrieved {len(llm_evals_response.llm_metadata)} LLM eval definitions",
             )
 
             for eval_metadata in llm_evals_response.llm_metadata:
@@ -238,7 +238,7 @@ class TaskManagementJobExecutor:
                     self.logger.info(
                         f"Fetching latest version for eval: {eval_metadata.name}",
                     )
-                    latest_version: LLMEval = connector.read_llm_eval_latest_version(
+                    latest_version: Eval = connector.read_llm_eval_latest_version(
                         task_id=task_id,
                         eval_name=eval_metadata.name,
                     )

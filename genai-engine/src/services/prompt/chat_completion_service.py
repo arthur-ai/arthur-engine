@@ -1,4 +1,5 @@
 import logging
+import uuid
 import warnings
 from datetime import datetime, timezone
 from typing import Any, AsyncGenerator, Dict, List, Set, Tuple, Union, cast
@@ -298,18 +299,22 @@ class ChatCompletionService:
         prompt: AgenticPrompt,
         llm_client: LLMClient,
         completion_request: PromptCompletionRequest = PromptCompletionRequest(),
+        *,
+        org_id: uuid.UUID,
     ) -> LLMModelResponse:
         model, completion_params = self._get_completion_params(
             prompt,
             completion_request,
         )
-        return llm_client.completion(model=model, **completion_params)
+        return llm_client.completion(model=model, org_id=org_id, **completion_params)
 
     def run_chat_completion(
         self,
         prompt: AgenticPrompt,
         llm_client: LLMClient,
         completion_request: PromptCompletionRequest = PromptCompletionRequest(),
+        *,
+        org_id: uuid.UUID,
     ) -> AgenticPromptRunResponse:
         if prompt.has_been_deleted():
             raise ValueError(
@@ -320,6 +325,7 @@ class ChatCompletionService:
             prompt,
             llm_client,
             completion_request,
+            org_id=org_id,
         )
         if not isinstance(llm_model_response.response, ModelResponse):
             raise ValueError("Response is not a ModelResponse")
@@ -349,6 +355,8 @@ class ChatCompletionService:
         prompt: AgenticPrompt,
         llm_client: LLMClient,
         completion_request: PromptCompletionRequest = PromptCompletionRequest(),
+        *,
+        org_id: uuid.UUID,
     ) -> AsyncGenerator[str, None]:
         try:
             if prompt.has_been_deleted():
@@ -360,7 +368,11 @@ class ChatCompletionService:
                 prompt,
                 completion_request,
             )
-            response = await llm_client.acompletion(model=model, **completion_params)
+            response = await llm_client.acompletion(
+                model=model,
+                org_id=org_id,
+                **completion_params,
+            )
 
             collected_chunks: list[
                 ModelResponse | ModelResponseStream | CustomStreamWrapper
@@ -380,6 +392,11 @@ class ChatCompletionService:
                 collected_chunks,
                 messages=completion_params.get("messages", []),
             )
+
+            # Streaming billing closure: acompletion can't record at
+            # return-time because usage isn't known until the stream is
+            # consumed. Record now, before yielding the final response.
+            llm_client.record_token_usage(org_id, complete_response)
 
             cost = llm_client.calculate_cost(complete_response)
 
@@ -415,13 +432,25 @@ class ChatCompletionService:
         llm_client: LLMClient,
         prompt: AgenticPrompt,
         completion_request: PromptCompletionRequest,
+        *,
+        org_id: uuid.UUID,
     ) -> Union[AgenticPromptRunResponse, StreamingResponse]:
         """Helper to execute prompt completion with or without streaming"""
         if completion_request.stream is None or completion_request.stream == False:
-            return self.run_chat_completion(prompt, llm_client, completion_request)
+            return self.run_chat_completion(
+                prompt,
+                llm_client,
+                completion_request,
+                org_id=org_id,
+            )
 
         return StreamingResponse(
-            self.stream_chat_completion(prompt, llm_client, completion_request),
+            self.stream_chat_completion(
+                prompt,
+                llm_client,
+                completion_request,
+                org_id=org_id,
+            ),
             media_type="text/event-stream",
             headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
         )

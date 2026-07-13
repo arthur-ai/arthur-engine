@@ -1,9 +1,8 @@
+import { DEFAULT_TOUR_LAYERS } from "@arthur/shared-components/tour";
 import { createTheme } from "@mui/material/styles";
 import { describe, expect, it } from "vitest";
 
 import { createExperimentDropdownTheme, EXPERIMENT_DROPDOWN_Z_INDEX } from "./tourDropdownTheme";
-
-import { DEFAULT_TOUR_LAYERS } from "@/features/tour";
 
 describe("createExperimentDropdownTheme", () => {
   it("floats dropdowns above every task tour overlay layer", () => {

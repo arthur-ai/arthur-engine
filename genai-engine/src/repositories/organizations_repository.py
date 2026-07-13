@@ -1,11 +1,114 @@
+import logging
 import uuid
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional, overload
 
-from sqlalchemy import Select
+from fastapi import HTTPException
+from sqlalchemy import Select, update
 from sqlalchemy.orm import Session
 
 from db_models import DatabaseOrganization
+from dependencies import db_session_context
+
+logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class OrgTokenQuotaStatus:
+    """Snapshot of an org's token-credit state at a moment in time."""
+
+    tokens_limit: Optional[int]  # None = unlimited
+    tokens_used: int
+
+    @property
+    def is_exhausted(self) -> bool:
+        if self.tokens_limit is None:
+            return False
+        return self.tokens_used >= self.tokens_limit
+
+
+TOKEN_LIMIT_EXCEEDED_ERROR_CODE = "TOKEN_LIMIT_EXCEEDED"
+TOKEN_LIMIT_EXCEEDED_MESSAGE = (
+    "Your organization has used all available LLM credits. "
+    "Contact Arthur to purchase more."
+)
+
+
+def extract_token_limit_message(exc: BaseException) -> Optional[str]:
+    """Return the user-facing credit-limit message if `exc` is our 429, else None.
+
+    Used by background workers (continuous evals, prompt experiments) to
+    surface a clean message on result rows when the gate fires, instead of
+    leaving a generic "failed" with no explanation. Returning None signals
+    "not a token-limit error" so callers can fall through to other handling.
+    """
+    if not isinstance(exc, HTTPException) or exc.status_code != 429:
+        return None
+    detail = exc.detail
+    if (
+        isinstance(detail, dict)
+        and detail.get("error_code") == TOKEN_LIMIT_EXCEEDED_ERROR_CODE
+    ):
+        return str(detail.get("message", TOKEN_LIMIT_EXCEEDED_MESSAGE))
+    return None
+
+
+def enforce_token_quota(org_id: uuid.UUID) -> None:
+    """Raise 429 if `org_id` has exhausted its lifetime token credit (UP-4390).
+
+    Orgs with `tokens_limit IS NULL` are unmetered (default org, system org)
+    and always pass. Called from `LLMClient.completion` / `.acompletion`
+    before delegating to litellm so the gate fires at the actual boundary
+    where tokens get spent — no route-level plumbing needed, can't be
+    forgotten on new endpoints, and mid-flow exhaustion is caught at the
+    next LLM call.
+
+    Opens its own DB session so it's safe to call from any context
+    (in-request, background thread, queue worker) without coupling to a
+    caller-owned session.
+    """
+    with db_session_context() as session:
+        status = OrganizationsRepository(session).get_token_quota_status(org_id)
+    if status is None or not status.is_exhausted:
+        return
+    raise HTTPException(
+        status_code=429,
+        detail={
+            "error_code": TOKEN_LIMIT_EXCEEDED_ERROR_CODE,
+            "message": TOKEN_LIMIT_EXCEEDED_MESSAGE,
+            "tokens_limit": status.tokens_limit,
+            "tokens_used": status.tokens_used,
+        },
+    )
+
+
+def record_org_token_usage(org_id: uuid.UUID, token_count: int) -> None:
+    """Atomically bill an org for `token_count` tokens (UP-4390).
+
+    Opens its own DB session so the write lands independently of the caller's
+    transaction — the LLM API call already happened, so accounting must
+    persist whether or not the surrounding request commits or rolls back.
+
+    Non-positive token counts are a no-op (post-call accounting on an LLM
+    response that didn't include usage must not subtract credits).
+    """
+    if token_count <= 0:
+        return
+    try:
+        with db_session_context() as session:
+            session.execute(
+                update(DatabaseOrganization)
+                .where(DatabaseOrganization.id == org_id)
+                .values(
+                    tokens_used=DatabaseOrganization.tokens_used + token_count,
+                ),
+            )
+            session.commit()
+    except Exception:
+        # Never let a billing-write failure leak out as the user-facing
+        # LLM error — log and move on.
+        logger.exception("Failed to record token usage for org=%s", org_id)
 
 
 @overload
@@ -52,12 +155,14 @@ class OrganizationsRepository:
         self,
         name: str,
         is_system: bool = False,
+        tokens_limit: Optional[int] = None,
         commit: bool = True,
     ) -> DatabaseOrganization:
         db_org = DatabaseOrganization(
             id=uuid.uuid4(),
             name=name,
             is_system=is_system,
+            tokens_limit=tokens_limit,
             created_at=datetime.now(),
         )
         self.db_session.add(db_org)
@@ -69,3 +174,20 @@ class OrganizationsRepository:
         else:
             self.db_session.flush()
         return db_org
+
+    def get_token_quota_status(
+        self,
+        organization_id: uuid.UUID,
+    ) -> Optional[OrgTokenQuotaStatus]:
+        """Return current (tokens_limit, tokens_used). None if the org doesn't exist."""
+        row = (
+            self.db_session.query(
+                DatabaseOrganization.tokens_limit,
+                DatabaseOrganization.tokens_used,
+            )
+            .filter(DatabaseOrganization.id == organization_id)
+            .one_or_none()
+        )
+        if row is None:
+            return None
+        return OrgTokenQuotaStatus(tokens_limit=row[0], tokens_used=row[1])

@@ -56,6 +56,13 @@ def pytest_configure(config):
 def set_env_vars():
     os.environ["NEW_RELIC_ENABLED"] = "false"
     os.environ["GENAI_ENGINE_THREAD_POOL_MAX_WORKERS"] = "1"
+    # UP-4390: `LLMClient` now opens a billing-side DB session inside every
+    # completion call (for the token-quota gate). Tests don't set POSTGRES_*
+    # — they wire SQLite via the FastAPI dependency override — but
+    # `DatabaseConfig()` constructs from env at runtime and rejects missing
+    # POSTGRES_* unless TEST_DATABASE is True. Pin it here so the test path
+    # converges with the override's SQLite engine.
+    os.environ["TEST_DATABASE"] = "True"
 
 
 def create_rule_for_task(create_task: Task, rule_request: NewRuleRequest) -> Rule:
