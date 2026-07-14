@@ -4,6 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "packageManager": "yarn@4.12.0",
+  "resolutions": {
+    "@arizeai/openinference-semantic-conventions": "2.5.0"
+  },
   "scripts": {
     "dev": "vite --mode dev",
     "build": "tsc -b && vite build",
@@ -37,7 +40,7 @@
     "@mui/material": "7.3.11",
     "@mui/x-charts": "8.29.2",
     "@mui/x-date-pickers": "7.29.4",
-    "@tanstack/react-form": "1.33.0",
+    "@tanstack/react-form": "1.33.1",
     "@tanstack/react-pacer": "0.22.1",
     "@tanstack/react-query": "5.90.21",
     "@tanstack/react-query-devtools": "5.91.3",
