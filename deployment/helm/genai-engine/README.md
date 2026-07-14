@@ -349,7 +349,7 @@ This section is a guide to run the GenAI Engine on GPUs on an [EKS Auto Mode](ht
 
 To perform the steps you need `kubectl` access to the cluster with admin privileges.
 
-1. **Create a GPU NodePool.** Auto Mode's built-in `system` / `general-purpose` NodePools only run non-accelerated instances, so create a custom NodePool that provisions NVIDIA GPU instances, labels its nodes so the engine can target them, and taints them so other workloads don't land on expensive GPU hardware. Save as `gpu-nodepool.yaml` and apply with `kubectl apply -f gpu-nodepool.yaml`. Adjust the instance families and GPU limit for your needs; see [Manage compute for AI/ML workloads with EKS Auto Mode and Karpenter](https://docs.aws.amazon.com/eks/latest/userguide/ml-node-pools.html) for the full set of well-known labels.
+1. **Create a GPU NodePool.** Auto Mode's built-in `system` / `general-purpose` NodePools only run non-accelerated instances, so create a custom NodePool that provisions NVIDIA GPU instances, labels its nodes so the engine can target them, and taints them so other workloads don't land on expensive GPU hardware. Save as `gpu-nodepool.yaml` and apply with `kubectl apply -f gpu-nodepool.yaml`. Adjust the instance family/sizes and GPU limit for your needs; see [Manage compute for AI/ML workloads with EKS Auto Mode and Karpenter](https://docs.aws.amazon.com/eks/latest/userguide/ml-node-pools.html) for the full set of well-known labels.
 
     ```yaml
     apiVersion: karpenter.sh/v1
@@ -370,7 +370,10 @@ To perform the steps you need `kubectl` access to the cluster with admin privile
           requirements:
             - key: "eks.amazonaws.com/instance-family"
               operator: In
-              values: ["g4dn", "g5", "g6"]     # NVIDIA GPU instance families
+              values: ["g4dn"]                 # NVIDIA GPU instance family
+            - key: "eks.amazonaws.com/instance-size"
+              operator: In
+              values: ["2xlarge", "4xlarge"]   # -> g4dn.2xlarge / g4dn.4xlarge
             - key: "eks.amazonaws.com/instance-gpu-manufacturer"
               operator: In
               values: ["nvidia"]
