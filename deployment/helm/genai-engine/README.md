@@ -394,7 +394,24 @@ To perform the steps you need `kubectl` access to the cluster with admin privile
     ```
 
 2. **Configure `values.yaml` for the Auto Mode GPU deployment.** In your `values.yaml` (from [values.yaml.template](values.yaml.template)):
-    - Under "Additional Required Configurations For GPU Deployment", uncomment the **"GPU deployment with EKS Auto Mode / Karpenter"** block (this sets `genaiEngineDeploymentType: "deployment"` and the GPU image).
+    - Comment out the default **CPU deployment** four-line block and uncomment the **"GPU deployment with EKS Auto Mode / Karpenter"** block:
+
+    ```yaml
+    gpuEnabled: true
+    genaiEngineDeploymentType: "deployment"
+    genaiEngineWorkers: 2
+    genaiEngineContainerImageLocation: "arthurplatform/genai-engine-gpu"
+    ```
+
+      `genaiEngineDeploymentType` is the key setting that distinguishes the two GPU topologies, so make sure you pick the Auto Mode block and not the managed-node-group one:
+
+      | | `genaiEngineDeploymentType` | Why |
+      | --- | --- | --- |
+      | Managed node group + ASG | `"daemonset"` | One GPU pod per node; the ASG fills nodes as it scales the node group. |
+      | **EKS Auto Mode / Karpenter** | **`"deployment"`** | Karpenter only provisions a node for an unschedulable **workload pod**, and will **not** scale up for a DaemonSet — so the engine must run as a Deployment whose pending pod is the scale-up trigger. |
+
+      `gpuEnabled: true` and the `-gpu` image select the GPU build; `genaiEngineWorkers: 2` is the per-pod worker count (keep it low — each worker loads the full model suite onto the GPU).
+
     - Set the pod `nodeSelector` to the NodePool's label and add a toleration for the taint, and disable the HPA:
 
     ```yaml
