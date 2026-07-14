@@ -387,8 +387,7 @@ To perform the steps you need `kubectl` access to the cluster with admin privile
               effect: NoSchedule
       # Cap total GPUs; idle GPU nodes are consolidated away (scale to zero)
       limits:
-        resources:
-          nvidia.com/gpu: "8"
+        nvidia.com/gpu: "8"
       disruption:
         consolidationPolicy: WhenEmptyOrUnderutilized
         consolidateAfter: 1m
