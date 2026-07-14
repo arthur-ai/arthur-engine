@@ -226,9 +226,8 @@ const spanDetailsStrategy = [
     widgets: [WIDGETS.LATENCY],
   },
   {
-    // PROMPT is in the OpenInference spec but not the installed JS package version.
     // Input shows the original template + variable values; Output shows the rendered result.
-    kind: "PROMPT",
+    kind: OpenInferenceSpanKind.PROMPT,
     panels: [PANELS.INPUT, PANELS.OUTPUT],
     raw: PANELS.RAW_DATA,
     tabs: [PANELS.RAW_DATA],

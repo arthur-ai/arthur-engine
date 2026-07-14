@@ -13,6 +13,7 @@ export const SPAN_TYPE_ICONS = {
   [OpenInferenceSpanKind.RERANKER]: <AutoAwesomeIcon />,
   [OpenInferenceSpanKind.GUARDRAIL]: <AutoAwesomeIcon />,
   [OpenInferenceSpanKind.EVALUATOR]: <AutoAwesomeIcon />,
+  [OpenInferenceSpanKind.PROMPT]: <AutoAwesomeIcon />,
 };
 
 export const TIME_RANGES = {
