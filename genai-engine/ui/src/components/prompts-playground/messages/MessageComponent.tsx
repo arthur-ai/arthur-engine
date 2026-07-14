@@ -20,8 +20,10 @@ import React, { useState, useMemo, useCallback, useEffect } from "react";
 
 import { usePromptContext } from "../PromptsPlaygroundContext";
 import { MESSAGE_ROLE_OPTIONS, MessageComponentProps } from "../types";
+import { buildMessageContent, contentEquals, splitMessageContent } from "../utils/messageUtils";
 
 import { HighlightedInputComponent } from "./HighlightedInputComponent";
+import { MessageAttachments } from "./MessageAttachments";
 
 import { OpenAIMessageItem, ToolCall } from "@/lib/api-client/api-client";
 
@@ -66,9 +68,23 @@ const draftsToToolCalls = (drafts: ToolCallDraft[]): ToolCall[] => {
     }));
 };
 
+// A single image/audio attachment paired with a stable id for React keys.
+export interface AttachmentDraft {
+  id: string;
+  item: OpenAIMessageItem;
+}
+
+// Wrap raw attachment items into drafts with stable ids.
+const itemsToAttachmentDrafts = (items: OpenAIMessageItem[]): AttachmentDraft[] => items.map((item) => ({ id: crypto.randomUUID(), item }));
+
 const Message: React.FC<MessageComponentProps> = ({ id, parentId, role, defaultContent = "", content, toolCalls, toolCallId, dragHandleProps }) => {
   const { dispatch } = usePromptContext();
-  const [inputValue, setInputValue] = useState(defaultContent);
+  // Seed text and attachments from the initial content once on mount, preserving
+  // any multimodal parts instead of flattening the array to a joined string.
+  const [inputValue, setInputValue] = useState(() => splitMessageContent(defaultContent).text);
+  const [attachmentDrafts, setAttachmentDrafts] = useState<AttachmentDraft[]>(() =>
+    itemsToAttachmentDrafts(splitMessageContent(defaultContent).attachments)
+  );
   const [toolCallDrafts, setToolCallDrafts] = useState<ToolCallDraft[]>(() => toolCallsToDrafts(toolCalls));
   const [toolCallIdValue, setToolCallIdValue] = useState(toolCallId ?? "");
   const [assistantMode, setAssistantMode] = useState<AssistantMessageMode>(toolCalls && toolCalls.length > 0 ? "toolCall" : "message");
@@ -143,18 +159,20 @@ const Message: React.FC<MessageComponentProps> = ({ id, parentId, role, defaultC
   // saved. For non-assistant roles there is no toggle, so content is always committed.
   const isToolCallMode = role === "assistant" && assistantMode === "toolCall";
 
-  // Debounce the setMessage function to prevent excessive re-renders/API calls
+  // Debounce the setMessage function to prevent excessive re-renders/API calls.
+  // The value is already the composed content (plain string or multimodal array)
+  // and is dispatched verbatim so attachments are preserved.
   const debouncedSetMessage = useMemo(
     () =>
       debounce((value: string | OpenAIMessageItem[]) => {
         // Empty strings are valid messages, but avoid propagating no-change events
-        if (value === content) return;
+        if (contentEquals(value, content)) return;
         dispatch({
           type: "editMessage",
           payload: {
             parentId,
             id,
-            content: typeof value === "string" ? value : value.map((item) => item.text || "").join(" "),
+            content: value,
           },
         });
       }, DEBOUNCE_TIME),
@@ -212,13 +230,15 @@ const Message: React.FC<MessageComponentProps> = ({ id, parentId, role, defaultC
         dispatch({ type: "editMessage", payload: { parentId, id, content: "" } });
       }
     } else {
-      debouncedSetMessage(inputValue);
+      // Attachments are only supported for user messages; other roles stay string-only.
+      const attachmentItems = role === "user" ? attachmentDrafts.map((draft) => draft.item) : [];
+      debouncedSetMessage(buildMessageContent(inputValue, attachmentItems));
       if (toolCalls && toolCalls.length > 0) {
         dispatch({ type: "editMessageToolCalls", payload: { parentId, id, toolCalls: null } });
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isToolCallMode, inputValue, toolCallDrafts, debouncedSetMessage, debouncedSetToolCalls]);
+  }, [isToolCallMode, inputValue, attachmentDrafts, toolCallDrafts, debouncedSetMessage, debouncedSetToolCalls]);
 
   // Seed the drafts from the toolCalls prop only on mount (e.g. when loading from a
   // trace). After mount, local drafts are the source of truth so editing isn't
@@ -350,7 +370,10 @@ const Message: React.FC<MessageComponentProps> = ({ id, parentId, role, defaultC
             </Box>
           </Stack>
         ) : (
-          <HighlightedInputComponent value={inputValue} onChange={handleContentChange} />
+          <>
+            <HighlightedInputComponent value={inputValue} onChange={handleContentChange} />
+            {role === "user" && <MessageAttachments attachments={attachmentDrafts} onChange={setAttachmentDrafts} />}
+          </>
         )}
       </Box>
     </div>
