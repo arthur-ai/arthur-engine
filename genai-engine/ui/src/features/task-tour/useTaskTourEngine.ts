@@ -12,7 +12,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createTaskTourHighlightsPlugin } from "./highlights";
 import { buildTourConfig } from "./tour-config";
 
-import { trackDynamic } from "@/services/analytics";
+import { track, trackDynamic } from "@/services/analytics";
 
 export const TASK_TOUR_STORAGE_KEY = "arthur:task-tour:status";
 
@@ -55,13 +55,23 @@ export function useTaskTourEngine({ taskId, isEmpty }: UseTaskTourEngineOptions)
   const autoStartedRef = useRef(false);
 
   useEffect(() => {
-    const config = buildTourConfig(taskId, {
-      isEmpty: (key, ctx) => isEmptyRef.current?.(key, ctx) ?? false,
-    });
-    const created = createTour({
-      config,
-      plugins: [createAnalyticsPlugin({ track: trackDynamic, prefix: "task-tour" }), statePlugin, highlightsPlugin],
-    });
+    let created: TourEngine;
+    try {
+      const config = buildTourConfig(taskId, {
+        isEmpty: (key, ctx) => isEmptyRef.current?.(key, ctx) ?? false,
+      });
+      created = createTour({
+        config,
+        plugins: [createAnalyticsPlugin({ track: trackDynamic, prefix: "task-tour" }), statePlugin, highlightsPlugin],
+      });
+    } catch (error) {
+      // Engine construction failed — the tour simply never mounts (TaskTour
+      // renders null on a null engine). Emit the P5 `tour/error` signal so the
+      // failure is observable rather than silently dropping the demo.
+      track("tour/error", { phase: "init", message: error instanceof Error ? error.message : String(error) });
+      setEngine(null);
+      return;
+    }
     setEngine(created);
     return () => {
       autoStartedRef.current = false;

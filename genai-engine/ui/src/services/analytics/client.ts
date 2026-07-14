@@ -114,6 +114,22 @@ export function identify(userId?: string, userProperties?: Record<string, unknow
   }
 }
 
+/**
+ * Product-activation signals for the demo nurture playbook (path P4). Set as an
+ * Amplitude user property so the "completed + activated" cohort can be built.
+ */
+export type ProductActivationReason = "own_agent_trace" | "self_hosted" | "own_data_experiment";
+
+/**
+ * PHASE 2 (playbook Section 4a `product_activated`): fixes the user-property
+ * name up front so the Amplitude cohort can be authored, but is NOT yet wired
+ * to a detection call site. Invoke it once the app can detect a user's own
+ * agent trace, a self-hosted engine, or an experiment on their own data.
+ */
+export function markProductActivated(reason: ProductActivationReason): void {
+  identify(undefined, { product_activated: true, product_activated_reason: reason });
+}
+
 /** Clear user identification (e.g., on logout). */
 export function clearUser(): void {
   if (!isInitialized) {

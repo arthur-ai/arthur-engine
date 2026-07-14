@@ -103,6 +103,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const me = authService.getMe();
       if (success && me) {
         setAuthState(buildAuthenticatedState(token, me));
+        // No `identify()` here: API-key logins carry no email (`MeResponse` has
+        // only `user_id`). See "Identity (prerequisite zero)" in
+        // `services/analytics/AGENTS.md` for why and what this blocks.
         track("Login", {
           authentication_method: "api_key",
           is_tenant: deriveIsTenant(me),

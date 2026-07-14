@@ -12,6 +12,7 @@ import {
 } from "@arthur/shared-components/tour";
 import { useReactRouterNavigator } from "@arthur/shared-components/tour/react-router";
 import { useCallback, useEffect, useMemo } from "react";
+import { ErrorBoundary } from "react-error-boundary";
 
 import { useTaskTourChromeConfig } from "./chromeConfig";
 import { createTaskTourEmptyStatePredicate } from "./emptyState";
@@ -30,7 +31,7 @@ import {
 } from "./widgets";
 
 import { useApi } from "@/hooks/useApi";
-import { trackDynamic } from "@/services/analytics";
+import { track, trackDynamic } from "@/services/analytics";
 
 export interface TaskTourProps {
   /** Required: the task the tour should bind its routes against. */
@@ -77,10 +78,25 @@ export function TaskTour({ taskId }: TaskTourProps) {
   if (!engine) return null;
   return (
     <TourChromeProvider value={chromeConfig}>
-      <TourProvider tour={engine} navigator={navigator}>
-        <TourSidePanel statePlugin={statePlugin} />
-        <TaskTourPortal taskId={taskId} />
-      </TourProvider>
+      {/*
+        The tour is a sidecar — a render crash in its surfaces must never take
+        down the host page. Swallow to `null` and emit the P5 `render_error`
+        signal so "errored/stuck" sessions are still observable in Amplitude.
+      */}
+      <ErrorBoundary
+        fallbackRender={() => null}
+        onError={(error, info) =>
+          track("task-tour.render_error", {
+            message: error instanceof Error ? error.message : String(error),
+            componentStack: info.componentStack ?? undefined,
+          })
+        }
+      >
+        <TourProvider tour={engine} navigator={navigator}>
+          <TourSidePanel statePlugin={statePlugin} />
+          <TaskTourPortal taskId={taskId} />
+        </TourProvider>
+      </ErrorBoundary>
     </TourChromeProvider>
   );
 }
