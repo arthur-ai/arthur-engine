@@ -48,9 +48,14 @@ Please pre-create a database on your instance (e.g. `arthur_genai_engine`)
 ## GPU deployment
 Arthur recommends running the GenAI Engine on GPUs for any production-grade deployments. The usage of GPUs provides significantly lower latency, higher scalability and platform cost efficiency.
 
-The CPU deployment runs the GenAI Engine as a Deployment with a Horizontal Pod Autoscaler (HPA). For the GPU deployment, following our guide in the [values.yaml.template](values.yaml.template) file runs the GenAI Engine as a DaemonSet on a dedicated node group described in the section below, "How to configure your AWS EKS cluster with a GPU node group". The DaemonSet GPU deployment is the Arthur's preferred configuration. It depends on the node group autoscaling for scaling out and scaling in on-demand. This approach does not assume you have a large pool of GPUs sitting idle, waiting to be used.
+The CPU deployment runs the GenAI Engine as a Deployment with a Horizontal Pod Autoscaler (HPA).
 
-## How to configure your AWS EKS cluster with a GPU node group
+For GPU, the chart supports two topologies. Pick the one that matches how your cluster provisions nodes (selected with `genaiEngineDeploymentType` in [values.yaml.template](values.yaml.template)):
+
+- **Managed GPU node group + ASG → DaemonSet.** Arthur's preferred configuration for classic EKS clusters with managed node groups. GenAI Engine runs as a DaemonSet — one pod per GPU node — and the node group's Auto Scaling Group (ASG) scales GPU nodes out and in on demand. This does not assume a large pool of idle GPUs. See [How to configure your AWS EKS cluster with a GPU node group (managed node group)](#how-to-configure-your-aws-eks-cluster-with-a-gpu-node-group-managed-node-group).
+- **EKS Auto Mode / Karpenter → Deployment.** For clusters on [EKS Auto Mode](https://docs.aws.amazon.com/eks/latest/userguide/automode.html), which have no managed node groups. Auto Mode's Karpenter provisions a GPU node only in response to a **pending workload pod** — it does not scale up for a DaemonSet ([Karpenter FAQ](https://karpenter.sh/docs/faq/)) — so GenAI Engine runs as a Deployment. See [How to configure EKS Auto Mode for GPU](#how-to-configure-eks-auto-mode-for-gpu-karpenter).
+
+## How to configure your AWS EKS cluster with a GPU node group (managed node group)
 This section is a guide to help you configure your existing AWS EKS cluster with a GPU node group for GenAI Engine.
 To perform the steps, you need AWS CLI with admin level permissions for the target AWS account.
 
@@ -339,6 +344,92 @@ aws cloudwatch put-metric-alarm \
 
 9. Label the CPU node group with `capability=cpu`
 
+## How to configure EKS Auto Mode for GPU (Karpenter)
+This section is a guide to run the GenAI Engine on GPUs on an [EKS Auto Mode](https://docs.aws.amazon.com/eks/latest/userguide/automode.html) cluster. Auto Mode has no managed node groups — it uses a managed **Karpenter** to provision nodes. Karpenter only launches a node in response to an **unschedulable workload pod**, and it will **not** scale up for a DaemonSet on its own ([Karpenter FAQ](https://karpenter.sh/docs/faq/)). So on Auto Mode the GenAI Engine runs as a **Deployment**, and it is the Deployment's pod (pinned to your GPU nodes via a `nodeSelector`) that triggers Karpenter to create a GPU node.
+
+To perform the steps you need `kubectl` access to the cluster with admin privileges.
+
+1. **Create a GPU NodePool.** Auto Mode's built-in `system` / `general-purpose` NodePools only run non-accelerated instances, so create a custom NodePool that provisions NVIDIA GPU instances, labels its nodes so the engine can target them, and taints them so other workloads don't land on expensive GPU hardware. Save as `gpu-nodepool.yaml` and apply with `kubectl apply -f gpu-nodepool.yaml`. Adjust the instance family/sizes and GPU limit for your needs; see [Manage compute for AI/ML workloads with EKS Auto Mode and Karpenter](https://docs.aws.amazon.com/eks/latest/userguide/ml-node-pools.html) for the full set of well-known labels.
+
+    ```yaml
+    apiVersion: karpenter.sh/v1
+    kind: NodePool
+    metadata:
+      name: arthur-genai-engine-gpu
+    spec:
+      template:
+        metadata:
+          labels:
+            capability: gpu          # GenAI Engine pods target this via nodeSelector
+        spec:
+          # Use the built-in EKS Auto Mode NodeClass (or reference your own custom NodeClass)
+          nodeClassRef:
+            group: eks.amazonaws.com
+            kind: NodeClass
+            name: default
+          requirements:
+            - key: "eks.amazonaws.com/instance-family"
+              operator: In
+              values: ["g4dn"]                 # NVIDIA GPU instance family
+            - key: "eks.amazonaws.com/instance-size"
+              operator: In
+              values: ["2xlarge", "4xlarge"]   # -> g4dn.2xlarge / g4dn.4xlarge
+            - key: "eks.amazonaws.com/instance-gpu-manufacturer"
+              operator: In
+              values: ["nvidia"]
+            - key: "karpenter.sh/capacity-type"
+              operator: In
+              values: ["on-demand"]
+          # Taint so only GPU workloads that tolerate it land on these nodes
+          taints:
+            - key: nvidia.com/gpu
+              value: "true"
+              effect: NoSchedule
+      # Cap total GPUs; idle GPU nodes are consolidated away (scale to zero)
+      limits:
+        nvidia.com/gpu: "8"
+      disruption:
+        consolidationPolicy: WhenEmptyOrUnderutilized
+        consolidateAfter: 1m
+    ```
+
+2. **Configure `values.yaml` for the Auto Mode GPU deployment.** In your `values.yaml` (from [values.yaml.template](values.yaml.template)):
+    - Comment out the default **CPU deployment** four-line block and uncomment the **"GPU deployment with EKS Auto Mode / Karpenter"** block:
+
+    ```yaml
+    gpuEnabled: true
+    genaiEngineDeploymentType: "deployment"
+    genaiEngineWorkers: 2
+    genaiEngineContainerImageLocation: "arthurplatform/genai-engine-gpu"
+    ```
+
+      `genaiEngineDeploymentType` is the key setting that distinguishes the two GPU topologies, so make sure you pick the Auto Mode block and not the managed-node-group one:
+
+      | | `genaiEngineDeploymentType` | Why |
+      | --- | --- | --- |
+      | Managed node group + ASG | `"daemonset"` | One GPU pod per node; the ASG fills nodes as it scales the node group. |
+      | **EKS Auto Mode / Karpenter** | **`"deployment"`** | Karpenter only provisions a node for an unschedulable **workload pod**, and will **not** scale up for a DaemonSet — so the engine must run as a Deployment whose pending pod is the scale-up trigger. |
+
+      `gpuEnabled: true` and the `-gpu` image select the GPU build; `genaiEngineWorkers: 2` is the per-pod worker count (keep it low — each worker loads the full model suite onto the GPU).
+
+    - Set the pod `nodeSelector` to the NodePool's label and add a toleration for the taint, and disable the HPA:
+
+    ```yaml
+    arthurGenaiEngineDeployment:
+      genaiEnginePodNodeSelector:
+        capability: gpu
+      genaiEnginePodTolerations:
+        - key: "nvidia.com/gpu"
+          operator: "Exists"
+          effect: "NoSchedule"
+    arthurGenaiEngineHPA:
+      enabled: false
+    ```
+
+    The `nodeSelector` is what makes the pod unschedulable on the general-purpose nodes, which is the signal that prompts Karpenter to provision a GPU node from the NodePool above. The chart grants the container GPU access via `NVIDIA_VISIBLE_DEVICES`, so no `nvidia.com/gpu` resource request is required in the pod spec.
+
+3. **Scaling is automatic.** Unlike the managed node group path, there is no launch template, ASG, or CloudWatch alarm to configure — Karpenter adds a GPU node when a GenAI Engine pod is pending and removes it when the node is idle (per the NodePool's `disruption` policy). To run more replicas, increase `genaiEngineReplicaCount`; Karpenter provisions additional GPU nodes to fit the pending pods (up to the NodePool `limits`).
+
 ## How to install GenAI Engine using Helm Chart
 
 1. Create Kubernetes secrets
@@ -397,3 +488,25 @@ Azure OpenAI has a quota called Tokens-per-Minute (TPM). It limits the number of
 process within a minute in the region the model is deployed. In order to get a larger quota for GenAI Engine, you can deploy
 additional models in other regions and have Arthur GenAI Engine round-robin against multiple Azure OpenAI endpoints. In
 addition, you can request and get approved for a model quota increase in the desired regions by Azure.
+
+### How do I load models from a shared volume instead of downloading them at startup?
+
+`modelPVC.enabled` is the online/offline toggle. By default (`false`) GenAI Engine downloads its
+model binaries from Hugging Face on startup (or fetches them from `modelRepositoryURL` if set), and
+no PersistentVolumeClaim is required. For air-gapped clusters or to avoid per-pod downloads, set it
+to `true` to pre-populate a shared volume once and have every replica load models offline from it:
+
+```bash
+--set modelPVC.enabled=true \
+--set modelPVC.claimName=arthur-models-pvc \
+--set modelPVC.mountPath=/home/nonroot/models-output
+```
+
+When enabled, the chart mounts the claim (read-write — see below) and sets `MODEL_STORAGE_PATH` +
+`HF_HUB_OFFLINE=1`, and the engine skips the startup download. Populate the volume with the one-time
+job in [../../model-upload](../../model-upload). On AWS EKS, provision the EFS-backed `ReadWriteMany`
+PVC with the Terraform module in [../../terraform/eks-efs-models](../../terraform/eks-efs-models).
+
+> The mount must be **read-write** (`modelPVC.readOnly` defaults to `false`). The HuggingFace
+> loaders write `.lock`/cache files under the mount even with `HF_HUB_OFFLINE=1`, so a read-only
+> mount fails with `[Errno 30] Read-only file system`.

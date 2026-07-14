@@ -436,6 +436,12 @@ jobs:
             ${{ github.ref == 'refs/heads/dev' && format('arthurplatform/genai-engine-{0}:latest-dev', matrix.torch_device) || '' }}
           push: true
           platforms: ${{ matrix.torch_device == 'cpu' && 'linux/amd64,linux/arm64' || 'linux/amd64' }}
+          # Attach a CycloneDX SBOM attestation to the pushed image, consumable via
+          # `docker buildx imagetools inspect <image> --format '{{ json .SBOM }}'`.
+          # SBOM only — do NOT add `provenance: mode=max` here: the build-args above carry
+          # secrets (Meticulous/GitLab/Amplitude/reCAPTCHA tokens) and mode=max records
+          # build-arg values into the provenance attestation on this public image.
+          sbom: true
       # Advisory vulnerability scan + justification docs (must never fail the release build).
       - name: Scan image & generate justification docs
         continue-on-error: true
@@ -471,24 +477,28 @@ jobs:
           pip install 'openapi-generator-cli[jdk4py]==7.12'
           openapi-generator-cli generate -c ml-engine/scripts/openapitools.json
           sed -i 's/license = "NoLicense"/license = "Unlicense"/g' ./ml-engine/src/genai_client/pyproject.toml
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4.1.0
       - name: Log in to Docker Hub
         uses: docker/login-action@v3.6.0
         with:
           username: ${{ secrets.DOCKERHUB_OSS_USERNAME }}
           password: ${{ secrets.DOCKERHUB_OSS_TOKEN }}
-      - name: Build and push docker image (no buildx)
-        run: |
-          cd ml-engine
-          docker build -t arthurplatform/ml-engine:${{ env.VERSION }} .
-          docker push arthurplatform/ml-engine:${{ env.VERSION }}
-          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
-            docker tag arthurplatform/ml-engine:${{ env.VERSION }} arthurplatform/ml-engine:latest
-            docker push arthurplatform/ml-engine:latest
-          fi
-          if [ "${{ github.ref }}" = "refs/heads/dev" ]; then
-            docker tag arthurplatform/ml-engine:${{ env.VERSION }} arthurplatform/ml-engine:latest-dev
-            docker push arthurplatform/ml-engine:latest-dev
-          fi
+      # buildx (not plain `docker build`) so we can attach a CycloneDX SBOM attestation to the
+      # image — consumable via `docker buildx imagetools inspect --format '{{ json .SBOM }}'`.
+      # SBOM only (no provenance): keep parity with the genai-engine build.
+      - name: Build and push docker image
+        uses: docker/build-push-action@v6.18.0
+        with:
+          context: ml-engine
+          file: ml-engine/Dockerfile
+          tags: |
+            arthurplatform/ml-engine:${{ env.VERSION }}
+            ${{ github.ref == 'refs/heads/main' && 'arthurplatform/ml-engine:latest' || '' }}
+            ${{ github.ref == 'refs/heads/dev' && 'arthurplatform/ml-engine:latest-dev' || '' }}
+          push: true
+          platforms: linux/amd64
+          sbom: true
       # Advisory vulnerability scan + justification docs (must never fail the release build).
       - name: Scan image & generate justification docs
         continue-on-error: true
@@ -498,21 +508,29 @@ jobs:
           slug: ml-engine
           dockerhub-username: ${{ secrets.DOCKERHUB_ENTERPRISE_USERNAME }}
           dockerhub-token: ${{ secrets.DOCKERHUB_ENTERPRISE_TOKEN }}
+      # Do NOT `docker logout` here: `imagetools create` below reads the source image from
+      # Docker Hub (logged in above) and writes to Artifactory (logged in now). Both sessions
+      # coexist in the docker config.
       - name: Login to Artifactory
         run: |
-          docker logout
           echo "${{ secrets.NEXUS_REPOSITORY_PASSWORD }}" | docker login docker.arthur.ai -u "${{ secrets.NEXUS_REPOSITORY_USERNAME }}" --password-stdin
+      # imagetools copies the full image (incl. the SBOM attestation) registry-to-registry.
+      # Required because buildx `push: true` does not load the image into the local docker
+      # store, so the old `docker tag` on a local image would no longer find it.
       - name: Retag and push image to Artifactory
         run: |
-          docker tag arthurplatform/ml-engine:${{ env.VERSION }} docker.arthur.ai/arthur/scope/ml-engine:${{ env.VERSION }}
-          docker push docker.arthur.ai/arthur/scope/ml-engine:${{ env.VERSION }}
+          docker buildx imagetools create \
+            --tag docker.arthur.ai/arthur/scope/ml-engine:${{ env.VERSION }} \
+            arthurplatform/ml-engine:${{ env.VERSION }}
           if [ "${{ github.ref }}" = "refs/heads/main" ]; then
-            docker tag arthurplatform/ml-engine:${{ env.VERSION }} docker.arthur.ai/arthur/scope/ml-engine:latest
-            docker push docker.arthur.ai/arthur/scope/ml-engine:latest
+            docker buildx imagetools create \
+              --tag docker.arthur.ai/arthur/scope/ml-engine:latest \
+              arthurplatform/ml-engine:${{ env.VERSION }}
           fi
           if [ "${{ github.ref }}" = "refs/heads/dev" ]; then
-            docker tag arthurplatform/ml-engine:${{ env.VERSION }} docker.arthur.ai/arthur/scope/ml-engine:latest-dev
-            docker push docker.arthur.ai/arthur/scope/ml-engine:latest-dev
+            docker buildx imagetools create \
+              --tag docker.arthur.ai/arthur/scope/ml-engine:latest-dev \
+              arthurplatform/ml-engine:${{ env.VERSION }}
           fi
 
   check-models-updates:
@@ -581,21 +599,27 @@ jobs:
       - uses: ./.github/workflows/composite-actions/set-version
         with:
           version-prefix: "genai-engine-"
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4.1.0
       - name: Log in to Docker Hub
         uses: docker/login-action@v3.6.0
         with:
           username: ${{ secrets.DOCKERHUB_OSS_USERNAME }}
           password: ${{ secrets.DOCKERHUB_OSS_TOKEN }}
+      # imagetools copies the full image (incl. the SBOM attestation) registry-to-registry.
+      # The previous `docker pull`/`tag`/`push` fetched only the platform manifest and would
+      # drop the SBOM attestation from the newly-tagged version.
       - name: Retag previous models image with new version
         run: |
           SOURCE_TAG=${{ github.ref == 'refs/heads/main' && 'latest' || 'latest-dev' }}
           echo "No model updates detected - retagging ${SOURCE_TAG} as ${{ env.VERSION }}"
-          docker pull arthurplatform/genai-engine-models-s3:${SOURCE_TAG}
-          docker tag arthurplatform/genai-engine-models-s3:${SOURCE_TAG} arthurplatform/genai-engine-models-s3:${{ env.VERSION }}
-          docker push arthurplatform/genai-engine-models-s3:${{ env.VERSION }}
+          docker buildx imagetools create \
+            --tag arthurplatform/genai-engine-models-s3:${{ env.VERSION }} \
+            arthurplatform/genai-engine-models-s3:${SOURCE_TAG}
           if [ "${{ github.ref }}" = "refs/heads/main" ]; then
-            docker tag arthurplatform/genai-engine-models-s3:${SOURCE_TAG} arthurplatform/genai-engine-models-s3:latest
-            docker push arthurplatform/genai-engine-models-s3:latest
+            docker buildx imagetools create \
+              --tag arthurplatform/genai-engine-models-s3:latest \
+              arthurplatform/genai-engine-models-s3:${SOURCE_TAG}
           fi
 
   build-genai-engine-models-fs-docker-image:
@@ -626,21 +650,27 @@ jobs:
       - uses: ./.github/workflows/composite-actions/set-version
         with:
           version-prefix: "genai-engine-"
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4.1.0
       - name: Log in to Docker Hub
         uses: docker/login-action@v3.6.0
         with:
           username: ${{ secrets.DOCKERHUB_OSS_USERNAME }}
           password: ${{ secrets.DOCKERHUB_OSS_TOKEN }}
+      # imagetools copies the full image (incl. the SBOM attestation) registry-to-registry.
+      # The previous `docker pull`/`tag`/`push` fetched only the platform manifest and would
+      # drop the SBOM attestation from the newly-tagged version.
       - name: Retag previous models fs image with new version
         run: |
           SOURCE_TAG=${{ github.ref == 'refs/heads/main' && 'latest' || 'latest-dev' }}
           echo "No model updates detected - retagging ${SOURCE_TAG} as ${{ env.VERSION }}"
-          docker pull arthurplatform/genai-engine-models-fs:${SOURCE_TAG}
-          docker tag arthurplatform/genai-engine-models-fs:${SOURCE_TAG} arthurplatform/genai-engine-models-fs:${{ env.VERSION }}
-          docker push arthurplatform/genai-engine-models-fs:${{ env.VERSION }}
+          docker buildx imagetools create \
+            --tag arthurplatform/genai-engine-models-fs:${{ env.VERSION }} \
+            arthurplatform/genai-engine-models-fs:${SOURCE_TAG}
           if [ "${{ github.ref }}" = "refs/heads/main" ]; then
-            docker tag arthurplatform/genai-engine-models-fs:${SOURCE_TAG} arthurplatform/genai-engine-models-fs:latest
-            docker push arthurplatform/genai-engine-models-fs:latest
+            docker buildx imagetools create \
+              --tag arthurplatform/genai-engine-models-fs:latest \
+              arthurplatform/genai-engine-models-fs:${SOURCE_TAG}
           fi
 
   build-gcp-model-upload-docker-image:
@@ -687,6 +717,106 @@ jobs:
           sed -i "s/REPLACE_ME_GENAI_ENGINE_VERSION/${{ env.VERSION }}/g" deployment/cloudformation/root-arthur-genai-engine-gpu.yml
           aws s3 sync ./deployment/cloudformation/ s3://${{ env.BUCKET_NAME }}/${{ env.TEMPLATES_DIRECTORY }}/templates/${{ env.VERSION }} --acl public-read
           aws s3 sync ./deployment/cloudformation/ s3://${{ env.BUCKET_NAME }}/${{ env.TEMPLATES_DIRECTORY }}/templates/latest --acl public-read
+
+  # Publish a CycloneDX SBOM per published image to the public arthur-cft bucket, giving stable
+  # download URLs (versioned + `latest`). Modeled on push-all-cfts (same OIDC role + s3 sync).
+  # SBOMs are generated fresh here with Trivy so coverage is uniform across all six images
+  # regardless of whether a model image was freshly built or retagged (the retag path builds
+  # nothing, so there is no artifact to reuse), and independent of the build jobs' internals.
+  push-all-sboms:
+    needs:
+      - build-genai-engine-docker-images
+      - build-ml-engine-docker-images
+      - build-genai-engine-models-docker-image
+      - tag-genai-engine-models-docker-image
+      - build-genai-engine-models-fs-docker-image
+      - tag-genai-engine-models-fs-docker-image
+      - build-gcp-model-upload-docker-image
+    environment: shared-protected-branch-secrets
+    # `needs` on a skipped model build/tag job still enforces ordering (a skipped job counts as
+    # complete), so whichever of each build/tag pair ran will have published the <VERSION> tag.
+    # `!cancelled()` lets this run when the unused half of each pair is skipped; we only require
+    # the two engine builds to have succeeded.
+    if: |
+      !cancelled() &&
+      needs.build-genai-engine-docker-images.result == 'success' &&
+      needs.build-ml-engine-docker-images.result == 'success' &&
+      contains(github.event.head_commit.message, 'Increment arthur-engine version') &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    env:
+      AWS_REGION: us-east-2
+      BUCKET_NAME: arthur-cft
+    steps:
+      - uses: mathio/gha-cleanup@v1
+        with:
+          remove-browsers: true
+          verbose: true
+      - uses: actions/checkout@v5
+      - uses: ./.github/workflows/composite-actions/setup-git
+      - uses: ./.github/workflows/composite-actions/set-version
+      # Enterprise creds = higher pull-rate limit (same account vuln-report uses for pulls).
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3.6.0
+        with:
+          username: ${{ secrets.DOCKERHUB_ENTERPRISE_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_ENTERPRISE_TOKEN }}
+      # Unpinned latest: GitHub only retains recent release assets, so pinned tags eventually 404
+      # (matches composite-actions/vuln-report).
+      - name: Install Trivy
+        uses: aquasecurity/setup-trivy@v0.3.1
+        with:
+          version: latest
+          token: ${{ github.token }}
+      - name: Generate CycloneDX SBOMs
+        run: |
+          set -uo pipefail
+          mkdir -p sbom-out
+          # image repo (under arthurplatform/) -> output filename stem
+          IMAGES="
+          genai-engine-cpu
+          genai-engine-gpu
+          ml-engine
+          genai-engine-models-s3
+          genai-engine-models-fs
+          genai-engine-models-gcs
+          "
+          for repo in $IMAGES; do
+            ref="arthurplatform/${repo}:${VERSION}"
+            echo "::group::SBOM for ${ref}"
+            # Advisory: a single missing/failed image must not block publishing the rest.
+            if trivy image --format cyclonedx --output "sbom-out/sbom-${repo}.cdx.json" "${ref}"; then
+              echo "Generated sbom-${repo}.cdx.json"
+            else
+              echo "::warning::Failed to generate SBOM for ${ref}; skipping"
+              rm -f "sbom-out/sbom-${repo}.cdx.json"
+            fi
+            # Clear trivy's image analysis cache between images to bound peak disk (model images
+            # bundle large HF weights). Keeps the vuln/java DBs so they don't re-download.
+            trivy clean --scan-cache >/dev/null 2>&1 || true
+            echo "::endgroup::"
+          done
+          echo "SBOMs produced:"
+          ls -la sbom-out
+      - name: configure aws credentials
+        uses: aws-actions/configure-aws-credentials@5ebd15afc69e5abcd499614d3ced5d65dc34087f
+        with:
+          role-to-assume: ${{ secrets.AWS_S3_ROLE_ARN }}
+          role-session-name: ${{ secrets.AWS_S3_ROLE_SESSION_NAME }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Publish SBOMs to S3
+        run: |
+          set -euo pipefail
+          echo "Publishing SBOMs for ${VERSION}"
+          aws s3 sync ./sbom-out s3://${BUCKET_NAME}/arthur-engine/sbom/${VERSION} --acl public-read
+          # `latest` tracks the newest production release only: dev increments continuously, so
+          # pointing the public `latest` SBOM at a dev build would be misleading.
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            aws s3 sync ./sbom-out s3://${BUCKET_NAME}/arthur-engine/sbom/latest --acl public-read
+          fi
 
   push-all-helm-charts:
     needs: [build-genai-engine-docker-images, build-ml-engine-docker-images]
