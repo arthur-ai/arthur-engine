@@ -349,7 +349,7 @@ This section is a guide to run the GenAI Engine on GPUs on an [EKS Auto Mode](ht
 
 To perform the steps you need `kubectl` access to the cluster with admin privileges.
 
-1. **Create a GPU NodePool.** Auto Mode's built-in `system` / `general-purpose` NodePools only run non-accelerated instances, so create a custom NodePool that provisions NVIDIA GPU instances, labels its nodes so the engine can target them, and taints them so other workloads don't land on expensive GPU hardware. Save as `gpu-nodepool.yaml` and apply with `kubectl apply -f gpu-nodepool.yaml`. Adjust the instance families and GPU limit for your needs; see [Manage compute for AI/ML workloads with EKS Auto Mode and Karpenter](https://docs.aws.amazon.com/eks/latest/userguide/ml-node-pools.html) for the full set of well-known labels.
+1. **Create a GPU NodePool.** Auto Mode's built-in `system` / `general-purpose` NodePools only run non-accelerated instances, so create a custom NodePool that provisions NVIDIA GPU instances, labels its nodes so the engine can target them, and taints them so other workloads don't land on expensive GPU hardware. Save as `gpu-nodepool.yaml` and apply with `kubectl apply -f gpu-nodepool.yaml`. Adjust the instance family/sizes and GPU limit for your needs; see [Manage compute for AI/ML workloads with EKS Auto Mode and Karpenter](https://docs.aws.amazon.com/eks/latest/userguide/ml-node-pools.html) for the full set of well-known labels.
 
     ```yaml
     apiVersion: karpenter.sh/v1
@@ -370,7 +370,10 @@ To perform the steps you need `kubectl` access to the cluster with admin privile
           requirements:
             - key: "eks.amazonaws.com/instance-family"
               operator: In
-              values: ["g4dn", "g5", "g6"]     # NVIDIA GPU instance families
+              values: ["g4dn"]                 # NVIDIA GPU instance family
+            - key: "eks.amazonaws.com/instance-size"
+              operator: In
+              values: ["2xlarge", "4xlarge"]   # -> g4dn.2xlarge / g4dn.4xlarge
             - key: "eks.amazonaws.com/instance-gpu-manufacturer"
               operator: In
               values: ["nvidia"]
@@ -384,15 +387,31 @@ To perform the steps you need `kubectl` access to the cluster with admin privile
               effect: NoSchedule
       # Cap total GPUs; idle GPU nodes are consolidated away (scale to zero)
       limits:
-        resources:
-          nvidia.com/gpu: "8"
+        nvidia.com/gpu: "8"
       disruption:
         consolidationPolicy: WhenEmptyOrUnderutilized
         consolidateAfter: 1m
     ```
 
 2. **Configure `values.yaml` for the Auto Mode GPU deployment.** In your `values.yaml` (from [values.yaml.template](values.yaml.template)):
-    - Under "Additional Required Configurations For GPU Deployment", uncomment the **"GPU deployment with EKS Auto Mode / Karpenter"** block (this sets `genaiEngineDeploymentType: "deployment"` and the GPU image).
+    - Comment out the default **CPU deployment** four-line block and uncomment the **"GPU deployment with EKS Auto Mode / Karpenter"** block:
+
+    ```yaml
+    gpuEnabled: true
+    genaiEngineDeploymentType: "deployment"
+    genaiEngineWorkers: 2
+    genaiEngineContainerImageLocation: "arthurplatform/genai-engine-gpu"
+    ```
+
+      `genaiEngineDeploymentType` is the key setting that distinguishes the two GPU topologies, so make sure you pick the Auto Mode block and not the managed-node-group one:
+
+      | | `genaiEngineDeploymentType` | Why |
+      | --- | --- | --- |
+      | Managed node group + ASG | `"daemonset"` | One GPU pod per node; the ASG fills nodes as it scales the node group. |
+      | **EKS Auto Mode / Karpenter** | **`"deployment"`** | Karpenter only provisions a node for an unschedulable **workload pod**, and will **not** scale up for a DaemonSet — so the engine must run as a Deployment whose pending pod is the scale-up trigger. |
+
+      `gpuEnabled: true` and the `-gpu` image select the GPU build; `genaiEngineWorkers: 2` is the per-pod worker count (keep it low — each worker loads the full model suite onto the GPU).
+
     - Set the pod `nodeSelector` to the NodePool's label and add a toleration for the taint, and disable the HPA:
 
     ```yaml
