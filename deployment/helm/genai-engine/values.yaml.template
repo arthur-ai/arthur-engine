@@ -25,10 +25,28 @@ arthurGenaiEngineDeployment:
   labels: {}
   genaiEnginePodAnnotations: {}
   genaiEnginePodLabels: {}
-  # Specify the node selector to "capability: gpu"
+  # Node selector for the GenAI Engine pod:
+  #  - CPU deployment: leave as {}.
+  #  - GPU deployment with managed node group + ASG: comment out the line below and uncomment the
+  #    block to pin the DaemonSet to your GPU nodes (label the node group to match, e.g. capability=gpu).
+  #  - GPU deployment with EKS Auto Mode / Karpenter: comment out the line below and uncomment the
+  #    block (label your GPU NodePool to match). This nodeSelector is also what triggers Karpenter
+  #    to provision a GPU node.
   genaiEnginePodNodeSelector: {}
+  #genaiEnginePodNodeSelector:
+  #  capability: gpu
   genaiEnginePodAffinity: {}
+  # Tolerations for the GenAI Engine pod:
+  #  - CPU deployment: leave as [].
+  #  - GPU deployment with managed node group + ASG: leave as [] (per this chart's README the node
+  #    group is only labeled, not tainted).
+  #  - GPU deployment with EKS Auto Mode / Karpenter: comment out the line below and uncomment the
+  #    block (per this chart's README the GPU NodePool is tainted nvidia.com/gpu=true:NoSchedule).
   genaiEnginePodTolerations: []
+  #genaiEnginePodTolerations:
+  #  - key: "nvidia.com/gpu"
+  #    operator: "Exists"
+  #    effect: "NoSchedule"
   auditLog:
     enabled: false
     mountPath: "/home/nonroot/app/audit_logs"
@@ -46,14 +64,25 @@ genaiEngineDeploymentType: "deployment"
 genaiEngineWorkers: 1
 genaiEngineContainerImageLocation: "arthurplatform/genai-engine-cpu"
 
-# GPU deployment - Uncomment the below 4 lines
+# GPU deployment with managed node group + ASG - Uncomment the below 4 lines
+# (one GPU pod per node; the DaemonSet fills each node as the ASG scales the node group)
 #gpuEnabled: true
 #genaiEngineDeploymentType: "daemonset"
 #genaiEngineWorkers: 2
 #genaiEngineContainerImageLocation: "arthurplatform/genai-engine-gpu"
 
+# GPU deployment with EKS Auto Mode / Karpenter - Uncomment the below 4 lines
+# (Karpenter provisions GPU nodes only for unschedulable workload pods, not DaemonSets, so use a
+#  Deployment; also set genaiEnginePodNodeSelector above to your GPU NodePool label)
+#gpuEnabled: true
+#genaiEngineDeploymentType: "deployment"
+#genaiEngineWorkers: 2
+#genaiEngineContainerImageLocation: "arthurplatform/genai-engine-gpu"
+
 arthurGenaiEngineHPA:
-  # Set it to 'false' for GPU deployment
+  # - CPU deployment: true.
+  # - GPU deployment with managed node group + ASG: false (HPA does not apply to a DaemonSet).
+  # - GPU deployment with EKS Auto Mode / Karpenter: false (GPU node scaling is handled by Karpenter).
   enabled: true
   annotations: {}
   labels: {}
@@ -111,7 +140,7 @@ ingress:
 ## Advanced - GenAI Engine
 ###################################
 # GenAI Engine version
-genaiEngineVersion: '2.1.688'
+genaiEngineVersion: '2.1.699'
 # Max number of tokens GenAI Engine can process against LLM for hallucination data checks
 genaiEngineHallucinationCheckMaxTokenLimit: 3000
 # Max number of tokens GenAI Engine can process against LLM for sensitive data checks
@@ -170,6 +199,38 @@ genaiEngineSecretOpenAIGPTModelNamesEndpointsKeysName: "genai-engine-secret-open
 genaiEngineSecretStoreKeyName: "genai-engine-secret-store-key"
 # (Optional) Name of the secret holding the reCAPTCHA Enterprise REST API key (expecting value for key 'key'). Leave unset to disable reCAPTCHA verification.
 # genaiEngineSecretRecaptchaApiKeyName: "genai-engine-secret-recaptcha-api-key"
+
+###################################
+## Advanced - Model loading: online (Hugging Face) vs offline (PVC)
+###################################
+# Toggle how GenAI Engine gets its model binaries:
+#   enabled: false (default) -> ONLINE. Models are downloaded from Hugging Face at startup
+#                               (or from modelRepositoryURL if set). No PVC required.
+#   enabled: true            -> OFFLINE. Mount a pre-populated PersistentVolumeClaim (e.g. the
+#                               EFS-backed PVC from deployment/terraform/eks-efs-models) and load
+#                               models from it with no network. The chart sets MODEL_STORAGE_PATH
+#                               + HF_HUB_OFFLINE=1 and the engine skips the startup download.
+modelPVC:
+  enabled: false
+  # Name of the PersistentVolumeClaim to mount (must already exist in this namespace)
+  claimName: "arthur-models-pvc"
+  # Path the volume is mounted at inside the container (also becomes MODEL_STORAGE_PATH)
+  mountPath: "/home/nonroot/models-output"
+  # Must be read-write: the HuggingFace loaders write .lock/cache files under the mount even in
+  # offline mode, so a read-only mount fails with "[Errno 30] Read-only file system".
+  readOnly: false
+
+###################################
+## Advanced - Health probes
+###################################
+# Startup + readiness probes on GET /health. The startup probe tolerates slow first-boot model
+# loading (especially from an EFS-backed PVC); readiness gates the load balancer until workers
+# serve, avoiding 502s during startup. Set enabled: false to disable both.
+probes:
+  enabled: true
+  # Startup budget = startupPeriodSeconds * startupFailureThreshold (default ~10 min for cold load)
+  startupPeriodSeconds: 10
+  startupFailureThreshold: 60
 
 ###################################
 ## Advanced - GCP Service Account

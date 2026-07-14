@@ -1,6 +1,6 @@
 [project]
 name = "ml-engine"
-version = "2.1.688"
+version = "2.1.699"
 description = ""
 authors = [{ name = "Arthur", email = "engineering@arthur.ai" }]
 license = "MIT"
@@ -40,7 +40,7 @@ dependencies = [
   "snowflake-sqlalchemy==1.10.2",
   "databricks-sqlalchemy>=2.0,<3",
   "databricks-sdk>=0.84.0,<1",
-  "arthur-client==1.4.2243",
+  "arthur-client==1.4.2256",
 ]
 
 [dependency-groups]

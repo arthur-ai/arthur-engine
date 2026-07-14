@@ -4,6 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "packageManager": "yarn@4.12.0",
+  "resolutions": {
+    "@arizeai/openinference-semantic-conventions": "2.5.0"
+  },
   "scripts": {
     "dev": "vite --mode dev",
     "build": "tsc -b && vite build",
@@ -19,12 +22,12 @@
     "generate-api:clean": "rm -rf src/lib/api-client && yarn generate-api"
   },
   "dependencies": {
-    "@amplitude/analytics-browser": "2.44.4",
+    "@amplitude/analytics-browser": "2.44.5",
     "@amplitude/experiment-js-client": "^1.21.1",
     "@amplitude/plugin-session-replay-browser": "^1.31.1",
-    "@arizeai/openinference-semantic-conventions": "2.1.7",
+    "@arizeai/openinference-semantic-conventions": "2.5.0",
     "@arthur/shared-components": "3.20.0",
-    "@base-ui/react": "1.2.0",
+    "@base-ui/react": "1.6.0",
     "@dnd-kit/core": "6.3.1",
     "@dnd-kit/sortable": "10.0.0",
     "@dnd-kit/utilities": "3.2.2",
@@ -35,10 +38,10 @@
     "@monaco-editor/react": "4.7.0",
     "@mui/icons-material": "7.3.11",
     "@mui/material": "7.3.11",
-    "@mui/x-charts": "8.29.0",
+    "@mui/x-charts": "8.29.2",
     "@mui/x-date-pickers": "7.29.4",
     "@tanstack/react-form": "1.33.0",
-    "@tanstack/react-pacer": "0.19.4",
+    "@tanstack/react-pacer": "0.22.1",
     "@tanstack/react-query": "5.90.21",
     "@tanstack/react-query-devtools": "5.91.3",
     "@tanstack/react-table": "8.21.3",
@@ -95,7 +98,7 @@
     "typescript-eslint": "8.56.1",
     "vite": "8.0.16",
     "vite-plugin-node-polyfills": "^0.28.0",
-    "vitest": "4.1.9"
+    "vitest": "4.1.10"
   },
   "optionalDependencies": {
     "@rollup/rollup-linux-x64-gnu": "4.54.0"

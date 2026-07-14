@@ -1,7 +1,7 @@
 name: arthur-engine
 services:
   db:
-    image: postgres:18
+    image: postgres:16
     shm_size: 128mb
     ports:
       - "5435:5432"

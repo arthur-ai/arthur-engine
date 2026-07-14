@@ -40,6 +40,24 @@ one is triaged to a documented position (fix it, or justify it via VEX). Two vie
 Generated artifacts (SBOM, per-image reports) are **not** committed; they are produced by CI and
 uploaded as workflow artifacts (and re-generated daily by `.github/workflows/image-vuln-scan.yml`).
 
+## Downloading a released SBOM
+
+Per release, a CycloneDX SBOM for every published image is also published to the public `arthur-cft`
+S3 bucket (by the `push-all-sboms` job in `.github/workflows/arthur-engine-workflow.yml`), giving
+stable download URLs. `latest/` tracks the newest **production** (main) release only:
+
+```
+https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/sbom/<VERSION>/sbom-<image>.cdx.json
+https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/sbom/latest/sbom-<image>.cdx.json
+```
+
+where `<image>` is one of `genai-engine-cpu`, `genai-engine-gpu`, `ml-engine`,
+`genai-engine-models-s3`, `genai-engine-models-fs`, `genai-engine-models-gcs`. Example:
+
+```bash
+curl -O https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/sbom/latest/sbom-genai-engine-cpu.cdx.json
+```
+
 ## Where the scanning runs
 
 - **Per release build** — `.github/workflows/arthur-engine-workflow.yml` calls the
