@@ -37,4 +37,5 @@ const TYPE_COLORS = {
   [OpenInferenceSpanKind.RERANKER]: "info",
   [OpenInferenceSpanKind.GUARDRAIL]: "error",
   [OpenInferenceSpanKind.EVALUATOR]: "info",
+  [OpenInferenceSpanKind.PROMPT]: "secondary",
 } as const;
