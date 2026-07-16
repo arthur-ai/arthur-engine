@@ -429,7 +429,9 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
             )}
           </Stack>
 
-          {selectedDataset && datasetColumns.length > 0 && <PreviewTable form={form} onSaveTransform={() => setShowSaveTransformDialog(true)} />}
+          {selectedDataset && datasetColumns.length > 0 && (
+            <PreviewTable form={form} onSaveTransform={() => setShowSaveTransformDialog(true)} onCancel={handleClose} />
+          )}
         </form>
       </Drawer>
 
