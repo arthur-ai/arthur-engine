@@ -2178,14 +2178,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tanstack/form-core@npm:1.33.1":
-  version: 1.33.1
-  resolution: "@tanstack/form-core@npm:1.33.1"
+"@tanstack/form-core@npm:1.33.2":
+  version: 1.33.2
+  resolution: "@tanstack/form-core@npm:1.33.2"
   dependencies:
     "@tanstack/devtools-event-client": "npm:^0.4.1"
     "@tanstack/pacer-lite": "npm:^0.1.1"
     "@tanstack/store": "npm:^0.11.0"
-  checksum: 10c0/142988319fa9c3988a0f951059a7138b5ecc409c0d77cb83637db15198ea39ea648b528d04c3482a931c3254a5d7d5d2d0a0a9ff33262d8b4545c36bfe3c1acb
+  checksum: 10c0/70a7c3d027b23c9d2c15539fe96c40ae7a46a06084e2c50ccd0f94f62a42de5016cce65a9effcf4910185eebfad68c1bbcb65446fcb443754e57389855e56443
   languageName: node
   linkType: hard
 
@@ -2258,18 +2258,18 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tanstack/react-form@npm:1.33.1":
-  version: 1.33.1
-  resolution: "@tanstack/react-form@npm:1.33.1"
+"@tanstack/react-form@npm:1.33.2":
+  version: 1.33.2
+  resolution: "@tanstack/react-form@npm:1.33.2"
   dependencies:
-    "@tanstack/form-core": "npm:1.33.1"
+    "@tanstack/form-core": "npm:1.33.2"
     "@tanstack/react-store": "npm:^0.11.0"
   peerDependencies:
     react: ^17.0.0 || ^18.0.0 || ^19.0.0
   peerDependenciesMeta:
     "@tanstack/react-start":
       optional: true
-  checksum: 10c0/8085a48606bfe516065790e002fb470dbc371355aa98a7e4acc026b336f8d22b37b1d0049626fc440ae8546c6739abb55bf88d2711cf1cf6539056ef2b30aec3
+  checksum: 10c0/e9d3e574a50deb236f3529885237239b4eebcae99948e63b3fcfb5e73633e3250aaa0a9051c60f73810570cbb2de1c6c81d68648932939f853a5abf9812d0b89
   languageName: node
   linkType: hard
 
@@ -8952,7 +8952,7 @@ __metadata:
     "@rollup/rollup-linux-x64-gnu": "npm:4.54.0"
     "@tailwindcss/vite": "npm:4.3.2"
     "@tanstack/eslint-plugin-query": "npm:5.91.4"
-    "@tanstack/react-form": "npm:1.33.1"
+    "@tanstack/react-form": "npm:1.33.2"
     "@tanstack/react-pacer": "npm:0.22.1"
     "@tanstack/react-query": "npm:5.90.21"
     "@tanstack/react-query-devtools": "npm:5.91.3"
