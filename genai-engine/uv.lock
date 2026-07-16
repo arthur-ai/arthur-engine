@@ -140,7 +140,7 @@ wheels = [
 
 [[package]]
 name = "arthur-client"
-version = "1.4.2256"
+version = "1.4.2261"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "authlib" },
@@ -152,9 +152,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f8/98/e25e45aff8c07fff88565f38dd049ca5bd69fe0389b592c3680b5425cd01/arthur_client-1.4.2256.tar.gz", hash = "sha256:1a03d78f90e8966504667b15b98520b83bf56242bcd6993bd1ca3fde1e3a4092", size = 404373, upload-time = "2026-07-08T22:40:35.984Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/89/66/a643d0973a4f8d4e79323d1e528d8fc1ac873f27fa208b7af5dbfb7eeb7b/arthur_client-1.4.2261.tar.gz", hash = "sha256:e3df8a3d1fd09de6ca677085267ca9f8f2b75ce91f89a2400abd42f61e8322a4", size = 404341, upload-time = "2026-07-10T22:12:13.91Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d9/c4/cc56811de596472ef91c28681ad8797cdbbbf8658ff042941bd134b72f5a/arthur_client-1.4.2256-py3-none-any.whl", hash = "sha256:ffc8f3810141ea9594cfd50c37f0ad3a269a1f9df6bfbdd479026bf3a904da07", size = 1482444, upload-time = "2026-07-08T22:40:37.298Z" },
+    { url = "https://files.pythonhosted.org/packages/17/50/0873f556947f56f0634724bedf8daef258bdcb85f79dc0f5fe307e0bafeb/arthur_client-1.4.2261-py3-none-any.whl", hash = "sha256:80c1c0427e61ed73e2e7839b150c8cd6124ec88e8cf3573284c9cec1f22b26fc", size = 1482426, upload-time = "2026-07-10T22:12:15.458Z" },
 ]
 
 [[package]]
@@ -182,7 +182,7 @@ wheels = [
 
 [[package]]
 name = "arthur-genai-engine"
-version = "2.1.697"
+version = "2.1.703"
 source = { editable = "." }
 dependencies = [
     { name = "alembic" },
@@ -277,7 +277,7 @@ performance = [
 requires-dist = [
     { name = "alembic", specifier = "==1.17.2" },
     { name = "amplitude-analytics", specifier = ">=1.1.5,<2" },
-    { name = "arthur-client", specifier = "==1.4.2256" },
+    { name = "arthur-client", specifier = "==1.4.2261" },
     { name = "arthur-common", specifier = "==2.4.67" },
     { name = "authlib", specifier = "==1.6.12" },
     { name = "azure-storage-blob", specifier = "==12.27.1" },
@@ -301,7 +301,7 @@ requires-dist = [
     { name = "importlib-metadata", specifier = "==8.5.0" },
     { name = "itsdangerous", specifier = "==2.2.0" },
     { name = "jinja2", specifier = ">=3.1.6,<4" },
-    { name = "langchain", specifier = "==1.3.12" },
+    { name = "langchain", specifier = "==1.3.13" },
     { name = "langchain-community", specifier = "==0.4.2" },
     { name = "langchain-openai", specifier = "==1.3.3" },
     { name = "langsmith", specifier = "==0.8.18" },
@@ -1796,16 +1796,16 @@ wheels = [
 
 [[package]]
 name = "langchain"
-version = "1.3.12"
+version = "1.3.13"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "langchain-core" },
     { name = "langgraph" },
     { name = "pydantic" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/68/c0/8481c93a3899d7e05ac27f21a4e984dab613b72631f39fe01fe0100e3be0/langchain-1.3.12.tar.gz", hash = "sha256:3321f86824a0c0720004d28797d729a58b9bb8a0ac73c6ea2b856cac38117879", size = 642308, upload-time = "2026-07-08T22:38:12.466Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/29/33/fd716d0273c8495482953bd63461bf02f71f3a8f4a2fe6c0a70a0e6ff799/langchain-1.3.13.tar.gz", hash = "sha256:bcf874680f31e9970f0db2264509df5bc2115d9680e9d651d537eb49bf1a7d8a", size = 642868, upload-time = "2026-07-10T23:06:08.555Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b1/31/33ba60f3aaa88dc7b97f9c7680f431237466804bf6826efb75400dfd2e6c/langchain-1.3.12-py3-none-any.whl", hash = "sha256:19685eb9dce01ebd71b11281d5489453e7ab3d2caf61eacb2a76d15574246535", size = 136863, upload-time = "2026-07-08T22:38:11.003Z" },
+    { url = "https://files.pythonhosted.org/packages/95/c6/dc676c632f3d20c88789b0726c43ad5e039c25338cc3bb7090fc247d1522/langchain-1.3.13-py3-none-any.whl", hash = "sha256:20a8fe4b1dea7db74356f7d2b5455c4970099b9f7f53c2122ea97f115c907fbd", size = 136911, upload-time = "2026-07-10T23:06:07.012Z" },
 ]
 
 [[package]]

@@ -49,6 +49,24 @@
                         "type": "string"
                     },
                     "description": "Labels for the Kubernetes ingress"
+                },
+                "tls": {
+                    "type": "array",
+                    "description": "Optional TLS blocks for the ingress (nginx path). Each entry has a hosts list and the name of a Kubernetes TLS secret. For AWS ALB, terminate TLS via annotations (certificate-arn) instead of this block.",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "hosts": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
+                            },
+                            "secretName": {
+                                "type": "string"
+                            }
+                        }
+                    }
                 }
             }
         },

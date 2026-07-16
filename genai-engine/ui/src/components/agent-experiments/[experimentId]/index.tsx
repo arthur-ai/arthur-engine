@@ -7,6 +7,7 @@ import { Link, useParams } from "react-router-dom";
 import { StatusBadge } from "../components/status-badge";
 import { useDeleteAgentExperiment } from "../hooks/useDeleteAgentExperiment";
 
+import { EvalStatusChip, ExperimentEvalSummary } from "./components/eval-summary";
 import { ExperimentHttpTemplate } from "./components/experiment-http-template";
 import { ExperimentProgressSummary } from "./components/experiment-progress-summary";
 import { TestCases } from "./components/test-cases";
@@ -74,6 +75,7 @@ export const AgentExperimentDetail = () => {
                   {agentExperiment.name}
                 </Typography>
                 <StatusBadge status={agentExperiment.status} />
+                <EvalStatusChip experiment={agentExperiment} />
               </Stack>
               <Typography variant="body2" color="text.secondary">
                 {agentExperiment.description}
@@ -131,6 +133,8 @@ export const AgentExperimentDetail = () => {
             <ExperimentHttpTemplate experimentId={experimentId!} />
             <ExperimentProgressSummary experiment={agentExperiment} />
           </div>
+
+          <ExperimentEvalSummary experiment={agentExperiment} />
 
           <Stack gap={1}>
             <Typography variant="h6" color="text.primary" fontWeight="bold">

@@ -39,6 +39,7 @@ from schemas.prompt_experiment_schemas import (
 from schemas.request_schemas import PromptCompletionRequest
 from services.experiment_executor import BaseExperimentExecutor
 from services.prompt.chat_completion_service import ChatCompletionService
+from utils.constants import EVAL_PASS_THRESHOLD
 
 logger = logging.getLogger(__name__)
 
@@ -219,8 +220,8 @@ class PromptExperimentExecutor(BaseExperimentExecutor):
 
                 eval_result_list = []
                 for (eval_name, eval_version), scores in sorted(eval_results.items()):
-                    # Count how many passed (score >= 0.5, assuming 0-1 scale)
-                    pass_count = sum(1 for s in scores if s >= 0.5)
+                    # Count how many passed (score >= EVAL_PASS_THRESHOLD, 0-1 scale)
+                    pass_count = sum(1 for s in scores if s >= EVAL_PASS_THRESHOLD)
                     total_count = len(scores)
 
                     eval_result_list.append(
