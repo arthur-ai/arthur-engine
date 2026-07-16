@@ -178,7 +178,7 @@ arthur-genai-engine:
   ## Advanced - GenAI Engine
   ###################################
   # GenAI Engine version
-  genaiEngineVersion: 2.1.706
+  genaiEngineVersion: 2.1.707
   # Max number of tokens GenAI Engine can process against LLM for hallucination data checks
   genaiEngineHallucinationCheckMaxTokenLimit: 3000
   # Max number of tokens GenAI Engine can process against LLM for sensitive data checks
@@ -290,7 +290,10 @@ arthur-ml-engine:
     imagePullSecretName: ""
   mlEngine:
     deployment:
-      # This should be the same as the genaiEngineIngressURL in the arthur-genai-engine chart
+      # Full URL of the GenAI Engine ingress, INCLUDING the "https://" scheme.
+      # This is the same host as genaiEngineIngressURL in the arthur-genai-engine chart, but note that
+      # genaiEngineIngressURL is a bare hostname (no scheme) whereas this value MUST include "https://".
+      # Example: "https://arthur-genai-engine.mydomain.com"
       genaiEngineInternalIngressHost: ""
       fetchRawDataEnabled: true
       genaiEngineMaxPageSize: 1500
