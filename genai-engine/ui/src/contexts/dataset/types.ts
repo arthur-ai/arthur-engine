@@ -44,8 +44,9 @@ export interface DatasetState {
 }
 
 export type DatasetAction =
-  | { type: "DATA/LOAD_VERSION"; payload: DatasetVersionResponse }
+  | { type: "DATA/LOAD_VERSION"; payload: DatasetVersionResponse; configuredColumns?: string[] }
   | { type: "DATA/SET_COLUMNS"; payload: string[] }
+  | { type: "DATA/MERGE_CONFIGURED_COLUMNS"; payload: string[] }
   | { type: "DATA/SET_COLUMN_DEFAULTS"; payload: ColumnDefaults }
   | { type: "DATA/ADD_ROW"; payload: Record<string, unknown> }
   | { type: "DATA/UPDATE_ROW"; payload: { id: string; data: Record<string, unknown> } }

@@ -4,6 +4,11 @@ import { initialDatasetState } from "./types";
 import type { DatasetVersionRowResponse } from "@/lib/api-client/api-client";
 import { generateTempRowId } from "@/utils/datasetRowUtils";
 
+function mergeColumns(primary: string[], secondary: string[]): string[] {
+  const seen = new Set(primary);
+  return [...primary, ...secondary.filter((c) => !seen.has(c))];
+}
+
 function createRowFromData(columns: string[], rowData: Record<string, unknown>, rowId?: string): DatasetVersionRowResponse {
   return {
     id: rowId || generateTempRowId(),
@@ -40,9 +45,10 @@ function transformRowsForNewColumns(rows: DatasetVersionRowResponse[], oldColumn
 export function datasetReducer(state: DatasetState, action: DatasetAction): DatasetState {
   switch (action.type) {
     case "DATA/LOAD_VERSION": {
+      const configured = action.configuredColumns ?? [];
       return {
         ...state,
-        columns: action.payload.column_names,
+        columns: mergeColumns(configured, action.payload.column_names),
         rows: action.payload.rows,
         pendingChanges: { added: [], updated: [], deleted: [] },
       };
@@ -81,6 +87,13 @@ export function datasetReducer(state: DatasetState, action: DatasetAction): Data
           ...state.pendingChanges,
           updated: [...state.pendingChanges.updated, ...rowsToUpdate],
         },
+      };
+    }
+
+    case "DATA/MERGE_CONFIGURED_COLUMNS": {
+      return {
+        ...state,
+        columns: mergeColumns(action.payload, state.columns),
       };
     }
 

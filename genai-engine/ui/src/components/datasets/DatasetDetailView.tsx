@@ -165,6 +165,7 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
           description: queries.dataset.description ?? undefined,
           metadata: {
             ...existingMetadata,
+            columns,
             columnDefaults: newColumnDefaults,
           },
         });
