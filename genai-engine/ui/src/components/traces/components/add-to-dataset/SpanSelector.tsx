@@ -26,6 +26,8 @@ const listButtonSx = {
   fontWeight: 400,
 } as const;
 
+const asSearchable = (v: unknown): string => (v == null ? "" : typeof v === "string" ? v : String(v));
+
 export const SpanSelector = withForm({
   ...addToDatasetFormOptions,
   props: {} as {
@@ -155,16 +157,16 @@ function spanMatchesSearch(span: NestedSpanWithMetricsResponse, query: string, r
   if (span.span_id.toLowerCase().includes(q)) return true;
 
   const kind = getSpanType(span);
-  if (kind?.toLowerCase().includes(q)) return true;
+  if (asSearchable(kind).toLowerCase().includes(q)) return true;
 
   const model = getSpanModel(span);
-  if (model?.toLowerCase().includes(q)) return true;
+  if (asSearchable(model).toLowerCase().includes(q)) return true;
 
   const input = getSpanInput(span);
-  if (input?.toLowerCase().includes(q)) return true;
+  if (asSearchable(input).toLowerCase().includes(q)) return true;
 
   const output = getSpanOutput(span);
-  if (output?.toLowerCase().includes(q)) return true;
+  if (asSearchable(output).toLowerCase().includes(q)) return true;
 
   if (rawDataSearchText?.includes(q)) return true;
 
