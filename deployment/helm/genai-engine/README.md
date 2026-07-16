@@ -19,14 +19,19 @@ Please review the GPT model requirements below:
 * A secure network route between your environment and the OpenAI endpoint(s)
 * Token limits, configured appropriately for your use cases
 
-### DNS
-A DNS URL for the GenAI Engine with an SSL certificate
+### DNS and TLS
+A DNS hostname for the GenAI Engine, plus a TLS certificate for that **same** hostname — an
+[AWS ACM](https://docs.aws.amazon.com/acm/) certificate for the ALB path, or a Kubernetes TLS
+secret for the nginx path. The DNS hostname, the certificate domain, and `genaiEngineIngressURL`
+must all be identical. See [Ingress and HTTPS](#ingress-and-https).
 
 ### Kubernetes
 The chart is tested on AWS Elastic Kubernetes Service (EKS) version 1.31.
 
 * A `kubectl` workstation with admin privileges
-* Nginx ingress controller
+* An ingress controller (see [Ingress and HTTPS](#ingress-and-https) for the full setup):
+  * Classic EKS / self-managed clusters: an nginx ingress controller, installed separately (it is **not** part of this chart).
+  * EKS Auto Mode, or any cluster running the AWS Load Balancer Controller: no nginx controller is needed — use the built-in `alb` IngressClass.
 * A dedicated namespace (e.g. `arthur`)
 * For CPU high availability deployment: a node group with AWS `m8g.large` x 2 or similar
   * Memory: 16 GiB
@@ -430,6 +435,82 @@ To perform the steps you need `kubectl` access to the cluster with admin privile
 
 3. **Scaling is automatic.** Unlike the managed node group path, there is no launch template, ASG, or CloudWatch alarm to configure — Karpenter adds a GPU node when a GenAI Engine pod is pending and removes it when the node is idle (per the NodePool's `disruption` policy). To run more replicas, increase `genaiEngineReplicaCount`; Karpenter provisions additional GPU nodes to fit the pending pods (up to the NodePool `limits`).
 
+## Ingress and HTTPS
+
+The chart creates a Kubernetes `Ingress` for the GenAI Engine, but it **does not install an
+ingress controller** and does not provision DNS or certificates. You choose how TLS is
+terminated based on how your cluster exposes services, then configure the `ingress` block and
+`genaiEngineIngressURL` in your `values.yaml`.
+
+> **Invariant:** `genaiEngineIngressURL`, the TLS certificate domain, and the DNS record must all
+> be the **same hostname**. If they disagree, requests return `404` or a certificate error even
+> though the pods are healthy.
+
+### Option A — nginx ingress controller (default)
+
+For classic EKS / self-managed clusters. Install an nginx ingress controller separately, then
+terminate TLS at nginx with a Kubernetes TLS secret:
+
+```bash
+kubectl -n arthur create secret tls genai-engine-tls --cert=tls.crt --key=tls.key
+```
+
+```yaml
+genaiEngineIngressURL: arthur-genai-engine.mydomain.com
+ingress:
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+  tls:
+    - hosts:
+        - arthur-genai-engine.mydomain.com   # must equal genaiEngineIngressURL
+      secretName: genai-engine-tls
+```
+
+### Option B — AWS ALB (EKS Auto Mode / AWS Load Balancer Controller)
+
+**EKS Auto Mode clusters have no nginx ingress controller** — they ship the AWS Load Balancer
+Controller with a built-in `alb` IngressClass. Use it, and terminate TLS at the ALB with an
+[AWS ACM](https://docs.aws.amazon.com/acm/) certificate whose domain equals
+`genaiEngineIngressURL`. Do **not** set a `tls` block — TLS is handled by the ALB, not a
+Kubernetes secret:
+
+```yaml
+genaiEngineIngressURL: arthur-genai-engine.mydomain.com
+ingress:
+  className: "alb"
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:<region>:<account-id>:certificate/<cert-id>"
+    alb.ingress.kubernetes.io/healthcheck-path: /health
+```
+
+> Do not mix classes and annotations. `nginx.ingress.kubernetes.io/*` annotations are ignored by
+> the ALB controller, and `alb.ingress.kubernetes.io/*` annotations are ignored by nginx. If you
+> switch `className`, remove the other controller's annotations. (When switching an existing
+> release via `helm upgrade --reuse-values`, the old annotations are merged back in and must be
+> cleared explicitly.)
+
+### DNS + verification
+
+After install, get the load balancer address and point DNS at it (a CNAME or Route53 ALIAS,
+since the LB is a hostname — not a plain `A` record):
+
+```bash
+kubectl get ingress -n arthur
+```
+
+Then verify HTTPS end to end:
+
+```bash
+curl -sS https://arthur-genai-engine.mydomain.com/health
+# {"message":"ok", ...}
+```
+
 ## How to install GenAI Engine using Helm Chart
 
 1. Create Kubernetes secrets
@@ -473,7 +554,7 @@ To perform the steps you need `kubectl` access to the cluster with admin privile
     ```bash
     helm upgrade --install -n arthur -f values.yaml arthur-genai-engine oci://ghcr.io/arthur-ai/arthur-engine/charts/arthur-genai-engine --version <version_number>
     ```
-4. Configure DNS by creating an `A` record that routes the GenAI Engine service URL to the GenAI Engine's ingress load balancer
+4. Configure DNS to route `genaiEngineIngressURL` to the load balancer created for the ingress (find it with `kubectl get ingress -n arthur`). An AWS ALB/NLB is a hostname, so use a **CNAME** or a **Route53 ALIAS** record — not a plain `A` record. The DNS hostname, the TLS certificate domain, and `genaiEngineIngressURL` must all match. See [Ingress and HTTPS](#ingress-and-https).
 5. Verify that all the pods are running with
     ```bash
     kubectl get pods -n arthur

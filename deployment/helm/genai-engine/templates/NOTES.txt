@@ -1,0 +1,53 @@
+Arthur GenAI Engine has been deployed to namespace "{{ .Release.Namespace }}" (release "{{ .Release.Name }}").
+
+{{- $url := .Values.genaiEngineIngressURL | default "" }}
+{{- $class := .Values.ingress.className | default "" }}
+{{- $ann := .Values.ingress.annotations | default dict }}
+{{- $annKeys := keys $ann | join "," }}
+{{- $hasAlbAnn := contains "alb.ingress" $annKeys }}
+{{- $hasNginxAnn := contains "nginx.ingress" $annKeys }}
+{{- $hasAlbCert := hasKey $ann "alb.ingress.kubernetes.io/certificate-arn" }}
+{{- $hasTls := gt (len (.Values.ingress.tls | default list)) 0 }}
+
+Ingress
+  Host:          {{ if $url }}{{ $url }}{{ else }}<none set>{{ end }}
+  IngressClass:  {{ if $class }}{{ $class }}{{ else }}<cluster default>{{ end }}
+  TLS:           {{ if $hasAlbCert }}ACM certificate at the ALB{{ else if $hasTls }}Kubernetes TLS secret at nginx{{ else }}NOT configured (HTTP only){{ end }}
+
+Next steps
+  1. Find the ingress load balancer address:
+       kubectl get ingress -n {{ .Release.Namespace }}
+  2. Point DNS at it. An AWS ALB/NLB is a hostname, so create a CNAME or a Route53 ALIAS
+     record - NOT a plain A record.
+  3. The DNS hostname, the TLS certificate domain, and genaiEngineIngressURL must all be the
+     same value, or requests return 404 / a certificate error even though the pods are healthy.
+  4. Verify:
+       curl -sS https://{{ if $url }}{{ $url }}{{ else }}<your-host>{{ end }}/health
+{{- if not $url }}
+
+WARNING: genaiEngineIngressURL is empty. The ingress matches all hosts and the engine has no
+         stable HTTPS URL. Set it to your DNS hostname.
+{{- end }}
+{{- if and (not $hasAlbCert) (not $hasTls) }}
+
+WARNING: No TLS is configured on the ingress (no alb.ingress.kubernetes.io/certificate-arn
+         annotation and no `tls` block), so the engine is served over HTTP only. See the chart
+         README section "Ingress and HTTPS" to enable HTTPS.
+{{- end }}
+{{- if and (eq $class "alb") $hasNginxAnn }}
+
+WARNING: ingress.className is "alb" but nginx.ingress.kubernetes.io/* annotations are set. The
+         AWS Load Balancer Controller ignores nginx annotations - use alb.ingress.kubernetes.io/*.
+{{- end }}
+{{- if and (hasPrefix "nginx" $class) $hasAlbAnn }}
+
+WARNING: ingress.className is "{{ $class }}" but alb.ingress.kubernetes.io/* annotations are set.
+         The nginx controller ignores ALB annotations - the class and annotations disagree.
+{{- end }}
+{{- if hasPrefix "nginx" $class }}
+
+NOTE: ingress.className is "{{ $class }}" - this requires an nginx ingress controller to be
+      installed in the cluster (it is not part of this chart). EKS Auto Mode clusters have no
+      nginx controller; use the built-in "alb" IngressClass instead (see the chart README
+      section "Ingress and HTTPS").
+{{- end }}
