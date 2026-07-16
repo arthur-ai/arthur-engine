@@ -430,6 +430,60 @@ To perform the steps you need `kubectl` access to the cluster with admin privile
 
 3. **Scaling is automatic.** Unlike the managed node group path, there is no launch template, ASG, or CloudWatch alarm to configure — Karpenter adds a GPU node when a GenAI Engine pod is pending and removes it when the node is idle (per the NodePool's `disruption` policy). To run more replicas, increase `genaiEngineReplicaCount`; Karpenter provisions additional GPU nodes to fit the pending pods (up to the NodePool `limits`).
 
+## Using a private image repository
+
+By default the chart pulls the GenAI Engine image from Docker Hub (`arthurplatform/genai-engine-cpu` or `arthurplatform/genai-engine-gpu`). If Docker Hub is not reachable from your cluster, mirror the image into your own container registry and point the chart at it.
+
+1. **Mirror the image** into your registry. Use the CPU or GPU variant that matches your deployment; the tag is used verbatim, so you can keep the upstream version or re-tag it as you like:
+
+    ```bash
+    docker pull arthurplatform/genai-engine-cpu:<version>
+    docker tag  arthurplatform/genai-engine-cpu:<version> <your-registry>/<path>/genai-engine-cpu:<tag>
+    docker push <your-registry>/<path>/genai-engine-cpu:<tag>
+    ```
+
+2. **Create an image pull secret** — only if your registry requires authentication. This is the same standard Kubernetes `docker-registry` secret (type `kubernetes.io/dockerconfigjson`) used in the install steps below; just point `--docker-server` at your registry host:
+
+    ```bash
+    # WARNING: Do NOT set up secrets this way in production.
+    #          Use a secure method such as sealed secrets and external secret store providers.
+    kubectl -n arthur create secret docker-registry arthur-repository-credentials \
+        --docker-server='<your-registry-host>' \
+        --docker-username='<username>' \
+        --docker-password='<password>' \
+        --docker-email=''
+    ```
+
+3. **Point the chart at your registry** in `values.yaml`. Unlike ML Engine, the GenAI Engine image reference is assembled from just two fields — `<genaiEngineContainerImageLocation>:<genaiEngineVersion>` (one `:`) — so the entire repository path (registry host + org + image name) goes in `genaiEngineContainerImageLocation`:
+
+    ```yaml
+    # Full repository path INCLUDING the image name (cpu or gpu variant)
+    genaiEngineContainerImageLocation: "<your-registry>/<path>/genai-engine-cpu"
+    # The tag you pushed, used verbatim
+    genaiEngineVersion: "<tag>"
+    # Set to true only if the registry requires authentication
+    containerRepositoryCredentialRequired: true
+    # Name of the docker-registry secret from step 2
+    imagePullSecretName: "arthur-repository-credentials"
+    ```
+
+    Example — for the image `myregistry.example.com/arthur/genai-engine-cpu:genai-engine_2.1.683`:
+
+    | Field | Value |
+    | --- | --- |
+    | `genaiEngineContainerImageLocation` | `myregistry.example.com/arthur/genai-engine-cpu` |
+    | `genaiEngineVersion` | `genai-engine_2.1.683` |
+
+    > For a GPU deployment, mirror and reference the `genai-engine-gpu` image and keep the related GPU settings (`gpuEnabled`, `genaiEngineDeploymentType`, `genaiEngineWorkers`) as described in the [GPU deployment](#gpu-deployment) section.
+
+You can verify the rendered image reference before installing:
+
+```bash
+helm template arthur-genai-engine oci://ghcr.io/arthur-ai/arthur-engine/charts/arthur-genai-engine \
+    --version <version_number> -f values.yaml | grep 'image:'
+# -> image: "myregistry.example.com/arthur/genai-engine-cpu:genai-engine_2.1.683"
+```
+
 ## How to install GenAI Engine using Helm Chart
 
 1. Create Kubernetes secrets

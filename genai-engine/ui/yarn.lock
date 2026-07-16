@@ -1227,6 +1227,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@floating-ui/core@npm:^1.8.0":
+  version: 1.8.0
+  resolution: "@floating-ui/core@npm:1.8.0"
+  dependencies:
+    "@floating-ui/utils": "npm:^0.2.12"
+  checksum: 10c0/cece958f6fab0f8cd7740cd57988c4f8bc5356dca39dd4c093433d44c91952c3a02c7a54d93d7ed6c078b6544d531a29f66621d2839c8bfbb4467dca6aed7df0
+  languageName: node
+  linkType: hard
+
 "@floating-ui/dom@npm:^1.7.6":
   version: 1.7.6
   resolution: "@floating-ui/dom@npm:1.7.6"
@@ -1234,6 +1243,16 @@ __metadata:
     "@floating-ui/core": "npm:^1.7.5"
     "@floating-ui/utils": "npm:^0.2.11"
   checksum: 10c0/5c098e0d7b58c9bc769f276cca1766994c2c9c70c92d091a61bba8b3e9be53c011e0a79a8457fc2fb2f3d91697a26eb52e0a4962ef936dc963b45f58613c212f
+  languageName: node
+  linkType: hard
+
+"@floating-ui/dom@npm:^1.8.0":
+  version: 1.8.0
+  resolution: "@floating-ui/dom@npm:1.8.0"
+  dependencies:
+    "@floating-ui/core": "npm:^1.8.0"
+    "@floating-ui/utils": "npm:^0.2.12"
+  checksum: 10c0/c32b2de7a596b69cfffa909c7028825e14f6319be1b45da529f8943c89fe16b75a49c214e800c87ded3f172353d3b99163d50072f11410488e756961b7b629cc
   languageName: node
   linkType: hard
 
@@ -1249,7 +1268,19 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@floating-ui/react@npm:0.27.19, @floating-ui/react@npm:^0.27.19":
+"@floating-ui/react-dom@npm:^2.1.9":
+  version: 2.1.9
+  resolution: "@floating-ui/react-dom@npm:2.1.9"
+  dependencies:
+    "@floating-ui/dom": "npm:^1.8.0"
+  peerDependencies:
+    react: ">=16.8.0"
+    react-dom: ">=16.8.0"
+  checksum: 10c0/9fa9851069738cb9591a1ab2da16e257f193eae5fd2d6d48ad0b1e73f3c049929b6805c5ad43d4af3c1da63c60b215b0ee4651a1fe5caeb80e66d9d423744348
+  languageName: node
+  linkType: hard
+
+"@floating-ui/react@npm:0.27.19":
   version: 0.27.19
   resolution: "@floating-ui/react@npm:0.27.19"
   dependencies:
@@ -1263,10 +1294,31 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@floating-ui/react@npm:^0.27.19":
+  version: 0.27.20
+  resolution: "@floating-ui/react@npm:0.27.20"
+  dependencies:
+    "@floating-ui/react-dom": "npm:^2.1.9"
+    "@floating-ui/utils": "npm:^0.2.12"
+    tabbable: "npm:^6.0.0"
+  peerDependencies:
+    react: ">=17.0.0"
+    react-dom: ">=17.0.0"
+  checksum: 10c0/5ebeb4c877128e9a274692849ceb2103b370441626e97ade38c25db5d94371dd7274292eda05208cc5d1c92c594a59595a1909799c2ac8ff44f9e651a4fe55b3
+  languageName: node
+  linkType: hard
+
 "@floating-ui/utils@npm:^0.2.11":
   version: 0.2.11
   resolution: "@floating-ui/utils@npm:0.2.11"
   checksum: 10c0/f4bcea1559bdbb721ecc8e8ead423ac58d6a5b6e70b602cf0810ba6ad4ed1c77211b207faa88b278a9042f0c743133de08a203ed6741c1b6443423332884d5b3
+  languageName: node
+  linkType: hard
+
+"@floating-ui/utils@npm:^0.2.12":
+  version: 0.2.12
+  resolution: "@floating-ui/utils@npm:0.2.12"
+  checksum: 10c0/bb910b90d56991a62011afaf5f8e0c4b7fb6dab69403f4dd17fbd6eb25560b28d533dff9791f270b4f459852e9006a1077b5d73cbedb5e34d9424afc6a828314
   languageName: node
   linkType: hard
 
@@ -2126,14 +2178,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tanstack/form-core@npm:1.33.1":
-  version: 1.33.1
-  resolution: "@tanstack/form-core@npm:1.33.1"
+"@tanstack/form-core@npm:1.33.2":
+  version: 1.33.2
+  resolution: "@tanstack/form-core@npm:1.33.2"
   dependencies:
     "@tanstack/devtools-event-client": "npm:^0.4.1"
     "@tanstack/pacer-lite": "npm:^0.1.1"
     "@tanstack/store": "npm:^0.11.0"
-  checksum: 10c0/142988319fa9c3988a0f951059a7138b5ecc409c0d77cb83637db15198ea39ea648b528d04c3482a931c3254a5d7d5d2d0a0a9ff33262d8b4545c36bfe3c1acb
+  checksum: 10c0/70a7c3d027b23c9d2c15539fe96c40ae7a46a06084e2c50ccd0f94f62a42de5016cce65a9effcf4910185eebfad68c1bbcb65446fcb443754e57389855e56443
   languageName: node
   linkType: hard
 
@@ -2206,18 +2258,18 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tanstack/react-form@npm:1.33.1":
-  version: 1.33.1
-  resolution: "@tanstack/react-form@npm:1.33.1"
+"@tanstack/react-form@npm:1.33.2":
+  version: 1.33.2
+  resolution: "@tanstack/react-form@npm:1.33.2"
   dependencies:
-    "@tanstack/form-core": "npm:1.33.1"
+    "@tanstack/form-core": "npm:1.33.2"
     "@tanstack/react-store": "npm:^0.11.0"
   peerDependencies:
     react: ^17.0.0 || ^18.0.0 || ^19.0.0
   peerDependenciesMeta:
     "@tanstack/react-start":
       optional: true
-  checksum: 10c0/8085a48606bfe516065790e002fb470dbc371355aa98a7e4acc026b336f8d22b37b1d0049626fc440ae8546c6739abb55bf88d2711cf1cf6539056ef2b30aec3
+  checksum: 10c0/e9d3e574a50deb236f3529885237239b4eebcae99948e63b3fcfb5e73633e3250aaa0a9051c60f73810570cbb2de1c6c81d68648932939f853a5abf9812d0b89
   languageName: node
   linkType: hard
 
@@ -8900,7 +8952,7 @@ __metadata:
     "@rollup/rollup-linux-x64-gnu": "npm:4.54.0"
     "@tailwindcss/vite": "npm:4.3.2"
     "@tanstack/eslint-plugin-query": "npm:5.91.4"
-    "@tanstack/react-form": "npm:1.33.1"
+    "@tanstack/react-form": "npm:1.33.2"
     "@tanstack/react-pacer": "npm:0.22.1"
     "@tanstack/react-query": "npm:5.90.21"
     "@tanstack/react-query-devtools": "npm:5.91.3"
