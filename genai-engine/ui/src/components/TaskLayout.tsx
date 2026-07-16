@@ -7,6 +7,7 @@ import { TaskErrorState } from "@/components/TaskErrorState";
 import { TaskLoadingState } from "@/components/TaskLoadingState";
 import { TaskNotFoundState } from "@/components/TaskNotFoundState";
 import { useAuth } from "@/contexts/AuthContext";
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useDemoMode } from "@/contexts/EngineConfigContext";
 import { TaskProvider } from "@/contexts/TaskContext";
 import { useTaskQuery } from "@/hooks/tasks/useTaskQuery";
@@ -23,6 +24,7 @@ export const TaskLayout: React.FC = () => {
   const location = useLocation();
   const { demoMode } = useDemoMode();
   const { isTenant } = useAuth();
+  const { chatbotEnabled } = useDisplaySettings();
   // The guided demo tour is a demo-only experience: it should run only when the
   // engine is in demo mode AND the signed-in user is a demo tenant. Gating at the
   // mount point means the tour engine never initializes (and so never auto-starts)
@@ -61,6 +63,12 @@ export const TaskLayout: React.FC = () => {
     }
   }
 
+  // The floating chatbot FAB/panel renders under the same condition used to mount
+  // `<ChatbotDrawer />` below (and `ChatbotDrawer` returns null when the chatbot is
+  // disabled). When present, reserve bottom clearance on the scrollable content so
+  // the FAB does not cover page controls (e.g. table pagination) in the corner.
+  const showChatbotFab = chatbotEnabled && activeSection !== "chatbot";
+
   const handleBack = () => {
     navigate("/");
   };
@@ -82,7 +90,7 @@ export const TaskLayout: React.FC = () => {
           // it). Keeping the page outside the lazy boundary means it never waits
           // on — or remounts behind — the tour chunk.
           <TaskProvider task={task}>
-            <main className="flex-1 overflow-auto">
+            <main className={`flex-1 overflow-auto${showChatbotFab ? " pb-24" : ""}`}>
               <Outlet />
             </main>
             {showTaskTour ? (
