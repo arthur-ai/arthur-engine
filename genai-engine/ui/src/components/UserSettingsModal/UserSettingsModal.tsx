@@ -245,7 +245,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                 </FormControl>
               </>
             )}
-            {availableEndpoints.length > 0 && (
+            {enableChatbot && availableEndpoints.length > 0 && (
               <Box sx={{ mt: 2 }}>
                 <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
                   Blocked Endpoints
