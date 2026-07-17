@@ -45,7 +45,14 @@ describe("initAnalytics", () => {
     initAnalytics();
     expect(amplitudeMock.add).not.toHaveBeenCalled();
     expect(amplitudeMock.init).toHaveBeenCalledWith("test-key", {
-      defaultTracking: false,
+      autocapture: {
+        attribution: true,
+        pageViews: false,
+        sessions: false,
+        formInteractions: false,
+        fileDownloads: false,
+        elementInteractions: false,
+      },
       serverZone: "US",
       logLevel: expectedLogLevel,
     });

@@ -32,6 +32,14 @@ Signals the playbook paths key off:
 
 P5 error events are app-side: `task-tour.render_error` from the `ErrorBoundary` in `TaskTour.tsx` (render crash), `tour/error` from the `createTour` try/catch in `useTaskTourEngine.ts` (engine init). Async engine failures (prepare/navigation/trigger/target/runtime) are NOT yet captured — that needs a `tour:error` bus event in `@arthur/shared-components` (tracked follow-up).
 
+## Acquisition / UTM attribution (playbook path P0)
+
+Channel attribution ("which content channel drove the signup") is captured by the Amplitude Browser SDK's built-in marketing attribution, enabled via `autocapture.attribution` in `initAnalytics` (`client.ts`). It sets `utm_source`, `utm_medium`, `utm_campaign`, `utm_term`, `utm_content` (plus first-touch `initial_utm_*`, `referrer`, `referring_domain`, and click IDs) as **sticky user properties**, so they attach to every downstream event including `onboarding/form_submitted`. This is distinct from the self-reported `attribution` form field, which is a user's manual "how did you hear about us" answer, not an automated referral source. All other autocapture surfaces (page views, sessions, form interactions, etc.) are intentionally left off to keep the event stream low-noise.
+
+## Task creation milestone ("create their own task")
+
+`task/created` (`events/tasks.ts`) fires when a user creates their own task via `CreateTaskForm`. It is the "create their own task" success milestone and is **not** the same as `dataset/created` (which requires a task but tracks a later, different action). The demo onboarding task is provisioned server-side (`signup.task_id` in `onboarding-page`) and never fires `task/created`, so this event cleanly isolates user-initiated task creation.
+
 ## Identity (playbook "prerequisite zero")
 
 Email is attached as an Amplitude user property **only on the signup form path** (`OnboardingPage` calls `identify(data.email, ...)`). The **API-key login path** (`AuthContext.login`) attaches no email: `MeResponse` carries only `user_id` (the API key id), never an email. Events from returning API-key sessions therefore cannot be matched to a HubSpot contact by email until identity is sourced another way.

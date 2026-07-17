@@ -36,7 +36,21 @@ export function initAnalytics(): void {
     }
 
     amplitude.init(apiKey, {
-      defaultTracking: false,
+      // `defaultTracking` is deprecated (SDK 2.10+) in favor of `autocapture`.
+      // We enable only marketing attribution so UTM/referrer/click IDs are
+      // captured as sticky user properties (utm_* + first-touch initial_utm_*)
+      // that ride the whole funnel through to `onboarding/form_submitted`.
+      // Everything else stays off to preserve the previous low-noise behavior;
+      // an `autocapture` object leaves unspecified surfaces at their `true`
+      // defaults, so each must be explicitly disabled.
+      autocapture: {
+        attribution: true,
+        pageViews: false,
+        sessions: false,
+        formInteractions: false,
+        fileDownloads: false,
+        elementInteractions: false,
+      },
       serverZone: "US",
       // Verbose SDK logging (incl. session-replay internals) only when
       // explicitly enabled via VITE_AMPLITUDE_DEBUG; otherwise warn-level.

@@ -7,6 +7,7 @@ import type { FeedbackEvents } from "./feedback";
 import type { OnboardingEvents } from "./onboarding";
 import type { PlaygroundEvents } from "./playground";
 import type { TaskTourEvents } from "./task-tour";
+import type { TaskEvents } from "./tasks";
 import type { TracingEvents } from "./tracing";
 
 /**
@@ -25,6 +26,7 @@ export interface AnalyticsEvents
     DatasetEvents,
     FeedbackEvents,
     OnboardingEvents,
+    TaskEvents,
     TaskTourEvents,
     CrossLinkEvents {}
 

@@ -10,6 +10,7 @@ import React, { useState } from "react";
 
 import { useApi } from "@/hooks/useApi";
 import { NewTaskRequest } from "@/lib/api";
+import { track } from "@/services/analytics";
 
 interface CreateTaskFormProps {
   onTaskCreated?: (taskId: string) => void;
@@ -47,6 +48,14 @@ export const CreateTaskForm: React.FC<CreateTaskFormProps> = ({ onTaskCreated, o
       };
 
       const response = await api.api.createTaskApiV2TasksPost(taskData);
+
+      if (response.data.id) {
+        track("task/created", {
+          task_id: response.data.id,
+          is_agentic: taskData.is_agentic ?? true,
+          source: "create_task_form",
+        });
+      }
 
       // Call the callback with the new task ID
       if (onTaskCreated && response.data.id) {
