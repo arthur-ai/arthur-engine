@@ -49,6 +49,7 @@ from schemas.request_schemas import (
 )
 from schemas.response_schemas import RagProviderQueryResponse
 from services.experiment_executor import BaseExperimentExecutor
+from utils.constants import EVAL_PASS_THRESHOLD
 
 logger = logging.getLogger(__name__)
 
@@ -638,8 +639,8 @@ class RagExperimentExecutor(BaseExperimentExecutor):
 
                 eval_result_list = []
                 for (eval_name, eval_version), scores in sorted(eval_results.items()):
-                    # Count how many passed (score >= 0.5, assuming 0-1 scale)
-                    pass_count = sum(1 for s in scores if s >= 0.5)
+                    # Count how many passed (score >= EVAL_PASS_THRESHOLD, 0-1 scale)
+                    pass_count = sum(1 for s in scores if s >= EVAL_PASS_THRESHOLD)
                     total_count = len(scores)
 
                     eval_result_list.append(
