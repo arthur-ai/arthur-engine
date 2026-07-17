@@ -207,7 +207,7 @@ export const EvaluatorAccordionList = ({ evals, taskId, onExpandToFullScreen, on
               sx={{
                 position: "absolute",
                 top: 0,
-                right: 120,
+                right: 150,
                 height: 56,
                 display: "flex",
                 alignItems: "center",
