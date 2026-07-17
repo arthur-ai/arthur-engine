@@ -1,6 +1,6 @@
 [project]
 name = "arthur-genai-engine"
-version = "2.1.708"
+version = "2.1.712"
 description = ""
 authors = [{ name = "Arthur", email = "engineering@arthur.ai" }]
 readme = "README.md"
@@ -62,7 +62,7 @@ dependencies = [
   "msgpack==1.2.1",
   "cloudpickle==3.1.2",
   "amplitude-analytics>=1.1.5,<2",
-  "sentencepiece==0.2.1",
+  "sentencepiece==0.2.2",
   "gliner==0.2.27",
   "openinference-semantic-conventions>=0.1.12,<0.2",
   "litellm==1.89.3",
@@ -74,7 +74,7 @@ dependencies = [
   "google-cloud-aiplatform>=1.38",
   "google-cloud-trace>=1.11.0,<2",
   "opentelemetry-semantic-conventions>=0.60b1,<0.61",
-  "arthur-client==1.4.2261",
+  "arthur-client==1.4.2262",
 ]
 
 [project.scripts]
