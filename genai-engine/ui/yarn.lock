@@ -20,12 +20,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@amplitude/analytics-browser@npm:2.45.0":
-  version: 2.45.0
-  resolution: "@amplitude/analytics-browser@npm:2.45.0"
+"@amplitude/analytics-browser@npm:2.45.1":
+  version: 2.45.1
+  resolution: "@amplitude/analytics-browser@npm:2.45.1"
   dependencies:
     "@amplitude/analytics-core": "npm:2.53.0"
-    "@amplitude/plugin-autocapture-browser": "npm:1.28.5"
+    "@amplitude/plugin-autocapture-browser": "npm:1.28.6"
     "@amplitude/plugin-custom-enrichment-browser": "npm:0.1.16"
     "@amplitude/plugin-event-property-attribution-browser": "npm:0.2.8"
     "@amplitude/plugin-network-capture-browser": "npm:1.10.8"
@@ -33,7 +33,7 @@ __metadata:
     "@amplitude/plugin-page-view-tracking-browser": "npm:2.11.8"
     "@amplitude/plugin-web-vitals-browser": "npm:1.1.40"
     tslib: "npm:^2.4.1"
-  checksum: 10c0/72b6270589edd4bf2cde620ef744b698a9ee4d647bfab1b343224ddec7199ec82ecb0ad41d9c45f17cf52258a88b5cef37799eeb3ffbf8c9f56337904bf5bced
+  checksum: 10c0/c59d05b36c347c3a4ea88c1193fd403bbe2432ef9683ada2157f7743a678f1fe63d5581fafdd95615db3ec8838ae3c2761cad56df9af4d6b9a44e7e396bc5624
   languageName: node
   linkType: hard
 
@@ -107,12 +107,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@amplitude/element-selector@npm:0.2.0":
-  version: 0.2.0
-  resolution: "@amplitude/element-selector@npm:0.2.0"
+"@amplitude/element-selector@npm:0.2.1":
+  version: 0.2.1
+  resolution: "@amplitude/element-selector@npm:0.2.1"
   dependencies:
     tslib: "npm:^2.4.1"
-  checksum: 10c0/63c65f5650f64f06dc94d50889c63b27caf5504d34d205b4fb4c3679cc12221bdcf381c3d10db65f07ec14bb3b37562ef5caf8a717664219f727e34c47cd4814
+  checksum: 10c0/5e11ead78d99f5041224e9e10335e3a712735c9bb01181376b8b73a0e72af7ed93c7d54919bd67d2cdd0855e6b5232eab46bdc3c291957fef89fb2818e566d17
   languageName: node
   linkType: hard
 
@@ -157,14 +157,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@amplitude/plugin-autocapture-browser@npm:1.28.5":
-  version: 1.28.5
-  resolution: "@amplitude/plugin-autocapture-browser@npm:1.28.5"
+"@amplitude/plugin-autocapture-browser@npm:1.28.6":
+  version: 1.28.6
+  resolution: "@amplitude/plugin-autocapture-browser@npm:1.28.6"
   dependencies:
     "@amplitude/analytics-core": "npm:2.53.0"
-    "@amplitude/element-selector": "npm:0.2.0"
+    "@amplitude/element-selector": "npm:0.2.1"
     tslib: "npm:^2.4.1"
-  checksum: 10c0/4abc0e8fe625845b1909570c5cad5dfd45ca72d0cdf210228f202daf01385d5fb0177ae79378ad055f865cf71c58df672f8c7f0acb84d34122557ce027b198ed
+  checksum: 10c0/3fd312e79db59bb532e60bf89b9040a7d82869fdc3eff1d6e9768ff1a7dc799be9d1d62830f086650a7f2224e9d3fe2b45c594b8d43ef46f4683c5b38e078cdc
   languageName: node
   linkType: hard
 
@@ -8941,7 +8941,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "ui@workspace:."
   dependencies:
-    "@amplitude/analytics-browser": "npm:2.45.0"
+    "@amplitude/analytics-browser": "npm:2.45.1"
     "@amplitude/experiment-js-client": "npm:^1.21.1"
     "@amplitude/plugin-session-replay-browser": "npm:^1.31.1"
     "@arizeai/openinference-semantic-conventions": "npm:2.5.0"
