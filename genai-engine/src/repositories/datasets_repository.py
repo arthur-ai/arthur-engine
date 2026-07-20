@@ -6,7 +6,7 @@ from uuid import UUID
 from arthur_common.models.common_schemas import PaginationParameters
 from arthur_common.models.enums import PaginationSortMethod
 from fastapi import HTTPException
-from sqlalchemy import and_, asc, cast, desc
+from sqlalchemy import and_, asc, cast, desc, func, or_
 from sqlalchemy.orm import Session
 from sqlalchemy.types import Text
 
@@ -197,8 +197,20 @@ class DatasetRepository:
 
         if search_query and search_query.strip():
             search_term = f"%{search_query.strip()}%"
+            # Normalize hyphens so a pasted Row ID matches regardless of the
+            # dialect's UUID text representation (PostgreSQL renders the
+            # canonical hyphenated form, while other backends may store the
+            # bare 32-char hex string) or whether the user included hyphens.
+            id_search_term = f"%{search_query.strip().replace('-', '')}%"
             base_query = base_query.filter(
-                cast(DatabaseDatasetVersionRow.data, Text).ilike(search_term),
+                or_(
+                    cast(DatabaseDatasetVersionRow.data, Text).ilike(search_term),
+                    func.replace(
+                        cast(DatabaseDatasetVersionRow.id, Text),
+                        "-",
+                        "",
+                    ).ilike(id_search_term),
+                ),
             )
 
         # apply pagination
