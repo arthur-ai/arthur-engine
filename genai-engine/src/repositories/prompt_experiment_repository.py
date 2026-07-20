@@ -331,6 +331,11 @@ class PromptExperimentRepository:
         if not dataset:
             raise ValueError(f"Dataset {request.dataset_ref.id} not found")
 
+        # Validation only needs the version's scalar column_names (read below).
+        # With version_rows now lazy="select" (see dataset_models.py) this
+        # .first() loads just the dataset_versions row and does NOT materialize
+        # the version's (potentially multi-GB) row set: the relationship is
+        # never accessed here, so no LEFT OUTER JOIN / row load is emitted.
         dataset_version = (
             self.db_session.query(DatabaseDatasetVersion)
             .filter(
@@ -535,25 +540,59 @@ class PromptExperimentRepository:
         ] = None,
     ) -> int:
         """Create test cases for each row in the dataset version, including prompt results and eval scores"""
-        # Get all rows for this dataset version
-        dataset_rows = (
-            self.db_session.query(DatabaseDatasetVersionRow)
-            .filter(
-                DatabaseDatasetVersionRow.dataset_id == dataset_ref.id,
-                DatabaseDatasetVersionRow.version_number == dataset_ref.version,
-            )
-            .all()
+        # Fetch the rows for this dataset version. When a dataset_row_filter is
+        # provided we push its equality conditions down into SQL so only the
+        # selected rows are fetched, instead of loading the whole version and
+        # filtering in Python. This is a minor extra defense; the primary
+        # create-time memory fix is the per-row flush further below.
+        #
+        # Dataset row values are always persisted as strings
+        # (DatasetVersionRowColumnItem.column_value is typed `str`), so the JSON
+        # `->>` (astext) comparison here is equivalent to the str()-based
+        # comparison in dataset_row_matches_filter, AND-combined across
+        # conditions to match the Python semantics.
+        rows_query = self.db_session.query(DatabaseDatasetVersionRow).filter(
+            DatabaseDatasetVersionRow.dataset_id == dataset_ref.id,
+            DatabaseDatasetVersionRow.version_number == dataset_ref.version,
         )
+        if dataset_row_filter:
+            for filter_condition in dataset_row_filter:
+                rows_query = rows_query.filter(
+                    DatabaseDatasetVersionRow.data[filter_condition.column_name].astext
+                    == str(filter_condition.column_value),
+                )
+        dataset_rows = rows_query.all()
 
-        # Filter rows based on dataset_row_filter if provided
+        # Defensive re-check preserving the exact original Python matching
+        # semantics (a no-op for the string-valued row data we persist).
         filtered_rows = [
             row
             for row in dataset_rows
             if dataset_row_matches_filter(row, dataset_row_filter)
         ]
 
-        # Create a test case for each filtered row
+        # Create the test cases one dataset row at a time, flushing and releasing
+        # each row's ORM objects before moving to the next row.
+        #
+        # Previously every test case, prompt result and eval score for the whole
+        # N x P x E matrix was built in memory and flushed once at the end, so
+        # all N*P*E eval_input_variables JSON blobs -- each holding a copy of the
+        # row's mapped column values -- were serialized and buffered by psycopg
+        # simultaneously. For a large mapped column (e.g. a RAG context/document)
+        # that made create-time memory scale with the whole matrix and could
+        # OOM the container during the create POST, before any eval ran, even
+        # for a small number of rows. Flushing per row bounds peak memory to a
+        # single row's P*E cells, independent of the matrix size or payload.
+        #
+        # This runs inside the create_experiment transaction: flush is not
+        # commit, so every per-row flush stays in the same transaction and rolls
+        # back together on error (atomicity is preserved -- no intermediate
+        # commits are introduced). Nothing later in create_experiment reads these
+        # per-cell objects back (only the returned row count and db_experiment
+        # are used), so each flushed row's objects are expunged to release their
+        # potentially large JSON payloads from the session identity map.
         for row in filtered_rows:
+            created_in_row: list[object] = []
             # Build prompt input variables from the dataset row data
             prompt_input_variables = []
             row_data = row.data  # This is the JSON data for the row
@@ -589,6 +628,7 @@ class PromptExperimentRepository:
                 prompt_input_variables=prompt_input_variables,
             )
             self.db_session.add(test_case)
+            created_in_row.append(test_case)
 
             # Create prompt results for each prompt config in this test case
             for config in prompt_configs:
@@ -624,6 +664,7 @@ class PromptExperimentRepository:
                         output_cost=None,
                     )
                 self.db_session.add(prompt_result)
+                created_in_row.append(prompt_result)
 
                 # Create eval score entries for each eval configuration
                 for eval_ref, llm_eval in eval_configs:
@@ -672,9 +713,16 @@ class PromptExperimentRepository:
                         eval_result_cost=None,
                     )
                     self.db_session.add(eval_score)
+                    created_in_row.append(eval_score)
 
-        # Commit all the created objects
-        self.db_session.flush()
+            # Flush this row's objects to the DB (bounding the psycopg serialize
+            # buffer to a single row's inserts) and expunge them from the session
+            # so their JSON payloads are released before building the next row.
+            # Expunge in reverse (child-first) creation order so the parents'
+            # unloaded relationship collections are never traversed/loaded.
+            self.db_session.flush()
+            for created_obj in reversed(created_in_row):
+                self.db_session.expunge(created_obj)
 
         return len(filtered_rows)
 
