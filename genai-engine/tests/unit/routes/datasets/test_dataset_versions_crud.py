@@ -775,6 +775,24 @@ def test_dataset_version_search(
     assert result.total_count == 2  # Total matching rows
     assert len(result.rows) == 1  # Only 1 per page
 
+    # Test 6: Search by Row ID should return the matching row
+    status_code, all_rows_result = client.get_dataset_version(
+        dataset_id=dataset_id,
+        version_number=1,
+    )
+    assert status_code == 200
+    target_row_id = all_rows_result.rows[0].id
+
+    status_code, result = client.get_dataset_version(
+        dataset_id=dataset_id,
+        version_number=1,
+        search=str(target_row_id),
+    )
+    assert status_code == 200
+    assert result.total_count == 1
+    assert len(result.rows) == 1
+    assert str(result.rows[0].id) == str(target_row_id)
+
     # Cleanup
     status_code = client.delete_dataset(dataset_id)
     assert status_code == 204

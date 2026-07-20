@@ -1,4 +1,4 @@
-import React, { Suspense, lazy } from "react";
+import React, { Suspense, lazy, useState } from "react";
 import { useParams, useNavigate, useLocation, Outlet } from "react-router-dom";
 
 import { ChatbotDrawer } from "@/components/chatbot/ChatbotDrawer";
@@ -7,6 +7,7 @@ import { TaskErrorState } from "@/components/TaskErrorState";
 import { TaskLoadingState } from "@/components/TaskLoadingState";
 import { TaskNotFoundState } from "@/components/TaskNotFoundState";
 import { useAuth } from "@/contexts/AuthContext";
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useDemoMode } from "@/contexts/EngineConfigContext";
 import { TaskProvider } from "@/contexts/TaskContext";
 import { useTaskQuery } from "@/hooks/tasks/useTaskQuery";
@@ -23,6 +24,7 @@ export const TaskLayout: React.FC = () => {
   const location = useLocation();
   const { demoMode } = useDemoMode();
   const { isTenant } = useAuth();
+  const { chatbotEnabled } = useDisplaySettings();
   // The guided demo tour is a demo-only experience: it should run only when the
   // engine is in demo mode AND the signed-in user is a demo tenant. Gating at the
   // mount point means the tour engine never initializes (and so never auto-starts)
@@ -61,6 +63,9 @@ export const TaskLayout: React.FC = () => {
     }
   }
 
+  const showChatbot = chatbotEnabled && activeSection !== "chatbot";
+  const [chatbotOpen, setChatbotOpen] = useState(false);
+
   const handleBack = () => {
     navigate("/");
   };
@@ -71,9 +76,15 @@ export const TaskLayout: React.FC = () => {
 
   return (
     <div className="h-screen bg-gray-50 dark:bg-gray-950 flex flex-col overflow-hidden">
-      {activeSection !== "chatbot" && <ChatbotDrawer taskId={taskId} />}
+      {showChatbot && <ChatbotDrawer taskId={taskId} open={chatbotOpen} onClose={() => setChatbotOpen(false)} />}
       <div className="flex flex-1 overflow-hidden">
-        <SidebarNavigation onBackToDashboard={handleBack} onNavigate={handleNavigate} activeSection={activeSection} taskName={task?.name} />
+        <SidebarNavigation
+          onBackToDashboard={handleBack}
+          onNavigate={handleNavigate}
+          activeSection={activeSection}
+          taskName={task?.name}
+          onOpenChatbot={showChatbot ? () => setChatbotOpen(true) : undefined}
+        />
 
         {task ? (
           // The page renders eagerly; when the demo tour is active the lazy

@@ -14,14 +14,13 @@ import { addToDatasetFormOptions } from "./form/shared";
 import { usePatchTransform } from "./hooks/usePatchTransform";
 import { usePreviewTableData } from "./hooks/usePreviewTableData";
 
-import { Drawer } from "@/components/common/Drawer";
-
 export const PreviewTable = withForm({
   ...addToDatasetFormOptions,
   props: {} as {
     onSaveTransform: () => void;
+    onCancel: () => void;
   },
-  render: function Render({ form, onSaveTransform }) {
+  render: function Render({ form, onSaveTransform, onCancel }) {
     const field = useField({ form, name: "columns" as const });
     const { enqueueSnackbar } = useSnackbar();
 
@@ -60,7 +59,9 @@ export const PreviewTable = withForm({
               </Button>
             </ButtonGroup>
             <ButtonGroup size="small">
-              <Drawer.Close render={<Button variant="outlined" color="primary" startIcon={<CloseIcon />} />}>Cancel</Drawer.Close>
+              <Button variant="outlined" color="primary" startIcon={<CloseIcon />} onClick={onCancel}>
+                Cancel
+              </Button>
               <Button variant="contained" color="primary" startIcon={<AddIcon />} type="submit">
                 Add Row
               </Button>

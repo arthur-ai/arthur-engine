@@ -10,12 +10,20 @@ arthur-genai-engine:
   enabled: true
   # postgres database URL
   postgresBYOEndpoint: ""
-  # GenAI Engine application ingress DNS URL (e.g. arthur-genai-engine.mydomain.com)
+  # GenAI Engine application ingress DNS URL (e.g. arthur-genai-engine.mydomain.com).
+  # This MUST be the same hostname as (1) the TLS/ACM certificate you terminate HTTPS with and
+  # (2) the DNS record you point at the ingress load balancer. If these three disagree, requests
+  # are served a 404 or a certificate error even though the pods are healthy. See the "ingress"
+  # block below and the README "Ingress and HTTPS" section.
   genaiEngineIngressURL: ""
   # Arthur Platform (Scope) frontend URL for this deployment (e.g. https://app.mydomain.arthur.ai)
   scopeFeIngressURI: ""
   # Provider of OpenAI LLMs (must be set to 'Azure' or 'OpenAI')
   genaiEngineOpenAIProvider: "Azure"
+  # TLS verification for the LLM endpoint (e.g. an OpenAI-compatible LiteLLM proxy). Referenced
+  # unconditionally by the deployment as GENAI_ENGINE_OPENAI_VERIFY_SSL, so set it explicitly
+  # (empty renders an invalid bool and crashes worker boot). "false" disables verification (dev/test only).
+  genaiEngineOpenAIVerifySSL: "true"
 
   ###################################
   ## Additional Required Configurations For GPU Deployment
@@ -47,6 +55,18 @@ arthur-genai-engine:
     #  - key: "nvidia.com/gpu"
     #    operator: "Exists"
     #    effect: "NoSchedule"
+    # Audit log PVC. Referenced unconditionally by the deployment template
+    # (.arthurGenaiEngineDeployment.auditLog.enabled), so this block must be present.
+    auditLog:
+      enabled: false
+      mountPath: "/home/nonroot/app/audit_logs"
+      # Size requested for the audit log PVC
+      storageSize: "10Gi"
+      # ReadWriteMany-capable storage class to back the audit log PVC (e.g. NFS, EFS, Azure Files)
+      storageClassName: ""
+      # (Optional) Group ID applied as the pod's fsGroup so the non-root container can write to the mounted PVC.
+      # Required on platforms that mount volumes as root (e.g. OpenShift - use a GID from the namespace's allowed range).
+      fsGroup: ""
   # CPU deployment - Comment out the below 4 lines
   gpuEnabled: false
   genaiEngineDeploymentType: "deployment"
@@ -116,17 +136,49 @@ arthur-genai-engine:
   ###################################
   ## Advanced - Kubernetes Ingress
   ###################################
+  # Ingress controller + TLS termination. HTTPS is a prerequisite (see README "Ingress and
+  # HTTPS"); configure it here. Pick the option that matches how your cluster exposes services:
+  #
+  #   - Option A - nginx ingress controller (default): the controller must be installed
+  #     separately (it is NOT part of this chart). TLS is terminated at nginx using a Kubernetes
+  #     TLS secret referenced under `tls`.
+  #   - Option B - AWS ALB (EKS Auto Mode, or any cluster running the AWS Load Balancer
+  #     Controller): there is NO nginx controller on these clusters. Use the built-in `alb`
+  #     IngressClass and terminate TLS at the ALB with an ACM certificate via annotations.
+  #
+  # Whichever you pick, the HTTPS hostname must equal genaiEngineIngressURL (see note above).
   ingress:
+    # --- Option A: nginx (default) ---
     className: "nginx"
     annotations:
       nginx.ingress.kubernetes.io/rewrite-target: /
+      # Uncomment to redirect HTTP->HTTPS once the `tls` block below is configured:
+      # nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    # TLS termination at nginx. Create the secret first, then uncomment:
+    #   kubectl -n <namespace> create secret tls genai-engine-tls --cert=tls.crt --key=tls.key
+    # tls:
+    #   - hosts:
+    #       - arthur-genai-engine.mydomain.com   # must equal genaiEngineIngressURL
+    #     secretName: genai-engine-tls
+    #
+    # --- Option B: AWS ALB (EKS Auto Mode / AWS Load Balancer Controller) ---
+    # Replace the className + annotations above with the following. TLS is terminated at the ALB
+    # using an ACM certificate whose domain equals genaiEngineIngressURL; do NOT set a `tls` block.
+    # className: "alb"
+    # annotations:
+    #   alb.ingress.kubernetes.io/scheme: internet-facing
+    #   alb.ingress.kubernetes.io/target-type: ip
+    #   alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+    #   alb.ingress.kubernetes.io/ssl-redirect: "443"
+    #   alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:<region>:<account-id>:certificate/<cert-id>"
+    #   alb.ingress.kubernetes.io/healthcheck-path: /health
     labels: {}
 
   ###################################
   ## Advanced - GenAI Engine
   ###################################
   # GenAI Engine version
-  genaiEngineVersion: 2.1.699
+  genaiEngineVersion: 2.1.717
   # Max number of tokens GenAI Engine can process against LLM for hallucination data checks
   genaiEngineHallucinationCheckMaxTokenLimit: 3000
   # Max number of tokens GenAI Engine can process against LLM for sensitive data checks
@@ -205,6 +257,22 @@ arthur-genai-engine:
   # Name of the secret which stores the connection strings for Azure OpenAI GPT-3.5 model endpoints. Must be in form "DEPLOYMENT_NAME1::OPENAI_ENDPOINT1::SECRET_KEY1,DEPLOYMENT_NAME2::OPENAI_ENDPOINT2::SECRET_KEY2"). Many may be specified.
   # (expecting value for key 'keys')
   genaiEngineSecretOpenAIGPTModelNamesEndpointsKeysName: "genai-engine-secret-open-ai-gpt-model-names-endpoints-keys"
+  # GenAI Engine secret store key name (expecting value for key 'key' - should be a base64-encoded 32-byte Fernet key)
+  genaiEngineSecretStoreKeyName: "genai-engine-secret-store-key"
+
+  ###################################
+  ## Advanced - GCP Service Account
+  ###################################
+  # Referenced unconditionally by the deployment template (.gcpDiscoveryConfig.isEnabled), so this
+  # block must be present. Leave isEnabled: false unless integrating Vertex AI.
+  gcpDiscoveryConfig:
+    isEnabled: false
+    # Google Cloud project ID for Vertex AI integration
+    # googleCloudProject: ""
+    # (Optional) Google Cloud region/location
+    # googleCloudLocation: ""
+    # (Optional) Name of the K8s secret containing the GCP service account JSON key
+    # googleCredentialsSecretName: ""
 
 arthur-ml-engine:
   ###################################
@@ -222,7 +290,10 @@ arthur-ml-engine:
     imagePullSecretName: ""
   mlEngine:
     deployment:
-      # This should be the same as the genaiEngineIngressURL in the arthur-genai-engine chart
+      # Full URL of the GenAI Engine ingress, INCLUDING the "https://" scheme.
+      # This is the same host as genaiEngineIngressURL in the arthur-genai-engine chart, but note that
+      # genaiEngineIngressURL is a bare hostname (no scheme) whereas this value MUST include "https://".
+      # Example: "https://arthur-genai-engine.mydomain.com"
       genaiEngineInternalIngressHost: ""
       fetchRawDataEnabled: true
       genaiEngineMaxPageSize: 1500

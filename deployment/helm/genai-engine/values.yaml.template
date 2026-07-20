@@ -3,7 +3,11 @@
 ###################################
 # postgres database URL
 postgresBYOEndpoint: ""
-# GenAI Engine application ingress DNS URL (e.g. arthur-genai-engine.mydomain.com)
+# GenAI Engine application ingress DNS URL (e.g. arthur-genai-engine.mydomain.com).
+# This MUST be the same hostname as (1) the TLS/ACM certificate you terminate HTTPS with and
+# (2) the DNS record you point at the ingress load balancer. If these three disagree, requests
+# are served a 404 or a certificate error even though the pods are healthy. See the "ingress"
+# block below and the README "Ingress and HTTPS" section.
 genaiEngineIngressURL: ""
 # Arthur Platform (Scope) frontend URL for this deployment (e.g. https://app.mydomain.arthur.ai)
 scopeFeIngressURI: ""
@@ -130,17 +134,49 @@ postgresClientConnectionPoolSize: 5
 ###################################
 ## Advanced - Kubernetes Ingress
 ###################################
+# Ingress controller + TLS termination. HTTPS is a prerequisite (see README "Ingress and
+# HTTPS"); configure it here. Pick the option that matches how your cluster exposes services:
+#
+#   - Option A - nginx ingress controller (default): the controller must be installed
+#     separately (it is NOT part of this chart). TLS is terminated at nginx using a Kubernetes
+#     TLS secret referenced under `tls`.
+#   - Option B - AWS ALB (EKS Auto Mode, or any cluster running the AWS Load Balancer
+#     Controller): there is NO nginx controller on these clusters. Use the built-in `alb`
+#     IngressClass and terminate TLS at the ALB with an ACM certificate via annotations.
+#
+# Whichever you pick, the HTTPS hostname must equal genaiEngineIngressURL (see note above).
 ingress:
+  # --- Option A: nginx (default) ---
   className: "nginx"
   annotations:
     nginx.ingress.kubernetes.io/rewrite-target: /
+    # Uncomment to redirect HTTP->HTTPS once the `tls` block below is configured:
+    # nginx.ingress.kubernetes.io/ssl-redirect: "true"
+  # TLS termination at nginx. Create the secret first, then uncomment:
+  #   kubectl -n <namespace> create secret tls genai-engine-tls --cert=tls.crt --key=tls.key
+  # tls:
+  #   - hosts:
+  #       - arthur-genai-engine.mydomain.com   # must equal genaiEngineIngressURL
+  #     secretName: genai-engine-tls
+  #
+  # --- Option B: AWS ALB (EKS Auto Mode / AWS Load Balancer Controller) ---
+  # Replace the className + annotations above with the following. TLS is terminated at the ALB
+  # using an ACM certificate whose domain equals genaiEngineIngressURL; do NOT set a `tls` block.
+  # className: "alb"
+  # annotations:
+  #   alb.ingress.kubernetes.io/scheme: internet-facing
+  #   alb.ingress.kubernetes.io/target-type: ip
+  #   alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+  #   alb.ingress.kubernetes.io/ssl-redirect: "443"
+  #   alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:<region>:<account-id>:certificate/<cert-id>"
+  #   alb.ingress.kubernetes.io/healthcheck-path: /health
   labels: {}
 
 ###################################
 ## Advanced - GenAI Engine
 ###################################
 # GenAI Engine version
-genaiEngineVersion: '2.1.699'
+genaiEngineVersion: '2.1.717'
 # Max number of tokens GenAI Engine can process against LLM for hallucination data checks
 genaiEngineHallucinationCheckMaxTokenLimit: 3000
 # Max number of tokens GenAI Engine can process against LLM for sensitive data checks

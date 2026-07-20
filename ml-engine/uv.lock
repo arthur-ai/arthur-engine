@@ -146,7 +146,7 @@ wheels = [
 
 [[package]]
 name = "arthur-client"
-version = "1.4.2256"
+version = "1.4.2267"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "authlib" },
@@ -158,9 +158,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f8/98/e25e45aff8c07fff88565f38dd049ca5bd69fe0389b592c3680b5425cd01/arthur_client-1.4.2256.tar.gz", hash = "sha256:1a03d78f90e8966504667b15b98520b83bf56242bcd6993bd1ca3fde1e3a4092", size = 404373, upload-time = "2026-07-08T22:40:35.984Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/fd/17/98c9480b0c0c56d158365307e435eccfee4f358046ccaa59d5c20428a6e9/arthur_client-1.4.2267.tar.gz", hash = "sha256:183c53bb9aed29d08842b49d181c8d211e6e5191184425a06238121cd73327e0", size = 405441, upload-time = "2026-07-16T14:17:09.915Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d9/c4/cc56811de596472ef91c28681ad8797cdbbbf8658ff042941bd134b72f5a/arthur_client-1.4.2256-py3-none-any.whl", hash = "sha256:ffc8f3810141ea9594cfd50c37f0ad3a269a1f9df6bfbdd479026bf3a904da07", size = 1482444, upload-time = "2026-07-08T22:40:37.298Z" },
+    { url = "https://files.pythonhosted.org/packages/24/8d/21391313d1a59e848b49f1baf47bd104e213e6bbc01dcbaaca925eb395e1/arthur_client-1.4.2267-py3-none-any.whl", hash = "sha256:543c96d38382cb6a19df97decb7b5b8b1071d1c73e4f18a36fefe18bc753290f", size = 1486399, upload-time = "2026-07-16T14:17:11.281Z" },
 ]
 
 [[package]]
@@ -1418,7 +1418,7 @@ wheels = [
 
 [[package]]
 name = "ml-engine"
-version = "2.1.696"
+version = "2.1.716"
 source = { editable = "." }
 dependencies = [
     { name = "adlfs" },
@@ -1477,7 +1477,7 @@ linters = [
 [package.metadata]
 requires-dist = [
     { name = "adlfs", specifier = "==2025.8.0" },
-    { name = "arthur-client", specifier = "==1.4.2256" },
+    { name = "arthur-client", specifier = "==1.4.2267" },
     { name = "arthur-common", specifier = "==2.4.67" },
     { name = "croniter", specifier = "==6.0.0" },
     { name = "databricks-sdk", specifier = ">=0.84.0,<1" },
@@ -1515,7 +1515,7 @@ requires-dist = [
 dev = [
     { name = "lazy-imports", specifier = "==1.2.0" },
     { name = "pre-commit", specifier = "==4.5.1" },
-    { name = "pytest", specifier = "==9.0.1" },
+    { name = "pytest", specifier = "==9.0.3" },
     { name = "pytest-asyncio", specifier = "==1.4.0" },
     { name = "pytest-httpserver", specifier = "==1.1.5" },
     { name = "pytest-httpx", specifier = "==0.36.2" },
@@ -2103,7 +2103,7 @@ wheels = [
 
 [[package]]
 name = "pytest"
-version = "9.0.1"
+version = "9.0.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "colorama", marker = "sys_platform == 'win32'" },
@@ -2112,9 +2112,9 @@ dependencies = [
     { name = "pluggy" },
     { name = "pygments" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/07/56/f013048ac4bc4c1d9be45afd4ab209ea62822fb1598f40687e6bf45dcea4/pytest-9.0.1.tar.gz", hash = "sha256:3e9c069ea73583e255c3b21cf46b8d3c56f6e3a1a8f6da94ccb0fcf57b9d73c8", size = 1564125, upload-time = "2025-11-12T13:05:09.333Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/7d/0d/549bd94f1a0a402dc8cf64563a117c0f3765662e2e668477624baeec44d5/pytest-9.0.3.tar.gz", hash = "sha256:b86ada508af81d19edeb213c681b1d48246c1a91d304c6c81a427674c17eb91c", size = 1572165, upload-time = "2026-04-07T17:16:18.027Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/0b/8b/6300fb80f858cda1c51ffa17075df5d846757081d11ab4aa35cef9e6258b/pytest-9.0.1-py3-none-any.whl", hash = "sha256:67be0030d194df2dfa7b556f2e56fb3c3315bd5c8822c6951162b92b32ce7dad", size = 373668, upload-time = "2025-11-12T13:05:07.379Z" },
+    { url = "https://files.pythonhosted.org/packages/d4/24/a372aaf5c9b7208e7112038812994107bc65a84cd00e0354a88c2c77a617/pytest-9.0.3-py3-none-any.whl", hash = "sha256:2c5efc453d45394fdd706ade797c0a81091eccd1d6e4bccfcd476e2b8e0ab5d9", size = 375249, upload-time = "2026-04-07T17:16:16.13Z" },
 ]
 
 [[package]]

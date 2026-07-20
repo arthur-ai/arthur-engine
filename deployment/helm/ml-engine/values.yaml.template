@@ -8,7 +8,10 @@ mlEngine:
     ###################################
     ## Minimum Required Configurations for when deployed with Arthur GenAI Engine
     ###################################
-    # This should be the same as the genaiEngineIngressURL in the arthur-genai-engine chart
+    # Full URL of the GenAI Engine ingress, INCLUDING the "https://" scheme.
+    # This is the same host as genaiEngineIngressURL in the arthur-genai-engine chart, but note that
+    # genaiEngineIngressURL is a bare hostname (no scheme) whereas this value MUST include "https://".
+    # Example: "https://arthur-genai-engine.mydomain.com"
     genaiEngineInternalIngressHost: ""
     fetchRawDataEnabled: true
     genaiEngineMaxPageSize: 1500
@@ -25,7 +28,7 @@ mlEngine:
       create: false
       name: ""
     containerImageName: "ml-engine"
-    containerImageVersion: "2.1.699"
+    containerImageVersion: "2.1.717"
     containerMemoryRequests: "16Gi"
     containerCPURequests: "7"
     containerMemoryLimits: "16Gi"
