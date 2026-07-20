@@ -26,6 +26,7 @@ from arthur_client.api_bindings import (
 
 from job_executors._interval_utils import alert_interval_to_timedelta
 from job_executors.alert_check_executor import (
+    MAX_ALERT_LOG_BUCKETS_PER_RULE,
     AlertCheckExecutor,
     get_expected_bucket_timestamps,
 )
@@ -33,12 +34,13 @@ from job_executors.alert_check_executor import (
 
 def expected_buckets(job_spec, alert_rule):
     td = alert_interval_to_timedelta(alert_rule.interval)
-    return get_expected_bucket_timestamps(
+    buckets, _ = get_expected_bucket_timestamps(
         job_spec.check_range_start_timestamp - td,
         job_spec.check_range_end_timestamp - td,
         td,
         alert_rule.interval,
     )
+    return buckets
 
 
 def make_alert_rule(model_id: str, now: datetime) -> AlertRule:
@@ -549,6 +551,65 @@ def test_alert_rule_log_okay():
     statuses = {log.timestamp: log.status for log in posted.logs}
     assert statuses[buckets[0]] == AlertLogStatus.OKAY
     alerts_client.post_model_alerts.assert_not_called()
+
+
+def test_expected_bucket_timestamps_capped():
+    start = datetime(2026, 7, 1, tzinfo=timezone.utc)
+    end = start + timedelta(days=1)
+    interval = AlertRuleInterval(unit=IntervalUnit.SECONDS, count=1)
+
+    buckets, num_skipped = get_expected_bucket_timestamps(
+        start,
+        end,
+        timedelta(seconds=1),
+        interval,
+    )
+
+    assert len(buckets) == MAX_ALERT_LOG_BUCKETS_PER_RULE
+    assert num_skipped == 86401 - MAX_ALERT_LOG_BUCKETS_PER_RULE
+    # the most recent buckets are kept, on the 1-second grid ending at `end`
+    assert buckets[-1] == end
+    assert buckets[0] == end - timedelta(seconds=MAX_ALERT_LOG_BUCKETS_PER_RULE - 1)
+
+    # a window smaller than the cap is unaffected
+    buckets, num_skipped = get_expected_bucket_timestamps(
+        start,
+        start + timedelta(seconds=10),
+        timedelta(seconds=1),
+        interval,
+    )
+    assert len(buckets) == 11
+    assert num_skipped == 0
+
+
+def test_alert_rule_log_bucket_cap_applied():
+    now = datetime(2026, 7, 18, 8, 0, tzinfo=timezone.utc)
+    model_id = str(uuid4())
+    alert_rule = make_alert_rule(model_id, now)
+    alert_rule.interval = AlertRuleInterval(unit=IntervalUnit.SECONDS, count=1)
+
+    alerts_client = Mock()
+    alert_rules_client = Mock()
+    metrics_client = Mock()
+
+    alert_rules_response = Mock()
+    alert_rules_response.records = [alert_rule]
+    alert_rules_client.get_model_alert_rules.return_value = alert_rules_response
+
+    metrics_client.post_model_metrics_query.return_value = MetricsQueryResult(
+        results=[],
+    )
+
+    # 1-hour check window with a 1-second rule would otherwise emit 3600 logs
+    job, job_spec = make_job_and_spec(model_id, now)
+    executor = make_executor(alerts_client, alert_rules_client, metrics_client)
+    executor.execute(job, job_spec)
+
+    alerts_client.post_model_alert_logs.assert_called_once()
+    posted = alerts_client.post_model_alert_logs.call_args.kwargs["post_alert_logs"]
+    assert len(posted.logs) == MAX_ALERT_LOG_BUCKETS_PER_RULE
+    assert all(log.status == AlertLogStatus.NO_DATA for log in posted.logs)
+    executor.logger.warning.assert_called()
 
 
 def test_alert_rule_log_no_data():

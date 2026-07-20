@@ -1,7 +1,7 @@
 import logging
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Tuple, Union
 from uuid import UUID
 
 from arthur_client.api_bindings import (
@@ -55,6 +55,13 @@ ALERT_RULES_NON_ADDITIONAL_DIMENSION_FIELDS = [
 ]
 ALERT_RULES_SCALAR_TYPES = (str, int, float, bool, datetime, UUID)
 
+# Caps how many per-bucket alert logs a single rule can emit per job run. A
+# fine-grained interval over a wide check window (e.g. a 1-second rule on a
+# multi-day backfill) would otherwise enumerate one no_data log per interval —
+# millions of rows in one job — and flood the app-plane alert_logs table. The
+# fired-alert path is separately capped by ALERT_RULES_QUERY_LIMIT.
+MAX_ALERT_LOG_BUCKETS_PER_RULE = 100
+
 # TimescaleDB's time_bucket anchors buckets to a fixed origin that depends on
 # the bucket width. Midnight Jan 3, 2000 for buckets using seconds/minutes/
 # hours/days and midnight Jan 1, 2000 for buckets using month/year/century.
@@ -67,7 +74,8 @@ def get_expected_bucket_timestamps(
     adjusted_end_time: datetime,
     td: timedelta,
     interval: AlertRuleInterval,
-) -> List[datetime]:
+    max_buckets: int = MAX_ALERT_LOG_BUCKETS_PER_RULE,
+) -> Tuple[List[datetime], int]:
     """
     This function gets every time bucket interval within thes specified window.
     We can then compare which buckets the query actually returned to determine
@@ -78,6 +86,10 @@ def get_expected_bucket_timestamps(
     account for this, we snap adjusted_start_time to that same grid so our generated
     timestamps match the ones the query returns, then create a bucket for each td
     until our end time.
+
+    At most max_buckets buckets are returned, keeping the most recent ones.
+    Returns (buckets, num_skipped) where num_skipped is the count of older
+    buckets in the window that were dropped by the cap.
 
     Timescale's docs on time_bucket:
     https://www.tigerdata.com/docs/reference/timescaledb/hyperfunctions/time-series-utilities/time_bucket
@@ -107,11 +119,25 @@ def get_expected_bucket_timestamps(
     if bucket_ts < adjusted_start_time:
         bucket_ts += bucket_step
 
+    num_skipped = 0
+    # jump straight to the last max_buckets buckets instead of enumerating a
+    # potentially huge window one interval at a time
+    if isinstance(bucket_step, timedelta) and bucket_ts <= adjusted_end_time:
+        total = (adjusted_end_time - bucket_ts) // bucket_step + 1
+        if total > max_buckets:
+            num_skipped = total - max_buckets
+            bucket_ts += num_skipped * bucket_step
+
     buckets = []
     while bucket_ts <= adjusted_end_time:
         buckets.append(bucket_ts)
         bucket_ts += bucket_step
-    return buckets
+
+    if len(buckets) > max_buckets:
+        num_skipped += len(buckets) - max_buckets
+        buckets = buckets[-max_buckets:]
+
+    return buckets, num_skipped
 
 
 class AlertCheckExecutor:
@@ -271,12 +297,21 @@ class AlertCheckExecutor:
 
             results_by_ts[ts.astimezone(timezone.utc)].append(r)
 
-        expected_bucket_timestamps = get_expected_bucket_timestamps(
-            adjusted_start_time,
-            adjusted_end_time,
-            td,
-            alert_rule.interval,
+        expected_bucket_timestamps, num_skipped_buckets = (
+            get_expected_bucket_timestamps(
+                adjusted_start_time,
+                adjusted_end_time,
+                td,
+                alert_rule.interval,
+            )
         )
+        if num_skipped_buckets:
+            self.logger.warning(
+                f"Alert rule {alert_rule.id} (interval: {alert_rule.interval.count} "
+                f"{alert_rule.interval.unit}) has {num_skipped_buckets + len(expected_bucket_timestamps)} "
+                f"buckets in check window {adjusted_start_time} -> {adjusted_end_time}; "
+                f"only logging the most recent {len(expected_bucket_timestamps)}",
+            )
 
         logs: List[PostAlertLog] = []
         fired_rows: List[Dict[str, Any]] = []
