@@ -197,6 +197,126 @@ def test_traces_overview_success_rate_defaults_to_one_without_evals(
 
 
 @pytest.mark.unit_tests
+def test_traces_overview_success_rate_excludes_skipped_evals(
+    client: GenaiEngineTestClientBase,
+):
+    status_code, task = client.create_task(
+        name="test_traces_overview_excludes_skipped",
+        is_agentic=True,
+    )
+    assert status_code == 200
+
+    now = datetime.now()
+    trace_id = str(uuid.uuid4())
+    passed_annotation = None
+    failed_annotation = None
+    skipped_annotation = None
+
+    try:
+        create_mock_trace(
+            trace_id,
+            task.id,
+            start_time=now - timedelta(days=1),
+            end_time=now - timedelta(days=1) + timedelta(seconds=5),
+            total_token_count=100,
+            total_token_cost=0.5,
+        )
+        passed_annotation = create_mock_annotation(
+            trace_id=trace_id,
+            annotation_type=AgenticAnnotationType.CONTINUOUS_EVAL,
+            continuous_eval_id=uuid.uuid4(),
+            run_status=ContinuousEvalRunStatus.PASSED,
+        )
+        failed_annotation = create_mock_annotation(
+            trace_id=trace_id,
+            annotation_type=AgenticAnnotationType.CONTINUOUS_EVAL,
+            continuous_eval_id=uuid.uuid4(),
+            run_status=ContinuousEvalRunStatus.FAILED,
+        )
+        # This SKIPPED eval must NOT be counted in the denominator.
+        skipped_annotation = create_mock_annotation(
+            trace_id=trace_id,
+            annotation_type=AgenticAnnotationType.CONTINUOUS_EVAL,
+            continuous_eval_id=uuid.uuid4(),
+            run_status=ContinuousEvalRunStatus.SKIPPED,
+        )
+
+        status_code, data = client.trace_api_get_traces_overview(
+            start_time=now - timedelta(days=7),
+            end_time=now,
+            task_ids=[task.id],
+        )
+        assert status_code == 200
+
+        overview = next((o for o in data.overviews if o.task_id == task.id), None)
+        assert overview is not None
+        # 3 continuous evals exist, but the SKIPPED one is excluded, so only
+        # the PASSED and FAILED evals count toward the denominator.
+        assert overview.eval_count == 2
+        # 1 passed out of 2 that actually ran.
+        assert overview.continuous_eval_success_rate == 0.5
+    finally:
+        if passed_annotation:
+            delete_mock_annotation(passed_annotation.id)
+        if failed_annotation:
+            delete_mock_annotation(failed_annotation.id)
+        if skipped_annotation:
+            delete_mock_annotation(skipped_annotation.id)
+        delete_mock_trace(trace_id)
+        client.delete_task(task.id)
+
+
+@pytest.mark.unit_tests
+def test_traces_overview_success_rate_defaults_to_one_with_only_skipped_evals(
+    client: GenaiEngineTestClientBase,
+):
+    status_code, task = client.create_task(
+        name="test_traces_overview_only_skipped",
+        is_agentic=True,
+    )
+    assert status_code == 200
+
+    now = datetime.now()
+    trace_id = str(uuid.uuid4())
+    skipped_annotation = None
+
+    try:
+        create_mock_trace(
+            trace_id,
+            task.id,
+            start_time=now - timedelta(days=1),
+            end_time=now - timedelta(days=1) + timedelta(seconds=5),
+            total_token_count=10,
+            total_token_cost=0.1,
+        )
+        skipped_annotation = create_mock_annotation(
+            trace_id=trace_id,
+            annotation_type=AgenticAnnotationType.CONTINUOUS_EVAL,
+            continuous_eval_id=uuid.uuid4(),
+            run_status=ContinuousEvalRunStatus.SKIPPED,
+        )
+
+        status_code, data = client.trace_api_get_traces_overview(
+            start_time=now - timedelta(days=7),
+            end_time=now,
+            task_ids=[task.id],
+        )
+        assert status_code == 200
+
+        overview = next((o for o in data.overviews if o.task_id == task.id), None)
+        assert overview is not None
+        # Only a SKIPPED eval exists, so nothing counts toward the denominator
+        # and the success rate falls back to the 100% zero-guard default.
+        assert overview.eval_count == 0
+        assert overview.continuous_eval_success_rate == 1.0
+    finally:
+        if skipped_annotation:
+            delete_mock_annotation(skipped_annotation.id)
+        delete_mock_trace(trace_id)
+        client.delete_task(task.id)
+
+
+@pytest.mark.unit_tests
 def test_traces_timeseries_buckets_by_day(client: GenaiEngineTestClientBase):
     status_code, task = client.create_task(
         name="test_traces_timeseries_buckets_by_day",

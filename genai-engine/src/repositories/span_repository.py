@@ -290,7 +290,17 @@ class SpanRepository:
         eval_rows = (
             self.db_session.query(
                 DatabaseTraceMetadata.task_id.label("task_id"),
-                func.count().label("eval_count"),
+                # Exclude SKIPPED evals from the denominator: they never run to
+                # a pass/fail result, so they can't contribute to passed_count
+                # and shouldn't drag the success rate down. PENDING/RUNNING/
+                # ERROR/FAILED still count. (run_status is guaranteed non-null
+                # for continuous-eval annotations by a DB check constraint.)
+                func.count(DatabaseAgenticAnnotation.id)
+                .filter(
+                    DatabaseAgenticAnnotation.run_status
+                    != ContinuousEvalRunStatus.SKIPPED.value,
+                )
+                .label("eval_count"),
                 func.count(DatabaseAgenticAnnotation.id)
                 .filter(
                     DatabaseAgenticAnnotation.run_status
