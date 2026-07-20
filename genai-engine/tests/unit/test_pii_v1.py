@@ -340,9 +340,9 @@ def test_pii_v1_config_trehsold_specified():
 @pytest.mark.unit_tests
 @patch("scorer.checks.pii.classifier_v1.get_gliner_tokenizer")
 @patch("scorer.checks.pii.classifier_v1.get_gliner_model")
-@patch("scorer.checks.pii.classifier_v1.AnalyzerEngine")
+@patch("scorer.checks.pii.classifier_v1.get_presidio_analyzer")
 def test_pii_v1_entity_routing(
-    mock_analyzer_engine,
+    mock_get_presidio_analyzer,
     mock_get_gliner,
     mock_get_tokenizer,
 ):
@@ -350,7 +350,7 @@ def test_pii_v1_entity_routing(
     # Setup analyzer mock
     mock_analyzer = MagicMock()
     mock_analyzer.analyze = MagicMock(return_value=[])
-    mock_analyzer_engine.return_value = mock_analyzer
+    mock_get_presidio_analyzer.return_value = mock_analyzer
 
     # Setup gliner mock
     mock_gliner_model = MagicMock()
