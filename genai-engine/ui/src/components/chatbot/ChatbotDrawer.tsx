@@ -31,7 +31,7 @@ export function ChatbotDrawer({ taskId, open, onClose }: ChatbotDrawerProps) {
           elevation={8}
           sx={{
             position: "fixed",
-            bottom: 24,
+            bottom: 16,
             left: SIDEBAR_CLEARANCE_PX,
             width: 380,
             height: 560,
