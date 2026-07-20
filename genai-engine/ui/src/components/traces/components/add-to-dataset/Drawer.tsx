@@ -28,7 +28,7 @@ import { Matcher } from "./components/matcher";
 import { TransformSelector } from "./components/transform-selector";
 import { Configurator } from "./Configurator";
 import { CreateDatasetModal } from "./CreateDatasetModal";
-import { addToDatasetFormOptions, TransformDefinition } from "./form/shared";
+import { addToDatasetFormOptions, hasSelectedTransform, TransformDefinition } from "./form/shared";
 import { PreviewTable } from "./PreviewTable";
 import { SaveTransformDialog } from "./SaveTransformDialog";
 
@@ -163,11 +163,17 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
   const selectedTransformDefinition = selectedTransformVersions[0]?.definition;
 
   // Dataset columns are the canonical schema. Pending columns (from
-  // AddColumnDialog) extend the schema once set. Transform variables that
-  // don't match a dataset column are intentionally NOT included here: per
-  // product spec, the schema reflects the dataset, and the transform only
-  // fills values into matching dataset columns.
-  const datasetColumns = selectedDataset?.id ? pendingColumns[selectedDataset.id] || latestVersion?.column_names || [] : [];
+  // AddColumnDialog) extend the schema once set. For the FIRST addition to a
+  // dataset (no persisted schema yet), the selected transform's variables
+  // define the initial schema, so the transform auto-matches and auto-fills
+  // instead of requiring manual column creation + "Fill from Object".
+  const persistedColumns = latestVersion?.column_names ?? [];
+  const transformVariableNames = hasSelectedTransform(selectedTransformId)
+    ? selectedTransformDefinition?.variables.map((v) => v.variable_name) ?? []
+    : [];
+  const datasetColumns = selectedDataset?.id
+    ? pendingColumns[selectedDataset.id] ?? (persistedColumns.length > 0 ? persistedColumns : transformVariableNames)
+    : [];
 
   const datasetColumnsSet = new Set(datasetColumns);
   const ignoredTransformVariables =
@@ -405,6 +411,7 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
                 dataset: "dataset",
                 transform: "transform",
               }}
+              datasetColumns={datasetColumns}
             />
 
             {selectedDataset && (

@@ -52,10 +52,10 @@ export const TransformSelector = withFieldGroup({
       onSuccess: (executionResult) => {
         if (!executionResult.variables.length || !selectedTransform || !selectedTransformDefinition) return;
 
-        // If the dataset schema hasn't loaded yet (e.g. a stale mutation resolved
-        // after the user switched datasets), skip applying transform results.
-        // The Autocomplete is also disabled while loading, so this is a backstop.
-        if (!latestVersion) return;
+        // Skip only while the dataset schema query is still loading (e.g. a stale
+        // mutation resolved after the user switched datasets). A first-addition
+        // dataset has no persisted version yet but must still be filled.
+        if (isLoadingLatestVersion) return;
 
         const transformVariablesByName = new Map(selectedTransformDefinition.variables.map((v) => [v.variable_name, v]));
         const executedValuesByName = new Map(executionResult.variables.map((v) => [v.name, v.value]));
