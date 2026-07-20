@@ -1,5 +1,5 @@
 import logging
-from typing import List, Optional, Tuple
+from typing import Iterator, List, Optional, Tuple
 from uuid import UUID, uuid4
 
 from arthur_common.models.common_schemas import PaginationParameters
@@ -9,7 +9,7 @@ from fastapi import HTTPException
 from litellm import ChatCompletionMessageToolCall
 from sqlalchemy import asc, column, desc, exists, func, or_, select
 from sqlalchemy.dialects import postgresql
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, joinedload, selectinload
 
 from db_models.agentic_prompt_models import DatabaseAgenticPrompt
 from db_models.dataset_models import (
@@ -56,6 +56,11 @@ from utils.dataset_utils import dataset_row_matches_filter
 
 logger = logging.getLogger(__name__)
 
+# Number of test cases loaded per page when streaming completed test cases for
+# summary aggregation. Bounds peak memory to one page's worth of eval scores
+# rather than the whole (rows x prompts x evals) matrix.
+SUMMARY_TEST_CASE_BATCH_SIZE = 50
+
 
 class PromptExperimentRepository:
     def __init__(self, db_session: Session):
@@ -86,12 +91,83 @@ class PromptExperimentRepository:
     def _get_db_test_cases(
         self,
         experiment_id: str,
+        status: Optional[str] = None,
+        offset: Optional[int] = None,
+        limit: Optional[int] = None,
+        defer_eval_input_variables: bool = False,
     ) -> List[DatabasePromptExperimentTestCase]:
-        return (
-            self.db_session.query(DatabasePromptExperimentTestCase)
-            .filter_by(experiment_id=experiment_id)
-            .all()
+        """Load test cases for an experiment.
+
+        Optional args allow callers to paginate and to skip loading the large
+        ``eval_input_variables`` JSON blobs (one per prompt x eval cell), so a
+        consumer that only needs eval scores does not pull the whole
+        (rows x prompts x evals) matrix of duplicated context into memory.
+        """
+        query = self.db_session.query(DatabasePromptExperimentTestCase).filter_by(
+            experiment_id=experiment_id,
         )
+        if status is not None:
+            query = query.filter_by(status=status)
+        if defer_eval_input_variables:
+            # Eager-load the result graph but leave out the heavy
+            # eval_input_variables column. Without an explicit loader option the
+            # lazy relationship would fetch every column, re-materializing all
+            # the duplicated context copies.
+            query = query.options(
+                selectinload(
+                    DatabasePromptExperimentTestCase.prompt_results,
+                )
+                .selectinload(
+                    DatabasePromptExperimentTestCasePromptResult.eval_scores,
+                )
+                .defer(
+                    DatabasePromptExperimentTestCasePromptResultEvalScore.eval_input_variables,
+                ),
+            )
+        if offset is not None or limit is not None:
+            # Deterministic ordering so offset/limit paging never skips or
+            # repeats a row across pages.
+            query = query.order_by(DatabasePromptExperimentTestCase.id)
+            if offset is not None:
+                query = query.offset(offset)
+            if limit is not None:
+                query = query.limit(limit)
+        return query.all()
+
+    def iter_completed_test_cases_for_summary(
+        self,
+        experiment_id: str,
+        batch_size: int = SUMMARY_TEST_CASE_BATCH_SIZE,
+    ) -> Iterator[DatabasePromptExperimentTestCase]:
+        """Yield COMPLETED test cases one page at a time for summary aggregation.
+
+        Each page is loaded with ``eval_input_variables`` deferred and is
+        expunged from the session before the next page is fetched, so peak
+        memory is bounded to one page rather than the full matrix of per-cell
+        context copies. Callers must consume the eval scores they need for a
+        test case before requesting the next one (the generator does not hold
+        prior pages).
+        """
+        offset = 0
+        while True:
+            batch = self._get_db_test_cases(
+                experiment_id,
+                status=TestCaseStatus.COMPLETED.value,
+                offset=offset,
+                limit=batch_size,
+                defer_eval_input_variables=True,
+            )
+            if not batch:
+                break
+            for test_case in batch:
+                yield test_case
+            # Release this page (and its eagerly-loaded prompt results / eval
+            # scores) before loading the next. Expunging only the test cases
+            # leaves any other objects the caller holds (e.g. the experiment)
+            # attached to the session.
+            for test_case in batch:
+                self.db_session.expunge(test_case)
+            offset += batch_size
 
     def _get_db_test_case(
         self,

@@ -1,10 +1,11 @@
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, Optional
 from unittest.mock import MagicMock
 
 import pytest
 
 from repositories.prompt_experiment_repository import PromptExperimentRepository
+from schemas.base_experiment_schemas import TestCaseStatus
 
 # These helpers return lightweight duck-typed stand-ins (SimpleNamespace) for
 # the Pydantic/ORM inputs the repository reads attribute-by-attribute. They are
@@ -122,4 +123,79 @@ def test_create_test_cases_flushes_per_row_and_bounds_peak() -> None:
         elif event == "expunge":
             live -= 1
     assert peak == objects_per_row
+    assert live == 0
+
+
+@pytest.mark.unit_tests
+def test_iter_completed_test_cases_streams_in_pages_and_releases_each() -> None:
+    """Summary aggregation must stream COMPLETED test cases page by page,
+    expunging each page before loading the next, so peak in-session memory is
+    bounded to a single page rather than the whole N x P x E matrix of
+    duplicated eval_input_variables. This guards against the run-time read-back
+    OOM regression (the executor previously loaded every test case -- and thus
+    every per-cell context copy -- at once)."""
+    batch_size = 2
+    num_test_cases = 5
+    test_cases = [SimpleNamespace(id=f"tc-{i}") for i in range(num_test_cases)]
+
+    # A single ordered event stream of yields and expunges lets us replay the
+    # live-object count and confirm each page is released before the next loads.
+    events: list[tuple[str, str]] = []
+    db_session = MagicMock()
+    db_session.expunge.side_effect = lambda obj: events.append(("expunge", obj.id))
+
+    repo = PromptExperimentRepository(db_session)
+
+    # Serve pages via _get_db_test_cases, enforcing the streaming contract:
+    # only COMPLETED test cases, eval_input_variables deferred, offset/limit
+    # paging.
+    pages_requested: list[tuple[Optional[int], Optional[int]]] = []
+
+    def fake_get_db_test_cases(
+        experiment_id: str,
+        status: Optional[str] = None,
+        offset: Optional[int] = None,
+        limit: Optional[int] = None,
+        defer_eval_input_variables: bool = False,
+    ) -> list[Any]:
+        assert status == TestCaseStatus.COMPLETED.value
+        assert defer_eval_input_variables is True
+        assert offset is not None and limit is not None
+        pages_requested.append((offset, limit))
+        return test_cases[offset : offset + limit]
+
+    repo._get_db_test_cases = fake_get_db_test_cases  # type: ignore[method-assign]
+
+    yielded: list[str] = []
+    for test_case in repo.iter_completed_test_cases_for_summary(
+        "exp-1",
+        batch_size=batch_size,
+    ):
+        yielded.append(test_case.id)
+        events.append(("yield", test_case.id))
+
+    # Every test case is yielded exactly once, in order (no drops, dupes, or
+    # reordering that would change aggregation).
+    assert yielded == [tc.id for tc in test_cases]
+
+    # Every yielded test case is expunged exactly once.
+    expunged = sorted(obj_id for kind, obj_id in events if kind == "expunge")
+    assert expunged == sorted(tc.id for tc in test_cases)
+
+    # Paging advances by batch_size and stops on the first empty page.
+    assert pages_requested == [(0, 2), (2, 2), (4, 2), (6, 2)]
+
+    # Replay the event stream: peak live (yielded-but-not-yet-expunged) objects
+    # never exceeds one page. The regression this guards would hold all
+    # num_test_cases at once (peak == num_test_cases).
+    live = 0
+    peak = 0
+    for kind, _obj_id in events:
+        if kind == "yield":
+            live += 1
+            peak = max(peak, live)
+        else:
+            live -= 1
+    assert peak == batch_size
+    assert peak < num_test_cases
     assert live == 0
