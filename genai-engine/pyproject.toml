@@ -84,8 +84,8 @@ routes_security_check = "routes_security_check:main"
 
 [dependency-groups]
 dev = [
-  "pytest==8.4.2",
-  "pytest-asyncio==1.2.0",
+  "pytest==9.0.3",
+  "pytest-asyncio==1.4.0",
   "pytest-cov==6.3.0",
   "pre-commit==4.5.1",
   "types-cachetools>=6.2.0.20251022",
