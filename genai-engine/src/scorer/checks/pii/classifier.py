@@ -64,8 +64,6 @@ class BinaryPIIDataClassifier:
         self.max_tokens_per_chunk = MAX_TOKENS_PER_CHUNK
         self.analyzer = get_presidio_analyzer()
 
-        # Shared process-wide spaCy date pipeline. Loading en_core_web_lg here
-        # per instantiation (i.e. per eval call) is what caused the experiment OOM.
         self.date_nlp = get_pii_date_nlp()
 
         # Get all entity values from enum

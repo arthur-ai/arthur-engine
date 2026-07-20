@@ -658,14 +658,7 @@ def get_presidio_analyzer() -> AnalyzerEngine | None:
 
 @log_model_loading("pii date spacy model")
 def get_pii_date_nlp() -> spacy.Language | None:
-    """Return a process-wide cached spaCy pipeline for PII DATE_TIME detection.
-
-    en_core_web_lg is ~560MB resident once loaded. Building it inside
-    BinaryPIIDataClassifier.__init__ meant a fresh spaCy load on every eval call
-    (the PII scorer is re-instantiated per call in get_ml_scorer); at experiment
-    scale that repeated allocation drove the genai-engine OOM. Cache it once per
-    process like the other heavy models above so it loads a single time.
-    """
+    """Return a process-wide cached spaCy pipeline for PII DATE_TIME detection."""
     if skip_model_loading():
         logger.info(
             "Skipping pii date spacy model - GENAI_ENGINE_SKIP_MODEL_LOADING is True",
