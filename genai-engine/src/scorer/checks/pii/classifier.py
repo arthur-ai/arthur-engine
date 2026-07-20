@@ -8,9 +8,7 @@ using both Presidio and GLiNER models.
 import logging
 import re
 
-import spacy
 from arthur_common.models.enums import PIIEntityTypes, RuleResultEnum
-from date_spacy import find_dates  # noqa: F401 - Import registers the component
 
 from schemas.scorer_schemas import (
     DateTimeSpan,
@@ -32,6 +30,7 @@ from scorer.checks.pii.presidio_gliner_map import PresidioGlinerMapper
 from utils.model_load import (
     get_gliner_model,
     get_gliner_tokenizer,
+    get_pii_date_nlp,
     get_presidio_analyzer,
 )
 
@@ -53,16 +52,21 @@ class BinaryPIIDataClassifier:
     DEFAULT_CONFIDENCE_THRESHOLD = 0.5
 
     def __init__(self) -> None:
-        """Initialize the PII classifier as a per-process singleton."""
+        """Initialize the PII classifier.
+
+        This object is lightweight and re-created per eval call; all heavy models
+        (GLiNER, Presidio, and the spaCy date pipeline) are process-wide
+        singletons served from utils.model_load, so they load once per process
+        rather than once per instantiation.
+        """
         self.model = get_gliner_model()
         self.tokenizer = get_gliner_tokenizer()
         self.max_tokens_per_chunk = MAX_TOKENS_PER_CHUNK
         self.analyzer = get_presidio_analyzer()
 
-        # Initialize spaCy with date_spacy for datetime detection
-        # Create a minimal pipeline without NER to avoid entity conflicts
-        self.date_nlp = spacy.load("en_core_web_lg", exclude=["ner"])
-        self.date_nlp.add_pipe("find_dates")
+        # Shared process-wide spaCy date pipeline. Loading en_core_web_lg here
+        # per instantiation (i.e. per eval call) is what caused the experiment OOM.
+        self.date_nlp = get_pii_date_nlp()
 
         # Get all entity values from enum
         entities = PIIEntityTypes.values()

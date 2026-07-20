@@ -9,7 +9,11 @@ from schemas.scorer_schemas import (
     ScorerPIIEntitySpan,
     ScorerRuleDetails,
 )
-from scorer.checks.pii.classifier import get_gliner_model, get_gliner_tokenizer
+from scorer.checks.pii.classifier import (
+    get_gliner_model,
+    get_gliner_tokenizer,
+    get_presidio_analyzer,
+)
 from scorer.checks.pii.pii_utils import (
     filter_by_allow_list,
     postprocess_spans,
@@ -25,8 +29,13 @@ logging.getLogger("presidio-analyzer").setLevel(logging.ERROR)
 
 class BinaryPIIDataClassifierV1(RuleScorer):
     def __init__(self) -> None:
-        """Initialized the binary classifier for PII Data"""
-        self.analyzer: AnalyzerEngine = AnalyzerEngine()
+        """Initialized the binary classifier for PII Data.
+
+        The Presidio AnalyzerEngine (which builds its own spaCy NLP engine on
+        construction) is a process-wide singleton served from utils.model_load,
+        so it loads once per process instead of once per eval call.
+        """
+        self.analyzer: AnalyzerEngine = get_presidio_analyzer()
         self.default_confidence_threshold: float = 0.5
         self.gliner_model = get_gliner_model()
         self.gliner_tokenizer = get_gliner_tokenizer()
