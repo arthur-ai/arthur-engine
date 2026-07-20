@@ -1,4 +1,4 @@
-import React, { Suspense, lazy } from "react";
+import React, { Suspense, lazy, useState } from "react";
 import { useParams, useNavigate, useLocation, Outlet } from "react-router-dom";
 
 import { ChatbotDrawer } from "@/components/chatbot/ChatbotDrawer";
@@ -63,11 +63,8 @@ export const TaskLayout: React.FC = () => {
     }
   }
 
-  // The floating chatbot FAB/panel renders under the same condition used to mount
-  // `<ChatbotDrawer />` below (and `ChatbotDrawer` returns null when the chatbot is
-  // disabled). When present, reserve bottom clearance on the scrollable content so
-  // the FAB does not cover page controls (e.g. table pagination) in the corner.
-  const showChatbotFab = chatbotEnabled && activeSection !== "chatbot";
+  const showChatbot = chatbotEnabled && activeSection !== "chatbot";
+  const [chatbotOpen, setChatbotOpen] = useState(false);
 
   const handleBack = () => {
     navigate("/");
@@ -79,9 +76,15 @@ export const TaskLayout: React.FC = () => {
 
   return (
     <div className="h-screen bg-gray-50 dark:bg-gray-950 flex flex-col overflow-hidden">
-      {activeSection !== "chatbot" && <ChatbotDrawer taskId={taskId} />}
+      {showChatbot && <ChatbotDrawer taskId={taskId} open={chatbotOpen} onClose={() => setChatbotOpen(false)} />}
       <div className="flex flex-1 overflow-hidden">
-        <SidebarNavigation onBackToDashboard={handleBack} onNavigate={handleNavigate} activeSection={activeSection} taskName={task?.name} />
+        <SidebarNavigation
+          onBackToDashboard={handleBack}
+          onNavigate={handleNavigate}
+          activeSection={activeSection}
+          taskName={task?.name}
+          onOpenChatbot={showChatbot ? () => setChatbotOpen(true) : undefined}
+        />
 
         {task ? (
           // The page renders eagerly; when the demo tour is active the lazy
@@ -90,7 +93,7 @@ export const TaskLayout: React.FC = () => {
           // it). Keeping the page outside the lazy boundary means it never waits
           // on — or remounts behind — the tour chunk.
           <TaskProvider task={task}>
-            <main className={`flex-1 overflow-auto${showChatbotFab ? " pb-24" : ""}`}>
+            <main className="flex-1 overflow-auto">
               <Outlet />
             </main>
             {showTaskTour ? (

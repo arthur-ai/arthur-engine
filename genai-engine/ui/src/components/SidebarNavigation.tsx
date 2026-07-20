@@ -11,7 +11,7 @@ import {
   ChatOutlined,
   SecurityOutlined,
 } from "@mui/icons-material";
-import { Link, Typography } from "@mui/material";
+import { Box, Link, Typography } from "@mui/material";
 import React from "react";
 import { useParams } from "react-router-dom";
 
@@ -24,6 +24,9 @@ interface SidebarNavigationProps {
   onNavigate: (sectionId: string) => void;
   activeSection?: string;
   taskName?: string;
+  /** When provided, renders a pinned assistant launcher at the bottom of the
+   * sidebar. Omitted when the chatbot is disabled or on the chatbot page. */
+  onOpenChatbot?: () => void;
 }
 
 interface NavigationSection {
@@ -116,7 +119,13 @@ function buildNavigationSections(demoMode: boolean): NavigationSection[] {
   ];
 }
 
-export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ onBackToDashboard, onNavigate, activeSection = "overview", taskName }) => {
+export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({
+  onBackToDashboard,
+  onNavigate,
+  activeSection = "overview",
+  taskName,
+  onOpenChatbot,
+}) => {
   const { id } = useParams<{ id: string }>();
   const { demoMode } = useDemoMode();
   const navigationSections = buildNavigationSections(demoMode);
@@ -193,6 +202,23 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ onBackToDa
           )}
         </ul>
       </div>
+
+      {onOpenChatbot && (
+        <Box sx={{ p: 2, borderTop: 1, borderColor: "divider" }}>
+          <Link
+            component="button"
+            type="button"
+            underline="none"
+            onClick={onOpenChatbot}
+            className="w-full text-left px-3! py-2! text-sm font-medium rounded-md! transition-colors duration-200 flex items-center gap-3 cursor-pointer hover:bg-gray-100! dark:hover:bg-gray-800!"
+          >
+            <span className="shrink-0">
+              <ChatOutlined sx={{ fontSize: 24 }} />
+            </span>
+            <span>Assistant</span>
+          </Link>
+        </Box>
+      )}
     </nav>
   );
 };
