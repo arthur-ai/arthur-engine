@@ -4,13 +4,17 @@ import { Box, IconButton, Paper, Tooltip, Typography } from "@mui/material";
 
 import { ChatPanel } from "./ChatPanel";
 
+import { SIDEBAR_WIDTH_PX } from "@/constants/layout";
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useChatbot } from "@/hooks/useChatbot";
 
-/** Left offset that clears the fixed-width (w-64 = 256px) sidebar, so the
- * floating panel opens just beside the sidebar launcher button rather than
- * over the navigation. */
-const SIDEBAR_CLEARANCE_PX = 272;
+/** Horizontal gap between the sidebar's right edge and the chat panel, so the
+ * floating panel opens just beside the sidebar launcher rather than over the
+ * navigation. */
+const DRAWER_GAP_PX = 16;
+/** Left offset that clears the sidebar. Derived from the shared sidebar width so
+ * the two stay in sync if the sidebar is ever resized. */
+const SIDEBAR_CLEARANCE_PX = SIDEBAR_WIDTH_PX + DRAWER_GAP_PX;
 
 interface ChatbotDrawerProps {
   taskId: string;

@@ -15,6 +15,7 @@ import { Box, Link, Typography } from "@mui/material";
 import React from "react";
 import { useParams } from "react-router-dom";
 
+import { SIDEBAR_WIDTH_PX } from "@/constants/layout";
 import { useDemoMode } from "@/contexts/EngineConfigContext";
 import { TOUR_IDS } from "@/features/task-tour/selectors";
 import { dispatchTourEvent, TASK_TOUR_ACTIONS, type TaskTourEventName } from "@/features/task-tour/tourEvents";
@@ -131,7 +132,10 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({
   const navigationSections = buildNavigationSections(demoMode);
 
   return (
-    <nav className="w-64 bg-white dark:bg-gray-900 shadow-sm border-r border-gray-200 dark:border-gray-700 flex flex-col h-full">
+    <nav
+      style={{ width: SIDEBAR_WIDTH_PX }}
+      className="bg-white dark:bg-gray-900 shadow-sm border-r border-gray-200 dark:border-gray-700 flex flex-col h-full"
+    >
       <div className="p-4 overflow-y-auto flex-1 min-h-0">
         <div className="mb-4">
           <button
