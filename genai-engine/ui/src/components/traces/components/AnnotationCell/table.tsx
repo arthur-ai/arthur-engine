@@ -57,13 +57,13 @@ export const AnnotationsTable = ({ annotations }: Props) => {
   });
 
   return (
-    <TableContainer ref={container} component={Paper} variant="outlined" sx={{ flexGrow: 0, flexShrink: 1 }}>
-      <Table stickyHeader size="small">
+    <TableContainer ref={container} component={Paper} variant="outlined" sx={{ flexGrow: 0, flexShrink: 1, overflowX: "auto" }}>
+      <Table stickyHeader size="small" sx={{ minWidth: 1270 }}>
         <TableHead>
           {table.getHeaderGroups().map((header) => (
             <TableRow key={header.id}>
               {header.headers.map((header) => (
-                <TableCell colSpan={header.colSpan} key={header.id}>
+                <TableCell colSpan={header.colSpan} key={header.id} sx={{ width: header.getSize() }}>
                   {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                 </TableCell>
               ))}
@@ -74,7 +74,9 @@ export const AnnotationsTable = ({ annotations }: Props) => {
           {table.getRowModel().rows.map((row) => (
             <TableRow key={row.id}>
               {row.getVisibleCells().map((cell) => (
-                <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
+                <TableCell key={cell.id} sx={{ width: cell.column.getSize() }}>
+                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                </TableCell>
               ))}
             </TableRow>
           ))}
@@ -99,13 +101,14 @@ const createColumns = ({
 }) => [
   columnHelper.accessor("annotation_type", {
     header: "Annotation Type",
+    size: 130,
     cell: ({ getValue }) => {
       const value = getValue();
 
       const label = value === "human" ? "Human" : "Continuous Eval";
 
       return (
-        <Typography variant="body2" className="capitalize">
+        <Typography variant="body2" className="capitalize" sx={{ whiteSpace: "nowrap" }}>
           {label}
         </Typography>
       );
@@ -114,17 +117,23 @@ const createColumns = ({
   columnHelper.display({
     id: "continuous_eval_name",
     header: "Continuous Eval Name",
+    size: 150,
     cell: ({ row }) => {
       if (!isContinuousEvalAnnotation(row.original)) return null;
 
       const name = row.original.continuous_eval_name;
       if (!name) return null;
 
-      return <Typography variant="body2">{name}</Typography>;
+      return (
+        <Typography variant="body2" sx={{ whiteSpace: "nowrap" }}>
+          {name}
+        </Typography>
+      );
     },
   }),
   columnHelper.accessor("eval_name", {
     header: "Eval Name",
+    size: 170,
     cell: ({ row }) => {
       if (!isContinuousEvalAnnotation(row.original)) return null;
 
@@ -134,7 +143,7 @@ const createColumns = ({
       if (!evalName) return null;
 
       return (
-        <Typography variant="body2">
+        <Typography variant="body2" sx={{ whiteSpace: "nowrap" }}>
           {evalName} {evalVersion != null && `(v${evalVersion})`}
         </Typography>
       );
@@ -142,18 +151,22 @@ const createColumns = ({
   }),
   columnHelper.accessor("annotation_score", {
     header: "Annotation Score",
+    size: 110,
     cell: ({ getValue }) => getValue(),
   }),
   columnHelper.accessor("annotation_description", {
     header: "Annotation Explanation",
+    size: 380,
+    minSize: 320,
     cell: ({ getValue }) => {
       const value = getValue();
       const text = value == null ? "" : typeof value === "object" ? JSON.stringify(value) : String(value);
-      return <div className="max-h-32 overflow-auto whitespace-pre-wrap">{text}</div>;
+      return <div className="max-h-60 overflow-auto whitespace-pre-wrap break-words">{text}</div>;
     },
   }),
   columnHelper.accessor("run_status", {
     header: "Run Status",
+    size: 120,
     cell: ({ row }) => {
       if (!isContinuousEvalAnnotation(row.original)) return;
 
@@ -163,6 +176,7 @@ const createColumns = ({
   }),
   columnHelper.accessor("cost", {
     header: "Cost",
+    size: 90,
     cell: ({ row }) => {
       if (!isContinuousEvalAnnotation(row.original)) return;
 
@@ -174,6 +188,7 @@ const createColumns = ({
   }),
   columnHelper.display({
     id: "actions",
+    size: 120,
     cell: ({ row }) => {
       const annotation = row.original;
 
