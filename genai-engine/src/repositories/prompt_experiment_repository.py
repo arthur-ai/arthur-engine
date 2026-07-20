@@ -540,31 +540,22 @@ class PromptExperimentRepository:
         ] = None,
     ) -> int:
         """Create test cases for each row in the dataset version, including prompt results and eval scores"""
-        # Fetch the rows for this dataset version. When a dataset_row_filter is
-        # provided we push its equality conditions down into SQL so only the
-        # selected rows are fetched, instead of loading the whole version and
-        # filtering in Python. This is a minor extra defense; the primary
-        # create-time memory fix is the per-row flush further below.
-        #
-        # Dataset row values are always persisted as strings
-        # (DatasetVersionRowColumnItem.column_value is typed `str`), so the JSON
-        # `->>` (astext) comparison here is equivalent to the str()-based
-        # comparison in dataset_row_matches_filter, AND-combined across
-        # conditions to match the Python semantics.
-        rows_query = self.db_session.query(DatabaseDatasetVersionRow).filter(
-            DatabaseDatasetVersionRow.dataset_id == dataset_ref.id,
-            DatabaseDatasetVersionRow.version_number == dataset_ref.version,
+        # Fetch the rows for this dataset version and apply the dataset_row_filter
+        # in Python. The filter is applied with dataset_row_matches_filter rather
+        # than pushed down into SQL because the row data JSON comparison would
+        # require dialect-specific JSON operators (e.g. Postgres `->>`) that are
+        # not portable across the engines this code runs on. The create-time
+        # memory fix is the per-row flush further below, not the row fetch.
+        dataset_rows = (
+            self.db_session.query(DatabaseDatasetVersionRow)
+            .filter(
+                DatabaseDatasetVersionRow.dataset_id == dataset_ref.id,
+                DatabaseDatasetVersionRow.version_number == dataset_ref.version,
+            )
+            .all()
         )
-        if dataset_row_filter:
-            for filter_condition in dataset_row_filter:
-                rows_query = rows_query.filter(
-                    DatabaseDatasetVersionRow.data[filter_condition.column_name].astext
-                    == str(filter_condition.column_value),
-                )
-        dataset_rows = rows_query.all()
 
-        # Defensive re-check preserving the exact original Python matching
-        # semantics (a no-op for the string-valued row data we persist).
+        # Filter rows based on dataset_row_filter if provided
         filtered_rows = [
             row
             for row in dataset_rows
