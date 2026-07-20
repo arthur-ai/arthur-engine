@@ -186,6 +186,12 @@ class BinaryPIIDataClassifier:
 
         datetime_spans: list[DateTimeSpan] = []
 
+        # The shared spaCy date pipeline is only None when model loading is
+        # skipped (GENAI_ENGINE_SKIP_MODEL_LOADING); in that case there is
+        # nothing to detect.
+        if self.date_nlp is None:
+            return datetime_spans
+
         # Phase 1: spaCy NER (intelligent, context-aware detection)
         doc = self.date_nlp(text)
         for ent in doc.ents:

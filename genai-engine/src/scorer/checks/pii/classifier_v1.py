@@ -35,7 +35,7 @@ class BinaryPIIDataClassifierV1(RuleScorer):
         construction) is a process-wide singleton served from utils.model_load,
         so it loads once per process instead of once per eval call.
         """
-        self.analyzer: AnalyzerEngine = get_presidio_analyzer()
+        self.analyzer: AnalyzerEngine | None = get_presidio_analyzer()
         self.default_confidence_threshold: float = 0.5
         self.gliner_model = get_gliner_model()
         self.gliner_tokenizer = get_gliner_tokenizer()
