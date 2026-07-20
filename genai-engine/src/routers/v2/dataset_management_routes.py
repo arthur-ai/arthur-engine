@@ -368,6 +368,29 @@ def bulk_add_traces_to_dataset(
         db_session.close()
 
 
+@dataset_management_routes.post(
+    "/datasets/{dataset_id}/versions/{version_number}/restore",
+    description="Reinstate a previous dataset version by copying its rows into a new latest version.",
+    tags=[datasets_router_tag],
+    response_model=DatasetVersionResponse,
+)
+@permission_checker(permissions=PermissionLevelsEnum.DATASET_WRITE.value)
+def restore_dataset_version(
+    dataset_id: UUID = Path(description="ID of the dataset."),
+    version_number: int = Path(description="Version number to reinstate."),
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
+) -> DatasetVersionResponse:
+    dataset_repo = DatasetRepository(db_session)
+    dataset_repo.restore_dataset_version(
+        dataset_id, version_number, org_scope=org_scope
+    )
+    return dataset_repo.get_latest_dataset_version(
+        dataset_id, org_scope=org_scope
+    ).to_response_model()
+
+
 @dataset_management_routes.get(
     "/datasets/{dataset_id}/versions",
     description="List dataset versions.",

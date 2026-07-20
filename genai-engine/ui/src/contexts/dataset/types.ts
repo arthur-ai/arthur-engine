@@ -104,6 +104,7 @@ export interface UseDatasetMutationsReturn {
   fillColumn: UseMutationResult<void, Error, { columnName: string; value: string }>;
   applyDefaults: UseMutationResult<void, Error, { columnDefaults: ColumnDefaults }>;
   updateDataset: UseMutationResult<void, Error, DatasetUpdateParams>;
+  restoreVersion: UseMutationResult<void, Error, { versionNumber: number }>;
 }
 
 export interface DatasetContextValue {

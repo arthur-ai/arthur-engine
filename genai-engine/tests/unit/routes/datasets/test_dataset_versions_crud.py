@@ -661,6 +661,181 @@ def test_dataset_versions_with_rows_to_delete_filter(
 
 
 @pytest.mark.unit_tests
+def test_restore_dataset_version_creates_new_version(
+    client: GenaiEngineTestClientBase,
+) -> None:
+    """Reinstating a previous version copies its rows into a new latest version
+    without mutating the existing history (UP-4702)."""
+    status_code, agentic_task = client.create_task(
+        name="test_restore_dataset_version_task",
+        is_agentic=True,
+    )
+    assert status_code == 200
+
+    status_code, created_dataset = client.create_dataset(
+        name="Dataset for Restore Test",
+        task_id=agentic_task.id,
+        description="Testing restore dataset version",
+    )
+    assert status_code == 200
+    dataset_id = created_dataset.id
+
+    # Version 1: two rows
+    rows_to_add = [
+        NewDatasetVersionRowRequest(
+            data=[
+                NewDatasetVersionRowColumnItemRequest(
+                    column_name="name",
+                    column_value="John Doe",
+                ),
+                NewDatasetVersionRowColumnItemRequest(
+                    column_name="age",
+                    column_value="30",
+                ),
+            ],
+        ),
+        NewDatasetVersionRowRequest(
+            data=[
+                NewDatasetVersionRowColumnItemRequest(
+                    column_name="name",
+                    column_value="Jane Smith",
+                ),
+                NewDatasetVersionRowColumnItemRequest(
+                    column_name="age",
+                    column_value="25",
+                ),
+            ],
+        ),
+    ]
+    status_code, version_1 = client.create_dataset_version(
+        dataset_id=dataset_id,
+        rows_to_add=rows_to_add,
+    )
+    assert status_code == 200
+    assert version_1.version_number == 1
+    v1_row_data = _extract_row_data(version_1.rows)
+    v1_row_ids = {row.id for row in version_1.rows}
+
+    # Version 2: delete a row so it differs from v1
+    jane_id = _get_id_by_row_name(version_1.rows, "Jane Smith")
+    status_code, version_2 = client.create_dataset_version(
+        dataset_id=dataset_id,
+        rows_to_delete=[jane_id],
+    )
+    assert status_code == 200
+    assert version_2.version_number == 2
+    assert version_2.total_count == 1
+
+    # Restore version 1 -> should create version 3 identical to version 1
+    status_code, restored = client.restore_dataset_version(
+        dataset_id=dataset_id,
+        version_number=1,
+    )
+    assert status_code == 200
+    assert restored.version_number == 3
+    assert restored.dataset_id == dataset_id
+    assert restored.total_count == version_1.total_count
+    assert _extract_row_data(restored.rows) == v1_row_data
+    # restored rows keep their original IDs
+    assert {row.id for row in restored.rows} == v1_row_ids
+
+    # history is preserved: three versions now exist
+    status_code, versions_response = client.get_dataset_versions(dataset_id)
+    assert status_code == 200
+    assert versions_response.total_count == 3
+
+    # parent dataset latest_version_number is bumped to the restored version
+    status_code, retrieved_dataset = client.get_dataset(dataset_id)
+    assert status_code == 200
+    assert retrieved_dataset.latest_version_number == 3
+
+    # Cleanup
+    status_code = client.delete_dataset(dataset_id)
+    assert status_code == 204
+    status_code = client.delete_task(agentic_task.id)
+    assert status_code == 204
+
+
+@pytest.mark.unit_tests
+def test_restore_nonexistent_version_returns_404(
+    client: GenaiEngineTestClientBase,
+) -> None:
+    """Restoring a version number that does not exist returns 404."""
+    status_code, agentic_task = client.create_task(
+        name="test_restore_nonexistent_version_task",
+        is_agentic=True,
+    )
+    assert status_code == 200
+
+    status_code, created_dataset = client.create_dataset(
+        name="Dataset for Restore 404 Test",
+        task_id=agentic_task.id,
+        description="Testing restore of nonexistent version",
+    )
+    assert status_code == 200
+    dataset_id = created_dataset.id
+
+    status_code, _ = client.create_dataset_version(
+        dataset_id=dataset_id,
+        rows_to_add=[
+            NewDatasetVersionRowRequest(
+                data=[
+                    NewDatasetVersionRowColumnItemRequest(
+                        column_name="name",
+                        column_value="John Doe",
+                    ),
+                ],
+            ),
+        ],
+    )
+    assert status_code == 200
+
+    status_code, _ = client.restore_dataset_version(
+        dataset_id=dataset_id,
+        version_number=999,
+    )
+    assert status_code == 404
+
+    # Cleanup
+    status_code = client.delete_dataset(dataset_id)
+    assert status_code == 204
+    status_code = client.delete_task(agentic_task.id)
+    assert status_code == 204
+
+
+@pytest.mark.unit_tests
+def test_restore_dataset_with_no_versions_returns_404(
+    client: GenaiEngineTestClientBase,
+) -> None:
+    """Restoring on a dataset that has no versions yet returns 404."""
+    status_code, agentic_task = client.create_task(
+        name="test_restore_no_versions_task",
+        is_agentic=True,
+    )
+    assert status_code == 200
+
+    status_code, created_dataset = client.create_dataset(
+        name="Dataset for Restore No Versions Test",
+        task_id=agentic_task.id,
+        description="Testing restore on dataset with no versions",
+    )
+    assert status_code == 200
+    dataset_id = created_dataset.id
+
+    status_code, _ = client.restore_dataset_version(
+        dataset_id=dataset_id,
+        version_number=1,
+    )
+    assert status_code == 404
+
+    # Cleanup
+    status_code = client.delete_dataset(dataset_id)
+    assert status_code == 204
+    status_code = client.delete_task(agentic_task.id)
+    assert status_code == 204
+
+
+@pytest.mark.unit_tests
 def test_dataset_version_search(
     client: GenaiEngineTestClientBase,
 ) -> None:

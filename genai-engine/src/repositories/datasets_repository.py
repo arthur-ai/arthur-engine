@@ -333,6 +333,41 @@ class DatasetRepository:
         else:
             self.db_session.flush()
 
+    def restore_dataset_version(
+        self,
+        dataset_id: UUID,
+        source_version_number: int,
+        org_scope: UUID | None = None,
+        commit: bool = True,
+    ) -> None:
+        db_dataset = self._get_db_dataset(dataset_id, org_scope=org_scope)
+        source_version = (
+            self.db_session.query(DatabaseDatasetVersion)
+            .filter(DatabaseDatasetVersion.dataset_id == dataset_id)
+            .filter(DatabaseDatasetVersion.version_number == source_version_number)
+            .first()
+        )
+        if not source_version:
+            raise HTTPException(
+                status_code=404,
+                detail="Dataset version %s for dataset %s not found."
+                % (source_version_number, dataset_id),
+                headers={"full_stacktrace": "false"},
+            )
+        latest_version = self._get_latest_db_dataset_version(
+            dataset_id, org_scope=org_scope
+        )
+        new_version = DatasetVersion._from_existing_version(
+            dataset_id, latest_version, source_version
+        )
+        self.db_session.add(new_version._to_database_model())
+        db_dataset.updated_at = datetime.now()
+        db_dataset.latest_version_number = new_version.version_number
+        if commit:
+            self.db_session.commit()
+        else:
+            self.db_session.flush()
+
     def get_dataset_versions(
         self,
         dataset_id: UUID,

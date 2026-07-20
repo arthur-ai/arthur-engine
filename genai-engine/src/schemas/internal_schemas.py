@@ -2785,6 +2785,31 @@ class DatasetVersion(DatasetVersionMetadata):
             column_names=DatasetVersionMetadata._calculate_column_names(all_rows),
         )
 
+    @staticmethod
+    def _from_existing_version(
+        dataset_id: uuid.UUID,
+        latest_version: "DatabaseDatasetVersion",
+        source_version: "DatabaseDatasetVersion",
+    ) -> "DatasetVersion":
+        """Build a new dataset version whose rows are a full copy of `source_version`.
+        Used to reinstate a previous version non-destructively (UP-4702)."""
+        curr_time = datetime.now()
+        rows = [
+            DatasetVersionRow._from_database_model(db_row)
+            for db_row in source_version.version_rows
+        ]
+        return DatasetVersion(
+            version_number=latest_version.version_number + 1,
+            created_at=curr_time,
+            dataset_id=dataset_id,
+            rows=rows,
+            page=0,
+            page_size=len(rows),
+            total_pages=1,
+            total_count=len(rows),
+            column_names=source_version.column_names,
+        )
+
     def _to_database_model(self) -> DatabaseDatasetVersion:
         if self.page_size != self.total_count:
             raise ValueError(
