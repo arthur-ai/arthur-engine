@@ -17,6 +17,8 @@ import {
   ListItemButton,
   ListItemText,
   ListItemIcon,
+  Box,
+  Stack,
 } from "@mui/material";
 import { createColumnHelper, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import { useMemo, useRef } from "react";
@@ -24,6 +26,7 @@ import { NavigateFunction, useNavigate } from "react-router-dom";
 
 import { Annotation, isContinuousEvalAnnotation } from "./schema";
 
+import { ExpandableTableRow } from "@/components/common";
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useTask } from "@/hooks/useTask";
 import { formatCurrency } from "@/utils/formatters";
@@ -44,10 +47,9 @@ export const AnnotationsTable = ({ annotations }: Props) => {
       createColumns({
         taskId: task!.id,
         container,
-        defaultCurrency,
         onNavigate: navigate,
       }),
-    [task, defaultCurrency, navigate]
+    [task, navigate]
   );
 
   const table = useReactTable({
@@ -56,14 +58,18 @@ export const AnnotationsTable = ({ annotations }: Props) => {
     getCoreRowModel: getCoreRowModel(),
   });
 
+  const totalColumnSize = table.getAllColumns().reduce((total, column) => total + column.getSize(), 0);
+
   return (
     <TableContainer ref={container} component={Paper} variant="outlined" sx={{ flexGrow: 0, flexShrink: 1 }}>
-      <Table stickyHeader size="small">
+      {/* Fixed layout keeps column widths stable when a row's full-width detail panel expands */}
+      <Table stickyHeader size="small" sx={{ tableLayout: "fixed" }}>
         <TableHead>
           {table.getHeaderGroups().map((header) => (
             <TableRow key={header.id}>
+              <TableCell padding="checkbox" sx={{ width: 48 }} />
               {header.headers.map((header) => (
-                <TableCell colSpan={header.colSpan} key={header.id}>
+                <TableCell colSpan={header.colSpan} key={header.id} sx={{ width: `${(header.getSize() / totalColumnSize) * 100}%` }}>
                   {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                 </TableCell>
               ))}
@@ -72,15 +78,61 @@ export const AnnotationsTable = ({ annotations }: Props) => {
         </TableHead>
         <TableBody>
           {table.getRowModel().rows.map((row) => (
-            <TableRow key={row.id}>
+            <ExpandableTableRow
+              key={row.id}
+              colSpan={row.getVisibleCells().length + 1}
+              expandDisabled={!hasDetail(row.original)}
+              detail={<AnnotationDetail annotation={row.original} defaultCurrency={defaultCurrency} />}
+            >
               {row.getVisibleCells().map((cell) => (
                 <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
               ))}
-            </TableRow>
+            </ExpandableTableRow>
           ))}
         </TableBody>
       </Table>
     </TableContainer>
+  );
+};
+
+const hasDetail = (annotation: Annotation) => Boolean(annotation.annotation_description) || isContinuousEvalAnnotation(annotation);
+
+const AnnotationDetail = ({ annotation, defaultCurrency }: { annotation: Annotation; defaultCurrency: string }) => {
+  const continuousEval = isContinuousEvalAnnotation(annotation) ? annotation : undefined;
+
+  return (
+    <Stack spacing={1.5}>
+      <Box>
+        <Typography variant="caption" color="text.secondary" component="div">
+          Annotation Explanation
+        </Typography>
+        <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+          {annotation.annotation_description || "—"}
+        </Typography>
+      </Box>
+      {continuousEval && (
+        <Stack direction="row" spacing={4}>
+          {continuousEval.eval_name && (
+            <Box>
+              <Typography variant="caption" color="text.secondary" component="div">
+                Eval Name
+              </Typography>
+              <Typography variant="body2">
+                {continuousEval.eval_name} {continuousEval.eval_version != null && `(v${continuousEval.eval_version})`}
+              </Typography>
+            </Box>
+          )}
+          <Box>
+            <Typography variant="caption" color="text.secondary" component="div">
+              Cost
+            </Typography>
+            <Typography variant="body2">
+              {continuousEval.eval_type === "ml_eval" ? "N/A" : formatCurrency(continuousEval.cost ?? 0, defaultCurrency)}
+            </Typography>
+          </Box>
+        </Stack>
+      )}
+    </Stack>
   );
 };
 
@@ -89,23 +141,22 @@ const columnHelper = createColumnHelper<Annotation>();
 const createColumns = ({
   taskId,
   container,
-  defaultCurrency,
   onNavigate,
 }: {
   taskId: string;
   container: React.RefObject<HTMLDivElement | null>;
-  defaultCurrency: string;
   onNavigate: NavigateFunction;
 }) => [
   columnHelper.accessor("annotation_type", {
     header: "Annotation Type",
+    size: 150,
     cell: ({ getValue }) => {
       const value = getValue();
 
       const label = value === "human" ? "Human" : "Continuous Eval";
 
       return (
-        <Typography variant="body2" className="capitalize">
+        <Typography variant="body2" className="capitalize" sx={{ whiteSpace: "nowrap" }}>
           {label}
         </Typography>
       );
@@ -114,6 +165,7 @@ const createColumns = ({
   columnHelper.display({
     id: "continuous_eval_name",
     header: "Continuous Eval Name",
+    size: 320,
     cell: ({ row }) => {
       if (!isContinuousEvalAnnotation(row.original)) return null;
 
@@ -123,37 +175,14 @@ const createColumns = ({
       return <Typography variant="body2">{name}</Typography>;
     },
   }),
-  columnHelper.accessor("eval_name", {
-    header: "Eval Name",
-    cell: ({ row }) => {
-      if (!isContinuousEvalAnnotation(row.original)) return null;
-
-      const evalName = row.original.eval_name;
-      const evalVersion = row.original.eval_version;
-
-      if (!evalName) return null;
-
-      return (
-        <Typography variant="body2">
-          {evalName} {evalVersion != null && `(v${evalVersion})`}
-        </Typography>
-      );
-    },
-  }),
   columnHelper.accessor("annotation_score", {
     header: "Annotation Score",
+    size: 120,
     cell: ({ getValue }) => getValue(),
-  }),
-  columnHelper.accessor("annotation_description", {
-    header: "Annotation Explanation",
-    cell: ({ getValue }) => {
-      const value = getValue();
-      const text = value == null ? "" : typeof value === "object" ? JSON.stringify(value) : String(value);
-      return <div className="max-h-32 overflow-auto whitespace-pre-wrap">{text}</div>;
-    },
   }),
   columnHelper.accessor("run_status", {
     header: "Run Status",
+    size: 120,
     cell: ({ row }) => {
       if (!isContinuousEvalAnnotation(row.original)) return;
 
@@ -161,19 +190,9 @@ const createColumns = ({
       return <Chip label={status} size="small" sx={getStatusChipSx(status)} />;
     },
   }),
-  columnHelper.accessor("cost", {
-    header: "Cost",
-    cell: ({ row }) => {
-      if (!isContinuousEvalAnnotation(row.original)) return;
-
-      if (row.original.eval_type === "ml_eval") {
-        return <span className="text-nowrap">N/A</span>;
-      }
-      return <span className="text-nowrap">{formatCurrency(row.original.cost ?? 0, defaultCurrency)}</span>;
-    },
-  }),
   columnHelper.display({
     id: "actions",
+    size: 130,
     cell: ({ row }) => {
       const annotation = row.original;
 
