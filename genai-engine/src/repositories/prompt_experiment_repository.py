@@ -52,12 +52,18 @@ from schemas.prompt_experiment_schemas import (
     UnsavedPromptConfig,
 )
 from services.prompt.chat_completion_service import ChatCompletionService
+from utils import constants
 from utils.dataset_utils import dataset_row_matches_filter
+from utils.utils import get_env_var
 
 logger = logging.getLogger(__name__)
 
 # Page size for streaming completed test cases during summary aggregation.
-SUMMARY_TEST_CASE_BATCH_SIZE = 50
+# Configurable via the GENAI_ENGINE_SUMMARY_TEST_CASE_BATCH_SIZE env var; defaults to 50.
+SUMMARY_TEST_CASE_BATCH_SIZE = int(
+    get_env_var(constants.GENAI_ENGINE_SUMMARY_TEST_CASE_BATCH_SIZE_ENV_VAR, True)
+    or 50,
+)
 
 
 class PromptExperimentRepository:
