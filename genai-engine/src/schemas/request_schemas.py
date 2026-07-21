@@ -154,6 +154,16 @@ class NewDatasetVersionRequest(BaseModel):
     )
 
 
+class BulkAddTracesToDatasetRequest(BaseModel):
+    transform_id: UUID = Field(
+        description="ID of the transform to run against each trace to extract row values.",
+    )
+    trace_ids: list[str] = Field(
+        description="List of trace IDs to add to the dataset. Limited to the trace "
+        "table's current page fetch-size (see MAX_BULK_ADD_TRACES).",
+    )
+
+
 class NewTraceTransformRequest(BaseModel):
     name: str = Field(
         description="Name of the transform.",
