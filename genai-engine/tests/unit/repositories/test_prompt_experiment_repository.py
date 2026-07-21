@@ -34,6 +34,29 @@ def _make_prompt_config(name: str) -> Any:
     return SimpleNamespace(type="saved", name=name, version=1)
 
 
+def _make_fake_get_db_test_cases(
+    test_cases: list[Any],
+    pages_requested: list[tuple[Optional[int], Optional[int]]],
+) -> Any:
+    """Build a stand-in for ``_get_db_test_cases`` that serves ``test_cases`` in
+    pages, enforcing the streaming contract and recording each page requested."""
+
+    def fake_get_db_test_cases(
+        experiment_id: str,
+        status: Optional[str] = None,
+        offset: Optional[int] = None,
+        limit: Optional[int] = None,
+        defer_eval_input_variables: bool = False,
+    ) -> list[Any]:
+        assert status == TestCaseStatus.COMPLETED.value
+        assert defer_eval_input_variables is True
+        assert offset is not None and limit is not None
+        pages_requested.append((offset, limit))
+        return test_cases[offset : offset + limit]
+
+    return fake_get_db_test_cases
+
+
 def _make_eval_config(eval_name: str) -> tuple[Any, Any]:
     eval_ref = SimpleNamespace(
         variable_mapping=[
@@ -128,20 +151,10 @@ def test_iter_completed_test_cases_streams_in_pages_and_releases_each() -> None:
     # Serve pages via _get_db_test_cases, enforcing the streaming contract.
     pages_requested: list[tuple[Optional[int], Optional[int]]] = []
 
-    def fake_get_db_test_cases(
-        experiment_id: str,
-        status: Optional[str] = None,
-        offset: Optional[int] = None,
-        limit: Optional[int] = None,
-        defer_eval_input_variables: bool = False,
-    ) -> list[Any]:
-        assert status == TestCaseStatus.COMPLETED.value
-        assert defer_eval_input_variables is True
-        assert offset is not None and limit is not None
-        pages_requested.append((offset, limit))
-        return test_cases[offset : offset + limit]
-
-    repo._get_db_test_cases = fake_get_db_test_cases  # type: ignore[method-assign]
+    repo._get_db_test_cases = _make_fake_get_db_test_cases(  # type: ignore[method-assign]
+        test_cases,
+        pages_requested,
+    )
 
     yielded: list[str] = []
     for test_case in repo.iter_completed_test_cases_for_summary(
