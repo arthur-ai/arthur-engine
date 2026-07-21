@@ -49,13 +49,6 @@ class DatabaseDatasetVersion(Base):
         primary_key=True,
     )
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.now())
-    # lazy="select" (not "joined"): a plain query for a DatabaseDatasetVersion
-    # (e.g. reading only column_names during experiment validation, or listing
-    # versions) must not eagerly drag in every row of the version via a
-    # LEFT OUTER JOIN. Eager-joining made those queries load the entire
-    # (potentially multi-GB) row set into memory. Callers that actually need the
-    # rows still access .version_rows explicitly with an open session, which
-    # lazy-loads them on demand.
     version_rows: Mapped[List["DatabaseDatasetVersionRow"]] = relationship(
         cascade="all,delete",
         lazy="select",
