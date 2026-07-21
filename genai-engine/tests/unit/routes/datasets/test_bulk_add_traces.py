@@ -453,6 +453,231 @@ def test_bulk_add_traces_too_many_trace_ids_422(
 
 
 @pytest.mark.unit_tests
+def test_bulk_add_traces_exactly_max_succeeds(
+    client: GenaiEngineTestClientBase,
+    setup_trace,
+) -> None:
+    """Exactly MAX_BULK_ADD_TRACES trace_ids is accepted (200, not 422) at the cap boundary."""
+    trace_id = setup_trace["trace_id"]
+
+    status_code, task = client.create_task(
+        name="bulk_add_exactly_max_task",
+        is_agentic=True,
+    )
+    assert status_code == 200
+
+    transform = None
+    dataset = None
+    try:
+        status_code, dataset = client.create_dataset(
+            name=f"bulk-add-exactly-max-dataset-{uuid.uuid4()}",
+            task_id=task.id,
+        )
+        assert status_code == 200
+
+        status_code, transform = client.create_transform(
+            task_id=task.id,
+            name="bulk_add_exactly_max_transform",
+            definition=_extraction_transform_definition(),
+        )
+        assert status_code == 200
+
+        # One real trace plus enough distinct fake IDs to hit the cap exactly.
+        trace_ids = [trace_id] + [
+            f"trace-{uuid.uuid4()}" for _ in range(MAX_BULK_ADD_TRACES - 1)
+        ]
+        assert len(trace_ids) == MAX_BULK_ADD_TRACES
+
+        status_code, result = client.bulk_add_traces_to_dataset(
+            dataset_id=dataset.id,
+            transform_id=transform.id,
+            trace_ids=trace_ids,
+        )
+
+        assert status_code == 200, result
+        assert result.total == MAX_BULK_ADD_TRACES
+        assert len(result.results) == MAX_BULK_ADD_TRACES
+        # The single real trace succeeds; the fake ones are reported as failures.
+        assert result.success_count == 1
+    finally:
+        if transform is not None:
+            client.delete_transform(transform.id)
+        if dataset is not None:
+            client.delete_dataset(dataset.id)
+        assert client.delete_task(task.id) == 204
+
+
+@pytest.mark.unit_tests
+def test_bulk_add_traces_all_fail_success_count_zero(
+    client: GenaiEngineTestClientBase,
+) -> None:
+    """A batch where every trace is missing returns success_count == 0 (drives the FE error toast)."""
+    status_code, task = client.create_task(
+        name="bulk_add_all_fail_task",
+        is_agentic=True,
+    )
+    assert status_code == 200
+
+    transform = None
+    dataset = None
+    try:
+        status_code, dataset = client.create_dataset(
+            name=f"bulk-add-all-fail-dataset-{uuid.uuid4()}",
+            task_id=task.id,
+        )
+        assert status_code == 200
+
+        status_code, transform = client.create_transform(
+            task_id=task.id,
+            name="bulk_add_all_fail_transform",
+            definition=_extraction_transform_definition(),
+        )
+        assert status_code == 200
+
+        missing_trace_ids = [f"nonexistent-{uuid.uuid4()}" for _ in range(3)]
+        status_code, result = client.bulk_add_traces_to_dataset(
+            dataset_id=dataset.id,
+            transform_id=transform.id,
+            trace_ids=missing_trace_ids,
+        )
+
+        assert status_code == 200, result
+        assert result.success_count == 0
+        assert result.total == 3
+        assert len(result.results) == 3
+        assert all(r.success is False for r in result.results)
+    finally:
+        if transform is not None:
+            client.delete_transform(transform.id)
+        if dataset is not None:
+            client.delete_dataset(dataset.id)
+        assert client.delete_task(task.id) == 204
+
+
+@pytest.mark.unit_tests
+def test_bulk_add_traces_deduplicates_trace_ids(
+    client: GenaiEngineTestClientBase,
+    setup_trace,
+) -> None:
+    """Duplicate trace_ids are deduped server-side; counts/rows reflect unique traces."""
+    trace_id = setup_trace["trace_id"]
+
+    status_code, task = client.create_task(
+        name="bulk_add_dedupe_task",
+        is_agentic=True,
+    )
+    assert status_code == 200
+
+    transform = None
+    dataset = None
+    try:
+        status_code, dataset = client.create_dataset(
+            name=f"bulk-add-dedupe-dataset-{uuid.uuid4()}",
+            task_id=task.id,
+        )
+        assert status_code == 200
+
+        # Seed the dataset with a version so it has a column schema.
+        status_code, _ = client.create_dataset_version(
+            dataset_id=dataset.id,
+            rows_to_add=[
+                NewDatasetVersionRowRequest(
+                    data=[
+                        NewDatasetVersionRowColumnItemRequest(
+                            column_name="sqlQuery",
+                            column_value="seed",
+                        ),
+                        NewDatasetVersionRowColumnItemRequest(
+                            column_name="token_cost",
+                            column_value="seed",
+                        ),
+                    ],
+                ),
+            ],
+        )
+        assert status_code == 200
+
+        status_code, transform = client.create_transform(
+            task_id=task.id,
+            name="bulk_add_dedupe_transform",
+            definition=_extraction_transform_definition(),
+        )
+        assert status_code == 200
+
+        # Same trace ID repeated three times -> should be deduped to a single trace.
+        status_code, result = client.bulk_add_traces_to_dataset(
+            dataset_id=dataset.id,
+            transform_id=transform.id,
+            trace_ids=[trace_id, trace_id, trace_id],
+        )
+
+        assert status_code == 200, result
+        assert result.total == 1
+        assert result.success_count == 1
+        assert len(result.results) == 1
+        assert result.results[0].trace_id == trace_id
+
+        # Only one new row was persisted (unique trace), on top of the seed row.
+        status_code, latest = client.get_dataset_version(
+            dataset_id=dataset.id,
+            version_number=2,
+        )
+        assert status_code == 200
+        matching = [
+            row
+            for row in latest.rows
+            if {item.column_name: item.column_value for item in row.data}.get("sqlQuery")
+            == "SELECT * FROM users WHERE id = 1"
+        ]
+        assert len(matching) == 1
+    finally:
+        if transform is not None:
+            client.delete_transform(transform.id)
+        if dataset is not None:
+            client.delete_dataset(dataset.id)
+        assert client.delete_task(task.id) == 204
+
+
+@pytest.mark.unit_tests
+def test_bulk_add_traces_unknown_dataset_404(
+    client: GenaiEngineTestClientBase,
+    setup_trace,
+) -> None:
+    """A non-existent (or cross-org) dataset returns 404 up front, not a 200 with success_count=0."""
+    trace_id = setup_trace["trace_id"]
+
+    status_code, task = client.create_task(
+        name="bulk_add_unknown_dataset_task",
+        is_agentic=True,
+    )
+    assert status_code == 200
+
+    transform = None
+    try:
+        status_code, transform = client.create_transform(
+            task_id=task.id,
+            name="bulk_add_unknown_dataset_transform",
+            definition=_extraction_transform_definition(),
+        )
+        assert status_code == 200
+
+        unknown_dataset_id = str(uuid.uuid4())
+        status_code, error = client.bulk_add_traces_to_dataset(
+            dataset_id=unknown_dataset_id,
+            transform_id=transform.id,
+            trace_ids=[trace_id],
+        )
+
+        assert status_code == 404
+        assert error is not None
+        assert "not found" in error.get("detail", "").lower()
+    finally:
+        if transform is not None:
+            client.delete_transform(transform.id)
+        assert client.delete_task(task.id) == 204
+
+
+@pytest.mark.unit_tests
 def test_bulk_add_traces_empty_trace_ids(
     client: GenaiEngineTestClientBase,
 ) -> None:

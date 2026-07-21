@@ -25,8 +25,18 @@ export const BulkAddToDatasetDialog = ({ open, traceCount, isSubmitting = false,
 
   const form = useAppForm({
     ...addToDatasetFormOptions,
-    onSubmit: ({ value }) => {
+    onSubmit: ({ value, formApi }) => {
+      // Guard with the same check the Add button uses so an Enter-key submit
+      // can't fire a request with an empty dataset id or the "manual" transform
+      // sentinel.
+      if (!value.dataset || !hasSelectedTransform(value.transform)) {
+        return;
+      }
       onSelect({ datasetId: value.dataset, transformId: value.transform });
+      // Reset here as well as in handleClose: the submit path closes the dialog
+      // via the parent (TraceLevel's finally), bypassing handleClose, so without
+      // this the dataset/transform selections would leak into the next open.
+      formApi.reset();
     },
   });
 

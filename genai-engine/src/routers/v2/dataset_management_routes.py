@@ -272,7 +272,13 @@ def bulk_add_traces_to_dataset(
                 ),
             )
 
-        if not request.trace_ids:
+        # De-duplicate the incoming trace IDs preserving first-seen order so a
+        # direct API caller passing duplicates doesn't get duplicate rows/results.
+        # The cap is applied to the raw request list above, before de-duplication,
+        # so 26 raw IDs still 422 even if some are duplicates.
+        trace_ids = list(dict.fromkeys(request.trace_ids))
+
+        if not trace_ids:
             return BulkAddTracesToDatasetResponse(
                 success_count=0,
                 total=0,
@@ -280,6 +286,11 @@ def bulk_add_traces_to_dataset(
             )
 
         dataset_repo = DatasetRepository(db_session)
+
+        # Validate the dataset exists and is owned by the caller up front so a
+        # cross-org / non-existent dataset returns 404 (not a 200 with
+        # success_count=0 when the transform produces no rows).
+        dataset_repo.get_dataset(dataset_id, org_scope=org_scope)
 
         # Resolve the transform + its latest definition (404 if missing), mirroring
         # execute_trace_transform_extraction in the v1 transform routes.
@@ -304,13 +315,17 @@ def bulk_add_traces_to_dataset(
 
         # Resolve the dataset's column schema. When the dataset has no version yet
         # (empty schema), fall back to the transform definition's variable names so
-        # that "extract -> row" still produces meaningful columns.
+        # that "extract -> row" still produces meaningful columns. Ownership was
+        # already validated above, so the only 404 expected here is the genuine
+        # "dataset has no version yet" case; anything else propagates.
         try:
             columns = dataset_repo.get_latest_dataset_version(
                 dataset_id,
                 org_scope=org_scope,
             ).column_names
-        except HTTPException:
+        except HTTPException as e:
+            if e.status_code != 404:
+                raise
             columns = []
         if not columns:
             columns = [var.variable_name for var in transform_definition.variables]
@@ -324,7 +339,7 @@ def bulk_add_traces_to_dataset(
             span_repo=span_repo,
             columns=columns,
             transform_definition=transform_definition,
-            trace_ids=request.trace_ids,
+            trace_ids=trace_ids,
             org_scope=org_scope,
         )
 
@@ -342,7 +357,7 @@ def bulk_add_traces_to_dataset(
 
         return BulkAddTracesToDatasetResponse(
             success_count=len(rows),
-            total=len(request.trace_ids),
+            total=len(trace_ids),
             results=results,
         )
     except HTTPException:

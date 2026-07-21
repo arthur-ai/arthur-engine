@@ -11,6 +11,7 @@ import { Search } from "@mui/icons-material";
 import { Alert, Box, Button, Paper, Stack, TextField } from "@mui/material";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { type OnChangeFn, type PaginationState, type RowSelectionState, SortingState } from "@tanstack/react-table";
+import { isAxiosError } from "axios";
 import type { MRT_ColumnDef } from "material-react-table";
 import { useSnackbar } from "notistack";
 import { memo, useCallback, useMemo, useState } from "react";
@@ -163,8 +164,9 @@ export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
         setRowSelection({});
       }
     },
-    onError: () => {
-      enqueueSnackbar("Failed to add traces to dataset", { variant: "error" });
+    onError: (error) => {
+      const detail = isAxiosError(error) ? error.response?.data?.detail : undefined;
+      enqueueSnackbar(detail || "Failed to add traces to dataset", { variant: "error" });
     },
   });
 
