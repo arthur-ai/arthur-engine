@@ -122,7 +122,7 @@ export const AnnotationCell = ({ annotations, traceId, className }: Props) => {
       <Dialog
         open={modalOpen}
         onClose={handleCloseModal}
-        maxWidth="lg"
+        maxWidth="md"
         fullWidth
         onClick={(e) => e.stopPropagation()}
         slotProps={{ paper: { ...tourDataAttr(TOUR_IDS.traceAnnotationsModal) } }}
