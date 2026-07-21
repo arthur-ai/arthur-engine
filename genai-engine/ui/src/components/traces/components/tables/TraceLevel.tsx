@@ -12,6 +12,7 @@ import { Alert, Box, Button, Paper, Stack, TextField } from "@mui/material";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { type OnChangeFn, type PaginationState, type RowSelectionState, SortingState } from "@tanstack/react-table";
 import type { MRT_ColumnDef } from "material-react-table";
+import { useSnackbar } from "notistack";
 import { memo, useCallback, useMemo, useState } from "react";
 
 import { TokenCostTooltip, TokenCountTooltip } from "../../data/common";
@@ -20,6 +21,8 @@ import { useSyncFiltersToUrl } from "../../hooks/useSyncFiltersToUrl";
 import { useFilterStore } from "../../stores/filter.store";
 import { usePaginationContext } from "../../stores/pagination-context";
 import { buildThresholdsFromSample } from "../../utils/duration";
+import { BulkAddToDatasetDialog } from "../add-to-dataset/BulkAddToDatasetDialog";
+import { useBulkAddTracesToDataset } from "../add-to-dataset/hooks/useBulkAddTracesToDataset";
 import { AnnotationCell } from "../AnnotationCell";
 import { DataContentGate } from "../DataContentGate";
 import { TraceContentCell } from "../TraceContentCell";
@@ -72,10 +75,12 @@ export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
   const setContext = usePaginationContext((state) => state.actions.setContext);
 
   const api = useApi()!;
+  const { enqueueSnackbar } = useSnackbar();
 
   const [sorting, setSorting] = useState<SortingState>([{ id: "start_time", desc: true }]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [evalPickerOpen, setEvalPickerOpen] = useState(false);
+  const [addToDatasetPickerOpen, setAddToDatasetPickerOpen] = useState(false);
   const [testRunConfig, setTestRunConfig] = useState<{ evalId: string; evalName: string; testRunId: string } | null>(null);
 
   // Clear selection when sorting or pagination changes (owned setters)
@@ -147,6 +152,39 @@ export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
       }
     },
     [selectedTraceIds, api]
+  );
+
+  const bulkAddToDataset = useBulkAddTracesToDataset({
+    onSuccess: (result) => {
+      const { success_count, total } = result;
+      const variant = success_count === total ? "success" : success_count === 0 ? "error" : "warning";
+      enqueueSnackbar(`${success_count} of ${total} added`, { variant });
+      if (success_count > 0) {
+        setRowSelection({});
+      }
+    },
+    onError: () => {
+      enqueueSnackbar("Failed to add traces to dataset", { variant: "error" });
+    },
+  });
+
+  const handleAddToDatasetClick = useCallback(() => {
+    setAddToDatasetPickerOpen(true);
+  }, []);
+
+  const handleAddToDatasetSelected = useCallback(
+    async ({ datasetId, transformId }: { datasetId: string; transformId: string }) => {
+      const unique = [...new Set(selectedTraceIds)];
+      if (unique.length === 0) return;
+      try {
+        await bulkAddToDataset.mutateAsync({ datasetId, transformId, traceIds: unique });
+      } catch {
+        // error surfaced via onError toast above
+      } finally {
+        setAddToDatasetPickerOpen(false);
+      }
+    },
+    [selectedTraceIds, bulkAddToDataset]
   );
 
   const handleTestRunClose = useCallback(() => {
@@ -266,7 +304,12 @@ export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
           </Box>
         )}
 
-        <SelectionActionBar selectedCount={selectedTraceIds.length} onRunEval={handleRunEvalClick} onClearSelection={handleClearSelection} />
+        <SelectionActionBar
+          selectedCount={selectedTraceIds.length}
+          onRunEval={handleRunEvalClick}
+          onAddToDataset={handleAddToDatasetClick}
+          onClearSelection={handleClearSelection}
+        />
 
         {hasData && (
           <BucketProvider thresholds={thresholds}>
@@ -293,6 +336,14 @@ export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
       </DataContentGate>
 
       <EvalPickerDialog open={evalPickerOpen} onClose={() => setEvalPickerOpen(false)} onSelect={handleEvalSelected} />
+
+      <BulkAddToDatasetDialog
+        open={addToDatasetPickerOpen}
+        traceCount={selectedTraceIds.length}
+        isSubmitting={bulkAddToDataset.isPending}
+        onClose={() => setAddToDatasetPickerOpen(false)}
+        onSelect={handleAddToDatasetSelected}
+      />
 
       <TestRunDialog
         open={!!testRunConfig}
