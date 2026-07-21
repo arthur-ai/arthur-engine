@@ -7,15 +7,10 @@ import pytest
 from repositories.prompt_experiment_repository import PromptExperimentRepository
 from schemas.base_experiment_schemas import TestCaseStatus
 
-# These helpers return lightweight duck-typed stand-ins (SimpleNamespace) for
-# the Pydantic/ORM inputs the repository reads attribute-by-attribute. They are
-# annotated as Any so the calls stay type-clean without constructing the full
-# real models, which would add heavy, unrelated setup to a memory-behavior test.
+# Duck-typed stand-ins for the ORM/Pydantic inputs the repository reads.
 
 
 def _make_dataset_row(row_id: str, context_value: str) -> Any:
-    """A stand-in for DatabaseDatasetVersionRow with the attributes the
-    repository reads (.id and .data)."""
     return SimpleNamespace(
         id=row_id,
         data={"context": context_value, "question": f"q-{row_id}"},
@@ -40,8 +35,6 @@ def _make_prompt_config(name: str) -> Any:
 
 
 def _make_eval_config(eval_name: str) -> tuple[Any, Any]:
-    # One dataset_column-sourced variable (the large mapped column) plus one
-    # experiment_output-sourced variable, mirroring a real llm-judge eval.
     eval_ref = SimpleNamespace(
         variable_mapping=[
             SimpleNamespace(
@@ -63,10 +56,8 @@ def _make_eval_config(eval_name: str) -> tuple[Any, Any]:
 
 @pytest.mark.unit_tests
 def test_create_test_cases_flushes_per_row_and_bounds_peak() -> None:
-    """The create path must flush + release each dataset row's ORM objects
-    before building the next row, so peak in-session memory is bounded to a
-    single row's test case + prompt results + eval scores rather than the whole
-    N x P x E matrix. This guards against the create-time OOM regression."""
+    """The create path flushes and expunges each row's objects before the next,
+    bounding peak memory to a single row."""
     num_rows = 3
     prompt_configs = [_make_prompt_config("p1"), _make_prompt_config("p2")]
     eval_configs = [_make_eval_config(f"eval-{i}") for i in range(4)]
@@ -80,9 +71,7 @@ def test_create_test_cases_flushes_per_row_and_bounds_peak() -> None:
         _make_dataset_row(f"row-{i}", context_value="x" * 1000) for i in range(num_rows)
     ]
 
-    # Track add / flush / expunge ordering so we can compute the live-object
-    # peak and confirm flushing is interleaved per row (not a single flush at
-    # the end).
+    # Track add / flush / expunge ordering to compute the live-object peak.
     events: list[str] = []
     db_session = MagicMock()
     db_session.query.return_value.filter.return_value.all.return_value = dataset_rows
@@ -103,17 +92,12 @@ def test_create_test_cases_flushes_per_row_and_bounds_peak() -> None:
 
     assert total_rows == num_rows
 
-    # Flush once per row (the regression this test guards would flush exactly
-    # once, at the very end).
+    # Flush once per row, and every created object is expunged.
     assert db_session.flush.call_count == num_rows
-
-    # Every created object is expunged (released from the identity map).
     assert db_session.add.call_count == num_rows * objects_per_row
     assert db_session.expunge.call_count == num_rows * objects_per_row
 
-    # Replay the event stream to confirm peak live objects never exceeds a
-    # single row's worth -- i.e. each row's objects are flushed and expunged
-    # before the next row is built.
+    # Peak live objects never exceeds a single row's worth.
     live = 0
     peak = 0
     for event in events:
@@ -128,27 +112,20 @@ def test_create_test_cases_flushes_per_row_and_bounds_peak() -> None:
 
 @pytest.mark.unit_tests
 def test_iter_completed_test_cases_streams_in_pages_and_releases_each() -> None:
-    """Summary aggregation must stream COMPLETED test cases page by page,
-    expunging each page before loading the next, so peak in-session memory is
-    bounded to a single page rather than the whole N x P x E matrix of
-    duplicated eval_input_variables. This guards against the run-time read-back
-    OOM regression (the executor previously loaded every test case -- and thus
-    every per-cell context copy -- at once)."""
+    """Summary aggregation streams COMPLETED test cases page by page, expunging
+    each page before loading the next, bounding peak memory to one page."""
     batch_size = 2
     num_test_cases = 5
     test_cases = [SimpleNamespace(id=f"tc-{i}") for i in range(num_test_cases)]
 
-    # A single ordered event stream of yields and expunges lets us replay the
-    # live-object count and confirm each page is released before the next loads.
+    # Ordered stream of yields and expunges, replayed to compute the live-object peak.
     events: list[tuple[str, str]] = []
     db_session = MagicMock()
     db_session.expunge.side_effect = lambda obj: events.append(("expunge", obj.id))
 
     repo = PromptExperimentRepository(db_session)
 
-    # Serve pages via _get_db_test_cases, enforcing the streaming contract:
-    # only COMPLETED test cases, eval_input_variables deferred, offset/limit
-    # paging.
+    # Serve pages via _get_db_test_cases, enforcing the streaming contract.
     pages_requested: list[tuple[Optional[int], Optional[int]]] = []
 
     def fake_get_db_test_cases(
@@ -174,8 +151,7 @@ def test_iter_completed_test_cases_streams_in_pages_and_releases_each() -> None:
         yielded.append(test_case.id)
         events.append(("yield", test_case.id))
 
-    # Every test case is yielded exactly once, in order (no drops, dupes, or
-    # reordering that would change aggregation).
+    # Every test case is yielded exactly once, in order.
     assert yielded == [tc.id for tc in test_cases]
 
     # Every yielded test case is expunged exactly once.
@@ -185,9 +161,7 @@ def test_iter_completed_test_cases_streams_in_pages_and_releases_each() -> None:
     # Paging advances by batch_size and stops on the first empty page.
     assert pages_requested == [(0, 2), (2, 2), (4, 2), (6, 2)]
 
-    # Replay the event stream: peak live (yielded-but-not-yet-expunged) objects
-    # never exceeds one page. The regression this guards would hold all
-    # num_test_cases at once (peak == num_test_cases).
+    # Peak live (yielded-but-not-yet-expunged) objects never exceeds one page.
     live = 0
     peak = 0
     for kind, _obj_id in events:

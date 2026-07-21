@@ -151,11 +151,7 @@ class PromptExperimentExecutor(BaseExperimentExecutor):
         Sets summary results dictionary with prompt_eval_summaries
         """
         try:
-            # Stream completed test cases in pages instead of loading them all at
-            # once. Each page defers the large eval_input_variables blobs and is
-            # released before the next is fetched, so peak memory is bounded to a
-            # page rather than the full (rows x prompts x evals) matrix of
-            # duplicated context. We only need the eval scores here.
+            # Stream completed test cases in pages to bound peak memory.
             prompt_experiment_repo = PromptExperimentRepository(db_session)
 
             # Build a structure to aggregate results: {prompt_key: {(eval_name, eval_version): [scores]}}
@@ -186,9 +182,6 @@ class PromptExperimentExecutor(BaseExperimentExecutor):
                             results_by_prompt[prompt_key][eval_key].append(
                                 eval_score.eval_result_score,
                             )
-
-            # No completed test cases -> empty summary (same result the general
-            # path below produces from an empty results_by_prompt).
 
             # Build the summary structure using Pydantic models
             prompt_eval_summaries = []

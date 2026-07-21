@@ -56,9 +56,7 @@ from utils.dataset_utils import dataset_row_matches_filter
 
 logger = logging.getLogger(__name__)
 
-# Number of test cases loaded per page when streaming completed test cases for
-# summary aggregation. Bounds peak memory to one page's worth of eval scores
-# rather than the whole (rows x prompts x evals) matrix.
+# Page size for streaming completed test cases during summary aggregation.
 SUMMARY_TEST_CASE_BATCH_SIZE = 50
 
 
@@ -96,23 +94,15 @@ class PromptExperimentRepository:
         limit: Optional[int] = None,
         defer_eval_input_variables: bool = False,
     ) -> List[DatabasePromptExperimentTestCase]:
-        """Load test cases for an experiment.
-
-        Optional args allow callers to paginate and to skip loading the large
-        ``eval_input_variables`` JSON blobs (one per prompt x eval cell), so a
-        consumer that only needs eval scores does not pull the whole
-        (rows x prompts x evals) matrix of duplicated context into memory.
-        """
+        """Load test cases for an experiment, optionally paginated and with
+        eval_input_variables deferred."""
         query = self.db_session.query(DatabasePromptExperimentTestCase).filter_by(
             experiment_id=experiment_id,
         )
         if status is not None:
             query = query.filter_by(status=status)
         if defer_eval_input_variables:
-            # Eager-load the result graph but leave out the heavy
-            # eval_input_variables column. Without an explicit loader option the
-            # lazy relationship would fetch every column, re-materializing all
-            # the duplicated context copies.
+            # Eager-load the result graph but defer the heavy eval_input_variables column.
             query = query.options(
                 selectinload(
                     DatabasePromptExperimentTestCase.prompt_results,
@@ -125,8 +115,7 @@ class PromptExperimentRepository:
                 ),
             )
         if offset is not None or limit is not None:
-            # Deterministic ordering so offset/limit paging never skips or
-            # repeats a row across pages.
+            # Deterministic order so paging doesn't skip or repeat rows.
             query = query.order_by(DatabasePromptExperimentTestCase.id)
             if offset is not None:
                 query = query.offset(offset)
@@ -139,15 +128,8 @@ class PromptExperimentRepository:
         experiment_id: str,
         batch_size: int = SUMMARY_TEST_CASE_BATCH_SIZE,
     ) -> Iterator[DatabasePromptExperimentTestCase]:
-        """Yield COMPLETED test cases one page at a time for summary aggregation.
-
-        Each page is loaded with ``eval_input_variables`` deferred and is
-        expunged from the session before the next page is fetched, so peak
-        memory is bounded to one page rather than the full matrix of per-cell
-        context copies. Callers must consume the eval scores they need for a
-        test case before requesting the next one (the generator does not hold
-        prior pages).
-        """
+        """Yield COMPLETED test cases one page at a time, expunging each page
+        before loading the next to bound memory."""
         offset = 0
         while True:
             batch = self._get_db_test_cases(
@@ -161,10 +143,7 @@ class PromptExperimentRepository:
                 break
             for test_case in batch:
                 yield test_case
-            # Release this page (and its eagerly-loaded prompt results / eval
-            # scores) before loading the next. Expunging only the test cases
-            # leaves any other objects the caller holds (e.g. the experiment)
-            # attached to the session.
+            # Release this page before loading the next.
             for test_case in batch:
                 self.db_session.expunge(test_case)
             offset += batch_size
@@ -407,11 +386,6 @@ class PromptExperimentRepository:
         if not dataset:
             raise ValueError(f"Dataset {request.dataset_ref.id} not found")
 
-        # Validation only needs the version's scalar column_names (read below).
-        # With version_rows now lazy="select" (see dataset_models.py) this
-        # .first() loads just the dataset_versions row and does NOT materialize
-        # the version's (potentially multi-GB) row set: the relationship is
-        # never accessed here, so no LEFT OUTER JOIN / row load is emitted.
         dataset_version = (
             self.db_session.query(DatabaseDatasetVersion)
             .filter(
@@ -616,12 +590,7 @@ class PromptExperimentRepository:
         ] = None,
     ) -> int:
         """Create test cases for each row in the dataset version, including prompt results and eval scores"""
-        # Fetch the rows for this dataset version and apply the dataset_row_filter
-        # in Python. The filter is applied with dataset_row_matches_filter rather
-        # than pushed down into SQL because the row data JSON comparison would
-        # require dialect-specific JSON operators (e.g. Postgres `->>`) that are
-        # not portable across the engines this code runs on. The create-time
-        # memory fix is the per-row flush further below, not the row fetch.
+        # Get all rows for this dataset version (filter applied in Python below).
         dataset_rows = (
             self.db_session.query(DatabaseDatasetVersionRow)
             .filter(
@@ -638,26 +607,8 @@ class PromptExperimentRepository:
             if dataset_row_matches_filter(row, dataset_row_filter)
         ]
 
-        # Create the test cases one dataset row at a time, flushing and releasing
-        # each row's ORM objects before moving to the next row.
-        #
-        # Previously every test case, prompt result and eval score for the whole
-        # N x P x E matrix was built in memory and flushed once at the end, so
-        # all N*P*E eval_input_variables JSON blobs -- each holding a copy of the
-        # row's mapped column values -- were serialized and buffered by psycopg
-        # simultaneously. For a large mapped column (e.g. a RAG context/document)
-        # that made create-time memory scale with the whole matrix and could
-        # OOM the container during the create POST, before any eval ran, even
-        # for a small number of rows. Flushing per row bounds peak memory to a
-        # single row's P*E cells, independent of the matrix size or payload.
-        #
-        # This runs inside the create_experiment transaction: flush is not
-        # commit, so every per-row flush stays in the same transaction and rolls
-        # back together on error (atomicity is preserved -- no intermediate
-        # commits are introduced). Nothing later in create_experiment reads these
-        # per-cell objects back (only the returned row count and db_experiment
-        # are used), so each flushed row's objects are expunged to release their
-        # potentially large JSON payloads from the session identity map.
+        # Build test cases one row at a time, flushing and expunging each row's
+        # objects before the next so peak memory stays bounded to a single row.
         for row in filtered_rows:
             created_in_row: list[object] = []
             # Build prompt input variables from the dataset row data
@@ -782,11 +733,7 @@ class PromptExperimentRepository:
                     self.db_session.add(eval_score)
                     created_in_row.append(eval_score)
 
-            # Flush this row's objects to the DB (bounding the psycopg serialize
-            # buffer to a single row's inserts) and expunge them from the session
-            # so their JSON payloads are released before building the next row.
-            # Expunge in reverse (child-first) creation order so the parents'
-            # unloaded relationship collections are never traversed/loaded.
+            # Flush and expunge this row's objects (child-first) before the next row.
             self.db_session.flush()
             for created_obj in reversed(created_in_row):
                 self.db_session.expunge(created_obj)
