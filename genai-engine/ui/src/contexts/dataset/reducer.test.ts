@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { datasetReducer, initialDatasetState } from "./reducer";
+import { selectHasUnsavedChanges, selectHasUnsavedWork } from "./selectors";
 
 import type { DatasetVersionResponse } from "@/lib/api-client/api-client";
 
@@ -19,45 +20,51 @@ function makeVersion(overrides: Partial<DatasetVersionResponse>): DatasetVersion
   };
 }
 
-describe("datasetReducer", () => {
-  it("DATA/MERGE_CONFIGURED_COLUMNS sets columns on empty state without creating rows or pending changes", () => {
+describe("datasetReducer columnsDirty", () => {
+  it("marks columns dirty when columns are configured on a dataset with no rows", () => {
     const next = datasetReducer(initialDatasetState, {
-      type: "DATA/MERGE_CONFIGURED_COLUMNS",
+      type: "DATA/SET_COLUMNS",
       payload: ["a", "b"],
     });
 
     expect(next.columns).toEqual(["a", "b"]);
-    expect(next.rows).toEqual([]);
+    expect(next.columnsDirty).toBe(true);
     expect(next.pendingChanges).toEqual({ added: [], updated: [], deleted: [] });
   });
 
-  it("DATA/MERGE_CONFIGURED_COLUMNS merges without duplicating existing columns", () => {
-    const state = { ...initialDatasetState, columns: ["a"] };
+  it("does not mark columns dirty when the configured columns are unchanged", () => {
+    const state = { ...initialDatasetState, columns: ["a", "b"] };
     const next = datasetReducer(state, {
-      type: "DATA/MERGE_CONFIGURED_COLUMNS",
+      type: "DATA/SET_COLUMNS",
       payload: ["a", "b"],
     });
 
-    expect(next.columns).toEqual(["a", "b"]);
+    expect(next.columnsDirty).toBe(false);
   });
 
-  it("DATA/LOAD_VERSION merges configured columns first, then appends version extras", () => {
-    const next = datasetReducer(initialDatasetState, {
+  it("resets columnsDirty when a version is loaded from the server", () => {
+    const dirty = { ...initialDatasetState, columnsDirty: true };
+    const next = datasetReducer(dirty, {
       type: "DATA/LOAD_VERSION",
-      payload: makeVersion({ column_names: ["a", "c"], rows: [] }),
-      configuredColumns: ["a", "b"],
+      payload: makeVersion({ column_names: ["a"] }),
     });
 
-    expect(next.columns).toEqual(["a", "b", "c"]);
+    expect(next.columnsDirty).toBe(false);
   });
 
-  it("DATA/LOAD_VERSION with no configured columns is backward-compatible", () => {
-    const next = datasetReducer(initialDatasetState, {
-      type: "DATA/LOAD_VERSION",
-      payload: makeVersion({ column_names: ["x"] }),
-      configuredColumns: [],
-    });
+  it("resets columnsDirty when changes are cleared", () => {
+    const dirty = { ...initialDatasetState, columnsDirty: true };
+    const next = datasetReducer(dirty, { type: "DATA/CLEAR_CHANGES" });
 
-    expect(next.columns).toEqual(["x"]);
+    expect(next.columnsDirty).toBe(false);
+  });
+});
+
+describe("unsaved-work selectors", () => {
+  it("treats unsaved column config as unsaved work, but not as a saveable (row) change", () => {
+    const state = { ...initialDatasetState, columns: ["a"], columnsDirty: true };
+
+    expect(selectHasUnsavedWork(state)).toBe(true);
+    expect(selectHasUnsavedChanges(state)).toBe(false);
   });
 });

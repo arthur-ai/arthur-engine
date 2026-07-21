@@ -46,22 +46,14 @@ export function DatasetContextProvider({ datasetId, children }: DatasetContextPr
 
   useEffect(() => {
     if (queries.versionData) {
-      const metadata = queries.dataset?.metadata as { columns?: string[] } | null;
-      dispatch({
-        type: "DATA/LOAD_VERSION",
-        payload: queries.versionData,
-        configuredColumns: metadata?.columns ?? [],
-      });
+      dispatch({ type: "DATA/LOAD_VERSION", payload: queries.versionData });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [queries.versionData]);
 
   useEffect(() => {
-    const metadata = queries.dataset?.metadata as { columnDefaults?: ColumnDefaults; columns?: string[] } | null;
-    dispatch({ type: "DATA/SET_COLUMN_DEFAULTS", payload: metadata?.columnDefaults ?? {} });
-    if (metadata?.columns) {
-      dispatch({ type: "DATA/MERGE_CONFIGURED_COLUMNS", payload: metadata.columns });
-    }
+    const metadata = queries.dataset?.metadata as { columnDefaults?: ColumnDefaults } | null;
+    const defaults = metadata?.columnDefaults ?? {};
+    dispatch({ type: "DATA/SET_COLUMN_DEFAULTS", payload: defaults });
   }, [queries.dataset?.metadata]);
 
   const contextValue: DatasetContextValue = {

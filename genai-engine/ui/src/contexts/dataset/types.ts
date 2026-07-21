@@ -14,6 +14,7 @@ export interface DatasetState {
   rows: DatasetVersionRowResponse[];
   columnDefaults: ColumnDefaults;
   pendingChanges: PendingChanges;
+  columnsDirty: boolean;
 
   selectedVersion: number | undefined;
 
@@ -44,9 +45,8 @@ export interface DatasetState {
 }
 
 export type DatasetAction =
-  | { type: "DATA/LOAD_VERSION"; payload: DatasetVersionResponse; configuredColumns?: string[] }
+  | { type: "DATA/LOAD_VERSION"; payload: DatasetVersionResponse }
   | { type: "DATA/SET_COLUMNS"; payload: string[] }
-  | { type: "DATA/MERGE_CONFIGURED_COLUMNS"; payload: string[] }
   | { type: "DATA/SET_COLUMN_DEFAULTS"; payload: ColumnDefaults }
   | { type: "DATA/ADD_ROW"; payload: Record<string, unknown> }
   | { type: "DATA/UPDATE_ROW"; payload: { id: string; data: Record<string, unknown> } }
@@ -119,6 +119,7 @@ export const initialDatasetState: DatasetState = {
   rows: [],
   columnDefaults: {},
   pendingChanges: { added: [], updated: [], deleted: [] },
+  columnsDirty: false,
 
   selectedVersion: undefined,
 
