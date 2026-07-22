@@ -37,6 +37,9 @@ import type { ContinuousEvalResponse, CreateEvalRequest, CreateMLEvalRequest, Mo
 import { formatDateInTimezone } from "@/utils/formatters";
 
 const ML_EDITABLE_TYPES = ["pii", "pii_v1", "toxicity"];
+// Built-in Arthur ML eval kinds. Anything not in this allow-list (including a missing/legacy
+// eval_kind) is treated as a user-authored evaluator, NOT built-in.
+const BUILT_IN_EVAL_KINDS = ["pii", "pii_v1", "toxicity", "prompt_injection"];
 
 const EvalDetailView = ({ evalData, isLoading, error, evalName, version, latestVersion, taskId, onRefetch }: EvalDetailViewProps) => {
   const [tagAnchorEl, setTagAnchorEl] = useState<HTMLButtonElement | null>(null);
@@ -219,8 +222,9 @@ const EvalDetailView = ({ evalData, isLoading, error, evalName, version, latestV
   }
 
   // Built-in Arthur evaluators (the built-in ML eval kinds) have no user-editable instructions;
-  // only user-authored LLM evaluators ("llm_as_a_judge") do.
-  const isBuiltIn = evalData.eval_kind !== "llm_as_a_judge";
+  // only user-authored LLM evaluators ("llm_as_a_judge") do. Use a positive allow-list so an
+  // unknown or missing eval_kind is never mislabeled as built-in.
+  const isBuiltIn = BUILT_IN_EVAL_KINDS.includes(evalData.eval_kind ?? "");
 
   return (
     <Box sx={{ p: 3, height: "100%", display: "flex", flexDirection: "column", overflow: "hidden" }}>
