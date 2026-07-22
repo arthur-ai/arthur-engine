@@ -12,13 +12,18 @@ from db_models.task_models import DatabaseTask
 from dependencies import get_db_session, get_org_scope, get_validated_task
 from repositories.agentic_prompts_repository import AgenticPromptRepository
 from repositories.datasets_repository import DatasetRepository
+from repositories.metrics_repository import MetricRepository
 from repositories.model_provider_repository import ModelProviderRepository
+from repositories.span_repository import SpanRepository
+from repositories.tasks_metrics_repository import TasksMetricsRepository
+from repositories.trace_transform_repository import TraceTransformRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
 from schemas.agentic_prompt_schemas import AgenticPrompt
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import Dataset, Task, User
 from schemas.request_schemas import (
+    BulkAddTracesToDatasetRequest,
     DatasetUpdateRequest,
     NewDatasetRequest,
     NewDatasetVersionRequest,
@@ -26,6 +31,7 @@ from schemas.request_schemas import (
     SyntheticDataGenerationRequest,
 )
 from schemas.response_schemas import (
+    BulkAddTracesToDatasetResponse,
     DatasetResponse,
     DatasetVersionResponse,
     DatasetVersionRowColumnItemResponse,
@@ -35,10 +41,12 @@ from schemas.response_schemas import (
     SyntheticDataGenerationResponse,
     SyntheticDataPromptStatus,
 )
+from services.dataset_bulk_add_service import build_bulk_add_rows
 from services.synthetic_data_service import SyntheticDataService
 from utils.constants import (
     EMPTY_MODEL_NAME,
     EMPTY_MODEL_PROVIDER,
+    MAX_BULK_ADD_TRACES,
     PRODUCTION_TAG,
     SYNTHETIC_DATA_SYSTEM_PROMPT_NAME,
     SYNTHETIC_DATASET_TASK_ID,
@@ -233,6 +241,129 @@ def create_dataset_version(
         return dataset_repo.get_latest_dataset_version(
             dataset_id, org_scope=org_scope
         ).to_response_model()
+    finally:
+        db_session.close()
+
+
+@dataset_management_routes.post(
+    "/datasets/{dataset_id}/bulk-add-traces",
+    description="Bulk add traces to a dataset by running a transform against each trace "
+    "and appending the extracted values as new rows in a single new dataset version.",
+    tags=[datasets_router_tag],
+    response_model=BulkAddTracesToDatasetResponse,
+)
+@permission_checker(permissions=PermissionLevelsEnum.DATASET_WRITE.value)
+def bulk_add_traces_to_dataset(
+    request: BulkAddTracesToDatasetRequest,
+    dataset_id: UUID = Path(
+        description="ID of the dataset to add traces to.",
+    ),
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
+) -> BulkAddTracesToDatasetResponse:
+    try:
+        if len(request.trace_ids) > MAX_BULK_ADD_TRACES:
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    f"Cannot add more than {MAX_BULK_ADD_TRACES} traces in a single "
+                    f"request; received {len(request.trace_ids)}."
+                ),
+            )
+
+        # De-duplicate the incoming trace IDs preserving first-seen order so a
+        # direct API caller passing duplicates doesn't get duplicate rows/results.
+        # The cap is applied to the raw request list above, before de-duplication,
+        # so 26 raw IDs still 422 even if some are duplicates.
+        trace_ids = list(dict.fromkeys(request.trace_ids))
+
+        if not trace_ids:
+            return BulkAddTracesToDatasetResponse(
+                success_count=0,
+                total=0,
+                results=[],
+            )
+
+        dataset_repo = DatasetRepository(db_session)
+
+        # Validate the dataset exists and is owned by the caller up front so a
+        # cross-org / non-existent dataset returns 404 (not a 200 with
+        # success_count=0 when the transform produces no rows).
+        dataset_repo.get_dataset(dataset_id, org_scope=org_scope)
+
+        # Resolve the transform + its latest definition (404 if missing), mirroring
+        # execute_trace_transform_extraction in the v1 transform routes.
+        trace_transform_repo = TraceTransformRepository(db_session)
+        trace_transform = trace_transform_repo.get_transform_by_id(
+            request.transform_id,
+            org_scope=org_scope,
+        )
+        if not trace_transform:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Transform {request.transform_id} not found",
+            )
+
+        versions = trace_transform_repo.list_versions(request.transform_id).versions
+        if not versions:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No versions found for transform {request.transform_id}",
+            )
+        transform_definition = versions[0].definition
+
+        # Resolve the dataset's column schema. When the dataset has no version yet
+        # (empty schema), fall back to the transform definition's variable names so
+        # that "extract -> row" still produces meaningful columns. Ownership was
+        # already validated above, so the only 404 expected here is the genuine
+        # "dataset has no version yet" case; anything else propagates.
+        try:
+            columns = dataset_repo.get_latest_dataset_version(
+                dataset_id,
+                org_scope=org_scope,
+            ).column_names
+        except HTTPException as e:
+            if e.status_code != 404:
+                raise
+            columns = []
+        if not columns:
+            columns = [var.variable_name for var in transform_definition.variables]
+
+        # Build the span repository once, then run the transform against each trace.
+        tasks_metrics_repo = TasksMetricsRepository(db_session)
+        metrics_repo = MetricRepository(db_session)
+        span_repo = SpanRepository(db_session, tasks_metrics_repo, metrics_repo)
+
+        rows, results = build_bulk_add_rows(
+            span_repo=span_repo,
+            columns=columns,
+            transform_definition=transform_definition,
+            trace_ids=trace_ids,
+            org_scope=org_scope,
+        )
+
+        # Persist all successful rows in a single new dataset version.
+        if rows:
+            dataset_repo.create_dataset_version(
+                dataset_id,
+                NewDatasetVersionRequest(
+                    rows_to_add=rows,
+                    rows_to_delete=[],
+                    rows_to_update=[],
+                ),
+                org_scope=org_scope,
+            )
+
+        return BulkAddTracesToDatasetResponse(
+            success_count=len(rows),
+            total=len(trace_ids),
+            results=results,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
     finally:
         db_session.close()
 

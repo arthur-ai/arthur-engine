@@ -453,6 +453,10 @@ CHATBOT_SUMMARIZER_PROMPT_NAME = "__chatbot_summarizer_prompt__"
 
 # Dataset constants
 MAX_DATASET_ROWS = 250
+# Maximum number of traces that can be added to a dataset in a single
+# bulk-add request. Matches the trace table's current page fetch-size limit
+# (the UI can only select traces on the current page).
+MAX_BULK_ADD_TRACES = 25
 
 ##################################################################
 

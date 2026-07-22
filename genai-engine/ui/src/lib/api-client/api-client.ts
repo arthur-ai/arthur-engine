@@ -1260,6 +1260,63 @@ export interface BuiltinValidationResponse {
   results: ExternalRuleResult[];
 }
 
+/** BulkAddTraceResult */
+export interface BulkAddTraceResult {
+  /**
+   * Error
+   * Error message when the trace could not be added (e.g. trace not found).
+   */
+  error?: string | null;
+  /**
+   * Success
+   * Whether a row was successfully produced for this trace.
+   */
+  success: boolean;
+  /**
+   * Trace Id
+   * ID of the trace this result refers to.
+   */
+  trace_id: string;
+}
+
+export type BulkAddTracesToDatasetApiV2DatasetsDatasetIdBulkAddTracesPostData = BulkAddTracesToDatasetResponse;
+
+export type BulkAddTracesToDatasetApiV2DatasetsDatasetIdBulkAddTracesPostError = HTTPValidationError;
+
+/** BulkAddTracesToDatasetRequest */
+export interface BulkAddTracesToDatasetRequest {
+  /**
+   * Trace Ids
+   * List of trace IDs to add to the dataset. Limited to the trace table's current page fetch-size (see MAX_BULK_ADD_TRACES).
+   */
+  trace_ids: string[];
+  /**
+   * Transform Id
+   * ID of the transform to run against each trace to extract row values.
+   * @format uuid
+   */
+  transform_id: string;
+}
+
+/** BulkAddTracesToDatasetResponse */
+export interface BulkAddTracesToDatasetResponse {
+  /**
+   * Results
+   * Per-trace results, in the order the trace IDs were provided.
+   */
+  results: BulkAddTraceResult[];
+  /**
+   * Success Count
+   * Number of rows successfully written to the new dataset version.
+   */
+  success_count: number;
+  /**
+   * Total
+   * Total number of trace IDs in the request.
+   */
+  total: number;
+}
+
 /** CertificateUploadResponse */
 export interface CertificateUploadResponse {
   /** Certificate Id */
@@ -13648,7 +13705,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.654
+ * @version 2.1.719
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
@@ -13873,6 +13930,33 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         method: "PATCH",
         query: query,
         secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Bulk add traces to a dataset by running a transform against each trace and appending the extracted values as new rows in a single new dataset version.
+     *
+     * @tags Datasets
+     * @name BulkAddTracesToDatasetApiV2DatasetsDatasetIdBulkAddTracesPost
+     * @summary Bulk Add Traces To Dataset
+     * @request POST:/api/v2/datasets/{dataset_id}/bulk-add-traces
+     * @secure
+     */
+    bulkAddTracesToDatasetApiV2DatasetsDatasetIdBulkAddTracesPost: (
+      datasetId: string,
+      data: BulkAddTracesToDatasetRequest,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        BulkAddTracesToDatasetApiV2DatasetsDatasetIdBulkAddTracesPostData,
+        BulkAddTracesToDatasetApiV2DatasetsDatasetIdBulkAddTracesPostError
+      >({
+        path: `/api/v2/datasets/${datasetId}/bulk-add-traces`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
         format: "json",
         ...params,
       }),
