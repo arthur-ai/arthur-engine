@@ -810,6 +810,27 @@ class TransformExtractionResponseList(BaseModel):
     )
 
 
+class BulkAddTraceResult(BaseModel):
+    trace_id: str = Field(description="ID of the trace this result refers to.")
+    success: bool = Field(
+        description="Whether a row was successfully produced for this trace.",
+    )
+    error: Optional[str] = Field(
+        default=None,
+        description="Error message when the trace could not be added (e.g. trace not found).",
+    )
+
+
+class BulkAddTracesToDatasetResponse(BaseModel):
+    success_count: int = Field(
+        description="Number of rows successfully written to the new dataset version.",
+    )
+    total: int = Field(description="Total number of trace IDs in the request.")
+    results: list[BulkAddTraceResult] = Field(
+        description="Per-trace results, in the order the trace IDs were provided.",
+    )
+
+
 class ContinuousEvalVariableMappingResponse(BaseModel):
     matching_variables: List[str] = Field(
         description="List of matching variables.",
