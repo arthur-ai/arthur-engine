@@ -36,6 +36,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useTasksOverview } from "@/hooks/tasks/useTasksOverview";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useActiveTasksQuery, useArchivedTasksQuery } from "@/hooks/useTasksList";
+import type { PaginationSortMethod, TaskSortField } from "@/lib/api-client/api-client";
 import { queryKeys } from "@/lib/queryKeys";
 import { type InactiveDays, type SortBy, useTaskListStore } from "@/stores/task-list.store";
 
@@ -49,8 +50,27 @@ export const AllTasks: React.FC = () => {
   const debouncedSearchQuery = useDebouncedValue(searchQuery, 300);
   const { hideSystemTasks, sortBy, inactiveDays, setHideSystemTasks, setSortBy, setInactiveDays } = useTaskListStore();
 
+  // Sorting is resolved server-side: the dropdown maps to a task column and a
+  // fixed descending direction (most-recent first), fixing the previous
+  // inconsistent client-side sort direction.
+  const sortField: TaskSortField = sortBy === "updated" ? "updated_at" : "created_at";
+  const sortDirection: PaginationSortMethod = "desc";
+
+  // "Active in last N days" now filters on last_active (max trace end-time)
+  // server-side instead of on the already-loaded page's updated_at. Frozen per
+  // inactiveDays change so it doesn't churn the query key every render.
+  const lastActiveStartTime = useMemo(() => {
+    if (typeof inactiveDays === "number" && inactiveDays > 0) {
+      return new Date(Date.now() - inactiveDays * 24 * 60 * 60 * 1000).toISOString();
+    }
+    return undefined;
+  }, [inactiveDays]);
+
   const { tasks, totalCount, isLoading, isError, isFetchingNextPage, hasNextPage, fetchNextPage } = useActiveTasksQuery({
     search: debouncedSearchQuery,
+    sortField,
+    sort: sortDirection,
+    lastActiveStartTime,
   });
 
   const {
@@ -61,47 +81,25 @@ export const AllTasks: React.FC = () => {
     isFetchingNextPage: archivedIsFetchingNextPage,
     hasNextPage: archivedHasNextPage,
     fetchNextPage: archivedFetchNextPage,
-  } = useArchivedTasksQuery({ enabled: archivedDialogOpen });
+  } = useArchivedTasksQuery({ enabled: archivedDialogOpen, sortField, sort: sortDirection });
 
   const sentinelRef = useRef<HTMLDivElement>(null);
   const archivedSentinelRef = useRef<HTMLDivElement>(null);
   const archivedScrollRef = useRef<HTMLDivElement>(null);
   const isSearching = debouncedSearchQuery.trim().length > 0;
 
+  // Sorting and the "Active in last N days" filter are applied server-side.
+  // The only remaining client-side transform is hiding system tasks, which the
+  // search endpoint does not filter on.
   const filteredTasks = useMemo(() => {
-    let result = [...tasks];
-
-    if (hideSystemTasks) {
-      result = result.filter((t) => !t.is_system_task);
-    }
-
-    if (inactiveDays !== "archived" && inactiveDays > 0) {
-      const cutoff = Date.now() - inactiveDays * 24 * 60 * 60 * 1000;
-      result = result.filter((t) => t.updated_at >= cutoff);
-    }
-
-    result.sort((a, b) => {
-      const field = sortBy === "updated" ? "updated_at" : "created_at";
-      return b[field] - a[field];
-    });
-
-    return result;
-  }, [tasks, hideSystemTasks, sortBy, inactiveDays]);
+    if (!hideSystemTasks) return tasks;
+    return tasks.filter((t) => !t.is_system_task);
+  }, [tasks, hideSystemTasks]);
 
   const filteredArchivedTasks = useMemo(() => {
-    let result = [...archivedTasks];
-
-    if (hideSystemTasks) {
-      result = result.filter((t) => !t.is_system_task);
-    }
-
-    result.sort((a, b) => {
-      const field = sortBy === "updated" ? "updated_at" : "created_at";
-      return b[field] - a[field];
-    });
-
-    return result;
-  }, [archivedTasks, hideSystemTasks, sortBy]);
+    if (!hideSystemTasks) return archivedTasks;
+    return archivedTasks.filter((t) => !t.is_system_task);
+  }, [archivedTasks, hideSystemTasks]);
 
   const visibleTaskIds = useMemo(() => [...filteredTasks, ...filteredArchivedTasks].map((t) => t.id), [filteredTasks, filteredArchivedTasks]);
   const { data: overviewByTask = {} } = useTasksOverview(visibleTaskIds);

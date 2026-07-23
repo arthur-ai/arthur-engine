@@ -32,6 +32,7 @@ from db_models import (
     DatabaseTaskToMetrics,
     DatabaseTaskToRules,
 )
+from db_models.telemetry_models import DatabaseTraceMetadata
 from repositories.metrics_repository import MetricRepository
 from repositories.rules_repository import RuleRepository
 from repositories.service_name_mapping_repository import (
@@ -79,24 +80,14 @@ class TaskRepository:
         include_archived: bool = False,
         only_archived: bool = False,
         sort: PaginationSortMethod = PaginationSortMethod.DESCENDING,
-        sort_field: TaskSortField = TaskSortField.CREATED,
-        start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None,
+        sort_field: Optional[TaskSortField] = None,
+        last_active_start_time: Optional[datetime] = None,
+        last_active_end_time: Optional[datetime] = None,
         page_size: Optional[int] = 10,
         page: int = 0,
         org_scope: Optional[UUID] = None,
     ) -> tuple[list[DatabaseTask], int]:
         stmt = self.db_session.query(DatabaseTask)
-        # Single source of truth: the selected mode resolves the timestamp column
-        # used for BOTH the time-range filter and the ordering. "Recently updated"
-        # uses updated_at so records updated (but not created) within the window
-        # are matched; "Recently created" preserves the historical created_at
-        # behavior. Unset mode defaults to created_at (unchanged behavior).
-        sort_column = (
-            DatabaseTask.updated_at
-            if sort_field == TaskSortField.UPDATED
-            else DatabaseTask.created_at
-        )
         # Tenant callers see only their own org's tasks. Admin (org_scope=None)
         # passes through and sees everything.
         if org_scope is not None:
@@ -111,15 +102,69 @@ class TaskRepository:
             stmt = stmt.where(DatabaseTask.archived == True)
         elif not include_archived:
             stmt = stmt.where(DatabaseTask.archived == False)
-        # Both range bounds filter on the same resolved column.
-        if start_time is not None:
-            stmt = stmt.where(sort_column >= start_time)
-        if end_time is not None:
-            stmt = stmt.where(sort_column <= end_time)
-        if sort == PaginationSortMethod.DESCENDING:
-            stmt = stmt.order_by(desc(sort_column))
-        elif sort == PaginationSortMethod.ASCENDING:
-            stmt = stmt.order_by(asc(sort_column))
+
+        # last_active is NOT a column on tasks: it is the most recent trace
+        # end-time per task, derived from trace_metadata. We only join the
+        # aggregation subquery when the caller filters or sorts on it, so the
+        # default (no param) query is byte-for-byte the historical behavior.
+        filtering_last_active = (
+            last_active_start_time is not None or last_active_end_time is not None
+        )
+        sorting_last_active = sort_field == TaskSortField.LAST_ACTIVE
+        last_active_column = None
+        if filtering_last_active or sorting_last_active:
+            last_active_subq = self.db_session.query(
+                DatabaseTraceMetadata.task_id.label("task_id"),
+                func.max(DatabaseTraceMetadata.end_time).label("last_active"),
+            )
+            # trace_metadata carries a denormalized org_id; scope the
+            # aggregation so tenants only see their own trace activity.
+            if org_scope is not None:
+                last_active_subq = last_active_subq.filter(
+                    DatabaseTraceMetadata.org_id == org_scope,
+                )
+            last_active_subq = last_active_subq.group_by(
+                DatabaseTraceMetadata.task_id,
+            ).subquery()
+            last_active_column = last_active_subq.c.last_active
+
+            if filtering_last_active:
+                # INNER join intentionally drops tasks with no traces / null
+                # last_active while the filter is active.
+                stmt = stmt.join(
+                    last_active_subq,
+                    DatabaseTask.id == last_active_subq.c.task_id,
+                )
+                if last_active_start_time is not None:
+                    stmt = stmt.where(last_active_column >= last_active_start_time)
+                if last_active_end_time is not None:
+                    stmt = stmt.where(last_active_column <= last_active_end_time)
+            else:
+                # Sorting only: keep trace-less tasks (LEFT join) and push their
+                # null last_active to the end regardless of direction.
+                stmt = stmt.outerjoin(
+                    last_active_subq,
+                    DatabaseTask.id == last_active_subq.c.task_id,
+                )
+
+        # Server-side ordering. sort_field=None preserves the historical
+        # default (created_at, honoring the pagination sort direction).
+        if sort_field == TaskSortField.NAME:
+            order_column = DatabaseTask.name
+        elif sort_field == TaskSortField.UPDATED_AT:
+            order_column = DatabaseTask.updated_at
+        elif sort_field == TaskSortField.LAST_ACTIVE:
+            order_column = last_active_column
+        else:
+            order_column = DatabaseTask.created_at
+
+        if sort == PaginationSortMethod.ASCENDING:
+            ordering = asc(order_column)
+        else:
+            ordering = desc(order_column)
+        if sorting_last_active:
+            ordering = ordering.nulls_last()
+        stmt = stmt.order_by(ordering)
 
         # Calculate the count prior to applying the offset
         count = stmt.count()
@@ -343,10 +388,6 @@ class TaskRepository:
             self.metric_repository.archive_metric(metric_link.metric_id, commit=False)
 
         db_task.archived = True
-        # Archiving is an update: bump updated_at so the task is returned by
-        # "Recently Updated" relative time filters (updated_at has no
-        # onupdate= default, so it must be set explicitly here).
-        db_task.updated_at = datetime.now()
         self.db_session.commit()
 
     def unarchive_task(self, task_id: str) -> None:
@@ -373,10 +414,6 @@ class TaskRepository:
             self.metric_repository.unarchive_metric(metric_link.metric_id, commit=False)
 
         db_task.archived = False
-        # Unarchiving is an update: bump updated_at so the task is returned by
-        # "Recently Updated" relative time filters (updated_at has no
-        # onupdate= default, so it must be set explicitly here).
-        db_task.updated_at = datetime.now()
         self.db_session.commit()
 
     def create_task(

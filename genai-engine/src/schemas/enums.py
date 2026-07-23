@@ -30,14 +30,18 @@ class RuleScoringMethod(str, Enum):
 
 
 class TaskSortField(str, Enum):
-    """Which task timestamp column drives ordering and time-range filtering.
+    """Server-side sort column for ``/api/v2/tasks/search``.
 
-    ``CREATED`` filters/sorts on ``tasks.created_at`` ("Recently created"),
-    ``UPDATED`` on ``tasks.updated_at`` ("Recently updated").
+    ``NAME``/``CREATED_AT``/``UPDATED_AT`` sort on the corresponding
+    ``tasks`` columns. ``LAST_ACTIVE`` sorts on the most recent trace
+    activity per task (``MAX(trace_metadata.end_time)``), which is not a
+    stored task column but computed by joining the trace-metadata table.
     """
 
-    CREATED = "created"
-    UPDATED = "updated"
+    NAME = "name"
+    CREATED_AT = "created_at"
+    UPDATED_AT = "updated_at"
+    LAST_ACTIVE = "last_active"
 
 
 class DocumentType(str, Enum):

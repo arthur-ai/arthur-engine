@@ -5,6 +5,7 @@ import pytest
 from arthur_common.models.enums import PaginationSortMethod
 
 from db_models import DatabaseTask
+from db_models.telemetry_models import DatabaseTraceMetadata
 from dependencies import get_application_config
 from repositories.metrics_repository import MetricRepository
 from repositories.rules_repository import RuleRepository
@@ -14,208 +15,320 @@ from tests.clients.base_test_client import override_get_db_session
 from utils.constants import DEFAULT_ORG_ID
 
 
-def _build_task_repo(db_session) -> TaskRepository:
+def _build_repo(db_session):
     application_config = get_application_config(session=db_session)
     rules_repo = RuleRepository(db_session)
     metric_repo = MetricRepository(db_session)
     return TaskRepository(db_session, rules_repo, metric_repo, application_config)
 
 
-def _insert_task(
-    db_session, name: str, created_at: datetime, updated_at: datetime
-) -> str:
+def _add_task(db_session, name, created_at, updated_at=None, org_id=DEFAULT_ORG_ID):
     task_id = str(uuid.uuid4())
-    db_session.add(
-        DatabaseTask(
-            id=task_id,
-            name=name,
-            created_at=created_at,
-            updated_at=updated_at,
-            is_agentic=False,
-            is_autocreated=False,
-            is_system_task=False,
-            org_id=DEFAULT_ORG_ID,
-        ),
+    task = DatabaseTask(
+        id=task_id,
+        name=name,
+        created_at=created_at,
+        updated_at=updated_at or created_at,
+        is_agentic=False,
+        archived=False,
+        org_id=org_id,
     )
+    db_session.add(task)
     db_session.commit()
     return task_id
 
 
-@pytest.mark.unit_tests
-def test_query_tasks_recently_updated_uses_updated_at():
-    """Regression for UP-4693.
+def _add_trace(db_session, task_id, end_time, org_id=DEFAULT_ORG_ID):
+    trace = DatabaseTraceMetadata(
+        trace_id=str(uuid.uuid4()),
+        task_id=task_id,
+        org_id=org_id,
+        session_id=None,
+        user_id=None,
+        span_count=1,
+        start_time=end_time,
+        end_time=end_time,
+        created_at=end_time,
+        updated_at=end_time,
+        input_content="in",
+        output_content="out",
+    )
+    db_session.add(trace)
+    db_session.commit()
+    return trace.trace_id
 
-    With mode "Recently updated", a task created outside the time window but
-    updated inside it must be returned, while a task updated outside the window
-    must be excluded. "Recently created" keeps filtering on created_at.
-    """
+
+@pytest.fixture
+def repo_env():
+    """Yields (repo, db_session) and cleans up any tasks/traces created."""
     db_session = override_get_db_session()
-    repo = _build_task_repo(db_session)
-
-    now = datetime.now()
-    window_start = now - timedelta(days=7)
-
-    prefix = f"up4693_{uuid.uuid4()}_"
-
-    # Created a month ago, updated 16 hours ago -> inside the "updated" window.
-    stale_created_fresh_updated = _insert_task(
-        db_session,
-        name=f"{prefix}stale_created_fresh_updated",
-        created_at=now - timedelta(days=30),
-        updated_at=now - timedelta(hours=16),
-    )
-    # Created a month ago, updated a month ago -> outside the "updated" window.
-    stale_updated = _insert_task(
-        db_session,
-        name=f"{prefix}stale_updated",
-        created_at=now - timedelta(days=30),
-        updated_at=now - timedelta(days=30),
-    )
-    # Created 2 days ago (inside "created" window), updated 2 days ago.
-    fresh_created = _insert_task(
-        db_session,
-        name=f"{prefix}fresh_created",
-        created_at=now - timedelta(days=2),
-        updated_at=now - timedelta(days=2),
-    )
-
-    all_ids = [stale_created_fresh_updated, stale_updated, fresh_created]
-
-    try:
-        # Recently updated: both range bounds filter on updated_at.
-        updated_tasks, _ = repo.query_tasks(
-            ids=all_ids,
-            sort_field=TaskSortField.UPDATED,
-            start_time=window_start,
-            end_time=now,
-            page_size=None,
-        )
-        updated_result_ids = {t.id for t in updated_tasks}
-        assert stale_created_fresh_updated in updated_result_ids
-        assert fresh_created in updated_result_ids
-        assert stale_updated not in updated_result_ids
-
-        # Recently created: filters on created_at instead.
-        created_tasks, _ = repo.query_tasks(
-            ids=all_ids,
-            sort_field=TaskSortField.CREATED,
-            start_time=window_start,
-            end_time=now,
-            page_size=None,
-        )
-        created_result_ids = {t.id for t in created_tasks}
-        assert fresh_created in created_result_ids
-        assert stale_created_fresh_updated not in created_result_ids
-        assert stale_updated not in created_result_ids
-
-        # Default (unset) mode preserves created_at behavior.
-        default_tasks, _ = repo.query_tasks(
-            ids=all_ids,
-            start_time=window_start,
-            end_time=now,
-            page_size=None,
-        )
-        assert {t.id for t in default_tasks} == created_result_ids
-    finally:
-        for task_id in all_ids:
-            repo.delete_task(task_id=task_id)
+    repo = _build_repo(db_session)
+    created = {"task_ids": [], "trace_ids": []}
+    yield repo, db_session, created
+    if created["trace_ids"]:
+        db_session.query(DatabaseTraceMetadata).filter(
+            DatabaseTraceMetadata.trace_id.in_(created["trace_ids"]),
+        ).delete(synchronize_session=False)
+    if created["task_ids"]:
+        db_session.query(DatabaseTask).filter(
+            DatabaseTask.id.in_(created["task_ids"]),
+        ).delete(synchronize_session=False)
+    db_session.commit()
 
 
 @pytest.mark.unit_tests
-def test_query_tasks_recently_updated_orders_by_updated_at():
-    """Ordering must follow the resolved column so recently-updated old tasks
-    surface at the top of a descending sort (matching the pagination fix)."""
-    db_session = override_get_db_session()
-    repo = _build_task_repo(db_session)
-
+def test_last_active_filter_includes_old_task_with_recent_trace(repo_env):
+    repo, db_session, created = repo_env
     now = datetime.now()
-    prefix = f"up4693_order_{uuid.uuid4()}_"
 
-    # Older created_at but newest updated_at.
-    recently_updated = _insert_task(
-        db_session,
-        name=f"{prefix}recently_updated",
-        created_at=now - timedelta(days=30),
-        updated_at=now - timedelta(hours=1),
+    # Task created 30 days ago but with a trace that ended 1 day ago.
+    old_task = _add_task(
+        db_session, "old-but-active", created_at=now - timedelta(days=30)
     )
-    # Newest created_at but older updated_at.
-    recently_created = _insert_task(
-        db_session,
-        name=f"{prefix}recently_created",
-        created_at=now - timedelta(hours=2),
-        updated_at=now - timedelta(days=10),
+    trace = _add_trace(db_session, old_task, end_time=now - timedelta(days=1))
+    created["task_ids"].append(old_task)
+    created["trace_ids"].append(trace)
+
+    tasks, count = repo.query_tasks(
+        ids=[old_task],
+        last_active_start_time=now - timedelta(days=7),
+        page_size=None,
     )
 
-    all_ids = [recently_updated, recently_created]
-
-    try:
-        tasks, _ = repo.query_tasks(
-            ids=all_ids,
-            sort=PaginationSortMethod.DESCENDING,
-            sort_field=TaskSortField.UPDATED,
-            page_size=None,
-        )
-        ordered_ids = [t.id for t in tasks]
-        assert ordered_ids == [recently_updated, recently_created]
-    finally:
-        for task_id in all_ids:
-            repo.delete_task(task_id=task_id)
+    assert count == 1
+    assert [t.id for t in tasks] == [old_task]
 
 
 @pytest.mark.unit_tests
-def test_archive_and_unarchive_bump_updated_at():
-    """Regression for UP-4693 (PR #1936 review): archiving and unarchiving a
-    task are updates and must advance ``updated_at`` so the task is returned by
-    "Recently Updated" relative time filters, even though its ``created_at``
-    falls outside the window."""
-    db_session = override_get_db_session()
-    repo = _build_task_repo(db_session)
-
+def test_last_active_filter_excludes_only_old_or_traceless_tasks(repo_env):
+    repo, db_session, created = repo_env
     now = datetime.now()
-    window_start = now - timedelta(days=7)
-    prefix = f"up4693_archive_{uuid.uuid4()}_"
 
-    # Created and last updated a month ago -> outside the "updated" window and
-    # its created_at is outside the window too.
-    task_id = _insert_task(
-        db_session,
-        name=f"{prefix}stale",
-        created_at=now - timedelta(days=30),
-        updated_at=now - timedelta(days=30),
+    recent_task = _add_task(db_session, "recent", created_at=now - timedelta(days=30))
+    recent_trace = _add_trace(db_session, recent_task, end_time=now - timedelta(days=2))
+
+    stale_task = _add_task(db_session, "stale", created_at=now - timedelta(days=30))
+    stale_trace = _add_trace(db_session, stale_task, end_time=now - timedelta(days=60))
+
+    traceless_task = _add_task(
+        db_session, "traceless", created_at=now - timedelta(days=1)
     )
 
-    try:
-        original_updated_at = repo.get_db_task_by_id(task_id).updated_at
+    created["task_ids"] += [recent_task, stale_task, traceless_task]
+    created["trace_ids"] += [recent_trace, stale_trace]
 
-        # Archiving must bump updated_at into the window.
-        repo.archive_task(task_id)
-        archived_updated_at = repo.get_db_task_by_id(
-            task_id, include_archived=True
-        ).updated_at
-        assert archived_updated_at > original_updated_at
+    tasks, count = repo.query_tasks(
+        ids=[recent_task, stale_task, traceless_task],
+        last_active_start_time=now - timedelta(days=7),
+        page_size=None,
+    )
 
-        archived_tasks, _ = repo.query_tasks(
-            ids=[task_id],
-            sort_field=TaskSortField.UPDATED,
-            start_time=window_start,
-            end_time=datetime.now(),
-            only_archived=True,
-            page_size=None,
-        )
-        assert task_id in {t.id for t in archived_tasks}
+    # Only the task with a trace inside the window survives the INNER join.
+    assert count == 1
+    assert [t.id for t in tasks] == [recent_task]
 
-        # Unarchiving must bump updated_at again.
-        repo.unarchive_task(task_id)
-        unarchived_updated_at = repo.get_db_task_by_id(task_id).updated_at
-        assert unarchived_updated_at >= archived_updated_at
 
-        unarchived_tasks, _ = repo.query_tasks(
-            ids=[task_id],
-            sort_field=TaskSortField.UPDATED,
-            start_time=window_start,
-            end_time=datetime.now(),
-            page_size=None,
-        )
-        assert task_id in {t.id for t in unarchived_tasks}
-    finally:
-        repo.delete_task(task_id=task_id)
+@pytest.mark.unit_tests
+def test_no_filter_returns_all_including_traceless(repo_env):
+    repo, db_session, created = repo_env
+    now = datetime.now()
+
+    active_task = _add_task(db_session, "active", created_at=now - timedelta(days=30))
+    active_trace = _add_trace(db_session, active_task, end_time=now - timedelta(days=1))
+    traceless_task = _add_task(
+        db_session, "traceless", created_at=now - timedelta(days=2)
+    )
+
+    created["task_ids"] += [active_task, traceless_task]
+    created["trace_ids"].append(active_trace)
+
+    tasks, count = repo.query_tasks(
+        ids=[active_task, traceless_task],
+        page_size=None,
+    )
+
+    # No filter => no join => trace-less tasks are still returned.
+    assert count == 2
+    assert set(t.id for t in tasks) == {active_task, traceless_task}
+
+
+@pytest.mark.unit_tests
+def test_last_active_end_time_bound(repo_env):
+    repo, db_session, created = repo_env
+    now = datetime.now()
+
+    recent_task = _add_task(db_session, "recent", created_at=now - timedelta(days=30))
+    recent_trace = _add_trace(
+        db_session, recent_task, end_time=now - timedelta(hours=1)
+    )
+    old_task = _add_task(db_session, "old", created_at=now - timedelta(days=30))
+    old_trace = _add_trace(db_session, old_task, end_time=now - timedelta(days=20))
+
+    created["task_ids"] += [recent_task, old_task]
+    created["trace_ids"] += [recent_trace, old_trace]
+
+    # Only activity on or before 10 days ago.
+    tasks, count = repo.query_tasks(
+        ids=[recent_task, old_task],
+        last_active_end_time=now - timedelta(days=10),
+        page_size=None,
+    )
+
+    assert count == 1
+    assert [t.id for t in tasks] == [old_task]
+
+
+@pytest.mark.unit_tests
+def test_default_sort_matches_created_at_desc(repo_env):
+    repo, db_session, created = repo_env
+    now = datetime.now()
+
+    first = _add_task(db_session, "a-first", created_at=now - timedelta(days=3))
+    second = _add_task(db_session, "b-second", created_at=now - timedelta(days=2))
+    third = _add_task(db_session, "c-third", created_at=now - timedelta(days=1))
+    created["task_ids"] += [first, second, third]
+
+    ids = [first, second, third]
+
+    # No sort_field: preserves historical created_at DESC default.
+    tasks, _ = repo.query_tasks(ids=ids, page_size=None)
+    assert [t.id for t in tasks] == [third, second, first]
+
+    tasks_asc, _ = repo.query_tasks(
+        ids=ids,
+        sort=PaginationSortMethod.ASCENDING,
+        page_size=None,
+    )
+    assert [t.id for t in tasks_asc] == [first, second, third]
+
+
+@pytest.mark.unit_tests
+def test_sort_by_name(repo_env):
+    repo, db_session, created = repo_env
+    now = datetime.now()
+
+    # created_at order is deliberately the reverse of alphabetical name order.
+    charlie = _add_task(db_session, "charlie", created_at=now - timedelta(days=1))
+    bravo = _add_task(db_session, "bravo", created_at=now - timedelta(days=2))
+    alpha = _add_task(db_session, "alpha", created_at=now - timedelta(days=3))
+    created["task_ids"] += [charlie, bravo, alpha]
+
+    ids = [charlie, bravo, alpha]
+
+    tasks_asc, _ = repo.query_tasks(
+        ids=ids,
+        sort_field=TaskSortField.NAME,
+        sort=PaginationSortMethod.ASCENDING,
+        page_size=None,
+    )
+    assert [t.name for t in tasks_asc] == ["alpha", "bravo", "charlie"]
+
+    tasks_desc, _ = repo.query_tasks(
+        ids=ids,
+        sort_field=TaskSortField.NAME,
+        sort=PaginationSortMethod.DESCENDING,
+        page_size=None,
+    )
+    assert [t.name for t in tasks_desc] == ["charlie", "bravo", "alpha"]
+
+
+@pytest.mark.unit_tests
+def test_sort_by_updated_at(repo_env):
+    repo, db_session, created = repo_env
+    now = datetime.now()
+
+    a = _add_task(
+        db_session,
+        "a",
+        created_at=now - timedelta(days=10),
+        updated_at=now - timedelta(days=1),
+    )
+    b = _add_task(
+        db_session,
+        "b",
+        created_at=now - timedelta(days=9),
+        updated_at=now - timedelta(days=5),
+    )
+    created["task_ids"] += [a, b]
+    ids = [a, b]
+
+    tasks_desc, _ = repo.query_tasks(
+        ids=ids,
+        sort_field=TaskSortField.UPDATED_AT,
+        sort=PaginationSortMethod.DESCENDING,
+        page_size=None,
+    )
+    assert [t.id for t in tasks_desc] == [a, b]
+
+    tasks_asc, _ = repo.query_tasks(
+        ids=ids,
+        sort_field=TaskSortField.UPDATED_AT,
+        sort=PaginationSortMethod.ASCENDING,
+        page_size=None,
+    )
+    assert [t.id for t in tasks_asc] == [b, a]
+
+
+@pytest.mark.unit_tests
+def test_sort_by_last_active_nulls_last(repo_env):
+    repo, db_session, created = repo_env
+    now = datetime.now()
+
+    recent = _add_task(db_session, "recent", created_at=now - timedelta(days=5))
+    recent_trace = _add_trace(db_session, recent, end_time=now - timedelta(days=1))
+    older = _add_task(db_session, "older", created_at=now - timedelta(days=5))
+    older_trace = _add_trace(db_session, older, end_time=now - timedelta(days=10))
+    traceless = _add_task(db_session, "traceless", created_at=now - timedelta(days=5))
+
+    created["task_ids"] += [recent, older, traceless]
+    created["trace_ids"] += [recent_trace, older_trace]
+
+    ids = [recent, older, traceless]
+
+    # DESC: most-recently-active first, trace-less (NULL) pushed to the end.
+    tasks_desc, count = repo.query_tasks(
+        ids=ids,
+        sort_field=TaskSortField.LAST_ACTIVE,
+        sort=PaginationSortMethod.DESCENDING,
+        page_size=None,
+    )
+    assert count == 3
+    assert [t.id for t in tasks_desc] == [recent, older, traceless]
+
+    # ASC: oldest activity first, trace-less (NULL) still last.
+    tasks_asc, _ = repo.query_tasks(
+        ids=ids,
+        sort_field=TaskSortField.LAST_ACTIVE,
+        sort=PaginationSortMethod.ASCENDING,
+        page_size=None,
+    )
+    assert [t.id for t in tasks_asc] == [older, recent, traceless]
+
+
+@pytest.mark.unit_tests
+def test_last_active_filter_respects_org_scope(repo_env):
+    repo, db_session, created = repo_env
+    now = datetime.now()
+    other_org = uuid.uuid4()
+
+    task = _add_task(db_session, "scoped", created_at=now - timedelta(days=30))
+    # Trace belongs to a DIFFERENT org than the query scope.
+    trace = _add_trace(
+        db_session,
+        task,
+        end_time=now - timedelta(days=1),
+        org_id=other_org,
+    )
+    created["task_ids"].append(task)
+    created["trace_ids"].append(trace)
+
+    # Scoped to DEFAULT_ORG_ID: the other-org trace must not count toward
+    # last_active, so the INNER join drops the task.
+    tasks, count = repo.query_tasks(
+        ids=[task],
+        last_active_start_time=now - timedelta(days=7),
+        org_scope=DEFAULT_ORG_ID,
+        page_size=None,
+    )
+    assert count == 0
+    assert tasks == []

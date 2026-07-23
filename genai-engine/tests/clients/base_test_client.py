@@ -410,8 +410,8 @@ class GenaiEngineTestClientBase(httpx.Client):
         include_archived: bool = None,
         only_archived: bool = None,
         sort_field: str = None,
-        start_time: str = None,
-        end_time: str = None,
+        last_active_start_time=None,
+        last_active_end_time=None,
     ) -> tuple[int, SearchTasksResponse]:
         path = "api/v2/tasks/search?"
         params = get_base_pagination_parameters(
@@ -420,11 +420,11 @@ class GenaiEngineTestClientBase(httpx.Client):
             page_size=page_size,
         )
         if sort_field is not None:
-            params["sort_field"] = sort_field
-        if start_time is not None:
-            params["start_time"] = start_time
-        if end_time is not None:
-            params["end_time"] = end_time
+            params["sort_field"] = str(sort_field)
+        if last_active_start_time is not None:
+            params["last_active_start_time"] = str(last_active_start_time)
+        if last_active_end_time is not None:
+            params["last_active_end_time"] = str(last_active_end_time)
         body = SearchTasksRequest()
         if task_ids:
             body.task_ids = task_ids

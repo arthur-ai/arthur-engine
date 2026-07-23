@@ -331,22 +331,25 @@ def search_tasks(
         PaginationParameters,
         Depends(common_pagination_parameters),
     ],
-    sort_field: TaskSortField = Query(
-        TaskSortField.CREATED,
-        description="Timestamp column used for time-range filtering and ordering. "
-        "'created' (default) matches 'Recently created'; 'updated' matches "
-        "'Recently updated' so tasks updated within the window are returned "
-        "regardless of when they were created.",
-    ),
-    start_time: datetime | None = Query(
+    sort_field: TaskSortField | None = Query(
         None,
-        description="Only return tasks whose selected timestamp (see sort_field) "
-        "is on or after this time.",
+        description="Column to sort by (server-side). One of 'name', "
+        "'created_at', 'updated_at', 'last_active'. 'last_active' sorts on the "
+        "most recent trace activity per task. Sort direction is controlled by "
+        "the 'sort' parameter. When omitted, results keep the default ordering "
+        "(created_at).",
     ),
-    end_time: datetime | None = Query(
+    last_active_start_time: datetime | None = Query(
         None,
-        description="Only return tasks whose selected timestamp (see sort_field) "
-        "is on or before this time.",
+        description="Only return tasks whose last trace activity "
+        "(max trace end-time) is on or after this UTC time. Tasks with no "
+        "traces are excluded when this filter is set.",
+    ),
+    last_active_end_time: datetime | None = Query(
+        None,
+        description="Only return tasks whose last trace activity "
+        "(max trace end-time) is on or before this UTC time. Tasks with no "
+        "traces are excluded when this filter is set.",
     ),
     db_session: Session = Depends(get_db_session),
     application_config: ApplicationConfiguration = Depends(get_application_config),
@@ -368,8 +371,8 @@ def search_tasks(
         only_archived=getattr(request, "only_archived", False) is True,
         sort=pagination_parameters.sort or PaginationSortMethod.DESCENDING,
         sort_field=sort_field,
-        start_time=start_time,
-        end_time=end_time,
+        last_active_start_time=last_active_start_time,
+        last_active_end_time=last_active_end_time,
         page=pagination_parameters.page,
         page_size=pagination_parameters.page_size,
     )

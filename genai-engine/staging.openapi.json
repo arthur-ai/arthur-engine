@@ -1404,14 +1404,21 @@
                         "in": "query",
                         "required": false,
                         "schema": {
-                            "$ref": "#/components/schemas/TaskSortField",
-                            "description": "Timestamp column used for time-range filtering and ordering. 'created' (default) matches 'Recently created'; 'updated' matches 'Recently updated' so tasks updated within the window are returned regardless of when they were created.",
-                            "default": "created"
+                            "anyOf": [
+                                {
+                                    "$ref": "#/components/schemas/TaskSortField"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Column to sort by (server-side). One of 'name', 'created_at', 'updated_at', 'last_active'. 'last_active' sorts on the most recent trace activity per task. Sort direction is controlled by the 'sort' parameter. When omitted, results keep the default ordering (created_at).",
+                            "title": "Sort Field"
                         },
-                        "description": "Timestamp column used for time-range filtering and ordering. 'created' (default) matches 'Recently created'; 'updated' matches 'Recently updated' so tasks updated within the window are returned regardless of when they were created."
+                        "description": "Column to sort by (server-side). One of 'name', 'created_at', 'updated_at', 'last_active'. 'last_active' sorts on the most recent trace activity per task. Sort direction is controlled by the 'sort' parameter. When omitted, results keep the default ordering (created_at)."
                     },
                     {
-                        "name": "start_time",
+                        "name": "last_active_start_time",
                         "in": "query",
                         "required": false,
                         "schema": {
@@ -1424,13 +1431,13 @@
                                     "type": "null"
                                 }
                             ],
-                            "description": "Only return tasks whose selected timestamp (see sort_field) is on or after this time.",
-                            "title": "Start Time"
+                            "description": "Only return tasks whose last trace activity (max trace end-time) is on or after this UTC time. Tasks with no traces are excluded when this filter is set.",
+                            "title": "Last Active Start Time"
                         },
-                        "description": "Only return tasks whose selected timestamp (see sort_field) is on or after this time."
+                        "description": "Only return tasks whose last trace activity (max trace end-time) is on or after this UTC time. Tasks with no traces are excluded when this filter is set."
                     },
                     {
-                        "name": "end_time",
+                        "name": "last_active_end_time",
                         "in": "query",
                         "required": false,
                         "schema": {
@@ -1443,10 +1450,10 @@
                                     "type": "null"
                                 }
                             ],
-                            "description": "Only return tasks whose selected timestamp (see sort_field) is on or before this time.",
-                            "title": "End Time"
+                            "description": "Only return tasks whose last trace activity (max trace end-time) is on or before this UTC time. Tasks with no traces are excluded when this filter is set.",
+                            "title": "Last Active End Time"
                         },
-                        "description": "Only return tasks whose selected timestamp (see sort_field) is on or before this time."
+                        "description": "Only return tasks whose last trace activity (max trace end-time) is on or before this UTC time. Tasks with no traces are excluded when this filter is set."
                     },
                     {
                         "name": "sort",
@@ -31909,11 +31916,13 @@
             "TaskSortField": {
                 "type": "string",
                 "enum": [
-                    "created",
-                    "updated"
+                    "name",
+                    "created_at",
+                    "updated_at",
+                    "last_active"
                 ],
                 "title": "TaskSortField",
-                "description": "Which task timestamp column drives ordering and time-range filtering.\n\n``CREATED`` filters/sorts on ``tasks.created_at`` (\"Recently created\"),\n``UPDATED`` on ``tasks.updated_at`` (\"Recently updated\")."
+                "description": "Server-side sort column for ``/api/v2/tasks/search``.\n\n``NAME``/``CREATED_AT``/``UPDATED_AT`` sort on the corresponding\n``tasks`` columns. ``LAST_ACTIVE`` sorts on the most recent trace\nactivity per task (``MAX(trace_metadata.end_time)``), which is not a\nstored task column but computed by joining the trace-metadata table."
             },
             "TemplateVariableMapping-Input": {
                 "properties": {

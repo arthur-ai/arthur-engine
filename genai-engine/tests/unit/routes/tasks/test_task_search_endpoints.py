@@ -6,10 +6,40 @@ import pytest
 from arthur_common.models.enums import PaginationSortMethod
 
 from db_models import DatabaseTask
+from db_models.telemetry_models import DatabaseTraceMetadata
+from schemas.enums import TaskSortField
 from tests.clients.base_test_client import (
     GenaiEngineTestClientBase,
     override_get_db_session,
 )
+from utils.constants import DEFAULT_ORG_ID
+
+
+def _set_task_created_at(db_session, task_id, created_at):
+    db_session.query(DatabaseTask).filter(DatabaseTask.id == task_id).update(
+        {"created_at": created_at, "updated_at": created_at},
+    )
+    db_session.commit()
+
+
+def _add_trace_for_task(db_session, task_id, end_time, org_id=DEFAULT_ORG_ID):
+    trace = DatabaseTraceMetadata(
+        trace_id=str(uuid.uuid4()),
+        task_id=task_id,
+        org_id=org_id,
+        session_id=None,
+        user_id=None,
+        span_count=1,
+        start_time=end_time,
+        end_time=end_time,
+        created_at=end_time,
+        updated_at=end_time,
+        input_content="in",
+        output_content="out",
+    )
+    db_session.add(trace)
+    db_session.commit()
+    return trace.trace_id
 
 
 @pytest.mark.unit_tests
@@ -87,69 +117,6 @@ def test_search_tasks(
         )
         assert len(task_resp.tasks) == 5
         assert set([t.id for t in task_resp.tasks]) == set(sample)
-
-
-@pytest.mark.unit_tests
-def test_search_tasks_recently_updated_time_filter(
-    client: GenaiEngineTestClientBase,
-):
-    """UP-4693: the sort_field + time-range query params must filter on the
-    resolved timestamp column. Recently updated should include a task created
-    outside the window but updated inside it, and exclude one updated outside."""
-    prefix = f"up4693_route_{uuid.uuid4()}_"
-
-    sc, fresh_updated = client.create_task(name=f"{prefix}fresh_updated")
-    assert sc == 200
-    sc, stale = client.create_task(name=f"{prefix}stale")
-    assert sc == 200
-
-    now = datetime.now()
-    # Backdate both created_at values; only fresh_updated is updated recently.
-    db_session = override_get_db_session()
-    db_session.query(DatabaseTask).filter(DatabaseTask.id == fresh_updated.id).update(
-        {
-            DatabaseTask.created_at: now - timedelta(days=30),
-            DatabaseTask.updated_at: now - timedelta(hours=16),
-        },
-    )
-    db_session.query(DatabaseTask).filter(DatabaseTask.id == stale.id).update(
-        {
-            DatabaseTask.created_at: now - timedelta(days=30),
-            DatabaseTask.updated_at: now - timedelta(days=30),
-        },
-    )
-    db_session.commit()
-
-    task_ids = [fresh_updated.id, stale.id]
-    window_start = (now - timedelta(days=7)).isoformat()
-    window_end = now.isoformat()
-
-    try:
-        sc, resp = client.search_tasks(
-            task_ids=task_ids,
-            page_size=50,
-            sort_field="updated",
-            start_time=window_start,
-            end_time=window_end,
-        )
-        assert sc == 200
-        result_ids = {t.id for t in resp.tasks}
-        assert fresh_updated.id in result_ids
-        assert stale.id not in result_ids
-
-        # Recently created filters on created_at -> neither is in the window.
-        sc, resp = client.search_tasks(
-            task_ids=task_ids,
-            page_size=50,
-            sort_field="created",
-            start_time=window_start,
-            end_time=window_end,
-        )
-        assert sc == 200
-        assert fresh_updated.id not in {t.id for t in resp.tasks}
-    finally:
-        for task_id in task_ids:
-            client.delete_task(task_id)
 
 
 @pytest.mark.unit_tests
@@ -374,3 +341,126 @@ def test_search_tasks_agentic_with_pagination(client: GenaiEngineTestClientBase)
     # All found tasks should be agentic
     for task in page1_our_tasks + page2_our_tasks:
         assert task.is_agentic == True
+
+
+@pytest.mark.unit_tests
+def test_search_tasks_last_active_filter(client: GenaiEngineTestClientBase):
+    """last_active filter returns tasks with recent trace activity even when
+    the task record itself is old, and excludes stale / trace-less tasks."""
+    db_session = override_get_db_session()
+    now = datetime.now()
+    prefix = str(random.random()) + "last_active_"
+
+    sc, recent = client.create_task(name=f"{prefix}recent")
+    assert sc == 200
+    sc, stale = client.create_task(name=f"{prefix}stale")
+    assert sc == 200
+    sc, traceless = client.create_task(name=f"{prefix}traceless")
+    assert sc == 200
+
+    task_ids = [recent.id, stale.id, traceless.id]
+    trace_ids = []
+    try:
+        # All three tasks are old records.
+        for tid in task_ids:
+            _set_task_created_at(db_session, tid, now - timedelta(days=30))
+        # Only `recent` has a trace inside the 7-day window.
+        trace_ids.append(
+            _add_trace_for_task(db_session, recent.id, now - timedelta(days=1)),
+        )
+        trace_ids.append(
+            _add_trace_for_task(db_session, stale.id, now - timedelta(days=60)),
+        )
+
+        sc, resp = client.search_tasks(
+            task_ids=task_ids,
+            last_active_start_time=(now - timedelta(days=7)).isoformat(),
+            page_size=50,
+        )
+        assert sc == 200
+        assert resp.count == 1
+        assert [t.id for t in resp.tasks] == [recent.id]
+
+        # Without the filter, all three (including trace-less) are returned.
+        sc, resp = client.search_tasks(task_ids=task_ids, page_size=50)
+        assert sc == 200
+        assert set(t.id for t in resp.tasks) == set(task_ids)
+    finally:
+        if trace_ids:
+            db_session.query(DatabaseTraceMetadata).filter(
+                DatabaseTraceMetadata.trace_id.in_(trace_ids),
+            ).delete(synchronize_session=False)
+            db_session.commit()
+
+
+@pytest.mark.unit_tests
+def test_search_tasks_sort_field_last_active(client: GenaiEngineTestClientBase):
+    """sort_field=last_active orders by most recent trace activity, with
+    trace-less tasks pushed to the end."""
+    db_session = override_get_db_session()
+    now = datetime.now()
+    prefix = str(random.random()) + "sort_active_"
+
+    sc, recent = client.create_task(name=f"{prefix}recent")
+    assert sc == 200
+    sc, older = client.create_task(name=f"{prefix}older")
+    assert sc == 200
+    sc, traceless = client.create_task(name=f"{prefix}traceless")
+    assert sc == 200
+
+    task_ids = [recent.id, older.id, traceless.id]
+    trace_ids = []
+    try:
+        trace_ids.append(
+            _add_trace_for_task(db_session, recent.id, now - timedelta(days=1)),
+        )
+        trace_ids.append(
+            _add_trace_for_task(db_session, older.id, now - timedelta(days=10)),
+        )
+
+        sc, resp = client.search_tasks(
+            task_ids=task_ids,
+            sort_field=TaskSortField.LAST_ACTIVE.value,
+            sort=PaginationSortMethod.DESCENDING,
+            page_size=50,
+        )
+        assert sc == 200
+        assert [t.id for t in resp.tasks] == [recent.id, older.id, traceless.id]
+
+        sc, resp = client.search_tasks(
+            task_ids=task_ids,
+            sort_field=TaskSortField.LAST_ACTIVE.value,
+            sort=PaginationSortMethod.ASCENDING,
+            page_size=50,
+        )
+        assert sc == 200
+        assert [t.id for t in resp.tasks] == [older.id, recent.id, traceless.id]
+    finally:
+        if trace_ids:
+            db_session.query(DatabaseTraceMetadata).filter(
+                DatabaseTraceMetadata.trace_id.in_(trace_ids),
+            ).delete(synchronize_session=False)
+            db_session.commit()
+
+
+@pytest.mark.unit_tests
+def test_search_tasks_sort_field_name(client: GenaiEngineTestClientBase):
+    """sort_field=name orders alphabetically server-side."""
+    prefix = str(random.random()) + "sort_name_"
+    sc, charlie = client.create_task(name=f"{prefix}charlie")
+    assert sc == 200
+    sc, alpha = client.create_task(name=f"{prefix}alpha")
+    assert sc == 200
+    sc, bravo = client.create_task(name=f"{prefix}bravo")
+    assert sc == 200
+
+    task_ids = [charlie.id, alpha.id, bravo.id]
+
+    sc, resp = client.search_tasks(
+        task_ids=task_ids,
+        sort_field=TaskSortField.NAME.value,
+        sort=PaginationSortMethod.ASCENDING,
+        page_size=50,
+    )
+    assert sc == 200
+    assert [t.id for t in resp.tasks] == [alpha.id, bravo.id, charlie.id]
