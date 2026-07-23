@@ -236,6 +236,15 @@ def test_bulk_add_traces_all_success_with_existing_schema(
         ]
         assert len(matching) == 1
         assert matching[0]["token_cost"] == "0.05"
+
+        # The bulk-added row records its originating trace; the seed row does not.
+        rows_by_trace_id = {row.trace_id: row for row in latest.rows}
+        assert set(rows_by_trace_id) == {trace_id, None}
+        bulk_added_row_data = {
+            item.column_name: item.column_value
+            for item in rows_by_trace_id[trace_id].data
+        }
+        assert bulk_added_row_data["sqlQuery"] == "SELECT * FROM users WHERE id = 1"
     finally:
         if transform is not None:
             client.delete_transform(transform.id)
@@ -626,7 +635,9 @@ def test_bulk_add_traces_deduplicates_trace_ids(
         matching = [
             row
             for row in latest.rows
-            if {item.column_name: item.column_value for item in row.data}.get("sqlQuery")
+            if {item.column_name: item.column_value for item in row.data}.get(
+                "sqlQuery"
+            )
             == "SELECT * FROM users WHERE id = 1"
         ]
         assert len(matching) == 1

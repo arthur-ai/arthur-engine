@@ -21773,6 +21773,18 @@
                         "title": "Data",
                         "description": "List of column names and values in the row."
                     },
+                    "trace_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Trace Id",
+                        "description": "ID of the trace this row was extracted from, if the row originated from a trace."
+                    },
                     "created_at": {
                         "type": "integer",
                         "title": "Created At",
@@ -25904,6 +25916,18 @@
                         "type": "array",
                         "title": "Data",
                         "description": "List of column-value pairs in the new dataset row."
+                    },
+                    "trace_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Trace Id",
+                        "description": "ID of the trace this row was extracted from, if the row originated from a trace."
                     }
                 },
                 "type": "object",
