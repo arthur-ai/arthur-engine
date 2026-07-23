@@ -370,6 +370,7 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
         ) : (
           <DatasetTable
             datasetId={datasetId}
+            taskId={task?.id}
             columns={state.columns}
             rows={filteredRows}
             isLoading={queries.versionLoading}
@@ -436,6 +437,8 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
           rowData={editRowData}
           rowId={state.modals.edit.row.id}
           isLoading={false}
+          traceId={state.modals.edit.row.trace_id}
+          taskId={task?.id}
         />
       )}
 

@@ -68,3 +68,43 @@ describe("unsaved-work selectors", () => {
     expect(selectHasUnsavedChanges(state)).toBe(false);
   });
 });
+
+describe("trace_id preservation", () => {
+  const tracedRow = {
+    id: "row-1",
+    created_at: 0,
+    trace_id: "abc123",
+    data: [{ column_name: "a", column_value: "1" }],
+  };
+
+  it("keeps trace_id when a row is edited", () => {
+    const state = { ...initialDatasetState, columns: ["a"], rows: [tracedRow] };
+    const next = datasetReducer(state, {
+      type: "DATA/UPDATE_ROW",
+      payload: { id: "row-1", data: { a: "2" } },
+    });
+
+    expect(next.rows[0].trace_id).toBe("abc123");
+    expect(next.rows[0].data).toEqual([{ column_name: "a", column_value: "2" }]);
+  });
+
+  it("keeps trace_id when columns are reconfigured", () => {
+    const state = { ...initialDatasetState, columns: ["a"], rows: [tracedRow] };
+    const next = datasetReducer(state, {
+      type: "DATA/SET_COLUMNS",
+      payload: ["b"],
+    });
+
+    expect(next.rows[0].trace_id).toBe("abc123");
+  });
+
+  it("does not set trace_id on manually added rows", () => {
+    const state = { ...initialDatasetState, columns: ["a"] };
+    const next = datasetReducer(state, {
+      type: "DATA/ADD_ROW",
+      payload: { a: "1" },
+    });
+
+    expect(next.rows[0].trace_id).toBeUndefined();
+  });
+});
