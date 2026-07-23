@@ -20,7 +20,7 @@ dependencies = [
   "sqlalchemy==2.0.51",
   "pgvector==0.4.2",
   "python-multipart==0.0.32",
-  "pypdf==6.13.3",
+  "pypdf==6.14.0",
   "httpx==0.28.1",
   "transformers==5.5.0",
   "authlib==1.7.2",
