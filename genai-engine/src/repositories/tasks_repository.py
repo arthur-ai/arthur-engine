@@ -343,6 +343,10 @@ class TaskRepository:
             self.metric_repository.archive_metric(metric_link.metric_id, commit=False)
 
         db_task.archived = True
+        # Archiving is an update: bump updated_at so the task is returned by
+        # "Recently Updated" relative time filters (updated_at has no
+        # onupdate= default, so it must be set explicitly here).
+        db_task.updated_at = datetime.now()
         self.db_session.commit()
 
     def unarchive_task(self, task_id: str) -> None:
@@ -369,6 +373,10 @@ class TaskRepository:
             self.metric_repository.unarchive_metric(metric_link.metric_id, commit=False)
 
         db_task.archived = False
+        # Unarchiving is an update: bump updated_at so the task is returned by
+        # "Recently Updated" relative time filters (updated_at has no
+        # onupdate= default, so it must be set explicitly here).
+        db_task.updated_at = datetime.now()
         self.db_session.commit()
 
     def create_task(

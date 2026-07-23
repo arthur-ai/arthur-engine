@@ -160,3 +160,62 @@ def test_query_tasks_recently_updated_orders_by_updated_at():
     finally:
         for task_id in all_ids:
             repo.delete_task(task_id=task_id)
+
+
+@pytest.mark.unit_tests
+def test_archive_and_unarchive_bump_updated_at():
+    """Regression for UP-4693 (PR #1936 review): archiving and unarchiving a
+    task are updates and must advance ``updated_at`` so the task is returned by
+    "Recently Updated" relative time filters, even though its ``created_at``
+    falls outside the window."""
+    db_session = override_get_db_session()
+    repo = _build_task_repo(db_session)
+
+    now = datetime.now()
+    window_start = now - timedelta(days=7)
+    prefix = f"up4693_archive_{uuid.uuid4()}_"
+
+    # Created and last updated a month ago -> outside the "updated" window and
+    # its created_at is outside the window too.
+    task_id = _insert_task(
+        db_session,
+        name=f"{prefix}stale",
+        created_at=now - timedelta(days=30),
+        updated_at=now - timedelta(days=30),
+    )
+
+    try:
+        original_updated_at = repo.get_db_task_by_id(task_id).updated_at
+
+        # Archiving must bump updated_at into the window.
+        repo.archive_task(task_id)
+        archived_updated_at = repo.get_db_task_by_id(
+            task_id, include_archived=True
+        ).updated_at
+        assert archived_updated_at > original_updated_at
+
+        archived_tasks, _ = repo.query_tasks(
+            ids=[task_id],
+            sort_field=TaskSortField.UPDATED,
+            start_time=window_start,
+            end_time=datetime.now(),
+            only_archived=True,
+            page_size=None,
+        )
+        assert task_id in {t.id for t in archived_tasks}
+
+        # Unarchiving must bump updated_at again.
+        repo.unarchive_task(task_id)
+        unarchived_updated_at = repo.get_db_task_by_id(task_id).updated_at
+        assert unarchived_updated_at >= archived_updated_at
+
+        unarchived_tasks, _ = repo.query_tasks(
+            ids=[task_id],
+            sort_field=TaskSortField.UPDATED,
+            start_time=window_start,
+            end_time=datetime.now(),
+            page_size=None,
+        )
+        assert task_id in {t.id for t in unarchived_tasks}
+    finally:
+        repo.delete_task(task_id=task_id)
