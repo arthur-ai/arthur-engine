@@ -107,3 +107,31 @@ helm template arthur-ml-engine oci://ghcr.io/arthur-ai/arthur-engine/charts/arth
     kubectl get pods -n arthur
     ```
     You should see the ML Engine pods in the running state. Please also inspect the log.
+
+## Autoscaling (HPA)
+
+The chart ships a `HorizontalPodAutoscaler` that is **enabled by default**. It scales the ML Engine
+deployment on both CPU and memory utilization. When the HPA is enabled the deployment's replica
+count is managed by the HPA (the static `mlEngine.deployment.replicas` value is not rendered).
+
+Requirements and caveats:
+
+* A **metrics-server** must be running in the cluster (already listed under the Kubernetes
+  prerequisites above).
+* Each replica requests a **large footprint (~16Gi RAM / 7–8 CPU)**, so `maxReplicas` multiplies
+  that footprint — e.g. `maxReplicas: 10` can request up to ~160Gi / ~80 CPU. Tune `minReplicas`
+  and `maxReplicas` to your node budget.
+
+Configure it via the `arthurMLEngineHPA` block in `values.yaml`:
+
+```yaml
+arthurMLEngineHPA:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 50
+  targetMemoryUtilizationPercentage: 80
+```
+
+To pin a fixed replica count instead, set `arthurMLEngineHPA.enabled: false`; the deployment then
+uses `mlEngine.deployment.replicas`.
