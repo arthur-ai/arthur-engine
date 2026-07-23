@@ -45,6 +45,7 @@ export function datasetReducer(state: DatasetState, action: DatasetAction): Data
         columns: action.payload.column_names,
         rows: action.payload.rows,
         pendingChanges: { added: [], updated: [], deleted: [] },
+        columnsDirty: false,
       };
     }
 
@@ -58,11 +59,13 @@ export function datasetReducer(state: DatasetState, action: DatasetAction): Data
       const columnsAdded = newColumns.filter((col) => !oldColumnsSet.has(col)).length > 0;
       const columnsRemoved = oldColumns.filter((col) => !newColumnsSet.has(col)).length > 0;
       const columnsRenamed = newColumns.some((col, idx) => oldColumns[idx] && oldColumns[idx] !== col);
+      const columnsChanged = columnsAdded || columnsRemoved || columnsRenamed;
 
       if (!columnsRemoved && !columnsRenamed && (!columnsAdded || state.rows.length === 0)) {
         return {
           ...state,
           columns: newColumns,
+          columnsDirty: state.columnsDirty || columnsChanged,
         };
       }
 
@@ -81,6 +84,7 @@ export function datasetReducer(state: DatasetState, action: DatasetAction): Data
           ...state.pendingChanges,
           updated: [...state.pendingChanges.updated, ...rowsToUpdate],
         },
+        columnsDirty: state.columnsDirty || columnsChanged,
       };
     }
 
@@ -165,6 +169,7 @@ export function datasetReducer(state: DatasetState, action: DatasetAction): Data
       return {
         ...state,
         pendingChanges: { added: [], updated: [], deleted: [] },
+        columnsDirty: false,
       };
     }
 
@@ -180,6 +185,7 @@ export function datasetReducer(state: DatasetState, action: DatasetAction): Data
         newState = {
           ...newState,
           columns: mergedColumns,
+          columnsDirty: true,
         };
       }
 

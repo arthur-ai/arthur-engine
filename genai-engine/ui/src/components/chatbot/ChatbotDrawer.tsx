@@ -1,40 +1,42 @@
-import ChatIcon from "@mui/icons-material/Chat";
 import CloseIcon from "@mui/icons-material/Close";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
-import { Box, Fab, IconButton, Paper, Tooltip, Typography } from "@mui/material";
-import { useState } from "react";
+import { Box, IconButton, Paper, Tooltip, Typography } from "@mui/material";
 
 import { ChatPanel } from "./ChatPanel";
 
+import { SIDEBAR_WIDTH_PX } from "@/constants/layout";
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useChatbot } from "@/hooks/useChatbot";
 
+/** Horizontal gap between the sidebar's right edge and the chat panel, so the
+ * floating panel opens just beside the sidebar launcher rather than over the
+ * navigation. */
+const DRAWER_GAP_PX = 16;
+/** Left offset that clears the sidebar. Derived from the shared sidebar width so
+ * the two stay in sync if the sidebar is ever resized. */
+const SIDEBAR_CLEARANCE_PX = SIDEBAR_WIDTH_PX + DRAWER_GAP_PX;
+
 interface ChatbotDrawerProps {
   taskId: string;
+  open: boolean;
+  onClose: () => void;
 }
 
-export function ChatbotDrawer({ taskId }: ChatbotDrawerProps) {
+export function ChatbotDrawer({ taskId, open, onClose }: ChatbotDrawerProps) {
   const { chatbotEnabled } = useDisplaySettings();
-  const [open, setOpen] = useState(false);
   const { messages, isStreaming, activeToolCall, sendMessage, clearConversation, abort } = useChatbot(taskId);
 
   if (!chatbotEnabled) return null;
 
   return (
     <>
-      {!open && (
-        <Fab color="primary" onClick={() => setOpen(true)} sx={{ position: "fixed", bottom: 24, right: 24, zIndex: 1200 }}>
-          <ChatIcon />
-        </Fab>
-      )}
-
       {open && (
         <Paper
           elevation={8}
           sx={{
             position: "fixed",
-            bottom: 24,
-            right: 24,
+            bottom: 16,
+            left: SIDEBAR_CLEARANCE_PX,
             width: 380,
             height: 560,
             zIndex: 1200,
@@ -71,7 +73,7 @@ export function ChatbotDrawer({ taskId }: ChatbotDrawerProps) {
                       <DeleteOutlineIcon fontSize="small" />
                     </IconButton>
                   </Tooltip>
-                  <IconButton size="small" onClick={() => setOpen(false)} sx={{ color: "primary.contrastText" }}>
+                  <IconButton size="small" onClick={onClose} sx={{ color: "primary.contrastText" }}>
                     <CloseIcon fontSize="small" />
                   </IconButton>
                 </Box>

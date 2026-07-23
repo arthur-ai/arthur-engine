@@ -14,6 +14,7 @@ export interface DatasetState {
   rows: DatasetVersionRowResponse[];
   columnDefaults: ColumnDefaults;
   pendingChanges: PendingChanges;
+  columnsDirty: boolean;
 
   selectedVersion: number | undefined;
 
@@ -118,6 +119,7 @@ export const initialDatasetState: DatasetState = {
   rows: [],
   columnDefaults: {},
   pendingChanges: { added: [], updated: [], deleted: [] },
+  columnsDirty: false,
 
   selectedVersion: undefined,
 

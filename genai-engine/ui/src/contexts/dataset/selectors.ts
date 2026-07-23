@@ -35,6 +35,14 @@ export function selectHasUnsavedChanges(state: DatasetState): boolean {
   return added.length > 0 || updated.length > 0 || deleted.length > 0;
 }
 
+export function selectHasUnsavedColumnConfig(state: DatasetState): boolean {
+  return state.columnsDirty;
+}
+
+export function selectHasUnsavedWork(state: DatasetState): boolean {
+  return selectHasUnsavedChanges(state) || selectHasUnsavedColumnConfig(state);
+}
+
 export function selectPendingChangesCounts(state: DatasetState): {
   added: number;
   updated: number;

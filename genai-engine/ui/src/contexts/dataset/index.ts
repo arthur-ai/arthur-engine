@@ -13,6 +13,8 @@ export {
   selectHasActiveConfirmation,
   selectHasOpenModal,
   selectHasUnsavedChanges,
+  selectHasUnsavedColumnConfig,
+  selectHasUnsavedWork,
   selectPendingChangesCounts,
   selectSortedRows,
 } from "./selectors";
