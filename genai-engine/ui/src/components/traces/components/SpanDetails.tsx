@@ -1,4 +1,5 @@
 import { OpenInferenceSpanKind } from "@arizeai/openinference-semantic-conventions";
+import { DurationCellWithBucket } from "@arthur/shared-components";
 import { Collapsible } from "@base-ui/react/collapsible";
 import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
@@ -10,7 +11,6 @@ import { createContext, Fragment, useContext } from "react";
 import { getSpanDetailsStrategy, SpanDetailsStrategy } from "../data/details-strategy";
 import { getSpanDuration, isSpanOfType } from "../utils/spans";
 
-import { DurationCell } from "./DurationCell";
 import { SpanStatusBadge } from "./span-status-badge";
 
 import { CopyableChip } from "@/components/common";
@@ -107,7 +107,7 @@ export const SpanDetailsHeader = ({ onOpenSpanDrawer, onOpenPlayground }: SpanDe
         <Typography variant="caption" color="text.secondary">
           {formatDateInTimezone(span.start_time, timezone, { hour12: !use24Hour })}
         </Typography>
-        {typeof duration === "number" && <DurationCell duration={duration} />}
+        {typeof duration === "number" && <DurationCellWithBucket duration={duration} />}
       </Stack>
     </Stack>
   );
