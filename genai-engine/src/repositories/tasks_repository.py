@@ -37,6 +37,7 @@ from repositories.rules_repository import RuleRepository
 from repositories.service_name_mapping_repository import (
     ServiceNameMappingRepository,
 )
+from schemas.enums import TaskSortField
 from schemas.internal_schemas import (
     ApplicationConfiguration,
     Rule,
@@ -78,11 +79,24 @@ class TaskRepository:
         include_archived: bool = False,
         only_archived: bool = False,
         sort: PaginationSortMethod = PaginationSortMethod.DESCENDING,
+        sort_field: TaskSortField = TaskSortField.CREATED,
+        start_time: Optional[datetime] = None,
+        end_time: Optional[datetime] = None,
         page_size: Optional[int] = 10,
         page: int = 0,
         org_scope: Optional[UUID] = None,
     ) -> tuple[list[DatabaseTask], int]:
         stmt = self.db_session.query(DatabaseTask)
+        # Single source of truth: the selected mode resolves the timestamp column
+        # used for BOTH the time-range filter and the ordering. "Recently updated"
+        # uses updated_at so records updated (but not created) within the window
+        # are matched; "Recently created" preserves the historical created_at
+        # behavior. Unset mode defaults to created_at (unchanged behavior).
+        sort_column = (
+            DatabaseTask.updated_at
+            if sort_field == TaskSortField.UPDATED
+            else DatabaseTask.created_at
+        )
         # Tenant callers see only their own org's tasks. Admin (org_scope=None)
         # passes through and sees everything.
         if org_scope is not None:
@@ -97,10 +111,15 @@ class TaskRepository:
             stmt = stmt.where(DatabaseTask.archived == True)
         elif not include_archived:
             stmt = stmt.where(DatabaseTask.archived == False)
+        # Both range bounds filter on the same resolved column.
+        if start_time is not None:
+            stmt = stmt.where(sort_column >= start_time)
+        if end_time is not None:
+            stmt = stmt.where(sort_column <= end_time)
         if sort == PaginationSortMethod.DESCENDING:
-            stmt = stmt.order_by(desc(DatabaseTask.created_at))
+            stmt = stmt.order_by(desc(sort_column))
         elif sort == PaginationSortMethod.ASCENDING:
-            stmt = stmt.order_by(asc(DatabaseTask.created_at))
+            stmt = stmt.order_by(asc(sort_column))
 
         # Calculate the count prior to applying the offset
         count = stmt.count()

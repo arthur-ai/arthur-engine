@@ -29,6 +29,17 @@ class RuleScoringMethod(str, Enum):
     BINARY = "binary"
 
 
+class TaskSortField(str, Enum):
+    """Which task timestamp column drives ordering and time-range filtering.
+
+    ``CREATED`` filters/sorts on ``tasks.created_at`` ("Recently created"),
+    ``UPDATED`` on ``tasks.updated_at`` ("Recently updated").
+    """
+
+    CREATED = "created"
+    UPDATED = "updated"
+
+
 class DocumentType(str, Enum):
     PDF = "pdf"
     CSV = "csv"

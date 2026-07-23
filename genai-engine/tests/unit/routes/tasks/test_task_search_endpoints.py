@@ -1,9 +1,15 @@
 import random
+import uuid
+from datetime import datetime, timedelta
 
 import pytest
 from arthur_common.models.enums import PaginationSortMethod
 
-from tests.clients.base_test_client import GenaiEngineTestClientBase
+from db_models import DatabaseTask
+from tests.clients.base_test_client import (
+    GenaiEngineTestClientBase,
+    override_get_db_session,
+)
 
 
 @pytest.mark.unit_tests
@@ -81,6 +87,69 @@ def test_search_tasks(
         )
         assert len(task_resp.tasks) == 5
         assert set([t.id for t in task_resp.tasks]) == set(sample)
+
+
+@pytest.mark.unit_tests
+def test_search_tasks_recently_updated_time_filter(
+    client: GenaiEngineTestClientBase,
+):
+    """UP-4693: the sort_field + time-range query params must filter on the
+    resolved timestamp column. Recently updated should include a task created
+    outside the window but updated inside it, and exclude one updated outside."""
+    prefix = f"up4693_route_{uuid.uuid4()}_"
+
+    sc, fresh_updated = client.create_task(name=f"{prefix}fresh_updated")
+    assert sc == 200
+    sc, stale = client.create_task(name=f"{prefix}stale")
+    assert sc == 200
+
+    now = datetime.now()
+    # Backdate both created_at values; only fresh_updated is updated recently.
+    db_session = override_get_db_session()
+    db_session.query(DatabaseTask).filter(DatabaseTask.id == fresh_updated.id).update(
+        {
+            DatabaseTask.created_at: now - timedelta(days=30),
+            DatabaseTask.updated_at: now - timedelta(hours=16),
+        },
+    )
+    db_session.query(DatabaseTask).filter(DatabaseTask.id == stale.id).update(
+        {
+            DatabaseTask.created_at: now - timedelta(days=30),
+            DatabaseTask.updated_at: now - timedelta(days=30),
+        },
+    )
+    db_session.commit()
+
+    task_ids = [fresh_updated.id, stale.id]
+    window_start = (now - timedelta(days=7)).isoformat()
+    window_end = now.isoformat()
+
+    try:
+        sc, resp = client.search_tasks(
+            task_ids=task_ids,
+            page_size=50,
+            sort_field="updated",
+            start_time=window_start,
+            end_time=window_end,
+        )
+        assert sc == 200
+        result_ids = {t.id for t in resp.tasks}
+        assert fresh_updated.id in result_ids
+        assert stale.id not in result_ids
+
+        # Recently created filters on created_at -> neither is in the window.
+        sc, resp = client.search_tasks(
+            task_ids=task_ids,
+            page_size=50,
+            sort_field="created",
+            start_time=window_start,
+            end_time=window_end,
+        )
+        assert sc == 200
+        assert fresh_updated.id not in {t.id for t in resp.tasks}
+    finally:
+        for task_id in task_ids:
+            client.delete_task(task_id)
 
 
 @pytest.mark.unit_tests
@@ -245,7 +314,9 @@ def test_search_tasks_archived_flags(client: GenaiEngineTestClientBase):
     assert set(t.id for t in resp.tasks) == set(active_ids)
 
     # include_archived=True returns active and archived tasks
-    sc, resp = client.search_tasks(task_ids=task_ids, page_size=50, include_archived=True)
+    sc, resp = client.search_tasks(
+        task_ids=task_ids, page_size=50, include_archived=True
+    )
     assert sc == 200
     assert set(t.id for t in resp.tasks) == set(task_ids)
 

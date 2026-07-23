@@ -1400,6 +1400,55 @@
                 ],
                 "parameters": [
                     {
+                        "name": "sort_field",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/TaskSortField",
+                            "description": "Timestamp column used for time-range filtering and ordering. 'created' (default) matches 'Recently created'; 'updated' matches 'Recently updated' so tasks updated within the window are returned regardless of when they were created.",
+                            "default": "created"
+                        },
+                        "description": "Timestamp column used for time-range filtering and ordering. 'created' (default) matches 'Recently created'; 'updated' matches 'Recently updated' so tasks updated within the window are returned regardless of when they were created."
+                    },
+                    {
+                        "name": "start_time",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string",
+                                    "format": "date-time"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Only return tasks whose selected timestamp (see sort_field) is on or after this time.",
+                            "title": "Start Time"
+                        },
+                        "description": "Only return tasks whose selected timestamp (see sort_field) is on or after this time."
+                    },
+                    {
+                        "name": "end_time",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string",
+                                    "format": "date-time"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Only return tasks whose selected timestamp (see sort_field) is on or before this time.",
+                            "title": "End Time"
+                        },
+                        "description": "Only return tasks whose selected timestamp (see sort_field) is on or before this time."
+                    },
+                    {
                         "name": "sort",
                         "in": "query",
                         "required": false,
@@ -31856,6 +31905,15 @@
                     "rules"
                 ],
                 "title": "TaskResponse"
+            },
+            "TaskSortField": {
+                "type": "string",
+                "enum": [
+                    "created",
+                    "updated"
+                ],
+                "title": "TaskSortField",
+                "description": "Which task timestamp column drives ordering and time-range filtering.\n\n``CREATED`` filters/sorts on ``tasks.created_at`` (\"Recently created\"),\n``UPDATED`` on ``tasks.updated_at`` (\"Recently updated\")."
             },
             "TemplateVariableMapping-Input": {
                 "properties": {

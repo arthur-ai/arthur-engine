@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Annotated
 from uuid import UUID
 
@@ -18,7 +19,7 @@ from arthur_common.models.response_schemas import (
     SearchTasksResponse,
     TaskResponse,
 )
-from fastapi import APIRouter, Body, Depends, HTTPException
+from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from starlette import status
 from starlette.responses import RedirectResponse, Response
@@ -38,7 +39,7 @@ from repositories.tasks_repository import TaskRepository
 from repositories.tasks_rules_repository import TasksRulesRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
-from schemas.enums import PermissionLevelsEnum
+from schemas.enums import PermissionLevelsEnum, TaskSortField
 from schemas.internal_schemas import (
     ApplicationConfiguration,
     Metric,
@@ -330,6 +331,23 @@ def search_tasks(
         PaginationParameters,
         Depends(common_pagination_parameters),
     ],
+    sort_field: TaskSortField = Query(
+        TaskSortField.CREATED,
+        description="Timestamp column used for time-range filtering and ordering. "
+        "'created' (default) matches 'Recently created'; 'updated' matches "
+        "'Recently updated' so tasks updated within the window are returned "
+        "regardless of when they were created.",
+    ),
+    start_time: datetime | None = Query(
+        None,
+        description="Only return tasks whose selected timestamp (see sort_field) "
+        "is on or after this time.",
+    ),
+    end_time: datetime | None = Query(
+        None,
+        description="Only return tasks whose selected timestamp (see sort_field) "
+        "is on or before this time.",
+    ),
     db_session: Session = Depends(get_db_session),
     application_config: ApplicationConfiguration = Depends(get_application_config),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
@@ -349,6 +367,9 @@ def search_tasks(
         include_archived=getattr(request, "include_archived", False) is True,
         only_archived=getattr(request, "only_archived", False) is True,
         sort=pagination_parameters.sort or PaginationSortMethod.DESCENDING,
+        sort_field=sort_field,
+        start_time=start_time,
+        end_time=end_time,
         page=pagination_parameters.page,
         page_size=pagination_parameters.page_size,
     )
