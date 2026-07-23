@@ -149,6 +149,47 @@
                     ]
                 }
             }
+        },
+        "arthurMLEngineHPA": {
+            "type": "object",
+            "description": "HorizontalPodAutoscaler configuration for the ML Engine deployment.",
+            "properties": {
+                "enabled": {
+                    "type": "boolean",
+                    "description": "Whether to create a HorizontalPodAutoscaler. When true, the Deployment's replica count is managed by the HPA instead of mlEngine.deployment.replicas."
+                },
+                "annotations": {
+                    "type": "object",
+                    "description": "Custom annotations for the HPA."
+                },
+                "labels": {
+                    "type": "object",
+                    "description": "Custom labels for the HPA."
+                },
+                "behavior": {
+                    "type": "object",
+                    "description": "Scaling behavior policies (scaleUp/scaleDown), passed through to the HPA spec."
+                },
+                "minReplicas": {
+                    "type": "integer",
+                    "description": "Minimum number of replicas."
+                },
+                "maxReplicas": {
+                    "type": "integer",
+                    "description": "Maximum number of replicas."
+                },
+                "targetCPUUtilizationPercentage": {
+                    "type": "integer",
+                    "description": "Target average CPU utilization (percentage) across pods."
+                },
+                "targetMemoryUtilizationPercentage": {
+                    "type": "integer",
+                    "description": "Target average memory utilization (percentage) across pods."
+                }
+            },
+            "required": [
+                "enabled"
+            ]
         }
     },
     "required": [

@@ -51,7 +51,7 @@ class DatabaseDatasetVersion(Base):
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.now())
     version_rows: Mapped[List["DatabaseDatasetVersionRow"]] = relationship(
         cascade="all,delete",
-        lazy="joined",
+        lazy="select",
         order_by="DatabaseDatasetVersionRow.created_at.desc()",
     )
     column_names: Mapped[List[str]] = mapped_column(JSON)

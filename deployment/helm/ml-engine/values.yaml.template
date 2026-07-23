@@ -28,7 +28,7 @@ mlEngine:
       create: false
       name: ""
     containerImageName: "ml-engine"
-    containerImageVersion: "2.1.717"
+    containerImageVersion: "2.1.725"
     containerMemoryRequests: "16Gi"
     containerCPURequests: "7"
     containerMemoryLimits: "16Gi"
@@ -45,3 +45,34 @@ mlEngine:
     mlEngineClientSecretName: "ml-engine-client-secret"
     # GenAI Engine secret admin key name (expecting value for key 'key')
     genaiEngineInternalAPIKeySecretName: "genai-engine-secret-admin-key"
+
+###################################
+## Advanced - Autoscaling
+###################################
+# HorizontalPodAutoscaler for the ML Engine.
+# NOTE: each replica requests ~16Gi RAM / 7-8 CPU, so maxReplicas multiplies that footprint
+# (e.g. maxReplicas: 10 => up to ~160Gi / ~80 CPU). Requires a metrics-server in the cluster.
+# Set enabled: false to pin a fixed replica count via mlEngine.deployment.replicas instead.
+arthurMLEngineHPA:
+  enabled: true
+  annotations: {}
+  labels: {}
+  # Conservative scale-down / aggressive scale-up (mirrors the genai-engine chart).
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 15
+    scaleUp:
+      stabilizationWindowSeconds: 30
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 15
+      selectPolicy: Max
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 50
+  targetMemoryUtilizationPercentage: 80

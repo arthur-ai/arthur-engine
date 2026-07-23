@@ -1,0 +1,40 @@
+{{- if (.Values.arthurMLEngineHPA | default dict).enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: arthur-ml-engine{{ if .Values.resourceNameSuffix }}-{{ .Values.resourceNameSuffix }}{{ end }}
+  {{- with .Values.arthurMLEngineHPA.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  labels:
+    app: arthur-ml-engine
+    {{- include "arthur-ml-engine.labels" . | nindent 4 }}
+    {{- with .Values.arthurMLEngineHPA.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: arthur-ml-engine{{ if .Values.resourceNameSuffix }}-{{ .Values.resourceNameSuffix }}{{ end }}
+  minReplicas: {{ .Values.arthurMLEngineHPA.minReplicas }}
+  maxReplicas: {{ .Values.arthurMLEngineHPA.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.arthurMLEngineHPA.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.arthurMLEngineHPA.targetMemoryUtilizationPercentage }}
+  {{- with .Values.arthurMLEngineHPA.behavior }}
+  behavior:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+{{- end }}

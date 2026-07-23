@@ -96,6 +96,9 @@ GENAI_ENGINE_TOXICITY_MAX_CHUNK_SIZE_SIZE_ENV_VAR = (
 GENAI_ENGINE_TOXICITY_MODEL_BATCH_SIZE_ENV_VAR = (
     "GENAI_ENGINE_TOXICITY_MODEL_BATCH_SIZE"
 )
+GENAI_ENGINE_SUMMARY_TEST_CASE_BATCH_SIZE_ENV_VAR = (
+    "GENAI_ENGINE_SUMMARY_TEST_CASE_BATCH_SIZE"
+)
 GENAI_ENGINE_USE_PII_MODEL_V2_ENV_VAR = "GENAI_ENGINE_USE_PII_MODEL_V2"
 DEFAULT_PII_RULE_CONFIDENCE_SCORE_THRESHOLD = 0
 GENAI_ENGINE_SENSITIVE_DATA_CHECK_MAX_TOKEN_LIMIT_ENV_VAR = (
@@ -453,6 +456,10 @@ CHATBOT_SUMMARIZER_PROMPT_NAME = "__chatbot_summarizer_prompt__"
 
 # Dataset constants
 MAX_DATASET_ROWS = 250
+# Maximum number of traces that can be added to a dataset in a single
+# bulk-add request. Matches the trace table's current page fetch-size limit
+# (the UI can only select traces on the current page).
+MAX_BULK_ADD_TRACES = 25
 
 ##################################################################
 
