@@ -290,7 +290,19 @@ class SpanRepository:
         eval_rows = (
             self.db_session.query(
                 DatabaseTraceMetadata.task_id.label("task_id"),
-                func.count().label("eval_count"),
+                # Denominator = evals that reached a terminal result; exclude
+                # skipped/pending/running (they can't count toward passed_count).
+                func.count(DatabaseAgenticAnnotation.id)
+                .filter(
+                    DatabaseAgenticAnnotation.run_status.notin_(
+                        [
+                            ContinuousEvalRunStatus.SKIPPED.value,
+                            ContinuousEvalRunStatus.PENDING.value,
+                            ContinuousEvalRunStatus.RUNNING.value,
+                        ]
+                    ),
+                )
+                .label("eval_count"),
                 func.count(DatabaseAgenticAnnotation.id)
                 .filter(
                     DatabaseAgenticAnnotation.run_status
