@@ -5,6 +5,7 @@ import { alpha, Theme } from "@mui/material/styles";
 import { useStore } from "@tanstack/react-form";
 
 import { withFieldGroup } from "../../filtering/hooks/form";
+import { hasSelectedTransform, resolveSchemaColumns } from "../form/shared";
 import { MatchStatus, useMatchingVariables } from "../hooks/useMatchingVariables";
 
 import { useTransformVersions } from "@/components/transforms/hooks/useTransformVersions";
@@ -32,13 +33,15 @@ export const Matcher = withFieldGroup({
     datasetColumns: string[];
   },
   render: function Render({ group, datasetColumns }) {
-    const transformId = useStore(group.store, (state) => (state.values.transform === "manual" ? null : state.values.transform));
+    const transformId = useStore(group.store, (state) => (hasSelectedTransform(state.values.transform) ? state.values.transform : null));
 
     const { data: versions = [] } = useTransformVersions(transformId);
     const definition = versions[0]?.definition;
 
     const { matchingNames, unmatchedTransform, matchStatus, matchCount } = useMatchingVariables({
-      columnNames: datasetColumns,
+      // On a first addition (dataset has no columns yet) the transform's
+      // variables define the schema, so the transform fully matches.
+      columnNames: resolveSchemaColumns(datasetColumns, definition?.variables ?? []),
       variables: definition?.variables ?? [],
     });
 

@@ -28,7 +28,7 @@ import { Matcher } from "./components/matcher";
 import { TransformSelector } from "./components/transform-selector";
 import { Configurator } from "./Configurator";
 import { CreateDatasetModal } from "./CreateDatasetModal";
-import { addToDatasetFormOptions, hasSelectedTransform, TransformDefinition } from "./form/shared";
+import { addToDatasetFormOptions, resolveSchemaColumns, TransformDefinition } from "./form/shared";
 import { PreviewTable } from "./PreviewTable";
 import { SaveTransformDialog } from "./SaveTransformDialog";
 
@@ -162,22 +162,18 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
   const { data: selectedTransformVersions = [] } = useTransformVersions(selectedTransform?.id);
   const selectedTransformDefinition = selectedTransformVersions[0]?.definition;
 
-  // Dataset columns are the canonical schema. Pending columns (from
-  // AddColumnDialog) extend the schema once set. For the FIRST addition to a
-  // dataset (no persisted schema yet), the selected transform's variables
-  // define the initial schema, so the transform auto-matches and auto-fills
-  // instead of requiring manual column creation + "Fill from Object".
-  const persistedColumns = latestVersion?.column_names ?? [];
-  const transformVariableNames = hasSelectedTransform(selectedTransformId)
-    ? selectedTransformDefinition?.variables.map((v) => v.variable_name) ?? []
-    : [];
-  const datasetColumns = selectedDataset?.id
-    ? pendingColumns[selectedDataset.id] ?? (persistedColumns.length > 0 ? persistedColumns : transformVariableNames)
-    : [];
+  // The dataset's current columns: pending columns added this session (via
+  // AddColumnDialog) supersede the persisted schema.
+  const datasetColumns = selectedDataset?.id ? (pendingColumns[selectedDataset.id] ?? latestVersion?.column_names ?? []) : [];
+  // The schema the new row is written against. On the FIRST addition to a
+  // dataset (no columns yet) the selected transform's variables define the
+  // initial schema, so the transform auto-matches and auto-fills instead of
+  // requiring manual column creation + "Fill from Object".
+  const schemaColumns = selectedDataset?.id ? resolveSchemaColumns(datasetColumns, selectedTransformDefinition?.variables ?? []) : [];
 
-  const datasetColumnsSet = new Set(datasetColumns);
+  const schemaColumnsSet = new Set(schemaColumns);
   const ignoredTransformVariables =
-    selectedTransformDefinition?.variables.filter((v) => !datasetColumnsSet.has(v.variable_name)).map((v) => v.variable_name) ?? [];
+    selectedTransformDefinition?.variables.filter((v) => !schemaColumnsSet.has(v.variable_name)).map((v) => v.variable_name) ?? [];
 
   const createDatasetMutation = useCreateDatasetMutation(task?.id, (newDataset) => {
     datasetsQuery.refetch();
@@ -204,7 +200,7 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
   const handleAddColumn = (columnName: string) => {
     if (!selectedDataset) return;
 
-    const currentColumns = datasetColumns;
+    const currentColumns = schemaColumns;
 
     // Check if column already exists
     if (currentColumns.includes(columnName)) {
@@ -401,7 +397,7 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
                 }}
                 traceId={traceId}
                 flatSpans={flatSpans}
-                datasetSchemaColumns={datasetColumns}
+                datasetColumns={datasetColumns}
               />
             </Stack>
 
@@ -416,18 +412,18 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
 
             {selectedDataset && (
               <>
-                {datasetColumns.length > 0 && (
+                {schemaColumns.length > 0 && (
                   <Configurator
                     form={form}
                     dataset={selectedDataset}
-                    datasetSchemaColumns={datasetColumns}
+                    datasetSchemaColumns={schemaColumns}
                     spans={flatSpans}
                     onAddColumn={() => setShowAddColumnDialog(true)}
                     ignoredTransformVariables={ignoredTransformVariables}
                   />
                 )}
 
-                {datasetColumns.length === 0 && (
+                {schemaColumns.length === 0 && (
                   <Button variant="outlined" startIcon={<AddIcon />} onClick={() => setShowAddColumnDialog(true)} fullWidth>
                     Add New Column
                   </Button>
@@ -436,7 +432,7 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
             )}
           </Stack>
 
-          {selectedDataset && datasetColumns.length > 0 && (
+          {selectedDataset && schemaColumns.length > 0 && (
             <PreviewTable form={form} onSaveTransform={() => setShowSaveTransformDialog(true)} onCancel={handleClose} />
           )}
         </form>
@@ -468,7 +464,7 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
         open={showAddColumnDialog}
         onClose={() => setShowAddColumnDialog(false)}
         onSubmit={handleAddColumn}
-        existingColumns={datasetColumns}
+        existingColumns={schemaColumns}
       />
 
       <SaveTransformDialog
