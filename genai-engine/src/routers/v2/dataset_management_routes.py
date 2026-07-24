@@ -475,6 +475,7 @@ def get_dataset_version_row(
         return DatasetVersionRowResponse(
             id=db_row.id,
             data=row_data,
+            trace_id=db_row.trace_id,
             created_at=int(db_row.created_at.timestamp() * 1000),
         )
     finally:

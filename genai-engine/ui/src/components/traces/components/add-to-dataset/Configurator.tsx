@@ -31,7 +31,7 @@ export const Configurator = withForm({
   render: function Render({ form, dataset, datasetSchemaColumns, spans, onAddColumn, ignoredTransformVariables }) {
     const { task } = useTask();
     const ref = useRef<HTMLDivElement>(null);
-    const { version, isLoading } = useDatasetVersionData(dataset.id, dataset.latest_version_number!, 0, 1);
+    const { version, isLoading } = useDatasetVersionData(dataset.id, dataset.latest_version_number ?? undefined, 0, 1);
 
     const transform = useStore(form.store, (state) => state.values.transform);
     const transformSelected = hasSelectedTransform(transform);
