@@ -102,7 +102,12 @@ export const AllTasks: React.FC = () => {
   }, [archivedTasks, hideSystemTasks]);
 
   const visibleTaskIds = useMemo(() => [...filteredTasks, ...filteredArchivedTasks].map((t) => t.id), [filteredTasks, filteredArchivedTasks]);
+  // 7-day window powers the metric tiles (traces/tokens/success). A second
+  // unbounded call supplies the true "Last active" so a task active before the
+  // 7-day window (e.g. matched by "Active in last 30 days") isn't mislabeled
+  // "Inactive" on its card.
   const { data: overviewByTask = {} } = useTasksOverview(visibleTaskIds);
+  const { data: lastActiveByTask = {} } = useTasksOverview(visibleTaskIds, { sinceCreated: true });
 
   const invalidateTaskQueries = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all() });
@@ -326,7 +331,7 @@ export const AllTasks: React.FC = () => {
                     }}
                   >
                     {filteredTasks.map((task) => (
-                      <TaskCard key={task.id} task={task} overview={overviewByTask[task.id]} onArchiveToggle={invalidateTaskQueries} />
+                      <TaskCard key={task.id} task={task} overview={overviewByTask[task.id]} lastActiveOverride={lastActiveByTask[task.id]?.last_active ?? null} onArchiveToggle={invalidateTaskQueries} />
                     ))}
                   </Box>
                 )}
@@ -402,7 +407,7 @@ export const AllTasks: React.FC = () => {
               <>
                 <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", lg: "repeat(3, 1fr)" }, pb: 1 }}>
                   {filteredArchivedTasks.map((task) => (
-                    <TaskCard key={task.id} task={task} overview={overviewByTask[task.id]} onArchiveToggle={invalidateTaskQueries} />
+                    <TaskCard key={task.id} task={task} overview={overviewByTask[task.id]} lastActiveOverride={lastActiveByTask[task.id]?.last_active ?? null} onArchiveToggle={invalidateTaskQueries} />
                   ))}
                 </Box>
                 <Box ref={archivedSentinelRef} sx={{ height: 1 }} />
