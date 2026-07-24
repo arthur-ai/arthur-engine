@@ -2465,6 +2465,11 @@ export interface DatasetVersionRowResponse {
    * @format uuid
    */
   id: string;
+  /**
+   * Trace Id
+   * ID of the trace this row was extracted from, if the row originated from a trace.
+   */
+  trace_id?: string | null;
 }
 
 export type DeactivateApiKeyAuthApiKeysDeactivateApiKeyIdDeleteData = ApiKeyResponse;
@@ -7087,6 +7092,11 @@ export interface NewDatasetVersionRowRequest {
    * Optional ID for the row (used for synthetic data generation).
    */
   id?: string | null;
+  /**
+   * Trace Id
+   * ID of the trace this row was extracted from, if the row originated from a trace.
+   */
+  trace_id?: string | null;
 }
 
 /**
@@ -13705,7 +13715,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.719
+ * @version 2.1.722
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
