@@ -383,11 +383,8 @@ def restore_dataset_version(
     org_scope: UUID | None = Depends(get_org_scope),
 ) -> DatasetVersionResponse:
     dataset_repo = DatasetRepository(db_session)
-    dataset_repo.restore_dataset_version(
+    return dataset_repo.restore_dataset_version(
         dataset_id, version_number, org_scope=org_scope
-    )
-    return dataset_repo.get_latest_dataset_version(
-        dataset_id, org_scope=org_scope
     ).to_response_model()
 
 

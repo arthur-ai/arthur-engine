@@ -133,6 +133,24 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
     dispatch({ type: "UI/HIDE_CONFIRMATION" });
   }, [state.confirmation.targetVersion, dispatch, datasetId, task?.id]);
 
+  const handleVersionRestore = useCallback(
+    (versionNumber: number) => {
+      dispatch({
+        type: "UI/SHOW_CONFIRMATION",
+        payload: { type: "restoreVersion", targetVersion: versionNumber },
+      });
+    },
+    [dispatch]
+  );
+
+  const handleConfirmRestore = useCallback(() => {
+    if (state.confirmation.targetVersion !== null && !mutations.restoreVersion.isPending) {
+      dispatch({ type: "DATA/CLEAR_CHANGES" });
+      mutations.restoreVersion.mutate({ versionNumber: state.confirmation.targetVersion });
+    }
+    dispatch({ type: "UI/HIDE_CONFIRMATION" });
+  }, [state.confirmation.targetVersion, mutations.restoreVersion, dispatch]);
+
   const handleAddRow = useCallback(
     async (rowData: Record<string, unknown>) => {
       track("dataset/row_added", { dataset_id: datasetId, task_id: task?.id });
@@ -424,7 +442,8 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
           onVersionClick={(v) => dispatch({ type: "UI/SHOW_CONFIRMATION", payload: { type: "unsavedVersionSwitch", targetVersion: v } })}
           onClose={() => dispatch({ type: "UI/TOGGLE_VERSION_DRAWER", payload: false })}
           onVersionSelect={handleVersionSwitch}
-          onVersionRestore={(v) => mutations.restoreVersion.mutate({ versionNumber: v })}
+          onVersionRestore={handleVersionRestore}
+          isRestoring={mutations.restoreVersion.isPending}
         />
       )}
 
@@ -518,6 +537,21 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
         title="Unsaved Changes"
         message="You have unsaved changes. Filling a column will discard your changes and update all rows on the server. Are you sure you want to continue?"
         confirmText="Discard & Fill Column"
+        cancelText="Cancel"
+      />
+
+      <ConfirmationModal
+        open={state.confirmation.type === "restoreVersion"}
+        onClose={() => dispatch({ type: "UI/HIDE_CONFIRMATION" })}
+        onConfirm={handleConfirmRestore}
+        title="Restore Version"
+        message={
+          `This will create a new latest version with the contents of version ${state.confirmation.targetVersion}. ` +
+          `Existing versions are not modified.` +
+          (hasUnsavedWork ? " Your unsaved changes will be lost." : "") +
+          " Are you sure you want to continue?"
+        }
+        confirmText={hasUnsavedWork ? "Discard & Restore" : "Restore Version"}
         cancelText="Cancel"
       />
     </Box>

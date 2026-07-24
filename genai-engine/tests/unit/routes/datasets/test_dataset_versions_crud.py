@@ -680,7 +680,7 @@ def test_restore_dataset_version_creates_new_version(
     assert status_code == 200
     dataset_id = created_dataset.id
 
-    # Version 1: two rows
+    # Version 1: two rows (one linked to a trace)
     rows_to_add = [
         NewDatasetVersionRowRequest(
             data=[
@@ -693,6 +693,7 @@ def test_restore_dataset_version_creates_new_version(
                     column_value="30",
                 ),
             ],
+            trace_id="restore-test-trace-id",
         ),
         NewDatasetVersionRowRequest(
             data=[
@@ -738,6 +739,11 @@ def test_restore_dataset_version_creates_new_version(
     assert _extract_row_data(restored.rows) == v1_row_data
     # restored rows keep their original IDs
     assert {row.id for row in restored.rows} == v1_row_ids
+    # restored rows keep their originating trace link
+    assert {row.trace_id for row in restored.rows} == {
+        "restore-test-trace-id",
+        None,
+    }
 
     # history is preserved: three versions now exist
     status_code, versions_response = client.get_dataset_versions(dataset_id)
@@ -748,6 +754,66 @@ def test_restore_dataset_version_creates_new_version(
     status_code, retrieved_dataset = client.get_dataset(dataset_id)
     assert status_code == 200
     assert retrieved_dataset.latest_version_number == 3
+
+    # restoring the version that is already the latest is rejected
+    status_code, _ = client.restore_dataset_version(
+        dataset_id=dataset_id,
+        version_number=3,
+    )
+    assert status_code == 400
+
+    # Cleanup
+    status_code = client.delete_dataset(dataset_id)
+    assert status_code == 204
+    status_code = client.delete_task(agentic_task.id)
+    assert status_code == 204
+
+
+@pytest.mark.unit_tests
+def test_restore_latest_version_returns_400(
+    client: GenaiEngineTestClientBase,
+) -> None:
+    """Restoring the current latest version is rejected with 400."""
+    status_code, agentic_task = client.create_task(
+        name="test_restore_latest_version_task",
+        is_agentic=True,
+    )
+    assert status_code == 200
+
+    status_code, created_dataset = client.create_dataset(
+        name="Dataset for Restore Latest 400 Test",
+        task_id=agentic_task.id,
+        description="Testing restore of the latest version",
+    )
+    assert status_code == 200
+    dataset_id = created_dataset.id
+
+    status_code, version_1 = client.create_dataset_version(
+        dataset_id=dataset_id,
+        rows_to_add=[
+            NewDatasetVersionRowRequest(
+                data=[
+                    NewDatasetVersionRowColumnItemRequest(
+                        column_name="name",
+                        column_value="John Doe",
+                    ),
+                ],
+            ),
+        ],
+    )
+    assert status_code == 200
+    assert version_1.version_number == 1
+
+    status_code, _ = client.restore_dataset_version(
+        dataset_id=dataset_id,
+        version_number=1,
+    )
+    assert status_code == 400
+
+    # no new version was created
+    status_code, versions_response = client.get_dataset_versions(dataset_id)
+    assert status_code == 200
+    assert versions_response.total_count == 1
 
     # Cleanup
     status_code = client.delete_dataset(dataset_id)

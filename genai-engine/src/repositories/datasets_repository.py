@@ -303,6 +303,20 @@ class DatasetRepository:
 
         return db_row
 
+    def _persist_new_version(
+        self,
+        db_dataset: DatabaseDataset,
+        new_version: DatasetVersion,
+        commit: bool,
+    ) -> None:
+        self.db_session.add(new_version._to_database_model())
+        db_dataset.updated_at = datetime.now()
+        db_dataset.latest_version_number = new_version.version_number
+        if commit:
+            self.db_session.commit()
+        else:
+            self.db_session.flush()
+
     def create_dataset_version(
         self,
         dataset_id: UUID,
@@ -325,13 +339,7 @@ class DatasetRepository:
             latest_version,
             dataset_version,
         )
-        self.db_session.add(internal_dataset_version._to_database_model())
-        db_dataset.updated_at = datetime.now()
-        db_dataset.latest_version_number = internal_dataset_version.version_number
-        if commit:
-            self.db_session.commit()
-        else:
-            self.db_session.flush()
+        self._persist_new_version(db_dataset, internal_dataset_version, commit)
 
     def restore_dataset_version(
         self,
@@ -339,7 +347,7 @@ class DatasetRepository:
         source_version_number: int,
         org_scope: UUID | None = None,
         commit: bool = True,
-    ) -> None:
+    ) -> DatasetVersion:
         db_dataset = self._get_db_dataset(dataset_id, org_scope=org_scope)
         source_version = (
             self.db_session.query(DatabaseDatasetVersion)
@@ -357,16 +365,18 @@ class DatasetRepository:
         latest_version = self._get_latest_db_dataset_version(
             dataset_id, org_scope=org_scope
         )
+        if source_version.version_number == latest_version.version_number:
+            raise HTTPException(
+                status_code=400,
+                detail="Version %s is already the latest version of dataset %s."
+                % (source_version_number, dataset_id),
+                headers={"full_stacktrace": "false"},
+            )
         new_version = DatasetVersion._from_existing_version(
             dataset_id, latest_version, source_version
         )
-        self.db_session.add(new_version._to_database_model())
-        db_dataset.updated_at = datetime.now()
-        db_dataset.latest_version_number = new_version.version_number
-        if commit:
-            self.db_session.commit()
-        else:
-            self.db_session.flush()
+        self._persist_new_version(db_dataset, new_version, commit)
+        return new_version
 
     def get_dataset_versions(
         self,
