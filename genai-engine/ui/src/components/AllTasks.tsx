@@ -50,15 +50,9 @@ export const AllTasks: React.FC = () => {
   const debouncedSearchQuery = useDebouncedValue(searchQuery, 300);
   const { hideSystemTasks, sortBy, inactiveDays, setHideSystemTasks, setSortBy, setInactiveDays } = useTaskListStore();
 
-  // Sorting is resolved server-side: the dropdown maps to a task column and a
-  // fixed descending direction (most-recent first), fixing the previous
-  // inconsistent client-side sort direction.
   const sortField: TaskSortField = sortBy === "updated" ? "updated_at" : "created_at";
   const sortDirection: PaginationSortMethod = "desc";
 
-  // "Active in last N days" now filters on last_active (max trace end-time)
-  // server-side instead of on the already-loaded page's updated_at. Frozen per
-  // inactiveDays change so it doesn't churn the query key every render.
   const lastActiveStartTime = useMemo(() => {
     if (typeof inactiveDays === "number" && inactiveDays > 0) {
       return new Date(Date.now() - inactiveDays * 24 * 60 * 60 * 1000).toISOString();
@@ -88,9 +82,6 @@ export const AllTasks: React.FC = () => {
   const archivedScrollRef = useRef<HTMLDivElement>(null);
   const isSearching = debouncedSearchQuery.trim().length > 0;
 
-  // Sorting and the "Active in last N days" filter are applied server-side.
-  // The only remaining client-side transform is hiding system tasks, which the
-  // search endpoint does not filter on.
   const filteredTasks = useMemo(() => {
     if (!hideSystemTasks) return tasks;
     return tasks.filter((t) => !t.is_system_task);
@@ -206,11 +197,6 @@ export const AllTasks: React.FC = () => {
     </Stack>
   );
 
-  // A filter/non-default range is applied when the user is searching or has
-  // narrowed the "Active in last N days" range away from "All time". This is
-  // derived from the current filter/range state (which drives
-  // last_active_start_time), NOT from the length of the already-filtered
-  // `tasks` array.
   const isDefaultRange = inactiveDays === 0;
   const isFilterApplied = isSearching || !isDefaultRange;
   const hasNoResults = !isLoading && tasks.length === 0;
@@ -242,10 +228,6 @@ export const AllTasks: React.FC = () => {
             ) : isError ? (
               <Alert severity="error">Failed to load tasks. Please check your authentication.</Alert>
             ) : hasNoResults && !isFilterApplied ? (
-              // Onboarding empty state: only when the account has no tasks at all
-              // (no search and the default "All time" range). A filter or
-              // non-default range returning empty keeps the toolbar rendered
-              // (below) so the user can widen or clear the range.
               <Box sx={{ textAlign: "center", py: 6 }}>
                 <Typography variant="h6" color="text.secondary">
                   No tasks found
@@ -331,7 +313,13 @@ export const AllTasks: React.FC = () => {
                     }}
                   >
                     {filteredTasks.map((task) => (
-                      <TaskCard key={task.id} task={task} overview={overviewByTask[task.id]} lastActiveOverride={lastActiveByTask[task.id]?.last_active ?? null} onArchiveToggle={invalidateTaskQueries} />
+                      <TaskCard
+                        key={task.id}
+                        task={task}
+                        overview={overviewByTask[task.id]}
+                        lastActiveOverride={lastActiveByTask[task.id]?.last_active ?? null}
+                        onArchiveToggle={invalidateTaskQueries}
+                      />
                     ))}
                   </Box>
                 )}
@@ -407,7 +395,13 @@ export const AllTasks: React.FC = () => {
               <>
                 <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", lg: "repeat(3, 1fr)" }, pb: 1 }}>
                   {filteredArchivedTasks.map((task) => (
-                    <TaskCard key={task.id} task={task} overview={overviewByTask[task.id]} lastActiveOverride={lastActiveByTask[task.id]?.last_active ?? null} onArchiveToggle={invalidateTaskQueries} />
+                    <TaskCard
+                      key={task.id}
+                      task={task}
+                      overview={overviewByTask[task.id]}
+                      lastActiveOverride={lastActiveByTask[task.id]?.last_active ?? null}
+                      onArchiveToggle={invalidateTaskQueries}
+                    />
                   ))}
                 </Box>
                 <Box ref={archivedSentinelRef} sx={{ height: 1 }} />

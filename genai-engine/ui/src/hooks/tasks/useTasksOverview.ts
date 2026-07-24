@@ -17,8 +17,7 @@ export const useTasksOverview = (taskIds: string[], options?: { sinceCreated?: b
     queryFn: async (): Promise<TasksOverviewMap> => {
       // Default: 7-day window feeds the card metric tiles (traces/tokens/success).
       // sinceCreated: unbounded lookback (epoch -> now) so "Last active" reflects
-      // the true most-recent activity, not just the last 7 days. A trace can't
-      // predate its task, so epoch is equivalent to "since created".
+      // the true most-recent activity, not just the last 7 days.
       let startTime: string;
       if (sinceCreated) {
         startTime = new Date(0).toISOString();
