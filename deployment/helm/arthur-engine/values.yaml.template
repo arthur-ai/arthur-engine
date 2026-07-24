@@ -178,7 +178,7 @@ arthur-genai-engine:
   ## Advanced - GenAI Engine
   ###################################
   # GenAI Engine version
-  genaiEngineVersion: 2.1.724
+  genaiEngineVersion: 2.1.726
   # Max number of tokens GenAI Engine can process against LLM for hallucination data checks
   genaiEngineHallucinationCheckMaxTokenLimit: 3000
   # Max number of tokens GenAI Engine can process against LLM for sensitive data checks
@@ -301,6 +301,8 @@ arthur-ml-engine:
       ###################################
       ## Advanced - General
       ###################################
+      # Number of replicas of the ML Engine pod running in the k8s cluster (this is automatically
+      # overridden if the ML Engine HPA is enabled - see arthurMLEngineHPA below)
       replicas: 1
       labels: {}
       annotations: {}
@@ -328,3 +330,34 @@ arthur-ml-engine:
       mlEngineClientSecretName: "ml-engine-client-secret"
       # GenAI Engine secret admin key name (expecting value for key 'key')
       genaiEngineInternalAPIKeySecretName: "genai-engine-secret-admin-key"
+
+  ###################################
+  ## Advanced - Autoscaling
+  ###################################
+  # HorizontalPodAutoscaler for the ML Engine.
+  # NOTE: each replica requests ~16Gi RAM / 7-8 CPU, so maxReplicas multiplies that footprint
+  # (e.g. maxReplicas: 5 => up to ~80Gi / ~40 CPU). Requires a metrics-server in the cluster.
+  # Set enabled: false to pin a fixed replica count via mlEngine.deployment.replicas instead.
+  arthurMLEngineHPA:
+    enabled: true
+    annotations: {}
+    labels: {}
+    # Conservative scale-down / aggressive scale-up (mirrors the genai-engine chart).
+    behavior:
+      scaleDown:
+        stabilizationWindowSeconds: 300
+        policies:
+          - type: Percent
+            value: 100
+            periodSeconds: 15
+      scaleUp:
+        stabilizationWindowSeconds: 30
+        policies:
+          - type: Percent
+            value: 100
+            periodSeconds: 15
+        selectPolicy: Max
+    minReplicas: 1
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 50
+    targetMemoryUtilizationPercentage: 80
