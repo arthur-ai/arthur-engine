@@ -27,7 +27,7 @@ export const BulkAddToDatasetDialog = ({ open, traceCount, isSubmitting = false,
     ...addToDatasetFormOptions,
     onSubmit: ({ value, formApi }) => {
       // Guard with the same check the Add button uses so an Enter-key submit
-      // can't fire a request with an empty dataset id or the "manual" transform
+      // can't fire a request with an empty dataset id or the MANUAL_TRANSFORM_ID
       // sentinel.
       if (!value.dataset || !hasSelectedTransform(value.transform)) {
         return;
@@ -112,7 +112,7 @@ export const BulkAddToDatasetDialog = ({ open, traceCount, isSubmitting = false,
               }}
               traceId=""
               flatSpans={[]}
-              datasetSchemaColumns={datasetColumns}
+              datasetColumns={datasetColumns}
             />
 
             <Matcher
@@ -121,6 +121,7 @@ export const BulkAddToDatasetDialog = ({ open, traceCount, isSubmitting = false,
                 dataset: "dataset",
                 transform: "transform",
               }}
+              datasetColumns={datasetColumns}
             />
           </Stack>
         </form>

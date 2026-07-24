@@ -35,6 +35,9 @@ vi.mock("../../utils/spans", () => ({
 
 vi.mock("@tanstack/react-form", () => ({
   useStore: (_store: unknown, selector: (state: { values: typeof formState.values }) => unknown) => selector({ values: formState.values }),
+  // Identity is enough for ./form/shared's addToDatasetFormOptions, letting the
+  // real module (sentinels, resolveSchemaColumns) be used unmocked.
+  formOptions: <T,>(options: T) => options,
 }));
 
 vi.mock("../filtering/hooks/form", () => ({
@@ -59,10 +62,6 @@ vi.mock("../filtering/hooks/form", () => ({
     reset: vi.fn(),
     setFieldValue: vi.fn(),
   }),
-}));
-
-vi.mock("./form/shared", () => ({
-  addToDatasetFormOptions: {},
 }));
 
 vi.mock("./components/matcher", () => ({
