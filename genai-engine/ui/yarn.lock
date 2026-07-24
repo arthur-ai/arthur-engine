@@ -37,15 +37,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@amplitude/analytics-client-common@npm:2.4.56":
-  version: 2.4.56
-  resolution: "@amplitude/analytics-client-common@npm:2.4.56"
+"@amplitude/analytics-client-common@npm:2.4.58":
+  version: 2.4.58
+  resolution: "@amplitude/analytics-client-common@npm:2.4.58"
   dependencies:
     "@amplitude/analytics-connector": "npm:^1.4.8"
-    "@amplitude/analytics-core": "npm:2.53.1"
+    "@amplitude/analytics-core": "npm:2.54.0"
     "@amplitude/analytics-types": "npm:2.11.1"
     tslib: "npm:^2.4.1"
-  checksum: 10c0/0b84641eff02c3a822e58b58c460ffbdf3bfe2bf6d1d05e1d2fe2e303f1bdd0745dfa448704b8b9ef8710f78271151067bb7621756cb4efcb06d89828d1d1575
+  checksum: 10c0/0db11446b154f6c44d7bdefa216b3bf7066152bfcda33ee0e1c3c8a6d18d0a56a49d4339697f3ad1ebe22a6f33ed0807d25022971df118ec497df448a942d5a7
   languageName: node
   linkType: hard
 
@@ -74,19 +74,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@amplitude/analytics-core@npm:2.53.1":
-  version: 2.53.1
-  resolution: "@amplitude/analytics-core@npm:2.53.1"
-  dependencies:
-    "@amplitude/analytics-connector": "npm:^1.6.4"
-    "@types/zen-observable": "npm:0.8.3"
-    safe-json-stringify: "npm:1.2.0"
-    tslib: "npm:^2.4.1"
-    zen-observable: "npm:0.10.0"
-  checksum: 10c0/44b9aeb665cd9db3d5d0c5e7fe7fe7b48a3a3e9da67a659361d729b6fe82d2402fa88c23686c89091d2dc4f8bbf99bcc3ef9eebdfaf62b3db3438668a190a222
-  languageName: node
-  linkType: hard
-
 "@amplitude/analytics-core@npm:2.53.2":
   version: 2.53.2
   resolution: "@amplitude/analytics-core@npm:2.53.2"
@@ -97,6 +84,19 @@ __metadata:
     tslib: "npm:^2.4.1"
     zen-observable: "npm:0.10.0"
   checksum: 10c0/55702f5fd812e16e6a4282c0a019c39a987c89bfc426c4ae674588435b4039a854eaab8ce61e4a77b950d30d63f7a5eefb78db83995a7e201c0f767a0a246820
+  languageName: node
+  linkType: hard
+
+"@amplitude/analytics-core@npm:2.54.0":
+  version: 2.54.0
+  resolution: "@amplitude/analytics-core@npm:2.54.0"
+  dependencies:
+    "@amplitude/analytics-connector": "npm:^1.6.4"
+    "@types/zen-observable": "npm:0.8.3"
+    safe-json-stringify: "npm:1.2.0"
+    tslib: "npm:^2.4.1"
+    zen-observable: "npm:0.10.0"
+  checksum: 10c0/98fa0c63252294bfac886974e17422d4e16328f53ac10331e1ff6ee01bd0d24e86b311c17248e32e0086c18756f6562978e52af9f3c7e3e00424eb4c067abaed
   languageName: node
   linkType: hard
 
@@ -249,18 +249,18 @@ __metadata:
   linkType: hard
 
 "@amplitude/plugin-session-replay-browser@npm:^1.31.1":
-  version: 1.33.4
-  resolution: "@amplitude/plugin-session-replay-browser@npm:1.33.4"
+  version: 1.33.6
+  resolution: "@amplitude/plugin-session-replay-browser@npm:1.33.6"
   dependencies:
-    "@amplitude/analytics-client-common": "npm:2.4.56"
-    "@amplitude/analytics-core": "npm:2.53.1"
+    "@amplitude/analytics-client-common": "npm:2.4.58"
+    "@amplitude/analytics-core": "npm:2.54.0"
     "@amplitude/analytics-types": "npm:2.11.1"
     "@amplitude/rrweb-plugin-console-record": "npm:2.0.0-alpha.40"
     "@amplitude/rrweb-record": "npm:2.0.0-alpha.40"
-    "@amplitude/session-replay-browser": "npm:1.47.4"
+    "@amplitude/session-replay-browser": "npm:1.48.0"
     idb-keyval: "npm:^6.2.1"
     tslib: "npm:^2.4.1"
-  checksum: 10c0/71bbc55bba70357d686328db181057fdad16e1fe6521b7c6f7bf5ed884c0baddd0d0568df1610fb39474ed6c54598d9522569a7624cd12ef6c1a8dd4f0c7263e
+  checksum: 10c0/4781cb0f08593664cbc30387fc53a575d9d8f1e5ff5494a37975dcef6da575ffcc09d58401a3d35a3f5dba10378d782780f69bdf853ebc462a5069cbac136b80
   languageName: node
   linkType: hard
 
@@ -377,12 +377,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@amplitude/session-replay-browser@npm:1.47.4":
-  version: 1.47.4
-  resolution: "@amplitude/session-replay-browser@npm:1.47.4"
+"@amplitude/session-replay-browser@npm:1.48.0":
+  version: 1.48.0
+  resolution: "@amplitude/session-replay-browser@npm:1.48.0"
   dependencies:
-    "@amplitude/analytics-client-common": "npm:2.4.56"
-    "@amplitude/analytics-core": "npm:2.53.1"
+    "@amplitude/analytics-client-common": "npm:2.4.58"
+    "@amplitude/analytics-core": "npm:2.54.0"
     "@amplitude/analytics-types": "npm:2.11.1"
     "@amplitude/experiment-core": "npm:0.7.2"
     "@amplitude/rrweb-packer": "npm:2.0.0-alpha.40"
@@ -390,25 +390,25 @@ __metadata:
     "@amplitude/rrweb-record": "npm:2.0.0-alpha.40"
     "@amplitude/rrweb-types": "npm:2.0.0-alpha.40"
     "@amplitude/rrweb-utils": "npm:2.0.0-alpha.40"
-    "@amplitude/targeting": "npm:0.3.6"
+    "@amplitude/targeting": "npm:0.3.8"
     "@rollup/plugin-replace": "npm:^6.0.1"
     idb: "npm:8.0.0"
     tslib: "npm:^2.4.1"
-  checksum: 10c0/7eb4a60e8cda539edf583bb6f9f2aa5da5ca3e18ce03f0ed79b4f6728d0e171d69cade415bdf0bc8b771001f6013fa75470db4c9357826c3e25b29516b205e5b
+  checksum: 10c0/988420e85d25894132cd311beb633e93320548ece7e7e1f195c7b0919dc9ef05877b13eb76e2598ac50f5bede04b7f8ce253543c3c12674ef9f7037641d5a850
   languageName: node
   linkType: hard
 
-"@amplitude/targeting@npm:0.3.6":
-  version: 0.3.6
-  resolution: "@amplitude/targeting@npm:0.3.6"
+"@amplitude/targeting@npm:0.3.8":
+  version: 0.3.8
+  resolution: "@amplitude/targeting@npm:0.3.8"
   dependencies:
-    "@amplitude/analytics-client-common": "npm:2.4.56"
-    "@amplitude/analytics-core": "npm:2.53.1"
+    "@amplitude/analytics-client-common": "npm:2.4.58"
+    "@amplitude/analytics-core": "npm:2.54.0"
     "@amplitude/analytics-types": "npm:2.11.1"
     "@amplitude/experiment-core": "npm:0.7.2"
     idb: "npm:8.0.0"
     tslib: "npm:^2.4.1"
-  checksum: 10c0/1912fb53a7b5598d6a6bbc9959a0c6f21ace85d60512d6adec2063011989b01a37efdb5ee1d879655e27326215d026c3e264dace239b436275e6152b9f60297d
+  checksum: 10c0/f117b9a3f082ec5a6aec3fe730ffc3dd16153f2dabc1b3ff84182a5ead0777cc75efdd2c36e9c1c504745bedcb0aadfa772a96adaf6015be8a18bed278c2ffee
   languageName: node
   linkType: hard
 
