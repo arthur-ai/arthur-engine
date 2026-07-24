@@ -1,9 +1,7 @@
 import React, { createContext, useCallback, useContext, useRef, useState } from "react";
 
-export type ShouldBlockFn = () => boolean;
-
 interface NavigationGuardContextValue {
-  registerBlocker: (shouldBlock: ShouldBlockFn | null) => void;
+  registerBlocker: (blocked: boolean) => void;
   runGuardedNavigation: (proceed: () => void) => void;
   /** `true` while a blocked navigation is awaiting the user's confirmation. */
   isBlocking: boolean;
@@ -15,16 +13,16 @@ interface NavigationGuardContextValue {
 const NavigationGuardContext = createContext<NavigationGuardContextValue | null>(null);
 
 export const NavigationGuardProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const shouldBlockRef = useRef<ShouldBlockFn | null>(null);
+  const blockedRef = useRef(false);
   const pendingNavigationRef = useRef<(() => void) | null>(null);
   const [isBlocking, setIsBlocking] = useState(false);
 
-  const registerBlocker = useCallback((shouldBlock: ShouldBlockFn | null) => {
-    shouldBlockRef.current = shouldBlock;
+  const registerBlocker = useCallback((blocked: boolean) => {
+    blockedRef.current = blocked;
   }, []);
 
   const runGuardedNavigation = useCallback((proceed: () => void) => {
-    if (shouldBlockRef.current?.()) {
+    if (blockedRef.current) {
       pendingNavigationRef.current = proceed;
       setIsBlocking(true);
     } else {

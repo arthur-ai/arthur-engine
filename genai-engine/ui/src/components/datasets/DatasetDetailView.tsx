@@ -100,8 +100,8 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
   }, [runGuardedNavigation, navigate, task?.id]);
 
   useEffect(() => {
-    registerBlocker(() => hasUnsavedWork);
-    return () => registerBlocker(null);
+    registerBlocker(hasUnsavedWork);
+    return () => registerBlocker(false);
   }, [hasUnsavedWork, registerBlocker]);
 
   const handleViewExperiments = useCallback(() => {
