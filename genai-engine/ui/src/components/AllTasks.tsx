@@ -201,6 +201,13 @@ export const AllTasks: React.FC = () => {
     </Stack>
   );
 
+  // A filter/non-default range is applied when the user is searching or has
+  // narrowed the "Active in last N days" range away from "All time". This is
+  // derived from the current filter/range state (which drives
+  // last_active_start_time), NOT from the length of the already-filtered
+  // `tasks` array.
+  const isDefaultRange = inactiveDays === 0;
+  const isFilterApplied = isSearching || !isDefaultRange;
   const hasNoResults = !isLoading && tasks.length === 0;
 
   return (
@@ -229,7 +236,11 @@ export const AllTasks: React.FC = () => {
               </Box>
             ) : isError ? (
               <Alert severity="error">Failed to load tasks. Please check your authentication.</Alert>
-            ) : hasNoResults && !isSearching ? (
+            ) : hasNoResults && !isFilterApplied ? (
+              // Onboarding empty state: only when the account has no tasks at all
+              // (no search and the default "All time" range). A filter or
+              // non-default range returning empty keeps the toolbar rendered
+              // (below) so the user can widen or clear the range.
               <Box sx={{ textAlign: "center", py: 6 }}>
                 <Typography variant="h6" color="text.secondary">
                   No tasks found

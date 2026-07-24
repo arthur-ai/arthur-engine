@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Any, Optional
 from uuid import UUID
 
 from arthur_common.models.agent_governance_schemas import (
@@ -113,27 +113,27 @@ class TaskRepository:
         sorting_last_active = sort_field == TaskSortField.LAST_ACTIVE
         last_active_column = None
         if filtering_last_active or sorting_last_active:
-            last_active_subq = self.db_session.query(
+            last_active_query = self.db_session.query(
                 DatabaseTraceMetadata.task_id.label("task_id"),
                 func.max(DatabaseTraceMetadata.end_time).label("last_active"),
             )
             # trace_metadata carries a denormalized org_id; scope the
             # aggregation so tenants only see their own trace activity.
             if org_scope is not None:
-                last_active_subq = last_active_subq.filter(
+                last_active_query = last_active_query.filter(
                     DatabaseTraceMetadata.org_id == org_scope,
                 )
-            last_active_subq = last_active_subq.group_by(
+            last_active_subquery = last_active_query.group_by(
                 DatabaseTraceMetadata.task_id,
             ).subquery()
-            last_active_column = last_active_subq.c.last_active
+            last_active_column = last_active_subquery.c.last_active
 
             if filtering_last_active:
                 # INNER join intentionally drops tasks with no traces / null
                 # last_active while the filter is active.
                 stmt = stmt.join(
-                    last_active_subq,
-                    DatabaseTask.id == last_active_subq.c.task_id,
+                    last_active_subquery,
+                    DatabaseTask.id == last_active_subquery.c.task_id,
                 )
                 if last_active_start_time is not None:
                     stmt = stmt.where(last_active_column >= last_active_start_time)
@@ -143,12 +143,15 @@ class TaskRepository:
                 # Sorting only: keep trace-less tasks (LEFT join) and push their
                 # null last_active to the end regardless of direction.
                 stmt = stmt.outerjoin(
-                    last_active_subq,
-                    DatabaseTask.id == last_active_subq.c.task_id,
+                    last_active_subquery,
+                    DatabaseTask.id == last_active_subquery.c.task_id,
                 )
 
         # Server-side ordering. sort_field=None preserves the historical
         # default (created_at, honoring the pagination sort direction).
+        # order_column holds Task columns or the subquery's last_active column,
+        # so it is broadly typed.
+        order_column: Any
         if sort_field == TaskSortField.NAME:
             order_column = DatabaseTask.name
         elif sort_field == TaskSortField.UPDATED_AT:
