@@ -2,8 +2,6 @@ export { DatasetContext, DatasetContextProvider } from "./DatasetContext";
 
 export { useDatasetContext, useDatasetDispatch, useDatasetMutations, useDatasetQueries, useDatasetSelector } from "./useDatasetContext";
 
-export { datasetActions } from "./actions";
-
 export {
   selectAddRowData,
   selectCanAddRow,
