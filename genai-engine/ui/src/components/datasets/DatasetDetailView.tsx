@@ -25,6 +25,7 @@ import {
   selectHasUnsavedWork,
   useDatasetContext,
 } from "@/contexts/dataset";
+import { useNavigationGuard } from "@/contexts/NavigationGuardContext";
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
 import { track } from "@/services/analytics";
@@ -55,6 +56,7 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
   const { task } = useTask();
   const navigate = useNavigate();
   const api = useApi();
+  const { registerBlocker, runGuardedNavigation, isBlocking, confirmNavigation, cancelNavigation } = useNavigationGuard();
   const [searchParams, setSearchParams] = useSearchParams();
   const [isExporting, setIsExporting] = useState(false);
 
@@ -94,17 +96,13 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
   }, [state.selectedVersion, setSearchParams]);
 
   const handleBack = useCallback(() => {
-    if (hasUnsavedWork) {
-      dispatch({ type: "UI/SHOW_CONFIRMATION", payload: { type: "unsavedNavigation" } });
-    } else {
-      navigate(`/tasks/${task?.id}/datasets`);
-    }
-  }, [hasUnsavedWork, navigate, task?.id, dispatch]);
+    runGuardedNavigation(() => navigate(`/tasks/${task?.id}/datasets`));
+  }, [runGuardedNavigation, navigate, task?.id]);
 
-  const handleConfirmNavigation = useCallback(() => {
-    dispatch({ type: "UI/HIDE_CONFIRMATION" });
-    navigate(`/tasks/${task?.id}/datasets`);
-  }, [navigate, task?.id, dispatch]);
+  useEffect(() => {
+    registerBlocker(() => hasUnsavedWork);
+    return () => registerBlocker(null);
+  }, [hasUnsavedWork, registerBlocker]);
 
   const handleViewExperiments = useCallback(() => {
     track("dataset/experiments_viewed", { dataset_id: datasetId, task_id: task?.id });
@@ -493,9 +491,9 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
       )}
 
       <ConfirmationModal
-        open={state.confirmation.type === "unsavedNavigation"}
-        onClose={() => dispatch({ type: "UI/HIDE_CONFIRMATION" })}
-        onConfirm={handleConfirmNavigation}
+        open={isBlocking}
+        onClose={cancelNavigation}
+        onConfirm={confirmNavigation}
         title="Unsaved Changes"
         message={unsavedNavigationMessage}
         confirmText="Leave Without Saving"

@@ -9,6 +9,7 @@ import { TaskNotFoundState } from "@/components/TaskNotFoundState";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useDemoMode } from "@/contexts/EngineConfigContext";
+import { NavigationGuardProvider, useNavigationGuard } from "@/contexts/NavigationGuardContext";
 import { TaskProvider } from "@/contexts/TaskContext";
 import { useTaskQuery } from "@/hooks/tasks/useTaskQuery";
 
@@ -19,9 +20,18 @@ import { useTaskQuery } from "@/hooks/tasks/useTaskQuery";
 const TaskTour = lazy(() => import("@/features/task-tour").then((m) => ({ default: m.TaskTour })));
 
 export const TaskLayout: React.FC = () => {
+  return (
+    <NavigationGuardProvider>
+      <TaskLayoutContent />
+    </NavigationGuardProvider>
+  );
+};
+
+const TaskLayoutContent: React.FC = () => {
   const params = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const { runGuardedNavigation } = useNavigationGuard();
   const { demoMode } = useDemoMode();
   const { isTenant } = useAuth();
   const { chatbotEnabled } = useDisplaySettings();
@@ -67,11 +77,11 @@ export const TaskLayout: React.FC = () => {
   const [chatbotOpen, setChatbotOpen] = useState(false);
 
   const handleBack = () => {
-    navigate("/");
+    runGuardedNavigation(() => navigate("/"));
   };
 
   const handleNavigate = (sectionId: string) => {
-    navigate(`/tasks/${taskId}/${sectionId}`);
+    runGuardedNavigation(() => navigate(`/tasks/${taskId}/${sectionId}`));
   };
 
   return (
