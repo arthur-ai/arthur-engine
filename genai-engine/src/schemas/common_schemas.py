@@ -58,6 +58,10 @@ class NewDatasetVersionRowRequest(BaseModel):
     data: List[NewDatasetVersionRowColumnItemRequest] = Field(
         description="List of column-value pairs in the new dataset row.",
     )
+    trace_id: Optional[str] = Field(
+        default=None,
+        description="ID of the trace this row was extracted from, if the row originated from a trace.",
+    )
 
 
 class NewDatasetVersionUpdateRowRequest(BaseModel):

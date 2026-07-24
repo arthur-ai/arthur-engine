@@ -210,6 +210,7 @@ class DatasetRepository:
                         "-",
                         "",
                     ).ilike(id_search_term),
+                    DatabaseDatasetVersionRow.trace_id.ilike(search_term),
                 ),
             )
 

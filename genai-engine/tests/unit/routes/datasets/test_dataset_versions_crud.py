@@ -1,3 +1,5 @@
+import uuid
+
 import pytest
 
 from schemas.request_schemas import (
@@ -792,6 +794,132 @@ def test_dataset_version_search(
     assert result.total_count == 1
     assert len(result.rows) == 1
     assert str(result.rows[0].id) == str(target_row_id)
+
+    # Cleanup
+    status_code = client.delete_dataset(dataset_id)
+    assert status_code == 204
+
+    status_code = client.delete_task(agentic_task.id)
+    assert status_code == 204
+
+
+@pytest.mark.unit_tests
+def test_dataset_row_trace_id_persistence(
+    client: GenaiEngineTestClientBase,
+) -> None:
+    """trace_id set on add is returned, survives version re-materialization, and is searchable."""
+    status_code, agentic_task = client.create_task(
+        name="test_dataset_row_trace_id_task",
+        is_agentic=True,
+    )
+    assert status_code == 200
+
+    status_code, created_dataset = client.create_dataset(
+        name="Dataset for Trace ID Test",
+        task_id=agentic_task.id,
+        description="Testing trace_id persistence on dataset rows",
+    )
+    assert status_code == 200
+    dataset_id = created_dataset.id
+
+    source_trace_id = uuid.uuid4().hex
+
+    # Version 1: one row from a trace, one plain row
+    status_code, version_1 = client.create_dataset_version(
+        dataset_id=dataset_id,
+        rows_to_add=[
+            NewDatasetVersionRowRequest(
+                data=[
+                    NewDatasetVersionRowColumnItemRequest(
+                        column_name="name",
+                        column_value="traced",
+                    ),
+                ],
+                trace_id=source_trace_id,
+            ),
+            NewDatasetVersionRowRequest(
+                data=[
+                    NewDatasetVersionRowColumnItemRequest(
+                        column_name="name",
+                        column_value="plain",
+                    ),
+                ],
+            ),
+        ],
+    )
+    assert status_code == 200
+    trace_ids_by_name = {
+        next(item.column_value for item in row.data): row.trace_id
+        for row in version_1.rows
+    }
+    assert trace_ids_by_name == {"traced": source_trace_id, "plain": None}
+    traced_row_id = _get_id_by_row_name(version_1.rows, "traced")
+    plain_row_id = _get_id_by_row_name(version_1.rows, "plain")
+
+    # Single-row GET returns the trace_id
+    status_code, traced_row = client.get_dataset_version_row(
+        dataset_id=dataset_id,
+        version_number=1,
+        row_id=traced_row_id,
+    )
+    assert status_code == 200
+    assert traced_row.trace_id == source_trace_id
+
+    # Version 2: adding an unrelated row keeps trace_id on the unchanged row
+    status_code, version_2 = client.create_dataset_version(
+        dataset_id=dataset_id,
+        rows_to_add=[
+            NewDatasetVersionRowRequest(
+                data=[
+                    NewDatasetVersionRowColumnItemRequest(
+                        column_name="name",
+                        column_value="unrelated",
+                    ),
+                ],
+            ),
+        ],
+    )
+    assert status_code == 200
+    traced_row = next(row for row in version_2.rows if row.id == traced_row_id)
+    assert traced_row.trace_id == source_trace_id
+
+    # Version 3: updating the traced row's data carries trace_id forward (write-once)
+    status_code, version_3 = client.create_dataset_version(
+        dataset_id=dataset_id,
+        rows_to_update=[
+            NewDatasetVersionUpdateRowRequest(
+                id=traced_row_id,
+                data=[
+                    NewDatasetVersionRowColumnItemRequest(
+                        column_name="name",
+                        column_value="traced-updated",
+                    ),
+                ],
+            ),
+        ],
+    )
+    assert status_code == 200
+    traced_row = next(row for row in version_3.rows if row.id == traced_row_id)
+    assert traced_row.trace_id == source_trace_id
+
+    # Version 4: deleting another row keeps trace_id on the surviving row
+    status_code, version_4 = client.create_dataset_version(
+        dataset_id=dataset_id,
+        rows_to_delete=[str(plain_row_id)],
+    )
+    assert status_code == 200
+    traced_row = next(row for row in version_4.rows if row.id == traced_row_id)
+    assert traced_row.trace_id == source_trace_id
+
+    # Search by trace_id finds only the traced row
+    status_code, result = client.get_dataset_version(
+        dataset_id=dataset_id,
+        version_number=4,
+        search=source_trace_id,
+    )
+    assert status_code == 200
+    assert result.total_count == 1
+    assert result.rows[0].id == traced_row_id
 
     # Cleanup
     status_code = client.delete_dataset(dataset_id)

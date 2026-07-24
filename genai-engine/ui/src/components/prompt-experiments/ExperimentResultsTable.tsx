@@ -28,13 +28,17 @@ import {
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import React, { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
 
 import { MessageDisplay, VariableTile } from "./PromptResultComponents";
 import { EvalInputsDialog } from "./PromptResultDetailModal";
 
+import { CopyableChip } from "@/components/common/CopyableChip";
+import { SourceTraceLink } from "@/components/common/SourceTraceLink";
 import { UpdateDatasetRowModal } from "@/components/common/UpdateDatasetRowModal";
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useApi } from "@/hooks/useApi";
+import { useApiQuery } from "@/hooks/useApiQuery";
 import { useExperimentTestCases } from "@/hooks/usePromptExperiments";
 import useSnackbar from "@/hooks/useSnackbar";
 import type { TestCase, DatasetVersionRowResponse, EvalExecution, ExperimentStatus } from "@/lib/api-client/api-client";
@@ -95,8 +99,16 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
   const [updateModalOpen, setUpdateModalOpen] = useState(false);
   const [selectedOutputForUpdate, setSelectedOutputForUpdate] = useState<string | null>(null);
   const { showSnackbar, snackbarProps, alertProps } = useSnackbar();
+  const { id: taskId } = useParams<{ id: string }>();
 
   const canUpdateDataset = !!(datasetId && datasetVersion !== undefined && testCase?.dataset_row_id);
+
+  const datasetRowQuery = useApiQuery<"getDatasetVersionRowApiV2DatasetsDatasetIdVersionsVersionNumberRowsRowIdGet">({
+    method: "getDatasetVersionRowApiV2DatasetsDatasetIdVersionsVersionNumberRowsRowIdGet",
+    args: [datasetId ?? "", datasetVersion ?? 0, testCase?.dataset_row_id ?? ""],
+    enabled: open && canUpdateDataset,
+  });
+  const sourceTraceId = datasetRowQuery.data?.trace_id;
 
   const handleOpenUpdateModal = (outputContent: string) => {
     setSelectedOutputForUpdate(outputContent);
@@ -162,9 +174,12 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
               <ArrowForwardIcon />
             </IconButton>
           </Box>
-          <IconButton onClick={onClose} size="small">
-            <CloseIcon />
-          </IconButton>
+          <Box className="flex items-center gap-2">
+            {sourceTraceId && taskId && <SourceTraceLink variant="pill" taskId={taskId} traceId={sourceTraceId} />}
+            <IconButton onClick={onClose} size="small">
+              <CloseIcon />
+            </IconButton>
+          </Box>
         </Box>
 
         {/* Modal Content */}
@@ -562,6 +577,7 @@ const DatasetRowModal: React.FC<DatasetRowModalProps> = ({ open, onClose, datase
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const api = useApi();
+  const { id: taskId } = useParams<{ id: string }>();
 
   useEffect(() => {
     if (!open || !api) return;
@@ -612,6 +628,18 @@ const DatasetRowModal: React.FC<DatasetRowModalProps> = ({ open, onClose, datase
                 <Typography variant="body2" className="text-gray-600 dark:text-gray-400 mb-2">
                   Dataset: {datasetId} | Version: {versionNumber} | Row ID: {rowId}
                 </Typography>
+                {rowData.trace_id && (
+                  <Box className="flex items-center gap-1">
+                    <Typography variant="body2" className="text-gray-600 dark:text-gray-400">
+                      Source trace:
+                    </Typography>
+                    {taskId ? (
+                      <SourceTraceLink variant="field" taskId={taskId} traceId={rowData.trace_id} />
+                    ) : (
+                      <CopyableChip label={rowData.trace_id} />
+                    )}
+                  </Box>
+                )}
               </Box>
               <Box className="space-y-3">
                 {rowData.data.map((item, index) => (

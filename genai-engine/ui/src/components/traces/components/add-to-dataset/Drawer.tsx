@@ -102,6 +102,7 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
         rows_to_add: [
           {
             data: rowData,
+            trace_id: traceId,
           },
         ],
         rows_to_delete: [],

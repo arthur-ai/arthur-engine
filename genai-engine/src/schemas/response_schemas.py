@@ -138,6 +138,10 @@ class DatasetVersionRowResponse(BaseModel):
     data: List[DatasetVersionRowColumnItemResponse] = Field(
         description="List of column names and values in the row.",
     )
+    trace_id: Optional[str] = Field(
+        default=None,
+        description="ID of the trace this row was extracted from, if the row originated from a trace.",
+    )
     created_at: int = Field(
         description="Timestamp representing the time of dataset row creation in unix milliseconds. May differ within "
         "a version if a row already existed in a past version of the dataset.",
