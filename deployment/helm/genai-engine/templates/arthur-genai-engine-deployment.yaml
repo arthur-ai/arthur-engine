@@ -18,7 +18,7 @@ metadata:
     {{- toYaml . | nindent 4 }}
     {{- end }}
 spec:
-  {{- if not .Values.arthurGenaiEngineHPA.enabled }}
+  {{- if and (not .Values.arthurGenaiEngineHPA.enabled) (not .Values.arthurGenaiEngineHPA.externallyManaged) }}
   replicas: {{ .Values.genaiEngineReplicaCount }}
   {{- end }}
   selector:

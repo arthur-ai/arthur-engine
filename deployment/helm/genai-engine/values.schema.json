@@ -330,6 +330,10 @@
                     "type": "boolean",
                     "description": "Enable Horizontal Pod Autoscaler for Arthur GenAI Engine"
                 },
+                "externallyManaged": {
+                    "type": "boolean",
+                    "description": "When true, an external controller (e.g. the arthur-genai-engine-gpu-autoscaler add-on chart) owns replica count: the Deployment omits its static replicas field and this chart renders no HPA of its own"
+                },
                 "annotations": {
                     "type": "object",
                     "additionalProperties": {
