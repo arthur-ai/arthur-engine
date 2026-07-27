@@ -322,6 +322,54 @@ class ModelProviderRepository:
 
         return providers
 
-    def list_models_for_provider(self, provider: ModelProvider) -> List[str]:
+    def _get_provider_secret(
+        self,
+        provider: ModelProvider,
+    ) -> DatabaseSecretStorage | None:
+        return (
+            self.db_session.query(DatabaseSecretStorage)
+            .where(DatabaseSecretStorage.secret_type == SecretType.MODEL_PROVIDER)
+            .where(DatabaseSecretStorage.name == provider)
+            .first()
+        )
+
+    def get_model_whitelist(self, provider: ModelProvider) -> list[str] | None:
+        """Returns the curated model list for a provider, or None when unfiltered."""
+        secret = self._get_provider_secret(provider)
+        if secret is None:
+            return None
+        return secret.model_whitelist
+
+    def set_model_whitelist(
+        self,
+        provider: ModelProvider,
+        models: list[str] | None,
+    ) -> None:
+        """Sets the curated model list. None clears it, restoring unfiltered listing."""
+        secret = self._get_provider_secret(provider)
+        if secret is None:
+            raise HTTPException(
+                status_code=400,
+                detail=f"model provider {provider} is not configured",
+            )
+        secret.model_whitelist = models
+        secret.updated_at = datetime.now()
+        self.db_session.commit()
+
+    def list_catalog_models_for_provider(self, provider: ModelProvider) -> List[str]:
+        """Every model the provider offers, ignoring the whitelist. The whitelist
+        editor needs this — otherwise an admin could not re-add a model they removed.
+        """
         client = self.get_model_provider_client(provider)
         return client.get_available_models()
+
+    def list_models_for_provider(self, provider: ModelProvider) -> List[str]:
+        catalog = self.list_catalog_models_for_provider(provider)
+        whitelist = self.get_model_whitelist(provider)
+        if whitelist is None:
+            return catalog
+        # Filter by iterating the catalog so ordering stays catalog-driven, and so
+        # a whitelist entry that has since vanished from the catalog is simply
+        # dropped rather than raising.
+        allowed = set(whitelist)
+        return [model for model in catalog if model in allowed]
