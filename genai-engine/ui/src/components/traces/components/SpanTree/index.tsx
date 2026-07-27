@@ -1,4 +1,5 @@
 import { OpenInferenceSpanKind } from "@arizeai/openinference-semantic-conventions";
+import { DurationCellWithBucket } from "@arthur/shared-components";
 import { Accordion } from "@base-ui/react/accordion";
 import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
 import { Box } from "@mui/material";
@@ -6,7 +7,6 @@ import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 
 import { getSpanDuration, getSpanType } from "../../utils/spans";
-import { DurationCellWithBucket } from "../DurationCell";
 import { SpanStatusBadge } from "../span-status-badge";
 
 import { TypeChip } from "@/components/common/span/TypeChip";

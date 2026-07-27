@@ -1,9 +1,8 @@
 import { OpenInferenceSpanKind } from "@arizeai/openinference-semantic-conventions";
-import { MessageRenderer } from "@arthur/shared-components";
+import { DurationCellWithBucket, MessageRenderer } from "@arthur/shared-components";
 import { Box } from "@mui/material";
 import Typography from "@mui/material/Typography";
 
-import { DurationCellWithBucket } from "../components/DurationCell";
 import { isSpanWithLlmAttrs, ToolsTab } from "../components/llm/ToolsTab";
 import { LLMMetricsPanel } from "../components/LLMMetricsPanel";
 import { SpanErrorPanel } from "../components/SpanErrorPanel";

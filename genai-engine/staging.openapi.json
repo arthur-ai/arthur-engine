@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.729"
+        "version": "2.1.731"
     },
     "paths": {
         "/api/v2/engine-config": {
@@ -8775,6 +8775,68 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/BulkAddTracesToDatasetResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v2/datasets/{dataset_id}/versions/{version_number}/restore": {
+            "post": {
+                "tags": [
+                    "Datasets"
+                ],
+                "summary": "Restore Dataset Version",
+                "description": "Reinstate a previous dataset version by copying its rows into a new latest version.",
+                "operationId": "restore_dataset_version_api_v2_datasets__dataset_id__versions__version_number__restore_post",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "dataset_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "description": "ID of the dataset.",
+                            "title": "Dataset Id"
+                        },
+                        "description": "ID of the dataset."
+                    },
+                    {
+                        "name": "version_number",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Version number to reinstate.",
+                            "title": "Version Number"
+                        },
+                        "description": "Version number to reinstate."
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DatasetVersionResponse"
                                 }
                             }
                         }

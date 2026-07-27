@@ -2,6 +2,9 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 07/24/2026
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions/{version_number}/restore  endpoint added
+
 # 07/23/2026
 - **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions  added the new optional request property 'rows_to_add/items/trace_id'
 - **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions  added the optional property 'rows/items/trace_id' to the response with the '200' status
