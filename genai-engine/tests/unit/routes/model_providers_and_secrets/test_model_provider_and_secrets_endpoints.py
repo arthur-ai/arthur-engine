@@ -558,3 +558,124 @@ def test_setting_azure_provider_credentials(client: GenaiEngineTestClientBase):
     assert response.status_code == 204
 
     db_session.close()
+
+
+@pytest.mark.unit_tests
+def test_model_whitelist_lifecycle(client: GenaiEngineTestClientBase):
+    SUPPORTED_TEXT_MODELS[ModelProvider.OPENAI] = ["gpt-5", "gpt-4.1", "gpt-4o"]
+
+    response = client.base_client.put(
+        "/api/v1/model_providers/openai",
+        json={"api_key": "test-key"},
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 201
+
+    # unset whitelist reads back as null, with the full catalog alongside it
+    response = client.base_client.get(
+        "/api/v1/model_providers/openai/model_whitelist",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200
+    assert response.json()["whitelist"] is None
+    assert response.json()["catalog"] == ["gpt-5", "gpt-4.1", "gpt-4o"]
+
+    # setting a whitelist narrows available_models
+    response = client.base_client.put(
+        "/api/v1/model_providers/openai/model_whitelist",
+        json={"models": ["gpt-4o", "gpt-5"]},
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 204
+
+    response = client.base_client.get(
+        "/api/v1/model_providers/openai/available_models",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200
+    assert response.json()["available_models"] == ["gpt-5", "gpt-4o"]
+
+    # the editor still sees the whole catalog
+    response = client.base_client.get(
+        "/api/v1/model_providers/openai/model_whitelist",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.json()["whitelist"] == ["gpt-4o", "gpt-5"]
+    assert response.json()["catalog"] == ["gpt-5", "gpt-4.1", "gpt-4o"]
+
+    # null clears it
+    response = client.base_client.put(
+        "/api/v1/model_providers/openai/model_whitelist",
+        json={"models": None},
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 204
+
+    response = client.base_client.get(
+        "/api/v1/model_providers/openai/available_models",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.json()["available_models"] == ["gpt-5", "gpt-4.1", "gpt-4o"]
+
+    # Cleanup
+    response = client.base_client.delete(
+        "/api/v1/model_providers/openai",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 204
+
+
+@pytest.mark.unit_tests
+def test_model_whitelist_rejects_unknown_model(client: GenaiEngineTestClientBase):
+    SUPPORTED_TEXT_MODELS[ModelProvider.OPENAI] = ["gpt-5"]
+    client.base_client.put(
+        "/api/v1/model_providers/openai",
+        json={"api_key": "test-key"},
+        headers=client.authorized_user_api_key_headers,
+    )
+
+    response = client.base_client.put(
+        "/api/v1/model_providers/openai/model_whitelist",
+        json={"models": ["gpt-5", "gpt-nonexistent"]},
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 400
+    assert "gpt-nonexistent" in response.json()["detail"]
+
+    client.base_client.delete(
+        "/api/v1/model_providers/openai",
+        headers=client.authorized_user_api_key_headers,
+    )
+
+
+@pytest.mark.unit_tests
+def test_model_whitelist_rejects_empty_list(client: GenaiEngineTestClientBase):
+    SUPPORTED_TEXT_MODELS[ModelProvider.OPENAI] = ["gpt-5"]
+    client.base_client.put(
+        "/api/v1/model_providers/openai",
+        json={"api_key": "test-key"},
+        headers=client.authorized_user_api_key_headers,
+    )
+
+    response = client.base_client.put(
+        "/api/v1/model_providers/openai/model_whitelist",
+        json={"models": []},
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 400
+
+    client.base_client.delete(
+        "/api/v1/model_providers/openai",
+        headers=client.authorized_user_api_key_headers,
+    )
+
+
+@pytest.mark.unit_tests
+def test_model_whitelist_requires_configured_provider(
+    client: GenaiEngineTestClientBase,
+):
+    response = client.base_client.get(
+        "/api/v1/model_providers/gemini/model_whitelist",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 400

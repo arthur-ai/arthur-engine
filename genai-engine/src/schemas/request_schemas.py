@@ -253,6 +253,16 @@ class PutModelProviderCredentials(BaseModel):
     )
 
 
+class PutModelProviderWhitelist(BaseModel):
+    models: Optional[List[str]] = Field(
+        default=None,
+        description=(
+            "Models to expose for this provider. Null exposes all models. "
+            "An empty list is rejected — it would hide every model."
+        ),
+    )
+
+
 class ApiKeyRagAuthenticationConfigRequest(BaseModel):
     authentication_method: Literal[
         RagProviderAuthenticationMethodEnum.API_KEY_AUTHENTICATION
