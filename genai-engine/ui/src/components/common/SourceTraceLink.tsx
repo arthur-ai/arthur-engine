@@ -22,11 +22,24 @@ interface SourceTraceLinkProps {
    * pill — outlined "View originating trace · <truncated id>" button (test-case header)
    */
   variant: "subtle" | "field" | "pill";
+  /**
+   * When provided, a plain left-click opens the trace in place instead of a new tab.
+   * Modifier-clicks (cmd/ctrl/shift/alt) and middle-click keep native new-tab behavior via the href.
+   */
+  onOpen?: () => void;
 }
 
-export const SourceTraceLink: React.FC<SourceTraceLinkProps> = ({ taskId, traceId, variant }) => {
+export const SourceTraceLink: React.FC<SourceTraceLinkProps> = ({ taskId, traceId, variant, onOpen }) => {
   const to = traceDeepLinkPath(taskId, traceId);
   const newTabProps = { target: "_blank", rel: "noopener noreferrer" } as const;
+
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!onOpen) return;
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    e.preventDefault();
+    onOpen();
+  };
 
   if (variant === "pill") {
     return (
@@ -37,7 +50,7 @@ export const SourceTraceLink: React.FC<SourceTraceLinkProps> = ({ taskId, traceI
         variant="outlined"
         size="small"
         startIcon={<ArrowOutwardIcon sx={{ fontSize: 14 }} />}
-        onClick={(e: React.MouseEvent) => e.stopPropagation()}
+        onClick={handleClick}
         sx={{ borderRadius: 999, textTransform: "none", whiteSpace: "nowrap" }}
       >
         View originating trace ·&nbsp;
@@ -54,7 +67,7 @@ export const SourceTraceLink: React.FC<SourceTraceLinkProps> = ({ taskId, traceI
         component={RouterLink}
         to={to}
         {...newTabProps}
-        onClick={(e: React.MouseEvent) => e.stopPropagation()}
+        onClick={handleClick}
         sx={{ display: "inline-flex", alignItems: "center", gap: 0.5, textDecoration: "none", "&:hover": { textDecoration: "underline" } }}
       >
         <Typography variant="body2" sx={{ fontFamily: "monospace" }}>
@@ -70,7 +83,7 @@ export const SourceTraceLink: React.FC<SourceTraceLinkProps> = ({ taskId, traceI
       component={RouterLink}
       to={to}
       {...newTabProps}
-      onClick={(e: React.MouseEvent) => e.stopPropagation()}
+      onClick={handleClick}
       sx={{
         display: "inline-flex",
         alignItems: "center",

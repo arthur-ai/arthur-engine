@@ -36,6 +36,7 @@ import { EvalInputsDialog } from "./PromptResultDetailModal";
 import { CopyableChip } from "@/components/common/CopyableChip";
 import { SourceTraceLink } from "@/components/common/SourceTraceLink";
 import { UpdateDatasetRowModal } from "@/components/common/UpdateDatasetRowModal";
+import { SourceTraceDrawer } from "@/components/traces/components/source-trace/SourceTraceDrawer";
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useApi } from "@/hooks/useApi";
 import { useApiQuery } from "@/hooks/useApiQuery";
@@ -81,6 +82,8 @@ interface TestCaseDetailModalProps {
   onViewEvalInputs?: (evalExecution: EvalExecution) => void;
   datasetId?: string;
   datasetVersion?: number;
+  onOpenSourceTrace?: (traceId: string) => void;
+  suspendKeyboardNav?: boolean;
 }
 
 const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
@@ -94,6 +97,8 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
   onViewEvalInputs,
   datasetId,
   datasetVersion,
+  onOpenSourceTrace,
+  suspendKeyboardNav,
 }) => {
   const { defaultCurrency } = useDisplaySettings();
   const [updateModalOpen, setUpdateModalOpen] = useState(false);
@@ -141,7 +146,7 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
 
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (!open) return;
+      if (!open || suspendKeyboardNav) return;
 
       if (e.key === "ArrowLeft") {
         e.preventDefault();
@@ -154,7 +159,7 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [open, onPrevious, onNext]);
+  }, [open, suspendKeyboardNav, onPrevious, onNext]);
 
   if (!testCase) return null;
 
@@ -175,7 +180,14 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
             </IconButton>
           </Box>
           <Box className="flex items-center gap-2">
-            {sourceTraceId && taskId && <SourceTraceLink variant="pill" taskId={taskId} traceId={sourceTraceId} />}
+            {sourceTraceId && taskId && (
+              <SourceTraceLink
+                variant="pill"
+                taskId={taskId}
+                traceId={sourceTraceId}
+                onOpen={onOpenSourceTrace ? () => onOpenSourceTrace(sourceTraceId) : undefined}
+              />
+            )}
             <IconButton onClick={onClose} size="small">
               <CloseIcon />
             </IconButton>
@@ -570,9 +582,10 @@ interface DatasetRowModalProps {
   datasetId: string;
   versionNumber: number;
   rowId: string;
+  onOpenSourceTrace?: (traceId: string) => void;
 }
 
-const DatasetRowModal: React.FC<DatasetRowModalProps> = ({ open, onClose, datasetId, versionNumber, rowId }) => {
+const DatasetRowModal: React.FC<DatasetRowModalProps> = ({ open, onClose, datasetId, versionNumber, rowId, onOpenSourceTrace }) => {
   const [rowData, setRowData] = useState<DatasetVersionRowResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -634,7 +647,12 @@ const DatasetRowModal: React.FC<DatasetRowModalProps> = ({ open, onClose, datase
                       Source trace:
                     </Typography>
                     {taskId ? (
-                      <SourceTraceLink variant="field" taskId={taskId} traceId={rowData.trace_id} />
+                      <SourceTraceLink
+                        variant="field"
+                        taskId={taskId}
+                        traceId={rowData.trace_id}
+                        onOpen={onOpenSourceTrace ? () => onOpenSourceTrace(rowData.trace_id!) : undefined}
+                      />
                     ) : (
                       <CopyableChip label={rowData.trace_id} />
                     )}
@@ -670,6 +688,7 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
   datasetVersion,
 }) => {
   const { defaultCurrency } = useDisplaySettings();
+  const { id: taskId } = useParams<{ id: string }>();
   const [page, setPage] = useState(0);
   const pageSize = 20;
   const { testCases, totalPages, totalCount, isLoading, error, refetch } = useExperimentTestCases(experimentId, page, pageSize);
@@ -680,6 +699,16 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
   const [selectedEvalExecution, setSelectedEvalExecution] = useState<EvalExecution | null>(null);
   const [datasetRowModalOpen, setDatasetRowModalOpen] = useState(false);
   const [selectedDatasetRow, setSelectedDatasetRow] = useState<{ datasetId: string; versionNumber: number; rowId: string } | null>(null);
+  // traceId is kept on close so the drawer's exit animation doesn't unmount its content mid-slide
+  const [sourceTrace, setSourceTrace] = useState<{ open: boolean; traceId: string | null }>({ open: false, traceId: null });
+
+  const handleOpenSourceTrace = (traceId: string) => {
+    setSourceTrace({ open: true, traceId });
+  };
+
+  const handleCloseSourceTrace = () => {
+    setSourceTrace((s) => ({ ...s, open: false }));
+  };
 
   // Refetch test cases when refreshTrigger changes
   useEffect(() => {
@@ -1029,6 +1058,8 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
         onViewEvalInputs={handleViewEvalInputs}
         datasetId={datasetId}
         datasetVersion={datasetVersion}
+        onOpenSourceTrace={handleOpenSourceTrace}
+        suspendKeyboardNav={sourceTrace.open}
       />
 
       {/* Eval Inputs Dialog - rendered as sibling to avoid nesting in Modal */}
@@ -1042,7 +1073,13 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
           datasetId={selectedDatasetRow.datasetId}
           versionNumber={selectedDatasetRow.versionNumber}
           rowId={selectedDatasetRow.rowId}
+          onOpenSourceTrace={handleOpenSourceTrace}
         />
+      )}
+
+      {/* Source Trace Drawer - rendered as sibling to avoid nesting in Modal */}
+      {taskId && sourceTrace.traceId && (
+        <SourceTraceDrawer open={sourceTrace.open} onClose={handleCloseSourceTrace} traceId={sourceTrace.traceId} taskId={taskId} />
       )}
     </Box>
   );
