@@ -89,6 +89,7 @@ export function useDatasetMutations({
     },
     invalidateQueries,
     onSuccess: () => {
+      dispatch({ type: "DATA/CLEAR_CHANGES" });
       dispatch({ type: "UI/CLOSE_FILL_MODAL" });
       dispatch({ type: "VERSION/RESET_TO_LATEST" });
       track("dataset/fill_column_applied", { dataset_id: datasetId });
@@ -197,6 +198,7 @@ export function useDatasetMutations({
     },
     invalidateQueries,
     onSuccess: () => {
+      dispatch({ type: "DATA/CLEAR_CHANGES" });
       dispatch({ type: "VERSION/RESET_TO_LATEST" });
       track("dataset/restore_version", { dataset_id: datasetId });
       showSnackbar("Version reinstated successfully!", "success");

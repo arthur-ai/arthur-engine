@@ -145,7 +145,6 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
 
   const handleConfirmRestore = useCallback(() => {
     if (state.confirmation.targetVersion !== null && !mutations.restoreVersion.isPending) {
-      dispatch({ type: "DATA/CLEAR_CHANGES" });
       mutations.restoreVersion.mutate({ versionNumber: state.confirmation.targetVersion });
     }
     dispatch({ type: "UI/HIDE_CONFIRMATION" });
@@ -180,8 +179,6 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
 
   const handleConfigureColumns = useCallback(
     async (columns: string[], newColumnDefaults: ColumnDefaults, applyToExisting: boolean) => {
-      dispatch({ type: "DATA/SET_COLUMNS", payload: columns });
-
       if (queries.dataset && datasetId) {
         const existingMetadata = (queries.dataset.metadata as Record<string, unknown>) ?? {};
         await mutations.updateDataset.mutateAsync({
@@ -198,7 +195,7 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
         }
       }
 
-      dispatch({ type: "UI/TOGGLE_CONFIGURE_MODAL", payload: false });
+      dispatch({ type: "DATA/SET_COLUMNS", payload: columns });
     },
     [dispatch, queries.dataset, queries.totalRowCount, datasetId, mutations]
   );
@@ -228,7 +225,6 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
 
   const handleConfirmFillColumn = useCallback(() => {
     if (state.confirmation.targetColumn) {
-      dispatch({ type: "DATA/CLEAR_CHANGES" });
       dispatch({ type: "UI/OPEN_FILL_MODAL", payload: state.confirmation.targetColumn });
     }
     dispatch({ type: "UI/HIDE_CONFIRMATION" });
