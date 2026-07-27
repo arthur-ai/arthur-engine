@@ -89,6 +89,7 @@ export function useDatasetMutations({
     },
     invalidateQueries,
     onSuccess: () => {
+      dispatch({ type: "DATA/CLEAR_CHANGES" });
       dispatch({ type: "UI/CLOSE_FILL_MODAL" });
       dispatch({ type: "VERSION/RESET_TO_LATEST" });
       track("dataset/fill_column_applied", { dataset_id: datasetId });
@@ -187,10 +188,31 @@ export function useDatasetMutations({
     },
   });
 
+  const restoreVersion = useApiMutation<void, { versionNumber: number }>({
+    mutationFn: async ({ versionNumber }) => {
+      if (!api || !datasetId) {
+        throw new Error("API or dataset ID not available");
+      }
+
+      await api.api.restoreDatasetVersionApiV2DatasetsDatasetIdVersionsVersionNumberRestorePost(datasetId, versionNumber);
+    },
+    invalidateQueries,
+    onSuccess: () => {
+      dispatch({ type: "DATA/CLEAR_CHANGES" });
+      dispatch({ type: "VERSION/RESET_TO_LATEST" });
+      track("dataset/restore_version", { dataset_id: datasetId });
+      showSnackbar("Version reinstated successfully!", "success");
+    },
+    onError: (error) => {
+      showSnackbar(error.message || "Failed to reinstate version", "error");
+    },
+  });
+
   return {
     save,
     fillColumn,
     applyDefaults,
     updateDataset,
+    restoreVersion,
   };
 }
