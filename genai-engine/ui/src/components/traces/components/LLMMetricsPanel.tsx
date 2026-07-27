@@ -5,6 +5,7 @@ import { Box, Chip, Divider, Paper, Stack, Typography } from "@mui/material";
 import { z } from "zod";
 
 import type { MetricResultResponse, NestedSpanWithMetricsResponse } from "@/lib/api-client/api-client";
+import { formatDurationMs } from "@/utils/formatters";
 
 const RelevanceBlock = z.object({
   bert_f_score: z.number().nullable().optional(),
@@ -140,7 +141,7 @@ function MetricCard({ result }: { result: MetricResultResponse }) {
             <Stack direction="row" spacing={0.5} alignItems="center">
               <AccessTimeIcon fontSize="inherit" sx={{ fontSize: 16 }} />
               <Typography variant="caption" color="text.secondary">
-                {result.latency_ms}ms
+                {formatDurationMs(result.latency_ms)}
               </Typography>
             </Stack>
             <Divider orientation="vertical" flexItem />

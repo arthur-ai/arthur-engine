@@ -140,7 +140,7 @@ wheels = [
 
 [[package]]
 name = "arthur-client"
-version = "1.4.2270"
+version = "1.4.2281"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "authlib" },
@@ -152,9 +152,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/70/2c/2754e3519c47a158f6ff438eb1b6192de7cc96db6bcf49d007b906635e25/arthur_client-1.4.2270.tar.gz", hash = "sha256:a81ab22621718d60594618205156dc7f9e2fef4feff8be3370ef78d251d98ffb", size = 406637, upload-time = "2026-07-20T21:13:39.893Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/90/99/577a7d743530bcb71acd55134b33f25df1747df9496974c3624942c493f4/arthur_client-1.4.2281.tar.gz", hash = "sha256:0a43ea93ab203ac7d664777b7275f17faf8fa019f19238c29cbd92ee2b0a068c", size = 406678, upload-time = "2026-07-23T13:13:34Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/60/3e/dd5f0307401e3c6c57697689db779ec591ad4935936466c88e21fdfbfd2d/arthur_client-1.4.2270-py3-none-any.whl", hash = "sha256:263e7a261506facb1cbff9892966bcdc45af3cce424dc63c9634d8b46309b65a", size = 1490027, upload-time = "2026-07-20T21:13:38.375Z" },
+    { url = "https://files.pythonhosted.org/packages/ff/7b/8b3abc09f49517b990b4262c8bde000249c13c78562809d4bb8b749214aa/arthur_client-1.4.2281-py3-none-any.whl", hash = "sha256:1ccbf5d811cd48b030e53e57ea06938a3fcd0492780b03610885acff51d48ba3", size = 1490026, upload-time = "2026-07-23T13:13:32.374Z" },
 ]
 
 [[package]]
@@ -277,7 +277,7 @@ performance = [
 requires-dist = [
     { name = "alembic", specifier = "==1.18.5" },
     { name = "amplitude-analytics", specifier = ">=1.1.5,<2" },
-    { name = "arthur-client", specifier = "==1.4.2270" },
+    { name = "arthur-client", specifier = "==1.4.2281" },
     { name = "arthur-common", specifier = "==2.4.67" },
     { name = "authlib", specifier = "==1.7.2" },
     { name = "azure-storage-blob", specifier = "==12.30.0" },
