@@ -147,10 +147,8 @@ class TaskRepository:
                     DatabaseTask.id == last_active_subquery.c.task_id,
                 )
 
-        # Server-side ordering. sort_field=None preserves the historical
-        # default (created_at, honoring the pagination sort direction).
-        # Typed Any because the branches assign different column kinds (task
-        # columns vs the subquery's last_active column).
+        # Any: branches assign different column kinds (task columns vs the
+        # last_active subquery column), which mypy would otherwise reject.
         order_column: Any = DatabaseTask.created_at
         if sort_field == TaskSortField.NAME:
             order_column = DatabaseTask.name
