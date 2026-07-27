@@ -665,7 +665,7 @@ def test_restore_dataset_version_creates_new_version(
     client: GenaiEngineTestClientBase,
 ) -> None:
     """Reinstating a previous version copies its rows into a new latest version
-    without mutating the existing history (UP-4702)."""
+    without mutating the existing history."""
     status_code, agentic_task = client.create_task(
         name="test_restore_dataset_version_task",
         is_agentic=True,
