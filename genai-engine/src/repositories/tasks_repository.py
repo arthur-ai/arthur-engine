@@ -149,17 +149,15 @@ class TaskRepository:
 
         # Server-side ordering. sort_field=None preserves the historical
         # default (created_at, honoring the pagination sort direction).
-        # order_column holds Task columns or the subquery's last_active column,
-        # so it is broadly typed.
-        order_column: Any
+        # Typed Any because the branches assign different column kinds (task
+        # columns vs the subquery's last_active column).
+        order_column: Any = DatabaseTask.created_at
         if sort_field == TaskSortField.NAME:
             order_column = DatabaseTask.name
         elif sort_field == TaskSortField.UPDATED_AT:
             order_column = DatabaseTask.updated_at
         elif sort_field == TaskSortField.LAST_ACTIVE:
             order_column = last_active_column
-        else:
-            order_column = DatabaseTask.created_at
 
         if sort == PaginationSortMethod.ASCENDING:
             ordering = asc(order_column)
