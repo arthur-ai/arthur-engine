@@ -9,7 +9,7 @@ Job-based evaluation engine (Python 3.13). Polls the Arthur Platform for jobs, l
 cd scripts && ./openapi_client_utils.sh generate python && ./openapi_client_utils.sh install python && cd ..
 ./scripts/install_db_dependencies.sh     # ODBC / Oracle drivers
 
-uv sync --group dev
+uv sync --group dev --group linters
 uv run python src/ml_engine/job_agent.py
 uv run pytest tests/unit
 uv run mypy src/ml_engine
