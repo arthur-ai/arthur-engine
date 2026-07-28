@@ -4,7 +4,7 @@
   "author": "Arthur Security <security@arthur.ai>",
   "role": "Document Creator",
   "timestamp": "2026-06-27T00:00:00.000000000-00:00",
-  "version": 3,
+  "version": 4,
   "_comment": "Scope: HIGH/CRITICAL CVEs a container-image re-scan still reports for the genai-engine, ml-engine and genai-engine-models-* images, but which are remediated in the shipped binary (the apt-upgraded library is copied over the distroless base, whose stale dpkg metadata the scanner reads) or are not in the execute path. Fully remediated CVEs are intentionally excluded: python3.11 is removed from every image (its dpkg metadata deleted) and litellm/langsmith/msgpack are upgraded past their advisories. See genai-engine/dockerfile, ml-engine/Dockerfile, deployment/model-upload/Dockerfile and PR #1851.",
   "statements": [
     {
@@ -389,6 +389,28 @@
       "justification": "vulnerable_code_not_in_execute_path",
       "impact_statement": "perl-base is a transitive base-OS package on the models-gcs image; no Arthur process invokes the Perl interpreter or Archive::Tar. The upload job runs a single Python entrypoint (upload_models.py).",
       "timestamp": "2026-06-27T00:00:00Z"
+    },
+    {
+      "_comment": "perl-base: CVE-2026-13221 is a signed-16-bit overflow in Perl_study_chunk when compiling a regex alternation of >65535 fixed-string branches into a trie; no Debian bookworm fix is available. perl-base is a transitive base-OS package on the models-gcs image; no Arthur process invokes the Perl interpreter, and no untrusted regex is compiled by Perl. The upload job runs a single Python entrypoint (upload_models.py). Owner: security@arthur.ai. Review by: 2026-12-27.",
+      "vulnerability": { "name": "CVE-2026-13221" },
+      "products": [
+        { "@id": "pkg:oci/genai-engine-models-gcs", "subcomponents": [ { "@id": "pkg:deb/debian/perl-base" } ] }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_in_execute_path",
+      "impact_statement": "perl-base is a transitive base-OS package on the models-gcs image; no Arthur process invokes the Perl interpreter, and no attacker-controlled regex is ever compiled by Perl (the flaw requires a Perl regex alternation of >65535 fixed-string branches). The upload job runs a single Python entrypoint (upload_models.py).",
+      "timestamp": "2026-07-28T00:00:00Z"
+    },
+    {
+      "_comment": "perl-base: CVE-2026-57433 is a signed-32-bit integer overflow in Storable's retrieve_hook_common when deserializing a crafted SX_HOOK record via thaw/retrieve; no Debian bookworm fix is available. perl-base is a transitive base-OS package on the models-gcs image; no Arthur process invokes the Perl interpreter or the Storable module, so no attacker-controlled blob is ever deserialized by Perl. The upload job runs a single Python entrypoint (upload_models.py). Owner: security@arthur.ai. Review by: 2026-12-27.",
+      "vulnerability": { "name": "CVE-2026-57433" },
+      "products": [
+        { "@id": "pkg:oci/genai-engine-models-gcs", "subcomponents": [ { "@id": "pkg:deb/debian/perl-base" } ] }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_in_execute_path",
+      "impact_statement": "perl-base is a transitive base-OS package on the models-gcs image; no Arthur process invokes the Perl interpreter or the Storable module, so no attacker-controlled blob is ever passed to thaw/retrieve. The upload job runs a single Python entrypoint (upload_models.py).",
+      "timestamp": "2026-07-28T00:00:00Z"
     },
     {
       "_comment": "python3.11 (system, unused): Flagged against the system Python 3.11 deb packages. The model-upload job runs on Python 3.12 from /usr/local (deployment/model-upload/Dockerfile); the inherited system 3.11 is removed and never executed. A Debian fix exists but is moot — the package is removed, not upgraded, in these images. Owner: security@arthur.ai. Review by: 2026-12-27.",
