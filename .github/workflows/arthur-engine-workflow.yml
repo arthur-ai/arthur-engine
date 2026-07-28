@@ -544,6 +544,10 @@ jobs:
       current_hash: ${{ steps.check-updates.outputs.current_hash }}
     steps:
       - uses: actions/checkout@v5
+        with:
+          # Full history so we can diff the model-upload build inputs against the
+          # previous release commit (see the build-inputs change check below).
+          fetch-depth: 0
       - uses: ./.github/workflows/composite-actions/setup-git
         with:
           safe-directory: ${{ runner.workspace }}
@@ -570,6 +574,25 @@ jobs:
               break
             fi
           done
+          # Force a rebuild when the files baked into the model-upload image change
+          # (Dockerfile, Python dependencies, or the entrypoint scripts) even if the
+          # HuggingFace models are unchanged. The build only runs on "Increment
+          # arthur-engine version" commits, so the previous such commit is the last
+          # built baseline. Without this, a dependency/Dockerfile change (e.g. a
+          # security bump) is silently re-tagged onto the stale image instead of
+          # rebuilt, so the fix never ships to the -s3/-fs images.
+          PREV_VERSION_COMMIT=$(git log --grep='Increment arthur-engine version' --format='%H' --skip=1 -n 1)
+          if [ -n "$PREV_VERSION_COMMIT" ]; then
+            CHANGED=$(git diff --name-only "$PREV_VERSION_COMMIT" HEAD -- \
+              Dockerfile pyproject.toml uv.lock download_models.py upload_models.py)
+            if [ -n "$CHANGED" ]; then
+              echo "::notice::model-upload build inputs changed since ${PREV_VERSION_COMMIT} - forcing model image rebuild:"
+              echo "$CHANGED"
+              echo "has_updates=true" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "::notice::no previous version-bump commit found - relying on model/bootstrap checks only"
+          fi
 
   build-genai-engine-models-docker-image:
     uses: ./.github/workflows/build-ecs-model-upload.yml
