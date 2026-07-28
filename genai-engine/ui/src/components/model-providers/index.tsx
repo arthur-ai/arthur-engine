@@ -26,6 +26,7 @@ import React, { useState } from "react";
 import { EditForm } from "./components/edit-form";
 import { useProviders } from "./hooks/useProviders";
 import { useRemoveProvider } from "./hooks/useRemoveProvider";
+import { useSaveModelWhitelist } from "./hooks/useSaveModelWhitelist";
 import { useSaveProvider } from "./hooks/useSaveProvider";
 
 import { getContentHeight } from "@/constants/layout";
@@ -42,6 +43,13 @@ export const ModelProviders: React.FC = () => {
     isOpen: boolean;
     provider: ModelProviderResponse | null;
   }>({ isOpen: false, provider: null });
+
+  // The parent owns the whitelist because it already owns both mutations, so one
+  // Save can fire the credential PUT and the whitelist PUT in order.
+  const [whitelist, setWhitelist] = useState<string[] | null>(null);
+  const [whitelistDirty, setWhitelistDirty] = useState(false);
+
+  const saveWhitelistMutation = useSaveModelWhitelist();
 
   const saveProviderMutation = useSaveProvider({
     onSuccess: async () => {
@@ -70,13 +78,36 @@ export const ModelProviders: React.FC = () => {
   };
 
   const handleEditClick = (provider: ModelProviderResponse) => {
+    // Reset so a previous provider's selection never leaks into the next dialog.
+    setWhitelist(null);
+    setWhitelistDirty(false);
     setEditModal({ isOpen: true, provider });
+  };
+
+  // Two writers, distinguished by whether they mark the state dirty. Seeding from
+  // the fetch must not, or opening and closing the dialog would issue a needless PUT.
+  const handleWhitelistInitial = (models: string[] | null) => {
+    setWhitelist(models);
+    setWhitelistDirty(false);
+  };
+
+  const handleWhitelistChange = (models: string[] | null) => {
+    setWhitelist(models);
+    setWhitelistDirty(true);
   };
 
   const handleEditSave = async (data: PutModelProviderCredentials) => {
     if (!editModal.provider) return;
 
+    // Credentials first: the whitelist endpoint requires a configured provider.
     await saveProviderMutation.mutateAsync({ provider: editModal.provider, data });
+
+    if (whitelistDirty) {
+      await saveWhitelistMutation.mutateAsync({
+        provider: editModal.provider.provider,
+        models: whitelist,
+      });
+    }
   };
 
   const handleEditCancel = () => {
@@ -298,7 +329,18 @@ export const ModelProviders: React.FC = () => {
           </Box>
           Configure {getProviderDisplayName(editModal.provider?.provider || "")}
         </DialogTitle>
-        {editModal.provider?.provider && <EditForm provider={editModal.provider.provider} onSubmit={handleEditSave} onClose={handleEditCancel} />}
+        {editModal.provider?.provider && (
+          <EditForm
+            provider={editModal.provider.provider}
+            enabled={editModal.provider.enabled}
+            providerDisplayName={getProviderDisplayName(editModal.provider.provider)}
+            whitelist={whitelist}
+            onWhitelistChange={handleWhitelistChange}
+            onWhitelistInitial={handleWhitelistInitial}
+            onSubmit={handleEditSave}
+            onClose={handleEditCancel}
+          />
+        )}
       </Dialog>
     </>
   );

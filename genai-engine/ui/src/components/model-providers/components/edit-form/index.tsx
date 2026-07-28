@@ -6,6 +6,7 @@ import { APIKeyFields } from "./components/api";
 import { AzureFields } from "./components/azure";
 import { BedrockFields } from "./components/bedrock";
 import { ConfirmationDialog } from "./components/confirmation-dialog";
+import { ModelWhitelistSection } from "./components/model-whitelist";
 import { VertexAIFields } from "./components/vertex";
 import { VllmFields } from "./components/vllm";
 import { AzureFormValues, BedrockFormValues, editFormOptions, VertexAIFormValues, VllmFormValues } from "./form";
@@ -15,11 +16,17 @@ import { ModelProvider, PutModelProviderCredentials } from "@/lib/api-client/api
 
 type Props = {
   provider: ModelProvider;
+  /** The whitelist editor needs a configured provider — the catalog endpoint 400s otherwise. */
+  enabled: boolean;
+  providerDisplayName: string;
+  whitelist: string[] | null;
+  onWhitelistChange: (models: string[] | null) => void;
+  onWhitelistInitial: (models: string[] | null) => void;
   onSubmit: (data: PutModelProviderCredentials) => Promise<void>;
   onClose: () => void;
 };
 
-export const EditForm = ({ provider, onSubmit, onClose }: Props) => {
+export const EditForm = ({ provider, enabled, providerDisplayName, whitelist, onWhitelistChange, onWhitelistInitial, onSubmit, onClose }: Props) => {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [pendingSubmitData, setPendingSubmitData] = useState<PutModelProviderCredentials | null>(null);
 
@@ -199,12 +206,27 @@ export const EditForm = ({ provider, onSubmit, onClose }: Props) => {
               }}
             />
           )}
+          {enabled && (
+            <ModelWhitelistSection
+              provider={provider}
+              providerDisplayName={providerDisplayName}
+              value={whitelist}
+              onChange={onWhitelistChange}
+              onInitialValue={onWhitelistInitial}
+            />
+          )}
         </DialogContent>
         <DialogActions>
           <Button onClick={onClose}>Cancel</Button>
           <form.Subscribe selector={(state) => [state.canSubmit, state.isSubmitting]}>
             {([canSubmit, isSubmitting]) => (
-              <Button type="submit" disabled={!canSubmit} loading={isSubmitting}>
+              <Button
+                type="submit"
+                // A restricted list with nothing in it would hide every model for this
+                // provider, so it must not be savable.
+                disabled={!canSubmit || (whitelist !== null && whitelist.length === 0)}
+                loading={isSubmitting}
+              >
                 Save
               </Button>
             )}
