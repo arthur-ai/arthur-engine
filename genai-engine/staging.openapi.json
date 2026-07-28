@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.734"
+        "version": "2.1.735"
     },
     "paths": {
         "/api/v2/engine-config": {
@@ -1399,6 +1399,62 @@
                     }
                 ],
                 "parameters": [
+                    {
+                        "name": "sort_field",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "$ref": "#/components/schemas/TaskSortField"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Column to sort by (server-side). One of 'name', 'created_at', 'updated_at', 'last_active'. 'last_active' sorts on the most recent trace activity per task. Sort direction is controlled by the 'sort' parameter. When omitted, results keep the default ordering (created_at).",
+                            "title": "Sort Field"
+                        },
+                        "description": "Column to sort by (server-side). One of 'name', 'created_at', 'updated_at', 'last_active'. 'last_active' sorts on the most recent trace activity per task. Sort direction is controlled by the 'sort' parameter. When omitted, results keep the default ordering (created_at)."
+                    },
+                    {
+                        "name": "last_active_start_time",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string",
+                                    "format": "date-time"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Only return tasks whose last trace activity (max trace end-time) is on or after this UTC time. Tasks with no traces are excluded when this filter is set.",
+                            "title": "Last Active Start Time"
+                        },
+                        "description": "Only return tasks whose last trace activity (max trace end-time) is on or after this UTC time. Tasks with no traces are excluded when this filter is set."
+                    },
+                    {
+                        "name": "last_active_end_time",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string",
+                                    "format": "date-time"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Only return tasks whose last trace activity (max trace end-time) is on or before this UTC time. Tasks with no traces are excluded when this filter is set.",
+                            "title": "Last Active End Time"
+                        },
+                        "description": "Only return tasks whose last trace activity (max trace end-time) is on or before this UTC time. Tasks with no traces are excluded when this filter is set."
+                    },
                     {
                         "name": "sort",
                         "in": "query",
@@ -31918,6 +31974,17 @@
                     "rules"
                 ],
                 "title": "TaskResponse"
+            },
+            "TaskSortField": {
+                "type": "string",
+                "enum": [
+                    "name",
+                    "created_at",
+                    "updated_at",
+                    "last_active"
+                ],
+                "title": "TaskSortField",
+                "description": "Server-side sort column for ``/api/v2/tasks/search``.\n\n``NAME``/``CREATED_AT``/``UPDATED_AT`` sort on the corresponding\n``tasks`` columns. ``LAST_ACTIVE`` sorts on the most recent trace\nactivity per task (``MAX(trace_metadata.end_time)``), which is not a\nstored task column but computed by joining the trace-metadata table."
             },
             "TemplateVariableMapping-Input": {
                 "properties": {

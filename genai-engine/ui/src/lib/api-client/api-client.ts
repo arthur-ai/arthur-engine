@@ -7686,6 +7686,17 @@ export interface PageConversationBaseResponse {
 /** PaginationSortMethod */
 export type PaginationSortMethod = "asc" | "desc";
 
+/**
+ * TaskSortField
+ * Server-side sort column for `/api/v2/tasks/search`.
+ *
+ * `NAME`/`CREATED_AT`/`UPDATED_AT` sort on the corresponding
+ * `tasks` columns. `LAST_ACTIVE` sorts on the most recent trace
+ * activity per task (`MAX(trace_metadata.end_time)`), which is not a
+ * stored task column but computed by joining the trace-metadata table.
+ */
+export type TaskSortField = "name" | "created_at" | "updated_at" | "last_active";
+
 /** PasswordResetRequest */
 export interface PasswordResetRequest {
   /** Password */
@@ -10504,6 +10515,18 @@ export type SearchTasksApiV2TasksSearchPostError = HTTPValidationError;
 
 export interface SearchTasksApiV2TasksSearchPostParams {
   /**
+   * Last Active End Time
+   * Only return tasks whose last trace activity (max trace end-time) is on or before this UTC time. Tasks with no traces are excluded when this filter is set.
+   * @format date-time
+   */
+  last_active_end_time?: string | null;
+  /**
+   * Last Active Start Time
+   * Only return tasks whose last trace activity (max trace end-time) is on or after this UTC time. Tasks with no traces are excluded when this filter is set.
+   * @format date-time
+   */
+  last_active_start_time?: string | null;
+  /**
    * Page
    * Page number
    * @default 0
@@ -10520,6 +10543,8 @@ export interface SearchTasksApiV2TasksSearchPostParams {
    * @default "desc"
    */
   sort?: PaginationSortMethod;
+  /** Column to sort by (server-side). One of 'name', 'created_at', 'updated_at', 'last_active'. 'last_active' sorts on the most recent trace activity per task. Sort direction is controlled by the 'sort' parameter. When omitted, results keep the default ordering (created_at). */
+  sort_field?: TaskSortField | null;
 }
 
 /** SearchTasksRequest */

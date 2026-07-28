@@ -140,7 +140,7 @@ wheels = [
 
 [[package]]
 name = "arthur-client"
-version = "1.4.2281"
+version = "1.4.2282"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "authlib" },
@@ -152,9 +152,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/90/99/577a7d743530bcb71acd55134b33f25df1747df9496974c3624942c493f4/arthur_client-1.4.2281.tar.gz", hash = "sha256:0a43ea93ab203ac7d664777b7275f17faf8fa019f19238c29cbd92ee2b0a068c", size = 406678, upload-time = "2026-07-23T13:13:34Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/b6/14/dbb7dc51e8d6f522de750736b3df712b585b02b248ff11f3bcdc94ac7d5a/arthur_client-1.4.2282.tar.gz", hash = "sha256:990f69cf431aa2f06585ef39b26847e4033097f67f91910fdbf58b1056932c32", size = 406674, upload-time = "2026-07-24T11:12:52.309Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ff/7b/8b3abc09f49517b990b4262c8bde000249c13c78562809d4bb8b749214aa/arthur_client-1.4.2281-py3-none-any.whl", hash = "sha256:1ccbf5d811cd48b030e53e57ea06938a3fcd0492780b03610885acff51d48ba3", size = 1490026, upload-time = "2026-07-23T13:13:32.374Z" },
+    { url = "https://files.pythonhosted.org/packages/bb/53/ba9cb03a16e7613d82f51ae2feb112917674c581c5b21b3e1c684b3d312b/arthur_client-1.4.2282-py3-none-any.whl", hash = "sha256:faa3f7d1df7dc7cd472afd166776ffd9d44aa2871944ba0d859c144a12d61269", size = 1490026, upload-time = "2026-07-24T11:12:53.837Z" },
 ]
 
 [[package]]
@@ -182,7 +182,7 @@ wheels = [
 
 [[package]]
 name = "arthur-genai-engine"
-version = "2.1.734"
+version = "2.1.735"
 source = { editable = "." }
 dependencies = [
     { name = "alembic" },
@@ -277,7 +277,7 @@ performance = [
 requires-dist = [
     { name = "alembic", specifier = "==1.18.5" },
     { name = "amplitude-analytics", specifier = ">=1.1.5,<2" },
-    { name = "arthur-client", specifier = "==1.4.2281" },
+    { name = "arthur-client", specifier = "==1.4.2282" },
     { name = "arthur-common", specifier = "==2.4.67" },
     { name = "authlib", specifier = "==1.7.2" },
     { name = "azure-storage-blob", specifier = "==12.30.0" },
@@ -292,7 +292,7 @@ requires-dist = [
     { name = "fastapi", specifier = "==0.136.3" },
     { name = "fastapi-pagination", specifier = "==0.15.15" },
     { name = "fastapi-sqlalchemy", specifier = "==0.2.1" },
-    { name = "gliner", specifier = "==0.2.27" },
+    { name = "gliner", specifier = "==0.2.28" },
     { name = "google-auth", specifier = ">=2.48.0,<3" },
     { name = "google-cloud-aiplatform", specifier = ">=1.38" },
     { name = "google-cloud-trace", specifier = ">=1.11.0,<2" },
@@ -319,7 +319,7 @@ requires-dist = [
     { name = "opentelemetry-instrumentation-sqlalchemy", specifier = ">=0.60b1,<0.61" },
     { name = "opentelemetry-semantic-conventions", specifier = ">=0.60b1,<0.61" },
     { name = "pgvector", specifier = "==0.4.2" },
-    { name = "presidio-analyzer", specifier = "==2.2.363" },
+    { name = "presidio-analyzer", specifier = "==2.2.364" },
     { name = "presidio-anonymizer", specifier = "==2.2.363" },
     { name = "psycopg2-binary", specifier = "==2.9.12" },
     { name = "pydantic", specifier = "==2.12.5" },
@@ -1200,7 +1200,7 @@ wheels = [
 
 [[package]]
 name = "gliner"
-version = "0.2.27"
+version = "0.2.28"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "huggingface-hub" },
@@ -1211,9 +1211,9 @@ dependencies = [
     { name = "tqdm" },
     { name = "transformers" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/69/37/c456f6be21a95ed2c635d00bd6049d99a3b31490129a2b19965b0a60ec58/gliner-0.2.27.tar.gz", hash = "sha256:071de0819d83c34468ede02f75a38f618bc0c69262582127dccf3bb787db4c0c", size = 225241, upload-time = "2026-06-15T14:38:38.422Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f4/b7/0f3e24ff0b8c1c95121532a44e09b5bb87bd771c6bed0d387d51480645c5/gliner-0.2.28.tar.gz", hash = "sha256:b1637afb5cf4235fc871f1e21498831775b7bd19cefbda6dc5fe08ee88cb07a0", size = 263394, upload-time = "2026-07-24T14:03:49.833Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/73/48/9b6dc122f53d5493d280a797e7781143b5a86a2625b8550d6b082eb7fb46/gliner-0.2.27-py3-none-any.whl", hash = "sha256:90373a3f6166977d4ca807c5daf6e3ea1fa21a5c40d862f3e63764cba442abae", size = 207786, upload-time = "2026-06-15T14:38:36.08Z" },
+    { url = "https://files.pythonhosted.org/packages/3e/24/cf6a9eb70bd8eb78a74f90104180c38ae0f93bc213fdd3224ea93c2fe74a/gliner-0.2.28-py3-none-any.whl", hash = "sha256:734e333ebf8a48c135aac5c05599f51051037513030127cbaf676ae71ca501c5", size = 245603, upload-time = "2026-07-24T14:03:48.337Z" },
 ]
 
 [[package]]
@@ -2742,7 +2742,7 @@ wheels = [
 
 [[package]]
 name = "presidio-analyzer"
-version = "2.2.363"
+version = "2.2.364"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
@@ -2754,9 +2754,9 @@ dependencies = [
     { name = "spacy" },
     { name = "tldextract" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a8/c7/c88c469f06cbf44d00a3af773ea8baea7f6ee045ba39933f4a54993854f8/presidio_analyzer-2.2.363.tar.gz", hash = "sha256:f93eae598710e747e54d1a79d3a3b892caea91d46e87a32becb340fb064bf497", size = 149406, upload-time = "2026-06-28T16:09:10.613Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c7/50/408a41cf99d076107d3823d514bb6408e249132418f068673cb807839ce5/presidio_analyzer-2.2.364.tar.gz", hash = "sha256:51f27bacf199fb9777ade9552c0f0111e00a1d73cfe2d4797fc05c998de1e0b6", size = 154117, upload-time = "2026-07-22T07:54:36.264Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/2d/17/1ff9fbf2cbecb9bf0bf86615aadb4641e29d9712cb6ca51aaeda481f5add/presidio_analyzer-2.2.363-py3-none-any.whl", hash = "sha256:84203d1148a87620ab80004cf31775d5868b965395f2754aa0a27c8d308e7dfb", size = 259041, upload-time = "2026-06-28T16:09:08.993Z" },
+    { url = "https://files.pythonhosted.org/packages/a6/15/44a64276cd5c45485716314addfb7966c24f61034d8ff8e9a78d13d0afbe/presidio_analyzer-2.2.364-py3-none-any.whl", hash = "sha256:0a9eeb60ccc416c505367b4989d056becb84ef082703ee3361c046fb75941739", size = 266299, upload-time = "2026-07-22T07:54:34.868Z" },
 ]
 
 [[package]]

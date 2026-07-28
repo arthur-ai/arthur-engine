@@ -29,6 +29,21 @@ class RuleScoringMethod(str, Enum):
     BINARY = "binary"
 
 
+class TaskSortField(str, Enum):
+    """Server-side sort column for ``/api/v2/tasks/search``.
+
+    ``NAME``/``CREATED_AT``/``UPDATED_AT`` sort on the corresponding
+    ``tasks`` columns. ``LAST_ACTIVE`` sorts on the most recent trace
+    activity per task (``MAX(trace_metadata.end_time)``), which is not a
+    stored task column but computed by joining the trace-metadata table.
+    """
+
+    NAME = "name"
+    CREATED_AT = "created_at"
+    UPDATED_AT = "updated_at"
+    LAST_ACTIVE = "last_active"
+
+
 class DocumentType(str, Enum):
     PDF = "pdf"
     CSV = "csv"
