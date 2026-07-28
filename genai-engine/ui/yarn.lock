@@ -453,14 +453,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@arthur/shared-components@npm:3.23.1":
-  version: 3.23.1
-  resolution: "@arthur/shared-components@npm:3.23.1::__archiveUrl=https%3A%2F%2Fgitlab.com%2Fapi%2Fv4%2Fprojects%2F54848372%2Fpackages%2Fnpm%2F%40arthur%2Fshared-components%2F-%2F%40arthur%2Fshared-components-3.23.1.tgz"
+"@arthur/shared-components@npm:^3.23.2":
+  version: 3.23.2
+  resolution: "@arthur/shared-components@npm:3.23.2::__archiveUrl=https%3A%2F%2Fgitlab.com%2Fapi%2Fv4%2Fprojects%2F54848372%2Fpackages%2Fnpm%2F%40arthur%2Fshared-components%2F-%2F%40arthur%2Fshared-components-3.23.2.tgz"
   dependencies:
     "@amplitude/analytics-browser": "npm:2.33.3"
     "@arizeai/openinference-semantic-conventions": "npm:2.1.0"
-    "@arthur/shield-types": "npm:^3.23.1"
-    "@arthur/unify-types": "npm:^3.23.1"
+    "@arthur/shield-types": "npm:^3.23.2"
+    "@arthur/unify-types": "npm:^3.23.2"
     "@base-ui/react": "npm:1.3.0"
     "@dnd-kit/core": "npm:6.3.1"
     "@dnd-kit/sortable": "npm:10.0.0"
@@ -470,7 +470,7 @@ __metadata:
     "@tanstack/react-form": "npm:1.27.7"
     "@tanstack/react-query": "npm:5.90.17"
     "@tanstack/react-query-devtools": "npm:5.91.2"
-    axios: "npm:1.17.0"
+    axios: "npm:^1.18.1"
     clsx: "npm:2.1.1"
     dayjs: "npm:1.11.13"
     material-react-table: "npm:3.2.1"
@@ -498,25 +498,25 @@ __metadata:
     react-error-boundary: ^6.1.2
     react-i18next: ^17.0.8
     react-router-dom: ^7.0.0
-  checksum: 10c0/f85b55a42cb47cd3256a35298bf391045d9b502adc45a528f220c40fbca9a177aaaea9776b543829f999b82e2c36f9ae4f9d2825c720d26a0af38dc2564b5541
+  checksum: 10c0/7af98a8605457a7af0c00a198ec1f213b0cb1392720ccf9764ae72c471fd392553e50fb63737944c10bf364adeb6a904d86c63135aed245b8e25e60220eb9d6c
   languageName: node
   linkType: hard
 
-"@arthur/shield-types@npm:^3.23.1":
-  version: 3.23.1
-  resolution: "@arthur/shield-types@npm:3.23.1::__archiveUrl=https%3A%2F%2Fgitlab.com%2Fapi%2Fv4%2Fprojects%2F54848372%2Fpackages%2Fnpm%2F%40arthur%2Fshield-types%2F-%2F%40arthur%2Fshield-types-3.23.1.tgz"
+"@arthur/shield-types@npm:^3.23.2":
+  version: 3.23.2
+  resolution: "@arthur/shield-types@npm:3.23.2::__archiveUrl=https%3A%2F%2Fgitlab.com%2Fapi%2Fv4%2Fprojects%2F54848372%2Fpackages%2Fnpm%2F%40arthur%2Fshield-types%2F-%2F%40arthur%2Fshield-types-3.23.2.tgz"
   dependencies:
     react: "npm:^19.1.1"
-  checksum: 10c0/59202a847652127bf6fd8cd2a55a0d6e8cdbe2da58b9c4151521b87d801e2574505053fa772e401518b94255e1d05aed4aac2e5db15f9a978e208377659edb0a
+  checksum: 10c0/3692d29a200286087830a808171faba33a6fdba4821b01caa90d4c010bafb2073c091e43b90f4773341dc8bdd37e87fcaca408b9a8f9a03deb63a2424da08c94
   languageName: node
   linkType: hard
 
-"@arthur/unify-types@npm:^3.23.1":
-  version: 3.23.1
-  resolution: "@arthur/unify-types@npm:3.23.1::__archiveUrl=https%3A%2F%2Fgitlab.com%2Fapi%2Fv4%2Fprojects%2F54848372%2Fpackages%2Fnpm%2F%40arthur%2Funify-types%2F-%2F%40arthur%2Funify-types-3.23.1.tgz"
+"@arthur/unify-types@npm:^3.23.2":
+  version: 3.23.2
+  resolution: "@arthur/unify-types@npm:3.23.2::__archiveUrl=https%3A%2F%2Fgitlab.com%2Fapi%2Fv4%2Fprojects%2F54848372%2Fpackages%2Fnpm%2F%40arthur%2Funify-types%2F-%2F%40arthur%2Funify-types-3.23.2.tgz"
   dependencies:
     react: "npm:19.2"
-  checksum: 10c0/ee3466b275bc8dcad2dce5000ed11d6d0ab2b8e7852f1cce70033c58ffc6b00901205585b40f25afb8c9395f0d3958b114067e587b8693c1829f744385493d0d
+  checksum: 10c0/42acb8831da479c145f7b52de494016b9fb7a83a6b35a27eefc276b50d4813178569bf325e7288abb1b4cce72e4af714f19896ee335cef0039de63c4117036c7
   languageName: node
   linkType: hard
 
@@ -3462,19 +3462,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"axios@npm:1.17.0":
-  version: 1.17.0
-  resolution: "axios@npm:1.17.0"
-  dependencies:
-    follow-redirects: "npm:^1.16.0"
-    form-data: "npm:^4.0.5"
-    https-proxy-agent: "npm:^5.0.1"
-    proxy-from-env: "npm:^2.1.0"
-  checksum: 10c0/c4fa19ff3a3a63bde48beec03ad816b133b9a6385cccffffe172577ab18c6a70e299280d57f12c80c867fe25df41f92cb91d3a8258708a6d2be3e9e085f92650
-  languageName: node
-  linkType: hard
-
-"axios@npm:1.18.1":
+"axios@npm:1.18.1, axios@npm:^1.18.1":
   version: 1.18.1
   resolution: "axios@npm:1.18.1"
   dependencies:
@@ -9110,7 +9098,7 @@ __metadata:
     "@amplitude/experiment-js-client": "npm:^1.21.1"
     "@amplitude/plugin-session-replay-browser": "npm:^1.31.1"
     "@arizeai/openinference-semantic-conventions": "npm:2.5.0"
-    "@arthur/shared-components": "npm:3.23.1"
+    "@arthur/shared-components": "npm:^3.23.2"
     "@base-ui/react": "npm:1.6.0"
     "@dnd-kit/core": "npm:6.3.1"
     "@dnd-kit/sortable": "npm:10.0.0"
