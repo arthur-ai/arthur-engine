@@ -14,9 +14,6 @@ export const useSaveModelWhitelist = () => {
     },
     onSuccess: async (_data, { provider }) => {
       await queryClient.invalidateQueries({ queryKey: queryKeys.providers.modelWhitelist(provider) });
-      // availableModels is keyed by the provider list, not a single provider, and
-      // useAvailableModels holds it for 60s. Without this the AI Assistant picker
-      // keeps showing the pre-save list for up to a minute.
       await queryClient.invalidateQueries({ queryKey: ["availableModels"] });
     },
   });

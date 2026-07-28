@@ -44,8 +44,6 @@ export const ModelProviders: React.FC = () => {
     provider: ModelProviderResponse | null;
   }>({ isOpen: false, provider: null });
 
-  // The parent owns the whitelist because it already owns both mutations, so one
-  // Save can fire the credential PUT and the whitelist PUT in order.
   const [whitelist, setWhitelist] = useState<string[] | null>(null);
   const [whitelistDirty, setWhitelistDirty] = useState(false);
 
@@ -78,14 +76,13 @@ export const ModelProviders: React.FC = () => {
   };
 
   const handleEditClick = (provider: ModelProviderResponse) => {
-    // Reset so a previous provider's selection never leaks into the next dialog.
     setWhitelist(null);
+
     setWhitelistDirty(false);
     setEditModal({ isOpen: true, provider });
   };
 
-  // Two writers, distinguished by whether they mark the state dirty. Seeding from
-  // the fetch must not, or opening and closing the dialog would issue a needless PUT.
+  // Seeding from the fetch must not mark the state dirty
   const handleWhitelistInitial = (models: string[] | null) => {
     setWhitelist(models);
     setWhitelistDirty(false);
@@ -99,7 +96,6 @@ export const ModelProviders: React.FC = () => {
   const handleEditSave = async (data: PutModelProviderCredentials) => {
     if (!editModal.provider) return;
 
-    // Credentials first: the whitelist endpoint requires a configured provider.
     await saveProviderMutation.mutateAsync({ provider: editModal.provider, data });
 
     if (whitelistDirty) {
@@ -332,8 +328,8 @@ export const ModelProviders: React.FC = () => {
         {editModal.provider?.provider && (
           <EditForm
             provider={editModal.provider.provider}
-            enabled={editModal.provider.enabled}
             providerDisplayName={getProviderDisplayName(editModal.provider.provider)}
+            providerEnabled={editModal.provider.enabled}
             whitelist={whitelist}
             onWhitelistChange={handleWhitelistChange}
             onWhitelistInitial={handleWhitelistInitial}

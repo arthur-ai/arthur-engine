@@ -671,11 +671,29 @@ def test_model_whitelist_rejects_empty_list(client: GenaiEngineTestClientBase):
 
 
 @pytest.mark.unit_tests
-def test_model_whitelist_requires_configured_provider(
+def test_model_whitelist_readable_before_provider_is_configured(
     client: GenaiEngineTestClientBase,
-):
+):    
+    SUPPORTED_TEXT_MODELS[ModelProvider.GEMINI] = ["gemini-2.5-pro", "gemini-2.5-flash"]
+
     response = client.base_client.get(
         "/api/v1/model_providers/gemini/model_whitelist",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200
+    assert response.json()["whitelist"] is None
+    assert response.json()["catalog"] == ["gemini-2.5-pro", "gemini-2.5-flash"]
+
+
+@pytest.mark.unit_tests
+def test_model_whitelist_write_still_requires_configured_provider(
+    client: GenaiEngineTestClientBase,
+):                  
+    SUPPORTED_TEXT_MODELS[ModelProvider.GEMINI] = ["gemini-2.5-pro"]
+
+    response = client.base_client.put(
+        "/api/v1/model_providers/gemini/model_whitelist",
+        json={"models": ["gemini-2.5-pro"]},
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 400

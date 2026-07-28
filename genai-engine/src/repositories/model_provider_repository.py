@@ -9,7 +9,7 @@ from pydantic import SecretStr
 from sqlalchemy.orm import Session
 from starlette.status import HTTP_400_BAD_REQUEST
 
-from clients.llm.llm_client import LLMClient
+from clients.llm.llm_client import LLMClient, get_static_catalog
 from db_models.secret_storage_models import DatabaseSecretStorage
 from schemas.enums import SecretType
 from schemas.internal_schemas import AwsBedrockCredentials, GCPServiceAccountCredentials
@@ -334,7 +334,6 @@ class ModelProviderRepository:
         )
 
     def get_model_whitelist(self, provider: ModelProvider) -> list[str] | None:
-        """Returns the curated model list for a provider, or None when unfiltered."""
         secret = self._get_provider_secret(provider)
         if secret is None:
             return None
@@ -345,7 +344,6 @@ class ModelProviderRepository:
         provider: ModelProvider,
         models: list[str] | None,
     ) -> None:
-        """Sets the curated model list. None clears it, restoring unfiltered listing."""
         secret = self._get_provider_secret(provider)
         if secret is None:
             raise HTTPException(
@@ -356,20 +354,20 @@ class ModelProviderRepository:
         secret.updated_at = datetime.now()
         self.db_session.commit()
 
-    def list_catalog_models_for_provider(self, provider: ModelProvider) -> List[str]:
-        """Every model the provider offers, ignoring the whitelist. The whitelist
-        editor needs this — otherwise an admin could not re-add a model they removed.
-        """
+    def _catalog_via_client(self, provider: ModelProvider) -> List[str]:
         client = self.get_model_provider_client(provider)
         return client.get_available_models()
 
+    def list_catalog_models_for_provider(self, provider: ModelProvider) -> List[str]:
+        static_catalog = get_static_catalog(provider)
+        if static_catalog is not None:
+            return static_catalog
+        return self._catalog_via_client(provider)
+
     def list_models_for_provider(self, provider: ModelProvider) -> List[str]:
-        catalog = self.list_catalog_models_for_provider(provider)
+        catalog = self._catalog_via_client(provider)
         whitelist = self.get_model_whitelist(provider)
         if whitelist is None:
             return catalog
-        # Filter by iterating the catalog so ordering stays catalog-driven, and so
-        # a whitelist entry that has since vanished from the catalog is simply
-        # dropped rather than raising.
         allowed = set(whitelist)
         return [model for model in catalog if model in allowed]

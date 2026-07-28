@@ -206,10 +206,9 @@ const EvalEditModal = ({
   // This eval's saved model may since have been dropped from the provider's
   // whitelist. Keep it selectable-but-disabled rather than letting the Autocomplete
   // fall back to empty and discard a working configuration on the next save.
-  const staleModel = modelName && !whitelistedModels.includes(modelName) ? modelName : null;
   const availableModelsForProvider = useMemo(
-    () => (staleModel ? [...whitelistedModels, staleModel] : whitelistedModels),
-    [whitelistedModels, staleModel]
+    () => (modelName && !whitelistedModels.includes(modelName) ? [...whitelistedModels, modelName] : whitelistedModels),
+    [whitelistedModels, modelName]
   );
 
   return (
@@ -289,8 +288,6 @@ const EvalEditModal = ({
                   value={modelName || null}
                   onChange={handleModelChange}
                   disabled={modelDisabled || isLoading}
-                  getOptionDisabled={(option) => option === staleModel}
-                  getOptionLabel={(option) => (option === staleModel ? `${option} (no longer listed)` : option)}
                   renderInput={(params) => (
                     <TextField {...params} label="Select Model" variant="outlined" size="small" sx={{ backgroundColor: "background.paper" }} />
                   )}

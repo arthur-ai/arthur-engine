@@ -16,9 +16,8 @@ import { ModelProvider, PutModelProviderCredentials } from "@/lib/api-client/api
 
 type Props = {
   provider: ModelProvider;
-  /** The whitelist editor needs a configured provider — the catalog endpoint 400s otherwise. */
-  enabled: boolean;
   providerDisplayName: string;
+  providerEnabled: boolean;
   whitelist: string[] | null;
   onWhitelistChange: (models: string[] | null) => void;
   onWhitelistInitial: (models: string[] | null) => void;
@@ -26,7 +25,16 @@ type Props = {
   onClose: () => void;
 };
 
-export const EditForm = ({ provider, enabled, providerDisplayName, whitelist, onWhitelistChange, onWhitelistInitial, onSubmit, onClose }: Props) => {
+export const EditForm = ({
+  provider,
+  providerDisplayName,
+  providerEnabled,
+  whitelist,
+  onWhitelistChange,
+  onWhitelistInitial,
+  onSubmit,
+  onClose,
+}: Props) => {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [pendingSubmitData, setPendingSubmitData] = useState<PutModelProviderCredentials | null>(null);
 
@@ -206,15 +214,14 @@ export const EditForm = ({ provider, enabled, providerDisplayName, whitelist, on
               }}
             />
           )}
-          {enabled && (
-            <ModelWhitelistSection
-              provider={provider}
-              providerDisplayName={providerDisplayName}
-              value={whitelist}
-              onChange={onWhitelistChange}
-              onInitialValue={onWhitelistInitial}
-            />
-          )}
+          <ModelWhitelistSection
+            provider={provider}
+            providerDisplayName={providerDisplayName}
+            providerEnabled={providerEnabled}
+            value={whitelist}
+            onChange={onWhitelistChange}
+            onInitialValue={onWhitelistInitial}
+          />
         </DialogContent>
         <DialogActions>
           <Button onClick={onClose}>Cancel</Button>
@@ -222,8 +229,6 @@ export const EditForm = ({ provider, enabled, providerDisplayName, whitelist, on
             {([canSubmit, isSubmitting]) => (
               <Button
                 type="submit"
-                // A restricted list with nothing in it would hide every model for this
-                // provider, so it must not be savable.
                 disabled={!canSubmit || (whitelist !== null && whitelist.length === 0)}
                 loading={isSubmitting}
               >

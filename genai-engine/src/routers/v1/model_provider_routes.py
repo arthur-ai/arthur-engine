@@ -236,9 +236,6 @@ def set_model_provider_whitelist(
                     "for this provider."
                 ),
             )
-        # Validate on write, not on read. Here the admin is looking at the catalog,
-        # so a mismatch is a typo. On read the catalog may legitimately have moved
-        # underneath a stored list.
         catalog = set(repo.list_catalog_models_for_provider(provider))
         unknown = sorted(set(request.models) - catalog)
         if unknown:

@@ -3,9 +3,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { UserSettingsModal } from "./UserSettingsModal";
 
-// Testing Library's auto-cleanup only registers when vitest runs with `globals:
-// true`, and this project does not. Without this, every render stacks in the same
-// document and queries match elements from earlier tests.
+// Auto-cleanup only registers under vitest `globals: true`, which this project does
+// not set, so renders would otherwise stack in one document across tests.
 afterEach(cleanup);
 
 const baseProps = {
@@ -25,26 +24,25 @@ const baseProps = {
 };
 
 const openModelSelect = () => {
-  // MUI renders Select as a button-like combobox; its menu mounts on open.
   fireEvent.mouseDown(screen.getByLabelText("Model Name"));
 };
 
 describe("UserSettingsModal", () => {
-  it("keeps a model that is no longer whitelisted visible and disabled", () => {
+  it("keeps a model that is no longer whitelisted selectable, shown as-is", () => {
     render(<UserSettingsModal {...baseProps} availableModelsMap={new Map([["openai", ["gpt-5"]]])} />);
 
     openModelSelect();
 
-    const stale = screen.getByRole("option", { name: /gpt-4o \(no longer listed\)/ });
-    expect(stale.getAttribute("aria-disabled")).toBe("true");
+    const stale = screen.getByRole("option", { name: "gpt-4o" });
+    expect(stale.getAttribute("aria-disabled")).toBeNull();
+    expect(screen.queryByText(/no longer listed/)).toBeNull();
   });
 
-  it("does not mark a still-whitelisted model as unlisted", () => {
+  it("does not duplicate a model that is still whitelisted", () => {
     render(<UserSettingsModal {...baseProps} availableModelsMap={new Map([["openai", ["gpt-4o", "gpt-5"]]])} />);
 
     openModelSelect();
 
-    expect(screen.queryByText(/no longer listed/)).toBeNull();
-    expect(screen.queryByRole("option", { name: "gpt-4o" })).not.toBeNull();
+    expect(screen.getAllByRole("option", { name: "gpt-4o" })).toHaveLength(1);
   });
 });

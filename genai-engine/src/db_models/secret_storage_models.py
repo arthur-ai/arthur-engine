@@ -45,11 +45,6 @@ class DatabaseSecretStorage(Base):
         default=None,
         nullable=True,
     )
-    # Curated list of models to expose for this provider. NULL means unfiltered
-    # (all catalog models), which is the pre-UP-4699 behaviour. A non-empty list
-    # restricts pickers to those models. An empty list is rejected at the API
-    # layer and must never be persisted. Plain JSON, not EncryptedJSON — model
-    # names are not secrets.
     model_whitelist: Mapped[Optional[List[str]]] = mapped_column(
         JSON,
         default=None,

@@ -12,7 +12,7 @@ import RadioGroup from "@mui/material/RadioGroup";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
-import React from "react";
+import React, { useRef } from "react";
 
 import { useModelWhitelist } from "../../../../hooks/useModelWhitelist";
 
@@ -21,26 +21,30 @@ import { ModelProvider } from "@/lib/api-client/api-client";
 type Props = {
   provider: ModelProvider;
   providerDisplayName: string;
-  /** null means every model is exposed. An array — including empty — means restricted. */
+  providerEnabled: boolean;
   value: string[] | null;
   onChange: (models: string[] | null) => void;
-  /** Fired once when the stored whitelist arrives, so the parent can seed its state. */
   onInitialValue: (models: string[] | null) => void;
 };
 
-export const ModelWhitelistSection: React.FC<Props> = ({ provider, providerDisplayName, value, onChange, onInitialValue }) => {
-  const { data, isLoading, error } = useModelWhitelist(provider, true);
+export const ModelWhitelistSection: React.FC<Props> = ({ provider, providerDisplayName, providerEnabled, value, onChange, onInitialValue }) => {
+  // vLLM's models live on the server itself and can only be read from a stored
+  // api_base. Every other provider has a static catalog.
+  const catalogUnavailable = provider === "hosted_vllm" && !providerEnabled;
 
-  // Seed the parent from the fetch exactly once. A ref rather than an effect: this
-  // is a one-shot handoff, not a subscription to an external system.
-  const seeded = React.useRef(false);
+  const { data, isLoading, error } = useModelWhitelist(provider, !catalogUnavailable);
+
+  const seeded = useRef(false);
   if (data && !seeded.current) {
     seeded.current = true;
     onInitialValue(data.whitelist ?? null);
   }
 
   const restricted = value !== null;
-  const hiddenCount = restricted && data ? data.catalog.length - value.length : 0;
+
+  if (catalogUnavailable) {
+    return null;
+  }
 
   return (
     <Box sx={{ mt: 2 }}>
@@ -62,7 +66,7 @@ export const ModelWhitelistSection: React.FC<Props> = ({ provider, providerDispl
 
       {!isLoading && !error && data && (
         <>
-          <RadioGroup value={restricted ? "some" : "all"} onChange={(event) => onChange(event.target.value === "all" ? null : [])}>
+          <RadioGroup value={restricted ? "some" : "all"} onChange={(event) => onChange(event.target.value === "all" ? null : [])} sx={{ gap: 0.5 }}>
             <FormControlLabel
               value="all"
               control={<Radio size="small" />}
@@ -98,10 +102,7 @@ export const ModelWhitelistSection: React.FC<Props> = ({ provider, providerDispl
                 value={value}
                 onChange={(_event, next) => onChange(next)}
                 disableCloseOnSelect
-                // The catalog is LiteLLM's static model map, which says nothing about what
-                // this account is entitled to. It lives inside the dropdown, pinned above
-                // the options, so it is read at the moment of choosing rather than skimmed
-                // past. PaperComponent rather than ListboxComponent: the listbox is the
+                // PaperComponent rather than ListboxComponent: the listbox is the
                 // scrolling element, so a sticky child of it would scroll away.
                 PaperComponent={({ children, ...paperProps }) => (
                   <Paper {...paperProps}>
@@ -114,21 +115,21 @@ export const ModelWhitelistSection: React.FC<Props> = ({ provider, providerDispl
                     {children}
                   </Paper>
                 )}
-                renderTags={(selected, getTagProps) =>
-                  selected.map((model, index) => {
-                    const { key, ...tagProps } = getTagProps({ index });
-                    return <Chip key={key} label={model} size="small" {...tagProps} />;
-                  })
-                }
+                // MUI packs tags into the input by default, displacing the placeholder
+                // and reflowing the field. Chips render below it instead.
+                renderTags={() => null}
                 renderInput={(params) => <TextField {...params} placeholder={`Search ${providerDisplayName} models…`} size="small" />}
               />
-              {value.length === 0 && <Alert severity="warning">Select at least one model</Alert>}
-              {hiddenCount > 0 && (
-                <Alert severity="info">
-                  {hiddenCount} {hiddenCount === 1 ? "model" : "models"} will be hidden. Existing configurations using them keep working, but the
-                  model will no longer appear in pickers.
-                </Alert>
+
+              {value.length > 0 && (
+                <Stack direction="row" flexWrap="wrap" gap={0.75}>
+                  {value.map((model) => (
+                    <Chip key={model} label={model} size="small" onDelete={() => onChange(value.filter((m) => m !== model))} />
+                  ))}
+                </Stack>
               )}
+
+              {value.length === 0 && <Alert severity="warning">Select at least one model</Alert>}
             </Stack>
           )}
         </>

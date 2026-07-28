@@ -3,9 +3,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ModelWhitelistSection } from "./index";
 
-// Testing Library's auto-cleanup only registers when vitest runs with `globals:
-// true`, and this project does not. Without this, every render stacks in the same
-// document and queries match elements from earlier tests.
+// Auto-cleanup only registers under vitest `globals: true`, which this project does
+// not set, so renders would otherwise stack in one document across tests.
 afterEach(cleanup);
 
 vi.mock("../../../../hooks/useModelWhitelist", () => ({
@@ -21,6 +20,7 @@ const CAVEAT = /including models your account may not have access to/;
 const baseProps = {
   provider: "openai" as const,
   providerDisplayName: "OpenAI",
+  providerEnabled: false,
   value: null,
   onChange: vi.fn(),
   onInitialValue: vi.fn(),
@@ -29,6 +29,25 @@ const baseProps = {
 const searchField = () => screen.getByPlaceholderText("Search OpenAI models…");
 
 describe("ModelWhitelistSection", () => {
+  it("renders during first-time setup for a provider with a static catalog", () => {
+    render(<ModelWhitelistSection {...baseProps} />);
+
+    expect(screen.queryByText("Visible models")).not.toBeNull();
+  });
+
+  it("renders nothing for an unconfigured vLLM, whose catalog needs a saved api_base", () => {
+    render(<ModelWhitelistSection {...baseProps} provider="hosted_vllm" providerDisplayName="vLLM" providerEnabled={false} />);
+
+    expect(screen.queryByText("Visible models")).toBeNull();
+    expect(screen.queryByText(/Couldn't load/)).toBeNull();
+  });
+
+  it("renders for vLLM once it is configured", () => {
+    render(<ModelWhitelistSection {...baseProps} provider="hosted_vllm" providerDisplayName="vLLM" providerEnabled />);
+
+    expect(screen.queryByText("Visible models")).not.toBeNull();
+  });
+
   it("hides the picker when All models is selected", () => {
     render(<ModelWhitelistSection {...baseProps} />);
 
@@ -78,26 +97,40 @@ describe("ModelWhitelistSection", () => {
     expect(screen.queryByText("gpt-5")).not.toBeNull();
   });
 
-  it("warns how many models a save would hide", () => {
-    render(<ModelWhitelistSection {...baseProps} value={["gpt-5"]} />);
-
-    // 3 in the catalog, 1 selected.
-    expect(screen.queryByText(/^2 models will be hidden\./)).not.toBeNull();
-  });
-
   it("shows the catalog caveat inside the dropdown, once opened", () => {
-    // All models: no picker at all, so there is no dropdown to open.
     const { unmount } = render(<ModelWhitelistSection {...baseProps} />);
     expect(screen.queryByText(CAVEAT)).toBeNull();
     unmount();
 
-    // Only selected: the caveat lives in the Autocomplete's Paper, which MUI mounts
-    // only while the popup is open — closed is the correct initial state.
+    // The caveat lives in the Autocomplete's Paper, which MUI mounts only while the
+    // popup is open.
     render(<ModelWhitelistSection {...baseProps} value={["gpt-5"]} />);
     expect(screen.queryByText(CAVEAT)).toBeNull();
 
     fireEvent.mouseDown(searchField());
 
     expect(screen.queryByText(CAVEAT)).not.toBeNull();
+  });
+
+  it("keeps the search placeholder visible when models are selected", () => {
+    render(<ModelWhitelistSection {...baseProps} value={["gpt-5", "gpt-4.1"]} />);
+
+    expect(searchField()).not.toBeNull();
+    expect(screen.queryByText("gpt-5")).not.toBeNull();
+    expect(screen.queryByText("gpt-4.1")).not.toBeNull();
+  });
+
+  it("removes a model when its chip is deleted", () => {
+    const onChange = vi.fn();
+    render(<ModelWhitelistSection {...baseProps} value={["gpt-5", "gpt-4.1"]} onChange={onChange} />);
+
+    // MUI renders the delete affordance as an svg inside the chip, not a button, so
+    // there is no accessible role to target — reach it through the chip root.
+    const chip = screen.getByText("gpt-5").closest(".MuiChip-root");
+    const deleteIcon = chip?.querySelector(".MuiChip-deleteIcon");
+    expect(deleteIcon).not.toBeNull();
+    fireEvent.click(deleteIcon as Element);
+
+    expect(onChange).toHaveBeenCalledWith(["gpt-4.1"]);
   });
 });

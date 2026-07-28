@@ -4,7 +4,7 @@ Revision ID: b3f2a91c4d17
 Revises: ea519bf96e9c
 Create Date: 2026-07-27 12:00:00.000000
 
-Stores an admin-curated list of models to expose for a provider (UP-4699).
+Stores an admin-curated list of models to expose for a provider.
 Nullable with no backfill: NULL means unfiltered, which preserves existing
 behaviour for every already-configured provider.
 """

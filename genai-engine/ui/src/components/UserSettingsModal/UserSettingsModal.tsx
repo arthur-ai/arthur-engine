@@ -119,9 +119,6 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
   const value = options.some((opt) => opt.value === timezone) ? timezone : (options[0]?.value ?? "UTC");
 
   const chatbotModels = chatbotProvider ? (availableModelsMap.get(chatbotProvider) ?? []) : [];
-  // A saved model may since have been dropped from the provider's whitelist. Keep it
-  // in the list, disabled, so the Select doesn't render blank and this form doesn't
-  // write an empty model back on the next save.
   const staleChatbotModel = chatbotModelName && !chatbotModels.includes(chatbotModelName) ? chatbotModelName : null;
 
   const handleTimezoneChange = (event: SelectChangeEvent<string>) => {
@@ -241,8 +238,8 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                   <InputLabel id="chatbot-model-label">Model Name</InputLabel>
                   <Select labelId="chatbot-model-label" label="Model Name" value={chatbotModelName} onChange={handleModelNameChange}>
                     {staleChatbotModel && (
-                      <MenuItem key={staleChatbotModel} value={staleChatbotModel} disabled>
-                        {staleChatbotModel} (no longer listed)
+                      <MenuItem key={staleChatbotModel} value={staleChatbotModel}>
+                        {staleChatbotModel}
                       </MenuItem>
                     )}
                     {chatbotModels.map((model: string) => (
