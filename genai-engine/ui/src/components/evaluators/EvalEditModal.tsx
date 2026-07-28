@@ -202,7 +202,15 @@ const EvalEditModal = ({
   const providerDisabled = enabledProviders.length === 0;
   const modelDisabled = modelProvider === "";
   const tooltipTitle = providerDisabled ? "No providers available. Please configure at least one provider." : "";
-  const availableModelsForProvider = useMemo(() => availableModels.get(modelProvider as ModelProvider) || [], [availableModels, modelProvider]);
+  const whitelistedModels = useMemo(() => availableModels.get(modelProvider as ModelProvider) || [], [availableModels, modelProvider]);
+  // This eval's saved model may since have been dropped from the provider's
+  // whitelist. Keep it selectable-but-disabled rather than letting the Autocomplete
+  // fall back to empty and discard a working configuration on the next save.
+  const staleModel = modelName && !whitelistedModels.includes(modelName) ? modelName : null;
+  const availableModelsForProvider = useMemo(
+    () => (staleModel ? [...whitelistedModels, staleModel] : whitelistedModels),
+    [whitelistedModels, staleModel]
+  );
 
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
@@ -281,6 +289,8 @@ const EvalEditModal = ({
                   value={modelName || null}
                   onChange={handleModelChange}
                   disabled={modelDisabled || isLoading}
+                  getOptionDisabled={(option) => option === staleModel}
+                  getOptionLabel={(option) => (option === staleModel ? `${option} (no longer listed)` : option)}
                   renderInput={(params) => (
                     <TextField {...params} label="Select Model" variant="outlined" size="small" sx={{ backgroundColor: "background.paper" }} />
                   )}
