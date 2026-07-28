@@ -128,6 +128,7 @@ export const queryKeys = {
   providers: {
     all: () => ["getModelProvidersApiV1ModelProvidersGet"] as const,
     availableModels: (providers: string[]) => ["availableModels", ...providers] as const,
+    modelWhitelist: (provider: string) => ["modelWhitelist", provider] as const,
   },
   tasksOverview: {
     all: (taskIds: string[]) => ["tasksOverview", [...taskIds].sort().join(",")] as const,

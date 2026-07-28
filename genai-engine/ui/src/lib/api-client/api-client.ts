@@ -4004,6 +4004,10 @@ export type GetLlmEvalByTagApiV1TasksTaskIdLlmEvalsEvalNameVersionsTagsTagGetErr
 
 export type GetMeUsersMeGetData = MeResponse;
 
+export type GetModelProviderWhitelistApiV1ModelProvidersProviderModelWhitelistGetData = ModelProviderWhitelist;
+
+export type GetModelProviderWhitelistApiV1ModelProvidersProviderModelWhitelistGetError = HTTPValidationError;
+
 export type GetModelProvidersApiV1ModelProvidersGetData = ModelProviderList;
 
 export type GetModelProvidersAvailableModelsApiV1ModelProvidersProviderAvailableModelsGetData = ModelProviderModelList;
@@ -6882,6 +6886,22 @@ export interface ModelProviderResponse {
   provider: ModelProvider;
 }
 
+/** ModelProviderWhitelist */
+export interface ModelProviderWhitelist {
+  /**
+   * Catalog
+   * Every model the provider offers, ignoring the whitelist
+   */
+  catalog: string[];
+  /** Provider the whitelist applies to */
+  provider: ModelProvider;
+  /**
+   * Whitelist
+   * Curated model list, or null when all models are exposed
+   */
+  whitelist: string[] | null;
+}
+
 /** _MultiTargetVectorJoin */
 export interface MultiTargetVectorJoin {
   /** Define how multi target vector searches should be combined. */
@@ -8208,6 +8228,15 @@ export interface PutModelProviderCredentials {
    * The vertex AI region to use
    */
   region?: string | null;
+}
+
+/** PutModelProviderWhitelist */
+export interface PutModelProviderWhitelist {
+  /**
+   * Models
+   * Models to expose for this provider. Null exposes all models. An empty list is rejected — it would hide every model.
+   */
+  models?: string[] | null;
 }
 
 export type QueryFeedbackApiV2FeedbackQueryGetData = QueryFeedbackResponse;
@@ -10767,6 +10796,10 @@ export interface SetAgenticNotebookStateRequest {
 export type SetModelProviderApiV1ModelProvidersProviderPutData = any;
 
 export type SetModelProviderApiV1ModelProvidersProviderPutError = HTTPValidationError;
+
+export type SetModelProviderWhitelistApiV1ModelProvidersProviderModelWhitelistPutData = any;
+
+export type SetModelProviderWhitelistApiV1ModelProvidersProviderModelWhitelistPutError = HTTPValidationError;
 
 export type SetNotebookStateApiV1NotebooksNotebookIdStatePutData = NotebookDetail;
 
@@ -13675,7 +13708,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.729
+ * @version 2.1.748
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
@@ -15799,6 +15832,27 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Returns the admin-curated model list for a provider along with the provider's full catalog. A null whitelist means all models are exposed.
+     *
+     * @tags Model Providers
+     * @name GetModelProviderWhitelistApiV1ModelProvidersProviderModelWhitelistGet
+     * @summary Get the curated model list for a provider.
+     * @request GET:/api/v1/model_providers/{provider}/model_whitelist
+     * @secure
+     */
+    getModelProviderWhitelistApiV1ModelProvidersProviderModelWhitelistGet: (provider: ModelProvider, params: RequestParams = {}) =>
+      this.request<
+        GetModelProviderWhitelistApiV1ModelProvidersProviderModelWhitelistGetData,
+        GetModelProviderWhitelistApiV1ModelProvidersProviderModelWhitelistGetError
+      >({
+        path: `/api/v1/model_providers/${provider}/model_whitelist`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Get detailed information about a notebook including state and experiment history
      *
      * @tags Notebooks
@@ -17329,6 +17383,32 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         secure: true,
         type: ContentType.Json,
         format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Restricts which models appear in model pickers. Send null to expose all models. An empty list is rejected.
+     *
+     * @tags Model Providers
+     * @name SetModelProviderWhitelistApiV1ModelProvidersProviderModelWhitelistPut
+     * @summary Set the curated model list for a provider.
+     * @request PUT:/api/v1/model_providers/{provider}/model_whitelist
+     * @secure
+     */
+    setModelProviderWhitelistApiV1ModelProvidersProviderModelWhitelistPut: (
+      provider: ModelProvider,
+      data: PutModelProviderWhitelist,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        SetModelProviderWhitelistApiV1ModelProvidersProviderModelWhitelistPutData,
+        SetModelProviderWhitelistApiV1ModelProvidersProviderModelWhitelistPutError
+      >({
+        path: `/api/v1/model_providers/${provider}/model_whitelist`,
+        method: "PUT",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
         ...params,
       }),
 
