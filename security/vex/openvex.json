@@ -3,9 +3,9 @@
   "@id": "https://arthur.ai/vex/arthur-engine",
   "author": "Arthur Security <security@arthur.ai>",
   "role": "Document Creator",
-  "timestamp": "2026-06-27T00:00:00.000000000-00:00",
-  "version": 4,
-  "_comment": "Scope: HIGH/CRITICAL CVEs a container-image re-scan still reports for the genai-engine, ml-engine and genai-engine-models-* images, but which are remediated in the shipped binary (the apt-upgraded library is copied over the distroless base, whose stale dpkg metadata the scanner reads) or are not in the execute path. Fully remediated CVEs are intentionally excluded: python3.11 is removed from every image (its dpkg metadata deleted) and litellm/langsmith/msgpack are upgraded past their advisories. See genai-engine/dockerfile, ml-engine/Dockerfile, deployment/model-upload/Dockerfile and PR #1851.",
+  "timestamp": "2026-07-28T00:00:00.000000000-00:00",
+  "version": 5,
+  "_comment": "Scope: HIGH/CRITICAL CVEs a container-image re-scan still reports for the genai-engine, ml-engine and genai-engine-models-* images, but which are remediated in the shipped binary (the apt-upgraded library is copied over the distroless base, whose stale dpkg metadata the scanner reads) or are not in the execute path. Fully remediated CVEs are intentionally excluded: python3.11 is removed from every image (its dpkg metadata deleted), litellm/langsmith/msgpack are upgraded past their advisories, and nltk is upgraded to 3.10.0 (fixes CVE-2026-54293, GHSA-p4gq-832x-fm9v). See genai-engine/dockerfile, ml-engine/Dockerfile, deployment/model-upload/Dockerfile and PR #1851.",
   "statements": [
     {
       "_comment": "libssl3: the shipped libssl.so.3/libcrypto.so.3 is OpenSSL 3.0.20 (deb 3.0.20-1~deb12u2), copied from the apt-upgraded *-slim-bookworm build stage over the distroless base. Scanners read stale dpkg metadata (3.0.19-1~deb12u2) inherited from the distroless base. The shipped binary contains the fix. The genai-engine-models-s3/-fs images do the same via deployment/model-upload/Dockerfile.",
@@ -153,17 +153,6 @@
       "status": "not_affected",
       "justification": "vulnerable_code_not_in_execute_path",
       "impact_statement": "The system libexpat1 is not loaded by the application: CPython 3.12/3.13 bundle their own expat statically and do not link /usr/lib/*/libexpat.so.1, and the only base-image consumer (Python 3.11) has been removed. The flaw is a denial-of-service (inefficient algorithmic complexity, CWE-407, CVSS ~2.9) reachable only by parsing attacker-controlled XML through this system library."
-    },
-    {
-      "_comment": "nltk: CVE-2026-54293 is a path-traversal bypass in nltk.data.load() via URL-encoded input, with no upstream fix available (affects nltk <= 3.9.4). genai-engine only imports PunktSentenceTokenizer (src/utils/claim_parser.py:7) and instantiates it once with no resource path (SENTENCE_TOKENIZER = PunktSentenceTokenizer()); nltk.data.load() is never called and no untrusted path reaches it. nltk is a genai-engine-only dependency (absent from ml-engine).",
-      "vulnerability": { "name": "CVE-2026-54293" },
-      "products": [
-        { "@id": "pkg:oci/genai-engine-cpu", "subcomponents": [ { "@id": "pkg:pypi/nltk" } ] },
-        { "@id": "pkg:oci/genai-engine-gpu", "subcomponents": [ { "@id": "pkg:pypi/nltk" } ] }
-      ],
-      "status": "not_affected",
-      "justification": "vulnerable_code_not_in_execute_path",
-      "impact_statement": "The vulnerable function nltk.data.load() is never invoked. The sole nltk usage is PunktSentenceTokenizer, imported and instantiated with no resource path, so no attacker-controlled path can reach the path-traversal sink."
     },
     {
       "_comment": "zlib1g: The overflow is in MiniZip (zlib contrib/minizip), which upstream states is not a supported part of zlib. Debian's zlib1g shared library does not build or export the MiniZip code (the vulnerable zipOpenNewFileInZip4_64 symbol is absent); Arthur links only the core inflate/deflate API. Owner: security@arthur.ai. Review by: 2026-12-27.",
