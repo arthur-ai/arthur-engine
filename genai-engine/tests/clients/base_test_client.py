@@ -3087,6 +3087,26 @@ class GenaiEngineTestClientBase(httpx.Client):
             )
         return resp.status_code, resp.json() if resp.content else None
 
+    def restore_dataset_version(
+        self,
+        dataset_id: str,
+        version_number: int,
+    ) -> tuple[int, DatasetVersionResponse]:
+        """Reinstate a previous dataset version."""
+        resp = self.base_client.post(
+            f"/api/v2/datasets/{dataset_id}/versions/{version_number}/restore",
+            headers=self.authorized_user_api_key_headers,
+        )
+        log_response(resp)
+        return (
+            resp.status_code,
+            (
+                DatasetVersionResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
+            ),
+        )
+
     def get_dataset_version(
         self,
         dataset_id: str,

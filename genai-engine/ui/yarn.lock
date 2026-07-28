@@ -453,14 +453,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@arthur/shared-components@npm:3.20.0":
-  version: 3.20.0
-  resolution: "@arthur/shared-components@npm:3.20.0::__archiveUrl=https%3A%2F%2Fgitlab.com%2Fapi%2Fv4%2Fprojects%2F54848372%2Fpackages%2Fnpm%2F%40arthur%2Fshared-components%2F-%2F%40arthur%2Fshared-components-3.20.0.tgz"
+"@arthur/shared-components@npm:3.23.1":
+  version: 3.23.1
+  resolution: "@arthur/shared-components@npm:3.23.1::__archiveUrl=https%3A%2F%2Fgitlab.com%2Fapi%2Fv4%2Fprojects%2F54848372%2Fpackages%2Fnpm%2F%40arthur%2Fshared-components%2F-%2F%40arthur%2Fshared-components-3.23.1.tgz"
   dependencies:
     "@amplitude/analytics-browser": "npm:2.33.3"
     "@arizeai/openinference-semantic-conventions": "npm:2.1.0"
-    "@arthur/shield-types": "npm:^3.20.0"
-    "@arthur/unify-types": "npm:^3.20.0"
+    "@arthur/shield-types": "npm:^3.23.1"
+    "@arthur/unify-types": "npm:^3.23.1"
     "@base-ui/react": "npm:1.3.0"
     "@dnd-kit/core": "npm:6.3.1"
     "@dnd-kit/sortable": "npm:10.0.0"
@@ -473,9 +473,10 @@ __metadata:
     axios: "npm:1.17.0"
     clsx: "npm:2.1.1"
     dayjs: "npm:1.11.13"
-    framer-motion: "npm:12.35.0"
     material-react-table: "npm:3.2.1"
     mitt: "npm:3.0.1"
+    motion: "npm:12.35.0"
+    pdfjs-dist: "npm:6.1.200"
     prism-react-renderer: "npm:2.4.1"
     react-markdown: "npm:10.1.0"
     remark-gfm: "npm:4.0.0"
@@ -495,27 +496,27 @@ __metadata:
     react: ^18.0.0 || ^19.0.0
     react-dom: ^18.0.0 || ^19.0.0
     react-error-boundary: ^6.1.2
-    react-i18next: ^16.5.3
+    react-i18next: ^17.0.8
     react-router-dom: ^7.0.0
-  checksum: 10c0/dbbc5e09e08be9b6acaef58e550cbc5c60c99ef261fcb35a34dd56c922a752d836ba02b1965e4a15b99ebed08aeb79b47478593bec184cf6eefda2a676d9435b
+  checksum: 10c0/f85b55a42cb47cd3256a35298bf391045d9b502adc45a528f220c40fbca9a177aaaea9776b543829f999b82e2c36f9ae4f9d2825c720d26a0af38dc2564b5541
   languageName: node
   linkType: hard
 
-"@arthur/shield-types@npm:^3.20.0":
-  version: 3.20.0
-  resolution: "@arthur/shield-types@npm:3.20.0::__archiveUrl=https%3A%2F%2Fgitlab.com%2Fapi%2Fv4%2Fprojects%2F54848372%2Fpackages%2Fnpm%2F%40arthur%2Fshield-types%2F-%2F%40arthur%2Fshield-types-3.20.0.tgz"
+"@arthur/shield-types@npm:^3.23.1":
+  version: 3.23.1
+  resolution: "@arthur/shield-types@npm:3.23.1::__archiveUrl=https%3A%2F%2Fgitlab.com%2Fapi%2Fv4%2Fprojects%2F54848372%2Fpackages%2Fnpm%2F%40arthur%2Fshield-types%2F-%2F%40arthur%2Fshield-types-3.23.1.tgz"
   dependencies:
     react: "npm:^19.1.1"
-  checksum: 10c0/27caeaeed705fee7c7b6f1852535ea108bc9e5eeeb214979c62a51a674459931fc59f4f83bf904710063c5476487fb1668470104a86a23d1883bbfc70d10b46c
+  checksum: 10c0/59202a847652127bf6fd8cd2a55a0d6e8cdbe2da58b9c4151521b87d801e2574505053fa772e401518b94255e1d05aed4aac2e5db15f9a978e208377659edb0a
   languageName: node
   linkType: hard
 
-"@arthur/unify-types@npm:^3.20.0":
-  version: 3.20.0
-  resolution: "@arthur/unify-types@npm:3.20.0::__archiveUrl=https%3A%2F%2Fgitlab.com%2Fapi%2Fv4%2Fprojects%2F54848372%2Fpackages%2Fnpm%2F%40arthur%2Funify-types%2F-%2F%40arthur%2Funify-types-3.20.0.tgz"
+"@arthur/unify-types@npm:^3.23.1":
+  version: 3.23.1
+  resolution: "@arthur/unify-types@npm:3.23.1::__archiveUrl=https%3A%2F%2Fgitlab.com%2Fapi%2Fv4%2Fprojects%2F54848372%2Fpackages%2Fnpm%2F%40arthur%2Funify-types%2F-%2F%40arthur%2Funify-types-3.23.1.tgz"
   dependencies:
     react: "npm:19.2"
-  checksum: 10c0/d6fa6ab17201b667f4fb9929ed5505c4667aa21addca93f8477badac400dc3512daf323621cee8723d622d0eaaadf0963de11914ba55d4a69e325192d049916f
+  checksum: 10c0/ee3466b275bc8dcad2dce5000ed11d6d0ab2b8e7852f1cce70033c58ffc6b00901205585b40f25afb8c9395f0d3958b114067e587b8693c1829f744385493d0d
   languageName: node
   linkType: hard
 
@@ -1737,6 +1738,129 @@ __metadata:
   peerDependencies:
     react: ^17.0.0 || ^18.0.0 || ^19.0.0
   checksum: 10c0/2f43fc4305011b3b232e635de28b596ca259fcd641bc4097f686dd6ce4218413bf609d968f7d164f074547d0845eaf9cc4977543fd3ba86cd6fab12fa48c6370
+  languageName: node
+  linkType: hard
+
+"@napi-rs/canvas-android-arm64@npm:1.0.2":
+  version: 1.0.2
+  resolution: "@napi-rs/canvas-android-arm64@npm:1.0.2"
+  conditions: os=android & cpu=arm64
+  languageName: node
+  linkType: hard
+
+"@napi-rs/canvas-darwin-arm64@npm:1.0.2":
+  version: 1.0.2
+  resolution: "@napi-rs/canvas-darwin-arm64@npm:1.0.2"
+  conditions: os=darwin & cpu=arm64
+  languageName: node
+  linkType: hard
+
+"@napi-rs/canvas-darwin-x64@npm:1.0.2":
+  version: 1.0.2
+  resolution: "@napi-rs/canvas-darwin-x64@npm:1.0.2"
+  conditions: os=darwin & cpu=x64
+  languageName: node
+  linkType: hard
+
+"@napi-rs/canvas-linux-arm-gnueabihf@npm:1.0.2":
+  version: 1.0.2
+  resolution: "@napi-rs/canvas-linux-arm-gnueabihf@npm:1.0.2"
+  conditions: os=linux & cpu=arm
+  languageName: node
+  linkType: hard
+
+"@napi-rs/canvas-linux-arm64-gnu@npm:1.0.2":
+  version: 1.0.2
+  resolution: "@napi-rs/canvas-linux-arm64-gnu@npm:1.0.2"
+  conditions: os=linux & cpu=arm64 & libc=glibc
+  languageName: node
+  linkType: hard
+
+"@napi-rs/canvas-linux-arm64-musl@npm:1.0.2":
+  version: 1.0.2
+  resolution: "@napi-rs/canvas-linux-arm64-musl@npm:1.0.2"
+  conditions: os=linux & cpu=arm64 & libc=musl
+  languageName: node
+  linkType: hard
+
+"@napi-rs/canvas-linux-riscv64-gnu@npm:1.0.2":
+  version: 1.0.2
+  resolution: "@napi-rs/canvas-linux-riscv64-gnu@npm:1.0.2"
+  conditions: os=linux & cpu=riscv64 & libc=glibc
+  languageName: node
+  linkType: hard
+
+"@napi-rs/canvas-linux-x64-gnu@npm:1.0.2":
+  version: 1.0.2
+  resolution: "@napi-rs/canvas-linux-x64-gnu@npm:1.0.2"
+  conditions: os=linux & cpu=x64 & libc=glibc
+  languageName: node
+  linkType: hard
+
+"@napi-rs/canvas-linux-x64-musl@npm:1.0.2":
+  version: 1.0.2
+  resolution: "@napi-rs/canvas-linux-x64-musl@npm:1.0.2"
+  conditions: os=linux & cpu=x64 & libc=musl
+  languageName: node
+  linkType: hard
+
+"@napi-rs/canvas-win32-arm64-msvc@npm:1.0.2":
+  version: 1.0.2
+  resolution: "@napi-rs/canvas-win32-arm64-msvc@npm:1.0.2"
+  conditions: os=win32 & cpu=arm64
+  languageName: node
+  linkType: hard
+
+"@napi-rs/canvas-win32-x64-msvc@npm:1.0.2":
+  version: 1.0.2
+  resolution: "@napi-rs/canvas-win32-x64-msvc@npm:1.0.2"
+  conditions: os=win32 & cpu=x64
+  languageName: node
+  linkType: hard
+
+"@napi-rs/canvas@npm:^1.0.0":
+  version: 1.0.2
+  resolution: "@napi-rs/canvas@npm:1.0.2"
+  dependencies:
+    "@napi-rs/canvas-android-arm64": "npm:1.0.2"
+    "@napi-rs/canvas-darwin-arm64": "npm:1.0.2"
+    "@napi-rs/canvas-darwin-x64": "npm:1.0.2"
+    "@napi-rs/canvas-linux-arm-gnueabihf": "npm:1.0.2"
+    "@napi-rs/canvas-linux-arm64-gnu": "npm:1.0.2"
+    "@napi-rs/canvas-linux-arm64-musl": "npm:1.0.2"
+    "@napi-rs/canvas-linux-riscv64-gnu": "npm:1.0.2"
+    "@napi-rs/canvas-linux-x64-gnu": "npm:1.0.2"
+    "@napi-rs/canvas-linux-x64-musl": "npm:1.0.2"
+    "@napi-rs/canvas-win32-arm64-msvc": "npm:1.0.2"
+    "@napi-rs/canvas-win32-x64-msvc": "npm:1.0.2"
+  dependenciesMeta:
+    "@napi-rs/canvas-android-arm64":
+      optional: true
+    "@napi-rs/canvas-darwin-arm64":
+      optional: true
+    "@napi-rs/canvas-darwin-x64":
+      optional: true
+    "@napi-rs/canvas-linux-arm-gnueabihf":
+      optional: true
+    "@napi-rs/canvas-linux-arm64-gnu":
+      optional: true
+    "@napi-rs/canvas-linux-arm64-musl":
+      optional: true
+    "@napi-rs/canvas-linux-riscv64-gnu":
+      optional: true
+    "@napi-rs/canvas-linux-x64-gnu":
+      optional: true
+    "@napi-rs/canvas-linux-x64-musl":
+      optional: true
+    "@napi-rs/canvas-win32-arm64-msvc":
+      optional: true
+    "@napi-rs/canvas-win32-x64-msvc":
+      optional: true
+    canvas:
+      built: true
+    skia-canvas:
+      built: true
+  checksum: 10c0/acc62bc6d76ccba3201a4f9e38ed2a67fb01ebf5c5485f166462896db890685daa893cf41eac67bdabb0f48065caee2eda41732defe96aeaa44c23446e4b41bf
   languageName: node
   linkType: hard
 
@@ -2981,9 +3105,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@vitejs/plugin-react@npm:6.0.3":
-  version: 6.0.3
-  resolution: "@vitejs/plugin-react@npm:6.0.3"
+"@vitejs/plugin-react@npm:6.0.4":
+  version: 6.0.4
+  resolution: "@vitejs/plugin-react@npm:6.0.4"
   dependencies:
     "@rolldown/pluginutils": "npm:^1.0.1"
   peerDependencies:
@@ -2995,7 +3119,7 @@ __metadata:
       optional: true
     babel-plugin-react-compiler:
       optional: true
-  checksum: 10c0/592a93178c0eec420759d529a2c964a7103860808f549f72993b96a38c287c929a0d371cacbd932c37ee2118b830348db752cc01a31d688c71d19d74567251fa
+  checksum: 10c0/38446b54f51760b97d81abfa2fb9130bdc7a545183c97b26cfc7a5982fbcbeef431f482a3d44ef8225ca3e8c37e852a0843f8f84d0834391cab49b36a172dbf8
   languageName: node
   linkType: hard
 
@@ -4955,28 +5079,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"framer-motion@npm:12.35.0":
-  version: 12.35.0
-  resolution: "framer-motion@npm:12.35.0"
-  dependencies:
-    motion-dom: "npm:^12.35.0"
-    motion-utils: "npm:^12.29.2"
-    tslib: "npm:^2.4.0"
-  peerDependencies:
-    "@emotion/is-prop-valid": "*"
-    react: ^18.0.0 || ^19.0.0
-    react-dom: ^18.0.0 || ^19.0.0
-  peerDependenciesMeta:
-    "@emotion/is-prop-valid":
-      optional: true
-    react:
-      optional: true
-    react-dom:
-      optional: true
-  checksum: 10c0/f79e2877d28f8f467bd7e936f2d67a53398c13adce5ac110bd4364da25b8e11b6c3daee7ea533df5d9624bef881ae2b7dd11a8805960bcdffaaee9d2438426f5
-  languageName: node
-  linkType: hard
-
 "framer-motion@npm:12.35.2":
   version: 12.35.2
   resolution: "framer-motion@npm:12.35.2"
@@ -4996,6 +5098,28 @@ __metadata:
     react-dom:
       optional: true
   checksum: 10c0/10df5d7def46869f93797ba4eef2bbb8a1468b288849b4d2d8ddcbe4d42ac717eb814209112d6c8045a6fabf98ce588174734452b1fb847d66b5565da1afa9a1
+  languageName: node
+  linkType: hard
+
+"framer-motion@npm:^12.35.0":
+  version: 12.42.2
+  resolution: "framer-motion@npm:12.42.2"
+  dependencies:
+    motion-dom: "npm:^12.42.2"
+    motion-utils: "npm:^12.39.0"
+    tslib: "npm:^2.4.0"
+  peerDependencies:
+    "@emotion/is-prop-valid": "*"
+    react: ^18.0.0 || ^19.0.0
+    react-dom: ^18.0.0 || ^19.0.0
+  peerDependenciesMeta:
+    "@emotion/is-prop-valid":
+      optional: true
+    react:
+      optional: true
+    react-dom:
+      optional: true
+  checksum: 10c0/2e514e0e303c0c01bc7d6a1028f7722ec17fc307922c6770a8dc5f7782521c60254f9c265329b887a29b32e2c730742328ecae468be626406afa5db1e6c0aa01
   languageName: node
   linkType: hard
 
@@ -6855,7 +6979,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"motion-dom@npm:^12.35.0, motion-dom@npm:^12.35.2":
+"motion-dom@npm:^12.35.2":
   version: 12.40.0
   resolution: "motion-dom@npm:12.40.0"
   dependencies:
@@ -6864,10 +6988,40 @@ __metadata:
   languageName: node
   linkType: hard
 
+"motion-dom@npm:^12.42.2":
+  version: 12.42.2
+  resolution: "motion-dom@npm:12.42.2"
+  dependencies:
+    motion-utils: "npm:^12.39.0"
+  checksum: 10c0/1bcee88df706e3aaa4e5b8e7d2ba0efd8e2304c142e7541411bbd6f03b0fbe8d25883ec157905fdebf284f51db02008245f6d4653d20a97de9acf44bbb7be79f
+  languageName: node
+  linkType: hard
+
 "motion-utils@npm:^12.29.2, motion-utils@npm:^12.39.0":
   version: 12.39.0
   resolution: "motion-utils@npm:12.39.0"
   checksum: 10c0/6d7a2a2cc0797b72410a666a9cc1c201c8e39bf9669670464e433fe1e72af5f0217154c869867b34fbadf3664cf222c0d022bbc4eed7927f201ae971918e7440
+  languageName: node
+  linkType: hard
+
+"motion@npm:12.35.0":
+  version: 12.35.0
+  resolution: "motion@npm:12.35.0"
+  dependencies:
+    framer-motion: "npm:^12.35.0"
+    tslib: "npm:^2.4.0"
+  peerDependencies:
+    "@emotion/is-prop-valid": "*"
+    react: ^18.0.0 || ^19.0.0
+    react-dom: ^18.0.0 || ^19.0.0
+  peerDependenciesMeta:
+    "@emotion/is-prop-valid":
+      optional: true
+    react:
+      optional: true
+    react-dom:
+      optional: true
+  checksum: 10c0/e43a0a6ea94ce755f53c4fd9906d3f230a7d3c1d572fe93b11a6b3adfe566df6f2fa1dfb2f84d8b39c42881abb66b0fc8fcd3742b6f3e63eecb7e33f4ba52fd7
   languageName: node
   linkType: hard
 
@@ -7399,6 +7553,18 @@ __metadata:
     sha.js: "npm:^2.4.12"
     to-buffer: "npm:^1.2.2"
   checksum: 10c0/828be4a5eed15c502dfa490247506c6abd4e539f6e1ea265d2b8a668292c9e07af4e6d4d7a5d3aa8ad12274da7cea1bf1b3dfc1f5f19bcdeee5157d1bf83f7f3
+  languageName: node
+  linkType: hard
+
+"pdfjs-dist@npm:6.1.200":
+  version: 6.1.200
+  resolution: "pdfjs-dist@npm:6.1.200"
+  dependencies:
+    "@napi-rs/canvas": "npm:^1.0.0"
+  dependenciesMeta:
+    "@napi-rs/canvas":
+      optional: true
+  checksum: 10c0/61d62f25002951dbc186e599f354f8d1dfc100ee5c63eafa0daad7261d70a355b0d883a2b92b92515884c82ef5bc75d0a18385e62d772f0784cddc3506c35e1f
   languageName: node
   linkType: hard
 
@@ -8944,7 +9110,7 @@ __metadata:
     "@amplitude/experiment-js-client": "npm:^1.21.1"
     "@amplitude/plugin-session-replay-browser": "npm:^1.31.1"
     "@arizeai/openinference-semantic-conventions": "npm:2.5.0"
-    "@arthur/shared-components": "npm:3.20.0"
+    "@arthur/shared-components": "npm:3.23.1"
     "@base-ui/react": "npm:1.6.0"
     "@dnd-kit/core": "npm:6.3.1"
     "@dnd-kit/sortable": "npm:10.0.0"
@@ -8974,7 +9140,7 @@ __metadata:
     "@types/papaparse": "npm:5.5.2"
     "@types/react": "npm:19.2.17"
     "@types/react-dom": "npm:19.2.3"
-    "@vitejs/plugin-react": "npm:6.0.3"
+    "@vitejs/plugin-react": "npm:6.0.4"
     axios: "npm:1.18.1"
     dayjs: "npm:1.11.19"
     eslint: "npm:9.39.5"
