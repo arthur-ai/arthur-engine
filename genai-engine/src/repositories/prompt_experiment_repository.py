@@ -1,5 +1,5 @@
 import logging
-from typing import List, Optional, Tuple
+from typing import Iterator, List, Optional, Tuple
 from uuid import UUID, uuid4
 
 from arthur_common.models.common_schemas import PaginationParameters
@@ -9,7 +9,7 @@ from fastapi import HTTPException
 from litellm import ChatCompletionMessageToolCall
 from sqlalchemy import asc, column, desc, exists, func, or_, select
 from sqlalchemy.dialects import postgresql
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, joinedload, selectinload
 
 from db_models.agentic_prompt_models import DatabaseAgenticPrompt
 from db_models.dataset_models import (
@@ -52,9 +52,18 @@ from schemas.prompt_experiment_schemas import (
     UnsavedPromptConfig,
 )
 from services.prompt.chat_completion_service import ChatCompletionService
+from utils import constants
 from utils.dataset_utils import dataset_row_matches_filter
+from utils.utils import get_env_var
 
 logger = logging.getLogger(__name__)
+
+# Page size for streaming completed test cases during summary aggregation.
+# Configurable via the GENAI_ENGINE_SUMMARY_TEST_CASE_BATCH_SIZE env var; defaults to 50.
+SUMMARY_TEST_CASE_BATCH_SIZE = int(
+    get_env_var(constants.GENAI_ENGINE_SUMMARY_TEST_CASE_BATCH_SIZE_ENV_VAR, True)
+    or 50,
+)
 
 
 class PromptExperimentRepository:
@@ -86,12 +95,64 @@ class PromptExperimentRepository:
     def _get_db_test_cases(
         self,
         experiment_id: str,
+        status: Optional[str] = None,
+        offset: Optional[int] = None,
+        limit: Optional[int] = None,
+        defer_eval_input_variables: bool = False,
     ) -> List[DatabasePromptExperimentTestCase]:
-        return (
-            self.db_session.query(DatabasePromptExperimentTestCase)
-            .filter_by(experiment_id=experiment_id)
-            .all()
+        """Load test cases for an experiment, optionally paginated and with
+        eval_input_variables deferred."""
+        query = self.db_session.query(DatabasePromptExperimentTestCase).filter_by(
+            experiment_id=experiment_id,
         )
+        if status is not None:
+            query = query.filter_by(status=status)
+        if defer_eval_input_variables:
+            # Eager-load the result graph but defer the heavy eval_input_variables column.
+            query = query.options(
+                selectinload(
+                    DatabasePromptExperimentTestCase.prompt_results,
+                )
+                .selectinload(
+                    DatabasePromptExperimentTestCasePromptResult.eval_scores,
+                )
+                .defer(
+                    DatabasePromptExperimentTestCasePromptResultEvalScore.eval_input_variables,
+                ),
+            )
+        if offset is not None or limit is not None:
+            # Deterministic order so paging doesn't skip or repeat rows.
+            query = query.order_by(DatabasePromptExperimentTestCase.id)
+            if offset is not None:
+                query = query.offset(offset)
+            if limit is not None:
+                query = query.limit(limit)
+        return query.all()
+
+    def iter_completed_test_cases_for_summary(
+        self,
+        experiment_id: str,
+        batch_size: int = SUMMARY_TEST_CASE_BATCH_SIZE,
+    ) -> Iterator[DatabasePromptExperimentTestCase]:
+        """Yield COMPLETED test cases one page at a time, expunging each page
+        before loading the next to bound memory."""
+        offset = 0
+        while True:
+            batch = self._get_db_test_cases(
+                experiment_id,
+                status=TestCaseStatus.COMPLETED.value,
+                offset=offset,
+                limit=batch_size,
+                defer_eval_input_variables=True,
+            )
+            if not batch:
+                break
+            for test_case in batch:
+                yield test_case
+            # Release this page before loading the next.
+            for test_case in batch:
+                self.db_session.expunge(test_case)
+            offset += batch_size
 
     def _get_db_test_case(
         self,
@@ -535,7 +596,7 @@ class PromptExperimentRepository:
         ] = None,
     ) -> int:
         """Create test cases for each row in the dataset version, including prompt results and eval scores"""
-        # Get all rows for this dataset version
+        # Get all rows for this dataset version (filter applied in Python below).
         dataset_rows = (
             self.db_session.query(DatabaseDatasetVersionRow)
             .filter(
@@ -552,8 +613,10 @@ class PromptExperimentRepository:
             if dataset_row_matches_filter(row, dataset_row_filter)
         ]
 
-        # Create a test case for each filtered row
+        # Build test cases one row at a time, flushing and expunging each row's
+        # objects before the next so peak memory stays bounded to a single row.
         for row in filtered_rows:
+            created_in_row: list[object] = []
             # Build prompt input variables from the dataset row data
             prompt_input_variables = []
             row_data = row.data  # This is the JSON data for the row
@@ -589,6 +652,7 @@ class PromptExperimentRepository:
                 prompt_input_variables=prompt_input_variables,
             )
             self.db_session.add(test_case)
+            created_in_row.append(test_case)
 
             # Create prompt results for each prompt config in this test case
             for config in prompt_configs:
@@ -624,6 +688,7 @@ class PromptExperimentRepository:
                         output_cost=None,
                     )
                 self.db_session.add(prompt_result)
+                created_in_row.append(prompt_result)
 
                 # Create eval score entries for each eval configuration
                 for eval_ref, llm_eval in eval_configs:
@@ -672,9 +737,12 @@ class PromptExperimentRepository:
                         eval_result_cost=None,
                     )
                     self.db_session.add(eval_score)
+                    created_in_row.append(eval_score)
 
-        # Commit all the created objects
-        self.db_session.flush()
+            # Flush and expunge this row's objects (child-first) before the next row.
+            self.db_session.flush()
+            for created_obj in reversed(created_in_row):
+                self.db_session.expunge(created_obj)
 
         return len(filtered_rows)
 

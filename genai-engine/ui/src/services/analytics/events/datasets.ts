@@ -28,6 +28,7 @@ export interface DatasetEvents {
   "dataset/version_drawer_opened": { dataset_id: string; task_id: string | undefined };
   "dataset/version_selected": { dataset_id: string; task_id: string | undefined };
   "dataset/version_switch_confirmed": { dataset_id: string; task_id: string | undefined };
+  "dataset/restore_version": { dataset_id: string };
   "dataset/search_changed": { dataset_id?: string; task_id: string | undefined };
   "dataset/sort_changed": { dataset_id?: string; task_id: string | undefined };
   "dataset/pagination_changed": { dataset_id?: string; task_id: string | undefined };

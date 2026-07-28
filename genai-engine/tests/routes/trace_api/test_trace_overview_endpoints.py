@@ -197,6 +197,165 @@ def test_traces_overview_success_rate_defaults_to_one_without_evals(
 
 
 @pytest.mark.unit_tests
+def test_traces_overview_success_rate_excludes_non_terminal_evals(
+    client: GenaiEngineTestClientBase,
+):
+    status_code, task = client.create_task(
+        name="test_traces_overview_excludes_non_terminal",
+        is_agentic=True,
+    )
+    assert status_code == 200
+
+    now = datetime.now()
+    trace_id = str(uuid.uuid4())
+    passed_annotation = None
+    failed_annotation = None
+    skipped_annotation = None
+    pending_annotation = None
+    running_annotation = None
+
+    try:
+        create_mock_trace(
+            trace_id,
+            task.id,
+            start_time=now - timedelta(days=1),
+            end_time=now - timedelta(days=1) + timedelta(seconds=5),
+            total_token_count=100,
+            total_token_cost=0.5,
+        )
+        passed_annotation = create_mock_annotation(
+            trace_id=trace_id,
+            annotation_type=AgenticAnnotationType.CONTINUOUS_EVAL,
+            continuous_eval_id=uuid.uuid4(),
+            run_status=ContinuousEvalRunStatus.PASSED,
+        )
+        failed_annotation = create_mock_annotation(
+            trace_id=trace_id,
+            annotation_type=AgenticAnnotationType.CONTINUOUS_EVAL,
+            continuous_eval_id=uuid.uuid4(),
+            run_status=ContinuousEvalRunStatus.FAILED,
+        )
+        # These non-terminal evals must NOT be counted in the denominator:
+        # SKIPPED never runs, and PENDING/RUNNING have not resolved yet.
+        skipped_annotation = create_mock_annotation(
+            trace_id=trace_id,
+            annotation_type=AgenticAnnotationType.CONTINUOUS_EVAL,
+            continuous_eval_id=uuid.uuid4(),
+            run_status=ContinuousEvalRunStatus.SKIPPED,
+        )
+        pending_annotation = create_mock_annotation(
+            trace_id=trace_id,
+            annotation_type=AgenticAnnotationType.CONTINUOUS_EVAL,
+            continuous_eval_id=uuid.uuid4(),
+            run_status=ContinuousEvalRunStatus.PENDING,
+        )
+        running_annotation = create_mock_annotation(
+            trace_id=trace_id,
+            annotation_type=AgenticAnnotationType.CONTINUOUS_EVAL,
+            continuous_eval_id=uuid.uuid4(),
+            run_status=ContinuousEvalRunStatus.RUNNING,
+        )
+
+        status_code, data = client.trace_api_get_traces_overview(
+            start_time=now - timedelta(days=7),
+            end_time=now,
+            task_ids=[task.id],
+        )
+        assert status_code == 200
+
+        overview = next((o for o in data.overviews if o.task_id == task.id), None)
+        assert overview is not None
+        # 5 continuous evals exist, but SKIPPED/PENDING/RUNNING are excluded, so
+        # only the PASSED and FAILED (terminal) evals count toward the denominator.
+        assert overview.eval_count == 2
+        # 1 passed out of 2 that reached a terminal result.
+        assert overview.continuous_eval_success_rate == 0.5
+    finally:
+        for annotation in (
+            passed_annotation,
+            failed_annotation,
+            skipped_annotation,
+            pending_annotation,
+            running_annotation,
+        ):
+            if annotation:
+                delete_mock_annotation(annotation.id)
+        delete_mock_trace(trace_id)
+        client.delete_task(task.id)
+
+
+@pytest.mark.unit_tests
+def test_traces_overview_success_rate_defaults_to_one_with_only_non_terminal_evals(
+    client: GenaiEngineTestClientBase,
+):
+    status_code, task = client.create_task(
+        name="test_traces_overview_only_non_terminal",
+        is_agentic=True,
+    )
+    assert status_code == 200
+
+    now = datetime.now()
+    trace_id = str(uuid.uuid4())
+    skipped_annotation = None
+    pending_annotation = None
+    running_annotation = None
+
+    try:
+        create_mock_trace(
+            trace_id,
+            task.id,
+            start_time=now - timedelta(days=1),
+            end_time=now - timedelta(days=1) + timedelta(seconds=5),
+            total_token_count=10,
+            total_token_cost=0.1,
+        )
+        # Only non-terminal evals exist (SKIPPED/PENDING/RUNNING); none reached
+        # a pass/fail result.
+        skipped_annotation = create_mock_annotation(
+            trace_id=trace_id,
+            annotation_type=AgenticAnnotationType.CONTINUOUS_EVAL,
+            continuous_eval_id=uuid.uuid4(),
+            run_status=ContinuousEvalRunStatus.SKIPPED,
+        )
+        pending_annotation = create_mock_annotation(
+            trace_id=trace_id,
+            annotation_type=AgenticAnnotationType.CONTINUOUS_EVAL,
+            continuous_eval_id=uuid.uuid4(),
+            run_status=ContinuousEvalRunStatus.PENDING,
+        )
+        running_annotation = create_mock_annotation(
+            trace_id=trace_id,
+            annotation_type=AgenticAnnotationType.CONTINUOUS_EVAL,
+            continuous_eval_id=uuid.uuid4(),
+            run_status=ContinuousEvalRunStatus.RUNNING,
+        )
+
+        status_code, data = client.trace_api_get_traces_overview(
+            start_time=now - timedelta(days=7),
+            end_time=now,
+            task_ids=[task.id],
+        )
+        assert status_code == 200
+
+        overview = next((o for o in data.overviews if o.task_id == task.id), None)
+        assert overview is not None
+        # No eval reached a terminal result, so nothing counts toward the
+        # denominator and the success rate falls back to the 100% zero-guard.
+        assert overview.eval_count == 0
+        assert overview.continuous_eval_success_rate == 1.0
+    finally:
+        for annotation in (
+            skipped_annotation,
+            pending_annotation,
+            running_annotation,
+        ):
+            if annotation:
+                delete_mock_annotation(annotation.id)
+        delete_mock_trace(trace_id)
+        client.delete_task(task.id)
+
+
+@pytest.mark.unit_tests
 def test_traces_timeseries_buckets_by_day(client: GenaiEngineTestClientBase):
     status_code, task = client.create_task(
         name="test_traces_timeseries_buckets_by_day",

@@ -83,6 +83,10 @@ ALLOWED_TRACE_RETENTION_DAYS = (7, 14, 30, 90, 120, 365)
 TRACE_RETENTION_INTERVAL_HOURS_ENV_VAR = "TRACE_RETENTION_INTERVAL_HOURS"
 MIN_TRACE_RETENTION_INTERVAL_HOURS = 1
 DEFAULT_TOXICITY_RULE_THRESHOLD = 0.5
+# Minimum eval score (0-1 scale) that counts as a "pass" when aggregating
+# experiment results. Mirrored in the UI as EVAL_PASS_THRESHOLD
+# (genai-engine/ui/src/utils/evals.ts); keep the two values in sync.
+EVAL_PASS_THRESHOLD = 0.5
 GENAI_ENGINE_TOXICITY_HARMFUL_REQUESTS_CHUNK_SIZE_ENV_VAR = (
     "GENAI_ENGINE_TOXICITY_HARMFUL_REQUESTS_CHUNK_SIZE"
 )
@@ -91,6 +95,9 @@ GENAI_ENGINE_TOXICITY_MAX_CHUNK_SIZE_SIZE_ENV_VAR = (
 )
 GENAI_ENGINE_TOXICITY_MODEL_BATCH_SIZE_ENV_VAR = (
     "GENAI_ENGINE_TOXICITY_MODEL_BATCH_SIZE"
+)
+GENAI_ENGINE_SUMMARY_TEST_CASE_BATCH_SIZE_ENV_VAR = (
+    "GENAI_ENGINE_SUMMARY_TEST_CASE_BATCH_SIZE"
 )
 GENAI_ENGINE_USE_PII_MODEL_V2_ENV_VAR = "GENAI_ENGINE_USE_PII_MODEL_V2"
 DEFAULT_PII_RULE_CONFIDENCE_SCORE_THRESHOLD = 0
@@ -449,6 +456,10 @@ CHATBOT_SUMMARIZER_PROMPT_NAME = "__chatbot_summarizer_prompt__"
 
 # Dataset constants
 MAX_DATASET_ROWS = 250
+# Maximum number of traces that can be added to a dataset in a single
+# bulk-add request. Matches the trace table's current page fetch-size limit
+# (the UI can only select traces on the current page).
+MAX_BULK_ADD_TRACES = 25
 
 ##################################################################
 

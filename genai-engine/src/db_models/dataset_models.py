@@ -51,7 +51,7 @@ class DatabaseDatasetVersion(Base):
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.now())
     version_rows: Mapped[List["DatabaseDatasetVersionRow"]] = relationship(
         cascade="all,delete",
-        lazy="joined",
+        lazy="select",
         order_by="DatabaseDatasetVersionRow.created_at.desc()",
     )
     column_names: Mapped[List[str]] = mapped_column(JSON)
@@ -71,6 +71,8 @@ class DatabaseDatasetVersionRow(Base):
     )
     id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True)
     data: Mapped[Any] = mapped_column(postgresql.JSON)
+    # ID of the trace this row was extracted from; null for rows not created from a trace
+    trace_id: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.now())
 
     # Add composite index for efficient row lookups by version since dataset_id is not in the primary key

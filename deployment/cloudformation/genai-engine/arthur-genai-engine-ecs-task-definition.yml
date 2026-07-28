@@ -162,6 +162,10 @@ Parameters:
     Type: Number
     Default: 8000
     Description: 'Max number of tokens an inference can have for the toxicity rule to run. This is for managing validation latency.'
+  GenaiEngineSummaryTestCaseBatchSize:
+    Type: Number
+    Default: 50
+    Description: 'Page size for streaming completed test cases during prompt experiment summary aggregation.'
   GenaiEngineUsePIIModelV2:
     Type: String
     AllowedValues:
@@ -363,6 +367,8 @@ Resources:
               Value: !Ref GenaiEngineHallucinationCheckMaxTokenLimit
             - Name: 'GENAI_ENGINE_TOXICITY_CHECK_MAX_TOKEN_LIMIT'
               Value: !Ref GenaiEngineToxicityCheckMaxTokenLimit
+            - Name: 'GENAI_ENGINE_SUMMARY_TEST_CASE_BATCH_SIZE'
+              Value: !Ref GenaiEngineSummaryTestCaseBatchSize
             - Name: 'GENAI_ENGINE_USE_PII_MODEL_V2'
               Value: !Ref GenaiEngineUsePIIModelV2
             - Name: 'GENAI_ENGINE_OPENAI_PROVIDER'

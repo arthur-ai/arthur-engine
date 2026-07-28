@@ -37,6 +37,9 @@ import type { ContinuousEvalResponse, CreateEvalRequest, CreateMLEvalRequest, Mo
 import { formatDateInTimezone } from "@/utils/formatters";
 
 const ML_EDITABLE_TYPES = ["pii", "pii_v1", "toxicity"];
+// Built-in Arthur ML eval kinds. Anything not in this allow-list (including a missing/legacy
+// eval_kind) is treated as a user-authored evaluator, NOT built-in.
+const BUILT_IN_EVAL_KINDS = ["pii", "pii_v1", "toxicity", "prompt_injection"];
 
 const EvalDetailView = ({ evalData, isLoading, error, evalName, version, latestVersion, taskId, onRefetch }: EvalDetailViewProps) => {
   const [tagAnchorEl, setTagAnchorEl] = useState<HTMLButtonElement | null>(null);
@@ -218,6 +221,11 @@ const EvalDetailView = ({ evalData, isLoading, error, evalName, version, latestV
     );
   }
 
+  // Built-in Arthur evaluators (the built-in ML eval kinds) have no user-editable instructions;
+  // only user-authored LLM evaluators ("llm_as_a_judge") do. Use a positive allow-list so an
+  // unknown or missing eval_kind is never mislabeled as built-in.
+  const isBuiltIn = BUILT_IN_EVAL_KINDS.includes(evalData.eval_kind ?? "");
+
   return (
     <Box sx={{ p: 3, height: "100%", display: "flex", flexDirection: "column", overflow: "hidden" }}>
       <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", mb: 2, flexShrink: 0 }}>
@@ -228,6 +236,7 @@ const EvalDetailView = ({ evalData, isLoading, error, evalName, version, latestV
             </Typography>
             {version !== null && <Chip label={`Version ${version}`} size="small" sx={{ height: 24 }} />}
             {version !== null && version === latestVersion && <Chip label="Latest" size="small" color="default" sx={{ height: 24 }} />}
+            {isBuiltIn && <Chip label="Built-in" size="small" color="info" sx={{ height: 24 }} />}
             {evalData.tags && evalData.tags.length > 0 && (
               <Box sx={{ display: "flex", gap: 0.5, flexWrap: "wrap" }}>
                 {evalData.tags.map((tag) => (
@@ -347,6 +356,15 @@ const EvalDetailView = ({ evalData, isLoading, error, evalName, version, latestV
               size="small"
             />
           </Box>
+        </Paper>
+      )}
+
+      {isBuiltIn && (
+        <Paper sx={{ p: 3, display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
+          <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+            Instructions
+          </Typography>
+          <Alert severity="info">Built-in Arthur evaluator — its detection logic is maintained by Arthur and isn&apos;t editable.</Alert>
         </Paper>
       )}
 
