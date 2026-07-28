@@ -2,9 +2,11 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["config:recommended"],
   "minimumReleaseAge": "3 days",
-  "schedule": ["* 0-4 * * *"],
-  "automergeSchedule": ["* 0-4 * * *"],
+  "schedule": ["after 10pm every weekday", "before 5am every weekday", "every weekend"],
+  "automergeSchedule": ["after 10pm every weekday", "before 5am every weekday", "every weekend"],
   "timezone": "America/New_York",
+  "rebaseWhen": "conflicted",
+  "prHourlyLimit": 0,
   "enabledManagers": ["npm", "pep621", "dockerfile", "docker-compose"],
   "includePaths": [
     "genai-engine/ui/package.json",
