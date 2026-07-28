@@ -30,7 +30,7 @@ import type { ColumnDefaultConfig, ColumnDefaults } from "@/types/dataset";
 interface ConfigureColumnsModalProps {
   open: boolean;
   onClose: () => void;
-  onSave: (columns: string[], columnDefaults: ColumnDefaults, applyToExisting: boolean) => void;
+  onSave: (columns: string[], columnDefaults: ColumnDefaults, applyToExisting: boolean) => Promise<void>;
   currentColumns: string[];
   currentColumnDefaults?: ColumnDefaults;
   existingRowCount?: number;
@@ -59,8 +59,13 @@ export const ConfigureColumnsModal: React.FC<ConfigureColumnsModalProps> = ({
       columns: currentColumns,
     },
     onSubmit: async ({ value }) => {
+      try {
+        await onSave(value.columns, columnDefaults, applyToExisting);
+      } catch {
+        // Save failed (snackbar already shown) — keep the modal open so the user can retry
+        return;
+      }
       track("dataset/columns_saved", { dataset_id: datasetId, task_id: taskId });
-      onSave(value.columns, columnDefaults, applyToExisting);
       onClose();
       setEditingIndex(null);
       setNewColumnName("");
@@ -341,9 +346,13 @@ export const ConfigureColumnsModal: React.FC<ConfigureColumnsModalProps> = ({
             <Button onClick={handleClose} color="inherit">
               Cancel
             </Button>
-            <Button type="submit" variant="contained" color="primary" disabled={editingIndex !== null}>
-              Save Changes
-            </Button>
+            <form.Subscribe selector={(state) => state.isSubmitting}>
+              {(isSubmitting) => (
+                <Button type="submit" variant="contained" color="primary" disabled={editingIndex !== null || isSubmitting}>
+                  {isSubmitting ? "Saving..." : "Save Changes"}
+                </Button>
+              )}
+            </form.Subscribe>
           </DialogActions>
         </Box>
       </form>

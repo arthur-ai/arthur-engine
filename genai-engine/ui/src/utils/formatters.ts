@@ -1,6 +1,6 @@
 import {
   formatDate,
-  formatDuration,
+  formatDurationMs,
   formatTimestampDuration as formatTimestampDurationShared,
   formatUTCTimestamp,
   capitalize,
@@ -13,12 +13,12 @@ import {
 import { getLocaleForCurrency } from "./currencyLocales";
 
 /**
- * Default: formatDate, formatUTCTimestamp, formatDuration, formatTimestampDuration, capitalize, truncateText
- * come from @arthur/shared-components; use them when no user timezone or 12/24h preference is needed.
+ * Default: formatDate, formatUTCTimestamp, formatDurationMs, formatTimestampDuration, capitalize,
+ * truncateText come from @arthur/shared-components; use them when no user timezone or 12/24h
+ * preference is needed.
  *
- * Local / extended: formatCurrency(amount, currencyCode) and formatDateInTimezone(value, timezone, options?)
- * are local and cover display currency and timezone-aware datetime (including UTC and 12/24h);
- * these are intended to be migrated into shared-components later.
+ * Local / extended: formatCurrency(amount, currencyCode) and formatDateInTimezone(value, timezone,
+ * options?) are local; these are intended to be migrated into shared-components later.
  */
 
 /**
@@ -89,8 +89,8 @@ export function formatDateInTimezone(
 
 export {
   formatDate,
+  formatDurationMs,
   formatUTCTimestamp,
-  formatDuration,
   formatTimestampDurationShared as formatTimestampDuration,
   capitalize,
   truncateText,

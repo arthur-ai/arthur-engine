@@ -125,7 +125,7 @@ eksctl create addon --name aws-efs-csi-driver --cluster <cluster> \
   --service-account-role-arn arn:aws:iam::<account>:role/AmazonEKS_EFS_CSI_DriverRole --force
 ```
 
-**2. Create the EFS filesystem and mount targets.** The filesystem must be reachable from the worker nodes, so create a mount target in each node subnet with a security group that allows inbound NFS (TCP 2049) from the nodes' security group.
+**2. Create the EFS filesystem and mount targets.** The filesystem must be reachable from the worker nodes, so create a mount target in **every AZ your nodes can run in**, with a security group that allows inbound NFS (TCP 2049) from the nodes' security group.
 
 ```bash
 # Create the filesystem (Elastic throughput recommended — see note below)
@@ -141,9 +141,11 @@ aws efs create-file-system \
 aws ec2 authorize-security-group-ingress \
   --group-id <efs-sg> --protocol tcp --port 2049 --source-group <node-sg>
 
-# One mount target per node subnet
+# EFS allows exactly ONE mount target per AZ. Create one in every AZ your nodes can run in,
+# passing any subnet in that AZ (a second create in the same AZ fails with MountTargetConflict).
 aws efs create-mount-target --file-system-id fs-xxxx --subnet-id <subnet-az-a> --security-groups <efs-sg>
 aws efs create-mount-target --file-system-id fs-xxxx --subnet-id <subnet-az-b> --security-groups <efs-sg>
+aws efs create-mount-target --file-system-id fs-xxxx --subnet-id <subnet-az-c> --security-groups <efs-sg>
 ```
 
 > Use **Elastic** (or provisioned) throughput, not Bursting. Model loading is many small-file reads and a low-baseline Bursting filesystem can throttle at startup.
@@ -160,8 +162,8 @@ parameters:
   provisioningMode: efs-ap          # one EFS access point per PVC
   fileSystemId: fs-xxxxxxxxxxxxxxxxx
   directoryPerms: "700"
-  uid: "1000760000"                 # match the upload job's runAsUser
-  gid: "1000760000"
+  uid: "65532"                      # the genai-engine image's nonroot user
+  gid: "65532"
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -178,19 +180,21 @@ spec:
       storage: 25Gi                 # EFS is elastic; this is a nominal request
 ```
 
-This replaces `k8s/01-pvc.yaml` (which defaults to `ReadWriteOnce` and the cluster's default StorageClass). The genai-engine pods must run with a UID matching the access point (`uid`/`gid` above) so they can read the files.
+This replaces `k8s/01-pvc.yaml` (which defaults to `ReadWriteOnce` and the cluster's default StorageClass). With `efs-ap` provisioning the access point **squashes all reads and writes to its `uid`/`gid`**, so neither the upload job nor the genai-engine pods need a matching `runAsUser` for access to work. Set `uid`/`gid` to `65532` (the genai-engine image's `nonroot` user) so on-disk ownership is sensible and consistent with [`README-regular-pvc.md`](README-regular-pvc.md).
 
-**4. Run the upload job** against the EFS-backed PVC:
+**4. Run the upload job** against the EFS-backed PVC, then the config-copy job. Run the config-copy job **only after the upload job completes** — it copies `gliner_config.json` (written by the upload job) to `config.json`, so applying both together races and the copy fails with `gliner_config.json not found`:
 
 ```bash
 kubectl apply -f <the StorageClass + PVC above>
 kubectl apply -f k8s/02-serviceaccount.yaml
-# Edit k8s/04-job.yaml to set the correct image version, then:
-kubectl apply -f k8s/04-job.yaml
-kubectl apply -f k8s/06-copy-config-job.yaml
 
-# Confirm completion
+# Edit k8s/04-job.yaml to set the correct image version, then run the upload and wait for it:
+kubectl apply -f k8s/04-job.yaml
 kubectl wait --for=condition=complete job/arthur-genai-engine-models-k8s --timeout=600s
+
+# Only now run the GLiNER config-copy job, and wait for it too:
+kubectl apply -f k8s/06-copy-config-job.yaml
+kubectl wait --for=condition=complete job/copy-gliner-config --timeout=300s
 ```
 
 **5. Mount the volume into genai-engine** (read-write) and point the engine at it. Add the PVC volume to the genai-engine deployment and set:
@@ -214,13 +218,15 @@ containers:
         readOnly: false  # loaders write .lock/cache files even offline
 ```
 
-> The genai-engine Helm chart supports this mount natively via the optional `modelPVC` values (the online/offline toggle, off by default): `--set modelPVC.enabled=true --set modelPVC.claimName=arthur-models-pvc --set modelPVC.mountPath=/home/nonroot/models-output`. The chart then adds the volume/volumeMount (read-write) and sets `MODEL_STORAGE_PATH` + `HF_HUB_OFFLINE=1` for you. On AWS EKS, provision the EFS-backed PVC with the Terraform module at [`../terraform/eks-efs-models`](../terraform/eks-efs-models).
+> The genai-engine Helm chart supports this mount natively via the optional `modelPVC` values (the online/offline toggle, off by default): `--set modelPVC.enabled=true --set modelPVC.claimName=arthur-models-pvc --set modelPVC.mountPath=/home/nonroot/models-output`. The chart then adds the volume/volumeMount (read-write) and sets `MODEL_STORAGE_PATH` + `HF_HUB_OFFLINE=1` for you. Provision the EFS-backed PVC with the steps in this section (StorageClass + `ReadWriteMany` PVC above).
 
 **IAM / networking checklist:**
 - EFS CSI driver IAM role attached (`AmazonEFSCSIDriverPolicy`).
 - EFS security group allows inbound TCP 2049 from the node security group.
-- A mount target exists in every subnet where genai-engine / the upload job can be scheduled.
-- The access point `uid`/`gid` matches the runAsUser of both the upload job and the genai-engine pods.
+- A mount target exists in every AZ where genai-engine / the upload job can be scheduled.
+- The access point `uid`/`gid` is set to `65532` (the genai-engine `nonroot` user). Because the access point squashes all I/O to this identity, the upload job and engine pods do **not** need a matching `runAsUser`.
+
+> **Transient mount error on freshly-provisioned nodes.** On EKS Auto Mode / Karpenter, the first pod to schedule onto a brand-new node may fail to mount for ~10–30s with `driver name efs.csi.aws.com not found in the list of registered CSI drivers`, until the `efs-csi-node` DaemonSet registers the driver on that node. It self-heals and the pod mounts — no action needed.
 
 ## Environment Variables
 

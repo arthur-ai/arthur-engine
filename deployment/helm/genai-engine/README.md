@@ -639,8 +639,8 @@ to `true` to pre-populate a shared volume once and have every replica load model
 
 When enabled, the chart mounts the claim (read-write — see below) and sets `MODEL_STORAGE_PATH` +
 `HF_HUB_OFFLINE=1`, and the engine skips the startup download. Populate the volume with the one-time
-job in [../../model-upload](../../model-upload). On AWS EKS, provision the EFS-backed `ReadWriteMany`
-PVC with the Terraform module in [../../terraform/eks-efs-models](../../terraform/eks-efs-models).
+job in [../../model-upload](../../model-upload). On AWS EKS, back the `ReadWriteMany` PVC with EFS by
+following the [AWS EKS + EFS](../../model-upload/README.md#aws-eks--efs) section of that guide.
 
 > The mount must be **read-write** (`modelPVC.readOnly` defaults to `false`). The HuggingFace
 > loaders write `.lock`/cache files under the mount even with `HF_HUB_OFFLINE=1`, so a read-only

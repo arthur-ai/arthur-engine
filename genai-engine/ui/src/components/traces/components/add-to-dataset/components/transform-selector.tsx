@@ -3,7 +3,7 @@ import { alpha, Theme } from "@mui/material/styles";
 import { useStore } from "@tanstack/react-form";
 
 import { withFieldGroup } from "../../filtering/hooks/form";
-import { addToDatasetFormOptions } from "../form/shared";
+import { addToDatasetFormOptions, resolveSchemaColumns } from "../form/shared";
 import { useExecuteTransform } from "../hooks/useExecuteTransform";
 import { MatchStatus, useMatchingVariables } from "../hooks/useMatchingVariables";
 
@@ -11,7 +11,7 @@ import { getNestedValue, getNestedValueWildcard } from "@/components/traces/util
 import { useTransformVersions } from "@/components/transforms/hooks/useTransformVersions";
 import { useTransforms } from "@/hooks/transforms/useTransforms";
 import { useDatasetLatestVersion } from "@/hooks/useDatasetLatestVersion";
-import { DatasetVersionMetadataResponse, NestedSpanWithMetricsResponse, TraceTransformResponse } from "@/lib/api-client/api-client";
+import { NestedSpanWithMetricsResponse, TraceTransformResponse } from "@/lib/api-client/api-client";
 
 const getStatusPalette = (theme: Theme, status: MatchStatus) => {
   const palette = {
@@ -32,13 +32,16 @@ export const TransformSelector = withFieldGroup({
   props: {} as {
     traceId: string;
     flatSpans: NestedSpanWithMetricsResponse[];
-    datasetSchemaColumns: string[];
+    // The dataset's current columns (persisted schema, or pending columns the
+    // user added this session). The first-addition fallback to the transform's
+    // variables is applied where consumed — see resolveSchemaColumns.
+    datasetColumns: string[];
   },
-  render: function Render({ group, traceId, flatSpans, datasetSchemaColumns }) {
+  render: function Render({ group, traceId, flatSpans, datasetColumns }) {
     const dataset = useStore(group.store, (state) => state.values.dataset);
     const transform = useStore(group.store, (state) => state.values.transform);
 
-    const { latestVersion, isLoading: isLoadingLatestVersion } = useDatasetLatestVersion(dataset);
+    const { isLoading: isLoadingLatestVersion } = useDatasetLatestVersion(dataset);
 
     const { data } = useTransforms();
     const transforms = data?.transforms;
@@ -52,19 +55,20 @@ export const TransformSelector = withFieldGroup({
       onSuccess: (executionResult) => {
         if (!executionResult.variables.length || !selectedTransform || !selectedTransformDefinition) return;
 
-        // If the dataset schema hasn't loaded yet (e.g. a stale mutation resolved
-        // after the user switched datasets), skip applying transform results.
-        // The Autocomplete is also disabled while loading, so this is a backstop.
-        if (!latestVersion) return;
+        // Skip only while the dataset schema query is still loading (e.g. a stale
+        // mutation resolved after the user switched datasets). A first-addition
+        // dataset has no persisted version yet but must still be filled.
+        if (isLoadingLatestVersion) return;
 
         const transformVariablesByName = new Map(selectedTransformDefinition.variables.map((v) => [v.variable_name, v]));
         const executedValuesByName = new Map(executionResult.variables.map((v) => [v.name, v.value]));
 
-        // Dataset schema is the source of truth: iterate its columns and fill
-        // values from any matching transform variable. Transform variables that
-        // don't match a dataset column are intentionally dropped here; the
-        // Configurator surfaces them in an inline warning.
-        const columns = datasetSchemaColumns.map((columnName) => {
+        // The row schema is the source of truth: iterate its columns and fill
+        // values from any matching transform variable (on a first addition the
+        // transform's variables ARE the schema). Variables that don't match a
+        // column are intentionally dropped here; the Configurator surfaces them
+        // in an inline warning.
+        const columns = resolveSchemaColumns(datasetColumns, selectedTransformDefinition.variables).map((columnName) => {
           const variableDef = transformVariablesByName.get(columnName);
 
           if (!variableDef) {
@@ -114,7 +118,10 @@ export const TransformSelector = withFieldGroup({
         listeners={{
           onChange: async ({ value }) => {
             if (!traceId) return group.setFieldValue("columns", []);
-            if (!value) return;
+            // Clearing the transform discards its auto-filled columns; for a
+            // schema'd dataset the Configurator re-seeds empty schema columns,
+            // for a first addition nothing stale is left behind in form state.
+            if (!value) return group.setFieldValue("columns", []);
 
             await executeTransformMutation.mutateAsync({ transformId: value });
           },
@@ -144,7 +151,7 @@ export const TransformSelector = withFieldGroup({
               renderOption={(props, option) => {
                 return (
                   <li {...props} key={option.id}>
-                    <SelectorOption option={option} dataset={latestVersion} />
+                    <SelectorOption option={option} columnNames={datasetColumns} />
                   </li>
                 );
               }}
@@ -157,11 +164,11 @@ export const TransformSelector = withFieldGroup({
   },
 });
 
-const SelectorOption = ({ option, dataset }: { option: TraceTransformResponse; dataset: DatasetVersionMetadataResponse | undefined }) => {
+const SelectorOption = ({ option, columnNames }: { option: TraceTransformResponse; columnNames: string[] }) => {
   const { data: versions = [] } = useTransformVersions(option.id);
   const definition = versions[0]?.definition;
   const { matchCount, matchStatus, unmatchedTransform } = useMatchingVariables({
-    columnNames: dataset?.column_names ?? [],
+    columnNames,
     variables: definition?.variables ?? [],
   });
 
