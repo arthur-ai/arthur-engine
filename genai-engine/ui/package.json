@@ -24,7 +24,7 @@
   "dependencies": {
     "@amplitude/analytics-browser": "2.45.4",
     "@amplitude/experiment-js-client": "^1.21.1",
-    "@amplitude/plugin-session-replay-browser": "^1.31.1",
+    "@amplitude/plugin-session-replay-browser": "^1.33.6",
     "@arizeai/openinference-semantic-conventions": "2.5.0",
     "@arthur/shared-components": "^3.23.2",
     "@base-ui/react": "1.6.0",
@@ -93,7 +93,7 @@
     "globals": "16.5.0",
     "jsdom": "^29.1.1",
     "prettier": "3.7.4",
-    "swagger-typescript-api": "^13.12.2",
+    "swagger-typescript-api": "^13.12.6",
     "typescript": "5.9.3",
     "typescript-eslint": "8.56.1",
     "vite": "8.0.16",
