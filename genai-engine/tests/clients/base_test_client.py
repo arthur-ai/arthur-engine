@@ -78,6 +78,7 @@ from schemas.request_schemas import (
     AgenticAnnotationRequest,
     ApiKeyRagAuthenticationConfigRequest,
     ApiKeyRagAuthenticationConfigUpdateRequest,
+    BulkAddTracesToDatasetRequest,
     ContinuousEvalCreateRequest,
     CreateAgenticPromptRequest,
     DatasetUpdateRequest,
@@ -107,6 +108,7 @@ from schemas.request_schemas import (
 )
 from schemas.response_schemas import (
     AgenticAnnotationAnalyticsResponse,
+    BulkAddTracesToDatasetResponse,
     ConnectionCheckResult,
     ContinuousEvalRerunResponse,
     ContinuousEvalTestRunResponse,
@@ -3041,6 +3043,52 @@ class GenaiEngineTestClientBase(httpx.Client):
 
         log_response(resp)
 
+        return (
+            resp.status_code,
+            (
+                DatasetVersionResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
+            ),
+        )
+
+    def bulk_add_traces_to_dataset(
+        self,
+        dataset_id: str,
+        transform_id: str,
+        trace_ids: list[str],
+    ) -> tuple[int, Any]:
+        """Bulk add traces to a dataset by running a transform against each trace."""
+        request = BulkAddTracesToDatasetRequest(
+            transform_id=transform_id,
+            trace_ids=trace_ids,
+        )
+
+        resp = self.base_client.post(
+            f"/api/v2/datasets/{dataset_id}/bulk-add-traces",
+            json=request.model_dump(mode="json"),
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        if resp.status_code == 200:
+            return resp.status_code, BulkAddTracesToDatasetResponse.model_validate(
+                resp.json(),
+            )
+        return resp.status_code, resp.json() if resp.content else None
+
+    def restore_dataset_version(
+        self,
+        dataset_id: str,
+        version_number: int,
+    ) -> tuple[int, DatasetVersionResponse]:
+        """Reinstate a previous dataset version."""
+        resp = self.base_client.post(
+            f"/api/v2/datasets/{dataset_id}/versions/{version_number}/restore",
+            headers=self.authorized_user_api_key_headers,
+        )
+        log_response(resp)
         return (
             resp.status_code,
             (

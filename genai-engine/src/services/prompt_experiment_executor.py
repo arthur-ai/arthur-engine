@@ -30,7 +30,6 @@ from repositories.prompt_experiment_repository import PromptExperimentRepository
 from schemas.agentic_experiment_schemas import RequestTimeParameter
 from schemas.base_experiment_schemas import (
     EvalResultSummary,
-    TestCaseStatus,
 )
 from schemas.prompt_experiment_schemas import (
     PromptEvalResultSummaries,
@@ -39,6 +38,7 @@ from schemas.prompt_experiment_schemas import (
 from schemas.request_schemas import PromptCompletionRequest
 from services.experiment_executor import BaseExperimentExecutor
 from services.prompt.chat_completion_service import ChatCompletionService
+from utils.constants import EVAL_PASS_THRESHOLD
 
 logger = logging.getLogger(__name__)
 
@@ -151,24 +151,8 @@ class PromptExperimentExecutor(BaseExperimentExecutor):
         Sets summary results dictionary with prompt_eval_summaries
         """
         try:
-            # Get all completed test cases with their prompt results and eval scores
-            test_cases = (
-                db_session.query(DatabasePromptExperimentTestCase)
-                .filter_by(
-                    experiment_id=experiment.id,
-                    status=TestCaseStatus.COMPLETED.value,
-                )
-                .all()
-            )
-
-            if not test_cases:
-                experiment.summary_results = SummaryResults(
-                    prompt_eval_summaries=[],
-                ).model_dump(
-                    mode="python",
-                    exclude_none=True,
-                )
-                return
+            # Stream completed test cases in pages to bound peak memory.
+            prompt_experiment_repo = PromptExperimentRepository(db_session)
 
             # Build a structure to aggregate results: {prompt_key: {(eval_name, eval_version): [scores]}}
             results_by_prompt: dict[
@@ -176,7 +160,11 @@ class PromptExperimentExecutor(BaseExperimentExecutor):
                 dict[tuple[str, int], list[float]],
             ] = {}
 
-            for test_case in test_cases:
+            for (
+                test_case
+            ) in prompt_experiment_repo.iter_completed_test_cases_for_summary(
+                experiment.id,
+            ):
                 for prompt_result in test_case.prompt_results:
                     prompt_key = prompt_result.prompt_key
 
@@ -219,8 +207,8 @@ class PromptExperimentExecutor(BaseExperimentExecutor):
 
                 eval_result_list = []
                 for (eval_name, eval_version), scores in sorted(eval_results.items()):
-                    # Count how many passed (score >= 0.5, assuming 0-1 scale)
-                    pass_count = sum(1 for s in scores if s >= 0.5)
+                    # Count how many passed (score >= EVAL_PASS_THRESHOLD, 0-1 scale)
+                    pass_count = sum(1 for s in scores if s >= EVAL_PASS_THRESHOLD)
                     total_count = len(scores)
 
                     eval_result_list.append(

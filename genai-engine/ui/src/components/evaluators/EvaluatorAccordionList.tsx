@@ -158,7 +158,7 @@ export const EvaluatorAccordionList = ({ evals, taskId, onExpandToFullScreen, on
                   py: 0,
                   minHeight: 56,
                   // Reserve space on the right so summary text doesn't overlap the action buttons
-                  pr: 14,
+                  pr: 15,
                   "& .MuiAccordionSummary-content": { my: 1.5, mr: 1 },
                 }}
               >
@@ -207,7 +207,7 @@ export const EvaluatorAccordionList = ({ evals, taskId, onExpandToFullScreen, on
               sx={{
                 position: "absolute",
                 top: 0,
-                right: 100,
+                right: 150,
                 height: 56,
                 display: "flex",
                 alignItems: "center",

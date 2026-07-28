@@ -17,6 +17,8 @@ interface VersionDrawerProps {
   onVersionClick: (versionNumber: number) => void;
   onClose: () => void;
   onVersionSelect?: (versionNumber: number) => void;
+  onVersionRestore?: (versionNumber: number) => void;
+  isRestoring?: boolean;
 }
 
 export const VersionDrawer: React.FC<VersionDrawerProps> = ({
@@ -28,6 +30,8 @@ export const VersionDrawer: React.FC<VersionDrawerProps> = ({
   onVersionClick,
   onClose,
   onVersionSelect,
+  onVersionRestore,
+  isRestoring = false,
 }) => {
   const { versions, totalCount, isLoading, error } = useDatasetVersionHistory(datasetId);
   const { timezone, use24Hour } = useDisplaySettings();
@@ -46,6 +50,13 @@ export const VersionDrawer: React.FC<VersionDrawerProps> = ({
       }
     },
     [onVersionSelect]
+  );
+
+  const handleRestoreVersion = useCallback(
+    (versionNumber: number) => {
+      onVersionRestore?.(versionNumber);
+    },
+    [onVersionRestore]
   );
 
   return (
@@ -177,6 +188,22 @@ export const VersionDrawer: React.FC<VersionDrawerProps> = ({
                         sx={{ mt: 1 }}
                       >
                         View this version
+                      </Button>
+                    )}
+
+                    {isSelected && !isLatest && (
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        fullWidth
+                        disabled={isRestoring}
+                        startIcon={isRestoring ? <CircularProgress size={16} /> : undefined}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRestoreVersion(version.version_number);
+                        }}
+                      >
+                        {isRestoring ? "Restoring..." : "Restore this version"}
                       </Button>
                     )}
                   </Stack>
