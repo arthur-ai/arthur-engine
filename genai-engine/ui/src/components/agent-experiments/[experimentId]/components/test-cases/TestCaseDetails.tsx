@@ -2,7 +2,7 @@ import { Collapsible } from "@base-ui/react/collapsible";
 import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import { Box, Chip, DialogContent, Link as MuiLink, Paper, Stack, Typography } from "@mui/material";
-import { Link as RouterLink } from "react-router-dom";
+import { Link as RouterLink } from "react-router";
 
 import { StatusBadge } from "@/components/agent-experiments/components/status-badge";
 import { CopyableChip } from "@/components/common";

@@ -1,6 +1,6 @@
 import Box from "@mui/material/Box";
 import { useState, useCallback } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router";
 
 import RagConfigDetailView from "./RagConfigDetailView";
 import RagConfigVersionDrawer from "./RagConfigVersionDrawer";

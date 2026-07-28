@@ -1,7 +1,7 @@
 import SearchIcon from "@mui/icons-material/Search";
 import { Box, InputAdornment, TextField } from "@mui/material";
 import React, { useState, useCallback, useEffect, useRef } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router";
 
 import { RagExperimentsEmptyState } from "./RagExperimentsEmptyState";
 import { RagExperimentsTable } from "./RagExperimentsTable";

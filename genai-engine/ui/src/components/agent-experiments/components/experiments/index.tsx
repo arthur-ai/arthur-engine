@@ -3,7 +3,7 @@ import ScienceOutlinedIcon from "@mui/icons-material/ScienceOutlined";
 import { Box, Button, MenuItem, Typography } from "@mui/material";
 import { MaterialReactTable, useMaterialReactTable } from "material-react-table";
 import { useMemo, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router";
 
 import { createColumns } from "../../data/experiments-columns";
 import { useAgentExperiments } from "../../hooks/useAgentExperiments";

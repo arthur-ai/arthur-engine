@@ -3,7 +3,7 @@ import HistoryIcon from "@mui/icons-material/History";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import { Box, Drawer, List, ListItemText, Skeleton, Stack, Typography, ListItemButton, LinearProgress, Button, TablePagination } from "@mui/material";
 import { Suspense } from "react";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 
 import { useShowState } from "../../hooks/useShowState";
 import { useSuspensePollAgenticNotebookHistory } from "../../hooks/useSuspensePollAgenticNotebookHistory";

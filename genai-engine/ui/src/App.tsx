@@ -4,7 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { SnackbarProvider } from "notistack";
 import { NuqsAdapter } from "nuqs/adapters/react-router/v7";
-import { Navigate, Route, BrowserRouter as Router, Routes } from "react-router-dom";
+import { Navigate, Route, BrowserRouter as Router, Routes } from "react-router";
 
 import "./App.css";
 import { AgentExperimentDetail } from "./components/agent-experiments/[experimentId]";

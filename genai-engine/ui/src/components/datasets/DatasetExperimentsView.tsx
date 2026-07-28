@@ -17,7 +17,7 @@ import {
   InputAdornment,
 } from "@mui/material";
 import React, { useState, useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router";
 
 import { CreateExperimentModal } from "../prompt-experiments/create-experiment-modal";
 import { PromptExperimentsEmptyState } from "../prompt-experiments/PromptExperimentsEmptyState";

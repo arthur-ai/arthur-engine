@@ -8,7 +8,7 @@ import IconButton from "@mui/material/IconButton";
 import Stack from "@mui/material/Stack";
 import { alpha } from "@mui/material/styles";
 import Typography from "@mui/material/Typography";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useTask } from "@/hooks/useTask";

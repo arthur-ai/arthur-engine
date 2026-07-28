@@ -1,6 +1,6 @@
 import Box from "@mui/material/Box";
 import { useState, useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router";
 
 import { useDeletePromptVersionMutation } from "../hooks/useDeletePromptVersionMutation";
 import { usePrompt } from "../hooks/usePrompt";

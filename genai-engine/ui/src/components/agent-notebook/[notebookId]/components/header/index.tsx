@@ -4,7 +4,7 @@ import FileDownloadIcon from "@mui/icons-material/FileDownload";
 import SaveIcon from "@mui/icons-material/Save";
 import { Box, Button, ButtonGroup, Chip, CircularProgress, Stack, Tooltip, Typography } from "@mui/material";
 import { Link as MuiLink } from "@mui/material";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams } from "react-router";
 
 import { useUpdateAgenticNotebook } from "../../../hooks/useUpdateAgenticNotebook";
 import { agentNotebookStateFormOpts } from "../../form";

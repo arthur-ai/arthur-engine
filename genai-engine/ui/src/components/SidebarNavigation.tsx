@@ -13,7 +13,7 @@ import {
 } from "@mui/icons-material";
 import { Box, Link, Typography } from "@mui/material";
 import React from "react";
-import { useParams } from "react-router-dom";
+import { useParams } from "react-router";
 
 import { SIDEBAR_WIDTH_PX } from "@/constants/layout";
 import { useDemoMode } from "@/contexts/EngineConfigContext";

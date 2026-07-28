@@ -19,7 +19,7 @@ import {
 } from "@mui/material";
 import { createMRTColumnHelper, MaterialReactTable, useMaterialReactTable } from "material-react-table";
 import { useCallback, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 
 import { useCreateTestRun, useTestRun, useTestRunResults } from "../hooks/useTestRun";
 

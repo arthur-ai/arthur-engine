@@ -1,6 +1,6 @@
 import { Alert, Box, TablePagination } from "@mui/material";
 import React, { useCallback, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 
 import { DatasetFormModal } from "./DatasetFormModal";
 import { DatasetsEmptyState } from "./DatasetsEmptyState";

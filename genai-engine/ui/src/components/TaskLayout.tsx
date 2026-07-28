@@ -1,5 +1,5 @@
 import React, { Suspense, lazy, useState } from "react";
-import { useParams, useNavigate, useLocation, Outlet } from "react-router-dom";
+import { useParams, useNavigate, useLocation, Outlet } from "react-router";
 
 import { ChatbotDrawer } from "@/components/chatbot/ChatbotDrawer";
 import { SidebarNavigation } from "@/components/SidebarNavigation";

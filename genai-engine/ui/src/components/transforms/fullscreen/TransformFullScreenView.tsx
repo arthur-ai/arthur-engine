@@ -1,6 +1,6 @@
 import Box from "@mui/material/Box";
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router";
 
 import { useTransformVersion } from "../hooks/useTransformVersion";
 import { useTransformVersions } from "../hooks/useTransformVersions";

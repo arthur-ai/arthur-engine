@@ -1,6 +1,6 @@
 import { Alert, Box, Button, TablePagination } from "@mui/material";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Navigate, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { Navigate, useNavigate, useParams, useSearchParams } from "react-router";
 
 import { ConfirmationModal } from "../common/ConfirmationModal";
 

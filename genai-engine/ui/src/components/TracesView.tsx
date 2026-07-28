@@ -1,7 +1,7 @@
 import { Level, LEVELS, TIME_RANGES, TracesViewLayout } from "@arthur/shared-components";
 import { parseAsStringLiteral, useQueryState } from "nuqs";
 import React, { Activity, memo } from "react";
-import { useParams } from "react-router-dom";
+import { useParams } from "react-router";
 
 import { CommonDrawer } from "./traces/components/CommonDrawer";
 import { SessionLevel } from "./traces/components/tables/SessionLevel";

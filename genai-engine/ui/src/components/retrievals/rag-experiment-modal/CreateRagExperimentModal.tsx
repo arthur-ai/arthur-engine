@@ -14,7 +14,7 @@ import {
   Alert,
 } from "@mui/material";
 import React, { useState, useCallback } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate } from "react-router";
 
 import { EvalVariableMappingStep } from "./EvalVariableMappingStep";
 import { ExperimentInfoStep } from "./ExperimentInfoStep";

@@ -7,7 +7,7 @@ import Tabs from "@mui/material/Tabs";
 import Typography from "@mui/material/Typography";
 import { parseAsStringEnum, useQueryState } from "nuqs";
 import { useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams } from "react-router";
 
 import { AgentExperiments } from "@/components/agent-experiments";
 import { AgentNotebook } from "@/components/agent-notebook";
