@@ -51,6 +51,19 @@
       "enabled": false
     },
     {
+      "matchManagers": ["pep621"],
+      "groupName": "langchain + openai",
+      "matchPackageNames": [
+        "langchain",
+        "langchain-core",
+        "langchain-community",
+        "langchain-openai",
+        "langchain-text-splitters",
+        "langsmith",
+        "openai"
+      ]
+    },
+    {
       "matchManagers": ["dockerfile", "docker-compose"],
       "matchPackageNames": ["python"],
       "enabled": false
