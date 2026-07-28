@@ -11,6 +11,9 @@ The intention of this changelog is to document API changes as they happen to eff
 - **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions/{version_number}  added the optional property 'rows/items/trace_id' to the response with the '200' status
 - **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions/{version_number}/generate-synthetic/message  added the new optional request property 'current_rows/items/trace_id'
 - **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions/{version_number}/rows/{row_id}  added the optional property 'trace_id' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/search  added the new optional `query` request parameter `sort_field`
+- **CHANGE** for **URL**: /api/v2/tasks/search  added the new optional `query` request parameter `last_active_start_time`
+- **CHANGE** for **URL**: /api/v2/tasks/search  added the new optional `query` request parameter `last_active_end_time`
 
 # 07/21/2026
 - **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/bulk-add-traces  endpoint added
