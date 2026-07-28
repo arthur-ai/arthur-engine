@@ -25,7 +25,7 @@
   },
   "lockFileMaintenance": {
     "enabled": true,
-    "prCreation": "immediate"
+    "schedule": ["* 0-4 * * *"]
   },
   "dockerfile": {
     "managerFilePatterns": ["(^|/)[Dd]ockerfile$", "(^|/)Dockerfile_[a-zA-Z]+$"]
