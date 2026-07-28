@@ -1,7 +1,7 @@
 import ArrowOutwardIcon from "@mui/icons-material/ArrowOutward";
 import { Button, Link as MuiLink, Typography } from "@mui/material";
 import React from "react";
-import { Link as RouterLink } from "react-router-dom";
+import { Link as RouterLink } from "react-router";
 
 import { serializeDrawerTarget } from "@/components/traces/hooks/useDrawerTarget";
 

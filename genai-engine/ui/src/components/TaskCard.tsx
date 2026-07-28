@@ -11,7 +11,7 @@ import { Box, Card, CardContent, Chip, CircularProgress, IconButton, Stack, Tool
 import { alpha } from "@mui/material/styles";
 import { keyframes } from "@mui/system";
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 
 import { CopyableChip } from "./common";
 

@@ -2,7 +2,7 @@ import { useAppForm } from "@arthur/shared-components";
 import { CircularProgress, Dialog, Stack } from "@mui/material";
 import { useSnackbar } from "notistack";
 import { useState } from "react";
-import { Navigate, useParams } from "react-router-dom";
+import { Navigate, useParams } from "react-router";
 
 import { useAgenticNotebook } from "../hooks/useAgenticNotebook";
 import { useAutosaveAgenticNotebook } from "../hooks/useAutosaveAgenticNotebook";

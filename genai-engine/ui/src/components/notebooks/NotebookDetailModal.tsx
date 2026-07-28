@@ -19,7 +19,7 @@ import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import Typography from "@mui/material/Typography";
 import React from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router";
 
 import { EditableTitle } from "@/components/common";
 import { useNotebook, useNotebookHistory, useUpdateNotebookMutation } from "@/hooks/useNotebooks";

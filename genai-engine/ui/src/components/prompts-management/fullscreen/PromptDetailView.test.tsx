@@ -21,7 +21,7 @@ vi.mock("@arthur/shared-components", () => ({
   MustacheHighlightedTextField: ({ value }: { value: string }) => <textarea readOnly value={value} />,
 }));
 
-vi.mock("react-router-dom", () => ({
+vi.mock("react-router", () => ({
   useNavigate: () => navigate,
 }));
 

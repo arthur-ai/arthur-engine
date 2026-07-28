@@ -19,7 +19,7 @@ import {
   Link,
 } from "@mui/material";
 import React, { useState } from "react";
-import { useParams, useNavigate, Link as RouterLink } from "react-router-dom";
+import { useParams, useNavigate, Link as RouterLink } from "react-router";
 
 import { RagExperimentTestCasesTable } from "./RagExperimentTestCasesTable";
 import { formatRagConfigName, getRagConfigDisplayName } from "./utils";

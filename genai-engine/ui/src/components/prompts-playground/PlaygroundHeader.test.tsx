@@ -5,7 +5,7 @@ import PlaygroundHeader from "./PlaygroundHeader";
 
 import { dispatchTourEvent } from "@/features/task-tour/tourEvents";
 
-vi.mock("react-router-dom", () => ({
+vi.mock("react-router", () => ({
   useNavigate: () => vi.fn(),
 }));
 

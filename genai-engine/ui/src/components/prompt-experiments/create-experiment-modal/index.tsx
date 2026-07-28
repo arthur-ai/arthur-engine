@@ -3,7 +3,7 @@ import { ThemeProvider, useTheme } from "@mui/material/styles";
 import { useStore } from "@tanstack/react-form";
 import { useSnackbar } from "notistack";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 
 import { EvalsStep } from "./components/evals-step";
 import { InfoStep } from "./components/info-step";

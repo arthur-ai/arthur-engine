@@ -3,7 +3,7 @@ import LiveTvOutlinedIcon from "@mui/icons-material/LiveTvOutlined";
 import UpdateIcon from "@mui/icons-material/Update";
 import { Box, Button, Chip, Link as MuiLink, Stack, Table, TableBody, TableCell, TableHead, TableRow, Tooltip, Typography } from "@mui/material";
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router";
 
 import { LiveEvalActions } from "@/components/live-evals/components/actions";
 import { EditFormDialog } from "@/components/live-evals/components/edit-form";
