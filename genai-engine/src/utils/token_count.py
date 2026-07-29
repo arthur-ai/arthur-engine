@@ -19,6 +19,51 @@ class TokenCountCost(BaseModel):
     prompt_token_count: int | None = None
     completion_token_count: int | None = None
     total_token_count: int | None = None
+    # True when a model had tokens but could not be priced (model unrecognized),
+    # so its cost is unknown rather than a real $0.
+    cost_unknown: bool = False
+
+
+# Routing/region prefixes that are deployment metadata, not part of litellm's
+# pricing key. Stripping them lets an otherwise-unrecognized name match a rate.
+_MODEL_ROUTE_PREFIXES = (
+    "bedrock/",
+    "vertex_ai/",
+    "anthropic/",
+    "openai/",
+    "azure/",
+    "gemini/",
+)
+_MODEL_REGION_PREFIXES = ("us.", "eu.", "apac.", "us-gov.")
+
+
+def _model_name_candidates(model_name: str) -> list[str]:
+    """Return pricing candidates for a model name, most specific first.
+
+    Yields the name as-is, then variants with a leading route prefix
+    (e.g. ``bedrock/``, ``vertex_ai/``) and/or a leading region prefix
+    (e.g. ``us.`` in ``us.anthropic.claude-...``) stripped. These prefixes
+    describe where a model is served, not which model it is, so the stripped
+    forms resolve to the same rate.
+    """
+    candidates = [model_name]
+    for prefix in _MODEL_ROUTE_PREFIXES:
+        if model_name.lower().startswith(prefix):
+            candidates.append(model_name[len(prefix) :])
+            break
+    base = candidates[-1]
+    for prefix in _MODEL_REGION_PREFIXES:
+        if base.lower().startswith(prefix):
+            candidates.append(base[len(prefix) :])
+            break
+
+    seen: set[str] = set()
+    unique: list[str] = []
+    for candidate in candidates:
+        if candidate and candidate not in seen:
+            seen.add(candidate)
+            unique.append(candidate)
+    return unique
 
 
 class TokenCounter:
@@ -61,37 +106,49 @@ def compute_cost_from_tokens(
     model_name: str,
     input_tokens: int = 0,
     output_tokens: int = 0,
+    cache_read_input_tokens: int = 0,
+    cache_creation_input_tokens: int = 0,
 ) -> float | None:
     """
     Compute cost from token counts.
 
     Args:
         model_name: The model name (e.g., "gpt-4", "claude-3-opus")
-        input_tokens: Number of input tokens
+        input_tokens: Number of input tokens (includes any cached tokens)
         output_tokens: Number of output tokens
+        cache_read_input_tokens: Input tokens served from cache (billed at the
+            discounted cache-read rate)
+        cache_creation_input_tokens: Input tokens written to cache (billed at
+            the cache-write rate)
 
     Returns:
-        Cost or None if computation fails
+        Cost, or None if the model is unrecognized or there are no tokens
     """
-    try:
-        if input_tokens == 0 and output_tokens == 0:
-            return None
-
-        # Calculate costs using litellm's cost_per_token
-        prompt_cost, completion_cost = cost_per_token(
-            model=model_name,
-            prompt_tokens=input_tokens,
-            completion_tokens=output_tokens,
-        )
-
-        total_cost = float(prompt_cost) + float(completion_cost)
-        return total_cost
-
-    except Exception as e:
-        logger.warning(
-            f"Error computing cost for model {model_name}: {e}",
-        )
+    if input_tokens == 0 and output_tokens == 0:
         return None
+
+    cache_read_input_tokens = cache_read_input_tokens or 0
+    cache_creation_input_tokens = cache_creation_input_tokens or 0
+
+    last_error: Exception | None = None
+    for candidate in _model_name_candidates(model_name):
+        try:
+            prompt_cost, completion_cost = cost_per_token(
+                model=candidate,
+                prompt_tokens=input_tokens,
+                completion_tokens=output_tokens,
+                cache_read_input_tokens=cache_read_input_tokens,
+                cache_creation_input_tokens=cache_creation_input_tokens,
+            )
+            return float(prompt_cost) + float(completion_cost)
+        except Exception as e:
+            last_error = e
+
+    logger.warning(
+        f"Unable to compute cost for unrecognized model {model_name!r}; "
+        f"cost is unknown and will not be counted: {last_error}",
+    )
+    return None
 
 
 def count_tokens_from_string(
