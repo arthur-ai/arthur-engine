@@ -1506,7 +1506,7 @@ requires-dist = [
     { name = "requests", specifier = "==2.33.0" },
     { name = "s3fs", specifier = "==2025.12.0" },
     { name = "simple-settings", specifier = "==1.2.0" },
-    { name = "snowflake-sqlalchemy", specifier = "==1.10.2" },
+    { name = "snowflake-sqlalchemy", specifier = "==1.11.0" },
     { name = "sqlalchemy", specifier = "==2.0.51" },
     { name = "types-croniter", specifier = "==6.0.0.20250809" },
     { name = "types-psutil", specifier = "==7.0.0.20251116" },
@@ -2477,15 +2477,15 @@ wheels = [
 
 [[package]]
 name = "snowflake-sqlalchemy"
-version = "1.10.2"
+version = "1.11.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "snowflake-connector-python" },
     { name = "sqlalchemy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/eb/9b/f90df69e93a05ed577b563dbb919451323184fea30c1f9898a49b08cb5f2/snowflake_sqlalchemy-1.10.2.tar.gz", hash = "sha256:084c51e38bdf700ce988e807fd7e24455a4e421bee4866574ebe0ba0895ecdd6", size = 204550, upload-time = "2026-06-22T07:48:49.727Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/82/54/f9f7e3701e4b35bcb9fbdc14cdb347133bbe3c5a9e87071649f3934b283d/snowflake_sqlalchemy-1.11.0.tar.gz", hash = "sha256:95866fe499a8ba692f01eb107741050efc553361e1674e3e44ea4a890b4df00c", size = 248059, upload-time = "2026-07-08T08:53:39.248Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d0/4a/cb2fc9fa6831b54d66aac9c0241d4eedaeaa7f1f2d1f8f3c68961e433bf5/snowflake_sqlalchemy-1.10.2-py3-none-any.whl", hash = "sha256:9f29c9be344bcb45a0ec66fc388ef8ee87fd0c185edc7ce8b995f4db756d2baf", size = 102711, upload-time = "2026-06-22T07:48:48.218Z" },
+    { url = "https://files.pythonhosted.org/packages/ea/9a/f8d0165f5d2447a0d7e10dc309c7ea1af6782aa1b357164d25dcb567b196/snowflake_sqlalchemy-1.11.0-py3-none-any.whl", hash = "sha256:f5fad9e86441812ad1f23aef92a2e612d65408338221ae39b9becedb7329a6e2", size = 117058, upload-time = "2026-07-08T08:53:38.053Z" },
 ]
 
 [[package]]
