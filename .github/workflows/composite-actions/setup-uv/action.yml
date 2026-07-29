@@ -19,8 +19,11 @@ runs:
   using: "composite"
   steps:
     - name: "Install uv"
-      shell: bash
-      run: curl -LsSf --retry 5 --retry-delay 2 --retry-all-errors https://astral.sh/uv/0.11.7/install.sh | env UV_INSTALL_DIR=/usr/local/bin sh
+      uses: astral-sh/setup-uv@v5
+      with:
+        version: "0.11.7"
+        enable-cache: true
+        cache-dependency-glob: "${{ inputs.working-directory }}/uv.lock"
     - name: "Install dependencies"
       shell: bash
       env:
