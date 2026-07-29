@@ -18,7 +18,7 @@ dependencies = [
   "pandas==3.0.5",
   "psycopg[binary]==3.2.13",
   "pymysql==1.2.0",
-  "pyodbc==5.2.0",
+  "pyodbc==5.3.0",
   "pyyaml==6.0.3",
   "requests==2.33.0",
   "adlfs==2025.8.0",
