@@ -2,7 +2,6 @@ import AddIcon from "@mui/icons-material/Add";
 import CloseIcon from "@mui/icons-material/Close";
 import InventoryIcon from "@mui/icons-material/Inventory";
 import ShowChartIcon from "@mui/icons-material/ShowChart";
-import SortIcon from "@mui/icons-material/Sort";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import {
@@ -38,7 +37,7 @@ import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useActiveTasksQuery, useArchivedTasksQuery } from "@/hooks/useTasksList";
 import type { PaginationSortMethod, TaskSortField } from "@/lib/api-client/api-client";
 import { queryKeys } from "@/lib/queryKeys";
-import { type InactiveDays, type SortBy, useTaskListStore } from "@/stores/task-list.store";
+import { type InactiveDays, useTaskListStore } from "@/stores/task-list.store";
 
 export const AllTasks: React.FC = () => {
   const navigate = useNavigate();
@@ -48,9 +47,9 @@ export const AllTasks: React.FC = () => {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearchQuery = useDebouncedValue(searchQuery, 300);
-  const { hideSystemTasks, sortBy, inactiveDays, setHideSystemTasks, setSortBy, setInactiveDays } = useTaskListStore();
+  const { hideSystemTasks, inactiveDays, setHideSystemTasks, setInactiveDays } = useTaskListStore();
 
-  const sortField: TaskSortField = sortBy === "updated" ? "updated_at" : "created_at";
+  const sortField: TaskSortField = "created_at";
   const sortDirection: PaginationSortMethod = "desc";
 
   const lastActiveStartTime = useMemo(() => {
@@ -148,19 +147,6 @@ export const AllTasks: React.FC = () => {
   const filterToolbar = (
     <Stack direction="row" spacing={1.5} alignItems="center">
       <Stack direction="row" spacing={0.5} alignItems="center">
-        <SortIcon sx={{ fontSize: 18, color: "text.disabled" }} />
-        <FormControl size="small" variant="standard">
-          <Select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as SortBy)}
-            disableUnderline
-            sx={{ fontSize: "0.875rem", color: "text.secondary" }}
-          >
-            <MenuItem value="updated">Recently updated</MenuItem>
-            <MenuItem value="created">Recently created</MenuItem>
-          </Select>
-        </FormControl>
-
         <FormControl size="small" variant="standard">
           <Select
             value={inactiveDays}
