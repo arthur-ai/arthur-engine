@@ -2067,14 +2067,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@standard-schema/spec@npm:1.0.0":
-  version: 1.0.0
-  resolution: "@standard-schema/spec@npm:1.0.0"
-  checksum: 10c0/a1ab9a8bdc09b5b47aa8365d0e0ec40cc2df6437be02853696a0e377321653b0d3ac6f079a8c67d5ddbe9821025584b1fb71d9cc041a6666a96f1fadf2ece15f
-  languageName: node
-  linkType: hard
-
-"@standard-schema/spec@npm:^1.1.0":
+"@standard-schema/spec@npm:1.1.0, @standard-schema/spec@npm:^1.1.0":
   version: 1.1.0
   resolution: "@standard-schema/spec@npm:1.1.0"
   checksum: 10c0/d90f55acde4b2deb983529c87e8025fa693de1a5e8b49ecc6eb84d1fd96328add0e03d7d551442156c7432fd78165b2c26ff561b970a9a881f046abb78d6a526
@@ -7126,17 +7119,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"nuqs@npm:2.8.9":
-  version: 2.8.9
-  resolution: "nuqs@npm:2.8.9"
+"nuqs@npm:2.9.2":
+  version: 2.9.2
+  resolution: "nuqs@npm:2.9.2"
   dependencies:
-    "@standard-schema/spec": "npm:1.0.0"
+    "@standard-schema/spec": "npm:1.1.0"
   peerDependencies:
     "@remix-run/react": ">=2"
     "@tanstack/react-router": ^1
     next: ">=14.2.0"
     react: ">=18.2.0 || ^19.0.0-0"
-    react-router: ^5 || ^6 || ^7
+    react-router: ^5 || ^6 || ^7 || ^8
     react-router-dom: ^5 || ^6 || ^7
   peerDependenciesMeta:
     "@remix-run/react":
@@ -7149,7 +7142,7 @@ __metadata:
       optional: true
     react-router-dom:
       optional: true
-  checksum: 10c0/1de53ba6cca7af326b17cd6c92501c6cfcd0abbe7e399319b228b07644b24e57bf3bba63fbf1cabaa27f77e40bcf15d5a3792e7767c800161903ef2e09b3ad85
+  checksum: 10c0/8efecd3c865042ec16d26ac2cf087ace01b21ea65f740a13e0ce468a2565f777f30a9fa40f9b0674ba50ea011c0c819f3ce6616a48c3feb4ae1df07dd5e0be2f
   languageName: node
   linkType: hard
 
@@ -9089,7 +9082,7 @@ __metadata:
     mitt: "npm:^3.0.1"
     monaco-editor: "npm:0.56.0"
     notistack: "npm:3.0.2"
-    nuqs: "npm:2.8.9"
+    nuqs: "npm:2.9.2"
     ohash: "npm:2.0.11"
     papaparse: "npm:5.5.4"
     prettier: "npm:3.7.4"
