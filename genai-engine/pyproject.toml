@@ -91,7 +91,7 @@ dev = [
   "types-cachetools>=6.2.0.20251022",
 ]
 performance = [
-  "locust==2.43.3",
+  "locust==2.46.2",
 ]
 linters = [
   "black==26.5.1",
