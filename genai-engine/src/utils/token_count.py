@@ -2,6 +2,7 @@ import logging
 from typing import Any, overload
 
 import tiktoken
+from arthur_common.models.llm_model_providers import ModelProvider
 from litellm import cost_per_token, token_counter
 from pydantic import BaseModel
 
@@ -26,14 +27,9 @@ class TokenCountCost(BaseModel):
 
 # Routing/region prefixes that are deployment metadata, not part of litellm's
 # pricing key. Stripping them lets an otherwise-unrecognized name match a rate.
-_MODEL_ROUTE_PREFIXES = (
-    "bedrock/",
-    "vertex_ai/",
-    "anthropic/",
-    "openai/",
-    "azure/",
-    "gemini/",
-)
+# Route prefixes are the provider names from ModelProvider plus a "/" (e.g.
+# "bedrock/"); region prefixes are not providers, so they stay a literal list.
+_MODEL_ROUTE_PREFIXES = tuple(f"{provider.value}/" for provider in ModelProvider)
 _MODEL_REGION_PREFIXES = ("us.", "eu.", "apac.", "us-gov.")
 
 
