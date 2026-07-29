@@ -2465,6 +2465,11 @@ export interface DatasetVersionRowResponse {
    * @format uuid
    */
   id: string;
+  /**
+   * Trace Id
+   * ID of the trace this row was extracted from, if the row originated from a trace.
+   */
+  trace_id?: string | null;
 }
 
 export type DeactivateApiKeyAuthApiKeysDeactivateApiKeyIdDeleteData = ApiKeyResponse;
@@ -7087,6 +7092,11 @@ export interface NewDatasetVersionRowRequest {
    * Optional ID for the row (used for synthetic data generation).
    */
   id?: string | null;
+  /**
+   * Trace Id
+   * ID of the trace this row was extracted from, if the row originated from a trace.
+   */
+  trace_id?: string | null;
 }
 
 /**
@@ -7675,6 +7685,17 @@ export interface PageConversationBaseResponse {
 
 /** PaginationSortMethod */
 export type PaginationSortMethod = "asc" | "desc";
+
+/**
+ * TaskSortField
+ * Server-side sort column for `/api/v2/tasks/search`.
+ *
+ * `NAME`/`CREATED_AT`/`UPDATED_AT` sort on the corresponding
+ * `tasks` columns. `LAST_ACTIVE` sorts on the most recent trace
+ * activity per task (`MAX(trace_metadata.end_time)`), which is not a
+ * stored task column but computed by joining the trace-metadata table.
+ */
+export type TaskSortField = "name" | "created_at" | "updated_at" | "last_active";
 
 /** PasswordResetRequest */
 export interface PasswordResetRequest {
@@ -10207,6 +10228,10 @@ export interface ResponseValidationRequest {
   response: string;
 }
 
+export type RestoreDatasetVersionApiV2DatasetsDatasetIdVersionsVersionNumberRestorePostData = DatasetVersionResponse;
+
+export type RestoreDatasetVersionApiV2DatasetsDatasetIdVersionsVersionNumberRestorePostError = HTTPValidationError;
+
 export type RotateSecretsApiV1SecretsRotationPostData = any;
 
 /** RuleResponse */
@@ -10490,6 +10515,18 @@ export type SearchTasksApiV2TasksSearchPostError = HTTPValidationError;
 
 export interface SearchTasksApiV2TasksSearchPostParams {
   /**
+   * Last Active End Time
+   * Only return tasks whose last trace activity (max trace end-time) is on or before this UTC time. Tasks with no traces are excluded when this filter is set.
+   * @format date-time
+   */
+  last_active_end_time?: string | null;
+  /**
+   * Last Active Start Time
+   * Only return tasks whose last trace activity (max trace end-time) is on or after this UTC time. Tasks with no traces are excluded when this filter is set.
+   * @format date-time
+   */
+  last_active_start_time?: string | null;
+  /**
    * Page
    * Page number
    * @default 0
@@ -10506,6 +10543,8 @@ export interface SearchTasksApiV2TasksSearchPostParams {
    * @default "desc"
    */
   sort?: PaginationSortMethod;
+  /** Column to sort by (server-side). One of 'name', 'created_at', 'updated_at', 'last_active'. 'last_active' sorts on the most recent trace activity per task. Sort direction is controlled by the 'sort' parameter. When omitted, results keep the default ordering (created_at). */
+  sort_field?: TaskSortField | null;
 }
 
 /** SearchTasksRequest */
@@ -13705,7 +13744,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.719
+ * @version 2.1.729
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
@@ -17054,6 +17093,31 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         RerunContinuousEvalApiV1ContinuousEvalsResultsRunIdRerunPostError
       >({
         path: `/api/v1/continuous_evals/results/${runId}/rerun`,
+        method: "POST",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Reinstate a previous dataset version by copying its rows into a new latest version.
+     *
+     * @tags Datasets
+     * @name RestoreDatasetVersionApiV2DatasetsDatasetIdVersionsVersionNumberRestorePost
+     * @summary Restore Dataset Version
+     * @request POST:/api/v2/datasets/{dataset_id}/versions/{version_number}/restore
+     * @secure
+     */
+    restoreDatasetVersionApiV2DatasetsDatasetIdVersionsVersionNumberRestorePost: (
+      datasetId: string,
+      versionNumber: number,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        RestoreDatasetVersionApiV2DatasetsDatasetIdVersionsVersionNumberRestorePostData,
+        RestoreDatasetVersionApiV2DatasetsDatasetIdVersionsVersionNumberRestorePostError
+      >({
+        path: `/api/v2/datasets/${datasetId}/versions/${versionNumber}/restore`,
         method: "POST",
         secure: true,
         format: "json",

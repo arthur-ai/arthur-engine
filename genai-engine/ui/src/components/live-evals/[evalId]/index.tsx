@@ -31,7 +31,7 @@ import { useQuery } from "@tanstack/react-query";
 import { PaginationState } from "@tanstack/react-table";
 import { MaterialReactTable, useMaterialReactTable } from "material-react-table";
 import { useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams } from "react-router";
 
 import { Details } from "../components/results/components/details";
 import { TestRunDialog } from "../components/TestRunDialog";

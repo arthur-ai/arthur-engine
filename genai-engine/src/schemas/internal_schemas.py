@@ -2621,6 +2621,7 @@ class DatasetVersionRowColumnItem(BaseModel):
 class DatasetVersionRow(BaseModel):
     id: uuid.UUID
     data: list[DatasetVersionRowColumnItem]
+    trace_id: Optional[str] = None
     created_at: datetime
 
     @staticmethod
@@ -2633,6 +2634,7 @@ class DatasetVersionRow(BaseModel):
                 DatasetVersionRowColumnItem(column_name=key, column_value=value)
                 for key, value in db_dataset_version_row.data.items()
             ],
+            trace_id=db_dataset_version_row.trace_id,
             created_at=db_dataset_version_row.created_at,
         )
 
@@ -2745,6 +2747,8 @@ class DatasetVersion(DatasetVersionMetadata):
                             DatasetVersionRowColumnItem._from_request_model(row_item)
                             for row_item in updated_row.data
                         ],
+                        # trace_id is write-once: carry it forward from the existing row
+                        trace_id=existing_row_id_to_row[updated_row.id].trace_id,
                         created_at=existing_row_id_to_row[updated_row.id].created_at,
                     ),
                 )
@@ -2756,6 +2760,7 @@ class DatasetVersion(DatasetVersionMetadata):
                     DatasetVersionRowColumnItem._from_request_model(row_item)
                     for row_item in new_row.data
                 ],
+                trace_id=new_row.trace_id,
                 created_at=curr_time,
             )
             for new_row in new_version.rows_to_add
@@ -2780,6 +2785,31 @@ class DatasetVersion(DatasetVersionMetadata):
             column_names=DatasetVersionMetadata._calculate_column_names(all_rows),
         )
 
+    @staticmethod
+    def _from_existing_version(
+        dataset_id: uuid.UUID,
+        latest_version: "DatabaseDatasetVersion",
+        source_version: "DatabaseDatasetVersion",
+    ) -> "DatasetVersion":
+        """Build a new dataset version whose rows are a full copy of `source_version`.
+        Used to reinstate a previous version non-destructively (UP-4702)."""
+        curr_time = datetime.now()
+        rows = [
+            DatasetVersionRow._from_database_model(db_row)
+            for db_row in source_version.version_rows
+        ]
+        return DatasetVersion(
+            version_number=latest_version.version_number + 1,
+            created_at=curr_time,
+            dataset_id=dataset_id,
+            rows=rows,
+            page=0,
+            page_size=len(rows),
+            total_pages=1,
+            total_count=len(rows),
+            column_names=source_version.column_names,
+        )
+
     def _to_database_model(self) -> DatabaseDatasetVersion:
         if self.page_size != self.total_count:
             raise ValueError(
@@ -2799,6 +2829,7 @@ class DatasetVersion(DatasetVersionMetadata):
                         row_item.column_name: row_item.column_value
                         for row_item in version_row.data
                     },
+                    trace_id=version_row.trace_id,
                     created_at=version_row.created_at,
                 )
                 for version_row in self.rows
@@ -2821,6 +2852,7 @@ class DatasetVersion(DatasetVersionMetadata):
                         )
                         for row_item in row.data
                     ],
+                    trace_id=row.trace_id,
                     created_at=_serialize_datetime(self.created_at),
                 )
                 for row in self.rows

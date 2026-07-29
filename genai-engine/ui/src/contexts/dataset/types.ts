@@ -38,7 +38,7 @@ export interface DatasetState {
   };
   versionDrawerOpen: boolean;
   confirmation: {
-    type: "unsavedNavigation" | "unsavedVersionSwitch" | "unsavedFillColumn" | null;
+    type: "unsavedVersionSwitch" | "unsavedFillColumn" | "restoreVersion" | null;
     targetVersion: number | null;
     targetColumn: string | null;
   };
@@ -71,7 +71,7 @@ export type DatasetAction =
   | { type: "UI/TOGGLE_VERSION_DRAWER"; payload: boolean }
   | {
       type: "UI/SHOW_CONFIRMATION";
-      payload: { type: "unsavedNavigation" | "unsavedVersionSwitch" | "unsavedFillColumn"; targetVersion?: number; targetColumn?: string };
+      payload: { type: "unsavedVersionSwitch" | "unsavedFillColumn" | "restoreVersion"; targetVersion?: number; targetColumn?: string };
     }
   | { type: "UI/HIDE_CONFIRMATION" };
 
@@ -104,6 +104,7 @@ export interface UseDatasetMutationsReturn {
   fillColumn: UseMutationResult<void, Error, { columnName: string; value: string }>;
   applyDefaults: UseMutationResult<void, Error, { columnDefaults: ColumnDefaults }>;
   updateDataset: UseMutationResult<void, Error, DatasetUpdateParams>;
+  restoreVersion: UseMutationResult<void, Error, { versionNumber: number }>;
 }
 
 export interface DatasetContextValue {

@@ -3,7 +3,7 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { Box, IconButton, Stack, Tooltip, Typography } from "@mui/material";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { useCallback, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 
 import { AttributePickerTree } from "./AttributePickerTree";
 import { ContinuousEvalStepper, type PickerState } from "./ContinuousEvalStepper";

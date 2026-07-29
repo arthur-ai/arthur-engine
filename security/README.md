@@ -65,7 +65,9 @@ curl -O https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/sbom/latest/
 - **Daily + on-demand** — `.github/workflows/image-vuln-scan.yml` re-scans all published
   `:latest` images, so newly-disclosed CVEs on already-shipped images are caught and the
   justification reports regenerate without a rebuild. This also covers the `genai-engine-models-*`
-  images (which are rebuilt only when models change).
+  images (which are rebuilt when their HuggingFace models **or** their build inputs —
+  `deployment/model-upload/` Dockerfile, deps, or entrypoint scripts — change; otherwise a
+  version bump re-tags the existing image).
 
 Both call the shared composite action `.github/workflows/composite-actions/vuln-report`.
 

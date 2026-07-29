@@ -2,7 +2,7 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { Box, Button, CircularProgress, Stack, Typography, Link as MuiLink, ButtonGroup } from "@mui/material";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams } from "react-router";
 
 import { StatusBadge } from "../components/status-badge";
 import { useDeleteAgentExperiment } from "../hooks/useDeleteAgentExperiment";

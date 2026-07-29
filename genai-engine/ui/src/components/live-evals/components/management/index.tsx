@@ -20,7 +20,7 @@ import {
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { flexRender, getCoreRowModel, getSortedRowModel, SortingState, useReactTable } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 
 import { createColumns } from "../../data/columns";
 import { continuousEvalsQueryOptions } from "../../hooks/useContinuousEvals";

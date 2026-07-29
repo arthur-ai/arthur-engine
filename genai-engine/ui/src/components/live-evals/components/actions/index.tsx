@@ -11,7 +11,7 @@ import Divider from "@mui/material/Divider";
 import List from "@mui/material/List";
 import Paper from "@mui/material/Paper";
 import { useMemo } from "react";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 
 import { useDeleteContinuousEval } from "../../hooks/useDeleteContinuousEval";
 import { useUpdateContinuousEval } from "../../hooks/useUpdateContinuousEval";

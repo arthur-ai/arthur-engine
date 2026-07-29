@@ -5,7 +5,7 @@ import { CircularProgress } from "@mui/material";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { useSnackbar } from "notistack";
 import { Suspense, useCallback, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 
 import { AttributePickerTree } from "@/components/live-evals/new/AttributePickerTree";
 import { ContinuousEvalStepper, type PickerState } from "@/components/live-evals/new/ContinuousEvalStepper";

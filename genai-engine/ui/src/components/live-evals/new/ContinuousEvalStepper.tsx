@@ -26,7 +26,7 @@ import {
 } from "@mui/material";
 import { useStore } from "@tanstack/react-form";
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import z from "zod";
 
 import { VariableMappingSection } from "../components/variable-mapping";

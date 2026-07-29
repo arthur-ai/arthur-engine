@@ -3,7 +3,7 @@ import { Button, Dialog, DialogActions, DialogContent, DialogTitle, Divider, For
 import { useStore } from "@tanstack/react-form";
 import { useSnackbar } from "notistack";
 import { useId, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import z from "zod";
 
 import { useContinuousEvalVariableMapping } from "../../hooks/useContinuousEvalVariableMapping";

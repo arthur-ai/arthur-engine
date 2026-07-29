@@ -4,13 +4,11 @@ import { useQuery } from "@tanstack/react-query";
 import { Suspense, useCallback, useMemo } from "react";
 
 import type { TimeRange } from "../../constants";
-import { BucketProvider } from "../../context/bucket-context";
 import { TokenCostTooltip, TokenCountTooltip } from "../../data/common";
 import { createSessionLevelColumns } from "../../data/create-session-level-columns";
 import { createTraceLevelColumns } from "../../data/create-trace-level-columns";
 import { useDrawerTarget } from "../../hooks/useDrawerTarget";
 import { FilterStoreProvider, useFilterStore } from "../../stores/filter.store";
-import { buildThresholdsFromSample } from "../../utils/duration";
 import { filterFields } from "../filtering/fields";
 import { FilterRow } from "../filtering/FilterRow";
 import { IncomingFilter } from "../filtering/mapper";
@@ -161,8 +159,6 @@ const UserTracesTable = ({ ids, taskId, onRowClick }: UserTableProps) => {
     [timezone, use24Hour]
   );
 
-  const thresholds = useMemo(() => buildThresholdsFromSample(traces.data?.traces.map((trace) => trace.duration_ms) ?? []), [traces.data?.traces]);
-
   const setFilters = useFilterStore((state) => state.setFilters);
 
   const handleFiltersChange = useCallback(
@@ -199,19 +195,15 @@ const UserTracesTable = ({ ids, taskId, onRowClick }: UserTableProps) => {
         onTrack={trackDynamic}
       />
       {traces.data?.count ? (
-        <>
-          <BucketProvider thresholds={thresholds}>
-            <TracesTable
-              data={traces.data?.traces ?? (DEFAULT_DATA as TraceMetadataResponse[])}
-              columns={columns}
-              rowCount={traces.data?.count ?? 0}
-              pagination={pagination}
-              onPaginationChange={props.onPaginationChange}
-              isLoading={traces.isLoading}
-              onRowClick={handleRowClick}
-            />
-          </BucketProvider>
-        </>
+        <TracesTable
+          data={traces.data?.traces ?? (DEFAULT_DATA as TraceMetadataResponse[])}
+          columns={columns}
+          rowCount={traces.data?.count ?? 0}
+          pagination={pagination}
+          onPaginationChange={props.onPaginationChange}
+          isLoading={traces.isLoading}
+          onRowClick={handleRowClick}
+        />
       ) : (
         <TracesEmptyState title="No traces found">
           <Typography variant="body1" color="text.secondary">

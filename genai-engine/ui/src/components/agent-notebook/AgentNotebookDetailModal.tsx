@@ -20,7 +20,7 @@ import TableRow from "@mui/material/TableRow";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import React, { useEffect, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router";
 
 import { useAgenticNotebook } from "./hooks/useAgenticNotebook";
 import { useUpdateAgenticNotebook } from "./hooks/useUpdateAgenticNotebook";

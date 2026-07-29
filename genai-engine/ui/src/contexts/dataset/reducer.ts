@@ -30,8 +30,7 @@ function transformRowsForNewColumns(rows: DatasetVersionRowResponse[], oldColumn
     });
 
     return {
-      id: row.id,
-      created_at: row.created_at,
+      ...row,
       data: result,
     };
   });
@@ -110,7 +109,9 @@ export function datasetReducer(state: DatasetState, action: DatasetAction): Data
 
     case "DATA/UPDATE_ROW": {
       const { id, data: rowData } = action.payload;
-      const updatedRow = createRowFromData(state.columns, rowData, id);
+      const existingRow = state.rows.find((row) => row.id === id);
+      // trace_id is server-managed and write-once; carry it through client-side edits
+      const updatedRow = { ...createRowFromData(state.columns, rowData, id), trace_id: existingRow?.trace_id };
 
       const isNewRow = state.pendingChanges.added.some((r) => r.id === id);
 

@@ -93,6 +93,7 @@ def build_bulk_add_rows(
                 )
                 for column in columns
             ],
+            trace_id=trace_id,
         )
         rows.append(row)
         results.append(BulkAddTraceResult(trace_id=trace_id, success=True))
