@@ -1,6 +1,6 @@
 [project]
 name = "ml-engine"
-version = "2.1.746"
+version = "2.1.747"
 description = ""
 authors = [{ name = "Arthur", email = "engineering@arthur.ai" }]
 license = "MIT"
