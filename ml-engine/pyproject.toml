@@ -16,7 +16,7 @@ dependencies = [
   "google-cloud-trace>=1.13.0,<2",
   "google-cloud-aiplatform>=1.68.0,<2",
   "pandas==3.0.5",
-  "psycopg[binary]==3.2.13",
+  "psycopg[binary]==3.3.4",
   "pymysql==1.2.0",
   "pyodbc==5.3.0",
   "pyyaml==6.0.3",
