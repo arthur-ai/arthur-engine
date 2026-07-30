@@ -14,7 +14,7 @@ from pydantic import BaseModel, Field
 
 from schemas.internal_schemas import MetricResult
 from schemas.metric_schemas import MetricScoreDetails, ToolSelectionCorrectnessMetric
-from scorer.llm_client import get_llm_executor
+from scorer.llm_client import extract_chain_model_name, get_llm_executor
 from scorer.metrics.tool_selection.prompt_templates import (
     TOOL_SELECTION_NON_STRUCTURED_PROMPT_TEMPLATE,
     TOOL_SELECTION_STRUCTURED_PROMPT_TEMPLATE,
@@ -163,9 +163,10 @@ class ToolSelectionCorrectnessScorer(MetricScorer):
     def prompt_llm(
         f: Callable[[], Any],
         operation_name: str,
+        model_name: str | None = None,
     ) -> tuple[Any, LLMTokenConsumption]:
         """Execute chain with token tracking, similar to relevance scorer"""
-        return get_llm_executor().execute(f, operation_name)
+        return get_llm_executor().execute(f, operation_name, model_name=model_name)
 
     def invoke_chain(
         self,
@@ -174,6 +175,8 @@ class ToolSelectionCorrectnessScorer(MetricScorer):
         context: list[dict[str, Any]],
     ) -> tuple[dict[str, str | int], dict[str, int]]:
         tool_selection_chain, tool_usage_chain = self._get_chains()
+        tool_selection_model_name = extract_chain_model_name(tool_selection_chain)
+        tool_usage_model_name = extract_chain_model_name(tool_usage_chain)
 
         # Create lambda for tool selection chain
         tool_selection_call = lambda: tool_selection_chain.invoke(
@@ -208,6 +211,7 @@ class ToolSelectionCorrectnessScorer(MetricScorer):
             tool_selection_response, selection_tokens = self.prompt_llm(
                 tool_selection_call,
                 "Tool Selection Check",
+                model_name=tool_selection_model_name,
             )
             # Convert Pydantic model to dict if using structured outputs
             if isinstance(tool_selection_response, ToolSelectionResponseSchema):
@@ -225,6 +229,7 @@ class ToolSelectionCorrectnessScorer(MetricScorer):
                 tool_usage_response, usage_tokens = self.prompt_llm(
                     tool_usage_call,
                     "Tool Usage Check",
+                    model_name=tool_usage_model_name,
                 )
                 # Convert Pydantic model to dict if using structured outputs
                 if isinstance(tool_usage_response, ToolUsageResponseSchema):
