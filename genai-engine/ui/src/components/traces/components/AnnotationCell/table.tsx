@@ -22,7 +22,7 @@ import {
 } from "@mui/material";
 import { createColumnHelper, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import { useMemo, useRef } from "react";
-import { NavigateFunction, useNavigate } from "react-router-dom";
+import { NavigateFunction, useNavigate } from "react-router";
 
 import { Annotation, isContinuousEvalAnnotation } from "./schema";
 

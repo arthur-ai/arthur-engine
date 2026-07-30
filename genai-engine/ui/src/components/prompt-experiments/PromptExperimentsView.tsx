@@ -19,7 +19,7 @@ import {
 import { alpha } from "@mui/material/styles";
 import { parseAsStringEnum, useQueryState } from "nuqs";
 import React, { useState, useEffect, useRef } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router";
 
 import { CreateExperimentModal } from "./create-experiment-modal";
 import { PromptExperimentsEmptyState } from "./PromptExperimentsEmptyState";

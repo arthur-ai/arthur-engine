@@ -1,6 +1,6 @@
 [project]
 name = "arthur-genai-engine"
-version = "2.1.738"
+version = "2.1.752"
 description = ""
 authors = [{ name = "Arthur", email = "engineering@arthur.ai" }]
 readme = "README.md"
@@ -18,7 +18,7 @@ dependencies = [
   "python-dotenv==1.2.2",
   "psycopg2-binary==2.9.12",
   "sqlalchemy==2.0.51",
-  "pgvector==0.4.2",
+  "pgvector==0.5.0",
   "python-multipart==0.0.32",
   "pypdf==6.14.2",
   "httpx==0.28.1",
@@ -41,13 +41,13 @@ dependencies = [
   "more-itertools==10.8.0",
   "presidio-analyzer==2.2.364",
   "presidio-anonymizer==2.2.364",
-  "python-keycloak==5.8.1",
+  "python-keycloak==5.12.0",
   "bcrypt==4.3.0",
   "cachetools==6.2.6",
   "sentence-transformers==5.6.1",
   "en-core-web-lg @ https://github.com/explosion/spacy-models/releases/download/en_core_web_lg-3.8.0/en_core_web_lg-3.8.0-py3-none-any.whl",
-  "torch==2.9.1 ; sys_platform == 'darwin'",
-  "torch==2.9.1+cpu ; sys_platform == 'linux' or sys_platform == 'win32'",
+  "torch==2.13.0 ; sys_platform == 'darwin'",
+  "torch==2.13.0+cpu ; sys_platform == 'linux' or sys_platform == 'win32'",
   "commonmark==0.9.2",
   "gunicorn>=23.0.0,<24",
   "fastapi-pagination==0.15.15",
@@ -67,7 +67,7 @@ dependencies = [
   "openinference-semantic-conventions>=0.1.12,<0.2",
   "litellm==1.89.3",
   "jinja2>=3.1.6,<4",
-  "python-benedict>=0.35.0,<0.36",
+  "python-benedict>=0.38,<0.39",
   "weaviate-client>=4.17.0,<5",
   "arthur-common==2.4.67",
   "google-auth>=2.48.0,<3",
@@ -84,14 +84,14 @@ routes_security_check = "routes_security_check:main"
 
 [dependency-groups]
 dev = [
-  "pytest==9.0.3",
+  "pytest==9.1.1",
   "pytest-asyncio==1.4.0",
   "pytest-cov==6.3.0",
-  "pre-commit==4.5.1",
+  "pre-commit==4.6.1",
   "types-cachetools>=6.2.0.20251022",
 ]
 performance = [
-  "locust==2.43.3",
+  "locust==2.46.2",
 ]
 linters = [
   "black==26.5.1",
@@ -103,13 +103,11 @@ linters = [
 [tool.uv]
 exclude-newer = "3 days"
 exclude-newer-package = { torch = false, arthur-common = false, arthur-client = false }
-# Security: pin transitive hf-xet (its wheel vendors Rust crates) to >=1.5.1, which bundles
-# rustls-webpki 0.103.13 — fixing RUSTSEC-2026-0104 (HIGH: DoS panic in CRL parsing).
-# Accepted exception: hf-xet 1.5.1 still vendors quinn-proto 0.11.14 (RUSTSEC-2026-0185, HIGH:
-# remote memory exhaustion). No hf-xet release fixes it as of 2026-06-25 (xet-core main also pins
-# 0.11.14). Low risk here — hf-xet's QUIC is a client to HuggingFace's TLS-authenticated CAS
-# servers and the DoS needs a malicious QUIC peer. Re-bump hf-xet once upstream lands the fix.
-constraint-dependencies = ["hf-xet>=1.5.1"]
+# Security: pin transitive hf-xet (its wheel vendors Rust crates) to >=1.5.2, which bundles
+# rustls-webpki 0.103.13 (RUSTSEC-2026-0104, HIGH: DoS panic in CRL parsing) and quinn-proto
+# 0.11.15 (RUSTSEC-2026-0185 / CVE-2026-25800, HIGH: remote memory exhaustion). Both are fixed
+# as of hf-xet 1.5.2 (xet-core v1.5.2 bumped the vendored quinn-proto 0.11.14 -> 0.11.15).
+constraint-dependencies = ["hf-xet>=1.5.2"]
 
 [[tool.uv.index]]
 name = "PyPI"

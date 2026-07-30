@@ -6,7 +6,7 @@ import { Stack } from "@mui/material";
 import { Link } from "@mui/material";
 import { useField, useStore } from "@tanstack/react-form";
 import { useEffect, useRef } from "react";
-import { Link as RouterLink } from "react-router-dom";
+import { Link as RouterLink } from "react-router";
 
 import { withForm } from "../filtering/hooks/form";
 

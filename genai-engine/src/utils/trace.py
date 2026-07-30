@@ -470,6 +470,16 @@ def extract_token_cost_from_span(
     )
     total_tokens = get_nested_value(attributes, SpanAttributes.LLM_TOKEN_COUNT_TOTAL)
 
+    # Extract cache token counts (subset of prompt tokens) for discounted pricing
+    cache_read_tokens = get_nested_value(
+        attributes,
+        SpanAttributes.LLM_TOKEN_COUNT_PROMPT_DETAILS_CACHE_READ,
+    )
+    cache_creation_tokens = get_nested_value(
+        attributes,
+        SpanAttributes.LLM_TOKEN_COUNT_PROMPT_DETAILS_CACHE_WRITE,
+    )
+
     # Extract costs from attributes
     prompt_cost = get_nested_value(attributes, SpanAttributes.LLM_COST_PROMPT)
     completion_cost = get_nested_value(attributes, SpanAttributes.LLM_COST_COMPLETION)
@@ -508,9 +518,18 @@ def extract_token_cost_from_span(
         else:
             completion_tokens = 0
 
+    cost_unknown = False
+
     # Calculate prompt cost if missing (requires model_name and prompt_tokens)
     if prompt_cost is None and (model_name and prompt_tokens is not None):
-        prompt_cost = compute_cost_from_tokens(model_name, input_tokens=prompt_tokens)
+        prompt_cost = compute_cost_from_tokens(
+            model_name,
+            input_tokens=prompt_tokens,
+            cache_read_input_tokens=cache_read_tokens or 0,
+            cache_creation_input_tokens=cache_creation_tokens or 0,
+        )
+        if prompt_cost is None and prompt_tokens:
+            cost_unknown = True
 
     # Calculate completion cost if missing (requires model_name and completion_tokens)
     if completion_cost is None and (model_name and completion_tokens is not None):
@@ -518,6 +537,8 @@ def extract_token_cost_from_span(
             model_name,
             output_tokens=completion_tokens,
         )
+        if completion_cost is None and completion_tokens:
+            cost_unknown = True
 
     # Calculate total tokens: always recalculate if we computed any tokens, or if total is missing
     # This ensures consistency when we estimate missing values
@@ -536,6 +557,7 @@ def extract_token_cost_from_span(
         prompt_token_cost=prompt_cost,
         completion_token_cost=completion_cost,
         total_token_cost=total_cost,
+        cost_unknown=cost_unknown,
     )
 
 

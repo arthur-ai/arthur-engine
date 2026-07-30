@@ -7,7 +7,7 @@ import CircularProgress from "@mui/material/CircularProgress";
 import TablePagination from "@mui/material/TablePagination";
 import Typography from "@mui/material/Typography";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router";
 
 import DeleteTransformDialog from "./DeleteTransformDialog";
 import TransformFullScreenView from "./fullscreen/TransformFullScreenView";

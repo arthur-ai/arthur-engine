@@ -18,7 +18,7 @@ import { useStore } from "@tanstack/react-form";
 import { AxiosError } from "axios";
 import { useSnackbar } from "notistack";
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 
 import { flattenSpans } from "../../utils/spans";
 import { useAppForm } from "../filtering/hooks/form";

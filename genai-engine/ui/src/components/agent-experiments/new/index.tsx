@@ -2,7 +2,7 @@ import { useAppForm, withForm } from "@arthur/shared-components";
 import { Box, Button, CircularProgress, Divider, Stack, TextField, Typography } from "@mui/material";
 import { useSnackbar } from "notistack";
 import { useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 
 import { extractVariablesFromText } from "../hooks/useExtractVariables";
 

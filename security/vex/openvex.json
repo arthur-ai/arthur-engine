@@ -3,9 +3,9 @@
   "@id": "https://arthur.ai/vex/arthur-engine",
   "author": "Arthur Security <security@arthur.ai>",
   "role": "Document Creator",
-  "timestamp": "2026-06-27T00:00:00.000000000-00:00",
-  "version": 4,
-  "_comment": "Scope: HIGH/CRITICAL CVEs a container-image re-scan still reports for the genai-engine, ml-engine and genai-engine-models-* images, but which are remediated in the shipped binary (the apt-upgraded library is copied over the distroless base, whose stale dpkg metadata the scanner reads) or are not in the execute path. Fully remediated CVEs are intentionally excluded: python3.11 is removed from every image (its dpkg metadata deleted) and litellm/langsmith/msgpack are upgraded past their advisories. See genai-engine/dockerfile, ml-engine/Dockerfile, deployment/model-upload/Dockerfile and PR #1851.",
+  "timestamp": "2026-07-28T00:00:00.000000000-00:00",
+  "version": 6,
+  "_comment": "Scope: HIGH/CRITICAL CVEs a container-image re-scan still reports for the genai-engine, ml-engine and genai-engine-models-* images, but which are remediated in the shipped binary (the apt-upgraded library is copied over the distroless base, whose stale dpkg metadata the scanner reads) or are not in the execute path. Fully remediated CVEs are intentionally excluded: python3.11 is removed from every image (its dpkg metadata deleted), litellm/langsmith/msgpack are upgraded past their advisories, nltk is upgraded to 3.10.0 (fixes CVE-2026-54293, GHSA-p4gq-832x-fm9v), uv is upgraded 0.11.25 -> 0.11.26 (bundles quinn-proto 0.11.15, fixing GHSA-4w2j-m93h-cj5j / RUSTSEC-2026-0185), and pyasn1 is upgraded to 0.6.4 (fixes CVE-2026-59885/59886) in deployment/model-upload/uv.lock and genai-engine/uv.lock — the models-gcs 0.6.3 finding is a stale pre-bump :latest artifact that clears on rebuild. See genai-engine/dockerfile, ml-engine/Dockerfile, deployment/model-upload/Dockerfile and PR #1851.",
   "statements": [
     {
       "_comment": "libssl3: the shipped libssl.so.3/libcrypto.so.3 is OpenSSL 3.0.20 (deb 3.0.20-1~deb12u2), copied from the apt-upgraded *-slim-bookworm build stage over the distroless base. Scanners read stale dpkg metadata (3.0.19-1~deb12u2) inherited from the distroless base. The shipped binary contains the fix. The genai-engine-models-s3/-fs images do the same via deployment/model-upload/Dockerfile.",
@@ -153,17 +153,6 @@
       "status": "not_affected",
       "justification": "vulnerable_code_not_in_execute_path",
       "impact_statement": "The system libexpat1 is not loaded by the application: CPython 3.12/3.13 bundle their own expat statically and do not link /usr/lib/*/libexpat.so.1, and the only base-image consumer (Python 3.11) has been removed. The flaw is a denial-of-service (inefficient algorithmic complexity, CWE-407, CVSS ~2.9) reachable only by parsing attacker-controlled XML through this system library."
-    },
-    {
-      "_comment": "nltk: CVE-2026-54293 is a path-traversal bypass in nltk.data.load() via URL-encoded input, with no upstream fix available (affects nltk <= 3.9.4). genai-engine only imports PunktSentenceTokenizer (src/utils/claim_parser.py:7) and instantiates it once with no resource path (SENTENCE_TOKENIZER = PunktSentenceTokenizer()); nltk.data.load() is never called and no untrusted path reaches it. nltk is a genai-engine-only dependency (absent from ml-engine).",
-      "vulnerability": { "name": "CVE-2026-54293" },
-      "products": [
-        { "@id": "pkg:oci/genai-engine-cpu", "subcomponents": [ { "@id": "pkg:pypi/nltk" } ] },
-        { "@id": "pkg:oci/genai-engine-gpu", "subcomponents": [ { "@id": "pkg:pypi/nltk" } ] }
-      ],
-      "status": "not_affected",
-      "justification": "vulnerable_code_not_in_execute_path",
-      "impact_statement": "The vulnerable function nltk.data.load() is never invoked. The sole nltk usage is PunktSentenceTokenizer, imported and instantiated with no resource path, so no attacker-controlled path can reach the path-traversal sink."
     },
     {
       "_comment": "zlib1g: The overflow is in MiniZip (zlib contrib/minizip), which upstream states is not a supported part of zlib. Debian's zlib1g shared library does not build or export the MiniZip code (the vulnerable zipOpenNewFileInZip4_64 symbol is absent); Arthur links only the core inflate/deflate API. Owner: security@arthur.ai. Review by: 2026-12-27.",
@@ -423,6 +412,127 @@
       "justification": "vulnerable_code_not_in_execute_path",
       "impact_statement": "Flagged against the system Python 3.11 deb packages. The model-upload job runs on Python 3.12 from /usr/local (deployment/model-upload/Dockerfile); the inherited system 3.11 is removed and never executed. A Debian fix exists but is moot — the package is removed, not upgraded, in these images.",
       "timestamp": "2026-06-27T00:00:00Z"
+    },
+    {
+      "_comment": "krb5: the shipped libgssapi-krb5-2/libk5crypto3/libkrb5-3/libkrb5support0 are krb5 1.20.1-2+deb12u5 (the bookworm/bookworm-security fix), copied from the apt-upgraded *-slim-bookworm build stage over the distroless base. Scanners read stale dpkg metadata (1.20.1-2+deb12u4) inherited from the distroless base; the shipped binary contains the fix. Not flagged on genai-engine-models-gcs, which apt-upgrades the slim runtime in place (fresh metadata). CVE-2026-40355 is a NULL-pointer-dereference DoS in the GSS-API NegoEx acceptor (gss_accept_sec_context).",
+      "vulnerability": { "name": "CVE-2026-40355" },
+      "products": [
+        { "@id": "pkg:oci/genai-engine-cpu", "subcomponents": [ { "@id": "pkg:deb/debian/libgssapi-krb5-2" }, { "@id": "pkg:deb/debian/libk5crypto3" }, { "@id": "pkg:deb/debian/libkrb5-3" }, { "@id": "pkg:deb/debian/libkrb5support0" } ] },
+        { "@id": "pkg:oci/genai-engine-gpu", "subcomponents": [ { "@id": "pkg:deb/debian/libgssapi-krb5-2" }, { "@id": "pkg:deb/debian/libk5crypto3" }, { "@id": "pkg:deb/debian/libkrb5-3" }, { "@id": "pkg:deb/debian/libkrb5support0" } ] },
+        { "@id": "pkg:oci/ml-engine", "subcomponents": [ { "@id": "pkg:deb/debian/libgssapi-krb5-2" }, { "@id": "pkg:deb/debian/libk5crypto3" }, { "@id": "pkg:deb/debian/libkrb5-3" }, { "@id": "pkg:deb/debian/libkrb5support0" } ] },
+        { "@id": "pkg:oci/genai-engine-models-s3", "subcomponents": [ { "@id": "pkg:deb/debian/libgssapi-krb5-2" }, { "@id": "pkg:deb/debian/libk5crypto3" }, { "@id": "pkg:deb/debian/libkrb5-3" }, { "@id": "pkg:deb/debian/libkrb5support0" } ] },
+        { "@id": "pkg:oci/genai-engine-models-fs", "subcomponents": [ { "@id": "pkg:deb/debian/libgssapi-krb5-2" }, { "@id": "pkg:deb/debian/libk5crypto3" }, { "@id": "pkg:deb/debian/libkrb5-3" }, { "@id": "pkg:deb/debian/libkrb5support0" } ] }
+      ],
+      "status": "fixed"
+    },
+    {
+      "_comment": "krb5 — shipped binaries are krb5 1.20.1-2+deb12u5 (bookworm fix); reported version is stale distroless dpkg metadata (1.20.1-2+deb12u4). CVE-2026-40356 is an integer-underflow / out-of-bounds-read DoS in the GSS-API NegoEx acceptor (gss_accept_sec_context).",
+      "vulnerability": { "name": "CVE-2026-40356" },
+      "products": [
+        { "@id": "pkg:oci/genai-engine-cpu", "subcomponents": [ { "@id": "pkg:deb/debian/libgssapi-krb5-2" }, { "@id": "pkg:deb/debian/libk5crypto3" }, { "@id": "pkg:deb/debian/libkrb5-3" }, { "@id": "pkg:deb/debian/libkrb5support0" } ] },
+        { "@id": "pkg:oci/genai-engine-gpu", "subcomponents": [ { "@id": "pkg:deb/debian/libgssapi-krb5-2" }, { "@id": "pkg:deb/debian/libk5crypto3" }, { "@id": "pkg:deb/debian/libkrb5-3" }, { "@id": "pkg:deb/debian/libkrb5support0" } ] },
+        { "@id": "pkg:oci/ml-engine", "subcomponents": [ { "@id": "pkg:deb/debian/libgssapi-krb5-2" }, { "@id": "pkg:deb/debian/libk5crypto3" }, { "@id": "pkg:deb/debian/libkrb5-3" }, { "@id": "pkg:deb/debian/libkrb5support0" } ] },
+        { "@id": "pkg:oci/genai-engine-models-s3", "subcomponents": [ { "@id": "pkg:deb/debian/libgssapi-krb5-2" }, { "@id": "pkg:deb/debian/libk5crypto3" }, { "@id": "pkg:deb/debian/libkrb5-3" }, { "@id": "pkg:deb/debian/libkrb5support0" } ] },
+        { "@id": "pkg:oci/genai-engine-models-fs", "subcomponents": [ { "@id": "pkg:deb/debian/libgssapi-krb5-2" }, { "@id": "pkg:deb/debian/libk5crypto3" }, { "@id": "pkg:deb/debian/libkrb5-3" }, { "@id": "pkg:deb/debian/libkrb5support0" } ] }
+      ],
+      "status": "fixed"
+    },
+    {
+      "_comment": "libexpat1: CVE-2026-56131 is a use-after-free reachable only through an XML_ResumeParser suspend/resume flow on a policy violation; no Debian bookworm fix is available (bookworm/bookworm-security ship 2.5.0-1+deb12u2, still vulnerable; fixed upstream in expat 2.8.2, only in sid). The system libexpat1 is not loaded by the application: CPython 3.12/3.13 bundle their own expat statically and do not link /usr/lib/*/libexpat.so.1, and the only base-image consumer (Python 3.11) has been removed. The engines expose JSON/HTTP APIs and never parse attacker-controlled XML through the system libexpat. Owner: security@arthur.ai. Review by: 2027-01-28.",
+      "vulnerability": { "name": "CVE-2026-56131" },
+      "products": [
+        { "@id": "pkg:oci/genai-engine-cpu", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] },
+        { "@id": "pkg:oci/genai-engine-gpu", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] },
+        { "@id": "pkg:oci/ml-engine", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] },
+        { "@id": "pkg:oci/genai-engine-models-s3", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] },
+        { "@id": "pkg:oci/genai-engine-models-fs", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] },
+        { "@id": "pkg:oci/genai-engine-models-gcs", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_in_execute_path",
+      "impact_statement": "CVE-2026-56131 (use-after-free via XML_ResumeParser in libexpat < 2.8.2) is reachable only by parsing attacker-controlled XML through the system libexpat1. That library is not loaded by the application: CPython 3.12/3.13 bundle their own expat statically and do not link /usr/lib/*/libexpat.so.1, and the only base-image consumer (Python 3.11) has been removed. No Debian bookworm fix is available yet (fixed upstream in expat 2.8.2).",
+      "timestamp": "2026-07-28T00:00:00Z"
+    },
+    {
+      "_comment": "libexpat1: CVE-2026-56407 is an integer overflow (CWE-190) in doProlog/storeEntityValue; no Debian bookworm fix is available (fixed upstream in expat 2.8.2, only in sid). The system libexpat1 is not loaded by the application (CPython bundles expat statically; the only base-image consumer, Python 3.11, has been removed) and the engines never parse attacker-controlled XML through it. DoS-class. Owner: security@arthur.ai. Review by: 2027-01-28.",
+      "vulnerability": { "name": "CVE-2026-56407" },
+      "products": [
+        { "@id": "pkg:oci/genai-engine-cpu", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] },
+        { "@id": "pkg:oci/genai-engine-gpu", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] },
+        { "@id": "pkg:oci/ml-engine", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] },
+        { "@id": "pkg:oci/genai-engine-models-s3", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] },
+        { "@id": "pkg:oci/genai-engine-models-fs", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] },
+        { "@id": "pkg:oci/genai-engine-models-gcs", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_in_execute_path",
+      "impact_statement": "CVE-2026-56407 (integer overflow in doProlog/storeEntityValue in libexpat < 2.8.2, DoS-class) is reachable only by parsing attacker-controlled XML through the system libexpat1, which the application does not load (CPython bundles expat statically; the base-image Python 3.11 consumer is removed). No Debian bookworm fix is available yet (fixed upstream in expat 2.8.2).",
+      "timestamp": "2026-07-28T00:00:00Z"
+    },
+    {
+      "_comment": "libexpat1: CVE-2026-56408 is an integer overflow (CWE-190) in copyString; no Debian bookworm fix is available (fixed upstream in expat 2.8.2, only in sid). The system libexpat1 is not loaded by the application (CPython bundles expat statically; the only base-image consumer, Python 3.11, has been removed) and the engines never parse attacker-controlled XML through it. DoS-class. Owner: security@arthur.ai. Review by: 2027-01-28.",
+      "vulnerability": { "name": "CVE-2026-56408" },
+      "products": [
+        { "@id": "pkg:oci/genai-engine-cpu", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] },
+        { "@id": "pkg:oci/genai-engine-gpu", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] },
+        { "@id": "pkg:oci/ml-engine", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] },
+        { "@id": "pkg:oci/genai-engine-models-s3", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] },
+        { "@id": "pkg:oci/genai-engine-models-fs", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] },
+        { "@id": "pkg:oci/genai-engine-models-gcs", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_in_execute_path",
+      "impact_statement": "CVE-2026-56408 (integer overflow in copyString in libexpat < 2.8.2, DoS-class) is reachable only by parsing attacker-controlled XML through the system libexpat1, which the application does not load (CPython bundles expat statically; the base-image Python 3.11 consumer is removed). No Debian bookworm fix is available yet (fixed upstream in expat 2.8.2).",
+      "timestamp": "2026-07-28T00:00:00Z"
+    },
+    {
+      "_comment": "util-linux (libblkid1 and sibling packages): CVE-2026-53615 is an integer overflow in libblkid's DOS/MBR partition parser (partitions/dos.c, parse_dos_extended); no Debian bookworm fix is available (bookworm ships 2.38.1-5+deb12u3, still vulnerable; Debian bug #1140197). Triggering requires libblkid to probe an attacker-controlled block device / disk image / partition table. These images never probe disks or mount untrusted media — the engines are network services and the model-upload job only downloads model files and writes to cloud storage / a mounted volume. Subcomponents are name-only so the statement matches whichever util-linux binary packages a given image ships (distroless images carry only libuuid1; the slim models-gcs runtime carries the full set). Owner: security@arthur.ai. Review by: 2027-01-28.",
+      "vulnerability": { "name": "CVE-2026-53615" },
+      "products": [
+        { "@id": "pkg:oci/genai-engine-cpu", "subcomponents": [ { "@id": "pkg:deb/debian/libblkid1" }, { "@id": "pkg:deb/debian/libmount1" }, { "@id": "pkg:deb/debian/libsmartcols1" }, { "@id": "pkg:deb/debian/libuuid1" }, { "@id": "pkg:deb/debian/bsdutils" }, { "@id": "pkg:deb/debian/mount" }, { "@id": "pkg:deb/debian/util-linux" }, { "@id": "pkg:deb/debian/util-linux-extra" } ] },
+        { "@id": "pkg:oci/genai-engine-gpu", "subcomponents": [ { "@id": "pkg:deb/debian/libblkid1" }, { "@id": "pkg:deb/debian/libmount1" }, { "@id": "pkg:deb/debian/libsmartcols1" }, { "@id": "pkg:deb/debian/libuuid1" }, { "@id": "pkg:deb/debian/bsdutils" }, { "@id": "pkg:deb/debian/mount" }, { "@id": "pkg:deb/debian/util-linux" }, { "@id": "pkg:deb/debian/util-linux-extra" } ] },
+        { "@id": "pkg:oci/ml-engine", "subcomponents": [ { "@id": "pkg:deb/debian/libblkid1" }, { "@id": "pkg:deb/debian/libmount1" }, { "@id": "pkg:deb/debian/libsmartcols1" }, { "@id": "pkg:deb/debian/libuuid1" }, { "@id": "pkg:deb/debian/bsdutils" }, { "@id": "pkg:deb/debian/mount" }, { "@id": "pkg:deb/debian/util-linux" }, { "@id": "pkg:deb/debian/util-linux-extra" } ] },
+        { "@id": "pkg:oci/genai-engine-models-s3", "subcomponents": [ { "@id": "pkg:deb/debian/libblkid1" }, { "@id": "pkg:deb/debian/libmount1" }, { "@id": "pkg:deb/debian/libsmartcols1" }, { "@id": "pkg:deb/debian/libuuid1" }, { "@id": "pkg:deb/debian/bsdutils" }, { "@id": "pkg:deb/debian/mount" }, { "@id": "pkg:deb/debian/util-linux" }, { "@id": "pkg:deb/debian/util-linux-extra" } ] },
+        { "@id": "pkg:oci/genai-engine-models-fs", "subcomponents": [ { "@id": "pkg:deb/debian/libblkid1" }, { "@id": "pkg:deb/debian/libmount1" }, { "@id": "pkg:deb/debian/libsmartcols1" }, { "@id": "pkg:deb/debian/libuuid1" }, { "@id": "pkg:deb/debian/bsdutils" }, { "@id": "pkg:deb/debian/mount" }, { "@id": "pkg:deb/debian/util-linux" }, { "@id": "pkg:deb/debian/util-linux-extra" } ] },
+        { "@id": "pkg:oci/genai-engine-models-gcs", "subcomponents": [ { "@id": "pkg:deb/debian/libblkid1" }, { "@id": "pkg:deb/debian/libmount1" }, { "@id": "pkg:deb/debian/libsmartcols1" }, { "@id": "pkg:deb/debian/libuuid1" }, { "@id": "pkg:deb/debian/bsdutils" }, { "@id": "pkg:deb/debian/mount" }, { "@id": "pkg:deb/debian/util-linux" }, { "@id": "pkg:deb/debian/util-linux-extra" } ] }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_in_execute_path",
+      "impact_statement": "CVE-2026-53615 is an integer overflow in libblkid's DOS/MBR partition-table parser (partitions/dos.c). It is reachable only when libblkid probes an attacker-controlled block device, disk image, or partition table. These images never probe disks or mount untrusted media: the engines are network services and the model-upload job only downloads model files and writes them to cloud storage / a mounted volume. No Debian bookworm fix is available yet.",
+      "timestamp": "2026-07-28T00:00:00Z"
+    },
+    {
+      "_comment": "libacl1: CVE-2026-54369 is a symlink-traversal privilege escalation in libacl's pathname-based functions (acl_get_file/acl_set_file/acl_extended_file/acl_delete_def_file follow symlinks); no Debian bookworm fix is available (bookworm ships acl 2.3.1-3, no-dsa/postponed; fixed upstream in acl 2.4.0). Exploitation requires a local unprivileged attacker racing a higher-privileged process that operates on ACLs of attacker-controllable paths. The models-gcs image runs a single non-interactive Python entrypoint (upload_models.py) as one user with no other local users and performs no ACL operations on untrusted paths. Owner: security@arthur.ai. Review by: 2027-01-28.",
+      "vulnerability": { "name": "CVE-2026-54369" },
+      "products": [
+        { "@id": "pkg:oci/genai-engine-models-gcs", "subcomponents": [ { "@id": "pkg:deb/debian/libacl1" } ] }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_in_execute_path",
+      "impact_statement": "CVE-2026-54369 is a local symlink-traversal privilege escalation in libacl's pathname-based functions. It requires a local unprivileged attacker and a higher-privileged process performing ACL operations on attacker-controllable paths. The models-gcs image runs a single non-interactive Python entrypoint (upload_models.py) as one user, has no other local users, and performs no ACL operations on untrusted paths. No Debian bookworm fix is available yet (fixed upstream in acl 2.4.0).",
+      "timestamp": "2026-07-28T00:00:00Z"
+    },
+    {
+      "_comment": "gzip: CVE-2026-41992 is a global buffer overflow (OOB read) from improperly reused global state between the LZW and LZH decoders in a single gzip invocation; no Debian bookworm fix is available (bookworm ships gzip 1.12-1, no-dsa/postponed). Triggering requires feeding gzip a crafted LZW file followed by a crafted LZH file in one command. The models-gcs image never invokes gzip on attacker-controlled .lzw/.lzh archives — the upload job downloads model files and writes them to cloud storage. gzip is a transitive base-OS package. Owner: security@arthur.ai. Review by: 2027-01-28.",
+      "vulnerability": { "name": "CVE-2026-41992" },
+      "products": [
+        { "@id": "pkg:oci/genai-engine-models-gcs", "subcomponents": [ { "@id": "pkg:deb/debian/gzip" } ] }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_in_execute_path",
+      "impact_statement": "CVE-2026-41992 is an out-of-bounds read from reused global state between gzip's LZW and LZH decoders, triggered only by decompressing a crafted LZW file followed by a crafted LZH file in a single gzip invocation. The models-gcs image never invokes gzip on attacker-controlled archives; gzip is a transitive base-OS package and the upload job only downloads model files and writes them to cloud storage. No Debian bookworm fix is available yet.",
+      "timestamp": "2026-07-28T00:00:00Z"
+    },
+    {
+      "_comment": "perl-base: CVE-2026-57432 is an integer overflow in S_measure_struct (pack/unpack template with large repeat counts) causing an out-of-bounds heap read; no Debian bookworm fix is available (bookworm ships perl 5.36.0-7+deb12u3, no-dsa; fixed upstream in sid 5.42.2-3). perl-base is a transitive base-OS package on the models-gcs image; no Arthur process invokes the Perl interpreter, and no attacker-controlled pack/unpack template is ever executed. The upload job runs a single Python entrypoint (upload_models.py). Owner: security@arthur.ai. Review by: 2027-01-28.",
+      "vulnerability": { "name": "CVE-2026-57432" },
+      "products": [
+        { "@id": "pkg:oci/genai-engine-models-gcs", "subcomponents": [ { "@id": "pkg:deb/debian/perl-base" } ] }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_in_execute_path",
+      "impact_statement": "CVE-2026-57432 is an integer overflow in Perl's S_measure_struct (pack/unpack of a template with large repeat counts) causing an out-of-bounds heap read. It is reachable only when the Perl interpreter runs an attacker-controlled pack/unpack template. perl-base is a transitive base-OS package on the models-gcs image; no Arthur process invokes Perl, and the upload job runs a single Python entrypoint (upload_models.py). No Debian bookworm fix is available yet.",
+      "timestamp": "2026-07-28T00:00:00Z"
     }
   ]
 }

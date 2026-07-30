@@ -26,7 +26,7 @@ import {
   Link,
 } from "@mui/material";
 import React, { useState, useEffect, useMemo } from "react";
-import { Link as RouterLink } from "react-router-dom";
+import { Link as RouterLink } from "react-router";
 
 import { PromptResultDetailModal, EvalInputsDialog } from "./PromptResultDetailModal";
 
