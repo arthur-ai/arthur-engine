@@ -25,7 +25,16 @@ type Props = {
   onClose: () => void;
 };
 
-export const EditForm = ({ provider, providerDisplayName, providerEnabled, whitelist, whitelistDirty, onWhitelistChange, onSubmit, onClose }: Props) => {
+export const EditForm = ({
+  provider,
+  providerDisplayName,
+  providerEnabled,
+  whitelist,
+  whitelistDirty,
+  onWhitelistChange,
+  onSubmit,
+  onClose,
+}: Props) => {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [pendingSubmitData, setPendingSubmitData] = useState<PutModelProviderCredentials | null>(null);
 
@@ -218,11 +227,7 @@ export const EditForm = ({ provider, providerDisplayName, providerEnabled, white
           <Button onClick={onClose}>Cancel</Button>
           <form.Subscribe selector={(state) => [state.canSubmit, state.isSubmitting]}>
             {([canSubmit, isSubmitting]) => (
-              <Button
-                type="submit"
-                disabled={!canSubmit || (whitelistDirty && whitelist !== null && whitelist.length === 0)}
-                loading={isSubmitting}
-              >
+              <Button type="submit" disabled={!canSubmit || (whitelistDirty && whitelist !== null && whitelist.length === 0)} loading={isSubmitting}>
                 Save
               </Button>
             )}
