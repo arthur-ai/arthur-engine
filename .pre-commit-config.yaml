@@ -80,7 +80,11 @@ repos:
         files: ^genai-engine/src/
       - id: genai-engine-mypy-check
         name: "genai-engine: mypy type checking"
-        entry: uv run --directory genai-engine mypy src
+        # --group linters: mypy lives in the linters group, which is not in uv's
+        # default group set, so without this the hook falls through to whatever
+        # mypy happens to be on PATH (or fails to spawn). Mirrors CI, which syncs
+        # the group via setup-uv's with-groups input.
+        entry: uv run --directory genai-engine --frozen --group linters mypy src
         language: system
         types: [python]
         pass_filenames: false
@@ -101,7 +105,8 @@ repos:
         files: ^ml-engine/src/
       - id: ml-engine-mypy-check
         name: "ml-engine: mypy type checking"
-        entry: uv run --directory ml-engine mypy src/ml_engine
+        # --group linters: see the genai-engine mypy hook above.
+        entry: uv run --directory ml-engine --frozen --group linters mypy src/ml_engine
         language: system
         types: [python]
         pass_filenames: false
