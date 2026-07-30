@@ -15,8 +15,9 @@ s3  = ["boto3>=1.28.0,<2"]
 gcs = ["google-cloud-storage>=2.10.0"]
 
 [project.scripts]
-upload   = "upload_models:main"
-download = "download_models:main"
+upload         = "upload_models:main"
+download       = "download_models:main"
+generate-aibom = "generate_aibom:main"
 
 [dependency-groups]
 dev = [
@@ -52,4 +53,5 @@ profile = "black"
 minversion = "6.0"
 addopts = "-vv"
 testpaths = ["tests"]
+pythonpath = ["."]
 asyncio_mode = "auto"

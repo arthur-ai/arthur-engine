@@ -30,6 +30,7 @@ MODELS = [
     "s-nlp/roberta_toxicity_classifier",
     "microsoft/deberta-v2-xlarge-mnli",
     "urchade/gliner_multi_pii-v1",
+    "microsoft/mdeberta-v3-base",
     "tarekziade/pardonmyai",
 ]
 
