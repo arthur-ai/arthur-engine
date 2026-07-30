@@ -19,22 +19,13 @@ type Props = {
   providerDisplayName: string;
   providerEnabled: boolean;
   whitelist: string[] | null;
+  whitelistDirty: boolean;
   onWhitelistChange: (models: string[] | null) => void;
-  onWhitelistInitial: (models: string[] | null) => void;
   onSubmit: (data: PutModelProviderCredentials) => Promise<void>;
   onClose: () => void;
 };
 
-export const EditForm = ({
-  provider,
-  providerDisplayName,
-  providerEnabled,
-  whitelist,
-  onWhitelistChange,
-  onWhitelistInitial,
-  onSubmit,
-  onClose,
-}: Props) => {
+export const EditForm = ({ provider, providerDisplayName, providerEnabled, whitelist, whitelistDirty, onWhitelistChange, onSubmit, onClose }: Props) => {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [pendingSubmitData, setPendingSubmitData] = useState<PutModelProviderCredentials | null>(null);
 
@@ -219,8 +210,8 @@ export const EditForm = ({
             providerDisplayName={providerDisplayName}
             providerEnabled={providerEnabled}
             value={whitelist}
+            dirty={whitelistDirty}
             onChange={onWhitelistChange}
-            onInitialValue={onWhitelistInitial}
           />
         </DialogContent>
         <DialogActions>
@@ -229,7 +220,7 @@ export const EditForm = ({
             {([canSubmit, isSubmitting]) => (
               <Button
                 type="submit"
-                disabled={!canSubmit || (whitelist !== null && whitelist.length === 0)}
+                disabled={!canSubmit || (whitelistDirty && whitelist !== null && whitelist.length === 0)}
                 loading={isSubmitting}
               >
                 Save

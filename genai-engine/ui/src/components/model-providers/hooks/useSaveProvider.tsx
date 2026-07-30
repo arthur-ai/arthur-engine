@@ -4,11 +4,7 @@ import { useApi } from "@/hooks/useApi";
 import { ModelProviderResponse, PutModelProviderCredentials } from "@/lib/api-client/api-client";
 import { queryKeys } from "@/lib/queryKeys";
 
-type Opts = {
-  onSuccess?: (data: ModelProviderResponse) => Promise<void>;
-};
-
-export const useSaveProvider = ({ onSuccess }: Opts = {}) => {
+export const useSaveProvider = () => {
   const queryClient = useQueryClient();
   const { api } = useApi()!;
 
@@ -24,10 +20,8 @@ export const useSaveProvider = ({ onSuccess }: Opts = {}) => {
 
       return response.data;
     },
-    onSuccess: async (data) => {
+    onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: queryKeys.providers.all() });
-
-      await onSuccess?.(data);
     },
   });
 };

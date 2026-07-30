@@ -12,7 +12,7 @@ import RadioGroup from "@mui/material/RadioGroup";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
-import React, { useRef } from "react";
+import React from "react";
 
 import { useModelWhitelist } from "../../../../hooks/useModelWhitelist";
 
@@ -23,24 +23,21 @@ type Props = {
   providerDisplayName: string;
   providerEnabled: boolean;
   value: string[] | null;
+  dirty: boolean;
   onChange: (models: string[] | null) => void;
-  onInitialValue: (models: string[] | null) => void;
 };
 
-export const ModelWhitelistSection: React.FC<Props> = ({ provider, providerDisplayName, providerEnabled, value, onChange, onInitialValue }) => {
+export const ModelWhitelistSection: React.FC<Props> = ({ provider, providerDisplayName, providerEnabled, value, dirty, onChange }) => {
   // vLLM's models live on the server itself and can only be read from a stored
   // api_base. Every other provider has a static catalog.
   const catalogUnavailable = provider === "hosted_vllm" && !providerEnabled;
 
   const { data, isLoading, error } = useModelWhitelist(provider, !catalogUnavailable);
 
-  const seeded = useRef(false);
-  if (data && !seeded.current) {
-    seeded.current = true;
-    onInitialValue(data.whitelist ?? null);
-  }
-
-  const restricted = value !== null;
+  // Until the user touches the controls, show what is stored. `value` only
+  // becomes authoritative once they do.
+  const models = dirty ? value : (data?.whitelist ?? null);
+  const restricted = models !== null;
 
   if (catalogUnavailable) {
     return null;
@@ -99,7 +96,7 @@ export const ModelWhitelistSection: React.FC<Props> = ({ provider, providerDispl
                 multiple
                 size="small"
                 options={data.catalog}
-                value={value}
+                value={models}
                 onChange={(_event, next) => onChange(next)}
                 disableCloseOnSelect
                 // PaperComponent rather than ListboxComponent: the listbox is the
@@ -121,15 +118,15 @@ export const ModelWhitelistSection: React.FC<Props> = ({ provider, providerDispl
                 renderInput={(params) => <TextField {...params} placeholder={`Search ${providerDisplayName} models…`} size="small" />}
               />
 
-              {value.length > 0 && (
+              {models.length > 0 && (
                 <Stack direction="row" flexWrap="wrap" gap={0.75}>
-                  {value.map((model) => (
-                    <Chip key={model} label={model} size="small" onDelete={() => onChange(value.filter((m) => m !== model))} />
+                  {models.map((model) => (
+                    <Chip key={model} label={model} size="small" onDelete={() => onChange(models.filter((m) => m !== model))} />
                   ))}
                 </Stack>
               )}
 
-              {value.length === 0 && <Alert severity="warning">Select at least one model</Alert>}
+              {models.length === 0 && <Alert severity="warning">Select at least one model</Alert>}
             </Stack>
           )}
         </>

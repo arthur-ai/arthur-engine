@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ModelWhitelistSection } from "./index";
 
@@ -7,23 +7,33 @@ import { ModelWhitelistSection } from "./index";
 // not set, so renders would otherwise stack in one document across tests.
 afterEach(cleanup);
 
+// Hoisted so the mock factory, which vitest lifts above the imports, can close over
+// it while tests still get to vary the stored whitelist.
+const query = vi.hoisted(() => ({ stored: null as string[] | null }));
+
 vi.mock("../../../../hooks/useModelWhitelist", () => ({
   useModelWhitelist: () => ({
-    data: { provider: "openai", whitelist: null, catalog: ["gpt-5", "gpt-4.1", "gpt-4o"] },
+    data: { provider: "openai", whitelist: query.stored, catalog: ["gpt-5", "gpt-4.1", "gpt-4o"] },
     isLoading: false,
     error: null,
   }),
 }));
 
+beforeEach(() => {
+  query.stored = null;
+});
+
 const CAVEAT = /including models your account may not have access to/;
 
+// dirty defaults to true so `value` drives the render. The false cases below cover
+// the fall back to the stored whitelist.
 const baseProps = {
   provider: "openai" as const,
   providerDisplayName: "OpenAI",
   providerEnabled: false,
   value: null,
+  dirty: true,
   onChange: vi.fn(),
-  onInitialValue: vi.fn(),
 };
 
 const searchField = () => screen.getByPlaceholderText("Search OpenAI models…");
@@ -57,13 +67,28 @@ describe("ModelWhitelistSection", () => {
     expect(screen.queryByText("Select at least one model")).toBeNull();
   });
 
-  it("reports the stored whitelist to the parent exactly once", () => {
-    const onInitialValue = vi.fn();
-    const { rerender } = render(<ModelWhitelistSection {...baseProps} onInitialValue={onInitialValue} />);
-    rerender(<ModelWhitelistSection {...baseProps} onInitialValue={onInitialValue} />);
+  it("renders the stored whitelist while untouched", () => {
+    query.stored = ["gpt-4.1"];
+    render(<ModelWhitelistSection {...baseProps} value={null} dirty={false} />);
 
-    expect(onInitialValue).toHaveBeenCalledTimes(1);
-    expect(onInitialValue).toHaveBeenCalledWith(null);
+    expect((screen.getByRole("radio", { name: /Only selected/ }) as HTMLInputElement).checked).toBe(true);
+    expect(screen.queryByText("gpt-4.1")).not.toBeNull();
+  });
+
+  it("ignores the stored whitelist once the user has touched the controls", () => {
+    query.stored = ["gpt-4.1"];
+    render(<ModelWhitelistSection {...baseProps} value={["gpt-5"]} dirty />);
+
+    expect(screen.queryByText("gpt-5")).not.toBeNull();
+    expect(screen.queryByText("gpt-4.1")).toBeNull();
+  });
+
+  it("shows All models when the user clears a stored whitelist", () => {
+    query.stored = ["gpt-4.1"];
+    render(<ModelWhitelistSection {...baseProps} value={null} dirty />);
+
+    expect((screen.getByRole("radio", { name: /All models/ }) as HTMLInputElement).checked).toBe(true);
+    expect(screen.queryByText("gpt-4.1")).toBeNull();
   });
 
   it("switches to a restricted empty list when Only selected is chosen", () => {

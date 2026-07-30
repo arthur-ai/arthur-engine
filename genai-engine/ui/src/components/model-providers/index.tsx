@@ -49,11 +49,7 @@ export const ModelProviders: React.FC = () => {
 
   const saveWhitelistMutation = useSaveModelWhitelist();
 
-  const saveProviderMutation = useSaveProvider({
-    onSuccess: async () => {
-      setEditModal({ isOpen: false, provider: null });
-    },
-  });
+  const saveProviderMutation = useSaveProvider();
 
   const deleteProviderMutation = useRemoveProvider({
     onSuccess: async () => {
@@ -82,12 +78,6 @@ export const ModelProviders: React.FC = () => {
     setEditModal({ isOpen: true, provider });
   };
 
-  // Seeding from the fetch must not mark the state dirty
-  const handleWhitelistInitial = (models: string[] | null) => {
-    setWhitelist(models);
-    setWhitelistDirty(false);
-  };
-
   const handleWhitelistChange = (models: string[] | null) => {
     setWhitelist(models);
     setWhitelistDirty(true);
@@ -104,6 +94,8 @@ export const ModelProviders: React.FC = () => {
         models: whitelist,
       });
     }
+
+    setEditModal({ isOpen: false, provider: null });
   };
 
   const handleEditCancel = () => {
@@ -331,8 +323,8 @@ export const ModelProviders: React.FC = () => {
             providerDisplayName={getProviderDisplayName(editModal.provider.provider)}
             providerEnabled={editModal.provider.enabled}
             whitelist={whitelist}
+            whitelistDirty={whitelistDirty}
             onWhitelistChange={handleWhitelistChange}
-            onWhitelistInitial={handleWhitelistInitial}
             onSubmit={handleEditSave}
             onClose={handleEditCancel}
           />
