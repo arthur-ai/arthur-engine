@@ -128,8 +128,16 @@ RUN set -eu; \
 # copies overwrite, so the synced version is what genuinely ships. (Both prefixes
 # are matched because bookworm packages are split between them.) Packages the base
 # ships but this stage lacks keep their original version — their files survive
-# untouched. md5sums are refreshed from this stage's dpkg database so the checksums
-# describe the files that actually ship.
+# untouched.
+#
+# The md5sums sidecars are refreshed from this stage's dpkg database, resolved via
+# `dpkg-query --control-path` rather than by composing the path: dpkg stores those
+# files arch-qualified (libc6:amd64.md5sums) for Multi-Arch: same packages, which
+# every package selected above is, so a hand-built /var/lib/dpkg/info/<pkg>.md5sums
+# never exists. The refreshed lists match every shipped shared object byte-for-byte;
+# their /usr/share/doc entries (changelog, NEWS) stay stale because these images
+# never copy /usr/share. That residue is inert — no scanner resolves CVEs from
+# checksums — but the shared objects, which the Version above now claims, do match.
 COPY --from=distroless_meta /var/lib/dpkg/status.d /tmp/base-status.d
 RUN set -eu; \
     out=/tmp/dpkg-status.d; \
@@ -141,8 +149,8 @@ RUN set -eu; \
       ver="$(dpkg-query -W -f='${Version}' "$pkg" 2>/dev/null)" || continue; \
       [ -n "$ver" ] || continue; \
       sed -i "s/^Version: .*/Version: ${ver}/" "$f"; \
-      if [ -f "/var/lib/dpkg/info/${pkg}.md5sums" ]; then \
-        cp "/var/lib/dpkg/info/${pkg}.md5sums" "${f}.md5sums"; \
+      if src="$(dpkg-query --control-path "$pkg" md5sums 2>/dev/null)" && [ -f "$src" ]; then \
+        cp "$src" "${f}.md5sums"; \
       fi; \
       echo "  dpkg-status sync: ${pkg} -> ${ver}"; \
     done
