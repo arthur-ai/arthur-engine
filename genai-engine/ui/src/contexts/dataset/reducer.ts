@@ -30,8 +30,7 @@ function transformRowsForNewColumns(rows: DatasetVersionRowResponse[], oldColumn
     });
 
     return {
-      id: row.id,
-      created_at: row.created_at,
+      ...row,
       data: result,
     };
   });
@@ -45,6 +44,7 @@ export function datasetReducer(state: DatasetState, action: DatasetAction): Data
         columns: action.payload.column_names,
         rows: action.payload.rows,
         pendingChanges: { added: [], updated: [], deleted: [] },
+        columnsDirty: false,
       };
     }
 
@@ -58,11 +58,13 @@ export function datasetReducer(state: DatasetState, action: DatasetAction): Data
       const columnsAdded = newColumns.filter((col) => !oldColumnsSet.has(col)).length > 0;
       const columnsRemoved = oldColumns.filter((col) => !newColumnsSet.has(col)).length > 0;
       const columnsRenamed = newColumns.some((col, idx) => oldColumns[idx] && oldColumns[idx] !== col);
+      const columnsChanged = columnsAdded || columnsRemoved || columnsRenamed;
 
       if (!columnsRemoved && !columnsRenamed && (!columnsAdded || state.rows.length === 0)) {
         return {
           ...state,
           columns: newColumns,
+          columnsDirty: state.columnsDirty || columnsChanged,
         };
       }
 
@@ -81,6 +83,7 @@ export function datasetReducer(state: DatasetState, action: DatasetAction): Data
           ...state.pendingChanges,
           updated: [...state.pendingChanges.updated, ...rowsToUpdate],
         },
+        columnsDirty: state.columnsDirty || columnsChanged,
       };
     }
 
@@ -106,7 +109,9 @@ export function datasetReducer(state: DatasetState, action: DatasetAction): Data
 
     case "DATA/UPDATE_ROW": {
       const { id, data: rowData } = action.payload;
-      const updatedRow = createRowFromData(state.columns, rowData, id);
+      const existingRow = state.rows.find((row) => row.id === id);
+      // trace_id is server-managed and write-once; carry it through client-side edits
+      const updatedRow = { ...createRowFromData(state.columns, rowData, id), trace_id: existingRow?.trace_id };
 
       const isNewRow = state.pendingChanges.added.some((r) => r.id === id);
 
@@ -165,6 +170,7 @@ export function datasetReducer(state: DatasetState, action: DatasetAction): Data
       return {
         ...state,
         pendingChanges: { added: [], updated: [], deleted: [] },
+        columnsDirty: false,
       };
     }
 
@@ -180,6 +186,7 @@ export function datasetReducer(state: DatasetState, action: DatasetAction): Data
         newState = {
           ...newState,
           columns: mergedColumns,
+          columnsDirty: true,
         };
       }
 

@@ -1,6 +1,8 @@
-import { Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, TextField } from "@mui/material";
+import { Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, TextField, Typography } from "@mui/material";
 import { useForm } from "@tanstack/react-form";
 import React, { useMemo } from "react";
+
+import { SourceTraceLink } from "@/components/common/SourceTraceLink";
 
 interface EditRowModalProps {
   open: boolean;
@@ -9,9 +11,11 @@ interface EditRowModalProps {
   rowData: Record<string, unknown>;
   rowId: string;
   isLoading?: boolean;
+  traceId?: string | null;
+  taskId?: string;
 }
 
-export const EditRowModal: React.FC<EditRowModalProps> = ({ open, onClose, onSubmit, rowData, rowId, isLoading = false }) => {
+export const EditRowModal: React.FC<EditRowModalProps> = ({ open, onClose, onSubmit, rowData, rowId, isLoading = false, traceId, taskId }) => {
   const columns = Object.keys(rowData);
 
   const stringData = useMemo(() => {
@@ -47,6 +51,14 @@ export const EditRowModal: React.FC<EditRowModalProps> = ({ open, onClose, onSub
       >
         <DialogTitle id="edit-row-dialog-title">{rowId === "new" ? "Add Row" : "Edit Row"}</DialogTitle>
         <DialogContent dividers>
+          {traceId && taskId && (
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
+              <Typography variant="body2" color="text.secondary" fontWeight={500}>
+                Source trace
+              </Typography>
+              <SourceTraceLink variant="field" taskId={taskId} traceId={traceId} />
+            </Box>
+          )}
           <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
             {columns.map((column) => (
               <form.Field key={column} name={column}>

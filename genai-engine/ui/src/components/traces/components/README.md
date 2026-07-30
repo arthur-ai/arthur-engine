@@ -12,7 +12,7 @@ These components handle:
 
 - **Data fetching** - Using React Query hooks (`useQuery`, `useSuspenseQuery`)
 - **State management** - URL state (`nuqs`), filter store, pagination context
-- **Routing** - Navigation via `react-router-dom`
+- **Routing** - Navigation via `react-router`
 - **App-specific logic** - Analytics tracking, drawer targets, etc.
 
 **Container Components:**
@@ -118,7 +118,7 @@ Container components in this directory depend on:
 
 - `@tanstack/react-query` - Data fetching
 - `nuqs` - URL state management
-- `react-router-dom` - Routing
+- `react-router` - Routing
 - `@/lib/api-client` - API client
 - `@/services/analytics` - Analytics
 - `@arthur/shared-components` - Presentational components (future)

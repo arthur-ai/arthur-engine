@@ -7,7 +7,7 @@ import CircularProgress from "@mui/material/CircularProgress";
 import TablePagination from "@mui/material/TablePagination";
 import Typography from "@mui/material/Typography";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate } from "react-router";
 
 import { CreateRagNotebookModal } from "./CreateRagNotebookModal";
 import RagNotebookDetailModal from "./RagNotebookDetailModal";

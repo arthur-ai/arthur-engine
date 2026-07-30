@@ -1,6 +1,6 @@
 import AddIcon from "@mui/icons-material/Add";
 import { Box, Button, ButtonGroup, Stack, Typography } from "@mui/material";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 
 import { Experiments } from "./components/experiments";
 

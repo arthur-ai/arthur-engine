@@ -4,7 +4,7 @@ import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
 import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useEffectEvent, useMemo, useState, type RefObject } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 
 import { getSpanDetailsStrategy } from "../data/details-strategy";
 import { useDrawerTarget } from "../hooks/useDrawerTarget";

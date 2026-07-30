@@ -1,6 +1,6 @@
 import { Box, Stack, Typography } from "@mui/material";
 import { useCallback } from "react";
-import { useParams } from "react-router-dom";
+import { useParams } from "react-router";
 
 import { ChatPanel } from "@/components/chatbot/ChatPanel";
 import { TOUR_IDS } from "@/features/task-tour/selectors";

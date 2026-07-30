@@ -11,7 +11,7 @@ import { Box, Card, CardContent, Chip, CircularProgress, IconButton, Stack, Tool
 import { alpha } from "@mui/material/styles";
 import { keyframes } from "@mui/system";
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 
 import { CopyableChip } from "./common";
 
@@ -24,10 +24,14 @@ import { formatDateInTimezone } from "@/utils/formatters";
 interface TaskCardProps {
   task: TaskResponse;
   overview?: TraceOverviewResponse;
+  // True most-recent activity, computed over an unbounded window. Overrides the
+  // 7-day overview's last_active so a task active before the metrics window is
+  // not mislabeled "Inactive". The tiles still reflect the 7-day overview.
+  lastActiveOverride?: string | null;
   onArchiveToggle?: () => void;
 }
 
-export const TaskCard: React.FC<TaskCardProps> = React.memo(({ task, overview, onArchiveToggle }) => {
+export const TaskCard: React.FC<TaskCardProps> = React.memo(({ task, overview, lastActiveOverride, onArchiveToggle }) => {
   const navigate = useNavigate();
   const api = useApi();
   const { timezone, use24Hour } = useDisplaySettings();
@@ -38,7 +42,7 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({ task, overview, o
     traceCount: overview?.trace_count ?? 0,
     totalTokens: overview?.trace_token_count ?? 0,
     successRate: Math.round((overview?.continuous_eval_success_rate ?? 1) * 100),
-    lastActive: overview?.last_active ?? null,
+    lastActive: lastActiveOverride ?? overview?.last_active ?? null,
   };
 
   const formatNumber = (num: number) => {

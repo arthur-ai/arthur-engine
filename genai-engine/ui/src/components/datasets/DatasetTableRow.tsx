@@ -6,6 +6,7 @@ import React from "react";
 import { DatasetTableCell } from "./DatasetTableCell";
 
 import { CopyableChip } from "@/components/common/CopyableChip";
+import { SourceTraceLink } from "@/components/common/SourceTraceLink";
 import { DatasetVersionRowResponse } from "@/lib/api-client/api-client";
 
 interface DatasetTableRowProps {
@@ -14,9 +15,10 @@ interface DatasetTableRowProps {
   onEdit: (row: DatasetVersionRowResponse) => void;
   onDelete: (rowId: string) => void;
   datasetId: string;
+  taskId?: string;
 }
 
-export const DatasetTableRow: React.FC<DatasetTableRowProps> = React.memo(({ row, columns, onEdit, onDelete, datasetId }) => {
+export const DatasetTableRow: React.FC<DatasetTableRowProps> = React.memo(({ row, columns, onEdit, onDelete, datasetId, taskId }) => {
   return (
     <TableRow hover>
       <TableCell
@@ -28,7 +30,10 @@ export const DatasetTableRow: React.FC<DatasetTableRowProps> = React.memo(({ row
           boxShadow: (theme) => (theme.palette.mode === "dark" ? "2px 0 4px rgba(0, 0, 0, 0.3)" : "2px 0 4px rgba(0, 0, 0, 0.1)"),
         }}
       >
-        <CopyableChip label={row.id} size="small" sx={{ maxWidth: 120, "& .MuiChip-label": { overflow: "hidden", textOverflow: "ellipsis" } }} />
+        <Box sx={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 0.25 }}>
+          <CopyableChip label={row.id} size="small" sx={{ maxWidth: 120, "& .MuiChip-label": { overflow: "hidden", textOverflow: "ellipsis" } }} />
+          {row.trace_id && taskId && <SourceTraceLink variant="subtle" taskId={taskId} traceId={row.trace_id} />}
+        </Box>
       </TableCell>
       {columns.map((column) => {
         const columnData = row.data.find((col) => col.column_name === column);
