@@ -30,7 +30,7 @@ dependencies = [
   "azure-storage-blob==12.30.0",
   "itsdangerous==2.2.0",
   "newrelic==10.17.0",
-  "importlib-metadata==8.5.0",
+  "importlib-metadata==8.9.0",
   "opentelemetry-instrumentation-logging>=0.60b1,<0.61",
   "opentelemetry-instrumentation>=0.60b1,<0.61",
   "opentelemetry-instrumentation-fastapi>=0.60b1,<0.61",
