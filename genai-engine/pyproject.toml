@@ -22,7 +22,7 @@ dependencies = [
   "python-multipart==0.0.32",
   "pypdf==6.14.2",
   "httpx==0.28.1",
-  "transformers==5.5.0",
+  "transformers==5.14.1",
   "authlib==1.7.2",
   "requests==2.33.0",
   "starlette==1.3.1",
