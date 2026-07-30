@@ -2053,9 +2053,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@rollup/rollup-linux-x64-gnu@npm:4.54.0":
-  version: 4.54.0
-  resolution: "@rollup/rollup-linux-x64-gnu@npm:4.54.0"
+"@rollup/rollup-linux-x64-gnu@npm:4.62.3":
+  version: 4.62.3
+  resolution: "@rollup/rollup-linux-x64-gnu@npm:4.62.3"
   conditions: os=linux & cpu=x64 & libc=glibc
   languageName: node
   linkType: hard
@@ -8725,7 +8725,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"tailwind-merge@npm:^3.6.0":
+"tailwind-merge@npm:3.6.0, tailwind-merge@npm:^3.6.0":
   version: 3.6.0
   resolution: "tailwind-merge@npm:3.6.0"
   checksum: 10c0/a728d929f4786bcb48641db4228cc8c006a7545491783a658fb4d24d177dab960620991d17805a047309228de50ab949ca8d9e112c30183da0432367796ae186
@@ -9051,7 +9051,7 @@ __metadata:
     "@mui/material": "npm:7.3.11"
     "@mui/x-charts": "npm:8.29.2"
     "@mui/x-date-pickers": "npm:7.29.4"
-    "@rollup/rollup-linux-x64-gnu": "npm:4.54.0"
+    "@rollup/rollup-linux-x64-gnu": "npm:4.62.3"
     "@tailwindcss/vite": "npm:4.3.3"
     "@tanstack/eslint-plugin-query": "npm:5.91.4"
     "@tanstack/react-form": "npm:1.33.2"
@@ -9096,7 +9096,7 @@ __metadata:
     rehype-sanitize: "npm:^6.0.0"
     remark-gfm: "npm:4.0.1"
     swagger-typescript-api: "npm:^13.12.6"
-    tailwind-merge: "npm:3.5.0"
+    tailwind-merge: "npm:3.6.0"
     tailwindcss: "npm:4.3.3"
     typescript: "npm:5.9.3"
     typescript-eslint: "npm:8.56.1"
