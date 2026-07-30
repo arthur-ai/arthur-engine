@@ -30,7 +30,7 @@ dependencies = [
   "datasketches==5.2.0",
   "numpy==2.3.2",
   "types-croniter==6.0.0.20250809",
-  "types-psutil==7.0.0.20251116",
+  "types-psutil==7.2.2.20260518",
   "types-requests==2.32.4.20260324",
   "psutil==7.2.2",
   "pyarrow==23.0.1",
