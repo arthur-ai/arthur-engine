@@ -128,6 +128,8 @@ export const queryKeys = {
   providers: {
     all: () => ["getModelProvidersApiV1ModelProvidersGet"] as const,
     availableModels: (providers: string[]) => ["availableModels", ...providers] as const,
+    // Prefix matcher: invalidates every provider combination at once
+    availableModelsAll: () => ["availableModels"] as const,
     modelWhitelist: (provider: string) => ["modelWhitelist", provider] as const,
   },
   tasksOverview: {

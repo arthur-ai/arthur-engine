@@ -14,7 +14,7 @@ export const useSaveModelWhitelist = () => {
     },
     onSuccess: async (_data, { provider }) => {
       await queryClient.invalidateQueries({ queryKey: queryKeys.providers.modelWhitelist(provider) });
-      await queryClient.invalidateQueries({ queryKey: ["availableModels"] });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.providers.availableModelsAll() });
     },
   });
 };
