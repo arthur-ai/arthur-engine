@@ -25,14 +25,6 @@ class TokenCountCost(BaseModel):
     cost_unknown: bool = False
 
 
-# Routing/region prefixes that are deployment metadata, not part of litellm's
-# pricing key. Stripping them lets an otherwise-unrecognized name match a rate.
-# Route prefixes are the provider names from ModelProvider plus a "/" (e.g.
-# "bedrock/"); region prefixes are not providers, so they stay a literal list.
-_MODEL_ROUTE_PREFIXES = tuple(f"{provider.value}/" for provider in ModelProvider)
-_MODEL_REGION_PREFIXES = ("us.", "eu.", "apac.", "us-gov.")
-
-
 def _model_name_candidates(model_name: str) -> list[str]:
     """Return pricing candidates for a model name, most specific first.
 
@@ -42,13 +34,19 @@ def _model_name_candidates(model_name: str) -> list[str]:
     describe where a model is served, not which model it is, so the stripped
     forms resolve to the same rate.
     """
+    # Route prefixes are the provider names from ModelProvider plus a "/"
+    # (e.g. "bedrock/"); region prefixes are not providers, so they stay a
+    # literal list.
+    route_prefixes = tuple(f"{provider.value}/" for provider in ModelProvider)
+    region_prefixes = ("us.", "eu.", "apac.", "us-gov.")
+
     candidates = [model_name]
-    for prefix in _MODEL_ROUTE_PREFIXES:
+    for prefix in route_prefixes:
         if model_name.lower().startswith(prefix):
             candidates.append(model_name[len(prefix) :])
             break
     base = candidates[-1]
-    for prefix in _MODEL_REGION_PREFIXES:
+    for prefix in region_prefixes:
         if base.lower().startswith(prefix):
             candidates.append(base[len(prefix) :])
             break
