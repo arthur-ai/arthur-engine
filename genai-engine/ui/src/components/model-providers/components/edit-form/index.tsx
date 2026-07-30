@@ -38,6 +38,8 @@ export const EditForm = ({
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [pendingSubmitData, setPendingSubmitData] = useState<PutModelProviderCredentials | null>(null);
 
+  const whitelistIsEmpty = whitelistDirty && whitelist !== null && whitelist.length === 0;
+
   const handleConfirmedSubmit = async () => {
     if (pendingSubmitData) {
       await onSubmit(pendingSubmitData);
@@ -227,7 +229,7 @@ export const EditForm = ({
           <Button onClick={onClose}>Cancel</Button>
           <form.Subscribe selector={(state) => [state.canSubmit, state.isSubmitting]}>
             {([canSubmit, isSubmitting]) => (
-              <Button type="submit" disabled={!canSubmit || (whitelistDirty && whitelist !== null && whitelist.length === 0)} loading={isSubmitting}>
+              <Button type="submit" disabled={!canSubmit || whitelistIsEmpty} loading={isSubmitting}>
                 Save
               </Button>
             )}

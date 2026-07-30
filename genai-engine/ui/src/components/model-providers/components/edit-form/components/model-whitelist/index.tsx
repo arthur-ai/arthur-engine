@@ -34,8 +34,6 @@ export const ModelWhitelistSection: React.FC<Props> = ({ provider, providerDispl
 
   const { data, isLoading, error } = useModelWhitelist(provider, !catalogUnavailable);
 
-  // Until the user touches the controls, show what is stored. `value` only
-  // becomes authoritative once they do.
   const models = dirty ? value : (data?.whitelist ?? null);
   const restricted = models !== null;
 
