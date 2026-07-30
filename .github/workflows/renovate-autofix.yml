@@ -1,0 +1,189 @@
+name: Renovate Auto-Fix
+
+# When "Arthur Engine CI" fails on a Renovate PR, let Claude adapt the source
+# code to the updated dependency, verify the full required suite passes, push
+# the fix, and re-approve so the change re-enters the dev merge queue.
+#
+# Safety model (three layers):
+#   1. Claude self-verifies: it re-runs the real checks and only signals success
+#      (writes .claude-autofix-success) if everything passes; otherwise it
+#      discards its edits and comments. Nothing broken is ever committed.
+#   2. The merge queue + required checks are the hard gate: the pushed fix still
+#      has to pass all 6 required checks on the PR AND on the merge-queue branch
+#      before it can merge. This workflow cannot bypass that.
+#   3. Scope/tool guards: runs only on renovate/* branches, only on CI failure,
+#      one attempt per PR (loop guard), and the prompt forbids weakening checks
+#      or touching CI/test/dependency-pin files.
+#
+# Identity split (required by the ruleset's require_last_push_approval +
+# dismiss_stale_reviews_on_push): the fix is PUSHED as the Arthur GitHub
+# Automator App, and RE-APPROVED as github-actions[bot] — two distinct actors,
+# so the post-push approval is valid.
+#
+# This is a workflow_run listener; it only becomes active once merged to the
+# default branch (dev). It always runs the version of itself from the default
+# branch, so a PR cannot tamper with the fixer that runs against it.
+
+on:
+  workflow_run:
+    workflows: ["Arthur Engine CI"]
+    types: [completed]
+
+permissions: {}
+
+concurrency:
+  group: renovate-autofix-${{ github.event.workflow_run.head_branch }}
+  cancel-in-progress: true
+
+jobs:
+  autofix:
+    # Only failed CI runs that came from a Renovate PR branch.
+    if: >-
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.conclusion == 'failure' &&
+      startsWith(github.event.workflow_run.head_branch, 'renovate/')
+    runs-on: ubuntu-latest
+    # Needed to read the Arthur GitHub Automator App credentials.
+    environment: shared-protected-branch-secrets
+    permissions:
+      contents: write # push the fix commit
+      pull-requests: write # approve + comment
+      actions: read # read the failed CI logs
+      id-token: write
+    steps:
+      - name: Generate Automator App token (push identity)
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.ARTHUR_GH_AUTOMATOR_APP_ID }}
+          private-key: ${{ secrets.ARTHUR_GH_AUTOMATOR_APP_PRIVATE_KEY }}
+
+      - name: Resolve PR number
+        id: pr
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+        run: |
+          NUM='${{ github.event.workflow_run.pull_requests[0].number }}'
+          if [ -z "$NUM" ] || [ "$NUM" = "null" ]; then
+            NUM=$(gh pr list --repo "${{ github.repository }}" --head "$HEAD_BRANCH" \
+              --state open --json number --jq '.[0].number // empty')
+          fi
+          if [ -n "$NUM" ]; then
+            echo "number=$NUM" >> "$GITHUB_OUTPUT"
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::No open PR found for branch $HEAD_BRANCH; nothing to fix."
+          fi
+
+      - name: Checkout PR branch
+        if: steps.pr.outputs.found == 'true'
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.workflow_run.head_branch }}
+          fetch-depth: 0
+          # Push identity = the Automator App (distinct from the approver below).
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Loop guard — skip if Claude already attempted this branch head
+        id: guard
+        if: steps.pr.outputs.found == 'true'
+        run: |
+          LAST_MSG=$(git log -1 --pretty=%s)
+          if printf '%s' "$LAST_MSG" | grep -q '\[claude-autofix\]'; then
+            echo "proceed=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Latest commit is already a Claude auto-fix; not retrying (loop guard)."
+          else
+            echo "proceed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Claude auto-fix (edits + self-verify only; no commit)
+        if: steps.guard.outputs.proceed == 'true'
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          # Allow the action to run even though the PR was authored by a bot.
+          allowed_bots: "renovate[bot]"
+          additional_permissions: |
+            actions: read
+          # Keep Claude to the tools it needs; no network mutations beyond gh/git.
+          claude_args: '--allowed-tools "Bash,Read,Edit,Write,Glob,Grep"'
+          prompt: |
+            A Renovate dependency-update PR (#${{ steps.pr.outputs.number }}) on this branch has FAILING CI.
+            The failed run is: ${{ github.event.workflow_run.html_url }} (run id ${{ github.event.workflow_run.id }}).
+            You are on the checked-out PR branch. Your objective: make the MINIMAL source-code changes
+            needed to adapt the code to the updated dependency so ALL required checks pass — WITHOUT
+            weakening any check. Do not break anything.
+
+            IN SCOPE (code adaptation only):
+              - genai-engine/ui: TypeScript/type errors, ESLint errors, Prettier formatting
+              - genai-engine: Python source issues — isort/black/autoflake formatting, mypy types,
+                and unit-test adaptations that are a legitimate consequence of the dependency's changed behavior
+
+            OUT OF SCOPE — if the failure is any of these, STOP, change nothing, and post a PR comment
+            (`gh pr comment ${{ steps.pr.outputs.number }} -b "..."`) explaining it needs a human:
+              - Dependency-resolution / lockfile conflicts (e.g. "No solution found when resolving
+                dependencies", incompatible version pins between packages).
+              - Anything that would require changing a version pin or lockfile to resolve.
+
+            HARD RULES (never violate — these protect the "don't break anything" objective):
+              - Do NOT edit anything under .github/, any CI config, pyproject.toml/package.json version
+                pins, uv.lock, or yarn.lock.
+              - Do NOT silence checks: no eslint-disable, @ts-ignore/@ts-expect-error, `# type: ignore`,
+                pytest skip/xfail, or coverage reductions. Fix the real cause.
+              - Prefer the smallest change that addresses the dependency's actual API/behavior change.
+
+            PROCESS:
+              1. Read the failures: `gh run view ${{ github.event.workflow_run.id }} --log-failed`.
+              2. Set up only what you need:
+                 - Python: `uv sync --directory genai-engine --frozen --group dev --group linters`
+                 - UI: `cd genai-engine/ui && corepack enable && yarn install --immutable`
+              3. Reproduce failures with the same commands CI uses:
+                 - Python lint: `uv run --directory genai-engine isort src --profile black --check`,
+                   `... black --check src`, `... mypy src`
+                 - Python tests: `uv run --directory genai-engine pytest -m unit_tests`
+                 - UI: `cd genai-engine/ui && yarn type-check && yarn lint && yarn format:check`
+              4. Fix the root cause in source. For formatting, run the fixers
+                 (`uv run --directory genai-engine isort src --profile black && ... black src`,
+                 and `cd genai-engine/ui && yarn format`).
+              5. VERIFY: re-run every relevant check above and confirm they ALL pass.
+              6. ONLY IF everything passes: create a file `.claude-autofix-success` at the repo root
+                 containing `ok`, and leave your edits in the working tree. DO NOT commit or push.
+              7. IF you cannot fully fix it safely: run `git checkout -- . && git clean -fd` to discard
+                 all edits, do NOT create the success file, and post the explanatory PR comment.
+
+            A later step commits & pushes ONLY if `.claude-autofix-success` exists, and the change still
+            goes through the full CI + merge queue before merging. Never leave broken or unverified edits.
+
+      - name: Commit, push & re-approve (only if verified)
+        if: steps.guard.outputs.proceed == 'true'
+        env:
+          # Approve as github-actions[bot] — a DIFFERENT identity than the app that
+          # pushes below, so require_last_push_approval is satisfied.
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+        run: |
+          set -euo pipefail
+          if [ ! -f .claude-autofix-success ]; then
+            echo "No verified fix was produced; leaving the PR for a human."
+            exit 0
+          fi
+          rm -f .claude-autofix-success
+          if git diff --quiet && git diff --cached --quiet; then
+            echo "Success marker present but no file changes; nothing to push."
+            exit 0
+          fi
+
+          # Commit author = Automator App bot (cosmetic); push credential is the
+          # app token configured by checkout, so GitHub attributes the push to the app.
+          git config user.name "arthur-github-automator[bot]"
+          git config user.email "${{ secrets.ARTHUR_GH_AUTOMATOR_APP_ID }}+arthur-github-automator[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "fix(deps): auto-resolve CI failures from dependency update [claude-autofix]"
+          git push origin "HEAD:$HEAD_BRANCH"
+
+          # Re-approve so the PR (now with a fresh commit) can re-enter the merge queue.
+          gh pr review "$PR_NUMBER" --repo "${{ github.repository }}" --approve \
+            -b "🤖 Auto-fix verified: adapted the code to the dependency update and confirmed the full required suite passes locally. Re-approving to re-enter the merge queue."
