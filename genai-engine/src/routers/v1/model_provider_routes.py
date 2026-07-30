@@ -188,12 +188,14 @@ def get_model_providers_available_models(
     summary="Get the curated model list for a provider.",
     description=(
         "Returns the admin-curated model list for a provider along with the provider's "
-        "full catalog. A null whitelist means all models are exposed."
+         "full catalog. A null whitelist means all models are exposed."
     ),
     tags=["Model Providers"],
     response_model=ModelProviderWhitelist,
 )
-@permission_checker(permissions=PermissionLevelsEnum.MODEL_PROVIDER_READ.value)
+@permission_checker(
+    permissions=PermissionLevelsEnum.MODEL_PROVIDER_WHITELIST_READ.value,
+)
 def get_model_provider_whitelist(
     provider: ModelProvider,
     db_session: Session = Depends(get_db_session),

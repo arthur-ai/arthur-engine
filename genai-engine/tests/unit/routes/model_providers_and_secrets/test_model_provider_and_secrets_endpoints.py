@@ -668,3 +668,37 @@ def test_model_whitelist_write_still_requires_configured_provider(
         ["gemini-2.5-pro"],
     )
     assert status_code == 400
+
+
+@pytest.mark.unit_tests
+def test_model_whitelist_read_is_admin_only(
+    client: GenaiEngineTestClientBase,
+    stub_catalog,
+):
+    stub_catalog(ModelProvider.OPENAI, ["gpt-5", "gpt-5.4-nano"])
+    assert client.set_model_provider("openai", {"api_key": "test-key"}) == 201
+
+    try:
+        with patch.dict(os.environ, {"GENAI_ENGINE_DEMO_MODE": "enabled"}):
+            status_code, signup = client.signup_tenant()
+            assert status_code == 200
+            assert signup is not None
+
+        tenant_headers = {"Authorization": f"Bearer {signup.api_key}"}
+
+        status_code, _ = client.get_model_provider_whitelist(
+            "openai",
+            headers=tenant_headers,
+        )
+        assert status_code == 403
+
+        # The same key still reads available_models, narrowed to the tenant
+        # whitelist rather than the full catalog.
+        status_code, models = client.get_model_provider_available_models(
+            "openai",
+            headers=tenant_headers,
+        )
+        assert status_code == 200
+        assert models.available_models == ["gpt-5.4-nano"]
+    finally:
+        client.delete_model_provider("openai")
