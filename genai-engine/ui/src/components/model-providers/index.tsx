@@ -21,6 +21,8 @@ import {
   Alert,
   Stack,
 } from "@mui/material";
+import { isAxiosError } from "axios";
+import { useSnackbar } from "notistack";
 import React, { useState } from "react";
 
 import { EditForm } from "./components/edit-form";
@@ -33,6 +35,7 @@ import { getContentHeight } from "@/constants/layout";
 import { ModelProviderResponse, PutModelProviderCredentials } from "@/lib/api-client/api-client";
 
 export const ModelProviders: React.FC = () => {
+  const { enqueueSnackbar } = useSnackbar();
   const { data: providers, isLoading, error } = useProviders();
   const [deleteModal, setDeleteModal] = useState<{
     isOpen: boolean;
@@ -86,13 +89,25 @@ export const ModelProviders: React.FC = () => {
   const handleEditSave = async (data: PutModelProviderCredentials) => {
     if (!editModal.provider) return;
 
-    await saveProviderMutation.mutateAsync({ provider: editModal.provider, data });
+    try {
+      await saveProviderMutation.mutateAsync({ provider: editModal.provider, data });
+    } catch (err) {
+      const detail = isAxiosError(err) ? err.response?.data?.detail : undefined;
+      enqueueSnackbar(detail || "Failed to save credentials", { variant: "error" });
+      return;
+    }
 
     if (whitelistDirty) {
-      await saveWhitelistMutation.mutateAsync({
-        provider: editModal.provider.provider,
-        models: whitelist,
-      });
+      try {
+        await saveWhitelistMutation.mutateAsync({
+          provider: editModal.provider.provider,
+          models: whitelist,
+        });
+      } catch (err) {
+        const detail = isAxiosError(err) ? err.response?.data?.detail : undefined;
+        enqueueSnackbar(detail || "Credentials saved, but updating visible models failed", { variant: "error" });
+        return;
+      }
     }
 
     setEditModal({ isOpen: false, provider: null });
