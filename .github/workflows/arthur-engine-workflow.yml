@@ -13,6 +13,12 @@ on:
     branches:
       - main
       - dev
+  # Required for the `dev` merge queue: GitHub runs the required checks on a
+  # temporary `gh-readonly-queue/dev/...` branch via the merge_group event.
+  # Without this trigger the queue would never see the checks and would stall.
+  merge_group:
+    branches:
+      - dev
   workflow_dispatch:
     inputs:
       commit_sha:
@@ -160,18 +166,20 @@ jobs:
     if: |
       (
         github.event_name == 'pull_request' ||
+        github.event_name == 'merge_group' ||
         (github.event_name == 'push' && github.ref_type == 'branch')
       ) &&
       github.ref != 'refs/heads/main' &&
       github.ref != 'refs/heads/dev'
     runs-on: ubuntu-latest
     outputs:
-      backend: ${{ steps.changes.outputs.backend }}
-      ui: ${{ steps.changes.outputs.ui }}
+      backend: ${{ steps.decide.outputs.backend }}
+      ui: ${{ steps.decide.outputs.ui }}
     steps:
       - uses: actions/checkout@v5
       - uses: dorny/paths-filter@v2
         id: changes
+        if: github.event_name != 'merge_group'
         with:
           filters: |
             ui:
@@ -193,34 +201,61 @@ jobs:
               - 'genai-engine/Dockerfile*'
               - 'genai-engine/docker-compose.yml'
               - 'arthur-observability-sdk/**'
+      # In the merge queue there is no PR base to diff against, and paths-filter's
+      # base detection is unreliable on merge_group. Run the full required suite as
+      # the final pre-merge gate instead of trying to narrow it by path.
+      - name: Decide affected areas
+        id: decide
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "merge_group" ]; then
+            echo "backend=true" >> "$GITHUB_OUTPUT"
+            echo "ui=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "backend=${{ steps.changes.outputs.backend }}" >> "$GITHUB_OUTPUT"
+            echo "ui=${{ steps.changes.outputs.ui }}" >> "$GITHUB_OUTPUT"
+          fi
 
   check-ml-engine-changes:
     if: |
       (
         github.event_name == 'pull_request' ||
+        github.event_name == 'merge_group' ||
         (github.event_name == 'push' && github.ref_type == 'branch')
       ) &&
       github.ref != 'refs/heads/main' &&
       github.ref != 'refs/heads/dev'
     runs-on: ubuntu-latest
     outputs:
-      changed: ${{ steps.changes.outputs.changed }}
+      changed: ${{ steps.decide.outputs.changed }}
     steps:
       - uses: actions/checkout@v5
       - uses: dorny/paths-filter@v2
         id: changes
+        if: github.event_name != 'merge_group'
         with:
           filters: |
             changed:
               - 'ml-engine/**'
               - 'arthur-observability-sdk/**'
               - 'genai-engine/staging.openapi.json'
+      # In the merge queue, run the full required suite (see note above).
+      - name: Decide affected areas
+        id: decide
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "merge_group" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=${{ steps.changes.outputs.changed }}" >> "$GITHUB_OUTPUT"
+          fi
 
   run-genai-engine-ui-lint:
     needs: check-genai-engine-changes
     if: |
       (
         github.event_name == 'pull_request' ||
+        github.event_name == 'merge_group' ||
         (github.event_name == 'push' && github.ref_type == 'branch')
       ) &&
       github.ref != 'refs/heads/main' &&
@@ -274,6 +309,7 @@ jobs:
     if: |
       (
         github.event_name == 'pull_request' ||
+        github.event_name == 'merge_group' ||
         (github.event_name == 'push' && github.ref_type == 'branch')
       ) &&
       github.ref != 'refs/heads/main' &&
