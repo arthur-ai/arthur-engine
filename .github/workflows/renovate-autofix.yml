@@ -153,8 +153,10 @@ jobs:
           allowed_bots: "renovate[bot]"
           additional_permissions: |
             actions: read
+          # Opus at xhigh effort: these fixes require reading unfamiliar dependency
+          # APIs and reasoning about breakage, and the same run also self-reviews.
           # Keep Claude to the tools it needs; no network mutations beyond gh/git.
-          claude_args: '--allowed-tools "Bash,Read,Edit,Write,Glob,Grep"'
+          claude_args: '--model opus --effort xhigh --allowed-tools "Bash,Read,Edit,Write,Glob,Grep"'
           prompt: |
             A Renovate dependency-update PR (#${{ steps.pr.outputs.number }}) on this branch has FAILING CI.
             The failed run is: ${{ github.event.workflow_run.html_url }} (run id ${{ github.event.workflow_run.id }}).
