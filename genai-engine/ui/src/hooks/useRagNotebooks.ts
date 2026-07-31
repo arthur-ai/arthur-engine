@@ -75,8 +75,8 @@ export function useRagNotebook(notebookId: string | undefined) {
 export function useRagNotebookState(notebookId: string | undefined) {
   const api = useApi();
 
+  // eslint-disable-next-line @tanstack/query/exhaustive-deps -- api reference is stable
   const { data, error, isLoading, isSuccess, refetch } = useQuery({
-    // eslint-disable-next-line @tanstack/query/exhaustive-deps -- api reference is stable
     queryKey: [...queryKeys.ragNotebooks.state(notebookId!), "deserialized"],
     queryFn: async () => {
       if (!api || !notebookId) throw new Error("API client or notebookId not available");

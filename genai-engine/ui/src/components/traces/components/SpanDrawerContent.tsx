@@ -26,8 +26,8 @@ export const SpanDrawerContent = ({ id }: Props) => {
   const [, select] = useSelection("span");
   const paginationContext = usePaginationContext((state) => state.context);
 
+  // eslint-disable-next-line @tanstack/query/exhaustive-deps
   const { data: span } = useSuspenseQuery({
-    // eslint-disable-next-line @tanstack/query/exhaustive-deps
     queryKey: queryKeys.spans.byId(id),
     queryFn: () => getSpan(api!, { spanId: id! }),
   });
