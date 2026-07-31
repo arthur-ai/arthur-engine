@@ -26,6 +26,7 @@ from pydantic import BaseModel
 
 from tests.clients.base_test_client import app
 from utils.constants import TENANT_USER
+from utils.routes import iter_api_routes
 from utils.users import enforce_org_scope, enforce_query_org_scope
 
 
@@ -92,9 +93,7 @@ def _accepts_task_id_or_ids(handler) -> Optional[str]:
 
 
 def _iter_api_routes():
-    for route in app.routes:
-        if isinstance(route, APIRoute):
-            yield route
+    yield from iter_api_routes(app)
 
 
 # ---------------------------------------------------------------------------
