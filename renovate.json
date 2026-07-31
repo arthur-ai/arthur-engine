@@ -105,14 +105,36 @@
       "allowedVersions": "<17"
     },
     {
+      "description": "Non-major npm updates get one randomly-sampled reviewer for visibility (they are auto-merged). Major npm bumps are routed to the frontend experts by the rule below.",
       "matchManagers": ["npm"],
+      "matchUpdateTypes": ["minor", "patch"],
       "reviewers": ["TheLukaszNs-Blazity", "xV3rt", "martin-arthur-ai"],
       "reviewersSampleSize": 1
     },
     {
+      "description": "Non-major Python updates get one randomly-sampled reviewer for visibility (they are auto-merged). Major backend bumps are routed to the backend experts by the rule below.",
       "matchManagers": ["pep621"],
+      "matchUpdateTypes": ["minor", "patch"],
       "reviewers": ["notthattal", "videetparekh", "mcgrawia"],
       "reviewersSampleSize": 1
+    },
+    {
+      "description": "Route major frontend (npm) bumps to the frontend experts. Major updates are not auto-approved, so request both experts for human review. No reviewersSampleSize, so both are always requested.",
+      "matchManagers": ["npm"],
+      "matchUpdateTypes": ["major"],
+      "reviewers": ["jan-lewandoski-blazity", "xV3rt"]
+    },
+    {
+      "description": "Route major backend (Python/pep621) bumps to the backend experts for human review.",
+      "matchManagers": ["pep621"],
+      "matchUpdateTypes": ["major"],
+      "reviewers": ["ntatsumi", "notthattal"]
+    },
+    {
+      "description": "Route major infra bumps (Docker base images, docker-compose services, and the uv pin tracked by the custom regex manager) to the backend experts for human review.",
+      "matchManagers": ["dockerfile", "docker-compose", "custom.regex"],
+      "matchUpdateTypes": ["major"],
+      "reviewers": ["ntatsumi", "notthattal"]
     }
   ]
 }
