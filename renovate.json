@@ -40,7 +40,8 @@
   ],
   "packageRules": [
     {
-      "matchUpdateTypes": ["minor", "patch"],
+      "description": "Auto-merge low-risk update types. lockFileMaintenance (nightly lockfile refresh) and replacement (curated drop-in package swaps from replacements:all) are gated by CI + the auto-fixer like minor/patch, so they merge without a human reviewer instead of sitting open.",
+      "matchUpdateTypes": ["minor", "patch", "lockFileMaintenance", "replacement"],
       "automerge": true,
       "autoApprove": true
     },
