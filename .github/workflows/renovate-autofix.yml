@@ -183,6 +183,21 @@ jobs:
                 dependencies", incompatible version pins between packages).
               - Anything that would require changing a version pin or lockfile to resolve.
 
+            RELEASE-AGE SOAK (a specific out-of-scope case — flag it precisely instead of just "needs a
+            human"): the blocker is that a NEWER release of a dependency WOULD fix the build but is being
+            held back by this repo's 3-day soak — `minimumReleaseAge` in /renovate.json and
+            `tool.uv exclude-newer` in the pyproject.toml files. Tell-tale signs: `uv lock` reports the
+            fixing version is unavailable / "not at the requested version", OR a package imports a symbol
+            that a just-updated dependency renamed/removed and that dependency's compat patch was published
+            less than 3 days ago. When you identify this, IN ADDITION to the explanatory comment, label the
+            PR so humans can see it is a timing hold, not a defect:
+              `gh pr edit ${{ steps.pr.outputs.number }} --add-label "blocked: release-age soak"`
+            In the comment, name the package, the exact version that fixes it, and the UTC timestamp it
+            clears the soak (the fixing release's upload time + 3 days). Do NOT change any pin or lockfile
+            to pull it in early — the soak is deliberate. (The label pre-exists in the repo and
+            `pull-requests: write` is enough to apply it; if the `add-label` call ever fails because the
+            label is missing, skip it and rely on the comment — do not block on it.)
+
             HARD RULES (never violate — these protect the "don't break anything" objective):
               - Do NOT edit anything under .github/, any CI config, pyproject.toml/package.json version
                 pins, uv.lock, or yarn.lock.
