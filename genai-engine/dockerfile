@@ -131,9 +131,19 @@ COPY .env /app/
 ARG ENABLE_TELEMETRY=false
 RUN echo "TELEMETRY_ENABLED=${ENABLE_TELEMETRY}" >> /app/.env
 
-# Download AWS RDS global certificate bundle
+# Download AWS RDS global certificate bundle.
+# Retried: this is a release-blocking single point of failure — a bare `curl` here
+# failed a dev release build with exit 35 (SSL connect error) reaching AWS. Notes on
+# the flags, since the defaults are wrong for this in two ways:
+#   --retry-all-errors  plain --retry only covers timeouts and 5xx/408/429, NOT the
+#                       connection and TLS handshake failures that actually occur here.
+#   -f                  without it curl exits 0 on an HTTP error and writes the error
+#                       body into the file, silently shipping a corrupt cert bundle.
+# The grep is a last guard against a proxy or captive portal returning 200 + junk.
 RUN apt-get update && apt-get install -y curl && \
-    curl -o /app/postgres-cert.pem https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem
+    curl -fsSL --retry 5 --retry-delay 2 --retry-all-errors --connect-timeout 15 --max-time 180 \
+      -o /app/postgres-cert.pem https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem && \
+    grep -q "BEGIN CERTIFICATE" /app/postgres-cert.pem
 
 # Copy alembic files to run directory
 COPY alembic /app/alembic
