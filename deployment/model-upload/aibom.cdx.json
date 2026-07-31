@@ -6,8 +6,7 @@
     "component": {
       "type": "application",
       "bom-ref": "arthur-genai-engine-models",
-      "name": "arthur-genai-engine-models",
-      "version": "2.1.761-dev"
+      "name": "arthur-genai-engine-models"
     },
     "tools": {
       "components": [

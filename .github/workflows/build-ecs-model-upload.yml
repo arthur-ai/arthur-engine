@@ -95,14 +95,7 @@ jobs:
         run: |
           cd deployment/model-upload
           # Deterministic catalog copy: HuggingFace LFS hashes + license/task, no timestamp.
-          python generate_aibom.py --no-timestamp --engine-version "${{ env.VERSION }}" --output aibom.cdx.json
-      - name: Upload AIBOM artifact
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: aibom-${{ env.VERSION }}
-          path: deployment/model-upload/aibom.cdx.json
-          if-no-files-found: warn
+          python generate_aibom.py --no-timestamp --no-engine-version --output aibom.cdx.json
       - name: Commit updated manifest
         run: |
           git config --global user.name "github-actions[bot]"

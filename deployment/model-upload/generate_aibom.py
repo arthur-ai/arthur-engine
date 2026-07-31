@@ -113,7 +113,8 @@ def load_manifest_commits(manifest_path: Path) -> dict[str, str]:
     """Return the ``model_commits`` map from ``models-manifest.json`` (or empty)."""
     if not manifest_path.exists():
         logger.warning(
-            "Manifest not found at %s; commit SHAs will be blank", manifest_path
+            "Manifest not found at %s; commit SHAs will be blank",
+            manifest_path,
         )
         return {}
     with open(manifest_path) as f:
@@ -252,7 +253,7 @@ def build_component(
 def build_bom(
     models: dict[str, list[str]],
     manifest_commits: dict[str, str],
-    engine_version: str,
+    engine_version: str | None,
     models_dir: Path | None,
     offline: bool,
     include_timestamp: bool,
@@ -282,13 +283,18 @@ def build_bom(
 
         components.append(build_component(model_id, filenames, metadata))
 
+    component_block: dict[str, Any] = {
+        "type": "application",
+        "bom-ref": "arthur-genai-engine-models",
+        "name": "arthur-genai-engine-models",
+    }
+    # None for the committed catalog copy: it documents the bundled models, which do not
+    # change with the engine version, so stamping it made the file churn every release.
+    if engine_version is not None:
+        component_block["version"] = engine_version
+
     metadata_block: dict[str, Any] = {
-        "component": {
-            "type": "application",
-            "bom-ref": "arthur-genai-engine-models",
-            "name": "arthur-genai-engine-models",
-            "version": engine_version,
-        },
+        "component": component_block,
         "tools": {
             "components": [
                 {
@@ -355,6 +361,15 @@ def main() -> int:
         action="store_true",
         help="Omit metadata.timestamp for stable, diff-friendly committed output",
     )
+    parser.add_argument(
+        "--no-engine-version",
+        action="store_true",
+        help=(
+            "Omit metadata.component.version for stable, diff-friendly committed "
+            "output. Note that --engine-version defaults to $VERSION, so this flag "
+            "is the only way to suppress the stamp in CI"
+        ),
+    )
     args = parser.parse_args()
 
     manifest_commits = load_manifest_commits(args.manifest)
@@ -372,7 +387,7 @@ def main() -> int:
     bom = build_bom(
         models=DEFAULT_MODELS,
         manifest_commits=manifest_commits,
-        engine_version=args.engine_version,
+        engine_version=None if args.no_engine_version else args.engine_version,
         models_dir=args.models_dir,
         offline=args.offline,
         include_timestamp=not args.no_timestamp,
@@ -383,7 +398,9 @@ def main() -> int:
         json.dump(bom, f, indent=2, sort_keys=False)
         f.write("\n")
     logger.info(
-        "AI-BOM written to %s (%d components)", args.output, len(bom["components"])
+        "AI-BOM written to %s (%d components)",
+        args.output,
+        len(bom["components"]),
     )
     return 0
 
