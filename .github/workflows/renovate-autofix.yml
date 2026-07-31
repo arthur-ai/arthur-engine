@@ -285,23 +285,34 @@ jobs:
             exit 0
           fi
 
-          # Minor/patch: approve the EXACT fix commit — but only once GitHub reports it as the
-          # PR head. A bare 'gh pr review --approve' immediately after a push races GitHub and
-          # can attach the approval to the PRE-push commit, which dismiss_stale_reviews_on_push
-          # then instantly dismisses. Pinning commit_id to FIX_SHA (and confirming it's head)
-          # makes the approval stick, and also means we never approve a stale head.
-          HEAD_SHA=""
-          for i in 1 2 3 4 5 6; do
+          # Minor/patch: approve the EXACT fix commit and CONFIRM the approval sticks.
+          # Why this dance: a bare `gh pr review --approve` right after a push races GitHub —
+          # the approval can attach to the PRE-push commit, which dismiss_stale_reviews_on_push
+          # then dismisses (observed on #2070: approval landed on the old SHA and was dismissed
+          # 1s later). This loop does not trust that reasoning; it verifies the END STATE:
+          #   (a) wait until GitHub reports FIX_SHA as the PR head,
+          #   (b) approve pinned to FIX_SHA,
+          #   (c) re-read reviews and confirm a NON-dismissed APPROVED review on FIX_SHA exists,
+          #   retrying if not. If the head has moved on to some other commit (a newer push
+          #   superseded us), FIX_SHA never becomes head and we exit without approving a stale
+          #   commit — a newer run/human owns it.
+          approved=false
+          for attempt in 1 2 3 4 5 6; do
             HEAD_SHA=$(gh api "repos/${{ github.repository }}/pulls/$PR_NUMBER" --jq '.head.sha' || echo "")
-            [ "$HEAD_SHA" = "$FIX_SHA" ] && break
-            echo "Waiting for GitHub to register $FIX_SHA as PR head (currently ${HEAD_SHA:-unknown})..."
-            sleep 5
+            if [ "$HEAD_SHA" != "$FIX_SHA" ]; then
+              echo "PR head is ${HEAD_SHA:-unknown}, waiting for our fix $FIX_SHA to register (attempt $attempt/6)..."
+              sleep 5
+              continue
+            fi
+            gh api "repos/${{ github.repository }}/pulls/$PR_NUMBER/reviews" \
+              -f commit_id="$FIX_SHA" -f event="APPROVE" \
+              -f body="🤖 Auto-fix verified: adapted the code to the dependency update and confirmed the full required suite passes locally. Approving $FIX_SHA to re-enter the merge queue." >/dev/null || true
+            sleep 4
+            STUCK=$(gh api "repos/${{ github.repository }}/pulls/$PR_NUMBER/reviews" \
+              | jq -r --arg sha "$FIX_SHA" 'any(.[]; .user.login=="github-actions[bot]" and .state=="APPROVED" and .commit_id==$sha)')
+            if [ "$STUCK" = "true" ]; then approved=true; echo "Approval confirmed sticking on $FIX_SHA."; break; fi
+            echo "Approval did not stick yet (attempt $attempt/6); retrying..."
           done
-          if [ "$HEAD_SHA" != "$FIX_SHA" ]; then
-            echo "::warning::PR head is $HEAD_SHA, not our fix $FIX_SHA — skipping approval so we never approve a stale commit."
-            exit 0
+          if [ "$approved" != "true" ]; then
+            echo "::warning::Could not confirm a sticking approval on $FIX_SHA after retries; leaving it for a human to approve."
           fi
-          gh api "repos/${{ github.repository }}/pulls/$PR_NUMBER/reviews" \
-            -f commit_id="$FIX_SHA" -f event="APPROVE" \
-            -f body="🤖 Auto-fix verified: adapted the code to the dependency update and confirmed the full required suite passes locally. Approving $FIX_SHA to re-enter the merge queue." >/dev/null
-          echo "Approved $FIX_SHA."
