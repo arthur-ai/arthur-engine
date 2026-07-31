@@ -5,7 +5,7 @@ import { Box, Button, CircularProgress, Drawer, IconButton, Stack, Tooltip, Typo
 import { QueryErrorResetBoundary, useSuspenseQuery } from "@tanstack/react-query";
 import { Suspense, useMemo, useState } from "react";
 import { ErrorBoundary } from "react-error-boundary";
-import { Link as RouterLink } from "react-router-dom";
+import { Link as RouterLink } from "react-router";
 
 import { CopyableChip } from "@/components/common";
 import { traceDeepLinkPath } from "@/components/common/SourceTraceLink";
