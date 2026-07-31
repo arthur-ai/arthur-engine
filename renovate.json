@@ -76,6 +76,12 @@
       "allowedVersions": "<5.14.0"
     },
     {
+      "description": "fsspec and its filesystem backends are lockstep (gcsfs/s3fs/adlfs each pin a matching fsspec calendar version), so they must bump together. Splitting them into separate PRs makes each individually unsatisfiable.",
+      "matchManagers": ["pep621"],
+      "groupName": "fsspec filesystems",
+      "matchPackageNames": ["fsspec", "gcsfs", "s3fs", "adlfs"]
+    },
+    {
       "matchManagers": ["pep621"],
       "groupName": "langchain + openai",
       "matchPackageNames": [
