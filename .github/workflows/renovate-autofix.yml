@@ -21,8 +21,11 @@ name: Renovate Auto-Fix
 #
 # Identity split (required by the ruleset's require_last_push_approval +
 # dismiss_stale_reviews_on_push): the fix is PUSHED as the Arthur GitHub
-# Automator App, and RE-APPROVED as github-actions[bot] — two distinct actors,
-# so the post-push approval is valid.
+# Automator App, and APPROVED as github-actions[bot] — two distinct actors,
+# so the post-push approval is valid. The approval is pinned to the exact fix
+# commit SHA (a bare approve races the push and gets dismissed as stale).
+# Major-version PRs (labelled 'major' by Renovate) are fixed but NOT approved —
+# they get their title flagged for human review instead.
 #
 # This is a workflow_run listener; it only becomes active once merged to the
 # default branch (dev). It always runs the version of itself from the default
@@ -226,7 +229,7 @@ jobs:
             merge queue (and an independent Claude review) before merging. Never leave broken, unreviewed,
             or unverified edits.
 
-      - name: Commit, push & re-approve (only if verified)
+      - name: Commit, push, then approve (minor/patch) or flag (major)
         if: steps.guard.outputs.proceed == 'true'
         env:
           # Approve as github-actions[bot] — a DIFFERENT identity than the app that
@@ -255,13 +258,50 @@ jobs:
           git config user.email "${{ secrets.ARTHUR_GH_AUTOMATOR_APP_ID }}+arthur-github-automator[bot]@users.noreply.github.com"
           git add -A
           git commit -m "fix(deps): auto-resolve CI failures from dependency update [claude-autofix]"
-          # Push with the app token EXPLICITLY. Do not rely on the credential persisted by
-          # checkout: claude-code-action rewrites the workspace git auth config during its
-          # run, so the persisted header is gone by now. An installation token pushed as
-          # x-access-token is attributed to the Automator App (distinct from the approver).
+          FIX_SHA=$(git rev-parse HEAD)
+
+          # Push with the app token EXPLICITLY (checkout's persisted credential is gone —
+          # claude-code-action rewrites the workspace git auth during its run). The push is
+          # x-access-token, so GitHub attributes it to the Automator App (distinct from the
+          # approver). NOT a force push: if Renovate rebased this branch while Claude worked,
+          # this is a non-fast-forward and is rejected — safe, a newer run handles the new head.
           git push "https://x-access-token:${APP_TOKEN}@github.com/${{ github.repository }}.git" \
             "HEAD:$HEAD_BRANCH"
 
-          # Re-approve so the PR (now with a fresh commit) can re-enter the merge queue.
-          gh pr review "$PR_NUMBER" --repo "${{ github.repository }}" --approve \
-            -b "🤖 Auto-fix verified: adapted the code to the dependency update and confirmed the full required suite passes locally. Re-approving to re-enter the merge queue."
+          # Major-version bumps are labelled 'major' by Renovate. For those we adapt the code
+          # so CI passes, but do NOT self-approve — a human must review the major bump. We flag
+          # the title instead.
+          IS_MAJOR=$(gh api "repos/${{ github.repository }}/pulls/$PR_NUMBER" --jq 'any(.labels[]; .name == "major")')
+          if [ "$IS_MAJOR" = "true" ]; then
+            TITLE=$(gh pr view "$PR_NUMBER" --repo "${{ github.repository }}" --json title --jq '.title')
+            case "$TITLE" in
+              "⚠️ major update"*) : ;;  # already flagged on a previous attempt; don't stack
+              *) gh pr edit "$PR_NUMBER" --repo "${{ github.repository }}" \
+                   --title "⚠️ major update — human review required: $TITLE" ;;
+            esac
+            gh pr comment "$PR_NUMBER" --repo "${{ github.repository }}" --body \
+              "🤖 Applied an auto-fix so CI passes, but this is a **major** dependency update, so it is **not** being auto-approved. A human should review and approve before it merges."
+            echo "Major update: flagged title, skipped self-approval."
+            exit 0
+          fi
+
+          # Minor/patch: approve the EXACT fix commit — but only once GitHub reports it as the
+          # PR head. A bare 'gh pr review --approve' immediately after a push races GitHub and
+          # can attach the approval to the PRE-push commit, which dismiss_stale_reviews_on_push
+          # then instantly dismisses. Pinning commit_id to FIX_SHA (and confirming it's head)
+          # makes the approval stick, and also means we never approve a stale head.
+          HEAD_SHA=""
+          for i in 1 2 3 4 5 6; do
+            HEAD_SHA=$(gh api "repos/${{ github.repository }}/pulls/$PR_NUMBER" --jq '.head.sha' || echo "")
+            [ "$HEAD_SHA" = "$FIX_SHA" ] && break
+            echo "Waiting for GitHub to register $FIX_SHA as PR head (currently ${HEAD_SHA:-unknown})..."
+            sleep 5
+          done
+          if [ "$HEAD_SHA" != "$FIX_SHA" ]; then
+            echo "::warning::PR head is $HEAD_SHA, not our fix $FIX_SHA — skipping approval so we never approve a stale commit."
+            exit 0
+          fi
+          gh api "repos/${{ github.repository }}/pulls/$PR_NUMBER/reviews" \
+            -f commit_id="$FIX_SHA" -f event="APPROVE" \
+            -f body="🤖 Auto-fix verified: adapted the code to the dependency update and confirmed the full required suite passes locally. Approving $FIX_SHA to re-enter the merge queue." >/dev/null
+          echo "Approved $FIX_SHA."

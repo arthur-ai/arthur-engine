@@ -45,6 +45,11 @@
       "autoApprove": true
     },
     {
+      "description": "Label major updates so the auto-fixer can flag them for human review instead of self-approving.",
+      "matchUpdateTypes": ["major"],
+      "addLabels": ["major"]
+    },
+    {
       "matchManagers": ["npm"],
       "matchUpdateTypes": ["minor", "patch"],
       "groupName": "npm minor and patch"
