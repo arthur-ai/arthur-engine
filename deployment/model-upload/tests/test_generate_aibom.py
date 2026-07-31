@@ -86,6 +86,70 @@ def test_timestamp_included_when_requested():
     assert bom["metadata"]["timestamp"].endswith("Z")
 
 
+def test_engine_version_omitted_when_none():
+    """The committed catalog copy carries no engine version, so it does not churn."""
+    bom = gen.build_bom(
+        models=DEFAULT_MODELS,
+        manifest_commits=FAKE_COMMITS,
+        engine_version=None,
+        models_dir=None,
+        offline=True,
+        include_timestamp=False,
+    )
+    component = bom["metadata"]["component"]
+    assert "version" not in component
+    # Everything else about the document is unaffected.
+    assert component["name"] == "arthur-genai-engine-models"
+    assert bom["specVersion"] == "1.6"
+
+
+def test_engine_version_is_the_only_difference():
+    """--no-engine-version must not perturb anything else in the document."""
+    common = dict(
+        models=DEFAULT_MODELS,
+        manifest_commits=FAKE_COMMITS,
+        models_dir=None,
+        offline=True,
+        include_timestamp=False,
+    )
+    stamped = gen.build_bom(engine_version="9.9.9", **common)
+    bare = gen.build_bom(engine_version=None, **common)
+
+    assert stamped["metadata"]["component"].pop("version") == "9.9.9"
+    assert stamped == bare
+
+
+def test_cli_no_engine_version_beats_the_VERSION_env_default(tmp_path, monkeypatch):
+    """--engine-version defaults to $VERSION, so the flag must override that in CI."""
+    manifest = Path(gen.__file__).parent / "models-manifest.json"
+    monkeypatch.setenv("VERSION", "2.1.999")
+
+    def run(extra_args: list[str], name: str) -> dict:
+        output = tmp_path / name
+        monkeypatch.setattr(
+            "sys.argv",
+            [
+                "generate_aibom.py",
+                "--offline",
+                "--no-timestamp",
+                *extra_args,
+                "--manifest",
+                str(manifest),
+                "--output",
+                str(output),
+            ],
+        )
+        assert gen.main() == 0
+        return json.loads(output.read_text())
+
+    # Without the flag the env var leaks in -- this is what caused the release churn.
+    assert run([], "stamped.json")["metadata"]["component"]["version"] == "2.1.999"
+    assert (
+        "version"
+        not in run(["--no-engine-version"], "bare.json")["metadata"]["component"]
+    )
+
+
 def test_local_file_hashes(tmp_path):
     """With a models-dir, per-file SHA-256 is computed and the primary weight hashed."""
     model_id = "s-nlp/roberta_toxicity_classifier"

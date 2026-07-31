@@ -95,7 +95,7 @@ jobs:
         run: |
           cd deployment/model-upload
           # Deterministic catalog copy: HuggingFace LFS hashes + license/task, no timestamp.
-          python generate_aibom.py --no-timestamp --engine-version "${{ env.VERSION }}" --output aibom.cdx.json
+          python generate_aibom.py --no-timestamp --no-engine-version --output aibom.cdx.json
       - name: Upload AIBOM artifact
         if: always()
         uses: actions/upload-artifact@v4
