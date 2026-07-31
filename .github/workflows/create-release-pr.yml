@@ -46,6 +46,41 @@ jobs:
             exit 1
           fi
 
+          # GitHub honours CI-skip directives on the head commit for `pull_request`
+          # events, not just `push`. If dev's tip carries one, the release PR opens
+          # with *zero* workflow runs, so main-branch-ruleset's required checks can
+          # never report and the PR is permanently BLOCKED (see #2078, #2081).
+          #
+          # dev's tip regularly carries one: the model-upload workflows push
+          # "Update models manifest [skip ci]" straight to dev. That [skip ci] is
+          # deliberate and must stay — Arthur Engine CI uses a per-ref concurrency
+          # group with cancel-in-progress on non-main refs, so a non-skipped push
+          # would cancel the very release build that produced the manifest.
+          #
+          # So fix it here instead: land an empty commit to give the PR a checkable
+          # head. Three constraints on that commit message, all load-bearing:
+          #   * no skip directive        - the whole point; the head must be checkable.
+          #   * must NOT contain "Increment arthur-engine version" - Arthur Engine CI
+          #     gates the image-build jobs on that phrase, so it would kick off a
+          #     premature release build on dev.
+          #   * MUST start with "chore(release)" - Version Management bumps the version
+          #     on every push to dev except for an allow-list of prefixes. Without a
+          #     matching prefix this commit bumps the version, which pushes an
+          #     "Increment arthur-engine version" commit, which rebuilds the model
+          #     images, which pushes a fresh "[skip ci]" manifest commit — putting the
+          #     PR head straight back on a skipped commit and re-blocking it. The
+          #     matching allow-list entry lives in version-workflow.yml; keep in sync.
+          TIP_MSG="$(git log -1 --pretty=%B origin/dev)"
+          if printf '%s' "$TIP_MSG" | grep -qiE '\[(skip ci|ci skip|no ci|skip actions|actions skip)\]'; then
+            echo "dev tip carries a CI-skip directive; adding an empty commit so the release PR gets checks."
+            git config user.name "arthur-github-automator[bot]"
+            git config user.email "arthur-github-automator[bot]@users.noreply.github.com"
+            git checkout -B dev origin/dev
+            git commit --allow-empty -m "chore(release): enable checks for the release PR"
+            git push origin dev
+            git fetch origin dev
+          fi
+
           BODY="Production release PR. Merging this PR will trigger the production build and deployment pipeline."
 
           gh pr create \
