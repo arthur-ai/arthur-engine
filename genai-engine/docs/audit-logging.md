@@ -11,6 +11,7 @@ Audit logging is **enabled by default**. Control it with these environment varia
 | `AUDIT_LOG_ENABLED` | `"true"` | Set to `"false"` to disable audit logging entirely |
 | `AUDIT_LOG_RETENTION_DAYS` | `365` | Number of daily log files to retain before rotation deletes them |
 | `AUDIT_LOG_OVERRIDE_PATH` | *(unset)* | Custom directory for audit log files. Defaults to `<project-root>/audit_logs/` |
+| `AUDIT_LOG_INCLUDE_AI_ACTIVITY` | `"false"` | Set to `"true"` to append the engine's own model invocations to each entry (see [AI Processing Activity](#ai-processing-activity-model-invocations)). Opt-in; only consulted when `AUDIT_LOG_ENABLED` is on. |
 
 When enabled, the server automatically:
 1. Creates the audit log directory
@@ -163,6 +164,58 @@ Error responses have an empty `response_ids` array since no resource was returne
   "audit_log_meta_version": "ArthurAuditLogEventV1"
 }
 ```
+
+## AI Processing Activity (Model Invocations)
+
+By default an audit entry records **who called which endpoint** — the access trail. When `AUDIT_LOG_INCLUDE_AI_ACTIVITY=true`, each entry is additionally annotated with **the AI models the engine itself invoked while serving that request** — the hosted LLM judge calls (hallucination, sensitive-data, relevance, tool-selection) and the on-box ML classifiers (prompt injection, toxicity, PII).
+
+When enabled:
+
+- `audit_log_meta_version` becomes `"ArthurAuditLogEventV2"` and a `model_invocations` array is added. When disabled, entries remain the V1 `AuditLog` unchanged.
+- Records are **metadata only** — no prompt or response content is ever written, consistent with the rest of the audit log.
+
+### `model_invocations` entries
+
+| Field | Type | Description |
+|---|---|---|
+| `model_name` | `string \| null` | The model invoked (LLM deployment name, or local classifier model id). `null` when it cannot be resolved. |
+| `provider` | `string` | `"azure"`, `"openai"`, `"proxy"`, or `"local"` (on-box model). |
+| `model_type` | `string` | `"llm"` for hosted judge calls, `"ml_classifier"` for on-box models. |
+| `operation` | `string` | The check/operation that issued the call (e.g. `"hallucination"`, `"toxicity"`, `"pii"`). |
+| `prompt_tokens` | `integer \| null` | Prompt tokens consumed. `null` for local models (not LLM-tokenized). |
+| `completion_tokens` | `integer \| null` | Completion tokens produced. `null` for local models. |
+| `total_tokens` | `integer \| null` | Total tokens consumed. `null` for local models. |
+| `latency_ms` | `integer` | Wall-clock duration of the invocation. |
+| `success` | `boolean` | Whether the invocation completed without raising. |
+| `error_type` | `string \| null` | Exception class name when the invocation failed, else `null`. |
+
+### Example (validate call, feature enabled)
+
+```json
+{
+  "id": "9f0d6f5e-6c9a-4d5f-8f3a-2c1b0e7d4a11",
+  "user_id": "master-key",
+  "timestamp": "2026-07-10T14:40:02.167675Z",
+  "request_method": "post",
+  "request_path": "/api/v2/validate_prompt",
+  "path_params": [],
+  "response_ids": [{ "response_type": "ValidationResult", "id_field": "id", "response_id": "…" }],
+  "status_code": 200,
+  "audit_log_meta_version": "ArthurAuditLogEventV2",
+  "model_invocations": [
+    { "provider": "local", "model_type": "ml_classifier", "operation": "prompt_injection", "latency_ms": 24, "success": true },
+    { "model_name": "gpt-4o", "provider": "azure", "model_type": "llm", "operation": "hallucination", "prompt_tokens": 812, "completion_tokens": 41, "total_tokens": 853, "latency_ms": 1032, "success": true }
+  ]
+}
+```
+
+### Coverage notes
+
+The audit log is **request-scoped**, so this captures only model calls made while serving an authenticated API request:
+
+- Model calls made **outside a request** — e.g. background continuous-eval runs — are not attached to any entry.
+- Endpoints excluded from audit logging (`/completions`, the chatbot `/stream`) are not annotated.
+- `model_name` may be `null` for some LLM calls (sensitive-data, relevance, tool-selection) where the deployment name is not available at the call site; `provider`, `operation`, tokens, and latency are still recorded.
 
 ## File Rotation
 

@@ -8,6 +8,7 @@ from arthur_common.models.enums import RuleResultEnum
 from transformers.modeling_utils import PreTrainedModel
 from transformers.tokenization_utils_base import PreTrainedTokenizerBase
 
+from monitoring.ai_activity import track_ml_model_invocation
 from schemas.scorer_schemas import RuleScore, ScoreRequest
 from scorer.scorer import RuleScorer
 from utils.model_load import (
@@ -63,6 +64,10 @@ class BinaryPromptInjectionClassifier(RuleScorer):
             PROMPT_INJECTION_TOKENIZER,
         )
 
+    @track_ml_model_invocation(
+        model_name="ProtectAI/deberta-v3-base-prompt-injection-v2",
+        operation="prompt_injection",
+    )
     def score(self, request: ScoreRequest) -> RuleScore:
         """Scores prompt for how likely they are to be a prompt injection attack
         Requests greater than 2000 characters are truncated from the middle"""

@@ -1,3 +1,9 @@
+# The distroless base is referenced twice: here, so the install stage can read the
+# dpkg metadata it ships (see the status.d sync at the end of that stage), and again
+# as the final image below. The same tag resolves to the same digest within one
+# build, so this adds a metadata read, not a second base image.
+FROM --platform=linux/amd64 gcr.io/distroless/python3-debian12:nonroot AS distroless_meta
+
 FROM --platform=linux/amd64 python:3.13-slim-bookworm AS install
 
 # install uv and wget; upgrade OS packages for Debian security fixes
@@ -82,6 +88,73 @@ RUN mkdir -p /genai_client
 COPY src/genai_client /genai_client
 RUN uv pip install --system /genai_client
 
+# Patch the libraries the distroless base keeps in /lib. Unlike bookworm, the base
+# is NOT merged-/usr: /lib is a real directory holding glibc (libc.so.6, libm,
+# libpthread, libnss_*, and the ELF interpreter that /lib64 symlinks to) plus
+# liblzma, libexpat, libgcc_s, libbz2, libcom_err, libcrypt, libkeyutils,
+# libncursesw and libreadline. `COPY --from=install /usr/lib /usr/lib` in the final
+# stage does not reach any of them, so they stayed at the base's versions in every
+# image shipped so far — the libc6 and liblzma5 CVEs scanners report against them
+# are real, not stale metadata. (The libssl3 and krb5 objects do live under
+# /usr/lib and were genuinely being patched.)
+#
+# Mirror the base's /lib layout using this stage's apt-upgraded libraries. Only
+# paths the base already has are emitted, so this replaces files rather than adding
+# any, and the base's layout is preserved. In this stage /lib is a symlink to
+# /usr/lib, hence the /usr/lib source path.
+COPY --from=distroless_meta /lib /tmp/base-lib
+RUN set -eu; \
+    out=/tmp/patched-lib; rm -rf "$out"; mkdir -p "$out"; \
+    cd /tmp/base-lib; \
+    find . -mindepth 1 \( -type f -o -type l \) -print | while IFS= read -r p; do \
+      rel="${p#./}"; src="/usr/lib/${rel}"; \
+      { [ -e "$src" ] || [ -L "$src" ]; } || continue; \
+      mkdir -p "$out/$(dirname "$rel")"; \
+      cp -a "$src" "$out/$rel"; \
+      echo "  /lib patch: ${rel}"; \
+    done
+
+# Rewrite the distroless base's dpkg metadata to the package versions this stage
+# actually installed. With the /lib mirror above and `COPY /usr/lib` in the final
+# stage, the base's shared objects are replaced by the apt-upgraded ones from
+# bookworm-security, but the base's /var/lib/dpkg/status.d keeps advertising the
+# versions it was built with. Scanners resolve OS-package CVEs from that metadata
+# (Wiz reports these as `detectionMethod: PACKAGE`), so they flag already-fixed
+# CVEs against libssl3/libkrb5* indefinitely and block downstream image-policy
+# gates — the situation security/vex/openvex.json documents.
+#
+# Only packages that this stage has installed AND that ship a shared object under
+# /lib|/usr/lib/<triplet>/ are synced: those, and only those, are the files the two
+# copies overwrite, so the synced version is what genuinely ships. (Both prefixes
+# are matched because bookworm packages are split between them.) Packages the base
+# ships but this stage lacks keep their original version — their files survive
+# untouched.
+#
+# The md5sums sidecars are refreshed from this stage's dpkg database, resolved via
+# `dpkg-query --control-path` rather than by composing the path: dpkg stores those
+# files arch-qualified (libc6:amd64.md5sums) for Multi-Arch: same packages, which
+# every package selected above is, so a hand-built /var/lib/dpkg/info/<pkg>.md5sums
+# never exists. The refreshed lists match every shipped shared object byte-for-byte;
+# their /usr/share/doc entries (changelog, NEWS) stay stale because these images
+# never copy /usr/share. That residue is inert — no scanner resolves CVEs from
+# checksums — but the shared objects, which the Version above now claims, do match.
+COPY --from=distroless_meta /var/lib/dpkg/status.d /tmp/base-status.d
+RUN set -eu; \
+    out=/tmp/dpkg-status.d; \
+    rm -rf "$out"; cp -a /tmp/base-status.d "$out"; \
+    for f in "$out"/*; do \
+      pkg="${f##*/}"; \
+      case "$pkg" in *.md5sums) continue ;; esac; \
+      dpkg-query -L "$pkg" 2>/dev/null | grep -qE '^(/usr)?/lib/[^/]*-linux-gnu/.*\.so' || continue; \
+      ver="$(dpkg-query -W -f='${Version}' "$pkg" 2>/dev/null)" || continue; \
+      [ -n "$ver" ] || continue; \
+      sed -i "s/^Version: .*/Version: ${ver}/" "$f"; \
+      if src="$(dpkg-query --control-path "$pkg" md5sums 2>/dev/null)" && [ -f "$src" ]; then \
+        cp "$src" "${f}.md5sums"; \
+      fi; \
+      echo "  dpkg-status sync: ${pkg} -> ${ver}"; \
+    done
+
 # Final Stage(s): Create ml-engine image
 FROM --platform=linux/amd64 gcr.io/distroless/python3-debian12:nonroot AS ml-engine-distroless-base
 
@@ -94,9 +167,15 @@ COPY --from=install /usr/bin/env /usr/bin/env
 COPY --from=install /usr/bin/printenv /usr/bin/printenv
 COPY --from=install /usr/bin/wget /usr/bin/wget
 COPY --from=install /usr/lib /usr/lib
+# The base keeps real glibc/liblzma/libexpat/... files in /lib (it is not
+# merged-/usr), which the /usr/lib copy above does not reach. See install stage.
+COPY --from=install /tmp/patched-lib /lib
 COPY --from=install /usr/local/lib/ /usr/local/lib/
 COPY --from=install /usr/local/bin/ /usr/local/bin/
 COPY --from=install /etc/ld.so.cache /etc/ld.so.cache
+# dpkg metadata corrected to match the shared objects copied above (see install stage).
+# Must precede the python3.11 cleanup below, which deletes three of these stanzas.
+COPY --from=install /tmp/dpkg-status.d /var/lib/dpkg/status.d
 COPY --from=install /opt/oracle/ /opt/oracle/
 COPY --from=install /opt/microsoft/msodbcsql18 /opt/microsoft/msodbcsql18
 COPY --from=install /opt/microsoft/msodbcsql17 /opt/microsoft/msodbcsql17
