@@ -107,7 +107,10 @@ linters = [
 
 [tool.uv]
 exclude-newer = "3 days"
-exclude-newer-package = { torch = false, arthur-common = false, arthur-client = false }
+# fastapi-pagination bypasses the release-age soak: 0.15.16 (FastAPI 0.140 compat) was needed
+# before it aged past the 3-day window. Without this, the lock's per-package override diverges
+# from pyproject and uv re-resolves under the soak, failing to satisfy the ==0.15.16 pin.
+exclude-newer-package = { torch = false, arthur-common = false, arthur-client = false, fastapi-pagination = false }
 # Security: pin transitive hf-xet (its wheel vendors Rust crates) to >=1.5.2, which bundles
 # rustls-webpki 0.103.13 (RUSTSEC-2026-0104, HIGH: DoS panic in CRL parsing) and quinn-proto
 # 0.11.15 (RUSTSEC-2026-0185 / CVE-2026-25800, HIGH: remote memory exhaustion). Both are fixed

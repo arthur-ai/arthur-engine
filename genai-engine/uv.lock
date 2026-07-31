@@ -8,14 +8,14 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "2026-07-28T15:48:08.399182Z"
+exclude-newer = "2026-07-28T17:46:51.286564Z"
 exclude-newer-span = "P3D"
 
 [options.exclude-newer-package]
 arthur-common = false
-fastapi-pagination = "2026-07-28T18:42:00Z"
-arthur-client = false
 torch = false
+arthur-client = false
+fastapi-pagination = false
 
 [manifest]
 constraints = [{ name = "hf-xet", specifier = ">=1.5.2" }]
@@ -185,7 +185,7 @@ wheels = [
 
 [[package]]
 name = "arthur-genai-engine"
-version = "2.1.770"
+version = "2.1.771"
 source = { editable = "." }
 dependencies = [
     { name = "alembic" },
