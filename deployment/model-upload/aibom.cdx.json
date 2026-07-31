@@ -1,0 +1,539 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.6",
+  "version": 1,
+  "metadata": {
+    "component": {
+      "type": "application",
+      "bom-ref": "arthur-genai-engine-models",
+      "name": "arthur-genai-engine-models"
+    },
+    "tools": {
+      "components": [
+        {
+          "type": "application",
+          "name": "arthur-generate-aibom",
+          "version": "1.0.0"
+        }
+      ]
+    }
+  },
+  "components": [
+    {
+      "type": "machine-learning-model",
+      "bom-ref": "ProtectAI/deberta-v3-base-prompt-injection-v2",
+      "group": "ProtectAI",
+      "name": "deberta-v3-base-prompt-injection-v2",
+      "publisher": "ProtectAI",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://huggingface.co/ProtectAI/deberta-v3-base-prompt-injection-v2"
+        }
+      ],
+      "version": "90c9989b1a342275dd0d1a95aad283c04e075671",
+      "purl": "pkg:huggingface/ProtectAI/deberta-v3-base-prompt-injection-v2@90c9989b1a342275dd0d1a95aad283c04e075671",
+      "description": "DeBERTa-v3 classifier used for prompt-injection detection.",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "6521cb8d0ac08148c81464899c424e6148fcc62befa371089fa4061d8b6e0424"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "name": "apache-2.0"
+          }
+        }
+      ],
+      "modelCard": {
+        "modelParameters": {
+          "task": "text-classification"
+        }
+      },
+      "properties": [
+        {
+          "name": "arthur:guardrail:purpose",
+          "value": "prompt-injection"
+        },
+        {
+          "name": "arthur:file:added_tokens.json",
+          "value": "bundled"
+        },
+        {
+          "name": "arthur:file:config.json",
+          "value": "bundled"
+        },
+        {
+          "name": "arthur:file:model.safetensors",
+          "value": "bundled"
+        },
+        {
+          "name": "arthur:file:model.safetensors:sha256",
+          "value": "6521cb8d0ac08148c81464899c424e6148fcc62befa371089fa4061d8b6e0424"
+        },
+        {
+          "name": "arthur:file:special_tokens_map.json",
+          "value": "bundled"
+        },
+        {
+          "name": "arthur:file:spm.model",
+          "value": "bundled"
+        },
+        {
+          "name": "arthur:file:spm.model:sha256",
+          "value": "c679fbf93643d19aab7ee10c0b99e460bdbc02fedf34b92b05af343b4af586fd"
+        },
+        {
+          "name": "arthur:file:tokenizer.json",
+          "value": "bundled"
+        },
+        {
+          "name": "arthur:file:tokenizer_config.json",
+          "value": "bundled"
+        }
+      ]
+    },
+    {
+      "type": "machine-learning-model",
+      "bom-ref": "microsoft/deberta-v2-xlarge-mnli",
+      "group": "microsoft",
+      "name": "deberta-v2-xlarge-mnli",
+      "publisher": "microsoft",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://huggingface.co/microsoft/deberta-v2-xlarge-mnli"
+        }
+      ],
+      "version": "2b65bccdedcead4bc685988bcc30153d4922a789",
+      "purl": "pkg:huggingface/microsoft/deberta-v2-xlarge-mnli@2b65bccdedcead4bc685988bcc30153d4922a789",
+      "description": "DeBERTa-v2 NLI model used for response-relevance scoring (optional).",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "cc41eeb065c6ab3f7e88f8dab756334abb1f77a1136fec8cf02442143934c253"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "name": "mit"
+          }
+        }
+      ],
+      "modelCard": {
+        "modelParameters": {
+          "task": "text-classification"
+        }
+      },
+      "properties": [
+        {
+          "name": "arthur:guardrail:purpose",
+          "value": "relevance-nli"
+        },
+        {
+          "name": "arthur:file:config.json",
+          "value": "bundled"
+        },
+        {
+          "name": "arthur:file:pytorch_model.bin",
+          "value": "bundled"
+        },
+        {
+          "name": "arthur:file:pytorch_model.bin:sha256",
+          "value": "cc41eeb065c6ab3f7e88f8dab756334abb1f77a1136fec8cf02442143934c253"
+        },
+        {
+          "name": "arthur:file:spm.model",
+          "value": "bundled"
+        },
+        {
+          "name": "arthur:file:spm.model:sha256",
+          "value": "5598d5e96f339a8d980c15f9afd405a2e5e1be7db41de3ed13b0f03fac1e8c17"
+        },
+        {
+          "name": "arthur:file:tokenizer_config.json",
+          "value": "bundled"
+        }
+      ]
+    },
+    {
+      "type": "machine-learning-model",
+      "bom-ref": "microsoft/mdeberta-v3-base",
+      "group": "microsoft",
+      "name": "mdeberta-v3-base",
+      "publisher": "microsoft",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://huggingface.co/microsoft/mdeberta-v3-base"
+        }
+      ],
+      "version": "a0484667b22365f84929a935b5e50a51f71f159d",
+      "purl": "pkg:huggingface/microsoft/mdeberta-v3-base@a0484667b22365f84929a935b5e50a51f71f159d",
+      "description": "Base encoder for the GLiNER PII model.",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "6f89419baf0f1aaad5cab7d53901e36a8c1af8f6b4ab58b15db9af32df656ead"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "name": "mit"
+          }
+        }
+      ],
+      "modelCard": {
+        "modelParameters": {
+          "task": "fill-mask"
+        }
+      },
+      "properties": [
+        {
+          "name": "arthur:guardrail:purpose",
+          "value": "pii-base-encoder"
+        },
+        {
+          "name": "arthur:file:config.json",
+          "value": "bundled"
+        },
+        {
+          "name": "arthur:file:generator_config.json",
+          "value": "bundled"
+        },
+        {
+          "name": "arthur:file:pytorch_model.bin",
+          "value": "bundled"
+        },
+        {
+          "name": "arthur:file:pytorch_model.bin:sha256",
+          "value": "6f89419baf0f1aaad5cab7d53901e36a8c1af8f6b4ab58b15db9af32df656ead"
+        },
+        {
+          "name": "arthur:file:pytorch_model.generator.bin",
+          "value": "bundled"
+        },
+        {
+          "name": "arthur:file:pytorch_model.generator.bin:sha256",
+          "value": "6ed99a7559e70706a5d8cd4fec61563e8d2681316ef02408ead469b6f0107006"
+        },
+        {
+          "name": "arthur:file:spm.model",
+          "value": "bundled"
+        },
+        {
+          "name": "arthur:file:spm.model:sha256",
+          "value": "13c8d666d62a7bc4ac8f040aab68e942c861f93303156cc28f5c7e885d86d6e3"
+        },
+        {
+          "name": "arthur:file:tf_model.h5",
+          "value": "bundled"
+        },
+        {
+          "name": "arthur:file:tf_model.h5:sha256",
+          "value": "698ea8844e1b68266b4c6f813e7548b244a3be833880db623427f99096cc820f"
+        },
+        {
+          "name": "arthur:file:tokenizer_config.json",
+          "value": "bundled"
+        }
+      ]
+    },
+    {
+      "type": "machine-learning-model",
+      "bom-ref": "s-nlp/roberta_toxicity_classifier",
+      "group": "s-nlp",
+      "name": "roberta_toxicity_classifier",
+      "publisher": "s-nlp",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://huggingface.co/s-nlp/roberta_toxicity_classifier"
+        }
+      ],
+      "version": "048c25bb1e199b98802784f96325f4840f22145d",
+      "purl": "pkg:huggingface/s-nlp/roberta_toxicity_classifier@048c25bb1e199b98802784f96325f4840f22145d",
+      "description": "RoBERTa classifier used for toxicity detection.",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "896f52af161757594994d1fefe85ac79cbb57c9a96b26fba8ab93139b6426b8c"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "name": "openrail++"
+          }
+        }
+      ],
+      "modelCard": {
+        "modelParameters": {
+          "task": "text-classification"
+        }
+      },
+      "properties": [
+        {
+          "name": "arthur:guardrail:purpose",
+          "value": "toxicity"
+        },
+        {
+          "name": "arthur:file:config.json",
+          "value": "bundled"
+        },
+        {
+          "name": "arthur:file:merges.txt",
+          "value": "bundled"
+        },
+        {
+          "name": "arthur:file:pytorch_model.bin",
+          "value": "bundled"
+        },
+        {
+          "name": "arthur:file:pytorch_model.bin:sha256",
+          "value": "896f52af161757594994d1fefe85ac79cbb57c9a96b26fba8ab93139b6426b8c"
+        },
+        {
+          "name": "arthur:file:special_tokens_map.json",
+          "value": "bundled"
+        },
+        {
+          "name": "arthur:file:tokenizer_config.json",
+          "value": "bundled"
+        },
+        {
+          "name": "arthur:file:vocab.json",
+          "value": "bundled"
+        }
+      ]
+    },
+    {
+      "type": "machine-learning-model",
+      "bom-ref": "sentence-transformers/all-MiniLM-L12-v2",
+      "group": "sentence-transformers",
+      "name": "all-MiniLM-L12-v2",
+      "publisher": "sentence-transformers",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://huggingface.co/sentence-transformers/all-MiniLM-L12-v2"
+        }
+      ],
+      "version": "a50ef00143b4d5391434df20ae11632588ac25be",
+      "purl": "pkg:huggingface/sentence-transformers/all-MiniLM-L12-v2@a50ef00143b4d5391434df20ae11632588ac25be",
+      "description": "Sentence-embedding model used for claim extraction in hallucination detection.",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "d2d541e5f101695ae495eacd867a8d025ecfe8f9674fb23aa6cf93cdb60a5542"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "name": "apache-2.0"
+          }
+        }
+      ],
+      "modelCard": {
+        "modelParameters": {
+          "task": "sentence-similarity"
+        }
+      },
+      "properties": [
+        {
+          "name": "arthur:guardrail:purpose",
+          "value": "claim-embedding"
+        },
+        {
+          "name": "arthur:file:1_Pooling/config.json",
+          "value": "bundled"
+        },
+        {
+          "name": "arthur:file:config.json",
+          "value": "bundled"
+        },
+        {
+          "name": "arthur:file:config_sentence_transformers.json",
+          "value": "bundled"
+        },
+        {
+          "name": "arthur:file:model.safetensors",
+          "value": "bundled"
+        },
+        {
+          "name": "arthur:file:model.safetensors:sha256",
+          "value": "d2d541e5f101695ae495eacd867a8d025ecfe8f9674fb23aa6cf93cdb60a5542"
+        },
+        {
+          "name": "arthur:file:modules.json",
+          "value": "bundled"
+        },
+        {
+          "name": "arthur:file:sentence_bert_config.json",
+          "value": "bundled"
+        },
+        {
+          "name": "arthur:file:special_tokens_map.json",
+          "value": "bundled"
+        },
+        {
+          "name": "arthur:file:tokenizer.json",
+          "value": "bundled"
+        },
+        {
+          "name": "arthur:file:tokenizer_config.json",
+          "value": "bundled"
+        },
+        {
+          "name": "arthur:file:vocab.txt",
+          "value": "bundled"
+        }
+      ]
+    },
+    {
+      "type": "machine-learning-model",
+      "bom-ref": "tarekziade/pardonmyai",
+      "group": "tarekziade",
+      "name": "pardonmyai",
+      "publisher": "tarekziade",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://huggingface.co/tarekziade/pardonmyai"
+        }
+      ],
+      "version": "ab8a02ae775d32baff05936fac625e289c4f4b07",
+      "purl": "pkg:huggingface/tarekziade/pardonmyai@ab8a02ae775d32baff05936fac625e289c4f4b07",
+      "description": "ONNX-quantized classifier used for profanity detection.",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "7dc39ec97dae9180e7895e9c52c0a0f08f004df9148443fe239aab30afa8893e"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "name": "apache-2.0"
+          }
+        }
+      ],
+      "modelCard": {
+        "modelParameters": {
+          "task": "text-classification"
+        }
+      },
+      "properties": [
+        {
+          "name": "arthur:guardrail:purpose",
+          "value": "profanity"
+        },
+        {
+          "name": "arthur:file:config.json",
+          "value": "bundled"
+        },
+        {
+          "name": "arthur:file:model.safetensors",
+          "value": "bundled"
+        },
+        {
+          "name": "arthur:file:model.safetensors:sha256",
+          "value": "7dc39ec97dae9180e7895e9c52c0a0f08f004df9148443fe239aab30afa8893e"
+        },
+        {
+          "name": "arthur:file:onnx/model.onnx",
+          "value": "bundled"
+        },
+        {
+          "name": "arthur:file:onnx/model.onnx:sha256",
+          "value": "814b5cb7a94a3757c22052131970b5a378de3e3841b491cf83525e41d9cec63a"
+        },
+        {
+          "name": "arthur:file:onnx/model_quantized.onnx",
+          "value": "bundled"
+        },
+        {
+          "name": "arthur:file:onnx/model_quantized.onnx:sha256",
+          "value": "118bd514d22922eedd727cb1d62907ca0304def20dee98da1033ecfa8304caff"
+        },
+        {
+          "name": "arthur:file:quantize_config.json",
+          "value": "bundled"
+        },
+        {
+          "name": "arthur:file:special_tokens_map.json",
+          "value": "bundled"
+        },
+        {
+          "name": "arthur:file:tokenizer.json",
+          "value": "bundled"
+        },
+        {
+          "name": "arthur:file:tokenizer_config.json",
+          "value": "bundled"
+        },
+        {
+          "name": "arthur:file:vocab.txt",
+          "value": "bundled"
+        }
+      ]
+    },
+    {
+      "type": "machine-learning-model",
+      "bom-ref": "urchade/gliner_multi_pii-v1",
+      "group": "urchade",
+      "name": "gliner_multi_pii-v1",
+      "publisher": "urchade",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://huggingface.co/urchade/gliner_multi_pii-v1"
+        }
+      ],
+      "version": "1fcf13e85f4eef5394e1fcd406cf2ca9ea82351d",
+      "purl": "pkg:huggingface/urchade/gliner_multi_pii-v1@1fcf13e85f4eef5394e1fcd406cf2ca9ea82351d",
+      "description": "GLiNER NER model used for PII detection.",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "3003753fba99e40645cf088c7367a2c6211fc174897dc64f1f9c147c29d18d2d"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "name": "apache-2.0"
+          }
+        }
+      ],
+      "modelCard": {
+        "modelParameters": {
+          "task": "token-classification"
+        }
+      },
+      "properties": [
+        {
+          "name": "arthur:guardrail:purpose",
+          "value": "pii"
+        },
+        {
+          "name": "arthur:file:gliner_config.json",
+          "value": "bundled"
+        },
+        {
+          "name": "arthur:file:pytorch_model.bin",
+          "value": "bundled"
+        },
+        {
+          "name": "arthur:file:pytorch_model.bin:sha256",
+          "value": "3003753fba99e40645cf088c7367a2c6211fc174897dc64f1f9c147c29d18d2d"
+        }
+      ]
+    }
+  ]
+}

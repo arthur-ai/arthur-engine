@@ -108,6 +108,20 @@ class Config:
         return audit_log_enabled.lower() == "true"
 
     @classmethod
+    def audit_log_include_ai_activity(cls) -> bool:
+        """Whether to append the engine's own model invocations to each audit entry.
+
+        Opt-in (default off) so existing audit-log consumers keep receiving the V1
+        event unless this is explicitly enabled. Only consulted when the base audit
+        log is enabled.
+        """
+        include_ai_activity = get_env_var(
+            constants.AUDIT_LOG_INCLUDE_AI_ACTIVITY_ENV_VAR,
+            default="false",
+        )
+        return include_ai_activity.lower() == "true"
+
+    @classmethod
     def audit_log_retention_days(cls) -> int:
         audit_log_retention_days = get_env_var(
             constants.AUDIT_LOG_RETENTION_DAYS_ENV_VAR,

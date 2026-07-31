@@ -2,8 +2,7 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["config:recommended"],
   "minimumReleaseAge": "3 days",
-  "schedule": ["* 0-4 * * *"],
-  "automergeSchedule": ["* 0-4 * * *"],
+  "rebaseWhen": "conflicted",
   "timezone": "America/New_York",
   "enabledManagers": ["npm", "pep621", "dockerfile", "docker-compose", "custom.regex"],
   "includePaths": [
@@ -18,7 +17,7 @@
     "**/docker-compose*.yaml"
   ],
   "osvVulnerabilityAlerts": true,
-  "prConcurrentLimit": 20,
+  "prConcurrentLimit": 10,
   "prHourlyLimit": 6,
   "vulnerabilityAlerts": {
     "labels": ["security"]
@@ -44,6 +43,21 @@
       "matchUpdateTypes": ["minor", "patch"],
       "automerge": true,
       "autoApprove": true
+    },
+    {
+      "matchManagers": ["npm"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "npm minor and patch"
+    },
+    {
+      "matchManagers": ["pep621"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "python minor and patch"
+    },
+    {
+      "description": "First-party Arthur packages are internal, so they skip the 3-day release-age soak that guards against third-party supply-chain risk. Mirrors tool.uv exclude-newer-package in the pyproject.toml files.",
+      "matchPackageNames": ["arthur-common", "arthur-client"],
+      "minimumReleaseAge": "0 days"
     },
     {
       "matchManagers": ["pep621"],

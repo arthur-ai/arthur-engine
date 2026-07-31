@@ -1,6 +1,6 @@
 [project]
 name = "ml-engine"
-version = "2.1.748"
+version = "2.1.762"
 description = ""
 authors = [{ name = "Arthur", email = "engineering@arthur.ai" }]
 license = "MIT"
@@ -16,9 +16,9 @@ dependencies = [
   "google-cloud-trace>=1.13.0,<2",
   "google-cloud-aiplatform>=1.68.0,<2",
   "pandas==3.0.5",
-  "psycopg[binary]==3.2.13",
-  "pymysql==1.1.2",
-  "pyodbc==5.2.0",
+  "psycopg[binary]==3.3.4",
+  "pymysql==1.2.0",
+  "pyodbc==5.3.0",
   "pyyaml==6.0.3",
   "requests==2.33.0",
   "adlfs==2025.8.0",
@@ -29,15 +29,15 @@ dependencies = [
   "fsspec==2025.12.0",
   "datasketches==5.2.0",
   "numpy==2.3.2",
-  "types-croniter==6.0.0.20250809",
-  "types-psutil==7.0.0.20251116",
-  "types-requests==2.32.4.20260324",
-  "psutil==7.0.0",
+  "types-croniter==6.2.4.20260711",
+  "types-psutil==7.2.2.20260518",
+  "types-requests==2.33.0.20260712",
+  "psutil==7.2.2",
   "pyarrow==23.0.1",
   "arthur-common==2.4.67",
   "gunicorn>=23.0.0,<24",
   "sqlalchemy==2.0.51",
-  "snowflake-sqlalchemy==1.10.2",
+  "snowflake-sqlalchemy==1.11.0",
   "databricks-sqlalchemy>=2.0,<3",
   "databricks-sdk>=0.84.0,<1",
   "arthur-client==1.4.2282",
@@ -45,12 +45,12 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-  "pytest==9.0.3",
-  "responses==0.25.8",
+  "pytest==9.1.1",
+  "responses==0.26.2",
   "pytest-httpserver==1.1.5",
   "pytest-asyncio==1.4.0",
   "pytest-httpx==0.36.2",
-  "pre-commit==4.5.1",
+  "pre-commit==4.6.1",
   "types-pytz>=2025.2.0.20250516",
   "lazy-imports==1.2.0",
 ]

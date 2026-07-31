@@ -110,6 +110,12 @@ RUN set -e; \
 # Copy the built static files
 RUN cp -r dist /app/ui-dist
 
+# The distroless base is referenced twice: here, so the build stage can read the
+# dpkg metadata it ships (see the status.d sync at the end of the install stage),
+# and again as the final image below. The same tag resolves to the same digest
+# within one build, so this adds a metadata read, not a second base image.
+FROM gcr.io/distroless/python3-debian12:nonroot AS distroless_meta
+
 # Install Stage: Install GenAI Engine on either CPU Install or GPU Install depending on the TORCH_DEVICE variable
 FROM ${TORCH_DEVICE}-install AS install
 # Copy backend files
@@ -125,9 +131,19 @@ COPY .env /app/
 ARG ENABLE_TELEMETRY=false
 RUN echo "TELEMETRY_ENABLED=${ENABLE_TELEMETRY}" >> /app/.env
 
-# Download AWS RDS global certificate bundle
+# Download AWS RDS global certificate bundle.
+# Retried: this is a release-blocking single point of failure — a bare `curl` here
+# failed a dev release build with exit 35 (SSL connect error) reaching AWS. Notes on
+# the flags, since the defaults are wrong for this in two ways:
+#   --retry-all-errors  plain --retry only covers timeouts and 5xx/408/429, NOT the
+#                       connection and TLS handshake failures that actually occur here.
+#   -f                  without it curl exits 0 on an HTTP error and writes the error
+#                       body into the file, silently shipping a corrupt cert bundle.
+# The grep is a last guard against a proxy or captive portal returning 200 + junk.
 RUN apt-get update && apt-get install -y curl && \
-    curl -o /app/postgres-cert.pem https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem
+    curl -fsSL --retry 5 --retry-delay 2 --retry-all-errors --connect-timeout 15 --max-time 180 \
+      -o /app/postgres-cert.pem https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem && \
+    grep -q "BEGIN CERTIFICATE" /app/postgres-cert.pem
 
 # Copy alembic files to run directory
 COPY alembic /app/alembic
@@ -142,6 +158,73 @@ RUN mkdir -p /home/nonroot/models
 # Pre-download tiktoken encoding files for airgapped environments
 RUN TIKTOKEN_CACHE_DIR=/home/nonroot/tiktoken \
     python3 -c "import os, tiktoken; os.makedirs('/home/nonroot/tiktoken', exist_ok=True); [tiktoken.get_encoding(e) for e in ['cl100k_base', 'p50k_base', 'r50k_base', 'o200k_base']]"
+
+# Patch the libraries the distroless base keeps in /lib. Unlike bookworm, the base
+# is NOT merged-/usr: /lib is a real directory holding glibc (libc.so.6, libm,
+# libpthread, libnss_*, and the ELF interpreter that /lib64 symlinks to) plus
+# liblzma, libexpat, libgcc_s, libbz2, libcom_err, libcrypt, libkeyutils,
+# libncursesw and libreadline. `COPY --from=install /usr/lib /usr/lib` in the final
+# stage does not reach any of them, so they stayed at the base's versions in every
+# image shipped so far — the libc6 and liblzma5 CVEs scanners report against them
+# are real, not stale metadata. (The libssl3 and krb5 objects do live under
+# /usr/lib and were genuinely being patched.)
+#
+# Mirror the base's /lib layout using this stage's apt-upgraded libraries. Only
+# paths the base already has are emitted, so this replaces files rather than adding
+# any, and the base's layout is preserved. In this stage /lib is a symlink to
+# /usr/lib, hence the /usr/lib source path.
+COPY --from=distroless_meta /lib /tmp/base-lib
+RUN set -eu; \
+    out=/tmp/patched-lib; rm -rf "$out"; mkdir -p "$out"; \
+    cd /tmp/base-lib; \
+    find . -mindepth 1 \( -type f -o -type l \) -print | while IFS= read -r p; do \
+      rel="${p#./}"; src="/usr/lib/${rel}"; \
+      { [ -e "$src" ] || [ -L "$src" ]; } || continue; \
+      mkdir -p "$out/$(dirname "$rel")"; \
+      cp -a "$src" "$out/$rel"; \
+      echo "  /lib patch: ${rel}"; \
+    done
+
+# Rewrite the distroless base's dpkg metadata to the package versions this stage
+# actually installed. With the /lib mirror above and `COPY /usr/lib` in the final
+# stage, the base's shared objects are replaced by the apt-upgraded ones from
+# bookworm-security, but the base's /var/lib/dpkg/status.d keeps advertising the
+# versions it was built with. Scanners resolve OS-package CVEs from that metadata
+# (Wiz reports these as `detectionMethod: PACKAGE`), so they flag already-fixed
+# CVEs against libssl3/libkrb5* indefinitely and block downstream image-policy
+# gates — the situation security/vex/openvex.json documents.
+#
+# Only packages that this stage has installed AND that ship a shared object under
+# /lib|/usr/lib/<triplet>/ are synced: those, and only those, are the files the two
+# copies overwrite, so the synced version is what genuinely ships. (Both prefixes
+# are matched because bookworm packages are split between them.) Packages the base
+# ships but this stage lacks keep their original version — their files survive
+# untouched.
+#
+# The md5sums sidecars are refreshed from this stage's dpkg database, resolved via
+# `dpkg-query --control-path` rather than by composing the path: dpkg stores those
+# files arch-qualified (libc6:amd64.md5sums) for Multi-Arch: same packages, which
+# every package selected above is, so a hand-built /var/lib/dpkg/info/<pkg>.md5sums
+# never exists. The refreshed lists match every shipped shared object byte-for-byte;
+# their /usr/share/doc entries (changelog, NEWS) stay stale because these images
+# never copy /usr/share. That residue is inert — no scanner resolves CVEs from
+# checksums — but the shared objects, which the Version above now claims, do match.
+COPY --from=distroless_meta /var/lib/dpkg/status.d /tmp/base-status.d
+RUN set -eu; \
+    out=/tmp/dpkg-status.d; \
+    rm -rf "$out"; cp -a /tmp/base-status.d "$out"; \
+    for f in "$out"/*; do \
+      pkg="${f##*/}"; \
+      case "$pkg" in *.md5sums) continue ;; esac; \
+      dpkg-query -L "$pkg" 2>/dev/null | grep -qE '^(/usr)?/lib/[^/]*-linux-gnu/.*\.so' || continue; \
+      ver="$(dpkg-query -W -f='${Version}' "$pkg" 2>/dev/null)" || continue; \
+      [ -n "$ver" ] || continue; \
+      sed -i "s/^Version: .*/Version: ${ver}/" "$f"; \
+      if src="$(dpkg-query --control-path "$pkg" md5sums 2>/dev/null)" && [ -f "$src" ]; then \
+        cp "$src" "${f}.md5sums"; \
+      fi; \
+      echo "  dpkg-status sync: ${pkg} -> ${ver}"; \
+    done
 
 
 #####################################################################################
@@ -163,9 +246,15 @@ COPY --from=install /usr/bin/env /usr/bin/env
 COPY --from=install /usr/bin/printenv /usr/bin/printenv
 COPY --from=install /usr/bin/lsof /usr/bin/lsof
 COPY --from=install /usr/lib /usr/lib
+# The base keeps real glibc/liblzma/libexpat/... files in /lib (it is not
+# merged-/usr), which the /usr/lib copy above does not reach. See install stage.
+COPY --from=install /tmp/patched-lib /lib
 COPY --from=install /usr/local/lib/ /usr/local/lib/
 COPY --from=install /usr/local/bin/ /usr/local/bin/
 COPY --from=install /etc/ld.so.cache /etc/ld.so.cache
+# dpkg metadata corrected to match the shared objects copied above (see install stage).
+# Must precede the python3.11 cleanup below, which deletes three of these stanzas.
+COPY --from=install /tmp/dpkg-status.d /var/lib/dpkg/status.d
 COPY --from=install --chown=nonroot:nonroot /app/ /home/nonroot/app/
 COPY --from=install --chown=nonroot:nonroot /home/nonroot/models /home/nonroot/models
 COPY --from=install --chown=nonroot:nonroot /home/nonroot/tiktoken /home/nonroot/tiktoken

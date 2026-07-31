@@ -26,7 +26,12 @@ from starlette.responses import Response
 from starlette.types import ASGIApp
 
 from config.config import Config
-from schemas.audit_log_schemas import RouteInfo
+from monitoring.ai_activity import (
+    begin_ai_activity,
+    end_ai_activity,
+    get_recorded_invocations,
+)
+from schemas.audit_log_schemas import ExtendedAuditLog, RouteInfo
 
 logger = logging.getLogger(__name__)
 
@@ -201,39 +206,55 @@ class AuditLogMiddleware(BaseHTTPMiddleware):
         request: Request,
         call_next: RequestResponseEndpoint,
     ) -> Response:
-        response = await call_next(request)
-
-        if any(re.match(p, request.url.path) for p in SKIP_PATHS) or not hasattr(
-            request.state,
-            "user_id",
-        ):
-            return response
-
+        # Start the AI-activity accumulator in the middleware's own context BEFORE
+        # call_next, so the downstream scorer (and its thread-pool workers) inherit
+        # it and append to the same list this method reads back afterwards.
+        ai_activity_token = begin_ai_activity()
         try:
-            if self.route_map is None:
-                self.route_map = build_route_response_model_map(request.app)
+            response = await call_next(request)
 
-            response_ids = await self._get_response_ids(request, response)
+            if any(re.match(p, request.url.path) for p in SKIP_PATHS) or not hasattr(
+                request.state,
+                "user_id",
+            ):
+                return response
 
-            entry = AuditLog(
-                id=uuid.uuid4(),
-                user_id=request.state.user_id,
-                timestamp=datetime.now(timezone.utc),
-                request_method=HTTPRequestMethod(request.method.lower()),
-                request_path=request.url.path,
-                path_params=self._get_path_parameters(request.path_params),
-                response_ids=response_ids,
-                status_code=response.status_code,
-            )
+            try:
+                if self.route_map is None:
+                    self.route_map = build_route_response_model_map(request.app)
 
-            AUDIT_LOGGER.info(entry.model_dump_json(exclude_none=True))
-        except Exception:
-            logger.error(
-                f"Failed to write audit log entry {request.url.path}",
-                exc_info=True,
-            )
+                response_ids = await self._get_response_ids(request, response)
 
-        return response
+                entry_fields = dict(
+                    id=uuid.uuid4(),
+                    user_id=request.state.user_id,
+                    timestamp=datetime.now(timezone.utc),
+                    request_method=HTTPRequestMethod(request.method.lower()),
+                    request_path=request.url.path,
+                    path_params=self._get_path_parameters(request.path_params),
+                    response_ids=response_ids,
+                    status_code=response.status_code,
+                )
+
+                entry: AuditLog
+                if Config.audit_log_include_ai_activity():
+                    entry = ExtendedAuditLog(
+                        **entry_fields,
+                        model_invocations=get_recorded_invocations(),
+                    )
+                else:
+                    entry = AuditLog(**entry_fields)
+
+                AUDIT_LOGGER.info(entry.model_dump_json(exclude_none=True))
+            except Exception:
+                logger.error(
+                    f"Failed to write audit log entry {request.url.path}",
+                    exc_info=True,
+                )
+
+            return response
+        finally:
+            end_ai_activity(ai_activity_token)
 
     def _get_path_parameters(
         self,

@@ -102,6 +102,7 @@ class SensitiveDataCustomExamples(RuleScorer):
             llm_response, token_consumption = self.prompt_llm(
                 call,
                 "sensitive data check",
+                model_name=getattr(self.grader_llm, "model_name", None),
             )
         except Exception as e:
             return handle_llm_exception(e)
@@ -128,7 +129,12 @@ class SensitiveDataCustomExamples(RuleScorer):
     def prompt_llm(
         f: FunctionT,
         operation_name: str,
+        model_name: str | None = None,
     ) -> tuple[AIMessage, LLMTokenConsumption]:
         result: AIMessage
-        result, token_consumption = get_llm_executor().execute(f, operation_name)
+        result, token_consumption = get_llm_executor().execute(
+            f,
+            operation_name,
+            model_name=model_name,
+        )
         return result, token_consumption

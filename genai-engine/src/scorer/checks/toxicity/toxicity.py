@@ -12,6 +12,7 @@ from transformers import AutoModelForSequenceClassification
 from transformers.modeling_utils import PreTrainedModel
 from transformers.tokenization_utils_base import PreTrainedTokenizerBase
 
+from monitoring.ai_activity import track_ml_model_invocation
 from schemas.scorer_schemas import (
     RuleScore,
     ScoreRequest,
@@ -248,6 +249,10 @@ class ToxicityScorer(RuleScorer):
             return "Toxicity detected"
         return "No toxicity detected!"
 
+    @track_ml_model_invocation(
+        model_name="s-nlp/roberta_toxicity_classifier",
+        operation="toxicity",
+    )
     def score(self, request: ScoreRequest) -> RuleScore:
         """Generates a toxicity score for a request
 
