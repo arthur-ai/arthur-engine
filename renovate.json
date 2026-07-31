@@ -131,10 +131,10 @@
       "reviewers": ["ntatsumi", "notthattal"]
     },
     {
-      "description": "Route major infra bumps (Docker base images, docker-compose services, and the uv pin tracked by the custom regex manager) to the backend experts for human review.",
+      "description": "Route major infra bumps (Docker base images, docker-compose services, and the uv pin tracked by the custom regex manager) to the infra experts for human review.",
       "matchManagers": ["dockerfile", "docker-compose", "custom.regex"],
       "matchUpdateTypes": ["major"],
-      "reviewers": ["ntatsumi", "notthattal"]
+      "reviewers": ["ntatsumi", "jdbarthur"]
     }
   ]
 }
