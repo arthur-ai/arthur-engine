@@ -422,6 +422,7 @@ jobs:
   build-genai-engine-docker-images:
     environment: shared-protected-branch-secrets
     if: |
+      github.repository == 'arthur-ai/arthur-engine' &&
       contains(github.event.head_commit.message, 'Increment arthur-engine version') &&
       (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
     runs-on: ubuntu-latest
@@ -495,6 +496,7 @@ jobs:
   build-ml-engine-docker-images:
     environment: shared-protected-branch-secrets
     if: |
+      github.repository == 'arthur-ai/arthur-engine' &&
       contains(github.event.head_commit.message, 'Increment arthur-engine version') &&
       (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
     runs-on: ubuntu-latest
@@ -576,6 +578,7 @@ jobs:
   check-models-updates:
     environment: shared-protected-branch-secrets
     if: |
+      github.repository == 'arthur-ai/arthur-engine' &&
       contains(github.event.head_commit.message, 'Increment arthur-engine version') &&
       (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
     runs-on: ubuntu-latest
@@ -649,6 +652,7 @@ jobs:
     needs: [check-models-updates]
     if: |
       needs.check-models-updates.outputs.has_updates == 'true' &&
+      github.repository == 'arthur-ai/arthur-engine' &&
       contains(github.event.head_commit.message, 'Increment arthur-engine version') &&
       (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
     with:
@@ -661,6 +665,7 @@ jobs:
     environment: shared-protected-branch-secrets
     if: |
       needs.check-models-updates.outputs.has_updates == 'false' &&
+      github.repository == 'arthur-ai/arthur-engine' &&
       contains(github.event.head_commit.message, 'Increment arthur-engine version') &&
       (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
     runs-on: ubuntu-latest
@@ -700,6 +705,7 @@ jobs:
     needs: [check-models-updates]
     if: |
       needs.check-models-updates.outputs.has_updates == 'true' &&
+      github.repository == 'arthur-ai/arthur-engine' &&
       contains(github.event.head_commit.message, 'Increment arthur-engine version') &&
       (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
     with:
@@ -712,6 +718,7 @@ jobs:
     environment: shared-protected-branch-secrets
     if: |
       needs.check-models-updates.outputs.has_updates == 'false' &&
+      github.repository == 'arthur-ai/arthur-engine' &&
       contains(github.event.head_commit.message, 'Increment arthur-engine version') &&
       (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
     runs-on: ubuntu-latest
@@ -750,6 +757,7 @@ jobs:
     uses: ./.github/workflows/build-gcp-model-upload.yml
     needs: [check-models-updates]
     if: |
+      github.repository == 'arthur-ai/arthur-engine' &&
       contains(github.event.head_commit.message, 'Increment arthur-engine version') &&
       (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
     with:
@@ -761,6 +769,7 @@ jobs:
     needs: [build-genai-engine-docker-images, build-ml-engine-docker-images]
     environment: shared-protected-branch-secrets
     if: |
+      github.repository == 'arthur-ai/arthur-engine' &&
       contains(github.event.head_commit.message, 'Increment arthur-engine version') &&
       (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
     runs-on: ubuntu-latest
@@ -791,6 +800,49 @@ jobs:
           aws s3 sync ./deployment/cloudformation/ s3://${{ env.BUCKET_NAME }}/${{ env.TEMPLATES_DIRECTORY }}/templates/${{ env.VERSION }} --acl public-read
           aws s3 sync ./deployment/cloudformation/ s3://${{ env.BUCKET_NAME }}/${{ env.TEMPLATES_DIRECTORY }}/templates/latest --acl public-read
 
+  push-aibom:
+    needs: [build-genai-engine-docker-images, build-ml-engine-docker-images]
+    environment: shared-protected-branch-secrets
+    if: |
+      github.repository == 'arthur-ai/arthur-engine' &&
+      contains(github.event.head_commit.message, 'Increment arthur-engine version') &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    env:
+      AWS_REGION: us-east-2
+      BUCKET_NAME: arthur-cft
+      ARTIFACT_DIRECTORY: arthur-engine
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/workflows/composite-actions/setup-git
+      - uses: ./.github/workflows/composite-actions/set-version
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install huggingface_hub
+      - name: configure aws credentials
+        uses: aws-actions/configure-aws-credentials@5ebd15afc69e5abcd499614d3ced5d65dc34087f
+        with:
+          role-to-assume: ${{ secrets.AWS_S3_ROLE_ARN }}
+          role-session-name: ${{ secrets.AWS_S3_ROLE_SESSION_NAME }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: generate and push AI-BOM
+        run: |
+          echo "Generating AI-BOM for ${{ env.VERSION }}"
+          cd deployment/model-upload
+          # Catalog copy: HuggingFace LFS hashes + license/task (no weight download).
+          python generate_aibom.py \
+            --manifest models-manifest.json \
+            --engine-version "${{ env.VERSION }}" \
+            --output aibom.cdx.json
+          aws s3 cp aibom.cdx.json s3://${{ env.BUCKET_NAME }}/${{ env.ARTIFACT_DIRECTORY }}/aibom/${{ env.VERSION }}/aibom.cdx.json --acl public-read
+          aws s3 cp aibom.cdx.json s3://${{ env.BUCKET_NAME }}/${{ env.ARTIFACT_DIRECTORY }}/aibom/latest/aibom.cdx.json --acl public-read
+
   # Publish a CycloneDX SBOM per published image to the public arthur-cft bucket, giving stable
   # download URLs (versioned + `latest`). Modeled on push-all-cfts (same OIDC role + s3 sync).
   # SBOMs are generated fresh here with Trivy so coverage is uniform across all six images
@@ -814,6 +866,7 @@ jobs:
       !cancelled() &&
       needs.build-genai-engine-docker-images.result == 'success' &&
       needs.build-ml-engine-docker-images.result == 'success' &&
+      github.repository == 'arthur-ai/arthur-engine' &&
       contains(github.event.head_commit.message, 'Increment arthur-engine version') &&
       (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
     runs-on: ubuntu-latest
@@ -895,7 +948,8 @@ jobs:
     needs: [build-genai-engine-docker-images, build-ml-engine-docker-images]
     environment: shared-protected-branch-secrets
     if: |
-      (contains(github.event.head_commit.message, 'Increment arthur-engine version') &&
+      (github.repository == 'arthur-ai/arthur-engine' &&
+      contains(github.event.head_commit.message, 'Increment arthur-engine version') &&
       (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev'))
     runs-on: ubuntu-latest
     permissions:
@@ -929,6 +983,7 @@ jobs:
   push-tag:
     needs: [push-all-cfts, push-all-helm-charts]
     if: |
+      github.repository == 'arthur-ai/arthur-engine' &&
       contains(github.event.head_commit.message, 'Increment arthur-engine version') &&
       (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
     runs-on: ubuntu-latest
@@ -948,6 +1003,7 @@ jobs:
   deploy-genai-engine-cloudformation:
     needs: [push-tag]
     if: |
+      github.repository == 'arthur-ai/arthur-engine' &&
       contains(github.event.head_commit.message, 'Increment arthur-engine version') &&
       (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
     runs-on: ubuntu-latest

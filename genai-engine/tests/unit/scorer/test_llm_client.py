@@ -3,12 +3,15 @@ from unittest.mock import patch
 import httpx
 import openai
 import pytest
+from langchain_core.output_parsers.json import JsonOutputParser
+from langchain_core.prompts import PromptTemplate
 from langchain_openai import (
     AzureChatOpenAI,
     AzureOpenAIEmbeddings,
     ChatOpenAI,
     OpenAIEmbeddings,
 )
+from pydantic import BaseModel
 from pydantic.types import SecretStr
 
 from schemas.custom_exceptions import (
@@ -16,11 +19,40 @@ from schemas.custom_exceptions import (
     LLMExecutionException,
     LLMMaxRequestTokensException,
 )
-from scorer.llm_client import LLMExecutor
+from scorer.llm_client import LLMExecutor, extract_chain_model_name
 from tests.constants import (
     DEFAULT_AZURE_OPENAI_SETTINGS,
     DEFAULT_VANILLA_OPENAI_SETTINGS,
 )
+
+
+class _ExtractorSchema(BaseModel):
+    x: int
+
+
+@pytest.mark.unit_tests
+def test_extract_chain_model_name_legacy_chain():
+    model = ChatOpenAI(model="gpt-4o-legacy", api_key=SecretStr("x"))
+    prompt = PromptTemplate(input_variables=["a"], template="{a}")
+    chain = prompt | model | JsonOutputParser(pydantic_object=_ExtractorSchema)
+
+    assert extract_chain_model_name(chain) == "gpt-4o-legacy"
+
+
+@pytest.mark.unit_tests
+def test_extract_chain_model_name_structured_chain():
+    model = ChatOpenAI(model="gpt-4o-structured", api_key=SecretStr("x"))
+    prompt = PromptTemplate(input_variables=["a"], template="{a}")
+    chain = prompt | model.with_structured_output(_ExtractorSchema)
+
+    assert extract_chain_model_name(chain) == "gpt-4o-structured"
+
+
+@pytest.mark.unit_tests
+def test_extract_chain_model_name_returns_none_for_unknown():
+    # A non-chain / mocked object has no list `.steps` -> None, never raises.
+    assert extract_chain_model_name(object()) is None
+    assert extract_chain_model_name(None) is None
 
 
 @pytest.mark.parametrize(
