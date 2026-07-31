@@ -32,7 +32,10 @@ dependencies = [
   "azure-storage-blob==12.30.0",
   "itsdangerous==2.2.0",
   "newrelic==10.17.0",
-  "importlib-metadata==8.9.0",
+  # Held below 8.8.0: opentelemetry-api 1.39.1 (via opentelemetry-semantic-conventions
+  # 0.60b1) requires importlib-metadata>=6.0,<8.8.0. See the importlib-metadata rule
+  # in /renovate.json. Raise once the pinned OpenTelemetry stack widens its ceiling.
+  "importlib-metadata==8.5.0",
   "opentelemetry-instrumentation-logging>=0.60b1,<0.61",
   "opentelemetry-instrumentation>=0.60b1,<0.61",
   "opentelemetry-instrumentation-fastapi>=0.60b1,<0.61",
