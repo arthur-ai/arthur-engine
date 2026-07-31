@@ -8,11 +8,12 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "2026-07-28T14:34:19.173059Z"
+exclude-newer = "2026-07-28T15:43:26.8784Z"
 exclude-newer-span = "P3D"
 
 [options.exclude-newer-package]
 arthur-common = false
+fastapi-pagination = "2026-07-28T18:42:00Z"
 arthur-client = false
 torch = false
 
@@ -184,7 +185,7 @@ wheels = [
 
 [[package]]
 name = "arthur-genai-engine"
-version = "2.1.766"
+version = "2.1.770"
 source = { editable = "." }
 dependencies = [
     { name = "alembic" },
@@ -292,7 +293,7 @@ requires-dist = [
     { name = "date-spacy", specifier = ">=0.0.1,<0.1" },
     { name = "en-core-web-lg", url = "https://github.com/explosion/spacy-models/releases/download/en_core_web_lg-3.8.0/en_core_web_lg-3.8.0-py3-none-any.whl" },
     { name = "fastapi", specifier = "==0.140.9" },
-    { name = "fastapi-pagination", specifier = "==0.15.15" },
+    { name = "fastapi-pagination", specifier = "==0.15.16" },
     { name = "fastapi-sqlalchemy", specifier = "==0.2.1" },
     { name = "gliner", specifier = "==0.2.28" },
     { name = "google-auth", specifier = ">=2.48.0,<3" },
@@ -998,16 +999,16 @@ wheels = [
 
 [[package]]
 name = "fastapi-pagination"
-version = "0.15.15"
+version = "0.15.16"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "fastapi" },
     { name = "pydantic" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f8/79/826b79dd718b0d9a91f21c3cfed365e5ecf44bc31419615c4cebeebb9ada/fastapi_pagination-0.15.15.tar.gz", hash = "sha256:d6e9e4bc4d6e20709dcabc11b16056cd5cd184c995ee214b0190f6b81426fa0c", size = 614873, upload-time = "2026-06-16T17:25:44.055Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/42/65/9c2f1c324fa7a83b328b024c45e70471007b165a1d56ab237fe0e574e36f/fastapi_pagination-0.15.16.tar.gz", hash = "sha256:739a4e904729dc01e03ce95e260ed9be050d48a3659be8463e5c4fcdd0cf25b0", size = 614997, upload-time = "2026-07-28T18:41:07.421Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c5/02/2e794ea498515afdadf2891f89aaed404de3ed619dd9cbf1ca637f17df19/fastapi_pagination-0.15.15-py3-none-any.whl", hash = "sha256:dc828d7cd15614c650c284bd2c3a98a8a2d9ce340508be3970dc8986908a02aa", size = 65864, upload-time = "2026-06-16T17:25:42.734Z" },
+    { url = "https://files.pythonhosted.org/packages/a4/d1/9725ec62421dcfe430d874cba9f82c0288baee0c4b7dd8aa8dcca2b0394e/fastapi_pagination-0.15.16-py3-none-any.whl", hash = "sha256:86dc73620812d47c297a7b8baca4eba2bac5d3f1d73aa75dc6e3bb12c0b803f7", size = 65991, upload-time = "2026-07-28T18:41:06.076Z" },
 ]
 
 [[package]]
