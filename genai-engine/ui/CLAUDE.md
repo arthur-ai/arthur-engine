@@ -1,153 +1,44 @@
-# CLAUDE.md
+# GenAI Engine UI
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+React 19 + TypeScript + Vite SPA for the GenAI Engine (tasks, prompts, datasets, traces). MUI is the component library; TanStack Query/Form/Table for data, Zustand for client state, nuqs for URL state, Zod v4 for validation, Yarn 4.
 
-## GenAI Engine UI
-
-React-based frontend for the GenAI Engine, providing interfaces for task management, prompt playground, dataset management, trace visualization, and model provider configuration.
-
-### Common Commands
+## Commands
 
 ```bash
-# Install dependencies
-yarn install
-
-# Development server (localhost:3000)
-yarn dev
-
-# Build for production
-yarn build
-
-# Preview production build
-yarn preview
-
-# Type checking
-yarn type-check
-
-# Linting
-yarn lint
-
-# Run both type checking and linting
-yarn check
-
-# Format code
-yarn format
-yarn format:check
-
-# Generate API client from backend OpenAPI spec
-yarn generate-api:clean
+yarn dev                  # dev server
+yarn check                # type-check + lint + format:check — required before committing, CI enforced
+yarn format               # auto-fix formatting
+yarn test:run             # vitest
+yarn generate-api:clean   # regenerate API client after backend OpenAPI spec changes
 ```
 
-### Architecture
+## API client & data fetching
 
-**Tech Stack**: React 19, TypeScript 5.9, Vite, Material-UI (MUI), Tailwind CSS 4, React Router v7, TanStack Query, Yarn Berry v4
+- `src/lib/api-client/` is generated from the backend OpenAPI spec — never hand-edit it; regenerate. Import backend types from it instead of re-declaring them (derive with `Pick<>` etc.).
+- Fetch with `useApiQuery` and mutate with `useApiMutation` (`src/hooks/`) — the mutation hook takes `invalidateQueries` and handles cache invalidation. Query keys come from the central `queryKeys` object in [src/lib/queryKeys.ts](src/lib/queryKeys.ts).
+- Never fetch in a raw `useEffect`; more generally, prefer values derived during render over effects and extra state.
 
-**Core Structure**:
+## Forms (TanStack Form + Zod v4)
 
-- **Components** (`src/components/`): Feature-based organization (prompts, datasets, traces, weaviate, common)
-- **Contexts** (`src/contexts/`): React Context for global state (AuthContext, TaskContext)
-- **Hooks** (`src/hooks/`): Custom React hooks for API interactions and shared logic
-- **API Client** (`src/client/`): Auto-generated TypeScript client from backend OpenAPI spec
-- **Pages** (`src/pages/`): Top-level route components
-- **Router** (`src/router.tsx`): React Router v7 configuration with protected routes
+Custom typed wrappers live in [src/components/traces/components/filtering/hooks/form.tsx](src/components/traces/components/filtering/hooks/form.tsx): `useAppForm(options)` creates the form, `form.AppField name="path"` renders typed fields, `form.Subscribe` / `useStore(form.store, selector)` for reactive reads.
 
-**Key Patterns**:
-
-- **Auto-Generated API Client**: The TypeScript API client is generated from the GenAI Engine's OpenAPI spec using `yarn generate-api:clean`. Never manually edit files in `src/client/` - regenerate instead
-- **Context + Hooks Architecture**: Global state (auth, tasks) lives in Context, accessed via custom hooks
-- **Protected Routes**: AuthContext wraps the router and guards routes requiring authentication
-- **Material-UI + Tailwind**: MUI components provide the foundation, Tailwind CSS handles custom styling
-- **React Query**: TanStack Query manages server state, caching, and data synchronization
-- **Monaco Editor**: Embedded code editor for prompt and rule editing
-- **Type Safety**: Strict TypeScript mode enabled, all API responses are typed via generated client
-
-**Component Organization**:
-
-- **Common components** (`src/components/common/`): Reusable UI elements (buttons, inputs, dialogs)
-- **Feature components**: Organized by domain (prompts, datasets, traces, weaviate)
-- Each feature typically has: list view, detail view, create/edit forms
-
-**Routing**:
-
-- React Router v7 with client-side navigation
-- Protected routes check authentication status before rendering
-- Lazy loading for code splitting (not yet implemented but supported)
-
-**API Integration**:
-
-- Backend runs on configurable base URL (default: localhost:5005)
-- All API calls go through the generated client
-- Request/response interceptors handle authentication headers
-- Error handling via React Query's error boundaries
-
-### useEffect Discipline
-
-Before writing a `useEffect`, ask: **"Is this synchronizing with an external system?"** If not, you probably don't need it. See [You Might Not Need an Effect](https://react.dev/learn/you-might-not-need-an-effect).
-
-**Do NOT use `useEffect` to:**
-
-- **Derive or transform state** from props/state — compute it during rendering (`const x = a + b`)
-- **Cache expensive calculations** — use `useMemo` instead
-- **Reset state when a prop changes** — pass a `key` to the component instead
-- **Run event-specific logic** (form submits, button clicks) — put it in the event handler
-- **Notify parent components of state changes** — call parent callbacks directly in event handlers
-- **Chain effects** that set state to trigger other effects — batch updates in a single event handler or compute during render
-- **Fetch data** — use TanStack Query (`useQuery`/`useMutation`) which handles caching, race conditions, and loading states; raw `useEffect` fetches are error-prone
-
-**Legitimate `useEffect` uses:** synchronizing with browser APIs or third-party libraries, analytics on mount, subscriptions to external stores (prefer `useSyncExternalStore`).
-
-### TanStack Form
-
-The codebase uses TanStack Form via custom wrappers in `src/components/traces/components/filtering/hooks/form.tsx`.
-
-**Core hooks:**
-
-- `useAppForm(options)` — creates a form with typed field components. Options: `defaultValues`, `validators`, `onSubmit`
-- `withForm({ ...formOpts, props?, render })` — HOC for child components receiving the form. `props` declares extra props (with defaults) passed to render alongside `form`. Use named functions for render to satisfy ESLint hook rules. Prefer `withForm` over `withFieldGroup` for sub-components that need to display validation errors (proper error types via form-level validators).
-- `withFieldGroup({ defaultValues, props?, render })` — HOC for reusable field groups. Render receives `group` with scoped `AppField`. **Caveat:** error types resolve to `never` — no `.message` property. Use `withForm` with absolute field paths instead when error display is needed.
-
-**Field rendering:**
-
-- `form.AppField name="path"` — typed field; children receive `field` with `state.value`, `handleChange`, `handleBlur`, `state.meta.errors`
-- `form.Subscribe selector={fn}` — reactive subscription for conditional rendering
-- `useStore(form.store, selector)` — direct store read (import from `@tanstack/react-form`)
-
-**Validation:**
-
-- Zod v4 schemas — use `{ error: "..." }` for custom messages (not `{ message: "..." }`). Use `path: ["field"]` on `.refine()` to target a specific nested field.
-- `formApi.parseValuesWithSchema(schema)` (form-level) or `fieldApi.parseValueWithSchema(schema)` (field-level)
-- Form-level validators can return `{ fields: { "path": error }, form: { key: error } }` — field errors auto-propagate to `field.state.meta.errors`
-- Display: `error={field.state.meta.errors.length > 0}` + `helperText={field.state.meta.errors[0]?.message}` on MUI TextField
-- **Clearing stale form-level errors:** `resetField()` does NOT clear errors from form-level validators (`parseValuesWithSchema`). Use `setFieldMeta` to explicitly clear `errorMap.onSubmit`:
+- Prefer `withForm({ ...formOpts, props?, render })` over `withFieldGroup` for sub-components that display validation errors — `withFieldGroup` error types resolve to `never` (no `.message`). Use named render functions to satisfy ESLint hook rules.
+- Zod v4 custom messages use `{ error: "..." }`, not `{ message: "..." }`; target a nested field on `.refine()` with `path: ["field"]`.
+- Form-level validators (`parseValuesWithSchema`) propagate field errors to `field.state.meta.errors`, but `resetField()` does NOT clear them — clear explicitly:
   ```tsx
   form.setFieldMeta(path, (prev) => ({ ...prev, errorMap: { ...prev.errorMap, onSubmit: undefined } }));
   ```
+- `form.state.isDirty` is persistent — stays true once any field changed, even if reverted.
+- Multi-step forms track the step in a `section` field: forward navigation uses `form.handleSubmit()` (validates), back sets `form.setFieldValue("section", prev)` (skips validation).
 
-**Form state:**
+## MUI styling (mandatory)
 
-- `form.state.isDirty` — persistent dirty (true once any field changed, even if reverted)
-- `form.state.isSubmitting`, `form.state.canSubmit`, `form.state.isValid`
+- Always use MUI components — never plain HTML (`<button>`, `<table>`, custom modals, `<div>` layout) when an MUI equivalent exists, and don't add UI libraries that duplicate MUI.
+- Style via the `sx` prop with theme color tokens (`primary.main`, `text.secondary`, `error.50`, …) — no inline `style={{}}`, no raw hex/rgb values.
+- Tailwind is only for supplementary layout utilities (flex, spacing); never for colors or typography.
+- Conventions: buttons `variant="contained"`/`outlined`/`text` for primary/secondary/tertiary; `variant="filled"` TextFields; icons from `@mui/icons-material`; `<Alert>` for inline messages, notistack's `enqueueSnackbar` for toasts.
 
-**Multi-step pattern:**
+## Misc gotchas
 
-- A `section` field tracks the current step. Forward navigation uses `form.handleSubmit()` (triggers validation). Back navigation sets section directly via `form.setFieldValue("section", prev)` (skips validation).
-
-### Before Committing (REQUIRED - CI Enforced)
-
-Always run and ensure these pass before committing UI changes:
-
-```bash
-yarn check  # Runs type-check, lint, and format:check
-```
-
-Fix any errors before committing. CI will block PRs with failures.
-
-If you need to auto-fix formatting issues, run `yarn format` first.
-
-### Development Notes
-
-- The API client must be regenerated after backend OpenAPI spec changes
-- Follow the component patterns in AGENTS.md for consistency
-- Use MUI's sx prop or Tailwind classes for styling, avoid inline styles
-- Authentication token is stored in localStorage and managed by AuthContext
-- The app is a SPA - no server-side rendering
+- Currency display: `useDisplaySettings()` provides `defaultCurrency` (from `GET /api/v2/display-settings`; backend default set by the `CURRENCY_DEFAULT_CURRENCY` env var). Format with `formatCurrency(amount, defaultCurrency)` from `@/utils/formatters`.
+- The auth token lives in localStorage, managed by `AuthContext`.

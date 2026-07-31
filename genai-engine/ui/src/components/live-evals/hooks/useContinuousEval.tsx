@@ -15,7 +15,7 @@ export const useContinuousEval = (evalId?: string) => {
 
   return useQuery({
     enabled: !!evalId,
-    queryKey: [queryKeys.continuousEvals.byId(evalId!)],
+    queryKey: [queryKeys.continuousEvals.byId(evalId!), task?.id],
     queryFn: async () => {
       try {
         const response = await api.api.getContinuousEvalByIdApiV1ContinuousEvalsEvalIdGet(evalId!);

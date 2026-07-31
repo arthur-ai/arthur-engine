@@ -11,8 +11,8 @@ interface UseRagSearchSettingsParams {
 export function useRagSearchSettings(taskId: string | undefined, params?: UseRagSearchSettingsParams) {
   const api = useApi();
 
+  // eslint-disable-next-line @tanstack/query/exhaustive-deps
   return useQuery({
-    // eslint-disable-next-line @tanstack/query/exhaustive-deps
     queryKey: ["rag-search-settings", taskId, params],
     queryFn: async () => {
       if (!api || !taskId) {

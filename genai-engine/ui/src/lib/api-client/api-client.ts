@@ -10290,13 +10290,7 @@ export type RuleScope = "default" | "task";
 
 /** RuleType */
 export type RuleType =
-  | "KeywordRule"
-  | "ModelHallucinationRuleV2"
-  | "ModelSensitiveDataRule"
-  | "PIIDataRule"
-  | "PromptInjectionRule"
-  | "RegexRule"
-  | "ToxicityRule";
+  "KeywordRule" | "ModelHallucinationRuleV2" | "ModelSensitiveDataRule" | "PIIDataRule" | "PromptInjectionRule" | "RegexRule" | "ToxicityRule";
 
 export type RunAgenticPromptApiV1CompletionsPostData = AgenticPromptRunResponse;
 
@@ -12898,14 +12892,7 @@ export interface WeaviateHybridSearchSettingsConfigurationRequest {
 }
 
 export type WeaviateHybridSearchSettingsConfigurationRequestReturnMetadataEnum =
-  | "creation_time"
-  | "last_update_time"
-  | "distance"
-  | "certainty"
-  | "score"
-  | "explain_score"
-  | "is_consistent"
-  | "query_profile";
+  "creation_time" | "last_update_time" | "distance" | "certainty" | "score" | "explain_score" | "is_consistent" | "query_profile";
 
 /** WeaviateHybridSearchSettingsConfigurationResponse */
 export interface WeaviateHybridSearchSettingsConfigurationResponse {
@@ -12991,14 +12978,7 @@ export interface WeaviateHybridSearchSettingsConfigurationResponse {
 }
 
 export type WeaviateHybridSearchSettingsConfigurationResponseReturnMetadataEnum =
-  | "creation_time"
-  | "last_update_time"
-  | "distance"
-  | "certainty"
-  | "score"
-  | "explain_score"
-  | "is_consistent"
-  | "query_profile";
+  "creation_time" | "last_update_time" | "distance" | "certainty" | "score" | "explain_score" | "is_consistent" | "query_profile";
 
 /** WeaviateHybridSearchSettingsRequest */
 export interface WeaviateHybridSearchSettingsRequest {
@@ -13084,14 +13064,7 @@ export interface WeaviateHybridSearchSettingsRequest {
 }
 
 export type WeaviateHybridSearchSettingsRequestReturnMetadataEnum =
-  | "creation_time"
-  | "last_update_time"
-  | "distance"
-  | "certainty"
-  | "score"
-  | "explain_score"
-  | "is_consistent"
-  | "query_profile";
+  "creation_time" | "last_update_time" | "distance" | "certainty" | "score" | "explain_score" | "is_consistent" | "query_profile";
 
 /** WeaviateKeywordSearchSettingsConfigurationRequest */
 export interface WeaviateKeywordSearchSettingsConfigurationRequest {
@@ -13154,14 +13127,7 @@ export interface WeaviateKeywordSearchSettingsConfigurationRequest {
 }
 
 export type WeaviateKeywordSearchSettingsConfigurationRequestReturnMetadataEnum =
-  | "creation_time"
-  | "last_update_time"
-  | "distance"
-  | "certainty"
-  | "score"
-  | "explain_score"
-  | "is_consistent"
-  | "query_profile";
+  "creation_time" | "last_update_time" | "distance" | "certainty" | "score" | "explain_score" | "is_consistent" | "query_profile";
 
 /** WeaviateKeywordSearchSettingsConfigurationResponse */
 export interface WeaviateKeywordSearchSettingsConfigurationResponse {
@@ -13224,14 +13190,7 @@ export interface WeaviateKeywordSearchSettingsConfigurationResponse {
 }
 
 export type WeaviateKeywordSearchSettingsConfigurationResponseReturnMetadataEnum =
-  | "creation_time"
-  | "last_update_time"
-  | "distance"
-  | "certainty"
-  | "score"
-  | "explain_score"
-  | "is_consistent"
-  | "query_profile";
+  "creation_time" | "last_update_time" | "distance" | "certainty" | "score" | "explain_score" | "is_consistent" | "query_profile";
 
 /** WeaviateKeywordSearchSettingsRequest */
 export interface WeaviateKeywordSearchSettingsRequest {
@@ -13294,14 +13253,7 @@ export interface WeaviateKeywordSearchSettingsRequest {
 }
 
 export type WeaviateKeywordSearchSettingsRequestReturnMetadataEnum =
-  | "creation_time"
-  | "last_update_time"
-  | "distance"
-  | "certainty"
-  | "score"
-  | "explain_score"
-  | "is_consistent"
-  | "query_profile";
+  "creation_time" | "last_update_time" | "distance" | "certainty" | "score" | "explain_score" | "is_consistent" | "query_profile";
 
 /**
  * WeaviateQueryResult
@@ -13454,14 +13406,7 @@ export interface WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest 
 }
 
 export type WeaviateVectorSimilarityTextSearchSettingsConfigurationRequestReturnMetadataEnum =
-  | "creation_time"
-  | "last_update_time"
-  | "distance"
-  | "certainty"
-  | "score"
-  | "explain_score"
-  | "is_consistent"
-  | "query_profile";
+  "creation_time" | "last_update_time" | "distance" | "certainty" | "score" | "explain_score" | "is_consistent" | "query_profile";
 
 /** WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse */
 export interface WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse {
@@ -13529,14 +13474,7 @@ export interface WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse
 }
 
 export type WeaviateVectorSimilarityTextSearchSettingsConfigurationResponseReturnMetadataEnum =
-  | "creation_time"
-  | "last_update_time"
-  | "distance"
-  | "certainty"
-  | "score"
-  | "explain_score"
-  | "is_consistent"
-  | "query_profile";
+  "creation_time" | "last_update_time" | "distance" | "certainty" | "score" | "explain_score" | "is_consistent" | "query_profile";
 
 /** WeaviateVectorSimilarityTextSearchSettingsRequest */
 export interface WeaviateVectorSimilarityTextSearchSettingsRequest {
@@ -13604,14 +13542,7 @@ export interface WeaviateVectorSimilarityTextSearchSettingsRequest {
 }
 
 export type WeaviateVectorSimilarityTextSearchSettingsRequestReturnMetadataEnum =
-  | "creation_time"
-  | "last_update_time"
-  | "distance"
-  | "certainty"
-  | "score"
-  | "explain_score"
-  | "is_consistent"
-  | "query_profile";
+  "creation_time" | "last_update_time" | "distance" | "certainty" | "score" | "explain_score" | "is_consistent" | "query_profile";
 
 import type { AxiosInstance, AxiosRequestConfig, AxiosResponse, HeadersDefaults, ResponseType } from "axios";
 import axios from "axios";
