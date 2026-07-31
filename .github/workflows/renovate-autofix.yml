@@ -232,6 +232,8 @@ jobs:
           # Approve as github-actions[bot] — a DIFFERENT identity than the app that
           # pushes below, so require_last_push_approval is satisfied.
           GH_TOKEN: ${{ github.token }}
+          # Used ONLY for the push, so GitHub attributes the push to the Automator App.
+          APP_TOKEN: ${{ steps.app-token.outputs.token }}
           PR_NUMBER: ${{ steps.pr.outputs.number }}
           HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
           AUTOFIX_MARKER: ${{ runner.temp }}/claude-autofix-success
@@ -249,13 +251,16 @@ jobs:
             exit 0
           fi
 
-          # Commit author = Automator App bot (cosmetic); push credential is the
-          # app token configured by checkout, so GitHub attributes the push to the app.
           git config user.name "arthur-github-automator[bot]"
           git config user.email "${{ secrets.ARTHUR_GH_AUTOMATOR_APP_ID }}+arthur-github-automator[bot]@users.noreply.github.com"
           git add -A
           git commit -m "fix(deps): auto-resolve CI failures from dependency update [claude-autofix]"
-          git push origin "HEAD:$HEAD_BRANCH"
+          # Push with the app token EXPLICITLY. Do not rely on the credential persisted by
+          # checkout: claude-code-action rewrites the workspace git auth config during its
+          # run, so the persisted header is gone by now. An installation token pushed as
+          # x-access-token is attributed to the Automator App (distinct from the approver).
+          git push "https://x-access-token:${APP_TOKEN}@github.com/${{ github.repository }}.git" \
+            "HEAD:$HEAD_BRANCH"
 
           # Re-approve so the PR (now with a fresh commit) can re-enter the merge queue.
           gh pr review "$PR_NUMBER" --repo "${{ github.repository }}" --approve \
