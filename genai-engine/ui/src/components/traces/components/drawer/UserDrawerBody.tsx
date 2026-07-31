@@ -135,8 +135,8 @@ const UserTracesTable = ({ ids, taskId, onRowClick }: UserTableProps) => {
     timeRange,
   };
 
+  // eslint-disable-next-line @tanstack/query/exhaustive-deps
   const traces = useQuery({
-    // eslint-disable-next-line @tanstack/query/exhaustive-deps
     queryKey: queryKeys.traces.listPaginated(params),
     queryFn: () => getFilteredTraces(api, params),
   });
@@ -233,8 +233,8 @@ const UserSessionsTable = ({ ids, taskId, onRowClick }: UserTableProps) => {
     timeRange,
   };
 
+  // eslint-disable-next-line @tanstack/query/exhaustive-deps
   const sessions = useQuery({
-    // eslint-disable-next-line @tanstack/query/exhaustive-deps
     queryKey: queryKeys.sessions.listPaginated(params),
     queryFn: () => getFilteredSessions(api, params),
   });

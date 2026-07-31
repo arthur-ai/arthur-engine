@@ -43,8 +43,8 @@ export const SettingsMenuButton: React.FC = () => {
 
   const isMenuOpen = Boolean(menuAnchorEl);
 
+  // eslint-disable-next-line @tanstack/query/exhaustive-deps
   const chatbotConfigQuery = useQuery({
-    // eslint-disable-next-line @tanstack/query/exhaustive-deps
     queryKey: CHATBOT_CONFIG_QUERY_KEY,
     queryFn: async () => {
       if (!api) throw new Error("API client not available");

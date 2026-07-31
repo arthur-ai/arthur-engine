@@ -58,8 +58,8 @@ export const UserLevel = ({ welcomeDismissed }: UserLevelProps) => {
     [task?.id, pagination.pageIndex, pagination.pageSize, timeRange, sort]
   );
 
+  // eslint-disable-next-line @tanstack/query/exhaustive-deps
   const { data, isLoading, error } = useQuery({
-    // eslint-disable-next-line @tanstack/query/exhaustive-deps
     queryKey: queryKeys.users.listPaginated(params),
     placeholderData: keepPreviousData,
     queryFn: () => getUsers(api, params),

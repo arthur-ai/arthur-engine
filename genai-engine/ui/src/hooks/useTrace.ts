@@ -8,8 +8,8 @@ import { getTrace } from "@/services/tracing";
 export const useTrace = (traceId: string) => {
   const api = useApi()!;
 
+  // eslint-disable-next-line @tanstack/query/exhaustive-deps
   return useQuery({
-    // eslint-disable-next-line @tanstack/query/exhaustive-deps
     queryKey: queryKeys.traces.byId(traceId),
     queryFn: () => getTrace(api, { traceId }),
   });

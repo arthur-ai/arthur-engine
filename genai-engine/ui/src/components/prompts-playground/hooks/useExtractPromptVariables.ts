@@ -21,8 +21,8 @@ export const useExtractPromptVariables = (messages: MessageType[]): UseQueryResu
   const apiClient = useApi();
   const debouncedMessages = useDebouncedValue(messages, DEBOUNCE_TIME);
 
+  // eslint-disable-next-line @tanstack/query/exhaustive-deps
   return useQuery<string[], Error>({
-    // eslint-disable-next-line @tanstack/query/exhaustive-deps
     queryKey: ["extractPromptVariables", debouncedMessages],
     queryFn: async () => {
       if (!apiClient || debouncedMessages.length === 0) {
