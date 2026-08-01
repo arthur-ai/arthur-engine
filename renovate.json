@@ -96,6 +96,18 @@
       ]
     },
     {
+      "description": "gliner 0.2.28 (latest release) requires transformers>=4.51.3,<5.14.0, so transformers 5.14.x makes genai-engine unresolvable. Raise or drop this cap once a gliner release widens its transformers ceiling.",
+      "matchManagers": ["pep621"],
+      "matchPackageNames": ["transformers"],
+      "allowedVersions": "<5.14.0"
+    },
+    {
+      "description": "opentelemetry-api 1.39.1 (via opentelemetry-semantic-conventions 0.60b1) requires importlib-metadata>=6.0,<8.8.0, so importlib-metadata 8.8.x+ makes genai-engine unresolvable. Raise or drop this cap once the pinned OpenTelemetry stack widens its importlib-metadata ceiling.",
+      "matchManagers": ["pep621"],
+      "matchPackageNames": ["importlib-metadata"],
+      "allowedVersions": "<8.8.0"
+    },
+    {
       "matchManagers": ["dockerfile", "docker-compose"],
       "matchPackageNames": ["python"],
       "enabled": false
