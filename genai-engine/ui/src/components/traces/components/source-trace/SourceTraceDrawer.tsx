@@ -105,8 +105,8 @@ const SourceTraceDrawerHeader = ({ traceId, taskId, onClose }: { traceId: string
 const SourceTraceDrawerContent = ({ traceId }: { traceId: string }) => {
   const api = useApi();
 
+  // eslint-disable-next-line @tanstack/query/exhaustive-deps
   const { data: trace } = useSuspenseQuery({
-    // eslint-disable-next-line @tanstack/query/exhaustive-deps
     queryKey: queryKeys.traces.byId(traceId),
     queryFn: () => getTrace(api!, { traceId }),
   });
