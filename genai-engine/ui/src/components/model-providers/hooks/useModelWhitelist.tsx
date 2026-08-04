@@ -7,8 +7,8 @@ import { queryKeys } from "@/lib/queryKeys";
 export const useModelWhitelist = (provider: ModelProvider, enabled: boolean) => {
   const api = useApi();
 
+  // eslint-disable-next-line @tanstack/query/exhaustive-deps
   return useQuery({
-    // eslint-disable-next-line @tanstack/query/exhaustive-deps
     queryKey: queryKeys.providers.modelWhitelist(provider),
     queryFn: async () => {
       if (!api) throw new Error("API client not initialized");

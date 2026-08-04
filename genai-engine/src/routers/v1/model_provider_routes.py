@@ -188,7 +188,7 @@ def get_model_providers_available_models(
     summary="Get the curated model list for a provider.",
     description=(
         "Returns the admin-curated model list for a provider along with the provider's "
-         "full catalog. A null whitelist means all models are exposed."
+        "full catalog. A null whitelist means all models are exposed."
     ),
     tags=["Model Providers"],
     response_model=ModelProviderWhitelist,
