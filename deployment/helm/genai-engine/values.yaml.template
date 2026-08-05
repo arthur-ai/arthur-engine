@@ -92,10 +92,10 @@ arthurGenaiEngineHPA:
   # - CPU deployment: true.
   # - GPU deployment with managed node group + ASG: false (HPA does not apply to a DaemonSet).
   # - GPU deployment with EKS Auto Mode / Karpenter: false here, and instead scale on GPU
-  #   utilization/memory with the separate `arthur-genai-engine-gpu-autoscaler` add-on chart
+  #   utilization/memory with the separate `genai-engine-gpu-autoscaler-karpenter` add-on chart
   #   (set externallyManaged: true below so this chart cedes replica ownership to it).
   enabled: true
-  # When true, an external controller (e.g. the arthur-genai-engine-gpu-autoscaler add-on chart)
+  # When true, an external controller (e.g. the genai-engine-gpu-autoscaler-karpenter add-on chart)
   # owns replica count: this chart omits the Deployment's static `replicas` and renders no HPA of
   # its own, so the two never fight on `helm upgrade`. Leave false for chart-managed scaling.
   externallyManaged: false

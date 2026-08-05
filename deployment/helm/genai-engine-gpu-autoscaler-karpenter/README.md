@@ -60,13 +60,13 @@ A standalone Helm add-on chart that autoscales the GenAI Engine's **GPU pods** o
 
 2. **Fetch the subcharts:**
    ```bash
-   helm dependency update deployment/helm/arthur-genai-engine-gpu-autoscaler
+   helm dependency update deployment/helm/genai-engine-gpu-autoscaler-karpenter
    ```
 
 3. **Install into the genai-engine namespace** (the HPA must live where the Deployment lives):
    ```bash
    helm install genai-gpu-autoscaler \
-     deployment/helm/arthur-genai-engine-gpu-autoscaler \
+     deployment/helm/genai-engine-gpu-autoscaler-karpenter \
      -n <genai-engine-namespace> -f my-values.yaml
    ```
 
@@ -85,7 +85,7 @@ A standalone Helm add-on chart that autoscales the GenAI Engine's **GPU pods** o
    ```bash
    kubectl get --raw "/apis/custom.metrics.k8s.io/v1beta1/namespaces/<ns>/pods/*/DCGM_FI_DEV_GPU_UTIL"
    kubectl get --raw "/apis/custom.metrics.k8s.io/v1beta1/namespaces/<ns>/pods/*/gpu_mem_used_percent"
-   kubectl get hpa genai-gpu-autoscaler-arthur-genai-engine-gpu-autoscaler -n <ns>
+   kubectl get hpa genai-gpu-autoscaler-genai-engine-gpu-autoscaler-karpenter -n <ns>
    ```
 
 6. **Observe scaling under load:**
