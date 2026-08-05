@@ -634,7 +634,9 @@ class Task(BaseModel):
             name=x.name,
             created_at=datetime.now(),
             updated_at=datetime.now(),
-            is_agentic=x.is_agentic,
+            # Post-consolidation every task is agentic; the stored
+            # flag survives only for the deprecation window.
+            is_agentic=True,
             org_id=org_id,
             task_metadata=task_metadata,
         )
@@ -720,7 +722,9 @@ class Task(BaseModel):
             name=self.name,
             created_at=_serialize_datetime(self.created_at),
             updated_at=_serialize_datetime(self.updated_at),
-            is_agentic=self.is_agentic,
+            # Deprecated wire field: hardcoded True for the transition window
+            # (TDD §7); dropped entirely in a later release.
+            is_agentic=True,
             is_autocreated=self.is_autocreated,
             is_system_task=self.is_system_task,
             is_archived=self.is_archived,

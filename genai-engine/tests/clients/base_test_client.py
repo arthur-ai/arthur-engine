@@ -406,7 +406,6 @@ class GenaiEngineTestClientBase(httpx.Client):
         page_size: int = None,
         task_ids: list[str] = None,
         task_name: str = None,
-        is_agentic: bool = None,
         include_archived: bool = None,
         only_archived: bool = None,
         sort_field: str = None,
@@ -430,8 +429,6 @@ class GenaiEngineTestClientBase(httpx.Client):
             body.task_ids = task_ids
         if task_name:
             body.task_name = task_name
-        if is_agentic is not None:
-            body.is_agentic = is_agentic
         if include_archived is not None:
             body.include_archived = include_archived
         if only_archived is not None:
