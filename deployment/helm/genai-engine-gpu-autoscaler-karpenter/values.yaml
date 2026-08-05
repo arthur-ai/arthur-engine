@@ -1,9 +1,10 @@
 # Default values for genai-engine-gpu-autoscaler-karpenter.
 #
 # This add-on chart installs a HorizontalPodAutoscaler that scales the GenAI Engine
-# GPU Deployment on GPU utilization and GPU memory, plus the metric pipeline that
-# feeds it (NVIDIA DCGM exporter + prometheus-adapter). Prometheus (Prometheus
-# Operator) must already be running in the cluster.
+# GPU Deployment on GPU utilization, plus the metric pipeline that feeds it (NVIDIA
+# DCGM exporter + prometheus-adapter). Prometheus (Prometheus Operator) must already
+# be running in the cluster, and the genai-engine release must set
+# genaiEngineContainerGPULimit: "1" so DCGM can attribute GPU metrics to pods.
 #
 # Install this chart into the SAME namespace as the genai-engine release: an HPA
 # can only target a Deployment in its own namespace.
@@ -27,16 +28,28 @@ targetDeployment:
 # HorizontalPodAutoscaler.
 # ---------------------------------------------------------------------------
 hpa:
-  minReplicas: 2
-  # Cap at or below the GPU NodePool's nvidia.com/gpu limit so the HPA never asks
-  # for more GPUs than Karpenter will provision.
-  maxReplicas: 8
+  # Every replica occupies its own GPU node (see "one engine pod per GPU node" in the
+  # README), so these two numbers are a direct statement about GPU spend. They default
+  # low on purpose: installing this chart should never raise your bill on its own.
+  #
+  # 1, not 2, so that taking ownership of the replica count cannot itself provision a
+  # GPU node. Raise it if you want the engine to stay multi-replica when idle.
+  minReplicas: 1
+  # Keep this at or below the GPU NodePool's nvidia.com/gpu limit, so the HPA never
+  # asks for more GPUs than Karpenter is allowed to provision — replicas beyond that
+  # limit stay Pending forever and the HPA reads it as "still overloaded".
+  maxReplicas: 4
   annotations: {}
   gpu:
     # Scale to keep average GPU utilization (DCGM_FI_DEV_GPU_UTIL, %) near this target.
+    #
+    # GPU utilization is the only scaling signal, deliberately. GPU *memory* is not a
+    # load signal for this workload: the engine holds its model suite resident, so
+    # memory is roughly constant with respect to request volume, and adding a replica
+    # does not reduce any existing pod's GPU memory (each replica loads the same models
+    # onto its own GPU). An HPA metric on it can therefore only ratchet upward — if
+    # idle memory exceeds the target it pins at maxReplicas and never recovers.
     targetGPUUtilizationPercentage: 60
-    # Scale to keep average GPU memory usage (derived gpu_mem_used_percent, %) near this target.
-    targetGPUMemoryUtilizationPercentage: 80
   # GPU-tuned behavior: a new replica needs a fresh g4dn node (Karpenter ~1-3 min)
   # plus model load (~5-10 min), so add one pod at a time and scale down patiently
   # to avoid thrashing expensive GPU nodes.
@@ -107,7 +120,10 @@ prometheus-adapter:
   rules:
     default: false
     custom:
-      # GPU utilization (%) exposed as a per-pod custom metric.
+      # GPU utilization (%) exposed as a per-pod custom metric. This is the only rule
+      # the HPA needs. DCGM's raw framebuffer fields (DCGM_FI_DEV_FB_USED / _FB_FREE)
+      # remain queryable in Prometheus for dashboards and capacity work; they are not
+      # surfaced on custom.metrics.k8s.io because that API exists to feed autoscalers.
       - seriesQuery: 'DCGM_FI_DEV_GPU_UTIL{exported_pod!="",exported_namespace!=""}'
         resources:
           overrides:
@@ -119,15 +135,3 @@ prometheus-adapter:
           matches: "^DCGM_FI_DEV_GPU_UTIL$"
           as: "DCGM_FI_DEV_GPU_UTIL"
         metricsQuery: 'avg(<<.Series>>{<<.LabelMatchers>>}) by (<<.GroupBy>>)'
-      # GPU memory used (%) derived from framebuffer used / (used + free).
-      - seriesQuery: 'DCGM_FI_DEV_FB_USED{exported_pod!="",exported_namespace!=""}'
-        resources:
-          overrides:
-            exported_namespace:
-              resource: namespace
-            exported_pod:
-              resource: pod
-        name:
-          matches: "^DCGM_FI_DEV_FB_USED$"
-          as: "gpu_mem_used_percent"
-        metricsQuery: '100 * (avg(DCGM_FI_DEV_FB_USED{<<.LabelMatchers>>}) by (<<.GroupBy>>)) / (avg(DCGM_FI_DEV_FB_USED{<<.LabelMatchers>>}) by (<<.GroupBy>>) + avg(DCGM_FI_DEV_FB_FREE{<<.LabelMatchers>>}) by (<<.GroupBy>>))'

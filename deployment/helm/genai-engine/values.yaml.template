@@ -92,7 +92,7 @@ arthurGenaiEngineHPA:
   # - CPU deployment: true.
   # - GPU deployment with managed node group + ASG: false (HPA does not apply to a DaemonSet).
   # - GPU deployment with EKS Auto Mode / Karpenter: false here, and instead scale on GPU
-  #   utilization/memory with the separate `genai-engine-gpu-autoscaler-karpenter` add-on chart
+  #   utilization with the separate `genai-engine-gpu-autoscaler-karpenter` add-on chart
   #   (set externallyManaged: true below so this chart cedes replica ownership to it).
   enabled: true
   # When true, an external controller (e.g. the genai-engine-gpu-autoscaler-karpenter add-on chart)
@@ -212,6 +212,15 @@ genaiEngineContainerMemoryRequests: "16Gi"
 genaiEngineContainerCPULimits: "8"
 # Memory limits value for GenAI Engine
 genaiEngineContainerMemoryLimits: "16Gi"
+# Value for the nvidia.com/gpu resource limit, e.g. "1". Empty omits the limit entirely,
+# which is correct for CPU deployments and for GPU deployments that get their GPU via
+# NVIDIA_VISIBLE_DEVICES alone.
+# Set this to "1" if you use the genai-engine-gpu-autoscaler-karpenter add-on chart: DCGM
+# maps GPUs to pods through the kubelet pod-resources API, which only reports a device
+# allocation when the pod requests one, so per-pod GPU metrics do not exist without it.
+# Only set it where a device plugin actually advertises nvidia.com/gpu (check
+# `kubectl get node <gpu-node> -o jsonpath='{.status.allocatable}'`), or the pod stays Pending.
+genaiEngineContainerGPULimit: ""
 # Name of the service account used by the GenAI Engine pod (if no service account is specified, the pod will use its default behavior, which usually means that it uses the `default` k8s service account)
 genaiEngineServiceAccount:
   create: false

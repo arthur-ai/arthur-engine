@@ -433,11 +433,19 @@ To perform the steps you need `kubectl` access to the cluster with admin privile
       # externallyManaged: true
     ```
 
-    The `nodeSelector` is what makes the pod unschedulable on the general-purpose nodes, which is the signal that prompts Karpenter to provision a GPU node from the NodePool above. The chart grants the container GPU access via `NVIDIA_VISIBLE_DEVICES`, so no `nvidia.com/gpu` resource request is required in the pod spec.
+    The `nodeSelector` is what makes the pod unschedulable on the general-purpose nodes, which is the signal that prompts Karpenter to provision a GPU node from the NodePool above. The chart grants the container GPU access via `NVIDIA_VISIBLE_DEVICES`, so no `nvidia.com/gpu` resource request is required for the engine to *use* the GPU.
+
+    It is required for GPU metrics to be *attributed* to the pod, though — DCGM maps GPUs to pods through the kubelet pod-resources API, which only reports a device allocation when the pod requests one. If you plan to use the GPU autoscaler add-on (step 4), set `genaiEngineContainerGPULimit: "1"`, and first confirm a device plugin advertises the resource:
+
+    ```bash
+    kubectl get node <gpu-node> -o jsonpath='{.status.allocatable}' | tr ',' '\n' | grep nvidia
+    ```
+
+    Without that, the pod requests a resource nothing provides and stays `Pending` forever.
 
 3. **Node scaling is automatic.** Unlike the managed node group path, there is no launch template, ASG, or CloudWatch alarm to configure — Karpenter adds a GPU node when a GenAI Engine pod is pending and removes it when the node is idle (per the NodePool's `disruption` policy). To run more replicas, increase `genaiEngineReplicaCount`; Karpenter provisions additional GPU nodes to fit the pending pods (up to the NodePool `limits`).
 
-4. **(Optional) Autoscale pods on GPU load.** Increasing `genaiEngineReplicaCount` is manual. To scale the replica count automatically on **GPU utilization** and **GPU memory**, install the companion [`genai-engine-gpu-autoscaler-karpenter`](../genai-engine-gpu-autoscaler-karpenter/README.md) add-on chart (DCGM exporter → Prometheus → prometheus-adapter → HPA). It owns the replica count, so set `arthurGenaiEngineHPA.externallyManaged: true` here and this chart will omit the Deployment's static `replicas` and render no HPA of its own. The HPA scales pods; Karpenter scales nodes.
+4. **(Optional) Autoscale pods on GPU load.** Increasing `genaiEngineReplicaCount` is manual. To scale the replica count automatically on **GPU utilization**, install the companion [`genai-engine-gpu-autoscaler-karpenter`](../genai-engine-gpu-autoscaler-karpenter/README.md) add-on chart (DCGM exporter → Prometheus → prometheus-adapter → HPA). It owns the replica count, so set `arthurGenaiEngineHPA.externallyManaged: true` here and this chart will omit the Deployment's static `replicas` and render no HPA of its own. It also needs `genaiEngineContainerGPULimit: "1"` (see step 2). The HPA scales pods; Karpenter scales nodes.
 
 ## Ingress and HTTPS
 

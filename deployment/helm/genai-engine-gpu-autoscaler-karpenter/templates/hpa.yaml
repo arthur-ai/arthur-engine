@@ -24,14 +24,6 @@ spec:
         target:
           type: AverageValue
           averageValue: {{ .Values.hpa.gpu.targetGPUUtilizationPercentage | quote }}
-    # Average GPU memory usage (%) across the target Deployment's pods.
-    - type: Pods
-      pods:
-        metric:
-          name: gpu_mem_used_percent
-        target:
-          type: AverageValue
-          averageValue: {{ .Values.hpa.gpu.targetGPUMemoryUtilizationPercentage | quote }}
   {{- with .Values.hpa.behavior }}
   behavior:
     {{- toYaml . | nindent 4 }}
