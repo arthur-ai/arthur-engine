@@ -1,0 +1,136 @@
+# Values template for genai-engine-gpu-autoscaler-karpenter.
+#
+# Copy this file to values.yaml (or my-values.yaml) in the directory you run Helm
+# from and edit it, then install with `-f <your values file>`. The values.yaml name
+# is git-ignored in this repo, so your populated copy is never committed.
+#
+# This add-on chart installs a HorizontalPodAutoscaler that scales the GenAI Engine
+# GPU Deployment on GPU utilization and GPU memory, plus the metric pipeline that
+# feeds it (NVIDIA DCGM exporter + prometheus-adapter). Prometheus (Prometheus
+# Operator) must already be running in the cluster.
+#
+# Install this chart into the SAME namespace as the genai-engine release: an HPA
+# can only target a Deployment in its own namespace.
+#
+# The values you are most likely to change: targetDeployment.name,
+# hpa.min/maxReplicas, hpa.gpu targets, prometheus-adapter.prometheus.url, and
+# dcgm-exporter.serviceMonitor.additionalLabels.
+
+# ---------------------------------------------------------------------------
+# The genai-engine Deployment this HPA scales.
+# ---------------------------------------------------------------------------
+targetDeployment:
+  # Name of the genai-engine Deployment (chart default is "arthur-genai-engine").
+  name: arthur-genai-engine
+  # If the genai-engine release sets arthurResourceNameSuffix, mirror it here so
+  # the HPA targets "<name>-<suffix>". Leave "" when no suffix is used.
+  resourceNameSuffix: ""
+
+# ---------------------------------------------------------------------------
+# HorizontalPodAutoscaler.
+# ---------------------------------------------------------------------------
+hpa:
+  minReplicas: 2
+  # Cap at or below the GPU NodePool's nvidia.com/gpu limit so the HPA never asks
+  # for more GPUs than Karpenter will provision.
+  maxReplicas: 8
+  annotations: {}
+  gpu:
+    # Scale to keep average GPU utilization (DCGM_FI_DEV_GPU_UTIL, %) near this target.
+    targetGPUUtilizationPercentage: 60
+    # Scale to keep average GPU memory usage (derived gpu_mem_used_percent, %) near this target.
+    targetGPUMemoryUtilizationPercentage: 80
+  # GPU-tuned behavior: a new replica needs a fresh g4dn node (Karpenter ~1-3 min)
+  # plus model load (~5-10 min), so add one pod at a time and scale down patiently
+  # to avoid thrashing expensive GPU nodes.
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 120
+      selectPolicy: Max
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 120
+    scaleDown:
+      stabilizationWindowSeconds: 600
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 300
+
+# ===========================================================================
+# Bundled subchart: NVIDIA DCGM exporter (GPU metrics source).
+# Set dcgm-exporter.enabled=false to bring your own exporter.
+# ===========================================================================
+dcgm-exporter:
+  enabled: true
+  # EKS Auto Mode GPU nodes have no NVIDIA device plugin; the exporter gets GPU
+  # access the same way the engine does, via NVIDIA_VISIBLE_DEVICES.
+  runtimeClassName: ""
+  nodeSelector:
+    capability: gpu
+  # Replace the chart's default control-plane toleration with the GPU taint.
+  tolerations:
+    - key: nvidia.com/gpu
+      operator: Exists
+      effect: NoSchedule
+  extraEnv:
+    - name: NVIDIA_VISIBLE_DEVICES
+      value: "all"
+    - name: NVIDIA_DRIVER_CAPABILITIES
+      value: "compute,utility"
+  # Attach the identity of the pod using each GPU to the metrics (needed so the
+  # HPA can average GPU load per genai-engine pod). Grants pod read RBAC.
+  kubernetes:
+    enablePodLabels: true
+    rbac:
+      create: true
+  # Prometheus Operator scrapes the exporter via this ServiceMonitor.
+  # honorLabels=false makes the workload pod surface as exported_pod/exported_namespace,
+  # which the prometheus-adapter rules below map to the pod/namespace resources.
+  serviceMonitor:
+    enabled: true
+    interval: 30s
+    honorLabels: false
+    additionalLabels: {}
+      # Add the label your Prometheus uses to select ServiceMonitors, e.g.:
+      # release: kube-prometheus-stack
+
+# ===========================================================================
+# Bundled subchart: prometheus-adapter (exposes GPU metrics on custom.metrics.k8s.io).
+# Set prometheus-adapter.enabled=false if the cluster already runs one (only one
+# adapter may serve custom.metrics.k8s.io per cluster).
+# ===========================================================================
+prometheus-adapter:
+  enabled: true
+  prometheus:
+    # kube-prometheus-stack default in-cluster Prometheus service. Override for your stack.
+    url: http://prometheus-operated.monitoring.svc
+    port: 9090
+  rules:
+    default: false
+    custom:
+      # GPU utilization (%) exposed as a per-pod custom metric.
+      - seriesQuery: 'DCGM_FI_DEV_GPU_UTIL{exported_pod!="",exported_namespace!=""}'
+        resources:
+          overrides:
+            exported_namespace:
+              resource: namespace
+            exported_pod:
+              resource: pod
+        name:
+          matches: "^DCGM_FI_DEV_GPU_UTIL$"
+          as: "DCGM_FI_DEV_GPU_UTIL"
+        metricsQuery: 'avg(<<.Series>>{<<.LabelMatchers>>}) by (<<.GroupBy>>)'
+      # GPU memory used (%) derived from framebuffer used / (used + free).
+      - seriesQuery: 'DCGM_FI_DEV_FB_USED{exported_pod!="",exported_namespace!=""}'
+        resources:
+          overrides:
+            exported_namespace:
+              resource: namespace
+            exported_pod:
+              resource: pod
+        name:
+          matches: "^DCGM_FI_DEV_FB_USED$"
+          as: "gpu_mem_used_percent"
+        metricsQuery: '100 * (avg(DCGM_FI_DEV_FB_USED{<<.LabelMatchers>>}) by (<<.GroupBy>>)) / (avg(DCGM_FI_DEV_FB_USED{<<.LabelMatchers>>}) by (<<.GroupBy>>) + avg(DCGM_FI_DEV_FB_FREE{<<.LabelMatchers>>}) by (<<.GroupBy>>))'

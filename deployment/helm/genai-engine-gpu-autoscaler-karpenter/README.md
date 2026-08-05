@@ -35,11 +35,15 @@ A standalone Helm add-on chart that autoscales the GenAI Engine's **GPU pods** o
 - EKS Auto Mode cluster with a **GPU NodePool** (label `capability: gpu`, taint `nvidia.com/gpu=true:NoSchedule`) and an `nvidia.com/gpu` limit.
 - **Prometheus Operator** running in-cluster (e.g. kube-prometheus-stack). This chart does **not** install Prometheus.
 - The `genai-engine` chart at a version that supports `arthurGenaiEngineHPA.externallyManaged` (see compatibility below).
-- Only **one** prometheus-adapter may serve `custom.metrics.k8s.io` per cluster — if you already run one, set `prometheus-adapter.enabled=false` and add the two rules from `values.yaml` to it instead.
+- Only **one** prometheus-adapter may serve `custom.metrics.k8s.io` per cluster — if you already run one, set `prometheus-adapter.enabled=false` and add the two rules from [values.yaml.template](values.yaml.template) to it instead.
 
 ## Step-by-step usage
 
-1. **Point the adapter at your Prometheus and set the ServiceMonitor label.** In a `my-values.yaml`:
+1. **Prepare your values file.** Copy [values.yaml.template](values.yaml.template) to `my-values.yaml` in the directory you run Helm from — it carries every default with inline documentation — and edit the values below. `values.yaml` is git-ignored in this repo, so a copy under that name stays out of commits.
+   ```bash
+   cp deployment/helm/genai-engine-gpu-autoscaler-karpenter/values.yaml.template my-values.yaml
+   ```
+   The values that usually need changing:
    ```yaml
    targetDeployment:
      name: arthur-genai-engine        # + resourceNameSuffix if your release uses one
@@ -99,7 +103,7 @@ A standalone Helm add-on chart that autoscales the GenAI Engine's **GPU pods** o
 ## Bring your own metric pipeline
 
 - Already run DCGM exporter? `--set dcgm-exporter.enabled=false` (ensure its metrics carry the workload pod identity and are scraped by Prometheus).
-- Already run prometheus-adapter? `--set prometheus-adapter.enabled=false` and copy the two `rules.custom` entries from `values.yaml` into it.
+- Already run prometheus-adapter? `--set prometheus-adapter.enabled=false` and copy the two `rules.custom` entries from [values.yaml.template](values.yaml.template) into it.
 
 ## Compatibility
 
