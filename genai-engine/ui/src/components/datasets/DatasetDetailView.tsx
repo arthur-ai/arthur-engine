@@ -14,6 +14,7 @@ import { ImportDatasetModal } from "./ImportDatasetModal";
 import { SyntheticDataModal } from "./synthetic";
 import { VersionDrawer } from "./VersionDrawer";
 
+import { SourceTraceDrawer } from "@/components/traces/components/source-trace/SourceTraceDrawer";
 import { getContentHeight } from "@/constants/layout";
 import {
   DatasetContextProvider,
@@ -59,6 +60,11 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
   const { registerBlocker, runGuardedNavigation, isBlocking, confirmNavigation, cancelNavigation } = useNavigationGuard();
   const [searchParams, setSearchParams] = useSearchParams();
   const [isExporting, setIsExporting] = useState(false);
+  // traceId is kept on close so the drawer's exit animation doesn't unmount its content mid-slide
+  const [sourceTrace, setSourceTrace] = useState<{ open: boolean; traceId: string | null }>({ open: false, traceId: null });
+
+  const handleOpenSourceTrace = useCallback((traceId: string) => setSourceTrace({ open: true, traceId }), []);
+  const handleCloseSourceTrace = useCallback(() => setSourceTrace((s) => ({ ...s, open: false })), []);
 
   useEffect(() => {
     track("dataset/detail_opened", { dataset_id: datasetId, task_id: task?.id });
@@ -396,6 +402,7 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
             onEditRow={(row) => dispatch({ type: "UI/OPEN_EDIT_MODAL", payload: row })}
             onDeleteRow={handleDeleteRow}
             onFillColumn={handleFillColumn}
+            onOpenTrace={handleOpenSourceTrace}
             searchQuery={state.searchQuery}
           />
         )}
@@ -453,6 +460,7 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
           isLoading={false}
           traceId={state.modals.edit.row.trace_id}
           taskId={task?.id}
+          onOpenTrace={handleOpenSourceTrace}
         />
       )}
 
@@ -504,6 +512,10 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
           versionNumber={queries.currentVersion}
           onAcceptRows={handleAcceptSyntheticRows}
         />
+      )}
+
+      {task && sourceTrace.traceId && (
+        <SourceTraceDrawer open={sourceTrace.open} onClose={handleCloseSourceTrace} traceId={sourceTrace.traceId} taskId={task.id} />
       )}
 
       <ConfirmationModal

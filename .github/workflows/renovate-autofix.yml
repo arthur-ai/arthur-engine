@@ -21,8 +21,11 @@ name: Renovate Auto-Fix
 #
 # Identity split (required by the ruleset's require_last_push_approval +
 # dismiss_stale_reviews_on_push): the fix is PUSHED as the Arthur GitHub
-# Automator App, and RE-APPROVED as github-actions[bot] — two distinct actors,
-# so the post-push approval is valid.
+# Automator App, and APPROVED as github-actions[bot] — two distinct actors,
+# so the post-push approval is valid. The approval is pinned to the exact fix
+# commit SHA (a bare approve races the push and gets dismissed as stale).
+# Major-version PRs (labelled 'major' by Renovate) are fixed but NOT approved —
+# they get their title flagged for human review instead.
 #
 # This is a workflow_run listener; it only becomes active once merged to the
 # default branch (dev). It always runs the version of itself from the default
@@ -180,6 +183,21 @@ jobs:
                 dependencies", incompatible version pins between packages).
               - Anything that would require changing a version pin or lockfile to resolve.
 
+            RELEASE-AGE SOAK (a specific out-of-scope case — flag it precisely instead of just "needs a
+            human"): the blocker is that a NEWER release of a dependency WOULD fix the build but is being
+            held back by this repo's 3-day soak — `minimumReleaseAge` in /renovate.json and
+            `tool.uv exclude-newer` in the pyproject.toml files. Tell-tale signs: `uv lock` reports the
+            fixing version is unavailable / "not at the requested version", OR a package imports a symbol
+            that a just-updated dependency renamed/removed and that dependency's compat patch was published
+            less than 3 days ago. When you identify this, IN ADDITION to the explanatory comment, label the
+            PR so humans can see it is a timing hold, not a defect:
+              `gh pr edit ${{ steps.pr.outputs.number }} --add-label "blocked: release-age soak"`
+            In the comment, name the package, the exact version that fixes it, and the UTC timestamp it
+            clears the soak (the fixing release's upload time + 3 days). Do NOT change any pin or lockfile
+            to pull it in early — the soak is deliberate. (The label pre-exists in the repo and
+            `pull-requests: write` is enough to apply it; if the `add-label` call ever fails because the
+            label is missing, skip it and rely on the comment — do not block on it.)
+
             HARD RULES (never violate — these protect the "don't break anything" objective):
               - Do NOT edit anything under .github/, any CI config, pyproject.toml/package.json version
                 pins, uv.lock, or yarn.lock.
@@ -226,12 +244,14 @@ jobs:
             merge queue (and an independent Claude review) before merging. Never leave broken, unreviewed,
             or unverified edits.
 
-      - name: Commit, push & re-approve (only if verified)
+      - name: Commit, push, then approve (minor/patch) or flag (major)
         if: steps.guard.outputs.proceed == 'true'
         env:
           # Approve as github-actions[bot] — a DIFFERENT identity than the app that
           # pushes below, so require_last_push_approval is satisfied.
           GH_TOKEN: ${{ github.token }}
+          # Used ONLY for the push, so GitHub attributes the push to the Automator App.
+          APP_TOKEN: ${{ steps.app-token.outputs.token }}
           PR_NUMBER: ${{ steps.pr.outputs.number }}
           HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
           AUTOFIX_MARKER: ${{ runner.temp }}/claude-autofix-success
@@ -249,14 +269,65 @@ jobs:
             exit 0
           fi
 
-          # Commit author = Automator App bot (cosmetic); push credential is the
-          # app token configured by checkout, so GitHub attributes the push to the app.
           git config user.name "arthur-github-automator[bot]"
           git config user.email "${{ secrets.ARTHUR_GH_AUTOMATOR_APP_ID }}+arthur-github-automator[bot]@users.noreply.github.com"
           git add -A
           git commit -m "fix(deps): auto-resolve CI failures from dependency update [claude-autofix]"
-          git push origin "HEAD:$HEAD_BRANCH"
+          FIX_SHA=$(git rev-parse HEAD)
 
-          # Re-approve so the PR (now with a fresh commit) can re-enter the merge queue.
-          gh pr review "$PR_NUMBER" --repo "${{ github.repository }}" --approve \
-            -b "🤖 Auto-fix verified: adapted the code to the dependency update and confirmed the full required suite passes locally. Re-approving to re-enter the merge queue."
+          # Push with the app token EXPLICITLY (checkout's persisted credential is gone —
+          # claude-code-action rewrites the workspace git auth during its run). The push is
+          # x-access-token, so GitHub attributes it to the Automator App (distinct from the
+          # approver). NOT a force push: if Renovate rebased this branch while Claude worked,
+          # this is a non-fast-forward and is rejected — safe, a newer run handles the new head.
+          git push "https://x-access-token:${APP_TOKEN}@github.com/${{ github.repository }}.git" \
+            "HEAD:$HEAD_BRANCH"
+
+          # Major-version bumps are labelled 'major' by Renovate. For those we adapt the code
+          # so CI passes, but do NOT self-approve — a human must review the major bump. We flag
+          # the title instead.
+          IS_MAJOR=$(gh api "repos/${{ github.repository }}/pulls/$PR_NUMBER" --jq 'any(.labels[]; .name == "major")')
+          if [ "$IS_MAJOR" = "true" ]; then
+            TITLE=$(gh pr view "$PR_NUMBER" --repo "${{ github.repository }}" --json title --jq '.title')
+            case "$TITLE" in
+              "⚠️ major update"*) : ;;  # already flagged on a previous attempt; don't stack
+              *) gh pr edit "$PR_NUMBER" --repo "${{ github.repository }}" \
+                   --title "⚠️ major update — human review required: $TITLE" ;;
+            esac
+            gh pr comment "$PR_NUMBER" --repo "${{ github.repository }}" --body \
+              "🤖 Applied an auto-fix so CI passes, but this is a **major** dependency update, so it is **not** being auto-approved. A human should review and approve before it merges."
+            echo "Major update: flagged title, skipped self-approval."
+            exit 0
+          fi
+
+          # Minor/patch: approve the EXACT fix commit and CONFIRM the approval sticks.
+          # Why this dance: a bare `gh pr review --approve` right after a push races GitHub —
+          # the approval can attach to the PRE-push commit, which dismiss_stale_reviews_on_push
+          # then dismisses (observed on #2070: approval landed on the old SHA and was dismissed
+          # 1s later). This loop does not trust that reasoning; it verifies the END STATE:
+          #   (a) wait until GitHub reports FIX_SHA as the PR head,
+          #   (b) approve pinned to FIX_SHA,
+          #   (c) re-read reviews and confirm a NON-dismissed APPROVED review on FIX_SHA exists,
+          #   retrying if not. If the head has moved on to some other commit (a newer push
+          #   superseded us), FIX_SHA never becomes head and we exit without approving a stale
+          #   commit — a newer run/human owns it.
+          approved=false
+          for attempt in 1 2 3 4 5 6; do
+            HEAD_SHA=$(gh api "repos/${{ github.repository }}/pulls/$PR_NUMBER" --jq '.head.sha' || echo "")
+            if [ "$HEAD_SHA" != "$FIX_SHA" ]; then
+              echo "PR head is ${HEAD_SHA:-unknown}, waiting for our fix $FIX_SHA to register (attempt $attempt/6)..."
+              sleep 5
+              continue
+            fi
+            gh api "repos/${{ github.repository }}/pulls/$PR_NUMBER/reviews" \
+              -f commit_id="$FIX_SHA" -f event="APPROVE" \
+              -f body="🤖 Auto-fix verified: adapted the code to the dependency update and confirmed the full required suite passes locally. Approving $FIX_SHA to re-enter the merge queue." >/dev/null || true
+            sleep 4
+            STUCK=$(gh api "repos/${{ github.repository }}/pulls/$PR_NUMBER/reviews" \
+              | jq -r --arg sha "$FIX_SHA" 'any(.[]; .user.login=="github-actions[bot]" and .state=="APPROVED" and .commit_id==$sha)')
+            if [ "$STUCK" = "true" ]; then approved=true; echo "Approval confirmed sticking on $FIX_SHA."; break; fi
+            echo "Approval did not stick yet (attempt $attempt/6); retrying..."
+          done
+          if [ "$approved" != "true" ]; then
+            echo "::warning::Could not confirm a sticking approval on $FIX_SHA after retries; leaving it for a human to approve."
+          fi

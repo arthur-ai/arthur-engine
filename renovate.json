@@ -40,9 +40,15 @@
   ],
   "packageRules": [
     {
-      "matchUpdateTypes": ["minor", "patch"],
-      "automerge": true,
-      "autoApprove": true
+      "description": "Auto-merge low-risk update types. lockFileMaintenance (nightly lockfile refresh) and replacement (curated drop-in package swaps from replacements:all) are gated by CI + the auto-fixer like minor/patch, so they merge without a human reviewer instead of sitting open.",
+      "matchUpdateTypes": ["minor", "patch", "lockFileMaintenance", "replacement"],
+      "automerge": false,
+      "autoApprove": false
+    },
+    {
+      "description": "Label major updates so the auto-fixer can flag them for human review instead of self-approving.",
+      "matchUpdateTypes": ["major"],
+      "addLabels": ["major"]
     },
     {
       "matchManagers": ["npm"],
@@ -65,6 +71,18 @@
       "enabled": false
     },
     {
+      "description": "Cap transformers < 5.14.0: gliner (load-bearing for PII/NER) pins transformers<5.14.0, and gliner 0.2.28 is the latest release, so transformers 5.14.x is unsatisfiable. Remove this once gliner relaxes its ceiling.",
+      "matchManagers": ["pep621"],
+      "matchPackageNames": ["transformers"],
+      "allowedVersions": "<5.14.0"
+    },
+    {
+      "description": "fsspec and its filesystem backends are lockstep (gcsfs/s3fs/adlfs each pin a matching fsspec calendar version), so they must bump together. Splitting them into separate PRs makes each individually unsatisfiable.",
+      "matchManagers": ["pep621"],
+      "groupName": "fsspec filesystems",
+      "matchPackageNames": ["fsspec", "gcsfs", "s3fs", "adlfs"]
+    },
+    {
       "matchManagers": ["pep621"],
       "groupName": "langchain + openai",
       "matchPackageNames": [
@@ -78,6 +96,18 @@
       ]
     },
     {
+      "description": "gliner 0.2.28 (latest release) requires transformers>=4.51.3,<5.14.0, so transformers 5.14.x makes genai-engine unresolvable. Raise or drop this cap once a gliner release widens its transformers ceiling.",
+      "matchManagers": ["pep621"],
+      "matchPackageNames": ["transformers"],
+      "allowedVersions": "<5.14.0"
+    },
+    {
+      "description": "opentelemetry-api 1.39.1 (via opentelemetry-semantic-conventions 0.60b1) requires importlib-metadata>=6.0,<8.8.0, so importlib-metadata 8.8.x+ makes genai-engine unresolvable. Raise or drop this cap once the pinned OpenTelemetry stack widens its importlib-metadata ceiling.",
+      "matchManagers": ["pep621"],
+      "matchPackageNames": ["importlib-metadata"],
+      "allowedVersions": "<8.8.0"
+    },
+    {
       "matchManagers": ["dockerfile", "docker-compose"],
       "matchPackageNames": ["python"],
       "enabled": false
@@ -88,14 +118,36 @@
       "allowedVersions": "<17"
     },
     {
+      "description": "Non-major npm updates get one randomly-sampled reviewer for visibility (they are auto-merged). Major npm bumps are routed to the frontend experts by the rule below.",
       "matchManagers": ["npm"],
+      "matchUpdateTypes": ["minor", "patch"],
       "reviewers": ["TheLukaszNs-Blazity", "xV3rt", "martin-arthur-ai"],
       "reviewersSampleSize": 1
     },
     {
+      "description": "Non-major Python updates get one randomly-sampled reviewer for visibility (they are auto-merged). Major backend bumps are routed to the backend experts by the rule below.",
       "matchManagers": ["pep621"],
+      "matchUpdateTypes": ["minor", "patch"],
       "reviewers": ["notthattal", "videetparekh", "mcgrawia"],
       "reviewersSampleSize": 1
+    },
+    {
+      "description": "Route major frontend (npm) bumps to the frontend experts. Major updates are not auto-approved, so request both experts for human review. No reviewersSampleSize, so both are always requested.",
+      "matchManagers": ["npm"],
+      "matchUpdateTypes": ["major"],
+      "reviewers": ["jan-lewandoski-blazity", "xV3rt"]
+    },
+    {
+      "description": "Route major backend (Python/pep621) bumps to the backend experts for human review.",
+      "matchManagers": ["pep621"],
+      "matchUpdateTypes": ["major"],
+      "reviewers": ["ntatsumi", "notthattal"]
+    },
+    {
+      "description": "Route major infra bumps (Docker base images, docker-compose services, and the uv pin tracked by the custom regex manager) to the infra experts for human review.",
+      "matchManagers": ["dockerfile", "docker-compose", "custom.regex"],
+      "matchUpdateTypes": ["major"],
+      "reviewers": ["ntatsumi", "jdbarthur"]
     }
   ]
 }

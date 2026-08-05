@@ -20,8 +20,8 @@ export const UserDrawerContent = ({ id }: Props) => {
 
   const [timeRange, setTimeRange] = useState<TimeRange>(TIME_RANGES["1 month"]);
 
+  // eslint-disable-next-line @tanstack/query/exhaustive-deps
   const { data: user } = useSuspenseQuery({
-    // eslint-disable-next-line @tanstack/query/exhaustive-deps
     queryKey: queryKeys.users.byId(id),
     queryFn: () => getUser(api, { taskId: task?.id ?? "", userId: id }),
   });

@@ -61,8 +61,8 @@ async function fetchConfigData(api: ReturnType<typeof useApi>, configId: string,
 export function useLoadRagConfig(configId: string | null, versionNumber?: number) {
   const api = useApi();
 
+  // eslint-disable-next-line @tanstack/query/exhaustive-deps -- api is a stable hook reference, not a serializable cache key
   return useQuery({
-    // eslint-disable-next-line @tanstack/query/exhaustive-deps -- api is a stable hook reference, not a serializable cache key
     queryKey: queryKeys.ragSearchSettings.load(configId!, versionNumber),
     queryFn: () => fetchConfigData(api, configId!, versionNumber),
     enabled: !!configId && !!api,

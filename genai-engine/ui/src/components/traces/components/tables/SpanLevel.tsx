@@ -85,8 +85,8 @@ export const SpanLevel = memo(({ welcomeDismissed }: SpanLevelProps) => {
     [task?.id, pagination.pageIndex, pagination.pageSize, filters, timeRange, sort, sortBy]
   );
 
+  // eslint-disable-next-line @tanstack/query/exhaustive-deps
   const { data, isLoading, error } = useQuery({
-    // eslint-disable-next-line @tanstack/query/exhaustive-deps
     queryKey: queryKeys.spans.listPaginated(params),
     placeholderData: keepPreviousData,
     queryFn: () => getFilteredSpans(api, params),

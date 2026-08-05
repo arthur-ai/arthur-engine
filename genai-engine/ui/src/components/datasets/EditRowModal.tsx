@@ -13,9 +13,20 @@ interface EditRowModalProps {
   isLoading?: boolean;
   traceId?: string | null;
   taskId?: string;
+  onOpenTrace?: (traceId: string) => void;
 }
 
-export const EditRowModal: React.FC<EditRowModalProps> = ({ open, onClose, onSubmit, rowData, rowId, isLoading = false, traceId, taskId }) => {
+export const EditRowModal: React.FC<EditRowModalProps> = ({
+  open,
+  onClose,
+  onSubmit,
+  rowData,
+  rowId,
+  isLoading = false,
+  traceId,
+  taskId,
+  onOpenTrace,
+}) => {
   const columns = Object.keys(rowData);
 
   const stringData = useMemo(() => {
@@ -56,7 +67,7 @@ export const EditRowModal: React.FC<EditRowModalProps> = ({ open, onClose, onSub
               <Typography variant="body2" color="text.secondary" fontWeight={500}>
                 Source trace
               </Typography>
-              <SourceTraceLink variant="field" taskId={taskId} traceId={traceId} />
+              <SourceTraceLink variant="field" taskId={taskId} traceId={traceId} onOpen={onOpenTrace ? () => onOpenTrace(traceId) : undefined} />
             </Box>
           )}
           <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>

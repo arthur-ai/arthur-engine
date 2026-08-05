@@ -16,9 +16,10 @@ interface DatasetTableRowProps {
   onDelete: (rowId: string) => void;
   datasetId: string;
   taskId?: string;
+  onOpenTrace?: (traceId: string) => void;
 }
 
-export const DatasetTableRow: React.FC<DatasetTableRowProps> = React.memo(({ row, columns, onEdit, onDelete, datasetId, taskId }) => {
+export const DatasetTableRow: React.FC<DatasetTableRowProps> = React.memo(({ row, columns, onEdit, onDelete, datasetId, taskId, onOpenTrace }) => {
   return (
     <TableRow hover>
       <TableCell
@@ -32,7 +33,14 @@ export const DatasetTableRow: React.FC<DatasetTableRowProps> = React.memo(({ row
       >
         <Box sx={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 0.25 }}>
           <CopyableChip label={row.id} size="small" sx={{ maxWidth: 120, "& .MuiChip-label": { overflow: "hidden", textOverflow: "ellipsis" } }} />
-          {row.trace_id && taskId && <SourceTraceLink variant="subtle" taskId={taskId} traceId={row.trace_id} />}
+          {row.trace_id && taskId && (
+            <SourceTraceLink
+              variant="subtle"
+              taskId={taskId}
+              traceId={row.trace_id}
+              onOpen={onOpenTrace ? () => onOpenTrace(row.trace_id!) : undefined}
+            />
+          )}
         </Box>
       </TableCell>
       {columns.map((column) => {
