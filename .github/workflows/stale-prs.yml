@@ -1,0 +1,44 @@
+name: Stale PR Cleanup
+
+on:
+  schedule:
+    # Runs daily at 06:00 UTC (a low-traffic time)
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Mark and close stale pull requests
+        uses: actions/stale@v9
+        with:
+          # Operate on pull requests only; disable all issue processing.
+          days-before-issue-stale: -1
+          days-before-issue-close: -1
+
+          # Warn after 21 days of inactivity, then close 7 days later (28 total).
+          days-before-pr-stale: 21
+          days-before-pr-close: 7
+
+          # Label applied when a PR is marked stale.
+          stale-pr-label: stale
+
+          # Never touch PRs explicitly flagged to stay open.
+          exempt-pr-labels: keep-open
+
+          # Any new activity clears the stale state automatically (default; set explicitly for clarity).
+          remove-stale-when-updated: true
+
+          stale-pr-message: >
+            This pull request has had no activity for 21 days and has been
+            marked as stale. It will be closed automatically in 7 more days if
+            there is no further activity. To keep it open, push a commit, leave
+            a comment, or add the `keep-open` label.
+
+          close-pr-message: >
+            This pull request has been closed because it was stale for 7 days
+            with no activity. Feel free to reopen it at any time if you would
+            like to continue the work.

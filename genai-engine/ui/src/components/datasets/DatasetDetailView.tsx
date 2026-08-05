@@ -1,6 +1,6 @@
 import { Alert, Box, Button, TablePagination } from "@mui/material";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Navigate, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { Navigate, useNavigate, useParams, useSearchParams } from "react-router";
 
 import { ConfirmationModal } from "../common/ConfirmationModal";
 
@@ -14,6 +14,7 @@ import { ImportDatasetModal } from "./ImportDatasetModal";
 import { SyntheticDataModal } from "./synthetic";
 import { VersionDrawer } from "./VersionDrawer";
 
+import { SourceTraceDrawer } from "@/components/traces/components/source-trace/SourceTraceDrawer";
 import { getContentHeight } from "@/constants/layout";
 import {
   DatasetContextProvider,
@@ -59,6 +60,11 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
   const { registerBlocker, runGuardedNavigation, isBlocking, confirmNavigation, cancelNavigation } = useNavigationGuard();
   const [searchParams, setSearchParams] = useSearchParams();
   const [isExporting, setIsExporting] = useState(false);
+  // traceId is kept on close so the drawer's exit animation doesn't unmount its content mid-slide
+  const [sourceTrace, setSourceTrace] = useState<{ open: boolean; traceId: string | null }>({ open: false, traceId: null });
+
+  const handleOpenSourceTrace = useCallback((traceId: string) => setSourceTrace({ open: true, traceId }), []);
+  const handleCloseSourceTrace = useCallback(() => setSourceTrace((s) => ({ ...s, open: false })), []);
 
   useEffect(() => {
     track("dataset/detail_opened", { dataset_id: datasetId, task_id: task?.id });
@@ -133,6 +139,23 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
     dispatch({ type: "UI/HIDE_CONFIRMATION" });
   }, [state.confirmation.targetVersion, dispatch, datasetId, task?.id]);
 
+  const handleVersionRestore = useCallback(
+    (versionNumber: number) => {
+      dispatch({
+        type: "UI/SHOW_CONFIRMATION",
+        payload: { type: "restoreVersion", targetVersion: versionNumber },
+      });
+    },
+    [dispatch]
+  );
+
+  const handleConfirmRestore = useCallback(() => {
+    if (state.confirmation.targetVersion !== null && !mutations.restoreVersion.isPending) {
+      mutations.restoreVersion.mutate({ versionNumber: state.confirmation.targetVersion });
+    }
+    dispatch({ type: "UI/HIDE_CONFIRMATION" });
+  }, [state.confirmation.targetVersion, mutations.restoreVersion, dispatch]);
+
   const handleAddRow = useCallback(
     async (rowData: Record<string, unknown>) => {
       track("dataset/row_added", { dataset_id: datasetId, task_id: task?.id });
@@ -162,8 +185,6 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
 
   const handleConfigureColumns = useCallback(
     async (columns: string[], newColumnDefaults: ColumnDefaults, applyToExisting: boolean) => {
-      dispatch({ type: "DATA/SET_COLUMNS", payload: columns });
-
       if (queries.dataset && datasetId) {
         const existingMetadata = (queries.dataset.metadata as Record<string, unknown>) ?? {};
         await mutations.updateDataset.mutateAsync({
@@ -180,7 +201,7 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
         }
       }
 
-      dispatch({ type: "UI/TOGGLE_CONFIGURE_MODAL", payload: false });
+      dispatch({ type: "DATA/SET_COLUMNS", payload: columns });
     },
     [dispatch, queries.dataset, queries.totalRowCount, datasetId, mutations]
   );
@@ -210,7 +231,6 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
 
   const handleConfirmFillColumn = useCallback(() => {
     if (state.confirmation.targetColumn) {
-      dispatch({ type: "DATA/CLEAR_CHANGES" });
       dispatch({ type: "UI/OPEN_FILL_MODAL", payload: state.confirmation.targetColumn });
     }
     dispatch({ type: "UI/HIDE_CONFIRMATION" });
@@ -382,6 +402,7 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
             onEditRow={(row) => dispatch({ type: "UI/OPEN_EDIT_MODAL", payload: row })}
             onDeleteRow={handleDeleteRow}
             onFillColumn={handleFillColumn}
+            onOpenTrace={handleOpenSourceTrace}
             searchQuery={state.searchQuery}
           />
         )}
@@ -424,6 +445,8 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
           onVersionClick={(v) => dispatch({ type: "UI/SHOW_CONFIRMATION", payload: { type: "unsavedVersionSwitch", targetVersion: v } })}
           onClose={() => dispatch({ type: "UI/TOGGLE_VERSION_DRAWER", payload: false })}
           onVersionSelect={handleVersionSwitch}
+          onVersionRestore={handleVersionRestore}
+          isRestoring={mutations.restoreVersion.isPending}
         />
       )}
 
@@ -437,6 +460,7 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
           isLoading={false}
           traceId={state.modals.edit.row.trace_id}
           taskId={task?.id}
+          onOpenTrace={handleOpenSourceTrace}
         />
       )}
 
@@ -490,6 +514,10 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
         />
       )}
 
+      {task && sourceTrace.traceId && (
+        <SourceTraceDrawer open={sourceTrace.open} onClose={handleCloseSourceTrace} traceId={sourceTrace.traceId} taskId={task.id} />
+      )}
+
       <ConfirmationModal
         open={isBlocking}
         onClose={cancelNavigation}
@@ -517,6 +545,21 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
         title="Unsaved Changes"
         message="You have unsaved changes. Filling a column will discard your changes and update all rows on the server. Are you sure you want to continue?"
         confirmText="Discard & Fill Column"
+        cancelText="Cancel"
+      />
+
+      <ConfirmationModal
+        open={state.confirmation.type === "restoreVersion"}
+        onClose={() => dispatch({ type: "UI/HIDE_CONFIRMATION" })}
+        onConfirm={handleConfirmRestore}
+        title="Restore Version"
+        message={
+          `This will create a new latest version with the contents of version ${state.confirmation.targetVersion}. ` +
+          `Existing versions are not modified.` +
+          (hasUnsavedWork ? " Your unsaved changes will be lost." : "") +
+          " Are you sure you want to continue?"
+        }
+        confirmText={hasUnsavedWork ? "Discard & Restore" : "Restore Version"}
         cancelText="Cancel"
       />
     </Box>

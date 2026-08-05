@@ -25,7 +25,7 @@ vi.mock("notistack", () => ({
   useSnackbar: () => ({ enqueueSnackbar: vi.fn() }),
 }));
 
-vi.mock("react-router-dom", () => ({
+vi.mock("react-router", () => ({
   useNavigate: () => vi.fn(),
 }));
 

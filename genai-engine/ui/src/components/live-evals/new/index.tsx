@@ -18,7 +18,7 @@ import {
 } from "@mui/material";
 import { useStore } from "@tanstack/react-form";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router";
 import z from "zod";
 
 import { VariableMappingSection } from "../components/variable-mapping";

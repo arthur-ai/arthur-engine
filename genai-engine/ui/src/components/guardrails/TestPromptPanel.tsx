@@ -16,6 +16,7 @@ import type {
   RuleType,
   ToxicityDetailsResponse,
 } from "@/lib/api-client/api-client";
+import { formatDurationMs } from "@/utils/formatters";
 
 interface TestPromptPanelProps {
   onValidate: (input: { prompt: string; response: string; context: string }) => Promise<BuiltinValidationResponse>;
@@ -258,7 +259,7 @@ export const TestPromptPanel: React.FC<TestPromptPanelProps> = ({
                   </Typography>
                   <Chip label={rr.result} size="small" color={style.chipColor} variant={style.chipVariant} sx={{ height: 20, fontSize: 11 }} />
                   <Typography variant="caption" color="text.disabled">
-                    {rr.latency_ms}ms
+                    {formatDurationMs(rr.latency_ms)}
                   </Typography>
                 </Stack>
                 {showAsReason && (

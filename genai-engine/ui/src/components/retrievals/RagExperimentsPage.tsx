@@ -5,7 +5,7 @@ import CircularProgress from "@mui/material/CircularProgress";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import React, { useState, useCallback, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate } from "react-router";
 
 import { CreateRagExperimentModal } from "./rag-experiment-modal";
 import { RagExperimentHistorySidebar } from "./RagExperimentHistorySidebar";

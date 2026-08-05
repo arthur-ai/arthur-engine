@@ -1,7 +1,7 @@
 import { useRegisterPreparation } from "@arthur/shared-components/tour";
 import type { PreparationHook } from "@arthur/shared-components/tour";
 import { useCallback, useRef } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router";
 
 import { TASK_TOUR_PREPARATIONS } from "../content/wiring";
 import { DEMO_TASK_PROMPT_NAME } from "../widgets/PromptTargetWidget";

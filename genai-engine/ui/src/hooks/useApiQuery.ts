@@ -21,8 +21,8 @@ export function useApiQuery<T extends ApiMethods>(params: UseApiQueryParams<T>):
   const api = useApi();
   const { method, args, enabled = true, queryOptions } = params;
 
+  // eslint-disable-next-line @tanstack/query/exhaustive-deps
   return useQuery<MethodReturnType<T>, Error>({
-    // eslint-disable-next-line @tanstack/query/exhaustive-deps
     queryKey: [method, ...args],
     queryFn: async () => {
       if (!api) throw new Error("API client not initialized");

@@ -19,7 +19,7 @@ import ListItemText from "@mui/material/ListItemText";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import React, { useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router";
 
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useRagNotebookHistoryWithPolling } from "@/hooks/useRagNotebooks";

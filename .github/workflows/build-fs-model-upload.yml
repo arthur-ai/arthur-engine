@@ -74,7 +74,9 @@ jobs:
         with:
           context: "{{defaultContext}}:deployment/model-upload"
           file: Dockerfile
-          build-args: BACKEND=fs
+          build-args: |
+            BACKEND=fs
+            AIBOM_VERSION=${{ env.VERSION }}
           target: runtime-fs
           tags: |
             ${{ inputs.image }}:${{ env.VERSION }}
@@ -89,12 +91,17 @@ jobs:
         run: |
           cd deployment/model-upload
           python check_model_updates.py --update
+      - name: Generate AIBOM
+        run: |
+          cd deployment/model-upload
+          # Deterministic catalog copy: HuggingFace LFS hashes + license/task, no timestamp.
+          python generate_aibom.py --no-timestamp --no-engine-version --output aibom.cdx.json
       - name: Commit updated manifest
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           export GH_TOKEN=${{ steps.generate-token.outputs.token }}
-          git add deployment/model-upload/models-manifest.json
+          git add deployment/model-upload/models-manifest.json deployment/model-upload/aibom.cdx.json
           # Nothing to do if another job already committed the same update.
           if git diff --staged --quiet; then
             echo "No manifest changes to commit."

@@ -68,6 +68,8 @@ jobs:
         working-directory: genai-engine/ui
         env:
           METICULOUS_RECORDING_TOKEN: ${{ secrets.METICULOUS_RECORDING_TOKEN }}
+          # Emit source maps so Meticulous can show source coverage
+          GENERATE_SOURCEMAPS: "true"
         run: |
           yarn build --mode development
 

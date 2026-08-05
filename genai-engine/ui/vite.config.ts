@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import path from "node:path";
 import { fileURLToPath, URL } from "node:url";
 
 import tailwindcss from "@tailwindcss/vite";
@@ -31,15 +33,39 @@ const injectMeticulousRecordingScript = (mode: string, recordingToken: string | 
   },
 });
 
+// Chains @arthur/shared-components' shipped .js.map files into our build output
+const chainSharedComponentsSourcemaps = (): PluginOption => ({
+  name: "chain-shared-components-sourcemaps",
+  apply: "build",
+  load(id) {
+    const cleanId = id.split("?")[0];
+    if (!cleanId.includes("@arthur/shared-components/dist") || !cleanId.endsWith(".js")) return null;
+    const code = fs.readFileSync(cleanId, "utf8");
+    const match = code.match(/\/\/# sourceMappingURL=([^\s'"]+)\s*$/);
+    if (!match || match[1].startsWith("data:")) return null;
+    const mapPath = path.resolve(path.dirname(cleanId), match[1]);
+    if (!fs.existsSync(mapPath)) return null;
+    return { code, map: JSON.parse(fs.readFileSync(mapPath, "utf8")) };
+  },
+});
+
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
   const recordingToken = env.METICULOUS_RECORDING_TOKEN;
   const amplitudeApiKey = env.AMPLITUDE_API_KEY;
   const recaptchaSiteKey = env.RECAPTCHA_ENTERPRISE_SITE_KEY;
+  // Opt-in (used by the Meticulous CI build); keep off by default so published images ship no sources
+  const generateSourcemaps = env.GENERATE_SOURCEMAPS === "true";
 
   return {
-    plugins: [injectMeticulousRecordingScript(mode, recordingToken), react(), tailwindcss(), nodePolyfills()],
+    plugins: [
+      injectMeticulousRecordingScript(mode, recordingToken),
+      ...(generateSourcemaps ? [chainSharedComponentsSourcemaps()] : []),
+      react(),
+      tailwindcss(),
+      nodePolyfills(),
+    ],
     define: {
       // Map AMPLITUDE_API_KEY from .env.local to VITE_AMPLITUDE_TOKEN for client-side access
       "import.meta.env.VITE_AMPLITUDE_TOKEN": JSON.stringify(amplitudeApiKey || ""),
@@ -70,6 +96,7 @@ export default defineConfig(({ mode }) => {
     build: {
       outDir: "dist",
       assetsDir: "assets",
+      sourcemap: generateSourcemaps,
       // Ensure all routes are handled by index.html for SPA routing
       rollupOptions: {
         output: {

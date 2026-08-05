@@ -7686,6 +7686,17 @@ export interface PageConversationBaseResponse {
 /** PaginationSortMethod */
 export type PaginationSortMethod = "asc" | "desc";
 
+/**
+ * TaskSortField
+ * Server-side sort column for `/api/v2/tasks/search`.
+ *
+ * `NAME`/`CREATED_AT`/`UPDATED_AT` sort on the corresponding
+ * `tasks` columns. `LAST_ACTIVE` sorts on the most recent trace
+ * activity per task (`MAX(trace_metadata.end_time)`), which is not a
+ * stored task column but computed by joining the trace-metadata table.
+ */
+export type TaskSortField = "name" | "created_at" | "updated_at" | "last_active";
+
 /** PasswordResetRequest */
 export interface PasswordResetRequest {
   /** Password */
@@ -10217,6 +10228,10 @@ export interface ResponseValidationRequest {
   response: string;
 }
 
+export type RestoreDatasetVersionApiV2DatasetsDatasetIdVersionsVersionNumberRestorePostData = DatasetVersionResponse;
+
+export type RestoreDatasetVersionApiV2DatasetsDatasetIdVersionsVersionNumberRestorePostError = HTTPValidationError;
+
 export type RotateSecretsApiV1SecretsRotationPostData = any;
 
 /** RuleResponse */
@@ -10275,13 +10290,7 @@ export type RuleScope = "default" | "task";
 
 /** RuleType */
 export type RuleType =
-  | "KeywordRule"
-  | "ModelHallucinationRuleV2"
-  | "ModelSensitiveDataRule"
-  | "PIIDataRule"
-  | "PromptInjectionRule"
-  | "RegexRule"
-  | "ToxicityRule";
+  "KeywordRule" | "ModelHallucinationRuleV2" | "ModelSensitiveDataRule" | "PIIDataRule" | "PromptInjectionRule" | "RegexRule" | "ToxicityRule";
 
 export type RunAgenticPromptApiV1CompletionsPostData = AgenticPromptRunResponse;
 
@@ -10500,6 +10509,18 @@ export type SearchTasksApiV2TasksSearchPostError = HTTPValidationError;
 
 export interface SearchTasksApiV2TasksSearchPostParams {
   /**
+   * Last Active End Time
+   * Only return tasks whose last trace activity (max trace end-time) is on or before this UTC time. Tasks with no traces are excluded when this filter is set.
+   * @format date-time
+   */
+  last_active_end_time?: string | null;
+  /**
+   * Last Active Start Time
+   * Only return tasks whose last trace activity (max trace end-time) is on or after this UTC time. Tasks with no traces are excluded when this filter is set.
+   * @format date-time
+   */
+  last_active_start_time?: string | null;
+  /**
    * Page
    * Page number
    * @default 0
@@ -10516,6 +10537,8 @@ export interface SearchTasksApiV2TasksSearchPostParams {
    * @default "desc"
    */
   sort?: PaginationSortMethod;
+  /** Column to sort by (server-side). One of 'name', 'created_at', 'updated_at', 'last_active'. 'last_active' sorts on the most recent trace activity per task. Sort direction is controlled by the 'sort' parameter. When omitted, results keep the default ordering (created_at). */
+  sort_field?: TaskSortField | null;
 }
 
 /** SearchTasksRequest */
@@ -12869,14 +12892,7 @@ export interface WeaviateHybridSearchSettingsConfigurationRequest {
 }
 
 export type WeaviateHybridSearchSettingsConfigurationRequestReturnMetadataEnum =
-  | "creation_time"
-  | "last_update_time"
-  | "distance"
-  | "certainty"
-  | "score"
-  | "explain_score"
-  | "is_consistent"
-  | "query_profile";
+  "creation_time" | "last_update_time" | "distance" | "certainty" | "score" | "explain_score" | "is_consistent" | "query_profile";
 
 /** WeaviateHybridSearchSettingsConfigurationResponse */
 export interface WeaviateHybridSearchSettingsConfigurationResponse {
@@ -12962,14 +12978,7 @@ export interface WeaviateHybridSearchSettingsConfigurationResponse {
 }
 
 export type WeaviateHybridSearchSettingsConfigurationResponseReturnMetadataEnum =
-  | "creation_time"
-  | "last_update_time"
-  | "distance"
-  | "certainty"
-  | "score"
-  | "explain_score"
-  | "is_consistent"
-  | "query_profile";
+  "creation_time" | "last_update_time" | "distance" | "certainty" | "score" | "explain_score" | "is_consistent" | "query_profile";
 
 /** WeaviateHybridSearchSettingsRequest */
 export interface WeaviateHybridSearchSettingsRequest {
@@ -13055,14 +13064,7 @@ export interface WeaviateHybridSearchSettingsRequest {
 }
 
 export type WeaviateHybridSearchSettingsRequestReturnMetadataEnum =
-  | "creation_time"
-  | "last_update_time"
-  | "distance"
-  | "certainty"
-  | "score"
-  | "explain_score"
-  | "is_consistent"
-  | "query_profile";
+  "creation_time" | "last_update_time" | "distance" | "certainty" | "score" | "explain_score" | "is_consistent" | "query_profile";
 
 /** WeaviateKeywordSearchSettingsConfigurationRequest */
 export interface WeaviateKeywordSearchSettingsConfigurationRequest {
@@ -13125,14 +13127,7 @@ export interface WeaviateKeywordSearchSettingsConfigurationRequest {
 }
 
 export type WeaviateKeywordSearchSettingsConfigurationRequestReturnMetadataEnum =
-  | "creation_time"
-  | "last_update_time"
-  | "distance"
-  | "certainty"
-  | "score"
-  | "explain_score"
-  | "is_consistent"
-  | "query_profile";
+  "creation_time" | "last_update_time" | "distance" | "certainty" | "score" | "explain_score" | "is_consistent" | "query_profile";
 
 /** WeaviateKeywordSearchSettingsConfigurationResponse */
 export interface WeaviateKeywordSearchSettingsConfigurationResponse {
@@ -13195,14 +13190,7 @@ export interface WeaviateKeywordSearchSettingsConfigurationResponse {
 }
 
 export type WeaviateKeywordSearchSettingsConfigurationResponseReturnMetadataEnum =
-  | "creation_time"
-  | "last_update_time"
-  | "distance"
-  | "certainty"
-  | "score"
-  | "explain_score"
-  | "is_consistent"
-  | "query_profile";
+  "creation_time" | "last_update_time" | "distance" | "certainty" | "score" | "explain_score" | "is_consistent" | "query_profile";
 
 /** WeaviateKeywordSearchSettingsRequest */
 export interface WeaviateKeywordSearchSettingsRequest {
@@ -13265,14 +13253,7 @@ export interface WeaviateKeywordSearchSettingsRequest {
 }
 
 export type WeaviateKeywordSearchSettingsRequestReturnMetadataEnum =
-  | "creation_time"
-  | "last_update_time"
-  | "distance"
-  | "certainty"
-  | "score"
-  | "explain_score"
-  | "is_consistent"
-  | "query_profile";
+  "creation_time" | "last_update_time" | "distance" | "certainty" | "score" | "explain_score" | "is_consistent" | "query_profile";
 
 /**
  * WeaviateQueryResult
@@ -13425,14 +13406,7 @@ export interface WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest 
 }
 
 export type WeaviateVectorSimilarityTextSearchSettingsConfigurationRequestReturnMetadataEnum =
-  | "creation_time"
-  | "last_update_time"
-  | "distance"
-  | "certainty"
-  | "score"
-  | "explain_score"
-  | "is_consistent"
-  | "query_profile";
+  "creation_time" | "last_update_time" | "distance" | "certainty" | "score" | "explain_score" | "is_consistent" | "query_profile";
 
 /** WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse */
 export interface WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse {
@@ -13500,14 +13474,7 @@ export interface WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse
 }
 
 export type WeaviateVectorSimilarityTextSearchSettingsConfigurationResponseReturnMetadataEnum =
-  | "creation_time"
-  | "last_update_time"
-  | "distance"
-  | "certainty"
-  | "score"
-  | "explain_score"
-  | "is_consistent"
-  | "query_profile";
+  "creation_time" | "last_update_time" | "distance" | "certainty" | "score" | "explain_score" | "is_consistent" | "query_profile";
 
 /** WeaviateVectorSimilarityTextSearchSettingsRequest */
 export interface WeaviateVectorSimilarityTextSearchSettingsRequest {
@@ -13575,14 +13542,7 @@ export interface WeaviateVectorSimilarityTextSearchSettingsRequest {
 }
 
 export type WeaviateVectorSimilarityTextSearchSettingsRequestReturnMetadataEnum =
-  | "creation_time"
-  | "last_update_time"
-  | "distance"
-  | "certainty"
-  | "score"
-  | "explain_score"
-  | "is_consistent"
-  | "query_profile";
+  "creation_time" | "last_update_time" | "distance" | "certainty" | "score" | "explain_score" | "is_consistent" | "query_profile";
 
 import type { AxiosInstance, AxiosRequestConfig, AxiosResponse, HeadersDefaults, ResponseType } from "axios";
 import axios from "axios";
@@ -13715,7 +13675,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.722
+ * @version 2.1.729
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
@@ -17064,6 +17024,31 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         RerunContinuousEvalApiV1ContinuousEvalsResultsRunIdRerunPostError
       >({
         path: `/api/v1/continuous_evals/results/${runId}/rerun`,
+        method: "POST",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Reinstate a previous dataset version by copying its rows into a new latest version.
+     *
+     * @tags Datasets
+     * @name RestoreDatasetVersionApiV2DatasetsDatasetIdVersionsVersionNumberRestorePost
+     * @summary Restore Dataset Version
+     * @request POST:/api/v2/datasets/{dataset_id}/versions/{version_number}/restore
+     * @secure
+     */
+    restoreDatasetVersionApiV2DatasetsDatasetIdVersionsVersionNumberRestorePost: (
+      datasetId: string,
+      versionNumber: number,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        RestoreDatasetVersionApiV2DatasetsDatasetIdVersionsVersionNumberRestorePostData,
+        RestoreDatasetVersionApiV2DatasetsDatasetIdVersionsVersionNumberRestorePostError
+      >({
+        path: `/api/v2/datasets/${datasetId}/versions/${versionNumber}/restore`,
         method: "POST",
         secure: true,
         format: "json",

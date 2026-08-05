@@ -409,6 +409,9 @@ class GenaiEngineTestClientBase(httpx.Client):
         is_agentic: bool = None,
         include_archived: bool = None,
         only_archived: bool = None,
+        sort_field: str = None,
+        last_active_start_time=None,
+        last_active_end_time=None,
     ) -> tuple[int, SearchTasksResponse]:
         path = "api/v2/tasks/search?"
         params = get_base_pagination_parameters(
@@ -416,6 +419,12 @@ class GenaiEngineTestClientBase(httpx.Client):
             page=page,
             page_size=page_size,
         )
+        if sort_field is not None:
+            params["sort_field"] = str(sort_field)
+        if last_active_start_time is not None:
+            params["last_active_start_time"] = str(last_active_start_time)
+        if last_active_end_time is not None:
+            params["last_active_end_time"] = str(last_active_end_time)
         body = SearchTasksRequest()
         if task_ids:
             body.task_ids = task_ids
@@ -3077,6 +3086,26 @@ class GenaiEngineTestClientBase(httpx.Client):
                 resp.json(),
             )
         return resp.status_code, resp.json() if resp.content else None
+
+    def restore_dataset_version(
+        self,
+        dataset_id: str,
+        version_number: int,
+    ) -> tuple[int, DatasetVersionResponse]:
+        """Reinstate a previous dataset version."""
+        resp = self.base_client.post(
+            f"/api/v2/datasets/{dataset_id}/versions/{version_number}/restore",
+            headers=self.authorized_user_api_key_headers,
+        )
+        log_response(resp)
+        return (
+            resp.status_code,
+            (
+                DatasetVersionResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
+            ),
+        )
 
     def get_dataset_version(
         self,

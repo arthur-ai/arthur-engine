@@ -12,9 +12,26 @@ on:
 
 jobs:
   claude-review:
-    # Skip only for Renovate PRs so the job is skipped, not failed
-    # GitHub App bots use login 'renovate[bot]'; legacy/self-hosted may use 'renovate'
-    if: github.event.pull_request.user.login != 'renovate' && github.event.pull_request.user.login != 'renovate[bot]'
+    # Review human PRs (skip pure Renovate syncs), PLUS review Renovate PRs the
+    # instant our Automator App pushes a Claude auto-fix to them — so code Claude
+    # wrote on a dependency PR always gets a review pass. The auto-fixer also does an
+    # inline review-and-address gate before it approves; this is the independent,
+    # fresh-context second look.
+    #
+    # GitHub App bots use login 'renovate[bot]'; legacy/self-hosted may use 'renovate'.
+    # Check both the PR author AND the triggering actor: Renovate can rebase/synchronize
+    # a PR opened by another bot (e.g. the version-bump app), which makes github.actor
+    # 'renovate[bot]' while pull_request.user.login stays the original author. The
+    # claude-code-action gates on the triggering actor, so guarding only on the author
+    # lets the job run and then fail with "Workflow initiated by non-human actor: renovate".
+    if: >-
+      (
+        github.event.pull_request.user.login != 'renovate' &&
+        github.event.pull_request.user.login != 'renovate[bot]' &&
+        github.actor != 'renovate' &&
+        github.actor != 'renovate[bot]'
+      ) ||
+      github.actor == 'arthur-github-automator-app[bot]'
 
     # Optional: Filter by PR author
     # if: |

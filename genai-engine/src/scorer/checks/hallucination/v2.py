@@ -327,6 +327,7 @@ class HallucinationClaimsV2(RuleScorer):
         return_claim_flags, token_consumption = get_llm_executor().execute(
             call,
             "hallucinationv2 claim validation",
+            model_name=getattr(self.model, "model_name", None),
         )
 
         results = return_claim_flags.results
@@ -415,6 +416,7 @@ class HallucinationClaimsV2(RuleScorer):
         output, token_consumption = get_llm_executor().execute(
             call,
             "hallucinationv2 claim validation",
+            model_name=getattr(self.model, "model_name", None),
         )
         net_token_consumption.add(token_consumption)
 
@@ -515,6 +517,7 @@ class HallucinationClaimsV2(RuleScorer):
         reason, explanation_tokens = get_llm_executor().execute(
             explain_call,
             "hallucinationv2 flagged claim explanation",
+            model_name=getattr(self.model, "model_name", None),
         )
 
         # in the call to the explainer, we gave the option to undo the flagging

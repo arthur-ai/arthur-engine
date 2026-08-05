@@ -2,7 +2,7 @@ import AddIcon from "@mui/icons-material/Add";
 import { Box, Button, Skeleton, Stack, Tab, Tabs, Typography } from "@mui/material";
 import { parseAsStringEnum, useQueryState } from "nuqs";
 import { Suspense } from "react";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 
 import { FilterStoreProvider } from "../traces/stores/filter.store";
 

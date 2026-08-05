@@ -40,6 +40,7 @@ interface DatasetTableProps {
   onEditRow: (row: DatasetVersionRowResponse) => void;
   onDeleteRow: (rowId: string) => void;
   onFillColumn?: (columnName: string) => void;
+  onOpenTrace?: (traceId: string) => void;
   emptyMessage?: string;
   searchQuery?: string;
 }
@@ -62,6 +63,7 @@ export const DatasetTable: React.FC<DatasetTableProps> = ({
   onEditRow,
   onDeleteRow,
   onFillColumn,
+  onOpenTrace,
   emptyMessage,
   searchQuery,
 }) => {
@@ -212,6 +214,7 @@ export const DatasetTable: React.FC<DatasetTableProps> = ({
                 onDelete={onDeleteRow}
                 datasetId={datasetId}
                 taskId={taskId}
+                onOpenTrace={onOpenTrace}
               />
             ))
           )}

@@ -3,7 +3,7 @@ import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
 import VpnKeyOutlinedIcon from "@mui/icons-material/VpnKeyOutlined";
 import { Alert, Box, Button, CircularProgress, InputAdornment, Stack, TextField, Typography } from "@mui/material";
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 
 import { EngineTopNav } from "./onboarding/engine-top-nav";
 

@@ -1,6 +1,6 @@
 import { type GetSpanDetailsStrategy, SpanDrawerBody } from "@arthur/shared-components";
 import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 
 import { getSpanDetailsStrategy } from "../data/details-strategy";
 import { useDrawerTarget } from "../hooks/useDrawerTarget";
@@ -26,8 +26,8 @@ export const SpanDrawerContent = ({ id }: Props) => {
   const [, select] = useSelection("span");
   const paginationContext = usePaginationContext((state) => state.context);
 
+  // eslint-disable-next-line @tanstack/query/exhaustive-deps
   const { data: span } = useSuspenseQuery({
-    // eslint-disable-next-line @tanstack/query/exhaustive-deps
     queryKey: queryKeys.spans.byId(id),
     queryFn: () => getSpan(api!, { spanId: id! }),
   });

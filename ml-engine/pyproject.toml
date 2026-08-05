@@ -1,6 +1,6 @@
 [project]
 name = "ml-engine"
-version = "2.1.729"
+version = "2.1.776"
 description = ""
 authors = [{ name = "Arthur", email = "engineering@arthur.ai" }]
 license = "MIT"
@@ -8,49 +8,49 @@ readme = "README.md"
 requires-python = "==3.13.*"
 
 dependencies = [
-  "croniter==6.0.0",
+  "croniter==6.2.4",
   "oracledb>=2.5.0,<3",
   "flask==3.1.3",
   "gcsfs==2025.12.0",
-  "google-cloud-bigquery==3.40.1",
+  "google-cloud-bigquery==3.42.2",
   "google-cloud-trace>=1.13.0,<2",
   "google-cloud-aiplatform>=1.68.0,<2",
-  "pandas==3.0.3",
-  "psycopg[binary]==3.2.13",
-  "pymysql==1.1.2",
-  "pyodbc==5.2.0",
+  "pandas==3.0.5",
+  "psycopg[binary]==3.3.4",
+  "pymysql==1.2.0",
+  "pyodbc==5.3.0",
   "pyyaml==6.0.3",
-  "requests==2.33.0",
+  "requests==2.34.2",
   "adlfs==2025.8.0",
   "s3fs==2025.12.0",
   "simple-settings==1.2.0",
   "httpx==0.28.1",
-  "duckdb==1.5.4",
+  "duckdb==1.5.5",
   "fsspec==2025.12.0",
   "datasketches==5.2.0",
   "numpy==2.3.2",
-  "types-croniter==6.0.0.20250809",
-  "types-psutil==7.0.0.20251116",
-  "types-requests==2.32.4.20260324",
-  "psutil==7.0.0",
+  "types-croniter==6.2.4.20260711",
+  "types-psutil==7.2.2.20260518",
+  "types-requests==2.33.0.20260712",
+  "psutil==7.2.2",
   "pyarrow==23.0.1",
-  "arthur-common==2.4.67",
-  "gunicorn>=23.0.0,<24",
+  "arthur-common==2.4.68",
+  "gunicorn>=26,<27",
   "sqlalchemy==2.0.51",
-  "snowflake-sqlalchemy==1.10.2",
+  "snowflake-sqlalchemy==1.11.0",
   "databricks-sqlalchemy>=2.0,<3",
   "databricks-sdk>=0.84.0,<1",
-  "arthur-client==1.4.2270",
+  "arthur-client==1.4.2299",
 ]
 
 [dependency-groups]
 dev = [
-  "pytest==9.0.3",
-  "responses==0.25.8",
+  "pytest==9.1.1",
+  "responses==0.26.2",
   "pytest-httpserver==1.1.5",
   "pytest-asyncio==1.4.0",
   "pytest-httpx==0.36.2",
-  "pre-commit==4.5.1",
+  "pre-commit==4.6.1",
   "types-pytz>=2025.2.0.20250516",
   "lazy-imports==1.2.0",
 ]

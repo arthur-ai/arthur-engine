@@ -178,7 +178,7 @@ arthur-genai-engine:
   ## Advanced - GenAI Engine
   ###################################
   # GenAI Engine version
-  genaiEngineVersion: 2.1.729
+  genaiEngineVersion: 2.1.776
   # Max number of tokens GenAI Engine can process against LLM for hallucination data checks
   genaiEngineHallucinationCheckMaxTokenLimit: 3000
   # Max number of tokens GenAI Engine can process against LLM for sensitive data checks
@@ -290,6 +290,16 @@ arthur-ml-engine:
     imagePullSecretName: ""
   mlEngine:
     deployment:
+      # In-cluster address of the GenAI Engine ClusterIP service, INCLUDING the "http://" scheme.
+      # This is the internal service-to-service hop (plain HTTP; TLS is terminated at the ingress,
+      # see genaiEngineInternalIngressHost below). The value MUST include a scheme or the ML Engine
+      # will fail to start with "Invalid endpoint ... does not include scheme".
+      # The service listens on port 80, so the port can be omitted. If arthurResourceNameSuffix is
+      # set in the arthur-genai-engine chart, the service name includes it
+      # (arthur-genai-engine-<suffix>-service). If the ML Engine runs in a different namespace, use the
+      # FQDN: http://arthur-genai-engine-service.<namespace>.svc.cluster.local
+      # Example: "http://arthur-genai-engine-service"
+      genaiEngineInternalHost: "http://arthur-genai-engine-service"
       # Full URL of the GenAI Engine ingress, INCLUDING the "https://" scheme.
       # This is the same host as genaiEngineIngressURL in the arthur-genai-engine chart, but note that
       # genaiEngineIngressURL is a bare hostname (no scheme) whereas this value MUST include "https://".
@@ -321,7 +331,6 @@ arthur-ml-engine:
       mlEnginePodNodeSelector: {}
       mlEnginePodAffinity: {}
       mlEnginePodTolerations: {}
-      genaiEngineInternalHost: "arthur-genai-engine-service"
 
       ###################################
       ## Advanced - Secrets name customization
