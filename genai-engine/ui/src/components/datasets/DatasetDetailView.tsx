@@ -1,4 +1,5 @@
 import { Alert, Box, Button, TablePagination } from "@mui/material";
+import { parseAsString, useQueryState } from "nuqs";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Navigate, useNavigate, useParams, useSearchParams } from "react-router";
 
@@ -7,6 +8,7 @@ import { ConfirmationModal } from "../common/ConfirmationModal";
 import { ConfigureColumnsModal } from "./ConfigureColumnsModal";
 import { DatasetHeader } from "./DatasetHeader";
 import { DatasetLoadingState } from "./DatasetLoadingState";
+import { DatasetRowDrawer } from "./DatasetRowDrawer";
 import { DatasetTable } from "./DatasetTable";
 import { EditRowModal } from "./EditRowModal";
 import { FillColumnModal } from "./FillColumnModal";
@@ -59,6 +61,8 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
   const api = useApi();
   const { registerBlocker, runGuardedNavigation, isBlocking, confirmNavigation, cancelNavigation } = useNavigationGuard();
   const [searchParams, setSearchParams] = useSearchParams();
+  // Row-detail deep link: `?row=<id>` opens a read-only drawer for that dataset row.
+  const [rowId, setRowId] = useQueryState("row", parseAsString);
   const [isExporting, setIsExporting] = useState(false);
   // traceId is kept on close so the drawer's exit animation doesn't unmount its content mid-slide
   const [sourceTrace, setSourceTrace] = useState<{ open: boolean; traceId: string | null }>({ open: false, traceId: null });
@@ -94,11 +98,19 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
   }, []);
 
   useEffect(() => {
-    if (state.selectedVersion !== undefined) {
-      setSearchParams({ version: state.selectedVersion.toString() }, { replace: true });
-    } else {
-      setSearchParams({}, { replace: true });
-    }
+    // Merge into existing params so the `?row=` deep link survives version sync.
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (state.selectedVersion !== undefined) {
+          next.set("version", state.selectedVersion.toString());
+        } else {
+          next.delete("version");
+        }
+        return next;
+      },
+      { replace: true }
+    );
   }, [state.selectedVersion, setSearchParams]);
 
   const handleBack = useCallback(() => {
@@ -513,6 +525,16 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
           onAcceptRows={handleAcceptSyntheticRows}
         />
       )}
+
+      <DatasetRowDrawer
+        open={!!rowId}
+        onClose={() => setRowId(null)}
+        datasetId={datasetId}
+        versionNumber={queries.currentVersion}
+        rowId={rowId}
+        taskId={task?.id}
+        onOpenSourceTrace={handleOpenSourceTrace}
+      />
 
       {task && sourceTrace.traceId && (
         <SourceTraceDrawer open={sourceTrace.open} onClose={handleCloseSourceTrace} traceId={sourceTrace.traceId} taskId={task.id} />

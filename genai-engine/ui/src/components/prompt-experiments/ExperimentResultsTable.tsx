@@ -33,9 +33,9 @@ import { useParams } from "react-router";
 import { MessageDisplay, VariableTile } from "./PromptResultComponents";
 import { EvalInputsDialog } from "./PromptResultDetailModal";
 
-import { CopyableChip } from "@/components/common/CopyableChip";
 import { SourceTraceLink } from "@/components/common/SourceTraceLink";
 import { UpdateDatasetRowModal } from "@/components/common/UpdateDatasetRowModal";
+import { DatasetRowContent } from "@/components/datasets/DatasetRowContent";
 import { SourceTraceDrawer } from "@/components/traces/components/source-trace/SourceTraceDrawer";
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useApi } from "@/hooks/useApi";
@@ -636,42 +636,15 @@ const DatasetRowModal: React.FC<DatasetRowModalProps> = ({ open, onClose, datase
               <Typography color="error">{error}</Typography>
             </Box>
           ) : rowData ? (
-            <Box>
-              <Box className="mb-4">
-                <Typography variant="body2" className="text-gray-600 dark:text-gray-400 mb-2">
-                  Dataset: {datasetId} | Version: {versionNumber} | Row ID: {rowId}
-                </Typography>
-                {rowData.trace_id && (
-                  <Box className="flex items-center gap-1">
-                    <Typography variant="body2" className="text-gray-600 dark:text-gray-400">
-                      Source trace:
-                    </Typography>
-                    {taskId ? (
-                      <SourceTraceLink
-                        variant="field"
-                        taskId={taskId}
-                        traceId={rowData.trace_id}
-                        onOpen={onOpenSourceTrace ? () => onOpenSourceTrace(rowData.trace_id!) : undefined}
-                      />
-                    ) : (
-                      <CopyableChip label={rowData.trace_id} />
-                    )}
-                  </Box>
-                )}
-              </Box>
-              <Box className="space-y-3">
-                {rowData.data.map((item, index) => (
-                  <Box key={index} className="p-4 bg-gray-50 dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700">
-                    <Typography variant="subtitle2" className="font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                      {item.column_name}
-                    </Typography>
-                    <Typography variant="body2" className="text-gray-900 dark:text-gray-100 whitespace-pre-wrap wrap-break-word">
-                      {item.column_value}
-                    </Typography>
-                  </Box>
-                ))}
-              </Box>
-            </Box>
+            <DatasetRowContent
+              rowData={rowData}
+              datasetId={datasetId}
+              versionNumber={versionNumber}
+              rowId={rowId}
+              taskId={taskId}
+              onOpenSourceTrace={onOpenSourceTrace}
+              rowIdHref={taskId ? `/tasks/${taskId}/datasets/${datasetId}?version=${versionNumber}&row=${rowId}` : undefined}
+            />
           ) : null}
         </Box>
       </Box>
