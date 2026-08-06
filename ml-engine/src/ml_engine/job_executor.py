@@ -110,7 +110,11 @@ class JobSpecRawParser:
 
 class JobExecutor:
     def __init__(self) -> None:
-        ssl_verify = Config.get_bool("ARTHUR_API_HOST_SSL_VERIFY", True)
+        ssl_verify = Config.get_bool(
+            "ARTHUR_API_HOST_SSL_VERIFY",
+            True,
+            fallback_keys=["KEYCLOAK_SSL_VERIFY"],
+        )
         sess = ArthurClientCredentialsAPISession(
             client_id=Config.settings.ARTHUR_CLIENT_ID,
             client_secret=Config.settings.ARTHUR_CLIENT_SECRET,
