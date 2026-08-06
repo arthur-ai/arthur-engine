@@ -42,3 +42,13 @@ Custom typed wrappers live in [src/components/traces/components/filtering/hooks/
 
 - Currency display: `useDisplaySettings()` provides `defaultCurrency` (from `GET /api/v2/display-settings`; backend default set by the `CURRENCY_DEFAULT_CURRENCY` env var). Format with `formatCurrency(amount, defaultCurrency)` from `@/utils/formatters`.
 - The auth token lives in localStorage, managed by `AuthContext`.
+
+## Dependency cooldown
+
+`npmMinimalAgeGate: 3d` in `.yarnrc.yml` refuses any version published less than 3 days ago, so a compromised release (usually yanked within hours) is never resolved. Renovate enforces the same window repo-wide via `minimumReleaseAge` in [renovate.json](../../renovate.json) — that only gates Renovate PRs, this gates every local `yarn add`.
+
+- The gate applies at **resolution** time only. `yarn install --immutable` replays locked resolutions and never consults it, so CI and existing lockfile entries are unaffected — only `yarn add`, `yarn up`, and Renovate bumps are.
+- A pinned request that is too fresh fails with `YN0016: All versions satisfying "<range>" are quarantined`. An unpinned `yarn add` silently resolves to the newest version older than 3 days instead.
+- `npmPreapprovedPackages: ["@arthur/*"]` exempts first-party packages (`@arthur/shared-components` resolves from the GitLab registry, not `workspace:*`). They carry no third-party supply-chain risk, and GitLab's npm registry may omit per-version publish times — a missing timestamp is treated as quarantined, so without the exemption a bump could be blocked indefinitely. Mirrors the first-party rule in `renovate.json` and `exclude-newer-package` in the `pyproject.toml` files.
+- To land something genuinely urgent, add it to `npmPreapprovedPackages` (glob patterns allowed) rather than lowering the gate.
+- **Never put comments in `.yarnrc.yml`** — Yarn rewrites that file and strips them on `yarn config set` / `yarn set version`. Document here instead.
