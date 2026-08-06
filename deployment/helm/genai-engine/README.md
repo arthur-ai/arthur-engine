@@ -404,8 +404,10 @@ To perform the steps you need `kubectl` access to the cluster with admin privile
     ```yaml
     gpuEnabled: true
     genaiEngineDeploymentType: "deployment"
-    genaiEngineWorkers: 2
+    genaiEngineWorkers: 3
     genaiEngineContainerImageLocation: "arthurplatform/genai-engine-gpu"
+    genaiEngineContainerGPULimit: "1"
+    genaiEngineContainerMemoryLimits: "24Gi"
     ```
 
       `genaiEngineDeploymentType` is the key setting that distinguishes the two GPU topologies, so make sure you pick the Auto Mode block and not the managed-node-group one:
@@ -415,7 +417,11 @@ To perform the steps you need `kubectl` access to the cluster with admin privile
       | Managed node group + ASG | `"daemonset"` | One GPU pod per node; the ASG fills nodes as it scales the node group. |
       | **EKS Auto Mode / Karpenter** | **`"deployment"`** | Karpenter only provisions a node for an unschedulable **workload pod**, and will **not** scale up for a DaemonSet — so the engine must run as a Deployment whose pending pod is the scale-up trigger. |
 
-      `gpuEnabled: true` and the `-gpu` image select the GPU build; `genaiEngineWorkers: 2` is the per-pod worker count (keep it low — each worker loads the full model suite onto the GPU).
+      `gpuEnabled: true` and the `-gpu` image select the GPU build. The remaining three settings are specific to GPU:
+
+      - `genaiEngineWorkers: 3` — the per-pod worker count. Each worker is a separate process, and a single worker cannot keep a GPU busy. Three is also the practical ceiling for a 16 GB GPU; a fourth exceeds available GPU memory and container RAM.
+      - `genaiEngineContainerMemoryLimits: "24Gi"` — every worker holds the full model suite resident, and large prompts or context add more on top, so the CPU default leaves too little headroom.
+      - `genaiEngineContainerGPULimit: "1"` — required only if you use the [GPU autoscaler add-on](../genai-engine-gpu-autoscaler-karpenter/README.md). GPU metrics are attributed to a pod only when the pod requests the device; without it the autoscaler has no metrics to act on.
 
     - Set the pod `nodeSelector` to the NodePool's label and add a toleration for the taint, and disable the HPA:
 

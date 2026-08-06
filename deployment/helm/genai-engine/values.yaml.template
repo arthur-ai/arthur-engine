@@ -77,16 +77,21 @@ genaiEngineContainerImageLocation: "arthurplatform/genai-engine-cpu"
 # (one GPU pod per node; the DaemonSet fills each node as the ASG scales the node group)
 #gpuEnabled: true
 #genaiEngineDeploymentType: "daemonset"
-#genaiEngineWorkers: 2
+#genaiEngineWorkers: 3
 #genaiEngineContainerImageLocation: "arthurplatform/genai-engine-gpu"
 
-# GPU deployment with EKS Auto Mode / Karpenter - Uncomment the below 4 lines
+# GPU deployment with EKS Auto Mode / Karpenter - Uncomment the below 5 lines
 # (Karpenter provisions GPU nodes only for unschedulable workload pods, not DaemonSets, so use a
 #  Deployment; also set genaiEnginePodNodeSelector above to your GPU NodePool label)
 #gpuEnabled: true
 #genaiEngineDeploymentType: "deployment"
-#genaiEngineWorkers: 2
+#genaiEngineWorkers: 3
 #genaiEngineContainerImageLocation: "arthurplatform/genai-engine-gpu"
+#genaiEngineContainerGPULimit: "1"
+# GPU deployments also need genaiEngineContainerMemoryLimits: "24Gi" (see below).
+# genaiEngineWorkers is the per-pod worker count. Each worker is a separate process, and a single
+# worker cannot keep a GPU busy, so 3 is recommended for GPU deployments. It is also the practical
+# ceiling for a 16 GB GPU — a fourth worker exceeds available GPU memory and container RAM.
 
 arthurGenaiEngineHPA:
   # - CPU deployment: true.
@@ -210,7 +215,9 @@ genaiEngineContainerCPURequests: "7"
 genaiEngineContainerMemoryRequests: "16Gi"
 # CPU limits value for GenAI Engine
 genaiEngineContainerCPULimits: "8"
-# Memory limits value for GenAI Engine
+# Memory limits value for GenAI Engine.
+# GPU deployments: use "24Gi". Every worker holds the full model suite resident, and large prompts
+# or context add more on top, so the CPU default leaves too little headroom.
 genaiEngineContainerMemoryLimits: "16Gi"
 # Value for the nvidia.com/gpu resource limit, e.g. "1". Empty omits the limit entirely,
 # which is correct for CPU deployments and for GPU deployments that get their GPU via

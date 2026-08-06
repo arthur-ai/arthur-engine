@@ -18,10 +18,10 @@ A standalone Helm add-on chart that autoscales the GenAI Engine's **GPU pods** o
 ```
 
 - **HPA scales pods; Karpenter scales nodes.** When average GPU load crosses target, the HPA adds a replica → the new pod is unschedulable → Karpenter provisions a GPU node. When load falls, the HPA removes replicas → Karpenter consolidates idle nodes.
-- **One engine pod per GPU node.** This is what makes the per-node GPU metric equal the per-pod metric, so a `type: Pods` / `AverageValue` HPA gives clean "average GPU load across replicas" semantics. The invariant comes from `genaiEngineContainerGPULimit: "1"` against a single-GPU instance type — one pod can hold the node's only GPU. Do **not** rely on the engine's CPU request for this: on instance types larger than `g4dn.2xlarge` two 7-CPU pods fit on one node, and without a GPU request they will share a single T4, which makes per-pod averaging meaningless.
+- **One engine pod per GPU node.** The per-node GPU metric then equals the per-pod metric, so a `type: Pods` / `AverageValue` HPA gives clean "average GPU load across replicas" semantics. `genaiEngineContainerGPULimit: "1"` is what enforces this on a single-GPU instance type; the engine's CPU request alone does not, since larger instance types can fit two engine pods onto one GPU.
 - **Replica-ownership handoff.** An external HPA cannot coexist with a Deployment that hard-pins `replicas`. The genai-engine chart exposes `arthurGenaiEngineHPA.externallyManaged: true`, which makes it drop the static `replicas` field and skip its own HPA, ceding scaling to this add-on.
 - **Pod identity on the metrics.** With the ServiceMonitor's `honorLabels: false`, the workload pod surfaces as `exported_pod`/`exported_namespace`, which the adapter rule maps to the `pod`/`namespace` resources. DCGM only learns which pod owns a GPU from the kubelet pod-resources API, and that reports an allocation only for pods that *request* the device — hence the `genaiEngineContainerGPULimit` prerequisite below.
-- **GPU utilization is the only scaling signal, deliberately.** GPU *memory* is not a load signal for this workload: the engine holds its model suite resident, so memory is roughly constant with respect to request volume, and adding a replica does not reduce any existing pod's GPU memory — each replica loads the same models onto its own GPU. An HPA metric on it could only ratchet upward, pinning at `maxReplicas` whenever idle memory exceeded the target, with no path back down. DCGM's raw `DCGM_FI_DEV_FB_USED` / `_FB_FREE` remain in Prometheus for dashboards and capacity planning.
+- **GPU utilization is the only scaling signal, deliberately.** GPU *memory* is not a load signal here: the engine holds its model suite resident, so memory stays roughly constant with request volume, and adding a replica does not reduce any existing pod's GPU memory. As an HPA metric it could only ratchet upward. DCGM's raw `DCGM_FI_DEV_FB_USED` / `_FB_FREE` remain available in Prometheus for dashboards and capacity planning.
 
 ### What the chart installs
 
@@ -34,7 +34,7 @@ A standalone Helm add-on chart that autoscales the GenAI Engine's **GPU pods** o
 ## Prerequisites
 
 - EKS Auto Mode cluster with a **GPU NodePool** (label `capability: gpu`, taint `nvidia.com/gpu=true:NoSchedule`) and an `nvidia.com/gpu` limit.
-- **A device plugin advertising `nvidia.com/gpu`**, and `genaiEngineContainerGPULimit: "1"` set on the genai-engine release. Without a device *request* on the engine pod, the kubelet pod-resources API reports no allocation, DCGM cannot attribute GPU metrics to a pod, and the HPA reads `<unknown>` forever. Confirm the resource exists first, or the pod will never schedule:
+- **A device plugin advertising `nvidia.com/gpu`**, and `genaiEngineContainerGPULimit: "1"` on the genai-engine release. GPU metrics are attributed to a pod only when the pod requests the device; without it the HPA reads `<unknown>`. Confirm the resource is advertised first, or the pod will not schedule:
   ```bash
   kubectl get node <gpu-node> -o jsonpath='{.status.allocatable}' | tr ',' '\n' | grep nvidia
   ```
@@ -105,6 +105,12 @@ A standalone Helm add-on chart that autoscales the GenAI Engine's **GPU pods** o
    ```
 
 7. **Uninstall / rollback:** `helm uninstall genai-gpu-autoscaler -n <ns>`, then revert `externallyManaged` to `false` (and re-enable the in-chart HPA if desired) on the genai-engine release.
+
+## Tuning the target
+
+- **GPU utilization depends on `genaiEngineWorkers`, not just on load.** Each engine worker is a separate process, and one process cannot keep a GPU busy, so utilization plateaus regardless of how much traffic you send. The default 60% target assumes `genaiEngineWorkers: 3` (with `genaiEngineContainerMemoryLimits: "24Gi"`). If the HPA reports a healthy metric but never scales, check the worker count before lowering the target.
+- **The HPA applies a ~10% tolerance**, so a target of 60 scales at roughly 66%. Allow for that when choosing a value.
+- **Adding a CPU metric does not help.** The engine's large CPU request exists to keep one pod per GPU node rather than to reflect real usage, so CPU utilization stays low and would never trigger before the GPU metric.
 
 ## Bring your own metric pipeline
 
