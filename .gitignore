@@ -37,6 +37,10 @@ new.openapi.json
 
 Chart.lock
 values.yaml
+# The GPU autoscaler add-on ships its defaults in values.yaml (no secrets in it),
+# so that one file must be tracked. Keep the other charts' values.yaml ignored —
+# those are user-populated and hold credentials.
+!deployment/helm/genai-engine-gpu-autoscaler-karpenter/values.yaml
 
 ml-engine/src/genai_client/**
 .vagrant

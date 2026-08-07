@@ -5,7 +5,7 @@ A React + TypeScript + Vite frontend application for the Arthur GenAI Engine.
 ## Prerequisites
 
 - Node.js (version 18 or higher)
-- Yarn (v4.9.2+ recommended)
+- Yarn Berry (the exact version comes from `packageManager` in `package.json`)
 
 ## Local Development Setup
 
@@ -98,11 +98,11 @@ The built files will be in the `dist/` directory, ready for deployment.
 
 ## Package Manager
 
-This project uses **Yarn Berry (v4.9.2+)**. The version is enforced via the `packageManager` field in `package.json`.
+This project uses **Yarn Berry**. The version is pinned by the `packageManager` field in `package.json` and enforced by Corepack — don't hardcode it anywhere else.
 
-If you don't have Yarn installed:
+If you don't have Yarn installed, run this from `genai-engine/ui` so Corepack picks up that field:
 
 ```bash
 corepack enable
-corepack prepare yarn@4.9.2 --activate
+corepack prepare --activate
 ```
