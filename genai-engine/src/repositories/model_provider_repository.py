@@ -116,7 +116,10 @@ class ModelProviderRepository:
             "aws_session_name": creds_dict.get("aws_session_name", ""),
         }
 
-    def _provider_secret_query(self, provider: ModelProvider) -> Query[Any]:
+    def _provider_secret_query(
+        self,
+        provider: ModelProvider,
+    ) -> Query[DatabaseSecretStorage]:
         return (
             self.db_session.query(DatabaseSecretStorage)
             .where(DatabaseSecretStorage.secret_type == SecretType.MODEL_PROVIDER)

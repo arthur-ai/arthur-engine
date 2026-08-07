@@ -2,6 +2,10 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 08/07/2026
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}/model_whitelist  endpoint added
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}/model_whitelist  endpoint added
+
 # 07/31/2026
 - **BREAKING CHANGE** for **URL**: /api/v1/completions  removed '#/components/schemas/LLMResponseFormat-Input' from the 'config/anyOf[subschema #1: LLMPromptRequestConfigSettings]/response_format' request property 'anyOf' list
 - **BREAKING CHANGE** for **URL**: /api/v1/rag_experiments/{experiment_id}  added '#/components/schemas/SavedRagConfig' to the 'rag_configs/items/' response property 'oneOf' list for the response status '200'
@@ -96,12 +100,6 @@ The intention of this changelog is to document API changes as they happen to eff
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_notebooks  mapped value for discriminator key 'saved' changed from '#/components/schemas/SavedRagConfig-Output' to '#/components/schemas/SavedRagConfig' for 'state/rag_configs/anyOf[subschema #1]/items/' response property for the response status '201'
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_notebooks  removed '#/components/schemas/SavedRagConfig-Output' from the 'experiments/items/rag_configs/items/' response property 'oneOf' list for the response status '201'
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_notebooks  removed '#/components/schemas/SavedRagConfig-Output' from the 'state/rag_configs/anyOf[subschema #1]/items/' response property 'oneOf' list for the response status '201'
-
-# 07/24/2026
-- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions/{version_number}/restore  endpoint added
-# 07/27/2026
-- **CHANGE** for **URL**: /api/v1/model_providers/{provider}/model_whitelist  endpoint added
-- **CHANGE** for **URL**: /api/v1/model_providers/{provider}/model_whitelist  endpoint added
 
 # 07/24/2026
 - **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions/{version_number}/restore  endpoint added
