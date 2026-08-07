@@ -2,7 +2,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import { alpha, Box, IconButton, keyframes, TableCell, TableRow } from "@mui/material";
-import React from "react";
+import React, { useEffect, useRef } from "react";
 
 import { DatasetTableCell } from "./DatasetTableCell";
 
@@ -19,16 +19,32 @@ interface DatasetTableRowProps {
   taskId?: string;
   onOpenTrace?: (traceId: string) => void;
   onView?: (rowId: string) => void;
-  // One-shot flash used when a deep link scrolls the table to this row.
+  // One-shot flash used when a deep link lands on this row; the row scrolls itself
+  // into view and reports the end of the flash via onHighlightEnd.
   isHighlighted?: boolean;
+  onHighlightEnd?: () => void;
 }
 
 export const DatasetTableRow: React.FC<DatasetTableRowProps> = React.memo(
-  ({ row, columns, onEdit, onDelete, datasetId, taskId, onOpenTrace, onView, isHighlighted }) => {
+  ({ row, columns, onEdit, onDelete, datasetId, taskId, onOpenTrace, onView, isHighlighted, onHighlightEnd }) => {
+    const rowRef = useRef<HTMLTableRowElement>(null);
+
+    useEffect(() => {
+      if (isHighlighted) {
+        rowRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }, [isHighlighted]);
+
     return (
       <TableRow
         hover
-        data-row-id={row.id}
+        ref={rowRef}
+        onAnimationEnd={(e) => {
+          // Child animations bubble; only the row's own flash ends the highlight.
+          if (isHighlighted && e.target === e.currentTarget) {
+            onHighlightEnd?.();
+          }
+        }}
         sx={
           isHighlighted
             ? (theme) => {

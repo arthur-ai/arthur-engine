@@ -1,12 +1,11 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 
 import { computeRowPage } from "./rowLocation";
 
 import { MAX_DATASET_ROWS } from "@/constants/datasetConstants";
 import type { DatasetAction } from "@/contexts/dataset";
-import { TOUR_IDS } from "@/features/task-tour/selectors";
 import { useApiQuery } from "@/hooks/useApiQuery";
-import type { DatasetVersionResponse, DatasetVersionRowResponse } from "@/lib/api-client/api-client";
+import type { DatasetVersionResponse } from "@/lib/api-client/api-client";
 import { track } from "@/services/analytics";
 
 interface UseDeepLinkedRowParams {
@@ -15,32 +14,23 @@ interface UseDeepLinkedRowParams {
   rowId: string | null;
   taskId: string | undefined;
   currentVersion: number | undefined;
-  /** Server rows of the currently displayed table page. */
-  rows: DatasetVersionRowResponse[];
-  versionLoading: boolean;
   rowsPerPage: number;
   currentPage: number;
   dispatch: React.Dispatch<DatasetAction>;
 }
 
 // Owns deep-link row arrival (`?row=` present at mount — in-page drawer opens target
-// rows that are already on screen): tracks the arrival, locates the row's table page,
-// jumps to it, scrolls it into view and flashes it once. Datasets are capped at
-// MAX_DATASET_ROWS, so one full fetch (same ordering as the table query) locates the
-// row client-side.
-export function useDeepLinkedRow({
-  datasetId,
-  rowId,
-  taskId,
-  currentVersion,
-  rows,
-  versionLoading,
-  rowsPerPage,
-  currentPage,
-  dispatch,
-}: UseDeepLinkedRowParams): { highlightedRowId: string | null } {
+// rows that are already on screen): tracks the arrival, locates the row's table page
+// and jumps to it, then flags the row as highlighted. Scrolling and the flash are the
+// row's own responsibility (DatasetTableRow reacts to `isHighlighted`), so this hook
+// never touches the DOM. Datasets are capped at MAX_DATASET_ROWS, so one full fetch
+// (same ordering as the table query) locates the row client-side.
+export function useDeepLinkedRow({ datasetId, rowId, taskId, currentVersion, rowsPerPage, currentPage, dispatch }: UseDeepLinkedRowParams): {
+  highlightedRowId: string | null;
+  clearHighlight: () => void;
+} {
   const targetRef = useRef(rowId);
-  const [phase, setPhase] = useState<"locating" | "awaitingRender" | "done">(rowId ? "locating" : "done");
+  const locatedRef = useRef(false);
   const [highlightedRowId, setHighlightedRowId] = useState<string | null>(null);
 
   // Track once the task resolves (it loads async) so the event carries a real task_id.
@@ -62,54 +52,29 @@ export function useDeepLinkedRow({
         sort: "asc",
       },
     ] as const,
-    enabled: phase === "locating" && !!datasetId && currentVersion !== undefined,
+    enabled: !!targetRef.current && !!datasetId && currentVersion !== undefined,
   });
   const allRows = (data as DatasetVersionResponse | undefined)?.rows;
 
-  // Jump to the located page, or bail when the row isn't in this version.
+  // Locate once: jump to the row's page and flag it. A stale link (row not in this
+  // version) does nothing — the row drawer shows its own not-found state.
   useEffect(() => {
-    if (phase !== "locating" || !allRows) return;
     const target = targetRef.current;
-    const page = target
-      ? computeRowPage(
-          allRows.map((r) => r.id),
-          target,
-          rowsPerPage
-        )
-      : null;
-    if (page === null) {
-      // Stale link — the row drawer shows its own not-found state.
-      setPhase("done");
-      return;
-    }
+    if (!target || locatedRef.current || !allRows) return;
+    locatedRef.current = true;
+    const page = computeRowPage(
+      allRows.map((r) => r.id),
+      target,
+      rowsPerPage
+    );
+    if (page === null) return;
     if (page !== currentPage) {
       dispatch({ type: "VIEW/SET_PAGE", payload: page });
     }
-    setPhase("awaitingRender");
-  }, [phase, allRows, rowsPerPage, currentPage, dispatch]);
-
-  // Once the target page has rendered, scroll to the row and flash it.
-  useEffect(() => {
-    if (phase !== "awaitingRender" || versionLoading) return;
-    const target = targetRef.current;
-    if (!target || !rows.some((r) => r.id === target)) return;
-    const frame = window.requestAnimationFrame(() => {
-      document
-        .querySelector(`[data-tour-id="${TOUR_IDS.datasetTable}"]`)
-        ?.querySelector(`[data-row-id="${CSS.escape(target)}"]`)
-        ?.scrollIntoView({ behavior: "smooth", block: "center" });
-    });
     setHighlightedRowId(target);
-    setPhase("done");
-    return () => window.cancelAnimationFrame(frame);
-  }, [phase, versionLoading, rows]);
+  }, [allRows, rowsPerPage, currentPage, dispatch]);
 
-  // One-shot flash: clear after the animation has finished.
-  useEffect(() => {
-    if (!highlightedRowId) return;
-    const timeout = window.setTimeout(() => setHighlightedRowId(null), 2500);
-    return () => window.clearTimeout(timeout);
-  }, [highlightedRowId]);
+  const clearHighlight = useCallback(() => setHighlightedRowId(null), []);
 
-  return { highlightedRowId };
+  return { highlightedRowId, clearHighlight };
 }

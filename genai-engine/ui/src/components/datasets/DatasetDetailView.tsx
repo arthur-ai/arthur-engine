@@ -109,13 +109,11 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
     setSearchParams((prev) => mergeVersionIntoParams(prev, state.selectedVersion), { replace: true });
   }, [state.selectedVersion, setSearchParams]);
 
-  const { highlightedRowId } = useDeepLinkedRow({
+  const { highlightedRowId, clearHighlight } = useDeepLinkedRow({
     datasetId,
     rowId,
     taskId: task?.id,
     currentVersion: queries.currentVersion,
-    rows: state.rows,
-    versionLoading: queries.versionLoading,
     rowsPerPage: state.pagination.rowsPerPage,
     currentPage: state.pagination.page,
     dispatch,
@@ -433,6 +431,7 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
             onOpenTrace={handleOpenSourceTrace}
             onViewRow={handleViewRow}
             highlightedRowId={highlightedRowId}
+            onHighlightEnd={clearHighlight}
             searchQuery={state.searchQuery}
           />
         )}

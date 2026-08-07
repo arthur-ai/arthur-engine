@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { DatasetTableRow } from "./DatasetTableRow";
 
@@ -15,6 +15,8 @@ const row: DatasetVersionRowResponse = {
   created_at: 0,
 };
 
+let scrollSpy: ReturnType<typeof vi.fn>;
+
 function renderRow(props: Partial<React.ComponentProps<typeof DatasetTableRow>> = {}) {
   return render(
     <table>
@@ -26,11 +28,36 @@ function renderRow(props: Partial<React.ComponentProps<typeof DatasetTableRow>> 
 }
 
 describe("DatasetTableRow", () => {
+  beforeEach(() => {
+    // jsdom has no scrollIntoView
+    scrollSpy = vi.fn();
+    Element.prototype.scrollIntoView = scrollSpy as unknown as Element["scrollIntoView"];
+  });
+
   afterEach(cleanup);
 
-  it("exposes the row id on the DOM for scroll targeting", () => {
+  it("scrolls itself into view when highlighted", () => {
+    renderRow({ isHighlighted: true });
+    expect(scrollSpy).toHaveBeenCalledWith({ behavior: "smooth", block: "center" });
+  });
+
+  it("does not scroll when not highlighted", () => {
     renderRow();
-    expect(screen.getByRole("row").getAttribute("data-row-id")).toBe("row-1");
+    expect(scrollSpy).not.toHaveBeenCalled();
+  });
+
+  it("reports the end of its flash animation", () => {
+    const onHighlightEnd = vi.fn();
+    renderRow({ isHighlighted: true, onHighlightEnd });
+    fireEvent(screen.getByRole("row"), new Event("animationend", { bubbles: true }));
+    expect(onHighlightEnd).toHaveBeenCalledTimes(1);
+  });
+
+  it("ignores animation ends when not highlighted", () => {
+    const onHighlightEnd = vi.fn();
+    renderRow({ onHighlightEnd });
+    fireEvent(screen.getByRole("row"), new Event("animationend", { bubbles: true }));
+    expect(onHighlightEnd).not.toHaveBeenCalled();
   });
 
   it("renders a view button that reports the row id", () => {
