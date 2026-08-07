@@ -61,8 +61,8 @@
       "groupName": "python minor and patch"
     },
     {
-      "description": "First-party Arthur packages are internal, so they skip the 3-day release-age soak that guards against third-party supply-chain risk. Mirrors tool.uv exclude-newer-package in the pyproject.toml files.",
-      "matchPackageNames": ["arthur-common", "arthur-client"],
+      "description": "First-party Arthur packages are internal, so they skip the 3-day release-age soak that guards against third-party supply-chain risk. Mirrors tool.uv exclude-newer-package in the pyproject.toml files and npmPreapprovedPackages in genai-engine/ui/.yarnrc.yml.",
+      "matchPackageNames": ["arthur-common", "arthur-client", "@arthur/**"],
       "minimumReleaseAge": "0 days"
     },
     {
