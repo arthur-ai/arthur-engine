@@ -1,6 +1,7 @@
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
-import { Box, IconButton, TableCell, TableRow } from "@mui/material";
+import VisibilityIcon from "@mui/icons-material/Visibility";
+import { alpha, Box, IconButton, keyframes, TableCell, TableRow } from "@mui/material";
 import React from "react";
 
 import { DatasetTableCell } from "./DatasetTableCell";
@@ -17,77 +18,109 @@ interface DatasetTableRowProps {
   datasetId: string;
   taskId?: string;
   onOpenTrace?: (traceId: string) => void;
+  onView?: (rowId: string) => void;
+  // One-shot flash used when a deep link scrolls the table to this row.
+  isHighlighted?: boolean;
 }
 
-export const DatasetTableRow: React.FC<DatasetTableRowProps> = React.memo(({ row, columns, onEdit, onDelete, datasetId, taskId, onOpenTrace }) => {
-  return (
-    <TableRow hover>
-      <TableCell
-        sx={{
-          position: "sticky",
-          left: 0,
-          backgroundColor: "background.paper",
-          zIndex: 1,
-          boxShadow: (theme) => (theme.palette.mode === "dark" ? "2px 0 4px rgba(0, 0, 0, 0.3)" : "2px 0 4px rgba(0, 0, 0, 0.1)"),
-        }}
+export const DatasetTableRow: React.FC<DatasetTableRowProps> = React.memo(
+  ({ row, columns, onEdit, onDelete, datasetId, taskId, onOpenTrace, onView, isHighlighted }) => {
+    return (
+      <TableRow
+        hover
+        data-row-id={row.id}
+        sx={
+          isHighlighted
+            ? (theme) => {
+                const flash = keyframes`
+                  from { background-color: ${alpha(theme.palette.primary.main, 0.18)}; }
+                  to { background-color: transparent; }
+                `;
+                return { animation: `${flash} 2s ease-out` };
+              }
+            : undefined
+        }
       >
-        <Box sx={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 0.25 }}>
-          <CopyableChip label={row.id} size="small" sx={{ maxWidth: 120, "& .MuiChip-label": { overflow: "hidden", textOverflow: "ellipsis" } }} />
-          {row.trace_id && taskId && (
-            <SourceTraceLink
-              variant="subtle"
-              taskId={taskId}
-              traceId={row.trace_id}
-              onOpen={onOpenTrace ? () => onOpenTrace(row.trace_id!) : undefined}
-            />
-          )}
-        </Box>
-      </TableCell>
-      {columns.map((column) => {
-        const columnData = row.data.find((col) => col.column_name === column);
-        const value = columnData?.column_value;
-
-        return <DatasetTableCell key={column} value={value} columnName={column} datasetId={datasetId} />;
-      })}
-      <TableCell
-        sx={{
-          textAlign: "center",
-          position: "sticky",
-          right: 0,
-          backgroundColor: "background.paper",
-          zIndex: 1,
-          boxShadow: (theme) => (theme.palette.mode === "dark" ? "-2px 0 4px rgba(0, 0, 0, 0.3)" : "-2px 0 4px rgba(0, 0, 0, 0.1)"),
-        }}
-      >
-        <Box
+        <TableCell
           sx={{
-            display: "flex",
-            gap: 0.5,
-            justifyContent: "center",
+            position: "sticky",
+            left: 0,
+            backgroundColor: "background.paper",
+            zIndex: 1,
+            boxShadow: (theme) => (theme.palette.mode === "dark" ? "2px 0 4px rgba(0, 0, 0, 0.3)" : "2px 0 4px rgba(0, 0, 0, 0.1)"),
           }}
         >
-          <IconButton
-            size="small"
-            onClick={(e) => {
-              e.stopPropagation();
-              onEdit(row);
+          <Box sx={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 0.25 }}>
+            <CopyableChip label={row.id} size="small" sx={{ maxWidth: 120, "& .MuiChip-label": { overflow: "hidden", textOverflow: "ellipsis" } }} />
+            {row.trace_id && taskId && (
+              <SourceTraceLink
+                variant="subtle"
+                taskId={taskId}
+                traceId={row.trace_id}
+                onOpen={onOpenTrace ? () => onOpenTrace(row.trace_id!) : undefined}
+              />
+            )}
+          </Box>
+        </TableCell>
+        {columns.map((column) => {
+          const columnData = row.data.find((col) => col.column_name === column);
+          const value = columnData?.column_value;
+
+          return <DatasetTableCell key={column} value={value} columnName={column} datasetId={datasetId} />;
+        })}
+        <TableCell
+          sx={{
+            textAlign: "center",
+            position: "sticky",
+            right: 0,
+            backgroundColor: "background.paper",
+            zIndex: 1,
+            boxShadow: (theme) => (theme.palette.mode === "dark" ? "-2px 0 4px rgba(0, 0, 0, 0.3)" : "-2px 0 4px rgba(0, 0, 0, 0.1)"),
+          }}
+        >
+          <Box
+            sx={{
+              display: "flex",
+              gap: 0.5,
+              justifyContent: "center",
             }}
-            sx={{ color: "primary.main" }}
           >
-            <EditIcon fontSize="small" />
-          </IconButton>
-          <IconButton
-            size="small"
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete(row.id);
-            }}
-            sx={{ color: "error.main" }}
-          >
-            <DeleteIcon fontSize="small" />
-          </IconButton>
-        </Box>
-      </TableCell>
-    </TableRow>
-  );
-});
+            {onView && (
+              <IconButton
+                size="small"
+                aria-label="View row"
+                title="View dataset row"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onView(row.id);
+                }}
+              >
+                <VisibilityIcon fontSize="small" />
+              </IconButton>
+            )}
+            <IconButton
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit(row);
+              }}
+              sx={{ color: "primary.main" }}
+            >
+              <EditIcon fontSize="small" />
+            </IconButton>
+            <IconButton
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(row.id);
+              }}
+              sx={{ color: "error.main" }}
+            >
+              <DeleteIcon fontSize="small" />
+            </IconButton>
+          </Box>
+        </TableCell>
+      </TableRow>
+    );
+  }
+);

@@ -1,10 +1,11 @@
-import { Box, Link, Typography } from "@mui/material";
+import { Box, Link, Stack, Typography } from "@mui/material";
 import React from "react";
 import { Link as RouterLink } from "react-router";
 
 import { CopyableChip } from "@/components/common/CopyableChip";
 import { SourceTraceLink } from "@/components/common/SourceTraceLink";
 import type { DatasetVersionRowResponse } from "@/lib/api-client/api-client";
+import { track } from "@/services/analytics";
 
 interface DatasetRowContentProps {
   rowData: DatasetVersionRowResponse;
@@ -13,12 +14,12 @@ interface DatasetRowContentProps {
   rowId: string;
   taskId?: string;
   onOpenSourceTrace?: (traceId: string) => void;
-  // When set, the Row ID renders as a router link to the dataset row (e.g. from the experiment modal).
-  rowIdHref?: string;
+  // Experiment context only: renders an explicit link to this row in the dataset viewer.
+  openInDatasetHref?: string;
 }
 
-// Shared read-only body for a single dataset row — rendered by both the experiment
-// "Dataset Row Data" modal and the dataset viewer's row-detail drawer so they stay identical.
+// Shared read-only body for a single dataset row — rendered by the row drawer on both
+// the experiment results page and the dataset viewer so they stay identical.
 export const DatasetRowContent: React.FC<DatasetRowContentProps> = ({
   rowData,
   datasetId,
@@ -26,23 +27,33 @@ export const DatasetRowContent: React.FC<DatasetRowContentProps> = ({
   rowId,
   taskId,
   onOpenSourceTrace,
-  rowIdHref,
+  openInDatasetHref,
 }) => (
-  <Box>
-    <Box className="mb-4">
-      <Typography variant="body2" className="text-gray-600 dark:text-gray-400 mb-2">
-        Dataset: {datasetId} | Version: {versionNumber} | Row ID:{" "}
-        {rowIdHref ? (
-          <Link component={RouterLink} to={rowIdHref} sx={{ fontFamily: "monospace" }}>
-            {rowId}
+  <Stack spacing={3}>
+    <Stack spacing={1}>
+      <Stack direction="row" alignItems="center" spacing={1} useFlexGap sx={{ flexWrap: "wrap" }}>
+        <Typography variant="body2" color="text.secondary">
+          Dataset: {datasetId} | Version: {versionNumber} | Row ID:
+        </Typography>
+        <CopyableChip label={rowId} size="small" />
+        {openInDatasetHref && (
+          <Link
+            component={RouterLink}
+            to={openInDatasetHref}
+            variant="body2"
+            onClick={() => {
+              if (taskId) {
+                track("dataset/open_row_from_experiment", { task_id: taskId, dataset_id: datasetId, source: "experiment_drawer" });
+              }
+            }}
+          >
+            Open in dataset
           </Link>
-        ) : (
-          rowId
         )}
-      </Typography>
+      </Stack>
       {rowData.trace_id && (
-        <Box className="flex items-center gap-1">
-          <Typography variant="body2" className="text-gray-600 dark:text-gray-400">
+        <Stack direction="row" alignItems="center" spacing={1}>
+          <Typography variant="body2" color="text.secondary">
             Source trace:
           </Typography>
           {taskId ? (
@@ -55,20 +66,20 @@ export const DatasetRowContent: React.FC<DatasetRowContentProps> = ({
           ) : (
             <CopyableChip label={rowData.trace_id} />
           )}
-        </Box>
+        </Stack>
       )}
-    </Box>
-    <Box className="space-y-3">
-      {rowData.data.map((item, index) => (
-        <Box key={index} className="p-4 bg-gray-50 dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700">
-          <Typography variant="subtitle2" className="font-semibold text-gray-700 dark:text-gray-300 mb-1">
+    </Stack>
+    <Stack spacing={1.5}>
+      {rowData.data.map((item) => (
+        <Box key={item.column_name} sx={{ p: 2, backgroundColor: "action.hover", borderRadius: 1, border: "1px solid", borderColor: "divider" }}>
+          <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
             {item.column_name}
           </Typography>
-          <Typography variant="body2" className="text-gray-900 dark:text-gray-100 whitespace-pre-wrap wrap-break-word">
+          <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
             {item.column_value}
           </Typography>
         </Box>
       ))}
-    </Box>
-  </Box>
+    </Stack>
+  </Stack>
 );

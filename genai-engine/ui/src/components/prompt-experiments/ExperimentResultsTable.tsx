@@ -35,14 +35,14 @@ import { EvalInputsDialog } from "./PromptResultDetailModal";
 
 import { SourceTraceLink } from "@/components/common/SourceTraceLink";
 import { UpdateDatasetRowModal } from "@/components/common/UpdateDatasetRowModal";
-import { DatasetRowContent } from "@/components/datasets/DatasetRowContent";
+import { DatasetRowDrawer } from "@/components/datasets/DatasetRowDrawer";
 import { SourceTraceDrawer } from "@/components/traces/components/source-trace/SourceTraceDrawer";
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
-import { useApi } from "@/hooks/useApi";
-import { useApiQuery } from "@/hooks/useApiQuery";
+import { useDatasetRow } from "@/hooks/useDatasetRow";
 import { useExperimentTestCases } from "@/hooks/usePromptExperiments";
 import useSnackbar from "@/hooks/useSnackbar";
-import type { TestCase, DatasetVersionRowResponse, EvalExecution, ExperimentStatus } from "@/lib/api-client/api-client";
+import type { TestCase, EvalExecution, ExperimentStatus } from "@/lib/api-client/api-client";
+import { track } from "@/services/analytics";
 import { formatCurrency } from "@/utils/formatters";
 import { getStatusChipSx } from "@/utils/statusChipStyles";
 
@@ -108,11 +108,7 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
 
   const canUpdateDataset = !!(datasetId && datasetVersion !== undefined && testCase?.dataset_row_id);
 
-  const datasetRowQuery = useApiQuery<"getDatasetVersionRowApiV2DatasetsDatasetIdVersionsVersionNumberRowsRowIdGet">({
-    method: "getDatasetVersionRowApiV2DatasetsDatasetIdVersionsVersionNumberRowsRowIdGet",
-    args: [datasetId ?? "", datasetVersion ?? 0, testCase?.dataset_row_id ?? ""],
-    enabled: open && canUpdateDataset,
-  });
+  const datasetRowQuery = useDatasetRow(datasetId, datasetVersion, testCase?.dataset_row_id, open && canUpdateDataset);
   const sourceTraceId = datasetRowQuery.data?.trace_id;
 
   const handleOpenUpdateModal = (outputContent: string) => {
@@ -576,82 +572,6 @@ const TestCaseRow: React.FC<RowProps> = ({ testCase, promptEvalColumns, evalGrou
   );
 };
 
-interface DatasetRowModalProps {
-  open: boolean;
-  onClose: () => void;
-  datasetId: string;
-  versionNumber: number;
-  rowId: string;
-  onOpenSourceTrace?: (traceId: string) => void;
-}
-
-const DatasetRowModal: React.FC<DatasetRowModalProps> = ({ open, onClose, datasetId, versionNumber, rowId, onOpenSourceTrace }) => {
-  const [rowData, setRowData] = useState<DatasetVersionRowResponse | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const api = useApi();
-  const { id: taskId } = useParams<{ id: string }>();
-
-  useEffect(() => {
-    if (!open || !api) return;
-
-    const fetchRowData = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const response = await api.api.getDatasetVersionRowApiV2DatasetsDatasetIdVersionsVersionNumberRowsRowIdGet(datasetId, versionNumber, rowId);
-        setRowData(response.data);
-      } catch (err) {
-        console.error("Failed to fetch dataset row:", err);
-        setError(err instanceof Error ? err.message : "Failed to load dataset row");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchRowData();
-  }, [open, api, datasetId, versionNumber, rowId]);
-
-  return (
-    <Modal open={open} onClose={onClose} aria-labelledby="dataset-row-modal">
-      <Box className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[90vw] max-w-4xl max-h-[80vh] bg-white dark:bg-gray-900 rounded-lg shadow-xl overflow-auto">
-        {/* Modal Header */}
-        <Box className="sticky top-0 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex justify-between items-center z-10">
-          <Typography variant="h6" className="font-semibold text-gray-900 dark:text-gray-100">
-            Dataset Row Data
-          </Typography>
-          <IconButton onClick={onClose} size="small">
-            <CloseIcon />
-          </IconButton>
-        </Box>
-
-        {/* Modal Content */}
-        <Box className="p-6">
-          {loading ? (
-            <Box className="flex justify-center items-center py-8">
-              <CircularProgress />
-            </Box>
-          ) : error ? (
-            <Box className="flex justify-center items-center py-8">
-              <Typography color="error">{error}</Typography>
-            </Box>
-          ) : rowData ? (
-            <DatasetRowContent
-              rowData={rowData}
-              datasetId={datasetId}
-              versionNumber={versionNumber}
-              rowId={rowId}
-              taskId={taskId}
-              onOpenSourceTrace={onOpenSourceTrace}
-              rowIdHref={taskId ? `/tasks/${taskId}/datasets/${datasetId}?version=${versionNumber}&row=${rowId}` : undefined}
-            />
-          ) : null}
-        </Box>
-      </Box>
-    </Modal>
-  );
-};
-
 export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
   experimentId,
   experimentStatus,
@@ -670,8 +590,11 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
   const [pendingIndexAfterPageLoad, setPendingIndexAfterPageLoad] = useState<"first" | "last" | null>(null);
   const [evalInputsDialogOpen, setEvalInputsDialogOpen] = useState(false);
   const [selectedEvalExecution, setSelectedEvalExecution] = useState<EvalExecution | null>(null);
-  const [datasetRowModalOpen, setDatasetRowModalOpen] = useState(false);
-  const [selectedDatasetRow, setSelectedDatasetRow] = useState<{ datasetId: string; versionNumber: number; rowId: string } | null>(null);
+  // row is kept on close so the drawer's exit animation doesn't unmount its content mid-slide
+  const [datasetRowDrawer, setDatasetRowDrawer] = useState<{
+    open: boolean;
+    row: { datasetId: string; versionNumber: number; rowId: string } | null;
+  }>({ open: false, row: null });
   // traceId is kept on close so the drawer's exit animation doesn't unmount its content mid-slide
   const [sourceTrace, setSourceTrace] = useState<{ open: boolean; traceId: string | null }>({ open: false, traceId: null });
 
@@ -723,17 +646,15 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
   };
 
   const handleViewDatasetRow = (testCase: TestCase, datasetId: string, versionNumber: number) => {
-    setSelectedDatasetRow({
-      datasetId,
-      versionNumber,
-      rowId: testCase.dataset_row_id,
+    track("dataset/row_drawer_opened", { dataset_id: datasetId, task_id: taskId, source: "experiment" });
+    setDatasetRowDrawer({
+      open: true,
+      row: { datasetId, versionNumber, rowId: testCase.dataset_row_id },
     });
-    setDatasetRowModalOpen(true);
   };
 
-  const handleCloseDatasetRowModal = () => {
-    setDatasetRowModalOpen(false);
-    setSelectedDatasetRow(null);
+  const handleCloseDatasetRowDrawer = () => {
+    setDatasetRowDrawer((s) => ({ ...s, open: false }));
   };
 
   const handlePrevious = async () => {
@@ -1038,15 +959,21 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
       {/* Eval Inputs Dialog - rendered as sibling to avoid nesting in Modal */}
       <EvalInputsDialog open={evalInputsDialogOpen} onClose={handleCloseEvalInputsDialog} evalExecution={selectedEvalExecution} />
 
-      {/* Dataset Row Modal */}
-      {selectedDatasetRow && (
-        <DatasetRowModal
-          open={datasetRowModalOpen}
-          onClose={handleCloseDatasetRowModal}
-          datasetId={selectedDatasetRow.datasetId}
-          versionNumber={selectedDatasetRow.versionNumber}
-          rowId={selectedDatasetRow.rowId}
+      {/* Dataset Row Drawer - same component the dataset viewer opens via the ?row= URL param */}
+      {datasetRowDrawer.row && (
+        <DatasetRowDrawer
+          open={datasetRowDrawer.open}
+          onClose={handleCloseDatasetRowDrawer}
+          datasetId={datasetRowDrawer.row.datasetId}
+          versionNumber={datasetRowDrawer.row.versionNumber}
+          rowId={datasetRowDrawer.row.rowId}
+          taskId={taskId}
           onOpenSourceTrace={handleOpenSourceTrace}
+          openInDatasetHref={
+            taskId
+              ? `/tasks/${taskId}/datasets/${datasetRowDrawer.row.datasetId}?version=${datasetRowDrawer.row.versionNumber}&row=${datasetRowDrawer.row.rowId}`
+              : undefined
+          }
         />
       )}
 

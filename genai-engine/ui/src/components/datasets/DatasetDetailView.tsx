@@ -14,7 +14,9 @@ import { EditRowModal } from "./EditRowModal";
 import { FillColumnModal } from "./FillColumnModal";
 import { ImportDatasetModal } from "./ImportDatasetModal";
 import { SyntheticDataModal } from "./synthetic";
+import { useDeepLinkedRow } from "./useDeepLinkedRow";
 import { VersionDrawer } from "./VersionDrawer";
+import { mergeVersionIntoParams } from "./versionSearchParams";
 
 import { SourceTraceDrawer } from "@/components/traces/components/source-trace/SourceTraceDrawer";
 import { getContentHeight } from "@/constants/layout";
@@ -62,7 +64,8 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
   const { registerBlocker, runGuardedNavigation, isBlocking, confirmNavigation, cancelNavigation } = useNavigationGuard();
   const [searchParams, setSearchParams] = useSearchParams();
   // Row-detail deep link: `?row=<id>` opens a read-only drawer for that dataset row.
-  const [rowId, setRowId] = useQueryState("row", parseAsString);
+  // Opens push a history entry so browser Back dismisses the drawer.
+  const [rowId, setRowId] = useQueryState("row", parseAsString.withOptions({ history: "push" }));
   const [isExporting, setIsExporting] = useState(false);
   // traceId is kept on close so the drawer's exit animation doesn't unmount its content mid-slide
   const [sourceTrace, setSourceTrace] = useState<{ open: boolean; traceId: string | null }>({ open: false, traceId: null });
@@ -70,9 +73,13 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
   const handleOpenSourceTrace = useCallback((traceId: string) => setSourceTrace({ open: true, traceId }), []);
   const handleCloseSourceTrace = useCallback(() => setSourceTrace((s) => ({ ...s, open: false })), []);
 
+  const taskId = task?.id;
+
   useEffect(() => {
-    track("dataset/detail_opened", { dataset_id: datasetId, task_id: task?.id });
-  }, [datasetId, task?.id]);
+    // Wait for the task to resolve so the event carries a real task_id and fires once.
+    if (!taskId) return;
+    track("dataset/detail_opened", { dataset_id: datasetId, task_id: taskId });
+  }, [datasetId, taskId]);
 
   const filteredRows = useMemo(() => selectFilteredRows(state), [state]);
   const hasUnsavedChanges = selectHasUnsavedChanges(state);
@@ -99,19 +106,28 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
 
   useEffect(() => {
     // Merge into existing params so the `?row=` deep link survives version sync.
-    setSearchParams(
-      (prev) => {
-        const next = new URLSearchParams(prev);
-        if (state.selectedVersion !== undefined) {
-          next.set("version", state.selectedVersion.toString());
-        } else {
-          next.delete("version");
-        }
-        return next;
-      },
-      { replace: true }
-    );
+    setSearchParams((prev) => mergeVersionIntoParams(prev, state.selectedVersion), { replace: true });
   }, [state.selectedVersion, setSearchParams]);
+
+  const { highlightedRowId } = useDeepLinkedRow({
+    datasetId,
+    rowId,
+    taskId: task?.id,
+    currentVersion: queries.currentVersion,
+    rows: state.rows,
+    versionLoading: queries.versionLoading,
+    rowsPerPage: state.pagination.rowsPerPage,
+    currentPage: state.pagination.page,
+    dispatch,
+  });
+
+  const handleViewRow = useCallback(
+    (id: string) => {
+      track("dataset/row_drawer_opened", { dataset_id: datasetId, task_id: task?.id, source: "table" });
+      setRowId(id);
+    },
+    [datasetId, task?.id, setRowId]
+  );
 
   const handleBack = useCallback(() => {
     runGuardedNavigation(() => navigate(`/tasks/${task?.id}/datasets`));
@@ -415,6 +431,8 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
             onDeleteRow={handleDeleteRow}
             onFillColumn={handleFillColumn}
             onOpenTrace={handleOpenSourceTrace}
+            onViewRow={handleViewRow}
+            highlightedRowId={highlightedRowId}
             searchQuery={state.searchQuery}
           />
         )}
@@ -528,7 +546,8 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
 
       <DatasetRowDrawer
         open={!!rowId}
-        onClose={() => setRowId(null)}
+        // Replace on close so Back doesn't reopen the drawer.
+        onClose={() => setRowId(null, { history: "replace" })}
         datasetId={datasetId}
         versionNumber={queries.currentVersion}
         rowId={rowId}

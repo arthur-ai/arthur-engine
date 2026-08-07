@@ -1045,6 +1045,74 @@ def test_dataset_version_search(
 
 
 @pytest.mark.unit_tests
+def test_dataset_version_row_order_deterministic(
+    client: GenaiEngineTestClientBase,
+) -> None:
+    """Rows created in one batch share a created_at; the id tiebreaker must make ordering stable."""
+    status_code, agentic_task = client.create_task(
+        name="test_dataset_version_row_order_task",
+        is_agentic=True,
+    )
+    assert status_code == 200
+
+    status_code, created_dataset = client.create_dataset(
+        name="Dataset for Row Order Test",
+        task_id=agentic_task.id,
+        description="Testing deterministic row ordering",
+    )
+    assert status_code == 200
+    dataset_id = created_dataset.id
+
+    rows_to_add = [
+        NewDatasetVersionRowRequest(
+            data=[
+                NewDatasetVersionRowColumnItemRequest(
+                    column_name="value",
+                    column_value=f"row-{i}",
+                ),
+            ],
+        )
+        for i in range(10)
+    ]
+    status_code, created_version = client.create_dataset_version(
+        dataset_id=dataset_id,
+        rows_to_add=rows_to_add,
+    )
+    assert status_code == 200
+    assert created_version.total_count == 10
+
+    def fetch_ids(**kwargs):
+        status_code, result = client.get_dataset_version(
+            dataset_id=dataset_id,
+            version_number=1,
+            **kwargs,
+        )
+        assert status_code == 200
+        return [row.id for row in result.rows]
+
+    # Ascending order is stable across calls and tie-broken by id
+    asc_ids = fetch_ids(sort="asc", page_size=10)
+    assert asc_ids == sorted(asc_ids)
+    for _ in range(2):
+        assert fetch_ids(sort="asc", page_size=10) == asc_ids
+
+    # Descending is the exact reverse
+    assert fetch_ids(sort="desc", page_size=10) == list(reversed(asc_ids))
+
+    # Pagination concatenates to the same sequence (no cross-page duplicates or gaps)
+    paginated_ids = []
+    for page in range(4):
+        paginated_ids.extend(fetch_ids(sort="asc", page=page, page_size=3))
+    assert paginated_ids == asc_ids
+
+    # Cleanup
+    status_code = client.delete_dataset(dataset_id)
+    assert status_code == 204
+    status_code = client.delete_task(agentic_task.id)
+    assert status_code == 204
+
+
+@pytest.mark.unit_tests
 def test_dataset_row_trace_id_persistence(
     client: GenaiEngineTestClientBase,
 ) -> None:
