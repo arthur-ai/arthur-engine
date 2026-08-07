@@ -1,0 +1,15 @@
+apiVersion: v2
+name: genai-engine-gpu-autoscaler-karpenter
+description: GPU-metric-driven autoscaling add-on for the Arthur GenAI Engine on EKS Auto Mode + Karpenter. Installs a HorizontalPodAutoscaler that scales the genai-engine Deployment on GPU utilization, backed by DCGM-exporter -> Prometheus -> prometheus-adapter.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+dependencies:
+  - name: dcgm-exporter
+    version: "4.8.3"
+    repository: "https://nvidia.github.io/dcgm-exporter/helm-charts"
+    condition: dcgm-exporter.enabled
+  - name: prometheus-adapter
+    version: "5.3.0"
+    repository: "https://prometheus-community.github.io/helm-charts"
+    condition: prometheus-adapter.enabled

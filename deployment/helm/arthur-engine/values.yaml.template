@@ -76,20 +76,31 @@ arthur-genai-engine:
   # (one GPU pod per node; the DaemonSet fills each node as the ASG scales the node group)
   #gpuEnabled: true
   #genaiEngineDeploymentType: "daemonset"
-  #genaiEngineWorkers: 2
+  #genaiEngineWorkers: 3
   #genaiEngineContainerImageLocation: "arthurplatform/genai-engine-gpu"
-  # GPU deployment with EKS Auto Mode / Karpenter - Uncomment the below 4 lines
+  # GPU deployment with EKS Auto Mode / Karpenter - Uncomment the below 5 lines
   # (Karpenter provisions GPU nodes only for unschedulable workload pods, not DaemonSets, so use a
   #  Deployment; also set genaiEnginePodNodeSelector above to your GPU NodePool label)
   #gpuEnabled: true
   #genaiEngineDeploymentType: "deployment"
-  #genaiEngineWorkers: 2
+  #genaiEngineWorkers: 3
   #genaiEngineContainerImageLocation: "arthurplatform/genai-engine-gpu"
+  #genaiEngineContainerGPULimit: "1"
+  # GPU deployments also need genaiEngineContainerMemoryLimits: "24Gi" (see below).
+  # genaiEngineWorkers is the per-pod worker count. Each worker is a separate process, and a single
+  # worker cannot keep a GPU busy, so 3 is recommended for GPU deployments. It is also the practical
+  # ceiling for a 16 GB GPU — a fourth worker exceeds available GPU memory and container RAM.
   arthurGenaiEngineHPA:
     # - CPU deployment: true.
     # - GPU deployment with managed node group + ASG: false (HPA does not apply to a DaemonSet).
-    # - GPU deployment with EKS Auto Mode / Karpenter: false (GPU node scaling is handled by Karpenter).
+    # - GPU deployment with EKS Auto Mode / Karpenter: false here, and instead scale on GPU
+    #   utilization with the separate `genai-engine-gpu-autoscaler-karpenter` add-on chart
+    #   (set externallyManaged: true below so this chart cedes replica ownership to it).
     enabled: true
+    # When true, an external controller (e.g. the genai-engine-gpu-autoscaler-karpenter add-on chart)
+    # owns replica count: this chart omits the Deployment's static `replicas` and renders no HPA of
+    # its own, so the two never fight on `helm upgrade`. Leave false for chart-managed scaling.
+    externallyManaged: false
     annotations: {}
     labels: {}
     behavior:
@@ -178,7 +189,7 @@ arthur-genai-engine:
   ## Advanced - GenAI Engine
   ###################################
   # GenAI Engine version
-  genaiEngineVersion: 2.1.776
+  genaiEngineVersion: 2.1.779
   # Max number of tokens GenAI Engine can process against LLM for hallucination data checks
   genaiEngineHallucinationCheckMaxTokenLimit: 3000
   # Max number of tokens GenAI Engine can process against LLM for sensitive data checks
@@ -199,8 +210,19 @@ arthur-genai-engine:
   genaiEngineContainerMemoryRequests: "16Gi"
   # CPU limits value for GenAI Engine
   genaiEngineContainerCPULimits: "8"
-  # Memory limits value for GenAI Engine
+  # Memory limits value for GenAI Engine.
+  # GPU deployments: use "24Gi". Every worker holds the full model suite resident, and large prompts
+  # or context add more on top, so the CPU default leaves too little headroom.
   genaiEngineContainerMemoryLimits: "16Gi"
+  # Value for the nvidia.com/gpu resource limit, e.g. "1". Empty omits the limit entirely,
+  # which is correct for CPU deployments and for GPU deployments that get their GPU via
+  # NVIDIA_VISIBLE_DEVICES alone.
+  # Set this to "1" if you use the genai-engine-gpu-autoscaler-karpenter add-on chart: DCGM
+  # maps GPUs to pods through the kubelet pod-resources API, which only reports a device
+  # allocation when the pod requests one, so per-pod GPU metrics do not exist without it.
+  # Only set it where a device plugin actually advertises nvidia.com/gpu (check
+  # `kubectl get node <gpu-node> -o jsonpath='{.status.allocatable}'`), or the pod stays Pending.
+  genaiEngineContainerGPULimit: ""
   # Name of the service account used by the GenAI Engine pod (if no service account is specified, the pod will use its default behavior, which usually means that it uses the `default` k8s service account)
   genaiEngineServiceAccount:
     create: false

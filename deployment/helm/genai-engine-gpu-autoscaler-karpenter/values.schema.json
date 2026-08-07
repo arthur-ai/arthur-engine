@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "title": "genai-engine-gpu-autoscaler-karpenter values",
+  "type": "object",
+  "properties": {
+    "targetDeployment": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the genai-engine Deployment the HPA scales"
+        },
+        "resourceNameSuffix": {
+          "type": "string",
+          "description": "Mirror the genai-engine arthurResourceNameSuffix so the HPA targets <name>-<suffix>"
+        }
+      },
+      "required": ["name"]
+    },
+    "hpa": {
+      "type": "object",
+      "properties": {
+        "minReplicas": { "type": "integer", "minimum": 1 },
+        "maxReplicas": { "type": "integer", "minimum": 1 },
+        "annotations": { "type": "object" },
+        "gpu": {
+          "type": "object",
+          "properties": {
+            "targetGPUUtilizationPercentage": { "type": "integer", "minimum": 1, "maximum": 100 }
+          }
+        },
+        "behavior": {
+          "type": "object",
+          "description": "HPA scaling behavior (autoscaling/v2 behavior block)"
+        }
+      }
+    },
+    "dcgm-exporter": {
+      "type": "object",
+      "description": "Values passed through to the NVIDIA dcgm-exporter subchart"
+    },
+    "prometheus-adapter": {
+      "type": "object",
+      "description": "Values passed through to the prometheus-adapter subchart"
+    },
+    "global": { "type": "object" }
+  }
+}

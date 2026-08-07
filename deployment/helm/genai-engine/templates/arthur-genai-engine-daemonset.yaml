@@ -81,6 +81,9 @@ spec:
             limits:
               memory: "{{ .Values.genaiEngineContainerMemoryLimits }}"
               cpu: "{{ .Values.genaiEngineContainerCPULimits }}"
+              {{- if .Values.genaiEngineContainerGPULimit }}
+              nvidia.com/gpu: {{ .Values.genaiEngineContainerGPULimit | quote }}
+              {{- end }}
           env:
             - name: POSTGRES_URL
               value: "{{ .Values.postgresBYOEndpoint }}"
