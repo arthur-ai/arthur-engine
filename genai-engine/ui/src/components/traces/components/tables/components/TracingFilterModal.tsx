@@ -28,9 +28,9 @@ interface FilterState {
   spanIds: string[];
   userIds: string[];
   annotationScore: string | null;
-  statusCode: string | null;
+  statusCode: string[];
   annotationType: string | null;
-  continuousEvalRunStatus: string | null;
+  continuousEvalRunStatus: string[];
   continuousEvalName: string;
   includeExperimentTraces: string | null;
   toolName: string;
@@ -153,8 +153,8 @@ const buildFiltersFromFormValues = (value: FilterState): IncomingFilter[] => {
   }
 
   // Status Code
-  if (value.statusCode !== null) {
-    filters.push({ name: "status_code", operator: EnumOperators.EQUALS, value: value.statusCode });
+  if (value.statusCode.length > 0) {
+    filters.push({ name: "status_code", operator: EnumOperators.IN, value: value.statusCode });
   }
 
   // Annotation Type
@@ -163,8 +163,8 @@ const buildFiltersFromFormValues = (value: FilterState): IncomingFilter[] => {
   }
 
   // Continuous Eval Run Status
-  if (value.continuousEvalRunStatus !== null) {
-    filters.push({ name: "continuous_eval_run_status", operator: EnumOperators.EQUALS, value: value.continuousEvalRunStatus });
+  if (value.continuousEvalRunStatus.length > 0) {
+    filters.push({ name: "continuous_eval_run_status", operator: EnumOperators.IN, value: value.continuousEvalRunStatus });
   }
 
   // Continuous Eval Name
@@ -211,9 +211,9 @@ const DEFAULT_FILTER_STATE: FilterState = {
   spanIds: [],
   userIds: [],
   annotationScore: null,
-  statusCode: null,
+  statusCode: [],
   annotationType: null,
-  continuousEvalRunStatus: null,
+  continuousEvalRunStatus: [],
   continuousEvalName: "",
   includeExperimentTraces: null,
   toolName: "",
@@ -314,13 +314,13 @@ export const TracingFilterModal = () => {
           newFilterState.annotationScore = String(filter.value);
           break;
         case "status_code":
-          newFilterState.statusCode = String(filter.value);
+          newFilterState.statusCode = Array.isArray(filter.value) ? filter.value : [String(filter.value)];
           break;
         case "annotation_type":
           newFilterState.annotationType = String(filter.value);
           break;
         case "continuous_eval_run_status":
-          newFilterState.continuousEvalRunStatus = String(filter.value);
+          newFilterState.continuousEvalRunStatus = Array.isArray(filter.value) ? filter.value : [String(filter.value)];
           break;
         case "continuous_eval_name":
           newFilterState.continuousEvalName = String(filter.value);
@@ -417,9 +417,9 @@ export const TracingFilterModal = () => {
     formState.spanIds.length > 0 ||
     formState.userIds.length > 0 ||
     formState.annotationScore !== null ||
-    formState.statusCode !== null ||
+    formState.statusCode.length > 0 ||
     formState.annotationType !== null ||
-    formState.continuousEvalRunStatus !== null ||
+    formState.continuousEvalRunStatus.length > 0 ||
     formState.continuousEvalName.trim() !== "" ||
     formState.includeExperimentTraces !== null ||
     formState.toolName.trim() !== "" ||
@@ -740,11 +740,13 @@ export const TracingFilterModal = () => {
                 <form.Field name="statusCode">
                   {(field) => (
                     <Autocomplete
+                      multiple
                       options={STATUS_CODE_OPTIONS}
                       value={field.state.value}
                       onChange={(_, newValue) => field.handleChange(newValue)}
-                      renderInput={(params) => <TextField {...params} size="small" placeholder="Select status" />}
+                      renderInput={(params) => <TextField {...params} size="small" placeholder="Select statuses" />}
                       getOptionLabel={(option) => (option === "Ok" ? "Pass" : "Fail")}
+                      disableCloseOnSelect
                     />
                   )}
                 </form.Field>
@@ -776,11 +778,13 @@ export const TracingFilterModal = () => {
                 <form.Field name="continuousEvalRunStatus">
                   {(field) => (
                     <Autocomplete
+                      multiple
                       options={CONTINUOUS_EVAL_RUN_STATUS_OPTIONS}
                       value={field.state.value}
                       onChange={(_, newValue) => field.handleChange(newValue)}
-                      renderInput={(params) => <TextField {...params} size="small" placeholder="Select status" />}
+                      renderInput={(params) => <TextField {...params} size="small" placeholder="Select statuses" />}
                       getOptionLabel={(option) => option.charAt(0).toUpperCase() + option.slice(1)}
+                      disableCloseOnSelect
                     />
                   )}
                 </form.Field>

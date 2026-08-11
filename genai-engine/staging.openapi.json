@@ -2769,10 +2769,21 @@
                         "in": "query",
                         "required": false,
                         "schema": {
-                            "$ref": "#/components/schemas/ContinuousEvalRunStatus",
-                            "description": "Filter by trace annotation run status (e.g. 'passed', 'failed', etc.)."
+                            "anyOf": [
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/ContinuousEvalRunStatus"
+                                    }
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Continuous eval run statuses to filter on (e.g. 'passed', 'failed', etc.). Optional.",
+                            "title": "Continuous Eval Run Status"
                         },
-                        "description": "Filter by trace annotation run status (e.g. 'passed', 'failed', etc.)."
+                        "description": "Continuous eval run statuses to filter on (e.g. 'passed', 'failed', etc.). Optional."
                     },
                     {
                         "name": "continuous_eval_name",
@@ -3524,10 +3535,21 @@
                         "in": "query",
                         "required": false,
                         "schema": {
-                            "$ref": "#/components/schemas/ContinuousEvalRunStatus",
-                            "description": "Filter by trace annotation run status (e.g. 'passed', 'failed', etc.)."
+                            "anyOf": [
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/ContinuousEvalRunStatus"
+                                    }
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Continuous eval run statuses to filter on (e.g. 'passed', 'failed', etc.). Optional.",
+                            "title": "Continuous Eval Run Status"
                         },
-                        "description": "Filter by trace annotation run status (e.g. 'passed', 'failed', etc.)."
+                        "description": "Continuous eval run statuses to filter on (e.g. 'passed', 'failed', etc.). Optional."
                     },
                     {
                         "name": "continuous_eval_name",
@@ -4518,10 +4540,21 @@
                         "in": "query",
                         "required": false,
                         "schema": {
-                            "$ref": "#/components/schemas/ContinuousEvalRunStatus",
-                            "description": "Filter by trace annotation run status (e.g. 'passed', 'failed', etc.)."
+                            "anyOf": [
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/ContinuousEvalRunStatus"
+                                    }
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Continuous eval run statuses to filter on (e.g. 'passed', 'failed', etc.). Optional.",
+                            "title": "Continuous Eval Run Status"
                         },
-                        "description": "Filter by trace annotation run status (e.g. 'passed', 'failed', etc.)."
+                        "description": "Continuous eval run statuses to filter on (e.g. 'passed', 'failed', etc.). Optional."
                     },
                     {
                         "name": "continuous_eval_name",
@@ -5366,10 +5399,21 @@
                         "in": "query",
                         "required": false,
                         "schema": {
-                            "$ref": "#/components/schemas/ContinuousEvalRunStatus",
-                            "description": "Filter by trace annotation run status (e.g. 'passed', 'failed', etc.)."
+                            "anyOf": [
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/ContinuousEvalRunStatus"
+                                    }
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Continuous eval run statuses to filter on (e.g. 'passed', 'failed', etc.). Optional.",
+                            "title": "Continuous Eval Run Status"
                         },
-                        "description": "Filter by trace annotation run status (e.g. 'passed', 'failed', etc.)."
+                        "description": "Continuous eval run statuses to filter on (e.g. 'passed', 'failed', etc.). Optional."
                     },
                     {
                         "name": "continuous_eval_name",
