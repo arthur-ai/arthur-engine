@@ -4,11 +4,14 @@ import { Autocomplete, Box, Button, Checkbox, Chip, FormControlLabel, IconButton
 import { DateTimePicker } from "@mui/x-date-pickers/DateTimePicker";
 import { useForm, useStore } from "@tanstack/react-form";
 import dayjs, { type Dayjs } from "dayjs";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useFilterStore } from "../../../stores/filter.store";
 import type { IncomingFilter } from "../../filtering/mapper";
 import { EnumOperators, Operators, TextOperators } from "../../filtering/types";
+
+import { useContinuousEvals } from "@/components/live-evals/hooks/useContinuousEvals";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 
 interface FilterState {
   spanTypes: string[];
@@ -426,6 +429,18 @@ export const TracingFilterModal = () => {
     formState.startTime !== "" ||
     formState.endTime !== "";
 
+  // Server-side (debounced) name search against the task's continuous evals
+  const debouncedEvalNameSearch = useDebouncedValue(formState.continuousEvalName);
+  const evalNameFilters = useMemo(() => {
+    const trimmed = debouncedEvalNameSearch.trim();
+    return trimmed ? [{ name: "name", operator: TextOperators.CONTAINS, value: trimmed }] : [];
+  }, [debouncedEvalNameSearch]);
+  const { data: continuousEvalsData } = useContinuousEvals({
+    pagination: { page: 0, page_size: 10 },
+    filters: evalNameFilters,
+  });
+  const continuousEvalNameOptions = useMemo(() => [...new Set((continuousEvalsData?.evals ?? []).map((eval_) => eval_.name))], [continuousEvalsData]);
+
   const renderNumericRangeFilter = (
     label: string,
     minField: keyof FilterState,
@@ -793,21 +808,15 @@ export const TracingFilterModal = () => {
                 </Typography>
                 <form.Field name="continuousEvalName">
                   {(field) => (
-                    <TextField
-                      size="small"
-                      fullWidth
+                    <Autocomplete
+                      freeSolo
+                      options={continuousEvalNameOptions}
+                      filterOptions={(options) => options}
                       value={field.state.value}
-                      onChange={(e) => field.handleChange(e.target.value)}
-                      placeholder="Enter continuous eval name"
-                      slotProps={{
-                        input: {
-                          endAdornment: field.state.value && (
-                            <IconButton size="small" onClick={() => field.handleChange("")} sx={{ mr: -1 }}>
-                              <Close fontSize="small" />
-                            </IconButton>
-                          ),
-                        },
-                      }}
+                      inputValue={field.state.value}
+                      onChange={(_, newValue) => field.handleChange(newValue ?? "")}
+                      onInputChange={(_, newValue) => field.handleChange(newValue)}
+                      renderInput={(params) => <TextField {...params} size="small" placeholder="Select or enter eval name" />}
                     />
                   )}
                 </form.Field>
