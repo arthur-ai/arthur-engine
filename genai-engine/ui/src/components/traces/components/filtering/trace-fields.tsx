@@ -98,7 +98,7 @@ export const TRACE_FIELDS = [
   createPrimitiveField({
     type: "enum",
     name: "continuous_eval_run_status",
-    operators: [EnumOperators.EQUALS],
+    operators: [EnumOperators.IN, EnumOperators.EQUALS],
     options: ["pending", "passed", "running", "failed", "skipped", "error"],
     itemToStringLabel: (option) => capitalize(option),
   }),

@@ -7,9 +7,10 @@ export interface DatasetEvents {
   "dataset/delete_confirmed": { dataset_id: string };
   "dataset/updated": { dataset_id: string };
   "dataset/deleted": { dataset_id: string };
-  "dataset/detail_opened": { dataset_id: string; task_id: string | undefined };
+  "dataset/detail_opened": { dataset_id: string; task_id: string };
   "dataset/save_version": { dataset_id: string };
   "dataset/row_added": { dataset_id: string; task_id: string | undefined };
+  "dataset/row_drawer_opened": { dataset_id: string; task_id: string | undefined; source: "deep_link" | "table" | "experiment" };
   "dataset/row_updated": { dataset_id: string; task_id: string | undefined };
   "dataset/row_deleted": { dataset_id: string; task_id: string | undefined };
   "dataset/columns_config_opened": { dataset_id: string; task_id: string | undefined };
