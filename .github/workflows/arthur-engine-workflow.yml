@@ -201,6 +201,12 @@ jobs:
               - 'genai-engine/Dockerfile*'
               - 'genai-engine/docker-compose.yml'
               - 'arthur-observability-sdk/**'
+              # Changes to the CI plumbing itself must exercise the jobs they
+              # affect, otherwise a broken workflow edit passes as an all-skipped
+              # green run and only surfaces in the merge queue, where it blocks
+              # everyone.
+              - '.github/workflows/arthur-engine-workflow.yml'
+              - '.github/workflows/composite-actions/**'
       # In the merge queue there is no PR base to diff against, and paths-filter's
       # base detection is unreliable on merge_group. Run the full required suite as
       # the final pre-merge gate instead of trying to narrow it by path.
@@ -239,6 +245,9 @@ jobs:
               - 'ml-engine/**'
               - 'arthur-observability-sdk/**'
               - 'genai-engine/staging.openapi.json'
+              # See the note in check-genai-engine-changes.
+              - '.github/workflows/arthur-engine-workflow.yml'
+              - '.github/workflows/composite-actions/**'
       # In the merge queue, run the full required suite (see note above).
       - name: Decide affected areas
         id: decide
