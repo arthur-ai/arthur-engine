@@ -42,8 +42,8 @@
     {
       "description": "Auto-merge low-risk update types. lockFileMaintenance (nightly lockfile refresh) and replacement (curated drop-in package swaps from replacements:all) are gated by CI + the auto-fixer like minor/patch, so they merge without a human reviewer instead of sitting open.",
       "matchUpdateTypes": ["minor", "patch", "lockFileMaintenance", "replacement"],
-      "automerge": false,
-      "autoApprove": false
+      "automerge": true,
+      "autoApprove": true
     },
     {
       "description": "Label major updates so the auto-fixer can flag them for human review instead of self-approving.",
