@@ -185,7 +185,7 @@ wheels = [
 
 [[package]]
 name = "arthur-genai-engine"
-version = "2.1.780"
+version = "2.1.783"
 source = { editable = "." }
 dependencies = [
     { name = "alembic" },
@@ -311,7 +311,7 @@ requires-dist = [
     { name = "litellm", specifier = "==1.93.0" },
     { name = "more-itertools", specifier = "==11.1.0" },
     { name = "msgpack", specifier = "==1.2.1" },
-    { name = "newrelic", specifier = "==10.17.0" },
+    { name = "newrelic", specifier = "==13.4.0" },
     { name = "nltk", specifier = "==3.10.0" },
     { name = "openai", specifier = "==2.50.0" },
     { name = "openinference-semantic-conventions", specifier = ">=0.1.12,<0.2" },
@@ -2279,14 +2279,14 @@ wheels = [
 
 [[package]]
 name = "newrelic"
-version = "10.17.0"
+version = "13.4.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/c7/82/71eb49483a2675eec2a5cfce2ea08c898c9329072a83f6671d2a6f68d101/newrelic-10.17.0.tar.gz", hash = "sha256:f092109ac024f9524fafdd06126924c0fbd2af54684571167c0ee1d1cc1bcb7d", size = 1286818, upload-time = "2025-09-04T22:15:25.988Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e0/01/08b587f27b214ca20a6ec18a9715a30d5fc3091ea7aa65d689e29486270e/newrelic-13.4.0.tar.gz", hash = "sha256:f9443060aa32f95f2db443545ba8b15350be2d66ec22fadcdcda11f5472a06f6", size = 1567114, upload-time = "2026-07-30T22:20:41.603Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/48/e3/c99b99ebedccb960b835a656d27e0d062904fbe49f8d98bf77eae617b649/newrelic-10.17.0-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:5ab9cbce3f8da5bfcd085b8a59591cfb653d75834b362e3eccb86bdf21eea917", size = 863000, upload-time = "2025-09-04T22:14:55.091Z" },
-    { url = "https://files.pythonhosted.org/packages/73/c8/7c5175f1e070063033a38aa50b920d3523c018a4244890068d211bd98c14/newrelic-10.17.0-cp312-cp312-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:889969407457a9344927b1a9e9d5afde77345857db4d2ea75b119d02c02d9174", size = 862657, upload-time = "2025-09-04T22:14:56.546Z" },
-    { url = "https://files.pythonhosted.org/packages/1f/37/34d71dcf78c7f539381ba71e0b7624ce170822d13364768241f11832ad0d/newrelic-10.17.0-cp312-cp312-musllinux_1_2_aarch64.whl", hash = "sha256:d74c06863356b19c1fcf19900f85057ab33ef779aa3e0de3cb7e3d3f37ca8e20", size = 860626, upload-time = "2025-09-04T22:14:58.707Z" },
-    { url = "https://files.pythonhosted.org/packages/7f/40/137ed6c2558ba38237193501e3da466dfefe019a7fdf43e7c57eda0bb293/newrelic-10.17.0-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:083777458f93d16ae9e605fd66a6298d856e32deea11cf3270ed237858dcbfe6", size = 860491, upload-time = "2025-09-04T22:15:00.497Z" },
+    { url = "https://files.pythonhosted.org/packages/bf/19/eb16150ba3d7b4ae9ea4c6af5486776e7f68b794ec497ded5d321639b67a/newrelic-13.4.0-cp312-cp312-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl", hash = "sha256:da1560c2ae5f235a399312427e9634f8f036c7f40f1849dfec0045f0b9cb19be", size = 941148, upload-time = "2026-07-30T22:19:55.982Z" },
+    { url = "https://files.pythonhosted.org/packages/88/59/9e8afe1dcf918c98f990993c14864fed1c99c547100104a988ef3c608dd1/newrelic-13.4.0-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:cf7b3679edad6b8f3c4c39147031e3e8d8c4468d6f3767bced689159bac43090", size = 943839, upload-time = "2026-07-30T22:19:57.724Z" },
+    { url = "https://files.pythonhosted.org/packages/5d/b4/ddd7369dea4517106dcbca10d1d4632720978ec1184fda8018c2df17ec72/newrelic-13.4.0-cp312-cp312-musllinux_1_2_aarch64.whl", hash = "sha256:460b4f1e72576071c2184a781289f5eb9fb13820d5dfa7d1f7c4b29c5c265b41", size = 941725, upload-time = "2026-07-30T22:19:59.311Z" },
+    { url = "https://files.pythonhosted.org/packages/09/0a/fc9db1053b22c2833990f80f26c49ce7f3d07953ea09c8680422f796137c/newrelic-13.4.0-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:71244b593e00855b37ae270811ce94e7b155228526f83efac033caf3f0ee0393", size = 940289, upload-time = "2026-07-30T22:20:00.915Z" },
 ]
 
 [[package]]
