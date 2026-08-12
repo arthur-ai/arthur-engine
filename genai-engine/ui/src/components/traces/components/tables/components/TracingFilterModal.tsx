@@ -10,7 +10,7 @@ import { useFilterStore } from "../../../stores/filter.store";
 import type { IncomingFilter } from "../../filtering/mapper";
 import { EnumOperators, Operators, TextOperators } from "../../filtering/types";
 
-import { useContinuousEvals } from "@/components/live-evals/hooks/useContinuousEvals";
+import { useInfiniteContinuousEvals } from "@/components/live-evals/hooks/useContinuousEvals";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 
 interface FilterState {
@@ -435,11 +435,24 @@ export const TracingFilterModal = () => {
     const trimmed = debouncedEvalNameSearch.trim();
     return trimmed ? [{ name: "name", operator: TextOperators.CONTAINS, value: trimmed }] : [];
   }, [debouncedEvalNameSearch]);
-  const { data: continuousEvalsData } = useContinuousEvals({
-    pagination: { page: 0, page_size: 10 },
-    filters: evalNameFilters,
-  });
-  const continuousEvalNameOptions = useMemo(() => [...new Set((continuousEvalsData?.evals ?? []).map((eval_) => eval_.name))], [continuousEvalsData]);
+  const {
+    data: continuousEvalsData,
+    fetchNextPage: fetchNextEvalsPage,
+    hasNextPage: hasNextEvalsPage,
+    isFetchingNextPage: isFetchingNextEvalsPage,
+  } = useInfiniteContinuousEvals({ pageSize: 10, filters: evalNameFilters });
+  const continuousEvalNameOptions = useMemo(
+    () => [...new Set((continuousEvalsData?.pages ?? []).flatMap((page) => page.evals ?? []).map((eval_) => eval_.name))],
+    [continuousEvalsData]
+  );
+
+  // Fetch the next page of evals when the dropdown is scrolled near the bottom
+  const handleEvalListboxScroll = (event: React.UIEvent<HTMLUListElement>) => {
+    const listbox = event.currentTarget;
+    if (listbox.scrollTop + listbox.clientHeight >= listbox.scrollHeight - 32 && hasNextEvalsPage && !isFetchingNextEvalsPage) {
+      fetchNextEvalsPage();
+    }
+  };
 
   const renderNumericRangeFilter = (
     label: string,
@@ -816,6 +829,7 @@ export const TracingFilterModal = () => {
                       inputValue={field.state.value}
                       onChange={(_, newValue) => field.handleChange(newValue ?? "")}
                       onInputChange={(_, newValue) => field.handleChange(newValue)}
+                      slotProps={{ listbox: { onScroll: handleEvalListboxScroll } }}
                       renderInput={(params) => <TextField {...params} size="small" placeholder="Select or enter eval name" />}
                     />
                   )}
