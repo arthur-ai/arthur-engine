@@ -152,7 +152,7 @@ wheels = [
 
 [[package]]
 name = "arthur-client"
-version = "1.4.2299"
+version = "1.4.2324"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "authlib" },
@@ -164,14 +164,14 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/90/94/89e1e284163849b3318ca12bec5b90d17416ba38a8f1ae4e14f75a418791/arthur_client-1.4.2299.tar.gz", hash = "sha256:93031e0edde066da726082f50c870c1ea8d09ad0739c56170fe60adc06d19773", size = 406693, upload-time = "2026-07-31T11:12:28.205Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ea/8d/4c5e8c7d1be49653ca07e5c0b56c05e649ff2e34a075b54d17af928f75c1/arthur_client-1.4.2324.tar.gz", hash = "sha256:6edab6f8a9ed281f10ff19cb8eafeda29a8045abc8de7dc1b6b852c1f28f9d54", size = 422842, upload-time = "2026-08-12T15:14:49.225Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e9/c9/c370da67bd78ee0b5b950162d30253a4bec03f9fc314a6420c09faf4938d/arthur_client-1.4.2299-py3-none-any.whl", hash = "sha256:7edf9b53e57cae8dc1e11bb08735d99b137059ddeac9e071defb463d9646d874", size = 1490025, upload-time = "2026-07-31T11:12:26.445Z" },
+    { url = "https://files.pythonhosted.org/packages/88/d9/eb44dee1b171ef917f9635271de3714d5134548d04d38e38b204172ee1ae/arthur_client-1.4.2324-py3-none-any.whl", hash = "sha256:fbb7fb8e7ee16f891bba29bb3dbee33913b04d7fa3ff7b81f59f7058ab76a1f1", size = 1545378, upload-time = "2026-08-12T15:14:51.023Z" },
 ]
 
 [[package]]
 name = "arthur-common"
-version = "2.4.68"
+version = "2.4.69"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "datasketches" },
@@ -187,9 +187,9 @@ dependencies = [
     { name = "types-requests" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/24/34/4c7b65dd2d41a0e178ebab4314a455ffe18bf4bbc6a1a352d7f500f760c0/arthur_common-2.4.68.tar.gz", hash = "sha256:a8f4960f0d1e635ae5e341b671712ded3fc63eee6190ae4800d5b74ddeb313b8", size = 14638007, upload-time = "2026-07-30T21:59:30.512Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/21/c4/8453bb5f4423b7762c69f6040c572dc1613e333c5f50d16f20ee6a20bd84/arthur_common-2.4.69.tar.gz", hash = "sha256:6ee9ab32e3505e446c255abbf339f36c652ac80fa46bbff83e538295245f560e", size = 14649954, upload-time = "2026-08-12T20:07:29.363Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b7/6e/c4e3916d312d3d30c6530bf46403284279b139fd4b28f37c5bf7f3e26004/arthur_common-2.4.68-py3-none-any.whl", hash = "sha256:e4f309abee953aceac9dd35134cb16e0a0244903107297f53c1dcd705bdeb6a6", size = 86411, upload-time = "2026-07-30T21:59:28.738Z" },
+    { url = "https://files.pythonhosted.org/packages/89/54/8a843765b5bd114a6ce8139d0fe357e1001181a767a16950304fd391f5ce/arthur_common-2.4.69-py3-none-any.whl", hash = "sha256:7b39ccaa8c190ead89ff82b92ecdb50058bb7d17a30b28efd070a026e4a54e33", size = 86409, upload-time = "2026-08-12T20:07:27.655Z" },
 ]
 
 [[package]]
@@ -870,7 +870,7 @@ wheels = [
 
 [[package]]
 name = "google-cloud-bigquery"
-version = "3.42.2"
+version = "3.43.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "google-api-core", extra = ["grpc"] },
@@ -881,9 +881,9 @@ dependencies = [
     { name = "python-dateutil" },
     { name = "requests" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a0/7a/6109aa1803b0c8c93c7064e0e555cff1b12e1692b7b7bc63cdc1619e3722/google_cloud_bigquery-3.42.2.tar.gz", hash = "sha256:08d4b264e5ee4790f719724c76b538f204b7190999328a2f1a6a95eaab74ca39", size = 517250, upload-time = "2026-07-08T17:03:40.675Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/99/a2/5ee4a9eae62dbd61e59504458d5cf870809f790ed136967d94c294b9a3ba/google_cloud_bigquery-3.43.0.tar.gz", hash = "sha256:e3dc25ab9ac8b2b089408493177d4d4508b098c80c3931786fbc20b075298fe6", size = 519709, upload-time = "2026-08-06T06:24:11.919Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ab/ee/3f3ff62d4ce39e6868ef9b98bea0af46f0c9c270092ef64d2bb5897c6e11/google_cloud_bigquery-3.42.2-py3-none-any.whl", hash = "sha256:41658c19e8ed5b83307011b4e55aca3b1f72052545a22788f1d637984615173f", size = 264272, upload-time = "2026-07-08T17:03:09.511Z" },
+    { url = "https://files.pythonhosted.org/packages/67/c0/f491506bdff4d73750f74cf18fea7d6ca409ada2f81c4c4d10a32edf5688/google_cloud_bigquery-3.43.0-py3-none-any.whl", hash = "sha256:a39217f14f215472ce9da816f20ebaf77fdb1db7ccdc8360772d8bf6bafb55c2", size = 265159, upload-time = "2026-08-06T06:23:04.281Z" },
 ]
 
 [[package]]
@@ -1375,7 +1375,7 @@ wheels = [
 
 [[package]]
 name = "litellm"
-version = "1.93.0"
+version = "1.96.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
@@ -1387,14 +1387,20 @@ dependencies = [
     { name = "jsonschema" },
     { name = "openai" },
     { name = "pydantic" },
+    { name = "pydantic-settings" },
     { name = "python-dotenv" },
     { name = "tiktoken" },
     { name = "tokenizers" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/93/e1/4f05ca4cbb4efb739c9e66a182ecd5c816bc05bf3665ec8e0fb4ab408379/litellm-1.93.0.tar.gz", hash = "sha256:140bf215e264c71601bca9c06d2436c5451bb59e1e195ea23fc2d3d87b6929ec", size = 15948866, upload-time = "2026-07-19T03:01:24.389Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/d0/92/1171e76f2a4204a65adb5c827475e4f1d30e7c6a89d3d3e944d58b6fd8a6/litellm-1.96.0.tar.gz", hash = "sha256:340a9b04e1bf8486b0b99f3f6a5556aa59c8f9c16b11b362c95eabea1bcf7a9d", size = 17679976, upload-time = "2026-08-09T01:36:56.266Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f5/e1/eabe3f13d9c8b853a01377b59e78a295f34c24c36b09e5fc1c60c0167f19/litellm-1.93.0-cp313-cp313-manylinux_2_28_aarch64.whl", hash = "sha256:23b8eea4fb8b3b6ade05e7b6085ec9ca12daffcfb38d033d0bbce9c1d5894da5", size = 20164863, upload-time = "2026-07-19T03:01:12.035Z" },
-    { url = "https://files.pythonhosted.org/packages/64/49/2db5757f7e284eb12618b547cb62dab49687ffaf1d749ca048210e3d0dbd/litellm-1.93.0-cp313-cp313-manylinux_2_28_x86_64.whl", hash = "sha256:98c15e84d32e922a821c105308bf9ddae8700de9ed396530bee2cbb1cacf4cbb", size = 20157288, upload-time = "2026-07-19T03:01:15.395Z" },
+    { url = "https://files.pythonhosted.org/packages/2b/1e/ac71d20d3c5df942d8877b834e5db190b77395317f436e59c77e5c8b0ef3/litellm-1.96.0-cp313-cp313-macosx_10_12_x86_64.whl", hash = "sha256:baf13fd3176a569b2924e2c4bb4e82da03a11e1a7cf4144ea2d92a1b40d87c17", size = 25933352, upload-time = "2026-08-09T01:36:17.98Z" },
+    { url = "https://files.pythonhosted.org/packages/ed/1e/76c666f9ba4e0a20d8b3fca8f0af369f97d2e2c2a4874b10b4f344c6bed7/litellm-1.96.0-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:26d2ae2a5f8a839b757cfb7744ffa0c95f225c583984b99352887fcf4e5456ef", size = 25643356, upload-time = "2026-08-09T01:36:20.535Z" },
+    { url = "https://files.pythonhosted.org/packages/56/fc/48cdbdb1fc6d0ec573bb9b1c04fe81528d84886e1cde0100d4c38e0238f1/litellm-1.96.0-cp313-cp313-manylinux_2_28_aarch64.whl", hash = "sha256:887fd96224c2197897b1df309e9e8d984196a3d18472f908a6aa5a371e569b25", size = 26580407, upload-time = "2026-08-09T01:36:23.345Z" },
+    { url = "https://files.pythonhosted.org/packages/cc/48/c1bddb7e7c328816a0136d94afa455279b825d13e1507b669da2e2be78b8/litellm-1.96.0-cp313-cp313-manylinux_2_28_x86_64.whl", hash = "sha256:1a75d7718fc72e526501d568c01f50278206106d1db7d77e6c34973e0877a77f", size = 26444531, upload-time = "2026-08-09T01:36:26.24Z" },
+    { url = "https://files.pythonhosted.org/packages/c7/63/0f4109c7e19bb78735e87f9fcca565750d49a71b022941ba89366f764cd5/litellm-1.96.0-cp313-cp313-musllinux_1_2_aarch64.whl", hash = "sha256:217191eeb91561372e1f079f2925a15753f1c41955256e09e11787d7c1dca94b", size = 26653932, upload-time = "2026-08-09T01:36:28.81Z" },
+    { url = "https://files.pythonhosted.org/packages/65/9e/812d87aee7db46f9cde44ce96aec25de90f1c4f356def2bb7f6d1ec0a011/litellm-1.96.0-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:b1cc10ba307cb31e9a799bfcdcfed4cb0a558c5cfb867a970cc6159d6ec649bc", size = 26861204, upload-time = "2026-08-09T01:36:31.467Z" },
+    { url = "https://files.pythonhosted.org/packages/61/80/0d276c052f54386a491571792818d7e24e3bcf2a1fae45f431cdb4b8c15f/litellm-1.96.0-cp313-cp313-win_amd64.whl", hash = "sha256:d64c7746768aa2df6a85d63bb6ea0a092488584131ed5e0d49e52e4088e60d20", size = 25054138, upload-time = "2026-08-09T01:36:34.391Z" },
 ]
 
 [[package]]
@@ -1533,8 +1539,8 @@ linters = [
 [package.metadata]
 requires-dist = [
     { name = "adlfs", specifier = "==2025.8.0" },
-    { name = "arthur-client", specifier = "==1.4.2299" },
-    { name = "arthur-common", specifier = "==2.4.68" },
+    { name = "arthur-client", specifier = "==1.4.2324" },
+    { name = "arthur-common", specifier = "==2.4.69" },
     { name = "croniter", specifier = "==6.2.4" },
     { name = "databricks-sdk", specifier = ">=0.84.0,<1" },
     { name = "databricks-sqlalchemy", specifier = ">=2.0,<3" },
@@ -1544,7 +1550,7 @@ requires-dist = [
     { name = "fsspec", specifier = "==2025.12.0" },
     { name = "gcsfs", specifier = "==2025.12.0" },
     { name = "google-cloud-aiplatform", specifier = ">=1.68.0,<2" },
-    { name = "google-cloud-bigquery", specifier = "==3.42.2" },
+    { name = "google-cloud-bigquery", specifier = "==3.43.0" },
     { name = "google-cloud-trace", specifier = ">=1.13.0,<2" },
     { name = "gunicorn", specifier = ">=26,<27" },
     { name = "httpx", specifier = "==0.28.1" },
@@ -2091,6 +2097,20 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/1a/d9/c248c103856f807ef70c18a4f986693a46a8ffe1602e5d361485da502d20/pydantic_core-2.41.5-cp313-cp313-win32.whl", hash = "sha256:650ae77860b45cfa6e2cdafc42618ceafab3a2d9a3811fcfbd3bbf8ac3c40d36", size = 1994679, upload-time = "2025-11-04T13:40:50.619Z" },
     { url = "https://files.pythonhosted.org/packages/9e/8b/341991b158ddab181cff136acd2552c9f35bd30380422a639c0671e99a91/pydantic_core-2.41.5-cp313-cp313-win_amd64.whl", hash = "sha256:79ec52ec461e99e13791ec6508c722742ad745571f234ea6255bed38c6480f11", size = 2019766, upload-time = "2025-11-04T13:40:52.631Z" },
     { url = "https://files.pythonhosted.org/packages/73/7d/f2f9db34af103bea3e09735bb40b021788a5e834c81eedb541991badf8f5/pydantic_core-2.41.5-cp313-cp313-win_arm64.whl", hash = "sha256:3f84d5c1b4ab906093bdc1ff10484838aca54ef08de4afa9de0f5f14d69639cd", size = 1981005, upload-time = "2025-11-04T13:40:54.734Z" },
+]
+
+[[package]]
+name = "pydantic-settings"
+version = "2.15.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pydantic" },
+    { name = "python-dotenv" },
+    { name = "typing-inspection" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/68/ca/31c57507b13119d7d3cfa1576dad2911a4861e3be07b579395f4e9d393f9/pydantic_settings-2.15.0.tar.gz", hash = "sha256:694b793e84f766ba76a90ebdefc01d0a9a045dab0382bee70393da93712ad117", size = 261253, upload-time = "2026-08-07T09:24:57.419Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/30/a4/2bffa9f8e804325a09867f0e9d30795c80ea9f8d62560bd1b6ad6220eb2f/pydantic_settings-2.15.0-py3-none-any.whl", hash = "sha256:0ba092c291c94baceb5eff768aa0d56400a457585bc0175925a5a5510303da42", size = 69413, upload-time = "2026-08-07T09:24:55.839Z" },
 ]
 
 [[package]]
