@@ -2241,7 +2241,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         user_ids: list[str] | None = None,
         annotation_score: int | None = None,
         annotation_type: str | None = None,
-        continuous_eval_run_status: str | None = None,
+        continuous_eval_run_status: str | list[str] | None = None,
         continuous_eval_name: str | None = None,
         include_spans: bool | None = None,
         # Query relevance filters
@@ -3114,6 +3114,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         page: int = None,
         page_size: int = None,
         search: str = None,
+        sort: str = None,
     ) -> tuple[int, DatasetVersionResponse]:
         """Get a dataset version."""
         path = f"/api/v2/datasets/{dataset_id}/versions/{version_number}"
@@ -3124,6 +3125,8 @@ class GenaiEngineTestClientBase(httpx.Client):
             params["page_size"] = page_size
         if search is not None:
             params["search"] = search
+        if sort is not None:
+            params["sort"] = sort
 
         url = path
         if params:
