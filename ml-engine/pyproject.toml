@@ -33,7 +33,7 @@ dependencies = [
   "types-psutil==7.2.2.20260518",
   "types-requests==2.33.0.20260712",
   "psutil==7.2.2",
-  "pyarrow==23.0.1",
+  "pyarrow==25.0.0",
   "arthur-common==2.4.68",
   "gunicorn>=26,<27",
   "sqlalchemy==2.0.51",
