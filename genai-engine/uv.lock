@@ -185,7 +185,7 @@ wheels = [
 
 [[package]]
 name = "arthur-genai-engine"
-version = "2.1.773"
+version = "2.1.780"
 source = { editable = "." }
 dependencies = [
     { name = "alembic" },
@@ -309,7 +309,7 @@ requires-dist = [
     { name = "langchain-openai", specifier = "==1.4.1" },
     { name = "langsmith", specifier = "==0.10.11" },
     { name = "litellm", specifier = "==1.93.0" },
-    { name = "more-itertools", specifier = "==10.8.0" },
+    { name = "more-itertools", specifier = "==11.1.0" },
     { name = "msgpack", specifier = "==1.2.1" },
     { name = "newrelic", specifier = "==10.17.0" },
     { name = "nltk", specifier = "==3.10.0" },
@@ -2157,11 +2157,11 @@ wheels = [
 
 [[package]]
 name = "more-itertools"
-version = "10.8.0"
+version = "11.1.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/ea/5d/38b681d3fce7a266dd9ab73c66959406d565b3e85f21d5e66e1181d93721/more_itertools-10.8.0.tar.gz", hash = "sha256:f638ddf8a1a0d134181275fb5d58b086ead7c6a72429ad725c67503f13ba30bd", size = 137431, upload-time = "2025-09-02T15:23:11.018Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/de/1d/f4da6f02cdffe04d6362210b807146a26044c88d839208aec273bb0d9184/more_itertools-11.1.0.tar.gz", hash = "sha256:48e8f4d9e7e5878571ecf6f2b4e57634f93cd474cc8cfbd2376f2d11b396e30d", size = 145772, upload-time = "2026-05-22T14:14:29.909Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a4/8e/469e5a4a2f5855992e425f3cb33804cc07bf18d48f2db061aec61ce50270/more_itertools-10.8.0-py3-none-any.whl", hash = "sha256:52d4362373dcf7c52546bc4af9a86ee7c4579df9a8dc268be0a2f949d376cc9b", size = 69667, upload-time = "2025-09-02T15:23:09.635Z" },
+    { url = "https://files.pythonhosted.org/packages/e8/3d/1087453384dbde46a8c7f9356eead2c58be8a7bf156bca40243377c85715/more_itertools-11.1.0-py3-none-any.whl", hash = "sha256:4b65538ae22f6fed0ce4874efd317463a7489796a0939fa66824dd542125a192", size = 72226, upload-time = "2026-05-22T14:14:28.824Z" },
 ]
 
 [[package]]
