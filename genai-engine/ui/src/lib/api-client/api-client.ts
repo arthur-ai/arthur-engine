@@ -5879,8 +5879,11 @@ export interface ListSpansMetadataApiV1TracesSpansGetParams {
    * Filter by continuous eval name.
    */
   continuous_eval_name?: string;
-  /** Filter by trace annotation run status (e.g. 'passed', 'failed', etc.). */
-  continuous_eval_run_status?: ContinuousEvalRunStatus;
+  /**
+   * Continuous Eval Run Status
+   * Continuous eval run statuses to filter on (e.g. 'passed', 'failed', etc.). Optional.
+   */
+  continuous_eval_run_status?: ContinuousEvalRunStatus[] | null;
   /**
    * End Time
    * Exclusive end date in ISO8601 string format. Use local time (not UTC).
@@ -6275,8 +6278,11 @@ export interface ListTracesMetadataApiV1TracesGetParams {
    * Filter by continuous eval name.
    */
   continuous_eval_name?: string;
-  /** Filter by trace annotation run status (e.g. 'passed', 'failed', etc.). */
-  continuous_eval_run_status?: ContinuousEvalRunStatus;
+  /**
+   * Continuous Eval Run Status
+   * Continuous eval run statuses to filter on (e.g. 'passed', 'failed', etc.). Optional.
+   */
+  continuous_eval_run_status?: ContinuousEvalRunStatus[] | null;
   /**
    * End Time
    * Exclusive end date in ISO8601 string format. Use local time (not UTC).
@@ -8535,8 +8541,11 @@ export interface QuerySpansV1TracesQueryGetParams {
    * Filter by continuous eval name.
    */
   continuous_eval_name?: string;
-  /** Filter by trace annotation run status (e.g. 'passed', 'failed', etc.). */
-  continuous_eval_run_status?: ContinuousEvalRunStatus;
+  /**
+   * Continuous Eval Run Status
+   * Continuous eval run statuses to filter on (e.g. 'passed', 'failed', etc.). Optional.
+   */
+  continuous_eval_run_status?: ContinuousEvalRunStatus[] | null;
   /**
    * End Time
    * Exclusive end date in ISO8601 string format. Use local time (not UTC).
@@ -8873,8 +8882,11 @@ export interface QuerySpansWithMetricsV1TracesMetricsGetParams {
    * Filter by continuous eval name.
    */
   continuous_eval_name?: string;
-  /** Filter by trace annotation run status (e.g. 'passed', 'failed', etc.). */
-  continuous_eval_run_status?: ContinuousEvalRunStatus;
+  /**
+   * Continuous Eval Run Status
+   * Continuous eval run statuses to filter on (e.g. 'passed', 'failed', etc.). Optional.
+   */
+  continuous_eval_run_status?: ContinuousEvalRunStatus[] | null;
   /**
    * End Time
    * Exclusive end date in ISO8601 string format. Use local time (not UTC).

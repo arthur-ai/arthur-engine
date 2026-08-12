@@ -2241,7 +2241,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         user_ids: list[str] | None = None,
         annotation_score: int | None = None,
         annotation_type: str | None = None,
-        continuous_eval_run_status: str | None = None,
+        continuous_eval_run_status: str | list[str] | None = None,
         continuous_eval_name: str | None = None,
         include_spans: bool | None = None,
         # Query relevance filters
