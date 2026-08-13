@@ -91,7 +91,7 @@ routes_security_check = "routes_security_check:main"
 dev = [
   "pytest==9.1.1",
   "pytest-asyncio==1.4.0",
-  "pytest-cov==6.3.0",
+  "pytest-cov==7.1.0",
   "pre-commit==4.6.1",
   "types-cachetools>=6.2.0.20251022",
 ]
