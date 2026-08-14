@@ -5,6 +5,39 @@ The intention of this changelog is to document API changes as they happen to eff
 # 08/07/2026
 - **CHANGE** for **URL**: /api/v1/model_providers/{provider}/model_whitelist  endpoint added
 - **CHANGE** for **URL**: /api/v1/model_providers/{provider}/model_whitelist  endpoint added
+# 08/11/2026
+- **BREAKING CHANGE** for **URL**: /api/v1/traces  removed the enum value 'error' from the 'query' request parameter 'continuous_eval_run_status'
+- **BREAKING CHANGE** for **URL**: /api/v1/traces  removed the enum value 'failed' from the 'query' request parameter 'continuous_eval_run_status'
+- **BREAKING CHANGE** for **URL**: /api/v1/traces  removed the enum value 'passed' from the 'query' request parameter 'continuous_eval_run_status'
+- **BREAKING CHANGE** for **URL**: /api/v1/traces  removed the enum value 'pending' from the 'query' request parameter 'continuous_eval_run_status'
+- **BREAKING CHANGE** for **URL**: /api/v1/traces  removed the enum value 'running' from the 'query' request parameter 'continuous_eval_run_status'
+- **BREAKING CHANGE** for **URL**: /api/v1/traces  removed the enum value 'skipped' from the 'query' request parameter 'continuous_eval_run_status'
+- **BREAKING CHANGE** for **URL**: /api/v1/traces  'query' request parameter 'continuous_eval_run_status' list-of-types was narrowed by removing types 'string'
+- **BREAKING CHANGE** for **URL**: /api/v1/traces/spans  removed the enum value 'error' from the 'query' request parameter 'continuous_eval_run_status'
+- **BREAKING CHANGE** for **URL**: /api/v1/traces/spans  removed the enum value 'failed' from the 'query' request parameter 'continuous_eval_run_status'
+- **BREAKING CHANGE** for **URL**: /api/v1/traces/spans  removed the enum value 'passed' from the 'query' request parameter 'continuous_eval_run_status'
+- **BREAKING CHANGE** for **URL**: /api/v1/traces/spans  removed the enum value 'pending' from the 'query' request parameter 'continuous_eval_run_status'
+- **BREAKING CHANGE** for **URL**: /api/v1/traces/spans  removed the enum value 'running' from the 'query' request parameter 'continuous_eval_run_status'
+- **BREAKING CHANGE** for **URL**: /api/v1/traces/spans  removed the enum value 'skipped' from the 'query' request parameter 'continuous_eval_run_status'
+- **BREAKING CHANGE** for **URL**: /api/v1/traces/spans  'query' request parameter 'continuous_eval_run_status' list-of-types was narrowed by removing types 'string'
+- **BREAKING CHANGE** for **URL**: /v1/traces/metrics/  removed the enum value 'error' from the 'query' request parameter 'continuous_eval_run_status'
+- **BREAKING CHANGE** for **URL**: /v1/traces/metrics/  removed the enum value 'failed' from the 'query' request parameter 'continuous_eval_run_status'
+- **BREAKING CHANGE** for **URL**: /v1/traces/metrics/  removed the enum value 'passed' from the 'query' request parameter 'continuous_eval_run_status'
+- **BREAKING CHANGE** for **URL**: /v1/traces/metrics/  removed the enum value 'pending' from the 'query' request parameter 'continuous_eval_run_status'
+- **BREAKING CHANGE** for **URL**: /v1/traces/metrics/  removed the enum value 'running' from the 'query' request parameter 'continuous_eval_run_status'
+- **BREAKING CHANGE** for **URL**: /v1/traces/metrics/  removed the enum value 'skipped' from the 'query' request parameter 'continuous_eval_run_status'
+- **BREAKING CHANGE** for **URL**: /v1/traces/metrics/  'query' request parameter 'continuous_eval_run_status' list-of-types was narrowed by removing types 'string'
+- **BREAKING CHANGE** for **URL**: /v1/traces/query  removed the enum value 'error' from the 'query' request parameter 'continuous_eval_run_status'
+- **BREAKING CHANGE** for **URL**: /v1/traces/query  removed the enum value 'failed' from the 'query' request parameter 'continuous_eval_run_status'
+- **BREAKING CHANGE** for **URL**: /v1/traces/query  removed the enum value 'passed' from the 'query' request parameter 'continuous_eval_run_status'
+- **BREAKING CHANGE** for **URL**: /v1/traces/query  removed the enum value 'pending' from the 'query' request parameter 'continuous_eval_run_status'
+- **BREAKING CHANGE** for **URL**: /v1/traces/query  removed the enum value 'running' from the 'query' request parameter 'continuous_eval_run_status'
+- **BREAKING CHANGE** for **URL**: /v1/traces/query  removed the enum value 'skipped' from the 'query' request parameter 'continuous_eval_run_status'
+- **BREAKING CHANGE** for **URL**: /v1/traces/query  'query' request parameter 'continuous_eval_run_status' list-of-types was narrowed by removing types 'string'
+- **CHANGE** for **URL**: /api/v1/traces  for the 'query' request parameter 'continuous_eval_run_status', the type/format was generalized from 'string'/'' to ''/''
+- **CHANGE** for **URL**: /api/v1/traces/spans  for the 'query' request parameter 'continuous_eval_run_status', the type/format was generalized from 'string'/'' to ''/''
+- **CHANGE** for **URL**: /v1/traces/metrics/  for the 'query' request parameter 'continuous_eval_run_status', the type/format was generalized from 'string'/'' to ''/''
+- **CHANGE** for **URL**: /v1/traces/query  for the 'query' request parameter 'continuous_eval_run_status', the type/format was generalized from 'string'/'' to ''/''
 
 # 07/31/2026
 - **BREAKING CHANGE** for **URL**: /api/v1/completions  removed '#/components/schemas/LLMResponseFormat-Input' from the 'config/anyOf[subschema #1: LLMPromptRequestConfigSettings]/response_format' request property 'anyOf' list

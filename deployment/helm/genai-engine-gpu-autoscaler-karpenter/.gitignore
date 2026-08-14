@@ -1,0 +1,4 @@
+# Subchart archives + lockfile fetched by `helm dependency build`/`update`.
+# Versions are pinned exactly in Chart.yaml, so these are regenerated, not vendored in git.
+charts/
+Chart.lock

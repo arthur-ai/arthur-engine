@@ -23,4 +23,8 @@ SEGMENTATION_COL_UNIQUE_VALUE_LIMIT: 100
 # Timeout increased to 10 minutes to allow for larger datasets and more complex aggregations
 ML_ENGINE_AGGREGATION_TIMEOUT: 600
 ###############################################
-KEYCLOAK_SSL_VERIFY: true
+# SSL verification for connections to ARTHUR_API_HOST. Defaults to true (see the
+# Config.get_bool default at the call sites). The legacy KEYCLOAK_SSL_VERIFY env
+# var is honored as a fallback for backward compatibility. Left unset here so an
+# explicit KEYCLOAK_SSL_VERIFY override is not shadowed by a value from this file.
+# ARTHUR_API_HOST_SSL_VERIFY: true
