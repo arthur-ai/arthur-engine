@@ -33,14 +33,14 @@ dependencies = [
   "types-psutil==7.2.2.20260518",
   "types-requests==2.33.0.20260712",
   "psutil==7.2.2",
-  "pyarrow==25.0.0",
+  "pyarrow==25.0.1",
   "arthur-common==2.4.69",
   "gunicorn>=26,<27",
   "sqlalchemy==2.0.51",
   "snowflake-sqlalchemy==1.11.0",
   "databricks-sqlalchemy>=2.0,<3",
   "databricks-sdk>=0.84.0,<1",
-  "arthur-client==1.4.2324",
+  "arthur-client==1.4.2331",
 ]
 
 [dependency-groups]
@@ -50,7 +50,7 @@ dev = [
   "pytest-httpserver==1.1.5",
   "pytest-asyncio==1.4.0",
   "pytest-httpx==0.36.2",
-  "pre-commit==4.6.1",
+  "pre-commit==4.6.2",
   "types-pytz>=2025.2.0.20250516",
   "lazy-imports==1.2.0",
 ]
