@@ -17,10 +17,14 @@ from schemas.internal_schemas import (
     GCPServiceAccountCredentials,
     User,
 )
-from schemas.request_schemas import PutModelProviderCredentials
+from schemas.request_schemas import (
+    PutModelProviderCredentials,
+    PutModelProviderWhitelist,
+)
 from schemas.response_schemas import (
     ModelProviderList,
     ModelProviderModelList,
+    ModelProviderWhitelist,
 )
 from utils.users import permission_checker
 
@@ -162,10 +166,87 @@ def get_model_providers_available_models(
         # UP-4461: tenant callers (org-scoped) see only whitelisted models.
         if current_user is not None and current_user.org_scope is not None:
             whitelist = set(Config.tenant_model_whitelist())
-            available_models = [m for m in available_models if m in whitelist]
+            filtered = [m for m in available_models if m in whitelist]
+            if available_models and not filtered:
+                logger.warning(
+                    "Tenant model whitelist and the admin whitelist for provider %s "
+                    "do not overlap; returning an empty model list to org %s.",
+                    provider,
+                    current_user.org_scope,
+                )
+            available_models = filtered
         return ModelProviderModelList(
             provider=provider,
             available_models=available_models,
         )
     finally:
         db_session.close()
+
+
+@model_provider_routes.get(
+    "/model_providers/{provider}/model_whitelist",
+    summary="Get the curated model list for a provider.",
+    description=(
+        "Returns the admin-curated model list for a provider along with the provider's "
+        "full catalog. A null whitelist means all models are exposed."
+    ),
+    tags=["Model Providers"],
+    response_model=ModelProviderWhitelist,
+)
+@permission_checker(
+    permissions=PermissionLevelsEnum.MODEL_PROVIDER_WHITELIST_READ.value,
+)
+def get_model_provider_whitelist(
+    provider: ModelProvider,
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> ModelProviderWhitelist:
+    repo = ModelProviderRepository(db_session)
+    return ModelProviderWhitelist(
+        provider=provider,
+        whitelist=repo.get_model_whitelist(provider),
+        catalog=repo.list_catalog_models_for_provider(provider),
+    )
+
+
+@model_provider_routes.put(
+    "/model_providers/{provider}/model_whitelist",
+    summary="Set the curated model list for a provider.",
+    description=(
+        "Restricts which models appear in model pickers. Send null to expose all "
+        "models. An empty list is rejected."
+    ),
+    tags=["Model Providers"],
+    status_code=HTTP_204_NO_CONTENT,
+    responses={HTTP_204_NO_CONTENT: {"description": "Whitelist updated."}},
+)
+@permission_checker(permissions=PermissionLevelsEnum.MODEL_PROVIDER_WRITE.value)
+def set_model_provider_whitelist(
+    provider: ModelProvider,
+    request: PutModelProviderWhitelist,
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> Response:
+    repo = ModelProviderRepository(db_session)
+
+    if request.models is not None:
+        if len(request.models) == 0:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "model list cannot be empty. Send null to expose all models "
+                    "for this provider."
+                ),
+            )
+        catalog = set(repo.list_catalog_models_for_provider(provider))
+        unknown = sorted(set(request.models) - catalog)
+        if unknown:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"models not offered by provider {provider}: {', '.join(unknown)}"
+                ),
+            )
+
+    repo.set_model_whitelist(provider, request.models)
+    return Response(status_code=HTTP_204_NO_CONTENT)

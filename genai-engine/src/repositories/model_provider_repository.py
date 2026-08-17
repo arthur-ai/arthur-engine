@@ -6,10 +6,10 @@ from typing import Any, Dict, List, Optional
 from arthur_common.models.llm_model_providers import ModelProvider
 from fastapi import HTTPException
 from pydantic import SecretStr
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Query, Session
 from starlette.status import HTTP_400_BAD_REQUEST
 
-from clients.llm.llm_client import LLMClient
+from clients.llm.llm_client import LLMClient, get_static_catalog
 from db_models.secret_storage_models import DatabaseSecretStorage
 from schemas.enums import SecretType
 from schemas.internal_schemas import AwsBedrockCredentials, GCPServiceAccountCredentials
@@ -116,6 +116,37 @@ class ModelProviderRepository:
             "aws_session_name": creds_dict.get("aws_session_name", ""),
         }
 
+    def _provider_secret_query(
+        self,
+        provider: ModelProvider,
+    ) -> Query[DatabaseSecretStorage]:
+        return (
+            self.db_session.query(DatabaseSecretStorage)
+            .where(DatabaseSecretStorage.secret_type == SecretType.MODEL_PROVIDER)
+            .where(DatabaseSecretStorage.name == provider)
+        )
+
+    def _get_provider_secret(
+        self,
+        provider: ModelProvider,
+    ) -> DatabaseSecretStorage | None:
+        secret: DatabaseSecretStorage | None = self._provider_secret_query(
+            provider,
+        ).first()
+        return secret
+
+    def _require_provider_secret(
+        self,
+        provider: ModelProvider,
+    ) -> DatabaseSecretStorage:
+        secret = self._get_provider_secret(provider)
+        if secret is None:
+            raise HTTPException(
+                status_code=HTTP_400_BAD_REQUEST,
+                detail=f"model provider {provider} is not configured",
+            )
+        return secret
+
     def validate_model_provider_credentials(
         self,
         provider: ModelProvider,
@@ -193,12 +224,7 @@ class ModelProviderRepository:
         aws_bedrock_credentials: AwsBedrockCredentials | None = None,
     ) -> None:
         # first check if this provider already exists
-        existing_provider = (
-            self.db_session.query(DatabaseSecretStorage)
-            .where(DatabaseSecretStorage.secret_type == SecretType.MODEL_PROVIDER)
-            .where(DatabaseSecretStorage.name == provider)
-            .first()
-        )
+        existing_provider = self._get_provider_secret(provider)
         secret_data = self._format_creds_for_provider_secret(api_key, api_base)
 
         vertex_credentials_data = None
@@ -245,12 +271,7 @@ class ModelProviderRepository:
         self,
         provider: ModelProvider,
     ) -> None:
-        providers = (
-            self.db_session.query(DatabaseSecretStorage)
-            .where(DatabaseSecretStorage.secret_type == SecretType.MODEL_PROVIDER)
-            .where(DatabaseSecretStorage.name == provider)
-            .all()
-        )
+        providers = self._provider_secret_query(provider).all()
         for provider_db in providers:
             self.db_session.delete(provider_db)
         self.db_session.commit()
@@ -265,17 +286,7 @@ class ModelProviderRepository:
                     "Please configure a real model provider."
                 ),
             )
-        secret = (
-            self.db_session.query(DatabaseSecretStorage)
-            .where(DatabaseSecretStorage.secret_type == SecretType.MODEL_PROVIDER)
-            .where(DatabaseSecretStorage.name == provider)
-            .first()
-        )
-        if not secret:
-            raise HTTPException(
-                status_code=400,
-                detail=f"model provider {provider} is not configured",
-            )
+        secret = self._require_provider_secret(provider)
 
         api_key = None
         if secret.value is not None:
@@ -322,6 +333,41 @@ class ModelProviderRepository:
 
         return providers
 
-    def list_models_for_provider(self, provider: ModelProvider) -> List[str]:
+    def get_model_whitelist(self, provider: ModelProvider) -> list[str] | None:
+        # Tolerates an unconfigured provider: the whitelist editor opens during
+        # first-time setup, before any secret row exists.
+        secret = self._get_provider_secret(provider)
+        if secret is None:
+            return None
+        return secret.model_whitelist
+
+    def set_model_whitelist(
+        self,
+        provider: ModelProvider,
+        models: list[str] | None,
+    ) -> None:
+        secret = self._require_provider_secret(provider)
+        secret.model_whitelist = models
+        secret.updated_at = datetime.now()
+        self.db_session.commit()
+
+    def _catalog_via_client(self, provider: ModelProvider) -> List[str]:
         client = self.get_model_provider_client(provider)
         return client.get_available_models()
+
+    def list_catalog_models_for_provider(self, provider: ModelProvider) -> List[str]:
+        static_catalog = get_static_catalog(provider)
+        if static_catalog is not None:
+            return static_catalog
+        # Reached for hosted_vllm, the one provider litellm's cost map has no entry
+        # for. Its models come from the deployment's own /v1/models, so this path
+        # needs stored credentials and 400s when the provider isn't configured yet.
+        return self._catalog_via_client(provider)
+
+    def list_models_for_provider(self, provider: ModelProvider) -> List[str]:
+        catalog = self._catalog_via_client(provider)
+        whitelist = self.get_model_whitelist(provider)
+        if whitelist is None:
+            return catalog
+        allowed = set(whitelist)
+        return [model for model in catalog if model in allowed]

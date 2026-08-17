@@ -2,6 +2,9 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 08/07/2026
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}/model_whitelist  endpoint added
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}/model_whitelist  endpoint added
 # 08/11/2026
 - **BREAKING CHANGE** for **URL**: /api/v1/traces  removed the enum value 'error' from the 'query' request parameter 'continuous_eval_run_status'
 - **BREAKING CHANGE** for **URL**: /api/v1/traces  removed the enum value 'failed' from the 'query' request parameter 'continuous_eval_run_status'

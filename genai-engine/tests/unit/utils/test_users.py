@@ -47,6 +47,7 @@ TENANT_USER_DISALLOWED = [
     PermissionLevelsEnum.USER_READ,
     PermissionLevelsEnum.USER_WRITE,
     PermissionLevelsEnum.MODEL_PROVIDER_WRITE,
+    PermissionLevelsEnum.MODEL_PROVIDER_WHITELIST_READ,
     PermissionLevelsEnum.DEFAULT_RULES_WRITE,
     PermissionLevelsEnum.APP_CONFIG_READ,
     PermissionLevelsEnum.APP_CONFIG_WRITE,
