@@ -16,8 +16,13 @@ name: Renovate Auto-Fix
 #      before it can merge. This workflow cannot bypass that.
 #   3. Scope/tool guards: runs only on renovate/* branches, only on CI failure,
 #      a bounded retry budget (default 3 attempts, then it hands off to a human),
-#      and the prompt forbids weakening checks or touching CI/test/dependency-pin
-#      files.
+#      and a prompt bounded by invariants rather than a file allowlist. It forbids
+#      weakening checks (the enforced rule set may never shrink), editing .github/
+#      or /renovate.json, and bypassing the 3-day release-age soak. Dependency
+#      constraints MAY be realigned — that is how a half-bumped lockstep family is
+#      repaired — but never by downgrading or capping the package the PR is
+#      updating, lockfiles are regenerated via uv/yarn rather than hand-edited, and
+#      every constraint change must be declared in the self-review comment.
 #
 # Identity split (required by the ruleset's require_last_push_approval +
 # dismiss_stale_reviews_on_push): the fix is PUSHED as the Arthur GitHub
