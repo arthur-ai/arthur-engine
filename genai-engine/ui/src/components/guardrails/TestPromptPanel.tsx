@@ -177,7 +177,7 @@ export const TestPromptPanel: React.FC<TestPromptPanelProps> = ({
         Test prompt
       </Typography>
 
-      <Box data-testid="test-prompt-scroll-container" sx={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
+      <Box data-testid="test-prompt-scroll-container" sx={{ flex: 1, minHeight: 0, overflowY: "auto", pt: 1.5 }}>
         <Stack spacing={2}>
           <form onSubmit={handleSubmit}>
             <Stack spacing={1.5}>
@@ -259,13 +259,7 @@ export const TestPromptPanel: React.FC<TestPromptPanelProps> = ({
                       <Typography variant="subtitle2" sx={{ fontWeight: 600, flex: 1, minWidth: 0 }} noWrap>
                         {rr.name}
                       </Typography>
-                      <Chip
-                        label={rr.result}
-                        size="small"
-                        color={style.chipColor}
-                        variant={style.chipVariant}
-                        sx={{ height: 20, fontSize: 11 }}
-                      />
+                      <Chip label={rr.result} size="small" color={style.chipColor} variant={style.chipVariant} sx={{ height: 20, fontSize: 11 }} />
                       <Typography variant="caption" color="text.disabled">
                         {formatDurationMs(rr.latency_ms)}
                       </Typography>

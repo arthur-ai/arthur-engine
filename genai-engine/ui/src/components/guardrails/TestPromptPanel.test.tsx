@@ -30,6 +30,7 @@ describe("TestPromptPanel", () => {
 
     const scrollContainer = screen.getByTestId("test-prompt-scroll-container");
     expect(getComputedStyle(scrollContainer).overflowY).toBe("auto");
+    expect(getComputedStyle(scrollContainer).paddingTop).toBe("12px");
     expect(scrollContainer.contains(screen.getByRole("button", { name: "Validate" }))).toBe(true);
     expect((screen.getByLabelText("Prompt") as HTMLTextAreaElement).value).toBe(prompt);
   });
