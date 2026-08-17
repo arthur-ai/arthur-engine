@@ -15,7 +15,7 @@ import {
 } from "@mui/material";
 import React, { useEffect, useState } from "react";
 
-import { useApiQuery } from "@/hooks/useApiQuery";
+import { useDatasetRow } from "@/hooks/useDatasetRow";
 import { useUpdateDatasetRowFromExperiment } from "@/hooks/useUpdateDatasetRowFromExperiment";
 
 interface UpdateDatasetRowModalProps {
@@ -40,15 +40,7 @@ export const UpdateDatasetRowModal: React.FC<UpdateDatasetRowModalProps> = ({
   const [selectedColumn, setSelectedColumn] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
 
-  const {
-    data: rowData,
-    isLoading: isLoadingColumns,
-    error: columnsError,
-  } = useApiQuery<"getDatasetVersionRowApiV2DatasetsDatasetIdVersionsVersionNumberRowsRowIdGet">({
-    method: "getDatasetVersionRowApiV2DatasetsDatasetIdVersionsVersionNumberRowsRowIdGet",
-    args: [datasetId, datasetVersion, rowId],
-    enabled: open && !!datasetId && !!rowId,
-  });
+  const { data: rowData, isLoading: isLoadingColumns, error: columnsError } = useDatasetRow(datasetId, datasetVersion, rowId, open);
 
   const columns = rowData?.data.map((col) => col.column_name) ?? [];
 

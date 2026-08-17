@@ -23,7 +23,7 @@ const filterSchema = z.array(
  * Legacy URLs may still have operator="eq" for these fields; migrate them on
  * load so users can see and remove the filter in the current UI.
  */
-const IN_ONLY_FIELDS = new Set(["span_types", "trace_ids", "session_ids", "span_ids", "user_ids"]);
+const IN_ONLY_FIELDS = new Set(["span_types", "trace_ids", "session_ids", "span_ids", "user_ids", "status_code", "continuous_eval_run_status"]);
 
 function migrateLegacyFilters(filters: IncomingFilter[]): IncomingFilter[] {
   return filters.map((filter) => {

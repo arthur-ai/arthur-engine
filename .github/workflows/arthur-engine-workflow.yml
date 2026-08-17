@@ -51,22 +51,22 @@ jobs:
         id: isort
         continue-on-error: true
         run: |
-          uv run --directory genai-engine isort src --profile black --check
+          uv run --no-sync --directory genai-engine isort src --profile black --check
       - name: Run autoflake
         id: autoflake
         continue-on-error: true
         run: |
-          uv run --directory genai-engine autoflake --remove-all-unused-imports --in-place --check --recursive --quiet src
+          uv run --no-sync --directory genai-engine autoflake --remove-all-unused-imports --in-place --check --recursive --quiet src
       - name: Run black
         id: black
         continue-on-error: true
         run: |
-          uv run --directory genai-engine black --check src
+          uv run --no-sync --directory genai-engine black --check src
       - name: Run mypy
         id: mypy
         continue-on-error: true
         run: |
-          uv run --directory genai-engine mypy src
+          uv run --no-sync --directory genai-engine mypy src
       - name: Check linter results
         if: steps.isort.outcome == 'failure' || steps.autoflake.outcome == 'failure' || steps.black.outcome == 'failure' || steps.mypy.outcome == 'failure'
         run: |
@@ -102,22 +102,22 @@ jobs:
         id: isort
         continue-on-error: true
         run: |
-          uv run --directory ml-engine isort src/ml_engine --profile black --check
+          uv run --no-sync --directory ml-engine isort src/ml_engine --profile black --check
       - name: Run autoflake
         id: autoflake
         continue-on-error: true
         run: |
-          uv run --directory ml-engine autoflake --remove-all-unused-imports --in-place --check --recursive --quiet src/ml_engine
+          uv run --no-sync --directory ml-engine autoflake --remove-all-unused-imports --in-place --check --recursive --quiet src/ml_engine
       - name: Run black
         id: black
         continue-on-error: true
         run: |
-          uv run --directory ml-engine black --check src/ml_engine
+          uv run --no-sync --directory ml-engine black --check src/ml_engine
       - name: Run mypy
         id: mypy
         continue-on-error: true
         run: |
-          uv run --directory ml-engine mypy src/ml_engine
+          uv run --no-sync --directory ml-engine mypy src/ml_engine
       - name: Check linter results
         if: steps.isort.outcome == 'failure' || steps.autoflake.outcome == 'failure' || steps.black.outcome == 'failure' || steps.mypy.outcome == 'failure'
         run: |
@@ -151,7 +151,7 @@ jobs:
           GENAI_ENGINE_DEMO_MODE: ENABLED
           PYTHONPATH: src
         run: |
-          uv run --directory genai-engine generate_changelog
+          uv run --no-sync --directory genai-engine generate_changelog
       - name: Upload artifacts on failure
         if: failure()
         uses: actions/upload-artifact@v4
@@ -201,6 +201,12 @@ jobs:
               - 'genai-engine/Dockerfile*'
               - 'genai-engine/docker-compose.yml'
               - 'arthur-observability-sdk/**'
+              # Changes to the CI plumbing itself must exercise the jobs they
+              # affect, otherwise a broken workflow edit passes as an all-skipped
+              # green run and only surfaces in the merge queue, where it blocks
+              # everyone.
+              - '.github/workflows/arthur-engine-workflow.yml'
+              - '.github/workflows/composite-actions/**'
       # In the merge queue there is no PR base to diff against, and paths-filter's
       # base detection is unreliable on merge_group. Run the full required suite as
       # the final pre-merge gate instead of trying to narrow it by path.
@@ -239,6 +245,9 @@ jobs:
               - 'ml-engine/**'
               - 'arthur-observability-sdk/**'
               - 'genai-engine/staging.openapi.json'
+              # See the note in check-genai-engine-changes.
+              - '.github/workflows/arthur-engine-workflow.yml'
+              - '.github/workflows/composite-actions/**'
       # In the merge queue, run the full required suite (see note above).
       - name: Decide affected areas
         id: decide
@@ -336,7 +345,7 @@ jobs:
           GENAI_ENGINE_SECRET_STORE_KEY: changeme_secret_store_key
         run: |
           set -o pipefail
-          uv run --directory genai-engine pytest --cov --cov=src \
+          uv run --no-sync --directory genai-engine pytest --cov --cov=src \
             --cov-report term \
             --junitxml=report.xml \
             -m "unit_tests" | tee pytest-coverage.txt
@@ -393,7 +402,7 @@ jobs:
           PYTHONPATH: "src:$PYTHONPATH"
         run: |
           cd genai-engine
-          uv run alembic upgrade head
+          uv run --no-sync alembic upgrade head
 
   run-ml-engine-unit-tests:
     needs: check-ml-engine-changes
@@ -422,7 +431,7 @@ jobs:
             --skip-validate-spec --package-name genai_client
       - name: Run unit-tests
         run: |
-          uv run --directory ml-engine pytest tests/unit
+          uv run --no-sync --directory ml-engine pytest tests/unit
 
   build-genai-engine-docker-images:
     environment: shared-protected-branch-secrets

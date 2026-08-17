@@ -1,5 +1,5 @@
 import { IncomingFilter, Operators } from "@arthur/shared-components";
-import { queryOptions, useQuery } from "@tanstack/react-query";
+import { keepPreviousData, queryOptions, useInfiniteQuery, useQuery } from "@tanstack/react-query";
 
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
@@ -12,6 +12,32 @@ export const useContinuousEvals = ({ pagination, filters = [] }: { pagination: P
   const api = useApi()!;
 
   return useQuery(continuousEvalsQueryOptions({ api, taskId: task!.id, pagination, filters }));
+};
+
+export const useInfiniteContinuousEvals = ({ pageSize, filters = [] }: { pageSize: number; filters?: IncomingFilter[] }) => {
+  const { task } = useTask();
+  const api = useApi()!;
+  const taskId = task!.id;
+
+  return useInfiniteQuery({
+    queryKey: [queryKeys.continuousEvals.all(taskId), "infinite", { pageSize }, filters],
+    queryFn: async ({ pageParam }) => {
+      const response = await api.api.listContinuousEvalsApiV1TasksTaskIdContinuousEvalsGet({
+        taskId,
+        page: pageParam,
+        page_size: pageSize,
+        ...mapFiltersToRequest(filters),
+      });
+      return response.data;
+    },
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, allPages) => {
+      if ((lastPage.evals?.length ?? 0) === 0) return undefined;
+      const loaded = allPages.reduce((sum, page) => sum + (page.evals?.length ?? 0), 0);
+      return loaded < lastPage.count ? allPages.length : undefined;
+    },
+    placeholderData: keepPreviousData,
+  });
 };
 
 export const continuousEvalsQueryOptions = ({
