@@ -153,15 +153,36 @@ jobs:
             echo "proceed=true" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Set up Arthur Engine tracing
+        if: steps.guard.outputs.proceed == 'true' && vars.GENAI_ENGINE_TASK_ID != ''
+        run: |
+          set -euo pipefail
+          pip install --quiet opentelemetry-sdk opentelemetry-exporter-otlp-proto-http
+          mkdir -p .claude/hooks
+          cp integrations/claude-code-observability/claude_code_tracer.py .claude/hooks/claude_code_tracer.py
+
       - name: Claude auto-fix (edits + self-verify only; no commit)
         if: steps.guard.outputs.proceed == 'true'
         # The success marker lives OUTSIDE the repo (in RUNNER_TEMP) so it cannot be
         # committed to the PR branch to forge a "verified" signal.
         env:
           AUTOFIX_MARKER: ${{ runner.temp }}/claude-autofix-success
+          GENAI_ENGINE_API_KEY: ${{ secrets.GENAI_ENGINE_API_KEY }}
+          GENAI_ENGINE_TASK_ID: ${{ vars.GENAI_ENGINE_TASK_ID }}
+          GENAI_ENGINE_TRACE_ENDPOINT: ${{ vars.GENAI_ENGINE_TRACE_ENDPOINT }}
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          settings: |
+            {
+              "hooks": {
+                "UserPromptSubmit": [{"matcher": "", "hooks": [{"type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/claude_code_tracer.py\" user_prompt_submit"}]}],
+                "PreToolUse": [{"matcher": "", "hooks": [{"type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/claude_code_tracer.py\" pre_tool"}]}],
+                "PostToolUse": [{"matcher": "", "hooks": [{"type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/claude_code_tracer.py\" post_tool"}]}],
+                "PostToolUseFailure": [{"matcher": "", "hooks": [{"type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/claude_code_tracer.py\" post_tool_failure"}]}],
+                "Stop": [{"matcher": "", "hooks": [{"type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/claude_code_tracer.py\" stop"}]}]
+              }
+            }
           # Allow the action to run even though the PR was authored by a bot.
           allowed_bots: "renovate[bot]"
           additional_permissions: |
