@@ -177,107 +177,107 @@ export const TestPromptPanel: React.FC<TestPromptPanelProps> = ({
         Test prompt
       </Typography>
 
-      <Box data-testid="test-prompt-scroll-container" sx={{ flex: 1, minHeight: 0, overflowY: "auto", pt: 1.5, "&&":{ mt: 0 } }}>
-          <form onSubmit={handleSubmit}>
-            <Stack spacing={1.5}>
-              <TextField
-                label="Prompt"
-                placeholder="Optional — user prompt to validate."
-                value={prompt}
-                onChange={onFieldChange(setPrompt)}
-                multiline
-                minRows={4}
-                fullWidth
-                disabled={validating}
-              />
-              <TextField
-                label="Response"
-                placeholder="Optional — LLM response to validate."
-                value={response}
-                onChange={onFieldChange(setResponse)}
-                multiline
-                minRows={3}
-                fullWidth
-                disabled={validating}
-              />
-              <TextField
-                label="Context"
-                placeholder="Optional — grounding context (required for hallucination checks)."
-                value={context}
-                onChange={onFieldChange(setContext)}
-                multiline
-                minRows={2}
-                fullWidth
-                disabled={validating}
-                helperText="Provide at least a prompt or a response."
-              />
-              {!hasEnabledRules && <Alert severity="info">No enabled rules on this task. Add or enable a rule to test.</Alert>}
-              {hasEnabledRules && inputHint && (
-                <Typography variant="caption" color="text.secondary">
-                  {inputHint}
-                </Typography>
-              )}
-              <Box>
-                <Button type="submit" variant="contained" disabled={!canSubmit} sx={{ minWidth: 140 }}>
-                  {validating ? <CircularProgress size={20} sx={{ color: "inherit" }} /> : "Validate"}
-                </Button>
-              </Box>
-            </Stack>
-          </form>
-
-          {error && <Alert severity="error">{error}</Alert>}
-
-          {results && (
-            <Stack spacing={1.5}>
-              <Typography variant="subtitle2" sx={{ color: "text.secondary" }}>
-                Results ({ruleResults.length})
+      <Box data-testid="test-prompt-scroll-container" sx={{ flex: 1, minHeight: 0, overflowY: "auto", pt: 1.5, "&&": { mt: 0 } }}>
+        <form onSubmit={handleSubmit}>
+          <Stack spacing={1.5}>
+            <TextField
+              label="Prompt"
+              placeholder="Optional — user prompt to validate."
+              value={prompt}
+              onChange={onFieldChange(setPrompt)}
+              multiline
+              minRows={4}
+              fullWidth
+              disabled={validating}
+            />
+            <TextField
+              label="Response"
+              placeholder="Optional — LLM response to validate."
+              value={response}
+              onChange={onFieldChange(setResponse)}
+              multiline
+              minRows={3}
+              fullWidth
+              disabled={validating}
+            />
+            <TextField
+              label="Context"
+              placeholder="Optional — grounding context (required for hallucination checks)."
+              value={context}
+              onChange={onFieldChange(setContext)}
+              multiline
+              minRows={2}
+              fullWidth
+              disabled={validating}
+              helperText="Provide at least a prompt or a response."
+            />
+            {!hasEnabledRules && <Alert severity="info">No enabled rules on this task. Add or enable a rule to test.</Alert>}
+            {hasEnabledRules && inputHint && (
+              <Typography variant="caption" color="text.secondary">
+                {inputHint}
               </Typography>
+            )}
+            <Box>
+              <Button type="submit" variant="contained" disabled={!canSubmit} sx={{ minWidth: 140 }}>
+                {validating ? <CircularProgress size={20} sx={{ color: "inherit" }} /> : "Validate"}
+              </Button>
+            </Box>
+          </Stack>
+        </form>
 
-              {ruleResults.length === 0 && (
-                <Typography variant="body2" color="text.secondary">
-                  No rules ran for this input.
-                </Typography>
-              )}
+        {error && <Alert severity="error">{error}</Alert>}
 
-              {ruleResults.map((rr) => {
-                const lines = buildDetailLines(rr);
-                const style = RESULT_STYLE[classifyResult(rr.result)];
-                const showAsReason = style.treatMessageAsReason && lines.length > 0;
-                return (
-                  <Box
-                    key={rr.id}
-                    sx={{
-                      border: "1px solid",
-                      borderColor: "divider",
-                      borderRadius: 1,
-                      p: 1.5,
-                    }}
-                  >
-                    <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: lines.length > 0 ? 0.75 : 0 }}>
-                      {style.icon}
-                      <Typography variant="subtitle2" sx={{ fontWeight: 600, flex: 1, minWidth: 0 }} noWrap>
-                        {rr.name}
-                      </Typography>
-                      <Chip label={rr.result} size="small" color={style.chipColor} variant={style.chipVariant} sx={{ height: 20, fontSize: 11 }} />
-                      <Typography variant="caption" color="text.disabled">
-                        {formatDurationMs(rr.latency_ms)}
-                      </Typography>
-                    </Stack>
-                    {showAsReason && (
-                      <Typography variant="caption" sx={{ display: "block", pl: 3, color: style.reasonColor, fontWeight: 500 }}>
-                        Reason: {lines[0]}
-                      </Typography>
-                    )}
-                    {lines.slice(showAsReason ? 1 : 0).map((line) => (
-                      <Typography key={line} variant="caption" color="text.secondary" sx={{ display: "block", pl: 3 }}>
-                        {line}
-                      </Typography>
-                    ))}
-                  </Box>
-                );
-              })}
-            </Stack>
-          )}
+        {results && (
+          <Stack spacing={1.5}>
+            <Typography variant="subtitle2" sx={{ color: "text.secondary" }}>
+              Results ({ruleResults.length})
+            </Typography>
+
+            {ruleResults.length === 0 && (
+              <Typography variant="body2" color="text.secondary">
+                No rules ran for this input.
+              </Typography>
+            )}
+
+            {ruleResults.map((rr) => {
+              const lines = buildDetailLines(rr);
+              const style = RESULT_STYLE[classifyResult(rr.result)];
+              const showAsReason = style.treatMessageAsReason && lines.length > 0;
+              return (
+                <Box
+                  key={rr.id}
+                  sx={{
+                    border: "1px solid",
+                    borderColor: "divider",
+                    borderRadius: 1,
+                    p: 1.5,
+                  }}
+                >
+                  <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: lines.length > 0 ? 0.75 : 0 }}>
+                    {style.icon}
+                    <Typography variant="subtitle2" sx={{ fontWeight: 600, flex: 1, minWidth: 0 }} noWrap>
+                      {rr.name}
+                    </Typography>
+                    <Chip label={rr.result} size="small" color={style.chipColor} variant={style.chipVariant} sx={{ height: 20, fontSize: 11 }} />
+                    <Typography variant="caption" color="text.disabled">
+                      {formatDurationMs(rr.latency_ms)}
+                    </Typography>
+                  </Stack>
+                  {showAsReason && (
+                    <Typography variant="caption" sx={{ display: "block", pl: 3, color: style.reasonColor, fontWeight: 500 }}>
+                      Reason: {lines[0]}
+                    </Typography>
+                  )}
+                  {lines.slice(showAsReason ? 1 : 0).map((line) => (
+                    <Typography key={line} variant="caption" color="text.secondary" sx={{ display: "block", pl: 3 }}>
+                      {line}
+                    </Typography>
+                  ))}
+                </Box>
+              );
+            })}
+          </Stack>
+        )}
       </Box>
     </Stack>
   );
