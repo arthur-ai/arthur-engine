@@ -128,7 +128,12 @@ const RagConfigVersionDrawer = ({
 
         {isLoading && (
           <Box sx={{ p: 2, textAlign: "center" }}>
-            <Typography variant="body2" color="text.secondary">
+            <Typography
+              variant="body2"
+              sx={{
+                color: "text.secondary",
+              }}
+            >
               Loading versions...
             </Typography>
           </Box>
@@ -144,7 +149,12 @@ const RagConfigVersionDrawer = ({
 
         {!isLoading && !error && sortedVersions.length === 0 && (
           <Box sx={{ p: 2, textAlign: "center" }}>
-            <Typography variant="body2" color="text.secondary">
+            <Typography
+              variant="body2"
+              sx={{
+                color: "text.secondary",
+              }}
+            >
               No versions found
             </Typography>
           </Box>

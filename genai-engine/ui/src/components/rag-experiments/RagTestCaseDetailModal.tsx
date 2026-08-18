@@ -98,10 +98,24 @@ const DatasetRowSection: React.FC<DatasetRowSectionProps> = ({ datasetId, versio
             borderColor: "divider",
           }}
         >
-          <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 0.5 }} color="text.secondary">
+          <Typography
+            variant="subtitle2"
+            sx={{
+              color: "text.secondary",
+              fontWeight: 600,
+              mb: 0.5,
+            }}
+          >
             {item.column_name}
           </Typography>
-          <Typography variant="body2" color="text.primary" sx={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.primary",
+              whiteSpace: "pre-wrap",
+              wordBreak: "break-word",
+            }}
+          >
             {item.column_value}
           </Typography>
         </Box>
@@ -125,7 +139,12 @@ const EvalInputsDialog: React.FC<EvalInputsDialogProps> = ({ open, onClose, eval
         Eval Inputs: {evalExecution.eval_name} v{evalExecution.eval_version}
       </DialogTitle>
       <DialogContent>
-        <Stack gap={2} className="mt-2">
+        <Stack
+          className="mt-2"
+          sx={{
+            gap: 2,
+          }}
+        >
           {evalExecution.eval_input_variables.map((variable, index) => (
             <Box
               key={index}
@@ -137,13 +156,25 @@ const EvalInputsDialog: React.FC<EvalInputsDialogProps> = ({ open, onClose, eval
                 borderColor: "divider",
               }}
             >
-              <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 0.5 }} color="text.secondary">
+              <Typography
+                variant="subtitle2"
+                sx={{
+                  color: "text.secondary",
+                  fontWeight: 600,
+                  mb: 0.5,
+                }}
+              >
                 {variable.variable_name}
               </Typography>
               <Typography
                 variant="body2"
-                color="text.primary"
-                sx={{ whiteSpace: "pre-wrap", wordBreak: "break-word", fontFamily: "monospace", fontSize: "0.875rem" }}
+                sx={{
+                  color: "text.primary",
+                  whiteSpace: "pre-wrap",
+                  wordBreak: "break-word",
+                  fontFamily: "monospace",
+                  fontSize: "0.875rem",
+                }}
               >
                 {variable.value}
               </Typography>
@@ -257,7 +288,13 @@ export const RagTestCaseDetailModal: React.FC<RagTestCaseDetailModalProps> = ({
               <IconButton onClick={onPrevious} size="small" disabled={currentIndex <= 0}>
                 <ArrowBackIcon />
               </IconButton>
-              <Typography variant="h6" sx={{ fontWeight: 600 }} color="text.primary">
+              <Typography
+                variant="h6"
+                sx={{
+                  color: "text.primary",
+                  fontWeight: 600,
+                }}
+              >
                 Test Case {currentIndex + 1} of {totalCount}
               </Typography>
               <IconButton onClick={onNext} size="small" disabled={currentIndex >= totalCount - 1}>
@@ -281,7 +318,17 @@ export const RagTestCaseDetailModal: React.FC<RagTestCaseDetailModalProps> = ({
           <Box className="p-6">
             {/* Dataset Row Section */}
             <Box className="mb-6">
-              <Typography variant="h6" color="text.primary" sx={{ fontWeight: 700, mb: 2, pb: 1, borderBottom: "2px solid", borderColor: "divider" }}>
+              <Typography
+                variant="h6"
+                sx={{
+                  color: "text.primary",
+                  fontWeight: 700,
+                  mb: 2,
+                  pb: 1,
+                  borderBottom: "2px solid",
+                  borderColor: "divider",
+                }}
+              >
                 Dataset Row
               </Typography>
               <DatasetRowSection datasetId={datasetId} versionNumber={datasetVersion} rowId={testCase.dataset_row_id} />
@@ -289,7 +336,17 @@ export const RagTestCaseDetailModal: React.FC<RagTestCaseDetailModalProps> = ({
 
             {/* RAG Results Section */}
             <Box>
-              <Typography variant="h6" color="text.primary" sx={{ fontWeight: 700, mb: 2, pb: 1, borderBottom: "2px solid", borderColor: "divider" }}>
+              <Typography
+                variant="h6"
+                sx={{
+                  color: "text.primary",
+                  fontWeight: 700,
+                  mb: 2,
+                  pb: 1,
+                  borderBottom: "2px solid",
+                  borderColor: "divider",
+                }}
+              >
                 RAG Results
               </Typography>
               <Box className="space-y-6">
@@ -323,7 +380,13 @@ export const RagTestCaseDetailModal: React.FC<RagTestCaseDetailModalProps> = ({
                         })}
                       >
                         <Box className="flex items-center gap-2">
-                          <Typography variant="h6" sx={{ fontWeight: 600 }} color="info.main">
+                          <Typography
+                            variant="h6"
+                            sx={{
+                              color: "info.main",
+                              fontWeight: 600,
+                            }}
+                          >
                             {displayName}
                           </Typography>
                           {ragResult.rag_config_type === "unsaved" && (
@@ -343,11 +406,24 @@ export const RagTestCaseDetailModal: React.FC<RagTestCaseDetailModalProps> = ({
                       <CardContent>
                         {/* Query Text */}
                         <Box className="mb-4">
-                          <Typography variant="subtitle2" color="text.secondary" sx={{ fontWeight: 500, mb: 1 }}>
+                          <Typography
+                            variant="subtitle2"
+                            sx={{
+                              color: "text.secondary",
+                              fontWeight: 500,
+                              mb: 1,
+                            }}
+                          >
                             Query Text:
                           </Typography>
                           <Box sx={{ p: 1.5, backgroundColor: "action.hover", border: "1px solid", borderColor: "divider", borderRadius: 1 }}>
-                            <Typography variant="body2" color="text.primary" sx={{ whiteSpace: "pre-wrap" }}>
+                            <Typography
+                              variant="body2"
+                              sx={{
+                                color: "text.primary",
+                                whiteSpace: "pre-wrap",
+                              }}
+                            >
                               {ragResult.query_text}
                             </Typography>
                           </Box>
@@ -355,7 +431,14 @@ export const RagTestCaseDetailModal: React.FC<RagTestCaseDetailModalProps> = ({
 
                         {/* RAG Search Results */}
                         <Box className="mb-4">
-                          <Typography variant="subtitle2" color="text.secondary" sx={{ fontWeight: 500, mb: 1 }}>
+                          <Typography
+                            variant="subtitle2"
+                            sx={{
+                              color: "text.secondary",
+                              fontWeight: 500,
+                              mb: 1,
+                            }}
+                          >
                             Retrieved Documents:
                           </Typography>
                           {ragResult.output?.response?.response ? (
@@ -368,7 +451,13 @@ export const RagTestCaseDetailModal: React.FC<RagTestCaseDetailModalProps> = ({
                             />
                           ) : (
                             <Box sx={{ p: 1.5, backgroundColor: "action.hover", border: "1px solid", borderColor: "divider", borderRadius: 1 }}>
-                              <Typography variant="body2" color="text.secondary" sx={{ fontStyle: "italic" }}>
+                              <Typography
+                                variant="body2"
+                                sx={{
+                                  color: "text.secondary",
+                                  fontStyle: "italic",
+                                }}
+                              >
                                 No results available yet
                               </Typography>
                             </Box>
@@ -378,7 +467,14 @@ export const RagTestCaseDetailModal: React.FC<RagTestCaseDetailModalProps> = ({
                         {/* Evaluations */}
                         {ragResult.evals.length > 0 && (
                           <Box>
-                            <Typography variant="subtitle2" color="text.secondary" sx={{ fontWeight: 500, mb: 1 }}>
+                            <Typography
+                              variant="subtitle2"
+                              sx={{
+                                color: "text.secondary",
+                                fontWeight: 500,
+                                mb: 1,
+                              }}
+                            >
                               Evaluations:
                             </Typography>
                             <Box className="space-y-2">
@@ -394,7 +490,13 @@ export const RagTestCaseDetailModal: React.FC<RagTestCaseDetailModalProps> = ({
                                 >
                                   <Box className="flex items-center justify-between mb-2">
                                     <Box className="flex items-center gap-2">
-                                      <Typography variant="body2" color="text.primary" sx={{ fontWeight: 500 }}>
+                                      <Typography
+                                        variant="body2"
+                                        sx={{
+                                          color: "text.primary",
+                                          fontWeight: 500,
+                                        }}
+                                      >
                                         {evalItem.eval_name} v{evalItem.eval_version}
                                       </Typography>
                                       {evalItem.eval_results ? (
@@ -424,7 +526,13 @@ export const RagTestCaseDetailModal: React.FC<RagTestCaseDetailModalProps> = ({
                                     </Button>
                                   </Box>
                                   {evalItem.eval_results?.explanation && (
-                                    <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                                    <Typography
+                                      variant="body2"
+                                      sx={{
+                                        color: "text.secondary",
+                                        mt: 0.5,
+                                      }}
+                                    >
                                       {evalItem.eval_results.explanation}
                                     </Typography>
                                   )}

@@ -22,10 +22,23 @@ const MAX_HEIGHT = 350;
  */
 const KeyValueItem = ({ label, value }: { label: string; value: React.ReactNode }) => (
   <Box component="li" sx={{ mb: 0.5, fontSize: 11 }}>
-    <Typography component="span" fontWeight={600} fontSize={11} color="text.secondary">
+    <Typography
+      component="span"
+      sx={{
+        fontWeight: 600,
+        fontSize: 11,
+        color: "text.secondary",
+      }}
+    >
       {label}:
     </Typography>{" "}
-    <Typography component="span" fontSize={11} sx={{ fontFamily: "monospace" }}>
+    <Typography
+      component="span"
+      sx={{
+        fontSize: 11,
+        fontFamily: "monospace",
+      }}
+    >
       {value}
     </Typography>
   </Box>
@@ -140,7 +153,15 @@ const ViewToggle = ({ view, setView }: { view: "formatted" | "raw"; setView: (vi
 
 const ContentBox = ({ label, children }: { label: string; children: React.ReactNode }) => (
   <Box>
-    <Typography variant="caption" color="text.secondary" fontWeight={600} sx={{ mb: 1, display: "block" }}>
+    <Typography
+      variant="caption"
+      sx={{
+        color: "text.secondary",
+        fontWeight: 600,
+        mb: 1,
+        display: "block",
+      }}
+    >
       {label}
     </Typography>
     <Paper variant="outlined" sx={{ p: 2, maxHeight: MAX_HEIGHT, overflow: "auto" }}>
@@ -217,14 +238,26 @@ const ToolCallItem = ({ toolCall }: { toolCall: ToolCall }) => {
 
   return (
     <Box>
-      <Typography variant="body2" fontWeight={600} fontSize={12} mb={1}>
+      <Typography
+        variant="body2"
+        sx={{
+          fontWeight: 600,
+          fontSize: 12,
+          mb: 1,
+        }}
+      >
         {toolCall.tool_call.function.name}
       </Typography>
       <Box sx={{ pl: 2 }}>
         {parsedArgs && typeof parsedArgs === "object" ? (
           <FormattedJsonContent data={parsedArgs} />
         ) : (
-          <Typography fontSize={11} color="text.secondary">
+          <Typography
+            sx={{
+              fontSize: 11,
+              color: "text.secondary",
+            }}
+          >
             (no arguments)
           </Typography>
         )}
@@ -382,25 +415,37 @@ export const MessageRenderer = ({ message }: { message: Message }) => {
       <Collapsible.Trigger className="group w-full" disabled={!contentToRender}>
         <Stack
           direction="row"
-          alignItems="center"
-          gap={1}
-          p={1}
+          className="group-data-panel-open:border-b group-disabled:opacity-25"
           sx={{
+            alignItems: "center",
+            gap: 1,
+            p: 1,
             borderColor: "divider",
             backgroundColor: getRoleAccentColor(role),
             textAlign: "left",
           }}
-          className="group-data-panel-open:border-b group-disabled:opacity-25"
         >
           <KeyboardArrowRightIcon fontSize="small" className="group-data-panel-open:rotate-90 transition-transform duration-75" />
-          <Typography color="text.primary" fontWeight={600} fontSize={12}>
+          <Typography
+            sx={{
+              color: "text.primary",
+              fontWeight: 600,
+              fontSize: 12,
+            }}
+          >
             {getRoleLabel(role)}
           </Typography>
         </Stack>
       </Collapsible.Trigger>
       {contentToRender ? (
         <Collapsible.Panel>
-          <Box p={1}>{contentToRender}</Box>
+          <Box
+            sx={{
+              p: 1,
+            }}
+          >
+            {contentToRender}
+          </Box>
         </Collapsible.Panel>
       ) : null}
     </Collapsible.Root>

@@ -210,20 +210,53 @@ export const FeedbackPanel = ({ containerRef, annotations, traceId }: Props) => 
                   render={<Paper data-tour-id={TOUR_IDS.traceFeedbackPopover} />}
                   className="origin-(--transform-origin) p-4 w-80 outline-none"
                 >
-                  <Stack direction="column" gap={1}>
-                    <Stack direction="column" gap={0}>
-                      <Popover.Title render={<Typography variant="body2" fontWeight="bold" color="text.primary" />}>
+                  <Stack
+                    direction="column"
+                    sx={{
+                      gap: 1,
+                    }}
+                  >
+                    <Stack
+                      direction="column"
+                      sx={{
+                        gap: 0,
+                      }}
+                    >
+                      <Popover.Title
+                        render={
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              fontWeight: "bold",
+                              color: "text.primary",
+                            }}
+                          />
+                        }
+                      >
                         Provide additional details
                       </Popover.Title>
-                      <Popover.Description render={<Typography variant="body2" color="text.secondary" />}>{config.description}</Popover.Description>
+                      <Popover.Description
+                        render={
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              color: "text.secondary",
+                            }}
+                          />
+                        }
+                      >
+                        {config.description}
+                      </Popover.Description>
                     </Stack>
                     <Stack
                       component="form"
                       direction="column"
-                      gap={1}
                       onSubmit={(e) => {
                         e.preventDefault();
                         form.handleSubmit();
+                      }}
+                      sx={{
+                        gap: 1,
                       }}
                     >
                       <form.Field
@@ -249,7 +282,12 @@ export const FeedbackPanel = ({ containerRef, annotations, traceId }: Props) => 
                         defaultValue={payload.feedback!}
                         children={(field) => <TextField hidden type="hidden" value={field.state.value} sx={{ display: "none" }} />}
                       />
-                      <Stack direction="row" gap={1}>
+                      <Stack
+                        direction="row"
+                        sx={{
+                          gap: 1,
+                        }}
+                      >
                         {annotation && (
                           <Button
                             variant="outlined"

@@ -152,10 +152,21 @@ const CreateForm = ({ taskId, onClose }: { taskId: string; onClose: () => void }
   return (
     <>
       <DialogTitle>
-        <Typography variant="h6" color="text.primary" fontWeight="bold">
+        <Typography
+          variant="h6"
+          sx={{
+            color: "text.primary",
+            fontWeight: "bold",
+          }}
+        >
           New Continuous Eval
         </Typography>
-        <Typography variant="body2" color="text.secondary">
+        <Typography
+          variant="body2"
+          sx={{
+            color: "text.secondary",
+          }}
+        >
           Create a new continuous eval to monitor and analyze your model's performance in real-time.
         </Typography>
       </DialogTitle>
@@ -168,11 +179,23 @@ const CreateForm = ({ taskId, onClose }: { taskId: string; onClose: () => void }
             e.stopPropagation();
             form.handleSubmit();
           }}
-          gap={2}
-          sx={{ pt: 1 }}
+          sx={{
+            gap: 2,
+            pt: 1,
+          }}
         >
-          <Stack gap={2}>
-            <Typography variant="h6" color="text.primary" fontWeight="bold">
+          <Stack
+            sx={{
+              gap: 2,
+            }}
+          >
+            <Typography
+              variant="h6"
+              sx={{
+                color: "text.primary",
+                fontWeight: "bold",
+              }}
+            >
               General Information
             </Typography>
             <DetailsFieldGroup

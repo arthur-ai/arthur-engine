@@ -31,8 +31,21 @@ export const DatasetRowContent: React.FC<DatasetRowContentProps> = ({
 }) => (
   <Stack spacing={3}>
     <Stack spacing={1}>
-      <Stack direction="row" alignItems="center" spacing={1} useFlexGap sx={{ flexWrap: "wrap" }}>
-        <Typography variant="body2" color="text.secondary">
+      <Stack
+        direction="row"
+        spacing={1}
+        useFlexGap
+        sx={{
+          alignItems: "center",
+          flexWrap: "wrap",
+        }}
+      >
+        <Typography
+          variant="body2"
+          sx={{
+            color: "text.secondary",
+          }}
+        >
           Dataset: {datasetId} | Version: {versionNumber} | Row ID:
         </Typography>
         <CopyableChip label={rowId} size="small" />
@@ -52,8 +65,19 @@ export const DatasetRowContent: React.FC<DatasetRowContentProps> = ({
         )}
       </Stack>
       {rowData.trace_id && (
-        <Stack direction="row" alignItems="center" spacing={1}>
-          <Typography variant="body2" color="text.secondary">
+        <Stack
+          direction="row"
+          spacing={1}
+          sx={{
+            alignItems: "center",
+          }}
+        >
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+            }}
+          >
             Source trace:
           </Typography>
           {taskId ? (

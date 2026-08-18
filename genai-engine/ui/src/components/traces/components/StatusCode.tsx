@@ -13,7 +13,13 @@ export const StatusCode = ({ statusCode }: Props) => {
 
   return (
     <Tooltip title={statusCode} sx={{ width: "min-content" }}>
-      <Stack gap={0.5} direction="row" alignItems="center">
+      <Stack
+        direction="row"
+        sx={{
+          gap: 0.5,
+          alignItems: "center",
+        }}
+      >
         <Icon sx={{ fontSize: 16 }} color={color} />
       </Stack>
     </Tooltip>

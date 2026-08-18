@@ -14,10 +14,22 @@ export const RagExperimentsViewHeader: React.FC<RagExperimentsViewHeaderProps> =
     <Box className="flex flex-col gap-4">
       <Box className="flex justify-between items-center">
         <Box>
-          <Typography variant="h5" fontWeight={600} color="text.primary">
+          <Typography
+            variant="h5"
+            sx={{
+              fontWeight: 600,
+              color: "text.primary",
+            }}
+          >
             RAG Experiments
           </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+              mt: 0.5,
+            }}
+          >
             View and compare results from RAG configuration experiments
           </Typography>
         </Box>

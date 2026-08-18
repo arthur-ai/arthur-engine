@@ -72,11 +72,23 @@ export const ConfigVersionsDrawer: React.FC<ConfigVersionsDrawerProps> = ({ open
             {config.name}
           </Typography>
           {config.description && (
-            <Typography variant="body2" color="text.secondary" gutterBottom>
+            <Typography
+              variant="body2"
+              gutterBottom
+              sx={{
+                color: "text.secondary",
+              }}
+            >
               {config.description}
             </Typography>
           )}
-          <Typography variant="body2" color="text.secondary" gutterBottom>
+          <Typography
+            variant="body2"
+            gutterBottom
+            sx={{
+              color: "text.secondary",
+            }}
+          >
             Latest Version: {config.latest_version_number}
           </Typography>
 

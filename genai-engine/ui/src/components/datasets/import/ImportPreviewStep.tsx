@@ -21,19 +21,34 @@ export const ImportPreviewStep: React.FC<ImportPreviewStepProps> = ({ previewDat
         </Typography>
         <Box sx={{ display: "flex", gap: 3 }}>
           <Box>
-            <Typography variant="caption" color="text.secondary">
+            <Typography
+              variant="caption"
+              sx={{
+                color: "text.secondary",
+              }}
+            >
               {CSV_IMPORT_MESSAGES.labels.columns}
             </Typography>
             <Typography variant="h6">{previewData.columns.length}</Typography>
           </Box>
           <Box>
-            <Typography variant="caption" color="text.secondary">
+            <Typography
+              variant="caption"
+              sx={{
+                color: "text.secondary",
+              }}
+            >
               {CSV_IMPORT_MESSAGES.labels.totalRows}
             </Typography>
             <Typography variant="h6">{previewData.totalRows}</Typography>
           </Box>
           <Box>
-            <Typography variant="caption" color="text.secondary">
+            <Typography
+              variant="caption"
+              sx={{
+                color: "text.secondary",
+              }}
+            >
               {CSV_IMPORT_MESSAGES.labels.willImport}
             </Typography>
             <Typography variant="h6">{rowsToImport}</Typography>
@@ -53,7 +68,14 @@ export const ImportPreviewStep: React.FC<ImportPreviewStepProps> = ({ previewDat
         <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
           {CSV_IMPORT_MESSAGES.labels.dataPreview}
         </Typography>
-        <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: "block" }}>
+        <Typography
+          variant="caption"
+          sx={{
+            color: "text.secondary",
+            mb: 1,
+            display: "block",
+          }}
+        >
           {CSV_IMPORT_MESSAGES.info.previewDescription(previewData.rows.length, previewData.totalRows)}
         </Typography>
         <TableContainer component={Paper} sx={{ maxHeight: 300, overflow: "auto" }}>

@@ -209,7 +209,13 @@ export const SyntheticDataConfigForm: React.FC<SyntheticDataConfigFormProps> = (
         <Typography variant="subtitle2" sx={{ mb: 1 }}>
           Column Descriptions
         </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        <Typography
+          variant="body2"
+          sx={{
+            color: "text.secondary",
+            mb: 2,
+          }}
+        >
           Describe what each column contains to guide realistic data generation
         </Typography>
         <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
@@ -262,14 +268,17 @@ export const SyntheticDataConfigForm: React.FC<SyntheticDataConfigFormProps> = (
                 {...params}
                 label="Model"
                 placeholder="Select a model"
-                InputProps={{
-                  ...params.InputProps,
-                  endAdornment: (
-                    <>
-                      {isLoadingModels ? <CircularProgress color="inherit" size={20} /> : null}
-                      {params.InputProps.endAdornment}
-                    </>
-                  ),
+                slotProps={{
+                  ...params.slotProps,
+                  input: {
+                    ...params.slotProps.input,
+                    endAdornment: (
+                      <>
+                        {isLoadingModels ? <CircularProgress color="inherit" size={20} /> : null}
+                        {params.slotProps.input.endAdornment}
+                      </>
+                    ),
+                  },
                 }}
               />
             )}
@@ -302,7 +311,13 @@ export const SyntheticDataConfigForm: React.FC<SyntheticDataConfigFormProps> = (
           control={<Switch checked={editExisting} onChange={(e) => setEditExisting(e.target.checked)} />}
           label="Edit existing data"
         />
-        <Typography variant="body2" color="text.secondary" sx={{ ml: 4 }}>
+        <Typography
+          variant="body2"
+          sx={{
+            color: "text.secondary",
+            ml: 4,
+          }}
+        >
           {editExisting
             ? "Existing dataset rows will be loaded into the canvas for editing and synthetic generation will update them"
             : "Only new rows will be generated without modifying existing data"}

@@ -1,5 +1,5 @@
 import CloseIcon from "@mui/icons-material/Close";
-import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutlineOutlined";
 import { Box, IconButton, Paper, Tooltip, Typography } from "@mui/material";
 
 import { ChatPanel } from "./ChatPanel";
@@ -64,7 +64,12 @@ export function ChatbotDrawer({ taskId, open, onClose }: ChatbotDrawerProps) {
                   color: "primary.contrastText",
                 }}
               >
-                <Typography variant="subtitle1" fontWeight={600}>
+                <Typography
+                  variant="subtitle1"
+                  sx={{
+                    fontWeight: 600,
+                  }}
+                >
                   Arthur AI Assistant
                 </Typography>
                 <Box>

@@ -54,7 +54,12 @@ export const createColumns = ({
   columnHelper.accessor("created_at", {
     header: "Created",
     Cell: ({ cell }) => (
-      <Typography variant="body2" color="text.secondary">
+      <Typography
+        variant="body2"
+        sx={{
+          color: "text.secondary",
+        }}
+      >
         {formatDateInTimezone(cell.getValue(), timezone, { hour12: !use24Hour })}
       </Typography>
     ),

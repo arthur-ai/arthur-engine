@@ -71,7 +71,12 @@ const Content = ({ children, ...props }: Omit<DrawerProps, "open" | "onClose">) 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 Content.muiName = (BaseDrawer as any).muiName;
 
-type TriggerProps = useRender.ComponentProps<typeof Button>;
+// MUI widens ButtonBase's `type` to a bare `string`, which no longer satisfies
+// the native `button` union base-ui's `mergeProps<"button">` expects — pin it
+// back to the HTML attribute's own type.
+type ButtonRenderProps = Omit<useRender.ComponentProps<typeof Button>, "type"> & Pick<React.ButtonHTMLAttributes<HTMLButtonElement>, "type">;
+
+type TriggerProps = ButtonRenderProps;
 
 const Trigger = (props: TriggerProps) => {
   const { render, ...otherProps } = props;
@@ -88,7 +93,7 @@ const Trigger = (props: TriggerProps) => {
   return element;
 };
 
-type CloseProps = useRender.ComponentProps<typeof Button>;
+type CloseProps = ButtonRenderProps;
 
 const Close = (props: CloseProps) => {
   const { render, ...otherProps } = props;

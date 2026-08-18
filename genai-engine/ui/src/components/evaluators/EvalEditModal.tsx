@@ -233,7 +233,13 @@ const EvalEditModal = ({
                   },
                 })}
               />
-              <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
+              <Typography
+                variant="caption"
+                sx={{
+                  color: "text.secondary",
+                  mt: 0.5,
+                }}
+              >
                 Eval name cannot be changed. Saving will create a new version.
               </Typography>
             </FormControl>

@@ -430,7 +430,12 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ promptId }) => {
             borderColor: "divider",
           }}
         >
-          <Typography variant="body2" color="text.secondary">
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+            }}
+          >
             {runningExperimentId
               ? "Experiment is running. Results will appear here..."
               : experimentIdToShow
@@ -537,11 +542,21 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ promptId }) => {
                             }}
                           />
                         ) : score === null || score === undefined ? (
-                          <Typography variant="caption" color="text.secondary">
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              color: "text.secondary",
+                            }}
+                          >
                             -
                           </Typography>
                         ) : (
-                          <Typography variant="caption" color="text.secondary">
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              color: "text.secondary",
+                            }}
+                          >
                             ?
                           </Typography>
                         )}

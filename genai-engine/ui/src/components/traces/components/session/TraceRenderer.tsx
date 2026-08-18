@@ -47,14 +47,38 @@ export const TraceRenderer = ({ trace }: Props) => {
       </Tabs.Root>
 
       <Box className="bg-gray-100 dark:bg-gray-800 border-l p-2" sx={{ borderColor: "divider" }}>
-        <Stack gap={1} alignItems="flex-start" className="sticky top-2">
-          <Stack component="button" color="primary.main" className="group cursor-pointer" onClick={onOpenTraceDrawer}>
-            <Typography variant="body2" fontWeight={700} className="group-hover:underline">
+        <Stack
+          className="sticky top-2"
+          sx={{
+            gap: 1,
+            alignItems: "flex-start",
+          }}
+        >
+          <Stack
+            component="button"
+            className="group cursor-pointer"
+            onClick={onOpenTraceDrawer}
+            sx={{
+              color: "primary.main",
+            }}
+          >
+            <Typography
+              variant="body2"
+              className="group-hover:underline"
+              sx={{
+                fontWeight: 700,
+              }}
+            >
               Trace: {rootSpan.span_name} ({trace.trace_id})
             </Typography>
           </Stack>
 
-          <Typography variant="body2" color="text.secondary">
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+            }}
+          >
             {formatDateInTimezone(rootSpan.start_time, timezone)}
           </Typography>
         </Stack>
@@ -71,7 +95,11 @@ const FormattedTrace = ({ trace }: { trace: TraceResponse }) => {
   const output = getSpanOutput(root);
 
   return (
-    <Stack gap={1}>
+    <Stack
+      sx={{
+        gap: 1,
+      }}
+    >
       <MessageBubble label="Input" content={input ?? ""} align="right" />
       <MessageBubble label="Output" content={output ?? ""} align="left" />
     </Stack>
@@ -84,14 +112,20 @@ const MessageBubble = ({ label, content, align }: { label: string; content: stri
       component={Paper}
       variant="outlined"
       sx={{
+        alignSelf: align === "left" ? "flex-start" : "flex-end",
+        gap: 1,
         p: 1,
         maxWidth: "75%",
         backgroundColor: align === "left" ? (theme) => (theme.palette.mode === "dark" ? "action.hover" : "#E8F5E9") : undefined,
       }}
-      alignSelf={align === "left" ? "flex-start" : "flex-end"}
-      gap={1}
     >
-      <Typography variant="body2" color={align === "left" ? "text.primary" : "text.secondary"} textAlign={align}>
+      <Typography
+        variant="body2"
+        color={align === "left" ? "text.primary" : "text.secondary"}
+        sx={{
+          textAlign: align,
+        }}
+      >
         {label}
       </Typography>
       <Highlight code={tryFormatJson(content)} language="json" />

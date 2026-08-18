@@ -12,25 +12,63 @@ export const BodyMapper = withFieldGroup({
     const ready = useStore(group.store, (state) => state.values.datasetRef.version && state.values.templateVariableMapping.length > 0);
 
     return (
-      <Stack component={Paper} variant="outlined" p={2} sx={{ opacity: ready ? 1 : 0.5, pointerEvents: ready ? "auto" : "none" }}>
+      <Stack
+        component={Paper}
+        variant="outlined"
+        sx={{
+          p: 2,
+          opacity: ready ? 1 : 0.5,
+          pointerEvents: ready ? "auto" : "none",
+        }}
+      >
         <Stack>
-          <Typography variant="body2" color="text.primary" fontWeight="bold">
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.primary",
+              fontWeight: "bold",
+            }}
+          >
             Endpoint Template Variables Mapper
           </Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+            }}
+          >
             Map dataset columns to the template variables used in your endpoint configuration.
           </Typography>
         </Stack>
         <Divider sx={{ my: 2 }} />
-        <Stack gap={2}>
+        <Stack
+          sx={{
+            gap: 2,
+          }}
+        >
           {ready ? (
             <group.AppField name="templateVariableMapping" mode="array">
               {(field) =>
                 field.state.value.map((_, index) => (
-                  <Stack component={Paper} variant="outlined" p={2} gap={2} sx={{ backgroundColor: "var(--color-gray-50)" }} key={`${index}`}>
+                  <Stack
+                    component={Paper}
+                    variant="outlined"
+                    key={`${index}`}
+                    sx={{
+                      p: 2,
+                      gap: 2,
+                      backgroundColor: "var(--color-gray-50)",
+                    }}
+                  >
                     <group.Subscribe selector={(state) => state.values.templateVariableMapping[index].variable_name}>
                       {(variableName) => (
-                        <Typography variant="body2" color="text.primary" fontWeight="bold">
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            color: "text.primary",
+                            fontWeight: "bold",
+                          }}
+                        >
                           {variableName}
                         </Typography>
                       )}
@@ -38,7 +76,12 @@ export const BodyMapper = withFieldGroup({
                     <group.AppField name={`templateVariableMapping[${index}]`}>
                       {() => (
                         <Stack>
-                          <Stack direction="row" gap={2}>
+                          <Stack
+                            direction="row"
+                            sx={{
+                              gap: 2,
+                            }}
+                          >
                             <group.AppField
                               name={`templateVariableMapping[${index}].source.type`}
                               listeners={{
@@ -106,7 +149,12 @@ export const BodyMapper = withFieldGroup({
               }
             </group.AppField>
           ) : (
-            <Typography variant="body2" color="text.secondary">
+            <Typography
+              variant="body2"
+              sx={{
+                color: "text.secondary",
+              }}
+            >
               No variables to map or no dataset version selected
             </Typography>
           )}

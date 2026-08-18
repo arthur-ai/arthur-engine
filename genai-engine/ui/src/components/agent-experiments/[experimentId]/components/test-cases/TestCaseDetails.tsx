@@ -51,27 +51,77 @@ const HeaderSection = ({
   datasetRowId: string;
   defaultCurrency: string;
 }) => (
-  <Stack direction="column" gap={2}>
-    <Stack direction="row" gap={3} alignItems="center" flexWrap="wrap">
-      <Stack direction="row" gap={1} alignItems="center">
-        <Typography variant="body2" color="text.secondary">
+  <Stack
+    direction="column"
+    sx={{
+      gap: 2,
+    }}
+  >
+    <Stack
+      direction="row"
+      sx={{
+        gap: 3,
+        alignItems: "center",
+        flexWrap: "wrap",
+      }}
+    >
+      <Stack
+        direction="row"
+        sx={{
+          gap: 1,
+          alignItems: "center",
+        }}
+      >
+        <Typography
+          variant="body2"
+          sx={{
+            color: "text.secondary",
+          }}
+        >
           Status:
         </Typography>
         <StatusBadge status={status} />
       </Stack>
 
-      <Stack direction="row" gap={1} alignItems="center">
-        <Typography variant="body2" color="text.secondary">
+      <Stack
+        direction="row"
+        sx={{
+          gap: 1,
+          alignItems: "center",
+        }}
+      >
+        <Typography
+          variant="body2"
+          sx={{
+            color: "text.secondary",
+          }}
+        >
           Total Cost:
         </Typography>
-        <Typography variant="body2" fontWeight={600}>
+        <Typography
+          variant="body2"
+          sx={{
+            fontWeight: 600,
+          }}
+        >
           {totalCost ? formatCurrency(parseFloat(totalCost), defaultCurrency) : "N/A"}
         </Typography>
       </Stack>
     </Stack>
 
-    <Stack direction="row" gap={1} alignItems="center">
-      <Typography variant="body2" color="text.secondary">
+    <Stack
+      direction="row"
+      sx={{
+        gap: 1,
+        alignItems: "center",
+      }}
+    >
+      <Typography
+        variant="body2"
+        sx={{
+          color: "text.secondary",
+        }}
+      >
         Dataset Row ID:
       </Typography>
       <CopyableChip label={datasetRowId} />
@@ -80,7 +130,12 @@ const HeaderSection = ({
 );
 
 const InputVariablesSection = ({ variables }: { variables: InputVariable[] }) => (
-  <Stack direction="column" gap={2}>
+  <Stack
+    direction="column"
+    sx={{
+      gap: 2,
+    }}
+  >
     <SectionTitle>Input Variables</SectionTitle>
     <Box className="grid grid-cols-1 md:grid-cols-2 gap-3">
       {variables.map((variable) => (
@@ -91,8 +146,15 @@ const InputVariablesSection = ({ variables }: { variables: InputVariable[] }) =>
 );
 
 const VariableTile = ({ name, value }: { name: string; value: string }) => (
-  <Paper component={Stack} variant="outlined" p={1} className="max-h-[200px] overflow-hidden">
-    <Typography variant="caption" color="text.secondary" fontWeight={600} className="uppercase">
+  <Paper component={Stack} variant="outlined" className="max-h-[200px] overflow-hidden" sx={{ p: 1 }}>
+    <Typography
+      variant="caption"
+      className="uppercase"
+      sx={{
+        color: "text.secondary",
+        fontWeight: 600,
+      }}
+    >
       {name}
     </Typography>
     <Box className="overflow-y-auto h-full">
@@ -104,11 +166,28 @@ const VariableTile = ({ name, value }: { name: string; value: string }) => (
 );
 
 const RequestSection = ({ url, headers, body }: { url: string; headers: Record<string, string>; body: string }) => (
-  <Stack direction="column" gap={2}>
+  <Stack
+    direction="column"
+    sx={{
+      gap: 2,
+    }}
+  >
     <SectionTitle>Request</SectionTitle>
 
-    <Stack direction="row" gap={1} alignItems="center">
-      <Typography variant="body2" color="text.secondary" fontWeight={500}>
+    <Stack
+      direction="row"
+      sx={{
+        gap: 1,
+        alignItems: "center",
+      }}
+    >
+      <Typography
+        variant="body2"
+        sx={{
+          color: "text.secondary",
+          fontWeight: 500,
+        }}
+      >
         URL:
       </Typography>
       <CopyableChip label={url} />
@@ -117,10 +196,27 @@ const RequestSection = ({ url, headers, body }: { url: string; headers: Record<s
     <CollapsibleSection label="Headers" defaultOpen={false}>
       <Paper variant="outlined" className="p-3">
         {Object.entries(headers).length > 0 ? (
-          <Stack direction="column" gap={1}>
+          <Stack
+            direction="column"
+            sx={{
+              gap: 1,
+            }}
+          >
             {Object.entries(headers).map(([key, value]) => (
-              <Stack key={key} direction="row" gap={1}>
-                <Typography variant="body2" fontWeight={600} color="text.secondary">
+              <Stack
+                key={key}
+                direction="row"
+                sx={{
+                  gap: 1,
+                }}
+              >
+                <Typography
+                  variant="body2"
+                  sx={{
+                    fontWeight: 600,
+                    color: "text.secondary",
+                  }}
+                >
                   {key}:
                 </Typography>
                 <Typography variant="body2" className="break-all">
@@ -130,7 +226,13 @@ const RequestSection = ({ url, headers, body }: { url: string; headers: Record<s
             ))}
           </Stack>
         ) : (
-          <Typography variant="body2" color="text.secondary" fontStyle="italic">
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+              fontStyle: "italic",
+            }}
+          >
             No headers
           </Typography>
         )}
@@ -148,22 +250,58 @@ const ResponseSection = ({ output, taskId }: { output: AgenticTestCase["agentic_
   const isSuccess = statusCode && statusCode >= 200 && statusCode < 300;
 
   return (
-    <Stack direction="column" gap={2}>
+    <Stack
+      direction="column"
+      sx={{
+        gap: 2,
+      }}
+    >
       <SectionTitle>Response</SectionTitle>
 
       {output ? (
         <>
-          <Stack direction="row" gap={3} alignItems="center" flexWrap="wrap">
-            <Stack direction="row" gap={1} alignItems="center">
-              <Typography variant="body2" color="text.secondary" fontWeight={500}>
+          <Stack
+            direction="row"
+            sx={{
+              gap: 3,
+              alignItems: "center",
+              flexWrap: "wrap",
+            }}
+          >
+            <Stack
+              direction="row"
+              sx={{
+                gap: 1,
+                alignItems: "center",
+              }}
+            >
+              <Typography
+                variant="body2"
+                sx={{
+                  color: "text.secondary",
+                  fontWeight: 500,
+                }}
+              >
                 Status Code:
               </Typography>
               <Chip label={statusCode ?? "N/A"} size="small" color={isSuccess ? "success" : statusCode ? "error" : "default"} variant="outlined" />
             </Stack>
 
             {output.trace_id && (
-              <Stack direction="row" gap={1} alignItems="center">
-                <Typography variant="body2" color="text.secondary" fontWeight={500}>
+              <Stack
+                direction="row"
+                sx={{
+                  gap: 1,
+                  alignItems: "center",
+                }}
+              >
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: "text.secondary",
+                    fontWeight: 500,
+                  }}
+                >
                   Trace ID:
                 </Typography>
                 {taskId ? (
@@ -192,7 +330,13 @@ const ResponseSection = ({ output, taskId }: { output: AgenticTestCase["agentic_
         </>
       ) : (
         <Paper variant="outlined" className="p-4">
-          <Typography variant="body2" color="text.secondary" fontStyle="italic">
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+              fontStyle: "italic",
+            }}
+          >
             No response available yet
           </Typography>
         </Paper>
@@ -202,9 +346,19 @@ const ResponseSection = ({ output, taskId }: { output: AgenticTestCase["agentic_
 };
 
 const EvaluationsSection = ({ evals }: { evals: EvalExecution[] }) => (
-  <Stack direction="column" gap={2}>
+  <Stack
+    direction="column"
+    sx={{
+      gap: 2,
+    }}
+  >
     <SectionTitle>Evaluations</SectionTitle>
-    <Stack direction="column" gap={2}>
+    <Stack
+      direction="column"
+      sx={{
+        gap: 2,
+      }}
+    >
       {evals.map((evalItem, index) => (
         <EvalCard key={`${evalItem.eval_name}-${evalItem.eval_version}-${index}`} evalItem={evalItem} />
       ))}
@@ -220,9 +374,26 @@ const EvalCard = ({ evalItem }: { evalItem: EvalExecution }) => {
 
   return (
     <Paper variant="outlined" className="p-4">
-      <Stack direction="column" gap={2}>
-        <Stack direction="row" gap={2} alignItems="center" flexWrap="wrap">
-          <Typography variant="body1" fontWeight={600}>
+      <Stack
+        direction="column"
+        sx={{
+          gap: 2,
+        }}
+      >
+        <Stack
+          direction="row"
+          sx={{
+            gap: 2,
+            alignItems: "center",
+            flexWrap: "wrap",
+          }}
+        >
+          <Typography
+            variant="body1"
+            sx={{
+              fontWeight: 600,
+            }}
+          >
             {eval_name}
           </Typography>
           <Chip label={`v${eval_version}`} size="small" variant="outlined" />
@@ -239,7 +410,12 @@ const EvalCard = ({ evalItem }: { evalItem: EvalExecution }) => {
 
         {hasResults && eval_results.explanation && (
           <Paper variant="outlined" className="p-3 bg-gray-50 dark:bg-gray-800">
-            <Typography variant="body2" color="text.secondary">
+            <Typography
+              variant="body2"
+              sx={{
+                color: "text.secondary",
+              }}
+            >
               <strong>Explanation:</strong> {eval_results.explanation}
             </Typography>
           </Paper>
@@ -260,17 +436,46 @@ const EvalCard = ({ evalItem }: { evalItem: EvalExecution }) => {
 };
 
 const SectionTitle = ({ children }: { children: React.ReactNode }) => (
-  <Typography variant="subtitle1" fontWeight={700} color="text.primary">
+  <Typography
+    variant="subtitle1"
+    sx={{
+      fontWeight: 700,
+      color: "text.primary",
+    }}
+  >
     {children}
   </Typography>
 );
 
 const CollapsibleSection = ({ label, defaultOpen, children }: { label: string; defaultOpen: boolean; children: React.ReactNode }) => (
-  <Collapsible.Root render={<Stack direction="column" gap={1} />} defaultOpen={defaultOpen}>
+  <Collapsible.Root
+    render={
+      <Stack
+        direction="column"
+        sx={{
+          gap: 1,
+        }}
+      />
+    }
+    defaultOpen={defaultOpen}
+  >
     <Collapsible.Trigger className="group cursor-pointer">
-      <Stack direction="row" gap={1} alignItems="center" sx={{ color: "text.primary" }}>
+      <Stack
+        direction="row"
+        sx={{
+          gap: 1,
+          alignItems: "center",
+          color: "text.primary",
+        }}
+      >
         <KeyboardArrowRightIcon fontSize="small" className="group-data-panel-open:rotate-90 transition-transform duration-75" />
-        <Typography variant="body2" color="text.primary" fontWeight={600}>
+        <Typography
+          variant="body2"
+          sx={{
+            color: "text.primary",
+            fontWeight: 600,
+          }}
+        >
           {label}
         </Typography>
       </Stack>

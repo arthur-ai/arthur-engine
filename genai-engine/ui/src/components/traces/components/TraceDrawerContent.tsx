@@ -218,9 +218,9 @@ export const TraceContentSkeleton = () => {
       <Stack
         direction="row"
         spacing={2}
-        justifyContent="space-between"
-        alignItems="center"
         sx={{
+          justifyContent: "space-between",
+          alignItems: "center",
           px: 4,
           py: 2,
           backgroundColor: "action.hover",

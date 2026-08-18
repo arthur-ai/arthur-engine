@@ -75,7 +75,12 @@ export const CreateTaskForm: React.FC<CreateTaskFormProps> = ({ onTaskCreated, o
     <div className="space-y-4">
       <div>
         <FormLabel htmlFor="taskName">
-          <Typography variant="body1" color="text.primary">
+          <Typography
+            variant="body1"
+            sx={{
+              color: "text.primary",
+            }}
+          >
             Task Name
           </Typography>
         </FormLabel>

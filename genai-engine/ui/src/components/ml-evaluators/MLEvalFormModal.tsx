@@ -179,7 +179,13 @@ const MLEvalFormModal = ({ open, onClose, onSubmit, isLoading = false, initialNa
                   </MenuItem>
                 ))}
               </Select>
-              <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
+              <Typography
+                variant="caption"
+                sx={{
+                  color: "text.secondary",
+                  mt: 0.5,
+                }}
+              >
                 {mlEvalType === "pii" &&
                   "Strict PII detection using an ML model (GLiNER) combined with rule-based analysis. Catches more entities but may have more false positives."}
                 {mlEvalType === "pii_v1" && "Standard PII detection using rule-based analysis (Presidio). More precise with fewer false positives."}
@@ -195,7 +201,13 @@ const MLEvalFormModal = ({ open, onClose, onSubmit, isLoading = false, initialNa
                     PII Entity Types
                   </Typography>
                 </FormLabel>
-                <Typography variant="caption" color="text.secondary" sx={{ mb: 1 }}>
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: "text.secondary",
+                    mb: 1,
+                  }}
+                >
                   All entities are detected by default. Uncheck to disable specific types.
                 </Typography>
                 <FormGroup sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 0 }}>
@@ -232,7 +244,12 @@ const MLEvalFormModal = ({ open, onClose, onSubmit, isLoading = false, initialNa
                   ]}
                   disabled={isLoading}
                 />
-                <Typography variant="caption" color="text.secondary">
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: "text.secondary",
+                  }}
+                >
                   Text with toxicity score above this threshold will fail. Lower = stricter.
                 </Typography>
               </FormControl>

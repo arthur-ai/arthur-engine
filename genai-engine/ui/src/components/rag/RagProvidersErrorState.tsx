@@ -24,7 +24,13 @@ export const RagProvidersErrorState: React.FC<RagProvidersErrorStateProps> = ({ 
       <Typography variant="h6" color="error">
         Failed to Load RAG Providers
       </Typography>
-      <Typography variant="body2" color="text.secondary" textAlign="center">
+      <Typography
+        variant="body2"
+        sx={{
+          color: "text.secondary",
+          textAlign: "center",
+        }}
+      >
         {error.message || "An unexpected error occurred"}
       </Typography>
       <Button variant="outlined" onClick={onRetry} sx={{ mt: 2 }}>

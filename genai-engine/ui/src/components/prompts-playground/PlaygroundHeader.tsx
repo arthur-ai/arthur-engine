@@ -77,10 +77,27 @@ export default function PlaygroundHeader({
 
   return (
     <Container component="div" maxWidth={false} disableGutters className="p-2 mt-1 shrink-0" sx={{ backgroundColor: "background.default" }}>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={2}>
-        <Stack direction="row" alignItems="center" spacing={2}>
+      <Stack
+        direction="row"
+        spacing={2}
+        sx={{
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <Stack
+          direction="row"
+          spacing={2}
+          sx={{
+            alignItems: "center",
+          }}
+        >
           {notebookId && (
-            <Stack alignItems="flex-start">
+            <Stack
+              sx={{
+                alignItems: "flex-start",
+              }}
+            >
               <Button
                 size="small"
                 variant="text"
@@ -145,7 +162,13 @@ export default function PlaygroundHeader({
           )}
         </Stack>
 
-        <Stack direction="row" alignItems="center" spacing={2}>
+        <Stack
+          direction="row"
+          spacing={2}
+          sx={{
+            alignItems: "center",
+          }}
+        >
           <Button variant={configDrawerOpen ? "contained" : "outlined"} size="small" onClick={onToggleConfigDrawer} startIcon={<InfoOutlinedIcon />}>
             {configModeActive && experimentConfig ? "View Config" : "Set Config"}
           </Button>

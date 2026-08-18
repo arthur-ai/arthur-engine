@@ -14,9 +14,23 @@ type TokenCountProps = {
 export const TokenCountTooltip = ({ prompt, completion, total }: TokenCountProps) => {
   if (!total)
     return (
-      <Stack direction="row" alignItems="center" gap={0.5}>
+      <Stack
+        direction="row"
+        sx={{
+          alignItems: "center",
+          gap: 0.5,
+        }}
+      >
         <GeneratingTokensOutlinedIcon sx={{ fontSize: 16 }} />
-        <Typography variant="body2" color="text.primary" fontWeight={700} fontSize={12} className="select-none">
+        <Typography
+          variant="body2"
+          className="select-none"
+          sx={{
+            color: "text.primary",
+            fontWeight: 700,
+            fontSize: 12,
+          }}
+        >
           N/A
         </Typography>
       </Stack>
@@ -24,17 +38,41 @@ export const TokenCountTooltip = ({ prompt, completion, total }: TokenCountProps
   return (
     <Tooltip
       title={
-        <Stack direction="column" gap={0} sx={{ fontFamily: "monospace" }}>
-          <Typography variant="body2" fontSize={12}>
+        <Stack
+          direction="column"
+          sx={{
+            gap: 0,
+            fontFamily: "monospace",
+          }}
+        >
+          <Typography
+            variant="body2"
+            sx={{
+              fontSize: 12,
+            }}
+          >
             Prompt: {prompt ?? "N/A"} tokens
           </Typography>
-          <Typography variant="body2" fontSize={12}>
+          <Typography
+            variant="body2"
+            sx={{
+              fontSize: 12,
+            }}
+          >
             Completion: {completion ?? "N/A"} tokens
           </Typography>
         </Stack>
       }
     >
-      <Typography variant="body2" color="text.primary" fontWeight={700} fontSize={12} className="select-none">
+      <Typography
+        variant="body2"
+        className="select-none"
+        sx={{
+          color: "text.primary",
+          fontWeight: 700,
+          fontSize: 12,
+        }}
+      >
         <GeneratingTokensOutlinedIcon sx={{ fontSize: 16, mr: 0.5 }} /> {total} tokens
       </Typography>
     </Tooltip>
@@ -48,9 +86,23 @@ export const TokenCostTooltip = ({ prompt, completion, total }: TokenCostProps) 
 
   if (!total)
     return (
-      <Stack direction="row" alignItems="center" gap={0.5}>
+      <Stack
+        direction="row"
+        sx={{
+          alignItems: "center",
+          gap: 0.5,
+        }}
+      >
         <TollOutlinedIcon sx={{ fontSize: 16 }} />
-        <Typography variant="body2" color="text.primary" fontWeight={700} fontSize={12} className="select-none">
+        <Typography
+          variant="body2"
+          className="select-none"
+          sx={{
+            color: "text.primary",
+            fontWeight: 700,
+            fontSize: 12,
+          }}
+        >
           N/A
         </Typography>
       </Stack>
@@ -59,17 +111,41 @@ export const TokenCostTooltip = ({ prompt, completion, total }: TokenCostProps) 
   return (
     <Tooltip
       title={
-        <Stack direction="column" gap={0} sx={{ fontFamily: "monospace" }}>
-          <Typography variant="body2" fontSize={12}>
+        <Stack
+          direction="column"
+          sx={{
+            gap: 0,
+            fontFamily: "monospace",
+          }}
+        >
+          <Typography
+            variant="body2"
+            sx={{
+              fontSize: 12,
+            }}
+          >
             Prompt: {prompt ? formatCurrency(prompt, defaultCurrency) : "N/A"}
           </Typography>
-          <Typography variant="body2" fontSize={12}>
+          <Typography
+            variant="body2"
+            sx={{
+              fontSize: 12,
+            }}
+          >
             Completion: {completion ? formatCurrency(completion, defaultCurrency) : "N/A"}
           </Typography>
         </Stack>
       }
     >
-      <Typography variant="body2" color="text.primary" fontWeight={700} fontSize={12} className="select-none">
+      <Typography
+        variant="body2"
+        className="select-none"
+        sx={{
+          color: "text.primary",
+          fontWeight: 700,
+          fontSize: 12,
+        }}
+      >
         <TollOutlinedIcon sx={{ fontSize: 16, mr: 0.5 }} /> {formatCurrency(total, defaultCurrency)}
       </Typography>
     </Tooltip>

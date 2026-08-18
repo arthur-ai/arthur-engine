@@ -147,8 +147,14 @@ const EditForm = ({ data, onClose }: { data: ContinuousEvalResponse; onClose: ()
 
   return (
     <>
-      <DialogTitle component={Stack} direction="row" alignItems="center" gap={2}>
-        <Typography variant="h6" color="text.primary" fontWeight="bold">
+      <DialogTitle component={Stack} direction="row" sx={{ alignItems: "center", gap: 2 }}>
+        <Typography
+          variant="h6"
+          sx={{
+            color: "text.primary",
+            fontWeight: "bold",
+          }}
+        >
           Edit {data.name}
         </Typography>
         <CopyableChip label={data.id} sx={{ fontFamily: "monospace" }} />
@@ -162,11 +168,23 @@ const EditForm = ({ data, onClose }: { data: ContinuousEvalResponse; onClose: ()
             e.stopPropagation();
             form.handleSubmit();
           }}
-          gap={2}
-          sx={{ pt: 1 }}
+          sx={{
+            gap: 2,
+            pt: 1,
+          }}
         >
-          <Stack gap={2}>
-            <Typography variant="h6" color="text.primary" fontWeight="bold">
+          <Stack
+            sx={{
+              gap: 2,
+            }}
+          >
+            <Typography
+              variant="h6"
+              sx={{
+                color: "text.primary",
+                fontWeight: "bold",
+              }}
+            >
               General Information
             </Typography>
             <DetailsFieldGroup

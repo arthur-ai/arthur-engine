@@ -21,7 +21,12 @@ export const DatasetLoadingState: React.FC<DatasetLoadingStateProps> = ({ type, 
       >
         <CircularProgress />
         {message && (
-          <Typography variant="body2" color="text.secondary">
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+            }}
+          >
             {message}
           </Typography>
         )}

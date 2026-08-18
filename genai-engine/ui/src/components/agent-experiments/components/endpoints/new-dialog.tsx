@@ -44,7 +44,11 @@ export const NewEndpointDialogContent = () => {
     >
       <DialogTitle>New Endpoint</DialogTitle>
       <DialogContent dividers>
-        <Stack gap={2}>
+        <Stack
+          sx={{
+            gap: 2,
+          }}
+        >
           <form.AppField name="name">
             {(field) => (
               <TextField
@@ -71,9 +75,24 @@ export const NewEndpointDialogContent = () => {
               />
             )}
           </form.Field>
-          <Stack gap={1}>
-            <Stack direction="row" justifyContent="space-between" alignItems="center">
-              <Typography variant="body2" fontWeight="bold">
+          <Stack
+            sx={{
+              gap: 1,
+            }}
+          >
+            <Stack
+              direction="row"
+              sx={{
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <Typography
+                variant="body2"
+                sx={{
+                  fontWeight: "bold",
+                }}
+              >
                 Headers
               </Typography>
               <form.Field name="headers" mode="array">
@@ -84,14 +103,29 @@ export const NewEndpointDialogContent = () => {
                 )}
               </form.Field>
             </Stack>
-            <Typography variant="body2" color="text.secondary">
+            <Typography
+              variant="body2"
+              sx={{
+                color: "text.secondary",
+              }}
+            >
               Use <code>{"{{variable}}"}</code> placeholders in header names or values for dynamic dataset values.
             </Typography>
             <form.Field name="headers" mode="array">
               {(field) => (
-                <Stack gap={1}>
+                <Stack
+                  sx={{
+                    gap: 1,
+                  }}
+                >
                   {field.state.value.map((header, index) => (
-                    <Stack direction="row" gap={1} alignItems="center">
+                    <Stack
+                      direction="row"
+                      sx={{
+                        gap: 1,
+                        alignItems: "center",
+                      }}
+                    >
                       <form.Field name={`headers[${index}].name`}>
                         {(field) => (
                           <TextField
@@ -105,7 +139,12 @@ export const NewEndpointDialogContent = () => {
                           />
                         )}
                       </form.Field>
-                      <Typography variant="body2" color="text.secondary">
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          color: "text.secondary",
+                        }}
+                      >
                         :
                       </Typography>
                       <form.Field name={`headers[${index}].value`}>
@@ -130,11 +169,25 @@ export const NewEndpointDialogContent = () => {
               )}
             </form.Field>
           </Stack>
-          <Stack gap={1}>
-            <Typography variant="body2" fontWeight="bold">
+          <Stack
+            sx={{
+              gap: 1,
+            }}
+          >
+            <Typography
+              variant="body2"
+              sx={{
+                fontWeight: "bold",
+              }}
+            >
               Request Body
             </Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography
+              variant="body2"
+              sx={{
+                color: "text.secondary",
+              }}
+            >
               Define the request body as a string. Use <code>{"{{variable}}"}</code> placeholders for dynamic dataset values. The body will be sent
               as-is after variable substitution.
             </Typography>

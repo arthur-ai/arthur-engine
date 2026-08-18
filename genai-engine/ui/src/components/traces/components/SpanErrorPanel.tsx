@@ -31,8 +31,22 @@ export const SpanErrorPanel = ({ span }: Props) => {
 
   return (
     <Paper variant="outlined" sx={{ borderColor: "error.main", p: 2 }}>
-      <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1, flexWrap: "wrap" }}>
-        <Typography variant="subtitle2" fontWeight={700} color="error.main">
+      <Stack
+        direction="row"
+        spacing={1}
+        sx={{
+          alignItems: "center",
+          mb: 1,
+          flexWrap: "wrap",
+        }}
+      >
+        <Typography
+          variant="subtitle2"
+          sx={{
+            fontWeight: 700,
+            color: "error.main",
+          }}
+        >
           {titleText}
         </Typography>
         <Chip label={code} size="small" color="error" variant="outlined" sx={{ fontFamily: "monospace", fontSize: 10 }} />
@@ -52,9 +66,21 @@ export const SpanErrorPanel = ({ span }: Props) => {
         <Box sx={{ mt: 1.5 }}>
           <Collapsible.Root render={<Stack direction="column" spacing={1} />}>
             <Collapsible.Trigger className="group">
-              <Stack direction="row" spacing={1} alignItems="center" sx={{ color: "text.secondary" }}>
+              <Stack
+                direction="row"
+                spacing={1}
+                sx={{
+                  alignItems: "center",
+                  color: "text.secondary",
+                }}
+              >
                 <KeyboardArrowRightIcon fontSize="small" className="group-data-panel-open:rotate-90 transition-transform duration-75" />
-                <Typography variant="caption" fontWeight={700}>
+                <Typography
+                  variant="caption"
+                  sx={{
+                    fontWeight: 700,
+                  }}
+                >
                   Stacktrace
                 </Typography>
               </Stack>

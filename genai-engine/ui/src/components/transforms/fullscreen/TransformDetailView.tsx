@@ -114,7 +114,12 @@ const TransformDetailView = ({ transform, versionData, isVersionLoading, version
           </Typography>
           <Box sx={{ display: "flex", gap: 4, flexWrap: "wrap", alignItems: "flex-start" }}>
             <Box>
-              <Typography variant="caption" color="text.secondary">
+              <Typography
+                variant="caption"
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
                 Transform ID
               </Typography>
               <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mt: 0.25 }}>
@@ -129,7 +134,12 @@ const TransformDetailView = ({ transform, versionData, isVersionLoading, version
               </Box>
             </Box>
             <Box>
-              <Typography variant="caption" color="text.secondary">
+              <Typography
+                variant="caption"
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
                 Created At
               </Typography>
               <Typography variant="body1" sx={{ fontWeight: 500 }}>
@@ -138,7 +148,12 @@ const TransformDetailView = ({ transform, versionData, isVersionLoading, version
             </Box>
             {transform.description && (
               <Box>
-                <Typography variant="caption" color="text.secondary">
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: "text.secondary",
+                  }}
+                >
                   Description
                 </Typography>
                 <Typography variant="body1" sx={{ fontWeight: 500 }}>
@@ -155,7 +170,12 @@ const TransformDetailView = ({ transform, versionData, isVersionLoading, version
             Variable Mappings ({variables.length})
           </Typography>
           {variables.length === 0 ? (
-            <Typography variant="body2" color="text.secondary">
+            <Typography
+              variant="body2"
+              sx={{
+                color: "text.secondary",
+              }}
+            >
               No variable mappings defined.
             </Typography>
           ) : (
@@ -171,14 +191,30 @@ const TransformDetailView = ({ transform, versionData, isVersionLoading, version
                     borderColor: "divider",
                   }}
                 >
-                  <Typography variant="body2" fontWeight="medium">
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      fontWeight: "medium",
+                    }}
+                  >
                     {variable.variable_name}
                   </Typography>
-                  <Typography variant="caption" color="text.secondary">
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: "text.secondary",
+                    }}
+                  >
                     Span: <code>{variable.span_name}</code> → Path: <code>{variable.attribute_path}</code>
                   </Typography>
                   {variable.fallback !== undefined && variable.fallback !== null && (
-                    <Typography variant="caption" color="text.secondary" display="block">
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        color: "text.secondary",
+                        display: "block",
+                      }}
+                    >
                       Fallback: {JSON.stringify(variable.fallback)}
                     </Typography>
                   )}

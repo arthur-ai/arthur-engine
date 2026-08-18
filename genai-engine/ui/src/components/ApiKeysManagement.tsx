@@ -262,10 +262,22 @@ export const ApiKeysManagement: React.FC = () => {
         }}
       >
         <Box>
-          <Typography variant="h5" fontWeight={600} color="text.primary">
+          <Typography
+            variant="h5"
+            sx={{
+              fontWeight: 600,
+              color: "text.primary",
+            }}
+          >
             API Keys Management
           </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+              mt: 0.5,
+            }}
+          >
             Create and manage API keys for accessing the GenAI Engine
           </Typography>
         </Box>
@@ -328,7 +340,12 @@ export const ApiKeysManagement: React.FC = () => {
                       <TableCell colSpan={4} align="center">
                         <Box sx={{ py: 4 }}>
                           <VpnKey sx={{ fontSize: 48, color: "grey.400", mb: 2 }} />
-                          <Typography variant="body2" color="text.secondary">
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              color: "text.secondary",
+                            }}
+                          >
                             No API keys found. Create your first key to get started.
                           </Typography>
                         </Box>
@@ -338,10 +355,20 @@ export const ApiKeysManagement: React.FC = () => {
                     apiKeys.map((apiKey) => (
                       <TableRow key={apiKey.id} hover>
                         <TableCell>
-                          <Typography variant="body2" fontWeight="medium">
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              fontWeight: "medium",
+                            }}
+                          >
                             {apiKey.description || "No description"}
                           </Typography>
-                          <Typography variant="caption" color="text.secondary">
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              color: "text.secondary",
+                            }}
+                          >
                             ID: {apiKey.id.substring(0, 8)}...
                           </Typography>
                         </TableCell>
@@ -487,9 +514,20 @@ export const ApiKeysManagement: React.FC = () => {
               immediately.
             </Typography>
             {deleteModal.apiKey?.description && (
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              <Typography
+                variant="body2"
+                sx={{
+                  color: "text.secondary",
+                  mb: 2,
+                }}
+              >
                 Description:{" "}
-                <Typography component="span" fontWeight="bold">
+                <Typography
+                  component="span"
+                  sx={{
+                    fontWeight: "bold",
+                  }}
+                >
                   {deleteModal.apiKey.description}
                 </Typography>
               </Typography>

@@ -126,15 +126,39 @@ const ContinuousEvalDrawerContent = ({ traceId, onClose }: { traceId: string; on
     <Stack direction="column" sx={{ height: "100%" }}>
       <Stack
         direction="row"
-        alignItems="center"
-        justifyContent="space-between"
-        sx={{ px: 2, py: 1, borderBottom: 1, borderColor: "divider", backgroundColor: "background.paper" }}
+        sx={{
+          alignItems: "center",
+          justifyContent: "space-between",
+          px: 2,
+          py: 1,
+          borderBottom: 1,
+          borderColor: "divider",
+          backgroundColor: "background.paper",
+        }}
       >
-        <Stack direction="row" alignItems="center" gap={1}>
-          <Typography variant="subtitle1" fontWeight={600} color="text.primary">
+        <Stack
+          direction="row"
+          sx={{
+            alignItems: "center",
+            gap: 1,
+          }}
+        >
+          <Typography
+            variant="subtitle1"
+            sx={{
+              fontWeight: 600,
+              color: "text.primary",
+            }}
+          >
             Create Continuous Eval from Trace
           </Typography>
-          <Typography variant="caption" color="text.secondary" sx={{ fontFamily: "monospace" }}>
+          <Typography
+            variant="caption"
+            sx={{
+              color: "text.secondary",
+              fontFamily: "monospace",
+            }}
+          >
             {traceId}
           </Typography>
         </Stack>
@@ -181,7 +205,12 @@ const ContinuousEvalDrawerContent = ({ traceId, onClose }: { traceId: string; on
             <SpanContentView span={selectedSpan} />
           ) : (
             <Box sx={{ p: 3 }}>
-              <Typography variant="body2" color="text.secondary">
+              <Typography
+                variant="body2"
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
                 Select a span to view its details
               </Typography>
             </Box>
@@ -219,7 +248,12 @@ const SpanContentView = ({ span }: { span: NestedSpanWithMetricsResponse }) => {
   if (!strategy) {
     return (
       <Box sx={{ p: 3 }}>
-        <Typography variant="body2" color="text.secondary">
+        <Typography
+          variant="body2"
+          sx={{
+            color: "text.secondary",
+          }}
+        >
           No details available for this span type.
         </Typography>
       </Box>

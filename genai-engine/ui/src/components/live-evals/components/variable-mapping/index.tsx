@@ -78,12 +78,27 @@ export const VariableMappingSection = withFieldGroup({
     }
 
     return (
-      <Stack gap={2}>
+      <Stack
+        sx={{
+          gap: 2,
+        }}
+      >
         <Stack>
-          <Typography variant="h6" color="text.primary" fontWeight="bold">
+          <Typography
+            variant="h6"
+            sx={{
+              color: "text.primary",
+              fontWeight: "bold",
+            }}
+          >
             Variable Mapping
           </Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+            }}
+          >
             Map each evaluator variable to a transform variable that will provide its value at runtime.
           </Typography>
         </Stack>
@@ -95,7 +110,11 @@ export const VariableMappingSection = withFieldGroup({
           </Alert>
         )}
 
-        <Stack gap={2}>
+        <Stack
+          sx={{
+            gap: 2,
+          }}
+        >
           {eval_variables.map((evalVariable) => {
             const mappedValue = getMappedTransformVariable(evalVariable);
             const autoMatched = isAutoMatched(evalVariable);
@@ -103,9 +122,24 @@ export const VariableMappingSection = withFieldGroup({
             return (
               <Card key={evalVariable} variant="outlined">
                 <CardContent sx={{ py: 2, "&:last-child": { pb: 2 } }}>
-                  <Stack gap={1.5}>
-                    <Stack direction="row" alignItems="center" gap={1}>
-                      <Typography variant="subtitle2" fontWeight={600}>
+                  <Stack
+                    sx={{
+                      gap: 1.5,
+                    }}
+                  >
+                    <Stack
+                      direction="row"
+                      sx={{
+                        alignItems: "center",
+                        gap: 1,
+                      }}
+                    >
+                      <Typography
+                        variant="subtitle2"
+                        sx={{
+                          fontWeight: 600,
+                        }}
+                      >
                         {evalVariable}
                       </Typography>
                       {autoMatched && mappedValue && (

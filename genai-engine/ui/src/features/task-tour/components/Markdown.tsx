@@ -120,7 +120,7 @@ function buildComponents(variant: MarkdownVariant): Components {
  * The frontmatter `intro.hero` field is validated separately at load time
  * and throws on miss.
  */
-function ImgWithAssetMap({ src, alt, width, height }: ImgHTMLAttributes<HTMLImageElement>): ReactNode {
+function ImgWithAssetMap({ src, alt, width }: ImgHTMLAttributes<HTMLImageElement>): ReactNode {
   const resolved = typeof src === "string" ? resolveAssetSrc(src) : null;
   if (!resolved) {
     if (import.meta.env.DEV) {
@@ -133,10 +133,9 @@ function ImgWithAssetMap({ src, alt, width, height }: ImgHTMLAttributes<HTMLImag
       component="img"
       src={resolved}
       alt={alt ?? ""}
-      width={width}
-      height={height}
       loading="lazy"
       sx={{
+        width: width,
         display: "block",
         maxWidth: "100%",
         height: "auto",

@@ -67,12 +67,30 @@ export const RagView = () => {
           flexShrink: 0,
         }}
       >
-        <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+        <Stack
+          direction="row"
+          sx={{
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+          }}
+        >
           <Box>
-            <Typography variant="h5" fontWeight={600} color="text.primary">
+            <Typography
+              variant="h5"
+              sx={{
+                fontWeight: 600,
+                color: "text.primary",
+              }}
+            >
               {TAB_TITLES[activeTab]}
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+            <Typography
+              variant="body2"
+              sx={{
+                color: "text.secondary",
+                mt: 0.5,
+              }}
+            >
               {TAB_SUBTITLES[activeTab]}
             </Typography>
           </Box>

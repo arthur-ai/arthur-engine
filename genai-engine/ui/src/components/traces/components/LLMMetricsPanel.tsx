@@ -40,8 +40,17 @@ export const LLMMetricsPanel = ({ span }: Props) => {
   if (!results.length) {
     return (
       <Paper variant="outlined">
-        <Box p={1}>
-          <Typography variant="body2" color="text.secondary">
+        <Box
+          sx={{
+            p: 1,
+          }}
+        >
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+            }}
+          >
             No metrics recorded for this span
           </Typography>
         </Box>
@@ -76,11 +85,28 @@ function formatNumber(value: number | null | undefined, fractionDigits = 3) {
 
 function KV({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <Stack direction="row" alignItems="baseline" spacing={1}>
-      <Typography variant="caption" color="text.secondary" sx={{ minWidth: 160 }}>
+    <Stack
+      direction="row"
+      spacing={1}
+      sx={{
+        alignItems: "baseline",
+      }}
+    >
+      <Typography
+        variant="caption"
+        sx={{
+          color: "text.secondary",
+          minWidth: 160,
+        }}
+      >
         {label}
       </Typography>
-      <Typography variant="body2" color="text.primary">
+      <Typography
+        variant="body2"
+        sx={{
+          color: "text.primary",
+        }}
+      >
         {value}
       </Typography>
     </Stack>
@@ -129,30 +155,61 @@ function MetricCard({ result }: { result: MetricResultResponse }) {
       <Collapsible.Trigger className="group w-full flex flex-row">
         <Stack
           direction="row"
-          gap={1}
-          alignItems="center"
-          p={1}
-          sx={{ borderColor: "divider" }}
           className="group-data-panel-open:border-b w-full flex-1"
+          sx={{
+            gap: 1,
+            alignItems: "center",
+            p: 1,
+            borderColor: "divider",
+          }}
         >
           <KeyboardArrowRightIcon fontSize="small" className="group-data-panel-open:rotate-90 transition-transform duration-75" />
           <Chip size="small" label={result.metric_type} variant="outlined" />
-          <Stack direction="row" gap={1.5} alignItems="center" className="ml-auto">
-            <Stack direction="row" spacing={0.5} alignItems="center">
+          <Stack
+            direction="row"
+            className="ml-auto"
+            sx={{
+              gap: 1.5,
+              alignItems: "center",
+            }}
+          >
+            <Stack
+              direction="row"
+              spacing={0.5}
+              sx={{
+                alignItems: "center",
+              }}
+            >
               <AccessTimeIcon fontSize="inherit" sx={{ fontSize: 16 }} />
-              <Typography variant="caption" color="text.secondary">
+              <Typography
+                variant="caption"
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
                 {formatDurationMs(result.latency_ms)}
               </Typography>
             </Stack>
             <Divider orientation="vertical" flexItem />
-            <Typography variant="caption" color="text.secondary">
+            <Typography
+              variant="caption"
+              sx={{
+                color: "text.secondary",
+              }}
+            >
               ∑ {result.prompt_tokens + result.completion_tokens}
             </Typography>
           </Stack>
         </Stack>
       </Collapsible.Trigger>
       <Collapsible.Panel>
-        <Box p={1}>{content ?? <Typography variant="body2">No details available</Typography>}</Box>
+        <Box
+          sx={{
+            p: 1,
+          }}
+        >
+          {content ?? <Typography variant="body2">No details available</Typography>}
+        </Box>
       </Collapsible.Panel>
     </Collapsible.Root>
   );

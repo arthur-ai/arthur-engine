@@ -21,12 +21,31 @@ export const EvaluatorMapper = withFieldGroup({
     const ready = useStore(group.store, (state) => state.values.datasetRef.version && state.values.evals.length > 0);
 
     return (
-      <Stack component={Paper} variant="outlined" p={2} sx={{ opacity: ready ? 1 : 0.5, pointerEvents: ready ? "auto" : "none" }}>
+      <Stack
+        component={Paper}
+        variant="outlined"
+        sx={{
+          p: 2,
+          opacity: ready ? 1 : 0.5,
+          pointerEvents: ready ? "auto" : "none",
+        }}
+      >
         <Stack>
-          <Typography variant="body2" color="text.primary" fontWeight="bold">
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.primary",
+              fontWeight: "bold",
+            }}
+          >
             Map Evaluation Variables
           </Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+            }}
+          >
             Define the variables that will be used to evaluate the agent's responses.
           </Typography>
         </Stack>
@@ -34,18 +53,30 @@ export const EvaluatorMapper = withFieldGroup({
         {ready ? (
           <group.AppField name="evals" mode="array">
             {(field) => (
-              <Stack gap={2}>
+              <Stack
+                sx={{
+                  gap: 2,
+                }}
+              >
                 {field.state.value.map((evaluator, eIndex) => (
                   <Stack
                     component={Paper}
                     variant="outlined"
-                    p={2}
-                    gap={2}
                     divider={<Divider />}
-                    sx={{ backgroundColor: "var(--color-gray-50)" }}
                     key={`${evaluator.name}-${evaluator.version}-${eIndex}`}
+                    sx={{
+                      p: 2,
+                      gap: 2,
+                      backgroundColor: "var(--color-gray-50)",
+                    }}
                   >
-                    <Typography variant="body2" color="text.primary" fontWeight="bold">
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        color: "text.primary",
+                        fontWeight: "bold",
+                      }}
+                    >
                       {evaluator.name} v{evaluator.version}
                     </Typography>
                     <group.AppField name={`evals[${eIndex}].transform_id`}>
@@ -79,7 +110,12 @@ export const EvaluatorMapper = withFieldGroup({
             )}
           </group.AppField>
         ) : (
-          <Typography variant="body2" color="text.secondary">
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+            }}
+          >
             No evaluators or no dataset version selected
           </Typography>
         )}
@@ -101,16 +137,40 @@ const EvalItem = withFieldGroup({
     if (!transform) return null;
 
     return (
-      <Stack gap={2}>
+      <Stack
+        sx={{
+          gap: 2,
+        }}
+      >
         <group.AppField name={`evals[${evalIndex}].variable_mapping`} mode="array">
           {(field) => (
-            <Stack gap={3}>
+            <Stack
+              sx={{
+                gap: 3,
+              }}
+            >
               {field.state.value.map((mapping, mIndex) => {
                 const key = `evals[${evalIndex}].variable_mapping[${mIndex}]` as const;
                 return (
-                  <Stack key={`${mapping.variable_name}-${mIndex}`} gap={2}>
-                    <Stack direction="row" justifyContent="space-between" alignItems="center">
-                      <Typography variant="body2" color="text.primary">
+                  <Stack
+                    key={`${mapping.variable_name}-${mIndex}`}
+                    sx={{
+                      gap: 2,
+                    }}
+                  >
+                    <Stack
+                      direction="row"
+                      sx={{
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                      }}
+                    >
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          color: "text.primary",
+                        }}
+                      >
                         {mapping.variable_name}
                       </Typography>
                       <group.AppField

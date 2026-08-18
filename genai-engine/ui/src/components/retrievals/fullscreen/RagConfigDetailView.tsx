@@ -212,12 +212,23 @@ const RagConfigDetailView = ({
           {/* Metadata row */}
           <Box sx={{ display: "flex", gap: 3, flexWrap: "wrap", alignItems: "center" }}>
             {config.description && (
-              <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 400 }}>
+              <Typography
+                variant="body2"
+                sx={{
+                  color: "text.secondary",
+                  maxWidth: 400,
+                }}
+              >
                 {config.description}
               </Typography>
             )}
             <Box sx={{ display: "flex", gap: 0.5, alignItems: "baseline" }}>
-              <Typography variant="caption" color="text.secondary">
+              <Typography
+                variant="caption"
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
                 Created:
               </Typography>
               <Typography variant="body2" sx={{ fontWeight: 500 }}>
@@ -246,7 +257,13 @@ const RagConfigDetailView = ({
         <Stack spacing={3}>
           {/* Search Method */}
           <Box>
-            <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.5 }}>
+            <Typography
+              variant="subtitle2"
+              sx={{
+                color: "text.secondary",
+                mb: 0.5,
+              }}
+            >
               Search Method
             </Typography>
             <Chip label={searchMethodLabel} color="primary" variant="outlined" />
@@ -256,7 +273,13 @@ const RagConfigDetailView = ({
 
           {/* Connection Info */}
           <Box>
-            <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1.5 }}>
+            <Typography
+              variant="subtitle2"
+              sx={{
+                color: "text.secondary",
+                mb: 1.5,
+              }}
+            >
               Connection
             </Typography>
             <Stack spacing={1.5}>
@@ -269,7 +292,13 @@ const RagConfigDetailView = ({
 
           {/* Search Parameters */}
           <Box>
-            <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1.5 }}>
+            <Typography
+              variant="subtitle2"
+              sx={{
+                color: "text.secondary",
+                mb: 1.5,
+              }}
+            >
               Parameters
             </Typography>
             <Stack spacing={1.5}>
@@ -288,7 +317,13 @@ const RagConfigDetailView = ({
             <>
               <Divider />
               <Box>
-                <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1.5 }}>
+                <Typography
+                  variant="subtitle2"
+                  sx={{
+                    color: "text.secondary",
+                    mb: 1.5,
+                  }}
+                >
                   Return Metadata Fields
                 </Typography>
                 <Box sx={{ display: "flex", gap: 0.5, flexWrap: "wrap" }}>
@@ -314,7 +349,14 @@ const RagConfigDetailView = ({
           <Typography variant="subtitle1" sx={{ mb: 0.5, fontWeight: 600 }}>
             Version Tags
           </Typography>
-          <Typography variant="caption" color="text.secondary" sx={{ mb: 2, display: "block" }}>
+          <Typography
+            variant="caption"
+            sx={{
+              color: "text.secondary",
+              mb: 2,
+              display: "block",
+            }}
+          >
             Tags to easily identify your configuration versions.
           </Typography>
 
@@ -323,7 +365,14 @@ const RagConfigDetailView = ({
           <Typography variant="subtitle1" sx={{ mb: 0.5, fontWeight: 600 }}>
             Add Tag
           </Typography>
-          <Typography variant="caption" color="text.secondary" sx={{ mb: 2, display: "block" }}>
+          <Typography
+            variant="caption"
+            sx={{
+              color: "text.secondary",
+              mb: 2,
+              display: "block",
+            }}
+          >
             Add a tag to this version
           </Typography>
 
@@ -390,7 +439,13 @@ interface SettingRowProps {
 
 const SettingRow: React.FC<SettingRowProps> = ({ label, value }) => (
   <Box sx={{ display: "flex", alignItems: "baseline", gap: 1 }}>
-    <Typography variant="body2" color="text.secondary" sx={{ minWidth: 160 }}>
+    <Typography
+      variant="body2"
+      sx={{
+        color: "text.secondary",
+        minWidth: 160,
+      }}
+    >
       {label}:
     </Typography>
     <Typography variant="body2" sx={{ fontWeight: 500 }}>

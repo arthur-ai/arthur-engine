@@ -98,8 +98,13 @@ export const Management = () => {
       <Stack
         direction="row"
         spacing={2}
-        alignItems="center"
-        sx={{ p: 2, borderBottom: "1px solid", borderColor: "divider", backgroundColor: "background.paper" }}
+        sx={{
+          alignItems: "center",
+          p: 2,
+          borderBottom: "1px solid",
+          borderColor: "divider",
+          backgroundColor: "background.paper",
+        }}
       >
         <TextField
           size="small"
@@ -134,7 +139,13 @@ export const Management = () => {
           <Typography variant="h5" gutterBottom sx={{ fontWeight: 500, color: "text.primary" }}>
             No continuous evals yet
           </Typography>
-          <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+          <Typography
+            variant="body1"
+            sx={{
+              color: "text.secondary",
+              mb: 3,
+            }}
+          >
             Get started by creating your first continuous eval
           </Typography>
           <Button
