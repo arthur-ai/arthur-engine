@@ -47,6 +47,9 @@ jobs:
         with:
           working-directory: genai-engine
           with-groups: dev,linters
+      - name: Check dependencies resolve
+        run: |
+          uv lock --directory genai-engine
       - name: Run isort
         id: isort
         continue-on-error: true
