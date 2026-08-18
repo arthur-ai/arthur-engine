@@ -80,7 +80,23 @@ Use `*_with_http_info()` + `raw_data` whenever the response includes prompts, me
    - In the `all` extra list: `"openinference-instrumentation-my-framework"`
 3. **`python/README.md`** — add a row to the "Supported instrumentors" table.
 
-Verify the correct module path and class name from the package's PyPI page before adding.
+`tests/test_instrumentors.py` checks that those places agree on names, but it reads declarations
+rather than importing anything, so it cannot see whether `module_path` and `class_name` are real.
+Verify those two against the published package:
+
+```bash
+pip install "arthur-observability-sdk[my-framework]"
+python3 scripts/verify_instrumentor.py --extra my-framework
+```
+
+CI runs that per-extra — for changed declarations on every PR, for all of them weekly — via
+`.github/workflows/arthur-observability-sdk-instrumentors.yml`. Declarations known not to resolve
+are listed with a reason in `KNOWN_BROKEN` (`scripts/instrumentor_registry.py`); the check is
+strict in both directions, so fixing one requires removing its entry.
+
+Not every openinference package fits `_instrument()`. Several ship an OTel `SpanProcessor` rather
+than a `BaseInstrumentor` and need `tracer_provider.add_span_processor(...)` instead — check which
+shape the package exports before adding a method for it.
 
 ## Testing
 

@@ -1,69 +1,144 @@
-"""Consistency test for the optional framework instrumentors."""
+"""Bookkeeping checks for the optional framework instrumentors.
 
-import ast
-import pathlib
-import re
-import tomllib
+Adding an instrumentor touches four places that must agree (see
+arthur-observability-sdk/CLAUDE.md): the ``instrument_*`` method in
+``arthur.py``, the individual extra in ``pyproject.toml``, the ``all`` extra,
+and the README table row.  These tests assert those four agree.
+
+Scope, deliberately: this is a *metadata* check.  It reads declarations rather
+than importing the optional packages, so it runs with no extras installed and
+in milliseconds — but it therefore cannot tell whether a declared
+``module_path``/``class_name`` resolves against the package actually published
+on PyPI.  That is ``scripts/verify_instrumentor.py``, run per-extra by
+``.github/workflows/arthur-observability-sdk-instrumentors.yml``.
+"""
+
+from __future__ import annotations
+
+from typing import Dict, List
 
 import pytest
 
+pytest.importorskip("tomllib", reason="registry parsing needs Python 3.11+")
+
+from instrumentor_registry import (  # noqa: E402  (import follows the version guard)
+    KNOWN_BROKEN,
+    Instrumentor,
+    load_documented,
+    load_extras,
+    load_instrumentors,
+    marker_of,
+)
+
 pytestmark = pytest.mark.unit_tests
 
-PACKAGE_ROOT = pathlib.Path(__file__).resolve().parent.parent
+INSTRUMENTORS: Dict[str, Instrumentor] = load_instrumentors()
+EXTRAS: Dict[str, List[str]] = load_extras()
+RAW_EXTRAS: Dict[str, List[str]] = load_extras(strip_markers=False)
+DOCUMENTED: Dict[str, str] = load_documented()
+
+# Parametrise so that -v names each instrumentor and one bad row does not mask
+# the rest.
+DECLARATIONS = pytest.mark.parametrize(
+    "instrumentor",
+    sorted(INSTRUMENTORS.values()),
+    ids=lambda instrumentor: instrumentor.method,
+)
 
 
-def test_instrumentors_are_consistent():
-    """Every instrument_* method must have a matching extra, 'all' entry, and README row.
+def test_registry_is_not_empty():
+    """Guards against a parser change that silently matches nothing."""
+    assert INSTRUMENTORS, "no instrument_* declarations found in arthur.py"
+    assert "all" in EXTRAS, "pyproject.toml declares no 'all' extra"
 
-    Adding an instrumentor touches four places that must agree (see
-    arthur-observability-sdk/CLAUDE.md).  Parsed from source rather than imported
-    so the optional packages need not be installed.
+
+@DECLARATIONS
+def test_method_declares_a_matching_individual_extra(instrumentor: Instrumentor):
+    assert EXTRAS.get(instrumentor.extra) == [instrumentor.package], (
+        f"{instrumentor.method}() names extra '{instrumentor.extra}' for "
+        f"'{instrumentor.package}', but pyproject.toml declares "
+        f"{EXTRAS.get(instrumentor.extra)}"
+    )
+
+
+@DECLARATIONS
+def test_package_is_in_the_all_extra(instrumentor: Instrumentor):
+    assert instrumentor.package in EXTRAS["all"], (
+        f"'{instrumentor.package}' is missing from the 'all' extra, so "
+        f"pip install arthur-observability-sdk[all] would not enable "
+        f"{instrumentor.method}()"
+    )
+
+
+@DECLARATIONS
+def test_all_extra_repeats_the_individual_marker(instrumentor: Instrumentor):
+    """A marked requirement must carry the same marker inside ``all``.
+
+    ``beeai`` is 3.11+ only.  Dropping its marker from ``all`` would make
+    ``pip install arthur-observability-sdk[all]`` unresolvable on 3.10, which
+    the SDK still supports.
     """
-    source = (PACKAGE_ROOT / "src" / "arthur_observability_sdk" / "arthur.py").read_text()
-    arthur_cls = next(
-        node
-        for node in ast.walk(ast.parse(source))
-        if isinstance(node, ast.ClassDef) and node.name == "Arthur"
-    )
-    # method name -> (package, extra_name) from the _instrument() call
-    methods = {
-        node.name: [arg.value for arg in node.body[0].value.args][:2]
-        for node in arthur_cls.body
-        if isinstance(node, ast.FunctionDef) and node.name.startswith("instrument_")
+    individual = {
+        requirement.split(";")[0].strip(): marker_of(requirement)
+        for requirement in RAW_EXTRAS[instrumentor.extra]
     }
-
-    pyproject = tomllib.loads((PACKAGE_ROOT / "pyproject.toml").read_text())
-    extras = {
-        extra: [requirement.split(";")[0].strip() for requirement in requirements]
-        for extra, requirements in pyproject["project"]["optional-dependencies"].items()
+    within_all = {
+        requirement.split(";")[0].strip(): marker_of(requirement)
+        for requirement in RAW_EXTRAS["all"]
     }
-    documented = dict(
-        re.findall(
-            r"^\|\s*`([a-z0-9-]+)`\s*\|[^|]*\|\s*`(instrument_[a-z0-9_]+)\(\)`\s*\|$",
-            (PACKAGE_ROOT / "README.md").read_text(),
-            re.MULTILINE,
-        )
+    expected = individual.get(instrumentor.package, "")
+    assert within_all.get(instrumentor.package) == expected, (
+        f"'{instrumentor.package}' has marker {expected!r} in extra "
+        f"'{instrumentor.extra}' but {within_all.get(instrumentor.package)!r} in 'all'"
     )
 
-    assert methods, "no instrument_* methods found in arthur.py"
-    for method_name, (package, extra_name) in sorted(methods.items()):
-        assert extras.get(extra_name) == [package], (
-            f"{method_name}() names extra '{extra_name}' for '{package}', but "
-            f"pyproject.toml declares {extras.get(extra_name)}"
-        )
-        assert package in extras["all"], f"'{package}' is missing from the 'all' extra"
-        assert documented.get(extra_name) == method_name, (
-            f"README table maps '{extra_name}' to {documented.get(extra_name)}, "
-            f"expected {method_name}()"
-        )
 
-    exposed = {package for package, _ in methods.values()}
-    assert set(extras["all"]) == exposed, (
-        f"'all' extra is out of sync: only in 'all' "
-        f"{sorted(set(extras['all']) - exposed)}, missing from 'all' "
-        f"{sorted(exposed - set(extras['all']))}"
+@DECLARATIONS
+def test_method_has_a_readme_table_row(instrumentor: Instrumentor):
+    assert DOCUMENTED.get(instrumentor.extra) == instrumentor.method, (
+        f"README table maps '{instrumentor.extra}' to "
+        f"{DOCUMENTED.get(instrumentor.extra)}, expected {instrumentor.method}()"
     )
-    assert not set(documented) - set(extras), (
-        f"README lists extras that pyproject.toml does not declare: "
-        f"{sorted(set(documented) - set(extras))}"
+
+
+def test_all_extra_has_no_unreachable_packages():
+    """Nothing in ``all`` that no ``instrument_*`` method can reach."""
+    exposed = {instrumentor.package for instrumentor in INSTRUMENTORS.values()}
+    orphaned = sorted(set(EXTRAS["all"]) - exposed)
+    assert (
+        not orphaned
+    ), f"'all' extra installs packages with no instrument_* method: {orphaned}"
+
+
+def test_no_individual_extra_is_orphaned():
+    """Every instrumentor extra is reachable from a method.
+
+    Catches an extra left behind when a method is renamed or removed — the
+    ``all``-extra check above cannot see it if the extra was also dropped
+    from ``all``.
+    """
+    declared_extras = {instrumentor.extra for instrumentor in INSTRUMENTORS.values()}
+    orphaned = sorted(set(DOCUMENTED) - declared_extras)
+    assert (
+        not orphaned
+    ), f"README documents extras with no instrument_* method: {orphaned}"
+
+
+def test_readme_documents_no_undeclared_extras():
+    undeclared = sorted(set(DOCUMENTED) - set(EXTRAS))
+    assert (
+        not undeclared
+    ), f"README lists extras that pyproject.toml does not declare: {undeclared}"
+
+
+def test_known_broken_entries_name_real_methods():
+    """Keeps ``KNOWN_BROKEN`` from outliving the methods it waives.
+
+    A stale entry would silently exempt nothing, or worse, exempt a method that
+    was renamed back into existence later.
+    """
+    stale = sorted(set(KNOWN_BROKEN) - set(INSTRUMENTORS))
+    assert not stale, (
+        f"KNOWN_BROKEN in scripts/instrumentor_registry.py names methods that "
+        f"no longer exist: {stale}"
     )
