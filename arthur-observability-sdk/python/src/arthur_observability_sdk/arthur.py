@@ -404,8 +404,16 @@ class Arthur:
             self._api_client.close()
 
     # ------------------------------------------------------------------
-    # Named instrumentation methods (32 frameworks)
+    # Named instrumentation methods (40 frameworks)
     # ------------------------------------------------------------------
+
+    def instrument_ag2(self) -> Any:
+        return self._instrument(
+            "openinference-instrumentation-ag2",
+            "ag2",
+            "openinference.instrumentation.ag2",
+            "AG2Instrumentor",
+        )
 
     def instrument_agent_framework(self) -> Any:
         return self._instrument(
@@ -493,6 +501,14 @@ class Arthur:
             "codex",
             "openinference.instrumentation.codex",
             "CodexInstrumentor",
+        )
+
+    def instrument_cohere(self) -> Any:
+        return self._instrument(
+            "openinference-instrumentation-cohere",
+            "cohere",
+            "openinference.instrumentation.cohere",
+            "CohereInstrumentor",
         )
 
     def instrument_crewai(self) -> Any:
@@ -607,6 +623,14 @@ class Arthur:
             "MonkaiAgentInstrumentor",
         )
 
+    def instrument_ollama(self) -> Any:
+        return self._instrument(
+            "openinference-instrumentation-ollama",
+            "ollama",
+            "openinference.instrumentation.ollama",
+            "OllamaInstrumentor",
+        )
+
     def instrument_openai(self) -> Any:
         return self._instrument(
             "openinference-instrumentation-openai",
@@ -677,6 +701,14 @@ class Arthur:
             "strands-agents",
             "openinference.instrumentation.strands_agents",
             "StrandsAgentsInstrumentor",
+        )
+
+    def instrument_together(self) -> Any:
+        return self._instrument(
+            "openinference-instrumentation-together",
+            "together",
+            "openinference.instrumentation.together",
+            "TogetherInstrumentor",
         )
 
     def instrument_vertexai(self) -> Any:

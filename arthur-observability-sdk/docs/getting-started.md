@@ -133,7 +133,7 @@ arthur.instrument_langchain()
 arthur.instrument_anthropic()
 ```
 
-All 32 supported frameworks follow the same pattern.  If the optional extra is not
+All 40 supported frameworks follow the same pattern.  If the optional extra is not
 installed the method raises `ImportError` with a `pip install` hint.
 
 ---
