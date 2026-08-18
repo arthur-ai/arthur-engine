@@ -23,10 +23,10 @@ pip install "arthur-observability-sdk[anthropic]"
 
 ## How-to guides
 
-Full guides are in [`docs/`](docs/):
+Full guides are in [`docs/`](../docs/):
 
-- **[Getting started](docs/getting-started.md)** — initialisation, session/user context, framework instrumentation, shutdown
-- **[Prompt management](docs/prompt-management.md)** — fetching and rendering versioned prompts, PROMPT span attributes
+- **[Getting started](../docs/getting-started.md)** — initialisation, session/user context, framework instrumentation, shutdown
+- **[Prompt management](../docs/prompt-management.md)** — fetching and rendering versioned prompts, PROMPT span attributes
 
 ### Quick start
 
