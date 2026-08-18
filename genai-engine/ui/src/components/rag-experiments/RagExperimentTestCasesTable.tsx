@@ -13,7 +13,14 @@ import {
   LinearProgress,
   CircularProgress,
 } from "@mui/material";
-import { createColumnHelper, flexRender, getCoreRowModel, useReactTable, type ColumnDef, type HeaderGroup } from "@tanstack/react-table";
+import { flexRender } from "@tanstack/react-table";
+import {
+  getCoreRowModel,
+  legacyCreateColumnHelper,
+  useLegacyTable,
+  type LegacyColumnDef as ColumnDef,
+  type LegacyHeaderGroup as HeaderGroup,
+} from "@tanstack/react-table/legacy";
 import React, { useMemo, useState, useCallback, useEffect } from "react";
 
 import { RagTestCaseDetailModal } from "./RagTestCaseDetailModal";
@@ -47,7 +54,7 @@ interface EvalGroup {
   ragConfigKeys: string[];
 }
 
-const columnHelper = createColumnHelper<RagTestCase>();
+const columnHelper = legacyCreateColumnHelper<RagTestCase>();
 
 // Status column definition
 const createStatusColumn = (): ColumnDef<RagTestCase> =>
@@ -395,7 +402,7 @@ export const RagExperimentTestCasesTable: React.FC<RagExperimentTestCasesTablePr
   );
 
   // TanStack Table instance
-  const table = useReactTable({
+  const table = useLegacyTable({
     data: testCases,
     columns,
     getCoreRowModel: getCoreRowModel(),

@@ -20,7 +20,8 @@ import {
   Box,
   Stack,
 } from "@mui/material";
-import { createColumnHelper, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
+import { flexRender } from "@tanstack/react-table";
+import { getCoreRowModel, legacyCreateColumnHelper, useLegacyTable } from "@tanstack/react-table/legacy";
 import { useMemo, useRef } from "react";
 import { NavigateFunction, useNavigate } from "react-router";
 
@@ -52,7 +53,7 @@ export const AnnotationsTable = ({ annotations }: Props) => {
     [task, navigate]
   );
 
-  const table = useReactTable({
+  const table = useLegacyTable({
     columns,
     data: annotations,
     getCoreRowModel: getCoreRowModel(),
@@ -136,7 +137,7 @@ const AnnotationDetail = ({ annotation, defaultCurrency }: { annotation: Annotat
   );
 };
 
-const columnHelper = createColumnHelper<Annotation>();
+const columnHelper = legacyCreateColumnHelper<Annotation>();
 
 const createColumns = ({
   taskId,
@@ -146,95 +147,96 @@ const createColumns = ({
   taskId: string;
   container: React.RefObject<HTMLDivElement | null>;
   onNavigate: NavigateFunction;
-}) => [
-  columnHelper.accessor("annotation_type", {
-    header: "Annotation Type",
-    size: 150,
-    cell: ({ getValue }) => {
-      const value = getValue();
+}) =>
+  columnHelper.columns([
+    columnHelper.accessor("annotation_type", {
+      header: "Annotation Type",
+      size: 150,
+      cell: ({ getValue }) => {
+        const value = getValue();
 
-      const label = value === "human" ? "Human" : "Continuous Eval";
+        const label = value === "human" ? "Human" : "Continuous Eval";
 
-      return (
-        <Typography variant="body2" className="capitalize" sx={{ whiteSpace: "nowrap" }}>
-          {label}
-        </Typography>
-      );
-    },
-  }),
-  columnHelper.display({
-    id: "continuous_eval_name",
-    header: "Continuous Eval Name",
-    size: 320,
-    cell: ({ row }) => {
-      if (!isContinuousEvalAnnotation(row.original)) return null;
+        return (
+          <Typography variant="body2" className="capitalize" sx={{ whiteSpace: "nowrap" }}>
+            {label}
+          </Typography>
+        );
+      },
+    }),
+    columnHelper.display({
+      id: "continuous_eval_name",
+      header: "Continuous Eval Name",
+      size: 320,
+      cell: ({ row }) => {
+        if (!isContinuousEvalAnnotation(row.original)) return null;
 
-      const name = row.original.continuous_eval_name;
-      if (!name) return null;
+        const name = row.original.continuous_eval_name;
+        if (!name) return null;
 
-      return <Typography variant="body2">{name}</Typography>;
-    },
-  }),
-  columnHelper.accessor("annotation_score", {
-    header: "Annotation Score",
-    size: 120,
-    cell: ({ getValue }) => getValue(),
-  }),
-  columnHelper.accessor("run_status", {
-    header: "Run Status",
-    size: 120,
-    cell: ({ row }) => {
-      if (!isContinuousEvalAnnotation(row.original)) return;
+        return <Typography variant="body2">{name}</Typography>;
+      },
+    }),
+    columnHelper.accessor("annotation_score", {
+      header: "Annotation Score",
+      size: 120,
+      cell: ({ getValue }) => getValue(),
+    }),
+    columnHelper.accessor("run_status", {
+      header: "Run Status",
+      size: 120,
+      cell: ({ row }) => {
+        if (!isContinuousEvalAnnotation(row.original)) return;
 
-      const status = row.original.run_status;
-      return <Chip label={status} size="small" sx={getStatusChipSx(status)} />;
-    },
-  }),
-  columnHelper.display({
-    id: "actions",
-    size: 130,
-    cell: ({ row }) => {
-      const annotation = row.original;
+        const status = row.original.run_status;
+        return <Chip label={status} size="small" sx={getStatusChipSx(status)} />;
+      },
+    }),
+    columnHelper.display({
+      id: "actions",
+      size: 130,
+      cell: ({ row }) => {
+        const annotation = row.original;
 
-      if (!isContinuousEvalAnnotation(annotation)) return;
+        if (!isContinuousEvalAnnotation(annotation)) return;
 
-      return (
-        <Menu.Root>
-          <Menu.Trigger render={<Button variant="outlined" size="small" endIcon={<ArrowDropDownIcon />} />}>Result</Menu.Trigger>
-          <Menu.Portal keepMounted container={container.current}>
-            <Menu.Positioner sideOffset={8} side="bottom" align="center" className="z-10">
-              <Menu.Popup
-                render={<List component={Paper} dense className="outline-none origin-(--transform-origin) min-w-(--anchor-width) z-1000" />}
-              >
-                <Menu.Item
-                  render={
-                    <ListItemButton onClick={() => onNavigate(`/tasks/${taskId}/evaluate?id=${annotation.id}&section=results`)} className="gap-4" />
-                  }
+        return (
+          <Menu.Root>
+            <Menu.Trigger render={<Button variant="outlined" size="small" endIcon={<ArrowDropDownIcon />} />}>Result</Menu.Trigger>
+            <Menu.Portal keepMounted container={container.current}>
+              <Menu.Positioner sideOffset={8} side="bottom" align="center" className="z-10">
+                <Menu.Popup
+                  render={<List component={Paper} dense className="outline-none origin-(--transform-origin) min-w-(--anchor-width) z-1000" />}
                 >
-                  <ListItemText primary="View Results" />
-                  <ListItemIcon sx={{ minWidth: "min-content" }}>
-                    <LaunchIcon color="action" fontSize="small" />
-                  </ListItemIcon>
-                </Menu.Item>
-                <Menu.Item
-                  render={
-                    <ListItemButton
-                      disabled={annotation.run_status !== "error"}
-                      onClick={() => onNavigate(`/tasks/${taskId}/evaluate?id=${annotation.id}&section=results&action=rerun`)}
-                      className="gap-4"
-                    />
-                  }
-                >
-                  <ListItemText primary="Rerun Annotation" />
-                  <ListItemIcon sx={{ minWidth: "min-content" }}>
-                    <RestartAltIcon color="action" fontSize="small" />
-                  </ListItemIcon>
-                </Menu.Item>
-              </Menu.Popup>
-            </Menu.Positioner>
-          </Menu.Portal>
-        </Menu.Root>
-      );
-    },
-  }),
-];
+                  <Menu.Item
+                    render={
+                      <ListItemButton onClick={() => onNavigate(`/tasks/${taskId}/evaluate?id=${annotation.id}&section=results`)} className="gap-4" />
+                    }
+                  >
+                    <ListItemText primary="View Results" />
+                    <ListItemIcon sx={{ minWidth: "min-content" }}>
+                      <LaunchIcon color="action" fontSize="small" />
+                    </ListItemIcon>
+                  </Menu.Item>
+                  <Menu.Item
+                    render={
+                      <ListItemButton
+                        disabled={annotation.run_status !== "error"}
+                        onClick={() => onNavigate(`/tasks/${taskId}/evaluate?id=${annotation.id}&section=results&action=rerun`)}
+                        className="gap-4"
+                      />
+                    }
+                  >
+                    <ListItemText primary="Rerun Annotation" />
+                    <ListItemIcon sx={{ minWidth: "min-content" }}>
+                      <RestartAltIcon color="action" fontSize="small" />
+                    </ListItemIcon>
+                  </Menu.Item>
+                </Menu.Popup>
+              </Menu.Positioner>
+            </Menu.Portal>
+          </Menu.Root>
+        );
+      },
+    }),
+  ]);

@@ -1,9 +1,10 @@
 import { Box, LinearProgress, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TableSortLabel } from "@mui/material";
-import { flexRender, Row, type Table as TableType } from "@tanstack/react-table";
+import { flexRender, type RowData } from "@tanstack/react-table";
+import { type LegacyRow as Row, type LegacyTable as TableType } from "@tanstack/react-table/legacy";
 
 import { TOUR_IDS } from "@/features/task-tour/selectors";
 
-type Props<TTable> = {
+type Props<TTable extends RowData> = {
   table: TableType<TTable>;
   ref?: React.RefObject<HTMLDivElement | null>;
   loading: boolean;
@@ -11,7 +12,7 @@ type Props<TTable> = {
   onRowClick?: (row: Row<TTable>) => void;
 };
 
-export const TracesTable = <TTable,>({ table, ref, loading, onScroll, onRowClick }: Props<TTable>) => {
+export const TracesTable = <TTable extends RowData>({ table, ref, loading, onScroll, onRowClick }: Props<TTable>) => {
   return (
     <TableContainer component={Paper} elevation={1} sx={{ flexGrow: 0, flexShrink: 1 }} ref={ref ?? undefined} onScroll={onScroll}>
       {loading && <LinearProgress />}

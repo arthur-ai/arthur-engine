@@ -18,7 +18,8 @@ import {
   Typography,
 } from "@mui/material";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { flexRender, getCoreRowModel, getSortedRowModel, SortingState, useReactTable } from "@tanstack/react-table";
+import { flexRender, SortingState } from "@tanstack/react-table";
+import { getCoreRowModel, getSortedRowModel, useLegacyTable } from "@tanstack/react-table/legacy";
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
 
@@ -74,7 +75,7 @@ export const Management = () => {
     })
   );
 
-  const table = useReactTable({
+  const table = useLegacyTable({
     data: data.evals,
     columns: useMemo(
       () =>

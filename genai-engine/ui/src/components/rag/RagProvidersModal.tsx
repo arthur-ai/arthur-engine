@@ -17,7 +17,8 @@ import {
   TableRow,
   Typography,
 } from "@mui/material";
-import { ColumnDef, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
+import { flexRender } from "@tanstack/react-table";
+import { getCoreRowModel, LegacyColumnDef, useLegacyTable } from "@tanstack/react-table/legacy";
 import React, { useCallback, useMemo, useState } from "react";
 
 import { RagProviderFormModal } from "@/components/rag/RagProviderFormModal";
@@ -91,7 +92,7 @@ export const RagProvidersModal: React.FC<RagProvidersModalProps> = ({ open, onCl
     refetch();
   }, [refetch]);
 
-  const columns = useMemo<ColumnDef<RagProviderConfigurationResponse>[]>(() => {
+  const columns = useMemo<LegacyColumnDef<RagProviderConfigurationResponse>[]>(() => {
     return [
       {
         header: "Name",
@@ -161,7 +162,7 @@ export const RagProvidersModal: React.FC<RagProvidersModalProps> = ({ open, onCl
 
   const providerRows = providers ?? [];
 
-  const table = useReactTable({
+  const table = useLegacyTable({
     data: providerRows,
     columns,
     getCoreRowModel: getCoreRowModel(),

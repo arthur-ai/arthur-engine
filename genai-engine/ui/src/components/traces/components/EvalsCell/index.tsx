@@ -15,7 +15,8 @@ import {
   Typography,
 } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
-import { ColumnDef, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
+import { flexRender } from "@tanstack/react-table";
+import { getCoreRowModel, LegacyColumnDef, useLegacyTable } from "@tanstack/react-table/legacy";
 import { motion } from "framer-motion";
 import { useMemo, useState } from "react";
 
@@ -34,7 +35,7 @@ export const EvalsCell = ({ traceId, className }: Props) => {
 
   const data = useMockEvalsResults(traceId);
 
-  const table = useReactTable({
+  const table = useLegacyTable({
     data,
     columns,
     getCoreRowModel: getCoreRowModel(),
@@ -144,7 +145,7 @@ const useMockEvalsResults = (traceId: string): MockEvalsResults[] => {
   );
 };
 
-const columns: ColumnDef<MockEvalsResults>[] = [
+const columns: LegacyColumnDef<MockEvalsResults>[] = [
   {
     id: "result",
     header: "Result",

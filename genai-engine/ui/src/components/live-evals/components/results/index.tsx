@@ -16,7 +16,8 @@ import {
   TextField,
 } from "@mui/material";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
+import { flexRender } from "@tanstack/react-table";
+import { getCoreRowModel, useLegacyTable } from "@tanstack/react-table/legacy";
 import { parseAsString, parseAsStringEnum, useQueryState } from "nuqs";
 import { useEffect, useMemo, useState } from "react";
 
@@ -73,7 +74,7 @@ export const Results = () => {
     })
   );
 
-  const table = useReactTable({
+  const table = useLegacyTable({
     data: data.annotations,
     columns: useMemo(
       () => createColumns({ onView: (annotationId) => setAnnotationId(annotationId), defaultCurrency }),

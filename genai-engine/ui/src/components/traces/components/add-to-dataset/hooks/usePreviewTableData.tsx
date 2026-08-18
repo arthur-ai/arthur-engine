@@ -1,4 +1,4 @@
-import { ColumnDef, getCoreRowModel, useReactTable } from "@tanstack/react-table";
+import { getCoreRowModel, LegacyColumnDef, useLegacyTable } from "@tanstack/react-table/legacy";
 import { useMemo } from "react";
 
 import { Column } from "../form/shared";
@@ -17,7 +17,7 @@ export const usePreviewTableData = (columns: Column[]) => {
     [columns]
   );
 
-  const tableColumns: ColumnDef<Record<string, string>>[] = useMemo(() => {
+  const tableColumns: LegacyColumnDef<Record<string, string>>[] = useMemo(() => {
     const keys = Object.keys(data?.[0] ?? {});
 
     return keys.map((key) => ({
@@ -27,7 +27,7 @@ export const usePreviewTableData = (columns: Column[]) => {
     }));
   }, [data]);
 
-  const table = useReactTable({
+  const table = useLegacyTable({
     columns: tableColumns,
     data,
     getCoreRowModel: getCoreRowModel(),

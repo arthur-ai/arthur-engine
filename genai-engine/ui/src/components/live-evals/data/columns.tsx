@@ -1,5 +1,5 @@
 import { Chip, Link as MuiLink, Tooltip, Typography } from "@mui/material";
-import { createColumnHelper } from "@tanstack/react-table";
+import { legacyCreateColumnHelper } from "@tanstack/react-table/legacy";
 import { Link } from "react-router";
 
 import { LiveEvalActions } from "../components/actions";
@@ -8,10 +8,10 @@ import { CopyableChip } from "@/components/common";
 import type { ContinuousEvalResponse } from "@/lib/api-client/api-client";
 import { formatDateInTimezone } from "@/utils/formatters";
 
-const columnHelper = createColumnHelper<ContinuousEvalResponse>();
+const columnHelper = legacyCreateColumnHelper<ContinuousEvalResponse>();
 
 export const createColumns = ({ onEdit, timezone, use24Hour }: { onEdit: (id: string) => void; timezone: string; use24Hour: boolean }) => {
-  const columns = [
+  const columns = columnHelper.columns([
     columnHelper.accessor("name", {
       header: "Name",
       cell: ({ getValue, row }) => {
@@ -66,12 +66,12 @@ export const createColumns = ({ onEdit, timezone, use24Hour }: { onEdit: (id: st
     ),
     columnHelper.accessor("created_at", {
       header: "Created At",
-      sortingFn: "datetime",
+      sortFn: "datetime",
       cell: ({ getValue }) => formatDateInTimezone(getValue(), timezone, { hour12: !use24Hour }),
     }),
     columnHelper.accessor("updated_at", {
       header: "Updated At",
-      sortingFn: "datetime",
+      sortFn: "datetime",
       cell: ({ getValue }) => formatDateInTimezone(getValue(), timezone, { hour12: !use24Hour }),
     }),
     columnHelper.accessor("id", {
@@ -87,7 +87,7 @@ export const createColumns = ({ onEdit, timezone, use24Hour }: { onEdit: (id: st
         return <LiveEvalActions config={row.original} onEdit={onEdit} />;
       },
     }),
-  ];
+  ]);
 
   return columns;
 };
