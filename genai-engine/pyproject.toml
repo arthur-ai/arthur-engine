@@ -119,6 +119,17 @@ exclude-newer-package = { torch = false, arthur-common = false, arthur-client = 
 # 0.11.15 (RUSTSEC-2026-0185 / CVE-2026-25800, HIGH: remote memory exhaustion). Both are fixed
 # as of hf-xet 1.5.2 (xet-core v1.5.2 bumped the vendored quinn-proto 0.11.14 -> 0.11.15).
 constraint-dependencies = ["hf-xet>=1.5.2"]
+# Security: force transitive cryptography past presidio-anonymizer 2.2.364 (latest), which
+# requires cryptography>=48.0.1,<49.0.0 and so pinned us to 48.0.1 — a version with three open
+# advisories: CVE-2026-69248 (X.509 verifier accepts wildcard DNS names, escaping
+# permittedSubtrees) and CVE-2026-69249 (duplicate self-signed intermediates cause exponential
+# path-building), both fixed in 49.0.0, plus CVE-2026-69247 (PKCS#7 EnvelopedData Bleichenbacher
+# oracle), fixed in 50.0.0. A constraint cannot lift an upper bound, hence an override.
+# Safe to force: presidio-anonymizer's entire use of cryptography is AES-CBC with PKCS7 padding
+# in operators/aes_cipher.py (`primitives.padding` and `primitives.ciphers.{Cipher, algorithms,
+# modes}`) — unchanged across 48 -> 50. Verified its AESCipher encrypt/decrypt round-trips on
+# 50.0.0 and the unit suite is unaffected. Drop this once presidio-anonymizer widens its pin.
+override-dependencies = ["cryptography>=50.0.0"]
 
 [[tool.uv.index]]
 name = "PyPI"
