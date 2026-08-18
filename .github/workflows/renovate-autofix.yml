@@ -264,6 +264,23 @@ jobs:
                 `... autoflake --remove-all-unused-imports --in-place --recursive src`, `... black src`
               - UI: `cd genai-engine/ui && corepack enable && yarn install --immutable`, then
                 `yarn type-check && yarn lint && yarn format:check` (fixer: `yarn format`)
+              - Lockfile drift: `.github/scripts/check-lockfile-drift.sh` (every uv project at once)
+
+            ## IF THE FAILING CHECK IS `check-dependency-automation`
+
+            This one has a specific cause, so do not treat it as a generic red check. Renovate updates
+            pyproject.toml and regenerates uv.lock in a separate step; when that second step fails it
+            opens the PR with the manifest edit ALONE. The script prints which of two states it found,
+            and they need opposite responses:
+
+              - **STALE** — the manifest resolves, the lock just was not regenerated. This is the easy
+                case and it IS your job: run `uv lock --directory <project>` for each project it names,
+                confirm the diff contains the update the PR is for, and carry on. Nothing else to fix.
+              - **UNRESOLVABLE** — no lockfile can satisfy the manifest, so re-locking will not help.
+                The resolver output names both sides. If the package blocking the update has a release
+                that accepts the new version, bump that one too (invariant 1: move the LAGGING package
+                forward, never cap or downgrade the one the PR is updating). If no such release exists,
+                you cannot fix this — see below.
 
             ## WHEN YOU CANNOT REACH THE GOAL
 
@@ -275,6 +292,16 @@ jobs:
             This includes any case where the only path to green would break an invariant — for example a
             required version does not exist yet, two updates in the PR are mutually incompatible at every
             available version, or the fix would have to change CI config or /renovate.json.
+
+            **Transitive ceiling** — the case where an UNRESOLVABLE manifest has no fix at any available
+            version: something else we pin caps the package this PR is updating, and no release of that
+            blocker accepts the new version yet. The update simply cannot land, and Renovate will keep
+            re-proposing it every run until told otherwise. Telling it otherwise means an `allowedVersions`
+            rule in /renovate.json, which invariant 6 forbids you from touching — so hand it over cleanly.
+            Say in your comment: the package and version being proposed, the pinned dependency that caps
+            it and the exact range it requires, that you verified no newer release of that blocker lifts
+            the cap, and the `allowedVersions` value a human should add. This is what should have happened
+            for openai 3.0.0 against litellm's `openai<3.0.0` (PR #2134).
 
             **Release-age soak** — flag this one precisely. The blocker is that a NEWER release WOULD fix the
             build but is held back by the 3-day soak (invariant 5). Tell-tale signs: `uv lock` reports the
