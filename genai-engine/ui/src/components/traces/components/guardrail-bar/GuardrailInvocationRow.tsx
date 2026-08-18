@@ -36,9 +36,9 @@ export function GuardrailInvocationRow({ invocation, selected, onJump }: Props) 
   return (
     <Stack
       direction="row"
-      alignItems="center"
       spacing={1.5}
       sx={{
+        alignItems: "center",
         px: 1.5,
         py: 1,
         borderRadius: 1,
@@ -49,17 +49,37 @@ export function GuardrailInvocationRow({ invocation, selected, onJump }: Props) 
       <Icon sx={{ fontSize: 20, color: iconColor, flexShrink: 0 }} />
 
       <Box sx={{ flex: 1, minWidth: 0 }}>
-        <Typography variant="body2" fontWeight={600} noWrap>
+        <Typography
+          variant="body2"
+          noWrap
+          sx={{
+            fontWeight: 600,
+          }}
+        >
           {invocation.name}
         </Typography>
         {invocation.parentSpanName && (
-          <Typography variant="caption" color="text.secondary" component="div" noWrap>
+          <Typography
+            variant="caption"
+            component="div"
+            noWrap
+            sx={{
+              color: "text.secondary",
+            }}
+          >
             under {invocation.parentSpanName}
           </Typography>
         )}
       </Box>
 
-      <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: "nowrap", flexShrink: 0 }}>
+      <Typography
+        variant="caption"
+        sx={{
+          color: "text.secondary",
+          whiteSpace: "nowrap",
+          flexShrink: 0,
+        }}
+      >
         {invocation.ruleCount} {invocation.ruleCount === 1 ? "rule" : "rules"}
       </Typography>
 

@@ -25,10 +25,21 @@ const TransformsHeader: React.FC<TransformsHeaderProps> = ({ onCreateTransform }
         }}
       >
         <Box>
-          <Typography variant="h5" fontWeight="bold" color="text.primary">
+          <Typography
+            variant="h5"
+            sx={{
+              fontWeight: "bold",
+              color: "text.primary",
+            }}
+          >
             Transforms
           </Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+            }}
+          >
             Manage reusable data extraction transforms for this task
           </Typography>
         </Box>

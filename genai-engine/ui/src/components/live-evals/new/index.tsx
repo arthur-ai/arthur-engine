@@ -217,9 +217,15 @@ const LiveEvalsNewForm = () => {
     >
       <Stack
         direction="row"
-        alignItems="center"
-        gap={1}
-        sx={{ px: 2, py: 1, borderBottom: 1, borderColor: "divider", backgroundColor: "background.paper" }}
+        sx={{
+          alignItems: "center",
+          gap: 1,
+          px: 2,
+          py: 1,
+          borderBottom: 1,
+          borderColor: "divider",
+          backgroundColor: "background.paper",
+        }}
       >
         <Tooltip title="Go back">
           <IconButton onClick={() => navigate(-1)} size="small">
@@ -227,16 +233,41 @@ const LiveEvalsNewForm = () => {
           </IconButton>
         </Tooltip>
         <Box>
-          <Typography variant="h5" color="text.primary" fontWeight="bold">
+          <Typography
+            variant="h5"
+            sx={{
+              color: "text.primary",
+              fontWeight: "bold",
+            }}
+          >
             New Continuous Eval
           </Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+            }}
+          >
             Create a new continuous eval to monitor and analyze your model's performance in real-time.
           </Typography>
         </Box>
       </Stack>
-      <Stack sx={{ p: 3, width: "100%", flex: 1, overflow: "auto" }} gap={2}>
-        <Typography variant="h6" color="text.primary" fontWeight="bold">
+      <Stack
+        sx={{
+          gap: 2,
+          p: 3,
+          width: "100%",
+          flex: 1,
+          overflow: "auto",
+        }}
+      >
+        <Typography
+          variant="h6"
+          sx={{
+            color: "text.primary",
+            fontWeight: "bold",
+          }}
+        >
           General Information
         </Typography>
 
@@ -264,7 +295,14 @@ const LiveEvalsNewForm = () => {
 
         {evaluatorData && (
           <Paper variant="outlined" sx={{ p: 2 }}>
-            <Typography variant="body1" color="text.primary" fontWeight="bold" mb={2}>
+            <Typography
+              variant="body1"
+              sx={{
+                color: "text.primary",
+                fontWeight: "bold",
+                mb: 2,
+              }}
+            >
               Evaluator Instructions
             </Typography>
             <MustacheHighlightedTextField value={evaluatorData?.instructions ?? ""} onChange={() => {}} readOnly size="small" />
@@ -327,7 +365,11 @@ export const DetailsFieldGroup = withFieldGroup({
     }, []);
 
     return (
-      <Stack gap={2}>
+      <Stack
+        sx={{
+          gap: 2,
+        }}
+      >
         <group.AppField name="name">
           {(field) => (
             <TextField
@@ -396,9 +438,26 @@ export const TransformSelector = withFieldGroup({
 
     return (
       <>
-        <Stack gap={2}>
-          <Stack direction="row" gap={2} width="100%" alignItems="center">
-            <Typography variant="h6" color="text.primary" fontWeight="bold">
+        <Stack
+          sx={{
+            gap: 2,
+          }}
+        >
+          <Stack
+            direction="row"
+            sx={{
+              gap: 2,
+              width: "100%",
+              alignItems: "center",
+            }}
+          >
+            <Typography
+              variant="h6"
+              sx={{
+                color: "text.primary",
+                fontWeight: "bold",
+              }}
+            >
               Transform
             </Typography>
             <Button
@@ -417,7 +476,13 @@ export const TransformSelector = withFieldGroup({
               Create New
             </Button>
           </Stack>
-          <Stack direction="row" gap={2} alignItems="flex-start">
+          <Stack
+            direction="row"
+            sx={{
+              gap: 2,
+              alignItems: "flex-start",
+            }}
+          >
             <group.AppField
               name="transformId"
               listeners={{

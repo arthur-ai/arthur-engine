@@ -103,16 +103,45 @@ export const TaskOverview: React.FC = () => {
     <Box sx={{ py: 3, px: 3, bgcolor: "background.default" }}>
       <Stack spacing={3} sx={{ maxWidth: 1400, mx: "auto" }}>
         {/* Header */}
-        <Stack direction="row" justifyContent="space-between" alignItems="center">
+        <Stack
+          direction="row"
+          sx={{
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
           <Box>
-            <Typography variant="h5" fontWeight={600} color="text.primary">
+            <Typography
+              variant="h5"
+              sx={{
+                fontWeight: 600,
+                color: "text.primary",
+              }}
+            >
               {task.name || "Task Overview"}
             </Typography>
-            <Stack direction="row" alignItems="center" gap={0.5} sx={{ mt: 0.5 }}>
-              <Typography variant="body2" color="text.secondary">
+            <Stack
+              direction="row"
+              sx={{
+                alignItems: "center",
+                gap: 0.5,
+                mt: 0.5,
+              }}
+            >
+              <Typography
+                variant="body2"
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
                 Analyze key performance metrics at a glance
               </Typography>
-              <Typography variant="body2" color="text.secondary">
+              <Typography
+                variant="body2"
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
                 ·
               </Typography>
               <Button
@@ -153,8 +182,19 @@ export const TaskOverview: React.FC = () => {
         {/* Task Details Modal */}
         <Dialog open={taskDetailsOpen} onClose={() => setTaskDetailsOpen(false)} maxWidth="sm" fullWidth>
           <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", pb: 1 }}>
-            <Stack direction="row" alignItems="center" gap={1}>
-              <Typography variant="subtitle1" fontWeight={600}>
+            <Stack
+              direction="row"
+              sx={{
+                alignItems: "center",
+                gap: 1,
+              }}
+            >
+              <Typography
+                variant="subtitle1"
+                sx={{
+                  fontWeight: 600,
+                }}
+              >
                 {task?.name || "Untitled Task"}
               </Typography>
               {task?.is_agentic && <Chip label="Agentic" size="small" color="primary" variant="outlined" />}
@@ -167,39 +207,89 @@ export const TaskOverview: React.FC = () => {
           <DialogContent>
             <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 3, pt: 1 }}>
               <Box>
-                <Typography variant="body2" color="text.secondary" fontWeight={500}>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: "text.secondary",
+                    fontWeight: 500,
+                  }}
+                >
                   Task ID
                 </Typography>
-                <Typography variant="body2" color="text.primary" sx={{ mt: 0.5, fontFamily: "monospace", wordBreak: "break-all" }}>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: "text.primary",
+                    mt: 0.5,
+                    fontFamily: "monospace",
+                    wordBreak: "break-all",
+                  }}
+                >
                   {task?.id}
                 </Typography>
               </Box>
 
               {task?.is_agentic !== undefined && (
                 <Box>
-                  <Typography variant="body2" color="text.secondary" fontWeight={500}>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: "text.secondary",
+                      fontWeight: 500,
+                    }}
+                  >
                     Type
                   </Typography>
-                  <Typography variant="body2" color="text.primary" sx={{ mt: 0.5 }}>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: "text.primary",
+                      mt: 0.5,
+                    }}
+                  >
                     {task.is_agentic ? "Agentic Task" : "Standard Task"}
                   </Typography>
                 </Box>
               )}
 
               <Box>
-                <Typography variant="body2" color="text.secondary" fontWeight={500}>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: "text.secondary",
+                    fontWeight: 500,
+                  }}
+                >
                   Created At
                 </Typography>
-                <Typography variant="body2" color="text.primary" sx={{ mt: 0.5 }}>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: "text.primary",
+                    mt: 0.5,
+                  }}
+                >
                   {task?.created_at ? formatDateInTimezone(task.created_at, timezone, { hour12: !use24Hour }) : "Not available"}
                 </Typography>
               </Box>
 
               <Box>
-                <Typography variant="body2" color="text.secondary" fontWeight={500}>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: "text.secondary",
+                    fontWeight: 500,
+                  }}
+                >
                   Updated At
                 </Typography>
-                <Typography variant="body2" color="text.primary" sx={{ mt: 0.5 }}>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: "text.primary",
+                    mt: 0.5,
+                  }}
+                >
                   {task?.updated_at ? formatDateInTimezone(task.updated_at, timezone, { hour12: !use24Hour }) : "Not available"}
                 </Typography>
               </Box>
@@ -299,7 +389,12 @@ export const TaskOverview: React.FC = () => {
               />
             ) : (
               <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: 256 }}>
-                <Typography variant="body2" color="text.secondary">
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: "text.secondary",
+                  }}
+                >
                   No data available
                 </Typography>
               </Box>
@@ -332,7 +427,12 @@ export const TaskOverview: React.FC = () => {
               />
             ) : (
               <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: 256 }}>
-                <Typography variant="body2" color="text.secondary">
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: "text.secondary",
+                  }}
+                >
                   No data available
                 </Typography>
               </Box>
@@ -362,7 +462,12 @@ export const TaskOverview: React.FC = () => {
               />
             ) : (
               <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: 256 }}>
-                <Typography variant="body2" color="text.secondary">
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: "text.secondary",
+                  }}
+                >
                   No data available
                 </Typography>
               </Box>
@@ -397,7 +502,12 @@ export const TaskOverview: React.FC = () => {
               />
             ) : (
               <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: 256 }}>
-                <Typography variant="body2" color="text.secondary">
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: "text.secondary",
+                  }}
+                >
                   No data available
                 </Typography>
               </Box>
@@ -408,12 +518,30 @@ export const TaskOverview: React.FC = () => {
         {/* Bottom CTA Banner */}
         {scopeUrl && (
           <Paper variant="outlined" sx={{ p: 3, borderStyle: "dashed", borderWidth: 2, borderColor: "divider" }}>
-            <Stack direction="row" justifyContent="space-between" alignItems="center">
+            <Stack
+              direction="row"
+              sx={{
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
               <Box>
-                <Typography variant="subtitle1" fontWeight={500} color="text.secondary">
+                <Typography
+                  variant="subtitle1"
+                  sx={{
+                    fontWeight: 500,
+                    color: "text.secondary",
+                  }}
+                >
                   Need deeper analysis?
                 </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: "text.secondary",
+                    mt: 0.5,
+                  }}
+                >
                   Create custom dashboards with advanced filters, breakdowns, and export options in the Arthur platform.
                 </Typography>
               </Box>

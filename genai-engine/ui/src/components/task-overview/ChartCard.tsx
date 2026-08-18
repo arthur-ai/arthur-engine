@@ -12,9 +12,21 @@ export const ChartCard = ({ icon, title, iconColor, isLoading, children }: Chart
   return (
     <Card variant="outlined">
       <Box sx={{ px: 3, py: 2 }}>
-        <Stack direction="row" spacing={1} alignItems="center">
+        <Stack
+          direction="row"
+          spacing={1}
+          sx={{
+            alignItems: "center",
+          }}
+        >
           <Box sx={{ color: iconColor, display: "flex", alignItems: "center", fontSize: 18 }}>{icon}</Box>
-          <Typography variant="subtitle1" fontWeight={600} color="text.primary">
+          <Typography
+            variant="subtitle1"
+            sx={{
+              fontWeight: 600,
+              color: "text.primary",
+            }}
+          >
             {title}
           </Typography>
         </Stack>

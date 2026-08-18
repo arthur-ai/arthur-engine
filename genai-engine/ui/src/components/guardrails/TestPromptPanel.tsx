@@ -1,5 +1,5 @@
 import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
-import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
+import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutlineOutlined";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import WarningAmberOutlinedIcon from "@mui/icons-material/WarningAmberOutlined";
 import { Alert, Box, Button, Chip, CircularProgress, Stack, TextField, Typography } from "@mui/material";
@@ -212,7 +212,12 @@ export const TestPromptPanel: React.FC<TestPromptPanelProps> = ({
           />
           {!hasEnabledRules && <Alert severity="info">No enabled rules on this task. Add or enable a rule to test.</Alert>}
           {hasEnabledRules && inputHint && (
-            <Typography variant="caption" color="text.secondary">
+            <Typography
+              variant="caption"
+              sx={{
+                color: "text.secondary",
+              }}
+            >
               {inputHint}
             </Typography>
           )}
@@ -233,7 +238,12 @@ export const TestPromptPanel: React.FC<TestPromptPanelProps> = ({
           </Typography>
 
           {ruleResults.length === 0 && (
-            <Typography variant="body2" color="text.secondary">
+            <Typography
+              variant="body2"
+              sx={{
+                color: "text.secondary",
+              }}
+            >
               No rules ran for this input.
             </Typography>
           )}
@@ -252,13 +262,25 @@ export const TestPromptPanel: React.FC<TestPromptPanelProps> = ({
                   p: 1.5,
                 }}
               >
-                <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: lines.length > 0 ? 0.75 : 0 }}>
+                <Stack
+                  direction="row"
+                  spacing={1}
+                  sx={{
+                    alignItems: "center",
+                    mb: lines.length > 0 ? 0.75 : 0,
+                  }}
+                >
                   {style.icon}
                   <Typography variant="subtitle2" sx={{ fontWeight: 600, flex: 1, minWidth: 0 }} noWrap>
                     {rr.name}
                   </Typography>
                   <Chip label={rr.result} size="small" color={style.chipColor} variant={style.chipVariant} sx={{ height: 20, fontSize: 11 }} />
-                  <Typography variant="caption" color="text.disabled">
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: "text.disabled",
+                    }}
+                  >
                     {formatDurationMs(rr.latency_ms)}
                   </Typography>
                 </Stack>
@@ -268,7 +290,15 @@ export const TestPromptPanel: React.FC<TestPromptPanelProps> = ({
                   </Typography>
                 )}
                 {lines.slice(showAsReason ? 1 : 0).map((line) => (
-                  <Typography key={line} variant="caption" color="text.secondary" sx={{ display: "block", pl: 3 }}>
+                  <Typography
+                    key={line}
+                    variant="caption"
+                    sx={{
+                      color: "text.secondary",
+                      display: "block",
+                      pl: 3,
+                    }}
+                  >
                     {line}
                   </Typography>
                 ))}

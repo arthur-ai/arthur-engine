@@ -1,4 +1,4 @@
-import { ErrorOutline, Search, SearchOff, ExpandMore } from "@mui/icons-material";
+import { ErrorOutlineOutlined, Search, SearchOff, ExpandMore } from "@mui/icons-material";
 import { useTheme, type Theme } from "@mui/material/styles";
 import React, { useState } from "react";
 
@@ -127,7 +127,7 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = React.memo(({ resul
       <EmptyStateContainer>
         <div className="bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-md p-4 max-w-md w-full">
           <div className="flex">
-            <ErrorOutline fontSize="small" sx={{ fontSize: 20, color: "error.light" }} />
+            <ErrorOutlineOutlined fontSize="small" sx={{ fontSize: 20, color: "error.light" }} />
             <div className="ml-3">
               <h3 className="text-sm font-medium text-red-800 dark:text-red-300">Search Error</h3>
               <div className="mt-2 text-sm text-red-700 dark:text-red-400">

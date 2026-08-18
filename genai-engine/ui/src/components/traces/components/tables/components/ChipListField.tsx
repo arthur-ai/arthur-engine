@@ -51,7 +51,13 @@ export const ChipListField = ({ label, placeholder, values, onAdd, onRemove }: C
           <Add />
         </IconButton>
       </Stack>
-      <Stack direction="row" flexWrap="wrap" gap={1}>
+      <Stack
+        direction="row"
+        sx={{
+          flexWrap: "wrap",
+          gap: 1,
+        }}
+      >
         {values.map((id) => (
           <Chip key={id} label={id} size="small" onDelete={() => onRemove(id)} deleteIcon={<Close />} />
         ))}

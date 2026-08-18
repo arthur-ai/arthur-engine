@@ -144,9 +144,26 @@ export const EvaluatorSelector = withFieldGroup({
 
     return (
       <>
-        <Stack gap={2}>
-          <Stack direction="row" gap={2} width="100%" alignItems="center">
-            <Typography variant="h6" color="text.primary" fontWeight="bold">
+        <Stack
+          sx={{
+            gap: 2,
+          }}
+        >
+          <Stack
+            direction="row"
+            sx={{
+              gap: 2,
+              width: "100%",
+              alignItems: "center",
+            }}
+          >
+            <Typography
+              variant="h6"
+              sx={{
+                color: "text.primary",
+                fontWeight: "bold",
+              }}
+            >
               Evaluator
             </Typography>
             <Button
@@ -164,7 +181,13 @@ export const EvaluatorSelector = withFieldGroup({
             </Button>
           </Stack>
 
-          <Stack direction="row" gap={2} width="100%">
+          <Stack
+            direction="row"
+            sx={{
+              gap: 2,
+              width: "100%",
+            }}
+          >
             {/* Eval name selector */}
             <Autocomplete
               sx={{ flex: 1 }}
@@ -179,7 +202,14 @@ export const EvaluatorSelector = withFieldGroup({
               getOptionKey={(option) => `${option.eval_kind}:${option.name}`}
               renderOption={(props, option) => (
                 <Box component="li" {...props}>
-                  <Stack direction="row" alignItems="center" gap={1} width="100%">
+                  <Stack
+                    direction="row"
+                    sx={{
+                      alignItems: "center",
+                      gap: 1,
+                      width: "100%",
+                    }}
+                  >
                     <Typography variant="body2" sx={{ flex: 1 }}>
                       {option.name}
                     </Typography>
@@ -200,12 +230,13 @@ export const EvaluatorSelector = withFieldGroup({
                   variant="filled"
                   label="Evaluator"
                   slotProps={{
+                    ...params.slotProps,
                     input: {
-                      ...params.InputProps,
+                      ...params.slotProps.input,
                       endAdornment: (
                         <>
                           {isEvaluatorsLoading ? <CircularProgress color="inherit" size={16} /> : null}
-                          {params.InputProps.endAdornment}
+                          {params.slotProps.input.endAdornment}
                         </>
                       ),
                     },
@@ -229,12 +260,13 @@ export const EvaluatorSelector = withFieldGroup({
                     variant="filled"
                     label="Version"
                     slotProps={{
+                      ...params.slotProps,
                       input: {
-                        ...params.InputProps,
+                        ...params.slotProps.input,
                         endAdornment: (
                           <>
                             {llmVersions.isLoading ? <CircularProgress color="inherit" size={16} /> : null}
-                            {params.InputProps.endAdornment}
+                            {params.slotProps.input.endAdornment}
                           </>
                         ),
                       },
@@ -259,12 +291,13 @@ export const EvaluatorSelector = withFieldGroup({
                     variant="filled"
                     label="Version"
                     slotProps={{
+                      ...params.slotProps,
                       input: {
-                        ...params.InputProps,
+                        ...params.slotProps.input,
                         endAdornment: (
                           <>
                             {mlVersions.isLoading ? <CircularProgress color="inherit" size={16} /> : null}
-                            {params.InputProps.endAdornment}
+                            {params.slotProps.input.endAdornment}
                           </>
                         ),
                       },

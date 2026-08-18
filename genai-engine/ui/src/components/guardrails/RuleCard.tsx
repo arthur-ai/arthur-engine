@@ -1,4 +1,4 @@
-import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutlineOutlined";
 import { Box, Card, CardContent, Chip, CircularProgress, IconButton, Stack, Switch, Tooltip, Typography } from "@mui/material";
 import React from "react";
 
@@ -71,9 +71,22 @@ export const RuleCard: React.FC<RuleCardProps> = ({ rule, onToggle, onDelete, is
   return (
     <Card variant="outlined" sx={{ opacity: enabled ? 1 : 0.65 }}>
       <CardContent sx={{ pb: "16px !important", py: 1.5 }}>
-        <Stack direction="row" alignItems="center" spacing={1.5}>
+        <Stack
+          direction="row"
+          spacing={1.5}
+          sx={{
+            alignItems: "center",
+          }}
+        >
           <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 0.5 }}>
+            <Stack
+              direction="row"
+              spacing={1}
+              sx={{
+                alignItems: "center",
+                mb: 0.5,
+              }}
+            >
               <Tooltip title={rule.name}>
                 <Typography variant="subtitle2" sx={{ fontWeight: 600, color: "text.primary", flex: 1, minWidth: 0 }} noWrap>
                   {rule.name}
@@ -96,7 +109,13 @@ export const RuleCard: React.FC<RuleCardProps> = ({ rule, onToggle, onDelete, is
                 </Tooltip>
               )}
             </Stack>
-            <Stack direction="row" alignItems="center" spacing={1}>
+            <Stack
+              direction="row"
+              spacing={1}
+              sx={{
+                alignItems: "center",
+              }}
+            >
               <Typography variant="caption" sx={{ color: "text.secondary" }}>
                 {meta?.label ?? rule.type}
               </Typography>

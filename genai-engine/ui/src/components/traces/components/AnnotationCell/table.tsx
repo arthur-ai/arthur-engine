@@ -103,7 +103,13 @@ const AnnotationDetail = ({ annotation, defaultCurrency }: { annotation: Annotat
   return (
     <Stack spacing={1.5}>
       <Box>
-        <Typography variant="caption" color="text.secondary" component="div">
+        <Typography
+          variant="caption"
+          component="div"
+          sx={{
+            color: "text.secondary",
+          }}
+        >
           Annotation Explanation
         </Typography>
         <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
@@ -114,7 +120,13 @@ const AnnotationDetail = ({ annotation, defaultCurrency }: { annotation: Annotat
         <Stack direction="row" spacing={4}>
           {continuousEval.eval_name && (
             <Box>
-              <Typography variant="caption" color="text.secondary" component="div">
+              <Typography
+                variant="caption"
+                component="div"
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
                 Eval Name
               </Typography>
               <Typography variant="body2">
@@ -123,7 +135,13 @@ const AnnotationDetail = ({ annotation, defaultCurrency }: { annotation: Annotat
             </Box>
           )}
           <Box>
-            <Typography variant="caption" color="text.secondary" component="div">
+            <Typography
+              variant="caption"
+              component="div"
+              sx={{
+                color: "text.secondary",
+              }}
+            >
               Cost
             </Typography>
             <Typography variant="body2">

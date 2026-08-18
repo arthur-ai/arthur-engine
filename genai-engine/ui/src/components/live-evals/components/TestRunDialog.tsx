@@ -1,5 +1,5 @@
-import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
-import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
+import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutlineOutlined";
+import ErrorOutlineIcon from "@mui/icons-material/ErrorOutlineOutlined";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import {
   Alert,
@@ -176,7 +176,12 @@ export const TestRunDialog = ({ open, onClose, evalId, evalName, taskId, testRun
         <DialogContent>
           {isSetupPhase ? (
             <Stack spacing={2} sx={{ mt: 1 }}>
-              <Typography variant="body2" color="text.secondary">
+              <Typography
+                variant="body2"
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
                 Paste trace IDs to test this eval against. Results are stored separately and won't affect production annotations.
               </Typography>
               <TextField
@@ -200,12 +205,29 @@ export const TestRunDialog = ({ open, onClose, evalId, evalName, taskId, testRun
             <Stack spacing={2} sx={{ mt: 1 }}>
               {/* Progress */}
               <Box>
-                <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
-                  <Typography variant="body2" color="text.secondary">
+                <Stack
+                  direction="row"
+                  sx={{
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    mb: 1,
+                  }}
+                >
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: "text.secondary",
+                    }}
+                  >
                     {testRun ? `${testRun.completed_count} / ${testRun.total_count} completed` : "Starting..."}
                   </Typography>
                   {testRun && !isRunning && (
-                    <Typography variant="body2" fontWeight={600}>
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        fontWeight: 600,
+                      }}
+                    >
                       {testRun.status === "completed" ? "Completed" : "Completed with issues"}
                     </Typography>
                   )}
@@ -215,7 +237,13 @@ export const TestRunDialog = ({ open, onClose, evalId, evalName, taskId, testRun
 
               {/* Summary chips */}
               {testRun && (
-                <Stack direction="row" gap={1} flexWrap="wrap">
+                <Stack
+                  direction="row"
+                  sx={{
+                    gap: 1,
+                    flexWrap: "wrap",
+                  }}
+                >
                   {testRun.passed_count > 0 && <Chip label={`${testRun.passed_count} passed`} size="small" color="success" variant="outlined" />}
                   {testRun.failed_count > 0 && <Chip label={`${testRun.failed_count} failed`} size="small" color="error" variant="outlined" />}
                   {testRun.error_count > 0 && <Chip label={`${testRun.error_count} errors`} size="small" color="warning" variant="outlined" />}

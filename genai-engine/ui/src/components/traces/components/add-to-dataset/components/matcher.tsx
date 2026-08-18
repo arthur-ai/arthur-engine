@@ -1,5 +1,5 @@
-import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
-import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
+import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutlineOutlined";
+import ErrorOutlineIcon from "@mui/icons-material/ErrorOutlineOutlined";
 import { Box, Stack, Tooltip, Typography } from "@mui/material";
 import { alpha, Theme } from "@mui/material/styles";
 import { useStore } from "@tanstack/react-form";
@@ -72,19 +72,48 @@ export const Matcher = withFieldGroup({
           <ErrorOutlineIcon sx={(theme) => ({ fontSize: 20, color: getStatusConfig(theme, matchStatus).color })} />
         )}
 
-        <Stack direction="row" gap={1} alignItems="center" flex={1}>
-          <Typography variant="body2" color="text.secondary">
+        <Stack
+          direction="row"
+          sx={{
+            gap: 1,
+            alignItems: "center",
+            flex: 1,
+          }}
+        >
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+            }}
+          >
             Column match:
           </Typography>
-          <Typography variant="body2" fontWeight={600} sx={(theme) => ({ color: getStatusConfig(theme, matchStatus).color })}>
+          <Typography
+            variant="body2"
+            sx={[
+              {
+                fontWeight: 600,
+              },
+              (theme) => ({ color: getStatusConfig(theme, matchStatus).color }),
+            ]}
+          >
             {matchCount} of {totalTransformVars}
           </Typography>
 
           {matchCount > 0 && (
             <Tooltip
               title={
-                <Stack gap={0.5}>
-                  <Typography variant="caption" fontWeight={600}>
+                <Stack
+                  sx={{
+                    gap: 0.5,
+                  }}
+                >
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      fontWeight: 600,
+                    }}
+                  >
                     Matched columns:
                   </Typography>
                   {matchingNames.map((name) => (
@@ -114,8 +143,17 @@ export const Matcher = withFieldGroup({
         {unmatchedTransform.length > 0 && (
           <Tooltip
             title={
-              <Stack gap={0.5}>
-                <Typography variant="caption" fontWeight={600}>
+              <Stack
+                sx={{
+                  gap: 0.5,
+                }}
+              >
+                <Typography
+                  variant="caption"
+                  sx={{
+                    fontWeight: 600,
+                  }}
+                >
                   New columns to add:
                 </Typography>
                 {unmatchedTransform.map((name) => (

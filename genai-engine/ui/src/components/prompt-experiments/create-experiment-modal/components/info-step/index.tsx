@@ -78,7 +78,12 @@ export const InfoStep = withForm({
       <>
         <DialogContent>
           <Box className="flex flex-col gap-4 mt-2">
-            <Stack gap={2} data-tour-id={TOUR_IDS.createExperimentInfoName}>
+            <Stack
+              data-tour-id={TOUR_IDS.createExperimentInfoName}
+              sx={{
+                gap: 2,
+              }}
+            >
               <form.AppField name="info.name">
                 {(field) => (
                   <TextField
@@ -175,7 +180,15 @@ const PromptSelector = withForm({
     }, [versionsQuery.versions, selectedVersions, form]);
 
     return (
-      <Stack sx={{ border: 1, borderColor: "divider", borderRadius: 1, p: 2 }} gap={2}>
+      <Stack
+        sx={{
+          gap: 2,
+          border: 1,
+          borderColor: "divider",
+          borderRadius: 1,
+          p: 2,
+        }}
+      >
         <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
           Prompt Versions
         </Typography>
@@ -269,7 +282,15 @@ const DatasetSelector = withForm({
     const versionsQuery = useDatasetVersionHistory(datasetId ?? undefined);
 
     return (
-      <Stack sx={{ border: 1, borderColor: "divider", borderRadius: 1, p: 2 }} gap={2}>
+      <Stack
+        sx={{
+          gap: 2,
+          border: 1,
+          borderColor: "divider",
+          borderRadius: 1,
+          p: 2,
+        }}
+      >
         <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
           Dataset
         </Typography>
@@ -349,13 +370,38 @@ const DatasetRowFilterSection = withForm({
     }
 
     return (
-      <Stack sx={{ border: 1, borderColor: "divider", borderRadius: 1, p: 2 }} gap={2}>
-        <Stack direction="row" alignItems="center" justifyContent="space-between">
-          <Stack direction="row" alignItems="center" gap={1}>
+      <Stack
+        sx={{
+          gap: 2,
+          border: 1,
+          borderColor: "divider",
+          borderRadius: 1,
+          p: 2,
+        }}
+      >
+        <Stack
+          direction="row"
+          sx={{
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <Stack
+            direction="row"
+            sx={{
+              alignItems: "center",
+              gap: 1,
+            }}
+          >
             <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
               Dataset Row Filter
             </Typography>
-            <Typography variant="caption" color="text.secondary">
+            <Typography
+              variant="caption"
+              sx={{
+                color: "text.secondary",
+              }}
+            >
               (Optional)
             </Typography>
             <Tooltip title="Filter which dataset rows to include. Only rows matching ALL conditions will be used." arrow placement="right">
@@ -365,9 +411,20 @@ const DatasetRowFilterSection = withForm({
         </Stack>
         <form.Field name="datasetRowFilter" mode="array">
           {(field) => (
-            <Stack gap={2}>
+            <Stack
+              sx={{
+                gap: 2,
+              }}
+            >
               {field.state.value.map((_filter, index) => (
-                <Stack key={index} direction="row" gap={2} alignItems="center">
+                <Stack
+                  key={index}
+                  direction="row"
+                  sx={{
+                    gap: 2,
+                    alignItems: "center",
+                  }}
+                >
                   <form.AppField name={`datasetRowFilter[${index}].column_name`}>
                     {(subField) => (
                       <Autocomplete
@@ -456,18 +513,37 @@ const EvaluatorsSelector = ({
 
   return (
     <>
-      <Stack sx={{ border: 1, borderColor: "divider", borderRadius: 1, p: 2 }} gap={2}>
+      <Stack
+        sx={{
+          gap: 2,
+          border: 1,
+          borderColor: "divider",
+          borderRadius: 1,
+          p: 2,
+        }}
+      >
         <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
           Evaluators
         </Typography>
         {evaluators.length > 0 && (
-          <Stack direction="row" gap={1} flexWrap="wrap">
+          <Stack
+            direction="row"
+            sx={{
+              gap: 1,
+              flexWrap: "wrap",
+            }}
+          >
             {evaluators.map((evaluator, index) => {
               return <Chip key={evaluator.name} label={`${evaluator.name} (v${evaluator.version})`} onDelete={() => onRemove(index)} />;
             })}
           </Stack>
         )}
-        <Stack direction="row" gap={1}>
+        <Stack
+          direction="row"
+          sx={{
+            gap: 1,
+          }}
+        >
           <Autocomplete
             loading={evalsQuery.isLoading}
             options={evalsQuery.evals}

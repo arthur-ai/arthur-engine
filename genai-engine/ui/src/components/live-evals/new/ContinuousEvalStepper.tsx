@@ -2,7 +2,7 @@ import { MustacheHighlightedTextField, useAppForm } from "@arthur/shared-compone
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 import GpsFixedIcon from "@mui/icons-material/GpsFixed";
-import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
+import HelpOutlineIcon from "@mui/icons-material/HelpOutlineOutlined";
 import {
   Alert,
   Autocomplete,
@@ -372,16 +372,38 @@ export const ContinuousEvalStepper = ({
       }}
       sx={{ height: "100%", overflow: "auto" }}
     >
-      <Stack sx={{ p: 2 }} gap={2}>
-        <Typography variant="h6" fontWeight="bold" color="text.primary">
+      <Stack
+        sx={{
+          gap: 2,
+          p: 2,
+        }}
+      >
+        <Typography
+          variant="h6"
+          sx={{
+            fontWeight: "bold",
+            color: "text.primary",
+          }}
+        >
           New Continuous Eval
         </Typography>
 
         <Stepper activeStep={activeStep} orientation="vertical">
           <Step>
             <StepLabel>
-              <Stack direction="row" alignItems="center" gap={0.5}>
-                <Typography variant="subtitle1" fontWeight={600}>
+              <Stack
+                direction="row"
+                sx={{
+                  alignItems: "center",
+                  gap: 0.5,
+                }}
+              >
+                <Typography
+                  variant="subtitle1"
+                  sx={{
+                    fontWeight: 600,
+                  }}
+                >
                   Select Evaluator
                 </Typography>
                 <Tooltip title="Choose the evaluator that will run on each incoming trace. The evaluator defines the scoring criteria (e.g., hallucination, toxicity) and the variables it needs as input.">
@@ -390,12 +412,22 @@ export const ContinuousEvalStepper = ({
               </Stack>
             </StepLabel>
             <StepContent>
-              <Stack gap={2}>
+              <Stack
+                sx={{
+                  gap: 2,
+                }}
+              >
                 <EvaluatorSelector taskId={task?.id ?? ""} form={form} fields="evaluator" onSelectionChange={handleSelectionChange} />
 
                 {!isMLEvalType && llmEvaluatorData && llmEvaluatorData.instructions != null && (
                   <Paper variant="outlined" sx={{ p: 2 }}>
-                    <Typography variant="body2" fontWeight="bold" mb={1}>
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        fontWeight: "bold",
+                        mb: 1,
+                      }}
+                    >
                       Instructions Preview
                     </Typography>
                     <MustacheHighlightedTextField value={llmEvaluatorData.instructions ?? ""} onChange={() => {}} readOnly size="small" />
@@ -413,8 +445,19 @@ export const ContinuousEvalStepper = ({
 
           <Step>
             <StepLabel>
-              <Stack direction="row" alignItems="center" gap={0.5}>
-                <Typography variant="subtitle1" fontWeight={600}>
+              <Stack
+                direction="row"
+                sx={{
+                  alignItems: "center",
+                  gap: 0.5,
+                }}
+              >
+                <Typography
+                  variant="subtitle1"
+                  sx={{
+                    fontWeight: 600,
+                  }}
+                >
                   Map to traces
                 </Typography>
                 <Tooltip title="Define how to extract data from each trace for the evaluator. Map each evaluator variable to a specific span and attribute path so the eval knows where to find its inputs.">
@@ -423,7 +466,11 @@ export const ContinuousEvalStepper = ({
               </Stack>
             </StepLabel>
             <StepContent>
-              <Stack gap={2}>
+              <Stack
+                sx={{
+                  gap: 2,
+                }}
+              >
                 <Tabs value={transformMode} onChange={(_, v) => setTransformMode(v as "select" | "create")} sx={{ mb: 1 }}>
                   <Tab label="Create New" value="create" />
                   <Tab label="Select Existing" value="select" />
@@ -455,7 +502,12 @@ export const ContinuousEvalStepper = ({
                   />
                 )}
 
-                <Stack direction="row" gap={1}>
+                <Stack
+                  direction="row"
+                  sx={{
+                    gap: 1,
+                  }}
+                >
                   <Button onClick={() => setActiveStep(0)}>Back</Button>
                 </Stack>
               </Stack>
@@ -522,7 +574,11 @@ const InlineTransformCreator = ({
   errors,
 }: InlineTransformCreatorProps) => {
   return (
-    <Stack gap={2}>
+    <Stack
+      sx={{
+        gap: 2,
+      }}
+    >
       {errors.length > 0 && (
         <Alert severity="error">
           <List dense disablePadding sx={{ pl: 2, listStyleType: "disc" }}>
@@ -535,8 +591,19 @@ const InlineTransformCreator = ({
         </Alert>
       )}
 
-      <Stack direction="row" justifyContent="space-between" alignItems="center">
-        <Typography variant="subtitle2" fontWeight={600}>
+      <Stack
+        direction="row"
+        sx={{
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <Typography
+          variant="subtitle2"
+          sx={{
+            fontWeight: 600,
+          }}
+        >
           Variable Mappings
         </Typography>
         <Button startIcon={<AddIcon />} onClick={onAddVariable} size="small">
@@ -561,11 +628,28 @@ const InlineTransformCreator = ({
                 backgroundColor: isPicking ? "primary.50" : "action.hover",
               }}
             >
-              <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1.5}>
-                <Typography variant="body2" fontWeight={600}>
+              <Stack
+                direction="row"
+                sx={{
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  mb: 1.5,
+                }}
+              >
+                <Typography
+                  variant="body2"
+                  sx={{
+                    fontWeight: 600,
+                  }}
+                >
                   {variable.variable_name || `Variable ${idx + 1}`}
                 </Typography>
-                <Stack direction="row" gap={0.5}>
+                <Stack
+                  direction="row"
+                  sx={{
+                    gap: 0.5,
+                  }}
+                >
                   {isPicking ? (
                     <Button size="small" variant="outlined" color="primary" onClick={onCancelPicking}>
                       Cancel Selection
@@ -617,7 +701,14 @@ const InlineTransformCreator = ({
                 />
                 {variable.previewValue && (
                   <Paper variant="outlined" sx={{ p: 1, backgroundColor: "action.hover" }}>
-                    <Typography variant="caption" color="text.secondary" display="block" mb={0.5}>
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        color: "text.secondary",
+                        display: "block",
+                        mb: 0.5,
+                      }}
+                    >
                       Preview
                     </Typography>
                     <Typography variant="body2" sx={{ fontFamily: "monospace", fontSize: "0.75rem", wordBreak: "break-all" }}>
@@ -665,9 +756,24 @@ const SelectExistingTransform = ({
   const canShowVariableMapping = evaluator.name && evaluator.version && transform.transformId;
 
   return (
-    <Stack gap={2}>
-      <Stack direction="row" gap={2} alignItems="center">
-        <Typography variant="subtitle2" fontWeight={600}>
+    <Stack
+      sx={{
+        gap: 2,
+      }}
+    >
+      <Stack
+        direction="row"
+        sx={{
+          gap: 2,
+          alignItems: "center",
+        }}
+      >
+        <Typography
+          variant="subtitle2"
+          sx={{
+            fontWeight: 600,
+          }}
+        >
           Transform
         </Typography>
         <Button
@@ -684,7 +790,13 @@ const SelectExistingTransform = ({
         </Button>
       </Stack>
 
-      <Stack direction="row" gap={2} alignItems="flex-start">
+      <Stack
+        direction="row"
+        sx={{
+          gap: 2,
+          alignItems: "flex-start",
+        }}
+      >
         <form.Field
           name="transform.transformId"
           listeners={{

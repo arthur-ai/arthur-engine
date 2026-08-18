@@ -466,7 +466,13 @@ export const TracingFilterModal = () => {
         {label}
       </Typography>
       <Stack spacing={1}>
-        <Stack direction="row" spacing={1} alignItems="center">
+        <Stack
+          direction="row"
+          spacing={1}
+          sx={{
+            alignItems: "center",
+          }}
+        >
           <form.Field name={minField}>
             {(field) => (
               <TextField
@@ -480,7 +486,12 @@ export const TracingFilterModal = () => {
               />
             )}
           </form.Field>
-          <Typography variant="body2" color="text.secondary">
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+            }}
+          >
             to
           </Typography>
           <form.Field name={maxField}>
@@ -537,7 +548,13 @@ export const TracingFilterModal = () => {
       </Stack>
       <form.Field name={fieldName}>
         {(field) => (
-          <Stack direction="row" flexWrap="wrap" gap={1}>
+          <Stack
+            direction="row"
+            sx={{
+              flexWrap: "wrap",
+              gap: 1,
+            }}
+          >
             {field.state.value.map((id) => (
               <Chip key={id} label={id} size="small" onDelete={() => handleRemoveId(type, id)} deleteIcon={<Close />} />
             ))}
@@ -575,7 +592,14 @@ export const TracingFilterModal = () => {
                 <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
                   Timestamp
                 </Typography>
-                <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: "block" }}>
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: "text.secondary",
+                    mb: 1,
+                    display: "block",
+                  }}
+                >
                   Overrides the time range selector when set
                 </Typography>
                 <Stack spacing={1.5}>
@@ -691,7 +715,13 @@ export const TracingFilterModal = () => {
                   Trace Duration (ms)
                 </Typography>
                 <Stack spacing={1}>
-                  <Stack direction="row" spacing={1} alignItems="center">
+                  <Stack
+                    direction="row"
+                    spacing={1}
+                    sx={{
+                      alignItems: "center",
+                    }}
+                  >
                     <form.Field name="traceDurationMin">
                       {(field) => (
                         <TextField
@@ -869,7 +899,13 @@ export const TracingFilterModal = () => {
               backgroundColor: "background.paper",
             }}
           >
-            <Stack direction="row" spacing={2} justifyContent="flex-end">
+            <Stack
+              direction="row"
+              spacing={2}
+              sx={{
+                justifyContent: "flex-end",
+              }}
+            >
               <Button variant="outlined" onClick={handleClearFilters} disabled={!hasActiveFilters}>
                 Clear
               </Button>

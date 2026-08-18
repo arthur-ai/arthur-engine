@@ -15,12 +15,35 @@ const EvalSummaryCard = ({ summary }: { summary: AgenticEvalResultSummaries }) =
 
   return (
     <Paper variant="outlined" sx={{ p: 2 }}>
-      <Stack gap={1}>
-        <Stack direction="row" justifyContent="space-between" alignItems="center" gap={1}>
-          <Typography variant="subtitle2" fontWeight={600} color="text.primary" className="truncate">
+      <Stack
+        sx={{
+          gap: 1,
+        }}
+      >
+        <Stack
+          direction="row"
+          sx={{
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: 1,
+          }}
+        >
+          <Typography
+            variant="subtitle2"
+            className="truncate"
+            sx={{
+              fontWeight: 600,
+              color: "text.primary",
+            }}
+          >
             {summary.eval_name} (v{summary.eval_version})
           </Typography>
-          <Typography variant="caption" color="text.secondary">
+          <Typography
+            variant="caption"
+            sx={{
+              color: "text.secondary",
+            }}
+          >
             {percentage.toFixed(0)}%
           </Typography>
         </Stack>
@@ -31,7 +54,12 @@ const EvalSummaryCard = ({ summary }: { summary: AgenticEvalResultSummaries }) =
           sx={{ height: 8, borderRadius: 1, "& .MuiLinearProgress-bar": { backgroundColor: barColor } }}
         />
 
-        <Typography variant="caption" color="text.secondary">
+        <Typography
+          variant="caption"
+          sx={{
+            color: "text.secondary",
+          }}
+        >
           {passCount} / {totalCount} test cases passed
         </Typography>
       </Stack>
@@ -48,14 +76,30 @@ export const ExperimentEvalSummary = ({ experiment }: Props) => {
   const evalSummaries = experiment.summary_results.eval_summaries;
 
   return (
-    <Stack gap={1}>
-      <Typography variant="h6" color="text.primary" fontWeight="bold">
+    <Stack
+      sx={{
+        gap: 1,
+      }}
+    >
+      <Typography
+        variant="h6"
+        sx={{
+          color: "text.primary",
+          fontWeight: "bold",
+        }}
+      >
         Overall Eval Performance
       </Typography>
 
       {evalSummaries.length === 0 ? (
         <Paper variant="outlined" sx={{ p: 2 }}>
-          <Typography variant="body2" color="text.secondary" fontStyle="italic">
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+              fontStyle: "italic",
+            }}
+          >
             Eval performance will be shown when the experiment finishes executing test cases.
           </Typography>
         </Paper>

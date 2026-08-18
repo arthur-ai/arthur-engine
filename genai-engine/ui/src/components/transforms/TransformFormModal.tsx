@@ -232,7 +232,12 @@ export const TransformFormModal: React.FC<TransformFormModalProps> = ({
               <Box>
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
                   <ContentCopyIcon fontSize="small" color="action" />
-                  <Typography variant="subtitle2" fontWeight="medium">
+                  <Typography
+                    variant="subtitle2"
+                    sx={{
+                      fontWeight: "medium",
+                    }}
+                  >
                     Copy from Existing Transform (Optional)
                   </Typography>
                 </Box>
@@ -249,12 +254,13 @@ export const TransformFormModal: React.FC<TransformFormModalProps> = ({
                       placeholder="Choose a transform"
                       size="small"
                       slotProps={{
+                        ...params.slotProps,
                         input: {
-                          ...params.InputProps,
+                          ...params.slotProps.input,
                           endAdornment: (
                             <>
                               {isLoadingTransforms ? <CircularProgress color="inherit" size={20} /> : null}
-                              {params.InputProps.endAdornment}
+                              {params.slotProps.input.endAdornment}
                             </>
                           ),
                         },
@@ -262,7 +268,14 @@ export const TransformFormModal: React.FC<TransformFormModalProps> = ({
                     />
                   )}
                 />
-                <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: "text.secondary",
+                    display: "block",
+                    mt: 1,
+                  }}
+                >
                   Select an existing transform to pre-fill the form below. You can modify the values as needed.
                 </Typography>
               </Box>
@@ -292,7 +305,12 @@ export const TransformFormModal: React.FC<TransformFormModalProps> = ({
 
           <Box>
             <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-              <Typography variant="subtitle2" fontWeight="medium">
+              <Typography
+                variant="subtitle2"
+                sx={{
+                  fontWeight: "medium",
+                }}
+              >
                 Variable Mappings
               </Typography>
               <Button startIcon={<AddIcon />} onClick={handleAddVariable} size="small">
@@ -313,7 +331,12 @@ export const TransformFormModal: React.FC<TransformFormModalProps> = ({
                   }}
                 >
                   <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-                    <Typography variant="body2" fontWeight="medium">
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        fontWeight: "medium",
+                      }}
+                    >
                       Variable {idx + 1}
                     </Typography>
                     <IconButton size="small" onClick={() => handleRemoveVariable(idx)} disabled={variables.length === 1}>

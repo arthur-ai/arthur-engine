@@ -94,9 +94,22 @@ export const EvalPickerDialog = ({ open, onClose, onSelect }: EvalPickerDialogPr
           />
 
           {!isLoading && evals.length === 0 ? (
-            <Stack alignItems="center" justifyContent="center" sx={{ py: 6, textAlign: "center" }}>
+            <Stack
+              sx={{
+                alignItems: "center",
+                justifyContent: "center",
+                py: 6,
+                textAlign: "center",
+              }}
+            >
               <LiveTvOutlinedIcon sx={{ fontSize: 48, color: "text.secondary", mb: 2 }} />
-              <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
+              <Typography
+                variant="body1"
+                sx={{
+                  color: "text.secondary",
+                  mb: 2,
+                }}
+              >
                 No continuous evals configured for this task
               </Typography>
               <Button variant="contained" size="small" component={Link} to={`/tasks/${task?.id}/continuous-evals/new`} onClick={handleClose}>
@@ -129,12 +142,22 @@ export const EvalPickerDialog = ({ open, onClose, onSelect }: EvalPickerDialogPr
                           <Radio checked={selected?.id === eval_.id} size="small" />
                         </TableCell>
                         <TableCell>
-                          <Typography variant="body2" fontWeight={500}>
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              fontWeight: 500,
+                            }}
+                          >
                             {eval_.name}
                           </Typography>
                         </TableCell>
                         <TableCell>
-                          <Typography variant="body2" color="text.secondary">
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              color: "text.secondary",
+                            }}
+                          >
                             {eval_.llm_eval_name}
                           </Typography>
                         </TableCell>
@@ -147,7 +170,12 @@ export const EvalPickerDialog = ({ open, onClose, onSelect }: EvalPickerDialogPr
                           />
                         </TableCell>
                         <TableCell>
-                          <Typography variant="body2" color="text.secondary">
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              color: "text.secondary",
+                            }}
+                          >
                             {formatDateInTimezone(eval_.created_at, timezone, { hour12: !use24Hour })}
                           </Typography>
                         </TableCell>

@@ -268,7 +268,13 @@ export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
   const hasData = Boolean(data?.traces?.length);
 
   return (
-    <Stack gap={1} height="100%" overflow="hidden">
+    <Stack
+      sx={{
+        gap: 1,
+        height: "100%",
+        overflow: "hidden",
+      }}
+    >
       <DataContentGate
         welcomeDismissed={welcomeDismissed}
         hasData={hasData}
@@ -279,7 +285,13 @@ export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
         {/* Search bar and filter button */}
         {(hasData || hasActiveFilters || error) && (
           <Paper variant="outlined" sx={{ p: 2 }}>
-            <Stack direction="row" spacing={2} alignItems="center">
+            <Stack
+              direction="row"
+              spacing={2}
+              sx={{
+                alignItems: "center",
+              }}
+            >
               <TextField
                 size="small"
                 placeholder="Search by span name"

@@ -87,7 +87,12 @@ export const Configurator = withForm({
     };
 
     return (
-      <Stack direction="column" gap={2}>
+      <Stack
+        direction="column"
+        sx={{
+          gap: 2,
+        }}
+      >
         {transformSelected && ignoredTransformVariables.length > 0 && (
           <Alert severity="warning">
             The following transform {ignoredTransformVariables.length === 1 ? "variable is" : "variables are"} not part of this dataset's schema and
@@ -102,9 +107,25 @@ export const Configurator = withForm({
               {(field) => (
                 <>
                   <div className="grid grid-cols-subgrid col-span-2">
-                    <Stack alignItems="flex-start" gap={1}>
-                      <Stack direction="row" alignItems="center" gap={1}>
-                        <Typography variant="body2" fontWeight="medium">
+                    <Stack
+                      sx={{
+                        alignItems: "flex-start",
+                        gap: 1,
+                      }}
+                    >
+                      <Stack
+                        direction="row"
+                        sx={{
+                          alignItems: "center",
+                          gap: 1,
+                        }}
+                      >
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            fontWeight: "medium",
+                          }}
+                        >
                           {column.name}
                         </Typography>
                         {column.matchCount !== undefined && column.matchCount === 0 && (
@@ -130,10 +151,21 @@ export const Configurator = withForm({
                           renderOption={(props, option) => (
                             <li {...props} key={option.span_id}>
                               <Stack direction="column" spacing={0.5}>
-                                <Typography variant="body2" fontWeight="medium">
+                                <Typography
+                                  variant="body2"
+                                  sx={{
+                                    fontWeight: "medium",
+                                  }}
+                                >
                                   {option.span_name}
                                 </Typography>
-                                <Typography variant="caption" color="text.secondary" noWrap>
+                                <Typography
+                                  variant="caption"
+                                  noWrap
+                                  sx={{
+                                    color: "text.secondary",
+                                  }}
+                                >
                                   → {option.extractedValue}
                                 </Typography>
                               </Stack>
@@ -161,8 +193,17 @@ export const Configurator = withForm({
                         <SpanSelector form={form} spans={spans} name={column.name} container={ref.current!} index={index} />
                       )}
                     </Stack>
-                    <Stack gap={1}>
-                      <Typography variant="body2" fontWeight="medium">
+                    <Stack
+                      sx={{
+                        gap: 1,
+                      }}
+                    >
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          fontWeight: "medium",
+                        }}
+                      >
                         Extracted Value {column.path && `(${column.path})`}
                       </Typography>
                       <TextField

@@ -25,16 +25,26 @@ export function TraceDrawerAnnotationBar({ annotations, traceId, containerRef }:
   const hasAnnotations = (annotations?.length ?? 0) > 0;
 
   return (
-    <Stack direction="row" alignItems="center" spacing={2} sx={{ minHeight: 32 }}>
+    <Stack
+      direction="row"
+      spacing={2}
+      sx={{
+        alignItems: "center",
+        minHeight: 32,
+      }}
+    >
       <Box data-tour-id={TOUR_IDS.traceDrawerEvals} sx={{ display: "inline-flex", alignItems: "center", cursor: "default" }}>
         {hasAnnotations ? (
           <AnnotationCell annotations={annotations} traceId={traceId} />
         ) : (
           <Typography
             variant="caption"
-            color="text.secondary"
-            sx={{ whiteSpace: "nowrap", cursor: "pointer" }}
             onClick={() => dispatchTourEvent(TASK_TOUR_EVENTS.annotationsReviewed)}
+            sx={{
+              color: "text.secondary",
+              whiteSpace: "nowrap",
+              cursor: "pointer",
+            }}
           >
             No eval annotations on this trace yet
           </Typography>

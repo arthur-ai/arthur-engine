@@ -136,7 +136,16 @@ const spanDetailsStrategy = [
         render: (span: NestedSpanWithMetricsResponse) => {
           const model = getSpanModel(span);
 
-          return <Typography variant="body2" color="text.primary" fontWeight={700} fontSize={12}>{`model: ${model}`}</Typography>;
+          return (
+            <Typography
+              variant="body2"
+              sx={{
+                color: "text.primary",
+                fontWeight: 700,
+                fontSize: 12,
+              }}
+            >{`model: ${model}`}</Typography>
+          );
         },
       },
       {
@@ -145,7 +154,14 @@ const spanDetailsStrategy = [
           const cost = isSpanWithLlmAttrs(span) ? getCost(span) : null;
 
           const na = (
-            <Typography variant="body2" color="text.primary" fontWeight={700} fontSize={12}>
+            <Typography
+              variant="body2"
+              sx={{
+                color: "text.primary",
+                fontWeight: 700,
+                fontSize: 12,
+              }}
+            >
               Cost: N/A
             </Typography>
           );
@@ -165,7 +181,14 @@ const spanDetailsStrategy = [
           const tokens = isSpanWithLlmAttrs(span) ? getTokens(span) : null;
 
           const na = (
-            <Typography variant="body2" color="text.primary" fontWeight={700} fontSize={12}>
+            <Typography
+              variant="body2"
+              sx={{
+                color: "text.primary",
+                fontWeight: 700,
+                fontSize: 12,
+              }}
+            >
               Tokens: N/A
             </Typography>
           );

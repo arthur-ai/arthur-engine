@@ -114,37 +114,87 @@ const Internal = ({ template }: { template?: AgenticExperimentDetail }) => {
         }}
       >
         <Stack>
-          <Typography variant="h5" color="text.primary" fontWeight="bold" mb={0.5}>
+          <Typography
+            variant="h5"
+            sx={{
+              color: "text.primary",
+              fontWeight: "bold",
+              mb: 0.5,
+            }}
+          >
             New Agent Experiment
           </Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+            }}
+          >
             Create a new agent experiment to test and optimize agent-based task execution strategies.
           </Typography>
         </Stack>
       </Box>
-      <Stack p={2} overflow="auto" gap={4}>
-        <Stack mb={2}>
-          <Typography variant="h6" color="text.primary" fontWeight="bold">
+      <Stack
+        sx={{
+          p: 2,
+          overflow: "auto",
+          gap: 4,
+        }}
+      >
+        <Stack
+          sx={{
+            mb: 2,
+          }}
+        >
+          <Typography
+            variant="h6"
+            sx={{
+              color: "text.primary",
+              fontWeight: "bold",
+            }}
+          >
             Endpoint Setup
           </Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+            }}
+          >
             Configure the API endpoint that will be called during the experiment.
           </Typography>
           <Divider sx={{ my: 2 }} />
           <EndpointSetup form={form} fields={{ endpoint: "endpoint" }} />
         </Stack>
         <Stack>
-          <Typography variant="h6" color="text.primary" fontWeight="bold">
+          <Typography
+            variant="h6"
+            sx={{
+              color: "text.primary",
+              fontWeight: "bold",
+            }}
+          >
             Experiment Setup
           </Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+            }}
+          >
             Define the experiment parameters and select your evaluation dataset.
           </Typography>
           <Divider sx={{ my: 2 }} />
           <ExperimentSetup form={form} />
         </Stack>
       </Stack>
-      <Stack direction="row" mt="auto" p={2}>
+      <Stack
+        direction="row"
+        sx={{
+          mt: "auto",
+          p: 2,
+        }}
+      >
         <form.Subscribe selector={(state) => [state.canSubmit, state.isDirty, state.isSubmitting]}>
           {([canSubmit, isDirty, isSubmitting]) => (
             <Button type="submit" variant="contained" color="primary" fullWidth disabled={!canSubmit || !isDirty} loading={isSubmitting}>
@@ -161,9 +211,17 @@ export const ExperimentSetup = withForm({
   ...newAgentExperimentFormOpts,
   render: function Render({ form }) {
     return (
-      <Stack gap={2}>
+      <Stack
+        sx={{
+          gap: 2,
+        }}
+      >
         <Box className="grid grid-cols-1 items-start" sx={{ gap: 2 }}>
-          <Stack gap={2}>
+          <Stack
+            sx={{
+              gap: 2,
+            }}
+          >
             <form.AppField name="name">
               {(field) => (
                 <TextField

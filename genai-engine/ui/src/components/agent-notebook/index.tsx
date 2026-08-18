@@ -199,10 +199,22 @@ export const AgentNotebook = ({ embedded = false, isCreateModalOpen, onCreateMod
             }}
           >
             <div>
-              <Typography variant="h5" color="text.primary" fontWeight="bold" mb={0.5}>
+              <Typography
+                variant="h5"
+                sx={{
+                  color: "text.primary",
+                  fontWeight: "bold",
+                  mb: 0.5,
+                }}
+              >
                 Agentic Notebooks
               </Typography>
-              <Typography variant="body2" color="text.secondary">
+              <Typography
+                variant="body2"
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
                 Use agentic notebooks to test and optimize agent-based task execution strategies with a reusable configuration.
               </Typography>
             </div>
@@ -229,7 +241,13 @@ export const AgentNotebook = ({ embedded = false, isCreateModalOpen, onCreateMod
             <Typography variant="h5" gutterBottom sx={{ fontWeight: 500, color: "text.primary" }}>
               No notebooks yet
             </Typography>
-            <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+            <Typography
+              variant="body1"
+              sx={{
+                color: "text.secondary",
+                mb: 3,
+              }}
+            >
               Get started by creating your first agent notebook
             </Typography>
             <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={handleCreateNotebook} size="large">
@@ -254,7 +272,11 @@ export const AgentNotebook = ({ embedded = false, isCreateModalOpen, onCreateMod
           }}
         >
           <DialogContent dividers>
-            <Stack gap={2}>
+            <Stack
+              sx={{
+                gap: 2,
+              }}
+            >
               <form.Field name="name" validators={{ onChange: z.string().min(1, "Name is required") }}>
                 {(field) => (
                   <TextField

@@ -135,7 +135,12 @@ export const GuardrailsView: React.FC = () => {
           <Typography variant="h5" sx={{ fontWeight: 600 }}>
             Guardrails
           </Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+            }}
+          >
             Configure deterministic rules that validate prompts and responses for this task, and test them live.
           </Typography>
         </Box>

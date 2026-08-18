@@ -13,7 +13,14 @@ export const ExperimentHttpTemplate = ({ experimentId }: Props) => {
   if (!experiment) {
     return (
       <Paper variant="outlined" sx={{ p: 2 }}>
-        <Typography variant="h6" color="text.primary" fontWeight="bold" mb={2}>
+        <Typography
+          variant="h6"
+          sx={{
+            color: "text.primary",
+            fontWeight: "bold",
+            mb: 2,
+          }}
+        >
           Endpoint
         </Typography>
         <Skeleton variant="text" width="100%" height={24} />
@@ -23,24 +30,63 @@ export const ExperimentHttpTemplate = ({ experimentId }: Props) => {
 
   return (
     <Paper variant="outlined" sx={{ p: 2 }}>
-      <Typography variant="h6" color="text.primary" fontWeight="bold" mb={2}>
+      <Typography
+        variant="h6"
+        sx={{
+          color: "text.primary",
+          fontWeight: "bold",
+          mb: 2,
+        }}
+      >
         Endpoint
       </Typography>
-      <Stack gap={1}>
-        <Typography variant="body2" color="text.secondary">
+      <Stack
+        sx={{
+          gap: 1,
+        }}
+      >
+        <Typography
+          variant="body2"
+          sx={{
+            color: "text.secondary",
+          }}
+        >
           <span className="font-bold">Name:</span> {experiment.http_template.endpoint_name}
         </Typography>
-        <Typography variant="body2" color="text.secondary">
+        <Typography
+          variant="body2"
+          sx={{
+            color: "text.secondary",
+          }}
+        >
           <span className="font-bold">URL:</span> {experiment.http_template.endpoint_url}
         </Typography>
         {experiment.http_template.headers && experiment.http_template.headers.length > 0 && (
-          <Stack gap={0.5}>
-            <Typography variant="body2" color="text.secondary" fontWeight="bold">
+          <Stack
+            sx={{
+              gap: 0.5,
+            }}
+          >
+            <Typography
+              variant="body2"
+              sx={{
+                color: "text.secondary",
+                fontWeight: "bold",
+              }}
+            >
               Headers:
             </Typography>
             <Stack component="ul" sx={{ m: 0, pl: 3 }}>
               {experiment.http_template.headers.map((header, index) => (
-                <Typography key={index} component="li" variant="body2" color="text.secondary" sx={{ fontFamily: "monospace" }}>
+                <Typography
+                  key={index}
+                  component="li"
+                  variant="body2"
+                  sx={{
+                    color: "text.secondary",
+                    fontFamily: "monospace",
+                  }}
+                >
                   {header.name}: {header.value}
                 </Typography>
               ))}
@@ -48,8 +94,18 @@ export const ExperimentHttpTemplate = ({ experimentId }: Props) => {
           </Stack>
         )}
         {experiment.http_template.request_body && experiment.http_template.request_body.length > 0 && (
-          <Stack gap={0.5}>
-            <Typography variant="body2" color="text.secondary" fontWeight="bold">
+          <Stack
+            sx={{
+              gap: 0.5,
+            }}
+          >
+            <Typography
+              variant="body2"
+              sx={{
+                color: "text.secondary",
+                fontWeight: "bold",
+              }}
+            >
               Request Body:
             </Typography>
             <Highlight code={experiment.http_template.request_body} language="json" />

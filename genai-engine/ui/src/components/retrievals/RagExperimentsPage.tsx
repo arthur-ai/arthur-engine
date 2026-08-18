@@ -1,4 +1,4 @@
-import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
+import ErrorOutlineIcon from "@mui/icons-material/ErrorOutlineOutlined";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
@@ -200,7 +200,12 @@ const RagExperimentsContent: React.FC = () => {
         }}
       >
         <CircularProgress />
-        <Typography variant="body2" color="text.secondary">
+        <Typography
+          variant="body2"
+          sx={{
+            color: "text.secondary",
+          }}
+        >
           Loading notebook...
         </Typography>
       </Box>
@@ -224,7 +229,14 @@ const RagExperimentsContent: React.FC = () => {
         <Typography variant="h5" sx={{ fontWeight: 600, color: "text.primary" }}>
           Notebook Not Found
         </Typography>
-        <Typography variant="body1" color="text.secondary" sx={{ textAlign: "center", maxWidth: 400 }}>
+        <Typography
+          variant="body1"
+          sx={{
+            color: "text.secondary",
+            textAlign: "center",
+            maxWidth: 400,
+          }}
+        >
           The notebook you're looking for doesn't exist or may have been deleted.
         </Typography>
         <Button variant="contained" onClick={() => navigateWithUnsavedCheck(`/tasks/${taskId}/rag`)} sx={{ mt: 2 }}>

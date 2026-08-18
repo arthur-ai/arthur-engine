@@ -46,7 +46,12 @@ export const RagConfigVersionSelector: React.FC<RagConfigVersionSelectorProps> =
           <Box key={key} component="li" {...optionProps}>
             <Box sx={{ flex: 1 }}>
               <Typography variant="body1">Version {option.version_number}</Typography>
-              <Typography variant="body2" color="text.secondary">
+              <Typography
+                variant="body2"
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
                 {new Date(option.created_at).toLocaleString()}
               </Typography>
               {option.tags && option.tags.length > 0 && (

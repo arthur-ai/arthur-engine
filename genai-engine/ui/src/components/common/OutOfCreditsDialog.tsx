@@ -26,7 +26,13 @@ export const OutOfCreditsDialog: React.FC = () => {
       aria-describedby="out-of-credits-dialog-description"
     >
       <DialogTitle id="out-of-credits-dialog-title">
-        <Stack direction="row" alignItems="center" spacing={1}>
+        <Stack
+          direction="row"
+          spacing={1}
+          sx={{
+            alignItems: "center",
+          }}
+        >
           <WarningAmberIcon sx={{ color: "warning.main" }} />
           <Typography variant="h6" component="span">
             Out of LLM credits
@@ -46,10 +52,20 @@ export const OutOfCreditsDialog: React.FC = () => {
               fontFamily: "monospace",
             }}
           >
-            <Typography variant="body2" color="text.secondary">
+            <Typography
+              variant="body2"
+              sx={{
+                color: "text.secondary",
+              }}
+            >
               Used: {formatTokenCount(detail.tokens_used)} tokens
             </Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography
+              variant="body2"
+              sx={{
+                color: "text.secondary",
+              }}
+            >
               Limit: {formatTokenCount(detail.tokens_limit)} tokens
             </Typography>
           </Box>

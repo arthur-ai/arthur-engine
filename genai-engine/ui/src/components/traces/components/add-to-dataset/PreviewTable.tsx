@@ -38,12 +38,38 @@ export const PreviewTable = withForm({
     if (!hasData) return null;
 
     return (
-      <Stack sx={{ mt: "auto", backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.100"), px: 4, py: 2 }} gap={1}>
-        <Stack direction={{ sm: "column", md: "row" }} alignItems={{ sm: "flex-start", md: "center" }} justifyContent="space-between" gap={1}>
-          <Typography variant="body2" color="text.primary" fontWeight="medium">
+      <Stack
+        sx={{
+          gap: 1,
+          mt: "auto",
+          backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.100"),
+          px: 4,
+          py: 2,
+        }}
+      >
+        <Stack
+          direction={{ sm: "column", md: "row" }}
+          sx={{
+            alignItems: { sm: "flex-start", md: "center" },
+            justifyContent: "space-between",
+            gap: 1,
+          }}
+        >
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.primary",
+              fontWeight: "medium",
+            }}
+          >
             Preview: 1 row will be added
           </Typography>
-          <Stack direction="row" gap={1}>
+          <Stack
+            direction="row"
+            sx={{
+              gap: 1,
+            }}
+          >
             <ButtonGroup size="small">
               <Button variant="outlined" color="primary" startIcon={<SaveIcon />} onClick={onSaveTransform} disabled={!hasData}>
                 Save new transform

@@ -38,35 +38,78 @@ export const EvalsStep = withForm({
     return (
       <>
         <DialogContent>
-          <Stack py={2} gap={2} data-tour-id={TOUR_IDS.createExperimentEvalMappingsList}>
+          <Stack
+            data-tour-id={TOUR_IDS.createExperimentEvalMappingsList}
+            sx={{
+              py: 2,
+              gap: 2,
+            }}
+          >
             {evaluators.map((evaluator, index) => (
-              <Stack key={index} sx={{ border: "1px solid", borderColor: "divider", borderRadius: 1, p: 2 }} gap={2} position="relative">
-                <Stack alignItems="flex-start">
+              <Stack
+                key={index}
+                sx={{
+                  gap: 2,
+                  position: "relative",
+                  border: "1px solid",
+                  borderColor: "divider",
+                  borderRadius: 1,
+                  p: 2,
+                }}
+              >
+                <Stack
+                  sx={{
+                    alignItems: "flex-start",
+                  }}
+                >
                   <Link
                     component="button"
                     type="button"
                     variant="body2"
-                    fontWeight="bold"
                     underline="hover"
                     className="sticky top-0"
                     onClick={() => setEvaluator(evaluator)}
+                    sx={{
+                      fontWeight: "bold",
+                    }}
                   >
                     {evaluator.name} v{evaluator.version}
                   </Link>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: "text.secondary",
+                    }}
+                  >
                     Map each variable of this evaluator to either a dataset column or the experiment output.
                   </Typography>
                 </Stack>
                 <form.AppField name={`evalVariableMappings[${index}].variables`} mode="array">
                   {(field) => (
-                    <Stack gap={2}>
+                    <Stack
+                      sx={{
+                        gap: 2,
+                      }}
+                    >
                       {field.state.value.map((variable, vIndex) => (
                         <Stack
                           key={vIndex}
-                          sx={{ border: "1px solid", borderColor: "divider", borderRadius: 1, p: 2, backgroundColor: "background.paper" }}
-                          gap={2}
+                          sx={{
+                            gap: 2,
+                            border: "1px solid",
+                            borderColor: "divider",
+                            borderRadius: 1,
+                            p: 2,
+                            backgroundColor: "background.paper",
+                          }}
                         >
-                          <Stack direction="row" justifyContent="space-between" alignItems="center">
+                          <Stack
+                            direction="row"
+                            sx={{
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                            }}
+                          >
                             <Typography variant="body2">{variable.name}</Typography>
                             <form.AppField
                               name={`evalVariableMappings[${index}].variables[${vIndex}].sourceType`}

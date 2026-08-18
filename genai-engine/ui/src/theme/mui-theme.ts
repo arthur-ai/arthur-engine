@@ -55,20 +55,25 @@ const createAppTheme = (mode: "light" | "dark") =>
       },
       MuiDrawer: {
         styleOverrides: {
-          paperAnchorRight: {
-            // Anchor to the content edge (panel's left) instead of the window edge…
-            right: "var(--app-inset-right, 0px)",
-            // …and cap the width so a drawer sized as a viewport percentage
-            // (e.g. width: "80%"/"90%") resolves against the content region
-            // rather than the full window and overflows under the panel.
-            // Capping below 100% leaves a left gutter of exposed backdrop —
-            // clicking it is a primary way to close the drawer, so it must never
-            // be fully covered. Defaults to `none` (TRULY inert off-tour, so a
-            // drawer's own maxWidth — e.g. the 95% PromptVersionDrawer — is
-            // untouched); TourSidePanel sets the 90%-content calc only while the
-            // panel reserves space.
-            maxWidth: "var(--app-drawer-max-width, none)",
-          },
+          // MUI dropped the per-anchor paper slots (`paperAnchorRight`); the anchor
+          // now only lives on the root, so narrow the paper slot by `ownerState`
+          // instead — same element, same specificity as before.
+          paper: ({ ownerState }) => ({
+            ...(ownerState.anchor === "right" && {
+              // Anchor to the content edge (panel's left) instead of the window edge…
+              right: "var(--app-inset-right, 0px)",
+              // …and cap the width so a drawer sized as a viewport percentage
+              // (e.g. width: "80%"/"90%") resolves against the content region
+              // rather than the full window and overflows under the panel.
+              // Capping below 100% leaves a left gutter of exposed backdrop —
+              // clicking it is a primary way to close the drawer, so it must never
+              // be fully covered. Defaults to `none` (TRULY inert off-tour, so a
+              // drawer's own maxWidth — e.g. the 95% PromptVersionDrawer — is
+              // untouched); TourSidePanel sets the 90%-content calc only while the
+              // panel reserves space.
+              maxWidth: "var(--app-drawer-max-width, none)",
+            }),
+          }),
         },
       },
       MuiTableContainer: {

@@ -69,7 +69,12 @@ export const Details = ({ annotationId, onClose, rerunOnMount = false, onRerunCo
   return (
     <>
       <DialogTitle>
-        <Typography variant="h6" fontWeight={600}>
+        <Typography
+          variant="h6"
+          sx={{
+            fontWeight: 600,
+          }}
+        >
           Annotation Details
         </Typography>
       </DialogTitle>
@@ -107,7 +112,14 @@ export const Details = ({ annotationId, onClose, rerunOnMount = false, onRerunCo
             <Box className="grid grid-cols-1 md:grid-cols-3 gap-3">
               {data.run_status && (
                 <Paper variant="outlined" sx={{ p: 2, opacity: isPending ? 0.5 : 1 }}>
-                  <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
+                  <Typography
+                    variant="caption"
+                    gutterBottom
+                    sx={{
+                      color: "text.secondary",
+                      display: "block",
+                    }}
+                  >
                     Status
                   </Typography>
                   {getStatusChip(data.run_status)}
@@ -116,10 +128,23 @@ export const Details = ({ annotationId, onClose, rerunOnMount = false, onRerunCo
 
               {data.annotation_score != null && (
                 <Paper variant="outlined" sx={{ p: 2 }}>
-                  <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
+                  <Typography
+                    variant="caption"
+                    gutterBottom
+                    sx={{
+                      color: "text.secondary",
+                      display: "block",
+                    }}
+                  >
                     Score
                   </Typography>
-                  <Typography variant="h5" fontWeight={700} sx={{ color: getScoreColor(data.annotation_score) }}>
+                  <Typography
+                    variant="h5"
+                    sx={{
+                      fontWeight: 700,
+                      color: getScoreColor(data.annotation_score),
+                    }}
+                  >
                     {data.annotation_score}
                   </Typography>
                 </Paper>
@@ -127,7 +152,14 @@ export const Details = ({ annotationId, onClose, rerunOnMount = false, onRerunCo
 
               {data.eval_name && (
                 <Paper variant="outlined" sx={{ p: 2 }}>
-                  <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
+                  <Typography
+                    variant="caption"
+                    gutterBottom
+                    sx={{
+                      color: "text.secondary",
+                      display: "block",
+                    }}
+                  >
                     Eval Name
                   </Typography>
                   <Box className="flex items-center gap-1">
@@ -141,7 +173,13 @@ export const Details = ({ annotationId, onClose, rerunOnMount = false, onRerunCo
             {/* Explanation */}
             {data.annotation_description && (
               <Box>
-                <Typography variant="subtitle2" fontWeight={600} gutterBottom>
+                <Typography
+                  variant="subtitle2"
+                  gutterBottom
+                  sx={{
+                    fontWeight: 600,
+                  }}
+                >
                   Explanation
                 </Typography>
                 <Paper
@@ -162,7 +200,13 @@ export const Details = ({ annotationId, onClose, rerunOnMount = false, onRerunCo
             {/* Eval Instructions */}
             {isLoadingEval ? (
               <Box>
-                <Typography variant="subtitle2" fontWeight={600} gutterBottom>
+                <Typography
+                  variant="subtitle2"
+                  gutterBottom
+                  sx={{
+                    fontWeight: 600,
+                  }}
+                >
                   Evaluation Criteria
                 </Typography>
                 <Paper variant="outlined" sx={{ p: 2, display: "flex", justifyContent: "center" }}>
@@ -171,7 +215,13 @@ export const Details = ({ annotationId, onClose, rerunOnMount = false, onRerunCo
               </Box>
             ) : instructions ? (
               <Box>
-                <Typography variant="subtitle2" fontWeight={600} gutterBottom>
+                <Typography
+                  variant="subtitle2"
+                  gutterBottom
+                  sx={{
+                    fontWeight: 600,
+                  }}
+                >
                   Evaluation Criteria
                 </Typography>
                 <Box
@@ -206,7 +256,13 @@ export const Details = ({ annotationId, onClose, rerunOnMount = false, onRerunCo
             {/* Input Variables */}
             {data.input_variables && data.input_variables.length > 0 && (
               <Box>
-                <Typography variant="subtitle2" fontWeight={600} gutterBottom>
+                <Typography
+                  variant="subtitle2"
+                  gutterBottom
+                  sx={{
+                    fontWeight: 600,
+                  }}
+                >
                   Input Variables ({data.input_variables.length})
                 </Typography>
                 <Box className="flex flex-col gap-2">
@@ -251,17 +307,34 @@ export const Details = ({ annotationId, onClose, rerunOnMount = false, onRerunCo
 
             {/* Stats Row */}
             <Box>
-              <Typography variant="subtitle2" fontWeight={600} gutterBottom>
+              <Typography
+                variant="subtitle2"
+                gutterBottom
+                sx={{
+                  fontWeight: 600,
+                }}
+              >
                 Metadata
               </Typography>
               <Box className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 <Paper variant="outlined" sx={{ p: 2, display: "flex", alignItems: "center", gap: 1.5 }}>
                   <AttachMoneyIcon color="action" />
                   <Box>
-                    <Typography variant="caption" color="text.secondary" display="block">
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        color: "text.secondary",
+                        display: "block",
+                      }}
+                    >
                       Cost
                     </Typography>
-                    <Typography variant="body1" fontWeight={600}>
+                    <Typography
+                      variant="body1"
+                      sx={{
+                        fontWeight: 600,
+                      }}
+                    >
                       {data.cost != null ? formatCurrency(data.cost, defaultCurrency) : "N/A"}
                     </Typography>
                   </Box>
@@ -270,10 +343,21 @@ export const Details = ({ annotationId, onClose, rerunOnMount = false, onRerunCo
                 <Paper variant="outlined" sx={{ p: 2, display: "flex", alignItems: "center", gap: 1.5 }}>
                   <AccessTimeIcon color="action" />
                   <Box>
-                    <Typography variant="caption" color="text.secondary" display="block">
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        color: "text.secondary",
+                        display: "block",
+                      }}
+                    >
                       Created
                     </Typography>
-                    <Typography variant="body2" fontWeight={500}>
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        fontWeight: 500,
+                      }}
+                    >
                       {data.created_at ? formatDateInTimezone(data.created_at, timezone, { hour12: !use24Hour }) : "N/A"}
                     </Typography>
                   </Box>
@@ -282,17 +366,35 @@ export const Details = ({ annotationId, onClose, rerunOnMount = false, onRerunCo
                 <Paper variant="outlined" sx={{ p: 2, display: "flex", alignItems: "center", gap: 1.5 }}>
                   <AccessTimeIcon color="action" />
                   <Box>
-                    <Typography variant="caption" color="text.secondary" display="block">
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        color: "text.secondary",
+                        display: "block",
+                      }}
+                    >
                       Updated
                     </Typography>
-                    <Typography variant="body2" fontWeight={500}>
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        fontWeight: 500,
+                      }}
+                    >
                       {data.updated_at ? formatDateInTimezone(data.updated_at, timezone, { hour12: !use24Hour }) : "N/A"}
                     </Typography>
                   </Box>
                 </Paper>
 
                 <Paper variant="outlined" sx={{ p: 2 }}>
-                  <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
+                  <Typography
+                    variant="caption"
+                    gutterBottom
+                    sx={{
+                      color: "text.secondary",
+                      display: "block",
+                    }}
+                  >
                     Annotation Type
                   </Typography>
                   <Chip label={data.annotation_type} size="small" variant="outlined" sx={{ fontWeight: 500 }} />
@@ -304,19 +406,39 @@ export const Details = ({ annotationId, onClose, rerunOnMount = false, onRerunCo
 
             {/* IDs Section */}
             <Box>
-              <Typography variant="subtitle2" fontWeight={600} gutterBottom>
+              <Typography
+                variant="subtitle2"
+                gutterBottom
+                sx={{
+                  fontWeight: 600,
+                }}
+              >
                 IDs
               </Typography>
               <Box className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <Paper variant="outlined" sx={{ p: 2 }}>
-                  <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
+                  <Typography
+                    variant="caption"
+                    gutterBottom
+                    sx={{
+                      color: "text.secondary",
+                      display: "block",
+                    }}
+                  >
                     Annotation ID
                   </Typography>
                   <CopyableChip label={data.id} sx={{ fontFamily: "monospace", fontSize: 12 }} />
                 </Paper>
 
                 <Paper variant="outlined" sx={{ p: 2 }}>
-                  <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
+                  <Typography
+                    variant="caption"
+                    gutterBottom
+                    sx={{
+                      color: "text.secondary",
+                      display: "block",
+                    }}
+                  >
                     Trace ID
                   </Typography>
                   <CopyableChip label={data.trace_id} sx={{ fontFamily: "monospace", fontSize: 12 }} />
@@ -324,7 +446,14 @@ export const Details = ({ annotationId, onClose, rerunOnMount = false, onRerunCo
 
                 {data.continuous_eval_id && (
                   <Paper variant="outlined" sx={{ p: 2 }}>
-                    <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
+                    <Typography
+                      variant="caption"
+                      gutterBottom
+                      sx={{
+                        color: "text.secondary",
+                        display: "block",
+                      }}
+                    >
                       Continuous Eval ID
                     </Typography>
                     <CopyableChip label={data.continuous_eval_id} sx={{ fontFamily: "monospace", fontSize: 12 }} />
@@ -334,7 +463,12 @@ export const Details = ({ annotationId, onClose, rerunOnMount = false, onRerunCo
             </Box>
           </Box>
         ) : (
-          <Typography color="text.secondary" className="text-center py-8">
+          <Typography
+            className="text-center py-8"
+            sx={{
+              color: "text.secondary",
+            }}
+          >
             No annotation data available
           </Typography>
         )}

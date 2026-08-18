@@ -71,17 +71,41 @@ export const SourceTraceDrawer = ({ open, onClose, traceId, taskId }: Props) => 
 const SourceTraceDrawerHeader = ({ traceId, taskId, onClose }: { traceId: string; taskId: string; onClose: () => void }) => (
   <Stack
     direction="row"
-    alignItems="center"
-    justifyContent="space-between"
-    sx={{ px: 2, py: 1, borderBottom: 1, borderColor: "divider", backgroundColor: "background.paper" }}
+    sx={{
+      alignItems: "center",
+      justifyContent: "space-between",
+      px: 2,
+      py: 1,
+      borderBottom: 1,
+      borderColor: "divider",
+      backgroundColor: "background.paper",
+    }}
   >
-    <Stack direction="row" alignItems="center" gap={1}>
-      <Typography variant="subtitle1" fontWeight={600} color="text.primary">
+    <Stack
+      direction="row"
+      sx={{
+        alignItems: "center",
+        gap: 1,
+      }}
+    >
+      <Typography
+        variant="subtitle1"
+        sx={{
+          fontWeight: 600,
+          color: "text.primary",
+        }}
+      >
         Source trace
       </Typography>
       <CopyableChip label={traceId} size="small" sx={{ fontFamily: "monospace" }} />
     </Stack>
-    <Stack direction="row" alignItems="center" gap={1}>
+    <Stack
+      direction="row"
+      sx={{
+        alignItems: "center",
+        gap: 1,
+      }}
+    >
       <Button
         component={RouterLink}
         to={traceDeepLinkPath(taskId, traceId)}
@@ -149,8 +173,22 @@ const SpanContentView = ({ span }: { span: NestedSpanWithMetricsResponse }) => {
 };
 
 const SourceTraceErrorState = ({ onRetry }: { onRetry: () => void }) => (
-  <Stack alignItems="center" justifyContent="center" gap={2} sx={{ flex: 1, p: 3 }}>
-    <Typography variant="body2" color="text.secondary" textAlign="center">
+  <Stack
+    sx={{
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 2,
+      flex: 1,
+      p: 3,
+    }}
+  >
+    <Typography
+      variant="body2"
+      sx={{
+        color: "text.secondary",
+        textAlign: "center",
+      }}
+    >
       This trace could not be loaded. It may have been deleted or expired.
     </Typography>
     <Button variant="outlined" size="small" onClick={onRetry}>
@@ -161,7 +199,12 @@ const SourceTraceErrorState = ({ onRetry }: { onRetry: () => void }) => (
 
 const CenteredMessage = ({ children }: { children: React.ReactNode }) => (
   <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100%", p: 3 }}>
-    <Typography variant="body2" color="text.secondary">
+    <Typography
+      variant="body2"
+      sx={{
+        color: "text.secondary",
+      }}
+    >
       {children}
     </Typography>
   </Box>

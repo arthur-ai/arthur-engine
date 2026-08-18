@@ -9,12 +9,24 @@ export const TransformRowExpansion: React.FC<TransformRowExpansionProps> = ({ tr
 
   return (
     <Box sx={{ p: 3, backgroundColor: "background.default" }}>
-      <Typography variant="subtitle2" fontWeight="medium" gutterBottom>
+      <Typography
+        variant="subtitle2"
+        gutterBottom
+        sx={{
+          fontWeight: "medium",
+        }}
+      >
         Transform Definition
       </Typography>
 
       <Box sx={{ mb: 3 }}>
-        <Typography variant="body2" fontWeight="medium" gutterBottom>
+        <Typography
+          variant="body2"
+          gutterBottom
+          sx={{
+            fontWeight: "medium",
+          }}
+        >
           Variable Mappings ({definition?.variables.length ?? 0})
         </Typography>
         <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
@@ -29,14 +41,30 @@ export const TransformRowExpansion: React.FC<TransformRowExpansionProps> = ({ tr
                 borderColor: "divider",
               }}
             >
-              <Typography variant="body2" fontWeight="medium">
+              <Typography
+                variant="body2"
+                sx={{
+                  fontWeight: "medium",
+                }}
+              >
                 {variable.variable_name}
               </Typography>
-              <Typography variant="caption" color="text.secondary">
+              <Typography
+                variant="caption"
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
                 Span: <code>{variable.span_name}</code> → Path: <code>{variable.attribute_path}</code>
               </Typography>
               {variable.fallback !== undefined && (
-                <Typography variant="caption" color="text.secondary" display="block">
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: "text.secondary",
+                    display: "block",
+                  }}
+                >
                   Fallback: {JSON.stringify(variable.fallback)}
                 </Typography>
               )}
@@ -46,7 +74,13 @@ export const TransformRowExpansion: React.FC<TransformRowExpansionProps> = ({ tr
       </Box>
 
       <Box>
-        <Typography variant="body2" fontWeight="medium" gutterBottom>
+        <Typography
+          variant="body2"
+          gutterBottom
+          sx={{
+            fontWeight: "medium",
+          }}
+        >
           Full JSON Definition
         </Typography>
         <Box

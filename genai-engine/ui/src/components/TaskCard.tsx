@@ -2,7 +2,7 @@ import ArchiveOutlinedIcon from "@mui/icons-material/ArchiveOutlined";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import CheckIcon from "@mui/icons-material/Check";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
+import ErrorOutlineIcon from "@mui/icons-material/ErrorOutlineOutlined";
 import GeneratingTokensOutlinedIcon from "@mui/icons-material/GeneratingTokensOutlined";
 import SettingsIcon from "@mui/icons-material/Settings";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
@@ -214,7 +214,13 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({ task, overview, l
                     <Typography variant="h6" sx={{ fontWeight: 600 }}>
                       {formatNumber(metrics.traceCount)}
                     </Typography>
-                    <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        color: "text.secondary",
+                        mt: 0.5,
+                      }}
+                    >
                       Traces
                     </Typography>
                   </Box>
@@ -225,7 +231,13 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({ task, overview, l
                     <Typography variant="h6" sx={{ fontWeight: 600 }}>
                       {formatNumber(metrics.totalTokens)}
                     </Typography>
-                    <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        color: "text.secondary",
+                        mt: 0.5,
+                      }}
+                    >
                       Tokens
                     </Typography>
                   </Box>
@@ -282,7 +294,12 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({ task, overview, l
               {/* Metadata */}
               <Stack direction="row" spacing={4}>
                 <Box>
-                  <Typography variant="caption" color="text.disabled">
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: "text.disabled",
+                    }}
+                  >
                     Last active
                   </Typography>
                   <Typography
@@ -293,7 +310,12 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({ task, overview, l
                   </Typography>
                 </Box>
                 <Box>
-                  <Typography variant="caption" color="text.disabled">
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: "text.disabled",
+                    }}
+                  >
                     Created
                   </Typography>
                   <Typography variant="caption" sx={{ display: "block", fontWeight: 500, color: "text.primary" }}>
@@ -326,7 +348,13 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({ task, overview, l
                 >
                   {task.is_archived ? "" : "View traces →"}
                 </Typography>
-                <Stack direction="row" spacing={0.5} alignItems="center">
+                <Stack
+                  direction="row"
+                  spacing={0.5}
+                  sx={{
+                    alignItems: "center",
+                  }}
+                >
                   <Box sx={{ position: "relative" }}>
                     {copiedTaskId === task.id ? (
                       <Box

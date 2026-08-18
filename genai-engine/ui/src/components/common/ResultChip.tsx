@@ -1,6 +1,6 @@
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
-import RemoveCircleOutlineIcon from "@mui/icons-material/RemoveCircleOutline";
+import ErrorOutlineIcon from "@mui/icons-material/ErrorOutlineOutlined";
+import RemoveCircleOutlineIcon from "@mui/icons-material/RemoveCircleOutlineOutlined";
 import { Chip } from "@mui/material";
 
 type Props = {

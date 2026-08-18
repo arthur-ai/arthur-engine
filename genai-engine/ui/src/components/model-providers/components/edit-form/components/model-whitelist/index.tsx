@@ -44,10 +44,22 @@ export const ModelWhitelistSection: React.FC<Props> = ({ provider, providerDispl
   return (
     <Box sx={{ mt: 2 }}>
       <Divider sx={{ mb: 2 }} />
-      <Typography variant="subtitle2" color="text.secondary">
+      <Typography
+        variant="subtitle2"
+        sx={{
+          color: "text.secondary",
+        }}
+      >
         Visible models
       </Typography>
-      <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1 }}>
+      <Typography
+        variant="caption"
+        sx={{
+          color: "text.secondary",
+          display: "block",
+          mb: 1,
+        }}
+      >
         Controls what appears in model pickers across the app.
       </Typography>
 
@@ -68,7 +80,12 @@ export const ModelWhitelistSection: React.FC<Props> = ({ provider, providerDispl
               label={
                 <Stack>
                   <Typography variant="body2">All models</Typography>
-                  <Typography variant="caption" color="text.secondary">
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: "text.secondary",
+                    }}
+                  >
                     Show everything {providerDisplayName} offers
                   </Typography>
                 </Stack>
@@ -80,7 +97,12 @@ export const ModelWhitelistSection: React.FC<Props> = ({ provider, providerDispl
               label={
                 <Stack>
                   <Typography variant="body2">Only selected</Typography>
-                  <Typography variant="caption" color="text.secondary">
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: "text.secondary",
+                    }}
+                  >
                     Pick the models your team uses.
                   </Typography>
                 </Stack>
@@ -97,27 +119,44 @@ export const ModelWhitelistSection: React.FC<Props> = ({ provider, providerDispl
                 value={models}
                 onChange={(_event, next) => onChange(next)}
                 disableCloseOnSelect
-                // PaperComponent rather than ListboxComponent: the listbox is the
-                // scrolling element, so a sticky child of it would scroll away.
-                PaperComponent={({ children, ...paperProps }) => (
-                  <Paper {...paperProps}>
-                    <Stack direction="row" spacing={0.75} sx={{ alignItems: "flex-start", px: 1.5, py: 1, borderBottom: 1, borderColor: "divider" }}>
-                      <InfoOutlined sx={{ fontSize: 15, color: "text.disabled", mt: 0.25 }} />
-                      <Typography variant="caption" color="text.secondary">
-                        This list is everything {providerDisplayName} publishes, including models your account may not have access to.
-                      </Typography>
-                    </Stack>
-                    {children}
-                  </Paper>
-                )}
                 // MUI packs tags into the input by default, displacing the placeholder
                 // and reflowing the field. Chips render below it instead.
-                renderTags={() => null}
+                renderValue={() => null}
                 renderInput={(params) => <TextField {...params} placeholder={`Search ${providerDisplayName} models…`} size="small" />}
+                // The paper slot rather than the listbox one: the listbox is the
+                // scrolling element, so a sticky child of it would scroll away.
+                slots={{
+                  paper: ({ children, ...paperProps }) => (
+                    <Paper {...paperProps}>
+                      <Stack
+                        direction="row"
+                        spacing={0.75}
+                        sx={{ alignItems: "flex-start", px: 1.5, py: 1, borderBottom: 1, borderColor: "divider" }}
+                      >
+                        <InfoOutlined sx={{ fontSize: 15, color: "text.disabled", mt: 0.25 }} />
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            color: "text.secondary",
+                          }}
+                        >
+                          This list is everything {providerDisplayName} publishes, including models your account may not have access to.
+                        </Typography>
+                      </Stack>
+                      {children}
+                    </Paper>
+                  ),
+                }}
               />
 
               {models.length > 0 && (
-                <Stack direction="row" flexWrap="wrap" gap={0.75}>
+                <Stack
+                  direction="row"
+                  sx={{
+                    flexWrap: "wrap",
+                    gap: 0.75,
+                  }}
+                >
                   {models.map((model) => (
                     <Chip key={model} label={model} size="small" onDelete={() => onChange(models.filter((m) => m !== model))} />
                   ))}

@@ -64,7 +64,13 @@ export const EditRowModal: React.FC<EditRowModalProps> = ({
         <DialogContent dividers>
           {traceId && taskId && (
             <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
-              <Typography variant="body2" color="text.secondary" fontWeight={500}>
+              <Typography
+                variant="body2"
+                sx={{
+                  color: "text.secondary",
+                  fontWeight: 500,
+                }}
+              >
                 Source trace
               </Typography>
               <SourceTraceLink variant="field" taskId={taskId} traceId={traceId} onOpen={onOpenTrace ? () => onOpenTrace(traceId) : undefined} />

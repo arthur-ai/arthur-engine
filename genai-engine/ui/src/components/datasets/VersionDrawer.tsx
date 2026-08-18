@@ -81,12 +81,23 @@ export const VersionDrawer: React.FC<VersionDrawerProps> = ({
           flexShrink: 0,
         }}
       >
-        <Stack direction="row" justifyContent="space-between" alignItems="center">
+        <Stack
+          direction="row"
+          sx={{
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
           <Box>
             <Typography variant="h6" sx={{ fontWeight: 600, mb: 0.5, color: "text.primary" }}>
               Version History
             </Typography>
-            <Typography variant="caption" color="text.secondary">
+            <Typography
+              variant="caption"
+              sx={{
+                color: "text.secondary",
+              }}
+            >
               {datasetName}
             </Typography>
           </Box>
@@ -121,10 +132,21 @@ export const VersionDrawer: React.FC<VersionDrawerProps> = ({
 
         {!isLoading && !error && versions.length === 0 && (
           <Box sx={{ py: 4, textAlign: "center" }}>
-            <Typography variant="body2" color="text.secondary">
+            <Typography
+              variant="body2"
+              sx={{
+                color: "text.secondary",
+              }}
+            >
               No versions yet
             </Typography>
-            <Typography variant="caption" color="text.secondary" sx={{ mt: 1 }}>
+            <Typography
+              variant="caption"
+              sx={{
+                color: "text.secondary",
+                mt: 1,
+              }}
+            >
               Versions are created when you save changes
             </Typography>
           </Box>
@@ -156,7 +178,15 @@ export const VersionDrawer: React.FC<VersionDrawerProps> = ({
                   }}
                 >
                   <Stack spacing={1.5}>
-                    <Stack direction="row" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={0.5}>
+                    <Stack
+                      direction="row"
+                      sx={{
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        flexWrap: "wrap",
+                        gap: 0.5,
+                      }}
+                    >
                       <Typography
                         variant="subtitle2"
                         sx={{
@@ -172,7 +202,12 @@ export const VersionDrawer: React.FC<VersionDrawerProps> = ({
                       </Box>
                     </Stack>
 
-                    <Typography variant="caption" color="text.secondary">
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        color: "text.secondary",
+                      }}
+                    >
                       {formatDateInTimezone(version.created_at, timezone, { hour12: !use24Hour })}
                     </Typography>
 
@@ -224,7 +259,12 @@ export const VersionDrawer: React.FC<VersionDrawerProps> = ({
             flexShrink: 0,
           }}
         >
-          <Typography variant="caption" color="text.secondary">
+          <Typography
+            variant="caption"
+            sx={{
+              color: "text.secondary",
+            }}
+          >
             {totalCount} version{totalCount !== 1 ? "s" : ""} total
           </Typography>
         </Box>

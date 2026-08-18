@@ -1,4 +1,4 @@
-import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
+import HelpOutlineIcon from "@mui/icons-material/HelpOutlineOutlined";
 import Box from "@mui/material/Box";
 import Divider from "@mui/material/Divider";
 import IconButton from "@mui/material/IconButton";
@@ -83,7 +83,15 @@ const VariableInputs = () => {
   return (
     <Paper elevation={0} sx={{ position: "relative", height: "100%" }}>
       <Box sx={{ padding: 2 }}>
-        <Stack direction="row" alignItems="center" justifyContent="center" spacing={1} className="mb-2">
+        <Stack
+          direction="row"
+          spacing={1}
+          className="mb-2"
+          sx={{
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
           <Typography variant="h5">Variables</Typography>
           <Tooltip
             title={tooltipContent}
@@ -104,7 +112,15 @@ const VariableInputs = () => {
             </IconButton>
           </Tooltip>
         </Stack>
-        <Typography variant="caption" color="text.secondary" sx={{ display: "block", textAlign: "center", mb: 1 }}>
+        <Typography
+          variant="caption"
+          sx={{
+            color: "text.secondary",
+            display: "block",
+            textAlign: "center",
+            mb: 1,
+          }}
+        >
           Fill in the values for your prompt variables below
         </Typography>
         <Divider className="my-2" />
@@ -121,7 +137,14 @@ const VariableInputs = () => {
         }}
       >
         {variables.length === 0 ? (
-          <Typography variant="body2" color="text.secondary" sx={{ padding: 2, textAlign: "center" }}>
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+              padding: 2,
+              textAlign: "center",
+            }}
+          >
             There are no variables present in any of your prompts. Add a variable like{" "}
             <Box component="span" sx={{ fontFamily: "monospace", fontWeight: 600 }}>
               {"{{variable_name}}"}
