@@ -78,7 +78,7 @@ Use `*_with_http_info()` + `raw_data` whenever the response includes prompts, me
 2. **`python/pyproject.toml`** — two additions:
    - In `[project.optional-dependencies]`: `my-framework = ["openinference-instrumentation-my-framework"]`
    - In the `all` extra list: `"openinference-instrumentation-my-framework"`
-3. **`README.md`** — add a row to the "Supported instrumentors" table.
+3. **`python/README.md`** — add a row to the "Supported instrumentors" table.
 
 Verify the correct module path and class name from the package's PyPI page before adding.
 
