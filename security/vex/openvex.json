@@ -3,8 +3,8 @@
   "@id": "https://arthur.ai/vex/arthur-engine",
   "author": "Arthur Security <security@arthur.ai>",
   "role": "Document Creator",
-  "timestamp": "2026-07-30T00:00:00.000000000-00:00",
-  "version": 7,
+  "timestamp": "2026-08-18T00:00:00.000000000-00:00",
+  "version": 8,
   "_comment": "Scope: HIGH/CRITICAL findings that a container-image re-scan still reports for the genai-engine, ml-engine and genai-engine-models-* images AND that are not exploitable in our usage. Every statement here is 'not_affected' with a justification. Remediated CVEs are excluded by policy — fix, don't justify (security/README.md), so a CVE disappearing from this document means it was fixed, not dropped. Remediated and therefore absent: python3.11 is removed from every image (its dpkg metadata deleted); litellm/langsmith/msgpack/nltk/uv/pyasn1 are upgraded past their advisories; and as of 2026-07-30 the distroless OS-package findings (libc6, libssl3, libkrb5*, liblzma5) are fixed at the source — the build stages now mirror the base's /lib layout with their apt-upgraded libraries and rewrite /var/lib/dpkg/status.d to the versions actually installed, so the patched objects ship and scanners read true versions. Auditor note: the distroless base is not merged-/usr, so before that change `COPY /usr/lib` never reached the glibc and liblzma objects the base keeps in /lib. Images up to and including 2.1.754 shipped the base's unpatched glibc (2.36-9+deb12u13) and liblzma5 (5.4.1-1), and earlier revisions of this document incorrectly recorded those libc6 CVEs as fixed. The libssl3 and krb5 objects do live under /usr/lib and were genuinely patched throughout; only their dpkg metadata was stale. See genai-engine/dockerfile, ml-engine/Dockerfile, deployment/model-upload/Dockerfile and PR #2073.",
   "statements": [
     {
@@ -377,6 +377,18 @@
       "justification": "vulnerable_code_not_in_execute_path",
       "impact_statement": "CVE-2026-57432 is an integer overflow in Perl's S_measure_struct (pack/unpack of a template with large repeat counts) causing an out-of-bounds heap read. It is reachable only when the Perl interpreter runs an attacker-controlled pack/unpack template. perl-base is a transitive base-OS package on the models-gcs image; no Arthur process invokes Perl, and the upload job runs a single Python entrypoint (upload_models.py). No Debian bookworm fix is available yet.",
       "timestamp": "2026-07-28T00:00:00Z"
+    },
+    {
+      "_comment": "cryptography (PyPI): CVE-2026-69247 is a Bleichenbacher oracle in PKCS#7 EnvelopedData decryption (pkcs7_decrypt_der / _pem / _smime), introduced in 44.0.0 and fixed in 50.0.0. The genai-engine images are held below the fix by presidio-anonymizer 2.2.364 (latest), which requires cryptography>=48.0.1,<49.0.0; ml-engine and the models-* images already ship 50.0.0 and are therefore not listed here. GenAI Engine never calls the PKCS#7 decrypt API (no pkcs7 reference anywhere under genai-engine/src) and exposes no endpoint that decrypts attacker-supplied EnvelopedData, so the oracle has no channel to observe; the wheels also link OpenSSL 3.2+, whose implicit rejection removes the invalid-padding distinction. Remove this statement once presidio-anonymizer widens its pin and the lock moves to cryptography>=50.0.0. Owner: security@arthur.ai. Review by: 2027-02-18.",
+      "vulnerability": { "name": "CVE-2026-69247" },
+      "products": [
+        { "@id": "pkg:oci/genai-engine-cpu", "subcomponents": [ { "@id": "pkg:pypi/cryptography" } ] },
+        { "@id": "pkg:oci/genai-engine-gpu", "subcomponents": [ { "@id": "pkg:pypi/cryptography" } ] }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_in_execute_path",
+      "impact_statement": "CVE-2026-69247 is a Bleichenbacher oracle exposed by cryptography's PKCS#7 EnvelopedData decryption helpers (pkcs7_decrypt_der, pkcs7_decrypt_pem, pkcs7_decrypt_smime). Exploiting it requires a service that decrypts untrusted EnvelopedData and reflects the per-stage outcome back to the attacker. GenAI Engine calls none of these APIs and accepts no PKCS#7 input, so the affected code is never executed. The images cannot yet move to the fixed 50.0.0 because presidio-anonymizer 2.2.364 (latest) requires cryptography>=48.0.1,<49.0.0.",
+      "timestamp": "2026-08-18T00:00:00Z"
     }
   ]
 }

@@ -5,7 +5,8 @@
   "type": "module",
   "packageManager": "yarn@4.17.1",
   "resolutions": {
-    "@arizeai/openinference-semantic-conventions": "2.5.0"
+    "@arizeai/openinference-semantic-conventions": "2.5.0",
+    "pdfjs-dist": "6.2.108"
   },
   "scripts": {
     "dev": "vite --mode dev",
