@@ -177,7 +177,16 @@ export const TestPromptPanel: React.FC<TestPromptPanelProps> = ({
         Test prompt
       </Typography>
 
-      <Box data-testid="test-prompt-scroll-container" sx={{ flex: 1, minHeight: 0, overflowY: "auto", pt: 1.5, "&&": { mt: 0 } }}>
+      <Box
+        data-testid="test-prompt-scroll-container"
+        sx={{
+          flex: 1,
+          minHeight: 0,
+          overflowY: "auto",
+          pt: 1.5,
+          "&&": { mt: 0 },
+        }}
+      >
         <form onSubmit={handleSubmit}>
           <Stack spacing={1.5}>
             <TextField
