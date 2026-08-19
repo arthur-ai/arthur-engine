@@ -6,6 +6,7 @@ import { APIKeyFields } from "./components/api";
 import { AzureFields } from "./components/azure";
 import { BedrockFields } from "./components/bedrock";
 import { ConfirmationDialog } from "./components/confirmation-dialog";
+import { ModelWhitelistSection } from "./components/model-whitelist";
 import { VertexAIFields } from "./components/vertex";
 import { VllmFields } from "./components/vllm";
 import { AzureFormValues, BedrockFormValues, editFormOptions, VertexAIFormValues, VllmFormValues } from "./form";
@@ -15,13 +16,29 @@ import { ModelProvider, PutModelProviderCredentials } from "@/lib/api-client/api
 
 type Props = {
   provider: ModelProvider;
+  providerDisplayName: string;
+  providerEnabled: boolean;
+  whitelist: string[] | null;
+  whitelistDirty: boolean;
+  onWhitelistChange: (models: string[] | null) => void;
   onSubmit: (data: PutModelProviderCredentials) => Promise<void>;
   onClose: () => void;
 };
 
-export const EditForm = ({ provider, onSubmit, onClose }: Props) => {
+export const EditForm = ({
+  provider,
+  providerDisplayName,
+  providerEnabled,
+  whitelist,
+  whitelistDirty,
+  onWhitelistChange,
+  onSubmit,
+  onClose,
+}: Props) => {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [pendingSubmitData, setPendingSubmitData] = useState<PutModelProviderCredentials | null>(null);
+
+  const whitelistIsEmpty = whitelistDirty && whitelist !== null && whitelist.length === 0;
 
   const handleConfirmedSubmit = async () => {
     if (pendingSubmitData) {
@@ -199,12 +216,20 @@ export const EditForm = ({ provider, onSubmit, onClose }: Props) => {
               }}
             />
           )}
+          <ModelWhitelistSection
+            provider={provider}
+            providerDisplayName={providerDisplayName}
+            providerEnabled={providerEnabled}
+            value={whitelist}
+            dirty={whitelistDirty}
+            onChange={onWhitelistChange}
+          />
         </DialogContent>
         <DialogActions>
           <Button onClick={onClose}>Cancel</Button>
           <form.Subscribe selector={(state) => [state.canSubmit, state.isSubmitting]}>
             {([canSubmit, isSubmitting]) => (
-              <Button type="submit" disabled={!canSubmit} loading={isSubmitting}>
+              <Button type="submit" disabled={!canSubmit || whitelistIsEmpty} loading={isSubmitting}>
                 Save
               </Button>
             )}

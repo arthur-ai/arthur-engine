@@ -121,6 +121,8 @@ from schemas.response_schemas import (
     ListRagSearchSettingConfigurationsResponse,
     ListRagSearchSettingConfigurationVersionsResponse,
     ListTraceTransformVersionsResponse,
+    ModelProviderModelList,
+    ModelProviderWhitelist,
     RagProviderConfigurationResponse,
     RagProviderQueryResponse,
     RagSearchSettingConfigurationResponse,
@@ -3208,6 +3210,106 @@ class GenaiEngineTestClientBase(httpx.Client):
                 if resp.status_code == 200
                 else None
             ),
+        )
+
+    def set_model_provider(
+        self,
+        provider: str,
+        credentials: dict[str, Any],
+        headers: dict | None = None,
+    ) -> int:
+        """Configure (enable) a model provider."""
+        resp = self.base_client.put(
+            f"/api/v1/model_providers/{provider}",
+            json=credentials,
+            headers=headers or self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return resp.status_code
+
+    def delete_model_provider(
+        self,
+        provider: str,
+        headers: dict | None = None,
+    ) -> int:
+        """Disable a model provider, dropping its stored credentials."""
+        resp = self.base_client.delete(
+            f"/api/v1/model_providers/{provider}",
+            headers=headers or self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return resp.status_code
+
+    def get_model_provider_available_models(
+        self,
+        provider: str,
+        headers: dict | None = None,
+    ) -> tuple[int, ModelProviderModelList]:
+        """List the models a provider exposes, after whitelist filtering."""
+        resp = self.base_client.get(
+            f"/api/v1/model_providers/{provider}/available_models",
+            headers=headers or self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                ModelProviderModelList.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
+            ),
+        )
+
+    def get_model_provider_whitelist(
+        self,
+        provider: str,
+        headers: dict | None = None,
+    ) -> tuple[int, ModelProviderWhitelist]:
+        """Read the curated model list plus the provider's full catalog."""
+        resp = self.base_client.get(
+            f"/api/v1/model_providers/{provider}/model_whitelist",
+            headers=headers or self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                ModelProviderWhitelist.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
+            ),
+        )
+
+    def set_model_provider_whitelist(
+        self,
+        provider: str,
+        models: list[str] | None,
+        headers: dict | None = None,
+    ) -> tuple[int, dict]:
+        """Restrict which models the provider exposes. `None` clears the list.
+
+        Returns the body too, since the failure modes (unknown model, empty list)
+        are asserted on the error detail.
+        """
+        resp = self.base_client.put(
+            f"/api/v1/model_providers/{provider}/model_whitelist",
+            json={"models": models},
+            headers=headers or self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json() if resp.status_code != 204 else {},
         )
 
     def create_rag_provider(

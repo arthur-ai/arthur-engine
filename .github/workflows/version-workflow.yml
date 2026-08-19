@@ -47,6 +47,14 @@ jobs:
           fetch-depth: 0
           token: ${{ steps.generate-token.outputs.token }}
       - uses: ./.github/workflows/composite-actions/setup-git
+      # Needed to re-lock after the pyproject version bumps below. Installed
+      # directly rather than via the setup-uv composite, which syncs a whole
+      # project environment this job has no use for. Keep the pin in step with
+      # the one in .github/workflows/composite-actions/setup-uv/action.yml.
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.11.7"
       - name: Sync main into dev
         run: |
           git fetch origin main
@@ -151,8 +159,26 @@ jobs:
           sed -i "s/^version = \".*\"/version = \"$NEW_ARTHUR_ENGINE_VERSION\"/" ml-engine/pyproject.toml
           sed -i "s/^version = \".*\"/version = \"$NEW_ARTHUR_ENGINE_VERSION\"/" arthur-observability-sdk/python/pyproject.toml
 
+          # Each uv.lock records its own project's version, so the three seds above
+          # leave every lockfile disagreeing with its manifest until something else
+          # happens to re-lock. That drift is harmless on its own, but it is
+          # indistinguishable from the drift check-dependency-automation exists to
+          # catch, and it would leave that gate permanently red. Re-lock here so the
+          # invariant "uv.lock always matches pyproject.toml" holds on every commit.
+          #
+          # `uv lock` without --upgrade keeps every existing pin as a preference, so
+          # no dependency moves here: the only edits are the project's own version
+          # entry and the `exclude-newer` line, which records where the 3-day soak
+          # window sat at lock time and is recomputed on every run. It is deliberately
+          # allowed to fail the job: if a manifest no longer resolves, dev is already
+          # broken and cutting a release from it would only ship the breakage.
+          for proj in genai-engine ml-engine arthur-observability-sdk/python; do
+            echo "Re-locking ${proj} at ${NEW_ARTHUR_ENGINE_VERSION}"
+            uv lock --directory "$proj"
+          done
+
           # Add and commit changes
-          git add version genai-engine/version genai-engine/src/version genai-engine/pyproject.toml ml-engine/pyproject.toml arthur-observability-sdk/python/pyproject.toml genai-engine/staging.openapi.json $GENAI_ENGINE_HELM_CHART_YAML_PATH $GENAI_ENGINE_HELM_VALUES_YAML_PATH $ARTHUR_ENGINE_HELM_CPU_START_SCRIPT_PATH $ARTHUR_ENGINE_HELM_GPU_START_SCRIPT_PATH $ARTHUR_ENGINE_CFT_GPU_HTML_PATH $ARTHUR_ENGINE_CFT_CPU_HTML_PATH $ARTHUR_ENGINE_CHART_YAML_PATH $ARTHUR_ENGINE_VALUES_YAML_PATH $ML_ENGINE_CHART_YAML_PATH $ML_ENGINE_VALUES_YAML_PATH
+          git add version genai-engine/version genai-engine/src/version genai-engine/pyproject.toml ml-engine/pyproject.toml arthur-observability-sdk/python/pyproject.toml genai-engine/uv.lock ml-engine/uv.lock arthur-observability-sdk/python/uv.lock genai-engine/staging.openapi.json $GENAI_ENGINE_HELM_CHART_YAML_PATH $GENAI_ENGINE_HELM_VALUES_YAML_PATH $ARTHUR_ENGINE_HELM_CPU_START_SCRIPT_PATH $ARTHUR_ENGINE_HELM_GPU_START_SCRIPT_PATH $ARTHUR_ENGINE_CFT_GPU_HTML_PATH $ARTHUR_ENGINE_CFT_CPU_HTML_PATH $ARTHUR_ENGINE_CHART_YAML_PATH $ARTHUR_ENGINE_VALUES_YAML_PATH $ML_ENGINE_CHART_YAML_PATH $ML_ENGINE_VALUES_YAML_PATH
           git status
           git diff --cached
           git commit --no-verify -m "Increment arthur-engine version to ${NEW_ARTHUR_ENGINE_VERSION}"

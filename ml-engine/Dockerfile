@@ -88,6 +88,37 @@ RUN mkdir -p /genai_client
 COPY src/genai_client /genai_client
 RUN uv pip install --system /genai_client
 
+# Drop the build-time Python tooling. This is the last step that needs pip/uv;
+# everything below is plain shell, and the runtime entrypoint is a bare
+# `python src/ml_engine/job_agent.py`. It matters because the final stage copies
+# /usr/local/lib and /usr/local/bin wholesale, so anything left in this stage's
+# site-packages ships — including the package manager and whatever it vendors.
+#
+# That is where the scanner findings against this image came from. Neither
+# offender is an ml-engine dependency and neither appears in uv.lock:
+#   - setuptools 70.3.0  (CVE-2025-47273) — build tooling from the base image
+#   - msgpack 1.1.2      (GHSA-6v7p-g79w-8964) — vendored inside pip, along with
+#     CacheControl, resolvelib, tomli, tomli-w, truststore and pyproject-hooks
+# Removing them is the fix rather than pinning: the vendored set is pip's to
+# choose, not ours, so a pin would only hold until the next pip bump.
+#
+# Safe to remove: nothing on an executed path imports setuptools or
+# pkg_resources. litellm reaches for pkg_resources only if importlib.resources
+# is unavailable (it is not, on 3.13); the remaining references across the
+# dependency set are in test fixtures and build helpers.
+RUN set -eu; \
+    SP="$(python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')"; \
+    rm -rf "$SP"/pip "$SP"/pip-*.dist-info \
+           "$SP"/setuptools "$SP"/setuptools-*.dist-info \
+           "$SP"/pkg_resources "$SP"/_distutils_hack "$SP"/distutils-precedence.pth \
+           "$SP"/uv "$SP"/uv-*.dist-info; \
+    rm -f /usr/local/bin/pip /usr/local/bin/pip3 /usr/local/bin/pip3.* \
+          /usr/local/bin/uv /usr/local/bin/uvx; \
+    python -c "import sys, importlib.util as u; \
+      left = [n for n in ('pip','setuptools','pkg_resources','uv') if u.find_spec(n)]; \
+      sys.exit('build tooling survived the cleanup: %s' % left) if left else \
+      print('build tooling removed; interpreter ok:', sys.version.split()[0])"
+
 # Patch the libraries the distroless base keeps in /lib. Unlike bookworm, the base
 # is NOT merged-/usr: /lib is a real directory holding glibc (libc.so.6, libm,
 # libpthread, libnss_*, and the ELF interpreter that /lib64 symlinks to) plus

@@ -119,6 +119,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
   const value = options.some((opt) => opt.value === timezone) ? timezone : (options[0]?.value ?? "UTC");
 
   const chatbotModels = chatbotProvider ? (availableModelsMap.get(chatbotProvider) ?? []) : [];
+  const staleChatbotModel = chatbotModelName && !chatbotModels.includes(chatbotModelName) ? chatbotModelName : null;
 
   const handleTimezoneChange = (event: SelectChangeEvent<string>) => {
     setTimezone(event.target.value);
@@ -236,6 +237,11 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                 <FormControl fullWidth size="small" disabled={isLoading || !chatbotProvider} sx={{ mt: 2 }}>
                   <InputLabel id="chatbot-model-label">Model Name</InputLabel>
                   <Select labelId="chatbot-model-label" label="Model Name" value={chatbotModelName} onChange={handleModelNameChange}>
+                    {staleChatbotModel && (
+                      <MenuItem key={staleChatbotModel} value={staleChatbotModel}>
+                        {staleChatbotModel}
+                      </MenuItem>
+                    )}
                     {chatbotModels.map((model: string) => (
                       <MenuItem key={model} value={model}>
                         {model}

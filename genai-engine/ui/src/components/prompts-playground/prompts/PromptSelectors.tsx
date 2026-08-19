@@ -183,10 +183,10 @@ const PromptSelectors = ({
   const modelDisabled = prompt.modelProvider === "";
   const tooltipTitle = providerDisabled ? "No providers available. Please configure at least one provider." : "";
   const backendPromptOptions = state.backendPrompts.map((backendPrompt) => backendPrompt.name);
-  const availableModels = useMemo(
-    () => availableModelsMap.get(prompt.modelProvider as ModelProvider) || [],
-    [availableModelsMap, prompt.modelProvider]
-  );
+  const availableModels = useMemo(() => {
+    const whitelisted = availableModelsMap.get(prompt.modelProvider as ModelProvider) || [];
+    return prompt.modelName && !whitelisted.includes(prompt.modelName) ? [...whitelisted, prompt.modelName] : whitelisted;
+  }, [availableModelsMap, prompt.modelProvider, prompt.modelName]);
 
   return (
     <div className="flex gap-1 min-w-0 flex-wrap">
