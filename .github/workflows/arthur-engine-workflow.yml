@@ -162,6 +162,64 @@ jobs:
             genai-engine/staging.openapi.json
             genai-engine/src/api_changelog.md
 
+  # Renovate's pep621 manager edits pyproject.toml and regenerates uv.lock as a
+  # separate "artifact" step. When that regeneration fails — typically because the
+  # new version violates a transitive constraint of another pinned dependency —
+  # Renovate still opens the PR with the manifest edit ALONE, and does not
+  # reliably flag it in the PR body. Renovate offers no option to fail closed
+  # here (see /renovate.json), so the repo has to detect it.
+  #
+  # Nothing else in CI can: every Python job installs with `uv sync --frozen`,
+  # which replays uv.lock verbatim and never compares it against pyproject.toml.
+  # A manifest-only PR is therefore fully green, merges, and leaves the two files
+  # disagreeing — at which point `uv lock` fails for everyone, and the upgrade the
+  # PR claimed to make was never actually applied to what ships. That is how
+  # openai==3.0.0 (#2134, unresolvable against litellm) and python-keycloak==7.1.1
+  # (#2124, which shipped 5.12.0 for weeks) both landed.
+  #
+  # This job is the gate. It must live in THIS workflow: renovate-autofix.yml
+  # listens for "Arthur Engine CI" failing, so a gate in a separate workflow would
+  # never hand the failure to the auto-fixer.
+  check-dependency-automation:
+    if: |
+      (
+        github.event_name == 'pull_request' ||
+        github.event_name == 'merge_group' ||
+        (github.event_name == 'push' && github.ref_type == 'branch')
+      ) &&
+      github.ref != 'refs/heads/main' &&
+      github.ref != 'refs/heads/dev'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      # Deliberately NOT the setup-uv composite: that one runs `uv sync --frozen`
+      # against a single project, which is both far more work than this needs and
+      # the very command that cannot see the drift.
+      - name: Install uv
+        run: |
+          curl -LsSf --retry 5 --retry-delay 2 --retry-all-errors \
+            https://astral.sh/uv/0.11.7/install.sh | env UV_INSTALL_DIR=/usr/local/bin sh
+          uv --version
+      - name: Verify every uv.lock agrees with its pyproject.toml
+        shell: bash
+        run: .github/scripts/check-lockfile-drift.sh
+      # An invalid /renovate.json does not fail loudly — Renovate keeps running on
+      # its last good config, or stops opening PRs, and either way dependency
+      # updates quietly stall. The failure message above actively tells people to
+      # go add allowedVersions rules there, so the file needs a syntax gate. Only
+      # worth the validator's install cost when the file actually changed.
+      - uses: dorny/paths-filter@v2
+        id: renovate-config
+        if: github.event_name != 'merge_group'
+        with:
+          filters: |
+            changed:
+              - 'renovate.json'
+      - name: Validate renovate.json
+        if: github.event_name == 'merge_group' || steps.renovate-config.outputs.changed == 'true'
+        run: npx --yes --package renovate renovate-config-validator renovate.json
+
   check-genai-engine-changes:
     if: |
       (
@@ -658,6 +716,13 @@ jobs:
 
   build-genai-engine-models-docker-image:
     uses: ./.github/workflows/build-ecs-model-upload.yml
+    # Passed through to the reusable workflow, which runs the vuln-report scan and
+    # publishes SARIF. A called workflow is capped by its caller's token, so
+    # security-events: write has to be granted here as well as there.
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
     needs: [check-models-updates]
     if: |
       needs.check-models-updates.outputs.has_updates == 'true' &&
@@ -711,6 +776,13 @@ jobs:
 
   build-genai-engine-models-fs-docker-image:
     uses: ./.github/workflows/build-fs-model-upload.yml
+    # Passed through to the reusable workflow, which runs the vuln-report scan and
+    # publishes SARIF. A called workflow is capped by its caller's token, so
+    # security-events: write has to be granted here as well as there.
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
     needs: [check-models-updates]
     if: |
       needs.check-models-updates.outputs.has_updates == 'true' &&
@@ -764,6 +836,13 @@ jobs:
 
   build-gcp-model-upload-docker-image:
     uses: ./.github/workflows/build-gcp-model-upload.yml
+    # Passed through to the reusable workflow, which runs the vuln-report scan and
+    # publishes SARIF. A called workflow is capped by its caller's token, so
+    # security-events: write has to be granted here as well as there.
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
     needs: [check-models-updates]
     if: |
       github.repository == 'arthur-ai/arthur-engine' &&
