@@ -145,11 +145,11 @@ class AlertCheckExecutor:
                 )
                 processing_exc = e
 
+        self._submit_compliance_check_job(job, job_spec)
+
         # re-raise error so job is marked as failed if any alert rule was not processed
         if processing_exc:
             raise processing_exc
-
-        self._submit_compliance_check_job(job, job_spec)
 
     def _submit_compliance_check_job(
         self,
@@ -282,12 +282,22 @@ class AlertCheckExecutor:
         fired_rows: List[Dict[str, Any]] = []
         for bucket_ts in expected_bucket_timestamps:
             rows = results_by_ts.get(bucket_ts.astimezone(timezone.utc), [])
+            numeric_rows: List[Dict[str, Any]] = []
+            for row in rows:
+                value = row[METRIC_VALUE_COLUMN_NAME]
+                if value is None:
+                    self.logger.warning(
+                        f"Skipping NULL metric value for alert rule {alert_rule.id} "
+                        f"in bucket {bucket_ts}"
+                    )
+                elif isinstance(value, (int, float)):
+                    numeric_rows.append(row)
             crossed = [
                 r
-                for r in rows
+                for r in numeric_rows
                 if self._crosses_threshold(alert_rule, r[METRIC_VALUE_COLUMN_NAME])
             ]
-            if not rows:
+            if not numeric_rows:
                 status = AlertLogStatus.NO_DATA
             elif crossed:
                 status = AlertLogStatus.FIRED
@@ -320,7 +330,9 @@ class AlertCheckExecutor:
                 f"Failed to post alert logs for alert rule {alert_rule.id}: {e}"
             )
 
-    def _crosses_threshold(self, alert_rule: AlertRule, value: float) -> bool:
+    def _crosses_threshold(self, alert_rule: AlertRule, value: float | None) -> bool:
+        if value is None:
+            return False
         if alert_rule.bound == AlertBound.UPPER_BOUND:
             return bool(value > alert_rule.threshold)
         return bool(value < alert_rule.threshold)

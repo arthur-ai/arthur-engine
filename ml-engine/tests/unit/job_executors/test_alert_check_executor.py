@@ -107,6 +107,7 @@ def test_alert_check_executor_fault_tolerance():
         count=1,
     )
     model_id = str(uuid4())
+    assignment_id = str(uuid4())
     now = datetime.now(timezone.utc)
     alert_rule1 = AlertRule(
         id="rule1",
@@ -142,6 +143,7 @@ def test_alert_check_executor_fault_tolerance():
         scope_model_id=model_id,
         check_range_start_timestamp=start_time,
         check_range_end_timestamp=end_time,
+        policy_assignment_id=assignment_id,
     )
     job = Job(
         id=str(uuid4()),
@@ -163,8 +165,13 @@ def test_alert_check_executor_fault_tolerance():
     alerts_client = Mock()
     alert_rules_client = Mock()
     jobs_client = Mock()
+    spawned_compliance_job_id = str(uuid4())
+    jobs_client.post_submit_jobs_batch.return_value = JobsBatch.model_construct(
+        jobs=[Mock(id=spawned_compliance_job_id)]
+    )
     metrics_client = Mock()
     logger = Mock()
+    policies_client = Mock()
 
     # Setup alert rules client to return our test rules
     alert_rules_response = Mock()
@@ -207,7 +214,7 @@ def test_alert_check_executor_fault_tolerance():
         alert_rules_client=alert_rules_client,
         jobs_client=jobs_client,
         metrics_client=metrics_client,
-        policies_client=Mock(),
+        policies_client=policies_client,
         logger=logger,
     )
 
@@ -253,9 +260,16 @@ def test_alert_check_executor_fault_tolerance():
     assert isinstance(call_args_list[1][1]["exc_info"], Exception)
     assert str(call_args_list[1][1]["exc_info"]) == "Simulated failure for rule1"
 
-    # On any per-rule failure execute() re-raises before reaching
-    # _submit_compliance_check_job, so no compliance job is queued.
-    jobs_client.post_submit_jobs_batch.assert_not_called()
+    # The compliance handoff is submitted and stamped before the original
+    # per-rule failure is re-raised.
+    jobs_client.post_submit_jobs_batch.assert_called_once()
+    policies_client.update_assignment_job_chain.assert_called_once()
+    patch_kwargs = policies_client.update_assignment_job_chain.call_args.kwargs
+    assert patch_kwargs["assignment_id"] == assignment_id
+    assert (
+        patch_kwargs["policy_assignment_job_chain_patch"].compliance_job_id
+        == spawned_compliance_job_id
+    )
 
 
 def test_alert_check_executor_submits_compliance_job_on_success():
@@ -576,6 +590,88 @@ def test_alert_rule_log_no_data():
     posted = alerts_client.post_model_alert_logs.call_args.kwargs["post_alert_logs"]
     assert all(log.status == AlertLogStatus.NO_DATA for log in posted.logs)
     alerts_client.post_model_alerts.assert_not_called()
+
+
+def test_alert_rule_log_ignores_null_values_when_evaluating_threshold():
+    now = datetime.now(timezone.utc)
+    model_id = str(uuid4())
+    alert_rule = make_alert_rule(model_id, now).model_copy(
+        update={"bound": AlertBound.LOWER_BOUND, "threshold": 50}
+    )
+
+    alerts_client = Mock()
+    alert_rules_client = Mock()
+    metrics_client = Mock()
+    alert_rules_client.get_model_alert_rules.return_value = Mock(records=[alert_rule])
+
+    job, job_spec = make_job_and_spec(model_id, now)
+    buckets = expected_buckets(job_spec, alert_rule)
+    metrics_client.post_model_metrics_query.return_value = MetricsQueryResult(
+        results=[
+            {"metric_timestamp": buckets[0], "metric_value": None},
+            {"metric_timestamp": buckets[0], "metric_value": 25},
+            {"metric_timestamp": buckets[0], "metric_value": None},
+            {"metric_timestamp": buckets[0], "metric_value": 75},
+            {"metric_timestamp": buckets[0], "metric_value": None},
+            {"metric_timestamp": buckets[0], "metric_value": None},
+        ],
+    )
+    alerts_client.post_model_alerts.return_value = CreatedAlerts(
+        alerts=[],
+        webhooks_called=[],
+    )
+
+    executor = make_executor(alerts_client, alert_rules_client, metrics_client)
+    executor.execute(job, job_spec)
+
+    posted_logs = alerts_client.post_model_alert_logs.call_args.kwargs[
+        "post_alert_logs"
+    ]
+    assert posted_logs.logs[0].status == AlertLogStatus.FIRED
+    posted_alerts = alerts_client.post_model_alerts.call_args.kwargs["post_alerts"]
+    assert [alert.value for alert in posted_alerts.alerts] == [25]
+
+
+def test_alert_rule_log_all_null_values_is_no_data():
+    now = datetime.now(timezone.utc)
+    model_id = str(uuid4())
+    alert_rule = make_alert_rule(model_id, now)
+
+    alerts_client = Mock()
+    alert_rules_client = Mock()
+    metrics_client = Mock()
+    logger = Mock()
+    alert_rules_client.get_model_alert_rules.return_value = Mock(records=[alert_rule])
+
+    job, job_spec = make_job_and_spec(model_id, now)
+    buckets = expected_buckets(job_spec, alert_rule)
+    metrics_client.post_model_metrics_query.return_value = MetricsQueryResult(
+        results=[
+            {"metric_timestamp": buckets[0], "metric_value": None},
+            {"metric_timestamp": buckets[0], "metric_value": None},
+        ],
+    )
+
+    executor = AlertCheckExecutor(
+        alerts_client=alerts_client,
+        alert_rules_client=alert_rules_client,
+        jobs_client=Mock(),
+        metrics_client=metrics_client,
+        policies_client=Mock(),
+        logger=logger,
+    )
+    executor.execute(job, job_spec)
+
+    posted_logs = alerts_client.post_model_alert_logs.call_args.kwargs[
+        "post_alert_logs"
+    ]
+    assert posted_logs.logs[0].status == AlertLogStatus.NO_DATA
+    alerts_client.post_model_alerts.assert_not_called()
+    warning_messages = [call.args[0] for call in logger.warning.call_args_list]
+    assert any(
+        alert_rule.id in message and str(buckets[0]) in message
+        for message in warning_messages
+    )
 
 
 def test_alert_rule_log_failure_does_not_raise():
