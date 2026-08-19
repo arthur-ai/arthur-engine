@@ -47,7 +47,11 @@ vi.mock("../hooks/useCreateContinuousEval", () => ({
 }));
 
 vi.mock("@/components/transforms/hooks/useTransforms", () => ({
-  useTransforms: () => ({ data: [], isLoading: false, refetch: vi.fn() }),
+  useTransforms: () => ({
+    data: [{ id: "transform-1", name: "Chat transform", definition: { variables: [] } }],
+    isLoading: false,
+    refetch: vi.fn(),
+  }),
 }));
 
 vi.mock("@/components/transforms/hooks/useTransformVersions", () => ({
@@ -117,6 +121,24 @@ describe("LiveEvalsNew evaluator prefill", () => {
     render(<LiveEvalsNew />);
 
     expect(readEvaluatorState()).toEqual({ name: "Toxicity", version: "latest", eval_type: "ml" });
+  });
+});
+
+describe("LiveEvalsNew submission", () => {
+  it("enables the submit button for an evaluator prefilled from URL params", () => {
+    state.search = "evalName=Readability&evalVersion=3";
+    state.fetchedEval = { name: "Readability", eval_kind: "llm_as_a_judge" };
+
+    render(<LiveEvalsNew />);
+
+    const submit = screen.getByRole("button", { name: /Create Continuous Eval/ });
+    expect(submit).toHaveProperty("disabled", true);
+
+    fireEvent.change(screen.getByLabelText(/Eval Name/), { target: { value: "Readability on chat" } });
+    fireEvent.keyDown(screen.getByLabelText("Transform"), { key: "ArrowDown" });
+    fireEvent.click(screen.getByRole("option", { name: "Chat transform" }));
+
+    expect(submit).toHaveProperty("disabled", false);
   });
 });
 

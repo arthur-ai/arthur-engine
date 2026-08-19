@@ -202,7 +202,8 @@ export const EvaluatorSelector = withFieldGroup({
                       variant="filled"
                       label="Evaluator"
                       onBlur={field.handleBlur}
-                      error={field.state.meta.isTouched && field.state.meta.errors.length > 0}
+                      // isBlurred rather than isTouched: programmatic writes such as clearing the version mark a field touched.
+                      error={field.state.meta.isBlurred && field.state.meta.errors.length > 0}
                       slotProps={{
                         input: {
                           ...params.InputProps,
@@ -237,7 +238,7 @@ export const EvaluatorSelector = withFieldGroup({
                         variant="filled"
                         label="Version"
                         onBlur={field.handleBlur}
-                        error={field.state.meta.isTouched && field.state.meta.errors.length > 0}
+                        error={field.state.meta.isBlurred && field.state.meta.errors.length > 0}
                         slotProps={{
                           input: {
                             ...params.InputProps,
@@ -273,7 +274,7 @@ export const EvaluatorSelector = withFieldGroup({
                         variant="filled"
                         label="Version"
                         onBlur={field.handleBlur}
-                        error={field.state.meta.isTouched && field.state.meta.errors.length > 0}
+                        error={field.state.meta.isBlurred && field.state.meta.errors.length > 0}
                         slotProps={{
                           input: {
                             ...params.InputProps,

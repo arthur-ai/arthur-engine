@@ -455,7 +455,8 @@ export const TransformSelector = withFieldGroup({
                         {...params}
                         label="Transform"
                         onBlur={field.handleBlur}
-                        error={field.state.meta.isTouched && field.state.meta.errors.length > 0}
+                        // isBlurred rather than isTouched: programmatic writes mark a field touched.
+                        error={field.state.meta.isBlurred && field.state.meta.errors.length > 0}
                       />
                     )}
                   />

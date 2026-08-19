@@ -62,6 +62,23 @@ describe("EvaluatorSelector", () => {
     expect(screen.getByLabelText("Version")).toHaveProperty("value", "3");
   });
 
+  it("does not flag the version field straight after picking an LLM evaluator", () => {
+    render(<Harness evaluator={{ name: null, version: null, eval_type: null }} />);
+
+    const evaluatorInput = screen.getByLabelText("Evaluator");
+    fireEvent.keyDown(evaluatorInput, { key: "ArrowDown" });
+    fireEvent.click(screen.getByRole("option", { name: /Readability/ }));
+
+    expect(evaluatorInput).toHaveProperty("value", "Readability");
+    const versionInput = screen.getByLabelText("Version");
+    expect(versionInput).toHaveProperty("value", "");
+    expect(versionInput).toHaveProperty("ariaInvalid", "false");
+
+    fireEvent.blur(versionInput);
+
+    expect(versionInput).toHaveProperty("ariaInvalid", "true");
+  });
+
   it("marks an unfilled required evaluator as errored once touched", () => {
     render(<Harness evaluator={{ name: null, version: null, eval_type: null }} />);
 
