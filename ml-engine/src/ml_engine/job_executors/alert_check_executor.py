@@ -145,11 +145,11 @@ class AlertCheckExecutor:
                 )
                 processing_exc = e
 
-        self._submit_compliance_check_job(job, job_spec)
-
         # re-raise error so job is marked as failed if any alert rule was not processed
         if processing_exc:
             raise processing_exc
+
+        self._submit_compliance_check_job(job, job_spec)
 
     def _submit_compliance_check_job(
         self,

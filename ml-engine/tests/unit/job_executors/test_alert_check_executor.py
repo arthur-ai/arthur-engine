@@ -165,10 +165,6 @@ def test_alert_check_executor_fault_tolerance():
     alerts_client = Mock()
     alert_rules_client = Mock()
     jobs_client = Mock()
-    spawned_compliance_job_id = str(uuid4())
-    jobs_client.post_submit_jobs_batch.return_value = JobsBatch.model_construct(
-        jobs=[Mock(id=spawned_compliance_job_id)]
-    )
     metrics_client = Mock()
     logger = Mock()
     policies_client = Mock()
@@ -260,16 +256,9 @@ def test_alert_check_executor_fault_tolerance():
     assert isinstance(call_args_list[1][1]["exc_info"], Exception)
     assert str(call_args_list[1][1]["exc_info"]) == "Simulated failure for rule1"
 
-    # The compliance handoff is submitted and stamped before the original
-    # per-rule failure is re-raised.
-    jobs_client.post_submit_jobs_batch.assert_called_once()
-    policies_client.update_assignment_job_chain.assert_called_once()
-    patch_kwargs = policies_client.update_assignment_job_chain.call_args.kwargs
-    assert patch_kwargs["assignment_id"] == assignment_id
-    assert (
-        patch_kwargs["policy_assignment_job_chain_patch"].compliance_job_id
-        == spawned_compliance_job_id
-    )
+    # A failed alert-check job must not hand off to compliance.
+    jobs_client.post_submit_jobs_batch.assert_not_called()
+    policies_client.update_assignment_job_chain.assert_not_called()
 
 
 def test_alert_check_executor_submits_compliance_job_on_success():
@@ -655,7 +644,11 @@ def test_alert_rule_log_all_null_values_is_no_data():
     executor = AlertCheckExecutor(
         alerts_client=alerts_client,
         alert_rules_client=alert_rules_client,
-        jobs_client=Mock(),
+        jobs_client=Mock(
+            post_submit_jobs_batch=Mock(
+                return_value=JobsBatch.model_construct(jobs=[]),
+            ),
+        ),
         metrics_client=metrics_client,
         policies_client=Mock(),
         logger=logger,
