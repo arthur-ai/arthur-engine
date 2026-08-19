@@ -171,6 +171,13 @@ const LiveEvalsNewForm = () => {
 
   const { eval: mlEvaluatorData } = useMLEval(task?.id, isMLEval ? (evaluator.name ?? undefined) : undefined, "latest");
 
+  // An evaluator prefilled from URL params carries no eval_type, which the schema requires.
+  // Backfill it from the fetched evaluator so the form behaves as it would after a manual pick.
+  useEffect(() => {
+    if (!evaluator.name || evaluator.eval_type || !evaluatorData?.eval_kind) return;
+    form.setFieldValue("evaluator.eval_type", evaluatorData.eval_kind);
+  }, [evaluator.name, evaluator.eval_type, evaluatorData?.eval_kind, form]);
+
   const { data: llmVariableMappingData, isLoading: isLoadingVariableMapping } = useContinuousEvalVariableMapping(
     task?.id,
     transform.transformId ?? undefined,
