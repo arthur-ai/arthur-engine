@@ -217,11 +217,17 @@ class DatasetRepository:
         # apply pagination
         total_count = base_query.count()
 
+        # id tiebreaker: rows created in one batch share a created_at, so ordering
+        # by created_at alone is nondeterministic across queries/pages
         if pagination_params.sort == PaginationSortMethod.ASCENDING:
-            base_query = base_query.order_by(DatabaseDatasetVersionRow.created_at.asc())
+            base_query = base_query.order_by(
+                DatabaseDatasetVersionRow.created_at.asc(),
+                DatabaseDatasetVersionRow.id.asc(),
+            )
         else:
             base_query = base_query.order_by(
                 DatabaseDatasetVersionRow.created_at.desc(),
+                DatabaseDatasetVersionRow.id.desc(),
             )
 
         offset = pagination_params.page * pagination_params.page_size

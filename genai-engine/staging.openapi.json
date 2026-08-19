@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.779"
+        "version": "2.1.801"
     },
     "paths": {
         "/api/v2/engine-config": {
@@ -2769,10 +2769,21 @@
                         "in": "query",
                         "required": false,
                         "schema": {
-                            "$ref": "#/components/schemas/ContinuousEvalRunStatus",
-                            "description": "Filter by trace annotation run status (e.g. 'passed', 'failed', etc.)."
+                            "anyOf": [
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/ContinuousEvalRunStatus"
+                                    }
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Continuous eval run statuses to filter on (e.g. 'passed', 'failed', etc.). Optional.",
+                            "title": "Continuous Eval Run Status"
                         },
-                        "description": "Filter by trace annotation run status (e.g. 'passed', 'failed', etc.)."
+                        "description": "Continuous eval run statuses to filter on (e.g. 'passed', 'failed', etc.). Optional."
                     },
                     {
                         "name": "continuous_eval_name",
@@ -3524,10 +3535,21 @@
                         "in": "query",
                         "required": false,
                         "schema": {
-                            "$ref": "#/components/schemas/ContinuousEvalRunStatus",
-                            "description": "Filter by trace annotation run status (e.g. 'passed', 'failed', etc.)."
+                            "anyOf": [
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/ContinuousEvalRunStatus"
+                                    }
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Continuous eval run statuses to filter on (e.g. 'passed', 'failed', etc.). Optional.",
+                            "title": "Continuous Eval Run Status"
                         },
-                        "description": "Filter by trace annotation run status (e.g. 'passed', 'failed', etc.)."
+                        "description": "Continuous eval run statuses to filter on (e.g. 'passed', 'failed', etc.). Optional."
                     },
                     {
                         "name": "continuous_eval_name",
@@ -4518,10 +4540,21 @@
                         "in": "query",
                         "required": false,
                         "schema": {
-                            "$ref": "#/components/schemas/ContinuousEvalRunStatus",
-                            "description": "Filter by trace annotation run status (e.g. 'passed', 'failed', etc.)."
+                            "anyOf": [
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/ContinuousEvalRunStatus"
+                                    }
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Continuous eval run statuses to filter on (e.g. 'passed', 'failed', etc.). Optional.",
+                            "title": "Continuous Eval Run Status"
                         },
-                        "description": "Filter by trace annotation run status (e.g. 'passed', 'failed', etc.)."
+                        "description": "Continuous eval run statuses to filter on (e.g. 'passed', 'failed', etc.). Optional."
                     },
                     {
                         "name": "continuous_eval_name",
@@ -5366,10 +5399,21 @@
                         "in": "query",
                         "required": false,
                         "schema": {
-                            "$ref": "#/components/schemas/ContinuousEvalRunStatus",
-                            "description": "Filter by trace annotation run status (e.g. 'passed', 'failed', etc.)."
+                            "anyOf": [
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/ContinuousEvalRunStatus"
+                                    }
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Continuous eval run statuses to filter on (e.g. 'passed', 'failed', etc.). Optional.",
+                            "title": "Continuous Eval Run Status"
                         },
-                        "description": "Filter by trace annotation run status (e.g. 'passed', 'failed', etc.)."
+                        "description": "Continuous eval run statuses to filter on (e.g. 'passed', 'failed', etc.). Optional."
                     },
                     {
                         "name": "continuous_eval_name",
@@ -9422,6 +9466,101 @@
                                 }
                             }
                         }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/model_providers/{provider}/model_whitelist": {
+            "get": {
+                "tags": [
+                    "Model Providers"
+                ],
+                "summary": "Get the curated model list for a provider.",
+                "description": "Returns the admin-curated model list for a provider along with the provider's full catalog. A null whitelist means all models are exposed.",
+                "operationId": "get_model_provider_whitelist_api_v1_model_providers__provider__model_whitelist_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "provider",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/ModelProvider"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ModelProviderWhitelist"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "Model Providers"
+                ],
+                "summary": "Set the curated model list for a provider.",
+                "description": "Restricts which models appear in model pickers. Send null to expose all models. An empty list is rejected.",
+                "operationId": "set_model_provider_whitelist_api_v1_model_providers__provider__model_whitelist_put",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "provider",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/ModelProvider"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PutModelProviderWhitelist"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "204": {
+                        "description": "Whitelist updated."
                     },
                     "422": {
                         "description": "Validation Error",
@@ -25387,6 +25526,44 @@
                 ],
                 "title": "ModelProviderResponse"
             },
+            "ModelProviderWhitelist": {
+                "properties": {
+                    "provider": {
+                        "$ref": "#/components/schemas/ModelProvider",
+                        "description": "Provider the whitelist applies to"
+                    },
+                    "whitelist": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Whitelist",
+                        "description": "Curated model list, or null when all models are exposed"
+                    },
+                    "catalog": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Catalog",
+                        "description": "Every model the provider offers, ignoring the whitelist"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "provider",
+                    "whitelist",
+                    "catalog"
+                ],
+                "title": "ModelProviderWhitelist"
+            },
             "NestedSpanWithMetricsResponse": {
                 "properties": {
                     "prompt_token_count": {
@@ -27841,6 +28018,27 @@
                 },
                 "type": "object",
                 "title": "PutModelProviderCredentials"
+            },
+            "PutModelProviderWhitelist": {
+                "properties": {
+                    "models": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Models",
+                        "description": "Models to expose for this provider. Null exposes all models. An empty list is rejected \u2014 it would hide every model."
+                    }
+                },
+                "type": "object",
+                "title": "PutModelProviderWhitelist"
             },
             "QueryFeedbackResponse": {
                 "properties": {

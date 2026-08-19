@@ -558,3 +558,147 @@ def test_setting_azure_provider_credentials(client: GenaiEngineTestClientBase):
     assert response.status_code == 204
 
     db_session.close()
+
+
+@pytest.fixture
+def stub_catalog(monkeypatch):
+    """Stub a provider's litellm-derived catalog. setitem restores it afterwards."""
+
+    def _set(provider: ModelProvider, models: list[str]) -> None:
+        monkeypatch.setitem(SUPPORTED_TEXT_MODELS, provider, models)
+
+    return _set
+
+
+@pytest.mark.unit_tests
+def test_model_whitelist_lifecycle(
+    client: GenaiEngineTestClientBase,
+    stub_catalog,
+):
+    stub_catalog(ModelProvider.OPENAI, ["gpt-5", "gpt-4.1", "gpt-4o"])
+    assert client.set_model_provider("openai", {"api_key": "test-key"}) == 201
+
+    # unset whitelist reads back as null, with the full catalog alongside it
+    status_code, whitelist = client.get_model_provider_whitelist("openai")
+    assert status_code == 200
+    assert whitelist.whitelist is None
+    assert whitelist.catalog == ["gpt-5", "gpt-4.1", "gpt-4o"]
+
+    # setting a whitelist narrows available_models
+    status_code, _ = client.set_model_provider_whitelist(
+        "openai",
+        ["gpt-4o", "gpt-5"],
+    )
+    assert status_code == 204
+
+    status_code, models = client.get_model_provider_available_models("openai")
+    assert status_code == 200
+    assert models.available_models == ["gpt-5", "gpt-4o"]
+
+    # the editor still sees the whole catalog
+    _, whitelist = client.get_model_provider_whitelist("openai")
+    assert whitelist.whitelist == ["gpt-4o", "gpt-5"]
+    assert whitelist.catalog == ["gpt-5", "gpt-4.1", "gpt-4o"]
+
+    # null clears it
+    status_code, _ = client.set_model_provider_whitelist("openai", None)
+    assert status_code == 204
+
+    _, models = client.get_model_provider_available_models("openai")
+    assert models.available_models == ["gpt-5", "gpt-4.1", "gpt-4o"]
+
+    # Cleanup
+    assert client.delete_model_provider("openai") == 204
+
+
+@pytest.mark.unit_tests
+def test_model_whitelist_rejects_unknown_model(
+    client: GenaiEngineTestClientBase,
+    stub_catalog,
+):
+    stub_catalog(ModelProvider.OPENAI, ["gpt-5"])
+    client.set_model_provider("openai", {"api_key": "test-key"})
+
+    status_code, body = client.set_model_provider_whitelist(
+        "openai",
+        ["gpt-5", "gpt-nonexistent"],
+    )
+    assert status_code == 400
+    assert "gpt-nonexistent" in body["detail"]
+
+    client.delete_model_provider("openai")
+
+
+@pytest.mark.unit_tests
+def test_model_whitelist_rejects_empty_list(
+    client: GenaiEngineTestClientBase,
+    stub_catalog,
+):
+    stub_catalog(ModelProvider.OPENAI, ["gpt-5"])
+    client.set_model_provider("openai", {"api_key": "test-key"})
+
+    status_code, _ = client.set_model_provider_whitelist("openai", [])
+    assert status_code == 400
+
+    client.delete_model_provider("openai")
+
+
+@pytest.mark.unit_tests
+def test_model_whitelist_readable_before_provider_is_configured(
+    client: GenaiEngineTestClientBase,
+    stub_catalog,
+):
+    stub_catalog(ModelProvider.GEMINI, ["gemini-2.5-pro", "gemini-2.5-flash"])
+
+    status_code, whitelist = client.get_model_provider_whitelist("gemini")
+    assert status_code == 200
+    assert whitelist.whitelist is None
+    assert whitelist.catalog == ["gemini-2.5-pro", "gemini-2.5-flash"]
+
+
+@pytest.mark.unit_tests
+def test_model_whitelist_write_still_requires_configured_provider(
+    client: GenaiEngineTestClientBase,
+    stub_catalog,
+):
+    stub_catalog(ModelProvider.GEMINI, ["gemini-2.5-pro"])
+
+    status_code, _ = client.set_model_provider_whitelist(
+        "gemini",
+        ["gemini-2.5-pro"],
+    )
+    assert status_code == 400
+
+
+@pytest.mark.unit_tests
+def test_model_whitelist_read_is_admin_only(
+    client: GenaiEngineTestClientBase,
+    stub_catalog,
+):
+    stub_catalog(ModelProvider.OPENAI, ["gpt-5", "gpt-5.4-nano"])
+    assert client.set_model_provider("openai", {"api_key": "test-key"}) == 201
+
+    try:
+        with patch.dict(os.environ, {"GENAI_ENGINE_DEMO_MODE": "enabled"}):
+            status_code, signup = client.signup_tenant()
+            assert status_code == 200
+            assert signup is not None
+
+        tenant_headers = {"Authorization": f"Bearer {signup.api_key}"}
+
+        status_code, _ = client.get_model_provider_whitelist(
+            "openai",
+            headers=tenant_headers,
+        )
+        assert status_code == 403
+
+        # The same key still reads available_models, narrowed to the tenant
+        # whitelist rather than the full catalog.
+        status_code, models = client.get_model_provider_available_models(
+            "openai",
+            headers=tenant_headers,
+        )
+        assert status_code == 200
+        assert models.available_models == ["gpt-5.4-nano"]
+    finally:
+        client.delete_model_provider("openai")

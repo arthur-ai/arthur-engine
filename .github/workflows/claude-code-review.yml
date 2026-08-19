@@ -57,7 +57,11 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          allowed_bots: 'arthur-github-automator-app,arthur-blazity-ai-workflow'
+          # Bots whose PRs we still want reviewed. The action strips a trailing
+          # '[bot]' before matching, so bare logins are correct here.
+          # 'claude' is the Claude-in-Slack / Claude Code web app: PRs it opens are
+          # Claude-authored code, exactly what this job exists to give a second look.
+          allowed_bots: 'arthur-github-automator-app,arthur-blazity-ai-workflow,claude'
           plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
           plugins: 'code-review@claude-code-plugins'
           prompt: '/code-review:code-review --comment https://github.com/${{ github.repository }}/pull/${{ github.event.pull_request.number }}'

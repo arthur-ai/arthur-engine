@@ -1,9 +1,9 @@
 [project]
 name = "arthur-observability-sdk"
-version = "2.1.779"
+version = "2.1.801"
 description = "Arthur Observability SDK — telemetry, prompt management, and framework instrumentation"
 authors = [{ name = "Arthur AI", email = "engineering@arthur.ai" }]
-readme = "../README.md"
+readme = "README.md"
 requires-python = ">=3.10,<3.14"
 
 dependencies = [
@@ -20,6 +20,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+ag2 = ["openinference-instrumentation-ag2"]
 agent-framework = ["openinference-instrumentation-agent-framework"]
 agentminds = ["openinference-instrumentation-agentminds"]
 agentspec = ["openinference-instrumentation-agentspec"]
@@ -31,6 +32,7 @@ baml = ["openinference-instrumentation-baml"]
 bedrock = ["openinference-instrumentation-bedrock"]
 beeai = ["openinference-instrumentation-beeai ; python_version >= '3.11'"]
 codex = ["openinference-instrumentation-codex"]
+cohere = ["openinference-instrumentation-cohere"]
 crewai = ["openinference-instrumentation-crewai"]
 dspy = ["openinference-instrumentation-dspy"]
 google-adk = ["openinference-instrumentation-google-adk"]
@@ -45,6 +47,7 @@ llama-index = ["openinference-instrumentation-llama-index"]
 mcp = ["openinference-instrumentation-mcp"]
 mistralai = ["openinference-instrumentation-mistralai"]
 monkai-agent = ["openinference-instrumentation-monkai-agent"]
+ollama = ["openinference-instrumentation-ollama"]
 openai = ["openinference-instrumentation-openai"]
 openai-agents = ["openinference-instrumentation-openai-agents"]
 openlit = ["openinference-instrumentation-openlit"]
@@ -54,9 +57,11 @@ portkey = ["openinference-instrumentation-portkey"]
 pydantic-ai = ["openinference-instrumentation-pydantic-ai"]
 smolagents = ["openinference-instrumentation-smolagents"]
 strands-agents = ["openinference-instrumentation-strands-agents"]
+together = ["openinference-instrumentation-together"]
 vertexai = ["openinference-instrumentation-vertexai"]
 claude-agent-sdk = ["openinference-instrumentation-claude-agent-sdk"]
 all = [
+  "openinference-instrumentation-ag2",
   "openinference-instrumentation-agent-framework",
   "openinference-instrumentation-agentminds",
   "openinference-instrumentation-agentspec",
@@ -68,6 +73,7 @@ all = [
   "openinference-instrumentation-bedrock",
   "openinference-instrumentation-beeai ; python_version >= '3.11'",
   "openinference-instrumentation-codex",
+  "openinference-instrumentation-cohere",
   "openinference-instrumentation-crewai",
   "openinference-instrumentation-dspy",
   "openinference-instrumentation-google-adk",
@@ -82,6 +88,7 @@ all = [
   "openinference-instrumentation-mcp",
   "openinference-instrumentation-mistralai",
   "openinference-instrumentation-monkai-agent",
+  "openinference-instrumentation-ollama",
   "openinference-instrumentation-openai",
   "openinference-instrumentation-openai-agents",
   "openinference-instrumentation-openlit",
@@ -91,6 +98,7 @@ all = [
   "openinference-instrumentation-pydantic-ai",
   "openinference-instrumentation-smolagents",
   "openinference-instrumentation-strands-agents",
+  "openinference-instrumentation-together",
   "openinference-instrumentation-vertexai",
   "openinference-instrumentation-claude-agent-sdk",
 ]
@@ -110,6 +118,14 @@ dev = [
 
 [tool.uv]
 exclude-newer = "3 days"
+# Security: force transitive json-repair past GHSA-xf7x-x43h-rpqh (HIGH, CVSS 7.5: circular
+# JSON Schema `$ref` spins forever in SchemaRepairer.resolve_schema, unbounded CPU DoS).
+# It reaches us only through the optional `beeai` extra -> beeai-framework, which pins
+# json-repair<0.53.0 as of 0.1.82 (latest), so a constraint cannot lift it — hence an override.
+# Safe to force: beeai-framework's only use is `json_repair.loads(input, stream_stable=...)`
+# (backend/utils.py) — it never passes schema=, so the vulnerable resolver is unreachable, and
+# that signature is unchanged in 0.63.2. Drop this once beeai-framework widens its pin.
+override-dependencies = ["json-repair>=0.60.1"]
 
 [build-system]
 requires = ["hatchling"]
