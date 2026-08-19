@@ -105,9 +105,7 @@ def test_all_extra_has_no_unreachable_packages():
     """Nothing in ``all`` that no ``instrument_*`` method can reach."""
     exposed = {instrumentor.package for instrumentor in INSTRUMENTORS.values()}
     orphaned = sorted(set(EXTRAS["all"]) - exposed)
-    assert (
-        not orphaned
-    ), f"'all' extra installs packages with no instrument_* method: {orphaned}"
+    assert not orphaned, f"'all' extra installs packages with no instrument_* method: {orphaned}"
 
 
 def test_no_individual_extra_is_orphaned():
@@ -119,16 +117,12 @@ def test_no_individual_extra_is_orphaned():
     """
     declared_extras = {instrumentor.extra for instrumentor in INSTRUMENTORS.values()}
     orphaned = sorted(set(DOCUMENTED) - declared_extras)
-    assert (
-        not orphaned
-    ), f"README documents extras with no instrument_* method: {orphaned}"
+    assert not orphaned, f"README documents extras with no instrument_* method: {orphaned}"
 
 
 def test_readme_documents_no_undeclared_extras():
     undeclared = sorted(set(DOCUMENTED) - set(EXTRAS))
-    assert (
-        not undeclared
-    ), f"README lists extras that pyproject.toml does not declare: {undeclared}"
+    assert not undeclared, f"README lists extras that pyproject.toml does not declare: {undeclared}"
 
 
 def test_known_broken_entries_name_real_methods():
