@@ -716,6 +716,13 @@ jobs:
 
   build-genai-engine-models-docker-image:
     uses: ./.github/workflows/build-ecs-model-upload.yml
+    # Passed through to the reusable workflow, which runs the vuln-report scan and
+    # publishes SARIF. A called workflow is capped by its caller's token, so
+    # security-events: write has to be granted here as well as there.
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
     needs: [check-models-updates]
     if: |
       needs.check-models-updates.outputs.has_updates == 'true' &&
@@ -769,6 +776,13 @@ jobs:
 
   build-genai-engine-models-fs-docker-image:
     uses: ./.github/workflows/build-fs-model-upload.yml
+    # Passed through to the reusable workflow, which runs the vuln-report scan and
+    # publishes SARIF. A called workflow is capped by its caller's token, so
+    # security-events: write has to be granted here as well as there.
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
     needs: [check-models-updates]
     if: |
       needs.check-models-updates.outputs.has_updates == 'true' &&
@@ -822,6 +836,13 @@ jobs:
 
   build-gcp-model-upload-docker-image:
     uses: ./.github/workflows/build-gcp-model-upload.yml
+    # Passed through to the reusable workflow, which runs the vuln-report scan and
+    # publishes SARIF. A called workflow is capped by its caller's token, so
+    # security-events: write has to be granted here as well as there.
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
     needs: [check-models-updates]
     if: |
       github.repository == 'arthur-ai/arthur-engine' &&
