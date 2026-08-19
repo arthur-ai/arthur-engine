@@ -4,8 +4,8 @@
   "author": "Arthur Security <security@arthur.ai>",
   "role": "Document Creator",
   "timestamp": "2026-08-18T00:00:00.000000000-00:00",
-  "version": 10,
-  "_comment": "Scope: HIGH/CRITICAL findings that a container-image re-scan still reports for the genai-engine, ml-engine and genai-engine-models-* images AND that are not exploitable in our usage. Every statement here is 'not_affected' with a justification. Remediated CVEs are excluded by policy — fix, don't justify (security/README.md), so a CVE disappearing from this document means it was fixed, not dropped. Remediated and therefore absent: python3.11 is removed from every image (its dpkg metadata deleted); litellm/langsmith/msgpack/nltk/uv/pyasn1 are upgraded past their advisories; and as of 2026-07-30 the distroless OS-package findings (libc6, libssl3, libkrb5*, liblzma5) are fixed at the source — the build stages now mirror the base's /lib layout with their apt-upgraded libraries and rewrite /var/lib/dpkg/status.d to the versions actually installed, so the patched objects ship and scanners read true versions. Auditor note: the distroless base is not merged-/usr, so before that change `COPY /usr/lib` never reached the glibc and liblzma objects the base keeps in /lib. Images up to and including 2.1.754 shipped the base's unpatched glibc (2.36-9+deb12u13) and liblzma5 (5.4.1-1), and earlier revisions of this document incorrectly recorded those libc6 CVEs as fixed. The libssl3 and krb5 objects do live under /usr/lib and were genuinely patched throughout; only their dpkg metadata was stale. See genai-engine/dockerfile, ml-engine/Dockerfile, deployment/model-upload/Dockerfile and PR #2073. Audited 2026-08-18 against the per-image Trivy reports from the daily image-vuln-scan: (a) no remaining statement suppresses a finding that has an upstream fix \u2014 every one is unfixed at the installed version, so none is masking a bump we could take instead; (b) the python3.11 statements (CVE-2025-69534, CVE-2026-3644, CVE-2026-4224, CVE-2026-6100, CVE-2026-7210, CVE-2025-13836) were removed because the runtime-s3 and runtime-fs stages now delete the interpreter and its dpkg metadata outright, so the packages are absent and those statements matched nothing; (c) four statements are deliberately RETAINED even though they currently match nothing \u2014 CVE-2026-11822 and CVE-2026-11824 (libsqlite3-0) and CVE-2026-56131 and CVE-2026-56407 (libexpat1) have been re-rated from HIGH to MEDIUM in the vulnerability database, so they fall below the scan's --severity HIGH,CRITICAL filter. They are still present and still unfixed in bookworm (Debian marks the sqlite pair <postponed>), so the justifications remain true and would resume applying if the rating moves back up. Do not mistake them for stale.",
+  "version": 11,
+  "_comment": "Scope: HIGH/CRITICAL findings that a container-image re-scan still reports for the genai-engine, ml-engine and genai-engine-models-* images AND that are not exploitable in our usage. Every statement here is 'not_affected' with a justification. Remediated CVEs are excluded by policy — fix, don't justify (security/README.md), so a CVE disappearing from this document means it was fixed, not dropped. Remediated and therefore absent: python3.11 is removed from every image (its dpkg metadata deleted); litellm/langsmith/msgpack/nltk/uv/pyasn1 are upgraded past their advisories; and as of 2026-07-30 the distroless OS-package findings (libc6, libssl3, libkrb5*, liblzma5) are fixed at the source — the build stages now mirror the base's /lib layout with their apt-upgraded libraries and rewrite /var/lib/dpkg/status.d to the versions actually installed, so the patched objects ship and scanners read true versions. Auditor note: the distroless base is not merged-/usr, so before that change `COPY /usr/lib` never reached the glibc and liblzma objects the base keeps in /lib. Images up to and including 2.1.754 shipped the base's unpatched glibc (2.36-9+deb12u13) and liblzma5 (5.4.1-1), and earlier revisions of this document incorrectly recorded those libc6 CVEs as fixed. The libssl3 and krb5 objects do live under /usr/lib and were genuinely patched throughout; only their dpkg metadata was stale. See genai-engine/dockerfile, ml-engine/Dockerfile, deployment/model-upload/Dockerfile and PR #2073. Audited 2026-08-18 against the per-image Trivy reports from the daily image-vuln-scan: (a) no remaining statement suppresses a finding that has an upstream fix \u2014 every one is unfixed at the installed version, so none is masking a bump we could take instead; (b) the python3.11 statements (CVE-2025-69534, CVE-2026-3644, CVE-2026-4224, CVE-2026-6100, CVE-2026-7210, CVE-2025-13836) were removed because the runtime-s3 and runtime-fs stages now delete the interpreter and its dpkg metadata outright, so the packages are absent and those statements matched nothing; (c) the document is scoped to HIGH/CRITICAL, so four statements were removed for falling below that line: CVE-2026-11822 and CVE-2026-11824 (libsqlite3-0) and CVE-2026-56131 and CVE-2026-56407 (libexpat1) were re-rated from HIGH to MEDIUM in the vulnerability database. Note what this does and does not mean: those four are NOT remediated. The packages are still installed at the same versions and Debian still ships no fix (it marks the sqlite pair <postponed> for bookworm); they simply sit under the scan's --severity HIGH,CRITICAL filter, so nothing reports them today. If any of them is ever re-rated back to HIGH it will surface as an untriaged finding and will need its justification restored -- the reasoning was sound, only the severity changed.",
   "statements": [
     {
       "_comment": "libexpat1: the reported system library (pkg:deb libexpat1 2.5.0-1~deb12u2 from the distroless base) is not linked by the application runtime. CPython 3.12/3.13 (from /usr/local) statically bundle their own expat (2.7.4 / 2.8.1) and do not load the system libexpat.so.1. Its only consumer in the base image, Python 3.11, has been removed. No Debian bookworm fix is available yet (fixed upstream in expat 2.8.1). DoS-only (CWE-407, CVSS ~2.9). Residual risk: the bundled CPython expat (2.7.4 on 3.12) is also affected, but is reachable only by parsing attacker-controlled XML, which these images do not do (the engines expose JSON APIs; the model-upload jobs parse no XML).",
@@ -84,38 +84,6 @@
       "status": "not_affected",
       "justification": "vulnerable_code_not_in_execute_path",
       "impact_statement": "Persistence uses PostgreSQL (pgvector); libsqlite3 is a transitive dependency that is never given attacker-controlled SQL. Exploitation requires executing crafted SQL (KeyInfoFromExprList), which is not in the engine's data path.",
-      "timestamp": "2026-06-27T00:00:00Z"
-    },
-    {
-      "_comment": "libsqlite3-0: Persistence uses PostgreSQL; libsqlite3 is a transitive dependency. The vulnerability is in the FTS5 full-text-search extension, which Arthur never loads or queries with untrusted input. Owner: security@arthur.ai. Review by: 2026-12-27.",
-      "vulnerability": { "name": "CVE-2026-11822" },
-      "products": [
-        { "@id": "pkg:oci/genai-engine-cpu", "subcomponents": [ { "@id": "pkg:deb/debian/libsqlite3-0" } ] },
-        { "@id": "pkg:oci/genai-engine-gpu", "subcomponents": [ { "@id": "pkg:deb/debian/libsqlite3-0" } ] },
-        { "@id": "pkg:oci/ml-engine", "subcomponents": [ { "@id": "pkg:deb/debian/libsqlite3-0" } ] },
-        { "@id": "pkg:oci/genai-engine-models-s3", "subcomponents": [ { "@id": "pkg:deb/debian/libsqlite3-0" } ] },
-        { "@id": "pkg:oci/genai-engine-models-fs", "subcomponents": [ { "@id": "pkg:deb/debian/libsqlite3-0" } ] },
-        { "@id": "pkg:oci/genai-engine-models-gcs", "subcomponents": [ { "@id": "pkg:deb/debian/libsqlite3-0" } ] }
-      ],
-      "status": "not_affected",
-      "justification": "vulnerable_code_not_in_execute_path",
-      "impact_statement": "Persistence uses PostgreSQL; libsqlite3 is a transitive dependency. The vulnerability is in the FTS5 full-text-search extension, which Arthur never loads or queries with untrusted input.",
-      "timestamp": "2026-06-27T00:00:00Z"
-    },
-    {
-      "_comment": "libsqlite3-0: Persistence uses PostgreSQL; libsqlite3 is a transitive dependency. The vulnerability is in the FTS5 full-text-search extension, which Arthur never loads or queries with untrusted input. Owner: security@arthur.ai. Review by: 2026-12-27.",
-      "vulnerability": { "name": "CVE-2026-11824" },
-      "products": [
-        { "@id": "pkg:oci/genai-engine-cpu", "subcomponents": [ { "@id": "pkg:deb/debian/libsqlite3-0" } ] },
-        { "@id": "pkg:oci/genai-engine-gpu", "subcomponents": [ { "@id": "pkg:deb/debian/libsqlite3-0" } ] },
-        { "@id": "pkg:oci/ml-engine", "subcomponents": [ { "@id": "pkg:deb/debian/libsqlite3-0" } ] },
-        { "@id": "pkg:oci/genai-engine-models-s3", "subcomponents": [ { "@id": "pkg:deb/debian/libsqlite3-0" } ] },
-        { "@id": "pkg:oci/genai-engine-models-fs", "subcomponents": [ { "@id": "pkg:deb/debian/libsqlite3-0" } ] },
-        { "@id": "pkg:oci/genai-engine-models-gcs", "subcomponents": [ { "@id": "pkg:deb/debian/libsqlite3-0" } ] }
-      ],
-      "status": "not_affected",
-      "justification": "vulnerable_code_not_in_execute_path",
-      "impact_statement": "Persistence uses PostgreSQL; libsqlite3 is a transitive dependency. The vulnerability is in the FTS5 full-text-search extension, which Arthur never loads or queries with untrusted input.",
       "timestamp": "2026-06-27T00:00:00Z"
     },
     {
@@ -208,38 +176,6 @@
       "status": "not_affected",
       "justification": "vulnerable_code_not_in_execute_path",
       "impact_statement": "perl-base is a transitive base-OS package on the models-gcs image; no Arthur process invokes the Perl interpreter or the Storable module, so no attacker-controlled blob is ever passed to thaw/retrieve. The upload job runs a single Python entrypoint (upload_models.py).",
-      "timestamp": "2026-07-28T00:00:00Z"
-    },
-    {
-      "_comment": "libexpat1: CVE-2026-56131 is a use-after-free reachable only through an XML_ResumeParser suspend/resume flow on a policy violation; no Debian bookworm fix is available (bookworm/bookworm-security ship 2.5.0-1+deb12u2, still vulnerable; fixed upstream in expat 2.8.2, only in sid). The system libexpat1 is not loaded by the application: CPython 3.12/3.13 bundle their own expat statically and do not link /usr/lib/*/libexpat.so.1, and the only base-image consumer (Python 3.11) has been removed. The engines expose JSON/HTTP APIs and never parse attacker-controlled XML through the system libexpat. Owner: security@arthur.ai. Review by: 2027-01-28.",
-      "vulnerability": { "name": "CVE-2026-56131" },
-      "products": [
-        { "@id": "pkg:oci/genai-engine-cpu", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] },
-        { "@id": "pkg:oci/genai-engine-gpu", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] },
-        { "@id": "pkg:oci/ml-engine", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] },
-        { "@id": "pkg:oci/genai-engine-models-s3", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] },
-        { "@id": "pkg:oci/genai-engine-models-fs", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] },
-        { "@id": "pkg:oci/genai-engine-models-gcs", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] }
-      ],
-      "status": "not_affected",
-      "justification": "vulnerable_code_not_in_execute_path",
-      "impact_statement": "CVE-2026-56131 (use-after-free via XML_ResumeParser in libexpat < 2.8.2) is reachable only by parsing attacker-controlled XML through the system libexpat1. That library is not loaded by the application: CPython 3.12/3.13 bundle their own expat statically and do not link /usr/lib/*/libexpat.so.1, and the only base-image consumer (Python 3.11) has been removed. No Debian bookworm fix is available yet (fixed upstream in expat 2.8.2).",
-      "timestamp": "2026-07-28T00:00:00Z"
-    },
-    {
-      "_comment": "libexpat1: CVE-2026-56407 is an integer overflow (CWE-190) in doProlog/storeEntityValue; no Debian bookworm fix is available (fixed upstream in expat 2.8.2, only in sid). The system libexpat1 is not loaded by the application (CPython bundles expat statically; the only base-image consumer, Python 3.11, has been removed) and the engines never parse attacker-controlled XML through it. DoS-class. Owner: security@arthur.ai. Review by: 2027-01-28.",
-      "vulnerability": { "name": "CVE-2026-56407" },
-      "products": [
-        { "@id": "pkg:oci/genai-engine-cpu", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] },
-        { "@id": "pkg:oci/genai-engine-gpu", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] },
-        { "@id": "pkg:oci/ml-engine", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] },
-        { "@id": "pkg:oci/genai-engine-models-s3", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] },
-        { "@id": "pkg:oci/genai-engine-models-fs", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] },
-        { "@id": "pkg:oci/genai-engine-models-gcs", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] }
-      ],
-      "status": "not_affected",
-      "justification": "vulnerable_code_not_in_execute_path",
-      "impact_statement": "CVE-2026-56407 (integer overflow in doProlog/storeEntityValue in libexpat < 2.8.2, DoS-class) is reachable only by parsing attacker-controlled XML through the system libexpat1, which the application does not load (CPython bundles expat statically; the base-image Python 3.11 consumer is removed). No Debian bookworm fix is available yet (fixed upstream in expat 2.8.2).",
       "timestamp": "2026-07-28T00:00:00Z"
     },
     {
