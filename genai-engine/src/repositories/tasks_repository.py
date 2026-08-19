@@ -287,7 +287,7 @@ class TaskRepository:
             "num_spans": total_span_count,
         }
 
-    def _get_task_creation_source(self, task: Task) -> Optional[AgentCreationSource]:
+    def _get_task_creation_source(self, task: Task) -> AgentCreationSource:
         """Get creation_source for a task, with service_names injected.
 
         Reads creation_source directly from task_metadata.
@@ -299,7 +299,7 @@ class TaskRepository:
             task: Task object with service_names already populated
 
         Returns:
-            AgentCreationSource or None
+            AgentCreationSource
         """
         service_names = task.service_names or []
 
@@ -315,15 +315,14 @@ class TaskRepository:
                 )
             return AgentCreationSource(root=cs)
 
-        # No task_metadata — infer from task properties
+        # No task_metadata — infer from task properties. Non-agentic tasks fall
+        # through to MANUAL rather than None: agent discovery now lists them, and
+        # its Agent model rejects a null creation_source.
         if task.is_autocreated:
             return AgentCreationSource(
                 root=OTELAgentCreationSource(service_names=service_names),
             )
-        elif task.is_agentic:
-            return AgentCreationSource(root=ManualAgentCreationSource())
-        else:
-            return None
+        return AgentCreationSource(root=ManualAgentCreationSource())
 
     def _enrich_tasks_with_service_names(self, tasks: list[Task]) -> list[Task]:
         """Enrich tasks with service names from service_name_task_mappings.

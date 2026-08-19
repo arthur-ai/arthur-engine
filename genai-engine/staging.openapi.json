@@ -1340,29 +1340,59 @@
                     "Tasks"
                 ],
                 "summary": "Get Agent Tasks",
-                "description": "Get agentic tasks with enriched agent metadata (tools, sub-agents, models). Returns only agentic tasks.",
+                "description": "Get tasks with enriched agent metadata (tools, sub-agents, models). Returns agentic and non-agentic tasks; pass 'is_agentic' to filter to one kind.",
                 "operationId": "get_agent_tasks_api_v2_agent_tasks_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "is_agentic",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "boolean"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Only return tasks whose is_agentic flag matches. When omitted, both agentic and non-agentic tasks are returned.",
+                            "title": "Is Agentic"
+                        },
+                        "description": "Only return tasks whose is_agentic flag matches. When omitted, both agentic and non-agentic tasks are returned."
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "Successful Response",
                         "content": {
                             "application/json": {
                                 "schema": {
+                                    "type": "array",
                                     "items": {
                                         "$ref": "#/components/schemas/EnrichedTaskResponse"
                                     },
-                                    "type": "array",
                                     "title": "Response Get Agent Tasks Api V2 Agent Tasks Get"
                                 }
                             }
                         }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
                     }
-                },
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ]
+                }
             }
         },
         "/api/v2/task": {

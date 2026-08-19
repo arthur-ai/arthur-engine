@@ -22,10 +22,10 @@ from tests.clients.base_test_client import (
 
 
 @pytest.mark.unit_tests
-def test_get_agent_tasks_returns_agentic_by_default(
+def test_get_agent_tasks_returns_all_tasks_by_default(
     client: GenaiEngineTestClientBase,
 ):
-    """Test that get_agent_tasks returns only agentic tasks by default."""
+    """Test that get_agent_tasks returns agentic and non-agentic tasks by default."""
     # Create both types of tasks
     agentic_name = f"agentic_{random.random()}"
     non_agentic_name = f"non_agentic_{random.random()}"
@@ -38,15 +38,63 @@ def test_get_agent_tasks_returns_agentic_by_default(
     )
     assert status_code == 200
 
-    # Get tasks with default filter (is_agentic=True by default)
+    # Get tasks with no is_agentic filter
     status_code, enriched_tasks = client.get_agent_tasks()
     assert status_code == 200
     assert isinstance(enriched_tasks, list)
 
-    # Should contain only agentic task, not non-agentic
+    # Should contain both tasks
+    task_ids = [t.id for t in enriched_tasks]
+    assert agentic_task.id in task_ids
+    assert non_agentic_task.id in task_ids
+
+
+@pytest.mark.unit_tests
+def test_get_agent_tasks_filters_on_is_agentic(
+    client: GenaiEngineTestClientBase,
+):
+    """Test that the is_agentic query param filters to one kind of task."""
+    agentic_name = f"agentic_{random.random()}"
+    non_agentic_name = f"non_agentic_{random.random()}"
+
+    status_code, agentic_task = client.create_task(agentic_name, is_agentic=True)
+    assert status_code == 200
+
+    status_code, non_agentic_task = client.create_task(
+        non_agentic_name, is_agentic=False
+    )
+    assert status_code == 200
+
+    status_code, enriched_tasks = client.get_agent_tasks(is_agentic=True)
+    assert status_code == 200
     task_ids = [t.id for t in enriched_tasks]
     assert agentic_task.id in task_ids
     assert non_agentic_task.id not in task_ids
+
+    status_code, enriched_tasks = client.get_agent_tasks(is_agentic=False)
+    assert status_code == 200
+    task_ids = [t.id for t in enriched_tasks]
+    assert non_agentic_task.id in task_ids
+    assert agentic_task.id not in task_ids
+
+
+@pytest.mark.unit_tests
+def test_get_agent_tasks_non_agentic_task_has_creation_source(
+    client: GenaiEngineTestClientBase,
+):
+    """Non-agentic tasks need a non-null creation_source: the Agent model in the
+    discovery job rejects null."""
+    status_code, task = client.create_task(
+        f"non_agentic_{random.random()}", is_agentic=False
+    )
+    assert status_code == 200
+
+    status_code, enriched_tasks = client.get_agent_tasks()
+    assert status_code == 200
+
+    enriched = next(t for t in enriched_tasks if t.id == task.id)
+    assert enriched.creation_source is not None
+    assert isinstance(enriched.creation_source.root, ManualAgentCreationSource)
 
 
 @pytest.mark.unit_tests

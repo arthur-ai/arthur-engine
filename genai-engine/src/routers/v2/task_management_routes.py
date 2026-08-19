@@ -207,19 +207,24 @@ def get_task(
 
 @task_management_routes.get(
     "/agent-tasks",
-    description="Get agentic tasks with enriched agent metadata (tools, sub-agents, models). "
-    "Returns only agentic tasks.",
+    description="Get tasks with enriched agent metadata (tools, sub-agents, models). "
+    "Returns agentic and non-agentic tasks; pass 'is_agentic' to filter to one kind.",
     response_model=list[EnrichedTaskResponse],
     tags=["Tasks"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
 def get_agent_tasks(
+    is_agentic: bool | None = Query(
+        None,
+        description="Only return tasks whose is_agentic flag matches. When "
+        "omitted, both agentic and non-agentic tasks are returned.",
+    ),
     db_session: Session = Depends(get_db_session),
     application_config: ApplicationConfiguration = Depends(get_application_config),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     org_scope: UUID | None = Depends(get_org_scope),
 ) -> list[EnrichedTaskResponse]:
-    """Get agentic tasks with enriched agent metadata.
+    """Get tasks with enriched agent metadata.
 
     Returns tasks with additional metadata computed from spans:
     - tools: List of tools used by the agent
@@ -230,12 +235,13 @@ def get_agent_tasks(
     Also includes creation_source information (GCP, OTEL, or manual).
 
     Args:
+        is_agentic: Optional is_agentic filter; unset returns all tasks
         db_session: Database session
         application_config: Application configuration
         current_user: Current authenticated user
 
     Returns:
-        List of EnrichedTaskResponse objects (agentic tasks only)
+        List of EnrichedTaskResponse objects
     """
     rules_repo = RuleRepository(db_session)
     metrics_repo = MetricRepository(db_session)
@@ -246,9 +252,11 @@ def get_agent_tasks(
         application_config,
     )
 
-    # Query only agentic tasks — tenant callers see only their own org's.
+    # Short term: no is_agentic filter by default, so agent discovery also picks up
+    # non-agentic tasks until is_agentic is set correctly at task creation (or
+    # promoted from observed agent/tool spans). Tenant callers see only their own org's.
     db_tasks, _ = tasks_repo.query_tasks(
-        is_agentic=True,
+        is_agentic=is_agentic,
         include_archived=False,
         page_size=1000,  # Large page size for now, add pagination later if needed
         page=0,

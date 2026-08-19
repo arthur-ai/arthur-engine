@@ -379,17 +379,23 @@ class GenaiEngineTestClientBase(httpx.Client):
 
     def get_agent_tasks(
         self,
+        is_agentic: bool | None = None,
     ) -> tuple[int, list[EnrichedTaskResponse]]:
-        """Get agentic tasks with enriched agent metadata.
+        """Get tasks with enriched agent metadata.
 
-        Returns only agentic tasks.
+        Returns agentic and non-agentic tasks unless is_agentic is given.
 
         Returns:
             Tuple of (status_code, list of EnrichedTaskResponse)
         """
         path = "api/v2/agent-tasks"
+        params = {} if is_agentic is None else {"is_agentic": is_agentic}
 
-        resp = self.base_client.get(path, headers=self.authorized_user_api_key_headers)
+        resp = self.base_client.get(
+            path,
+            params=params,
+            headers=self.authorized_user_api_key_headers,
+        )
         log_response(resp)
 
         return (

@@ -2,6 +2,10 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 08/19/2026
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added the new optional 'query' request parameter 'is_agentic'
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added the non-success response with the status '422'
+
 # 08/07/2026
 - **CHANGE** for **URL**: /api/v1/model_providers/{provider}/model_whitelist  endpoint added
 - **CHANGE** for **URL**: /api/v1/model_providers/{provider}/model_whitelist  endpoint added
