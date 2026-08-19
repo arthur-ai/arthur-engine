@@ -450,7 +450,14 @@ export const TransformSelector = withFieldGroup({
                     getOptionLabel={(option) => option.name}
                     isOptionEqualToValue={(option, value) => option.id === value.id}
                     getOptionKey={(option) => option.id}
-                    renderInput={(params) => <TextField {...params} label="Transform" />}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        label="Transform"
+                        onBlur={field.handleBlur}
+                        error={field.state.meta.isTouched && field.state.meta.errors.length > 0}
+                      />
+                    )}
                   />
                 );
               }}

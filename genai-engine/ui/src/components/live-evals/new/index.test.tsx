@@ -1,5 +1,5 @@
 import { useStore } from "@tanstack/react-form";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { LiveEvalsNew } from ".";
@@ -117,5 +117,21 @@ describe("LiveEvalsNew evaluator prefill", () => {
     render(<LiveEvalsNew />);
 
     expect(readEvaluatorState()).toEqual({ name: "Toxicity", version: "latest", eval_type: "ml" });
+  });
+});
+
+describe("LiveEvalsNew validation feedback", () => {
+  it("marks an unfilled required Transform as errored once touched", () => {
+    state.search = "evalName=Readability&evalVersion=3";
+    state.fetchedEval = { name: "Readability", eval_kind: "llm_as_a_judge" };
+
+    render(<LiveEvalsNew />);
+
+    const transformInput = screen.getByLabelText("Transform");
+    expect(transformInput).toHaveProperty("ariaInvalid", "false");
+
+    fireEvent.blur(transformInput);
+
+    expect(transformInput).toHaveProperty("ariaInvalid", "true");
   });
 });

@@ -166,112 +166,130 @@ export const EvaluatorSelector = withFieldGroup({
 
           <Stack direction="row" gap={2} width="100%">
             {/* Eval name selector */}
-            <Autocomplete
-              sx={{ flex: 1 }}
-              loading={isEvaluatorsLoading}
-              options={evals}
-              value={selectedEval}
-              onChange={(_, value) => handleEvalChange(value)}
-              inputValue={inputValue}
-              onInputChange={(_, value) => setInputValue(value)}
-              getOptionLabel={(option) => option.name}
-              isOptionEqualToValue={(option, value) => option.name === value.name}
-              getOptionKey={(option) => `${option.eval_kind}:${option.name}`}
-              renderOption={(props, option) => (
-                <Box component="li" {...props}>
-                  <Stack direction="row" alignItems="center" gap={1} width="100%">
-                    <Typography variant="body2" sx={{ flex: 1 }}>
-                      {option.name}
-                    </Typography>
-                    {option.eval_kind !== "llm_as_a_judge" ? (
-                      <Chip label="ML" size="small" color="secondary" variant="outlined" sx={{ height: 18, fontSize: "0.65rem" }} />
-                    ) : (
-                      <Chip label="LLM" size="small" color="primary" variant="outlined" sx={{ height: 18, fontSize: "0.65rem" }} />
-                    )}
-                    {option.eval_kind !== "llm_as_a_judge" && (
-                      <Chip label={option.eval_kind} size="small" variant="outlined" sx={{ height: 18, fontSize: "0.65rem" }} />
-                    )}
-                  </Stack>
-                </Box>
-              )}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  variant="filled"
-                  label="Evaluator"
-                  slotProps={{
-                    input: {
-                      ...params.InputProps,
-                      endAdornment: (
-                        <>
-                          {isEvaluatorsLoading ? <CircularProgress color="inherit" size={16} /> : null}
-                          {params.InputProps.endAdornment}
-                        </>
-                      ),
-                    },
-                  }}
+            <group.AppField name="name">
+              {(field) => (
+                <Autocomplete
+                  sx={{ flex: 1 }}
+                  loading={isEvaluatorsLoading}
+                  options={evals}
+                  value={selectedEval}
+                  onChange={(_, value) => handleEvalChange(value)}
+                  inputValue={inputValue}
+                  onInputChange={(_, value) => setInputValue(value)}
+                  getOptionLabel={(option) => option.name}
+                  isOptionEqualToValue={(option, value) => option.name === value.name}
+                  getOptionKey={(option) => `${option.eval_kind}:${option.name}`}
+                  renderOption={(props, option) => (
+                    <Box component="li" {...props}>
+                      <Stack direction="row" alignItems="center" gap={1} width="100%">
+                        <Typography variant="body2" sx={{ flex: 1 }}>
+                          {option.name}
+                        </Typography>
+                        {option.eval_kind !== "llm_as_a_judge" ? (
+                          <Chip label="ML" size="small" color="secondary" variant="outlined" sx={{ height: 18, fontSize: "0.65rem" }} />
+                        ) : (
+                          <Chip label="LLM" size="small" color="primary" variant="outlined" sx={{ height: 18, fontSize: "0.65rem" }} />
+                        )}
+                        {option.eval_kind !== "llm_as_a_judge" && (
+                          <Chip label={option.eval_kind} size="small" variant="outlined" sx={{ height: 18, fontSize: "0.65rem" }} />
+                        )}
+                      </Stack>
+                    </Box>
+                  )}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      variant="filled"
+                      label="Evaluator"
+                      onBlur={field.handleBlur}
+                      error={field.state.meta.isTouched && field.state.meta.errors.length > 0}
+                      slotProps={{
+                        input: {
+                          ...params.InputProps,
+                          endAdornment: (
+                            <>
+                              {isEvaluatorsLoading ? <CircularProgress color="inherit" size={16} /> : null}
+                              {params.InputProps.endAdornment}
+                            </>
+                          ),
+                        },
+                      }}
+                    />
+                  )}
                 />
               )}
-            />
+            </group.AppField>
 
             {/* Version selector — LLM evals */}
             {!isML && (
-              <Autocomplete
-                sx={{ width: 160 }}
-                loading={llmVersions.isLoading}
-                options={llmVersionOptions}
-                value={version}
-                onChange={(_, value) => handleVersionChange(value)}
-                disabled={!name}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    variant="filled"
-                    label="Version"
-                    slotProps={{
-                      input: {
-                        ...params.InputProps,
-                        endAdornment: (
-                          <>
-                            {llmVersions.isLoading ? <CircularProgress color="inherit" size={16} /> : null}
-                            {params.InputProps.endAdornment}
-                          </>
-                        ),
-                      },
-                    }}
+              <group.AppField name="version">
+                {(field) => (
+                  <Autocomplete
+                    sx={{ width: 160 }}
+                    loading={llmVersions.isLoading}
+                    options={llmVersionOptions}
+                    value={version}
+                    onChange={(_, value) => handleVersionChange(value)}
+                    disabled={!name}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        variant="filled"
+                        label="Version"
+                        onBlur={field.handleBlur}
+                        error={field.state.meta.isTouched && field.state.meta.errors.length > 0}
+                        slotProps={{
+                          input: {
+                            ...params.InputProps,
+                            endAdornment: (
+                              <>
+                                {llmVersions.isLoading ? <CircularProgress color="inherit" size={16} /> : null}
+                                {params.InputProps.endAdornment}
+                              </>
+                            ),
+                          },
+                        }}
+                      />
+                    )}
                   />
                 )}
-              />
+              </group.AppField>
             )}
 
             {/* Version selector — ML evals */}
             {isML && (
-              <Autocomplete
-                sx={{ width: 160 }}
-                loading={mlVersions.isLoading}
-                options={mlVersionOptions}
-                value={version}
-                onChange={(_, value) => handleVersionChange(value)}
-                disabled={!name}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    variant="filled"
-                    label="Version"
-                    slotProps={{
-                      input: {
-                        ...params.InputProps,
-                        endAdornment: (
-                          <>
-                            {mlVersions.isLoading ? <CircularProgress color="inherit" size={16} /> : null}
-                            {params.InputProps.endAdornment}
-                          </>
-                        ),
-                      },
-                    }}
+              <group.AppField name="version">
+                {(field) => (
+                  <Autocomplete
+                    sx={{ width: 160 }}
+                    loading={mlVersions.isLoading}
+                    options={mlVersionOptions}
+                    value={version}
+                    onChange={(_, value) => handleVersionChange(value)}
+                    disabled={!name}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        variant="filled"
+                        label="Version"
+                        onBlur={field.handleBlur}
+                        error={field.state.meta.isTouched && field.state.meta.errors.length > 0}
+                        slotProps={{
+                          input: {
+                            ...params.InputProps,
+                            endAdornment: (
+                              <>
+                                {mlVersions.isLoading ? <CircularProgress color="inherit" size={16} /> : null}
+                                {params.InputProps.endAdornment}
+                              </>
+                            ),
+                          },
+                        }}
+                      />
+                    )}
                   />
                 )}
-              />
+              </group.AppField>
             )}
           </Stack>
         </Stack>
