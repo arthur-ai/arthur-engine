@@ -12,11 +12,18 @@ name: Arthur Observability SDK - Instrumentor Verification
 # does not follow the BaseInstrumentor shape at all.
 #
 # Cadence:
-#   pull_request      → only declarations this PR adds or alters (usually 0-1)
-#   schedule/dispatch → all 40, plus a combined [all]-extra install
+#   pull_request, declaration change → only the declarations it adds or alters
+#   pull_request, tooling change     → all of them (see below)
+#   schedule/dispatch                → all, plus a combined [all]-extra install
 #
 # The weekly run matters because these are unpinned third-party packages: a
 # declaration that works today breaks when upstream renames a class.
+#
+# A PR that changes the verification tooling rather than a declaration verifies
+# everything.  Diffing declarations would select nothing, so a broken harness
+# would merge green and stay undetected until the next scheduled run — while
+# still acting as the gate for any declaration added in the meantime.  Tooling
+# changes are rare, so paying for a full sweep on them is cheap.
 
 on:
   pull_request:
@@ -52,12 +59,24 @@ jobs:
         id: registry
         working-directory: arthur-observability-sdk
         run: |
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            echo "Selecting declarations changed since ${{ github.event.pull_request.base.sha }}"
-            MATRIX=$(python3 scripts/instrumentor_registry.py --json \
-              --changed-since "${{ github.event.pull_request.base.sha }}")
-          else
+          BASE="${{ github.event.pull_request.base.sha }}"
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            echo "Scheduled or manual run — verifying every declaration."
             MATRIX=$(python3 scripts/instrumentor_registry.py --json)
+          else
+            # Paths are repo-relative, so run git from the workspace root rather
+            # than this step's working-directory.
+            TOOLING=$(git -C "$GITHUB_WORKSPACE" diff --name-only "$BASE"...HEAD -- \
+              arthur-observability-sdk/scripts/instrumentor_registry.py \
+              arthur-observability-sdk/scripts/verify_instrumentor.py \
+              .github/workflows/arthur-observability-sdk-instrumentors.yml | wc -l)
+            if [ "$TOOLING" -gt 0 ]; then
+              echo "Verification tooling changed — verifying every declaration."
+              MATRIX=$(python3 scripts/instrumentor_registry.py --json)
+            else
+              echo "Selecting declarations changed since $BASE"
+              MATRIX=$(python3 scripts/instrumentor_registry.py --json --changed-since "$BASE")
+            fi
           fi
           COUNT=$(printf '%s' "$MATRIX" | python3 -c "import json,sys; print(len(json.load(sys.stdin)))")
           echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
