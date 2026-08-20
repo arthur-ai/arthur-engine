@@ -374,6 +374,13 @@ export const TracingFilterModal = () => {
     }
   };
 
+  const handleCommitPendingIds = () => {
+    handleAddId("trace", traceIdInput);
+    handleAddId("session", sessionIdInput);
+    handleAddId("span", spanIdInput);
+    handleAddId("user", userIdInput);
+  };
+
   const handleRemoveId = (type: "trace" | "session" | "span" | "user", id: string) => {
     const fieldName = `${type}Ids` as keyof FilterState;
     const currentValue = form.getFieldValue(fieldName) as string[];
@@ -528,6 +535,10 @@ export const TracingFilterModal = () => {
               e.preventDefault();
               handleAddId(type, inputValue);
             }
+          }}
+          onPaste={(e) => {
+            e.preventDefault();
+            handleAddId(type, e.clipboardData.getData("text"));
           }}
           placeholder={`Enter ${label}`}
         />
@@ -877,6 +888,7 @@ export const TracingFilterModal = () => {
                 variant="contained"
                 onClick={(e) => {
                   e.preventDefault();
+                  handleCommitPendingIds();
                   form.handleSubmit();
                 }}
               >
