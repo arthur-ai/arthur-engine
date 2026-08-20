@@ -1,5 +1,5 @@
 import { Box, Link as MuiLink, Stack } from "@mui/material";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 
 import { ArthurLogo } from "../../common/ArthurLogo";
 

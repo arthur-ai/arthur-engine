@@ -46,6 +46,7 @@ DEFAULT_PAGE_SIZE = 5  # Reduced for trace-level pagination
 MAX_PAGE_SIZE = 5000
 MODEL_REPOSITORY_URL_ENV_VAR = "MODEL_REPOSITORY_URL"
 MODEL_STORAGE_PATH_ENV_VAR = "MODEL_STORAGE_PATH"
+HF_HUB_OFFLINE_ENV_VAR = "HF_HUB_OFFLINE"
 GENAI_ENGINE_SKIP_MODEL_LOADING_ENV_VAR = "GENAI_ENGINE_SKIP_MODEL_LOADING"
 
 ##################################################################
@@ -82,6 +83,10 @@ ALLOWED_TRACE_RETENTION_DAYS = (7, 14, 30, 90, 120, 365)
 TRACE_RETENTION_INTERVAL_HOURS_ENV_VAR = "TRACE_RETENTION_INTERVAL_HOURS"
 MIN_TRACE_RETENTION_INTERVAL_HOURS = 1
 DEFAULT_TOXICITY_RULE_THRESHOLD = 0.5
+# Minimum eval score (0-1 scale) that counts as a "pass" when aggregating
+# experiment results. Mirrored in the UI as EVAL_PASS_THRESHOLD
+# (genai-engine/ui/src/utils/evals.ts); keep the two values in sync.
+EVAL_PASS_THRESHOLD = 0.5
 GENAI_ENGINE_TOXICITY_HARMFUL_REQUESTS_CHUNK_SIZE_ENV_VAR = (
     "GENAI_ENGINE_TOXICITY_HARMFUL_REQUESTS_CHUNK_SIZE"
 )
@@ -90,6 +95,9 @@ GENAI_ENGINE_TOXICITY_MAX_CHUNK_SIZE_SIZE_ENV_VAR = (
 )
 GENAI_ENGINE_TOXICITY_MODEL_BATCH_SIZE_ENV_VAR = (
     "GENAI_ENGINE_TOXICITY_MODEL_BATCH_SIZE"
+)
+GENAI_ENGINE_SUMMARY_TEST_CASE_BATCH_SIZE_ENV_VAR = (
+    "GENAI_ENGINE_SUMMARY_TEST_CASE_BATCH_SIZE"
 )
 GENAI_ENGINE_USE_PII_MODEL_V2_ENV_VAR = "GENAI_ENGINE_USE_PII_MODEL_V2"
 DEFAULT_PII_RULE_CONFIDENCE_SCORE_THRESHOLD = 0
@@ -448,6 +456,10 @@ CHATBOT_SUMMARIZER_PROMPT_NAME = "__chatbot_summarizer_prompt__"
 
 # Dataset constants
 MAX_DATASET_ROWS = 250
+# Maximum number of traces that can be added to a dataset in a single
+# bulk-add request. Matches the trace table's current page fetch-size limit
+# (the UI can only select traces on the current page).
+MAX_BULK_ADD_TRACES = 25
 
 ##################################################################
 
@@ -474,5 +486,6 @@ AGENT_EXPERIMENT_SESSION_PREFIX = "arthur-exp"
 AUDIT_LOG_ENABLED_ENV_VAR = "AUDIT_LOG_ENABLED"
 AUDIT_LOG_RETENTION_DAYS_ENV_VAR = "AUDIT_LOG_RETENTION_DAYS"
 AUDIT_LOG_OVERRIDE_PATH_ENV_VAR = "AUDIT_LOG_OVERRIDE_PATH"
+AUDIT_LOG_INCLUDE_AI_ACTIVITY_ENV_VAR = "AUDIT_LOG_INCLUDE_AI_ACTIVITY"
 
 ##################################################################

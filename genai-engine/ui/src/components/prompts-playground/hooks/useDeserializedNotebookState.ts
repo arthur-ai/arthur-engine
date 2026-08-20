@@ -21,9 +21,9 @@ export function useDeserializedNotebookState(notebookId: string | undefined, tas
   const apiClient = useApi();
   const { state: rawState } = useNotebookState(notebookId);
 
+  // eslint-disable-next-line @tanstack/query/exhaustive-deps
   const { data, isLoading, error } = useQuery({
     // Key only by notebookId+taskId to avoid re-running deserialization on every auto-save.
-    // eslint-disable-next-line @tanstack/query/exhaustive-deps
     queryKey: queryKeys.notebooks.deserialized(notebookId, taskId),
     queryFn: () => deserializeNotebookState(rawState!, apiClient!, taskId!),
     enabled: !!rawState && !!apiClient && !!taskId,

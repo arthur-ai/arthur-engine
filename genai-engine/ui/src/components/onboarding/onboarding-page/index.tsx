@@ -1,7 +1,7 @@
 import { useSnackbar } from "notistack";
 import { parseAsStringEnum, useQueryState } from "nuqs";
 import { Suspense } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 
 import { useCreateOnboardingSubmissionMutation } from "../hooks/useCreateOnboardingSubmissionMutation";
 import { LandingHero } from "../landing-hero";

@@ -19,14 +19,19 @@ Please review the GPT model requirements below:
 * A secure network route between your environment and the OpenAI endpoint(s)
 * Token limits, configured appropriately for your use cases
 
-### DNS
-A DNS URL for the GenAI Engine with an SSL certificate
+### DNS and TLS
+A DNS hostname for the GenAI Engine, plus a TLS certificate for that **same** hostname — an
+[AWS ACM](https://docs.aws.amazon.com/acm/) certificate for the ALB path, or a Kubernetes TLS
+secret for the nginx path. The DNS hostname, the certificate domain, and `genaiEngineIngressURL`
+must all be identical. See [Ingress and HTTPS](#ingress-and-https).
 
 ### Kubernetes
 The chart is tested on AWS Elastic Kubernetes Service (EKS) version 1.31.
 
 * A `kubectl` workstation with admin privileges
-* Nginx ingress controller
+* An ingress controller (see [Ingress and HTTPS](#ingress-and-https) for the full setup):
+  * Classic EKS / self-managed clusters: an nginx ingress controller, installed separately (it is **not** part of this chart).
+  * EKS Auto Mode, or any cluster running the AWS Load Balancer Controller: no nginx controller is needed — use the built-in `alb` IngressClass.
 * A dedicated namespace (e.g. `arthur`)
 * For CPU high availability deployment: a node group with AWS `m8g.large` x 2 or similar
   * Memory: 16 GiB
@@ -48,9 +53,14 @@ Please pre-create a database on your instance (e.g. `arthur_genai_engine`)
 ## GPU deployment
 Arthur recommends running the GenAI Engine on GPUs for any production-grade deployments. The usage of GPUs provides significantly lower latency, higher scalability and platform cost efficiency.
 
-The CPU deployment runs the GenAI Engine as a Deployment with a Horizontal Pod Autoscaler (HPA). For the GPU deployment, following our guide in the [values.yaml.template](values.yaml.template) file runs the GenAI Engine as a DaemonSet on a dedicated node group described in the section below, "How to configure your AWS EKS cluster with a GPU node group". The DaemonSet GPU deployment is the Arthur's preferred configuration. It depends on the node group autoscaling for scaling out and scaling in on-demand. This approach does not assume you have a large pool of GPUs sitting idle, waiting to be used.
+The CPU deployment runs the GenAI Engine as a Deployment with a Horizontal Pod Autoscaler (HPA).
 
-## How to configure your AWS EKS cluster with a GPU node group
+For GPU, the chart supports two topologies. Pick the one that matches how your cluster provisions nodes (selected with `genaiEngineDeploymentType` in [values.yaml.template](values.yaml.template)):
+
+- **Managed GPU node group + ASG → DaemonSet.** Arthur's preferred configuration for classic EKS clusters with managed node groups. GenAI Engine runs as a DaemonSet — one pod per GPU node — and the node group's Auto Scaling Group (ASG) scales GPU nodes out and in on demand. This does not assume a large pool of idle GPUs. See [How to configure your AWS EKS cluster with a GPU node group (managed node group)](#how-to-configure-your-aws-eks-cluster-with-a-gpu-node-group-managed-node-group).
+- **EKS Auto Mode / Karpenter → Deployment.** For clusters on [EKS Auto Mode](https://docs.aws.amazon.com/eks/latest/userguide/automode.html), which have no managed node groups. Auto Mode's Karpenter provisions a GPU node only in response to a **pending workload pod** — it does not scale up for a DaemonSet ([Karpenter FAQ](https://karpenter.sh/docs/faq/)) — so GenAI Engine runs as a Deployment. See [How to configure EKS Auto Mode for GPU](#how-to-configure-eks-auto-mode-for-gpu-karpenter).
+
+## How to configure your AWS EKS cluster with a GPU node group (managed node group)
 This section is a guide to help you configure your existing AWS EKS cluster with a GPU node group for GenAI Engine.
 To perform the steps, you need AWS CLI with admin level permissions for the target AWS account.
 
@@ -339,6 +349,240 @@ aws cloudwatch put-metric-alarm \
 
 9. Label the CPU node group with `capability=cpu`
 
+## How to configure EKS Auto Mode for GPU (Karpenter)
+This section is a guide to run the GenAI Engine on GPUs on an [EKS Auto Mode](https://docs.aws.amazon.com/eks/latest/userguide/automode.html) cluster. Auto Mode has no managed node groups — it uses a managed **Karpenter** to provision nodes. Karpenter only launches a node in response to an **unschedulable workload pod**, and it will **not** scale up for a DaemonSet on its own ([Karpenter FAQ](https://karpenter.sh/docs/faq/)). So on Auto Mode the GenAI Engine runs as a **Deployment**, and it is the Deployment's pod (pinned to your GPU nodes via a `nodeSelector`) that triggers Karpenter to create a GPU node.
+
+To perform the steps you need `kubectl` access to the cluster with admin privileges.
+
+1. **Create a GPU NodePool.** Auto Mode's built-in `system` / `general-purpose` NodePools only run non-accelerated instances, so create a custom NodePool that provisions NVIDIA GPU instances, labels its nodes so the engine can target them, and taints them so other workloads don't land on expensive GPU hardware. Save as `gpu-nodepool.yaml` and apply with `kubectl apply -f gpu-nodepool.yaml`. Adjust the instance family/sizes and GPU limit for your needs; see [Manage compute for AI/ML workloads with EKS Auto Mode and Karpenter](https://docs.aws.amazon.com/eks/latest/userguide/ml-node-pools.html) for the full set of well-known labels.
+
+    ```yaml
+    apiVersion: karpenter.sh/v1
+    kind: NodePool
+    metadata:
+      name: arthur-genai-engine-gpu
+    spec:
+      template:
+        metadata:
+          labels:
+            capability: gpu          # GenAI Engine pods target this via nodeSelector
+        spec:
+          # Use the built-in EKS Auto Mode NodeClass (or reference your own custom NodeClass)
+          nodeClassRef:
+            group: eks.amazonaws.com
+            kind: NodeClass
+            name: default
+          requirements:
+            - key: "eks.amazonaws.com/instance-family"
+              operator: In
+              values: ["g4dn"]                 # NVIDIA GPU instance family
+            - key: "eks.amazonaws.com/instance-size"
+              operator: In
+              values: ["2xlarge", "4xlarge"]   # -> g4dn.2xlarge / g4dn.4xlarge
+            - key: "eks.amazonaws.com/instance-gpu-manufacturer"
+              operator: In
+              values: ["nvidia"]
+            - key: "karpenter.sh/capacity-type"
+              operator: In
+              values: ["on-demand"]
+          # Taint so only GPU workloads that tolerate it land on these nodes
+          taints:
+            - key: nvidia.com/gpu
+              value: "true"
+              effect: NoSchedule
+      # Cap total GPUs; idle GPU nodes are consolidated away (scale to zero)
+      limits:
+        nvidia.com/gpu: "8"
+      disruption:
+        consolidationPolicy: WhenEmptyOrUnderutilized
+        consolidateAfter: 1m
+    ```
+
+2. **Configure `values.yaml` for the Auto Mode GPU deployment.** In your `values.yaml` (from [values.yaml.template](values.yaml.template)):
+    - Comment out the default **CPU deployment** four-line block and uncomment the **"GPU deployment with EKS Auto Mode / Karpenter"** block:
+
+    ```yaml
+    gpuEnabled: true
+    genaiEngineDeploymentType: "deployment"
+    genaiEngineWorkers: 3
+    genaiEngineContainerImageLocation: "arthurplatform/genai-engine-gpu"
+    genaiEngineContainerGPULimit: "1"
+    genaiEngineContainerMemoryLimits: "24Gi"
+    ```
+
+      `genaiEngineDeploymentType` is the key setting that distinguishes the two GPU topologies, so make sure you pick the Auto Mode block and not the managed-node-group one:
+
+      | | `genaiEngineDeploymentType` | Why |
+      | --- | --- | --- |
+      | Managed node group + ASG | `"daemonset"` | One GPU pod per node; the ASG fills nodes as it scales the node group. |
+      | **EKS Auto Mode / Karpenter** | **`"deployment"`** | Karpenter only provisions a node for an unschedulable **workload pod**, and will **not** scale up for a DaemonSet — so the engine must run as a Deployment whose pending pod is the scale-up trigger. |
+
+      `gpuEnabled: true` and the `-gpu` image select the GPU build. The remaining three settings are specific to GPU:
+
+      - `genaiEngineWorkers: 3` — the per-pod worker count. Each worker is a separate process, and a single worker cannot keep a GPU busy. Three is also the practical ceiling for a 16 GB GPU; a fourth exceeds available GPU memory and container RAM.
+      - `genaiEngineContainerMemoryLimits: "24Gi"` — every worker holds the full model suite resident, and large prompts or context add more on top, so the CPU default leaves too little headroom.
+      - `genaiEngineContainerGPULimit: "1"` — required only if you use the [GPU autoscaler add-on](../genai-engine-gpu-autoscaler-karpenter/README.md). GPU metrics are attributed to a pod only when the pod requests the device; without it the autoscaler has no metrics to act on.
+
+    - Set the pod `nodeSelector` to the NodePool's label and add a toleration for the taint, and disable the HPA:
+
+    ```yaml
+    arthurGenaiEngineDeployment:
+      genaiEnginePodNodeSelector:
+        capability: gpu
+      genaiEnginePodTolerations:
+        - key: "nvidia.com/gpu"
+          operator: "Exists"
+          effect: "NoSchedule"
+    arthurGenaiEngineHPA:
+      enabled: false
+      # If you use the GPU autoscaler add-on chart (see below), also set:
+      # externallyManaged: true
+    ```
+
+    The `nodeSelector` is what makes the pod unschedulable on the general-purpose nodes, which is the signal that prompts Karpenter to provision a GPU node from the NodePool above. The chart grants the container GPU access via `NVIDIA_VISIBLE_DEVICES`, so no `nvidia.com/gpu` resource request is required for the engine to *use* the GPU.
+
+    It is required for GPU metrics to be *attributed* to the pod, though — DCGM maps GPUs to pods through the kubelet pod-resources API, which only reports a device allocation when the pod requests one. If you plan to use the GPU autoscaler add-on (step 4), set `genaiEngineContainerGPULimit: "1"`, and first confirm a device plugin advertises the resource:
+
+    ```bash
+    kubectl get node <gpu-node> -o jsonpath='{.status.allocatable}' | tr ',' '\n' | grep nvidia
+    ```
+
+    Without that, the pod requests a resource nothing provides and stays `Pending` forever.
+
+3. **Node scaling is automatic.** Unlike the managed node group path, there is no launch template, ASG, or CloudWatch alarm to configure — Karpenter adds a GPU node when a GenAI Engine pod is pending and removes it when the node is idle (per the NodePool's `disruption` policy). To run more replicas, increase `genaiEngineReplicaCount`; Karpenter provisions additional GPU nodes to fit the pending pods (up to the NodePool `limits`).
+
+4. **(Optional) Autoscale pods on GPU load.** Increasing `genaiEngineReplicaCount` is manual. To scale the replica count automatically on **GPU utilization**, install the companion [`genai-engine-gpu-autoscaler-karpenter`](../genai-engine-gpu-autoscaler-karpenter/README.md) add-on chart (DCGM exporter → Prometheus → prometheus-adapter → HPA). It owns the replica count, so set `arthurGenaiEngineHPA.externallyManaged: true` here and this chart will omit the Deployment's static `replicas` and render no HPA of its own. It also needs `genaiEngineContainerGPULimit: "1"` (see step 2). The HPA scales pods; Karpenter scales nodes.
+
+## Ingress and HTTPS
+
+The chart creates a Kubernetes `Ingress` for the GenAI Engine, but it **does not install an
+ingress controller** and does not provision DNS or certificates. You choose how TLS is
+terminated based on how your cluster exposes services, then configure the `ingress` block and
+`genaiEngineIngressURL` in your `values.yaml`.
+
+> **Invariant:** `genaiEngineIngressURL`, the TLS certificate domain, and the DNS record must all
+> be the **same hostname**. If they disagree, requests return `404` or a certificate error even
+> though the pods are healthy.
+
+### Option A — nginx ingress controller (default)
+
+For classic EKS / self-managed clusters. Install an nginx ingress controller separately, then
+terminate TLS at nginx with a Kubernetes TLS secret:
+
+```bash
+kubectl -n arthur create secret tls genai-engine-tls --cert=tls.crt --key=tls.key
+```
+
+```yaml
+genaiEngineIngressURL: arthur-genai-engine.mydomain.com
+ingress:
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+  tls:
+    - hosts:
+        - arthur-genai-engine.mydomain.com   # must equal genaiEngineIngressURL
+      secretName: genai-engine-tls
+```
+
+### Option B — AWS ALB (EKS Auto Mode / AWS Load Balancer Controller)
+
+**EKS Auto Mode clusters have no nginx ingress controller** — they ship the AWS Load Balancer
+Controller with a built-in `alb` IngressClass. Use it, and terminate TLS at the ALB with an
+[AWS ACM](https://docs.aws.amazon.com/acm/) certificate whose domain equals
+`genaiEngineIngressURL`. Do **not** set a `tls` block — TLS is handled by the ALB, not a
+Kubernetes secret:
+
+```yaml
+genaiEngineIngressURL: arthur-genai-engine.mydomain.com
+ingress:
+  className: "alb"
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:<region>:<account-id>:certificate/<cert-id>"
+    alb.ingress.kubernetes.io/healthcheck-path: /health
+```
+
+> Do not mix classes and annotations. `nginx.ingress.kubernetes.io/*` annotations are ignored by
+> the ALB controller, and `alb.ingress.kubernetes.io/*` annotations are ignored by nginx. If you
+> switch `className`, remove the other controller's annotations. (When switching an existing
+> release via `helm upgrade --reuse-values`, the old annotations are merged back in and must be
+> cleared explicitly.)
+
+### DNS + verification
+
+After install, get the load balancer address and point DNS at it (a CNAME or Route53 ALIAS,
+since the LB is a hostname — not a plain `A` record):
+
+```bash
+kubectl get ingress -n arthur
+```
+
+Then verify HTTPS end to end:
+
+```bash
+curl -sS https://arthur-genai-engine.mydomain.com/health
+# {"message":"ok", ...}
+```
+
+## Using a private image repository
+
+By default the chart pulls the GenAI Engine image from Docker Hub (`arthurplatform/genai-engine-cpu` or `arthurplatform/genai-engine-gpu`). If Docker Hub is not reachable from your cluster, mirror the image into your own container registry and point the chart at it.
+
+1. **Mirror the image** into your registry. Use the CPU or GPU variant that matches your deployment; the tag is used verbatim, so you can keep the upstream version or re-tag it as you like:
+
+    ```bash
+    docker pull arthurplatform/genai-engine-cpu:<version>
+    docker tag  arthurplatform/genai-engine-cpu:<version> <your-registry>/<path>/genai-engine-cpu:<tag>
+    docker push <your-registry>/<path>/genai-engine-cpu:<tag>
+    ```
+
+2. **Create an image pull secret** — only if your registry requires authentication. This is the same standard Kubernetes `docker-registry` secret (type `kubernetes.io/dockerconfigjson`) used in the install steps below; just point `--docker-server` at your registry host:
+
+    ```bash
+    # WARNING: Do NOT set up secrets this way in production.
+    #          Use a secure method such as sealed secrets and external secret store providers.
+    kubectl -n arthur create secret docker-registry arthur-repository-credentials \
+        --docker-server='<your-registry-host>' \
+        --docker-username='<username>' \
+        --docker-password='<password>' \
+        --docker-email=''
+    ```
+
+3. **Point the chart at your registry** in `values.yaml`. Unlike ML Engine, the GenAI Engine image reference is assembled from just two fields — `<genaiEngineContainerImageLocation>:<genaiEngineVersion>` (one `:`) — so the entire repository path (registry host + org + image name) goes in `genaiEngineContainerImageLocation`:
+
+    ```yaml
+    # Full repository path INCLUDING the image name (cpu or gpu variant)
+    genaiEngineContainerImageLocation: "<your-registry>/<path>/genai-engine-cpu"
+    # The tag you pushed, used verbatim
+    genaiEngineVersion: "<tag>"
+    # Set to true only if the registry requires authentication
+    containerRepositoryCredentialRequired: true
+    # Name of the docker-registry secret from step 2
+    imagePullSecretName: "arthur-repository-credentials"
+    ```
+
+    Example — for the image `myregistry.example.com/arthur/genai-engine-cpu:genai-engine_2.1.683`:
+
+    | Field | Value |
+    | --- | --- |
+    | `genaiEngineContainerImageLocation` | `myregistry.example.com/arthur/genai-engine-cpu` |
+    | `genaiEngineVersion` | `genai-engine_2.1.683` |
+
+    > For a GPU deployment, mirror and reference the `genai-engine-gpu` image and keep the related GPU settings (`gpuEnabled`, `genaiEngineDeploymentType`, `genaiEngineWorkers`) as described in the [GPU deployment](#gpu-deployment) section.
+
+You can verify the rendered image reference before installing:
+
+```bash
+helm template arthur-genai-engine oci://ghcr.io/arthur-ai/arthur-engine/charts/arthur-genai-engine \
+    --version <version_number> -f values.yaml | grep 'image:'
+# -> image: "myregistry.example.com/arthur/genai-engine-cpu:genai-engine_2.1.683"
+```
+
 ## How to install GenAI Engine using Helm Chart
 
 1. Create Kubernetes secrets
@@ -382,7 +626,7 @@ aws cloudwatch put-metric-alarm \
     ```bash
     helm upgrade --install -n arthur -f values.yaml arthur-genai-engine oci://ghcr.io/arthur-ai/arthur-engine/charts/arthur-genai-engine --version <version_number>
     ```
-4. Configure DNS by creating an `A` record that routes the GenAI Engine service URL to the GenAI Engine's ingress load balancer
+4. Configure DNS to route `genaiEngineIngressURL` to the load balancer created for the ingress (find it with `kubectl get ingress -n arthur`). An AWS ALB/NLB is a hostname, so use a **CNAME** or a **Route53 ALIAS** record — not a plain `A` record. The DNS hostname, the TLS certificate domain, and `genaiEngineIngressURL` must all match. See [Ingress and HTTPS](#ingress-and-https).
 5. Verify that all the pods are running with
     ```bash
     kubectl get pods -n arthur
@@ -397,3 +641,25 @@ Azure OpenAI has a quota called Tokens-per-Minute (TPM). It limits the number of
 process within a minute in the region the model is deployed. In order to get a larger quota for GenAI Engine, you can deploy
 additional models in other regions and have Arthur GenAI Engine round-robin against multiple Azure OpenAI endpoints. In
 addition, you can request and get approved for a model quota increase in the desired regions by Azure.
+
+### How do I load models from a shared volume instead of downloading them at startup?
+
+`modelPVC.enabled` is the online/offline toggle. By default (`false`) GenAI Engine downloads its
+model binaries from Hugging Face on startup (or fetches them from `modelRepositoryURL` if set), and
+no PersistentVolumeClaim is required. For air-gapped clusters or to avoid per-pod downloads, set it
+to `true` to pre-populate a shared volume once and have every replica load models offline from it:
+
+```bash
+--set modelPVC.enabled=true \
+--set modelPVC.claimName=arthur-models-pvc \
+--set modelPVC.mountPath=/home/nonroot/models-output
+```
+
+When enabled, the chart mounts the claim (read-write — see below) and sets `MODEL_STORAGE_PATH` +
+`HF_HUB_OFFLINE=1`, and the engine skips the startup download. Populate the volume with the one-time
+job in [../../model-upload](../../model-upload). On AWS EKS, back the `ReadWriteMany` PVC with EFS by
+following the [AWS EKS + EFS](../../model-upload/README.md#aws-eks--efs) section of that guide.
+
+> The mount must be **read-write** (`modelPVC.readOnly` defaults to `false`). The HuggingFace
+> loaders write `.lock`/cache files under the mount even with `HF_HUB_OFFLINE=1`, so a read-only
+> mount fails with `[Errno 30] Read-only file system`.

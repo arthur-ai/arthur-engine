@@ -78,6 +78,7 @@ from schemas.request_schemas import (
     AgenticAnnotationRequest,
     ApiKeyRagAuthenticationConfigRequest,
     ApiKeyRagAuthenticationConfigUpdateRequest,
+    BulkAddTracesToDatasetRequest,
     ContinuousEvalCreateRequest,
     CreateAgenticPromptRequest,
     DatasetUpdateRequest,
@@ -107,6 +108,7 @@ from schemas.request_schemas import (
 )
 from schemas.response_schemas import (
     AgenticAnnotationAnalyticsResponse,
+    BulkAddTracesToDatasetResponse,
     ConnectionCheckResult,
     ContinuousEvalRerunResponse,
     ContinuousEvalTestRunResponse,
@@ -119,6 +121,8 @@ from schemas.response_schemas import (
     ListRagSearchSettingConfigurationsResponse,
     ListRagSearchSettingConfigurationVersionsResponse,
     ListTraceTransformVersionsResponse,
+    ModelProviderModelList,
+    ModelProviderWhitelist,
     RagProviderConfigurationResponse,
     RagProviderQueryResponse,
     RagSearchSettingConfigurationResponse,
@@ -407,6 +411,9 @@ class GenaiEngineTestClientBase(httpx.Client):
         is_agentic: bool = None,
         include_archived: bool = None,
         only_archived: bool = None,
+        sort_field: str = None,
+        last_active_start_time=None,
+        last_active_end_time=None,
     ) -> tuple[int, SearchTasksResponse]:
         path = "api/v2/tasks/search?"
         params = get_base_pagination_parameters(
@@ -414,6 +421,12 @@ class GenaiEngineTestClientBase(httpx.Client):
             page=page,
             page_size=page_size,
         )
+        if sort_field is not None:
+            params["sort_field"] = str(sort_field)
+        if last_active_start_time is not None:
+            params["last_active_start_time"] = str(last_active_start_time)
+        if last_active_end_time is not None:
+            params["last_active_end_time"] = str(last_active_end_time)
         body = SearchTasksRequest()
         if task_ids:
             body.task_ids = task_ids
@@ -2230,7 +2243,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         user_ids: list[str] | None = None,
         annotation_score: int | None = None,
         annotation_type: str | None = None,
-        continuous_eval_run_status: str | None = None,
+        continuous_eval_run_status: str | list[str] | None = None,
         continuous_eval_name: str | None = None,
         include_spans: bool | None = None,
         # Query relevance filters
@@ -3050,6 +3063,52 @@ class GenaiEngineTestClientBase(httpx.Client):
             ),
         )
 
+    def bulk_add_traces_to_dataset(
+        self,
+        dataset_id: str,
+        transform_id: str,
+        trace_ids: list[str],
+    ) -> tuple[int, Any]:
+        """Bulk add traces to a dataset by running a transform against each trace."""
+        request = BulkAddTracesToDatasetRequest(
+            transform_id=transform_id,
+            trace_ids=trace_ids,
+        )
+
+        resp = self.base_client.post(
+            f"/api/v2/datasets/{dataset_id}/bulk-add-traces",
+            json=request.model_dump(mode="json"),
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        if resp.status_code == 200:
+            return resp.status_code, BulkAddTracesToDatasetResponse.model_validate(
+                resp.json(),
+            )
+        return resp.status_code, resp.json() if resp.content else None
+
+    def restore_dataset_version(
+        self,
+        dataset_id: str,
+        version_number: int,
+    ) -> tuple[int, DatasetVersionResponse]:
+        """Reinstate a previous dataset version."""
+        resp = self.base_client.post(
+            f"/api/v2/datasets/{dataset_id}/versions/{version_number}/restore",
+            headers=self.authorized_user_api_key_headers,
+        )
+        log_response(resp)
+        return (
+            resp.status_code,
+            (
+                DatasetVersionResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
+            ),
+        )
+
     def get_dataset_version(
         self,
         dataset_id: str,
@@ -3057,6 +3116,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         page: int = None,
         page_size: int = None,
         search: str = None,
+        sort: str = None,
     ) -> tuple[int, DatasetVersionResponse]:
         """Get a dataset version."""
         path = f"/api/v2/datasets/{dataset_id}/versions/{version_number}"
@@ -3067,6 +3127,8 @@ class GenaiEngineTestClientBase(httpx.Client):
             params["page_size"] = page_size
         if search is not None:
             params["search"] = search
+        if sort is not None:
+            params["sort"] = sort
 
         url = path
         if params:
@@ -3148,6 +3210,106 @@ class GenaiEngineTestClientBase(httpx.Client):
                 if resp.status_code == 200
                 else None
             ),
+        )
+
+    def set_model_provider(
+        self,
+        provider: str,
+        credentials: dict[str, Any],
+        headers: dict | None = None,
+    ) -> int:
+        """Configure (enable) a model provider."""
+        resp = self.base_client.put(
+            f"/api/v1/model_providers/{provider}",
+            json=credentials,
+            headers=headers or self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return resp.status_code
+
+    def delete_model_provider(
+        self,
+        provider: str,
+        headers: dict | None = None,
+    ) -> int:
+        """Disable a model provider, dropping its stored credentials."""
+        resp = self.base_client.delete(
+            f"/api/v1/model_providers/{provider}",
+            headers=headers or self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return resp.status_code
+
+    def get_model_provider_available_models(
+        self,
+        provider: str,
+        headers: dict | None = None,
+    ) -> tuple[int, ModelProviderModelList]:
+        """List the models a provider exposes, after whitelist filtering."""
+        resp = self.base_client.get(
+            f"/api/v1/model_providers/{provider}/available_models",
+            headers=headers or self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                ModelProviderModelList.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
+            ),
+        )
+
+    def get_model_provider_whitelist(
+        self,
+        provider: str,
+        headers: dict | None = None,
+    ) -> tuple[int, ModelProviderWhitelist]:
+        """Read the curated model list plus the provider's full catalog."""
+        resp = self.base_client.get(
+            f"/api/v1/model_providers/{provider}/model_whitelist",
+            headers=headers or self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                ModelProviderWhitelist.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
+            ),
+        )
+
+    def set_model_provider_whitelist(
+        self,
+        provider: str,
+        models: list[str] | None,
+        headers: dict | None = None,
+    ) -> tuple[int, dict]:
+        """Restrict which models the provider exposes. `None` clears the list.
+
+        Returns the body too, since the failure modes (unknown model, empty list)
+        are asserted on the error detail.
+        """
+        resp = self.base_client.put(
+            f"/api/v1/model_providers/{provider}/model_whitelist",
+            json={"models": models},
+            headers=headers or self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json() if resp.status_code != 204 else {},
         )
 
     def create_rag_provider(

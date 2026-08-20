@@ -1,44 +1,20 @@
-# CLAUDE.md
-
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+# Arthur Observability SDK
 
 ## Commands
 
+Skills cover the common flows: `generate-client` (regenerate the gitignored API client — required before tests on a fresh clone), `test-unit`, `test-integration`, `update-docs`.
+
 ```bash
-# Generate the API client first (requires Node.js + Java; python/src/arthur_genai_client/ is gitignored)
-./scripts/generate_openapi_client.sh generate python
-
-# Install (runs uv sync, which picks up the generated client)
-./scripts/generate_openapi_client.sh install python
-
-# Test (run from arthur-observability-sdk/python/)
-cd python
-uv run pytest tests -v          # all tests (includes install/wheel smoke tests)
-uv run pytest tests/test_client.py::test_arthur_requires_task_or_service_name  # single test
-uv run pytest -k "telemetry"    # match expression
-
-# Lint (all at once, run from arthur-observability-sdk/)
-./scripts/lint.sh
-
-# Individually (run from arthur-observability-sdk/python/)
-cd python
-uv run black src tests
-uv run isort src tests --profile black
-uv run autoflake --remove-all-unused-imports --in-place --recursive src tests
-uv run mypy src/arthur_observability_sdk
-
-# Build wheel (run from arthur-observability-sdk/)
-./scripts/build_sdk_wheel.sh
-
-# Regenerate arthur_genai_client from GenAI Engine OpenAPI spec
-./scripts/generate_openapi_client.sh generate python
+./scripts/lint.sh               # black + isort + autoflake + mypy (from arthur-observability-sdk/)
+./scripts/build_sdk_wheel.sh    # build wheel (from arthur-observability-sdk/)
+cd python && uv run pytest tests -v   # all tests, incl. install/wheel smoke tests
 ```
 
 ## Architecture
 
 The SDK has three layers:
 
-**`Arthur`** (`arthur.py`) — the user-facing entrypoint. Owns the OTel `TracerProvider`, the API client, and the 32 `instrument_*` methods. At least one of `task_id`, `task_name`, or `service_name` must be provided.
+**`Arthur`** (`arthur.py`) — the user-facing entrypoint. Owns the OTel `TracerProvider`, the API client, and the 40 `instrument_*` methods. At least one of `task_id`, `task_name`, or `service_name` must be provided.
 
 **`setup_telemetry`** (`telemetry.py`) — creates a `TracerProvider` with a `BatchSpanProcessor` backed by an OTLP HTTP exporter. Passes `Authorization: Bearer {api_key}` in the exporter headers. Called by `Arthur.__init__` when `enable_telemetry=True`. Registers the provider globally via `trace.set_tracer_provider()`.
 
@@ -102,7 +78,7 @@ Use `*_with_http_info()` + `raw_data` whenever the response includes prompts, me
 2. **`python/pyproject.toml`** — two additions:
    - In `[project.optional-dependencies]`: `my-framework = ["openinference-instrumentation-my-framework"]`
    - In the `all` extra list: `"openinference-instrumentation-my-framework"`
-3. **`README.md`** — add a row to the "Supported instrumentors" table.
+3. **`python/README.md`** — add a row to the "Supported instrumentors" table.
 
 Verify the correct module path and class name from the package's PyPI page before adding.
 

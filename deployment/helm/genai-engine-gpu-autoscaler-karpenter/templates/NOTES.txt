@@ -1,0 +1,35 @@
+Arthur GenAI Engine GPU Autoscaler installed in namespace "{{ .Release.Namespace }}".
+
+HPA:            {{ include "gpu-autoscaler.fullname" . }}
+Scales:         Deployment/{{ include "gpu-autoscaler.targetDeploymentName" . }}  ({{ .Values.hpa.minReplicas }}-{{ .Values.hpa.maxReplicas }} replicas)
+GPU util target: {{ .Values.hpa.gpu.targetGPUUtilizationPercentage }}%
+
+NEXT STEPS
+==========
+
+1. Hand replica ownership to this add-on, and request the GPU so DCGM can attribute
+   metrics to pods. In the genai-engine release values set:
+     arthurGenaiEngineHPA:
+       enabled: false
+       externallyManaged: true
+     genaiEngineContainerGPULimit: "1"
+   then upgrade it:
+     helm upgrade <genai-release> <genai-chart> -n {{ .Release.Namespace }} -f <values> ...
+
+2. Confirm the GPU metric reaches the custom-metrics API (should return values, not an error):
+     kubectl get --raw "/apis/custom.metrics.k8s.io/v1beta1/namespaces/{{ .Release.Namespace }}/pods/*/DCGM_FI_DEV_GPU_UTIL"
+
+   An empty list here usually means the metrics carry no pod identity. That needs
+   genaiEngineContainerGPULimit: "1" on the genai-engine release (see README).
+
+3. Confirm the HPA sees real values (the TARGETS column must not show <unknown>):
+     kubectl get hpa {{ include "gpu-autoscaler.fullname" . }} -n {{ .Release.Namespace }}
+
+4. Watch pods scale under load and Karpenter provision GPU nodes:
+     kubectl get hpa,pods -n {{ .Release.Namespace }} -w
+     kubectl get nodes -l capability=gpu
+{{- if not (index .Values "prometheus-adapter" "enabled") }}
+
+NOTE: the bundled prometheus-adapter is DISABLED. Ensure your existing adapter
+exposes the DCGM_FI_DEV_GPU_UTIL pod metric (see README).
+{{- end }}

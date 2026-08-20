@@ -16,16 +16,23 @@ class Config:
     settings = settings
 
     @classmethod
-    def get_bool(cls, key: str, default: bool = False) -> bool:
+    def get_bool(
+        cls,
+        key: str,
+        default: bool = False,
+        fallback_keys: list[str] | None = None,
+    ) -> bool:
         settings_dict = cls.settings.as_dict()
-        value = settings_dict.get(key)
-        if isinstance(value, bool):
-            return value
-        if value is None:
-            return default
-        if isinstance(value, str):
-            return value.lower() in ["true", "1", "yes"]
-        raise ValueError(f"Invalid value for {key}: {value}")
+        for k in [key, *(fallback_keys or [])]:
+            value = settings_dict.get(k)
+            if value is None:
+                continue
+            if isinstance(value, bool):
+                return value
+            if isinstance(value, str):
+                return value.lower() in ["true", "1", "yes"]
+            raise ValueError(f"Invalid value for {k}: {value}")
+        return default
 
     @staticmethod
     def segmentation_col_count_limit() -> int:

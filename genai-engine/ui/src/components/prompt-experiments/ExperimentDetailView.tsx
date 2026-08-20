@@ -22,7 +22,7 @@ import {
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import React, { useEffect, useState } from "react";
-import { useParams, useNavigate, Link as RouterLink } from "react-router-dom";
+import { useParams, useNavigate, Link as RouterLink } from "react-router";
 
 import { CreateExperimentModal } from "./create-experiment-modal";
 import { ExperimentResultsTable } from "./ExperimentResultsTable";

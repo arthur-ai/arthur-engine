@@ -2,6 +2,154 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 08/07/2026
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}/model_whitelist  endpoint added
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}/model_whitelist  endpoint added
+# 08/11/2026
+- **BREAKING CHANGE** for **URL**: /api/v1/traces  removed the enum value 'error' from the 'query' request parameter 'continuous_eval_run_status'
+- **BREAKING CHANGE** for **URL**: /api/v1/traces  removed the enum value 'failed' from the 'query' request parameter 'continuous_eval_run_status'
+- **BREAKING CHANGE** for **URL**: /api/v1/traces  removed the enum value 'passed' from the 'query' request parameter 'continuous_eval_run_status'
+- **BREAKING CHANGE** for **URL**: /api/v1/traces  removed the enum value 'pending' from the 'query' request parameter 'continuous_eval_run_status'
+- **BREAKING CHANGE** for **URL**: /api/v1/traces  removed the enum value 'running' from the 'query' request parameter 'continuous_eval_run_status'
+- **BREAKING CHANGE** for **URL**: /api/v1/traces  removed the enum value 'skipped' from the 'query' request parameter 'continuous_eval_run_status'
+- **BREAKING CHANGE** for **URL**: /api/v1/traces  'query' request parameter 'continuous_eval_run_status' list-of-types was narrowed by removing types 'string'
+- **BREAKING CHANGE** for **URL**: /api/v1/traces/spans  removed the enum value 'error' from the 'query' request parameter 'continuous_eval_run_status'
+- **BREAKING CHANGE** for **URL**: /api/v1/traces/spans  removed the enum value 'failed' from the 'query' request parameter 'continuous_eval_run_status'
+- **BREAKING CHANGE** for **URL**: /api/v1/traces/spans  removed the enum value 'passed' from the 'query' request parameter 'continuous_eval_run_status'
+- **BREAKING CHANGE** for **URL**: /api/v1/traces/spans  removed the enum value 'pending' from the 'query' request parameter 'continuous_eval_run_status'
+- **BREAKING CHANGE** for **URL**: /api/v1/traces/spans  removed the enum value 'running' from the 'query' request parameter 'continuous_eval_run_status'
+- **BREAKING CHANGE** for **URL**: /api/v1/traces/spans  removed the enum value 'skipped' from the 'query' request parameter 'continuous_eval_run_status'
+- **BREAKING CHANGE** for **URL**: /api/v1/traces/spans  'query' request parameter 'continuous_eval_run_status' list-of-types was narrowed by removing types 'string'
+- **BREAKING CHANGE** for **URL**: /v1/traces/metrics/  removed the enum value 'error' from the 'query' request parameter 'continuous_eval_run_status'
+- **BREAKING CHANGE** for **URL**: /v1/traces/metrics/  removed the enum value 'failed' from the 'query' request parameter 'continuous_eval_run_status'
+- **BREAKING CHANGE** for **URL**: /v1/traces/metrics/  removed the enum value 'passed' from the 'query' request parameter 'continuous_eval_run_status'
+- **BREAKING CHANGE** for **URL**: /v1/traces/metrics/  removed the enum value 'pending' from the 'query' request parameter 'continuous_eval_run_status'
+- **BREAKING CHANGE** for **URL**: /v1/traces/metrics/  removed the enum value 'running' from the 'query' request parameter 'continuous_eval_run_status'
+- **BREAKING CHANGE** for **URL**: /v1/traces/metrics/  removed the enum value 'skipped' from the 'query' request parameter 'continuous_eval_run_status'
+- **BREAKING CHANGE** for **URL**: /v1/traces/metrics/  'query' request parameter 'continuous_eval_run_status' list-of-types was narrowed by removing types 'string'
+- **BREAKING CHANGE** for **URL**: /v1/traces/query  removed the enum value 'error' from the 'query' request parameter 'continuous_eval_run_status'
+- **BREAKING CHANGE** for **URL**: /v1/traces/query  removed the enum value 'failed' from the 'query' request parameter 'continuous_eval_run_status'
+- **BREAKING CHANGE** for **URL**: /v1/traces/query  removed the enum value 'passed' from the 'query' request parameter 'continuous_eval_run_status'
+- **BREAKING CHANGE** for **URL**: /v1/traces/query  removed the enum value 'pending' from the 'query' request parameter 'continuous_eval_run_status'
+- **BREAKING CHANGE** for **URL**: /v1/traces/query  removed the enum value 'running' from the 'query' request parameter 'continuous_eval_run_status'
+- **BREAKING CHANGE** for **URL**: /v1/traces/query  removed the enum value 'skipped' from the 'query' request parameter 'continuous_eval_run_status'
+- **BREAKING CHANGE** for **URL**: /v1/traces/query  'query' request parameter 'continuous_eval_run_status' list-of-types was narrowed by removing types 'string'
+- **CHANGE** for **URL**: /api/v1/traces  for the 'query' request parameter 'continuous_eval_run_status', the type/format was generalized from 'string'/'' to ''/''
+- **CHANGE** for **URL**: /api/v1/traces/spans  for the 'query' request parameter 'continuous_eval_run_status', the type/format was generalized from 'string'/'' to ''/''
+- **CHANGE** for **URL**: /v1/traces/metrics/  for the 'query' request parameter 'continuous_eval_run_status', the type/format was generalized from 'string'/'' to ''/''
+- **CHANGE** for **URL**: /v1/traces/query  for the 'query' request parameter 'continuous_eval_run_status', the type/format was generalized from 'string'/'' to ''/''
+
+# 07/31/2026
+- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed '#/components/schemas/LLMResponseFormat-Input' from the 'config/anyOf[subschema #1: LLMPromptRequestConfigSettings]/response_format' request property 'anyOf' list
+- **BREAKING CHANGE** for **URL**: /api/v1/rag_experiments/{experiment_id}  added '#/components/schemas/SavedRagConfig' to the 'rag_configs/items/' response property 'oneOf' list for the response status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/rag_experiments/{experiment_id}/notebook  added '#/components/schemas/SavedRagConfig' to the 'rag_configs/items/' response property 'oneOf' list for the response status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}  added '#/components/schemas/SavedRagConfig' to the 'experiments/items/rag_configs/items/' response property 'oneOf' list for the response status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}  added '#/components/schemas/SavedRagConfig' to the 'state/rag_configs/anyOf[subschema #1]/items/' response property 'oneOf' list for the response status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}  added '#/components/schemas/SavedRagConfig' to the 'experiments/items/rag_configs/items/' response property 'oneOf' list for the response status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}  added '#/components/schemas/SavedRagConfig' to the 'state/rag_configs/anyOf[subschema #1]/items/' response property 'oneOf' list for the response status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}/history  added '#/components/schemas/SavedRagConfig' to the 'data/items/rag_configs/items/' response property 'oneOf' list for the response status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}/state  added '#/components/schemas/SavedRagConfig' to the 'rag_configs/anyOf[subschema #1]/items/' response property 'oneOf' list for the response status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}/state  removed '#/components/schemas/SavedRagConfig-Input' from the 'state/rag_configs/anyOf[subschema #1]/items/' request property 'oneOf' list
+- **BREAKING CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}/state  added '#/components/schemas/SavedRagConfig' to the 'experiments/items/rag_configs/items/' response property 'oneOf' list for the response status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}/state  added '#/components/schemas/SavedRagConfig' to the 'state/rag_configs/anyOf[subschema #1]/items/' response property 'oneOf' list for the response status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/notebooks  removed '#/components/schemas/NotebookState-Input' from the 'state' request property 'anyOf' list
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed '#/components/schemas/LLMResponseFormat-Input' from the 'config/anyOf[subschema #1: LLMPromptRequestConfigSettings]/response_format' request property 'anyOf' list
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_experiments  added '#/components/schemas/SavedRagConfig' to the 'data/items/rag_configs/items/' response property 'oneOf' list for the response status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_experiments  removed '#/components/schemas/SavedRagConfig-Input' from the 'rag_configs/items/' request property 'oneOf' list
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_experiments  added '#/components/schemas/SavedRagConfig' to the 'rag_configs/items/' response property 'oneOf' list for the response status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_notebooks  removed '#/components/schemas/SavedRagConfig-Input' from the 'state/anyOf[subschema #1: RagNotebookState]/rag_configs/anyOf[subschema #1]/items/' request property 'oneOf' list
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_notebooks  added '#/components/schemas/SavedRagConfig' to the 'experiments/items/rag_configs/items/' response property 'oneOf' list for the response status '201'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_notebooks  added '#/components/schemas/SavedRagConfig' to the 'state/rag_configs/anyOf[subschema #1]/items/' response property 'oneOf' list for the response status '201'
+- **CHANGE** for Component/Schema:  removed the schema 'AgenticEvalRef-Input'
+- **CHANGE** for Component/Schema:  removed the schema 'AgenticEvalRef-Output'
+- **CHANGE** for Component/Schema:  removed the schema 'AgenticEvalVariableMapping-Input'
+- **CHANGE** for Component/Schema:  removed the schema 'AgenticEvalVariableMapping-Output'
+- **CHANGE** for Component/Schema:  removed the schema 'EvalRef-Input'
+- **CHANGE** for Component/Schema:  removed the schema 'EvalRef-Output'
+- **CHANGE** for Component/Schema:  removed the schema 'EvalVariableMapping-Input'
+- **CHANGE** for Component/Schema:  removed the schema 'EvalVariableMapping-Output'
+- **CHANGE** for Component/Schema:  removed the schema 'LLMResponseFormat-Input'
+- **CHANGE** for Component/Schema:  removed the schema 'LLMResponseFormat-Output'
+- **CHANGE** for Component/Schema:  removed the schema 'LLMResponseSchema-Input'
+- **CHANGE** for Component/Schema:  removed the schema 'LLMResponseSchema-Output'
+- **CHANGE** for Component/Schema:  removed the schema 'LLMTool-Input'
+- **CHANGE** for Component/Schema:  removed the schema 'LLMTool-Output'
+- **CHANGE** for Component/Schema:  removed the schema 'NotebookState-Input'
+- **CHANGE** for Component/Schema:  removed the schema 'NotebookState-Output'
+- **CHANGE** for Component/Schema:  removed the schema 'OpenAIMessage-Input'
+- **CHANGE** for Component/Schema:  removed the schema 'OpenAIMessage-Output'
+- **CHANGE** for Component/Schema:  removed the schema 'PromptVariableMapping-Input'
+- **CHANGE** for Component/Schema:  removed the schema 'PromptVariableMapping-Output'
+- **CHANGE** for Component/Schema:  removed the schema 'SavedRagConfig-Input'
+- **CHANGE** for Component/Schema:  removed the schema 'SavedRagConfig-Output'
+- **CHANGE** for Component/Schema:  removed the schema 'TemplateVariableMapping-Input'
+- **CHANGE** for Component/Schema:  removed the schema 'TemplateVariableMapping-Output'
+- **CHANGE** for Component/Schema:  removed the schema 'ToolFunction-Input'
+- **CHANGE** for Component/Schema:  removed the schema 'ToolFunction-Output'
+- **CHANGE** for **URL**: /api/v1/completions  added '#/components/schemas/LLMResponseFormat' to the 'config/anyOf[subschema #1: LLMPromptRequestConfigSettings]/response_format' request property 'anyOf' list
+- **CHANGE** for **URL**: /api/v1/rag_experiments/{experiment_id}  mapped value for discriminator key 'saved' changed from '#/components/schemas/SavedRagConfig-Output' to '#/components/schemas/SavedRagConfig' for 'rag_configs/items/' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/rag_experiments/{experiment_id}  removed '#/components/schemas/SavedRagConfig-Output' from the 'rag_configs/items/' response property 'oneOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/rag_experiments/{experiment_id}/notebook  mapped value for discriminator key 'saved' changed from '#/components/schemas/SavedRagConfig-Output' to '#/components/schemas/SavedRagConfig' for 'rag_configs/items/' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/rag_experiments/{experiment_id}/notebook  removed '#/components/schemas/SavedRagConfig-Output' from the 'rag_configs/items/' response property 'oneOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}  mapped value for discriminator key 'saved' changed from '#/components/schemas/SavedRagConfig-Output' to '#/components/schemas/SavedRagConfig' for 'experiments/items/rag_configs/items/' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}  mapped value for discriminator key 'saved' changed from '#/components/schemas/SavedRagConfig-Output' to '#/components/schemas/SavedRagConfig' for 'state/rag_configs/anyOf[subschema #1]/items/' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}  removed '#/components/schemas/SavedRagConfig-Output' from the 'experiments/items/rag_configs/items/' response property 'oneOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}  removed '#/components/schemas/SavedRagConfig-Output' from the 'state/rag_configs/anyOf[subschema #1]/items/' response property 'oneOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}  mapped value for discriminator key 'saved' changed from '#/components/schemas/SavedRagConfig-Output' to '#/components/schemas/SavedRagConfig' for 'experiments/items/rag_configs/items/' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}  mapped value for discriminator key 'saved' changed from '#/components/schemas/SavedRagConfig-Output' to '#/components/schemas/SavedRagConfig' for 'state/rag_configs/anyOf[subschema #1]/items/' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}  removed '#/components/schemas/SavedRagConfig-Output' from the 'experiments/items/rag_configs/items/' response property 'oneOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}  removed '#/components/schemas/SavedRagConfig-Output' from the 'state/rag_configs/anyOf[subschema #1]/items/' response property 'oneOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}/history  mapped value for discriminator key 'saved' changed from '#/components/schemas/SavedRagConfig-Output' to '#/components/schemas/SavedRagConfig' for 'data/items/rag_configs/items/' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}/history  removed '#/components/schemas/SavedRagConfig-Output' from the 'data/items/rag_configs/items/' response property 'oneOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}/state  mapped value for discriminator key 'saved' changed from '#/components/schemas/SavedRagConfig-Output' to '#/components/schemas/SavedRagConfig' for 'rag_configs/anyOf[subschema #1]/items/' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}/state  removed '#/components/schemas/SavedRagConfig-Output' from the 'rag_configs/anyOf[subschema #1]/items/' response property 'oneOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}/state  mapped value for discriminator key 'saved' changed from '#/components/schemas/SavedRagConfig-Input' to '#/components/schemas/SavedRagConfig' for 'state/rag_configs/anyOf[subschema #1]/items/' request property
+- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}/state  added '#/components/schemas/SavedRagConfig' to the 'state/rag_configs/anyOf[subschema #1]/items/' request property 'oneOf' list
+- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}/state  mapped value for discriminator key 'saved' changed from '#/components/schemas/SavedRagConfig-Output' to '#/components/schemas/SavedRagConfig' for 'experiments/items/rag_configs/items/' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}/state  mapped value for discriminator key 'saved' changed from '#/components/schemas/SavedRagConfig-Output' to '#/components/schemas/SavedRagConfig' for 'state/rag_configs/anyOf[subschema #1]/items/' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}/state  removed '#/components/schemas/SavedRagConfig-Output' from the 'experiments/items/rag_configs/items/' response property 'oneOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}/state  removed '#/components/schemas/SavedRagConfig-Output' from the 'state/rag_configs/anyOf[subschema #1]/items/' response property 'oneOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/notebooks  added '#/components/schemas/NotebookState' to the 'state' request property 'anyOf' list
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  added '#/components/schemas/LLMResponseFormat' to the 'config/anyOf[subschema #1: LLMPromptRequestConfigSettings]/response_format' request property 'anyOf' list
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  added '#/components/schemas/LLMResponseFormat' to the 'config/anyOf[subschema #1: LLMConfigSettings]/response_format' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed '#/components/schemas/LLMResponseFormat-Output' from the 'config/anyOf[subschema #1: LLMConfigSettings]/response_format' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/tags/{tag}  added '#/components/schemas/LLMResponseFormat' to the 'config/anyOf[subschema #1: LLMConfigSettings]/response_format' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/tags/{tag}  removed '#/components/schemas/LLMResponseFormat-Output' from the 'config/anyOf[subschema #1: LLMConfigSettings]/response_format' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  added '#/components/schemas/LLMResponseFormat' to the 'config/anyOf[subschema #1: LLMConfigSettings]/response_format' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  removed '#/components/schemas/LLMResponseFormat-Output' from the 'config/anyOf[subschema #1: LLMConfigSettings]/response_format' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  added '#/components/schemas/LLMResponseFormat' to the 'config/anyOf[subschema #1: LLMConfigSettings]/response_format' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  removed '#/components/schemas/LLMResponseFormat-Output' from the 'config/anyOf[subschema #1: LLMConfigSettings]/response_format' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/tags  added '#/components/schemas/LLMResponseFormat' to the 'config/anyOf[subschema #1: LLMConfigSettings]/response_format' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/tags  removed '#/components/schemas/LLMResponseFormat-Output' from the 'config/anyOf[subschema #1: LLMConfigSettings]/response_format' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_experiments  mapped value for discriminator key 'saved' changed from '#/components/schemas/SavedRagConfig-Output' to '#/components/schemas/SavedRagConfig' for 'data/items/rag_configs/items/' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_experiments  removed '#/components/schemas/SavedRagConfig-Output' from the 'data/items/rag_configs/items/' response property 'oneOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_experiments  mapped value for discriminator key 'saved' changed from '#/components/schemas/SavedRagConfig-Input' to '#/components/schemas/SavedRagConfig' for 'rag_configs/items/' request property
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_experiments  added '#/components/schemas/SavedRagConfig' to the 'rag_configs/items/' request property 'oneOf' list
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_experiments  mapped value for discriminator key 'saved' changed from '#/components/schemas/SavedRagConfig-Output' to '#/components/schemas/SavedRagConfig' for 'rag_configs/items/' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_experiments  removed '#/components/schemas/SavedRagConfig-Output' from the 'rag_configs/items/' response property 'oneOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_notebooks  mapped value for discriminator key 'saved' changed from '#/components/schemas/SavedRagConfig-Input' to '#/components/schemas/SavedRagConfig' for 'state/anyOf[subschema #1: RagNotebookState]/rag_configs/anyOf[subschema #1]/items/' request property
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_notebooks  added '#/components/schemas/SavedRagConfig' to the 'state/anyOf[subschema #1: RagNotebookState]/rag_configs/anyOf[subschema #1]/items/' request property 'oneOf' list
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_notebooks  mapped value for discriminator key 'saved' changed from '#/components/schemas/SavedRagConfig-Output' to '#/components/schemas/SavedRagConfig' for 'experiments/items/rag_configs/items/' response property for the response status '201'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_notebooks  mapped value for discriminator key 'saved' changed from '#/components/schemas/SavedRagConfig-Output' to '#/components/schemas/SavedRagConfig' for 'state/rag_configs/anyOf[subschema #1]/items/' response property for the response status '201'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_notebooks  removed '#/components/schemas/SavedRagConfig-Output' from the 'experiments/items/rag_configs/items/' response property 'oneOf' list for the response status '201'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_notebooks  removed '#/components/schemas/SavedRagConfig-Output' from the 'state/rag_configs/anyOf[subschema #1]/items/' response property 'oneOf' list for the response status '201'
+
+# 07/24/2026
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions/{version_number}/restore  endpoint added
+
+# 07/23/2026
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions  added the new optional request property 'rows_to_add/items/trace_id'
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions  added the optional property 'rows/items/trace_id' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions/{version_number}  added the optional property 'rows/items/trace_id' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions/{version_number}/generate-synthetic/message  added the new optional request property 'current_rows/items/trace_id'
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions/{version_number}/rows/{row_id}  added the optional property 'trace_id' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/search  added the new optional `query` request parameter `sort_field`
+- **CHANGE** for **URL**: /api/v2/tasks/search  added the new optional `query` request parameter `last_active_start_time`
+- **CHANGE** for **URL**: /api/v2/tasks/search  added the new optional `query` request parameter `last_active_end_time`
+
+# 07/21/2026
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/bulk-add-traces  endpoint added
+
 # 06/24/2026
 - **CHANGE** for **URL**: /api/v1/traces/sessions  added the new optional `query` request parameter `session_ids`
 - **CHANGE** for **URL**: /api/v1/traces/sessions  added the new optional `query` request parameter `trace_ids`

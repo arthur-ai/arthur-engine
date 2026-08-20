@@ -63,6 +63,18 @@ def get_models_dir() -> str:
     return models_dir if models_dir is not None else DEFAULT_MODELS_DIR
 
 
+def models_loaded_offline() -> bool:
+    """Whether models are pre-populated on a mounted volume and downloads should be skipped.
+
+    Set by the Helm chart when the model PVC is mounted (modelPVC.enabled=true exports
+    HF_HUB_OFFLINE=1). In this mode the binaries already exist under MODEL_STORAGE_PATH, so the
+    startup download step is a no-op — skipping it avoids needless offline HuggingFace lookups and
+    write attempts into the (potentially read-only) shared volume.
+    """
+    offline = get_env_var(constants.HF_HUB_OFFLINE_ENV_VAR, default="0")
+    return offline.strip().lower() in ("1", "true", "yes", "on")
+
+
 def get_local_model_path(model_name: str) -> str:
     """Get the local filesystem path for a model.
 
@@ -84,14 +96,14 @@ def get_local_model_path(model_name: str) -> str:
     return model_name
 
 
-CLAIM_CLASSIFIER_EMBEDDING_MODEL = None
+CLAIM_CLASSIFIER_EMBEDDING_MODEL: SentenceTransformer | None = None
 PROMPT_INJECTION_MODEL: PreTrainedModel | None = None
 PROMPT_INJECTION_TOKENIZER: PreTrainedTokenizerBase | None = None
 PROMPT_INJECTION_CLASSIFIER: TextClassificationPipeline | None = None
 TOXICITY_MODEL: AutoModelForSequenceClassification | None = None
 TOXICITY_TOKENIZER: PreTrainedTokenizerBase | None = None
 RELEVANCE_MODEL: AutoModelForSequenceClassification | None = None
-RELEVANCE_TOKENIZER: AutoTokenizer | None = None
+RELEVANCE_TOKENIZER: PreTrainedTokenizerBase | None = None
 TOXICITY_CLASSIFIER: TextClassificationPipeline | None = None
 PROFANITY_CLASSIFIER = None
 BERT_SCORER: BERTScorer | None = None
@@ -265,6 +277,12 @@ def download_models(num_of_process: int) -> None:
             "Skipping model downloads - GENAI_ENGINE_SKIP_MODEL_LOADING is True",
         )
         return
+    if models_loaded_offline():
+        logger.info(
+            f"Offline mode (HF_HUB_OFFLINE) - loading pre-populated models from "
+            f"{get_models_dir()}, skipping downloads",
+        )
+        return
     models_to_download = get_models_to_download()
     tasks = [
         (model_name, filename)
@@ -330,7 +348,7 @@ def get_prompt_injection_tokenizer() -> PreTrainedTokenizerBase | None:
         model_path = get_local_model_path(
             "ProtectAI/deberta-v3-base-prompt-injection-v2",
         )
-        PROMPT_INJECTION_TOKENIZER = AutoTokenizer.from_pretrained(  # type: ignore[no-untyped-call]
+        PROMPT_INJECTION_TOKENIZER = AutoTokenizer.from_pretrained(
             model_path,
             weights_only=False,
         )
@@ -391,7 +409,7 @@ def get_toxicity_tokenizer() -> PreTrainedTokenizerBase | None:
     global TOXICITY_TOKENIZER
     if not TOXICITY_TOKENIZER:
         model_path = get_local_model_path("s-nlp/roberta_toxicity_classifier")
-        TOXICITY_TOKENIZER = AutoTokenizer.from_pretrained(  # type: ignore[no-untyped-call]
+        TOXICITY_TOKENIZER = AutoTokenizer.from_pretrained(
             model_path,
             weights_only=False,
             model_max_length=None,
@@ -475,7 +493,7 @@ def get_relevance_model() -> AutoModelForSequenceClassification | None:
 
 
 @log_model_loading("relevance tokenizer", "RELEVANCE_TOKENIZER")
-def get_relevance_tokenizer() -> AutoTokenizer | None:
+def get_relevance_tokenizer() -> PreTrainedTokenizerBase | None:
     if skip_model_loading():
         logger.info(
             "Skipping relevance tokenizer - GENAI_ENGINE_SKIP_MODEL_LOADING is True",
@@ -484,7 +502,7 @@ def get_relevance_tokenizer() -> AutoTokenizer | None:
     global RELEVANCE_TOKENIZER
     if not RELEVANCE_TOKENIZER:
         model_path = get_local_model_path("microsoft/deberta-v2-xlarge-mnli")
-        RELEVANCE_TOKENIZER = AutoTokenizer.from_pretrained(  # type: ignore[no-untyped-call]
+        RELEVANCE_TOKENIZER = AutoTokenizer.from_pretrained(
             model_path,
             weights_only=False,
         )
@@ -569,7 +587,7 @@ def get_gliner_tokenizer() -> PreTrainedTokenizerBase | None:
         logger.info(
             f"Using local tokenizer from: {tokenizer_model_path} instead of {config.model_name}",
         )
-        PII_GLINER_TOKENIZER = AutoTokenizer.from_pretrained(  # type: ignore[no-untyped-call]
+        PII_GLINER_TOKENIZER = AutoTokenizer.from_pretrained(
             tokenizer_model_path,
         )
     return PII_GLINER_TOKENIZER
@@ -591,11 +609,31 @@ def get_gliner_model() -> GLiNER | None:
         local_files_only = (
             os.path.exists(model_path) and model_path != "urchade/gliner_multi_pii-v1"
         )
+        # gliner>=0.2.23 dropped the `config`/`tokenizer` kwargs from
+        # from_pretrained and now loads the tokenizer itself - from the model
+        # directory if it contains tokenizer files, otherwise from the base
+        # encoder named in gliner_config.json ("model_name"). The published
+        # gliner repo ships only weights + config (no tokenizer), so for a local
+        # model directory we materialize the base-encoder tokenizer into it;
+        # gliner then loads it offline without reaching the Hub. This is
+        # best-effort: airgapped images bake the tokenizer location into
+        # gliner_config.json via the model-upload job, and their model mounts may
+        # be read-only.
+        if local_files_only and not os.path.exists(
+            os.path.join(model_path, "tokenizer_config.json"),
+        ):
+            tokenizer = get_gliner_tokenizer()
+            if tokenizer is not None:
+                try:
+                    tokenizer.save_pretrained(model_path)
+                except OSError as e:
+                    logger.warning(
+                        f"Could not cache GLiNER tokenizer into {model_path}: {e}. "
+                        "Falling back to the base encoder named in gliner_config.json.",
+                    )
         PII_GLINER_MODEL = GLiNER.from_pretrained(
             model_path,
-            config=GLiNERConfig.from_json_file(GLINER_CONFIG_PATH),
-            tokenizer=get_gliner_tokenizer(),
-            load_tokenizer=False,
+            load_tokenizer=True,
             local_files_only=local_files_only,
         ).to(get_device())
         PII_GLINER_MODEL.eval()

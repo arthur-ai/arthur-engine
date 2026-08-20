@@ -86,6 +86,13 @@ refresh_thread = threading.Thread(target=refresh_models_periodically, daemon=Tru
 refresh_thread.start()
 
 
+def get_static_catalog(provider: ModelProvider) -> List[str] | None:
+    """The models LiteLLM knows for a provider, needing no credentials. None when the
+    provider has no static catalog and must be queried (e.g. vLLM).
+    """
+    return SUPPORTED_TEXT_MODELS.get(provider)
+
+
 class LLMClient:
     def __init__(
         self,

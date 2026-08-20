@@ -56,6 +56,24 @@ spec:
           ports:
             - containerPort: 3030
             - containerPort: {{ .Values.postgresBYOPort }}
+          {{- if .Values.probes.enabled }}
+          # Startup probe gives the app time to load models on first boot (slow when loading from
+          # an EFS-backed PVC) before readiness begins gating traffic. Readiness holds the load
+          # balancer off until gunicorn workers are actually serving, avoiding 502s during startup.
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 3030
+            periodSeconds: {{ .Values.probes.startupPeriodSeconds }}
+            failureThreshold: {{ .Values.probes.startupFailureThreshold }}
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3030
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          {{- end }}
           resources:
             requests:
               memory: "{{ .Values.genaiEngineContainerMemoryRequests }}"
@@ -63,6 +81,9 @@ spec:
             limits:
               memory: "{{ .Values.genaiEngineContainerMemoryLimits }}"
               cpu: "{{ .Values.genaiEngineContainerCPULimits }}"
+              {{- if .Values.genaiEngineContainerGPULimit }}
+              nvidia.com/gpu: {{ .Values.genaiEngineContainerGPULimit | quote }}
+              {{- end }}
           env:
             - name: POSTGRES_URL
               value: "{{ .Values.postgresBYOEndpoint }}"
@@ -160,6 +181,12 @@ spec:
             - name: MODEL_REPOSITORY_URL
               value: {{ .Values.modelRepositoryURL | quote }}
             {{- end }}
+            {{- if .Values.modelPVC.enabled }}
+            - name: MODEL_STORAGE_PATH
+              value: {{ .Values.modelPVC.mountPath | quote }}
+            - name: HF_HUB_OFFLINE
+              value: "1"
+            {{- end }}
             {{- if .Values.gcpDiscoveryConfig.isEnabled }}
             - name: GOOGLE_CLOUD_PROJECT
               value: {{ .Values.gcpDiscoveryConfig.googleCloudProject | quote }}
@@ -188,6 +215,10 @@ spec:
               value: "true"
             - name: AUDIT_LOG_OVERRIDE_PATH
               value: {{ .Values.arthurGenaiEngineDeployment.auditLog.mountPath | quote }}
+            - name: AUDIT_LOG_RETENTION_DAYS
+              value: {{ .Values.arthurGenaiEngineDeployment.auditLog.retentionDays | default 365 | quote }}
+            - name: AUDIT_LOG_INCLUDE_AI_ACTIVITY
+              value: {{ .Values.arthurGenaiEngineDeployment.auditLog.includeAiActivity | default false | quote }}
             {{- end }}
           volumeMounts:
             {{- if .Values.gcpDiscoveryConfig.isEnabled }}
@@ -198,6 +229,11 @@ spec:
             {{- if .Values.arthurGenaiEngineDeployment.auditLog.enabled }}
             - name: audit-logs
               mountPath: {{ .Values.arthurGenaiEngineDeployment.auditLog.mountPath }}
+            {{- end }}
+            {{- if .Values.modelPVC.enabled }}
+            - name: models
+              mountPath: {{ .Values.modelPVC.mountPath | quote }}
+              readOnly: {{ .Values.modelPVC.readOnly }}
             {{- end }}
       volumes:
         {{- if .Values.gcpDiscoveryConfig.isEnabled }}
@@ -210,6 +246,11 @@ spec:
         - name: audit-logs
           persistentVolumeClaim:
             claimName: arthur-genai-engine-audit-logs{{ if .Values.arthurResourceNameSuffix }}-{{ .Values.arthurResourceNameSuffix }}{{ end }}
+        {{- end }}
+        {{- if .Values.modelPVC.enabled }}
+        - name: models
+          persistentVolumeClaim:
+            claimName: {{ .Values.modelPVC.claimName }}
         {{- end }}
       {{- with .Values.arthurGenaiEngineDeployment.genaiEnginePodAffinity }}
       affinity:

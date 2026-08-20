@@ -1,7 +1,7 @@
 import ArrowBackOutlined from "@mui/icons-material/ArrowBackOutlined";
 import { Box, Button } from "@mui/material";
 import React from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 
 import { ArthurLogo } from "../common/ArthurLogo";
 

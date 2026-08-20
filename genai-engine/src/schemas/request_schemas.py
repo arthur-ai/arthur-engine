@@ -154,6 +154,16 @@ class NewDatasetVersionRequest(BaseModel):
     )
 
 
+class BulkAddTracesToDatasetRequest(BaseModel):
+    transform_id: UUID = Field(
+        description="ID of the transform to run against each trace to extract row values.",
+    )
+    trace_ids: list[str] = Field(
+        description="List of trace IDs to add to the dataset. Limited to the trace "
+        "table's current page fetch-size (see MAX_BULK_ADD_TRACES).",
+    )
+
+
 class NewTraceTransformRequest(BaseModel):
     name: str = Field(
         description="Name of the transform.",
@@ -240,6 +250,16 @@ class PutModelProviderCredentials(BaseModel):
     credentials_file: Optional[GCPServiceAccountCredentialsRequest] = Field(
         default=None,
         description="Optional GCP service account credentials JSON",
+    )
+
+
+class PutModelProviderWhitelist(BaseModel):
+    models: Optional[List[str]] = Field(
+        default=None,
+        description=(
+            "Models to expose for this provider. Null exposes all models. "
+            "An empty list is rejected — it would hide every model."
+        ),
     )
 
 

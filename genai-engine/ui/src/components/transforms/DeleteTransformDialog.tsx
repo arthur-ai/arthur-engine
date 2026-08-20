@@ -13,7 +13,7 @@ import ListItem from "@mui/material/ListItem";
 import ListItemText from "@mui/material/ListItemText";
 import Typography from "@mui/material/Typography";
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 
 import { useTransformDependents } from "./hooks/useTransformDependents";
 

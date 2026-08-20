@@ -1,4 +1,4 @@
-{{- if .Values.arthurGenaiEngineHPA.enabled }}
+{{- if and .Values.arthurGenaiEngineHPA.enabled (not .Values.arthurGenaiEngineHPA.externallyManaged) }}
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:

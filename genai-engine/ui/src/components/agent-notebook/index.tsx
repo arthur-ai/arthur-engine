@@ -20,7 +20,7 @@ import {
 } from "@mui/material";
 import { MaterialReactTable, useMaterialReactTable } from "material-react-table";
 import { useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router";
 import z from "zod";
 
 import AgentNotebookDetailModal from "./AgentNotebookDetailModal";

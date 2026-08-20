@@ -1,9 +1,8 @@
 import { OpenInferenceSpanKind } from "@arizeai/openinference-semantic-conventions";
-import { MessageRenderer } from "@arthur/shared-components";
+import { DurationCellWithBucket, MessageRenderer } from "@arthur/shared-components";
 import { Box } from "@mui/material";
 import Typography from "@mui/material/Typography";
 
-import { DurationCellWithBucket } from "../components/DurationCell";
 import { isSpanWithLlmAttrs, ToolsTab } from "../components/llm/ToolsTab";
 import { LLMMetricsPanel } from "../components/LLMMetricsPanel";
 import { SpanErrorPanel } from "../components/SpanErrorPanel";
@@ -226,9 +225,8 @@ const spanDetailsStrategy = [
     widgets: [WIDGETS.LATENCY],
   },
   {
-    // PROMPT is in the OpenInference spec but not the installed JS package version.
     // Input shows the original template + variable values; Output shows the rendered result.
-    kind: "PROMPT",
+    kind: OpenInferenceSpanKind.PROMPT,
     panels: [PANELS.INPUT, PANELS.OUTPUT],
     raw: PANELS.RAW_DATA,
     tabs: [PANELS.RAW_DATA],

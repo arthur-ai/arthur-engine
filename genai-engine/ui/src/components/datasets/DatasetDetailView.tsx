@@ -1,19 +1,24 @@
 import { Alert, Box, Button, TablePagination } from "@mui/material";
+import { parseAsString, useQueryState } from "nuqs";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Navigate, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { Navigate, useNavigate, useParams, useSearchParams } from "react-router";
 
 import { ConfirmationModal } from "../common/ConfirmationModal";
 
 import { ConfigureColumnsModal } from "./ConfigureColumnsModal";
 import { DatasetHeader } from "./DatasetHeader";
 import { DatasetLoadingState } from "./DatasetLoadingState";
+import { DatasetRowDrawer } from "./DatasetRowDrawer";
 import { DatasetTable } from "./DatasetTable";
 import { EditRowModal } from "./EditRowModal";
 import { FillColumnModal } from "./FillColumnModal";
 import { ImportDatasetModal } from "./ImportDatasetModal";
 import { SyntheticDataModal } from "./synthetic";
+import { useDeepLinkedRow } from "./useDeepLinkedRow";
 import { VersionDrawer } from "./VersionDrawer";
+import { mergeVersionIntoParams } from "./versionSearchParams";
 
+import { SourceTraceDrawer } from "@/components/traces/components/source-trace/SourceTraceDrawer";
 import { getContentHeight } from "@/constants/layout";
 import {
   DatasetContextProvider,
@@ -21,8 +26,11 @@ import {
   selectEditRowData,
   selectFilteredRows,
   selectHasUnsavedChanges,
+  selectHasUnsavedColumnConfig,
+  selectHasUnsavedWork,
   useDatasetContext,
 } from "@/contexts/dataset";
+import { useNavigationGuard } from "@/contexts/NavigationGuardContext";
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
 import { track } from "@/services/analytics";
@@ -53,15 +61,34 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
   const { task } = useTask();
   const navigate = useNavigate();
   const api = useApi();
+  const { registerBlocker, runGuardedNavigation, isBlocking, confirmNavigation, cancelNavigation } = useNavigationGuard();
   const [searchParams, setSearchParams] = useSearchParams();
+  // Row-detail deep link: `?row=<id>` opens a read-only drawer for that dataset row.
+  // Opens push a history entry so browser Back dismisses the drawer.
+  const [rowId, setRowId] = useQueryState("row", parseAsString.withOptions({ history: "push" }));
   const [isExporting, setIsExporting] = useState(false);
+  // traceId is kept on close so the drawer's exit animation doesn't unmount its content mid-slide
+  const [sourceTrace, setSourceTrace] = useState<{ open: boolean; traceId: string | null }>({ open: false, traceId: null });
+
+  const handleOpenSourceTrace = useCallback((traceId: string) => setSourceTrace({ open: true, traceId }), []);
+  const handleCloseSourceTrace = useCallback(() => setSourceTrace((s) => ({ ...s, open: false })), []);
+
+  const taskId = task?.id;
 
   useEffect(() => {
-    track("dataset/detail_opened", { dataset_id: datasetId, task_id: task?.id });
-  }, [datasetId, task?.id]);
+    // Wait for the task to resolve so the event carries a real task_id and fires once.
+    if (!taskId) return;
+    track("dataset/detail_opened", { dataset_id: datasetId, task_id: taskId });
+  }, [datasetId, taskId]);
 
   const filteredRows = useMemo(() => selectFilteredRows(state), [state]);
   const hasUnsavedChanges = selectHasUnsavedChanges(state);
+  const hasUnsavedColumnConfig = selectHasUnsavedColumnConfig(state);
+  const hasUnsavedWork = selectHasUnsavedWork(state);
+  const onlyColumnConfigUnsaved = hasUnsavedColumnConfig && !hasUnsavedChanges;
+  const unsavedNavigationMessage = onlyColumnConfigUnsaved
+    ? "You've configured columns but haven't added any rows yet. A dataset can't be saved without rows, so your configured columns will be lost if you leave now. Are you sure you want to continue?"
+    : "You have unsaved changes. If you leave now, your changes will be lost. Are you sure you want to continue?";
   const addRowData = useMemo(() => selectAddRowData(state), [state]);
   const editRowData = useMemo(() => selectEditRowData(state), [state]);
 
@@ -78,25 +105,36 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
   }, []);
 
   useEffect(() => {
-    if (state.selectedVersion !== undefined) {
-      setSearchParams({ version: state.selectedVersion.toString() }, { replace: true });
-    } else {
-      setSearchParams({}, { replace: true });
-    }
+    // Merge into existing params so the `?row=` deep link survives version sync.
+    setSearchParams((prev) => mergeVersionIntoParams(prev, state.selectedVersion), { replace: true });
   }, [state.selectedVersion, setSearchParams]);
 
-  const handleBack = useCallback(() => {
-    if (hasUnsavedChanges) {
-      dispatch({ type: "UI/SHOW_CONFIRMATION", payload: { type: "unsavedNavigation" } });
-    } else {
-      navigate(`/tasks/${task?.id}/datasets`);
-    }
-  }, [hasUnsavedChanges, navigate, task?.id, dispatch]);
+  const { highlightedRowId, clearHighlight } = useDeepLinkedRow({
+    datasetId,
+    rowId,
+    taskId: task?.id,
+    currentVersion: queries.currentVersion,
+    rowsPerPage: state.pagination.rowsPerPage,
+    currentPage: state.pagination.page,
+    dispatch,
+  });
 
-  const handleConfirmNavigation = useCallback(() => {
-    dispatch({ type: "UI/HIDE_CONFIRMATION" });
-    navigate(`/tasks/${task?.id}/datasets`);
-  }, [navigate, task?.id, dispatch]);
+  const handleViewRow = useCallback(
+    (id: string) => {
+      track("dataset/row_drawer_opened", { dataset_id: datasetId, task_id: task?.id, source: "table" });
+      setRowId(id);
+    },
+    [datasetId, task?.id, setRowId]
+  );
+
+  const handleBack = useCallback(() => {
+    runGuardedNavigation(() => navigate(`/tasks/${task?.id}/datasets`));
+  }, [runGuardedNavigation, navigate, task?.id]);
+
+  useEffect(() => {
+    registerBlocker(hasUnsavedWork);
+    return () => registerBlocker(false);
+  }, [hasUnsavedWork, registerBlocker]);
 
   const handleViewExperiments = useCallback(() => {
     track("dataset/experiments_viewed", { dataset_id: datasetId, task_id: task?.id });
@@ -105,7 +143,7 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
 
   const handleVersionSwitch = useCallback(
     (versionNumber: number) => {
-      if (hasUnsavedChanges) {
+      if (hasUnsavedWork) {
         dispatch({
           type: "UI/SHOW_CONFIRMATION",
           payload: { type: "unsavedVersionSwitch", targetVersion: versionNumber },
@@ -115,7 +153,7 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
       track("dataset/version_selected", { dataset_id: datasetId, task_id: task?.id });
       dispatch({ type: "VERSION/SELECT", payload: versionNumber });
     },
-    [hasUnsavedChanges, dispatch, datasetId, task?.id]
+    [hasUnsavedWork, dispatch, datasetId, task?.id]
   );
 
   const handleConfirmVersionSwitch = useCallback(() => {
@@ -126,6 +164,23 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
     }
     dispatch({ type: "UI/HIDE_CONFIRMATION" });
   }, [state.confirmation.targetVersion, dispatch, datasetId, task?.id]);
+
+  const handleVersionRestore = useCallback(
+    (versionNumber: number) => {
+      dispatch({
+        type: "UI/SHOW_CONFIRMATION",
+        payload: { type: "restoreVersion", targetVersion: versionNumber },
+      });
+    },
+    [dispatch]
+  );
+
+  const handleConfirmRestore = useCallback(() => {
+    if (state.confirmation.targetVersion !== null && !mutations.restoreVersion.isPending) {
+      mutations.restoreVersion.mutate({ versionNumber: state.confirmation.targetVersion });
+    }
+    dispatch({ type: "UI/HIDE_CONFIRMATION" });
+  }, [state.confirmation.targetVersion, mutations.restoreVersion, dispatch]);
 
   const handleAddRow = useCallback(
     async (rowData: Record<string, unknown>) => {
@@ -156,8 +211,6 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
 
   const handleConfigureColumns = useCallback(
     async (columns: string[], newColumnDefaults: ColumnDefaults, applyToExisting: boolean) => {
-      dispatch({ type: "DATA/SET_COLUMNS", payload: columns });
-
       if (queries.dataset && datasetId) {
         const existingMetadata = (queries.dataset.metadata as Record<string, unknown>) ?? {};
         await mutations.updateDataset.mutateAsync({
@@ -174,7 +227,7 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
         }
       }
 
-      dispatch({ type: "UI/TOGGLE_CONFIGURE_MODAL", payload: false });
+      dispatch({ type: "DATA/SET_COLUMNS", payload: columns });
     },
     [dispatch, queries.dataset, queries.totalRowCount, datasetId, mutations]
   );
@@ -204,7 +257,6 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
 
   const handleConfirmFillColumn = useCallback(() => {
     if (state.confirmation.targetColumn) {
-      dispatch({ type: "DATA/CLEAR_CHANGES" });
       dispatch({ type: "UI/OPEN_FILL_MODAL", payload: state.confirmation.targetColumn });
     }
     dispatch({ type: "UI/HIDE_CONFIRMATION" });
@@ -295,7 +347,7 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
         <DatasetHeader
           datasetName={queries.dataset.name}
           description={queries.dataset.description}
-          hasUnsavedChanges={hasUnsavedChanges}
+          hasUnsavedChanges={hasUnsavedWork}
           isSaving={mutations.save.isPending}
           isExporting={isExporting}
           canSave={hasUnsavedChanges && !mutations.save.isPending}
@@ -362,6 +414,7 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
         ) : (
           <DatasetTable
             datasetId={datasetId}
+            taskId={task?.id}
             columns={state.columns}
             rows={filteredRows}
             isLoading={queries.versionLoading}
@@ -375,6 +428,10 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
             onEditRow={(row) => dispatch({ type: "UI/OPEN_EDIT_MODAL", payload: row })}
             onDeleteRow={handleDeleteRow}
             onFillColumn={handleFillColumn}
+            onOpenTrace={handleOpenSourceTrace}
+            onViewRow={handleViewRow}
+            highlightedRowId={highlightedRowId}
+            onHighlightEnd={clearHighlight}
             searchQuery={state.searchQuery}
           />
         )}
@@ -417,6 +474,8 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
           onVersionClick={(v) => dispatch({ type: "UI/SHOW_CONFIRMATION", payload: { type: "unsavedVersionSwitch", targetVersion: v } })}
           onClose={() => dispatch({ type: "UI/TOGGLE_VERSION_DRAWER", payload: false })}
           onVersionSelect={handleVersionSwitch}
+          onVersionRestore={handleVersionRestore}
+          isRestoring={mutations.restoreVersion.isPending}
         />
       )}
 
@@ -428,6 +487,9 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
           rowData={editRowData}
           rowId={state.modals.edit.row.id}
           isLoading={false}
+          traceId={state.modals.edit.row.trace_id}
+          taskId={task?.id}
+          onOpenTrace={handleOpenSourceTrace}
         />
       )}
 
@@ -481,18 +543,33 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
         />
       )}
 
+      <DatasetRowDrawer
+        open={!!rowId}
+        // Replace on close so Back doesn't reopen the drawer.
+        onClose={() => setRowId(null, { history: "replace" })}
+        datasetId={datasetId}
+        versionNumber={queries.currentVersion}
+        rowId={rowId}
+        taskId={task?.id}
+        onOpenSourceTrace={handleOpenSourceTrace}
+      />
+
+      {task && sourceTrace.traceId && (
+        <SourceTraceDrawer open={sourceTrace.open} onClose={handleCloseSourceTrace} traceId={sourceTrace.traceId} taskId={task.id} />
+      )}
+
       <ConfirmationModal
-        open={state.confirmation.type === "unsavedNavigation"}
-        onClose={() => dispatch({ type: "UI/HIDE_CONFIRMATION" })}
-        onConfirm={handleConfirmNavigation}
+        open={isBlocking}
+        onClose={cancelNavigation}
+        onConfirm={confirmNavigation}
         title="Unsaved Changes"
-        message="You have unsaved changes. If you leave now, your changes will be lost. Are you sure you want to continue?"
+        message={unsavedNavigationMessage}
         confirmText="Leave Without Saving"
         cancelText="Stay"
       />
 
       <ConfirmationModal
-        open={state.confirmation.type === "unsavedVersionSwitch" && hasUnsavedChanges}
+        open={state.confirmation.type === "unsavedVersionSwitch" && hasUnsavedWork}
         onClose={() => dispatch({ type: "UI/HIDE_CONFIRMATION" })}
         onConfirm={handleConfirmVersionSwitch}
         title="Unsaved Changes"
@@ -508,6 +585,21 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
         title="Unsaved Changes"
         message="You have unsaved changes. Filling a column will discard your changes and update all rows on the server. Are you sure you want to continue?"
         confirmText="Discard & Fill Column"
+        cancelText="Cancel"
+      />
+
+      <ConfirmationModal
+        open={state.confirmation.type === "restoreVersion"}
+        onClose={() => dispatch({ type: "UI/HIDE_CONFIRMATION" })}
+        onConfirm={handleConfirmRestore}
+        title="Restore Version"
+        message={
+          `This will create a new latest version with the contents of version ${state.confirmation.targetVersion}. ` +
+          `Existing versions are not modified.` +
+          (hasUnsavedWork ? " Your unsaved changes will be lost." : "") +
+          " Are you sure you want to continue?"
+        }
+        confirmText={hasUnsavedWork ? "Discard & Restore" : "Restore Version"}
         cancelText="Cancel"
       />
     </Box>

@@ -5,10 +5,10 @@ import { alpha, Theme } from "@mui/material/styles";
 import { useStore } from "@tanstack/react-form";
 
 import { withFieldGroup } from "../../filtering/hooks/form";
+import { hasSelectedTransform, resolveSchemaColumns } from "../form/shared";
 import { MatchStatus, useMatchingVariables } from "../hooks/useMatchingVariables";
 
 import { useTransformVersions } from "@/components/transforms/hooks/useTransformVersions";
-import { useDatasetLatestVersion } from "@/hooks/useDatasetLatestVersion";
 
 const getStatusConfig = (theme: Theme, status: MatchStatus) => {
   const palette = {
@@ -29,16 +29,19 @@ export const Matcher = withFieldGroup({
     dataset: string;
     transform: string;
   },
-  render: function Render({ group }) {
-    const datasetId = useStore(group.store, (state) => state.values.dataset);
-    const transformId = useStore(group.store, (state) => (state.values.transform === "manual" ? null : state.values.transform));
+  props: {} as {
+    datasetColumns: string[];
+  },
+  render: function Render({ group, datasetColumns }) {
+    const transformId = useStore(group.store, (state) => (hasSelectedTransform(state.values.transform) ? state.values.transform : null));
 
-    const { latestVersion: dataset } = useDatasetLatestVersion(datasetId);
     const { data: versions = [] } = useTransformVersions(transformId);
     const definition = versions[0]?.definition;
 
     const { matchingNames, unmatchedTransform, matchStatus, matchCount } = useMatchingVariables({
-      columnNames: dataset?.column_names ?? [],
+      // On a first addition (dataset has no columns yet) the transform's
+      // variables define the schema, so the transform fully matches.
+      columnNames: resolveSchemaColumns(datasetColumns, definition?.variables ?? []),
       variables: definition?.variables ?? [],
     });
 

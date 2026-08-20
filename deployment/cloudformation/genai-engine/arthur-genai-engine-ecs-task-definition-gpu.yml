@@ -162,6 +162,10 @@ Parameters:
     Type: Number
     Default: 8000
     Description: 'Max number of tokens an inference can have for the toxicity rule to run. This is for managing validation latency.'
+  GenaiEngineSummaryTestCaseBatchSize:
+    Type: Number
+    Default: 50
+    Description: 'Page size for streaming completed test cases during prompt experiment summary aggregation.'
   GenaiEngineUsePIIModelV2:
     Type: String
     AllowedValues:
@@ -198,8 +202,8 @@ Parameters:
     Description: 'Memory value for AWS EC2 per GenAI Engine ECS task'
   GenaiEngineServerWorkerCount:
     Type: Number
-    Default: 5
-    Description: 'Number of GenAI Engine server processes to run for adjusting parallelism (5 is recommended)'
+    Default: 3
+    Description: 'Number of GenAI Engine server processes to run for adjusting parallelism. 3 is recommended for GPU: a single worker cannot keep a GPU busy, and because each worker holds the full model suite resident, 3 is also the practical ceiling for a 16 GB GPU.'
   GenaiEngineOpenAIProvider:
     Type: String
     AllowedValues:
@@ -256,6 +260,13 @@ Parameters:
     Type: String
     Description: 'Override path for audit log directory'
     Default: '/home/nonroot/audit_logs'
+  AuditLogIncludeAiActivity:
+    Type: String
+    Description: "Append the engine's own model invocations to each audit log entry. Opt-in; only consulted when AuditLogEnabled is 'true'."
+    Default: 'false'
+    AllowedValues:
+      - 'true'
+      - 'false'
 
 Conditions:
   EnableAuthService: !Equals [ !Ref GenaiEngineAPIOnlyModeEnabled, 'disabled' ]
@@ -366,6 +377,8 @@ Resources:
               Value: !Ref GenaiEngineHallucinationCheckMaxTokenLimit
             - Name: 'GENAI_ENGINE_TOXICITY_CHECK_MAX_TOKEN_LIMIT'
               Value: !Ref GenaiEngineToxicityCheckMaxTokenLimit
+            - Name: 'GENAI_ENGINE_SUMMARY_TEST_CASE_BATCH_SIZE'
+              Value: !Ref GenaiEngineSummaryTestCaseBatchSize
             - Name: 'GENAI_ENGINE_USE_PII_MODEL_V2'
               Value: !Ref GenaiEngineUsePIIModelV2
             - Name: 'GENAI_ENGINE_OPENAI_PROVIDER'
@@ -442,6 +455,8 @@ Resources:
               Value: !Ref AuditLogOverridePath
             - Name: 'AUDIT_LOG_RETENTION_DAYS'
               Value: !Ref AuditLogRetentionPeriod
+            - Name: 'AUDIT_LOG_INCLUDE_AI_ACTIVITY'
+              Value: !Ref AuditLogIncludeAiActivity
           Secrets:
             - Name: 'GENAI_ENGINE_ADMIN_KEY'
               ValueFrom: !Ref GenaiEngineSecretAPIKeyARN

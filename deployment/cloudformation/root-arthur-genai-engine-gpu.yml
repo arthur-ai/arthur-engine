@@ -214,8 +214,8 @@ Parameters:
     Description: 'Memory value for AWS EC2 per GenAI Engine ECS task'
   GenaiEngineServerWorkerCount:
     Type: Number
-    Default: 2
-    Description: 'Number of GenAI Engine server processes to run for adjusting parallelism (2 is recommended)'
+    Default: 3
+    Description: 'Number of GenAI Engine server processes to run for adjusting parallelism. 3 is recommended for GPU: a single worker cannot keep a GPU busy, and because each worker holds the full model suite resident, 3 is also the practical ceiling for a 16 GB GPU.'
   GenaiEngineECSServiceTaskDesiredCount:
     Type: Number
     Description: 'The desired number of tasks running for GenAI Engine ECS service'
@@ -233,6 +233,10 @@ Parameters:
     Type: Number
     Default: 8000
     Description: 'Max number of tokens an inference can have for the toxicity rule to run. This is for managing validation latency.'
+  GenaiEngineSummaryTestCaseBatchSize:
+    Type: Number
+    Default: 50
+    Description: 'Page size for streaming completed test cases during prompt experiment summary aggregation.'
   GenaiEngineUsePIIModelV2:
     Type: String
     AllowedValues:
@@ -527,6 +531,7 @@ Metadata:
           - GenaiEngineSensitiveDataCheckMaxTokenLimit
           - GenaiEngineHallucinationCheckMaxTokenLimit
           - GenaiEngineToxicityCheckMaxTokenLimit
+          - GenaiEngineSummaryTestCaseBatchSize
           - GenaiEngineUsePIIModelV2
           - GenaiEngineDemoMode
           - GenaiEngineDefaultTenantTokenLimit
@@ -639,6 +644,8 @@ Metadata:
         default: 'GenAI Engine Hallucination Check Max Token Limit'
       GenaiEngineToxicityCheckMaxTokenLimit:
         default: 'GenAI Engine Toxicity Check Max Token Limit'
+      GenaiEngineSummaryTestCaseBatchSize:
+        default: 'GenAI Engine Summary Test Case Batch Size'
       GenaiEngineUsePIIModelV2:
         default: 'GenAI Engine Use PII Model V2'
       GenaiEngineDemoMode:
@@ -850,6 +857,7 @@ Resources:
         GenaiEngineSensitiveDataCheckMaxTokenLimit: !Ref GenaiEngineSensitiveDataCheckMaxTokenLimit
         GenaiEngineHallucinationCheckMaxTokenLimit: !Ref GenaiEngineHallucinationCheckMaxTokenLimit
         GenaiEngineToxicityCheckMaxTokenLimit: !Ref GenaiEngineToxicityCheckMaxTokenLimit
+        GenaiEngineSummaryTestCaseBatchSize: !Ref GenaiEngineSummaryTestCaseBatchSize
         GenaiEngineUsePIIModelV2: !Ref GenaiEngineUsePIIModelV2
         GenaiEngineDemoMode: !Ref GenaiEngineDemoMode
         GenaiEngineDefaultTenantTokenLimit: !Ref GenaiEngineDefaultTenantTokenLimit

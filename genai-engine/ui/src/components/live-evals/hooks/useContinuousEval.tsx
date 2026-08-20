@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { AxiosError } from "axios";
 import { useSnackbar } from "notistack";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
@@ -15,7 +15,7 @@ export const useContinuousEval = (evalId?: string) => {
 
   return useQuery({
     enabled: !!evalId,
-    queryKey: [queryKeys.continuousEvals.byId(evalId!)],
+    queryKey: [queryKeys.continuousEvals.byId(evalId!), task?.id],
     queryFn: async () => {
       try {
         const response = await api.api.getContinuousEvalByIdApiV1ContinuousEvalsEvalIdGet(evalId!);

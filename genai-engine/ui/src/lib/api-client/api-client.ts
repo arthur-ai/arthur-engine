@@ -1260,6 +1260,63 @@ export interface BuiltinValidationResponse {
   results: ExternalRuleResult[];
 }
 
+/** BulkAddTraceResult */
+export interface BulkAddTraceResult {
+  /**
+   * Error
+   * Error message when the trace could not be added (e.g. trace not found).
+   */
+  error?: string | null;
+  /**
+   * Success
+   * Whether a row was successfully produced for this trace.
+   */
+  success: boolean;
+  /**
+   * Trace Id
+   * ID of the trace this result refers to.
+   */
+  trace_id: string;
+}
+
+export type BulkAddTracesToDatasetApiV2DatasetsDatasetIdBulkAddTracesPostData = BulkAddTracesToDatasetResponse;
+
+export type BulkAddTracesToDatasetApiV2DatasetsDatasetIdBulkAddTracesPostError = HTTPValidationError;
+
+/** BulkAddTracesToDatasetRequest */
+export interface BulkAddTracesToDatasetRequest {
+  /**
+   * Trace Ids
+   * List of trace IDs to add to the dataset. Limited to the trace table's current page fetch-size (see MAX_BULK_ADD_TRACES).
+   */
+  trace_ids: string[];
+  /**
+   * Transform Id
+   * ID of the transform to run against each trace to extract row values.
+   * @format uuid
+   */
+  transform_id: string;
+}
+
+/** BulkAddTracesToDatasetResponse */
+export interface BulkAddTracesToDatasetResponse {
+  /**
+   * Results
+   * Per-trace results, in the order the trace IDs were provided.
+   */
+  results: BulkAddTraceResult[];
+  /**
+   * Success Count
+   * Number of rows successfully written to the new dataset version.
+   */
+  success_count: number;
+  /**
+   * Total
+   * Total number of trace IDs in the request.
+   */
+  total: number;
+}
+
 /** CertificateUploadResponse */
 export interface CertificateUploadResponse {
   /** Certificate Id */
@@ -2408,6 +2465,11 @@ export interface DatasetVersionRowResponse {
    * @format uuid
    */
   id: string;
+  /**
+   * Trace Id
+   * ID of the trace this row was extracted from, if the row originated from a trace.
+   */
+  trace_id?: string | null;
 }
 
 export type DeactivateApiKeyAuthApiKeysDeactivateApiKeyIdDeleteData = ApiKeyResponse;
@@ -3941,6 +4003,10 @@ export type GetLlmEvalByTagApiV1TasksTaskIdLlmEvalsEvalNameVersionsTagsTagGetDat
 export type GetLlmEvalByTagApiV1TasksTaskIdLlmEvalsEvalNameVersionsTagsTagGetError = HTTPValidationError;
 
 export type GetMeUsersMeGetData = MeResponse;
+
+export type GetModelProviderWhitelistApiV1ModelProvidersProviderModelWhitelistGetData = ModelProviderWhitelist;
+
+export type GetModelProviderWhitelistApiV1ModelProvidersProviderModelWhitelistGetError = HTTPValidationError;
 
 export type GetModelProvidersApiV1ModelProvidersGetData = ModelProviderList;
 
@@ -5817,8 +5883,11 @@ export interface ListSpansMetadataApiV1TracesSpansGetParams {
    * Filter by continuous eval name.
    */
   continuous_eval_name?: string;
-  /** Filter by trace annotation run status (e.g. 'passed', 'failed', etc.). */
-  continuous_eval_run_status?: ContinuousEvalRunStatus;
+  /**
+   * Continuous Eval Run Status
+   * Continuous eval run statuses to filter on (e.g. 'passed', 'failed', etc.). Optional.
+   */
+  continuous_eval_run_status?: ContinuousEvalRunStatus[] | null;
   /**
    * End Time
    * Exclusive end date in ISO8601 string format. Use local time (not UTC).
@@ -6213,8 +6282,11 @@ export interface ListTracesMetadataApiV1TracesGetParams {
    * Filter by continuous eval name.
    */
   continuous_eval_name?: string;
-  /** Filter by trace annotation run status (e.g. 'passed', 'failed', etc.). */
-  continuous_eval_run_status?: ContinuousEvalRunStatus;
+  /**
+   * Continuous Eval Run Status
+   * Continuous eval run statuses to filter on (e.g. 'passed', 'failed', etc.). Optional.
+   */
+  continuous_eval_run_status?: ContinuousEvalRunStatus[] | null;
   /**
    * End Time
    * Exclusive end date in ISO8601 string format. Use local time (not UTC).
@@ -6820,6 +6892,22 @@ export interface ModelProviderResponse {
   provider: ModelProvider;
 }
 
+/** ModelProviderWhitelist */
+export interface ModelProviderWhitelist {
+  /**
+   * Catalog
+   * Every model the provider offers, ignoring the whitelist
+   */
+  catalog: string[];
+  /** Provider the whitelist applies to */
+  provider: ModelProvider;
+  /**
+   * Whitelist
+   * Curated model list, or null when all models are exposed
+   */
+  whitelist: string[] | null;
+}
+
 /** _MultiTargetVectorJoin */
 export interface MultiTargetVectorJoin {
   /** Define how multi target vector searches should be combined. */
@@ -7030,6 +7118,11 @@ export interface NewDatasetVersionRowRequest {
    * Optional ID for the row (used for synthetic data generation).
    */
   id?: string | null;
+  /**
+   * Trace Id
+   * ID of the trace this row was extracted from, if the row originated from a trace.
+   */
+  trace_id?: string | null;
 }
 
 /**
@@ -7619,6 +7712,17 @@ export interface PageConversationBaseResponse {
 /** PaginationSortMethod */
 export type PaginationSortMethod = "asc" | "desc";
 
+/**
+ * TaskSortField
+ * Server-side sort column for `/api/v2/tasks/search`.
+ *
+ * `NAME`/`CREATED_AT`/`UPDATED_AT` sort on the corresponding
+ * `tasks` columns. `LAST_ACTIVE` sorts on the most recent trace
+ * activity per task (`MAX(trace_metadata.end_time)`), which is not a
+ * stored task column but computed by joining the trace-metadata table.
+ */
+export type TaskSortField = "name" | "created_at" | "updated_at" | "last_active";
+
 /** PasswordResetRequest */
 export interface PasswordResetRequest {
   /** Password */
@@ -8132,6 +8236,15 @@ export interface PutModelProviderCredentials {
   region?: string | null;
 }
 
+/** PutModelProviderWhitelist */
+export interface PutModelProviderWhitelist {
+  /**
+   * Models
+   * Models to expose for this provider. Null exposes all models. An empty list is rejected — it would hide every model.
+   */
+  models?: string[] | null;
+}
+
 export type QueryFeedbackApiV2FeedbackQueryGetData = QueryFeedbackResponse;
 
 export type QueryFeedbackApiV2FeedbackQueryGetError = HTTPValidationError;
@@ -8457,8 +8570,11 @@ export interface QuerySpansV1TracesQueryGetParams {
    * Filter by continuous eval name.
    */
   continuous_eval_name?: string;
-  /** Filter by trace annotation run status (e.g. 'passed', 'failed', etc.). */
-  continuous_eval_run_status?: ContinuousEvalRunStatus;
+  /**
+   * Continuous Eval Run Status
+   * Continuous eval run statuses to filter on (e.g. 'passed', 'failed', etc.). Optional.
+   */
+  continuous_eval_run_status?: ContinuousEvalRunStatus[] | null;
   /**
    * End Time
    * Exclusive end date in ISO8601 string format. Use local time (not UTC).
@@ -8795,8 +8911,11 @@ export interface QuerySpansWithMetricsV1TracesMetricsGetParams {
    * Filter by continuous eval name.
    */
   continuous_eval_name?: string;
-  /** Filter by trace annotation run status (e.g. 'passed', 'failed', etc.). */
-  continuous_eval_run_status?: ContinuousEvalRunStatus;
+  /**
+   * Continuous Eval Run Status
+   * Continuous eval run statuses to filter on (e.g. 'passed', 'failed', etc.). Optional.
+   */
+  continuous_eval_run_status?: ContinuousEvalRunStatus[] | null;
   /**
    * End Time
    * Exclusive end date in ISO8601 string format. Use local time (not UTC).
@@ -10150,6 +10269,10 @@ export interface ResponseValidationRequest {
   response: string;
 }
 
+export type RestoreDatasetVersionApiV2DatasetsDatasetIdVersionsVersionNumberRestorePostData = DatasetVersionResponse;
+
+export type RestoreDatasetVersionApiV2DatasetsDatasetIdVersionsVersionNumberRestorePostError = HTTPValidationError;
+
 export type RotateSecretsApiV1SecretsRotationPostData = any;
 
 /** RuleResponse */
@@ -10208,13 +10331,7 @@ export type RuleScope = "default" | "task";
 
 /** RuleType */
 export type RuleType =
-  | "KeywordRule"
-  | "ModelHallucinationRuleV2"
-  | "ModelSensitiveDataRule"
-  | "PIIDataRule"
-  | "PromptInjectionRule"
-  | "RegexRule"
-  | "ToxicityRule";
+  "KeywordRule" | "ModelHallucinationRuleV2" | "ModelSensitiveDataRule" | "PIIDataRule" | "PromptInjectionRule" | "RegexRule" | "ToxicityRule";
 
 export type RunAgenticPromptApiV1CompletionsPostData = AgenticPromptRunResponse;
 
@@ -10433,6 +10550,18 @@ export type SearchTasksApiV2TasksSearchPostError = HTTPValidationError;
 
 export interface SearchTasksApiV2TasksSearchPostParams {
   /**
+   * Last Active End Time
+   * Only return tasks whose last trace activity (max trace end-time) is on or before this UTC time. Tasks with no traces are excluded when this filter is set.
+   * @format date-time
+   */
+  last_active_end_time?: string | null;
+  /**
+   * Last Active Start Time
+   * Only return tasks whose last trace activity (max trace end-time) is on or after this UTC time. Tasks with no traces are excluded when this filter is set.
+   * @format date-time
+   */
+  last_active_start_time?: string | null;
+  /**
    * Page
    * Page number
    * @default 0
@@ -10449,6 +10578,8 @@ export interface SearchTasksApiV2TasksSearchPostParams {
    * @default "desc"
    */
   sort?: PaginationSortMethod;
+  /** Column to sort by (server-side). One of 'name', 'created_at', 'updated_at', 'last_active'. 'last_active' sorts on the most recent trace activity per task. Sort direction is controlled by the 'sort' parameter. When omitted, results keep the default ordering (created_at). */
+  sort_field?: TaskSortField | null;
 }
 
 /** SearchTasksRequest */
@@ -10677,6 +10808,10 @@ export interface SetAgenticNotebookStateRequest {
 export type SetModelProviderApiV1ModelProvidersProviderPutData = any;
 
 export type SetModelProviderApiV1ModelProvidersProviderPutError = HTTPValidationError;
+
+export type SetModelProviderWhitelistApiV1ModelProvidersProviderModelWhitelistPutData = any;
+
+export type SetModelProviderWhitelistApiV1ModelProvidersProviderModelWhitelistPutError = HTTPValidationError;
 
 export type SetNotebookStateApiV1NotebooksNotebookIdStatePutData = NotebookDetail;
 
@@ -12802,14 +12937,7 @@ export interface WeaviateHybridSearchSettingsConfigurationRequest {
 }
 
 export type WeaviateHybridSearchSettingsConfigurationRequestReturnMetadataEnum =
-  | "creation_time"
-  | "last_update_time"
-  | "distance"
-  | "certainty"
-  | "score"
-  | "explain_score"
-  | "is_consistent"
-  | "query_profile";
+  "creation_time" | "last_update_time" | "distance" | "certainty" | "score" | "explain_score" | "is_consistent" | "query_profile";
 
 /** WeaviateHybridSearchSettingsConfigurationResponse */
 export interface WeaviateHybridSearchSettingsConfigurationResponse {
@@ -12895,14 +13023,7 @@ export interface WeaviateHybridSearchSettingsConfigurationResponse {
 }
 
 export type WeaviateHybridSearchSettingsConfigurationResponseReturnMetadataEnum =
-  | "creation_time"
-  | "last_update_time"
-  | "distance"
-  | "certainty"
-  | "score"
-  | "explain_score"
-  | "is_consistent"
-  | "query_profile";
+  "creation_time" | "last_update_time" | "distance" | "certainty" | "score" | "explain_score" | "is_consistent" | "query_profile";
 
 /** WeaviateHybridSearchSettingsRequest */
 export interface WeaviateHybridSearchSettingsRequest {
@@ -12988,14 +13109,7 @@ export interface WeaviateHybridSearchSettingsRequest {
 }
 
 export type WeaviateHybridSearchSettingsRequestReturnMetadataEnum =
-  | "creation_time"
-  | "last_update_time"
-  | "distance"
-  | "certainty"
-  | "score"
-  | "explain_score"
-  | "is_consistent"
-  | "query_profile";
+  "creation_time" | "last_update_time" | "distance" | "certainty" | "score" | "explain_score" | "is_consistent" | "query_profile";
 
 /** WeaviateKeywordSearchSettingsConfigurationRequest */
 export interface WeaviateKeywordSearchSettingsConfigurationRequest {
@@ -13058,14 +13172,7 @@ export interface WeaviateKeywordSearchSettingsConfigurationRequest {
 }
 
 export type WeaviateKeywordSearchSettingsConfigurationRequestReturnMetadataEnum =
-  | "creation_time"
-  | "last_update_time"
-  | "distance"
-  | "certainty"
-  | "score"
-  | "explain_score"
-  | "is_consistent"
-  | "query_profile";
+  "creation_time" | "last_update_time" | "distance" | "certainty" | "score" | "explain_score" | "is_consistent" | "query_profile";
 
 /** WeaviateKeywordSearchSettingsConfigurationResponse */
 export interface WeaviateKeywordSearchSettingsConfigurationResponse {
@@ -13128,14 +13235,7 @@ export interface WeaviateKeywordSearchSettingsConfigurationResponse {
 }
 
 export type WeaviateKeywordSearchSettingsConfigurationResponseReturnMetadataEnum =
-  | "creation_time"
-  | "last_update_time"
-  | "distance"
-  | "certainty"
-  | "score"
-  | "explain_score"
-  | "is_consistent"
-  | "query_profile";
+  "creation_time" | "last_update_time" | "distance" | "certainty" | "score" | "explain_score" | "is_consistent" | "query_profile";
 
 /** WeaviateKeywordSearchSettingsRequest */
 export interface WeaviateKeywordSearchSettingsRequest {
@@ -13198,14 +13298,7 @@ export interface WeaviateKeywordSearchSettingsRequest {
 }
 
 export type WeaviateKeywordSearchSettingsRequestReturnMetadataEnum =
-  | "creation_time"
-  | "last_update_time"
-  | "distance"
-  | "certainty"
-  | "score"
-  | "explain_score"
-  | "is_consistent"
-  | "query_profile";
+  "creation_time" | "last_update_time" | "distance" | "certainty" | "score" | "explain_score" | "is_consistent" | "query_profile";
 
 /**
  * WeaviateQueryResult
@@ -13358,14 +13451,7 @@ export interface WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest 
 }
 
 export type WeaviateVectorSimilarityTextSearchSettingsConfigurationRequestReturnMetadataEnum =
-  | "creation_time"
-  | "last_update_time"
-  | "distance"
-  | "certainty"
-  | "score"
-  | "explain_score"
-  | "is_consistent"
-  | "query_profile";
+  "creation_time" | "last_update_time" | "distance" | "certainty" | "score" | "explain_score" | "is_consistent" | "query_profile";
 
 /** WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse */
 export interface WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse {
@@ -13433,14 +13519,7 @@ export interface WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse
 }
 
 export type WeaviateVectorSimilarityTextSearchSettingsConfigurationResponseReturnMetadataEnum =
-  | "creation_time"
-  | "last_update_time"
-  | "distance"
-  | "certainty"
-  | "score"
-  | "explain_score"
-  | "is_consistent"
-  | "query_profile";
+  "creation_time" | "last_update_time" | "distance" | "certainty" | "score" | "explain_score" | "is_consistent" | "query_profile";
 
 /** WeaviateVectorSimilarityTextSearchSettingsRequest */
 export interface WeaviateVectorSimilarityTextSearchSettingsRequest {
@@ -13508,14 +13587,7 @@ export interface WeaviateVectorSimilarityTextSearchSettingsRequest {
 }
 
 export type WeaviateVectorSimilarityTextSearchSettingsRequestReturnMetadataEnum =
-  | "creation_time"
-  | "last_update_time"
-  | "distance"
-  | "certainty"
-  | "score"
-  | "explain_score"
-  | "is_consistent"
-  | "query_profile";
+  "creation_time" | "last_update_time" | "distance" | "certainty" | "score" | "explain_score" | "is_consistent" | "query_profile";
 
 import type { AxiosInstance, AxiosRequestConfig, AxiosResponse, HeadersDefaults, ResponseType } from "axios";
 import axios from "axios";
@@ -13648,7 +13720,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.654
+ * @version 2.1.748
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
@@ -13873,6 +13945,33 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         method: "PATCH",
         query: query,
         secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Bulk add traces to a dataset by running a transform against each trace and appending the extracted values as new rows in a single new dataset version.
+     *
+     * @tags Datasets
+     * @name BulkAddTracesToDatasetApiV2DatasetsDatasetIdBulkAddTracesPost
+     * @summary Bulk Add Traces To Dataset
+     * @request POST:/api/v2/datasets/{dataset_id}/bulk-add-traces
+     * @secure
+     */
+    bulkAddTracesToDatasetApiV2DatasetsDatasetIdBulkAddTracesPost: (
+      datasetId: string,
+      data: BulkAddTracesToDatasetRequest,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        BulkAddTracesToDatasetApiV2DatasetsDatasetIdBulkAddTracesPostData,
+        BulkAddTracesToDatasetApiV2DatasetsDatasetIdBulkAddTracesPostError
+      >({
+        path: `/api/v2/datasets/${datasetId}/bulk-add-traces`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
         format: "json",
         ...params,
       }),
@@ -15745,6 +15844,27 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Returns the admin-curated model list for a provider along with the provider's full catalog. A null whitelist means all models are exposed.
+     *
+     * @tags Model Providers
+     * @name GetModelProviderWhitelistApiV1ModelProvidersProviderModelWhitelistGet
+     * @summary Get the curated model list for a provider.
+     * @request GET:/api/v1/model_providers/{provider}/model_whitelist
+     * @secure
+     */
+    getModelProviderWhitelistApiV1ModelProvidersProviderModelWhitelistGet: (provider: ModelProvider, params: RequestParams = {}) =>
+      this.request<
+        GetModelProviderWhitelistApiV1ModelProvidersProviderModelWhitelistGetData,
+        GetModelProviderWhitelistApiV1ModelProvidersProviderModelWhitelistGetError
+      >({
+        path: `/api/v1/model_providers/${provider}/model_whitelist`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Get detailed information about a notebook including state and experiment history
      *
      * @tags Notebooks
@@ -16977,6 +17097,31 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Reinstate a previous dataset version by copying its rows into a new latest version.
+     *
+     * @tags Datasets
+     * @name RestoreDatasetVersionApiV2DatasetsDatasetIdVersionsVersionNumberRestorePost
+     * @summary Restore Dataset Version
+     * @request POST:/api/v2/datasets/{dataset_id}/versions/{version_number}/restore
+     * @secure
+     */
+    restoreDatasetVersionApiV2DatasetsDatasetIdVersionsVersionNumberRestorePost: (
+      datasetId: string,
+      versionNumber: number,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        RestoreDatasetVersionApiV2DatasetsDatasetIdVersionsVersionNumberRestorePostData,
+        RestoreDatasetVersionApiV2DatasetsDatasetIdVersionsVersionNumberRestorePostError
+      >({
+        path: `/api/v2/datasets/${datasetId}/versions/${versionNumber}/restore`,
+        method: "POST",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description This endpoint re-encrypts all the secrets in the database. The procedure calling this endpoint is as follows: First: Deploy a new version of the service with GENAI_ENGINE_SECRET_STORE_KEY set to a value like 'new-key::old-key'. Second: call this endpoint - all secrets will be re-encrypted with 'new-key'. Third: Deploy a new version of the service removing the old key from GENAI_ENGINE_SECRET_STORE_KEY, like 'new-key'. At this point all existing and new secrets will be managed by 'new-key'.
      *
      * @tags Secrets
@@ -17250,6 +17395,32 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         secure: true,
         type: ContentType.Json,
         format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Restricts which models appear in model pickers. Send null to expose all models. An empty list is rejected.
+     *
+     * @tags Model Providers
+     * @name SetModelProviderWhitelistApiV1ModelProvidersProviderModelWhitelistPut
+     * @summary Set the curated model list for a provider.
+     * @request PUT:/api/v1/model_providers/{provider}/model_whitelist
+     * @secure
+     */
+    setModelProviderWhitelistApiV1ModelProvidersProviderModelWhitelistPut: (
+      provider: ModelProvider,
+      data: PutModelProviderWhitelist,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        SetModelProviderWhitelistApiV1ModelProvidersProviderModelWhitelistPutData,
+        SetModelProviderWhitelistApiV1ModelProvidersProviderModelWhitelistPutError
+      >({
+        path: `/api/v1/model_providers/${provider}/model_whitelist`,
+        method: "PUT",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
         ...params,
       }),
 

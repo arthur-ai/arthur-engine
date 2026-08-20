@@ -29,6 +29,7 @@ import { DatasetVersionRowResponse } from "@/lib/api-client/api-client";
 
 interface DatasetTableProps {
   datasetId: string;
+  taskId?: string;
   columns: string[];
   rows: DatasetVersionRowResponse[];
   isLoading: boolean;
@@ -39,6 +40,10 @@ interface DatasetTableProps {
   onEditRow: (row: DatasetVersionRowResponse) => void;
   onDeleteRow: (rowId: string) => void;
   onFillColumn?: (columnName: string) => void;
+  onOpenTrace?: (traceId: string) => void;
+  onViewRow?: (rowId: string) => void;
+  highlightedRowId?: string | null;
+  onHighlightEnd?: () => void;
   emptyMessage?: string;
   searchQuery?: string;
 }
@@ -50,6 +55,7 @@ interface ColumnMenuState {
 
 export const DatasetTable: React.FC<DatasetTableProps> = ({
   datasetId,
+  taskId,
   columns,
   rows,
   isLoading,
@@ -60,6 +66,10 @@ export const DatasetTable: React.FC<DatasetTableProps> = ({
   onEditRow,
   onDeleteRow,
   onFillColumn,
+  onOpenTrace,
+  onViewRow,
+  highlightedRowId,
+  onHighlightEnd,
   emptyMessage,
   searchQuery,
 }) => {
@@ -133,7 +143,7 @@ export const DatasetTable: React.FC<DatasetTableProps> = ({
             <TableCell
               sx={{
                 fontWeight: 600,
-                width: 100,
+                width: 140,
                 position: "sticky",
                 left: 0,
                 zIndex: 3,
@@ -202,7 +212,19 @@ export const DatasetTable: React.FC<DatasetTableProps> = ({
             </TableRow>
           ) : (
             rows.map((row) => (
-              <DatasetTableRow key={row.id} row={row} columns={columns} onEdit={onEditRow} onDelete={onDeleteRow} datasetId={datasetId} />
+              <DatasetTableRow
+                key={row.id}
+                row={row}
+                columns={columns}
+                onEdit={onEditRow}
+                onDelete={onDeleteRow}
+                datasetId={datasetId}
+                taskId={taskId}
+                onOpenTrace={onOpenTrace}
+                onView={onViewRow}
+                isHighlighted={row.id === highlightedRowId}
+                onHighlightEnd={onHighlightEnd}
+              />
             ))
           )}
         </TableBody>

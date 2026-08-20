@@ -110,7 +110,7 @@ Give the run a name. A clear name (and optional description) makes it easier to 
 
 ## step: experiment-info-versions
 
-Choose the prompt versions you want to compare. These are the saved variants from your notebook. Pick the ones worth testing, then click **Next**.
+Select the prompt you just edited, then choose **both versions** to compare — the original and the new variant you saved in the playground. Running them side by side is what proves which one performs better. Click **Next** when both are selected.
 
 ## step: experiment-info-dataset
 
@@ -118,7 +118,7 @@ Select the dataset and version that holds the captured failure. Every prompt ver
 
 ## step: experiment-info-evaluators
 
-Add the evals that will judge each result. Once your evaluators are in, click **Next**.
+Add the evals that will judge each result. Select **all three evaluators** so every prompt version is scored the same way. Once all three are in, click **Next**.
 
 ## step: review-experiment-info
 

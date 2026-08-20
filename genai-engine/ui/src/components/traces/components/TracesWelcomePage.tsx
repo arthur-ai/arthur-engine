@@ -11,7 +11,7 @@ import { Box, Button, Link, Paper, Stack, Typography } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import { useSnackbar } from "notistack";
 import React from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router";
 import { useShallow } from "zustand/react/shallow";
 
 import { useWelcomeStore } from "../stores/welcome.store";

@@ -25,8 +25,8 @@ report.xml
 
 *.venv*
 local.env
-.env.local
 .env
+.env.*
 
 # Ignore .vscode contents but allow settings.json (per-folder Python interpreters)
 **/.vscode/*
@@ -37,6 +37,10 @@ new.openapi.json
 
 Chart.lock
 values.yaml
+# The GPU autoscaler add-on ships its defaults in values.yaml (no secrets in it),
+# so that one file must be tracked. Keep the other charts' values.yaml ignored —
+# those are user-populated and hold credentials.
+!deployment/helm/genai-engine-gpu-autoscaler-karpenter/values.yaml
 
 ml-engine/src/genai_client/**
 .vagrant
@@ -56,3 +60,6 @@ arthur-engine.code-workspace
 # Ignore audit logs
 genai-engine/audit_logs
 genai-engine/tests/test_audit_logs
+
+# arthur-blazity-ai-workflow bot session memory — must not be committed to this public repo
+blazebot/

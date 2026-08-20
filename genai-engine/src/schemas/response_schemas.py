@@ -138,6 +138,10 @@ class DatasetVersionRowResponse(BaseModel):
     data: List[DatasetVersionRowColumnItemResponse] = Field(
         description="List of column names and values in the row.",
     )
+    trace_id: Optional[str] = Field(
+        default=None,
+        description="ID of the trace this row was extracted from, if the row originated from a trace.",
+    )
     created_at: int = Field(
         description="Timestamp representing the time of dataset row creation in unix milliseconds. May differ within "
         "a version if a row already existed in a past version of the dataset.",
@@ -369,6 +373,16 @@ class ModelProviderModelList(BaseModel):
     provider: ModelProvider = Field(description="Provider of the models")
     available_models: List[str] = Field(
         description="Available models from the provider",
+    )
+
+
+class ModelProviderWhitelist(BaseModel):
+    provider: ModelProvider = Field(description="Provider the whitelist applies to")
+    whitelist: Optional[List[str]] = Field(
+        description="Curated model list, or null when all models are exposed",
+    )
+    catalog: List[str] = Field(
+        description="Every model the provider offers, ignoring the whitelist",
     )
 
 
@@ -807,6 +821,27 @@ class TransformExtractionResponseList(BaseModel):
     )
     missing_spans: list[str] = Field(
         description="List of matching spans for the variables.",
+    )
+
+
+class BulkAddTraceResult(BaseModel):
+    trace_id: str = Field(description="ID of the trace this result refers to.")
+    success: bool = Field(
+        description="Whether a row was successfully produced for this trace.",
+    )
+    error: Optional[str] = Field(
+        default=None,
+        description="Error message when the trace could not be added (e.g. trace not found).",
+    )
+
+
+class BulkAddTracesToDatasetResponse(BaseModel):
+    success_count: int = Field(
+        description="Number of rows successfully written to the new dataset version.",
+    )
+    total: int = Field(description="Total number of trace IDs in the request.")
+    results: list[BulkAddTraceResult] = Field(
+        description="Per-trace results, in the order the trace IDs were provided.",
     )
 
 

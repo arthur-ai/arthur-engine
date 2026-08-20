@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { enqueueSnackbar } from "notistack";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";

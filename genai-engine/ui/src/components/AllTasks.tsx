@@ -2,7 +2,6 @@ import AddIcon from "@mui/icons-material/Add";
 import CloseIcon from "@mui/icons-material/Close";
 import InventoryIcon from "@mui/icons-material/Inventory";
 import ShowChartIcon from "@mui/icons-material/ShowChart";
-import SortIcon from "@mui/icons-material/Sort";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import {
@@ -24,7 +23,7 @@ import {
 } from "@mui/material";
 import { useQueryClient } from "@tanstack/react-query";
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 
 import { ArthurLogo } from "./common/ArthurLogo";
 import { SearchBar } from "./common/SearchBar";
@@ -36,8 +35,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useTasksOverview } from "@/hooks/tasks/useTasksOverview";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useActiveTasksQuery, useArchivedTasksQuery } from "@/hooks/useTasksList";
+import type { PaginationSortMethod, TaskSortField } from "@/lib/api-client/api-client";
 import { queryKeys } from "@/lib/queryKeys";
-import { type InactiveDays, type SortBy, useTaskListStore } from "@/stores/task-list.store";
+import { type InactiveDays, useTaskListStore } from "@/stores/task-list.store";
 
 export const AllTasks: React.FC = () => {
   const navigate = useNavigate();
@@ -47,10 +47,23 @@ export const AllTasks: React.FC = () => {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearchQuery = useDebouncedValue(searchQuery, 300);
-  const { hideSystemTasks, sortBy, inactiveDays, setHideSystemTasks, setSortBy, setInactiveDays } = useTaskListStore();
+  const { hideSystemTasks, inactiveDays, setHideSystemTasks, setInactiveDays } = useTaskListStore();
+
+  const sortField: TaskSortField = "created_at";
+  const sortDirection: PaginationSortMethod = "desc";
+
+  const lastActiveStartTime = useMemo(() => {
+    if (typeof inactiveDays === "number" && inactiveDays > 0) {
+      return new Date(Date.now() - inactiveDays * 24 * 60 * 60 * 1000).toISOString();
+    }
+    return undefined;
+  }, [inactiveDays]);
 
   const { tasks, totalCount, isLoading, isError, isFetchingNextPage, hasNextPage, fetchNextPage } = useActiveTasksQuery({
     search: debouncedSearchQuery,
+    sortField,
+    sort: sortDirection,
+    lastActiveStartTime,
   });
 
   const {
@@ -61,7 +74,7 @@ export const AllTasks: React.FC = () => {
     isFetchingNextPage: archivedIsFetchingNextPage,
     hasNextPage: archivedHasNextPage,
     fetchNextPage: archivedFetchNextPage,
-  } = useArchivedTasksQuery({ enabled: archivedDialogOpen });
+  } = useArchivedTasksQuery({ enabled: archivedDialogOpen, sortField, sort: sortDirection });
 
   const sentinelRef = useRef<HTMLDivElement>(null);
   const archivedSentinelRef = useRef<HTMLDivElement>(null);
@@ -69,42 +82,22 @@ export const AllTasks: React.FC = () => {
   const isSearching = debouncedSearchQuery.trim().length > 0;
 
   const filteredTasks = useMemo(() => {
-    let result = [...tasks];
-
-    if (hideSystemTasks) {
-      result = result.filter((t) => !t.is_system_task);
-    }
-
-    if (inactiveDays !== "archived" && inactiveDays > 0) {
-      const cutoff = Date.now() - inactiveDays * 24 * 60 * 60 * 1000;
-      result = result.filter((t) => t.updated_at >= cutoff);
-    }
-
-    result.sort((a, b) => {
-      const field = sortBy === "updated" ? "updated_at" : "created_at";
-      return b[field] - a[field];
-    });
-
-    return result;
-  }, [tasks, hideSystemTasks, sortBy, inactiveDays]);
+    if (!hideSystemTasks) return tasks;
+    return tasks.filter((t) => !t.is_system_task);
+  }, [tasks, hideSystemTasks]);
 
   const filteredArchivedTasks = useMemo(() => {
-    let result = [...archivedTasks];
-
-    if (hideSystemTasks) {
-      result = result.filter((t) => !t.is_system_task);
-    }
-
-    result.sort((a, b) => {
-      const field = sortBy === "updated" ? "updated_at" : "created_at";
-      return b[field] - a[field];
-    });
-
-    return result;
-  }, [archivedTasks, hideSystemTasks, sortBy]);
+    if (!hideSystemTasks) return archivedTasks;
+    return archivedTasks.filter((t) => !t.is_system_task);
+  }, [archivedTasks, hideSystemTasks]);
 
   const visibleTaskIds = useMemo(() => [...filteredTasks, ...filteredArchivedTasks].map((t) => t.id), [filteredTasks, filteredArchivedTasks]);
+  // 7-day window powers the metric tiles (traces/tokens/success). A second
+  // unbounded call supplies the true "Last active" so a task active before the
+  // 7-day window (e.g. matched by "Active in last 30 days") isn't mislabeled
+  // "Inactive" on its card.
   const { data: overviewByTask = {} } = useTasksOverview(visibleTaskIds);
+  const { data: lastActiveByTask = {} } = useTasksOverview(visibleTaskIds, { sinceCreated: true });
 
   const invalidateTaskQueries = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all() });
@@ -154,19 +147,6 @@ export const AllTasks: React.FC = () => {
   const filterToolbar = (
     <Stack direction="row" spacing={1.5} alignItems="center">
       <Stack direction="row" spacing={0.5} alignItems="center">
-        <SortIcon sx={{ fontSize: 18, color: "text.disabled" }} />
-        <FormControl size="small" variant="standard">
-          <Select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as SortBy)}
-            disableUnderline
-            sx={{ fontSize: "0.875rem", color: "text.secondary" }}
-          >
-            <MenuItem value="updated">Recently updated</MenuItem>
-            <MenuItem value="created">Recently created</MenuItem>
-          </Select>
-        </FormControl>
-
         <FormControl size="small" variant="standard">
           <Select
             value={inactiveDays}
@@ -203,6 +183,8 @@ export const AllTasks: React.FC = () => {
     </Stack>
   );
 
+  const isDefaultRange = inactiveDays === 0;
+  const isFilterApplied = isSearching || !isDefaultRange;
   const hasNoResults = !isLoading && tasks.length === 0;
 
   return (
@@ -231,7 +213,7 @@ export const AllTasks: React.FC = () => {
               </Box>
             ) : isError ? (
               <Alert severity="error">Failed to load tasks. Please check your authentication.</Alert>
-            ) : hasNoResults && !isSearching ? (
+            ) : hasNoResults && !isFilterApplied ? (
               <Box sx={{ textAlign: "center", py: 6 }}>
                 <Typography variant="h6" color="text.secondary">
                   No tasks found
@@ -317,7 +299,13 @@ export const AllTasks: React.FC = () => {
                     }}
                   >
                     {filteredTasks.map((task) => (
-                      <TaskCard key={task.id} task={task} overview={overviewByTask[task.id]} onArchiveToggle={invalidateTaskQueries} />
+                      <TaskCard
+                        key={task.id}
+                        task={task}
+                        overview={overviewByTask[task.id]}
+                        lastActiveOverride={lastActiveByTask[task.id]?.last_active ?? null}
+                        onArchiveToggle={invalidateTaskQueries}
+                      />
                     ))}
                   </Box>
                 )}
@@ -393,7 +381,13 @@ export const AllTasks: React.FC = () => {
               <>
                 <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", lg: "repeat(3, 1fr)" }, pb: 1 }}>
                   {filteredArchivedTasks.map((task) => (
-                    <TaskCard key={task.id} task={task} overview={overviewByTask[task.id]} onArchiveToggle={invalidateTaskQueries} />
+                    <TaskCard
+                      key={task.id}
+                      task={task}
+                      overview={overviewByTask[task.id]}
+                      lastActiveOverride={lastActiveByTask[task.id]?.last_active ?? null}
+                      onArchiveToggle={invalidateTaskQueries}
+                    />
                   ))}
                 </Box>
                 <Box ref={archivedSentinelRef} sx={{ height: 1 }} />

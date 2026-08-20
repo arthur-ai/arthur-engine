@@ -93,6 +93,9 @@ def _create_response(
 class ExtendedTraceQueryRequest(TraceQueryRequest):
     """Extends TraceQueryRequest with token count and span count filter support."""
 
+    # Overrides the single-value field in arthur-common's TraceQueryRequest to
+    # accept multiple run statuses. TODO: upstream this change to arthur-common.
+    continuous_eval_run_status: Optional[list[ContinuousEvalRunStatus]] = None  # type: ignore[assignment]
     total_token_count_eq: Optional[int] = None
     total_token_count_gt: Optional[int] = None
     total_token_count_gte: Optional[int] = None
@@ -153,9 +156,9 @@ def trace_query_parameters(
         None,
         description="Filter by trace annotation type (i.e. 'human' or 'continuous_eval').",
     ),
-    continuous_eval_run_status: ContinuousEvalRunStatus = Query(
+    continuous_eval_run_status: list[ContinuousEvalRunStatus] | None = Query(
         None,
-        description="Filter by trace annotation run status (e.g. 'passed', 'failed', etc.).",
+        description="Continuous eval run statuses to filter on (e.g. 'passed', 'failed', etc.). Optional.",
     ),
     continuous_eval_name: str = Query(
         None,

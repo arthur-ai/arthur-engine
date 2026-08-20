@@ -3,20 +3,261 @@
   "@id": "https://arthur.ai/vex/arthur-engine",
   "author": "Arthur Security <security@arthur.ai>",
   "role": "Document Creator",
-  "timestamp": "2026-06-25T00:00:00.000000000-00:00",
-  "version": 1,
+  "timestamp": "2026-08-18T00:00:00.000000000-00:00",
+  "version": 11,
+  "_comment": "Scope: HIGH/CRITICAL findings that a container-image re-scan still reports for the genai-engine, ml-engine and genai-engine-models-* images AND that are not exploitable in our usage. Every statement here is 'not_affected' with a justification. Remediated CVEs are excluded by policy — fix, don't justify (security/README.md), so a CVE disappearing from this document means it was fixed, not dropped. Remediated and therefore absent: python3.11 is removed from every image (its dpkg metadata deleted); litellm/langsmith/msgpack/nltk/uv/pyasn1 are upgraded past their advisories; and as of 2026-07-30 the distroless OS-package findings (libc6, libssl3, libkrb5*, liblzma5) are fixed at the source — the build stages now mirror the base's /lib layout with their apt-upgraded libraries and rewrite /var/lib/dpkg/status.d to the versions actually installed, so the patched objects ship and scanners read true versions. Auditor note: the distroless base is not merged-/usr, so before that change `COPY /usr/lib` never reached the glibc and liblzma objects the base keeps in /lib. Images up to and including 2.1.754 shipped the base's unpatched glibc (2.36-9+deb12u13) and liblzma5 (5.4.1-1), and earlier revisions of this document incorrectly recorded those libc6 CVEs as fixed. The libssl3 and krb5 objects do live under /usr/lib and were genuinely patched throughout; only their dpkg metadata was stale. See genai-engine/dockerfile, ml-engine/Dockerfile, deployment/model-upload/Dockerfile and PR #2073. Audited 2026-08-18 against the per-image Trivy reports from the daily image-vuln-scan: (a) no remaining statement suppresses a finding that has an upstream fix \u2014 every one is unfixed at the installed version, so none is masking a bump we could take instead; (b) the python3.11 statements (CVE-2025-69534, CVE-2026-3644, CVE-2026-4224, CVE-2026-6100, CVE-2026-7210, CVE-2025-13836) were removed because the runtime-s3 and runtime-fs stages now delete the interpreter and its dpkg metadata outright, so the packages are absent and those statements matched nothing; (c) the document is scoped to HIGH/CRITICAL, so four statements were removed for falling below that line: CVE-2026-11822 and CVE-2026-11824 (libsqlite3-0) and CVE-2026-56131 and CVE-2026-56407 (libexpat1) were re-rated from HIGH to MEDIUM in the vulnerability database. Note what this does and does not mean: those four are NOT remediated. The packages are still installed at the same versions and Debian still ships no fix (it marks the sqlite pair <postponed> for bookworm); they simply sit under the scan's --severity HIGH,CRITICAL filter, so nothing reports them today. If any of them is ever re-rated back to HIGH it will surface as an untriaged finding and will need its justification restored -- the reasoning was sound, only the severity changed.",
   "statements": [
     {
-      "_comment": "EXAMPLE / TEMPLATE statement. Replace with real triaged CVEs. One statement per (vulnerability, product). 'products' @id should match the image purl reported by the scanner, e.g. pkg:oci/genai-engine-cpu. Remove this example once real statements exist.",
-      "vulnerability": {
-        "name": "CVE-0000-00000"
-      },
+      "_comment": "libexpat1: the reported system library (pkg:deb libexpat1 2.5.0-1~deb12u2 from the distroless base) is not linked by the application runtime. CPython 3.12/3.13 (from /usr/local) statically bundle their own expat (2.7.4 / 2.8.1) and do not load the system libexpat.so.1. Its only consumer in the base image, Python 3.11, has been removed. No Debian bookworm fix is available yet (fixed upstream in expat 2.8.1). DoS-only (CWE-407, CVSS ~2.9). Residual risk: the bundled CPython expat (2.7.4 on 3.12) is also affected, but is reachable only by parsing attacker-controlled XML, which these images do not do (the engines expose JSON APIs; the model-upload jobs parse no XML).",
+      "vulnerability": { "name": "CVE-2026-45186" },
       "products": [
-        { "@id": "pkg:oci/genai-engine-cpu" },
-        { "@id": "pkg:oci/genai-engine-gpu" },
-        { "@id": "pkg:oci/ml-engine" }
+        { "@id": "pkg:oci/genai-engine-cpu", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] },
+        { "@id": "pkg:oci/genai-engine-gpu", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] },
+        { "@id": "pkg:oci/ml-engine", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] },
+        { "@id": "pkg:oci/genai-engine-models-s3", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] },
+        { "@id": "pkg:oci/genai-engine-models-fs", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] },
+        { "@id": "pkg:oci/genai-engine-models-gcs", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] }
       ],
-      "status": "under_investigation"
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_in_execute_path",
+      "impact_statement": "The system libexpat1 is not loaded by the application: CPython 3.12/3.13 bundle their own expat statically and do not link /usr/lib/*/libexpat.so.1, and the only base-image consumer (Python 3.11) has been removed. The flaw is a denial-of-service (inefficient algorithmic complexity, CWE-407, CVSS ~2.9) reachable only by parsing attacker-controlled XML through this system library.",
+      "timestamp": "2026-06-27T00:00:00Z"
+    },
+    {
+      "_comment": "zlib1g: The overflow is in MiniZip (zlib contrib/minizip), which upstream states is not a supported part of zlib. Debian's zlib1g shared library does not build or export the MiniZip code (the vulnerable zipOpenNewFileInZip4_64 symbol is absent); Arthur links only the core inflate/deflate API. Owner: security@arthur.ai. Review by: 2026-12-27.",
+      "vulnerability": { "name": "CVE-2023-45853" },
+      "products": [
+        { "@id": "pkg:oci/genai-engine-cpu", "subcomponents": [ { "@id": "pkg:deb/debian/zlib1g" } ] },
+        { "@id": "pkg:oci/genai-engine-gpu", "subcomponents": [ { "@id": "pkg:deb/debian/zlib1g" } ] },
+        { "@id": "pkg:oci/ml-engine", "subcomponents": [ { "@id": "pkg:deb/debian/zlib1g" } ] },
+        { "@id": "pkg:oci/genai-engine-models-s3", "subcomponents": [ { "@id": "pkg:deb/debian/zlib1g" } ] },
+        { "@id": "pkg:oci/genai-engine-models-fs", "subcomponents": [ { "@id": "pkg:deb/debian/zlib1g" } ] },
+        { "@id": "pkg:oci/genai-engine-models-gcs", "subcomponents": [ { "@id": "pkg:deb/debian/zlib1g" } ] }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "The overflow is in MiniZip (zlib contrib/minizip), which upstream states is not a supported part of zlib. Debian's zlib1g shared library does not build or export the MiniZip code (the vulnerable zipOpenNewFileInZip4_64 symbol is absent); Arthur links only the core inflate/deflate API.",
+      "timestamp": "2026-06-27T00:00:00Z"
+    },
+    {
+      "_comment": "libexpat1: Triggering requires parsing attacker-controlled XML through libexpat. Arthur's engines expose JSON/HTTP APIs and never parse untrusted XML via the system libexpat; it is a transitive base-OS dependency. Owner: security@arthur.ai. Review by: 2026-12-27.",
+      "vulnerability": { "name": "CVE-2025-59375" },
+      "products": [
+        { "@id": "pkg:oci/genai-engine-cpu", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] },
+        { "@id": "pkg:oci/genai-engine-gpu", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] },
+        { "@id": "pkg:oci/ml-engine", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] },
+        { "@id": "pkg:oci/genai-engine-models-s3", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] },
+        { "@id": "pkg:oci/genai-engine-models-fs", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_in_execute_path",
+      "impact_statement": "Triggering requires parsing attacker-controlled XML through libexpat. Arthur's engines expose JSON/HTTP APIs and never parse untrusted XML via the system libexpat; it is a transitive base-OS dependency.",
+      "timestamp": "2026-06-27T00:00:00Z"
+    },
+    {
+      "_comment": "ncurses: The buffer overflow is in the infocmp CLI / terminfo handling. The images run a non-interactive service with no TTY; Arthur never invokes infocmp nor renders attacker-controlled terminal/terminfo data. Owner: security@arthur.ai. Review by: 2026-12-27.",
+      "vulnerability": { "name": "CVE-2025-69720" },
+      "products": [
+        { "@id": "pkg:oci/genai-engine-cpu", "subcomponents": [ { "@id": "pkg:deb/debian/libncursesw6" }, { "@id": "pkg:deb/debian/libtinfo6" } ] },
+        { "@id": "pkg:oci/genai-engine-gpu", "subcomponents": [ { "@id": "pkg:deb/debian/libncursesw6" }, { "@id": "pkg:deb/debian/libtinfo6" } ] },
+        { "@id": "pkg:oci/ml-engine", "subcomponents": [ { "@id": "pkg:deb/debian/libncursesw6" }, { "@id": "pkg:deb/debian/libtinfo6" } ] },
+        { "@id": "pkg:oci/genai-engine-models-s3", "subcomponents": [ { "@id": "pkg:deb/debian/libncursesw6" }, { "@id": "pkg:deb/debian/libtinfo6" } ] },
+        { "@id": "pkg:oci/genai-engine-models-fs", "subcomponents": [ { "@id": "pkg:deb/debian/libncursesw6" }, { "@id": "pkg:deb/debian/libtinfo6" } ] },
+        { "@id": "pkg:oci/genai-engine-models-gcs", "subcomponents": [ { "@id": "pkg:deb/debian/libncursesw6" }, { "@id": "pkg:deb/debian/libtinfo6" }, { "@id": "pkg:deb/debian/ncurses-base" }, { "@id": "pkg:deb/debian/ncurses-bin" } ] }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_in_execute_path",
+      "impact_statement": "The buffer overflow is in the infocmp CLI / terminfo handling. The images run a non-interactive service with no TTY; Arthur never invokes infocmp nor renders attacker-controlled terminal/terminfo data.",
+      "timestamp": "2026-06-27T00:00:00Z"
+    },
+    {
+      "_comment": "libsqlite3-0: Persistence uses PostgreSQL (pgvector); libsqlite3 is a transitive dependency that is never given attacker-controlled SQL. Exploitation requires executing crafted SQL (KeyInfoFromExprList), which is not in the engine's data path. Owner: security@arthur.ai. Review by: 2026-12-27.",
+      "vulnerability": { "name": "CVE-2025-7458" },
+      "products": [
+        { "@id": "pkg:oci/genai-engine-cpu", "subcomponents": [ { "@id": "pkg:deb/debian/libsqlite3-0" } ] },
+        { "@id": "pkg:oci/genai-engine-gpu", "subcomponents": [ { "@id": "pkg:deb/debian/libsqlite3-0" } ] },
+        { "@id": "pkg:oci/ml-engine", "subcomponents": [ { "@id": "pkg:deb/debian/libsqlite3-0" } ] },
+        { "@id": "pkg:oci/genai-engine-models-s3", "subcomponents": [ { "@id": "pkg:deb/debian/libsqlite3-0" } ] },
+        { "@id": "pkg:oci/genai-engine-models-fs", "subcomponents": [ { "@id": "pkg:deb/debian/libsqlite3-0" } ] },
+        { "@id": "pkg:oci/genai-engine-models-gcs", "subcomponents": [ { "@id": "pkg:deb/debian/libsqlite3-0" } ] }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_in_execute_path",
+      "impact_statement": "Persistence uses PostgreSQL (pgvector); libsqlite3 is a transitive dependency that is never given attacker-controlled SQL. Exploitation requires executing crafted SQL (KeyInfoFromExprList), which is not in the engine's data path.",
+      "timestamp": "2026-06-27T00:00:00Z"
+    },
+    {
+      "_comment": "libexpat1: Triggering requires parsing attacker-controlled XML through libexpat. Arthur's engines expose JSON/HTTP APIs and never parse untrusted XML via the system libexpat; it is a transitive base-OS dependency. Owner: security@arthur.ai. Review by: 2026-12-27.",
+      "vulnerability": { "name": "CVE-2026-25210" },
+      "products": [
+        { "@id": "pkg:oci/genai-engine-cpu", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] },
+        { "@id": "pkg:oci/genai-engine-gpu", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] },
+        { "@id": "pkg:oci/ml-engine", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] },
+        { "@id": "pkg:oci/genai-engine-models-s3", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] },
+        { "@id": "pkg:oci/genai-engine-models-fs", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_in_execute_path",
+      "impact_statement": "Triggering requires parsing attacker-controlled XML through libexpat. Arthur's engines expose JSON/HTTP APIs and never parse untrusted XML via the system libexpat; it is a transitive base-OS dependency.",
+      "timestamp": "2026-06-27T00:00:00Z"
+    },
+    {
+      "_comment": "perl-base: perl-base is a transitive base-OS package on the models-gcs image; no Arthur process invokes the Perl interpreter or Archive::Tar. The upload job runs a single Python entrypoint (upload_models.py). Owner: security@arthur.ai. Review by: 2026-12-27.",
+      "vulnerability": { "name": "CVE-2026-42496" },
+      "products": [
+        { "@id": "pkg:oci/genai-engine-models-gcs", "subcomponents": [ { "@id": "pkg:deb/debian/perl-base" } ] }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_in_execute_path",
+      "impact_statement": "perl-base is a transitive base-OS package on the models-gcs image; no Arthur process invokes the Perl interpreter or Archive::Tar. The upload job runs a single Python entrypoint (upload_models.py).",
+      "timestamp": "2026-06-27T00:00:00Z"
+    },
+    {
+      "_comment": "perl-base: perl-base is a transitive base-OS package on the models-gcs image; no Arthur process invokes the Perl interpreter or Archive::Tar. The upload job runs a single Python entrypoint (upload_models.py). Owner: security@arthur.ai. Review by: 2026-12-27.",
+      "vulnerability": { "name": "CVE-2026-42497" },
+      "products": [
+        { "@id": "pkg:oci/genai-engine-models-gcs", "subcomponents": [ { "@id": "pkg:deb/debian/perl-base" } ] }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_in_execute_path",
+      "impact_statement": "perl-base is a transitive base-OS package on the models-gcs image; no Arthur process invokes the Perl interpreter or Archive::Tar. The upload job runs a single Python entrypoint (upload_models.py).",
+      "timestamp": "2026-06-27T00:00:00Z"
+    },
+    {
+      "_comment": "perl-base: perl-base is a transitive base-OS package on the models-gcs image; no Arthur process invokes the Perl interpreter or IO::Compress/File::GlobMapper. The upload job runs a single Python entrypoint (upload_models.py). Owner: security@arthur.ai. Review by: 2026-12-27.",
+      "vulnerability": { "name": "CVE-2026-48962" },
+      "products": [
+        { "@id": "pkg:oci/genai-engine-models-gcs", "subcomponents": [ { "@id": "pkg:deb/debian/perl-base" } ] }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_in_execute_path",
+      "impact_statement": "perl-base is a transitive base-OS package on the models-gcs image; no Arthur process invokes the Perl interpreter or IO::Compress/File::GlobMapper. The upload job runs a single Python entrypoint (upload_models.py).",
+      "timestamp": "2026-06-27T00:00:00Z"
+    },
+    {
+      "_comment": "perl-base: perl-base is a transitive base-OS package on the models-gcs image; no Arthur process invokes the Perl interpreter (no untrusted regex compilation). The upload job runs a single Python entrypoint (upload_models.py). Owner: security@arthur.ai. Review by: 2026-12-27.",
+      "vulnerability": { "name": "CVE-2026-8376" },
+      "products": [
+        { "@id": "pkg:oci/genai-engine-models-gcs", "subcomponents": [ { "@id": "pkg:deb/debian/perl-base" } ] }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_in_execute_path",
+      "impact_statement": "perl-base is a transitive base-OS package on the models-gcs image; no Arthur process invokes the Perl interpreter (no untrusted regex compilation). The upload job runs a single Python entrypoint (upload_models.py).",
+      "timestamp": "2026-06-27T00:00:00Z"
+    },
+    {
+      "_comment": "perl-base: perl-base is a transitive base-OS package on the models-gcs image; no Arthur process invokes the Perl interpreter or Archive::Tar. The upload job runs a single Python entrypoint (upload_models.py). Owner: security@arthur.ai. Review by: 2026-12-27.",
+      "vulnerability": { "name": "CVE-2026-9538" },
+      "products": [
+        { "@id": "pkg:oci/genai-engine-models-gcs", "subcomponents": [ { "@id": "pkg:deb/debian/perl-base" } ] }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_in_execute_path",
+      "impact_statement": "perl-base is a transitive base-OS package on the models-gcs image; no Arthur process invokes the Perl interpreter or Archive::Tar. The upload job runs a single Python entrypoint (upload_models.py).",
+      "timestamp": "2026-06-27T00:00:00Z"
+    },
+    {
+      "_comment": "perl-base: CVE-2026-13221 is a signed-16-bit overflow in Perl_study_chunk when compiling a regex alternation of >65535 fixed-string branches into a trie; no Debian bookworm fix is available. perl-base is a transitive base-OS package on the models-gcs image; no Arthur process invokes the Perl interpreter, and no untrusted regex is compiled by Perl. The upload job runs a single Python entrypoint (upload_models.py). Owner: security@arthur.ai. Review by: 2026-12-27.",
+      "vulnerability": { "name": "CVE-2026-13221" },
+      "products": [
+        { "@id": "pkg:oci/genai-engine-models-gcs", "subcomponents": [ { "@id": "pkg:deb/debian/perl-base" } ] }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_in_execute_path",
+      "impact_statement": "perl-base is a transitive base-OS package on the models-gcs image; no Arthur process invokes the Perl interpreter, and no attacker-controlled regex is ever compiled by Perl (the flaw requires a Perl regex alternation of >65535 fixed-string branches). The upload job runs a single Python entrypoint (upload_models.py).",
+      "timestamp": "2026-07-28T00:00:00Z"
+    },
+    {
+      "_comment": "perl-base: CVE-2026-57433 is a signed-32-bit integer overflow in Storable's retrieve_hook_common when deserializing a crafted SX_HOOK record via thaw/retrieve; no Debian bookworm fix is available. perl-base is a transitive base-OS package on the models-gcs image; no Arthur process invokes the Perl interpreter or the Storable module, so no attacker-controlled blob is ever deserialized by Perl. The upload job runs a single Python entrypoint (upload_models.py). Owner: security@arthur.ai. Review by: 2026-12-27.",
+      "vulnerability": { "name": "CVE-2026-57433" },
+      "products": [
+        { "@id": "pkg:oci/genai-engine-models-gcs", "subcomponents": [ { "@id": "pkg:deb/debian/perl-base" } ] }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_in_execute_path",
+      "impact_statement": "perl-base is a transitive base-OS package on the models-gcs image; no Arthur process invokes the Perl interpreter or the Storable module, so no attacker-controlled blob is ever passed to thaw/retrieve. The upload job runs a single Python entrypoint (upload_models.py).",
+      "timestamp": "2026-07-28T00:00:00Z"
+    },
+    {
+      "_comment": "libexpat1: CVE-2026-56408 is an integer overflow (CWE-190) in copyString; no Debian bookworm fix is available (fixed upstream in expat 2.8.2, only in sid). The system libexpat1 is not loaded by the application (CPython bundles expat statically; the only base-image consumer, Python 3.11, has been removed) and the engines never parse attacker-controlled XML through it. DoS-class. Owner: security@arthur.ai. Review by: 2027-01-28.",
+      "vulnerability": { "name": "CVE-2026-56408" },
+      "products": [
+        { "@id": "pkg:oci/genai-engine-cpu", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] },
+        { "@id": "pkg:oci/genai-engine-gpu", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] },
+        { "@id": "pkg:oci/ml-engine", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] },
+        { "@id": "pkg:oci/genai-engine-models-s3", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] },
+        { "@id": "pkg:oci/genai-engine-models-fs", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] },
+        { "@id": "pkg:oci/genai-engine-models-gcs", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_in_execute_path",
+      "impact_statement": "CVE-2026-56408 (integer overflow in copyString in libexpat < 2.8.2, DoS-class) is reachable only by parsing attacker-controlled XML through the system libexpat1, which the application does not load (CPython bundles expat statically; the base-image Python 3.11 consumer is removed). No Debian bookworm fix is available yet (fixed upstream in expat 2.8.2).",
+      "timestamp": "2026-07-28T00:00:00Z"
+    },
+    {
+      "_comment": "util-linux (libblkid1 and sibling packages): CVE-2026-53615 is an integer overflow in libblkid's DOS/MBR partition parser (partitions/dos.c, parse_dos_extended); no Debian bookworm fix is available (bookworm ships 2.38.1-5+deb12u3, still vulnerable; Debian bug #1140197). Triggering requires libblkid to probe an attacker-controlled block device / disk image / partition table. These images never probe disks or mount untrusted media — the engines are network services and the model-upload job only downloads model files and writes to cloud storage / a mounted volume. Subcomponents are name-only so the statement matches whichever util-linux binary packages a given image ships (distroless images carry only libuuid1; the slim models-gcs runtime carries the full set). Owner: security@arthur.ai. Review by: 2027-01-28.",
+      "vulnerability": { "name": "CVE-2026-53615" },
+      "products": [
+        { "@id": "pkg:oci/genai-engine-cpu", "subcomponents": [ { "@id": "pkg:deb/debian/libblkid1" }, { "@id": "pkg:deb/debian/libmount1" }, { "@id": "pkg:deb/debian/libsmartcols1" }, { "@id": "pkg:deb/debian/libuuid1" }, { "@id": "pkg:deb/debian/bsdutils" }, { "@id": "pkg:deb/debian/mount" }, { "@id": "pkg:deb/debian/util-linux" }, { "@id": "pkg:deb/debian/util-linux-extra" } ] },
+        { "@id": "pkg:oci/genai-engine-gpu", "subcomponents": [ { "@id": "pkg:deb/debian/libblkid1" }, { "@id": "pkg:deb/debian/libmount1" }, { "@id": "pkg:deb/debian/libsmartcols1" }, { "@id": "pkg:deb/debian/libuuid1" }, { "@id": "pkg:deb/debian/bsdutils" }, { "@id": "pkg:deb/debian/mount" }, { "@id": "pkg:deb/debian/util-linux" }, { "@id": "pkg:deb/debian/util-linux-extra" } ] },
+        { "@id": "pkg:oci/ml-engine", "subcomponents": [ { "@id": "pkg:deb/debian/libblkid1" }, { "@id": "pkg:deb/debian/libmount1" }, { "@id": "pkg:deb/debian/libsmartcols1" }, { "@id": "pkg:deb/debian/libuuid1" }, { "@id": "pkg:deb/debian/bsdutils" }, { "@id": "pkg:deb/debian/mount" }, { "@id": "pkg:deb/debian/util-linux" }, { "@id": "pkg:deb/debian/util-linux-extra" } ] },
+        { "@id": "pkg:oci/genai-engine-models-s3", "subcomponents": [ { "@id": "pkg:deb/debian/libblkid1" }, { "@id": "pkg:deb/debian/libmount1" }, { "@id": "pkg:deb/debian/libsmartcols1" }, { "@id": "pkg:deb/debian/libuuid1" }, { "@id": "pkg:deb/debian/bsdutils" }, { "@id": "pkg:deb/debian/mount" }, { "@id": "pkg:deb/debian/util-linux" }, { "@id": "pkg:deb/debian/util-linux-extra" } ] },
+        { "@id": "pkg:oci/genai-engine-models-fs", "subcomponents": [ { "@id": "pkg:deb/debian/libblkid1" }, { "@id": "pkg:deb/debian/libmount1" }, { "@id": "pkg:deb/debian/libsmartcols1" }, { "@id": "pkg:deb/debian/libuuid1" }, { "@id": "pkg:deb/debian/bsdutils" }, { "@id": "pkg:deb/debian/mount" }, { "@id": "pkg:deb/debian/util-linux" }, { "@id": "pkg:deb/debian/util-linux-extra" } ] },
+        { "@id": "pkg:oci/genai-engine-models-gcs", "subcomponents": [ { "@id": "pkg:deb/debian/libblkid1" }, { "@id": "pkg:deb/debian/libmount1" }, { "@id": "pkg:deb/debian/libsmartcols1" }, { "@id": "pkg:deb/debian/libuuid1" }, { "@id": "pkg:deb/debian/bsdutils" }, { "@id": "pkg:deb/debian/mount" }, { "@id": "pkg:deb/debian/util-linux" }, { "@id": "pkg:deb/debian/util-linux-extra" } ] }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_in_execute_path",
+      "impact_statement": "CVE-2026-53615 is an integer overflow in libblkid's DOS/MBR partition-table parser (partitions/dos.c). It is reachable only when libblkid probes an attacker-controlled block device, disk image, or partition table. These images never probe disks or mount untrusted media: the engines are network services and the model-upload job only downloads model files and writes them to cloud storage / a mounted volume. No Debian bookworm fix is available yet.",
+      "timestamp": "2026-07-28T00:00:00Z"
+    },
+    {
+      "_comment": "libacl1: CVE-2026-54369 is a symlink-traversal privilege escalation in libacl's pathname-based functions (acl_get_file/acl_set_file/acl_extended_file/acl_delete_def_file follow symlinks); no Debian bookworm fix is available (bookworm ships acl 2.3.1-3, no-dsa/postponed; fixed upstream in acl 2.4.0). Exploitation requires a local unprivileged attacker racing a higher-privileged process that operates on ACLs of attacker-controllable paths. The models-gcs image runs a single non-interactive Python entrypoint (upload_models.py) as one user with no other local users and performs no ACL operations on untrusted paths. Owner: security@arthur.ai. Review by: 2027-01-28.",
+      "vulnerability": { "name": "CVE-2026-54369" },
+      "products": [
+        { "@id": "pkg:oci/genai-engine-models-gcs", "subcomponents": [ { "@id": "pkg:deb/debian/libacl1" } ] }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_in_execute_path",
+      "impact_statement": "CVE-2026-54369 is a local symlink-traversal privilege escalation in libacl's pathname-based functions. It requires a local unprivileged attacker and a higher-privileged process performing ACL operations on attacker-controllable paths. The models-gcs image runs a single non-interactive Python entrypoint (upload_models.py) as one user, has no other local users, and performs no ACL operations on untrusted paths. No Debian bookworm fix is available yet (fixed upstream in acl 2.4.0).",
+      "timestamp": "2026-07-28T00:00:00Z"
+    },
+    {
+      "_comment": "gzip: CVE-2026-41992 is a global buffer overflow (OOB read) from improperly reused global state between the LZW and LZH decoders in a single gzip invocation; no Debian bookworm fix is available (bookworm ships gzip 1.12-1, no-dsa/postponed). Triggering requires feeding gzip a crafted LZW file followed by a crafted LZH file in one command. The models-gcs image never invokes gzip on attacker-controlled .lzw/.lzh archives — the upload job downloads model files and writes them to cloud storage. gzip is a transitive base-OS package. Owner: security@arthur.ai. Review by: 2027-01-28.",
+      "vulnerability": { "name": "CVE-2026-41992" },
+      "products": [
+        { "@id": "pkg:oci/genai-engine-models-gcs", "subcomponents": [ { "@id": "pkg:deb/debian/gzip" } ] }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_in_execute_path",
+      "impact_statement": "CVE-2026-41992 is an out-of-bounds read from reused global state between gzip's LZW and LZH decoders, triggered only by decompressing a crafted LZW file followed by a crafted LZH file in a single gzip invocation. The models-gcs image never invokes gzip on attacker-controlled archives; gzip is a transitive base-OS package and the upload job only downloads model files and writes them to cloud storage. No Debian bookworm fix is available yet.",
+      "timestamp": "2026-07-28T00:00:00Z"
+    },
+    {
+      "_comment": "perl-base: CVE-2026-57432 is an integer overflow in S_measure_struct (pack/unpack template with large repeat counts) causing an out-of-bounds heap read; no Debian bookworm fix is available (bookworm ships perl 5.36.0-7+deb12u3, no-dsa; fixed upstream in sid 5.42.2-3). perl-base is a transitive base-OS package on the models-gcs image; no Arthur process invokes the Perl interpreter, and no attacker-controlled pack/unpack template is ever executed. The upload job runs a single Python entrypoint (upload_models.py). Owner: security@arthur.ai. Review by: 2027-01-28.",
+      "vulnerability": { "name": "CVE-2026-57432" },
+      "products": [
+        { "@id": "pkg:oci/genai-engine-models-gcs", "subcomponents": [ { "@id": "pkg:deb/debian/perl-base" } ] }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_in_execute_path",
+      "impact_statement": "CVE-2026-57432 is an integer overflow in Perl's S_measure_struct (pack/unpack of a template with large repeat counts) causing an out-of-bounds heap read. It is reachable only when the Perl interpreter runs an attacker-controlled pack/unpack template. perl-base is a transitive base-OS package on the models-gcs image; no Arthur process invokes Perl, and the upload job runs a single Python entrypoint (upload_models.py). No Debian bookworm fix is available yet.",
+      "timestamp": "2026-07-28T00:00:00Z"
+    },
+    {
+      "_comment": "openssl/libssl3: CVE-2026-14456 is unbounded memory growth in the OpenSSL QUIC SERVER incoming-channel queue (a listener queues an unlimited number of pending channels for Initial packets with unknown connection IDs). Upstream OpenSSL rates it LOW and lists the affected ranges as >=3.5.0 <3.5.8, >=3.6.0 <3.6.4 and >=4.0.0 <4.0.2 — the QUIC server implementation was only added in 3.5. Every Arthur image ships OpenSSL 3.0.20-1~deb12u2, which predates that code entirely, so the vulnerable function is not present in the shipped object. Trivy reports it because Debian's tracker has not yet triaged the CVE and defaults every openssl branch to 'vulnerable' (it likewise marks bullseye's 1.1.1w vulnerable, which cannot be true for a 3.5-era feature); that is also why the report shows no fixed version. Nothing in these images runs a QUIC listener in any case. Re-check once Debian triages bookworm; if 3.0.x is ever shown to contain the queueing code this must be revisited. Owner: security@arthur.ai. Review by: 2027-02-18.",
+      "vulnerability": { "name": "CVE-2026-14456" },
+      "products": [
+        { "@id": "pkg:oci/genai-engine-cpu", "subcomponents": [ { "@id": "pkg:deb/debian/libssl3" }, { "@id": "pkg:deb/debian/openssl" } ] },
+        { "@id": "pkg:oci/genai-engine-gpu", "subcomponents": [ { "@id": "pkg:deb/debian/libssl3" }, { "@id": "pkg:deb/debian/openssl" } ] },
+        { "@id": "pkg:oci/ml-engine", "subcomponents": [ { "@id": "pkg:deb/debian/libssl3" }, { "@id": "pkg:deb/debian/openssl" } ] },
+        { "@id": "pkg:oci/genai-engine-models-s3", "subcomponents": [ { "@id": "pkg:deb/debian/libssl3" }, { "@id": "pkg:deb/debian/openssl" } ] },
+        { "@id": "pkg:oci/genai-engine-models-fs", "subcomponents": [ { "@id": "pkg:deb/debian/libssl3" }, { "@id": "pkg:deb/debian/openssl" } ] },
+        { "@id": "pkg:oci/genai-engine-models-gcs", "subcomponents": [ { "@id": "pkg:deb/debian/libssl3" }, { "@id": "pkg:deb/debian/openssl" } ] }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "CVE-2026-14456 affects the OpenSSL QUIC server listener, which was introduced in OpenSSL 3.5. Upstream lists the affected ranges as >=3.5.0 <3.5.8, >=3.6.0 <3.6.4 and >=4.0.0 <4.0.2, and rates the issue LOW. These images ship OpenSSL 3.0.20-1~deb12u2, in which the QUIC server implementation does not exist, so the vulnerable code is not present in the shipped library. No Arthur process operates a QUIC listener regardless. No Debian fix is listed because bookworm's 3.0.x branch was never affected.",
+      "timestamp": "2026-08-18T00:00:00Z"
     }
   ]
 }

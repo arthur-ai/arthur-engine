@@ -14,8 +14,8 @@ interface UseRagConfigVersionsParams {
 export function useRagConfigVersions(configId: string | null, params?: UseRagConfigVersionsParams) {
   const api = useApi();
 
+  // eslint-disable-next-line @tanstack/query/exhaustive-deps
   return useQuery({
-    // eslint-disable-next-line @tanstack/query/exhaustive-deps
     queryKey: ["rag-config-versions", configId, params],
     queryFn: async () => {
       if (!api || !configId) {

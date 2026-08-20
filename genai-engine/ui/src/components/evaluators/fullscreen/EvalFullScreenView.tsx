@@ -1,6 +1,6 @@
 import Box from "@mui/material/Box";
 import { useState, useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router";
 
 import { useDeleteEvalVersionMutation } from "../hooks/useDeleteEvalVersionMutation";
 import { useEval } from "../hooks/useEval";

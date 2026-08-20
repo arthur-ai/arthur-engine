@@ -1,10 +1,11 @@
 name: "Vulnerability scan & justification report"
 description: >
-  Advisory container vulnerability scan (Docker Scout + Trivy) for a single image. Uploads SARIF
+  Advisory container vulnerability scan (Trivy) for a single image. Uploads SARIF
   to the GitHub Security tab and generates an SBOM + a VEX-applied HIGH/CRITICAL justification
-  report, uploaded as a workflow artifact. Never fails the build (advisory). Requires the caller
-  to have already `docker login`'d and to have checked out the repo (for security/vex + renderer).
-  The caller job needs `permissions: { security-events: write }`.
+  report, uploaded as a workflow artifact. Never fails the build (advisory). Pass
+  dockerhub-username/dockerhub-token for authenticated pulls (otherwise the caller must already be
+  `docker login`'d). The caller must also have checked out the repo (for security/vex + renderer)
+  and the job needs `permissions: { security-events: write }`.
 
 inputs:
   image:
@@ -17,51 +18,55 @@ inputs:
     description: "Platform to scan for multi-arch images"
     required: false
     default: "linux/amd64"
-  trivy-version:
-    description: "Trivy CLI version to install"
+  dockerhub-username:
+    description: "Docker Hub username for authenticated image pulls (raises the pull rate limit)"
     required: false
-    default: "0.58.1"
+    default: ""
+  dockerhub-token:
+    description: "Docker Hub access token (or password) for authenticated image pulls"
+    required: false
+    default: ""
 
 runs:
   using: composite
   steps:
-    # --- Docker Scout: CVEs -> SARIF (advisory) ---
-    - name: Docker Scout CVE scan (advisory)
-      uses: docker/scout-action@v1
-      continue-on-error: true
-      with:
-        command: cves
-        image: ${{ inputs.image }}
-        platform: ${{ inputs.platform }}
-        only-severities: critical,high
-        sarif-file: scout-${{ inputs.slug }}.sarif
-    - name: Upload Scout SARIF
-      if: always() && hashFiles(format('scout-{0}.sarif', inputs.slug)) != ''
-      uses: github/codeql-action/upload-sarif@v3
-      with:
-        sarif_file: scout-${{ inputs.slug }}.sarif
-        category: scout-${{ inputs.slug }}
-    # --- Docker Scout: base-image upgrade recommendations (advisory, logs only) ---
-    - name: Docker Scout recommendations (advisory)
-      uses: docker/scout-action@v1
-      continue-on-error: true
-      with:
-        command: recommendations
-        image: ${{ inputs.image }}
-        platform: ${{ inputs.platform }}
-
-    # --- Install Trivy CLI (deterministic; no action-tag guessing) ---
-    - name: Install Trivy
+    # --- Pull the image (authenticated) so Trivy scans the local copy instead of pulling it from
+    #     the registry. With the Docker Hub credentials this uses the authenticated (higher) rate
+    #     limit — avoids the TOOMANYREQUESTS errors that surface as "unable to find the specified
+    #     image". ---
+    - name: Authenticate to Docker Hub & pull image
       shell: bash
+      env:
+        DOCKERHUB_USERNAME: ${{ inputs.dockerhub-username }}
+        DOCKERHUB_TOKEN: ${{ inputs.dockerhub-token }}
+        IMAGE: ${{ inputs.image }}
+        PLATFORM: ${{ inputs.platform }}
       run: |
         set -euo pipefail
-        VER="${{ inputs.trivy-version }}"
-        curl -sfL "https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh" \
-          | sh -s -- -b "${RUNNER_TEMP}/bin" "v${VER}"
-        echo "${RUNNER_TEMP}/bin" >> "$GITHUB_PATH"
-        "${RUNNER_TEMP}/bin/trivy" --version
+        if [ -n "${DOCKERHUB_USERNAME}" ] && [ -n "${DOCKERHUB_TOKEN}" ]; then
+          echo "${DOCKERHUB_TOKEN}" | docker login -u "${DOCKERHUB_USERNAME}" --password-stdin
+        fi
+        docker pull --platform "${PLATFORM}" "${IMAGE}"
+
+    # --- Install Trivy CLI (official action; always latest) ---
+    # Unpinned: GitHub only retains release assets for recent versions, so pinned tags eventually 404.
+    - name: Install Trivy
+      uses: aquasecurity/setup-trivy@v0.3.1
+      with:
+        version: latest
+        token: ${{ github.token }}
 
     # --- Trivy: single scan -> JSON, then convert to SARIF (advisory) ---
+    # Every HIGH/CRITICAL is surfaced to the GitHub Security tab; findings accepted via VEX are
+    # suppressed (they move to ExperimentalModifiedFindings and are excluded from the converted
+    # SARIF), so the tab shows only the not-yet-triaged backlog. Unfixed CVEs are NOT hidden — the
+    # policy is to document each one with a VEX statement (see security/README.md), not to drop it.
+    #
+    # VEX matching note: statements in security/vex/openvex.json scope subcomponents by *package
+    # name only* (e.g. pkg:deb/debian/libssl3), NOT by pinned version/qualifiers. Trivy package
+    # purls carry arch + distro point-release (?arch=amd64&distro=debian-12.13) that drift on every
+    # base-image bump; a version-pinned subcomponent purl silently stops matching and the
+    # suppression breaks. Keep subcomponent purls name-only.
     - name: Trivy scan (advisory)
       shell: bash
       env:

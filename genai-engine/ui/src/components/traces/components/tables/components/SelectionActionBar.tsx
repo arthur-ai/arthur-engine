@@ -1,4 +1,4 @@
-import { Close, PlayArrow } from "@mui/icons-material";
+import { Close, LibraryAdd, PlayArrow } from "@mui/icons-material";
 import { Button, Chip, Collapse, Paper, Stack, Typography } from "@mui/material";
 
 import { MAX_TRACES_PER_TEST_RUN } from "@/lib/constants";
@@ -6,10 +6,11 @@ import { MAX_TRACES_PER_TEST_RUN } from "@/lib/constants";
 type SelectionActionBarProps = {
   selectedCount: number;
   onRunEval: () => void;
+  onAddToDataset: () => void;
   onClearSelection: () => void;
 };
 
-export const SelectionActionBar = ({ selectedCount, onRunEval, onClearSelection }: SelectionActionBarProps) => {
+export const SelectionActionBar = ({ selectedCount, onRunEval, onAddToDataset, onClearSelection }: SelectionActionBarProps) => {
   return (
     <Collapse in={selectedCount > 0}>
       <Paper
@@ -31,6 +32,9 @@ export const SelectionActionBar = ({ selectedCount, onRunEval, onClearSelection 
           <Stack direction="row" spacing={1} sx={{ ml: "auto !important" }}>
             <Button size="small" variant="outlined" startIcon={<Close />} onClick={onClearSelection}>
               Clear
+            </Button>
+            <Button size="small" variant="outlined" startIcon={<LibraryAdd />} onClick={onAddToDataset}>
+              Add to dataset
             </Button>
             <Button size="small" variant="contained" startIcon={<PlayArrow />} onClick={onRunEval}>
               Run Eval

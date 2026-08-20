@@ -2,6 +2,8 @@ import datetime
 import logging
 import os
 import random
+import sys
+import time
 from datetime import datetime as dt
 from typing import Any, Callable
 
@@ -20,6 +22,8 @@ from opentelemetry import trace
 from pydantic.types import SecretStr
 
 from config.openai_config import GenaiEngineOpenAIProvider, OpenAISettings
+from monitoring.ai_activity import record_model_invocation
+from schemas.audit_log_schemas import ModelInvocation
 from schemas.custom_exceptions import (
     LLMContentFilterException,
     LLMExecutionException,
@@ -243,17 +247,28 @@ class LLMExecutor:
         self,
         f: Callable[[], Any],
         operation_name: str,
+        model_name: str | None = None,
     ) -> tuple[Any, LLMTokenConsumption]:
         if not self.requests.request_allowed():
             # Throw an error, delay, what do?
             pass
+        provider = (
+            "azure"
+            if self.azure_openai_enabled
+            else "openai" if self.openai_enabled else "unknown"
+        )
+        start_time = time.perf_counter()
+        success = False
+        error_type: str | None = None
         with get_openai_callback() as cb:
             try:
                 result: Any = f()
                 token_consumption = utils.log_llm_metrics(operation_name, cb)
                 self.requests.add_request(token_consumption)
+                success = True
                 return result, token_consumption
             except openai.RateLimitError as e:
+                error_type = type(e).__name__
                 logger.warning(
                     f"OpenAI API request exceeded rate limit by {operation_name}: {e}",
                 )
@@ -261,6 +276,7 @@ class LLMExecutor:
                     "GenAI Engine was unable to evaluate due to an upstream API rate limit",
                 )
             except openai.APIConnectionError as e:
+                error_type = type(e).__name__
                 logger.warning(
                     f"Failed to connect to OpenAI API by {operation_name}: {e}",
                 )
@@ -268,6 +284,7 @@ class LLMExecutor:
                     "GenAI Engine was unable to evaluate due to an upstream API connection error",
                 )
             except openai.APIError as e:
+                error_type = type(e).__name__
                 if e.code == "context_length_exceeded":
                     logger.warning(
                         f"OpenAI API request context length exceeded by {operation_name}: {e}",
@@ -301,6 +318,60 @@ class LLMExecutor:
                     raise LLMExecutionException(
                         "GenAI Engine was unable to evaluate due to an upstream API request error",
                     )
+            finally:
+                # Record this LLM invocation on the request's audit accumulator
+                # (no-op outside a request / when the feature is disabled). Runs on
+                # both the success path and every raising path; capture the type of
+                # any exception not already classified above. Best-effort — audit
+                # instrumentation must never break the evaluation it observes.
+                try:
+                    if not success and error_type is None:
+                        uncaught = sys.exc_info()[0]
+                        if uncaught is not None:
+                            error_type = uncaught.__name__
+                    record_model_invocation(
+                        ModelInvocation(
+                            model_name=model_name,
+                            provider=provider,
+                            model_type="llm",
+                            operation=operation_name,
+                            prompt_tokens=cb.prompt_tokens,
+                            completion_tokens=cb.completion_tokens,
+                            total_tokens=cb.prompt_tokens + cb.completion_tokens,
+                            latency_ms=int((time.perf_counter() - start_time) * 1000),
+                            success=success,
+                            error_type=error_type,
+                        ),
+                    )
+                except Exception:  # pragma: no cover - best-effort instrumentation
+                    logger.debug(
+                        "Failed to record LLM model invocation",
+                        exc_info=True,
+                    )
+
+
+def extract_chain_model_name(chain: Any) -> str | None:
+    """Best-effort read of the LLM deployment name embedded in a built LangChain chain.
+
+    Handles both legacy (``prompt | model | parser``) and structured-output
+    (``prompt | model.with_structured_output(...)``) chains — the structured
+    binding delegates ``model_name`` to the wrapped model. Returns None when it
+    cannot be determined (e.g. mocked chains in tests) so callers can pass it
+    straight through to ``execute(model_name=...)``.
+    """
+    steps = getattr(chain, "steps", None)
+    if not isinstance(steps, list):
+        return None
+    for step in steps:
+        name = getattr(step, "model_name", None)
+        if isinstance(name, str):
+            return name
+        bound = getattr(step, "bound", None)
+        if bound is not None:
+            name = getattr(bound, "model_name", None)
+            if isinstance(name, str):
+                return name
+    return None
 
 
 def get_llm_executor() -> LLMExecutor:

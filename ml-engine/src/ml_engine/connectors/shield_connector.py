@@ -17,7 +17,7 @@ from arthur_client.api_bindings import (
     Dataset,
     DatasetLocator,
     DatasetLocatorField,
-    LLMEval,
+    Eval,
     PutAvailableDataset,
     PutAvailableDatasets,
     TraceTransformResponse,
@@ -479,7 +479,7 @@ class ShieldBaseConnector(Connector, ABC):
         self,
         task_id: str,
         eval_name: str,
-    ) -> LLMEval:
+    ) -> Eval:
         """
         Reads the latest version of a specific LLM evaluation from the Shield API.
 
@@ -488,7 +488,7 @@ class ShieldBaseConnector(Connector, ABC):
             eval_name: Name of the eval to retrieve
 
         Returns:
-            LLMEval object for the latest version
+            Eval object for the latest version
         """
         resp = self._evals_client.get_llm_eval_api_v1_tasks_task_id_llm_evals_eval_name_versions_eval_version_get_with_http_info(
             task_id=task_id,
@@ -496,10 +496,12 @@ class ShieldBaseConnector(Connector, ABC):
             eval_version="latest",
         )
         data = json.loads(resp.raw_data)
-        return LLMEval.model_validate(data)
+        return Eval.model_validate(data)
 
     def list_trace_metadata(
-        self, task_ids: list[str], **kwargs: Any
+        self,
+        task_ids: list[str],
+        **kwargs: Any,
     ) -> TraceListResponse:
         """
         Lists trace metadata
@@ -517,7 +519,9 @@ class ShieldBaseConnector(Connector, ABC):
         return TraceListResponse.model_validate(data)
 
     def query_inferences(
-        self, task_ids: list[str], **kwargs: Any
+        self,
+        task_ids: list[str],
+        **kwargs: Any,
     ) -> QueryInferencesResponse:
         """
         Queries inferences

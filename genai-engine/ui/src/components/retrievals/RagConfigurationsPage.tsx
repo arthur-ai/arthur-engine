@@ -1,6 +1,6 @@
 import Box from "@mui/material/Box";
 import React, { useCallback } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router";
 
 import { ConfigurationsListView } from "./ConfigurationsListView";
 import RagConfigFullScreenView from "./fullscreen/RagConfigFullScreenView";

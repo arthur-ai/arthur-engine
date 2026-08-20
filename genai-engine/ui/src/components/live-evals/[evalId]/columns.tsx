@@ -1,7 +1,7 @@
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import { Chip, IconButton, Tooltip, Typography } from "@mui/material";
 import { createMRTColumnHelper } from "material-react-table";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 
 import { CopyableChip } from "@/components/common";
 import { serializeDrawerTarget } from "@/components/traces/hooks/useDrawerTarget";

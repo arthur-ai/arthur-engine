@@ -49,6 +49,24 @@
                         "type": "string"
                     },
                     "description": "Labels for the Kubernetes ingress"
+                },
+                "tls": {
+                    "type": "array",
+                    "description": "Optional TLS blocks for the ingress (nginx path). Each entry has a hosts list and the name of a Kubernetes TLS secret. For AWS ALB, terminate TLS via annotations (certificate-arn) instead of this block.",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "hosts": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
+                            },
+                            "secretName": {
+                                "type": "string"
+                            }
+                        }
+                    }
                 }
             }
         },
@@ -61,7 +79,7 @@
             "description": "GenAI Engine version"
         },
         "genaiEngineIngressURL": {
-            "oneOf": [
+            "anyOf": [
                 {
                     "type": "string",
                     "format": "hostname"
@@ -74,7 +92,7 @@
             "description": "GenAI Engine application ingress DNS URL, can be empty"
         },
         "scopeFeIngressURI": {
-            "oneOf": [
+            "anyOf": [
                 {
                     "type": "string",
                     "format": "uri"
@@ -201,6 +219,10 @@
             "type": "string",
             "description": "Memory limits value for GenAI Engine"
         },
+        "genaiEngineContainerGPULimit": {
+            "type": ["string", "integer"],
+            "description": "Value for the nvidia.com/gpu resource limit on the GenAI Engine container, e.g. \"1\". Leave empty to omit the limit entirely. Required for GPU metric attribution: DCGM maps GPUs to pods through the kubelet pod-resources API, which only reports a device allocation when the pod requests one, so the GPU autoscaler add-on chart cannot see per-pod GPU metrics without this. Only set it on clusters where a device plugin advertises nvidia.com/gpu, or the pod will never schedule"
+        },
         "arthurGenaiEngineDeployment": {
             "type": "object",
             "properties": {
@@ -255,32 +277,31 @@
                             "operator": {
                                 "type": "string",
                                 "enum": [
-                                    "Equal"
+                                    "Equal",
+                                    "Exists"
                                 ],
-                                "description": "The operator to use for the toleration"
+                                "description": "The operator to use for the toleration. Use 'Exists' (with no value) to tolerate a GPU node taint, e.g. key 'nvidia.com/gpu'."
                             },
                             "value": {
                                 "type": "string",
-                                "description": "The value to match for the toleration"
+                                "description": "The value to match for the toleration. Omit when operator is 'Exists'."
                             },
                             "effect": {
                                 "type": "string",
                                 "enum": [
+                                    "NoSchedule",
+                                    "PreferNoSchedule",
                                     "NoExecute"
                                 ],
-                                "description": "The effect of the toleration"
+                                "description": "The effect of the toleration. Use 'NoSchedule' to tolerate a tainted GPU NodePool/node group."
                             },
                             "tolerationSeconds": {
                                 "type": "integer",
-                                "description": "The duration for which the toleration is valid"
+                                "description": "The duration for which the toleration is valid. Only valid with effect 'NoExecute'."
                             }
                         },
                         "required": [
-                            "key",
-                            "operator",
-                            "value",
-                            "effect",
-                            "tolerationSeconds"
+                            "key"
                         ]
                     },
                     "description": "Tolerations for Arthur GenAI Engine pod"
@@ -312,6 +333,10 @@
                 "enabled": {
                     "type": "boolean",
                     "description": "Enable Horizontal Pod Autoscaler for Arthur GenAI Engine"
+                },
+                "externallyManaged": {
+                    "type": "boolean",
+                    "description": "When true, an external controller (e.g. the genai-engine-gpu-autoscaler-karpenter add-on chart) owns replica count: the Deployment omits its static replicas field and this chart renders no HPA of its own"
                 },
                 "annotations": {
                     "type": "object",
@@ -493,6 +518,49 @@
         "genaiEngineSecretRecaptchaApiKeyName": {
             "type": "string",
             "description": "(Optional) Name of the secret holding the reCAPTCHA Enterprise REST API key (expecting value for key 'key'). Leave unset to disable reCAPTCHA verification."
+        },
+        "modelPVC": {
+            "type": "object",
+            "description": "(Optional) Offline model loading. Mount a pre-populated PersistentVolumeClaim holding the model binaries (e.g. the EFS-backed PVC from deployment/terraform/eks-efs-models) and load models from it instead of downloading from Hugging Face at startup.",
+            "properties": {
+                "enabled": {
+                    "type": "boolean",
+                    "description": "Online/offline toggle. false (default): download models from Hugging Face at startup, no PVC. true: mount the model PVC and set MODEL_STORAGE_PATH + HF_HUB_OFFLINE=1 to load offline."
+                },
+                "claimName": {
+                    "type": "string",
+                    "description": "Name of the PersistentVolumeClaim to mount (must already exist in the release namespace)."
+                },
+                "mountPath": {
+                    "type": "string",
+                    "description": "Path the volume is mounted at inside the container; also used as MODEL_STORAGE_PATH."
+                },
+                "readOnly": {
+                    "type": "boolean",
+                    "description": "Must be false: the HuggingFace loaders write .lock/cache files under the mount even in offline mode, so a read-only mount fails with '[Errno 30] Read-only file system'."
+                }
+            },
+            "required": ["enabled"]
+        },
+        "probes": {
+            "type": "object",
+            "description": "(Optional) Startup + readiness probes on GET /health. The startup probe tolerates slow first-boot model loading (especially from an EFS-backed PVC); readiness gates the load balancer until workers serve.",
+            "properties": {
+                "enabled": {
+                    "type": "boolean",
+                    "description": "Enable the startup and readiness probes. Default true."
+                },
+                "startupPeriodSeconds": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Seconds between startup probe attempts."
+                },
+                "startupFailureThreshold": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Startup probe failures tolerated before the container is restarted. Startup budget = startupPeriodSeconds * startupFailureThreshold."
+                }
+            }
         },
         "gcpDiscoveryConfig": {
             "type": "object",

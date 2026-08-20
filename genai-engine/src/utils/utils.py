@@ -1,4 +1,5 @@
 import asyncio
+import contextvars
 import functools
 import logging
 import os
@@ -115,12 +116,21 @@ class TracedThreadPoolExecutor(ThreadPoolExecutor):
 
         # get the current otel context
         context = otel_context.get_current()
+        # Copy the full contextvars context so request-scoped state (e.g. the
+        # AI-activity accumulator) propagates into the worker thread. Workers only
+        # append to the shared accumulator list — never reassign the ContextVar —
+        # so their mutations remain visible to the submitting thread.
+        cv_context = contextvars.copy_context()
         if context:
             return super().submit(
-                lambda: self.with_otel_context(context, lambda: fn(*args, **kwargs)),
+                lambda: cv_context.run(
+                    self.with_otel_context,
+                    context,
+                    lambda: fn(*args, **kwargs),
+                ),
             )
         else:
-            return super().submit(lambda: fn(*args, **kwargs))
+            return super().submit(lambda: cv_context.run(fn, *args, **kwargs))
 
 
 def get_postgres_connection_string(

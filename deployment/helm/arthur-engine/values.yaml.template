@@ -10,12 +10,20 @@ arthur-genai-engine:
   enabled: true
   # postgres database URL
   postgresBYOEndpoint: ""
-  # GenAI Engine application ingress DNS URL (e.g. arthur-genai-engine.mydomain.com)
+  # GenAI Engine application ingress DNS URL (e.g. arthur-genai-engine.mydomain.com).
+  # This MUST be the same hostname as (1) the TLS/ACM certificate you terminate HTTPS with and
+  # (2) the DNS record you point at the ingress load balancer. If these three disagree, requests
+  # are served a 404 or a certificate error even though the pods are healthy. See the "ingress"
+  # block below and the README "Ingress and HTTPS" section.
   genaiEngineIngressURL: ""
   # Arthur Platform (Scope) frontend URL for this deployment (e.g. https://app.mydomain.arthur.ai)
   scopeFeIngressURI: ""
   # Provider of OpenAI LLMs (must be set to 'Azure' or 'OpenAI')
   genaiEngineOpenAIProvider: "Azure"
+  # TLS verification for the LLM endpoint (e.g. an OpenAI-compatible LiteLLM proxy). Referenced
+  # unconditionally by the deployment as GENAI_ENGINE_OPENAI_VERIFY_SSL, so set it explicitly
+  # (empty renders an invalid bool and crashes worker boot). "false" disables verification (dev/test only).
+  genaiEngineOpenAIVerifySSL: "true"
 
   ###################################
   ## Additional Required Configurations For GPU Deployment
@@ -25,23 +33,74 @@ arthur-genai-engine:
     labels: {}
     genaiEnginePodAnnotations: {}
     genaiEnginePodLabels: {}
-    # Specify the node selector to "capability: gpu"
+    # Node selector for the GenAI Engine pod:
+    #  - CPU deployment: leave as {}.
+    #  - GPU deployment with managed node group + ASG: comment out the line below and uncomment the
+    #    block to pin the DaemonSet to your GPU nodes (label the node group to match, e.g. capability=gpu).
+    #  - GPU deployment with EKS Auto Mode / Karpenter: comment out the line below and uncomment the
+    #    block (label your GPU NodePool to match). This nodeSelector is also what triggers Karpenter
+    #    to provision a GPU node.
     genaiEnginePodNodeSelector: {}
+    #genaiEnginePodNodeSelector:
+    #  capability: gpu
     genaiEnginePodAffinity: {}
+    # Tolerations for the GenAI Engine pod:
+    #  - CPU deployment: leave as [].
+    #  - GPU deployment with managed node group + ASG: leave as [] (per the genai-engine README the
+    #    node group is only labeled, not tainted).
+    #  - GPU deployment with EKS Auto Mode / Karpenter: comment out the line below and uncomment the
+    #    block (per the genai-engine README the GPU NodePool is tainted nvidia.com/gpu=true:NoSchedule).
     genaiEnginePodTolerations: []
+    #genaiEnginePodTolerations:
+    #  - key: "nvidia.com/gpu"
+    #    operator: "Exists"
+    #    effect: "NoSchedule"
+    # Audit log PVC. Referenced unconditionally by the deployment template
+    # (.arthurGenaiEngineDeployment.auditLog.enabled), so this block must be present.
+    auditLog:
+      enabled: false
+      mountPath: "/home/nonroot/app/audit_logs"
+      # Size requested for the audit log PVC
+      storageSize: "10Gi"
+      # ReadWriteMany-capable storage class to back the audit log PVC (e.g. NFS, EFS, Azure Files)
+      storageClassName: ""
+      # (Optional) Group ID applied as the pod's fsGroup so the non-root container can write to the mounted PVC.
+      # Required on platforms that mount volumes as root (e.g. OpenShift - use a GID from the namespace's allowed range).
+      fsGroup: ""
   # CPU deployment - Comment out the below 4 lines
   gpuEnabled: false
   genaiEngineDeploymentType: "deployment"
   genaiEngineWorkers: 1
   genaiEngineContainerImageLocation: "arthurplatform/genai-engine-cpu"
-  # GPU deployment - Uncomment the below 4 lines
+  # GPU deployment with managed node group + ASG - Uncomment the below 4 lines
+  # (one GPU pod per node; the DaemonSet fills each node as the ASG scales the node group)
   #gpuEnabled: true
   #genaiEngineDeploymentType: "daemonset"
-  #genaiEngineWorkers: 2
+  #genaiEngineWorkers: 3
   #genaiEngineContainerImageLocation: "arthurplatform/genai-engine-gpu"
+  # GPU deployment with EKS Auto Mode / Karpenter - Uncomment the below 5 lines
+  # (Karpenter provisions GPU nodes only for unschedulable workload pods, not DaemonSets, so use a
+  #  Deployment; also set genaiEnginePodNodeSelector above to your GPU NodePool label)
+  #gpuEnabled: true
+  #genaiEngineDeploymentType: "deployment"
+  #genaiEngineWorkers: 3
+  #genaiEngineContainerImageLocation: "arthurplatform/genai-engine-gpu"
+  #genaiEngineContainerGPULimit: "1"
+  # GPU deployments also need genaiEngineContainerMemoryLimits: "24Gi" (see below).
+  # genaiEngineWorkers is the per-pod worker count. Each worker is a separate process, and a single
+  # worker cannot keep a GPU busy, so 3 is recommended for GPU deployments. It is also the practical
+  # ceiling for a 16 GB GPU — a fourth worker exceeds available GPU memory and container RAM.
   arthurGenaiEngineHPA:
-    # Set it to 'false' for GPU deployment
+    # - CPU deployment: true.
+    # - GPU deployment with managed node group + ASG: false (HPA does not apply to a DaemonSet).
+    # - GPU deployment with EKS Auto Mode / Karpenter: false here, and instead scale on GPU
+    #   utilization with the separate `genai-engine-gpu-autoscaler-karpenter` add-on chart
+    #   (set externallyManaged: true below so this chart cedes replica ownership to it).
     enabled: true
+    # When true, an external controller (e.g. the genai-engine-gpu-autoscaler-karpenter add-on chart)
+    # owns replica count: this chart omits the Deployment's static `replicas` and renders no HPA of
+    # its own, so the two never fight on `helm upgrade`. Leave false for chart-managed scaling.
+    externallyManaged: false
     annotations: {}
     labels: {}
     behavior:
@@ -88,17 +147,49 @@ arthur-genai-engine:
   ###################################
   ## Advanced - Kubernetes Ingress
   ###################################
+  # Ingress controller + TLS termination. HTTPS is a prerequisite (see README "Ingress and
+  # HTTPS"); configure it here. Pick the option that matches how your cluster exposes services:
+  #
+  #   - Option A - nginx ingress controller (default): the controller must be installed
+  #     separately (it is NOT part of this chart). TLS is terminated at nginx using a Kubernetes
+  #     TLS secret referenced under `tls`.
+  #   - Option B - AWS ALB (EKS Auto Mode, or any cluster running the AWS Load Balancer
+  #     Controller): there is NO nginx controller on these clusters. Use the built-in `alb`
+  #     IngressClass and terminate TLS at the ALB with an ACM certificate via annotations.
+  #
+  # Whichever you pick, the HTTPS hostname must equal genaiEngineIngressURL (see note above).
   ingress:
+    # --- Option A: nginx (default) ---
     className: "nginx"
     annotations:
       nginx.ingress.kubernetes.io/rewrite-target: /
+      # Uncomment to redirect HTTP->HTTPS once the `tls` block below is configured:
+      # nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    # TLS termination at nginx. Create the secret first, then uncomment:
+    #   kubectl -n <namespace> create secret tls genai-engine-tls --cert=tls.crt --key=tls.key
+    # tls:
+    #   - hosts:
+    #       - arthur-genai-engine.mydomain.com   # must equal genaiEngineIngressURL
+    #     secretName: genai-engine-tls
+    #
+    # --- Option B: AWS ALB (EKS Auto Mode / AWS Load Balancer Controller) ---
+    # Replace the className + annotations above with the following. TLS is terminated at the ALB
+    # using an ACM certificate whose domain equals genaiEngineIngressURL; do NOT set a `tls` block.
+    # className: "alb"
+    # annotations:
+    #   alb.ingress.kubernetes.io/scheme: internet-facing
+    #   alb.ingress.kubernetes.io/target-type: ip
+    #   alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+    #   alb.ingress.kubernetes.io/ssl-redirect: "443"
+    #   alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:<region>:<account-id>:certificate/<cert-id>"
+    #   alb.ingress.kubernetes.io/healthcheck-path: /health
     labels: {}
 
   ###################################
   ## Advanced - GenAI Engine
   ###################################
   # GenAI Engine version
-  genaiEngineVersion: 2.1.665
+  genaiEngineVersion: 2.1.806
   # Max number of tokens GenAI Engine can process against LLM for hallucination data checks
   genaiEngineHallucinationCheckMaxTokenLimit: 3000
   # Max number of tokens GenAI Engine can process against LLM for sensitive data checks
@@ -119,8 +210,19 @@ arthur-genai-engine:
   genaiEngineContainerMemoryRequests: "16Gi"
   # CPU limits value for GenAI Engine
   genaiEngineContainerCPULimits: "8"
-  # Memory limits value for GenAI Engine
+  # Memory limits value for GenAI Engine.
+  # GPU deployments: use "24Gi". Every worker holds the full model suite resident, and large prompts
+  # or context add more on top, so the CPU default leaves too little headroom.
   genaiEngineContainerMemoryLimits: "16Gi"
+  # Value for the nvidia.com/gpu resource limit, e.g. "1". Empty omits the limit entirely,
+  # which is correct for CPU deployments and for GPU deployments that get their GPU via
+  # NVIDIA_VISIBLE_DEVICES alone.
+  # Set this to "1" if you use the genai-engine-gpu-autoscaler-karpenter add-on chart: DCGM
+  # maps GPUs to pods through the kubelet pod-resources API, which only reports a device
+  # allocation when the pod requests one, so per-pod GPU metrics do not exist without it.
+  # Only set it where a device plugin actually advertises nvidia.com/gpu (check
+  # `kubectl get node <gpu-node> -o jsonpath='{.status.allocatable}'`), or the pod stays Pending.
+  genaiEngineContainerGPULimit: ""
   # Name of the service account used by the GenAI Engine pod (if no service account is specified, the pod will use its default behavior, which usually means that it uses the `default` k8s service account)
   genaiEngineServiceAccount:
     create: false
@@ -131,6 +233,38 @@ arthur-genai-engine:
     labels: {}
   # Allow the admin key general API access (Must be enabled for the Arthur Platform. Can be disabled for the guardrails-only standalone deployment.)
   genaiEngineAllowAdminKeyGeneralAccess: "enabled"
+  # Chunked transfer-encoding middleware. Referenced unconditionally by the deployment, so set it
+  # explicitly here (empty renders as an invalid value and crashes worker boot).
+  transferEncodingMiddlewareEnabled: "enabled"
+
+  ###################################
+  ## Advanced - Model loading: online (Hugging Face) vs offline (PVC)
+  ###################################
+  # Toggle how GenAI Engine gets its model binaries:
+  #   enabled: false (default) -> ONLINE: download from Hugging Face at startup, no PVC required.
+  #   enabled: true            -> OFFLINE: mount the pre-populated EFS-backed PVC (provisioned by
+  #                               deployment/terraform/eks-efs-models) and load models from it with
+  #                               no network. The chart sets MODEL_STORAGE_PATH + HF_HUB_OFFLINE=1.
+  modelPVC:
+    enabled: false
+    # Name of the PersistentVolumeClaim to mount (must already exist in this namespace)
+    claimName: "arthur-models-pvc"
+    # Path the volume is mounted at inside the container (also becomes MODEL_STORAGE_PATH)
+    mountPath: "/home/nonroot/models-output"
+    # Must be read-write: the HuggingFace loaders write .lock/cache files under the mount even in
+    # offline mode, so a read-only mount fails with "[Errno 30] Read-only file system".
+    readOnly: false
+
+  ###################################
+  ## Advanced - Health probes
+  ###################################
+  # Startup + readiness probes on GET /health. The startup probe tolerates slow first-boot model
+  # loading; readiness gates the load balancer until workers serve, avoiding 502s during startup.
+  # Set enabled: false to disable both.
+  probes:
+    enabled: true
+    startupPeriodSeconds: 10
+    startupFailureThreshold: 60
 
   ###################################
   ## Advanced - Secrets name customization
@@ -145,6 +279,22 @@ arthur-genai-engine:
   # Name of the secret which stores the connection strings for Azure OpenAI GPT-3.5 model endpoints. Must be in form "DEPLOYMENT_NAME1::OPENAI_ENDPOINT1::SECRET_KEY1,DEPLOYMENT_NAME2::OPENAI_ENDPOINT2::SECRET_KEY2"). Many may be specified.
   # (expecting value for key 'keys')
   genaiEngineSecretOpenAIGPTModelNamesEndpointsKeysName: "genai-engine-secret-open-ai-gpt-model-names-endpoints-keys"
+  # GenAI Engine secret store key name (expecting value for key 'key' - should be a base64-encoded 32-byte Fernet key)
+  genaiEngineSecretStoreKeyName: "genai-engine-secret-store-key"
+
+  ###################################
+  ## Advanced - GCP Service Account
+  ###################################
+  # Referenced unconditionally by the deployment template (.gcpDiscoveryConfig.isEnabled), so this
+  # block must be present. Leave isEnabled: false unless integrating Vertex AI.
+  gcpDiscoveryConfig:
+    isEnabled: false
+    # Google Cloud project ID for Vertex AI integration
+    # googleCloudProject: ""
+    # (Optional) Google Cloud region/location
+    # googleCloudLocation: ""
+    # (Optional) Name of the K8s secret containing the GCP service account JSON key
+    # googleCredentialsSecretName: ""
 
 arthur-ml-engine:
   ###################################
@@ -162,7 +312,20 @@ arthur-ml-engine:
     imagePullSecretName: ""
   mlEngine:
     deployment:
-      # This should be the same as the genaiEngineIngressURL in the arthur-genai-engine chart
+      # In-cluster address of the GenAI Engine ClusterIP service, INCLUDING the "http://" scheme.
+      # This is the internal service-to-service hop (plain HTTP; TLS is terminated at the ingress,
+      # see genaiEngineInternalIngressHost below). The value MUST include a scheme or the ML Engine
+      # will fail to start with "Invalid endpoint ... does not include scheme".
+      # The service listens on port 80, so the port can be omitted. If arthurResourceNameSuffix is
+      # set in the arthur-genai-engine chart, the service name includes it
+      # (arthur-genai-engine-<suffix>-service). If the ML Engine runs in a different namespace, use the
+      # FQDN: http://arthur-genai-engine-service.<namespace>.svc.cluster.local
+      # Example: "http://arthur-genai-engine-service"
+      genaiEngineInternalHost: "http://arthur-genai-engine-service"
+      # Full URL of the GenAI Engine ingress, INCLUDING the "https://" scheme.
+      # This is the same host as genaiEngineIngressURL in the arthur-genai-engine chart, but note that
+      # genaiEngineIngressURL is a bare hostname (no scheme) whereas this value MUST include "https://".
+      # Example: "https://arthur-genai-engine.mydomain.com"
       genaiEngineInternalIngressHost: ""
       fetchRawDataEnabled: true
       genaiEngineMaxPageSize: 1500
@@ -170,6 +333,8 @@ arthur-ml-engine:
       ###################################
       ## Advanced - General
       ###################################
+      # Number of replicas of the ML Engine pod running in the k8s cluster (this is automatically
+      # overridden if the ML Engine HPA is enabled - see arthurMLEngineHPA below)
       replicas: 1
       labels: {}
       annotations: {}
@@ -188,7 +353,6 @@ arthur-ml-engine:
       mlEnginePodNodeSelector: {}
       mlEnginePodAffinity: {}
       mlEnginePodTolerations: {}
-      genaiEngineInternalHost: "arthur-genai-engine-service"
 
       ###################################
       ## Advanced - Secrets name customization
@@ -197,3 +361,34 @@ arthur-ml-engine:
       mlEngineClientSecretName: "ml-engine-client-secret"
       # GenAI Engine secret admin key name (expecting value for key 'key')
       genaiEngineInternalAPIKeySecretName: "genai-engine-secret-admin-key"
+
+  ###################################
+  ## Advanced - Autoscaling
+  ###################################
+  # HorizontalPodAutoscaler for the ML Engine.
+  # NOTE: each replica requests ~16Gi RAM / 7-8 CPU, so maxReplicas multiplies that footprint
+  # (e.g. maxReplicas: 5 => up to ~80Gi / ~40 CPU). Requires a metrics-server in the cluster.
+  # Set enabled: false to pin a fixed replica count via mlEngine.deployment.replicas instead.
+  arthurMLEngineHPA:
+    enabled: true
+    annotations: {}
+    labels: {}
+    # Conservative scale-down / aggressive scale-up (mirrors the genai-engine chart).
+    behavior:
+      scaleDown:
+        stabilizationWindowSeconds: 300
+        policies:
+          - type: Percent
+            value: 100
+            periodSeconds: 15
+      scaleUp:
+        stabilizationWindowSeconds: 30
+        policies:
+          - type: Percent
+            value: 100
+            periodSeconds: 15
+        selectPolicy: Max
+    minReplicas: 1
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 50
+    targetMemoryUtilizationPercentage: 80

@@ -326,7 +326,7 @@ class SpanQueryService:
         if (
             filters.annotation_score is not None
             or filters.annotation_type is not None
-            or filters.continuous_eval_run_status is not None
+            or filters.continuous_eval_run_status
             or filters.continuous_eval_name is not None
         ):
             join_conditions = [
@@ -345,10 +345,11 @@ class SpanQueryService:
                     == filters.annotation_type.value,
                 )
 
-            if filters.continuous_eval_run_status is not None:
+            if filters.continuous_eval_run_status:
                 join_conditions.append(
-                    DatabaseAgenticAnnotation.run_status
-                    == filters.continuous_eval_run_status.value,
+                    DatabaseAgenticAnnotation.run_status.in_(
+                        [status.value for status in filters.continuous_eval_run_status],
+                    ),
                 )
 
             query = query.join(
@@ -783,7 +784,7 @@ class SpanQueryService:
             or filters.span_count_filters
             or filters.annotation_score is not None
             or filters.annotation_type is not None
-            or filters.continuous_eval_run_status is not None
+            or filters.continuous_eval_run_status
             or filters.continuous_eval_name is not None
             or filters.user_ids
             or filters.session_ids,
@@ -880,7 +881,7 @@ class SpanQueryService:
         if (
             filters.annotation_score is not None
             or filters.annotation_type is not None
-            or filters.continuous_eval_run_status is not None
+            or filters.continuous_eval_run_status
             or filters.continuous_eval_name is not None
         ):
             join_conditions = [
@@ -899,10 +900,11 @@ class SpanQueryService:
                     == filters.annotation_type.value,
                 )
 
-            if filters.continuous_eval_run_status is not None:
+            if filters.continuous_eval_run_status:
                 join_conditions.append(
-                    DatabaseAgenticAnnotation.run_status
-                    == filters.continuous_eval_run_status.value,
+                    DatabaseAgenticAnnotation.run_status.in_(
+                        [status.value for status in filters.continuous_eval_run_status],
+                    ),
                 )
 
             query = query.join(

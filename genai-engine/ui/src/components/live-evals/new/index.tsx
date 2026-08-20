@@ -18,7 +18,7 @@ import {
 } from "@mui/material";
 import { useStore } from "@tanstack/react-form";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router";
 import z from "zod";
 
 import { VariableMappingSection } from "../components/variable-mapping";
@@ -48,6 +48,17 @@ type TransformFormState = {
   transformVersionId: string | null;
 };
 
+export const getInitialEvaluatorState = (searchParams: URLSearchParams): EvaluatorFormState => {
+  const mlEvalNameParam = searchParams.get("mlEvalName");
+  const initialEvalName = mlEvalNameParam ?? searchParams.get("evalName");
+
+  return {
+    name: initialEvalName,
+    version: mlEvalNameParam ? "latest" : searchParams.get("evalVersion"),
+    eval_type: mlEvalNameParam ? "ml" : initialEvalName ? "llm_as_a_judge" : null,
+  };
+};
+
 export const LiveEvalsNew = () => {
   const [searchParams] = useSearchParams();
   const traceId = searchParams.get("traceId");
@@ -73,10 +84,7 @@ const LiveEvalsNewForm = () => {
   const { task } = useTask();
   const [searchParams] = useSearchParams();
   // Support both `evalName` (LLM) and `mlEvalName` (ML) params
-  const mlEvalNameParam = searchParams.get("mlEvalName");
-  const initialEvalName = mlEvalNameParam ?? searchParams.get("evalName");
-  const initialEvalType = mlEvalNameParam ? "ml" : null;
-  const initialEvalVersion = mlEvalNameParam ? "latest" : searchParams.get("evalVersion");
+  const initialEvaluator = getInitialEvaluatorState(searchParams);
 
   const navigate = useNavigate();
 
@@ -87,11 +95,7 @@ const LiveEvalsNewForm = () => {
       name: "",
       description: "",
       enabled: true,
-      evaluator: {
-        name: initialEvalName ?? null,
-        version: initialEvalVersion ?? null,
-        eval_type: initialEvalType,
-      } as EvaluatorFormState,
+      evaluator: initialEvaluator,
       transform: {
         transformId: null,
         transformVersionId: null,

@@ -6,8 +6,8 @@ import { queryKeys } from "@/lib/queryKeys";
 export function useRagProviders(taskId?: string) {
   const api = useApi();
 
+  // eslint-disable-next-line @tanstack/query/exhaustive-deps
   const { data, isLoading, error, refetch } = useQuery({
-    // eslint-disable-next-line @tanstack/query/exhaustive-deps
     queryKey: queryKeys.ragProviders.list(taskId || ""),
     enabled: Boolean(taskId && api),
     queryFn: async () => {
