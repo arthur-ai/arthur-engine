@@ -1,9 +1,10 @@
 name: Scheduled image vulnerability scan
 
 # Re-scans the published images daily so newly-disclosed CVEs surface (and the justification
-# reports regenerate) even when no new release was built. Advisory only — this workflow never
-# gates anything. Findings land in Security -> Code scanning; SBOM + per-image justification
-# reports are uploaded as workflow artifacts.
+# reports regenerate) even when no new release was built, and again whenever the VEX is edited so
+# a fresh triage decision takes effect immediately. Advisory only — this workflow never gates
+# anything. Findings land in Security -> Code scanning; SBOM + per-image justification reports are
+# uploaded as workflow artifacts.
 #
 # Tag selection: by default we scan the latest `-dev` image, derived from the `version` file via
 # the set-version action. The workflow runs on the `dev` default branch, so set-version appends
@@ -15,6 +16,15 @@ on:
   schedule:
     # Daily at 09:00 UTC
     - cron: "0 9 * * *"
+  # Editing the VEX changes how existing findings are triaged without changing any image, so
+  # nothing else would re-scan: the build-time scans only fire when an image is rebuilt, and an
+  # image whose contents are unchanged is retagged rather than rebuilt. Without this trigger a
+  # newly-added suppression sits unapplied — and its alert stays open in the Security tab — until
+  # the next nightly run.
+  push:
+    branches: [dev]
+    paths:
+      - "security/vex/openvex.json"
   workflow_dispatch:
     inputs:
       tag:

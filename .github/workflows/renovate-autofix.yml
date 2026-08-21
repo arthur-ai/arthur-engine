@@ -16,8 +16,13 @@ name: Renovate Auto-Fix
 #      before it can merge. This workflow cannot bypass that.
 #   3. Scope/tool guards: runs only on renovate/* branches, only on CI failure,
 #      a bounded retry budget (default 3 attempts, then it hands off to a human),
-#      and the prompt forbids weakening checks or touching CI/test/dependency-pin
-#      files.
+#      and a prompt bounded by invariants rather than a file allowlist. It forbids
+#      weakening checks (the enforced rule set may never shrink), editing .github/
+#      or /renovate.json, and bypassing the 3-day release-age soak. Dependency
+#      constraints MAY be realigned — that is how a half-bumped lockstep family is
+#      repaired — but never by downgrading or capping the package the PR is
+#      updating, lockfiles are regenerated via uv/yarn rather than hand-edited, and
+#      every constraint change must be declared in the self-review comment.
 #
 # Identity split (required by the ruleset's require_last_push_approval +
 # dismiss_stale_reviews_on_push): the fix is PUSHED as the Arthur GitHub
@@ -63,6 +68,11 @@ jobs:
       ) &&
       startsWith(github.event.workflow_run.head_branch, 'renovate/')
     runs-on: ubuntu-latest
+    # Bound the run. Without this the job inherits GitHub's 6h default, so a Claude
+    # session that hangs burns a runner for hours. The budget has to cover reproducing
+    # the failure, fixing, and re-running the full required suite (all four Python
+    # linters + unit tests, or the three UI checks) twice.
+    timeout-minutes: 90
     # Needed to read the Arthur GitHub Automator App credentials.
     environment: shared-protected-branch-secrets
     permissions:
@@ -163,86 +173,171 @@ jobs:
           prompt: |
             A Renovate dependency-update PR (#${{ steps.pr.outputs.number }}) on this branch has FAILING CI.
             The failed run is: ${{ github.event.workflow_run.html_url }} (run id ${{ github.event.workflow_run.id }}).
-            You are on the checked-out PR branch. Your objective: make the MINIMAL source-code changes
-            needed to adapt the code to the updated dependency so ALL required checks pass — WITHOUT
-            weakening any check. Do not break anything.
+            You are on the checked-out PR branch.
+
+            ## HOW THIS SESSION WORKS — read this first
+
+            This is a single non-interactive run. Nothing will wake you up: no human will reply, and no
+            background task can hand control back to you. **The moment you stop producing output the
+            session ends**, the runner is torn down, and everything in the working tree is thrown away —
+            including a correct, finished fix.
+
+            Therefore:
+              - **Run every command in the FOREGROUND and let it block until it exits.** Never put a check
+                in the background (`&`, `nohup`, background tasks, "I'll check on it shortly") and then wait
+                for it. Waiting is how the run dies.
+              - **Slow commands are expected and fine.** The Python unit suite and the UI checks take
+                minutes; the budget accounts for that. Start it, block on it, read its exit status.
+              - **There are exactly two valid ways to finish**: you wrote $AUTOFIX_MARKER, or you discarded
+                your edits and posted a cannot-fix PR comment. Ending your turn in any other state —
+                especially "waiting to confirm" — throws the work away and helps nobody.
+
+            ## YOUR GOAL
+
+            This PR exists to land the dependency updates in its description. Your job is to get it there:
+            make every required check pass, with those updates still delivered, and nothing else broken.
+
+            You are not restricted to a fixed list of allowed edits. Diagnose the real cause and fix it
+            wherever it actually lives — application source, a test that encodes the dependency's old
+            contract, a linter config that a plugin's changed API broke, or a dependency constraint that
+            Renovate left inconsistent. What matters is not which file you touched but whether the
+            INVARIANTS below still hold and your VERIFICATION genuinely proves it.
 
             NOTE: this may be a retry. If the branch already contains a `[claude-autofix]` commit, a
-            previous attempt did not fully pass — the failing run above reflects what that fix got
-            wrong. Read those logs, understand the remaining failure, and build on the prior fix
-            rather than repeating it.
+            previous attempt did not fully pass — the failing run above reflects what that fix got wrong.
+            Read those logs, understand the remaining failure, and build on the prior fix rather than
+            repeating it.
 
-            IN SCOPE (code adaptation only):
-              - genai-engine/ui: TypeScript/type errors, ESLint errors, Prettier formatting
-              - genai-engine: Python source issues — isort/black/autoflake formatting, mypy types,
-                and unit-test adaptations that are a legitimate consequence of the dependency's changed behavior
+            ## INVARIANTS — every one must hold of your final diff
 
-            OUT OF SCOPE — if the failure is any of these, STOP, change nothing, and post a PR comment
-            (`gh pr comment ${{ steps.pr.outputs.number }} -b "..."`) explaining it needs a human:
-              - Dependency-resolution / lockfile conflicts (e.g. "No solution found when resolving
-                dependencies", incompatible version pins between packages).
-              - Anything that would require changing a version pin or lockfile to resolve.
+              1. **The update still lands.** Every package named in the PR description must end at or above
+                 the version the PR set. Never downgrade, cap, or exclude the package being updated to make
+                 the build go green — that turns the PR into a no-op while making it look fixed. When
+                 packages conflict, move the LAGGING one forward, not the updated one back.
+              2. **No check is weakened.** No eslint-disable, @ts-ignore/@ts-expect-error, `# type: ignore`,
+                 pytest skip/xfail, deleted assertions, or coverage reductions. If a linter config must
+                 change because a plugin moved or renamed its API, you may adapt it — but the set of rules
+                 actually enforced must not shrink. If adapting it would drop rules that were previously
+                 enforced, say so explicitly in your review comment rather than letting it pass silently.
+              3. **No behaviour change beyond the adaptation.** Nothing opportunistic, no refactors, no
+                 unrelated cleanups. Smallest change that achieves the goal.
+              4. **Lockfiles are generated, never authored.** If resolution has to change, edit the declared
+                 constraint (`genai-engine/pyproject.toml`, `genai-engine/ui/package.json`) and regenerate:
+                 `uv lock --directory genai-engine` for Python, `cd genai-engine/ui && yarn install` for npm.
+                 Never hand-edit `uv.lock` or `yarn.lock`.
+              5. **The release-age soak is not yours to bypass.** `minimumReleaseAge` in /renovate.json and
+                 `tool.uv exclude-newer` in the pyproject.toml files are deliberate. Do not remove, loosen,
+                 or work around them, and do not pull in a release they exclude.
+              6. **The rules that judge you are off limits.** Do not edit anything under .github/ or any CI
+                 workflow, or /renovate.json. A fix that requires changing them is a fix a human must make —
+                 see CANNOT-FIX below. (Linter configs under genai-engine/ are covered by invariant 2, not
+                 by this one.)
+              7. **Constraint edits are declared.** If your diff changes any dependency constraint, your
+                 review comment must list each one (`package: old -> new`) and the resolver output that
+                 forced it. Also try `gh pr edit ${{ steps.pr.outputs.number }} --add-label "autofix: dependency-realignment"`;
+                 if that fails because the label does not exist, skip it and rely on the comment — do not
+                 block on it. Constraint edits get the same scrutiny as code: the version you move to must
+                 be the one the conflict actually demands, not the newest you can find.
 
-            RELEASE-AGE SOAK (a specific out-of-scope case — flag it precisely instead of just "needs a
-            human"): the blocker is that a NEWER release of a dependency WOULD fix the build but is being
-            held back by this repo's 3-day soak — `minimumReleaseAge` in /renovate.json and
-            `tool.uv exclude-newer` in the pyproject.toml files. Tell-tale signs: `uv lock` reports the
+            ## VERIFICATION — required, and it must be real
+
+            A fix is not done because it looks right. Prove it:
+              1. **Reproduce first.** From the failed run, identify each failing check and the exact command
+                 it ran. Run that command in the foreground and watch it fail, so you know you are fixing
+                 the right thing.
+              2. **The failing check now passes.** Re-run that same command to completion.
+              3. **Nothing new broke.** Run the other required checks covering what you touched — not just
+                 the one that was red. All four Python linters gate the build, so run all four if you
+                 touched Python; run type-check, lint and format:check if you touched the UI.
+              4. **Invariants are checked, not assumed.** Read your own `git diff`. Confirm invariant 1 by
+                 inspecting the constraint diff directly: no package in the PR description sits below its
+                 target version.
+
+            Commands (confirm each against the failed run's log — it shows what actually ran):
+              - Python deps: `uv sync --directory genai-engine --frozen --group dev --group linters`
+                (drop `--frozen` after a deliberate constraint change, then re-lock).
+              - Python lint: `uv run --directory genai-engine isort src --profile black --check`,
+                `... autoflake --remove-all-unused-imports --check --recursive --quiet src`,
+                `... black --check src`, `... mypy src`
+              - Python tests: `uv run --directory genai-engine pytest -m unit_tests`
+              - Python fixers: `uv run --directory genai-engine isort src --profile black`,
+                `... autoflake --remove-all-unused-imports --in-place --recursive src`, `... black src`
+              - UI: `cd genai-engine/ui && corepack enable && yarn install --immutable`, then
+                `yarn type-check && yarn lint && yarn format:check` (fixer: `yarn format`)
+              - Lockfile drift: `.github/scripts/check-lockfile-drift.sh` (every uv project at once)
+
+            ## IF THE FAILING CHECK IS `check-dependency-automation`
+
+            This one has a specific cause, so do not treat it as a generic red check. Renovate updates
+            pyproject.toml and regenerates uv.lock in a separate step; when that second step fails it
+            opens the PR with the manifest edit ALONE. The script prints which of two states it found,
+            and they need opposite responses:
+
+              - **STALE** — the manifest resolves, the lock just was not regenerated. This is the easy
+                case and it IS your job: run `uv lock --directory <project>` for each project it names,
+                confirm the diff contains the update the PR is for, and carry on. Nothing else to fix.
+              - **UNRESOLVABLE** — no lockfile can satisfy the manifest, so re-locking will not help.
+                The resolver output names both sides. If the package blocking the update has a release
+                that accepts the new version, bump that one too (invariant 1: move the LAGGING package
+                forward, never cap or downgrade the one the PR is updating). If no such release exists,
+                you cannot fix this — see below.
+
+            ## WHEN YOU CANNOT REACH THE GOAL
+
+            Some failures genuinely need a human. In every such case: run `git checkout -- . && git clean -fd`
+            to discard all edits, do NOT write the marker, and post a PR comment
+            (`gh pr comment ${{ steps.pr.outputs.number }} -b "..."`) naming the specific blocker and what
+            would resolve it. Never leave partial edits behind.
+
+            This includes any case where the only path to green would break an invariant — for example a
+            required version does not exist yet, two updates in the PR are mutually incompatible at every
+            available version, or the fix would have to change CI config or /renovate.json.
+
+            **Transitive ceiling** — the case where an UNRESOLVABLE manifest has no fix at any available
+            version: something else we pin caps the package this PR is updating, and no release of that
+            blocker accepts the new version yet. The update simply cannot land, and Renovate will keep
+            re-proposing it every run until told otherwise. Telling it otherwise means an `allowedVersions`
+            rule in /renovate.json, which invariant 6 forbids you from touching — so hand it over cleanly.
+            Say in your comment: the package and version being proposed, the pinned dependency that caps
+            it and the exact range it requires, that you verified no newer release of that blocker lifts
+            the cap, and the `allowedVersions` value a human should add. This is what should have happened
+            for openai 3.0.0 against litellm's `openai<3.0.0` (PR #2134).
+
+            **Release-age soak** — flag this one precisely. The blocker is that a NEWER release WOULD fix the
+            build but is held back by the 3-day soak (invariant 5). Tell-tale signs: `uv lock` reports the
             fixing version is unavailable / "not at the requested version", OR a package imports a symbol
             that a just-updated dependency renamed/removed and that dependency's compat patch was published
-            less than 3 days ago. When you identify this, IN ADDITION to the explanatory comment, label the
-            PR so humans can see it is a timing hold, not a defect:
-              `gh pr edit ${{ steps.pr.outputs.number }} --add-label "blocked: release-age soak"`
-            In the comment, name the package, the exact version that fixes it, and the UTC timestamp it
-            clears the soak (the fixing release's upload time + 3 days). Do NOT change any pin or lockfile
-            to pull it in early — the soak is deliberate. (The label pre-exists in the repo and
-            `pull-requests: write` is enough to apply it; if the `add-label` call ever fails because the
-            label is missing, skip it and rely on the comment — do not block on it.)
+            less than 3 days ago. In addition to the explanatory comment, label it:
+            `gh pr edit ${{ steps.pr.outputs.number }} --add-label "blocked: release-age soak"` so humans see
+            it is a timing hold, not a defect. In the comment, name the package, the exact version that fixes
+            it, and the UTC timestamp it clears the soak (the fixing release's upload time + 3 days).
 
-            HARD RULES (never violate — these protect the "don't break anything" objective):
-              - Do NOT edit anything under .github/, any CI config, pyproject.toml/package.json version
-                pins, uv.lock, or yarn.lock.
-              - Do NOT silence checks: no eslint-disable, @ts-ignore/@ts-expect-error, `# type: ignore`,
-                pytest skip/xfail, or coverage reductions. Fix the real cause.
-              - Prefer the smallest change that addresses the dependency's actual API/behavior change.
+            ## PROCESS
 
-            PROCESS:
               1. Read the failures: `gh run view ${{ github.event.workflow_run.id }} --log-failed`.
-              2. Set up only what you need:
-                 - Python: `uv sync --directory genai-engine --frozen --group dev --group linters`
-                 - UI: `cd genai-engine/ui && corepack enable && yarn install --immutable`
-              3. Reproduce failures with the same commands CI uses (these are the exact
-                 required-linter gates — all four Python linters fail the build):
-                 - Python lint: `uv run --directory genai-engine isort src --profile black --check`,
-                   `... autoflake --remove-all-unused-imports --check --recursive --quiet src`,
-                   `... black --check src`, `... mypy src`
-                 - Python tests: `uv run --directory genai-engine pytest -m unit_tests`
-                 - UI: `cd genai-engine/ui && yarn type-check && yarn lint && yarn format:check`
-              4. Fix the root cause in source. For formatting/unused-import gates, run the fixers
-                 (`uv run --directory genai-engine isort src --profile black`,
-                 `... autoflake --remove-all-unused-imports --in-place --recursive src`,
-                 `... black src`, and `cd genai-engine/ui && yarn format`).
-              5. VERIFY: re-run every relevant check above and confirm they ALL pass.
-              6. SELF-REVIEW your own diff as a critical, adversarial reviewer — this review gates the
-                 merge. Run `git diff` and judge: (a) does it genuinely adapt to the dependency's changed
-                 API/behaviour rather than mask the symptom? (b) does it introduce any behaviour change
-                 beyond that adaptation? (c) any correctness bugs? (d) does it silence/weaken any check
-                 (forbidden)? (e) is it the minimal change? Post a short review summary (findings +
-                 verdict) as a PR comment: `gh pr comment ${{ steps.pr.outputs.number }} -b "..."`.
-              7. ADDRESS every actionable finding from your review, then RE-RUN all relevant checks from
-                 step 3 and confirm they still pass. Repeat review -> address until your review has no
-                 unaddressed actionable findings.
-              8. ONLY IF all checks pass AND your review is clean: write the file at the path in the env
-                 var $AUTOFIX_MARKER (it is OUTSIDE the repo — run `echo ok > "$AUTOFIX_MARKER"`), and
-                 leave your edits in the working tree. DO NOT commit or push, and do NOT create any
-                 marker file inside the repo.
-              9. IF you cannot fully fix it safely, or your review surfaces a problem you cannot resolve
-                 with a safe minimal change: run `git checkout -- . && git clean -fd` to discard all
-                 edits, do NOT write the marker, and post the explanatory PR comment.
+                 Reproduce per VERIFICATION step 1.
+              2. Diagnose the ROOT CAUSE. For a resolver conflict, read the resolver's own explanation — it
+                 names the packages and the versions each one demands; that tells you which constraint is
+                 lagging and what it must become.
+              3. Make the smallest change that reaches the goal.
+              4. VERIFY: all four steps above. Every relevant check green.
+              5. SELF-REVIEW your diff as a critical, adversarial reviewer — this review gates the merge.
+                 Run `git diff` and judge: (a) does it genuinely address the cause rather than mask the
+                 symptom? (b) does every INVARIANT hold — check them one by one, especially 1 and 2?
+                 (c) any correctness bug? (d) is it minimal? Post a short review summary (findings + verdict,
+                 plus the invariant-7 constraint list if applicable) as a PR comment:
+                 `gh pr comment ${{ steps.pr.outputs.number }} -b "..."`.
+              6. ADDRESS every actionable finding, then RE-RUN all relevant checks and confirm they still
+                 pass. Repeat review -> address until your review has no unaddressed actionable findings.
+              7. ONLY IF all checks pass AND your review is clean: write the file at the path in the env var
+                 $AUTOFIX_MARKER (it is OUTSIDE the repo — run `echo ok > "$AUTOFIX_MARKER"`), and leave your
+                 edits in the working tree. DO NOT commit or push, and do NOT create any marker file inside
+                 the repo.
 
-            A later step commits & pushes ONLY if $AUTOFIX_MARKER exists, so the marker means "fixed,
-            self-reviewed, and review findings addressed". The change still goes through the full CI +
-            merge queue (and an independent Claude review) before merging. Never leave broken, unreviewed,
-            or unverified edits.
+            A later step commits & pushes ONLY if $AUTOFIX_MARKER exists, so the marker means "goal reached,
+            invariants hold, verified, self-reviewed, and review findings addressed". The change still goes
+            through the full CI + merge queue (and an independent Claude review) before merging. Never leave
+            broken, unreviewed, or unverified edits.
 
       - name: Commit, push, then approve (minor/patch) or flag (major)
         if: steps.guard.outputs.proceed == 'true'

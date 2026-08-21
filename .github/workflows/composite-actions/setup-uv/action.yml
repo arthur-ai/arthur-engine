@@ -1,6 +1,11 @@
 name: "Setup uv"
 description: "Installs uv and syncs dependencies"
 
+# This action leaves a fully synced environment behind, so steps that follow it
+# should invoke tools as `uv run --no-sync`. Without that flag `uv run` re-checks
+# the lockfile, which forces a network round trip for `en-core-web-lg` (a
+# direct-URL wheel, not a registry package) on every single step.
+
 inputs:
   working-directory:
     description: "Directory containing the pyproject.toml file"
@@ -15,9 +20,15 @@ runs:
   steps:
     - name: "Install uv"
       shell: bash
-      run: curl -LsSf https://astral.sh/uv/0.11.7/install.sh | env UV_INSTALL_DIR=/usr/local/bin sh
+      run: curl -LsSf --retry 5 --retry-delay 2 --retry-all-errors https://astral.sh/uv/0.11.7/install.sh | env UV_INSTALL_DIR=/usr/local/bin sh
     - name: "Install dependencies"
       shell: bash
+      env:
+        # `en-core-web-lg` is served from github.com's release CDN, which answers
+        # parallel fetches with HTTP/2 REFUSED_STREAM once enough streams are open.
+        # Capping concurrency keeps the resolver inside what that CDN tolerates.
+        UV_CONCURRENT_DOWNLOADS: "4"
+        UV_HTTP_TIMEOUT: "120"
       run: |
         uv --version
         GROUPS_FLAG=""
@@ -27,4 +38,16 @@ runs:
             GROUPS_FLAG="$GROUPS_FLAG --group $group"
           done
         fi
-        uv sync --directory ${{ inputs.working-directory }} --frozen $GROUPS_FLAG
+        # uv's built-in retries cover a single request; a CDN that is refusing
+        # streams outright can outlast them, so retry the whole sync with backoff.
+        for attempt in 1 2 3; do
+          if uv sync --directory ${{ inputs.working-directory }} --frozen $GROUPS_FLAG; then
+            exit 0
+          fi
+          if [ "$attempt" -lt 3 ]; then
+            echo "::warning::uv sync failed (attempt ${attempt}/3), retrying in $((attempt * 10))s"
+            sleep $((attempt * 10))
+          fi
+        done
+        echo "::error::uv sync failed after 3 attempts"
+        exit 1

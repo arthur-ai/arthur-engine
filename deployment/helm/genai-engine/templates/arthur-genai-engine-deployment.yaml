@@ -18,7 +18,7 @@ metadata:
     {{- toYaml . | nindent 4 }}
     {{- end }}
 spec:
-  {{- if not .Values.arthurGenaiEngineHPA.enabled }}
+  {{- if and (not .Values.arthurGenaiEngineHPA.enabled) (not .Values.arthurGenaiEngineHPA.externallyManaged) }}
   replicas: {{ .Values.genaiEngineReplicaCount }}
   {{- end }}
   selector:
@@ -79,6 +79,9 @@ spec:
             limits:
               memory: "{{ .Values.genaiEngineContainerMemoryLimits }}"
               cpu: "{{ .Values.genaiEngineContainerCPULimits }}"
+              {{- if .Values.genaiEngineContainerGPULimit }}
+              nvidia.com/gpu: {{ .Values.genaiEngineContainerGPULimit | quote }}
+              {{- end }}
           env:
             - name: POSTGRES_URL
               value: "{{ .Values.postgresBYOEndpoint }}"

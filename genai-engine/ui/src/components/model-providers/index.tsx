@@ -21,17 +21,21 @@ import {
   Alert,
   Stack,
 } from "@mui/material";
+import { isAxiosError } from "axios";
+import { useSnackbar } from "notistack";
 import React, { useState } from "react";
 
 import { EditForm } from "./components/edit-form";
 import { useProviders } from "./hooks/useProviders";
 import { useRemoveProvider } from "./hooks/useRemoveProvider";
+import { useSaveModelWhitelist } from "./hooks/useSaveModelWhitelist";
 import { useSaveProvider } from "./hooks/useSaveProvider";
 
 import { getContentHeight } from "@/constants/layout";
 import { ModelProviderResponse, PutModelProviderCredentials } from "@/lib/api-client/api-client";
 
 export const ModelProviders: React.FC = () => {
+  const { enqueueSnackbar } = useSnackbar();
   const { data: providers, isLoading, error } = useProviders();
   const [deleteModal, setDeleteModal] = useState<{
     isOpen: boolean;
@@ -43,11 +47,12 @@ export const ModelProviders: React.FC = () => {
     provider: ModelProviderResponse | null;
   }>({ isOpen: false, provider: null });
 
-  const saveProviderMutation = useSaveProvider({
-    onSuccess: async () => {
-      setEditModal({ isOpen: false, provider: null });
-    },
-  });
+  const [whitelist, setWhitelist] = useState<string[] | null>(null);
+  const [whitelistDirty, setWhitelistDirty] = useState(false);
+
+  const saveWhitelistMutation = useSaveModelWhitelist();
+
+  const saveProviderMutation = useSaveProvider();
 
   const deleteProviderMutation = useRemoveProvider({
     onSuccess: async () => {
@@ -70,13 +75,42 @@ export const ModelProviders: React.FC = () => {
   };
 
   const handleEditClick = (provider: ModelProviderResponse) => {
+    setWhitelist(null);
+
+    setWhitelistDirty(false);
     setEditModal({ isOpen: true, provider });
+  };
+
+  const handleWhitelistChange = (models: string[] | null) => {
+    setWhitelist(models);
+    setWhitelistDirty(true);
   };
 
   const handleEditSave = async (data: PutModelProviderCredentials) => {
     if (!editModal.provider) return;
 
-    await saveProviderMutation.mutateAsync({ provider: editModal.provider, data });
+    try {
+      await saveProviderMutation.mutateAsync({ provider: editModal.provider, data });
+    } catch (err) {
+      const detail = isAxiosError(err) ? err.response?.data?.detail : undefined;
+      enqueueSnackbar(detail || "Failed to save credentials", { variant: "error" });
+      return;
+    }
+
+    if (whitelistDirty) {
+      try {
+        await saveWhitelistMutation.mutateAsync({
+          provider: editModal.provider.provider,
+          models: whitelist,
+        });
+      } catch (err) {
+        const detail = isAxiosError(err) ? err.response?.data?.detail : undefined;
+        enqueueSnackbar(detail || "Credentials saved, but updating visible models failed", { variant: "error" });
+        return;
+      }
+    }
+
+    setEditModal({ isOpen: false, provider: null });
   };
 
   const handleEditCancel = () => {
@@ -298,7 +332,18 @@ export const ModelProviders: React.FC = () => {
           </Box>
           Configure {getProviderDisplayName(editModal.provider?.provider || "")}
         </DialogTitle>
-        {editModal.provider?.provider && <EditForm provider={editModal.provider.provider} onSubmit={handleEditSave} onClose={handleEditCancel} />}
+        {editModal.provider?.provider && (
+          <EditForm
+            provider={editModal.provider.provider}
+            providerDisplayName={getProviderDisplayName(editModal.provider.provider)}
+            providerEnabled={editModal.provider.enabled}
+            whitelist={whitelist}
+            whitelistDirty={whitelistDirty}
+            onWhitelistChange={handleWhitelistChange}
+            onSubmit={handleEditSave}
+            onClose={handleEditCancel}
+          />
+        )}
       </Dialog>
     </>
   );

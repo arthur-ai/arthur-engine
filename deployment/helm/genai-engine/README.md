@@ -404,8 +404,10 @@ To perform the steps you need `kubectl` access to the cluster with admin privile
     ```yaml
     gpuEnabled: true
     genaiEngineDeploymentType: "deployment"
-    genaiEngineWorkers: 2
+    genaiEngineWorkers: 3
     genaiEngineContainerImageLocation: "arthurplatform/genai-engine-gpu"
+    genaiEngineContainerGPULimit: "1"
+    genaiEngineContainerMemoryLimits: "24Gi"
     ```
 
       `genaiEngineDeploymentType` is the key setting that distinguishes the two GPU topologies, so make sure you pick the Auto Mode block and not the managed-node-group one:
@@ -415,7 +417,11 @@ To perform the steps you need `kubectl` access to the cluster with admin privile
       | Managed node group + ASG | `"daemonset"` | One GPU pod per node; the ASG fills nodes as it scales the node group. |
       | **EKS Auto Mode / Karpenter** | **`"deployment"`** | Karpenter only provisions a node for an unschedulable **workload pod**, and will **not** scale up for a DaemonSet — so the engine must run as a Deployment whose pending pod is the scale-up trigger. |
 
-      `gpuEnabled: true` and the `-gpu` image select the GPU build; `genaiEngineWorkers: 2` is the per-pod worker count (keep it low — each worker loads the full model suite onto the GPU).
+      `gpuEnabled: true` and the `-gpu` image select the GPU build. The remaining three settings are specific to GPU:
+
+      - `genaiEngineWorkers: 3` — the per-pod worker count. Each worker is a separate process, and a single worker cannot keep a GPU busy. Three is also the practical ceiling for a 16 GB GPU; a fourth exceeds available GPU memory and container RAM.
+      - `genaiEngineContainerMemoryLimits: "24Gi"` — every worker holds the full model suite resident, and large prompts or context add more on top, so the CPU default leaves too little headroom.
+      - `genaiEngineContainerGPULimit: "1"` — required only if you use the [GPU autoscaler add-on](../genai-engine-gpu-autoscaler-karpenter/README.md). GPU metrics are attributed to a pod only when the pod requests the device; without it the autoscaler has no metrics to act on.
 
     - Set the pod `nodeSelector` to the NodePool's label and add a toleration for the taint, and disable the HPA:
 
@@ -429,11 +435,23 @@ To perform the steps you need `kubectl` access to the cluster with admin privile
           effect: "NoSchedule"
     arthurGenaiEngineHPA:
       enabled: false
+      # If you use the GPU autoscaler add-on chart (see below), also set:
+      # externallyManaged: true
     ```
 
-    The `nodeSelector` is what makes the pod unschedulable on the general-purpose nodes, which is the signal that prompts Karpenter to provision a GPU node from the NodePool above. The chart grants the container GPU access via `NVIDIA_VISIBLE_DEVICES`, so no `nvidia.com/gpu` resource request is required in the pod spec.
+    The `nodeSelector` is what makes the pod unschedulable on the general-purpose nodes, which is the signal that prompts Karpenter to provision a GPU node from the NodePool above. The chart grants the container GPU access via `NVIDIA_VISIBLE_DEVICES`, so no `nvidia.com/gpu` resource request is required for the engine to *use* the GPU.
 
-3. **Scaling is automatic.** Unlike the managed node group path, there is no launch template, ASG, or CloudWatch alarm to configure — Karpenter adds a GPU node when a GenAI Engine pod is pending and removes it when the node is idle (per the NodePool's `disruption` policy). To run more replicas, increase `genaiEngineReplicaCount`; Karpenter provisions additional GPU nodes to fit the pending pods (up to the NodePool `limits`).
+    It is required for GPU metrics to be *attributed* to the pod, though — DCGM maps GPUs to pods through the kubelet pod-resources API, which only reports a device allocation when the pod requests one. If you plan to use the GPU autoscaler add-on (step 4), set `genaiEngineContainerGPULimit: "1"`, and first confirm a device plugin advertises the resource:
+
+    ```bash
+    kubectl get node <gpu-node> -o jsonpath='{.status.allocatable}' | tr ',' '\n' | grep nvidia
+    ```
+
+    Without that, the pod requests a resource nothing provides and stays `Pending` forever.
+
+3. **Node scaling is automatic.** Unlike the managed node group path, there is no launch template, ASG, or CloudWatch alarm to configure — Karpenter adds a GPU node when a GenAI Engine pod is pending and removes it when the node is idle (per the NodePool's `disruption` policy). To run more replicas, increase `genaiEngineReplicaCount`; Karpenter provisions additional GPU nodes to fit the pending pods (up to the NodePool `limits`).
+
+4. **(Optional) Autoscale pods on GPU load.** Increasing `genaiEngineReplicaCount` is manual. To scale the replica count automatically on **GPU utilization**, install the companion [`genai-engine-gpu-autoscaler-karpenter`](../genai-engine-gpu-autoscaler-karpenter/README.md) add-on chart (DCGM exporter → Prometheus → prometheus-adapter → HPA). It owns the replica count, so set `arthurGenaiEngineHPA.externallyManaged: true` here and this chart will omit the Deployment's static `replicas` and render no HPA of its own. It also needs `genaiEngineContainerGPULimit: "1"` (see step 2). The HPA scales pods; Karpenter scales nodes.
 
 ## Ingress and HTTPS
 

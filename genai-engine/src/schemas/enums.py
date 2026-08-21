@@ -220,6 +220,13 @@ class PermissionLevelsEnum(Enum):
             constants.TENANT_USER,
         ],
     )
+    MODEL_PROVIDER_WHITELIST_READ = frozenset(
+        [
+            constants.ORG_ADMIN,
+            constants.ORG_AUDITOR,
+            constants.TASK_ADMIN,
+        ],
+    )
     # Read of the chatbot system task's model + prompt config. Admin-only:
     # this is system-wide config, not tenant data.
     CHATBOT_CONFIG_READ = frozenset(

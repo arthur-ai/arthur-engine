@@ -29,6 +29,19 @@ on:
 jobs:
   build-fs-model-upload:
     environment: shared-protected-branch-secrets
+    # security-events: write is what lets the scan below publish SARIF to the
+    # Security tab. A reusable workflow cannot grant itself more than its caller
+    # holds, so the calling job in arthur-engine-workflow.yml declares the same set.
+    #
+    # contents: read is deliberate and does not affect the manifest commit further
+    # down: checkout, the git push and gh all run on the Arthur Automator App token,
+    # not GITHUB_TOKEN. The only thing here that touches github.token is the Trivy
+    # installer fetching a public release. Declaring any permissions block at all
+    # drops the unlisted scopes to none, hence spelling out all three.
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
     runs-on: ubuntu-latest
     steps:
       - name: Generate Arthur GitHub Automator App Token
@@ -123,3 +136,25 @@ jobs:
           done
           echo "Failed to push manifest after retries." >&2
           exit 1
+      # Advisory vulnerability scan + justification docs, matching what the
+      # genai-engine and ml-engine builds already do. Without this the models
+      # images were only ever scanned by the nightly image-vuln-scan, so a fix
+      # merged just after a release sat visibly "open" in the Security tab for up
+      # to a day after it had actually shipped.
+      #
+      # The slug is the SARIF category, so it must stay identical to this image's
+      # entry in the image-vuln-scan.yml matrix (models-fs); a different category
+      # would open a second, parallel set of alerts instead of updating these.
+      #
+      # Runs last: the scan takes minutes, and the manifest commit above races
+      # other jobs pushing to the same branch, so this keeps that window tight.
+      # Only meaningful when the image was pushed -- the scan pulls it by tag.
+      - name: Scan image & generate justification docs
+        if: inputs.push
+        continue-on-error: true
+        uses: ./.github/workflows/composite-actions/vuln-report
+        with:
+          image: ${{ inputs.image }}:${{ env.VERSION }}
+          slug: models-fs
+          dockerhub-username: ${{ secrets.DOCKERHUB_ENTERPRISE_USERNAME }}
+          dockerhub-token: ${{ secrets.DOCKERHUB_ENTERPRISE_TOKEN }}
