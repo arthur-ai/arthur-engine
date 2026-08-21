@@ -28,9 +28,10 @@ Usage, in an environment where the SDK and the relevant extra are installed:
     pip install "arthur_observability_sdk-*.whl[openai]"
     python3 scripts/verify_instrumentor.py --method instrument_openai
 
-Exit status is 0 when the outcome matches expectation and 1 when it does not.
-``KNOWN_BROKEN`` declarations are held to the opposite expectation: they must
-still fail, so fixing one forces its entry to be removed instead of rotting.
+Exit status is 0 only when the declaration resolves.  There are no waivers: every
+declaration in ``arthur.py`` is expected to work, and packages that cannot work
+are not declared at all — they are recorded in ``UNSUPPORTED``
+(``instrumentor_registry.py``) with the reason, and this script never sees them.
 
 Note that a tier-2 failure with a missing *framework* module surfaces from the
 SDK as "Missing optional dependency '<the extra's package>' ... pip install
@@ -222,9 +223,8 @@ def exercise(instrumentor: Instrumentor) -> Tuple[Optional[bool], str]:
 
 
 def verify(instrumentor: Instrumentor) -> int:
-    """Run both tiers and compare the outcome to what ``KNOWN_BROKEN`` expects."""
+    """Run both tiers and report.  Any declaration that does not resolve fails."""
     label = f"{instrumentor.method}() -> {instrumentor.module_path}.{instrumentor.class_name}"
-    expected_broken = instrumentor.known_broken
 
     declared_ok, declared_detail = check_declaration(instrumentor)
     lines = [f"      tier 1: {declared_detail}"]
@@ -241,28 +241,18 @@ def verify(instrumentor: Instrumentor) -> int:
 
     body = "\n".join(lines)
 
-    if worked and not expected_broken:
+    if worked:
         print(f"PASS  {label}\n{body}")
-        return 0
-
-    if worked and expected_broken:
-        print(
-            f"FAIL  {label}\n{body}\n"
-            f"      This declaration is listed in KNOWN_BROKEN but now works.\n"
-            f"      Remove it from KNOWN_BROKEN in scripts/instrumentor_registry.py.\n"
-            f"      Recorded reason: {expected_broken}",
-        )
-        return 1
-
-    if expected_broken:
-        print(f"XFAIL {label}\n{body}\n      Broken as recorded: {expected_broken}")
         return 0
 
     print(
         f"FAIL  {label}\n{body}\n"
         f"      pip install arthur-observability-sdk[{instrumentor.extra}] then "
         f"{instrumentor.method}() does not work.\n"
-        f"      Check module_path and class_name against the published package.",
+        f"      Check module_path and class_name against the published package.\n"
+        f"      If the package cannot work with _instrument() at all, remove the "
+        f"declaration and record it in UNSUPPORTED "
+        f"(scripts/instrumentor_registry.py) rather than leaving it failing.",
     )
     return 1
 
@@ -276,9 +266,9 @@ def verify_all() -> int:
             failed.append(instrumentor.method)
         print()
 
-    print(f"{len(instrumentors) - len(failed)}/{len(instrumentors)} as expected.")
+    print(f"{len(instrumentors) - len(failed)}/{len(instrumentors)} verified.")
     if failed:
-        print(f"Unexpected results: {', '.join(failed)}")
+        print(f"Failed: {', '.join(failed)}")
         return 1
     return 0
 

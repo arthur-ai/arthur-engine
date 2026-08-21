@@ -48,55 +48,64 @@ README_ROW = re.compile(
     re.MULTILINE,
 )
 
-# Instrumentors that are known not to work against the published package.
-# verify_instrumentor.py treats these strictly: an entry here MUST still fail,
-# so a fix forces the entry to be removed rather than left to rot.
+# openinference packages the SDK deliberately does not expose, keyed by the
+# extra name they would have had.  Each shipped an extra and an instrument_*
+# method that could not work; rather than leave a declaration that fails for
+# every user who installs it, the declaration is gone and the reason is recorded
+# here.  See UP-4874 for restoring them.
 #
-# Three groups:
-#   * smolagents — a class-name typo, one line to fix.
-#   * five packages that are not BaseInstrumentor packages at all: they ship an
-#     OTel SpanProcessor (or, for codex, a JSONL forwarder), which needs
-#     tracer_provider.add_span_processor(...) rather than Arthur._instrument()'s
-#     cls().instrument() shape.  Fixing those needs a second code path in
-#     arthur.py, not a corrected class name.
-#   * monkai-agent — our declaration is right; the upstream package is broken.
-KNOWN_BROKEN: Dict[str, str] = {
-    "instrument_smolagents": (
-        "Class name casing: the package defines SmolagentsInstrumentor "
-        "(lowercase 'a'), not SmolAgentsInstrumentor.  One-line fix in arthur.py."
-    ),
-    "instrument_agent_framework": (
+# This is an exclusion list, not a waiver: nothing here is declared anywhere, so
+# verify_instrumentor.py never sees these and the workflow is green on a clean
+# registry.  test_instrumentors.py holds the list to that — an entry must be
+# absent from arthur.py, pyproject.toml and the README, so re-adding support
+# forces its removal from here rather than leaving two sources of truth.
+#
+# Two groups:
+#   * six packages that are not BaseInstrumentor packages at all: five ship an
+#     OTel SpanProcessor and codex a session-JSONL forwarder.  A SpanProcessor
+#     needs tracer_provider.add_span_processor(...), which Arthur has no code
+#     path for — _instrument() only knows cls().instrument().  Supporting them
+#     means a second method shape in arthur.py, not a corrected class name.
+#   * monkai-agent — our declaration was right; the upstream package is broken.
+UNSUPPORTED: Dict[str, str] = {
+    "agent-framework": (
         "Package ships AgentFrameworkToOpenInferenceProcessor (a SpanProcessor); "
         "there is no BaseInstrumentor to instantiate."
     ),
-    "instrument_strands_agents": (
+    "strands-agents": (
         "Package ships StrandsAgentsToOpenInferenceProcessor (a SpanProcessor); "
         "there is no BaseInstrumentor to instantiate."
     ),
-    "instrument_openlit": (
+    "openlit": (
         "Package ships OpenInferenceSpanProcessor (a SpanProcessor); "
         "there is no BaseInstrumentor to instantiate."
     ),
-    "instrument_openllmetry": (
+    "openllmetry": (
         "Package ships OpenInferenceSpanProcessor (a SpanProcessor); "
         "there is no BaseInstrumentor to instantiate."
     ),
-    "instrument_pydantic_ai": (
+    "pydantic-ai": (
         "Package ships OpenInferenceSpanProcessor (a SpanProcessor); "
         "there is no BaseInstrumentor to instantiate."
     ),
-    "instrument_codex": (
+    "codex": (
         "Package ships CodexJsonlForwarder / NativeOtlpInterceptor — a session "
         "JSONL forwarding model that fits neither the instrumentor nor the "
         "span-processor shape."
     ),
-    # The one entry whose declaration is correct: the upstream package is broken.
-    "instrument_monkai_agent": (
-        "Declaration is correct, but monkai-agent 0.0.1 raises NameError on "
+    # The one entry whose declaration was correct: the upstream package is broken.
+    "monkai-agent": (
+        "Declaration was correct, but monkai-agent 0.0.1 raises NameError on "
         "import ('MCPAgent' is not defined in its own base.py), so importing "
-        "the instrumentor fails.  Nothing to fix on our side — either wait for "
-        "an upstream release or drop the extra."
+        "the instrumentor fails.  Nothing to fix on our side — the extra is "
+        "excluded until there is an upstream release."
     ),
+}
+
+# The package name an excluded extra would install, by the same convention every
+# declared extra follows.  Kept derived rather than listed so the two cannot drift.
+UNSUPPORTED_PACKAGES: Dict[str, str] = {
+    extra: f"openinference-instrumentation-{extra}" for extra in UNSUPPORTED
 }
 
 
@@ -108,10 +117,6 @@ class Instrumentor(NamedTuple):
     extra: str  # key in [project.optional-dependencies]
     module_path: str  # importlib path
     class_name: str  # attribute looked up on the module
-
-    @property
-    def known_broken(self) -> Optional[str]:
-        return KNOWN_BROKEN.get(self.method)
 
 
 class RegistryError(Exception):
@@ -337,12 +342,13 @@ def main() -> int:
         return 0
     width = max(len(instrumentor.method) for instrumentor in instrumentors)
     for instrumentor in instrumentors:
-        flag = "BROKEN" if instrumentor.known_broken else "      "
         print(
-            f"{flag} {instrumentor.method:<{width}}  "
+            f"{instrumentor.method:<{width}}  "
             f"[{instrumentor.extra}]  {instrumentor.module_path}.{instrumentor.class_name}",
         )
-    print(f"\n{len(instrumentors)} declaration(s), {len(KNOWN_BROKEN)} known broken.")
+    print(f"\n{len(instrumentors)} declaration(s), {len(UNSUPPORTED)} excluded.")
+    for extra, reason in sorted(UNSUPPORTED.items()):
+        print(f"  excluded: {extra} — {reason}")
     return 0
 
 

@@ -14,7 +14,7 @@ cd python && uv run pytest tests -v   # all tests, incl. install/wheel smoke tes
 
 The SDK has three layers:
 
-**`Arthur`** (`arthur.py`) — the user-facing entrypoint. Owns the OTel `TracerProvider`, the API client, and the 40 `instrument_*` methods. At least one of `task_id`, `task_name`, or `service_name` must be provided.
+**`Arthur`** (`arthur.py`) — the user-facing entrypoint. Owns the OTel `TracerProvider`, the API client, and the 33 `instrument_*` methods. At least one of `task_id`, `task_name`, or `service_name` must be provided.
 
 **`setup_telemetry`** (`telemetry.py`) — creates a `TracerProvider` with a `BatchSpanProcessor` backed by an OTLP HTTP exporter. Passes `Authorization: Bearer {api_key}` in the exporter headers. Called by `Arthur.__init__` when `enable_telemetry=True`. Registers the provider globally via `trace.set_tracer_provider()`.
 
@@ -90,13 +90,16 @@ python3 scripts/verify_instrumentor.py --extra my-framework
 ```
 
 CI runs that per-extra — for changed declarations on every PR, for all of them weekly — via
-`.github/workflows/arthur-observability-sdk-instrumentors.yml`. Declarations known not to resolve
-are listed with a reason in `KNOWN_BROKEN` (`scripts/instrumentor_registry.py`); the check is
-strict in both directions, so fixing one requires removing its entry.
+`.github/workflows/arthur-observability-sdk-instrumentors.yml`. There are no waivers: every
+declaration is expected to resolve, so a red job means a real break.
 
 Not every openinference package fits `_instrument()`. Several ship an OTel `SpanProcessor` rather
-than a `BaseInstrumentor` and need `tracer_provider.add_span_processor(...)` instead — check which
-shape the package exports before adding a method for it.
+than a `BaseInstrumentor` and need `tracer_provider.add_span_processor(...)`, which `Arthur` has no
+code path for — check which shape the package exports before adding a method for it. Those packages
+are **not declared**: they are recorded with a reason in `UNSUPPORTED`
+(`scripts/instrumentor_registry.py`), and `test_instrumentors.py` asserts each one is absent from
+`arthur.py`, both extras, and the README. Adding support means deleting its entry from that list.
+See UP-4874 for the span-processor work.
 
 ## Testing
 

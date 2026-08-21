@@ -19,6 +19,11 @@ name: Arthur Observability SDK - Instrumentor Verification
 # The weekly run matters because these are unpinned third-party packages: a
 # declaration that works today breaks when upstream renames a class.
 #
+# There are no expected failures: every declaration is expected to resolve, so a
+# red job here means a real break.  Packages that cannot work with
+# Arthur._instrument() are not declared at all — they are recorded in UNSUPPORTED
+# (scripts/instrumentor_registry.py) and never reach this workflow.
+#
 # A PR that changes the verification tooling rather than a declaration verifies
 # everything.  Diffing declarations would select nothing, so a broken harness
 # would merge green and stay undetected until the next scheduled run — while
@@ -176,7 +181,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   # ── the combined [all] install: cross-package resolvability ──────────────
-  # 40 optional packages resolved together is the failure mode neither the unit
+  # Every optional package resolved together is the failure mode neither the unit
   # test nor the per-extra matrix can see.  Too slow for every PR.
   verify-all-extra:
     needs: build-wheel

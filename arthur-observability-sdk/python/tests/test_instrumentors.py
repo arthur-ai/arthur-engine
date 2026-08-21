@@ -3,7 +3,8 @@
 Adding an instrumentor touches four places that must agree (see
 arthur-observability-sdk/CLAUDE.md): the ``instrument_*`` method in
 ``arthur.py``, the individual extra in ``pyproject.toml``, the ``all`` extra,
-and the README table row.  These tests assert those four agree.
+and the README table row.  These tests assert those four agree — and that the
+packages recorded in ``UNSUPPORTED`` appear in none of them.
 
 Scope, deliberately: this is a *metadata* check.  It reads declarations rather
 than importing the optional packages, so it runs with no extras installed and
@@ -22,7 +23,8 @@ import pytest
 pytest.importorskip("tomllib", reason="registry parsing needs Python 3.11+")
 
 from instrumentor_registry import (  # noqa: E402  (import follows the version guard)
-    KNOWN_BROKEN,
+    UNSUPPORTED,
+    UNSUPPORTED_PACKAGES,
     Instrumentor,
     load_documented,
     load_extras,
@@ -44,6 +46,8 @@ DECLARATIONS = pytest.mark.parametrize(
     sorted(INSTRUMENTORS.values()),
     ids=lambda instrumentor: instrumentor.method,
 )
+
+EXCLUSIONS = pytest.mark.parametrize("extra", sorted(UNSUPPORTED), ids=lambda extra: extra)
 
 
 def test_registry_is_not_empty():
@@ -125,14 +129,28 @@ def test_readme_documents_no_undeclared_extras():
     assert not undeclared, f"README lists extras that pyproject.toml does not declare: {undeclared}"
 
 
-def test_known_broken_entries_name_real_methods():
-    """Keeps ``KNOWN_BROKEN`` from outliving the methods it waives.
+@EXCLUSIONS
+def test_excluded_extra_is_not_declared(extra: str):
+    """An excluded package must be absent from all four registry locations.
 
-    A stale entry would silently exempt nothing, or worse, exempt a method that
-    was renamed back into existence later.
+    Without this the exclusion list and the declarations could both claim an
+    extra: the workflow would verify a package we have already decided cannot
+    work, and the recorded reason would describe something still shipping.
+    Restoring support therefore has to delete the entry from ``UNSUPPORTED``.
     """
-    stale = sorted(set(KNOWN_BROKEN) - set(INSTRUMENTORS))
-    assert not stale, (
-        f"KNOWN_BROKEN in scripts/instrumentor_registry.py names methods that "
-        f"no longer exist: {stale}"
+    package = UNSUPPORTED_PACKAGES[extra]
+    method = f"instrument_{extra.replace('-', '_')}"
+
+    assert method not in INSTRUMENTORS, (
+        f"'{extra}' is listed in UNSUPPORTED (scripts/instrumentor_registry.py) "
+        f"but arthur.py still declares {method}() — remove the entry if it works now"
     )
+    assert extra not in EXTRAS, f"pyproject.toml still declares the excluded extra '{extra}'"
+    assert package not in EXTRAS["all"], f"the 'all' extra still installs excluded '{package}'"
+    assert extra not in DOCUMENTED, f"README still documents the excluded extra '{extra}'"
+
+
+def test_exclusion_reasons_are_recorded():
+    """Every exclusion carries a reason — the list is documentation, not a mute."""
+    unexplained = sorted(extra for extra, reason in UNSUPPORTED.items() if not reason.strip())
+    assert not unexplained, f"UNSUPPORTED entries with no reason: {unexplained}"
