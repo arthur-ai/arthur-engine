@@ -68,6 +68,11 @@ curl -O https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/sbom/latest/
   images (which are rebuilt when their HuggingFace models **or** their build inputs —
   `deployment/model-upload/` Dockerfile, deps, or entrypoint scripts — change; otherwise a
   version bump re-tags the existing image).
+- **On every edit to `vex/openvex.json`** — the same workflow, via a `push` trigger on `dev`.
+  Editing the VEX re-triages existing findings without changing any image, so neither of the
+  triggers above fires: an unchanged image is re-tagged rather than rebuilt, and its open alerts
+  would otherwise stay open until the next nightly run. This is what makes a new statement take
+  effect (and close its alert) at merge time.
 
 Both call the shared composite action `.github/workflows/composite-actions/vuln-report`.
 

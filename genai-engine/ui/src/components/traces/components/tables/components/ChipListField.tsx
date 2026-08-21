@@ -1,25 +1,24 @@
 import { Add, Close } from "@mui/icons-material";
 import { Box, Chip, IconButton, Stack, TextField, Typography } from "@mui/material";
-import { useState } from "react";
 
 interface ChipListFieldProps {
   label: string;
   placeholder: string;
   values: string[];
+  inputValue: string;
+  onInputChange: (value: string) => void;
   onAdd: (value: string) => void;
   onRemove: (value: string) => void;
 }
 
-export const ChipListField = ({ label, placeholder, values, onAdd, onRemove }: ChipListFieldProps) => {
-  const [input, setInput] = useState("");
-
-  const commit = () => {
-    const trimmed = input.trim();
+export const ChipListField = ({ label, placeholder, values, inputValue, onInputChange, onAdd, onRemove }: ChipListFieldProps) => {
+  const commit = (value: string) => {
+    const trimmed = value.trim();
     if (!trimmed) {
       return;
     }
     onAdd(trimmed);
-    setInput("");
+    onInputChange("");
   };
 
   return (
@@ -31,12 +30,19 @@ export const ChipListField = ({ label, placeholder, values, onAdd, onRemove }: C
         <TextField
           size="small"
           fullWidth
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
+          value={inputValue}
+          onChange={(e) => onInputChange(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
               e.preventDefault();
-              commit();
+              commit(inputValue);
+            }
+          }}
+          onPaste={(e) => {
+            const pastedText = e.clipboardData.getData("text").trim();
+            if (pastedText) {
+              e.preventDefault();
+              commit(pastedText);
             }
           }}
           placeholder={placeholder}
@@ -47,7 +53,7 @@ export const ChipListField = ({ label, placeholder, values, onAdd, onRemove }: C
             },
           }}
         />
-        <IconButton size="small" onClick={commit} disabled={!input.trim()} color="primary">
+        <IconButton size="small" onClick={() => commit(inputValue)} disabled={!inputValue.trim()} color="primary">
           <Add />
         </IconButton>
       </Stack>
