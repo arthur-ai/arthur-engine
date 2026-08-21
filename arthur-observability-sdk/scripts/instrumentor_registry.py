@@ -321,7 +321,17 @@ def main() -> int:
         metavar="REF",
         help="restrict output to declarations new or altered since this git ref",
     )
+    parser.add_argument(
+        "--excluded-packages",
+        action="store_true",
+        help="list the PyPI names in UNSUPPORTED, one per line (for check_new_instrumentors.sh)",
+    )
     args = parser.parse_args()
+
+    if args.excluded_packages:
+        for package in sorted(UNSUPPORTED_PACKAGES.values()):
+            print(package)
+        return 0
 
     root = args.root.resolve()
     if args.changed_since:
