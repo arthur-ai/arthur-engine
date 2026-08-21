@@ -154,7 +154,10 @@ jobs:
           fi
 
       - name: Set up Arthur Engine tracing
-        if: steps.guard.outputs.proceed == 'true' && vars.GENAI_ENGINE_TASK_ID != ''
+        if: steps.guard.outputs.proceed == 'true'
+        # Unconditional: the hooks below are registered either way, and a missing
+        # tracer file exits non-zero, which blocks every tool call. The tracer
+        # itself no-ops when GENAI_ENGINE_TASK_ID is unset.
         run: |
           set -euo pipefail
           pip install --quiet opentelemetry-sdk opentelemetry-exporter-otlp-proto-http
