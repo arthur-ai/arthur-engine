@@ -12,12 +12,12 @@ dependencies = [
   # re-resolve at all. Raise this only once litellm supports openai v3.
   "openai==2.54.0",
   "fastapi==0.141.1",
-  "uvicorn==0.52.3",
+  "uvicorn==0.52.4",
   "pydantic==2.13.4",
   "sse-starlette==3.4.8",
   "fastapi-sqlalchemy==0.2.1",
   "alembic==1.19.1",
-  "boto3==1.43.74",
+  "boto3==1.43.75",
   "python-dotenv==1.2.3",
   "psycopg2-binary==2.9.12",
   "sqlalchemy==2.0.52",
@@ -82,7 +82,7 @@ dependencies = [
   "google-cloud-aiplatform>=1.38",
   "google-cloud-trace>=1.11.0,<2",
   "opentelemetry-semantic-conventions>=0.60b1,<0.61",
-  "arthur-client==1.4.2487",
+  "arthur-client==1.4.2510",
 ]
 
 [project.scripts]
