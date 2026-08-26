@@ -340,7 +340,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "24"
       - name: Enable Corepack
         run: corepack enable
       - name: Install dependencies
@@ -362,13 +362,18 @@ jobs:
         id: format-check
         continue-on-error: true
         run: yarn format:check
+      - name: Run tests
+        id: tests
+        continue-on-error: true
+        run: yarn test:run
       - name: Check results
-        if: steps.type-check.outcome == 'failure' || steps.lint.outcome == 'failure' || steps.format-check.outcome == 'failure'
+        if: steps.type-check.outcome == 'failure' || steps.lint.outcome == 'failure' || steps.format-check.outcome == 'failure' || steps.tests.outcome == 'failure'
         run: |
           echo "One or more checks failed:"
           echo "  type-check: ${{ steps.type-check.outcome }}"
           echo "  lint: ${{ steps.lint.outcome }}"
           echo "  format-check: ${{ steps.format-check.outcome }}"
+          echo "  tests: ${{ steps.tests.outcome }}"
           exit 1
 
   run-genai-engine-unit-tests:
