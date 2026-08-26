@@ -121,6 +121,12 @@
       "allowedVersions": "<8.8.0"
     },
     {
+      "description": "Cap typescript < 6.1.0: typescript-eslint (a direct devDependency of genai-engine/ui) declares peer typescript '>=4.8.4 <6.1.0' and hard-throws at ESLint config load on any TS >= 7 ('typescript-eslint does not support TS 7.0'), so yarn lint cannot run at all. typescript 7.x is the native port and no longer exports the JS compiler API that @typescript-eslint/typescript-estree is built on, so this is not a version range a patch release widens: no published typescript-eslint (latest 8.68.0 or canary) admits TS 7.x, and upstream typescript-eslint#10940 targets TS >= 7.1, skipping 7.0 entirely. <6.1.0 mirrors the upstream peer ceiling exactly and still allows the typescript 6.0.x major, which typescript-eslint does support. Lift this cap once a typescript-eslint release widens its typescript peer range past 7.0.",
+      "matchManagers": ["npm"],
+      "matchPackageNames": ["typescript"],
+      "allowedVersions": "<6.1.0"
+    },
+    {
       "matchManagers": ["dockerfile", "docker-compose"],
       "matchPackageNames": ["python"],
       "enabled": false
