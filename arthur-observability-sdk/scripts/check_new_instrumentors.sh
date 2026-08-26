@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# CI script: diffs PyPI openinference-instrumentation-* packages against pyproject.toml.
-# Exits 0 if nothing new, exits 1 with warning if new packages exist on PyPI.
+# CI script: diffs PyPI openinference-instrumentation-* packages against the ones
+# pyproject.toml declares, minus the ones UNSUPPORTED records as deliberately
+# excluded.  Exits 0 if nothing new, 1 with a warning if new packages exist.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -23,11 +24,19 @@ DECLARED_PACKAGES=$(grep -oE 'openinference-instrumentation-[a-z0-9-]+' "$PYPROJ
   | sort -u)
 echo "$DECLARED_PACKAGES"
 
+# Packages we have already evaluated and deliberately do not declare.  Without
+# subtracting these, every run reports them as new and asks for them to be added
+# — see UNSUPPORTED in instrumentor_registry.py for why each one cannot work.
+echo ""
+echo "Packages excluded on purpose:"
+EXCLUDED_PACKAGES=$(python3 "$SCRIPT_DIR/instrumentor_registry.py" --excluded-packages)
+echo "$EXCLUDED_PACKAGES"
+
 echo ""
 echo "Diffing..."
 NEW_PACKAGES=$(comm -23 \
   <(echo "$PYPI_PACKAGES" | sort) \
-  <(echo "$DECLARED_PACKAGES" | sort))
+  <(printf '%s\n%s\n' "$DECLARED_PACKAGES" "$EXCLUDED_PACKAGES" | sort -u))
 
 if [ -z "$NEW_PACKAGES" ]; then
   echo "No new openinference instrumentors found on PyPI. pyproject.toml is up to date."

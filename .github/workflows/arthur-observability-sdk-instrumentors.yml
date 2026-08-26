@@ -1,0 +1,212 @@
+name: Arthur Observability SDK - Instrumentor Verification
+
+# Verifies that each instrument_* declaration actually resolves against the
+# package published on PyPI.
+#
+# tests/test_instrumentors.py (unit, runs on every PR) checks that the four
+# registry locations agree on names.  It reads declarations rather than
+# importing packages, so it cannot see whether a declared module_path or
+# class_name is real — those two strings appear nowhere but the call that
+# consumes them.  This workflow installs each extra for real and calls the
+# method, which is the only way to catch a wrong class name or a package that
+# does not follow the BaseInstrumentor shape at all.
+#
+# Cadence:
+#   pull_request, declaration change → only the declarations it adds or alters
+#   pull_request, tooling change     → all of them (see below)
+#   schedule/dispatch                → all, plus a combined [all]-extra install
+#
+# The weekly run matters because these are unpinned third-party packages: a
+# declaration that works today breaks when upstream renames a class.
+#
+# There are no expected failures: every declaration is expected to resolve, so a
+# red job here means a real break.  Packages that cannot work with
+# Arthur._instrument() are not declared at all — they are recorded in UNSUPPORTED
+# (scripts/instrumentor_registry.py) and never reach this workflow.
+#
+# A PR that changes the verification tooling rather than a declaration verifies
+# everything.  Diffing declarations would select nothing, so a broken harness
+# would merge green and stay undetected until the next scheduled run — while
+# still acting as the gate for any declaration added in the meantime.  Tooling
+# changes are rare, so paying for a full sweep on them is cheap.
+
+on:
+  pull_request:
+    paths:
+      - 'arthur-observability-sdk/python/src/arthur_observability_sdk/arthur.py'
+      - 'arthur-observability-sdk/python/pyproject.toml'
+      - 'arthur-observability-sdk/scripts/instrumentor_registry.py'
+      - 'arthur-observability-sdk/scripts/verify_instrumentor.py'
+      - '.github/workflows/arthur-observability-sdk-instrumentors.yml'
+  schedule:
+    # Mondays 06:00 UTC — a fresh report at the start of the week.
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+jobs:
+  # ── which declarations to verify ──────────────────────────────────────────
+  discover:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.registry.outputs.matrix }}
+      count: ${{ steps.registry.outputs.count }}
+    steps:
+      # Full history so the PR base commit is present for --changed-since.
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: ./.github/workflows/composite-actions/setup-git
+        with:
+          safe-directory: ${{ runner.workspace }}
+
+      - name: Select declarations
+        id: registry
+        working-directory: arthur-observability-sdk
+        run: |
+          BASE="${{ github.event.pull_request.base.sha }}"
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            echo "Scheduled or manual run — verifying every declaration."
+            MATRIX=$(python3 scripts/instrumentor_registry.py --json)
+          else
+            # Paths are repo-relative, so run git from the workspace root rather
+            # than this step's working-directory.
+            TOOLING=$(git -C "$GITHUB_WORKSPACE" diff --name-only "$BASE"...HEAD -- \
+              arthur-observability-sdk/scripts/instrumentor_registry.py \
+              arthur-observability-sdk/scripts/verify_instrumentor.py \
+              .github/workflows/arthur-observability-sdk-instrumentors.yml | wc -l)
+            if [ "$TOOLING" -gt 0 ]; then
+              echo "Verification tooling changed — verifying every declaration."
+              MATRIX=$(python3 scripts/instrumentor_registry.py --json)
+            else
+              echo "Selecting declarations changed since $BASE"
+              MATRIX=$(python3 scripts/instrumentor_registry.py --json --changed-since "$BASE")
+            fi
+          fi
+          COUNT=$(printf '%s' "$MATRIX" | python3 -c "import json,sys; print(len(json.load(sys.stdin)))")
+          echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
+          echo "count=$COUNT"   >> "$GITHUB_OUTPUT"
+          echo "Selected $COUNT declaration(s)."
+          python3 scripts/instrumentor_registry.py >> "$GITHUB_STEP_SUMMARY"
+
+  # ── shared: generate the OpenAPI client the SDK imports ──────────────────
+  generate-client:
+    runs-on: ubuntu-latest
+    env:
+      GIT_DEPTH: 100
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: ${{ env.GIT_DEPTH }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Generate API client
+        working-directory: arthur-observability-sdk
+        run: ./scripts/generate_openapi_client.sh generate python
+      - uses: actions/upload-artifact@v4
+        with:
+          name: arthur-genai-client
+          path: arthur-observability-sdk/python/src/arthur_genai_client
+
+  # ── build the wheel once, install it 40 ways ─────────────────────────────
+  build-wheel:
+    needs: generate-client
+    runs-on: ubuntu-latest
+    container: python:3.12-bullseye
+    env:
+      GIT_DEPTH: 100
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: ${{ env.GIT_DEPTH }}
+      - uses: ./.github/workflows/composite-actions/setup-git
+        with:
+          safe-directory: ${{ runner.workspace }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: arthur-genai-client
+          path: arthur-observability-sdk/python/src/arthur_genai_client
+      - uses: ./.github/workflows/composite-actions/setup-uv
+        with:
+          working-directory: arthur-observability-sdk/python
+      - name: Build wheel
+        run: ./arthur-observability-sdk/scripts/build_sdk_wheel.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sdk-wheel
+          path: arthur-observability-sdk/dist/*.whl
+
+  # ── one job per declaration ──────────────────────────────────────────────
+  verify:
+    needs: [discover, build-wheel]
+    if: needs.discover.outputs.count != '0'
+    runs-on: ubuntu-latest
+    container: python:3.12-bullseye
+    strategy:
+      # Every declaration should report, not just the ones before the first
+      # failure — the point is a complete picture of what is broken.
+      fail-fast: false
+      max-parallel: 8
+      matrix:
+        instrumentor: ${{ fromJSON(needs.discover.outputs.matrix) }}
+    name: verify ${{ matrix.instrumentor.extra }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+      - uses: actions/download-artifact@v4
+        with:
+          name: sdk-wheel
+          path: dist/
+      - name: Install SDK with the [${{ matrix.instrumentor.extra }}] extra
+        run: |
+          WHEEL=$(ls dist/*.whl | head -1)
+          echo "Installing ${WHEEL}[${{ matrix.instrumentor.extra }}]"
+          pip install --quiet "${WHEEL}[${{ matrix.instrumentor.extra }}]"
+          pip show "${{ matrix.instrumentor.package }}" | head -2
+      - name: Verify ${{ matrix.instrumentor.method }}()
+        run: |
+          python3 arthur-observability-sdk/scripts/verify_instrumentor.py \
+            --method "${{ matrix.instrumentor.method }}" | tee result.txt
+          {
+            echo "### \`${{ matrix.instrumentor.method }}()\`"
+            echo '```'
+            cat result.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # ── the combined [all] install: cross-package resolvability ──────────────
+  # Every optional package resolved together is the failure mode neither the unit
+  # test nor the per-extra matrix can see.  Too slow for every PR.
+  verify-all-extra:
+    needs: build-wheel
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    container: python:3.12-bullseye
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+      - uses: actions/download-artifact@v4
+        with:
+          name: sdk-wheel
+          path: dist/
+      - name: Install SDK with the [all] extra
+        run: |
+          WHEEL=$(ls dist/*.whl | head -1)
+          pip install --quiet "${WHEEL}[all]"
+      - name: Verify every declaration
+        run: |
+          python3 arthur-observability-sdk/scripts/verify_instrumentor.py --all \
+            | tee result.txt
+          {
+            echo "### \`[all]\` extra"
+            echo '```'
+            tail -20 result.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
