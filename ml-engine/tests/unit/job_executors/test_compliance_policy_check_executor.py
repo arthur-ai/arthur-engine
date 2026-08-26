@@ -243,12 +243,14 @@ def _make_job_and_spec(
     assignment_id: str = None,
     window_start: datetime = None,
     window_end: datetime = None,
+    errored_alert_rule_ids: list[str] = None,
 ) -> tuple[Job, CompliancePolicyCheckJobSpec]:
     job_spec = CompliancePolicyCheckJobSpec(
         scope_model_id=model_id,
         check_range_start_timestamp=window_start or ALERT_WINDOW_START,
         check_range_end_timestamp=window_end or NOW,
         policy_assignment_id=assignment_id,
+        errored_alert_rule_ids=errored_alert_rule_ids or [],
     )
     job = Job(
         id=str(uuid4()),
@@ -529,6 +531,59 @@ def test_alert_violation_non_compliant(mock_datetime):
         detail.alert_rules.non_compliant[0].alert.description
         == triggering_alert.description
     )
+
+
+@patch("job_executors.compliance_policy_check_executor.datetime")
+def test_errored_alert_rule_non_compliant_not_passing(mock_datetime):
+    """A rule the alert check could not evaluate produces no alerts, which would
+    otherwise read as passing. It must be reported non-compliant with an error
+    message instead, so a broken rule never asserts compliance it never checked."""
+    mock_datetime.now.return_value = NOW
+    mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
+
+    executor, policies_client, alert_rules_client, alerts_client, metrics_client, _, _ = (
+        _make_executor()
+    )
+
+    model_id = str(uuid4())
+    policy_id = str(uuid4())
+    assignment = _make_assignment(
+        policy_summary=_make_policy_summary(policy_id),
+        model_summary=_make_model_summary(model_id),
+    )
+    policy = _make_policy(policy_id)
+    alert_rule = _make_alert_rule(model_id=model_id)
+
+    job, job_spec = _make_job_and_spec(
+        model_id, errored_alert_rule_ids=[str(alert_rule.id)]
+    )
+
+    policies_client.list_model_policy_assignments.return_value = _paginated_response(
+        [assignment]
+    )
+    policies_client.get_policy.return_value = policy
+    policies_client.list_model_attestations.return_value = _paginated_response([])
+    alert_rules_client.get_model_alert_rules.return_value = _paginated_response(
+        [alert_rule]
+    )
+    # The rule never ran, so there are no alerts to find.
+    alerts_client.get_model_alerts.return_value = _paginated_response([])
+
+    executor.execute(job, job_spec)
+
+    detail = policies_client.set_compliance_status.call_args.kwargs[
+        "set_compliance_status_request"
+    ].compliance_status
+    assert detail.alert_rules.compliant == []
+    assert len(detail.alert_rules.non_compliant) == 1
+    reported = detail.alert_rules.non_compliant[0]
+    assert reported.id == alert_rule.id
+    assert reported.error_message is not None
+    # No alert exists for an unevaluated rule, so none should be attached.
+    assert reported.alert is None
+
+    # The rule is never queried for alerts - it is known to have failed.
+    alerts_client.get_model_alerts.assert_not_called()
 
 
 @patch("job_executors.compliance_policy_check_executor.datetime")

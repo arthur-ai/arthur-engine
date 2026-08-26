@@ -43,6 +43,10 @@ from job_executors._interval_utils import alert_interval_to_timedelta
 from job_executors.task_management_job_executors import TaskManagementJobExecutor
 
 _PAGE_SIZE = 100
+_ALERT_RULE_NOT_EVALUATED = (
+    "Alert rule could not be evaluated: the alert check failed for this rule, "
+    "so its compliance is unknown."
+)
 GUARDRAIL_DEPENDENT_RESOURCE_TYPE = "guardrail"
 
 
@@ -93,6 +97,9 @@ class CompliancePolicyCheckExecutor:
                 if job_spec.policy_assignment_id is not None
                 else None
             ),
+            errored_alert_rule_ids={
+                str(rule_id) for rule_id in (job_spec.errored_alert_rule_ids or [])
+            },
         )
 
     def _run_compliance_checks(
@@ -101,6 +108,7 @@ class CompliancePolicyCheckExecutor:
         window_start: datetime,
         window_end: datetime,
         policy_assignment_id: Optional[str] = None,
+        errored_alert_rule_ids: Optional[Set[str]] = None,
     ) -> None:
         assignments = self._fetch_assignments(model_id, policy_assignment_id)
         if not assignments:
@@ -113,7 +121,13 @@ class CompliancePolicyCheckExecutor:
         errors: list[Exception] = []
         for assignment in assignments:
             try:
-                self._process_assignment(assignment, model_id, window_start, window_end)
+                self._process_assignment(
+                    assignment,
+                    model_id,
+                    window_start,
+                    window_end,
+                    errored_alert_rule_ids or set(),
+                )
             except Exception as e:
                 self.logger.error(
                     f"Error checking compliance for assignment {assignment.id}",
@@ -132,6 +146,7 @@ class CompliancePolicyCheckExecutor:
         model_id: str,
         window_start: datetime,
         window_end: datetime,
+        errored_alert_rule_ids: Set[str],
     ) -> None:
         self.logger.info(
             f"Checking compliance for assignment {assignment.id} "
@@ -142,14 +157,16 @@ class CompliancePolicyCheckExecutor:
         attestation_results = self._check_attestation_rules(
             assignment, policy.attestation_rules, window_end
         )
-        alert_rule_results = self._check_alert_rules(assignment, window_end)
+        alert_rule_results = self._check_alert_rules(
+            assignment, window_end, errored_alert_rule_ids
+        )
         guardrail_results = self._check_guardrail_rules(
             policy, model_id, window_start, window_end
         )
 
         has_violations = (
             any(not passed for _, passed, _ in attestation_results)
-            or any(not passed for _, passed, _ in alert_rule_results)
+            or any(not passed for _, passed, _, _ in alert_rule_results)
             or any(not r.passed for r in guardrail_results)
         )
 
@@ -252,8 +269,15 @@ class CompliancePolicyCheckExecutor:
         self,
         assignment: PolicyAssignment,
         window_end: datetime,
-    ) -> List[Tuple[ClientAlertRule, bool, Optional[Alert]]]:
-        """Returns list of (alert_rule, passed, triggering_alert) tuples.
+        errored_alert_rule_ids: Set[str],
+    ) -> List[Tuple[ClientAlertRule, bool, Optional[Alert], Optional[str]]]:
+        """Returns list of (alert_rule, passed, triggering_alert, error) tuples.
+
+        Rules named in errored_alert_rule_ids could not be evaluated by the
+        preceding alert check, so they have no alerts to find. Reporting them
+        as passing would assert compliance for a rule that never ran, so they
+        are failed with an error message instead - the same shape guardrail
+        failures already use.
 
         Per rule, query a sliding window of (window_end - 2*rule.interval,
         window_end] and report non-compliant iff any alert exists in there.
@@ -273,8 +297,16 @@ class CompliancePolicyCheckExecutor:
         if not alert_rules:
             return []
 
-        results: List[Tuple[ClientAlertRule, bool, Optional[Alert]]] = []
+        results: List[Tuple[ClientAlertRule, bool, Optional[Alert], Optional[str]]] = []
         for rule in alert_rules:
+            if str(rule.id) in errored_alert_rule_ids:
+                self.logger.info(
+                    f"Alert rule {rule.id} ({rule.name}): NOT EVALUATED "
+                    "(alert check failed for this rule)"
+                )
+                results.append((rule, False, None, _ALERT_RULE_NOT_EVALUATED))
+                continue
+
             sliding_window_start = window_end - 2 * alert_interval_to_timedelta(
                 rule.interval
             )
@@ -294,10 +326,10 @@ class CompliancePolicyCheckExecutor:
                     f"Alert rule {rule.id} ({rule.name}): VIOLATION "
                     f"(latest_bucket_alert={triggering.id})"
                 )
-                results.append((rule, False, triggering))
+                results.append((rule, False, triggering, None))
             else:
                 self.logger.info(f"Alert rule {rule.id} ({rule.name}): PASSING")
-                results.append((rule, True, None))
+                results.append((rule, True, None, None))
 
         return results
 
@@ -495,7 +527,9 @@ class CompliancePolicyCheckExecutor:
         self,
         assignment_id: str,
         status: ComplianceStatus,
-        alert_rule_results: List[Tuple[ClientAlertRule, bool, Optional[Alert]]],
+        alert_rule_results: List[
+            Tuple[ClientAlertRule, bool, Optional[Alert], Optional[str]]
+        ],
         attestation_results: List[Tuple[PolicyAttestationRule, bool, str]],
         guardrail_results: Optional[List[GuardrailCheckResult]] = None,
         policy: Optional[Policy] = None,
@@ -518,7 +552,7 @@ class CompliancePolicyCheckExecutor:
 
         compliant_alert_rules: List[CompliantAlertRuleStatus] = []
         non_compliant_alert_rules: List[NonCompliantAlertRuleStatus] = []
-        for rule, passed, triggering_alert in alert_rule_results:
+        for rule, passed, triggering_alert, error_message in alert_rule_results:
             # Check if we failed the guardrail check
             guardrail_reason = guardrail_failed_rule_ids.get(
                 rule.policy_alert_rule_id or ""
@@ -529,6 +563,14 @@ class CompliancePolicyCheckExecutor:
                         id=rule.id,
                         name=rule.name,
                         error_message=guardrail_reason,
+                    )
+                )
+            elif error_message:
+                non_compliant_alert_rules.append(
+                    NonCompliantAlertRuleStatus(
+                        id=rule.id,
+                        name=rule.name,
+                        error_message=error_message,
                     )
                 )
             elif passed:
@@ -610,7 +652,9 @@ class CompliancePolicyCheckExecutor:
         assignment: PolicyAssignment,
         status: ComplianceStatus,
         attestation_results: List[Tuple[PolicyAttestationRule, bool, str]],
-        alert_rule_results: List[Tuple[ClientAlertRule, bool, Optional[Alert]]],
+        alert_rule_results: List[
+            Tuple[ClientAlertRule, bool, Optional[Alert], Optional[str]]
+        ],
         now: datetime,
     ) -> None:
         metric_ts = self._align_to_5min(now)
@@ -707,7 +751,7 @@ class CompliancePolicyCheckExecutor:
         # (model_id, metric_name, timestamp) tuples — the platform's existing
         # version-cleanup collapses them to one row, so dashboards stop
         # over-counting a single ongoing violation as N separate ones.
-        for rule, passed, triggering_alert in alert_rule_results:
+        for rule, passed, triggering_alert, error_message in alert_rule_results:
             dimensions = [
                 Dimension(name="policy_id", value=str(assignment.policy.id)),
                 Dimension(name="policy_name", value=assignment.policy.name),
@@ -719,8 +763,13 @@ class CompliancePolicyCheckExecutor:
             if passed:
                 point_ts = metric_ts
                 value = 0.0
+            elif triggering_alert is None:
+                # Rule could not be evaluated, so there is no alert to date the
+                # point from. Counted as a violation with no alert_id.
+                point_ts = metric_ts
+                value = 1.0
+                dimensions.append(Dimension(name="not_evaluated", value="true"))
             else:
-                assert triggering_alert is not None
                 point_ts = self._align_to_5min(triggering_alert.timestamp)
                 value = 1.0
                 dimensions.append(
