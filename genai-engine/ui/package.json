@@ -84,7 +84,7 @@
     "@types/node": "24.13.3",
     "@types/papaparse": "5.5.2",
     "@types/react": "19.2.18",
-    "@types/react-dom": "19.2.4",
+    "@types/react-dom": "19.2.5",
     "@vitejs/plugin-react": "6.1.0",
     "eslint": "10.9.0",
     "eslint-config-prettier": "10.1.8",
