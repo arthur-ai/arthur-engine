@@ -4740,9 +4740,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"eslint@npm:10.8.1":
-  version: 10.8.1
-  resolution: "eslint@npm:10.8.1"
+"eslint@npm:10.9.0":
+  version: 10.9.0
+  resolution: "eslint@npm:10.9.0"
   dependencies:
     "@eslint-community/eslint-utils": "npm:^4.8.0"
     "@eslint-community/regexpp": "npm:^4.12.2"
@@ -4781,7 +4781,7 @@ __metadata:
       optional: true
   bin:
     eslint: bin/eslint.js
-  checksum: 10c0/0c4720a43ef2052829db18e37aa79adb5f0a62137bdf4a4f8e9507bbbbf888ba0669fc03e4b7139d8f27b59b051bbbcd0a3988b068c30fa934a766d60a81f599
+  checksum: 10c0/bc6c9f4a5c0b97e37ab1aa1753ae30ad5b0cf43a25ca3dcfff937f2b47243654c3ca34e37f71006474a3c1b95d6d4e046149facc6d66af4af6e993a619c23509
   languageName: node
   linkType: hard
 
@@ -8743,7 +8743,7 @@ __metadata:
     "@vitejs/plugin-react": "npm:6.1.0"
     axios: "npm:1.19.0"
     dayjs: "npm:1.11.23"
-    eslint: "npm:10.8.1"
+    eslint: "npm:10.9.0"
     eslint-config-prettier: "npm:10.1.8"
     eslint-plugin-import-x: "npm:4.17.1"
     eslint-plugin-react-hooks: "npm:5.2.0"
