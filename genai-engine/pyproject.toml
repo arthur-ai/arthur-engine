@@ -7,7 +7,7 @@ readme = "README.md"
 requires-python = ">=3.12,<3.13"
 
 dependencies = [
-  # Held at 2.x: litellm 1.96.2 requires openai<3.0.0. Renovate's openai v3 bump (#2134)
+  # Held at 2.x: litellm 1.97.0 requires openai<3.0.0. Renovate's openai v3 bump (#2134)
   # edited this pin without relocking, so uv.lock kept 2.54.0 and `uv lock` could not
   # re-resolve at all. Raise this only once litellm supports openai v3.
   "openai==2.54.0",
@@ -17,13 +17,13 @@ dependencies = [
   "sse-starlette==3.4.8",
   "fastapi-sqlalchemy==0.2.1",
   "alembic==1.19.1",
-  "boto3==1.43.75",
+  "boto3==1.43.78",
   "python-dotenv==1.2.3",
   "psycopg2-binary==2.9.12",
   "sqlalchemy==2.0.52",
   "pgvector==0.5.0",
   "python-multipart==0.0.32",
-  "pypdf==6.16.1",
+  "pypdf==6.16.2",
   "httpx==0.28.1",
   # Held below 5.14.0: gliner 0.2.28 (the latest release) requires
   # transformers>=4.51.3,<5.14.0. See the transformers rule in /renovate.json.
@@ -34,7 +34,7 @@ dependencies = [
   "pyjwt==2.13.0",
   "azure-storage-blob==12.30.0",
   "itsdangerous==2.2.0",
-  "newrelic==13.4.0",
+  "newrelic==13.5.0",
   # Held below 8.8.0: opentelemetry-api 1.39.1 (via opentelemetry-semantic-conventions
   # 0.60b1) requires importlib-metadata>=6.0,<8.8.0. See the importlib-metadata rule
   # in /renovate.json. Raise once the pinned OpenTelemetry stack widens its ceiling.
@@ -73,16 +73,16 @@ dependencies = [
   "sentencepiece==0.2.2",
   "gliner==0.2.28",
   "openinference-semantic-conventions>=0.1.12,<0.2",
-  "litellm==1.96.2",
+  "litellm==1.97.0",
   "jinja2>=3.1.6,<4",
   "python-benedict>=0.38,<0.39",
   "weaviate-client>=4.17.0,<5",
-  "arthur-common==2.4.70",
+  "arthur-common==2.4.71",
   "google-auth>=2.48.0,<3",
   "google-cloud-aiplatform>=1.38",
   "google-cloud-trace>=1.11.0,<2",
   "opentelemetry-semantic-conventions>=0.60b1,<0.61",
-  "arthur-client==1.4.2510",
+  "arthur-client==1.4.2580",
 ]
 
 [project.scripts]
