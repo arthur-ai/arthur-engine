@@ -376,6 +376,16 @@ class ModelProviderModelList(BaseModel):
     )
 
 
+class ModelProviderWhitelist(BaseModel):
+    provider: ModelProvider = Field(description="Provider the whitelist applies to")
+    whitelist: Optional[List[str]] = Field(
+        description="Curated model list, or null when all models are exposed",
+    )
+    catalog: List[str] = Field(
+        description="Every model the provider offers, ignoring the whitelist",
+    )
+
+
 class ApiKeyRagAuthenticationConfigResponse(BaseModel):
     authentication_method: Literal[
         RagProviderAuthenticationMethodEnum.API_KEY_AUTHENTICATION

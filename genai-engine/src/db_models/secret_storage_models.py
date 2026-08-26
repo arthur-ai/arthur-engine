@@ -1,7 +1,7 @@
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
-from sqlalchemy import TIMESTAMP, String
+from sqlalchemy import JSON, TIMESTAMP, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from db_models.base import Base
@@ -42,6 +42,11 @@ class DatabaseSecretStorage(Base):
     )
     aws_bedrock_credentials: Mapped[Optional[Dict[str, Any]]] = mapped_column(
         EncryptedJSON,
+        default=None,
+        nullable=True,
+    )
+    model_whitelist: Mapped[Optional[List[str]]] = mapped_column(
+        JSON,
         default=None,
         nullable=True,
     )

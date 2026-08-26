@@ -14,7 +14,7 @@ cd python && uv run pytest tests -v   # all tests, incl. install/wheel smoke tes
 
 The SDK has three layers:
 
-**`Arthur`** (`arthur.py`) — the user-facing entrypoint. Owns the OTel `TracerProvider`, the API client, and the 32 `instrument_*` methods. At least one of `task_id`, `task_name`, or `service_name` must be provided.
+**`Arthur`** (`arthur.py`) — the user-facing entrypoint. Owns the OTel `TracerProvider`, the API client, and the 40 `instrument_*` methods. At least one of `task_id`, `task_name`, or `service_name` must be provided.
 
 **`setup_telemetry`** (`telemetry.py`) — creates a `TracerProvider` with a `BatchSpanProcessor` backed by an OTLP HTTP exporter. Passes `Authorization: Bearer {api_key}` in the exporter headers. Called by `Arthur.__init__` when `enable_telemetry=True`. Registers the provider globally via `trace.set_tracer_provider()`.
 
@@ -78,7 +78,7 @@ Use `*_with_http_info()` + `raw_data` whenever the response includes prompts, me
 2. **`python/pyproject.toml`** — two additions:
    - In `[project.optional-dependencies]`: `my-framework = ["openinference-instrumentation-my-framework"]`
    - In the `all` extra list: `"openinference-instrumentation-my-framework"`
-3. **`README.md`** — add a row to the "Supported instrumentors" table.
+3. **`python/README.md`** — add a row to the "Supported instrumentors" table.
 
 Verify the correct module path and class name from the package's PyPI page before adding.
 

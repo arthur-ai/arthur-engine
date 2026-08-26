@@ -20,6 +20,14 @@ const EMPTY_FILTER_STATE: FilterState = {
   userIds: [],
 };
 
+type PendingInputs = Record<keyof FilterState, string>;
+
+const EMPTY_PENDING_INPUTS: PendingInputs = {
+  traceIds: "",
+  sessionIds: "",
+  userIds: "",
+};
+
 const SESSION_FILTER_FIELDS = [
   { key: "traceIds", name: "trace_ids", label: "Trace ID", placeholder: "Enter Trace ID" },
   { key: "sessionIds", name: "session_ids", label: "Session ID", placeholder: "Enter Session ID" },
@@ -35,6 +43,7 @@ export const SessionsFilterModal = () => {
   const currentFilters = useFilterStore((state) => state.filters);
 
   const [filterState, setFilterState] = useState<FilterState>(EMPTY_FILTER_STATE);
+  const [pendingInputs, setPendingInputs] = useState<PendingInputs>(EMPTY_PENDING_INPUTS);
   const [pendingFilters, setPendingFilters] = useState<IncomingFilter[] | null>(null);
 
   // Populate filter state from currentFilters when modal opens
@@ -50,6 +59,7 @@ export const SessionsFilterModal = () => {
       });
 
       setFilterState(newFilterState);
+      setPendingInputs(EMPTY_PENDING_INPUTS);
     }
   }, [open, currentFilters]);
 
@@ -76,7 +86,9 @@ export const SessionsFilterModal = () => {
     const filters: IncomingFilter[] = [];
 
     SESSION_FILTER_FIELDS.forEach((field) => {
-      const value = filterState[field.key];
+      const pending = pendingInputs[field.key].trim();
+      const committed = filterState[field.key];
+      const value = pending && !committed.includes(pending) ? [...committed, pending] : committed;
       if (value.length > 0) {
         filters.push({
           name: field.name,
@@ -87,15 +99,18 @@ export const SessionsFilterModal = () => {
     });
 
     setPendingFilters(filters);
+    setPendingInputs(EMPTY_PENDING_INPUTS);
     handleClose();
   };
 
   const handleClearFilters = () => {
     setFilterState(EMPTY_FILTER_STATE);
+    setPendingInputs(EMPTY_PENDING_INPUTS);
     setFilters([]);
   };
 
-  const hasActiveFilters = Object.values(filterState).some((ids) => ids.length > 0);
+  const hasActiveFilters =
+    Object.values(filterState).some((ids) => ids.length > 0) || Object.values(pendingInputs).some((input) => input.trim().length > 0);
 
   return (
     <>
@@ -136,6 +151,8 @@ export const SessionsFilterModal = () => {
                   label={field.label}
                   placeholder={field.placeholder}
                   values={filterState[field.key]}
+                  inputValue={pendingInputs[field.key]}
+                  onInputChange={(value) => setPendingInputs((prev) => ({ ...prev, [field.key]: value }))}
                   onAdd={(value) => addId(field.key, value)}
                   onRemove={(value) => removeId(field.key, value)}
                 />
