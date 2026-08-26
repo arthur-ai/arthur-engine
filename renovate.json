@@ -127,6 +127,12 @@
       "allowedVersions": "<6.1.0"
     },
     {
+      "description": "Cap @tanstack/react-table < 9: material-react-table 3.2.1 (the latest release, 2025-03-01) hard-depends on @tanstack/react-table 8.20.6 and its type declarations are written against v8, so v9 breaks every MRT table in genai-engine/ui — which is most of them. PR #2118 showed the cost: migrating the app's own tables onto v9's upstream-@deprecated /legacy shim, dropping the tsconfig paths and vite dedupe entries that pin MRT to one copy, and shipping both table cores in the bundle, for no functional gain. Lift this cap once material-react-table supports v9, or once the UI migrates off material-react-table.",
+      "matchManagers": ["npm"],
+      "matchPackageNames": ["@tanstack/react-table"],
+      "allowedVersions": "<9"
+    },
+    {
       "matchManagers": ["dockerfile", "docker-compose"],
       "matchPackageNames": ["python"],
       "enabled": false
