@@ -16,8 +16,7 @@
     "noEmit": true,
     "jsx": "react-jsx",
 
-    /* Path mapping */
-    "baseUrl": ".",
+    /* Path mapping — resolved relative to this file; `baseUrl` is deprecated as of TypeScript 6 */
     "paths": {
       "@/*": ["./src/*"],
       "material-react-table": ["./node_modules/material-react-table"],
