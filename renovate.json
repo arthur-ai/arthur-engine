@@ -121,6 +121,18 @@
       "allowedVersions": "<8.8.0"
     },
     {
+      "description": "Cap typescript < 6.1.0: typescript-eslint (a direct devDependency of genai-engine/ui) declares peer typescript '>=4.8.4 <6.1.0' and hard-throws at ESLint config load on any TS >= 7 ('typescript-eslint does not support TS 7.0'), so yarn lint cannot run at all. typescript 7.x is the native port and no longer exports the JS compiler API that @typescript-eslint/typescript-estree is built on, so this is not a version range a patch release widens: no published typescript-eslint (latest 8.68.0 or canary) admits TS 7.x, and upstream typescript-eslint#10940 targets TS >= 7.1, skipping 7.0 entirely. <6.1.0 mirrors the upstream peer ceiling exactly and still allows the typescript 6.0.x major, which typescript-eslint does support. Lift this cap once a typescript-eslint release widens its typescript peer range past 7.0.",
+      "matchManagers": ["npm"],
+      "matchPackageNames": ["typescript"],
+      "allowedVersions": "<6.1.0"
+    },
+    {
+      "description": "Cap @tanstack/react-table < 9: material-react-table 3.2.1 (the latest release, 2025-03-01) hard-depends on @tanstack/react-table 8.20.6 and its type declarations are written against v8, so v9 breaks every MRT table in genai-engine/ui — which is most of them. PR #2118 showed the cost: migrating the app's own tables onto v9's upstream-@deprecated /legacy shim, dropping the tsconfig paths and vite dedupe entries that pin MRT to one copy, and shipping both table cores in the bundle, for no functional gain. Lift this cap once material-react-table supports v9, or once the UI migrates off material-react-table.",
+      "matchManagers": ["npm"],
+      "matchPackageNames": ["@tanstack/react-table"],
+      "allowedVersions": "<9"
+    },
+    {
       "matchManagers": ["dockerfile", "docker-compose"],
       "matchPackageNames": ["python"],
       "enabled": false

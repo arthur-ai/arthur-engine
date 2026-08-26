@@ -17,7 +17,6 @@
     "jsx": "react-jsx",
 
     /* Path mapping */
-    "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
       "material-react-table": ["./node_modules/material-react-table"],

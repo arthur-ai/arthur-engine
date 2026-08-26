@@ -270,7 +270,7 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
         }
       }
 
-      throw new Error(errorMessage);
+      throw new Error(errorMessage, { cause: error });
     }
   };
 
