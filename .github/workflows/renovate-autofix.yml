@@ -160,7 +160,8 @@ jobs:
         # itself no-ops when GENAI_ENGINE_TASK_ID is unset.
         run: |
           set -euo pipefail
-          pip install --quiet opentelemetry-sdk opentelemetry-exporter-otlp-proto-http
+          pip install --quiet opentelemetry-sdk opentelemetry-exporter-otlp-proto-http || \
+            echo "::warning::Arthur tracing dependencies could not be installed; continuing without tracing."
           mkdir -p .claude/hooks
           cp integrations/claude-code-observability/claude_code_tracer.py .claude/hooks/claude_code_tracer.py
 
