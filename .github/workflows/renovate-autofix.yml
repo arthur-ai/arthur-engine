@@ -155,36 +155,34 @@ jobs:
 
       - name: Set up Arthur Engine tracing
         if: steps.guard.outputs.proceed == 'true'
-        # Unconditional: the hooks below are registered either way, and a missing
-        # tracer file exits non-zero, which blocks every tool call. The tracer
-        # itself no-ops when GENAI_ENGINE_TASK_ID is unset.
         run: |
-          set -euo pipefail
           pip install --quiet opentelemetry-sdk opentelemetry-exporter-otlp-proto-http || \
             echo "::warning::Arthur tracing dependencies could not be installed; continuing without tracing."
-          mkdir -p .claude/hooks
-          cp integrations/claude-code-observability/claude_code_tracer.py .claude/hooks/claude_code_tracer.py
+          cp integrations/claude-code-observability/claude_code_tracer.py "$RUNNER_TEMP/claude_code_tracer.py" || \
+            echo "::warning::Arthur tracer could not be copied; continuing without tracing."
 
       - name: Claude auto-fix (edits + self-verify only; no commit)
         if: steps.guard.outputs.proceed == 'true'
         # The success marker lives OUTSIDE the repo (in RUNNER_TEMP) so it cannot be
         # committed to the PR branch to forge a "verified" signal.
-        env:
-          AUTOFIX_MARKER: ${{ runner.temp }}/claude-autofix-success
-          GENAI_ENGINE_API_KEY: ${{ secrets.GENAI_ENGINE_API_KEY }}
-          GENAI_ENGINE_TASK_ID: ${{ vars.GENAI_ENGINE_TASK_ID }}
-          GENAI_ENGINE_TRACE_ENDPOINT: ${{ vars.GENAI_ENGINE_TRACE_ENDPOINT }}
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           settings: |
             {
+              "env": {
+                "AUTOFIX_MARKER": "${{ runner.temp }}/claude-autofix-success",
+                "USER": "renovate-autofix-pr-${{ steps.pr.outputs.number }}",
+                "GENAI_ENGINE_API_KEY": "${{ secrets.GENAI_ENGINE_API_KEY }}",
+                "GENAI_ENGINE_TASK_ID": "${{ vars.GENAI_ENGINE_TASK_ID }}",
+                "GENAI_ENGINE_TRACE_ENDPOINT": "${{ vars.GENAI_ENGINE_TRACE_ENDPOINT }}"
+              },
               "hooks": {
-                "UserPromptSubmit": [{"matcher": "", "hooks": [{"type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/claude_code_tracer.py\" user_prompt_submit"}]}],
-                "PreToolUse": [{"matcher": "", "hooks": [{"type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/claude_code_tracer.py\" pre_tool"}]}],
-                "PostToolUse": [{"matcher": "", "hooks": [{"type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/claude_code_tracer.py\" post_tool"}]}],
-                "PostToolUseFailure": [{"matcher": "", "hooks": [{"type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/claude_code_tracer.py\" post_tool_failure"}]}],
-                "Stop": [{"matcher": "", "hooks": [{"type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/claude_code_tracer.py\" stop"}]}]
+                "UserPromptSubmit": [{"matcher": "", "hooks": [{"type": "command", "timeout": 5, "command": "T=\"${{ runner.temp }}/claude_code_tracer.py\"; [ -f \"$T\" ] && timeout 5s python3 \"$T\" user_prompt_submit; true"}]}],
+                "PreToolUse": [{"matcher": "", "hooks": [{"type": "command", "timeout": 5, "command": "T=\"${{ runner.temp }}/claude_code_tracer.py\"; [ -f \"$T\" ] && timeout 5s python3 \"$T\" pre_tool; true"}]}],
+                "PostToolUse": [{"matcher": "", "hooks": [{"type": "command", "timeout": 5, "command": "T=\"${{ runner.temp }}/claude_code_tracer.py\"; [ -f \"$T\" ] && timeout 5s python3 \"$T\" post_tool; true"}]}],
+                "PostToolUseFailure": [{"matcher": "", "hooks": [{"type": "command", "timeout": 5, "command": "T=\"${{ runner.temp }}/claude_code_tracer.py\"; [ -f \"$T\" ] && timeout 5s python3 \"$T\" post_tool_failure; true"}]}],
+                "Stop": [{"matcher": "", "hooks": [{"type": "command", "timeout": 5, "command": "T=\"${{ runner.temp }}/claude_code_tracer.py\"; [ -f \"$T\" ] && timeout 5s python3 \"$T\" stop; true"}]}]
               }
             }
           # Allow the action to run even though the PR was authored by a bot.
