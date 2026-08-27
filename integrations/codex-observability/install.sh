@@ -65,9 +65,12 @@ except (json.JSONDecodeError, OSError):
 
 hooks = settings.setdefault("hooks", {})
 for event, argument, matcher in (
+    ("SessionStart", "session_start", None),
     ("UserPromptSubmit", "user_prompt_submit", None),
     ("PreToolUse", "pre_tool", ""),
     ("PostToolUse", "post_tool", ""),
+    ("SubagentStart", "subagent_start", None),
+    ("SubagentStop", "subagent_stop", None),
     ("Stop", "stop", None),
 ):
     command = " ".join(

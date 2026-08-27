@@ -26,14 +26,30 @@ Codex lifecycle hook
     → Arthur Engine /api/v1/traces
 ```
 
-`UserPromptSubmit` supplies the exact prompt and start time. `PostToolUse`
-supplies tool input and output. `Stop` supplies the final assistant message and
-completes the root span. The tracer reads token counts from the current Codex
-session transcript; no historical sessions are scanned or backfilled.
+`SessionStart` records a local activation marker without exporting conversation
+content. `UserPromptSubmit` supplies the exact prompt and start time.
+`PostToolUse` supplies tool input and output. `Stop` supplies the final assistant
+message and completes the root span. `SubagentStart` and `SubagentStop` connect
+thread-spawned child work to its parent as an OpenInference `AGENT` span:
+
+```text
+parent codex.turn
+    └── codex.agent
+        └── child codex.turn
+            └── child tool spans
+```
+
+Codex reports the parent session ID on subagent hooks. The tracer correlates
+the parent's `spawn_agent` result with the child lifecycle events using the
+shared `agent_id`.
+
+The tracer reads token counts from the current Codex session transcript; no
+historical sessions are scanned or backfilled.
 
 ## Global installation
 
-Use a global install to trace Codex sessions in every trusted project:
+Use a global install to trace supported Codex lifecycle events in trusted
+projects:
 
 ```bash
 cd arthur-engine/integrations/codex-observability
@@ -49,7 +65,7 @@ The installer:
 2. Installs the dependencies from
    `arthur-engine/integrations/codex-observability/requirements.txt`.
 3. Copies the tracer to `~/.codex/hooks/codex_hook_tracer.py`.
-4. Merges four Arthur handlers into `~/.codex/hooks.json` without replacing
+4. Merges seven Arthur handlers into `~/.codex/hooks.json` without replacing
    other hook definitions. Reinstalling replaces older definitions of these
    Arthur handlers instead of accumulating duplicates.
 5. Writes `~/.codex/arthur_config.json` with mode `0600` when a complete `.env`
@@ -58,6 +74,16 @@ The installer:
 Open `/hooks` in Codex, review the exact command definitions, and trust them.
 Restart Codex after the first install. Codex skips new or changed non-managed
 hooks until their current definitions are trusted.
+
+Codex binds hook runtimes to tasks. After installing, upgrading, or trusting a
+changed hook definition, start a new task and verify that
+`~/.codex/tracer/activation/` receives a fresh mode-`0600` marker. Existing
+Desktop tasks may keep stale hook state until Codex refreshes their runtime.
+Arthur cannot export an event that Codex did not dispatch.
+
+Codex exposes `SubagentStart` and `SubagentStop` only for thread-spawned
+subagents. Internal or synthetic Codex agents that do not expose user lifecycle
+hooks cannot be observed by this integration.
 
 ## Project-scoped installation
 

@@ -51,7 +51,15 @@ def test_global_install_is_idempotent_and_preserves_existing_hooks(tmp_path):
     assert (codex_dir / "hooks" / ".arthur-venv" / "bin" / "python").is_file()
     hooks = json.loads(hooks_path.read_text())["hooks"]
     assert hooks["SessionStart"][0]["hooks"][0]["command"] == "/usr/bin/true"
-    for event in ("UserPromptSubmit", "PreToolUse", "PostToolUse", "Stop"):
+    for event in (
+        "SessionStart",
+        "UserPromptSubmit",
+        "PreToolUse",
+        "PostToolUse",
+        "SubagentStart",
+        "SubagentStop",
+        "Stop",
+    ):
         arthur_handlers = [
             hook
             for group in hooks[event]
@@ -174,18 +182,18 @@ def test_install_writes_mode_0600_config_from_environment_without_echoing_key(tm
         "install.sh",
         tmp_path,
         {
-            "GENAI_ENGINE_API_KEY": "local-development-key",
+            "GENAI_ENGINE_API_KEY": "example-test-key",
             "GENAI_ENGINE_TASK_ID": "00000000-0000-0000-0000-000000000123",
             "GENAI_ENGINE_TRACE_ENDPOINT": EXAMPLE_ENDPOINT,
         },
     )
 
     assert result.returncode == 0, result.stderr
-    assert "local-development-key" not in result.stdout + result.stderr
+    assert "example-test-key" not in result.stdout + result.stderr
     config_path = tmp_path / ".codex" / "arthur_config.json"
     assert config_path.stat().st_mode & 0o777 == 0o600
     assert json.loads(config_path.read_text()) == {
-        "api_key": "local-development-key",
+        "api_key": "example-test-key",
         "task_id": "00000000-0000-0000-0000-000000000123",
         "endpoint": EXAMPLE_ENDPOINT,
     }
