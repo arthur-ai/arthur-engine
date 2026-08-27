@@ -76,6 +76,10 @@ def _state_key(session_id: str, turn_id: str) -> str:
     return hashlib.sha256(f"{session_id}\0{turn_id}".encode()).hexdigest()
 
 
+def _agent_key(agent_id: str) -> str:
+    return hashlib.sha256(agent_id.encode()).hexdigest()
+
+
 def _state_path(session_id: str, turn_id: str) -> Path:
     STATE_DIR.mkdir(parents=True, exist_ok=True)
     return STATE_DIR / f"{_state_key(session_id, turn_id)}.json"
@@ -84,6 +88,18 @@ def _state_path(session_id: str, turn_id: str) -> Path:
 def _lock_path(session_id: str, turn_id: str) -> Path:
     STATE_DIR.mkdir(parents=True, exist_ok=True)
     return STATE_DIR / f"{_state_key(session_id, turn_id)}.lock"
+
+
+def _agent_context_path(agent_id: str) -> Path:
+    directory = STATE_DIR / "agents"
+    directory.mkdir(parents=True, exist_ok=True)
+    return directory / f"{_agent_key(agent_id)}.json"
+
+
+def _activation_path(session_id: str) -> Path:
+    directory = STATE_DIR / "activation"
+    directory.mkdir(parents=True, exist_ok=True)
+    return directory / f"{hashlib.sha256(session_id.encode()).hexdigest()}.json"
 
 
 @contextlib.contextmanager
@@ -115,10 +131,29 @@ def _delete_state(session_id: str, turn_id: str) -> None:
     _state_path(session_id, turn_id).unlink(missing_ok=True)
 
 
+def _load_agent_context(agent_id: str) -> dict:
+    path = _agent_context_path(agent_id)
+    try:
+        return json.loads(path.read_text()) if path.is_file() else {}
+    except (OSError, json.JSONDecodeError) as exc:
+        log.warning("Could not read hook state for agent %s: %s", agent_id, exc)
+        return {}
+
+
+def _save_agent_context(context: dict) -> None:
+    path = _agent_context_path(context["agent_id"])
+    path.write_text(json.dumps(context, sort_keys=True))
+    path.chmod(0o600)
+
+
+def _delete_agent_context(agent_id: str) -> None:
+    _agent_context_path(agent_id).unlink(missing_ok=True)
+
+
 def _cleanup_stale_state() -> None:
     try:
         cutoff = time.time() - STATE_MAX_AGE_SECONDS
-        for path in STATE_DIR.glob("*.json"):
+        for path in STATE_DIR.rglob("*.json"):
             if path.stat().st_mtime < cutoff:
                 path.unlink(missing_ok=True)
     except OSError as exc:
@@ -176,6 +211,66 @@ def _common_ids(data: dict) -> tuple[str, str]:
     return str(data.get("session_id") or ""), str(data.get("turn_id") or "")
 
 
+def _agent_fields(data: dict) -> tuple[str, str]:
+    return str(data.get("agent_id") or ""), str(data.get("agent_type") or "")
+
+
+def _find_agent_id(value: Any) -> str:
+    if isinstance(value, str):
+        try:
+            return _find_agent_id(json.loads(value))
+        except json.JSONDecodeError:
+            return ""
+    if isinstance(value, dict):
+        agent_id = value.get("agent_id")
+        if isinstance(agent_id, str) and agent_id:
+            return agent_id
+        for nested in value.values():
+            found = _find_agent_id(nested)
+            if found:
+                return found
+    if isinstance(value, list):
+        for nested in value:
+            found = _find_agent_id(nested)
+            if found:
+                return found
+    return ""
+
+
+def _agent_prompt(tool_input: Any) -> str:
+    if not isinstance(tool_input, dict):
+        return ""
+    for key in ("message", "prompt", "description"):
+        value = tool_input.get(key)
+        if isinstance(value, str) and value:
+            return value
+    return ""
+
+
+def handle_session_start(
+    data: dict,
+    config: dict,
+    export: Optional[ExportFunction] = None,
+) -> None:
+    del config, export
+    session_id = str(data.get("session_id") or "")
+    if not session_id:
+        return
+    path = _activation_path(session_id)
+    path.write_text(
+        json.dumps(
+            {
+                "session_id": session_id,
+                "source": data.get("source") or "unknown",
+                "model": data.get("model") or "unknown",
+                "observed_at_ns": time.time_ns(),
+            },
+            sort_keys=True,
+        )
+    )
+    path.chmod(0o600)
+
+
 def handle_user_prompt_submit(
     data: dict,
     config: dict,
@@ -185,6 +280,8 @@ def handle_user_prompt_submit(
     session_id, turn_id = _common_ids(data)
     if not session_id or not turn_id:
         return
+    agent_id, agent_type = _agent_fields(data)
+    agent_context = _load_agent_context(agent_id) if agent_id else {}
     now_ns = time.time_ns()
     with _turn_lock(session_id, turn_id):
         _save_state(
@@ -193,12 +290,20 @@ def handle_user_prompt_submit(
                 "turn_id": turn_id,
                 "model": data.get("model") or "unknown",
                 "prompt": data.get("prompt") or "",
-                "trace_id_hex": _new_trace_id(),
+                "trace_id_hex": agent_context.get("trace_id_hex") or _new_trace_id(),
                 "root_span_id_hex": _new_span_id(),
+                "parent_span_id_hex": agent_context.get("agent_span_id_hex"),
+                "trace_session_id": agent_context.get("parent_session_id")
+                or session_id,
+                "agent_id": agent_id,
+                "agent_type": agent_type or agent_context.get("agent_type") or "",
                 "start_ns": now_ns,
                 "pending_tools": {},
             }
         )
+    if agent_context:
+        agent_context["turn_id"] = turn_id
+        _save_agent_context(agent_context)
 
 
 def handle_pre_tool(data: dict, config: dict) -> None:
@@ -222,6 +327,27 @@ def handle_pre_tool(data: dict, config: dict) -> None:
 def _tool_span_record(state: dict, data: dict, start_ns: int, end_ns: int) -> dict:
     tool_name = data.get("tool_name") or "unknown"
     tool_use_id = str(data.get("tool_use_id") or "")
+    attributes = {
+        "openinference.span.kind": "TOOL",
+        "tool.name": tool_name,
+        "tool.call.id": tool_use_id,
+        "input.value": _encoded_attribute(data.get("tool_input")),
+        "input.mime_type": "application/json",
+        "output.value": _encoded_attribute(data.get("tool_response")),
+        "output.mime_type": "application/json",
+        "session.id": state.get("trace_session_id") or state["session_id"],
+        "codex.thread.id": state.get("agent_id") or state["session_id"],
+        "codex.turn.id": state["turn_id"],
+    }
+    if state.get("agent_id"):
+        attributes.update(
+            {
+                "codex.parent.thread.id": state.get("trace_session_id")
+                or state["session_id"],
+                "codex.agent.id": state["agent_id"],
+                "codex.agent.type": state.get("agent_type") or "unknown",
+            }
+        )
     return {
         "name": tool_name,
         "trace_id_hex": state["trace_id_hex"],
@@ -231,19 +357,33 @@ def _tool_span_record(state: dict, data: dict, start_ns: int, end_ns: int) -> di
         "status_code": "OK",
         "start_ns": start_ns,
         "end_ns": end_ns,
-        "attributes": {
-            "openinference.span.kind": "TOOL",
-            "tool.name": tool_name,
-            "tool.call.id": tool_use_id,
-            "input.value": _encoded_attribute(data.get("tool_input")),
-            "input.mime_type": "application/json",
-            "output.value": _encoded_attribute(data.get("tool_response")),
-            "output.mime_type": "application/json",
-            "session.id": state["session_id"],
-            "codex.thread.id": state["session_id"],
-            "codex.turn.id": state["turn_id"],
-        },
+        "attributes": attributes,
     }
+
+
+def _record_spawned_agent(state: dict, pending: dict, data: dict) -> None:
+    tool_name = str(data.get("tool_name") or "").lower()
+    if tool_name not in {"agent", "spawn_agent", "task"}:
+        return
+    agent_id = _find_agent_id(data.get("tool_response"))
+    if not agent_id:
+        return
+    existing = _load_agent_context(agent_id)
+    tool_input = pending.get("tool_input", data.get("tool_input"))
+    _save_agent_context(
+        {
+            **existing,
+            "parent_session_id": state.get("trace_session_id") or state["session_id"],
+            "parent_turn_id": state["turn_id"],
+            "agent_id": agent_id,
+            "agent_type": existing.get("agent_type") or "unknown",
+            "prompt": _agent_prompt(tool_input),
+            "trace_id_hex": state["trace_id_hex"],
+            "agent_span_id_hex": existing.get("agent_span_id_hex") or _new_span_id(),
+            "parent_span_id_hex": state["root_span_id_hex"],
+            "start_ns": int(pending.get("start_ns") or time.time_ns()),
+        }
+    )
 
 
 def handle_post_tool(
@@ -264,8 +404,9 @@ def handle_post_tool(
         pending = state.setdefault("pending_tools", {}).pop(tool_use_id, {})
         start_ns = int(pending.get("start_ns") or end_ns - 1_000_000)
         record = _tool_span_record(state, data, start_ns, end_ns)
+        _record_spawned_agent(state, pending, data)
         _save_state(state)
-    export(config, session_id, [record])
+    export(config, state.get("trace_session_id") or session_id, [record])
 
 
 def _root_span_record(state: dict, data: dict, end_ns: int) -> dict:
@@ -275,8 +416,8 @@ def _root_span_record(state: dict, data: dict, end_ns: int) -> dict:
         "input.mime_type": "text/plain",
         "output.value": data.get("last_assistant_message") or "",
         "output.mime_type": "text/plain",
-        "session.id": state["session_id"],
-        "codex.thread.id": state["session_id"],
+        "session.id": state.get("trace_session_id") or state["session_id"],
+        "codex.thread.id": state.get("agent_id") or state["session_id"],
         "codex.turn.id": state["turn_id"],
         "codex.turn.status": "completed",
         "codex.emission.transport": "hooks",
@@ -285,6 +426,15 @@ def _root_span_record(state: dict, data: dict, end_ns: int) -> dict:
         "graph.node.name": "codex.turn",
         "llm.model_name": state.get("model") or "unknown",
     }
+    if state.get("agent_id"):
+        attributes.update(
+            {
+                "codex.parent.thread.id": state.get("trace_session_id")
+                or state["session_id"],
+                "codex.agent.id": state["agent_id"],
+                "codex.agent.type": state.get("agent_type") or "unknown",
+            }
+        )
     transcript_path = data.get("transcript_path")
     if transcript_path:
         usage = read_token_usage(Path(str(transcript_path)), state["turn_id"])
@@ -306,13 +456,100 @@ def _root_span_record(state: dict, data: dict, end_ns: int) -> dict:
         "name": "codex.turn",
         "trace_id_hex": state["trace_id_hex"],
         "span_id_hex": state["root_span_id_hex"],
-        "parent_span_id_hex": None,
+        "parent_span_id_hex": state.get("parent_span_id_hex"),
         "kind": "INTERNAL",
         "status_code": "OK",
         "start_ns": state["start_ns"],
         "end_ns": end_ns,
         "attributes": attributes,
     }
+
+
+def handle_subagent_start(
+    data: dict,
+    config: dict,
+    export: Optional[ExportFunction] = None,
+) -> None:
+    del config, export
+    session_id, turn_id = _common_ids(data)
+    agent_id, agent_type = _agent_fields(data)
+    if not session_id or not turn_id or not agent_id:
+        return
+    context = _load_agent_context(agent_id)
+    context.update(
+        {
+            "parent_session_id": context.get("parent_session_id") or session_id,
+            "turn_id": turn_id,
+            "agent_id": agent_id,
+            "agent_type": agent_type or context.get("agent_type") or "unknown",
+            "prompt": context.get("prompt") or "",
+            "trace_id_hex": context.get("trace_id_hex") or _new_trace_id(),
+            "agent_span_id_hex": context.get("agent_span_id_hex") or _new_span_id(),
+            "parent_span_id_hex": context.get("parent_span_id_hex"),
+            "start_ns": int(context.get("start_ns") or time.time_ns()),
+        }
+    )
+    _save_agent_context(context)
+
+
+def _agent_span_record(context: dict, data: dict, end_ns: int) -> dict:
+    agent_id = context["agent_id"]
+    agent_type = context.get("agent_type") or "unknown"
+    parent_session_id = context.get("parent_session_id") or data.get("session_id", "")
+    return {
+        "name": "codex.agent",
+        "trace_id_hex": context["trace_id_hex"],
+        "span_id_hex": context["agent_span_id_hex"],
+        "parent_span_id_hex": context.get("parent_span_id_hex"),
+        "kind": "INTERNAL",
+        "status_code": "OK",
+        "start_ns": context["start_ns"],
+        "end_ns": end_ns,
+        "attributes": {
+            "openinference.span.kind": "AGENT",
+            "input.value": context.get("prompt") or "",
+            "input.mime_type": "text/plain",
+            "output.value": data.get("last_assistant_message") or "",
+            "output.mime_type": "text/plain",
+            "session.id": parent_session_id,
+            "codex.thread.id": agent_id,
+            "codex.parent.thread.id": parent_session_id,
+            "codex.turn.id": context.get("turn_id") or "",
+            "codex.agent.id": agent_id,
+            "codex.agent.type": agent_type,
+            "graph.node.id": f"agent:{agent_id}",
+            "graph.node.name": "codex.agent",
+        },
+    }
+
+
+def handle_subagent_stop(
+    data: dict,
+    config: dict,
+    export: Optional[ExportFunction] = None,
+) -> None:
+    export = _build_and_export_spans if export is None else export
+    session_id, turn_id = _common_ids(data)
+    agent_id, _ = _agent_fields(data)
+    if not session_id or not turn_id or not agent_id:
+        return
+    end_ns = time.time_ns()
+    records = []
+    with _turn_lock(session_id, turn_id):
+        state = _load_state(session_id, turn_id)
+        if state:
+            root_data = dict(data)
+            if data.get("agent_transcript_path"):
+                root_data["transcript_path"] = data["agent_transcript_path"]
+            records.append(_root_span_record(state, root_data, end_ns))
+            _delete_state(session_id, turn_id)
+    context = _load_agent_context(agent_id)
+    if context:
+        records.append(_agent_span_record(context, data, end_ns))
+        _delete_agent_context(agent_id)
+    if records:
+        export(config, context.get("parent_session_id") or session_id, records)
+    _cleanup_stale_state()
 
 
 def handle_stop(
@@ -444,9 +681,12 @@ def _build_and_export_spans(config: dict, session_id: str, records: list[dict]) 
 
 
 HANDLERS = {
+    "session_start": handle_session_start,
     "user_prompt_submit": handle_user_prompt_submit,
     "pre_tool": handle_pre_tool,
     "post_tool": handle_post_tool,
+    "subagent_start": handle_subagent_start,
+    "subagent_stop": handle_subagent_stop,
     "stop": handle_stop,
 }
 
@@ -454,7 +694,8 @@ HANDLERS = {
 def main() -> int:
     if len(sys.argv) != 2 or sys.argv[1] not in HANDLERS:
         print(
-            "Usage: codex_hook_tracer.py <user_prompt_submit|pre_tool|post_tool|stop>",
+            "Usage: codex_hook_tracer.py "
+            "<session_start|user_prompt_submit|pre_tool|post_tool|subagent_start|subagent_stop|stop>",
             file=sys.stderr,
         )
         return 0

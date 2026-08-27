@@ -170,6 +170,218 @@ def test_hook_lifecycle_exports_tool_then_complete_turn(isolated_state):
     assert not list(isolated_state.glob("*.json"))
 
 
+def test_session_start_records_hook_activation_without_exporting_content(
+    isolated_state,
+):
+    """Break caught: a live task silently uses no Arthur hook runtime."""
+    exported = []
+
+    tracer.handle_session_start(
+        {
+            "session_id": "session-123",
+            "hook_event_name": "SessionStart",
+            "source": "resume",
+            "model": "gpt-5.6-sol",
+        },
+        config(),
+        lambda *args: exported.append(args),
+    )
+
+    activation_files = list((isolated_state / "activation").glob("*.json"))
+    assert len(activation_files) == 1
+    activation = json.loads(activation_files[0].read_text())
+    assert activation["session_id"] == "session-123"
+    assert activation["source"] == "resume"
+    assert activation["model"] == "gpt-5.6-sol"
+    assert isinstance(activation["observed_at_ns"], int)
+    assert activation_files[0].stat().st_mode & 0o777 == 0o600
+    assert exported == []
+
+
+def test_subagent_lifecycle_exports_agent_turn_and_nested_tools(isolated_state):
+    """Break caught: Codex subagent work is flattened or never completed."""
+    exported = []
+    exported_session_ids = []
+
+    def export(cfg, session_id, records):
+        exported_session_ids.append(session_id)
+        exported.extend(records)
+
+    tracer.handle_user_prompt_submit(
+        {**common(), "prompt": "PARENT_PROMPT"}, config(), export
+    )
+    tracer.handle_pre_tool(
+        {
+            **common(),
+            "tool_name": "spawn_agent",
+            "tool_use_id": "spawn-1",
+            "tool_input": {
+                "task_name": "researcher",
+                "message": "SUBAGENT_PROMPT",
+            },
+        },
+        config(),
+    )
+    tracer.handle_post_tool(
+        {
+            **common(),
+            "tool_name": "spawn_agent",
+            "tool_use_id": "spawn-1",
+            "tool_input": {
+                "task_name": "researcher",
+                "message": "SUBAGENT_PROMPT",
+            },
+            "tool_response": {
+                "agent_id": "agent-789",
+                "status": "running",
+            },
+        },
+        config(),
+        export,
+    )
+    tracer.handle_subagent_start(
+        {
+            "session_id": "session-123",
+            "turn_id": "subagent-turn-1",
+            "agent_id": "agent-789",
+            "agent_type": "researcher",
+            "model": "gpt-5.6-sol",
+            "hook_event_name": "SubagentStart",
+        },
+        config(),
+        export,
+    )
+    tracer.handle_user_prompt_submit(
+        {
+            "session_id": "session-123",
+            "turn_id": "subagent-turn-1",
+            "agent_id": "agent-789",
+            "agent_type": "researcher",
+            "model": "gpt-5.6-sol",
+            "prompt": "SUBAGENT_PROMPT",
+            "hook_event_name": "UserPromptSubmit",
+        },
+        config(),
+        export,
+    )
+    tracer.handle_pre_tool(
+        {
+            "session_id": "session-123",
+            "turn_id": "subagent-turn-1",
+            "agent_id": "agent-789",
+            "agent_type": "researcher",
+            "tool_name": "Bash",
+            "tool_use_id": "child-tool-1",
+            "tool_input": {"command": "printf CHILD_TOOL"},
+        },
+        config(),
+    )
+    tracer.handle_post_tool(
+        {
+            "session_id": "session-123",
+            "turn_id": "subagent-turn-1",
+            "agent_id": "agent-789",
+            "agent_type": "researcher",
+            "tool_name": "Bash",
+            "tool_use_id": "child-tool-1",
+            "tool_input": {"command": "printf CHILD_TOOL"},
+            "tool_response": "CHILD_TOOL",
+        },
+        config(),
+        export,
+    )
+    tracer.handle_subagent_stop(
+        {
+            "session_id": "session-123",
+            "turn_id": "subagent-turn-1",
+            "agent_id": "agent-789",
+            "agent_type": "researcher",
+            "agent_transcript_path": None,
+            "last_assistant_message": "SUBAGENT_RESPONSE",
+            "hook_event_name": "SubagentStop",
+        },
+        config(),
+        export,
+    )
+    tracer.handle_stop(
+        {**common(), "last_assistant_message": "PARENT_RESPONSE"},
+        config(),
+        export,
+    )
+
+    records_by_name = {}
+    for record in exported:
+        records_by_name.setdefault(record["name"], []).append(record)
+
+    parent_turn = next(
+        record
+        for record in records_by_name["codex.turn"]
+        if record["attributes"]["codex.turn.id"] == "turn-456"
+    )
+    child_turn = next(
+        record
+        for record in records_by_name["codex.turn"]
+        if record["attributes"]["codex.turn.id"] == "subagent-turn-1"
+    )
+    agent = records_by_name["codex.agent"][0]
+    child_tool = next(
+        record
+        for record in records_by_name["Bash"]
+        if record["attributes"]["tool.call.id"] == "child-tool-1"
+    )
+
+    assert agent["trace_id_hex"] == parent_turn["trace_id_hex"]
+    assert child_turn["trace_id_hex"] == parent_turn["trace_id_hex"]
+    assert child_tool["trace_id_hex"] == parent_turn["trace_id_hex"]
+    assert agent["parent_span_id_hex"] == parent_turn["span_id_hex"]
+    assert child_turn["parent_span_id_hex"] == agent["span_id_hex"]
+    assert child_tool["parent_span_id_hex"] == child_turn["span_id_hex"]
+    assert agent["attributes"]["openinference.span.kind"] == "AGENT"
+    assert agent["attributes"]["input.value"] == "SUBAGENT_PROMPT"
+    assert agent["attributes"]["output.value"] == "SUBAGENT_RESPONSE"
+    assert agent["attributes"]["codex.agent.id"] == "agent-789"
+    assert agent["attributes"]["codex.agent.type"] == "researcher"
+    assert agent["attributes"]["session.id"] == "session-123"
+    assert child_turn["attributes"]["codex.agent.id"] == "agent-789"
+    assert child_turn["attributes"]["session.id"] == "session-123"
+    assert child_turn["attributes"]["codex.parent.thread.id"] == "session-123"
+    assert child_tool["attributes"]["codex.agent.id"] == "agent-789"
+    assert set(exported_session_ids) == {"session-123"}
+    assert not list(isolated_state.glob("*.json"))
+    assert not list((isolated_state / "agents").glob("*.json"))
+
+
+def test_stale_cleanup_removes_abandoned_agent_and_activation_state(
+    isolated_state, monkeypatch
+):
+    """Break caught: missing Stop events retain agent/session identifiers forever."""
+    tracer._save_agent_context(
+        {
+            "parent_session_id": "session-123",
+            "agent_id": "agent-789",
+            "trace_id_hex": "1" * 32,
+            "agent_span_id_hex": "2" * 16,
+            "start_ns": 1,
+        }
+    )
+    tracer.handle_session_start(
+        {"session_id": "session-123", "source": "startup"}, config()
+    )
+    paths = [
+        *list((isolated_state / "agents").glob("*.json")),
+        *list((isolated_state / "activation").glob("*.json")),
+    ]
+    old_time = 1_000
+    for path in paths:
+        os.utime(path, (old_time, old_time))
+    monkeypatch.setattr(tracer.time, "time", lambda: old_time + 49 * 60 * 60)
+
+    tracer._cleanup_stale_state()
+
+    assert not list((isolated_state / "agents").glob("*.json"))
+    assert not list((isolated_state / "activation").glob("*.json"))
+
+
 def test_token_usage_sums_all_model_calls_in_only_the_matching_turn(tmp_path):
     """Break caught: reporting session totals or only the final model call."""
     transcript = tmp_path / "rollout.jsonl"
