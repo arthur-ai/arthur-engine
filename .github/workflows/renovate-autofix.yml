@@ -178,11 +178,11 @@ jobs:
                 "GENAI_ENGINE_TRACE_ENDPOINT": "${{ vars.GENAI_ENGINE_TRACE_ENDPOINT }}"
               },
               "hooks": {
-                "UserPromptSubmit": [{"matcher": "", "hooks": [{"type": "command", "timeout": 5, "command": "T=\"${{ runner.temp }}/claude_code_tracer.py\"; [ -f \"$T\" ] && timeout 5s python3 \"$T\" user_prompt_submit; true"}]}],
-                "PreToolUse": [{"matcher": "", "hooks": [{"type": "command", "timeout": 5, "command": "T=\"${{ runner.temp }}/claude_code_tracer.py\"; [ -f \"$T\" ] && timeout 5s python3 \"$T\" pre_tool; true"}]}],
-                "PostToolUse": [{"matcher": "", "hooks": [{"type": "command", "timeout": 5, "command": "T=\"${{ runner.temp }}/claude_code_tracer.py\"; [ -f \"$T\" ] && timeout 5s python3 \"$T\" post_tool; true"}]}],
-                "PostToolUseFailure": [{"matcher": "", "hooks": [{"type": "command", "timeout": 5, "command": "T=\"${{ runner.temp }}/claude_code_tracer.py\"; [ -f \"$T\" ] && timeout 5s python3 \"$T\" post_tool_failure; true"}]}],
-                "Stop": [{"matcher": "", "hooks": [{"type": "command", "timeout": 5, "command": "T=\"${{ runner.temp }}/claude_code_tracer.py\"; [ -f \"$T\" ] && timeout 5s python3 \"$T\" stop; true"}]}]
+                "UserPromptSubmit": [{"matcher": "", "hooks": [{"type": "command", "command": "T=\"${{ runner.temp }}/claude_code_tracer.py\"; [ -f \"$T\" ] && python3 \"$T\" user_prompt_submit; true"}]}],
+                "PreToolUse": [{"matcher": "", "hooks": [{"type": "command", "command": "T=\"${{ runner.temp }}/claude_code_tracer.py\"; [ -f \"$T\" ] && python3 \"$T\" pre_tool; true"}]}],
+                "PostToolUse": [{"matcher": "", "hooks": [{"type": "command", "command": "T=\"${{ runner.temp }}/claude_code_tracer.py\"; [ -f \"$T\" ] && python3 \"$T\" post_tool; true"}]}],
+                "PostToolUseFailure": [{"matcher": "", "hooks": [{"type": "command", "command": "T=\"${{ runner.temp }}/claude_code_tracer.py\"; [ -f \"$T\" ] && python3 \"$T\" post_tool_failure; true"}]}],
+                "Stop": [{"matcher": "", "hooks": [{"type": "command", "command": "T=\"${{ runner.temp }}/claude_code_tracer.py\"; [ -f \"$T\" ] && python3 \"$T\" stop; true"}]}]
               }
             }
           # Allow the action to run even though the PR was authored by a bot.
