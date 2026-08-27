@@ -219,6 +219,10 @@
             "type": "string",
             "description": "Memory limits value for GenAI Engine"
         },
+        "genaiEngineContainerGPULimit": {
+            "type": ["string", "integer"],
+            "description": "Value for the nvidia.com/gpu resource limit on the GenAI Engine container, e.g. \"1\". Leave empty to omit the limit entirely. Required for GPU metric attribution: DCGM maps GPUs to pods through the kubelet pod-resources API, which only reports a device allocation when the pod requests one, so the GPU autoscaler add-on chart cannot see per-pod GPU metrics without this. Only set it on clusters where a device plugin advertises nvidia.com/gpu, or the pod will never schedule"
+        },
         "arthurGenaiEngineDeployment": {
             "type": "object",
             "properties": {
@@ -329,6 +333,10 @@
                 "enabled": {
                     "type": "boolean",
                     "description": "Enable Horizontal Pod Autoscaler for Arthur GenAI Engine"
+                },
+                "externallyManaged": {
+                    "type": "boolean",
+                    "description": "When true, an external controller (e.g. the genai-engine-gpu-autoscaler-karpenter add-on chart) owns replica count: the Deployment omits its static replicas field and this chart renders no HPA of its own"
                 },
                 "annotations": {
                     "type": "object",

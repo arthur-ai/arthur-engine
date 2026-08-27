@@ -81,16 +81,14 @@ PART A — SDK SETUP:
     mistralai           → instrument_mistralai()
     groq                → instrument_groq()
     litellm             → instrument_litellm()
-    pydantic-ai         → instrument_pydantic_ai()
     openai-agents       → instrument_openai_agents()
     claude-agent-sdk    → instrument_claude_agent_sdk()
     haystack            → instrument_haystack()
     dspy                → instrument_dspy()
     smolagents          → instrument_smolagents()
-    strands-agents      → instrument_strands_agents()
     mcp                 → instrument_mcp()
-    (others: agno, agentspec, agent-framework, beeai, guardrails, instructor,
-             monkai-agent, openlit, openllmetry, pipecat, portkey)
+    (others: ag2, agentminds, agentspec, agno, baml, beeai, cohere,
+             guardrails, instructor, ollama, pipecat, portkey, together)
 
   If the framework is not in the list, fall back to the OpenInference instrumentation
   approach instead (see the OpenInference task prompt).

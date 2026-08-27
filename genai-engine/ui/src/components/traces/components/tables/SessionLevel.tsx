@@ -61,8 +61,8 @@ export const SessionLevel = ({ welcomeDismissed }: SessionLevelProps) => {
     [task?.id, pagination.pageIndex, pagination.pageSize, filters, timeRange, sort]
   );
 
+  // eslint-disable-next-line @tanstack/query/exhaustive-deps
   const { data, isLoading, error } = useQuery({
-    // eslint-disable-next-line @tanstack/query/exhaustive-deps
     queryKey: queryKeys.sessions.listPaginated(params),
     placeholderData: keepPreviousData,
     queryFn: () => getFilteredSessions(api, params),

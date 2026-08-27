@@ -51,22 +51,22 @@ jobs:
         id: isort
         continue-on-error: true
         run: |
-          uv run --directory genai-engine isort src --profile black --check
+          uv run --no-sync --directory genai-engine isort src --profile black --check
       - name: Run autoflake
         id: autoflake
         continue-on-error: true
         run: |
-          uv run --directory genai-engine autoflake --remove-all-unused-imports --in-place --check --recursive --quiet src
+          uv run --no-sync --directory genai-engine autoflake --remove-all-unused-imports --in-place --check --recursive --quiet src
       - name: Run black
         id: black
         continue-on-error: true
         run: |
-          uv run --directory genai-engine black --check src
+          uv run --no-sync --directory genai-engine black --check src
       - name: Run mypy
         id: mypy
         continue-on-error: true
         run: |
-          uv run --directory genai-engine mypy src
+          uv run --no-sync --directory genai-engine mypy src
       - name: Check linter results
         if: steps.isort.outcome == 'failure' || steps.autoflake.outcome == 'failure' || steps.black.outcome == 'failure' || steps.mypy.outcome == 'failure'
         run: |
@@ -102,22 +102,22 @@ jobs:
         id: isort
         continue-on-error: true
         run: |
-          uv run --directory ml-engine isort src/ml_engine --profile black --check
+          uv run --no-sync --directory ml-engine isort src/ml_engine --profile black --check
       - name: Run autoflake
         id: autoflake
         continue-on-error: true
         run: |
-          uv run --directory ml-engine autoflake --remove-all-unused-imports --in-place --check --recursive --quiet src/ml_engine
+          uv run --no-sync --directory ml-engine autoflake --remove-all-unused-imports --in-place --check --recursive --quiet src/ml_engine
       - name: Run black
         id: black
         continue-on-error: true
         run: |
-          uv run --directory ml-engine black --check src/ml_engine
+          uv run --no-sync --directory ml-engine black --check src/ml_engine
       - name: Run mypy
         id: mypy
         continue-on-error: true
         run: |
-          uv run --directory ml-engine mypy src/ml_engine
+          uv run --no-sync --directory ml-engine mypy src/ml_engine
       - name: Check linter results
         if: steps.isort.outcome == 'failure' || steps.autoflake.outcome == 'failure' || steps.black.outcome == 'failure' || steps.mypy.outcome == 'failure'
         run: |
@@ -151,7 +151,7 @@ jobs:
           GENAI_ENGINE_DEMO_MODE: ENABLED
           PYTHONPATH: src
         run: |
-          uv run --directory genai-engine generate_changelog
+          uv run --no-sync --directory genai-engine generate_changelog
       - name: Upload artifacts on failure
         if: failure()
         uses: actions/upload-artifact@v4
@@ -161,6 +161,64 @@ jobs:
             genai-engine/new.openapi.json
             genai-engine/staging.openapi.json
             genai-engine/src/api_changelog.md
+
+  # Renovate's pep621 manager edits pyproject.toml and regenerates uv.lock as a
+  # separate "artifact" step. When that regeneration fails — typically because the
+  # new version violates a transitive constraint of another pinned dependency —
+  # Renovate still opens the PR with the manifest edit ALONE, and does not
+  # reliably flag it in the PR body. Renovate offers no option to fail closed
+  # here (see /renovate.json), so the repo has to detect it.
+  #
+  # Nothing else in CI can: every Python job installs with `uv sync --frozen`,
+  # which replays uv.lock verbatim and never compares it against pyproject.toml.
+  # A manifest-only PR is therefore fully green, merges, and leaves the two files
+  # disagreeing — at which point `uv lock` fails for everyone, and the upgrade the
+  # PR claimed to make was never actually applied to what ships. That is how
+  # openai==3.0.0 (#2134, unresolvable against litellm) and python-keycloak==7.1.1
+  # (#2124, which shipped 5.12.0 for weeks) both landed.
+  #
+  # This job is the gate. It must live in THIS workflow: renovate-autofix.yml
+  # listens for "Arthur Engine CI" failing, so a gate in a separate workflow would
+  # never hand the failure to the auto-fixer.
+  check-dependency-automation:
+    if: |
+      (
+        github.event_name == 'pull_request' ||
+        github.event_name == 'merge_group' ||
+        (github.event_name == 'push' && github.ref_type == 'branch')
+      ) &&
+      github.ref != 'refs/heads/main' &&
+      github.ref != 'refs/heads/dev'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      # Deliberately NOT the setup-uv composite: that one runs `uv sync --frozen`
+      # against a single project, which is both far more work than this needs and
+      # the very command that cannot see the drift.
+      - name: Install uv
+        run: |
+          curl -LsSf --retry 5 --retry-delay 2 --retry-all-errors \
+            https://astral.sh/uv/0.11.7/install.sh | env UV_INSTALL_DIR=/usr/local/bin sh
+          uv --version
+      - name: Verify every uv.lock agrees with its pyproject.toml
+        shell: bash
+        run: .github/scripts/check-lockfile-drift.sh
+      # An invalid /renovate.json does not fail loudly — Renovate keeps running on
+      # its last good config, or stops opening PRs, and either way dependency
+      # updates quietly stall. The failure message above actively tells people to
+      # go add allowedVersions rules there, so the file needs a syntax gate. Only
+      # worth the validator's install cost when the file actually changed.
+      - uses: dorny/paths-filter@v2
+        id: renovate-config
+        if: github.event_name != 'merge_group'
+        with:
+          filters: |
+            changed:
+              - 'renovate.json'
+      - name: Validate renovate.json
+        if: github.event_name == 'merge_group' || steps.renovate-config.outputs.changed == 'true'
+        run: npx --yes --package renovate renovate-config-validator renovate.json
 
   check-genai-engine-changes:
     if: |
@@ -201,6 +259,12 @@ jobs:
               - 'genai-engine/Dockerfile*'
               - 'genai-engine/docker-compose.yml'
               - 'arthur-observability-sdk/**'
+              # Changes to the CI plumbing itself must exercise the jobs they
+              # affect, otherwise a broken workflow edit passes as an all-skipped
+              # green run and only surfaces in the merge queue, where it blocks
+              # everyone.
+              - '.github/workflows/arthur-engine-workflow.yml'
+              - '.github/workflows/composite-actions/**'
       # In the merge queue there is no PR base to diff against, and paths-filter's
       # base detection is unreliable on merge_group. Run the full required suite as
       # the final pre-merge gate instead of trying to narrow it by path.
@@ -239,6 +303,9 @@ jobs:
               - 'ml-engine/**'
               - 'arthur-observability-sdk/**'
               - 'genai-engine/staging.openapi.json'
+              # See the note in check-genai-engine-changes.
+              - '.github/workflows/arthur-engine-workflow.yml'
+              - '.github/workflows/composite-actions/**'
       # In the merge queue, run the full required suite (see note above).
       - name: Decide affected areas
         id: decide
@@ -273,7 +340,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "24"
       - name: Enable Corepack
         run: corepack enable
       - name: Install dependencies
@@ -295,13 +362,18 @@ jobs:
         id: format-check
         continue-on-error: true
         run: yarn format:check
+      - name: Run tests
+        id: tests
+        continue-on-error: true
+        run: yarn test:run
       - name: Check results
-        if: steps.type-check.outcome == 'failure' || steps.lint.outcome == 'failure' || steps.format-check.outcome == 'failure'
+        if: steps.type-check.outcome == 'failure' || steps.lint.outcome == 'failure' || steps.format-check.outcome == 'failure' || steps.tests.outcome == 'failure'
         run: |
           echo "One or more checks failed:"
           echo "  type-check: ${{ steps.type-check.outcome }}"
           echo "  lint: ${{ steps.lint.outcome }}"
           echo "  format-check: ${{ steps.format-check.outcome }}"
+          echo "  tests: ${{ steps.tests.outcome }}"
           exit 1
 
   run-genai-engine-unit-tests:
@@ -331,7 +403,7 @@ jobs:
           GENAI_ENGINE_SECRET_STORE_KEY: changeme_secret_store_key
         run: |
           set -o pipefail
-          uv run --directory genai-engine pytest --cov --cov=src \
+          uv run --no-sync --directory genai-engine pytest --cov --cov=src \
             --cov-report term \
             --junitxml=report.xml \
             -m "unit_tests" | tee pytest-coverage.txt
@@ -388,7 +460,7 @@ jobs:
           PYTHONPATH: "src:$PYTHONPATH"
         run: |
           cd genai-engine
-          uv run alembic upgrade head
+          uv run --no-sync alembic upgrade head
 
   run-ml-engine-unit-tests:
     needs: check-ml-engine-changes
@@ -417,7 +489,7 @@ jobs:
             --skip-validate-spec --package-name genai_client
       - name: Run unit-tests
         run: |
-          uv run --directory ml-engine pytest tests/unit
+          uv run --no-sync --directory ml-engine pytest tests/unit
 
   build-genai-engine-docker-images:
     environment: shared-protected-branch-secrets
@@ -605,9 +677,9 @@ jobs:
         run: |
           cd deployment/model-upload
           python check_model_updates.py --output github >> $GITHUB_OUTPUT
-          # If either model image doesn't exist yet (bootstrap case), force a build
+          # If any model image doesn't exist yet (bootstrap case), force a build
           TAG=${{ github.ref == 'refs/heads/main' && 'latest' || 'latest-dev' }}
-          for IMAGE in "arthurplatform/genai-engine-models-s3" "arthurplatform/genai-engine-models-fs"; do
+          for IMAGE in "arthurplatform/genai-engine-models-s3" "arthurplatform/genai-engine-models-fs" "arthurplatform/genai-engine-models-gcs"; do
             NAMESPACE="${IMAGE%%/*}"
             REPO="${IMAGE##*/}"
             STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://hub.docker.com/v2/repositories/${NAMESPACE}/${REPO}/tags/${TAG}/")
@@ -649,6 +721,13 @@ jobs:
 
   build-genai-engine-models-docker-image:
     uses: ./.github/workflows/build-ecs-model-upload.yml
+    # Passed through to the reusable workflow, which runs the vuln-report scan and
+    # publishes SARIF. A called workflow is capped by its caller's token, so
+    # security-events: write has to be granted here as well as there.
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
     needs: [check-models-updates]
     if: |
       needs.check-models-updates.outputs.has_updates == 'true' &&
@@ -702,6 +781,13 @@ jobs:
 
   build-genai-engine-models-fs-docker-image:
     uses: ./.github/workflows/build-fs-model-upload.yml
+    # Passed through to the reusable workflow, which runs the vuln-report scan and
+    # publishes SARIF. A called workflow is capped by its caller's token, so
+    # security-events: write has to be granted here as well as there.
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
     needs: [check-models-updates]
     if: |
       needs.check-models-updates.outputs.has_updates == 'true' &&
@@ -755,8 +841,16 @@ jobs:
 
   build-gcp-model-upload-docker-image:
     uses: ./.github/workflows/build-gcp-model-upload.yml
+    # Passed through to the reusable workflow, which runs the vuln-report scan and
+    # publishes SARIF. A called workflow is capped by its caller's token, so
+    # security-events: write has to be granted here as well as there.
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
     needs: [check-models-updates]
     if: |
+      needs.check-models-updates.outputs.has_updates == 'true' &&
       github.repository == 'arthur-ai/arthur-engine' &&
       contains(github.event.head_commit.message, 'Increment arthur-engine version') &&
       (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
@@ -764,6 +858,46 @@ jobs:
       push: true
       image: arthurplatform/genai-engine-models-gcs
     secrets: inherit
+
+  tag-gcp-model-upload-docker-image:
+    needs: [check-models-updates]
+    environment: shared-protected-branch-secrets
+    if: |
+      needs.check-models-updates.outputs.has_updates == 'false' &&
+      github.repository == 'arthur-ai/arthur-engine' &&
+      contains(github.event.head_commit.message, 'Increment arthur-engine version') &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/workflows/composite-actions/setup-git
+        with:
+          safe-directory: ${{ runner.workspace }}
+      - uses: ./.github/workflows/composite-actions/set-version
+        with:
+          version-prefix: "genai-engine-"
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4.1.0
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3.6.0
+        with:
+          username: ${{ secrets.DOCKERHUB_OSS_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_OSS_TOKEN }}
+      # imagetools copies the full image (incl. the SBOM attestation) registry-to-registry.
+      # The previous `docker pull`/`tag`/`push` fetched only the platform manifest and would
+      # drop the SBOM attestation from the newly-tagged version.
+      - name: Retag previous models gcs image with new version
+        run: |
+          SOURCE_TAG=${{ github.ref == 'refs/heads/main' && 'latest' || 'latest-dev' }}
+          echo "No model updates detected - retagging ${SOURCE_TAG} as ${{ env.VERSION }}"
+          docker buildx imagetools create \
+            --tag arthurplatform/genai-engine-models-gcs:${{ env.VERSION }} \
+            arthurplatform/genai-engine-models-gcs:${SOURCE_TAG}
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            docker buildx imagetools create \
+              --tag arthurplatform/genai-engine-models-gcs:latest \
+              arthurplatform/genai-engine-models-gcs:${SOURCE_TAG}
+          fi
 
   push-all-cfts:
     needs: [build-genai-engine-docker-images, build-ml-engine-docker-images]
@@ -857,6 +991,7 @@ jobs:
       - build-genai-engine-models-fs-docker-image
       - tag-genai-engine-models-fs-docker-image
       - build-gcp-model-upload-docker-image
+      - tag-gcp-model-upload-docker-image
     environment: shared-protected-branch-secrets
     # `needs` on a skipped model build/tag job still enforces ordering (a skipped job counts as
     # complete), so whichever of each build/tag pair ran will have published the <VERSION> tag.

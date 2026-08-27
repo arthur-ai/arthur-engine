@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.764"
+        "version": "2.1.821"
     },
     "paths": {
         "/api/v2/engine-config": {
@@ -2769,10 +2769,21 @@
                         "in": "query",
                         "required": false,
                         "schema": {
-                            "$ref": "#/components/schemas/ContinuousEvalRunStatus",
-                            "description": "Filter by trace annotation run status (e.g. 'passed', 'failed', etc.)."
+                            "anyOf": [
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/ContinuousEvalRunStatus"
+                                    }
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Continuous eval run statuses to filter on (e.g. 'passed', 'failed', etc.). Optional.",
+                            "title": "Continuous Eval Run Status"
                         },
-                        "description": "Filter by trace annotation run status (e.g. 'passed', 'failed', etc.)."
+                        "description": "Continuous eval run statuses to filter on (e.g. 'passed', 'failed', etc.). Optional."
                     },
                     {
                         "name": "continuous_eval_name",
@@ -3524,10 +3535,21 @@
                         "in": "query",
                         "required": false,
                         "schema": {
-                            "$ref": "#/components/schemas/ContinuousEvalRunStatus",
-                            "description": "Filter by trace annotation run status (e.g. 'passed', 'failed', etc.)."
+                            "anyOf": [
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/ContinuousEvalRunStatus"
+                                    }
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Continuous eval run statuses to filter on (e.g. 'passed', 'failed', etc.). Optional.",
+                            "title": "Continuous Eval Run Status"
                         },
-                        "description": "Filter by trace annotation run status (e.g. 'passed', 'failed', etc.)."
+                        "description": "Continuous eval run statuses to filter on (e.g. 'passed', 'failed', etc.). Optional."
                     },
                     {
                         "name": "continuous_eval_name",
@@ -4518,10 +4540,21 @@
                         "in": "query",
                         "required": false,
                         "schema": {
-                            "$ref": "#/components/schemas/ContinuousEvalRunStatus",
-                            "description": "Filter by trace annotation run status (e.g. 'passed', 'failed', etc.)."
+                            "anyOf": [
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/ContinuousEvalRunStatus"
+                                    }
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Continuous eval run statuses to filter on (e.g. 'passed', 'failed', etc.). Optional.",
+                            "title": "Continuous Eval Run Status"
                         },
-                        "description": "Filter by trace annotation run status (e.g. 'passed', 'failed', etc.)."
+                        "description": "Continuous eval run statuses to filter on (e.g. 'passed', 'failed', etc.). Optional."
                     },
                     {
                         "name": "continuous_eval_name",
@@ -5366,10 +5399,21 @@
                         "in": "query",
                         "required": false,
                         "schema": {
-                            "$ref": "#/components/schemas/ContinuousEvalRunStatus",
-                            "description": "Filter by trace annotation run status (e.g. 'passed', 'failed', etc.)."
+                            "anyOf": [
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/ContinuousEvalRunStatus"
+                                    }
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Continuous eval run statuses to filter on (e.g. 'passed', 'failed', etc.). Optional.",
+                            "title": "Continuous Eval Run Status"
                         },
-                        "description": "Filter by trace annotation run status (e.g. 'passed', 'failed', etc.)."
+                        "description": "Continuous eval run statuses to filter on (e.g. 'passed', 'failed', etc.). Optional."
                     },
                     {
                         "name": "continuous_eval_name",
@@ -9436,6 +9480,101 @@
                 }
             }
         },
+        "/api/v1/model_providers/{provider}/model_whitelist": {
+            "get": {
+                "tags": [
+                    "Model Providers"
+                ],
+                "summary": "Get the curated model list for a provider.",
+                "description": "Returns the admin-curated model list for a provider along with the provider's full catalog. A null whitelist means all models are exposed.",
+                "operationId": "get_model_provider_whitelist_api_v1_model_providers__provider__model_whitelist_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "provider",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/ModelProvider"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ModelProviderWhitelist"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "Model Providers"
+                ],
+                "summary": "Set the curated model list for a provider.",
+                "description": "Restricts which models appear in model pickers. Send null to expose all models. An empty list is rejected.",
+                "operationId": "set_model_provider_whitelist_api_v1_model_providers__provider__model_whitelist_put",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "provider",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/ModelProvider"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PutModelProviderWhitelist"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "204": {
+                        "description": "Whitelist updated."
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/secrets/rotation": {
             "post": {
                 "tags": [
@@ -12240,7 +12379,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/NotebookState-Output"
+                                    "$ref": "#/components/schemas/NotebookState"
                                 }
                             }
                         }
@@ -18145,7 +18284,7 @@
                 ],
                 "title": "AgenticAnnotationType"
             },
-            "AgenticEvalRef-Input": {
+            "AgenticEvalRef": {
                 "properties": {
                     "name": {
                         "type": "string",
@@ -18165,44 +18304,7 @@
                     },
                     "variable_mapping": {
                         "items": {
-                            "$ref": "#/components/schemas/AgenticEvalVariableMapping-Input"
-                        },
-                        "type": "array",
-                        "title": "Variable Mapping",
-                        "description": "Mapping of eval variables to data sources (supports transform variables for agentic experiments)"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "name",
-                    "version",
-                    "transform_id",
-                    "variable_mapping"
-                ],
-                "title": "AgenticEvalRef",
-                "description": "Reference to an evaluation configuration with transform"
-            },
-            "AgenticEvalRef-Output": {
-                "properties": {
-                    "name": {
-                        "type": "string",
-                        "title": "Name",
-                        "description": "Name of the evaluation"
-                    },
-                    "version": {
-                        "type": "integer",
-                        "title": "Version",
-                        "description": "Version of the evaluation"
-                    },
-                    "transform_id": {
-                        "type": "string",
-                        "format": "uuid",
-                        "title": "Transform Id",
-                        "description": "ID of the transform to apply to the trace before evaluation"
-                    },
-                    "variable_mapping": {
-                        "items": {
-                            "$ref": "#/components/schemas/AgenticEvalVariableMapping-Output"
+                            "$ref": "#/components/schemas/AgenticEvalVariableMapping"
                         },
                         "type": "array",
                         "title": "Variable Mapping",
@@ -18256,42 +18358,7 @@
                 "title": "AgenticEvalResultSummaries",
                 "description": "Summary of evaluation results for an agentic experiment"
             },
-            "AgenticEvalVariableMapping-Input": {
-                "properties": {
-                    "variable_name": {
-                        "type": "string",
-                        "title": "Variable Name",
-                        "description": "Name of the eval variable"
-                    },
-                    "source": {
-                        "oneOf": [
-                            {
-                                "$ref": "#/components/schemas/DatasetColumnVariableSource"
-                            },
-                            {
-                                "$ref": "#/components/schemas/AgenticExperimentOutputVariableSource"
-                            }
-                        ],
-                        "title": "Source",
-                        "description": "Source of the variable value",
-                        "discriminator": {
-                            "propertyName": "type",
-                            "mapping": {
-                                "dataset_column": "#/components/schemas/DatasetColumnVariableSource",
-                                "experiment_output": "#/components/schemas/AgenticExperimentOutputVariableSource"
-                            }
-                        }
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "variable_name",
-                    "source"
-                ],
-                "title": "AgenticEvalVariableMapping",
-                "description": "Mapping of an eval variable to its source (dataset column or experiment output).\n\nFor transform variables, use ExperimentOutputVariableSource with transform_variable_name\nin the experiment_output field. The transform_id comes from the associated AgenticEvalRef."
-            },
-            "AgenticEvalVariableMapping-Output": {
+            "AgenticEvalVariableMapping": {
                 "properties": {
                     "variable_name": {
                         "type": "string",
@@ -18435,7 +18502,7 @@
                     },
                     "template_variable_mapping": {
                         "items": {
-                            "$ref": "#/components/schemas/TemplateVariableMapping-Output"
+                            "$ref": "#/components/schemas/TemplateVariableMapping"
                         },
                         "type": "array",
                         "title": "Template Variable Mapping",
@@ -18443,7 +18510,7 @@
                     },
                     "eval_list": {
                         "items": {
-                            "$ref": "#/components/schemas/AgenticEvalRef-Output"
+                            "$ref": "#/components/schemas/AgenticEvalRef"
                         },
                         "type": "array",
                         "title": "Eval List",
@@ -18777,7 +18844,7 @@
                         "anyOf": [
                             {
                                 "items": {
-                                    "$ref": "#/components/schemas/TemplateVariableMapping-Input"
+                                    "$ref": "#/components/schemas/TemplateVariableMapping"
                                 },
                                 "type": "array"
                             },
@@ -18818,7 +18885,7 @@
                         "anyOf": [
                             {
                                 "items": {
-                                    "$ref": "#/components/schemas/AgenticEvalRef-Input"
+                                    "$ref": "#/components/schemas/AgenticEvalRef"
                                 },
                                 "type": "array"
                             },
@@ -18851,7 +18918,7 @@
                         "anyOf": [
                             {
                                 "items": {
-                                    "$ref": "#/components/schemas/TemplateVariableMapping-Output"
+                                    "$ref": "#/components/schemas/TemplateVariableMapping"
                                 },
                                 "type": "array"
                             },
@@ -18892,7 +18959,7 @@
                         "anyOf": [
                             {
                                 "items": {
-                                    "$ref": "#/components/schemas/AgenticEvalRef-Output"
+                                    "$ref": "#/components/schemas/AgenticEvalRef"
                                 },
                                 "type": "array"
                             },
@@ -19037,7 +19104,7 @@
                     },
                     "messages": {
                         "items": {
-                            "$ref": "#/components/schemas/OpenAIMessage-Output"
+                            "$ref": "#/components/schemas/OpenAIMessage"
                         },
                         "type": "array",
                         "title": "Messages",
@@ -19071,7 +19138,7 @@
                         "anyOf": [
                             {
                                 "items": {
-                                    "$ref": "#/components/schemas/LLMTool-Output"
+                                    "$ref": "#/components/schemas/LLMTool"
                                 },
                                 "type": "array"
                             },
@@ -20391,7 +20458,7 @@
                 "properties": {
                     "history": {
                         "items": {
-                            "$ref": "#/components/schemas/OpenAIMessage-Input"
+                            "$ref": "#/components/schemas/OpenAIMessage"
                         },
                         "type": "array",
                         "title": "History"
@@ -20418,7 +20485,7 @@
                 "properties": {
                     "messages": {
                         "items": {
-                            "$ref": "#/components/schemas/OpenAIMessage-Input"
+                            "$ref": "#/components/schemas/OpenAIMessage"
                         },
                         "type": "array",
                         "title": "Messages",
@@ -20437,7 +20504,7 @@
                         "anyOf": [
                             {
                                 "items": {
-                                    "$ref": "#/components/schemas/LLMTool-Input"
+                                    "$ref": "#/components/schemas/LLMTool"
                                 },
                                 "type": "array"
                             },
@@ -20969,7 +21036,7 @@
                     },
                     "template_variable_mapping": {
                         "items": {
-                            "$ref": "#/components/schemas/TemplateVariableMapping-Input"
+                            "$ref": "#/components/schemas/TemplateVariableMapping"
                         },
                         "type": "array",
                         "title": "Template Variable Mapping",
@@ -20992,7 +21059,7 @@
                     },
                     "eval_list": {
                         "items": {
-                            "$ref": "#/components/schemas/AgenticEvalRef-Input"
+                            "$ref": "#/components/schemas/AgenticEvalRef"
                         },
                         "type": "array",
                         "title": "Eval List",
@@ -21052,7 +21119,7 @@
                 "properties": {
                     "messages": {
                         "items": {
-                            "$ref": "#/components/schemas/OpenAIMessage-Input"
+                            "$ref": "#/components/schemas/OpenAIMessage"
                         },
                         "type": "array",
                         "title": "Messages",
@@ -21071,7 +21138,7 @@
                         "anyOf": [
                             {
                                 "items": {
-                                    "$ref": "#/components/schemas/LLMTool-Input"
+                                    "$ref": "#/components/schemas/LLMTool"
                                 },
                                 "type": "array"
                             },
@@ -21189,7 +21256,7 @@
                     "state": {
                         "anyOf": [
                             {
-                                "$ref": "#/components/schemas/NotebookState-Input"
+                                "$ref": "#/components/schemas/NotebookState"
                             },
                             {
                                 "type": "null"
@@ -21230,7 +21297,7 @@
                     },
                     "eval_list": {
                         "items": {
-                            "$ref": "#/components/schemas/EvalRef-Input"
+                            "$ref": "#/components/schemas/EvalRef"
                         },
                         "type": "array",
                         "title": "Eval List",
@@ -21275,7 +21342,7 @@
                     },
                     "prompt_variable_mapping": {
                         "items": {
-                            "$ref": "#/components/schemas/PromptVariableMapping-Input"
+                            "$ref": "#/components/schemas/PromptVariableMapping"
                         },
                         "type": "array",
                         "title": "Prompt Variable Mapping",
@@ -21318,7 +21385,7 @@
                     },
                     "eval_list": {
                         "items": {
-                            "$ref": "#/components/schemas/EvalRef-Input"
+                            "$ref": "#/components/schemas/EvalRef"
                         },
                         "type": "array",
                         "title": "Eval List",
@@ -21343,7 +21410,7 @@
                         "items": {
                             "oneOf": [
                                 {
-                                    "$ref": "#/components/schemas/SavedRagConfig-Input"
+                                    "$ref": "#/components/schemas/SavedRagConfig"
                                 },
                                 {
                                     "$ref": "#/components/schemas/UnsavedRagConfig"
@@ -21352,7 +21419,7 @@
                             "discriminator": {
                                 "propertyName": "type",
                                 "mapping": {
-                                    "saved": "#/components/schemas/SavedRagConfig-Input",
+                                    "saved": "#/components/schemas/SavedRagConfig",
                                     "unsaved": "#/components/schemas/UnsavedRagConfig"
                                 }
                             }
@@ -22467,7 +22534,7 @@
                 "title": "EvalKind",
                 "description": "Discriminator for all eval types stored in the llm_evals table."
             },
-            "EvalRef-Input": {
+            "EvalRef": {
                 "properties": {
                     "name": {
                         "type": "string",
@@ -22481,37 +22548,7 @@
                     },
                     "variable_mapping": {
                         "items": {
-                            "$ref": "#/components/schemas/EvalVariableMapping-Input"
-                        },
-                        "type": "array",
-                        "title": "Variable Mapping",
-                        "description": "Mapping of eval variables to data sources"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "name",
-                    "version",
-                    "variable_mapping"
-                ],
-                "title": "EvalRef",
-                "description": "Reference to an evaluation configuration"
-            },
-            "EvalRef-Output": {
-                "properties": {
-                    "name": {
-                        "type": "string",
-                        "title": "Name",
-                        "description": "Name of the evaluation"
-                    },
-                    "version": {
-                        "type": "integer",
-                        "title": "Version",
-                        "description": "Version of the evaluation"
-                    },
-                    "variable_mapping": {
-                        "items": {
-                            "$ref": "#/components/schemas/EvalVariableMapping-Output"
+                            "$ref": "#/components/schemas/EvalVariableMapping"
                         },
                         "type": "array",
                         "title": "Variable Mapping",
@@ -22594,42 +22631,7 @@
                 ],
                 "title": "EvalType"
             },
-            "EvalVariableMapping-Input": {
-                "properties": {
-                    "variable_name": {
-                        "type": "string",
-                        "title": "Variable Name",
-                        "description": "Name of the eval variable"
-                    },
-                    "source": {
-                        "oneOf": [
-                            {
-                                "$ref": "#/components/schemas/DatasetColumnVariableSource"
-                            },
-                            {
-                                "$ref": "#/components/schemas/ExperimentOutputVariableSource"
-                            }
-                        ],
-                        "title": "Source",
-                        "description": "Source of the variable value",
-                        "discriminator": {
-                            "propertyName": "type",
-                            "mapping": {
-                                "dataset_column": "#/components/schemas/DatasetColumnVariableSource",
-                                "experiment_output": "#/components/schemas/ExperimentOutputVariableSource"
-                            }
-                        }
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "variable_name",
-                    "source"
-                ],
-                "title": "EvalVariableMapping",
-                "description": "Mapping of an eval variable to its source (dataset column or experiment output)"
-            },
-            "EvalVariableMapping-Output": {
+            "EvalVariableMapping": {
                 "properties": {
                     "variable_name": {
                         "type": "string",
@@ -24240,7 +24242,7 @@
                     "response_format": {
                         "anyOf": [
                             {
-                                "$ref": "#/components/schemas/LLMResponseFormat-Output"
+                                "$ref": "#/components/schemas/LLMResponseFormat"
                             },
                             {},
                             {
@@ -24566,7 +24568,7 @@
                     "response_format": {
                         "anyOf": [
                             {
-                                "$ref": "#/components/schemas/LLMResponseFormat-Input"
+                                "$ref": "#/components/schemas/LLMResponseFormat"
                             },
                             {
                                 "type": "null"
@@ -24779,7 +24781,7 @@
                 "type": "object",
                 "title": "LLMRequestConfigSettings"
             },
-            "LLMResponseFormat-Input": {
+            "LLMResponseFormat": {
                 "properties": {
                     "type": {
                         "$ref": "#/components/schemas/LLMResponseFormatEnum",
@@ -24791,35 +24793,7 @@
                     "json_schema": {
                         "anyOf": [
                             {
-                                "$ref": "#/components/schemas/LLMResponseSchema-Input"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "description": "JSON schema definition (required when type is 'json_schema')"
-                    }
-                },
-                "additionalProperties": false,
-                "type": "object",
-                "required": [
-                    "type"
-                ],
-                "title": "LLMResponseFormat"
-            },
-            "LLMResponseFormat-Output": {
-                "properties": {
-                    "type": {
-                        "$ref": "#/components/schemas/LLMResponseFormatEnum",
-                        "description": "Response format type: 'text', 'json_object', or 'json_schema'",
-                        "examples": [
-                            "json_schema"
-                        ]
-                    },
-                    "json_schema": {
-                        "anyOf": [
-                            {
-                                "$ref": "#/components/schemas/LLMResponseSchema-Output"
+                                "$ref": "#/components/schemas/LLMResponseSchema"
                             },
                             {
                                 "type": "null"
@@ -24844,7 +24818,7 @@
                 ],
                 "title": "LLMResponseFormatEnum"
             },
-            "LLMResponseSchema-Input": {
+            "LLMResponseSchema": {
                 "properties": {
                     "name": {
                         "type": "string",
@@ -24887,50 +24861,7 @@
                 ],
                 "title": "LLMResponseSchema"
             },
-            "LLMResponseSchema-Output": {
-                "properties": {
-                    "name": {
-                        "type": "string",
-                        "title": "Name",
-                        "description": "Name of the schema"
-                    },
-                    "description": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Description",
-                        "description": "Description of the schema"
-                    },
-                    "schema": {
-                        "$ref": "#/components/schemas/JsonSchema",
-                        "description": "The JSON schema object"
-                    },
-                    "strict": {
-                        "anyOf": [
-                            {
-                                "type": "boolean"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Strict",
-                        "description": "Whether to enforce strict schema adherence"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "name",
-                    "schema"
-                ],
-                "title": "LLMResponseSchema"
-            },
-            "LLMTool-Input": {
+            "LLMTool": {
                 "properties": {
                     "type": {
                         "type": "string",
@@ -24939,38 +24870,7 @@
                         "default": "function"
                     },
                     "function": {
-                        "$ref": "#/components/schemas/ToolFunction-Input",
-                        "description": "The function definition"
-                    },
-                    "strict": {
-                        "anyOf": [
-                            {
-                                "type": "boolean"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Strict",
-                        "description": "Whether the function definition should use OpenAI's strict mode"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "function"
-                ],
-                "title": "LLMTool"
-            },
-            "LLMTool-Output": {
-                "properties": {
-                    "type": {
-                        "type": "string",
-                        "title": "Type",
-                        "description": "The type of tool. Should always be 'function'",
-                        "default": "function"
-                    },
-                    "function": {
-                        "$ref": "#/components/schemas/ToolFunction-Output",
+                        "$ref": "#/components/schemas/ToolFunction",
                         "description": "The function definition"
                     },
                     "strict": {
@@ -25625,6 +25525,44 @@
                     "enabled"
                 ],
                 "title": "ModelProviderResponse"
+            },
+            "ModelProviderWhitelist": {
+                "properties": {
+                    "provider": {
+                        "$ref": "#/components/schemas/ModelProvider",
+                        "description": "Provider the whitelist applies to"
+                    },
+                    "whitelist": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Whitelist",
+                        "description": "Curated model list, or null when all models are exposed"
+                    },
+                    "catalog": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Catalog",
+                        "description": "Every model the provider offers, ignoring the whitelist"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "provider",
+                    "whitelist",
+                    "catalog"
+                ],
+                "title": "ModelProviderWhitelist"
             },
             "NestedSpanWithMetricsResponse": {
                 "properties": {
@@ -26444,7 +26382,7 @@
                         "description": "ISO timestamp when last updated"
                     },
                     "state": {
-                        "$ref": "#/components/schemas/NotebookState-Output",
+                        "$ref": "#/components/schemas/NotebookState",
                         "description": "Current draft state"
                     },
                     "experiments": {
@@ -26511,7 +26449,7 @@
                 "title": "NotebookListResponse",
                 "description": "Paginated list of notebooks"
             },
-            "NotebookState-Input": {
+            "NotebookState": {
                 "properties": {
                     "prompt_configs": {
                         "anyOf": [
@@ -26546,7 +26484,7 @@
                         "anyOf": [
                             {
                                 "items": {
-                                    "$ref": "#/components/schemas/PromptVariableMapping-Input"
+                                    "$ref": "#/components/schemas/PromptVariableMapping"
                                 },
                                 "type": "array"
                             },
@@ -26587,99 +26525,7 @@
                         "anyOf": [
                             {
                                 "items": {
-                                    "$ref": "#/components/schemas/EvalRef-Input"
-                                },
-                                "type": "array"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Eval List",
-                        "description": "List of evaluations"
-                    }
-                },
-                "type": "object",
-                "title": "NotebookState",
-                "description": "Draft state of a notebook - mirrors experiment config but all fields optional."
-            },
-            "NotebookState-Output": {
-                "properties": {
-                    "prompt_configs": {
-                        "anyOf": [
-                            {
-                                "items": {
-                                    "oneOf": [
-                                        {
-                                            "$ref": "#/components/schemas/SavedPromptConfig"
-                                        },
-                                        {
-                                            "$ref": "#/components/schemas/UnsavedPromptConfig"
-                                        }
-                                    ],
-                                    "discriminator": {
-                                        "propertyName": "type",
-                                        "mapping": {
-                                            "saved": "#/components/schemas/SavedPromptConfig",
-                                            "unsaved": "#/components/schemas/UnsavedPromptConfig"
-                                        }
-                                    }
-                                },
-                                "type": "array"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Prompt Configs",
-                        "description": "List of prompt configurations"
-                    },
-                    "prompt_variable_mapping": {
-                        "anyOf": [
-                            {
-                                "items": {
-                                    "$ref": "#/components/schemas/PromptVariableMapping-Output"
-                                },
-                                "type": "array"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Prompt Variable Mapping",
-                        "description": "Variable mappings for prompts"
-                    },
-                    "dataset_ref": {
-                        "anyOf": [
-                            {
-                                "$ref": "#/components/schemas/DatasetRef"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "description": "Dataset reference (includes name)"
-                    },
-                    "dataset_row_filter": {
-                        "anyOf": [
-                            {
-                                "items": {
-                                    "$ref": "#/components/schemas/NewDatasetVersionRowColumnItemRequest"
-                                },
-                                "type": "array"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Dataset Row Filter",
-                        "description": "Optional list of column name and value filters. Only rows matching ALL specified column name-value pairs (AND condition) will be included."
-                    },
-                    "eval_list": {
-                        "anyOf": [
-                            {
-                                "items": {
-                                    "$ref": "#/components/schemas/EvalRef-Output"
+                                    "$ref": "#/components/schemas/EvalRef"
                                 },
                                 "type": "array"
                             },
@@ -26889,78 +26735,7 @@
                 "title": "OnboardingTryItOutFormData",
                 "description": "Try-it-out onboarding form fields (matches UI TryItOutSubmission)."
             },
-            "OpenAIMessage-Input": {
-                "properties": {
-                    "role": {
-                        "$ref": "#/components/schemas/MessageRole",
-                        "description": "Role of the message"
-                    },
-                    "name": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Name",
-                        "description": "An optional name for the participant. Provides the model information to differentiate between participants of the same role."
-                    },
-                    "content": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "items": {
-                                    "$ref": "#/components/schemas/OpenAIMessageItem"
-                                },
-                                "type": "array"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Content",
-                        "description": "Content of the message"
-                    },
-                    "tool_calls": {
-                        "anyOf": [
-                            {
-                                "items": {
-                                    "$ref": "#/components/schemas/ToolCall"
-                                },
-                                "type": "array"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Tool Calls",
-                        "description": "Tool calls made by assistant"
-                    },
-                    "tool_call_id": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Tool Call Id",
-                        "description": "ID of the tool call this message is responding to"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "role"
-                ],
-                "title": "OpenAIMessage",
-                "description": "The message schema class for the prompts playground.\nThis class adheres to OpenAI's message schema."
-            },
-            "OpenAIMessage-Output": {
+            "OpenAIMessage": {
                 "properties": {
                     "role": {
                         "$ref": "#/components/schemas/MessageRole",
@@ -27591,7 +27366,7 @@
                     },
                     "eval_list": {
                         "items": {
-                            "$ref": "#/components/schemas/EvalRef-Output"
+                            "$ref": "#/components/schemas/EvalRef"
                         },
                         "type": "array",
                         "title": "Eval List",
@@ -27621,7 +27396,7 @@
                     },
                     "prompt_variable_mapping": {
                         "items": {
-                            "$ref": "#/components/schemas/PromptVariableMapping-Output"
+                            "$ref": "#/components/schemas/PromptVariableMapping"
                         },
                         "type": "array",
                         "title": "Prompt Variable Mapping",
@@ -27964,27 +27739,7 @@
                 ],
                 "title": "PromptValidationRequest"
             },
-            "PromptVariableMapping-Input": {
-                "properties": {
-                    "variable_name": {
-                        "type": "string",
-                        "title": "Variable Name",
-                        "description": "Name of the prompt variable"
-                    },
-                    "source": {
-                        "$ref": "#/components/schemas/DatasetColumnVariableSource",
-                        "description": "Dataset column source"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "variable_name",
-                    "source"
-                ],
-                "title": "PromptVariableMapping",
-                "description": "Mapping of a prompt variable to a dataset column source"
-            },
-            "PromptVariableMapping-Output": {
+            "PromptVariableMapping": {
                 "properties": {
                     "variable_name": {
                         "type": "string",
@@ -28263,6 +28018,27 @@
                 },
                 "type": "object",
                 "title": "PutModelProviderCredentials"
+            },
+            "PutModelProviderWhitelist": {
+                "properties": {
+                    "models": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Models",
+                        "description": "Models to expose for this provider. Null exposes all models. An empty list is rejected \u2014 it would hide every model."
+                    }
+                },
+                "type": "object",
+                "title": "PutModelProviderWhitelist"
             },
             "QueryFeedbackResponse": {
                 "properties": {
@@ -28770,7 +28546,7 @@
                     },
                     "eval_list": {
                         "items": {
-                            "$ref": "#/components/schemas/EvalRef-Output"
+                            "$ref": "#/components/schemas/EvalRef"
                         },
                         "type": "array",
                         "title": "Eval List",
@@ -28780,7 +28556,7 @@
                         "items": {
                             "oneOf": [
                                 {
-                                    "$ref": "#/components/schemas/SavedRagConfig-Output"
+                                    "$ref": "#/components/schemas/SavedRagConfig"
                                 },
                                 {
                                     "$ref": "#/components/schemas/UnsavedRagConfigResponse"
@@ -28789,7 +28565,7 @@
                             "discriminator": {
                                 "propertyName": "type",
                                 "mapping": {
-                                    "saved": "#/components/schemas/SavedRagConfig-Output",
+                                    "saved": "#/components/schemas/SavedRagConfig",
                                     "unsaved": "#/components/schemas/UnsavedRagConfigResponse"
                                 }
                             }
@@ -28954,7 +28730,7 @@
                         "items": {
                             "oneOf": [
                                 {
-                                    "$ref": "#/components/schemas/SavedRagConfig-Output"
+                                    "$ref": "#/components/schemas/SavedRagConfig"
                                 },
                                 {
                                     "$ref": "#/components/schemas/UnsavedRagConfigResponse"
@@ -28963,7 +28739,7 @@
                             "discriminator": {
                                 "propertyName": "type",
                                 "mapping": {
-                                    "saved": "#/components/schemas/SavedRagConfig-Output",
+                                    "saved": "#/components/schemas/SavedRagConfig",
                                     "unsaved": "#/components/schemas/UnsavedRagConfigResponse"
                                 }
                             }
@@ -29131,7 +28907,7 @@
                                 "items": {
                                     "oneOf": [
                                         {
-                                            "$ref": "#/components/schemas/SavedRagConfig-Input"
+                                            "$ref": "#/components/schemas/SavedRagConfig"
                                         },
                                         {
                                             "$ref": "#/components/schemas/UnsavedRagConfig"
@@ -29140,7 +28916,7 @@
                                     "discriminator": {
                                         "propertyName": "type",
                                         "mapping": {
-                                            "saved": "#/components/schemas/SavedRagConfig-Input",
+                                            "saved": "#/components/schemas/SavedRagConfig",
                                             "unsaved": "#/components/schemas/UnsavedRagConfig"
                                         }
                                     }
@@ -29184,7 +28960,7 @@
                         "anyOf": [
                             {
                                 "items": {
-                                    "$ref": "#/components/schemas/EvalRef-Input"
+                                    "$ref": "#/components/schemas/EvalRef"
                                 },
                                 "type": "array"
                             },
@@ -29208,7 +28984,7 @@
                                 "items": {
                                     "oneOf": [
                                         {
-                                            "$ref": "#/components/schemas/SavedRagConfig-Output"
+                                            "$ref": "#/components/schemas/SavedRagConfig"
                                         },
                                         {
                                             "$ref": "#/components/schemas/UnsavedRagConfigResponse"
@@ -29217,7 +28993,7 @@
                                     "discriminator": {
                                         "propertyName": "type",
                                         "mapping": {
-                                            "saved": "#/components/schemas/SavedRagConfig-Output",
+                                            "saved": "#/components/schemas/SavedRagConfig",
                                             "unsaved": "#/components/schemas/UnsavedRagConfigResponse"
                                         }
                                     }
@@ -29261,7 +29037,7 @@
                         "anyOf": [
                             {
                                 "items": {
-                                    "$ref": "#/components/schemas/EvalRef-Output"
+                                    "$ref": "#/components/schemas/EvalRef"
                                 },
                                 "type": "array"
                             },
@@ -30197,7 +29973,7 @@
                 "properties": {
                     "messages": {
                         "items": {
-                            "$ref": "#/components/schemas/OpenAIMessage-Output"
+                            "$ref": "#/components/schemas/OpenAIMessage"
                         },
                         "type": "array",
                         "title": "Messages",
@@ -30446,40 +30222,7 @@
                 "title": "SavedPromptRenderingRequest",
                 "description": "Request schema for rendering an unsaved agentic prompt with variables"
             },
-            "SavedRagConfig-Input": {
-                "properties": {
-                    "type": {
-                        "type": "string",
-                        "const": "saved",
-                        "title": "Type",
-                        "default": "saved"
-                    },
-                    "setting_configuration_id": {
-                        "type": "string",
-                        "format": "uuid",
-                        "title": "Setting Configuration Id",
-                        "description": "ID of the RAG search setting configuration"
-                    },
-                    "version": {
-                        "type": "integer",
-                        "title": "Version",
-                        "description": "Version of the RAG search setting configuration"
-                    },
-                    "query_column": {
-                        "$ref": "#/components/schemas/DatasetColumnVariableSource",
-                        "description": "Dataset column to use as the RAG search query"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "setting_configuration_id",
-                    "version",
-                    "query_column"
-                ],
-                "title": "SavedRagConfig",
-                "description": "Configuration for a saved RAG setting configuration version"
-            },
-            "SavedRagConfig-Output": {
+            "SavedRagConfig": {
                 "properties": {
                     "type": {
                         "type": "string",
@@ -31011,7 +30754,7 @@
             "SetNotebookStateRequest": {
                 "properties": {
                     "state": {
-                        "$ref": "#/components/schemas/NotebookState-Input",
+                        "$ref": "#/components/schemas/NotebookState",
                         "description": "New state for the notebook"
                     }
                 },
@@ -31635,7 +31378,7 @@
                     },
                     "conversation_history": {
                         "items": {
-                            "$ref": "#/components/schemas/OpenAIMessage-Input"
+                            "$ref": "#/components/schemas/OpenAIMessage"
                         },
                         "type": "array",
                         "title": "Conversation History",
@@ -31753,7 +31496,7 @@
                         "description": "Full current state of all generated rows."
                     },
                     "assistant_message": {
-                        "$ref": "#/components/schemas/OpenAIMessage-Output",
+                        "$ref": "#/components/schemas/OpenAIMessage",
                         "description": "The assistant's response message explaining what was done."
                     },
                     "rows_added": {
@@ -31986,46 +31729,7 @@
                 "title": "TaskSortField",
                 "description": "Server-side sort column for ``/api/v2/tasks/search``.\n\n``NAME``/``CREATED_AT``/``UPDATED_AT`` sort on the corresponding\n``tasks`` columns. ``LAST_ACTIVE`` sorts on the most recent trace\nactivity per task (``MAX(trace_metadata.end_time)``), which is not a\nstored task column but computed by joining the trace-metadata table."
             },
-            "TemplateVariableMapping-Input": {
-                "properties": {
-                    "variable_name": {
-                        "type": "string",
-                        "title": "Variable Name",
-                        "description": "Name of the template variable"
-                    },
-                    "source": {
-                        "oneOf": [
-                            {
-                                "$ref": "#/components/schemas/DatasetColumnVariableSource"
-                            },
-                            {
-                                "$ref": "#/components/schemas/RequestTimeParameterSource"
-                            },
-                            {
-                                "$ref": "#/components/schemas/GeneratedVariableSource"
-                            }
-                        ],
-                        "title": "Source",
-                        "description": "Source of the variable value",
-                        "discriminator": {
-                            "propertyName": "type",
-                            "mapping": {
-                                "dataset_column": "#/components/schemas/DatasetColumnVariableSource",
-                                "generated": "#/components/schemas/GeneratedVariableSource",
-                                "request_time_parameter": "#/components/schemas/RequestTimeParameterSource"
-                            }
-                        }
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "variable_name",
-                    "source"
-                ],
-                "title": "TemplateVariableMapping",
-                "description": "Mapping of a template variable to its source"
-            },
-            "TemplateVariableMapping-Output": {
+            "TemplateVariableMapping": {
                 "properties": {
                     "variable_name": {
                         "type": "string",
@@ -32452,44 +32156,7 @@
                 ],
                 "title": "ToolClassEnum"
             },
-            "ToolFunction-Input": {
-                "properties": {
-                    "name": {
-                        "type": "string",
-                        "title": "Name",
-                        "description": "The name of the tool/function"
-                    },
-                    "description": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Description",
-                        "description": "Description of what the tool does"
-                    },
-                    "parameters": {
-                        "anyOf": [
-                            {
-                                "$ref": "#/components/schemas/JsonSchema"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "description": "The function's parameter schema"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "name"
-                ],
-                "title": "ToolFunction"
-            },
-            "ToolFunction-Output": {
+            "ToolFunction": {
                 "properties": {
                     "name": {
                         "type": "string",
@@ -33869,7 +33536,7 @@
                     },
                     "messages": {
                         "items": {
-                            "$ref": "#/components/schemas/OpenAIMessage-Input"
+                            "$ref": "#/components/schemas/OpenAIMessage"
                         },
                         "type": "array",
                         "title": "Messages",
@@ -33904,7 +33571,7 @@
                 "properties": {
                     "messages": {
                         "items": {
-                            "$ref": "#/components/schemas/OpenAIMessage-Input"
+                            "$ref": "#/components/schemas/OpenAIMessage"
                         },
                         "type": "array",
                         "title": "Messages",

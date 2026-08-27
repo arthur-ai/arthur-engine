@@ -1,5 +1,10 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": [
+    "Renovate updates pyproject.toml and regenerates uv.lock as a separate artifact step. When that regeneration fails — almost always because the new version violates a transitive constraint of another pinned dependency — Renovate opens the PR with the manifest edit ALONE, and does not reliably say so in the PR body (#2134 carried no artifact warning at all).",
+    "There is no configuration option that makes Renovate fail closed instead: that is upstream behaviour, not something this file can switch off. The backstop is therefore CI — .github/workflows/arthur-engine-workflow.yml runs check-dependency-automation, which fails any PR whose uv.lock disagrees with its pyproject.toml.",
+    "What this file CAN do is stop Renovate re-proposing updates already known to be unsatisfiable. See the allowedVersions rules below; each names the dependency imposing the ceiling and the condition for lifting it."
+  ],
   "extends": ["config:recommended"],
   "minimumReleaseAge": "3 days",
   "rebaseWhen": "conflicted",
@@ -40,9 +45,15 @@
   ],
   "packageRules": [
     {
-      "matchUpdateTypes": ["minor", "patch"],
+      "description": "Auto-merge low-risk update types. lockFileMaintenance (nightly lockfile refresh) and replacement (curated drop-in package swaps from replacements:all) are gated by CI + the auto-fixer like minor/patch, so they merge without a human reviewer instead of sitting open.",
+      "matchUpdateTypes": ["minor", "patch", "lockFileMaintenance", "replacement"],
       "automerge": true,
       "autoApprove": true
+    },
+    {
+      "description": "Label major updates so the auto-fixer can flag them for human review instead of self-approving.",
+      "matchUpdateTypes": ["major"],
+      "addLabels": ["major"]
     },
     {
       "matchManagers": ["npm"],
@@ -55,8 +66,8 @@
       "groupName": "python minor and patch"
     },
     {
-      "description": "First-party Arthur packages are internal, so they skip the 3-day release-age soak that guards against third-party supply-chain risk. Mirrors tool.uv exclude-newer-package in the pyproject.toml files.",
-      "matchPackageNames": ["arthur-common", "arthur-client"],
+      "description": "First-party Arthur packages are internal, so they skip the 3-day release-age soak that guards against third-party supply-chain risk. Mirrors tool.uv exclude-newer-package in the pyproject.toml files and npmPreapprovedPackages in genai-engine/ui/.yarnrc.yml.",
+      "matchPackageNames": ["arthur-common", "arthur-client", "@arthur/**"],
       "minimumReleaseAge": "0 days"
     },
     {
@@ -65,6 +76,19 @@
       "enabled": false
     },
     {
+      "description": "Cap transformers < 5.14.0: gliner (load-bearing for PII/NER) pins transformers<5.14.0, and gliner 0.2.28 is the latest release, so transformers 5.14.x is unsatisfiable. Remove this once gliner relaxes its ceiling.",
+      "matchManagers": ["pep621"],
+      "matchPackageNames": ["transformers"],
+      "allowedVersions": "<5.14.0"
+    },
+    {
+      "description": "fsspec and its filesystem backends are lockstep (gcsfs/s3fs/adlfs each pin a matching fsspec calendar version), so they must bump together. Splitting them into separate PRs makes each individually unsatisfiable.",
+      "matchManagers": ["pep621"],
+      "groupName": "fsspec filesystems",
+      "matchPackageNames": ["fsspec", "gcsfs", "s3fs", "adlfs"]
+    },
+    {
+      "description": "litellm pins openai to a narrow range (openai>=2.20.0,<3.0.0 as of litellm 1.96.2), so an openai bump that leaves litellm behind cannot resolve. Grouping them means the family moves together or not at all, instead of Renovate proposing a half-bump that no lockfile can satisfy. arthur-common is deliberately NOT in this group even though it pins litellm exactly: it is first-party and updates several times a week, so coupling it here would stall those. If a litellm bump ever conflicts with the pinned arthur-common, check-dependency-automation catches it.",
       "matchManagers": ["pep621"],
       "groupName": "langchain + openai",
       "matchPackageNames": [
@@ -74,8 +98,39 @@
         "langchain-openai",
         "langchain-text-splitters",
         "langsmith",
+        "litellm",
         "openai"
       ]
+    },
+    {
+      "description": "Cap openai < 3.0.0: litellm 1.96.2 (the pinned version, itself pinned by arthur-common) requires openai>=2.20.0,<3.0.0, so openai 3.x is unsatisfiable in genai-engine no matter what else moves. Renovate cannot see that transitive ceiling and re-proposed it as PR #2134, whose lockfile step then failed — which is how a manifest-only bump reached dev. Lift this cap once litellm accepts openai 3.x (openai 3.0.0's breaking change is the move to HTTPX2).",
+      "matchManagers": ["pep621"],
+      "matchPackageNames": ["openai"],
+      "allowedVersions": "<3.0.0"
+    },
+    {
+      "description": "gliner 0.2.28 (latest release) requires transformers>=4.51.3,<5.14.0, so transformers 5.14.x makes genai-engine unresolvable. Raise or drop this cap once a gliner release widens its transformers ceiling.",
+      "matchManagers": ["pep621"],
+      "matchPackageNames": ["transformers"],
+      "allowedVersions": "<5.14.0"
+    },
+    {
+      "description": "opentelemetry-api 1.39.1 (via opentelemetry-semantic-conventions 0.60b1) requires importlib-metadata>=6.0,<8.8.0, so importlib-metadata 8.8.x+ makes genai-engine unresolvable. Raise or drop this cap once the pinned OpenTelemetry stack widens its importlib-metadata ceiling.",
+      "matchManagers": ["pep621"],
+      "matchPackageNames": ["importlib-metadata"],
+      "allowedVersions": "<8.8.0"
+    },
+    {
+      "description": "Cap typescript < 6.1.0: typescript-eslint (a direct devDependency of genai-engine/ui) declares peer typescript '>=4.8.4 <6.1.0' and hard-throws at ESLint config load on any TS >= 7 ('typescript-eslint does not support TS 7.0'), so yarn lint cannot run at all. typescript 7.x is the native port and no longer exports the JS compiler API that @typescript-eslint/typescript-estree is built on, so this is not a version range a patch release widens: no published typescript-eslint (latest 8.68.0 or canary) admits TS 7.x, and upstream typescript-eslint#10940 targets TS >= 7.1, skipping 7.0 entirely. <6.1.0 mirrors the upstream peer ceiling exactly and still allows the typescript 6.0.x major, which typescript-eslint does support. Lift this cap once a typescript-eslint release widens its typescript peer range past 7.0.",
+      "matchManagers": ["npm"],
+      "matchPackageNames": ["typescript"],
+      "allowedVersions": "<6.1.0"
+    },
+    {
+      "description": "Cap @tanstack/react-table < 9: material-react-table 3.2.1 (the latest release, 2025-03-01) hard-depends on @tanstack/react-table 8.20.6 and its type declarations are written against v8, so v9 breaks every MRT table in genai-engine/ui — which is most of them. PR #2118 showed the cost: migrating the app's own tables onto v9's upstream-@deprecated /legacy shim, dropping the tsconfig paths and vite dedupe entries that pin MRT to one copy, and shipping both table cores in the bundle, for no functional gain. Lift this cap once material-react-table supports v9, or once the UI migrates off material-react-table.",
+      "matchManagers": ["npm"],
+      "matchPackageNames": ["@tanstack/react-table"],
+      "allowedVersions": "<9"
     },
     {
       "matchManagers": ["dockerfile", "docker-compose"],
@@ -88,13 +143,17 @@
       "allowedVersions": "<17"
     },
     {
-      "matchManagers": ["npm"],
-      "reviewers": ["TheLukaszNs-Blazity", "xV3rt", "martin-arthur-ai"],
-      "reviewersSampleSize": 1
-    },
-    {
-      "matchManagers": ["pep621"],
-      "reviewers": ["notthattal", "videetparekh", "mcgrawia"],
+      "description": "Reviewer routing. Everyone in this pool is treated as full-stack and can take any Renovate PR, so there is one list covering every manager and update type rather than the old frontend/backend/infra split — no PR waits on one specific person being around. reviewersSampleSize 1 makes exactly one of them the owner of each PR, including majors: a single name on a PR is a person who knows it is theirs, whereas two names is a PR nobody owns.",
+      "matchManagers": ["npm", "pep621", "dockerfile", "docker-compose", "custom.regex"],
+      "reviewers": [
+        "xV3rt",
+        "notthattal",
+        "jan-lewandoski-blazity",
+        "ntatsumi",
+        "jdbarthur",
+        "kc961163",
+        "TomLisankie"
+      ],
       "reviewersSampleSize": 1
     }
   ]

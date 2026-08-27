@@ -2399,9 +2399,9 @@ class TraceQuerySchema(BaseModel):
         None,
         description="Filter by trace annotation type (i.e. 'human' or 'continuous_eval').",
     )
-    continuous_eval_run_status: Optional[ContinuousEvalRunStatus] = Field(
+    continuous_eval_run_status: Optional[list[ContinuousEvalRunStatus]] = Field(
         None,
-        description="Filter by trace annotation run status (e.g. 'passed', 'failed', etc.).",
+        description="Continuous eval run statuses to filter on (e.g. 'passed', 'failed', etc.).",
     )
     continuous_eval_name: Optional[str] = Field(
         None,
@@ -2443,6 +2443,14 @@ class TraceQuerySchema(BaseModel):
                     filters.append(FloatRangeFilter(value=value, operator=op))
             return filters if filters else None
 
+        # ExtendedTraceQueryRequest overrides this field as a list; coerce a
+        # single value from a plain TraceQueryRequest for backward compatibility.
+        continuous_eval_run_status: Optional[list[ContinuousEvalRunStatus]]
+        if isinstance(request.continuous_eval_run_status, ContinuousEvalRunStatus):
+            continuous_eval_run_status = [request.continuous_eval_run_status]
+        else:
+            continuous_eval_run_status = request.continuous_eval_run_status
+
         query_relevance = resolve_filters("query_relevance")
         response_relevance = resolve_filters("response_relevance")
         trace_duration = resolve_filters("trace_duration")
@@ -2460,7 +2468,7 @@ class TraceQuerySchema(BaseModel):
             span_types=request.span_types,
             annotation_score=request.annotation_score,
             annotation_type=request.annotation_type,
-            continuous_eval_run_status=request.continuous_eval_run_status,
+            continuous_eval_run_status=continuous_eval_run_status,
             continuous_eval_name=request.continuous_eval_name,
             tool_selection=request.tool_selection,
             tool_usage=request.tool_usage,

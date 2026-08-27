@@ -34,8 +34,8 @@ export const ContinuousEvalWithTracePage = ({ traceId }: Props) => {
   const api = useApi();
   const navigate = useNavigate();
 
+  // eslint-disable-next-line @tanstack/query/exhaustive-deps
   const { data: trace } = useSuspenseQuery({
-    // eslint-disable-next-line @tanstack/query/exhaustive-deps
     queryKey: queryKeys.traces.byId(traceId),
     queryFn: () => getTrace(api!, { traceId }),
   });

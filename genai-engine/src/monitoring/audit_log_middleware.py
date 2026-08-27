@@ -14,7 +14,6 @@ from arthur_common.models.audit_log_schemas import (
 )
 from arthur_common.models.enums import HTTPRequestMethod
 from fastapi import FastAPI
-from fastapi.routing import APIRoute
 from starlette.concurrency import iterate_in_threadpool
 from starlette.middleware.base import (
     BaseHTTPMiddleware,
@@ -32,6 +31,7 @@ from monitoring.ai_activity import (
     get_recorded_invocations,
 )
 from schemas.audit_log_schemas import ExtendedAuditLog, RouteInfo
+from utils.routes import iter_api_routes
 
 logger = logging.getLogger(__name__)
 
@@ -143,8 +143,8 @@ def build_route_response_model_map(
     """
     result: dict[str, RouteInfo] = {}
 
-    for route in app.routes:
-        if not isinstance(route, APIRoute) or not route.response_model:
+    for route in iter_api_routes(app):
+        if not route.response_model:
             continue
 
         model = route.response_model

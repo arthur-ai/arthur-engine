@@ -42,8 +42,8 @@ export const TraceDrawerContent = ({ id }: Props) => {
   const navigate = useNavigate();
   const paginationContext = usePaginationContext((state) => state.context);
 
+  // eslint-disable-next-line @tanstack/query/exhaustive-deps
   const { data: trace } = useSuspenseQuery({
-    // eslint-disable-next-line @tanstack/query/exhaustive-deps
     queryKey: queryKeys.traces.byId(id),
     queryFn: () => getTrace(api!, { traceId: id! }),
   });

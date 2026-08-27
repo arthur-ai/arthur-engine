@@ -469,6 +469,36 @@ def test_get_trace_requests_continuous_eval_filtering(
         assert len(data.traces) == 2
         assert sum(len(trace.annotations) for trace in data.traces) == 4
 
+        # Test filtering on multiple continuous eval run statuses returns traces
+        # matching any of the provided statuses
+        status_code, data = client.trace_api_list_traces_metadata(
+            task_ids=["api_task1"],
+            continuous_eval_run_status=[
+                ContinuousEvalRunStatus.PASSED.value,
+                ContinuousEvalRunStatus.FAILED.value,
+            ],
+        )
+        assert status_code == 200
+        assert data.count == 2
+        assert len(data.traces) == 2
+        assert {trace.trace_id for trace in data.traces} == {
+            "api_trace1",
+            "api_trace2",
+        }
+
+        # A status with no matching annotations does not widen the result set
+        status_code, data = client.trace_api_list_traces_metadata(
+            task_ids=["api_task1"],
+            continuous_eval_run_status=[
+                ContinuousEvalRunStatus.PASSED.value,
+                ContinuousEvalRunStatus.SKIPPED.value,
+            ],
+        )
+        assert status_code == 200
+        assert data.count == 1
+        assert len(data.traces) == 1
+        assert data.traces[0].trace_id == "api_trace1"
+
         # Test filtering on continuous eval name
         status_code, data = client.trace_api_list_traces_metadata(
             task_ids=["api_task1"],

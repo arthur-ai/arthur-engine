@@ -20,8 +20,8 @@ interface RagCollectionsResponse {
 export function useRagCollections(providerId: string | undefined): UseRagCollectionsResult {
   const api = useApi();
 
+  // eslint-disable-next-line @tanstack/query/exhaustive-deps
   const queryResult: UseQueryResult<RagCollectionsResponse, Error> = useQuery<RagCollectionsResponse, Error>({
-    // eslint-disable-next-line @tanstack/query/exhaustive-deps
     queryKey: queryKeys.ragCollections.list(providerId || ""),
     queryFn: async () => {
       if (!providerId || !api) {

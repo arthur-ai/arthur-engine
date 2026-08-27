@@ -23,10 +23,10 @@ pip install "arthur-observability-sdk[anthropic]"
 
 ## How-to guides
 
-Full guides are in [`docs/`](docs/):
+Full guides are in [`docs/`](../docs/):
 
-- **[Getting started](docs/getting-started.md)** — initialisation, session/user context, framework instrumentation, shutdown
-- **[Prompt management](docs/prompt-management.md)** — fetching and rendering versioned prompts, PROMPT span attributes
+- **[Getting started](../docs/getting-started.md)** — initialisation, session/user context, framework instrumentation, shutdown
+- **[Prompt management](../docs/prompt-management.md)** — fetching and rendering versioned prompts, PROMPT span attributes
 
 ### Quick start
 
@@ -69,7 +69,7 @@ Pass `--extras` to install any of these alongside the SDK.
 
 | Extra | Framework | Method |
 |-------|-----------|--------|
-| `agent-framework` | Agent Framework | `instrument_agent_framework()` |
+| `ag2` | AG2 | `instrument_ag2()` |
 | `agentminds` | AgentMinds | `instrument_agentminds()` |
 | `agentspec` | AgentSpec | `instrument_agentspec()` |
 | `agno` | Agno | `instrument_agno()` |
@@ -79,7 +79,7 @@ Pass `--extras` to install any of these alongside the SDK.
 | `baml` | BAML | `instrument_baml()` |
 | `bedrock` | AWS Bedrock | `instrument_bedrock()` |
 | `beeai` | BeeAI | `instrument_beeai()` |
-| `codex` | OpenAI Codex | `instrument_codex()` |
+| `cohere` | Cohere | `instrument_cohere()` |
 | `crewai` | CrewAI | `instrument_crewai()` |
 | `dspy` | DSPy | `instrument_dspy()` |
 | `google-adk` | Google ADK | `instrument_google_adk()` |
@@ -93,16 +93,13 @@ Pass `--extras` to install any of these alongside the SDK.
 | `llama-index` | LlamaIndex | `instrument_llama_index()` |
 | `mcp` | MCP | `instrument_mcp()` |
 | `mistralai` | Mistral AI | `instrument_mistralai()` |
-| `monkai-agent` | Monkai Agent | `instrument_monkai_agent()` |
+| `ollama` | Ollama | `instrument_ollama()` |
 | `openai` | OpenAI | `instrument_openai()` |
 | `openai-agents` | OpenAI Agents | `instrument_openai_agents()` |
-| `openlit` | OpenLIT | `instrument_openlit()` |
-| `openllmetry` | OpenLLMetry | `instrument_openllmetry()` |
 | `pipecat` | Pipecat | `instrument_pipecat()` |
 | `portkey` | Portkey | `instrument_portkey()` |
-| `pydantic-ai` | Pydantic AI | `instrument_pydantic_ai()` |
 | `smolagents` | SmolAgents | `instrument_smolagents()` |
-| `strands-agents` | Strands Agents | `instrument_strands_agents()` |
+| `together` | Together AI | `instrument_together()` |
 | `vertexai` | Vertex AI | `instrument_vertexai()` |
 | `claude-agent-sdk` | Claude Agent SDK | `instrument_claude_agent_sdk()` |
 

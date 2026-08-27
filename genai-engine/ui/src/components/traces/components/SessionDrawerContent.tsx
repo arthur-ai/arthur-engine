@@ -15,8 +15,8 @@ export const SessionDrawerContent = ({ id }: Props) => {
   const api = useApi()!;
   const queryClient = useQueryClient();
 
+  // eslint-disable-next-line @tanstack/query/exhaustive-deps
   const { data: session } = useSuspenseQuery({
-    // eslint-disable-next-line @tanstack/query/exhaustive-deps
     queryKey: queryKeys.sessions.byId(id),
     queryFn: () => getSession(api, { sessionId: id }),
   });

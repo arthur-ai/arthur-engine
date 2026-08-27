@@ -36,8 +36,8 @@ export function useModelProviders() {
 export function useAvailableModels(enabledProviders: ModelProvider[]) {
   const api = useApi();
 
+  // eslint-disable-next-line @tanstack/query/exhaustive-deps
   const { data, error, isLoading } = useQuery<Map<ModelProvider, string[]>>({
-    // eslint-disable-next-line @tanstack/query/exhaustive-deps
     queryKey: queryKeys.providers.availableModels(enabledProviders),
     queryFn: async () => {
       if (!api) throw new Error("API client not initialized");
