@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { CreateExperimentModalFormValues } from "./form";
 
@@ -251,8 +251,14 @@ vi.mock("@/features/task-tour/tourActions", () => ({
 }));
 
 describe("CreateExperimentModal task tour instrumentation", () => {
-  beforeEach(() => {
+  // Unmount after each test, not before the next one: the last test would
+  // otherwise leave the Dialog mounted through vitest's jsdom teardown, and its
+  // still-pending MUI transition callbacks then fire against a deleted `window`.
+  afterEach(() => {
     cleanup();
+  });
+
+  beforeEach(() => {
     vi.clearAllMocks();
     formState.values = null;
     createMutationState.options = null;
