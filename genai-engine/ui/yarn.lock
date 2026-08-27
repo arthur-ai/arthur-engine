@@ -7045,10 +7045,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"papaparse@npm:5.6.0":
-  version: 5.6.0
-  resolution: "papaparse@npm:5.6.0"
-  checksum: 10c0/e7f338b86e4a37e828a75a3d5305aaa5132a460fa13cecc2157bfd8d3664a31fa86a52f012f945401180496d62d10c6dbd870b92a2b9abf6cf671793e406e670
+"papaparse@npm:5.7.0":
+  version: 5.7.0
+  resolution: "papaparse@npm:5.7.0"
+  checksum: 10c0/aeea2122ffa7abf33206ab9465e1adcb678ca0e9b08fbd3cea53bf6dc07d5903e69f387dc4dde2498e2478130ba3db79d1fd3956bf638c00be802f0d275e006d
   languageName: node
   linkType: hard
 
@@ -8513,7 +8513,7 @@ __metadata:
     notistack: "npm:3.0.2"
     nuqs: "npm:2.10.0"
     ohash: "npm:2.0.12"
-    papaparse: "npm:5.6.0"
+    papaparse: "npm:5.7.0"
     prettier: "npm:3.9.6"
     prism-react-renderer: "npm:2.4.1"
     react: "npm:19.2.8"
