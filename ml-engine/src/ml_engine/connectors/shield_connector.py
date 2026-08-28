@@ -304,25 +304,26 @@ class ShieldBaseConnector(Connector, ABC):
                 page=page,
             )
             for task in resp.tasks:
-                model_problem_type = (
-                    ModelProblemType.AGENTIC_TRACE
-                    if task.is_agentic
-                    else ModelProblemType.ARTHUR_SHIELD
-                )
-                datasets.available_datasets.append(
-                    PutAvailableDataset(
-                        name=task.name,
-                        dataset_locator=DatasetLocator(
-                            fields=[
-                                DatasetLocatorField(
-                                    key=SHIELD_DATASET_TASK_ID_FIELD,
-                                    value=task.id,
-                                ),
-                            ],
+                # Post-consolidation every task exposes both datasets:
+                # trace/evals + inferences/guardrails, same task_id locator.
+                for name_suffix, model_problem_type in (
+                    ("traces", ModelProblemType.AGENTIC_TRACE),
+                    ("guardrails", ModelProblemType.ARTHUR_SHIELD),
+                ):
+                    datasets.available_datasets.append(
+                        PutAvailableDataset(
+                            name=f"{task.name} - {name_suffix}",
+                            dataset_locator=DatasetLocator(
+                                fields=[
+                                    DatasetLocatorField(
+                                        key=SHIELD_DATASET_TASK_ID_FIELD,
+                                        value=task.id,
+                                    ),
+                                ],
+                            ),
+                            model_problem_type=model_problem_type,
                         ),
-                        model_problem_type=model_problem_type,
-                    ),
-                )
+                    )
 
             if len(resp.tasks) != page_size:
                 break
@@ -333,7 +334,6 @@ class ShieldBaseConnector(Connector, ABC):
     def create_task(
         self,
         name: str,
-        is_agentic: bool = False,
         agent_metadata: Optional[AgentMetadata] = None,
     ) -> TaskResponse:
         # Bridge arthur_common AgentMetadata to the genai_client generated type
@@ -344,7 +344,6 @@ class ShieldBaseConnector(Connector, ABC):
         )
         new_task_req = NewTaskRequest(
             name=name,
-            is_agentic=is_agentic,
             agent_metadata=genai_agent_metadata,
         )
         resp = self._tasks_client.create_task_api_v2_tasks_post_with_http_info(
