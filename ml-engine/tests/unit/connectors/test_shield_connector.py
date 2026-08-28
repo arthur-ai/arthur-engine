@@ -25,6 +25,7 @@ from arthur_common.models.connectors import ConnectorPaginationOptions
 from arthur_common.models.enums import ModelProblemType
 from arthur_common.models.request_schemas import NewRuleRequest
 from pydantic import ValidationError
+from unittest.mock import Mock
 
 from config.config import Config
 from connectors.shield_connector import (
@@ -849,7 +850,6 @@ def test_shield_read_raises_for_static_dataset():
 def test_list_datasets_emits_both_datasets_per_task():
     """Post-consolidation every task exposes a trace/evals dataset
     AND a guardrails dataset, regardless of the deprecated is_agentic flag."""
-    from unittest.mock import Mock
 
     spec = ConnectorSpec.model_validate(mock_shield_connector_spec(MOCK_SHIELD_HOST))
     conn = ShieldConnector(spec, logger)
