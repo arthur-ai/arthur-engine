@@ -53,8 +53,12 @@ class AzureBlobConnector(BucketBasedConnector):
     def _construct_adlfs_with_auth(
         config: _AzureConnectorConfigFields,
     ) -> AzureBlobFileSystem:
+        # skip_instance_cache: see gcs_connector.py
         if config.connection_string:
-            return AzureBlobFileSystem(connection_string=config.connection_string)
+            return AzureBlobFileSystem(
+                connection_string=config.connection_string,
+                skip_instance_cache=True,
+            )
         if config.tenant_id and config.client_id and config.client_secret:
             if not config.account_name:
                 raise ValueError("account_name is required for service principal auth")
@@ -63,6 +67,7 @@ class AzureBlobConnector(BucketBasedConnector):
                 tenant_id=config.tenant_id,
                 client_id=config.client_id,
                 client_secret=config.client_secret,
+                skip_instance_cache=True,
             )
         if config.sas_token:
             if not config.account_name:
@@ -70,11 +75,13 @@ class AzureBlobConnector(BucketBasedConnector):
             return AzureBlobFileSystem(
                 account_name=config.account_name,
                 sas_token=config.sas_token,
+                skip_instance_cache=True,
             )
         if config.account_name and config.account_key:
             return AzureBlobFileSystem(
                 account_name=config.account_name,
                 account_key=config.account_key,
+                skip_instance_cache=True,
             )
         raise ValueError(
             "At least one auth method is required: connection_string, "

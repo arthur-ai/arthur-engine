@@ -758,3 +758,10 @@ def test_csv_various_formats(
     # Run format-specific validation checks
     for check_name, check_func in validation_checks.items():
         assert check_func(records), f"Validation failed: {check_name}"
+
+
+def test_s3_connector_does_not_share_filesystem_across_connectors():
+    spec = ConnectorSpec.model_validate(MOCK_S3_CONNECTOR_SPEC)
+    first, second = S3Connector(spec, logger), S3Connector(spec, logger)
+    assert first.file_system is not second.file_system
+    assert not first.file_system.dircache
