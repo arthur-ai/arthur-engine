@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.824"
+        "version": "2.1.829"
     },
     "paths": {
         "/api/v2/engine-config": {
@@ -26287,6 +26287,12 @@
                         "title": "Name",
                         "description": "Name of the task."
                     },
+                    "is_agentic": {
+                        "type": "boolean",
+                        "title": "Is Agentic",
+                        "description": "Whether the task is agentic or not.",
+                        "default": false
+                    },
                     "agent_metadata": {
                         "anyOf": [
                             {
@@ -30444,6 +30450,18 @@
                         "title": "Task Name",
                         "description": "Task name substring search string."
                     },
+                    "is_agentic": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Is Agentic",
+                        "description": "Filter tasks by agentic status. If not provided, returns both agentic and non-agentic tasks."
+                    },
                     "include_archived": {
                         "anyOf": [
                             {
@@ -31614,8 +31632,7 @@
                             }
                         ],
                         "title": "Is Agentic",
-                        "description": "Deprecated \u2014 every task is agentic post-consolidation; genai-engine returns True. Will be removed in a future release (UP-4619).",
-                        "deprecated": true
+                        "description": "Whether the task is agentic or not"
                     },
                     "is_system_task": {
                         "anyOf": [

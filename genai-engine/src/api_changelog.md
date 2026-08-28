@@ -2,6 +2,10 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 08/28/2026
+- **CHANGE** for **URL**: /api/v2/tasks  added the new optional request property 'is_agentic'
+- **CHANGE** for **URL**: /api/v2/tasks/search  added the new optional request property 'is_agentic'
+
 # 08/07/2026
 - **CHANGE** for **URL**: /api/v1/model_providers/{provider}/model_whitelist  endpoint added
 - **CHANGE** for **URL**: /api/v1/model_providers/{provider}/model_whitelist  endpoint added
