@@ -401,10 +401,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@arizeai/openinference-semantic-conventions@npm:2.7.0":
-  version: 2.7.0
-  resolution: "@arizeai/openinference-semantic-conventions@npm:2.7.0"
-  checksum: 10c0/1a9dfbcb2f91cec6a0b567fe648dbb3381abb95dab8b68ee6a79dd14739d3b99dd3ba482f5be8e46309bd4d5f2c2021dc7d9f6fd37f7b418ccc80b6e4591156e
+"@arizeai/openinference-semantic-conventions@npm:2.8.0":
+  version: 2.8.0
+  resolution: "@arizeai/openinference-semantic-conventions@npm:2.8.0"
+  checksum: 10c0/7601417cb3d896eb4af081652e1858e6179c1a211a6b710a3f34a55cdb1b211dccca310b692ee3b6be041f72d73d01254c830e93eec25420a4b422485ad93944
   languageName: node
   linkType: hard
 
@@ -8534,7 +8534,7 @@ __metadata:
     "@amplitude/analytics-browser": "npm:2.45.7"
     "@amplitude/experiment-js-client": "npm:^1.21.1"
     "@amplitude/plugin-session-replay-browser": "npm:^1.33.6"
-    "@arizeai/openinference-semantic-conventions": "npm:2.7.0"
+    "@arizeai/openinference-semantic-conventions": "npm:2.8.0"
     "@arthur/shared-components": "npm:^3.23.3"
     "@base-ui/react": "npm:1.7.0"
     "@dnd-kit/core": "npm:6.3.1"
