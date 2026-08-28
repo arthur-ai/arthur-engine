@@ -503,6 +503,11 @@
             ],
             "description": "Allow the admin key general API access (Must be enabled for the Arthur Platform. Can be disabled for the guardrails-only standalone deployment.)"
         },
+        "genaiEngineMaxApiKeys": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "(Optional) Maximum number of active API keys GenAI Engine will issue. Leave unset to use the application default (100)."
+        },
         "modelRepositoryURL": {
             "type": "string",
             "description": "(Optional) Custom URL for the model repository (e.g. a private Hugging Face mirror). If not specified, the default Hugging Face endpoint will be used."
