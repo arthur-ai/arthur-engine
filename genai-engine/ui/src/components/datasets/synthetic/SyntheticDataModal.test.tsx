@@ -1,5 +1,5 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { SyntheticDataModal } from "./SyntheticDataModal";
 
@@ -62,6 +62,10 @@ function renderModal(open = true) {
 describe("SyntheticDataModal task tour target", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    cleanup();
   });
 
   it("refreshes the tour target and marks the dialog surface when opened", async () => {
