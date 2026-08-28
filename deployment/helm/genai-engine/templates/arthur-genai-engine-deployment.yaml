@@ -177,6 +177,10 @@ spec:
               value: {{ .Values.genaiEngineAllowAdminKeyGeneralAccess }}
             - name: TRANSFER_ENCODING_MIDDLEWARE_ENABLED
               value: {{ .Values.transferEncodingMiddlewareEnabled }}
+            {{- if .Values.genaiEngineMaxApiKeys }}
+            - name: MAX_API_KEYS
+              value: {{ .Values.genaiEngineMaxApiKeys | quote }}
+            {{- end }}
             {{- if .Values.modelRepositoryURL }}
             - name: MODEL_REPOSITORY_URL
               value: {{ .Values.modelRepositoryURL | quote }}
