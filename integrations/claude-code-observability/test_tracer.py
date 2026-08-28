@@ -1256,6 +1256,77 @@ class TestHandleStop:
         assert len(llm_spans) == 1
         assert llm_spans[0]["attributes"]["output.value"] == "Result"
 
+    def test_stop_reads_agent_sdk_execution_file_without_user_event(
+        self,
+        tmp_path,
+        monkeypatch,
+    ):
+        monkeypatch.setattr(tracer, "STATE_DIR", tmp_path / "tracer")
+        (tmp_path / "tracer").mkdir()
+        captured = []
+        monkeypatch.setattr(
+            tracer,
+            "_build_and_export_spans",
+            lambda **kw: captured.extend(kw["span_records"]),
+        )
+
+        execution_file = tmp_path / "claude-execution-output.json"
+        assistant = llm_entry("Autofix complete")
+        assistant["message"]["id"] = "msg_sdk_1"
+        assistant.pop("timestamp")
+        execution_file.write_text(
+            json.dumps(
+                [
+                    {"type": "system", "subtype": "init", "session_id": "sdk1"},
+                    assistant,
+                    {"type": "result", "subtype": "success", "result": "done"},
+                ],
+            ),
+        )
+        stale_hook_transcript = tmp_path / "hook-transcript.jsonl"
+        _make_transcript(
+            [human_entry("Fix the failed Renovate PR")],
+            stale_hook_transcript,
+        )
+        state = {
+            "session_id": "sdk1",
+            "username": "renovate-autofix-pr-2170",
+            "transcript_path": str(stale_hook_transcript),
+            "current_trace": {
+                "trace_id": "1" * 32,
+                "root_span_id": "2" * 16,
+                "turn_start_ns": 1_000_000_000,
+                "turn_number": 1,
+                "human_count_at_start": 0,
+                "prompt_preview": "Fix the failed Renovate PR",
+                "emitted_llm_span_count": 0,
+            },
+        }
+        tracer._save_state("sdk1", state)
+
+        tracer.handle_stop(
+            {"execution_file": str(execution_file)},
+            self.CONFIG,
+        )
+
+        llm_spans = [
+            s
+            for s in captured
+            if s.get("attributes", {}).get("openinference.span.kind") == "LLM"
+        ]
+        chain_spans = [
+            s
+            for s in captured
+            if s.get("attributes", {}).get("openinference.span.kind") == "CHAIN"
+        ]
+        assert len(llm_spans) == 1
+        assert llm_spans[0]["attributes"]["output.value"] == "Autofix complete"
+        assert llm_spans[0]["attributes"]["llm.input_messages.0.message.content"] == (
+            "Fix the failed Renovate PR"
+        )
+        assert chain_spans[0]["attributes"]["output.value"] == "Autofix complete"
+        assert chain_spans[0]["end_ns"] >= max(span["end_ns"] for span in llm_spans)
+
 
 # ---------------------------------------------------------------------------
 # handle_user_prompt_submit — new trace creation and turn completion
