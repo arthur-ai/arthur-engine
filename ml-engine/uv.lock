@@ -8,7 +8,7 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "2026-08-26T10:06:01.788358624Z"
+exclude-newer = "0001-01-01T00:00:00Z" # This has no effect and is included for backwards compatibility when using relative exclude-newer values.
 exclude-newer-span = "P3D"
 
 [options.exclude-newer-package]
@@ -1245,11 +1245,19 @@ wheels = [
 
 [[package]]
 name = "isort"
-version = "8.0.1"
+version = "9.0.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/ef/7c/ec4ab396d31b3b395e2e999c8f46dec78c5e29209fac49d1f4dace04041d/isort-8.0.1.tar.gz", hash = "sha256:171ac4ff559cdc060bcfff550bc8404a486fee0caab245679c2abe7cb253c78d", size = 769592, upload-time = "2026-02-28T10:08:20.685Z" }
+dependencies = [
+    { name = "mypy-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/32/76/582717fd6f1fb012e224d3bd8b55976483ed8e6ac44721f3831435fcd7e3/isort-9.0.0.tar.gz", hash = "sha256:268b1ee5eb3a32269b8f876367e57a83ed25040c3c6538e6f2e7388ac6101aec", size = 665294, upload-time = "2026-08-26T21:52:22.39Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/3e/95/c7c34aa53c16353c56d0b802fba48d5f5caa2cdee7958acbcb795c830416/isort-8.0.1-py3-none-any.whl", hash = "sha256:28b89bc70f751b559aeca209e6120393d43fbe2490de0559662be7a9787e3d75", size = 89733, upload-time = "2026-02-28T10:08:19.466Z" },
+    { url = "https://files.pythonhosted.org/packages/0a/df/a08716082f524344c43cc6c421924a0ad2d583de3b9e414be2ccc744d357/isort-9.0.0-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:c45aa98fa3f198ce655a1e656f2bf4a3e571d768580717e9e0610b12bdae8368", size = 1023659, upload-time = "2026-08-26T21:51:44.405Z" },
+    { url = "https://files.pythonhosted.org/packages/51/ed/524d76d5563a6e742e74e0bbf1a74a435729b3e4ac13e600803af7634c1f/isort-9.0.0-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:36c6b9a845eef5b3495ab1bdba486e4cf5d9b522cd544a13c34f58e14d3f2b49", size = 1653488, upload-time = "2026-08-26T21:51:45.901Z" },
+    { url = "https://files.pythonhosted.org/packages/d7/55/ae342235146aa6de7fd93cee22dcaa3a4440cbf84cd556662bc2d7ccde08/isort-9.0.0-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:d87ee271eaa6bdf8178485f0ffa6decaaefeae2c63c5220db7b6b1ec0da438c4", size = 1645307, upload-time = "2026-08-26T21:51:47.448Z" },
+    { url = "https://files.pythonhosted.org/packages/b8/a5/b5499685dc3e4e4e5058eaee229868830103a748ad0c4de5591e130ca3be/isort-9.0.0-cp313-cp313-pyemscripten_2025_0_wasm32.whl", hash = "sha256:87564ed377371a24694983668d3087b206897e4fcf06eb8038e24489581d345f", size = 459154, upload-time = "2026-08-26T21:51:48.931Z" },
+    { url = "https://files.pythonhosted.org/packages/ef/f5/447c1fb1a76411cdcc9217dd210ff91bf2038c5155d7e549bc0a7667ac38/isort-9.0.0-cp313-cp313-win_amd64.whl", hash = "sha256:e5c0ef5ee3b2b5bc94904821928a67e2665d0d367e8161196c98654d8f695c00", size = 879893, upload-time = "2026-08-26T21:51:50.386Z" },
+    { url = "https://files.pythonhosted.org/packages/80/34/6005fd7ee35cd441a0a17e3e72afacfc535072c2b427767c27f7be7707ef/isort-9.0.0-py3-none-any.whl", hash = "sha256:ab557aed1df135da50b7eb234c27c182c9c473664dcb07d49a67eaa6fb2bde28", size = 103486, upload-time = "2026-08-26T21:52:21.025Z" },
 ]
 
 [[package]]
@@ -1570,7 +1578,7 @@ dev = [
 linters = [
     { name = "autoflake", specifier = ">=2.3.1,<3" },
     { name = "black", specifier = "==26.5.1" },
-    { name = "isort", specifier = ">=8.0.1,<9" },
+    { name = "isort", specifier = ">=9,<10" },
     { name = "mypy", specifier = ">=2.3,<3" },
 ]
 
