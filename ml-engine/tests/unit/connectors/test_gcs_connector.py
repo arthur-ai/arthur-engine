@@ -194,3 +194,10 @@ def test_gcs_read_data(
         assert len(rows) == expected_rows
         # Verify all column names are strings, not integers
         assert_column_names_are_strings(rows)
+
+
+def test_gcs_connector_does_not_share_filesystem_across_connectors():
+    spec = ConnectorSpec.model_validate(MOCK_GCS_CONNECTOR_SPEC)
+    first, second = GCSConnector(spec, logger), GCSConnector(spec, logger)
+    assert first.file_system is not second.file_system
+    assert not first.file_system.dircache

@@ -1,4 +1,5 @@
 from logging import Logger
+from threading import Lock
 
 from arthur_client.api_bindings import ConnectorSpec, ConnectorsV1Api, ConnectorType
 
@@ -17,8 +18,20 @@ class ConnectorConstructor:
     def __init__(self, connectors_client: ConnectorsV1Api, scope_logger: Logger):
         self.connectors_client = connectors_client
         self.scope_logger = scope_logger
+        # job-scoped: constructing a connector builds a new fsspec filesystem, which is expensive
+        # enough to matter when resolving images one cell at a time
+        self._connectors: dict[str, Connector] = {}
+        self._connectors_lock = Lock()
 
     def get_connector_from_spec(self, connector_id: str) -> Connector:
+        with self._connectors_lock:
+            if connector_id not in self._connectors:
+                self._connectors[connector_id] = self._construct_connector(
+                    connector_id,
+                )
+            return self._connectors[connector_id]
+
+    def _construct_connector(self, connector_id: str) -> Connector:
         connector_config = self.connectors_client.get_sensitive_connector(connector_id)
         match connector_config.connector_type:
             case ConnectorType.SHIELD:
