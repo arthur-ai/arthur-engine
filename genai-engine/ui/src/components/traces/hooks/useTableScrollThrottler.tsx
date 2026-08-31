@@ -31,7 +31,6 @@ export const useTableScrollThrottler = ({ onOffsetReached, offsetThreshold = 50,
 
   useEffect(() => {
     onLoad();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return { ref, execute: scrollThrottler.maybeExecute };

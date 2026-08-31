@@ -332,7 +332,6 @@ class GlobalAgentPollingService(BaseQueueService[AgentPollingJob]):
             gcp_tasks = (
                 db_session.query(DatabaseTask)
                 .filter(
-                    DatabaseTask.is_agentic == True,
                     DatabaseTask.archived == False,
                     func.json_extract_path_text(
                         DatabaseTask.task_metadata,

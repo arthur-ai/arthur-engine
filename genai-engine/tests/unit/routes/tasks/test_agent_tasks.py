@@ -1,32 +1,33 @@
 """Unit tests for the /api/v2/agent-tasks endpoint."""
+
 import random
 from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
-from utils.constants import DEFAULT_ORG_ID
 
 import pytest
-from openinference.semconv.trace import OpenInferenceSpanKindValues
-
-from db_models import DatabaseSpan, DatabaseTask, DatabaseTaskPollingState
 from arthur_common.models.agent_governance_schemas import (
     GCPAgentCreationSource,
     ManualAgentCreationSource,
     OTELAgentCreationSource,
     TaskMetadata,
 )
+from openinference.semconv.trace import OpenInferenceSpanKindValues
+
+from db_models import DatabaseSpan, DatabaseTask, DatabaseTaskPollingState
 from tests.clients.base_test_client import (
     GenaiEngineTestClientBase,
     override_get_db_session,
 )
+from utils.constants import DEFAULT_ORG_ID
 
 
 @pytest.mark.unit_tests
-def test_get_agent_tasks_returns_agentic_by_default(
+def test_get_agent_tasks_returns_all_tasks(
     client: GenaiEngineTestClientBase,
 ):
-    """Test that get_agent_tasks returns only agentic tasks by default."""
-    # Create both types of tasks
+    """The legacy agentic filter is removed: get_agent_tasks returns
+    every task, including ones created with the legacy is_agentic=False flag."""
     agentic_name = f"agentic_{random.random()}"
     non_agentic_name = f"non_agentic_{random.random()}"
 
@@ -38,15 +39,13 @@ def test_get_agent_tasks_returns_agentic_by_default(
     )
     assert status_code == 200
 
-    # Get tasks with default filter (is_agentic=True by default)
     status_code, enriched_tasks = client.get_agent_tasks()
     assert status_code == 200
     assert isinstance(enriched_tasks, list)
 
-    # Should contain only agentic task, not non-agentic
     task_ids = [t.id for t in enriched_tasks]
     assert agentic_task.id in task_ids
-    assert non_agentic_task.id not in task_ids
+    assert non_agentic_task.id in task_ids
 
 
 @pytest.mark.unit_tests

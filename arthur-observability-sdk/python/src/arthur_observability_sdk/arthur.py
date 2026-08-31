@@ -415,14 +415,6 @@ class Arthur:
             "AG2Instrumentor",
         )
 
-    def instrument_agent_framework(self) -> Any:
-        return self._instrument(
-            "openinference-instrumentation-agent-framework",
-            "agent-framework",
-            "openinference.instrumentation.agent_framework",
-            "AgentFrameworkInstrumentor",
-        )
-
     def instrument_agentminds(self) -> Any:
         return self._instrument(
             "openinference-instrumentation-agentminds",
@@ -493,14 +485,6 @@ class Arthur:
             "beeai",
             "openinference.instrumentation.beeai",
             "BeeAIInstrumentor",
-        )
-
-    def instrument_codex(self) -> Any:
-        return self._instrument(
-            "openinference-instrumentation-codex",
-            "codex",
-            "openinference.instrumentation.codex",
-            "CodexInstrumentor",
         )
 
     def instrument_cohere(self) -> Any:
@@ -615,14 +599,6 @@ class Arthur:
             "MistralAIInstrumentor",
         )
 
-    def instrument_monkai_agent(self) -> Any:
-        return self._instrument(
-            "openinference-instrumentation-monkai-agent",
-            "monkai-agent",
-            "openinference.instrumentation.monkai_agent",
-            "MonkaiAgentInstrumentor",
-        )
-
     def instrument_ollama(self) -> Any:
         return self._instrument(
             "openinference-instrumentation-ollama",
@@ -647,22 +623,6 @@ class Arthur:
             "OpenAIAgentsInstrumentor",
         )
 
-    def instrument_openlit(self) -> Any:
-        return self._instrument(
-            "openinference-instrumentation-openlit",
-            "openlit",
-            "openinference.instrumentation.openlit",
-            "OpenLITInstrumentor",
-        )
-
-    def instrument_openllmetry(self) -> Any:
-        return self._instrument(
-            "openinference-instrumentation-openllmetry",
-            "openllmetry",
-            "openinference.instrumentation.openllmetry",
-            "OpenLLMetryInstrumentor",
-        )
-
     def instrument_pipecat(self) -> Any:
         return self._instrument(
             "openinference-instrumentation-pipecat",
@@ -679,28 +639,12 @@ class Arthur:
             "PortkeyInstrumentor",
         )
 
-    def instrument_pydantic_ai(self) -> Any:
-        return self._instrument(
-            "openinference-instrumentation-pydantic-ai",
-            "pydantic-ai",
-            "openinference.instrumentation.pydantic_ai",
-            "PydanticAIInstrumentor",
-        )
-
     def instrument_smolagents(self) -> Any:
         return self._instrument(
             "openinference-instrumentation-smolagents",
             "smolagents",
             "openinference.instrumentation.smolagents",
-            "SmolAgentsInstrumentor",
-        )
-
-    def instrument_strands_agents(self) -> Any:
-        return self._instrument(
-            "openinference-instrumentation-strands-agents",
-            "strands-agents",
-            "openinference.instrumentation.strands_agents",
-            "StrandsAgentsInstrumentor",
+            "SmolagentsInstrumentor",
         )
 
     def instrument_together(self) -> Any:

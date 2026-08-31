@@ -4,13 +4,10 @@ from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
-from fastapi import HTTPException
-
 from arthur_common.models.common_schemas import (
     PaginationParameters,
     VariableTemplateValue,
 )
-from utils.constants import DEFAULT_ORG_ID
 from arthur_common.models.enums import PaginationSortMethod
 from arthur_common.models.llm_model_providers import (
     JsonSchema,
@@ -23,7 +20,13 @@ from arthur_common.models.llm_model_providers import (
     ToolChoice,
     ToolChoiceFunction,
 )
-from litellm.types.utils import ChatCompletionMessageToolCall, Function, ModelResponse
+from fastapi import HTTPException
+from litellm.types.utils import (
+    ChatCompletionMessageCustomToolCall,
+    ChatCompletionMessageToolCall,
+    Function,
+    ModelResponse,
+)
 from pydantic import Field, create_model
 from sqlalchemy.exc import IntegrityError
 
@@ -49,6 +52,7 @@ from schemas.response_schemas import (
 )
 from services.prompt.chat_completion_service import ChatCompletionService
 from tests.clients.base_test_client import override_get_db_session
+from utils.constants import DEFAULT_ORG_ID
 
 
 def to_openai_messages(
@@ -184,7 +188,13 @@ async def test_run_prompt(
     mock_response.choices = [MagicMock()]
     mock_message = MagicMock()
     mock_message.content = "Test response"
-    mock_message.tool_calls = [{"id": "call_123", "function": {"name": "test_tool"}}]
+    mock_message.tool_calls = [
+        ChatCompletionMessageToolCall(
+            function=Function(arguments="", name="test_tool"),
+            id="call_123",
+            type="function",
+        ),
+    ]
     mock_response.choices[0].message = mock_message
     mock_llm_response = MagicMock()
     mock_llm_response.response = mock_response
@@ -507,7 +517,13 @@ def test_chat_completion_service_run_chat_completion(
     mock_response.choices = [MagicMock()]
     mock_message = MagicMock()
     mock_message.content = "Direct completion response"
-    mock_message.tool_calls = [{"id": "call_456", "function": {"name": "test_tool"}}]
+    mock_message.tool_calls = [
+        ChatCompletionMessageToolCall(
+            function=Function(arguments="", name="test_tool"),
+            id="call_456",
+            type="function",
+        ),
+    ]
     mock_response.choices[0].message = mock_message
     mock_llm_response = MagicMock()
     mock_llm_response.response = mock_response
@@ -545,6 +561,24 @@ def test_chat_completion_service_run_chat_completion(
     mock_completion.assert_called_once()
     call_args = mock_completion.call_args[1]
     assert call_args["model"] == "openai/gpt-4"
+
+
+@pytest.mark.unit_tests
+def test_function_tool_calls_excludes_custom_tool_calls():
+    function_tool_call = ChatCompletionMessageToolCall(
+        function=Function(arguments="", name="test_tool"),
+        id="call_123",
+        type="function",
+    )
+    custom_tool_call = ChatCompletionMessageCustomToolCall(
+        id="custom_123",
+        type="custom",
+        custom={"name": "code_exec", "input": "print('hello')"},
+    )
+
+    assert ChatCompletionService._function_tool_calls(
+        [function_tool_call, custom_tool_call],
+    ) == [function_tool_call]
 
 
 @pytest.mark.unit_tests

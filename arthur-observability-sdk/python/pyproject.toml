@@ -1,6 +1,6 @@
 [project]
 name = "arthur-observability-sdk"
-version = "2.1.816"
+version = "2.1.844"
 description = "Arthur Observability SDK — telemetry, prompt management, and framework instrumentation"
 authors = [{ name = "Arthur AI", email = "engineering@arthur.ai" }]
 readme = "README.md"
@@ -21,7 +21,6 @@ dependencies = [
 
 [project.optional-dependencies]
 ag2 = ["openinference-instrumentation-ag2"]
-agent-framework = ["openinference-instrumentation-agent-framework"]
 agentminds = ["openinference-instrumentation-agentminds"]
 agentspec = ["openinference-instrumentation-agentspec"]
 agno = ["openinference-instrumentation-agno"]
@@ -31,7 +30,6 @@ autogen-agentchat = ["openinference-instrumentation-autogen-agentchat"]
 baml = ["openinference-instrumentation-baml"]
 bedrock = ["openinference-instrumentation-bedrock"]
 beeai = ["openinference-instrumentation-beeai ; python_version >= '3.11'"]
-codex = ["openinference-instrumentation-codex"]
 cohere = ["openinference-instrumentation-cohere"]
 crewai = ["openinference-instrumentation-crewai"]
 dspy = ["openinference-instrumentation-dspy"]
@@ -46,23 +44,17 @@ litellm = ["openinference-instrumentation-litellm"]
 llama-index = ["openinference-instrumentation-llama-index"]
 mcp = ["openinference-instrumentation-mcp"]
 mistralai = ["openinference-instrumentation-mistralai"]
-monkai-agent = ["openinference-instrumentation-monkai-agent"]
 ollama = ["openinference-instrumentation-ollama"]
 openai = ["openinference-instrumentation-openai"]
 openai-agents = ["openinference-instrumentation-openai-agents"]
-openlit = ["openinference-instrumentation-openlit"]
-openllmetry = ["openinference-instrumentation-openllmetry"]
 pipecat = ["openinference-instrumentation-pipecat"]
 portkey = ["openinference-instrumentation-portkey"]
-pydantic-ai = ["openinference-instrumentation-pydantic-ai"]
 smolagents = ["openinference-instrumentation-smolagents"]
-strands-agents = ["openinference-instrumentation-strands-agents"]
 together = ["openinference-instrumentation-together"]
 vertexai = ["openinference-instrumentation-vertexai"]
 claude-agent-sdk = ["openinference-instrumentation-claude-agent-sdk"]
 all = [
   "openinference-instrumentation-ag2",
-  "openinference-instrumentation-agent-framework",
   "openinference-instrumentation-agentminds",
   "openinference-instrumentation-agentspec",
   "openinference-instrumentation-agno",
@@ -72,7 +64,6 @@ all = [
   "openinference-instrumentation-baml",
   "openinference-instrumentation-bedrock",
   "openinference-instrumentation-beeai ; python_version >= '3.11'",
-  "openinference-instrumentation-codex",
   "openinference-instrumentation-cohere",
   "openinference-instrumentation-crewai",
   "openinference-instrumentation-dspy",
@@ -87,17 +78,12 @@ all = [
   "openinference-instrumentation-llama-index",
   "openinference-instrumentation-mcp",
   "openinference-instrumentation-mistralai",
-  "openinference-instrumentation-monkai-agent",
   "openinference-instrumentation-ollama",
   "openinference-instrumentation-openai",
   "openinference-instrumentation-openai-agents",
-  "openinference-instrumentation-openlit",
-  "openinference-instrumentation-openllmetry",
   "openinference-instrumentation-pipecat",
   "openinference-instrumentation-portkey",
-  "openinference-instrumentation-pydantic-ai",
   "openinference-instrumentation-smolagents",
-  "openinference-instrumentation-strands-agents",
   "openinference-instrumentation-together",
   "openinference-instrumentation-vertexai",
   "openinference-instrumentation-claude-agent-sdk",

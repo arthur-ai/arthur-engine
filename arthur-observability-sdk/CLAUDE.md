@@ -14,7 +14,7 @@ cd python && uv run pytest tests -v   # all tests, incl. install/wheel smoke tes
 
 The SDK has three layers:
 
-**`Arthur`** (`arthur.py`) — the user-facing entrypoint. Owns the OTel `TracerProvider`, the API client, and the 40 `instrument_*` methods. At least one of `task_id`, `task_name`, or `service_name` must be provided.
+**`Arthur`** (`arthur.py`) — the user-facing entrypoint. Owns the OTel `TracerProvider`, the API client, and the 33 `instrument_*` methods. At least one of `task_id`, `task_name`, or `service_name` must be provided.
 
 **`setup_telemetry`** (`telemetry.py`) — creates a `TracerProvider` with a `BatchSpanProcessor` backed by an OTLP HTTP exporter. Passes `Authorization: Bearer {api_key}` in the exporter headers. Called by `Arthur.__init__` when `enable_telemetry=True`. Registers the provider globally via `trace.set_tracer_provider()`.
 
@@ -80,7 +80,26 @@ Use `*_with_http_info()` + `raw_data` whenever the response includes prompts, me
    - In the `all` extra list: `"openinference-instrumentation-my-framework"`
 3. **`python/README.md`** — add a row to the "Supported instrumentors" table.
 
-Verify the correct module path and class name from the package's PyPI page before adding.
+`tests/test_instrumentors.py` checks that those places agree on names, but it reads declarations
+rather than importing anything, so it cannot see whether `module_path` and `class_name` are real.
+Verify those two against the published package:
+
+```bash
+pip install "arthur-observability-sdk[my-framework]"
+python3 scripts/verify_instrumentor.py --extra my-framework
+```
+
+CI runs that per-extra — for changed declarations on every PR, for all of them weekly — via
+`.github/workflows/arthur-observability-sdk-instrumentors.yml`. There are no waivers: every
+declaration is expected to resolve, so a red job means a real break.
+
+Not every openinference package fits `_instrument()`. Several ship an OTel `SpanProcessor` rather
+than a `BaseInstrumentor` and need `tracer_provider.add_span_processor(...)`, which `Arthur` has no
+code path for — check which shape the package exports before adding a method for it. Those packages
+are **not declared**: they are recorded with a reason in `UNSUPPORTED`
+(`scripts/instrumentor_registry.py`), and `test_instrumentors.py` asserts each one is absent from
+`arthur.py`, both extras, and the README. Adding support means deleting its entry from that list.
+See UP-4874 for the span-processor work.
 
 ## Testing
 

@@ -15,6 +15,5 @@ export const useTrackOnMount = <E extends AnalyticsEventName>({ eventName, event
 
   useEffect(() => {
     trackEvent();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 };
