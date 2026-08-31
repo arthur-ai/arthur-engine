@@ -36,7 +36,6 @@ from arthur_common.models.task_job_specs import (
     CreateModelTaskJobSpec,
     DeleteModelTaskJobSpec,
     FetchModelTaskJobSpec,
-    TaskType,
     UpdateModelTaskRulesJobSpec,
 )
 
@@ -81,26 +80,28 @@ class TaskManagementJobExecutor:
 
         return conn
 
-    def _lookup_models_single_shield_dataset(self, model: Model) -> Dataset:
+    def _lookup_models_task_datasets(self, model: Model) -> list[Dataset]:
         """
-        Given a model, extracts the single shield dataset from that model. Will
-        raise an error if that assumption is not valid.
+        Given a model, extracts its shield/task datasets. Post-consolidation a
+        model carries two datasets (trace/evals + guardrails) bound to the same
+        task; legacy un-migrated models carry one.
         """
-        shield_datasets = [
+        shield_dataset_refs = [
             dsr
             for dsr in model.datasets
             if dsr.dataset_connector_type == ConnectorType.SHIELD
             or dsr.dataset_connector_type == ConnectorType.ENGINE_INTERNAL
         ]
 
-        # if the model has more than one shield dataset, raise error
-        if len(shield_datasets) > 1:
+        if not shield_dataset_refs:
             raise ValueError(
-                "Invalid model configuration. Cannot perform task management on models with more than one Shield Dataset.",
+                "Invalid model configuration. Cannot perform task management on models without a Shield dataset.",
             )
 
-        task_dataset_ref = shield_datasets[0]
-        return self.datasets_client.get_dataset(dataset_id=task_dataset_ref.dataset_id)
+        return [
+            self.datasets_client.get_dataset(dataset_id=dsr.dataset_id)
+            for dsr in shield_dataset_refs
+        ]
 
     @staticmethod
     def _extract_task_id_from_dataset(dataset: Dataset) -> str:
@@ -127,29 +128,40 @@ class TaskManagementJobExecutor:
     def retrieve_task_management_resources_from_model_id(
         self,
         model_id: str,
-    ) -> Tuple[Model, Dataset, ShieldBaseConnector, str]:
+    ) -> Tuple[Model, list[Dataset], ShieldBaseConnector, str]:
         """
-        Given a scope model ID, will look up and return the Task's Dataset, ShieldConnector, and UUID of the task
+        Given a scope model ID, will look up and return the Task's Datasets, ShieldConnector, and UUID of the task
         """
         # 1. fetch the model
         model = self.models_client.get_model(model_id=model_id)
 
-        # 2. fetch the model's single dataset
-        task_dataset = self._lookup_models_single_shield_dataset(model=model)
+        # 2. fetch the model's task datasets (two post-consolidation, one legacy)
+        task_datasets = self._lookup_models_task_datasets(model=model)
 
-        # 3. get the task ID from the dataset locator
-        task_id = self._extract_task_id_from_dataset(dataset=task_dataset)
+        # 3. get the task ID from the dataset locators — all datasets on the
+        # model must reference the same task
+        task_ids = {
+            self._extract_task_id_from_dataset(dataset=d) for d in task_datasets
+        }
+        if len(task_ids) != 1:
+            raise ValueError(
+                "Invalid model configuration. Cannot perform task management on models whose datasets reference different tasks.",
+            )
+        task_id = task_ids.pop()
         self.logger.info(f"Task found for model: {task_id}")
 
-        # 4. get the connector for the dataset/task
-        if not task_dataset.connector:
+        # 4. get the connector for the datasets/task
+        primary_dataset = task_datasets[0]
+        if not primary_dataset.connector:
             raise ValueError(
                 "Invalid dataset configuration. Cannot perform task management on models using joined datasets.",
             )
 
-        conn = self.get_shield_connector_from_connector_id(task_dataset.connector.id)
+        conn = self.get_shield_connector_from_connector_id(
+            primary_dataset.connector.id,
+        )
 
-        return model, task_dataset, conn, task_id
+        return model, task_datasets, conn, task_id
 
     def _get_task_transforms(
         self,
@@ -475,60 +487,74 @@ class _TaskDatasetAndModelCreator(_ValidationKeyManager):
 
         super().__init__(self.conn, self.tasks_client, self.logger)
 
-    def create(self) -> Tuple[Model, Dataset]:
-        # Differentiate between agentic and shield tasks
-        if self.task.is_agentic:
-            dataset_schema = common_to_client_put_dataset_schema(AGENTIC_TRACE_SCHEMA())
-            model_problem_type = ModelProblemType.AGENTIC_TRACE
-        else:
-            dataset_schema = common_to_client_put_dataset_schema(SHIELD_SCHEMA())
-            model_problem_type = ModelProblemType.ARTHUR_SHIELD
-
-        # create dataset
-        dataset = self.datasets_client.post_connector_dataset(
-            connector_id=self.conn.connector_config.id,
-            post_dataset=PostDataset(
-                name=self.task.name,
-                dataset_locator=DatasetLocator(
-                    fields=[
-                        DatasetLocatorField(
-                            key=SHIELD_DATASET_TASK_ID_FIELD,
-                            value=self.task.id,
-                        ),
-                    ],
-                ),
-                dataset_schema=dataset_schema,
-                model_problem_type=model_problem_type,
+    def create(self) -> Tuple[Model, list[Dataset]]:
+        # Post-consolidation every task carries BOTH datasets:
+        #
+        #   task ──┬── "<name> - traces"      (AGENTIC_TRACE: traces + evals)
+        #          └── "<name> - guardrails"  (ARTHUR_SHIELD: inferences + rule results)
+        #
+        # Both bind to the same task via the task_id locator; one model links both.
+        dataset_specs = [
+            (
+                "traces",
+                common_to_client_put_dataset_schema(AGENTIC_TRACE_SCHEMA()),
+                ModelProblemType.AGENTIC_TRACE,
             ),
-        )
-        self.logger.info(
-            f"Created dataset for task: {dataset.name} with id {dataset.id}",
-        )
+            (
+                "guardrails",
+                common_to_client_put_dataset_schema(SHIELD_SCHEMA()),
+                ModelProblemType.ARTHUR_SHIELD,
+            ),
+        ]
 
-        # enter rollback block so we can clean up the dataset if model creation fails
+        # enter rollback block so we can clean up datasets if any later creation fails
+        datasets: list[Dataset] = []
         try:
-            model = self._create_task_model(dataset=dataset)
-            return model, dataset
+            for name_suffix, dataset_schema, model_problem_type in dataset_specs:
+                dataset = self.datasets_client.post_connector_dataset(
+                    connector_id=self.conn.connector_config.id,
+                    post_dataset=PostDataset(
+                        name=f"{self.task.name} - {name_suffix}",
+                        dataset_locator=DatasetLocator(
+                            fields=[
+                                DatasetLocatorField(
+                                    key=SHIELD_DATASET_TASK_ID_FIELD,
+                                    value=self.task.id,
+                                ),
+                            ],
+                        ),
+                        dataset_schema=dataset_schema,
+                        model_problem_type=model_problem_type,
+                    ),
+                )
+                self.logger.info(
+                    f"Created dataset for task: {dataset.name} with id {dataset.id}",
+                )
+                datasets.append(dataset)
+
+            model = self._create_task_model(datasets=datasets)
+            return model, datasets
         except Exception:
-            # if model creation fails, we need to rollback dataset creation
+            # if any dataset or model creation fails, roll back created datasets
             self.logger.warning(
-                f"Failed to create model for task, rolling back created dataset {dataset.name} with id {dataset.id}",
+                "Failed to create model for task, rolling back created datasets",
             )
-            self.datasets_client.delete_dataset(dataset_id=dataset.id)
+            for dataset in datasets:
+                self.datasets_client.delete_dataset(dataset_id=dataset.id)
             self.logger.warning("Dataset rollback complete")
             raise
 
     def _create_task_model(
         self,
-        dataset: Dataset,
+        datasets: list[Dataset],
     ) -> Model:
         model = self.models_client.post_model(
-            project_id=dataset.project_id,
+            project_id=datasets[0].project_id,
             post_model=PostModel(
                 name=self.task.name,
                 description=f"This model corresponds to task {self.task.name} in connector {self.conn.connector_config.name}",
                 onboarding_identifier=self.onboarding_identifier,
-                dataset_ids=[dataset.id],
+                dataset_ids=[dataset.id for dataset in datasets],
             ),
         )
         self.logger.info(f"Created model for task: {model.name} with id {model.id}")
@@ -562,12 +588,10 @@ class TaskCreator:
         self.tasks_client = tasks_client
         self.logger = logger
 
-    def create(self) -> Tuple[Model, Dataset, TaskResponse]:
+    def create(self) -> Tuple[Model, list[Dataset], TaskResponse]:
         # create the task in shield
-        is_agentic = self.job_spec.task_type == TaskType.AGENTIC
         task_resp = self.conn.create_task(
             name=self.job_spec.task_name,
-            is_agentic=is_agentic,
             agent_metadata=self.job_spec.agent_metadata,
         )
         self.logger.info(
@@ -590,27 +614,26 @@ class TaskCreator:
     def _add_rules_and_create_model_for_task(
         self,
         task_id: str,
-    ) -> Tuple[Model, Dataset, TaskResponse]:
-        # Add tracing metrics to an agentic task
-        if self.job_spec.task_type == TaskType.AGENTIC:
-            trace_metric_adder = _TaskTraceMetricAdder(
-                connector=self.conn,
-                logger=self.logger,
-            )
-            trace_metric_adder.add_tracing_metrics_to_task(
-                task_id=task_id,
-                metrics_to_add=self.job_spec.initial_metrics,
-                rollback_on_failure=False,
-            )
-        else:
-            # add rules to the task in shield
-            # skip rollback because if there's a failure the whole task will be deleted
-            rule_adder = _TaskRuleAdder(connector=self.conn, logger=self.logger)
-            rule_adder.add_rules_to_task(
-                task_id=task_id,
-                rules_to_add=self.job_spec.initial_rules,
-                rollback_on_failure=False,
-            )
+    ) -> Tuple[Model, list[Dataset], TaskResponse]:
+        # Post-consolidation a task carries guardrail rules AND trace metrics.
+        # Skip rollback on both because if there's a failure the whole task
+        # will be deleted by the caller.
+        rule_adder = _TaskRuleAdder(connector=self.conn, logger=self.logger)
+        rule_adder.add_rules_to_task(
+            task_id=task_id,
+            rules_to_add=self.job_spec.initial_rules,
+            rollback_on_failure=False,
+        )
+
+        trace_metric_adder = _TaskTraceMetricAdder(
+            connector=self.conn,
+            logger=self.logger,
+        )
+        trace_metric_adder.add_tracing_metrics_to_task(
+            task_id=task_id,
+            metrics_to_add=self.job_spec.initial_metrics,
+            rollback_on_failure=False,
+        )
 
         # get latest copy of task state to return after adding rules
         task = self.conn.read_task(task_id=task_id)
@@ -627,8 +650,8 @@ class TaskCreator:
             tasks_client=self.tasks_client,
             logger=self.logger,
         )
-        model, dataset = dataset_model_creator.create()
-        return model, dataset, task
+        model, datasets = dataset_model_creator.create()
+        return model, datasets, task
 
 
 class ExistingTaskCreator(_ValidationKeyManager):
@@ -650,7 +673,7 @@ class ExistingTaskCreator(_ValidationKeyManager):
 
         super().__init__(self.conn, self.tasks_client, self.logger)
 
-    def link(self) -> Tuple[Model, Dataset, TaskResponse]:
+    def link(self) -> Tuple[Model, list[Dataset], TaskResponse]:
         # fetch the task from shield
         task_resp = self.conn.read_task(task_id=self.job_spec.task_id)
         self.logger.info(f"Found task: {task_resp.name} with id {task_resp.id}")
@@ -665,8 +688,8 @@ class ExistingTaskCreator(_ValidationKeyManager):
             logger=self.logger,
         )
         # don't use rollback here because if we fail we want the task to remain
-        model, dataset = dataset_model_creator.create()
-        return model, dataset, task_resp
+        model, datasets = dataset_model_creator.create()
+        return model, datasets, task_resp
 
 
 class _TaskAndModelDeleter(_ValidationKeyManager):
@@ -712,7 +735,7 @@ class _TaskAndModelDeleter(_ValidationKeyManager):
         self,
         task_id: str,
         model: Model,
-        dataset: Dataset,
+        datasets: list[Dataset],
     ) -> None:
         self.logger.info(f"Deleting task: {task_id}")
         self._delete_task_idempotent(task_id=task_id, model=model)
@@ -723,10 +746,11 @@ class _TaskAndModelDeleter(_ValidationKeyManager):
         self._delete_model_idempotent(model_id=model.id)
         self.logger.info(f"Model {model.id} deleted")
 
-        # delete dataset in scope
-        self.logger.info(f"Deleting dataset: {dataset.id}")
-        self._delete_dataset_idempotent(dataset_id=dataset.id)
-        self.logger.info(f"Dataset {dataset.id} deleted")
+        # delete all of the task's datasets in scope
+        for dataset in datasets:
+            self.logger.info(f"Deleting dataset: {dataset.id}")
+            self._delete_dataset_idempotent(dataset_id=dataset.id)
+            self.logger.info(f"Dataset {dataset.id} deleted")
 
 
 class CreateTaskJobExecutor(TaskManagementJobExecutor):
@@ -848,7 +872,7 @@ class DeleteTaskJobExecutor(TaskManagementJobExecutor):
     def execute(self, job_spec: DeleteModelTaskJobSpec) -> None:
         (
             model,
-            dataset,
+            datasets,
             connector,
             task_id,
         ) = self.retrieve_task_management_resources_from_model_id(
@@ -862,7 +886,7 @@ class DeleteTaskJobExecutor(TaskManagementJobExecutor):
             self.tasks_client,
             self.logger,
         )
-        deleter.delete_task_and_related_resources(task_id, model, dataset)
+        deleter.delete_task_and_related_resources(task_id, model, datasets)
 
 
 class FetchTaskJobExecutor(TaskManagementJobExecutor):

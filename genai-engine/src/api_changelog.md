@@ -2,6 +2,11 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 08/28/2026
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added '#/components/schemas/EndpointAgentCreationSource' to the '/items/creation_source/anyOf[subschema #1: AgentCreationSource]/' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v2/tasks  the 'is_agentic' request property default value 'false' was removed
+- **CHANGE** for **URL**: /api/v2/tasks  request property 'is_agentic' list-of-types was widened by adding types 'null' to media type 'application/json'
+
 # 08/07/2026
 - **CHANGE** for **URL**: /api/v1/model_providers/{provider}/model_whitelist  endpoint added
 - **CHANGE** for **URL**: /api/v1/model_providers/{provider}/model_whitelist  endpoint added

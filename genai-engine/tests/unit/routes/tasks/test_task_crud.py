@@ -19,12 +19,13 @@ def test_user_story_create_task_get_task(client: GenaiEngineTestClientBase):
     assert status_code == 200
 
     assert task_response.name == task_name
-    assert task_response.is_agentic == False  # Default should be False
+    # Deprecated wire field: always True post-consolidation
+    assert task_response.is_agentic == True
 
     status_code, task = client.get_task(task_response.id)
 
     assert len(task.rules) > 0
-    assert task.is_agentic == False
+    assert task.is_agentic == True
 
 
 @pytest.mark.unit_tests
@@ -80,73 +81,47 @@ def test_create_agentic_task(client: GenaiEngineTestClientBase):
 
 @pytest.mark.unit_tests
 def test_create_non_agentic_task_explicit(client: GenaiEngineTestClientBase):
-    """Test creating a task with is_agentic=False explicitly"""
+    """A legacy is_agentic=False in the request is ignored — every task is
+    created agentic post-consolidation."""
     task_name = str(random.random())
     status_code, task_response = client.create_task(task_name, is_agentic=False)
     assert status_code == 200
 
     assert task_response.name == task_name
-    assert task_response.is_agentic == False
+    assert task_response.is_agentic == True
 
     # Verify by getting the task
     status_code, task = client.get_task(task_response.id)
     assert status_code == 200
-    assert task.is_agentic == False
+    assert task.is_agentic == True
 
 
 @pytest.mark.unit_tests
 def test_search_tasks_by_agentic_status(client: GenaiEngineTestClientBase):
-    """Test filtering tasks by agentic status"""
-    # Create some agentic and non-agentic tasks
-    agentic_task_ids = []
-    non_agentic_task_ids = []
+    """The is_agentic search filter is removed — search returns all
+    tasks regardless of the legacy flag sent at creation, and every task
+    reports the deprecated field as True."""
+    task_ids = []
 
     for i in range(3):
-        # Create agentic tasks
         status_code, task = client.create_task(f"agentic_task_{i}", is_agentic=True)
         assert status_code == 200
-        agentic_task_ids.append(task.id)
+        task_ids.append(task.id)
 
-        # Create non-agentic tasks
         status_code, task = client.create_task(
             f"non_agentic_task_{i}",
             is_agentic=False,
         )
         assert status_code == 200
-        non_agentic_task_ids.append(task.id)
+        task_ids.append(task.id)
 
-    # Search for agentic tasks only
-    status_code, search_response = client.search_tasks(is_agentic=True, page_size=50)
-    assert status_code == 200
-
-    agentic_results = [
-        task for task in search_response.tasks if task.id in agentic_task_ids
-    ]
-    assert len(agentic_results) == 3
-    for task in agentic_results:
-        assert task.is_agentic == True
-
-    # Search for non-agentic tasks only
-    status_code, search_response = client.search_tasks(is_agentic=False, page_size=50)
-    assert status_code == 200
-
-    non_agentic_results = [
-        task for task in search_response.tasks if task.id in non_agentic_task_ids
-    ]
-    assert len(non_agentic_results) == 3
-    for task in non_agentic_results:
-        assert task.is_agentic == False
-
-    # Search without filter should return both types
     status_code, search_response = client.search_tasks(page_size=50)
     assert status_code == 200
 
-    all_test_tasks = [
-        task
-        for task in search_response.tasks
-        if task.id in agentic_task_ids + non_agentic_task_ids
-    ]
+    all_test_tasks = [task for task in search_response.tasks if task.id in task_ids]
     assert len(all_test_tasks) == 6
+    for task in all_test_tasks:
+        assert task.is_agentic == True
 
 
 @pytest.mark.unit_tests

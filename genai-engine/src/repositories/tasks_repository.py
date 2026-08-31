@@ -630,13 +630,8 @@ class TaskRepository:
             )
 
     def link_metric_to_task(self, task_id: str, metric_id: str) -> None:
-        # Check if task is agentic before allowing metric linkage
-        db_task = self.get_db_task_by_id(task_id)
-        if not db_task.is_agentic:
-            raise HTTPException(
-                status_code=400,
-                detail=constants.ERROR_NON_AGENTIC_TASK_METRIC,
-            )
+        # Validate the task exists (404) before creating the link.
+        self.get_db_task_by_id(task_id)
 
         new_link = DatabaseTaskToMetrics(
             task_id=task_id,
@@ -653,13 +648,6 @@ class TaskRepository:
         enabled: bool,
     ) -> None:
         task = self.get_db_task_by_id(task_id)
-
-        # Check if task is agentic when enabling a metric
-        if enabled and not task.is_agentic:
-            raise HTTPException(
-                status_code=400,
-                detail=constants.ERROR_NON_AGENTIC_TASK_METRIC,
-            )
 
         for metric_link in task.metric_links:
             if metric_link.metric_id == metric_id:

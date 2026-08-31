@@ -23,7 +23,7 @@
     "generate-api:clean": "rm -rf src/lib/api-client && yarn generate-api"
   },
   "dependencies": {
-    "@amplitude/analytics-browser": "2.45.7",
+    "@amplitude/analytics-browser": "2.45.8",
     "@amplitude/experiment-js-client": "^1.21.1",
     "@amplitude/plugin-session-replay-browser": "^1.33.6",
     "@arizeai/openinference-semantic-conventions": "2.8.0",
@@ -43,10 +43,10 @@
     "@mui/x-date-pickers": "7.29.4",
     "@tanstack/react-form": "1.33.5",
     "@tanstack/react-pacer": "0.23.0",
-    "@tanstack/react-query": "5.102.3",
-    "@tanstack/react-query-devtools": "5.102.3",
+    "@tanstack/react-query": "5.102.8",
+    "@tanstack/react-query-devtools": "5.102.8",
     "@tanstack/react-table": "8.21.3",
-    "axios": "1.19.0",
+    "axios": "1.20.0",
     "dayjs": "1.11.23",
     "html-to-image": "^1.11.13",
     "material-react-table": "3.2.1",
@@ -54,7 +54,7 @@
     "monaco-editor": "0.56.0",
     "motion": "13.1.1",
     "notistack": "3.0.2",
-    "nuqs": "2.10.0",
+    "nuqs": "2.10.1",
     "ohash": "2.0.12",
     "papaparse": "5.7.0",
     "prism-react-renderer": "2.4.1",
@@ -77,7 +77,7 @@
   "devDependencies": {
     "@eslint/js": "10.0.1",
     "@tailwindcss/vite": "4.3.3",
-    "@tanstack/eslint-plugin-query": "5.102.3",
+    "@tanstack/eslint-plugin-query": "5.102.8",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/react": "^16.3.2",
     "@total-typescript/ts-reset": "0.6.1",
@@ -85,12 +85,12 @@
     "@types/papaparse": "5.5.2",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.5",
-    "@vitejs/plugin-react": "6.1.0",
+    "@vitejs/plugin-react": "6.1.1",
     "eslint": "10.9.1",
     "eslint-config-prettier": "10.1.8",
     "eslint-plugin-import-x": "4.17.1",
     "eslint-plugin-react-hooks": "7.1.1",
-    "eslint-plugin-react-refresh": "0.5.4",
+    "eslint-plugin-react-refresh": "0.5.5",
     "globals": "17.11.0",
     "jsdom": "^30.0.0",
     "prettier": "3.9.6",
@@ -102,6 +102,6 @@
     "vitest": "4.1.11"
   },
   "optionalDependencies": {
-    "@rollup/rollup-linux-x64-gnu": "4.62.5"
+    "@rollup/rollup-linux-x64-gnu": "4.63.1"
   }
 }

@@ -59,12 +59,6 @@ class AgentPollingRepository:
                 detail=f"Task {task_id} not found",
             )
 
-        if not task.is_agentic:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Task {task_id} is not available for agent polling",
-            )
-
         if (
             task.task_metadata is None
             or task.task_metadata.creation_source is None

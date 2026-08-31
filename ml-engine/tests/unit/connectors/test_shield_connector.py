@@ -25,6 +25,7 @@ from arthur_common.models.connectors import ConnectorPaginationOptions
 from arthur_common.models.enums import ModelProblemType
 from arthur_common.models.request_schemas import NewRuleRequest
 from pydantic import ValidationError
+from unittest.mock import Mock
 
 from config.config import Config
 from connectors.shield_connector import (
@@ -844,3 +845,34 @@ def test_shield_read_raises_for_static_dataset():
         match="Static datasets are not supported by the Shield connector",
     ):
         conn.read(static_dataset, start_time=start, end_time=end)
+
+
+def test_list_datasets_emits_both_datasets_per_task():
+    """Post-consolidation every task exposes a trace/evals dataset
+    AND a guardrails dataset, regardless of the deprecated is_agentic flag."""
+
+    spec = ConnectorSpec.model_validate(mock_shield_connector_spec(MOCK_SHIELD_HOST))
+    conn = ShieldConnector(spec, logger)
+
+    task = Mock()
+    task.id = str(uuid4())
+    task.name = "my task"
+    search_response = Mock()
+    search_response.tasks = [task]
+    with patch.object(
+        conn,
+        "_tasks_client",
+    ) as tasks_client:
+        tasks_client.search_tasks_api_v2_tasks_search_post.return_value = (
+            search_response
+        )
+        result = conn.list_datasets()
+
+    available = result.available_datasets
+    assert len(available) == 2
+    assert {(d.name, d.model_problem_type) for d in available} == {
+        ("my task - traces", ModelProblemType.AGENTIC_TRACE),
+        ("my task - guardrails", ModelProblemType.ARTHUR_SHIELD),
+    }
+    for dataset in available:
+        assert dataset.dataset_locator.fields[0].value == task.id

@@ -246,9 +246,8 @@ def get_agent_tasks(
         application_config,
     )
 
-    # Query only agentic tasks — tenant callers see only their own org's.
+    # Tenant callers see only their own org's tasks.
     db_tasks, _ = tasks_repo.query_tasks(
-        is_agentic=True,
         include_archived=False,
         page_size=1000,  # Large page size for now, add pagination later if needed
         page=0,
@@ -366,7 +365,6 @@ def search_tasks(
     db_tasks, count = tasks_repo.query_tasks(
         ids=request.task_ids,
         task_name=request.task_name,
-        is_agentic=request.is_agentic,
         include_archived=getattr(request, "include_archived", False) is True,
         only_archived=getattr(request, "only_archived", False) is True,
         sort=pagination_parameters.sort or PaginationSortMethod.DESCENDING,

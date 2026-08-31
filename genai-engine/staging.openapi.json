@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.829"
+        "version": "2.1.843"
     },
     "paths": {
         "/api/v2/engine-config": {
@@ -17996,6 +17996,9 @@
                     },
                     {
                         "$ref": "#/components/schemas/ManualAgentCreationSource"
+                    },
+                    {
+                        "$ref": "#/components/schemas/EndpointAgentCreationSource"
                     }
                 ],
                 "title": "AgentCreationSource"
@@ -22182,6 +22185,161 @@
                 ],
                 "title": "DocumentStorageEnvironment"
             },
+            "EndpointAgentCreationSource": {
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "const": "ENDPOINT",
+                        "title": "Type",
+                        "default": "ENDPOINT"
+                    },
+                    "mdm": {
+                        "type": "string",
+                        "const": "jamf_pro",
+                        "title": "Mdm",
+                        "description": "The device management system that reported this agent.",
+                        "default": "jamf_pro"
+                    },
+                    "software_key": {
+                        "type": "string",
+                        "title": "Software Key",
+                        "description": "Stable, version-free identifier for the discovered software. Frozen wire contract: with device_key it forms the finding's identity, and changing either derivation orphans every existing agent AND duplicates it, because the Agents API has no delete."
+                    },
+                    "device_key": {
+                        "type": "string",
+                        "title": "Device Key",
+                        "description": "Stable device identity, e.g. 'serial:C02XL4KHQ6NV'. Part of the frozen wire contract alongside software_key."
+                    },
+                    "device_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Device Name",
+                        "description": "MDM device name, e.g. 'MBP-4471'."
+                    },
+                    "device_group": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Device Group",
+                        "description": "MDM grouping the device belongs to, e.g. a Jamf site or smart group."
+                    },
+                    "assigned_user": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Assigned User",
+                        "description": "User the MDM assigns the device to. PERSONAL DATA -- this is the field that makes an endpoint finding attributable to an individual, and it is subject to the works-council and DPIA review the design calls for before EU deployment. Omit it where that review has not happened."
+                    },
+                    "os_version": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Os Version",
+                        "description": "Guest OS version, e.g. 'macOS 15.3 (24D60)'."
+                    },
+                    "process_cmdline": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Process Cmdline",
+                        "description": "Full command line of the running process, e.g. 'openclaw --serve --port 8788'. Absent when the agent is installed but not running, which is a meaningful difference and not a collection failure."
+                    },
+                    "parent_process": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Parent Process",
+                        "description": "Parent of the observed process, e.g. '/bin/zsh'. Distinguishes an agent a human launched from a terminal from one a LaunchAgent starts unattended."
+                    },
+                    "install_path": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Install Path",
+                        "description": "Where the software is installed, PATH-SHAPED to '~/...' rather than '/Users/<name>/...'. The collector shapes it; usernames must not travel here in a path when assigned_user already carries identity explicitly."
+                    },
+                    "version": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Version",
+                        "description": "Version read statically from the install path. Never obtained by executing the discovered binary."
+                    },
+                    "first_seen": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "First Seen",
+                        "description": "When the collector first observed this software on this device. Reconstructed by diffing inventory snapshots, since MDM relay is snapshot- rather than event-shaped."
+                    },
+                    "classification": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Classification",
+                        "description": "Short catalog-assigned label shown beside the name, e.g. 'Personal agent' or 'Local model'. Free-form rather than an enum so the catalog can add one without a schema release and a client regeneration -- the same reason the catalog itself lives in the collector. Keep the vocabulary small; it is a glanceable pill, not a taxonomy. Absent for uncatalogued software, which is a finding in its own right and must still render."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "software_key",
+                    "device_key"
+                ],
+                "title": "EndpointAgentCreationSource",
+                "description": "One agent discovered on one managed endpoint.\n\nGRAIN IS PER (SOFTWARE, DEVICE), not per software. The Discovery list shows a row\nper machine -- \"OpenClaw / MBP-4471 / openclaw --serve\" -- so the device is part of\nthe finding's identity rather than a count attached to it. An earlier draft carried\n``device_count`` instead and was the wrong shape: it could not name the machine, the\nuser, or what the process was actually doing.\n\nEvery field here is obtainable from a ONE-SHOT osquery invocation plus MDM inventory.\nDeliberately absent, because they are not:\n\n* **Destination hostname.** ``process_open_sockets`` returns ``remote_address`` as an\n  IP. Recovering ``api.anthropic.com`` needs reverse DNS, which is unreliable against\n  CDN and anycast ranges, or SNI capture.\n* **Connection counts over a window.** Only ``socket_events`` yields those, and it is\n  event-based: a one-shot run reports \"events are disabled\". It requires osqueryd\n  running persistently with the audit subsystem -- which is the decision that would\n  put code signing, notarization and PPPC back on the critical path.\n\nNeither is modelled as a nullable field, on purpose. A column that is always null\nreads as \"not collected yet\" rather than \"this sensor cannot see it.\""
+            },
             "EngineConfigResponse": {
                 "properties": {
                     "demo_mode": {
@@ -26288,10 +26446,17 @@
                         "description": "Name of the task."
                     },
                     "is_agentic": {
-                        "type": "boolean",
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
                         "title": "Is Agentic",
-                        "description": "Whether the task is agentic or not.",
-                        "default": false
+                        "description": "DEPRECATED: formerly marked tasks as agentic or not; now does nothing.",
+                        "deprecated": true
                     },
                     "agent_metadata": {
                         "anyOf": [
@@ -30460,7 +30625,8 @@
                             }
                         ],
                         "title": "Is Agentic",
-                        "description": "Filter tasks by agentic status. If not provided, returns both agentic and non-agentic tasks."
+                        "description": "DEPRECATED: formerly filtered tasks by agentic status; now does nothing.",
+                        "deprecated": true
                     },
                     "include_archived": {
                         "anyOf": [
@@ -31632,7 +31798,8 @@
                             }
                         ],
                         "title": "Is Agentic",
-                        "description": "Whether the task is agentic or not"
+                        "description": "Deprecated \u2014 every task is agentic post-consolidation; genai-engine returns True. Will be removed in a future release.",
+                        "deprecated": true
                     },
                     "is_system_task": {
                         "anyOf": [
