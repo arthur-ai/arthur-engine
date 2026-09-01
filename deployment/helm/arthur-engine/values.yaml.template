@@ -189,7 +189,7 @@ arthur-genai-engine:
   ## Advanced - GenAI Engine
   ###################################
   # GenAI Engine version
-  genaiEngineVersion: 2.1.801
+  genaiEngineVersion: 2.1.845
   # Max number of tokens GenAI Engine can process against LLM for hallucination data checks
   genaiEngineHallucinationCheckMaxTokenLimit: 3000
   # Max number of tokens GenAI Engine can process against LLM for sensitive data checks
@@ -233,6 +233,8 @@ arthur-genai-engine:
     labels: {}
   # Allow the admin key general API access (Must be enabled for the Arthur Platform. Can be disabled for the guardrails-only standalone deployment.)
   genaiEngineAllowAdminKeyGeneralAccess: "enabled"
+  # Maximum number of active API keys GenAI Engine will issue. Leave unset to use the application default (100).
+  genaiEngineMaxApiKeys: 100
   # Chunked transfer-encoding middleware. Referenced unconditionally by the deployment, so set it
   # explicitly here (empty renders as an invalid value and crashes worker boot).
   transferEncodingMiddlewareEnabled: "enabled"

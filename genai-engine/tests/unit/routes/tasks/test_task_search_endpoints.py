@@ -74,11 +74,10 @@ def test_search_tasks(
     assert sc == 200
     assert len(task_resp_base.tasks) == expected_count
 
-    # Verify all tasks have is_agentic field (should default to False)
+    # Verify all tasks report the deprecated is_agentic field as True
     for task in task_resp_base.tasks:
         assert hasattr(task, "is_agentic")
-        # Since we didn't specify is_agentic in create_task, they should all be False
-        assert task.is_agentic == False
+        assert task.is_agentic == True
 
     if page:
         sc, task_resp = client.search_tasks(
@@ -152,105 +151,70 @@ def test_search_task_name(
 
 
 @pytest.mark.unit_tests
-def test_search_tasks_by_is_agentic_filter(client: GenaiEngineTestClientBase):
-    """Test searching tasks specifically by is_agentic filter"""
+def test_search_tasks_ignores_legacy_agentic_flag(client: GenaiEngineTestClientBase):
+    """The is_agentic search filter is removed: search returns every
+    task regardless of the legacy flag sent at creation, and each task
+    reports the deprecated response field as True."""
     unique_prefix = str(random.random()) + "agentic_test_"
 
-    # Create a mix of agentic and non-agentic tasks
-    agentic_task_ids = []
-    non_agentic_task_ids = []
-
+    task_ids = []
     for i in range(5):
-        # Create agentic tasks
         sc, task = client.create_task(
             name=f"{unique_prefix}agentic_{i}",
             is_agentic=True,
         )
         assert sc == 200
-        agentic_task_ids.append(task.id)
+        task_ids.append(task.id)
 
-        # Create non-agentic tasks
         sc, task = client.create_task(
             name=f"{unique_prefix}non_agentic_{i}",
             is_agentic=False,
         )
         assert sc == 200
-        non_agentic_task_ids.append(task.id)
+        task_ids.append(task.id)
 
-    # Test 1: Search for only agentic tasks
-    sc, agentic_response = client.search_tasks(is_agentic=True, page_size=50)
-    assert sc == 200
-
-    # Filter to only our test tasks
-    found_agentic = [
-        task for task in agentic_response.tasks if task.id in agentic_task_ids
-    ]
-    assert len(found_agentic) == 5
-
-    for task in found_agentic:
-        assert task.is_agentic == True
-        assert task.id in agentic_task_ids
-
-    # Test 2: Search for only non-agentic tasks
-    sc, non_agentic_response = client.search_tasks(is_agentic=False, page_size=50)
-    assert sc == 200
-
-    # Filter to only our test tasks
-    found_non_agentic = [
-        task for task in non_agentic_response.tasks if task.id in non_agentic_task_ids
-    ]
-    assert len(found_non_agentic) == 5
-
-    for task in found_non_agentic:
-        assert task.is_agentic == False
-        assert task.id in non_agentic_task_ids
-
-    # Test 3: Search without is_agentic filter should return both types
     sc, all_response = client.search_tasks(page_size=50)
     assert sc == 200
 
-    all_our_tasks = [
-        task
-        for task in all_response.tasks
-        if task.id in agentic_task_ids + non_agentic_task_ids
-    ]
+    all_our_tasks = [task for task in all_response.tasks if task.id in task_ids]
     assert len(all_our_tasks) == 10
+    for task in all_our_tasks:
+        assert task.is_agentic == True
 
 
 @pytest.mark.unit_tests
-def test_search_tasks_agentic_with_other_filters(client: GenaiEngineTestClientBase):
-    """Test combining is_agentic filter with other search filters"""
+def test_search_tasks_name_filter_spans_legacy_flags(
+    client: GenaiEngineTestClientBase,
+):
+    """Name search matches every task with the name regardless of the legacy
+    agentic flag (the is_agentic filter is removed)."""
     unique_prefix = str(random.random()) + "combined_test_"
 
-    # Create tasks with specific names
-    agentic_task_ids = []
+    created_task_ids = []
     for i in range(3):
         sc, task = client.create_task(
             name=f"{unique_prefix}special_agentic_{i}",
             is_agentic=True,
         )
         assert sc == 200
-        agentic_task_ids.append(task.id)
+        created_task_ids.append(task.id)
 
-    # Also create some non-agentic tasks with similar names
     for i in range(2):
         sc, task = client.create_task(
             name=f"{unique_prefix}special_non_agentic_{i}",
             is_agentic=False,
         )
         assert sc == 200
+        created_task_ids.append(task.id)
 
-    # Test combining name search with is_agentic filter
     sc, response = client.search_tasks(
         task_name=f"{unique_prefix}special",
-        is_agentic=True,
         page_size=50,
     )
     assert sc == 200
 
-    # Should only find agentic tasks with "special" in the name
-    found_tasks = [task for task in response.tasks if task.id in agentic_task_ids]
-    assert len(found_tasks) == 3
+    found_tasks = [task for task in response.tasks if task.id in created_task_ids]
+    assert len(found_tasks) == 5
 
     for task in found_tasks:
         assert task.is_agentic == True
@@ -302,35 +266,35 @@ def test_search_tasks_archived_flags(client: GenaiEngineTestClientBase):
 
 
 @pytest.mark.unit_tests
-def test_search_tasks_agentic_with_pagination(client: GenaiEngineTestClientBase):
-    """Test is_agentic filter with pagination"""
+def test_search_tasks_pagination(client: GenaiEngineTestClientBase):
+    """Pagination still behaves after the is_agentic filter removal."""
     unique_prefix = str(random.random()) + "pagination_test_"
 
-    # Create more agentic tasks than page size
-    agentic_task_ids = []
+    # Create more tasks than page size
+    created_task_ids = []
     for i in range(7):  # More than our page size of 3
         sc, task = client.create_task(
             name=f"{unique_prefix}agentic_{i}",
             is_agentic=True,
         )
         assert sc == 200
-        agentic_task_ids.append(task.id)
+        created_task_ids.append(task.id)
 
     # Test first page
-    sc, page1_response = client.search_tasks(is_agentic=True, page=0, page_size=3)
+    sc, page1_response = client.search_tasks(page=0, page_size=3)
     assert sc == 200
 
     page1_our_tasks = [
-        task for task in page1_response.tasks if task.id in agentic_task_ids
+        task for task in page1_response.tasks if task.id in created_task_ids
     ]
     assert len(page1_our_tasks) <= 3
 
     # Test second page
-    sc, page2_response = client.search_tasks(is_agentic=True, page=1, page_size=3)
+    sc, page2_response = client.search_tasks(page=1, page_size=3)
     assert sc == 200
 
     page2_our_tasks = [
-        task for task in page2_response.tasks if task.id in agentic_task_ids
+        task for task in page2_response.tasks if task.id in created_task_ids
     ]
 
     # Ensure no overlap between pages
@@ -338,7 +302,7 @@ def test_search_tasks_agentic_with_pagination(client: GenaiEngineTestClientBase)
     page2_ids = [task.id for task in page2_our_tasks]
     assert len(set(page1_ids).intersection(set(page2_ids))) == 0
 
-    # All found tasks should be agentic
+    # All found tasks report the deprecated field as True
     for task in page1_our_tasks + page2_our_tasks:
         assert task.is_agentic == True
 

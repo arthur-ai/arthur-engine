@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from arthur_common.models.response_schemas import TaskResponse
 from litellm.exceptions import BadRequestError
-from litellm.types.utils import ModelResponse
+from litellm.types.utils import ChatCompletionMessageToolCall, Function, ModelResponse
 
 from src.schemas.agentic_prompt_schemas import AgenticPrompt
 from tests.clients.base_test_client import GenaiEngineTestClientBase
@@ -271,7 +271,13 @@ def test_run_saved_agentic_prompt_success(
     mock_response.choices = [MagicMock()]
     mock_message = MagicMock()
     mock_message.content = "Saved prompt response"
-    mock_message.tool_calls = [{"id": "call_123", "function": {"name": "test_tool"}}]
+    mock_message.tool_calls = [
+        ChatCompletionMessageToolCall(
+            function=Function(arguments="", name="test_tool"),
+            id="call_123",
+            type="function",
+        ),
+    ]
     mock_response.choices[0].message = mock_message
     mock_completion.return_value = mock_response
     mock_completion_cost.return_value = 0.002345

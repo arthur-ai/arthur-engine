@@ -340,7 +340,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "24"
       - name: Enable Corepack
         run: corepack enable
       - name: Install dependencies
@@ -362,13 +362,18 @@ jobs:
         id: format-check
         continue-on-error: true
         run: yarn format:check
+      - name: Run tests
+        id: tests
+        continue-on-error: true
+        run: yarn test:run
       - name: Check results
-        if: steps.type-check.outcome == 'failure' || steps.lint.outcome == 'failure' || steps.format-check.outcome == 'failure'
+        if: steps.type-check.outcome == 'failure' || steps.lint.outcome == 'failure' || steps.format-check.outcome == 'failure' || steps.tests.outcome == 'failure'
         run: |
           echo "One or more checks failed:"
           echo "  type-check: ${{ steps.type-check.outcome }}"
           echo "  lint: ${{ steps.lint.outcome }}"
           echo "  format-check: ${{ steps.format-check.outcome }}"
+          echo "  tests: ${{ steps.tests.outcome }}"
           exit 1
 
   run-genai-engine-unit-tests:
@@ -672,9 +677,9 @@ jobs:
         run: |
           cd deployment/model-upload
           python check_model_updates.py --output github >> $GITHUB_OUTPUT
-          # If either model image doesn't exist yet (bootstrap case), force a build
+          # If any model image doesn't exist yet (bootstrap case), force a build
           TAG=${{ github.ref == 'refs/heads/main' && 'latest' || 'latest-dev' }}
-          for IMAGE in "arthurplatform/genai-engine-models-s3" "arthurplatform/genai-engine-models-fs"; do
+          for IMAGE in "arthurplatform/genai-engine-models-s3" "arthurplatform/genai-engine-models-fs" "arthurplatform/genai-engine-models-gcs"; do
             NAMESPACE="${IMAGE%%/*}"
             REPO="${IMAGE##*/}"
             STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://hub.docker.com/v2/repositories/${NAMESPACE}/${REPO}/tags/${TAG}/")
@@ -716,6 +721,13 @@ jobs:
 
   build-genai-engine-models-docker-image:
     uses: ./.github/workflows/build-ecs-model-upload.yml
+    # Passed through to the reusable workflow, which runs the vuln-report scan and
+    # publishes SARIF. A called workflow is capped by its caller's token, so
+    # security-events: write has to be granted here as well as there.
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
     needs: [check-models-updates]
     if: |
       needs.check-models-updates.outputs.has_updates == 'true' &&
@@ -769,6 +781,13 @@ jobs:
 
   build-genai-engine-models-fs-docker-image:
     uses: ./.github/workflows/build-fs-model-upload.yml
+    # Passed through to the reusable workflow, which runs the vuln-report scan and
+    # publishes SARIF. A called workflow is capped by its caller's token, so
+    # security-events: write has to be granted here as well as there.
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
     needs: [check-models-updates]
     if: |
       needs.check-models-updates.outputs.has_updates == 'true' &&
@@ -822,8 +841,16 @@ jobs:
 
   build-gcp-model-upload-docker-image:
     uses: ./.github/workflows/build-gcp-model-upload.yml
+    # Passed through to the reusable workflow, which runs the vuln-report scan and
+    # publishes SARIF. A called workflow is capped by its caller's token, so
+    # security-events: write has to be granted here as well as there.
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
     needs: [check-models-updates]
     if: |
+      needs.check-models-updates.outputs.has_updates == 'true' &&
       github.repository == 'arthur-ai/arthur-engine' &&
       contains(github.event.head_commit.message, 'Increment arthur-engine version') &&
       (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
@@ -831,6 +858,46 @@ jobs:
       push: true
       image: arthurplatform/genai-engine-models-gcs
     secrets: inherit
+
+  tag-gcp-model-upload-docker-image:
+    needs: [check-models-updates]
+    environment: shared-protected-branch-secrets
+    if: |
+      needs.check-models-updates.outputs.has_updates == 'false' &&
+      github.repository == 'arthur-ai/arthur-engine' &&
+      contains(github.event.head_commit.message, 'Increment arthur-engine version') &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/workflows/composite-actions/setup-git
+        with:
+          safe-directory: ${{ runner.workspace }}
+      - uses: ./.github/workflows/composite-actions/set-version
+        with:
+          version-prefix: "genai-engine-"
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4.1.0
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3.6.0
+        with:
+          username: ${{ secrets.DOCKERHUB_OSS_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_OSS_TOKEN }}
+      # imagetools copies the full image (incl. the SBOM attestation) registry-to-registry.
+      # The previous `docker pull`/`tag`/`push` fetched only the platform manifest and would
+      # drop the SBOM attestation from the newly-tagged version.
+      - name: Retag previous models gcs image with new version
+        run: |
+          SOURCE_TAG=${{ github.ref == 'refs/heads/main' && 'latest' || 'latest-dev' }}
+          echo "No model updates detected - retagging ${SOURCE_TAG} as ${{ env.VERSION }}"
+          docker buildx imagetools create \
+            --tag arthurplatform/genai-engine-models-gcs:${{ env.VERSION }} \
+            arthurplatform/genai-engine-models-gcs:${SOURCE_TAG}
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            docker buildx imagetools create \
+              --tag arthurplatform/genai-engine-models-gcs:latest \
+              arthurplatform/genai-engine-models-gcs:${SOURCE_TAG}
+          fi
 
   push-all-cfts:
     needs: [build-genai-engine-docker-images, build-ml-engine-docker-images]
@@ -924,6 +991,7 @@ jobs:
       - build-genai-engine-models-fs-docker-image
       - tag-genai-engine-models-fs-docker-image
       - build-gcp-model-upload-docker-image
+      - tag-gcp-model-upload-docker-image
     environment: shared-protected-branch-secrets
     # `needs` on a skipped model build/tag job still enforces ordering (a skipped job counts as
     # complete), so whichever of each build/tag pair ran will have published the <VERSION> tag.

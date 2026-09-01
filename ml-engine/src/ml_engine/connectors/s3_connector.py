@@ -86,10 +86,12 @@ class S3Connector(BucketBasedConnector):
                     session_name=f"arthur_connector_{connector_id}",
                 ),
             )
+        # skip_instance_cache: see gcs_connector.py
         return s3fs.S3FileSystem(
             endpoint_url=connector_config_fields.endpoint,
             s3_additional_kwargs={"region": connector_config_fields.region},
             session=sess,
+            skip_instance_cache=True,
         )
 
     @property

@@ -8,7 +8,7 @@ React 19 + TypeScript + Vite SPA for the GenAI Engine (tasks, prompts, datasets,
 yarn dev                  # dev server
 yarn check                # type-check + lint + format:check — required before committing, CI enforced
 yarn format               # auto-fix formatting
-yarn test:run             # vitest
+yarn test:run             # vitest — also CI enforced, in the same job as yarn check
 yarn generate-api:clean   # regenerate API client after backend OpenAPI spec changes
 ```
 
@@ -42,6 +42,7 @@ Custom typed wrappers live in [src/components/traces/components/filtering/hooks/
 
 - Currency display: `useDisplaySettings()` provides `defaultCurrency` (from `GET /api/v2/display-settings`; backend default set by the `CURRENCY_DEFAULT_CURRENCY` env var). Format with `formatCurrency(amount, defaultCurrency)` from `@/utils/formatters`.
 - The auth token lives in localStorage, managed by `AuthContext`.
+- Keep `/@arthur\//` in `test.server.deps.inline` (vitest.config.ts) — `@arthur/*` packages ship ESM with extensionless relative imports that Vitest's resolver can't handle otherwise.
 
 ## Dependency cooldown
 

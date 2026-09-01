@@ -213,7 +213,6 @@ def get_traces_overview(
 
         tasks, _ = tasks_repo.query_tasks(
             ids=request.task_ids,
-            is_agentic=True,
             include_archived=False,
             sort=PaginationSortMethod.DESCENDING,
             page_size=None,

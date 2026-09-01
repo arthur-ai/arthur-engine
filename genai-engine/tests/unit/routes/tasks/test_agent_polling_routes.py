@@ -71,7 +71,8 @@ def test_execute_agent_polling_task_not_found(
 def test_execute_agent_polling_non_agentic_task(
     client: GenaiEngineTestClientBase,
 ):
-    """Test that executing a polling job for a non-agentic task returns 400."""
+    """The agentic polling gate is removed; a manually-created task
+    still 400s because it is not a GCP agent."""
     mock_polling_service = MagicMock()
 
     with patch(
@@ -89,7 +90,7 @@ def test_execute_agent_polling_non_agentic_task(
                 task_id=task_response.id,
             )
             assert status_code == 400
-            assert "not available for agent polling" in response["detail"]
+            assert "is not a GCP agent" in response["detail"]
         finally:
             client.delete_task(task_response.id)
 
@@ -203,10 +204,12 @@ def test_execute_all_agent_polling_success(
 ):
     """Test that execute-all triggers discovery + polling and returns counts."""
     mock_polling_service = MagicMock()
-    mock_polling_service._discover_and_poll_agents.return_value = DiscoverAndPollResponse(
-        status="completed",
-        discovered=2,
-        traces_fetched=0,
+    mock_polling_service._discover_and_poll_agents.return_value = (
+        DiscoverAndPollResponse(
+            status="completed",
+            discovered=2,
+            traces_fetched=0,
+        )
     )
 
     with patch(
@@ -227,10 +230,12 @@ def test_execute_all_agent_polling_sync_with_traces_fetched(
 ):
     """Test that execute-all in synchronous mode returns actual traces_fetched count."""
     mock_polling_service = MagicMock()
-    mock_polling_service._discover_and_poll_agents.return_value = DiscoverAndPollResponse(
-        status="completed",
-        discovered=1,
-        traces_fetched=42,
+    mock_polling_service._discover_and_poll_agents.return_value = (
+        DiscoverAndPollResponse(
+            status="completed",
+            discovered=1,
+            traces_fetched=42,
+        )
     )
 
     with patch(

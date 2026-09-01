@@ -18,7 +18,12 @@ from litellm import (
     Message,
     stream_chunk_builder,
 )
-from litellm.types.utils import ModelResponse, ModelResponseStream
+from litellm.types.utils import (
+    ChatCompletionMessageCustomToolCall,
+    ChatCompletionMessageToolCall,
+    ModelResponse,
+    ModelResponseStream,
+)
 
 from clients.llm.llm_client import LLMClient, LLMModelResponse
 from schemas.agentic_prompt_schemas import AgenticPrompt
@@ -156,6 +161,34 @@ class ChatCompletionService:
     # ============================================================================
     # Completion Helpers and Methods
     # ============================================================================
+
+    @staticmethod
+    def _function_tool_calls(
+        tool_calls: (
+            list[ChatCompletionMessageToolCall | ChatCompletionMessageCustomToolCall]
+            | None
+        ),
+    ) -> list[ChatCompletionMessageToolCall] | None:
+        """
+        Keep only function tool calls.
+
+        litellm widened Message.tool_calls to also carry OpenAI custom tool calls, which
+        AgenticPromptRunResponse does not model. Drop them rather than widening the response.
+
+        Args:
+            tool_calls: Tool calls off a completion message, may be None
+
+        Returns:
+            The function tool calls, or None if the message had none
+        """
+        if tool_calls is None:
+            return None
+
+        return [
+            tool_call
+            for tool_call in tool_calls
+            if isinstance(tool_call, ChatCompletionMessageToolCall)
+        ]
 
     @staticmethod
     def _extract_token_counts(
@@ -341,7 +374,7 @@ class ChatCompletionService:
 
             return AgenticPromptRunResponse(
                 content=msg.content,
-                tool_calls=msg.tool_calls,
+                tool_calls=self._function_tool_calls(msg.tool_calls),
                 cost=llm_model_response.cost or "",
                 input_tokens=input_tokens,
                 output_tokens=output_tokens,
@@ -416,7 +449,7 @@ class ChatCompletionService:
 
                 data = AgenticPromptRunResponse(
                     content=msg.content,
-                    tool_calls=msg.tool_calls,
+                    tool_calls=self._function_tool_calls(msg.tool_calls),
                     cost=cost,
                     input_tokens=input_tokens,
                     output_tokens=output_tokens,

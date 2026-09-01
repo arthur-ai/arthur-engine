@@ -122,7 +122,7 @@ def create_tenant_signup(
             application_config,
         ).create_task(
             Task._from_request_model(
-                NewTaskRequest(name=db_org.name, is_agentic=True),
+                NewTaskRequest(name=db_org.name),
                 org_id=db_org.id,
             ),
             commit=False,
