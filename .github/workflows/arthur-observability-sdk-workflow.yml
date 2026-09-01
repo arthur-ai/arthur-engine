@@ -147,8 +147,21 @@ jobs:
       contents: read
       pull-requests: write
     steps:
+      - name: Generate Automator App token (push identity)
+        id: app-token
+        # A forked PR has no access to secrets, so the token — and with it the
+        # regeneration below — is available only for same-repo PRs.
+        if: github.event.pull_request.head.repo.full_name == github.repository
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.ARTHUR_GH_AUTOMATOR_APP_ID }}
+          private-key: ${{ secrets.ARTHUR_GH_AUTOMATOR_APP_PRIVATE_KEY }}
+
       - uses: actions/checkout@v5
         with:
+          # The PR head commit, not the merge ref: the docs commit is pushed back
+          # onto the PR branch.
+          ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
 
       - name: Detect src change without docs update
@@ -165,14 +178,60 @@ jobs:
             echo "stale=false" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Install Claude Code CLI
+        if: steps.check.outputs.stale == 'true' && steps.app-token.outcome == 'success'
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Regenerate docs
+        id: generate
+        if: steps.check.outputs.stale == 'true' && steps.app-token.outcome == 'success'
+        working-directory: arthur-observability-sdk
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          UPDATE_DOCS_NON_INTERACTIVE: 'true'
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+        # origin/<base>, because a detached PR checkout has no local base branch.
+        run: ./scripts/update-docs.sh "origin/$BASE_REF"
+
+      - name: Commit and push the docs update
+        id: push
+        if: steps.generate.outcome == 'success'
+        env:
+          APP_TOKEN: ${{ steps.app-token.outputs.token }}
+          HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
+        run: |
+          set -euo pipefail
+          if [ -z "$(git status --porcelain arthur-observability-sdk/docs/)" ]; then
+            echo "Docs are already current; nothing to push."
+            exit 0
+          fi
+          git config user.name "arthur-github-automator[bot]"
+          git config user.email "${{ secrets.ARTHUR_GH_AUTOMATOR_APP_ID }}+arthur-github-automator[bot]@users.noreply.github.com"
+          git add arthur-observability-sdk/docs/
+          git commit -m "docs(observability-sdk): regenerate for SDK changes [claude-autodocs]"
+
+          # Push with the app token EXPLICITLY so GitHub attributes the commit to the
+          # Automator App. NOT a force push: if the author pushed while docs were being
+          # generated this is a non-fast-forward and is rejected — a later run redoes it.
+          # The re-triggered run sees docs/ in the PR diff, so `stale` is false and this
+          # job no-ops rather than looping.
+          git push "https://x-access-token:${APP_TOKEN}@github.com/${{ github.repository }}.git" \
+            "HEAD:$HEAD_BRANCH"
+
       - name: Post docs reminder
-        if: steps.check.outputs.stale == 'true'
+        # Fallback for what the automation cannot cover: a forked PR (no secrets and a
+        # read-only token), a failed regeneration, or a rejected push.
+        if: >-
+          always() && steps.check.outputs.stale == 'true' &&
+          (steps.app-token.outcome != 'success' ||
+           steps.generate.outcome != 'success' ||
+           steps.push.outcome != 'success')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh pr comment ${{ github.event.pull_request.number }} \
             --repo ${{ github.repository }} \
-            --body "**Docs reminder:** \`python/src/arthur_observability_sdk/\` was modified in this PR but \`docs/\` was not updated. Consider running \`scripts/update-docs.sh\` locally (requires the \`claude\` CLI) and committing any resulting changes. This is a reminder only — the PR is not blocked."
+            --body "**Docs reminder:** \`python/src/arthur_observability_sdk/\` was modified in this PR but \`docs/\` was not updated, and automatic regeneration could not run here. Consider running \`scripts/update-docs.sh\` locally (requires the \`claude\` CLI) and committing any resulting changes. This is a reminder only — the PR is not blocked."
 
   claude-code-review:
     # Mirrors the gate in claude-code-review.yml: skip pure Renovate syncs, but keep
