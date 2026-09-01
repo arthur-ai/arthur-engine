@@ -144,19 +144,9 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     permissions:
-      contents: read
+      contents: write # push the regenerated docs commit onto the PR branch
       pull-requests: write
     steps:
-      - name: Generate Automator App token (push identity)
-        id: app-token
-        # A forked PR has no access to secrets, so the token — and with it the
-        # regeneration below — is available only for same-repo PRs.
-        if: github.event.pull_request.head.repo.full_name == github.repository
-        uses: actions/create-github-app-token@v1
-        with:
-          app-id: ${{ secrets.ARTHUR_GH_AUTOMATOR_APP_ID }}
-          private-key: ${{ secrets.ARTHUR_GH_AUTOMATOR_APP_PRIVATE_KEY }}
-
       - uses: actions/checkout@v5
         with:
           # The PR head commit, not the merge ref: the docs commit is pushed back
@@ -178,13 +168,21 @@ jobs:
             echo "stale=false" >> "$GITHUB_OUTPUT"
           fi
 
+      # A forked PR has no secrets and a read-only token, so it can neither generate
+      # nor push; it falls through to the reminder comment. Every step below is
+      # continue-on-error so that any failure still reaches that comment.
       - name: Install Claude Code CLI
-        if: steps.check.outputs.stale == 'true' && steps.app-token.outcome == 'success'
+        id: install-cli
+        if: >-
+          steps.check.outputs.stale == 'true' &&
+          github.event.pull_request.head.repo.full_name == github.repository
+        continue-on-error: true
         run: npm install -g @anthropic-ai/claude-code
 
       - name: Regenerate docs
         id: generate
-        if: steps.check.outputs.stale == 'true' && steps.app-token.outcome == 'success'
+        if: steps.install-cli.outcome == 'success'
+        continue-on-error: true
         working-directory: arthur-observability-sdk
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -196,8 +194,8 @@ jobs:
       - name: Commit and push the docs update
         id: push
         if: steps.generate.outcome == 'success'
+        continue-on-error: true
         env:
-          APP_TOKEN: ${{ steps.app-token.outputs.token }}
           HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
         run: |
           set -euo pipefail
@@ -205,27 +203,21 @@ jobs:
             echo "Docs are already current; nothing to push."
             exit 0
           fi
-          git config user.name "arthur-github-automator[bot]"
-          git config user.email "${{ secrets.ARTHUR_GH_AUTOMATOR_APP_ID }}+arthur-github-automator[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add arthur-observability-sdk/docs/
           git commit -m "docs(observability-sdk): regenerate for SDK changes [claude-autodocs]"
 
-          # Push with the app token EXPLICITLY so GitHub attributes the commit to the
-          # Automator App. NOT a force push: if the author pushed while docs were being
-          # generated this is a non-fast-forward and is rejected — a later run redoes it.
-          # The re-triggered run sees docs/ in the PR diff, so `stale` is false and this
-          # job no-ops rather than looping.
-          git push "https://x-access-token:${APP_TOKEN}@github.com/${{ github.repository }}.git" \
-            "HEAD:$HEAD_BRANCH"
+          # NOT a force push: if the author pushed while docs were being generated this
+          # is a non-fast-forward, it is rejected rather than overwritten, and the
+          # reminder below fires instead. A GITHUB_TOKEN push starts no new workflow
+          # run, so this cannot loop.
+          git push origin "HEAD:$HEAD_BRANCH"
 
       - name: Post docs reminder
-        # Fallback for what the automation cannot cover: a forked PR (no secrets and a
-        # read-only token), a failed regeneration, or a rejected push.
-        if: >-
-          always() && steps.check.outputs.stale == 'true' &&
-          (steps.app-token.outcome != 'success' ||
-           steps.generate.outcome != 'success' ||
-           steps.push.outcome != 'success')
+        # Fallback for everything the automation cannot cover: a forked PR, a failed
+        # regeneration, or a rejected push.
+        if: always() && steps.check.outputs.stale == 'true' && steps.push.outcome != 'success'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
