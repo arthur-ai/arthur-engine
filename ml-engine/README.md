@@ -60,13 +60,10 @@ docker run -e ARTHUR_API_HOST=https://platform.arthur.ai -e ARTHUR_CLIENT_SECRET
 
 ### Running ML Engine in Terminal Window
 
-#### Install prerequisites
+#### Install prerequisite
 1. Install uv
 ```bash
 pip install uv
-brew install openjdk # or install another way
-# If installed via brew, link the JDK into the Java Virtual Machines directory
-sudo ln -sfn /opt/homebrew/opt/openjdk/libexec/openjdk.jdk /Library/Java/JavaVirtualMachines/openjdk.jdk
 ```
 
 #### Set Up Python Environment

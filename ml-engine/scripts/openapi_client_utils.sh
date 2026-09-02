@@ -9,35 +9,19 @@ if [ "$#" -eq 0 ]; then
     exit 2
 fi
 
-export OPENAPI_GENERATOR_VERSION=7.12.0
+export OPENAPI_GENERATOR_VERSION=7.12
 
-install_or_update_openapi_gen() {
-  echo "Installing or updating openapi-generator-cli to version $OPENAPI_GENERATOR_VERSION..."
-  if [[ $(uname) == 'Darwin' ]]; then
-    # use npm to install and manage OpenAPI Generator on local macs
-    brew install npm
-    npm install -g @openapitools/openapi-generator-cli
-    openapi-generator-cli version-manager set $OPENAPI_GENERATOR_VERSION
-  else
-    npm install -g @openapitools/openapi-generator-cli
-    openapi-generator-cli version-manager set $OPENAPI_GENERATOR_VERSION
-  fi
+install_openapi_gen() {
+  echo "Installing openapi-generator-cli $OPENAPI_GENERATOR_VERSION..."
+  # The PyPI distribution bundles its own JVM via jdk4py, so no system Java install is
+  # needed. Same generator and pin CI uses in .github/workflows/arthur-engine-workflow.yml.
+  python3 -m pip install "openapi-generator-cli[jdk4py]==$OPENAPI_GENERATOR_VERSION"
+  # Prefer this install over an older npm-installed shim left on PATH by previous versions
+  # of this script, which shells out to a system JVM instead of the bundled one.
+  PATH="$(python3 -c 'import sysconfig; print(sysconfig.get_path("scripts"))'):$PATH"
 }
 
-# install cli if not present
-if ! command -v openapi-generator-cli &> /dev/null; then
-  echo "openapi-generator-cli is not installed."
-  install_or_update_openapi_gen
-else
-  echo "openapi-generator-cli version `openapi-generator-cli version` already installed"
-fi
-
-# upgrade cli if not on desired version
-version=$(openapi-generator-cli version)
-if [ "$version" != "$OPENAPI_GENERATOR_VERSION" ]; then
-  install_or_update_openapi_gen
-  openapi-generator-cli version # confirm installation successful
-fi
+install_openapi_gen
 
 purpose=${1:-generate}
 runtime=${2:-python} # use 'python' by default if no language runtime passed to script
