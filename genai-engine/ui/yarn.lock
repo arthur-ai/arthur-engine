@@ -821,15 +821,15 @@ __metadata:
   linkType: hard
 
 "@csstools/css-color-parser@npm:^4.1.10":
-  version: 4.2.1
-  resolution: "@csstools/css-color-parser@npm:4.2.1"
+  version: 4.2.2
+  resolution: "@csstools/css-color-parser@npm:4.2.2"
   dependencies:
     "@csstools/color-helpers": "npm:^6.1.1"
     "@csstools/css-calc": "npm:^3.3.0"
   peerDependencies:
     "@csstools/css-parser-algorithms": ^4.0.0
     "@csstools/css-tokenizer": ^4.0.0
-  checksum: 10c0/c3819982ef8bcdd8b1dc8793ed7ad5b05c46f5ccc4c52864c9d8db6c90376bee299c80e6eca81b66691fc6cddb1d819941e7c86499afa384ce24cfe2c6d0bda6
+  checksum: 10c0/976707dceff091b5a955f1dbce3fa0e69119ee9fce14691f4ad0491940a1eeb9d474c0ba7d6a1a8b079a027dc70ced058336307fa2262241dc1aa084b5f65628
   languageName: node
   linkType: hard
 
@@ -843,14 +843,14 @@ __metadata:
   linkType: hard
 
 "@csstools/css-syntax-patches-for-csstree@npm:^1.1.7":
-  version: 1.1.9
-  resolution: "@csstools/css-syntax-patches-for-csstree@npm:1.1.9"
+  version: 1.1.10
+  resolution: "@csstools/css-syntax-patches-for-csstree@npm:1.1.10"
   peerDependencies:
     css-tree: ^3.2.1
   peerDependenciesMeta:
     css-tree:
       optional: true
-  checksum: 10c0/b57a7f588d72c207c7c92687947d625c787b94e0e3d4c73318c721bf11d422aad2e89e0e2345622ce100dcf59a434b82b6b7a5c98ab5d2b27d02a35e00a8fb20
+  checksum: 10c0/6bdb255713a8820971579412078f7adac812905fdfda79fa8ca6883952c61da2abcebb545fb7f87320854d13210994bc89188e195fcd3f62e89f2aa576b114da
   languageName: node
   linkType: hard
 
@@ -5242,9 +5242,9 @@ __metadata:
   linkType: hard
 
 "ignore@npm:^7.0.5":
-  version: 7.0.6
-  resolution: "ignore@npm:7.0.6"
-  checksum: 10c0/fc01ef1d14efbe003439b60538726351e81483d1b6f55bdbb3a4465c6346d9481afad5b350dfbd604ddd7049618ef9093ff26dc147984aabc303c56ba53ea3b5
+  version: 7.0.7
+  resolution: "ignore@npm:7.0.7"
+  checksum: 10c0/9f6552572f0c1e95eda40ce382afd7d54287e8359f591ef5fe45ad6eca71a7c792b5170ece3d4e9ce3b9a45dd9a2ac18054c8ed9c706b4c27048bdcda488a709
   languageName: node
   linkType: hard
 
@@ -8390,11 +8390,11 @@ __metadata:
   linkType: hard
 
 "type-fest@npm:^5.7.0":
-  version: 5.8.0
-  resolution: "type-fest@npm:5.8.0"
+  version: 5.9.0
+  resolution: "type-fest@npm:5.9.0"
   dependencies:
     tagged-tag: "npm:^1.0.0"
-  checksum: 10c0/c8aae118a763d550a9552a511dff6b71840a23dab4edf693cf1c4df22596942794e6f6723389bd9036a90182249d915158bacf0815a1ae87f05f901b1d5f574e
+  checksum: 10c0/9bf14a49454b9b40d9fe85e563a4cf90990bbe7c75958665b72660b4197a905f247be682a7757cac7c8fa60fc0eae32cc8cf51f80a88e15f0a3d4a8ec07eb5b6
   languageName: node
   linkType: hard
 
