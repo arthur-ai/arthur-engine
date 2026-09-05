@@ -1,0 +1,561 @@
+{
+  "session_id": "sess_customer_01_a3829cd4",
+  "user_id": "user-42",
+  "task_id": "3f7c1b2a-9d44-4c1e-8b0a-2c5e6f7a8b90",
+  "agent_kind": "customer_support",
+  "scenario": "Order lookup, then a policy follow-up, then sign-off \u2014 the canonical happy path.",
+  "resource_attributes": {
+    "service.name": "support-agent",
+    "arthur.task": "3f7c1b2a-9d44-4c1e-8b0a-2c5e6f7a8b90"
+  },
+  "trace_count": 3,
+  "span_count": 9,
+  "traces": [
+    {
+      "trace_id": "829a73750ce315b24cf60307dfc3ba83",
+      "root_span_id": "7c484fdd0c7047c5",
+      "spans": [
+        {
+          "traceId": "829a73750ce315b24cf60307dfc3ba83",
+          "spanId": "7c484fdd0c7047c5",
+          "name": "support-agent.run",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788541620000000000",
+          "endTimeUnixNano": "1788541621912000000",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "AGENT"
+              }
+            },
+            "input": {
+              "value": "Where is my order #7781?"
+            },
+            "output": {
+              "value": "Your order #7781 is in transit and should arrive Sep 6."
+            },
+            "session": {
+              "id": "sess_customer_01_a3829cd4"
+            },
+            "user": {
+              "id": "user-42"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "829a73750ce315b24cf60307dfc3ba83",
+          "spanId": "49f2c1aefe232380",
+          "name": "ChatCompletion",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788541620015000064",
+          "endTimeUnixNano": "1788541620795000064",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "LLM"
+              }
+            },
+            "llm": {
+              "model_name": "gpt-4o-mini",
+              "provider": "openai",
+              "system": "openai",
+              "invocation_parameters": {
+                "model": "gpt-4o-mini",
+                "temperature": 0.2
+              },
+              "token_count": {
+                "prompt": 412,
+                "completion": 24,
+                "total": 436
+              },
+              "input_messages": [
+                {
+                  "message": {
+                    "role": "system",
+                    "content": "You are a support agent for an online retailer."
+                  }
+                },
+                {
+                  "message": {
+                    "role": "user",
+                    "content": "Where is my order #7781?"
+                  }
+                }
+              ],
+              "output_messages": [
+                {
+                  "message": {
+                    "role": "assistant",
+                    "tool_calls": [
+                      {
+                        "tool_call": {
+                          "id": "call_82af37196417",
+                          "function": {
+                            "name": "lookup_order",
+                            "arguments": "{\"order_id\": \"7781\"}"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "messages": [
+                  {
+                    "role": "system",
+                    "content": "You are a support agent for an online retailer."
+                  },
+                  {
+                    "role": "user",
+                    "content": "Where is my order #7781?"
+                  }
+                ]
+              }
+            },
+            "session": {
+              "id": "sess_customer_01_a3829cd4"
+            },
+            "user": {
+              "id": "user-42"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "7c484fdd0c7047c5",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "829a73750ce315b24cf60307dfc3ba83",
+          "spanId": "1f5b49a902aeceb1",
+          "name": "lookup_order",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788541620799000064",
+          "endTimeUnixNano": "1788541620979000064",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "TOOL"
+              }
+            },
+            "tool": {
+              "name": "lookup_order",
+              "description": "Look up an order by its ID."
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "order_id": "7781"
+              }
+            },
+            "output": {
+              "mime_type": "application/json",
+              "value": {
+                "status": "in_transit",
+                "eta": "Sep 6"
+              }
+            },
+            "session": {
+              "id": "sess_customer_01_a3829cd4"
+            },
+            "user": {
+              "id": "user-42"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "7c484fdd0c7047c5",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "829a73750ce315b24cf60307dfc3ba83",
+          "spanId": "0e4aa41b2cb9c35b",
+          "name": "ChatCompletion",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788541620983000064",
+          "endTimeUnixNano": "1788541621892999936",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "LLM"
+              }
+            },
+            "llm": {
+              "model_name": "gpt-4o-mini",
+              "provider": "openai",
+              "system": "openai",
+              "invocation_parameters": {
+                "model": "gpt-4o-mini",
+                "temperature": 0.2
+              },
+              "token_count": {
+                "prompt": 468,
+                "completion": 31,
+                "total": 499
+              },
+              "input_messages": [
+                {
+                  "message": {
+                    "role": "system",
+                    "content": "You are a support agent."
+                  }
+                },
+                {
+                  "message": {
+                    "role": "user",
+                    "content": "Where is my order #7781?"
+                  }
+                },
+                {
+                  "message": {
+                    "role": "tool",
+                    "content": "{\"status\": \"in_transit\", \"eta\": \"Sep 6\"}"
+                  }
+                }
+              ],
+              "output_messages": [
+                {
+                  "message": {
+                    "role": "assistant",
+                    "content": "Your order #7781 is in transit and should arrive Sep 6."
+                  }
+                }
+              ]
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "messages": [
+                  {
+                    "role": "system",
+                    "content": "You are a support agent."
+                  },
+                  {
+                    "role": "user",
+                    "content": "Where is my order #7781?"
+                  },
+                  {
+                    "role": "tool",
+                    "content": "{\"status\": \"in_transit\", \"eta\": \"Sep 6\"}"
+                  }
+                ]
+              }
+            },
+            "output": {
+              "value": "Your order #7781 is in transit and should arrive Sep 6."
+            },
+            "session": {
+              "id": "sess_customer_01_a3829cd4"
+            },
+            "user": {
+              "id": "user-42"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "7c484fdd0c7047c5",
+          "arthur_span_version": "arthur_span_v1"
+        }
+      ]
+    },
+    {
+      "trace_id": "32918e87ced46de6d7cdfd70b2b535d3",
+      "root_span_id": "657123b55ce757ab",
+      "spans": [
+        {
+          "traceId": "32918e87ced46de6d7cdfd70b2b535d3",
+          "spanId": "657123b55ce757ab",
+          "name": "support-agent.run",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788541682912000000",
+          "endTimeUnixNano": "1788541684604999936",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "AGENT"
+              }
+            },
+            "input": {
+              "value": "What's your refund policy if it's late?"
+            },
+            "output": {
+              "value": "If an order is delayed beyond 5 business days you're entitled to a full refund, issued to your original payment method within 10 business days."
+            },
+            "session": {
+              "id": "sess_customer_01_a3829cd4"
+            },
+            "user": {
+              "id": "user-42"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "32918e87ced46de6d7cdfd70b2b535d3",
+          "spanId": "e9be0baa9d3e6083",
+          "name": "VectorStoreRetriever.get_relevant_documents",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788541682924499968",
+          "endTimeUnixNano": "1788541683164499968",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "RETRIEVER"
+              }
+            },
+            "input": {
+              "value": "What's your refund policy if it's late?"
+            },
+            "retrieval": {
+              "documents": [
+                {
+                  "document": {
+                    "id": "doc-114",
+                    "content": "Orders delayed beyond 5 business days qualify for a full refund.",
+                    "score": 0.87,
+                    "metadata": {
+                      "source": "policies/shipping.pdf",
+                      "page": 3
+                    }
+                  }
+                },
+                {
+                  "document": {
+                    "id": "doc-208",
+                    "content": "Refunds are issued to the original payment method within 10 business days.",
+                    "score": 0.71,
+                    "metadata": {
+                      "source": "policies/refunds.pdf",
+                      "page": 1
+                    }
+                  }
+                }
+              ]
+            },
+            "session": {
+              "id": "sess_customer_01_a3829cd4"
+            },
+            "user": {
+              "id": "user-42"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "657123b55ce757ab",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "32918e87ced46de6d7cdfd70b2b535d3",
+          "spanId": "4d73f23a42077a0e",
+          "name": "ChatCompletion",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788541683168499968",
+          "endTimeUnixNano": "1788541684588499968",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "LLM"
+              }
+            },
+            "llm": {
+              "model_name": "gpt-4o-mini",
+              "provider": "openai",
+              "system": "openai",
+              "invocation_parameters": {
+                "model": "gpt-4o-mini",
+                "temperature": 0.2
+              },
+              "token_count": {
+                "prompt": 890,
+                "completion": 88,
+                "total": 978
+              },
+              "input_messages": [
+                {
+                  "message": {
+                    "role": "system",
+                    "content": "Answer using the retrieved policy excerpts."
+                  }
+                },
+                {
+                  "message": {
+                    "role": "user",
+                    "content": "What's your refund policy if it's late?"
+                  }
+                }
+              ],
+              "output_messages": [
+                {
+                  "message": {
+                    "role": "assistant",
+                    "content": "If an order is delayed beyond 5 business days you're entitled to a full refund, issued to your original payment method within 10 business days."
+                  }
+                }
+              ]
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "messages": [
+                  {
+                    "role": "system",
+                    "content": "Answer using the retrieved policy excerpts."
+                  },
+                  {
+                    "role": "user",
+                    "content": "What's your refund policy if it's late?"
+                  }
+                ]
+              }
+            },
+            "output": {
+              "value": "If an order is delayed beyond 5 business days you're entitled to a full refund, issued to your original payment method within 10 business days."
+            },
+            "session": {
+              "id": "sess_customer_01_a3829cd4"
+            },
+            "user": {
+              "id": "user-42"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "657123b55ce757ab",
+          "arthur_span_version": "arthur_span_v1"
+        }
+      ]
+    },
+    {
+      "trace_id": "4fe5564405b45886b22fb1bdfe0a9653",
+      "root_span_id": "15de5bdc11543c86",
+      "spans": [
+        {
+          "traceId": "4fe5564405b45886b22fb1bdfe0a9653",
+          "spanId": "15de5bdc11543c86",
+          "name": "support-agent.run",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788541756604999936",
+          "endTimeUnixNano": "1788541757033999872",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "AGENT"
+              }
+            },
+            "input": {
+              "value": "Thanks, that's all!"
+            },
+            "output": {
+              "value": "Happy to help. Have a great day!"
+            },
+            "session": {
+              "id": "sess_customer_01_a3829cd4"
+            },
+            "user": {
+              "id": "user-42"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "4fe5564405b45886b22fb1bdfe0a9653",
+          "spanId": "3e135f35e8efb51c",
+          "name": "ChatCompletion",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788541756612499968",
+          "endTimeUnixNano": "1788541757022500096",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "LLM"
+              }
+            },
+            "llm": {
+              "model_name": "gpt-4o-mini",
+              "provider": "openai",
+              "system": "openai",
+              "invocation_parameters": {
+                "model": "gpt-4o-mini",
+                "temperature": 0.2
+              },
+              "token_count": {
+                "prompt": 298,
+                "completion": 12,
+                "total": 310
+              },
+              "input_messages": [
+                {
+                  "message": {
+                    "role": "system",
+                    "content": "You are a support agent."
+                  }
+                },
+                {
+                  "message": {
+                    "role": "user",
+                    "content": "Thanks, that's all!"
+                  }
+                }
+              ],
+              "output_messages": [
+                {
+                  "message": {
+                    "role": "assistant",
+                    "content": "Happy to help. Have a great day!"
+                  }
+                }
+              ]
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "messages": [
+                  {
+                    "role": "system",
+                    "content": "You are a support agent."
+                  },
+                  {
+                    "role": "user",
+                    "content": "Thanks, that's all!"
+                  }
+                ]
+              }
+            },
+            "output": {
+              "value": "Happy to help. Have a great day!"
+            },
+            "session": {
+              "id": "sess_customer_01_a3829cd4"
+            },
+            "user": {
+              "id": "user-42"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "15de5bdc11543c86",
+          "arthur_span_version": "arthur_span_v1"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,351 @@
+{
+  "session_id": "sess_revenue_02_7d4cd65d",
+  "user_id": "user-1187",
+  "task_id": "e7b104d9-3c88-4a52-9f61-0d84c2a7b6e5",
+  "agent_kind": "revenue_agent",
+  "scenario": "Sales \u2014 discount request declined by policy, then a meeting booked instead.",
+  "resource_attributes": {
+    "service.name": "revenue-agent",
+    "arthur.task": "e7b104d9-3c88-4a52-9f61-0d84c2a7b6e5"
+  },
+  "trace_count": 1,
+  "span_count": 6,
+  "traces": [
+    {
+      "trace_id": "672916381774047e37aabbc0e429f786",
+      "root_span_id": "7355ec72cb4ada86",
+      "spans": [
+        {
+          "traceId": "672916381774047e37aabbc0e429f786",
+          "spanId": "7355ec72cb4ada86",
+          "name": "router.dispatch",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788552840000000000",
+          "endTimeUnixNano": "1788552842935000064",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "CHAIN"
+              }
+            },
+            "input": {
+              "value": "Can you do 40% off if we sign today?"
+            },
+            "output": {
+              "value": "I can offer 15% on an annual plan \u2014 40% is outside what I can approve. I've held a slot with an account executive tomorrow at 2pm."
+            },
+            "metadata": {
+              "route": "sales",
+              "confidence": 0.88,
+              "router_version": "v3"
+            },
+            "session": {
+              "id": "sess_revenue_02_7d4cd65d"
+            },
+            "user": {
+              "id": "user-1187"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "672916381774047e37aabbc0e429f786",
+          "spanId": "d38db380f2717600",
+          "name": "ChatCompletion",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788552840017499904",
+          "endTimeUnixNano": "1788552840537499904",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "LLM"
+              }
+            },
+            "llm": {
+              "model_name": "gpt-4o-mini",
+              "provider": "openai",
+              "system": "openai",
+              "invocation_parameters": {
+                "model": "gpt-4o-mini",
+                "temperature": 0.2
+              },
+              "token_count": {
+                "prompt": 410,
+                "completion": 8,
+                "total": 418
+              },
+              "input_messages": [
+                {
+                  "message": {
+                    "role": "system",
+                    "content": "Route the message to one of: billing, sales, onboarding."
+                  }
+                },
+                {
+                  "message": {
+                    "role": "user",
+                    "content": "Can you do 40% off if we sign today?"
+                  }
+                }
+              ],
+              "output_messages": [
+                {
+                  "message": {
+                    "role": "assistant",
+                    "content": "sales"
+                  }
+                }
+              ]
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "messages": [
+                  {
+                    "role": "system",
+                    "content": "Route the message to one of: billing, sales, onboarding."
+                  },
+                  {
+                    "role": "user",
+                    "content": "Can you do 40% off if we sign today?"
+                  }
+                ]
+              }
+            },
+            "output": {
+              "value": "sales"
+            },
+            "metadata": {
+              "candidates": [
+                "billing",
+                "sales",
+                "onboarding"
+              ]
+            },
+            "session": {
+              "id": "sess_revenue_02_7d4cd65d"
+            },
+            "user": {
+              "id": "user-1187"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "7355ec72cb4ada86",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "672916381774047e37aabbc0e429f786",
+          "spanId": "b247bc211adce1e1",
+          "name": "sales-agent.run",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788552840541500160",
+          "endTimeUnixNano": "1788552842913500160",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "AGENT"
+              }
+            },
+            "input": {
+              "value": "Can you do 40% off if we sign today?"
+            },
+            "output": {
+              "value": "Offered 15%; booked an AE call."
+            },
+            "agent": {
+              "name": "sales-agent"
+            },
+            "graph": {
+              "node": {
+                "id": "sales-agent"
+              }
+            },
+            "session": {
+              "id": "sess_revenue_02_7d4cd65d"
+            },
+            "user": {
+              "id": "user-1187"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "7355ec72cb4ada86",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "672916381774047e37aabbc0e429f786",
+          "spanId": "eed177cf6c312b79",
+          "name": "ChatCompletion",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788552840556499968",
+          "endTimeUnixNano": "1788552842156500224",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "LLM"
+              }
+            },
+            "llm": {
+              "model_name": "gpt-4o",
+              "provider": "openai",
+              "system": "openai",
+              "invocation_parameters": {
+                "model": "gpt-4o",
+                "temperature": 0.2
+              },
+              "token_count": {
+                "prompt": 1100,
+                "completion": 68,
+                "total": 1168
+              },
+              "input_messages": [
+                {
+                  "message": {
+                    "role": "system",
+                    "content": "Max self-serve discount is 15%. Never exceed it."
+                  }
+                },
+                {
+                  "message": {
+                    "role": "user",
+                    "content": "Can you do 40% off if we sign today?"
+                  }
+                }
+              ],
+              "output_messages": [
+                {
+                  "message": {
+                    "role": "assistant",
+                    "content": "15% is my ceiling; booking an AE."
+                  }
+                }
+              ]
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "messages": [
+                  {
+                    "role": "system",
+                    "content": "Max self-serve discount is 15%. Never exceed it."
+                  },
+                  {
+                    "role": "user",
+                    "content": "Can you do 40% off if we sign today?"
+                  }
+                ]
+              }
+            },
+            "output": {
+              "value": "15% is my ceiling; booking an AE."
+            },
+            "session": {
+              "id": "sess_revenue_02_7d4cd65d"
+            },
+            "user": {
+              "id": "user-1187"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "b247bc211adce1e1",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "672916381774047e37aabbc0e429f786",
+          "spanId": "1dfe73f0c665ea77",
+          "name": "apply_discount",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788552842160499968",
+          "endTimeUnixNano": "1788552842480499968",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "TOOL"
+              }
+            },
+            "tool": {
+              "name": "apply_discount",
+              "description": "Apply a discount to a quote. Mutates CRM state."
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "pct": 15,
+                "plan": "annual"
+              }
+            },
+            "output": {
+              "mime_type": "application/json",
+              "value": {
+                "applied": true,
+                "quote_id": "Q-16967b0b"
+              }
+            },
+            "session": {
+              "id": "sess_revenue_02_7d4cd65d"
+            },
+            "user": {
+              "id": "user-1187"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "b247bc211adce1e1",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "672916381774047e37aabbc0e429f786",
+          "spanId": "eb34cbede5be5e40",
+          "name": "book_meeting",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788552842484499968",
+          "endTimeUnixNano": "1788552842894500096",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "TOOL"
+              }
+            },
+            "tool": {
+              "name": "book_meeting"
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "with": "account_executive",
+                "when": "2026-09-06T14:00"
+              }
+            },
+            "output": {
+              "mime_type": "application/json",
+              "value": {
+                "booked": true,
+                "event_id": "EV-d594f959"
+              }
+            },
+            "session": {
+              "id": "sess_revenue_02_7d4cd65d"
+            },
+            "user": {
+              "id": "user-1187"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "b247bc211adce1e1",
+          "arthur_span_version": "arthur_span_v1"
+        }
+      ]
+    }
+  ]
+}

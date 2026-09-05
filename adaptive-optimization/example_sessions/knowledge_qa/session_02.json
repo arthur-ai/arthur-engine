@@ -1,0 +1,531 @@
+{
+  "session_id": "sess_knowledge_02_5a4e0bb3",
+  "user_id": "user-1187",
+  "task_id": "b81d4a55-2f0e-4c7a-9d13-6e2f8a4b7c11",
+  "agent_kind": "knowledge_qa",
+  "scenario": "Expense questions \u2014 the second answer restates a limit the excerpts don't contain.",
+  "resource_attributes": {
+    "service.name": "policy-copilot",
+    "arthur.task": "b81d4a55-2f0e-4c7a-9d13-6e2f8a4b7c11"
+  },
+  "trace_count": 3,
+  "span_count": 9,
+  "traces": [
+    {
+      "trace_id": "624acfe33d7a45d1e65cb5a8eb2e993b",
+      "root_span_id": "d7037777732167d6",
+      "spans": [
+        {
+          "traceId": "624acfe33d7a45d1e65cb5a8eb2e993b",
+          "spanId": "d7037777732167d6",
+          "name": "qa.pipeline",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788552840000000000",
+          "endTimeUnixNano": "1788552841917999872",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "CHAIN"
+              }
+            },
+            "input": {
+              "value": "What's the daily meal limit when I travel?"
+            },
+            "output": {
+              "value": "Domestic travel meals are reimbursed up to $75 per day (handbook/expenses.md)."
+            },
+            "session": {
+              "id": "sess_knowledge_02_5a4e0bb3"
+            },
+            "user": {
+              "id": "user-1187"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "624acfe33d7a45d1e65cb5a8eb2e993b",
+          "spanId": "8938a6ee0b5c5b13",
+          "name": "PineconeRetriever.similarity_search",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788552840009999872",
+          "endTimeUnixNano": "1788552840320000000",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "RETRIEVER"
+              }
+            },
+            "input": {
+              "value": "What's the daily meal limit when I travel?"
+            },
+            "retrieval": {
+              "documents": [
+                {
+                  "document": {
+                    "id": "fin-0304",
+                    "content": "Meals during domestic travel are reimbursed up to $75 per day.",
+                    "score": 0.88,
+                    "metadata": {
+                      "source": "handbook/expenses.md",
+                      "section": "Travel"
+                    }
+                  }
+                },
+                {
+                  "document": {
+                    "id": "fin-0311",
+                    "content": "Receipts are required for any single expense over $25.",
+                    "score": 0.79,
+                    "metadata": {
+                      "source": "handbook/expenses.md",
+                      "section": "Receipts"
+                    }
+                  }
+                }
+              ]
+            },
+            "session": {
+              "id": "sess_knowledge_02_5a4e0bb3"
+            },
+            "user": {
+              "id": "user-1187"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "d7037777732167d6",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "624acfe33d7a45d1e65cb5a8eb2e993b",
+          "spanId": "cfa9216103fc3ec6",
+          "name": "ChatCompletion",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788552840324000000",
+          "endTimeUnixNano": "1788552841904000000",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "LLM"
+              }
+            },
+            "llm": {
+              "model_name": "gpt-4o",
+              "provider": "openai",
+              "system": "openai",
+              "invocation_parameters": {
+                "model": "gpt-4o",
+                "temperature": 0.2
+              },
+              "token_count": {
+                "prompt": 1040,
+                "completion": 52,
+                "total": 1092
+              },
+              "input_messages": [
+                {
+                  "message": {
+                    "role": "system",
+                    "content": "Answer only from the provided excerpts. Cite the source filename."
+                  }
+                },
+                {
+                  "message": {
+                    "role": "user",
+                    "content": "What's the daily meal limit when I travel?"
+                  }
+                }
+              ],
+              "output_messages": [
+                {
+                  "message": {
+                    "role": "assistant",
+                    "content": "Domestic travel meals are reimbursed up to $75 per day (handbook/expenses.md)."
+                  }
+                }
+              ]
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "messages": [
+                  {
+                    "role": "system",
+                    "content": "Answer only from the provided excerpts. Cite the source filename."
+                  },
+                  {
+                    "role": "user",
+                    "content": "What's the daily meal limit when I travel?"
+                  }
+                ]
+              }
+            },
+            "output": {
+              "value": "Domestic travel meals are reimbursed up to $75 per day (handbook/expenses.md)."
+            },
+            "session": {
+              "id": "sess_knowledge_02_5a4e0bb3"
+            },
+            "user": {
+              "id": "user-1187"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "d7037777732167d6",
+          "arthur_span_version": "arthur_span_v1"
+        }
+      ]
+    },
+    {
+      "trace_id": "7f2c4e2eabf9a72117c9bc187f6602c3",
+      "root_span_id": "44c370efb4d4a986",
+      "spans": [
+        {
+          "traceId": "7f2c4e2eabf9a72117c9bc187f6602c3",
+          "spanId": "44c370efb4d4a986",
+          "name": "qa.pipeline",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788552929917999872",
+          "endTimeUnixNano": "1788552931836000000",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "CHAIN"
+              }
+            },
+            "input": {
+              "value": "Do I need receipts for a $12 coffee?"
+            },
+            "output": {
+              "value": "No \u2014 receipts are only required for single expenses over $25 (handbook/expenses.md)."
+            },
+            "session": {
+              "id": "sess_knowledge_02_5a4e0bb3"
+            },
+            "user": {
+              "id": "user-1187"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "7f2c4e2eabf9a72117c9bc187f6602c3",
+          "spanId": "15d6d31644b65886",
+          "name": "PineconeRetriever.similarity_search",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788552929928000000",
+          "endTimeUnixNano": "1788552930237999872",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "RETRIEVER"
+              }
+            },
+            "input": {
+              "value": "Do I need receipts for a $12 coffee?"
+            },
+            "retrieval": {
+              "documents": [
+                {
+                  "document": {
+                    "id": "fin-0304",
+                    "content": "Meals during domestic travel are reimbursed up to $75 per day.",
+                    "score": 0.88,
+                    "metadata": {
+                      "source": "handbook/expenses.md",
+                      "section": "Travel"
+                    }
+                  }
+                },
+                {
+                  "document": {
+                    "id": "fin-0311",
+                    "content": "Receipts are required for any single expense over $25.",
+                    "score": 0.79,
+                    "metadata": {
+                      "source": "handbook/expenses.md",
+                      "section": "Receipts"
+                    }
+                  }
+                }
+              ]
+            },
+            "session": {
+              "id": "sess_knowledge_02_5a4e0bb3"
+            },
+            "user": {
+              "id": "user-1187"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "44c370efb4d4a986",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "7f2c4e2eabf9a72117c9bc187f6602c3",
+          "spanId": "844ff270aa7fd052",
+          "name": "ChatCompletion",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788552930242000128",
+          "endTimeUnixNano": "1788552931822000128",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "LLM"
+              }
+            },
+            "llm": {
+              "model_name": "gpt-4o",
+              "provider": "openai",
+              "system": "openai",
+              "invocation_parameters": {
+                "model": "gpt-4o",
+                "temperature": 0.2
+              },
+              "token_count": {
+                "prompt": 1090,
+                "completion": 58,
+                "total": 1148
+              },
+              "input_messages": [
+                {
+                  "message": {
+                    "role": "system",
+                    "content": "Answer only from the provided excerpts. Cite the source filename."
+                  }
+                },
+                {
+                  "message": {
+                    "role": "user",
+                    "content": "Do I need receipts for a $12 coffee?"
+                  }
+                }
+              ],
+              "output_messages": [
+                {
+                  "message": {
+                    "role": "assistant",
+                    "content": "No \u2014 receipts are only required for single expenses over $25 (handbook/expenses.md)."
+                  }
+                }
+              ]
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "messages": [
+                  {
+                    "role": "system",
+                    "content": "Answer only from the provided excerpts. Cite the source filename."
+                  },
+                  {
+                    "role": "user",
+                    "content": "Do I need receipts for a $12 coffee?"
+                  }
+                ]
+              }
+            },
+            "output": {
+              "value": "No \u2014 receipts are only required for single expenses over $25 (handbook/expenses.md)."
+            },
+            "session": {
+              "id": "sess_knowledge_02_5a4e0bb3"
+            },
+            "user": {
+              "id": "user-1187"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "44c370efb4d4a986",
+          "arthur_span_version": "arthur_span_v1"
+        }
+      ]
+    },
+    {
+      "trace_id": "c133268cef23db45ef9513989b23b687",
+      "root_span_id": "acb7889600b02ce5",
+      "spans": [
+        {
+          "traceId": "c133268cef23db45ef9513989b23b687",
+          "spanId": "acb7889600b02ce5",
+          "name": "qa.pipeline",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788553014836000000",
+          "endTimeUnixNano": "1788553016753999872",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "CHAIN"
+              }
+            },
+            "input": {
+              "value": "What about international travel?"
+            },
+            "output": {
+              "value": "International travel meals are reimbursed up to $110 per day."
+            },
+            "session": {
+              "id": "sess_knowledge_02_5a4e0bb3"
+            },
+            "user": {
+              "id": "user-1187"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "c133268cef23db45ef9513989b23b687",
+          "spanId": "4c4f56d3102492cb",
+          "name": "PineconeRetriever.similarity_search",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788553014845999872",
+          "endTimeUnixNano": "1788553015156000000",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "RETRIEVER"
+              }
+            },
+            "input": {
+              "value": "What about international travel?"
+            },
+            "retrieval": {
+              "documents": [
+                {
+                  "document": {
+                    "id": "fin-0304",
+                    "content": "Meals during domestic travel are reimbursed up to $75 per day.",
+                    "score": 0.88,
+                    "metadata": {
+                      "source": "handbook/expenses.md",
+                      "section": "Travel"
+                    }
+                  }
+                },
+                {
+                  "document": {
+                    "id": "fin-0311",
+                    "content": "Receipts are required for any single expense over $25.",
+                    "score": 0.79,
+                    "metadata": {
+                      "source": "handbook/expenses.md",
+                      "section": "Receipts"
+                    }
+                  }
+                }
+              ]
+            },
+            "session": {
+              "id": "sess_knowledge_02_5a4e0bb3"
+            },
+            "user": {
+              "id": "user-1187"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "acb7889600b02ce5",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "c133268cef23db45ef9513989b23b687",
+          "spanId": "04a2fcf50845b269",
+          "name": "ChatCompletion",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788553015160000000",
+          "endTimeUnixNano": "1788553016740000000",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "LLM"
+              }
+            },
+            "llm": {
+              "model_name": "gpt-4o",
+              "provider": "openai",
+              "system": "openai",
+              "invocation_parameters": {
+                "model": "gpt-4o",
+                "temperature": 0.2
+              },
+              "token_count": {
+                "prompt": 1150,
+                "completion": 44,
+                "total": 1194
+              },
+              "input_messages": [
+                {
+                  "message": {
+                    "role": "system",
+                    "content": "Answer only from the provided excerpts. Cite the source filename."
+                  }
+                },
+                {
+                  "message": {
+                    "role": "user",
+                    "content": "What about international travel?"
+                  }
+                }
+              ],
+              "output_messages": [
+                {
+                  "message": {
+                    "role": "assistant",
+                    "content": "International travel meals are reimbursed up to $110 per day."
+                  }
+                }
+              ]
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "messages": [
+                  {
+                    "role": "system",
+                    "content": "Answer only from the provided excerpts. Cite the source filename."
+                  },
+                  {
+                    "role": "user",
+                    "content": "What about international travel?"
+                  }
+                ]
+              }
+            },
+            "output": {
+              "value": "International travel meals are reimbursed up to $110 per day."
+            },
+            "session": {
+              "id": "sess_knowledge_02_5a4e0bb3"
+            },
+            "user": {
+              "id": "user-1187"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "acb7889600b02ce5",
+          "arthur_span_version": "arthur_span_v1"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,658 @@
+{
+  "session_id": "sess_clinical_01_d8cc74ae",
+  "user_id": "user-42",
+  "task_id": "9a3f2c68-4e15-4b7d-8c02-fd51e8b39a24",
+  "agent_kind": "clinical_documentation",
+  "scenario": "Three encounters in one clinic session \u2014 the standard shift shape.",
+  "resource_attributes": {
+    "service.name": "clinical-scribe",
+    "arthur.task": "9a3f2c68-4e15-4b7d-8c02-fd51e8b39a24"
+  },
+  "trace_count": 3,
+  "span_count": 12,
+  "traces": [
+    {
+      "trace_id": "334450e7b89a01f781b5ec3fa927c2ac",
+      "root_span_id": "eebc3b7944e60abc",
+      "spans": [
+        {
+          "traceId": "334450e7b89a01f781b5ec3fa927c2ac",
+          "spanId": "eebc3b7944e60abc",
+          "name": "encounter.document",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788541620000000000",
+          "endTimeUnixNano": "1788541623772000000",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "CHAIN"
+              }
+            },
+            "input": {
+              "value": "Draft a visit note for J. Alvarez (MRN MRN-4471102) \u2014 follow-up hypertension"
+            },
+            "output": {
+              "value": "A/P: Hypertension, controlled. Continue lisinopril 10mg daily. Recheck in 3 months."
+            },
+            "metadata": {
+              "mrn": "MRN-4471102",
+              "encounter_type": "office_visit",
+              "department": "internal_medicine",
+              "phi": true
+            },
+            "session": {
+              "id": "sess_clinical_01_d8cc74ae"
+            },
+            "user": {
+              "id": "user-42"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "334450e7b89a01f781b5ec3fa927c2ac",
+          "spanId": "0ba4a6d9b896945a",
+          "name": "fetch_encounter",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788541620020000000",
+          "endTimeUnixNano": "1788541620360000000",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "TOOL"
+              }
+            },
+            "tool": {
+              "name": "fetch_encounter",
+              "description": "Pull the patient chart from the EHR."
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "mrn": "MRN-4471102"
+              }
+            },
+            "output": {
+              "mime_type": "application/json",
+              "value": {
+                "medications": [
+                  "lisinopril 10mg"
+                ],
+                "allergies": [
+                  "penicillin"
+                ],
+                "last_visit": "2026-06-14"
+              }
+            },
+            "session": {
+              "id": "sess_clinical_01_d8cc74ae"
+            },
+            "user": {
+              "id": "user-42"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "eebc3b7944e60abc",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "334450e7b89a01f781b5ec3fa927c2ac",
+          "spanId": "a44ecf344077c48c",
+          "name": "ChatCompletion",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788541620364000000",
+          "endTimeUnixNano": "1788541623464000000",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "LLM"
+              }
+            },
+            "llm": {
+              "model_name": "gpt-4o",
+              "provider": "openai",
+              "system": "openai",
+              "invocation_parameters": {
+                "model": "gpt-4o",
+                "temperature": 0.2
+              },
+              "token_count": {
+                "prompt": 1800,
+                "completion": 210,
+                "total": 2010
+              },
+              "input_messages": [
+                {
+                  "message": {
+                    "role": "system",
+                    "content": "Draft a SOAP note from the visit transcript. Do not infer diagnoses that were not stated."
+                  }
+                },
+                {
+                  "message": {
+                    "role": "user",
+                    "content": "Patient reports good adherence. BP today 128/78. No side effects."
+                  }
+                }
+              ],
+              "output_messages": [
+                {
+                  "message": {
+                    "role": "assistant",
+                    "content": "A/P: Hypertension, controlled. Continue lisinopril 10mg daily."
+                  }
+                }
+              ]
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "messages": [
+                  {
+                    "role": "system",
+                    "content": "Draft a SOAP note from the visit transcript. Do not infer diagnoses that were not stated."
+                  },
+                  {
+                    "role": "user",
+                    "content": "Patient reports good adherence. BP today 128/78. No side effects."
+                  }
+                ]
+              }
+            },
+            "output": {
+              "value": "A/P: Hypertension, controlled. Continue lisinopril 10mg daily."
+            },
+            "session": {
+              "id": "sess_clinical_01_d8cc74ae"
+            },
+            "user": {
+              "id": "user-42"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "eebc3b7944e60abc",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "334450e7b89a01f781b5ec3fa927c2ac",
+          "spanId": "b22ca758eae501e0",
+          "name": "write_note",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788541623468000000",
+          "endTimeUnixNano": "1788541623748000000",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "TOOL"
+              }
+            },
+            "tool": {
+              "name": "write_note",
+              "description": "Write the drafted note back to the EHR."
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "mrn": "MRN-4471102",
+                "section": "assessment_plan"
+              }
+            },
+            "output": {
+              "mime_type": "application/json",
+              "value": {
+                "written": true,
+                "note_id": "NOTE-49df5a17"
+              }
+            },
+            "session": {
+              "id": "sess_clinical_01_d8cc74ae"
+            },
+            "user": {
+              "id": "user-42"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "eebc3b7944e60abc",
+          "arthur_span_version": "arthur_span_v1"
+        }
+      ]
+    },
+    {
+      "trace_id": "603124f01e1e6516b1c8c73ce886709c",
+      "root_span_id": "aa66848cc8eba439",
+      "spans": [
+        {
+          "traceId": "603124f01e1e6516b1c8c73ce886709c",
+          "spanId": "aa66848cc8eba439",
+          "name": "encounter.document",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788541665772000000",
+          "endTimeUnixNano": "1788541669544000000",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "CHAIN"
+              }
+            },
+            "input": {
+              "value": "Draft a visit note for R. Okafor (MRN MRN-8820394) \u2014 new onset knee pain"
+            },
+            "output": {
+              "value": "A/P: Right knee pain, likely mechanical. X-ray ordered. NSAIDs as needed."
+            },
+            "metadata": {
+              "mrn": "MRN-8820394",
+              "encounter_type": "office_visit",
+              "department": "internal_medicine",
+              "phi": true
+            },
+            "session": {
+              "id": "sess_clinical_01_d8cc74ae"
+            },
+            "user": {
+              "id": "user-42"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "603124f01e1e6516b1c8c73ce886709c",
+          "spanId": "ef06a678f08f09e1",
+          "name": "fetch_encounter",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788541665792000000",
+          "endTimeUnixNano": "1788541666132000000",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "TOOL"
+              }
+            },
+            "tool": {
+              "name": "fetch_encounter",
+              "description": "Pull the patient chart from the EHR."
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "mrn": "MRN-8820394"
+              }
+            },
+            "output": {
+              "mime_type": "application/json",
+              "value": {
+                "medications": [],
+                "allergies": [
+                  "none documented"
+                ],
+                "last_visit": "2026-06-14"
+              }
+            },
+            "session": {
+              "id": "sess_clinical_01_d8cc74ae"
+            },
+            "user": {
+              "id": "user-42"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "aa66848cc8eba439",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "603124f01e1e6516b1c8c73ce886709c",
+          "spanId": "34c2c2e44446848c",
+          "name": "ChatCompletion",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788541666136000000",
+          "endTimeUnixNano": "1788541669236000000",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "LLM"
+              }
+            },
+            "llm": {
+              "model_name": "gpt-4o",
+              "provider": "openai",
+              "system": "openai",
+              "invocation_parameters": {
+                "model": "gpt-4o",
+                "temperature": 0.2
+              },
+              "token_count": {
+                "prompt": 1650,
+                "completion": 190,
+                "total": 1840
+              },
+              "input_messages": [
+                {
+                  "message": {
+                    "role": "system",
+                    "content": "Draft a SOAP note from the visit transcript. Do not infer diagnoses that were not stated."
+                  }
+                },
+                {
+                  "message": {
+                    "role": "user",
+                    "content": "Onset two weeks ago after running. No swelling, no locking. ROM full."
+                  }
+                }
+              ],
+              "output_messages": [
+                {
+                  "message": {
+                    "role": "assistant",
+                    "content": "A/P: Right knee pain, likely mechanical. X-ray ordered."
+                  }
+                }
+              ]
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "messages": [
+                  {
+                    "role": "system",
+                    "content": "Draft a SOAP note from the visit transcript. Do not infer diagnoses that were not stated."
+                  },
+                  {
+                    "role": "user",
+                    "content": "Onset two weeks ago after running. No swelling, no locking. ROM full."
+                  }
+                ]
+              }
+            },
+            "output": {
+              "value": "A/P: Right knee pain, likely mechanical. X-ray ordered."
+            },
+            "session": {
+              "id": "sess_clinical_01_d8cc74ae"
+            },
+            "user": {
+              "id": "user-42"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "aa66848cc8eba439",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "603124f01e1e6516b1c8c73ce886709c",
+          "spanId": "60e6b61ede8955a8",
+          "name": "write_note",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788541669240000000",
+          "endTimeUnixNano": "1788541669520000000",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "TOOL"
+              }
+            },
+            "tool": {
+              "name": "write_note",
+              "description": "Write the drafted note back to the EHR."
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "mrn": "MRN-8820394",
+                "section": "assessment_plan"
+              }
+            },
+            "output": {
+              "mime_type": "application/json",
+              "value": {
+                "written": true,
+                "note_id": "NOTE-385b1b27"
+              }
+            },
+            "session": {
+              "id": "sess_clinical_01_d8cc74ae"
+            },
+            "user": {
+              "id": "user-42"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "aa66848cc8eba439",
+          "arthur_span_version": "arthur_span_v1"
+        }
+      ]
+    },
+    {
+      "trace_id": "5b8f8a1a8407320f8394af4397d2de47",
+      "root_span_id": "ae1889c780e105d9",
+      "spans": [
+        {
+          "traceId": "5b8f8a1a8407320f8394af4397d2de47",
+          "spanId": "ae1889c780e105d9",
+          "name": "encounter.document",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788541739544000000",
+          "endTimeUnixNano": "1788541743316000000",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "CHAIN"
+              }
+            },
+            "input": {
+              "value": "Draft a visit note for T. Nguyen (MRN MRN-1039855) \u2014 diabetes follow-up"
+            },
+            "output": {
+              "value": "A/P: Type 2 DM, A1c 7.2%, improved. Continue metformin. Dietitian referral placed."
+            },
+            "metadata": {
+              "mrn": "MRN-1039855",
+              "encounter_type": "office_visit",
+              "department": "internal_medicine",
+              "phi": true
+            },
+            "session": {
+              "id": "sess_clinical_01_d8cc74ae"
+            },
+            "user": {
+              "id": "user-42"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "5b8f8a1a8407320f8394af4397d2de47",
+          "spanId": "161b196e2d308fad",
+          "name": "fetch_encounter",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788541739564000000",
+          "endTimeUnixNano": "1788541739904000000",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "TOOL"
+              }
+            },
+            "tool": {
+              "name": "fetch_encounter",
+              "description": "Pull the patient chart from the EHR."
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "mrn": "MRN-1039855"
+              }
+            },
+            "output": {
+              "mime_type": "application/json",
+              "value": {
+                "medications": [
+                  "metformin 1000mg BID"
+                ],
+                "allergies": [
+                  "sulfa"
+                ],
+                "last_visit": "2026-06-14"
+              }
+            },
+            "session": {
+              "id": "sess_clinical_01_d8cc74ae"
+            },
+            "user": {
+              "id": "user-42"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "ae1889c780e105d9",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "5b8f8a1a8407320f8394af4397d2de47",
+          "spanId": "f26f955c7de58177",
+          "name": "ChatCompletion",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788541739908000000",
+          "endTimeUnixNano": "1788541743008000000",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "LLM"
+              }
+            },
+            "llm": {
+              "model_name": "gpt-4o",
+              "provider": "openai",
+              "system": "openai",
+              "invocation_parameters": {
+                "model": "gpt-4o",
+                "temperature": 0.2
+              },
+              "token_count": {
+                "prompt": 1920,
+                "completion": 240,
+                "total": 2160
+              },
+              "input_messages": [
+                {
+                  "message": {
+                    "role": "system",
+                    "content": "Draft a SOAP note from the visit transcript. Do not infer diagnoses that were not stated."
+                  }
+                },
+                {
+                  "message": {
+                    "role": "user",
+                    "content": "A1c down from 8.1 to 7.2. Reports dietary changes. No hypoglycemia."
+                  }
+                }
+              ],
+              "output_messages": [
+                {
+                  "message": {
+                    "role": "assistant",
+                    "content": "A/P: Type 2 DM improved. Continue metformin 1000mg BID."
+                  }
+                }
+              ]
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "messages": [
+                  {
+                    "role": "system",
+                    "content": "Draft a SOAP note from the visit transcript. Do not infer diagnoses that were not stated."
+                  },
+                  {
+                    "role": "user",
+                    "content": "A1c down from 8.1 to 7.2. Reports dietary changes. No hypoglycemia."
+                  }
+                ]
+              }
+            },
+            "output": {
+              "value": "A/P: Type 2 DM improved. Continue metformin 1000mg BID."
+            },
+            "session": {
+              "id": "sess_clinical_01_d8cc74ae"
+            },
+            "user": {
+              "id": "user-42"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "ae1889c780e105d9",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "5b8f8a1a8407320f8394af4397d2de47",
+          "spanId": "66bab0e0334e1ac1",
+          "name": "write_note",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788541743012000000",
+          "endTimeUnixNano": "1788541743292000000",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "TOOL"
+              }
+            },
+            "tool": {
+              "name": "write_note",
+              "description": "Write the drafted note back to the EHR."
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "mrn": "MRN-1039855",
+                "section": "assessment_plan"
+              }
+            },
+            "output": {
+              "mime_type": "application/json",
+              "value": {
+                "written": true,
+                "note_id": "NOTE-2313b49c"
+              }
+            },
+            "session": {
+              "id": "sess_clinical_01_d8cc74ae"
+            },
+            "user": {
+              "id": "user-42"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "ae1889c780e105d9",
+          "arthur_span_version": "arthur_span_v1"
+        }
+      ]
+    }
+  ]
+}

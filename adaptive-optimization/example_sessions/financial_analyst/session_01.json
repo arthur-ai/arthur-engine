@@ -1,0 +1,241 @@
+{
+  "session_id": "sess_financial_01_91a41a47",
+  "user_id": "user-42",
+  "task_id": "5d2a8e14-7b93-4f06-a2c8-9e0b3d6f1a47",
+  "agent_kind": "financial_analyst",
+  "scenario": "Standard equity note: filing retrieval, a live quote, and a drafted summary.",
+  "resource_attributes": {
+    "service.name": "research-copilot",
+    "arthur.task": "5d2a8e14-7b93-4f06-a2c8-9e0b3d6f1a47"
+  },
+  "trace_count": 1,
+  "span_count": 4,
+  "traces": [
+    {
+      "trace_id": "4437ed358a238e692081aec9621dbb2b",
+      "root_span_id": "655e79737b796681",
+      "spans": [
+        {
+          "traceId": "4437ed358a238e692081aec9621dbb2b",
+          "spanId": "655e79737b796681",
+          "name": "analyst.request",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788541620000000000",
+          "endTimeUnixNano": "1788541623436999936",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "AGENT"
+              }
+            },
+            "input": {
+              "value": "Summarize ACME's customer concentration risk."
+            },
+            "output": {
+              "value": "ACME's top three customers were 48% of FY2025 revenue (10-K Item 1A, p.42), alongside advanced-packaging supply constraints (p.44). Shares last traded at $184.20, +1.4%."
+            },
+            "agent": {
+              "name": "research-copilot"
+            },
+            "metadata": {
+              "desk": "equity-research",
+              "model_version": "2026-08-rc3",
+              "compliance_reviewed": false
+            },
+            "session": {
+              "id": "sess_financial_01_91a41a47"
+            },
+            "user": {
+              "id": "user-42"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "4437ed358a238e692081aec9621dbb2b",
+          "spanId": "d0579d2b5e2dae39",
+          "name": "FilingsRetriever.search",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788541620022500096",
+          "endTimeUnixNano": "1788541620442500096",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "RETRIEVER"
+              }
+            },
+            "input": {
+              "value": "ACME 10-K risk factors"
+            },
+            "retrieval": {
+              "documents": [
+                {
+                  "document": {
+                    "id": "ACME-10K-2025-p42",
+                    "content": "Revenue concentration: our top three customers accounted for 48% of fiscal 2025 revenue.",
+                    "score": 0.89,
+                    "metadata": {
+                      "source": "ACME 10-K FY2025",
+                      "item": "1A",
+                      "page": 42
+                    }
+                  }
+                },
+                {
+                  "document": {
+                    "id": "ACME-10K-2025-p44",
+                    "content": "We face supply constraints on advanced packaging capacity.",
+                    "score": 0.76,
+                    "metadata": {
+                      "source": "ACME 10-K FY2025",
+                      "item": "1A",
+                      "page": 44
+                    }
+                  }
+                }
+              ]
+            },
+            "session": {
+              "id": "sess_financial_01_91a41a47"
+            },
+            "user": {
+              "id": "user-42"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "655e79737b796681",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "4437ed358a238e692081aec9621dbb2b",
+          "spanId": "b5a1bc9a7cca982e",
+          "name": "market_data.quote",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788541620446500096",
+          "endTimeUnixNano": "1788541620606499840",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "TOOL"
+              }
+            },
+            "tool": {
+              "name": "market_data.quote",
+              "description": "Fetch a delayed equity quote."
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "ticker": "ACME"
+              }
+            },
+            "output": {
+              "mime_type": "application/json",
+              "value": {
+                "price": 184.2,
+                "change_pct": 1.4,
+                "as_of": "2026-09-04T20:00:00Z"
+              }
+            },
+            "session": {
+              "id": "sess_financial_01_91a41a47"
+            },
+            "user": {
+              "id": "user-42"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "655e79737b796681",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "4437ed358a238e692081aec9621dbb2b",
+          "spanId": "1e0cf6a08a82c669",
+          "name": "ChatCompletion",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788541620610500096",
+          "endTimeUnixNano": "1788541623410500096",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "LLM"
+              }
+            },
+            "llm": {
+              "model_name": "gpt-4o",
+              "provider": "openai",
+              "system": "openai",
+              "invocation_parameters": {
+                "model": "gpt-4o",
+                "temperature": 0.2
+              },
+              "token_count": {
+                "prompt": 2400,
+                "completion": 210,
+                "total": 2610
+              },
+              "input_messages": [
+                {
+                  "message": {
+                    "role": "system",
+                    "content": "Draft an equity research note. Cite page numbers for every figure."
+                  }
+                },
+                {
+                  "message": {
+                    "role": "user",
+                    "content": "Summarize ACME's customer concentration risk."
+                  }
+                }
+              ],
+              "output_messages": [
+                {
+                  "message": {
+                    "role": "assistant",
+                    "content": "ACME's top three customers were 48% of FY2025 revenue (p.42), alongside advanced-packaging supply constraints (p.44)."
+                  }
+                }
+              ]
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "messages": [
+                  {
+                    "role": "system",
+                    "content": "Draft an equity research note. Cite page numbers for every figure."
+                  },
+                  {
+                    "role": "user",
+                    "content": "Summarize ACME's customer concentration risk."
+                  }
+                ]
+              }
+            },
+            "output": {
+              "value": "ACME's top three customers were 48% of FY2025 revenue (p.42), alongside advanced-packaging supply constraints (p.44)."
+            },
+            "session": {
+              "id": "sess_financial_01_91a41a47"
+            },
+            "user": {
+              "id": "user-42"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "655e79737b796681",
+          "arthur_span_version": "arthur_span_v1"
+        }
+      ]
+    }
+  ]
+}

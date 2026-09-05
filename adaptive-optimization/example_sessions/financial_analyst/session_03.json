@@ -1,0 +1,239 @@
+{
+  "session_id": "sess_financial_03_c0e23ce7",
+  "user_id": "user-903",
+  "task_id": "5d2a8e14-7b93-4f06-a2c8-9e0b3d6f1a47",
+  "agent_kind": "financial_analyst",
+  "scenario": "Data provider outage mid-analysis: the quote tool errors and the note ships without a price.",
+  "resource_attributes": {
+    "service.name": "research-copilot",
+    "arthur.task": "5d2a8e14-7b93-4f06-a2c8-9e0b3d6f1a47"
+  },
+  "trace_count": 1,
+  "span_count": 4,
+  "traces": [
+    {
+      "trace_id": "eca42d48ade29d96f302d965d689f6b0",
+      "root_span_id": "6ac2dc00391a6a69",
+      "spans": [
+        {
+          "traceId": "eca42d48ade29d96f302d965d689f6b0",
+          "spanId": "6ac2dc00391a6a69",
+          "name": "analyst.request",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788564060000000000",
+          "endTimeUnixNano": "1788564068176999936",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "AGENT"
+              }
+            },
+            "input": {
+              "value": "Draft a one-paragraph update on ACME."
+            },
+            "output": {
+              "value": "ACME's concentration risk is unchanged from the FY2025 filing. A live quote was unavailable at the time of writing."
+            },
+            "agent": {
+              "name": "research-copilot"
+            },
+            "metadata": {
+              "desk": "equity-research",
+              "model_version": "2026-08-rc3",
+              "compliance_reviewed": false
+            },
+            "session": {
+              "id": "sess_financial_03_c0e23ce7"
+            },
+            "user": {
+              "id": "user-903"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "eca42d48ade29d96f302d965d689f6b0",
+          "spanId": "9d5a77a6e47fb9e6",
+          "name": "FilingsRetriever.search",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788564060022500096",
+          "endTimeUnixNano": "1788564060442500096",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "RETRIEVER"
+              }
+            },
+            "input": {
+              "value": "ACME 10-K risk factors"
+            },
+            "retrieval": {
+              "documents": [
+                {
+                  "document": {
+                    "id": "ACME-10K-2025-p42",
+                    "content": "Revenue concentration: our top three customers accounted for 48% of fiscal 2025 revenue.",
+                    "score": 0.89,
+                    "metadata": {
+                      "source": "ACME 10-K FY2025",
+                      "item": "1A",
+                      "page": 42
+                    }
+                  }
+                },
+                {
+                  "document": {
+                    "id": "ACME-10K-2025-p44",
+                    "content": "We face supply constraints on advanced packaging capacity.",
+                    "score": 0.76,
+                    "metadata": {
+                      "source": "ACME 10-K FY2025",
+                      "item": "1A",
+                      "page": 44
+                    }
+                  }
+                }
+              ]
+            },
+            "session": {
+              "id": "sess_financial_03_c0e23ce7"
+            },
+            "user": {
+              "id": "user-903"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "6ac2dc00391a6a69",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "eca42d48ade29d96f302d965d689f6b0",
+          "spanId": "7dc99ded077145dd",
+          "name": "market_data.quote",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788564060446500096",
+          "endTimeUnixNano": "1788564065646500096",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "TOOL"
+              }
+            },
+            "tool": {
+              "name": "market_data.quote"
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "ticker": "ACME"
+              }
+            },
+            "output": {
+              "mime_type": "application/json",
+              "value": {
+                "error": "provider 503"
+              }
+            },
+            "session": {
+              "id": "sess_financial_03_c0e23ce7"
+            },
+            "user": {
+              "id": "user-903"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_ERROR",
+            "message": "MarketDataError: provider returned 503"
+          },
+          "parentSpanId": "6ac2dc00391a6a69",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "eca42d48ade29d96f302d965d689f6b0",
+          "spanId": "8d3c46204ef1aadb",
+          "name": "ChatCompletion",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788564065650500096",
+          "endTimeUnixNano": "1788564068150500096",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "LLM"
+              }
+            },
+            "llm": {
+              "model_name": "gpt-4o",
+              "provider": "openai",
+              "system": "openai",
+              "invocation_parameters": {
+                "model": "gpt-4o",
+                "temperature": 0.2
+              },
+              "token_count": {
+                "prompt": 2200,
+                "completion": 140,
+                "total": 2340
+              },
+              "input_messages": [
+                {
+                  "message": {
+                    "role": "system",
+                    "content": "If market data is unavailable, say so explicitly."
+                  }
+                },
+                {
+                  "message": {
+                    "role": "user",
+                    "content": "Draft a one-paragraph update on ACME."
+                  }
+                }
+              ],
+              "output_messages": [
+                {
+                  "message": {
+                    "role": "assistant",
+                    "content": "Concentration risk unchanged; live quote unavailable."
+                  }
+                }
+              ]
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "messages": [
+                  {
+                    "role": "system",
+                    "content": "If market data is unavailable, say so explicitly."
+                  },
+                  {
+                    "role": "user",
+                    "content": "Draft a one-paragraph update on ACME."
+                  }
+                ]
+              }
+            },
+            "output": {
+              "value": "Concentration risk unchanged; live quote unavailable."
+            },
+            "session": {
+              "id": "sess_financial_03_c0e23ce7"
+            },
+            "user": {
+              "id": "user-903"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "6ac2dc00391a6a69",
+          "arthur_span_version": "arthur_span_v1"
+        }
+      ]
+    }
+  ]
+}

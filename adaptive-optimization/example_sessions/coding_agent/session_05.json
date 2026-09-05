@@ -1,0 +1,561 @@
+{
+  "session_id": "sess_coding_05_27421df3",
+  "user_id": "user-77",
+  "task_id": "c4e9f70b-6a21-4d88-bf35-11a0d7c5e932",
+  "agent_kind": "coding_agent",
+  "scenario": "Aborted task: the agent loops on the same tool and the trace ends in error.",
+  "resource_attributes": {
+    "service.name": "pr-review-agent",
+    "arthur.task": "c4e9f70b-6a21-4d88-bf35-11a0d7c5e932"
+  },
+  "trace_count": 1,
+  "span_count": 10,
+  "traces": [
+    {
+      "trace_id": "9f129bab83179767070eb09c0f11db81",
+      "root_span_id": "cdbe0ae3b4aee432",
+      "spans": [
+        {
+          "traceId": "9f129bab83179767070eb09c0f11db81",
+          "spanId": "cdbe0ae3b4aee432",
+          "name": "review_pr",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788586500000000000",
+          "endTimeUnixNano": "1788586867365999872",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "AGENT"
+              }
+            },
+            "input": {
+              "value": "Review PR #2258: Migrate to pydantic v3"
+            },
+            "output": {
+              "value": "Aborted: test collection failed 3x with ImportError in conftest.py."
+            },
+            "agent": {
+              "name": "pr-review-agent"
+            },
+            "metadata": {
+              "repo": "arthur-ai/arthur-engine",
+              "pr": 2258,
+              "base": "dev"
+            },
+            "session": {
+              "id": "sess_coding_05_27421df3"
+            },
+            "user": {
+              "id": "user-77"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "9f129bab83179767070eb09c0f11db81",
+          "spanId": "a1d2b69f4c8a2237",
+          "name": "get_diff",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788586500029999872",
+          "endTimeUnixNano": "1788586500920000000",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "TOOL"
+              }
+            },
+            "tool": {
+              "name": "get_diff"
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "pr": 2258
+              }
+            },
+            "output": {
+              "mime_type": "application/json",
+              "value": {
+                "files": 47,
+                "additions": 1840,
+                "deletions": 1620
+              }
+            },
+            "session": {
+              "id": "sess_coding_05_27421df3"
+            },
+            "user": {
+              "id": "user-77"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "cdbe0ae3b4aee432",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "9f129bab83179767070eb09c0f11db81",
+          "spanId": "df3af25975a94057",
+          "name": "ChatCompletion",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788586500924000000",
+          "endTimeUnixNano": "1788586503024000000",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "LLM"
+              }
+            },
+            "llm": {
+              "model_name": "claude-sonnet-5",
+              "provider": "anthropic",
+              "system": "anthropic",
+              "invocation_parameters": {
+                "model": "claude-sonnet-5",
+                "temperature": 0.2
+              },
+              "token_count": {
+                "prompt": 3300,
+                "completion": 240,
+                "total": 3540
+              },
+              "input_messages": [
+                {
+                  "message": {
+                    "role": "system",
+                    "content": "You are a code review agent. Investigate before editing."
+                  }
+                },
+                {
+                  "message": {
+                    "role": "user",
+                    "content": "Plan."
+                  }
+                }
+              ],
+              "output_messages": [
+                {
+                  "message": {
+                    "role": "assistant",
+                    "content": "47 files. Start with the schema modules."
+                  }
+                }
+              ]
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "messages": [
+                  {
+                    "role": "system",
+                    "content": "You are a code review agent. Investigate before editing."
+                  },
+                  {
+                    "role": "user",
+                    "content": "Plan."
+                  }
+                ]
+              }
+            },
+            "output": {
+              "value": "47 files. Start with the schema modules."
+            },
+            "session": {
+              "id": "sess_coding_05_27421df3"
+            },
+            "user": {
+              "id": "user-77"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "cdbe0ae3b4aee432",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "9f129bab83179767070eb09c0f11db81",
+          "spanId": "2f1f634f2e45318b",
+          "name": "read_file",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788586503028000000",
+          "endTimeUnixNano": "1788586503068000000",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "TOOL"
+              }
+            },
+            "tool": {
+              "name": "read_file",
+              "description": "Read a file from the repository."
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "path": "genai-engine/src/schemas/internal_schemas.py"
+              }
+            },
+            "output": {
+              "mime_type": "application/json",
+              "value": {
+                "lines": 2280,
+                "truncated": false
+              }
+            },
+            "session": {
+              "id": "sess_coding_05_27421df3"
+            },
+            "user": {
+              "id": "user-77"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "cdbe0ae3b4aee432",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "9f129bab83179767070eb09c0f11db81",
+          "spanId": "722404311273873c",
+          "name": "read_file",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788586503072000000",
+          "endTimeUnixNano": "1788586503112000000",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "TOOL"
+              }
+            },
+            "tool": {
+              "name": "read_file",
+              "description": "Read a file from the repository."
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "path": "genai-engine/src/schemas/response_schemas.py"
+              }
+            },
+            "output": {
+              "mime_type": "application/json",
+              "value": {
+                "lines": 1100,
+                "truncated": false
+              }
+            },
+            "session": {
+              "id": "sess_coding_05_27421df3"
+            },
+            "user": {
+              "id": "user-77"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "cdbe0ae3b4aee432",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "9f129bab83179767070eb09c0f11db81",
+          "spanId": "960114227ec92b73",
+          "name": "run_tests",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788586503116000000",
+          "endTimeUnixNano": "1788586623116000000",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "TOOL"
+              }
+            },
+            "tool": {
+              "name": "run_tests"
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "suite": "unit"
+              }
+            },
+            "output": {
+              "mime_type": "application/json",
+              "value": {
+                "passed": 0,
+                "failed": 0,
+                "duration_s": 120
+              }
+            },
+            "session": {
+              "id": "sess_coding_05_27421df3"
+            },
+            "user": {
+              "id": "user-77"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_ERROR",
+            "message": "0 tests failed"
+          },
+          "parentSpanId": "cdbe0ae3b4aee432",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "9f129bab83179767070eb09c0f11db81",
+          "spanId": "c9c29ec02cdc4827",
+          "name": "ChatCompletion",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788586623120000000",
+          "endTimeUnixNano": "1788586625220000000",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "LLM"
+              }
+            },
+            "llm": {
+              "model_name": "claude-sonnet-5",
+              "provider": "anthropic",
+              "system": "anthropic",
+              "invocation_parameters": {
+                "model": "claude-sonnet-5",
+                "temperature": 0.2
+              },
+              "token_count": {
+                "prompt": 5200,
+                "completion": 180,
+                "total": 5380
+              },
+              "input_messages": [
+                {
+                  "message": {
+                    "role": "system",
+                    "content": "You are a code review agent. Investigate before editing."
+                  }
+                },
+                {
+                  "message": {
+                    "role": "user",
+                    "content": "Tests won't collect."
+                  }
+                }
+              ],
+              "output_messages": [
+                {
+                  "message": {
+                    "role": "assistant",
+                    "content": "ImportError in conftest. Retry."
+                  }
+                }
+              ]
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "messages": [
+                  {
+                    "role": "system",
+                    "content": "You are a code review agent. Investigate before editing."
+                  },
+                  {
+                    "role": "user",
+                    "content": "Tests won't collect."
+                  }
+                ]
+              }
+            },
+            "output": {
+              "value": "ImportError in conftest. Retry."
+            },
+            "session": {
+              "id": "sess_coding_05_27421df3"
+            },
+            "user": {
+              "id": "user-77"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "cdbe0ae3b4aee432",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "9f129bab83179767070eb09c0f11db81",
+          "spanId": "10c3a5185ff7ae50",
+          "name": "run_tests",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788586625224000000",
+          "endTimeUnixNano": "1788586745224000000",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "TOOL"
+              }
+            },
+            "tool": {
+              "name": "run_tests"
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "suite": "unit"
+              }
+            },
+            "output": {
+              "mime_type": "application/json",
+              "value": {
+                "passed": 0,
+                "failed": 0,
+                "duration_s": 120
+              }
+            },
+            "session": {
+              "id": "sess_coding_05_27421df3"
+            },
+            "user": {
+              "id": "user-77"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_ERROR",
+            "message": "0 tests failed"
+          },
+          "parentSpanId": "cdbe0ae3b4aee432",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "9f129bab83179767070eb09c0f11db81",
+          "spanId": "1be95faf1766a2f1",
+          "name": "ChatCompletion",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788586745228000000",
+          "endTimeUnixNano": "1788586747328000000",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "LLM"
+              }
+            },
+            "llm": {
+              "model_name": "claude-sonnet-5",
+              "provider": "anthropic",
+              "system": "anthropic",
+              "invocation_parameters": {
+                "model": "claude-sonnet-5",
+                "temperature": 0.2
+              },
+              "token_count": {
+                "prompt": 5400,
+                "completion": 170,
+                "total": 5570
+              },
+              "input_messages": [
+                {
+                  "message": {
+                    "role": "system",
+                    "content": "You are a code review agent. Investigate before editing."
+                  }
+                },
+                {
+                  "message": {
+                    "role": "user",
+                    "content": "Same error."
+                  }
+                }
+              ],
+              "output_messages": [
+                {
+                  "message": {
+                    "role": "assistant",
+                    "content": "Retry once more with a clean venv."
+                  }
+                }
+              ]
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "messages": [
+                  {
+                    "role": "system",
+                    "content": "You are a code review agent. Investigate before editing."
+                  },
+                  {
+                    "role": "user",
+                    "content": "Same error."
+                  }
+                ]
+              }
+            },
+            "output": {
+              "value": "Retry once more with a clean venv."
+            },
+            "session": {
+              "id": "sess_coding_05_27421df3"
+            },
+            "user": {
+              "id": "user-77"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "cdbe0ae3b4aee432",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "9f129bab83179767070eb09c0f11db81",
+          "spanId": "d7cb40193aba70db",
+          "name": "run_tests",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788586747332000000",
+          "endTimeUnixNano": "1788586867332000000",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "TOOL"
+              }
+            },
+            "tool": {
+              "name": "run_tests"
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "suite": "unit"
+              }
+            },
+            "output": {
+              "mime_type": "application/json",
+              "value": {
+                "passed": 0,
+                "failed": 0,
+                "duration_s": 120
+              }
+            },
+            "session": {
+              "id": "sess_coding_05_27421df3"
+            },
+            "user": {
+              "id": "user-77"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_ERROR",
+            "message": "0 tests failed"
+          },
+          "parentSpanId": "cdbe0ae3b4aee432",
+          "arthur_span_version": "arthur_span_v1"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,176 @@
+{
+  "session_id": "sess_knowledge_03_d3b229c4",
+  "user_id": "user-903",
+  "task_id": "b81d4a55-2f0e-4c7a-9d13-6e2f8a4b7c11",
+  "agent_kind": "knowledge_qa",
+  "scenario": "Single high-confidence security question (retrieval score 0.94).",
+  "resource_attributes": {
+    "service.name": "policy-copilot",
+    "arthur.task": "b81d4a55-2f0e-4c7a-9d13-6e2f8a4b7c11"
+  },
+  "trace_count": 1,
+  "span_count": 3,
+  "traces": [
+    {
+      "trace_id": "4b32be46d5da8ad78c223989688b64ad",
+      "root_span_id": "490c0cff0d89f945",
+      "spans": [
+        {
+          "traceId": "4b32be46d5da8ad78c223989688b64ad",
+          "spanId": "490c0cff0d89f945",
+          "name": "qa.pipeline",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788564060000000000",
+          "endTimeUnixNano": "1788564061338000128",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "CHAIN"
+              }
+            },
+            "input": {
+              "value": "How do I get production access?"
+            },
+            "output": {
+              "value": "Production access requires hardware MFA plus an approved access request (security/access-control.md)."
+            },
+            "session": {
+              "id": "sess_knowledge_03_d3b229c4"
+            },
+            "user": {
+              "id": "user-903"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "4b32be46d5da8ad78c223989688b64ad",
+          "spanId": "bb24b9ff54c9af60",
+          "name": "PineconeRetriever.similarity_search",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788564060009999872",
+          "endTimeUnixNano": "1788564060200000000",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "RETRIEVER"
+              }
+            },
+            "input": {
+              "value": "How do I get production access?"
+            },
+            "retrieval": {
+              "documents": [
+                {
+                  "document": {
+                    "id": "sec-0090",
+                    "content": "Production access requires hardware MFA and an approved access request.",
+                    "score": 0.94,
+                    "metadata": {
+                      "source": "security/access-control.md",
+                      "section": "Production"
+                    }
+                  }
+                }
+              ]
+            },
+            "session": {
+              "id": "sess_knowledge_03_d3b229c4"
+            },
+            "user": {
+              "id": "user-903"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "490c0cff0d89f945",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "4b32be46d5da8ad78c223989688b64ad",
+          "spanId": "fa3e04d49da867e8",
+          "name": "ChatCompletion",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788564060204000000",
+          "endTimeUnixNano": "1788564061324000000",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "LLM"
+              }
+            },
+            "llm": {
+              "model_name": "gpt-4o",
+              "provider": "openai",
+              "system": "openai",
+              "invocation_parameters": {
+                "model": "gpt-4o",
+                "temperature": 0.2
+              },
+              "token_count": {
+                "prompt": 860,
+                "completion": 49,
+                "total": 909
+              },
+              "input_messages": [
+                {
+                  "message": {
+                    "role": "system",
+                    "content": "Answer only from the provided excerpts. Cite the source filename."
+                  }
+                },
+                {
+                  "message": {
+                    "role": "user",
+                    "content": "How do I get production access?"
+                  }
+                }
+              ],
+              "output_messages": [
+                {
+                  "message": {
+                    "role": "assistant",
+                    "content": "Production access requires hardware MFA plus an approved access request (security/access-control.md)."
+                  }
+                }
+              ]
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "messages": [
+                  {
+                    "role": "system",
+                    "content": "Answer only from the provided excerpts. Cite the source filename."
+                  },
+                  {
+                    "role": "user",
+                    "content": "How do I get production access?"
+                  }
+                ]
+              }
+            },
+            "output": {
+              "value": "Production access requires hardware MFA plus an approved access request (security/access-control.md)."
+            },
+            "session": {
+              "id": "sess_knowledge_03_d3b229c4"
+            },
+            "user": {
+              "id": "user-903"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "490c0cff0d89f945",
+          "arthur_span_version": "arthur_span_v1"
+        }
+      ]
+    }
+  ]
+}

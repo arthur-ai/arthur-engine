@@ -1,0 +1,331 @@
+{
+  "session_id": "sess_financial_04_c420541e",
+  "user_id": "user-2260",
+  "task_id": "5d2a8e14-7b93-4f06-a2c8-9e0b3d6f1a47",
+  "agent_kind": "financial_analyst",
+  "scenario": "Underwriting-style memo \u2014 three retrievals feeding one long generation.",
+  "resource_attributes": {
+    "service.name": "research-copilot",
+    "arthur.task": "5d2a8e14-7b93-4f06-a2c8-9e0b3d6f1a47"
+  },
+  "trace_count": 1,
+  "span_count": 6,
+  "traces": [
+    {
+      "trace_id": "a9526b761aacf73473a68b5ef032ff89",
+      "root_span_id": "0cb0f68571a45bcb",
+      "spans": [
+        {
+          "traceId": "a9526b761aacf73473a68b5ef032ff89",
+          "spanId": "0cb0f68571a45bcb",
+          "name": "analyst.request",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788575280000000000",
+          "endTimeUnixNano": "1788575285584999936",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "AGENT"
+              }
+            },
+            "input": {
+              "value": "Build a credit summary for ACME."
+            },
+            "output": {
+              "value": "Revenue concentration at 48%, packaging supply constraints, and a $184.20 last price. Recommend a covenant review at renewal."
+            },
+            "agent": {
+              "name": "research-copilot"
+            },
+            "metadata": {
+              "desk": "equity-research",
+              "model_version": "2026-08-rc3",
+              "compliance_reviewed": false
+            },
+            "session": {
+              "id": "sess_financial_04_c420541e"
+            },
+            "user": {
+              "id": "user-2260"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "a9526b761aacf73473a68b5ef032ff89",
+          "spanId": "8442fc395c5ed108",
+          "name": "FilingsRetriever.search",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788575280022500096",
+          "endTimeUnixNano": "1788575280442500096",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "RETRIEVER"
+              }
+            },
+            "input": {
+              "value": "ACME 10-K risk factors"
+            },
+            "retrieval": {
+              "documents": [
+                {
+                  "document": {
+                    "id": "ACME-10K-2025-p42",
+                    "content": "Revenue concentration: our top three customers accounted for 48% of fiscal 2025 revenue.",
+                    "score": 0.89,
+                    "metadata": {
+                      "source": "ACME 10-K FY2025",
+                      "item": "1A",
+                      "page": 42
+                    }
+                  }
+                },
+                {
+                  "document": {
+                    "id": "ACME-10K-2025-p44",
+                    "content": "We face supply constraints on advanced packaging capacity.",
+                    "score": 0.76,
+                    "metadata": {
+                      "source": "ACME 10-K FY2025",
+                      "item": "1A",
+                      "page": 44
+                    }
+                  }
+                }
+              ]
+            },
+            "session": {
+              "id": "sess_financial_04_c420541e"
+            },
+            "user": {
+              "id": "user-2260"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "0cb0f68571a45bcb",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "a9526b761aacf73473a68b5ef032ff89",
+          "spanId": "8b58a9ef644c2aa4",
+          "name": "FilingsRetriever.search",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788575280446500096",
+          "endTimeUnixNano": "1788575280826499840",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "RETRIEVER"
+              }
+            },
+            "input": {
+              "value": "ACME debt covenants"
+            },
+            "retrieval": {
+              "documents": [
+                {
+                  "document": {
+                    "id": "ACME-10K-2025-p68",
+                    "content": "Our revolving facility requires a maximum net leverage ratio of 3.5x.",
+                    "score": 0.85,
+                    "metadata": {
+                      "source": "ACME 10-K FY2025",
+                      "item": "7",
+                      "page": 68
+                    }
+                  }
+                }
+              ]
+            },
+            "session": {
+              "id": "sess_financial_04_c420541e"
+            },
+            "user": {
+              "id": "user-2260"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "0cb0f68571a45bcb",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "a9526b761aacf73473a68b5ef032ff89",
+          "spanId": "a3d661af3e8e2e60",
+          "name": "FilingsRetriever.search",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788575280830499840",
+          "endTimeUnixNano": "1788575281190500096",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "RETRIEVER"
+              }
+            },
+            "input": {
+              "value": "ACME liquidity"
+            },
+            "retrieval": {
+              "documents": [
+                {
+                  "document": {
+                    "id": "ACME-10K-2025-p71",
+                    "content": "Cash and equivalents totaled $1.2 billion at fiscal year end.",
+                    "score": 0.81,
+                    "metadata": {
+                      "source": "ACME 10-K FY2025",
+                      "item": "7",
+                      "page": 71
+                    }
+                  }
+                }
+              ]
+            },
+            "session": {
+              "id": "sess_financial_04_c420541e"
+            },
+            "user": {
+              "id": "user-2260"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "0cb0f68571a45bcb",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "a9526b761aacf73473a68b5ef032ff89",
+          "spanId": "23addf3213e534be",
+          "name": "market_data.quote",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788575281194500096",
+          "endTimeUnixNano": "1788575281354500096",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "TOOL"
+              }
+            },
+            "tool": {
+              "name": "market_data.quote",
+              "description": "Fetch a delayed equity quote."
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "ticker": "ACME"
+              }
+            },
+            "output": {
+              "mime_type": "application/json",
+              "value": {
+                "price": 184.2,
+                "change_pct": 1.4,
+                "as_of": "2026-09-04T20:00:00Z"
+              }
+            },
+            "session": {
+              "id": "sess_financial_04_c420541e"
+            },
+            "user": {
+              "id": "user-2260"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "0cb0f68571a45bcb",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "a9526b761aacf73473a68b5ef032ff89",
+          "spanId": "6d3b376aaf92031c",
+          "name": "ChatCompletion",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788575281358500096",
+          "endTimeUnixNano": "1788575285558500096",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "LLM"
+              }
+            },
+            "llm": {
+              "model_name": "gpt-4o",
+              "provider": "openai",
+              "system": "openai",
+              "invocation_parameters": {
+                "model": "gpt-4o",
+                "temperature": 0.2
+              },
+              "token_count": {
+                "prompt": 4100,
+                "completion": 460,
+                "total": 4560
+              },
+              "input_messages": [
+                {
+                  "message": {
+                    "role": "system",
+                    "content": "Draft a credit memo. Every figure must carry a page citation."
+                  }
+                },
+                {
+                  "message": {
+                    "role": "user",
+                    "content": "Build a credit summary for ACME."
+                  }
+                }
+              ],
+              "output_messages": [
+                {
+                  "message": {
+                    "role": "assistant",
+                    "content": "48% concentration (p.42), 3.5x max net leverage (p.68), $1.2B cash (p.71)."
+                  }
+                }
+              ]
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "messages": [
+                  {
+                    "role": "system",
+                    "content": "Draft a credit memo. Every figure must carry a page citation."
+                  },
+                  {
+                    "role": "user",
+                    "content": "Build a credit summary for ACME."
+                  }
+                ]
+              }
+            },
+            "output": {
+              "value": "48% concentration (p.42), 3.5x max net leverage (p.68), $1.2B cash (p.71)."
+            },
+            "session": {
+              "id": "sess_financial_04_c420541e"
+            },
+            "user": {
+              "id": "user-2260"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "0cb0f68571a45bcb",
+          "arthur_span_version": "arthur_span_v1"
+        }
+      ]
+    }
+  ]
+}

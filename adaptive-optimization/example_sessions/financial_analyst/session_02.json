@@ -1,0 +1,310 @@
+{
+  "session_id": "sess_financial_02_cf819bc2",
+  "user_id": "user-1187",
+  "task_id": "5d2a8e14-7b93-4f06-a2c8-9e0b3d6f1a47",
+  "agent_kind": "financial_analyst",
+  "scenario": "Two-question session on a bank's margin trend, with a follow-up projection.",
+  "resource_attributes": {
+    "service.name": "research-copilot",
+    "arthur.task": "5d2a8e14-7b93-4f06-a2c8-9e0b3d6f1a47"
+  },
+  "trace_count": 2,
+  "span_count": 5,
+  "traces": [
+    {
+      "trace_id": "f954f9a4334e3b6952fa2c3c4f17551b",
+      "root_span_id": "19eacd8a955167d9",
+      "spans": [
+        {
+          "traceId": "f954f9a4334e3b6952fa2c3c4f17551b",
+          "spanId": "19eacd8a955167d9",
+          "name": "analyst.request",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788552840000000000",
+          "endTimeUnixNano": "1788552842572999936",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "AGENT"
+              }
+            },
+            "input": {
+              "value": "What happened to NBK's net interest margin?"
+            },
+            "output": {
+              "value": "NIM compressed 18bps QoQ to 2.94% (10-Q Q2 2026, Item 2, p.11)."
+            },
+            "agent": {
+              "name": "research-copilot"
+            },
+            "metadata": {
+              "desk": "equity-research",
+              "model_version": "2026-08-rc3",
+              "compliance_reviewed": false
+            },
+            "session": {
+              "id": "sess_financial_02_cf819bc2"
+            },
+            "user": {
+              "id": "user-1187"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "f954f9a4334e3b6952fa2c3c4f17551b",
+          "spanId": "1145d4a552b8ed46",
+          "name": "FilingsRetriever.search",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788552840022500096",
+          "endTimeUnixNano": "1788552840442500096",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "RETRIEVER"
+              }
+            },
+            "input": {
+              "value": "NBK 10-K risk factors"
+            },
+            "retrieval": {
+              "documents": [
+                {
+                  "document": {
+                    "id": "NBK-10Q-Q2-p11",
+                    "content": "Net interest margin compressed 18bps quarter over quarter to 2.94%.",
+                    "score": 0.93,
+                    "metadata": {
+                      "source": "NBK 10-Q Q2 2026",
+                      "item": "2",
+                      "page": 11
+                    }
+                  }
+                }
+              ]
+            },
+            "session": {
+              "id": "sess_financial_02_cf819bc2"
+            },
+            "user": {
+              "id": "user-1187"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "19eacd8a955167d9",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "f954f9a4334e3b6952fa2c3c4f17551b",
+          "spanId": "0409b84e9af8e81b",
+          "name": "ChatCompletion",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788552840446500096",
+          "endTimeUnixNano": "1788552842546499840",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "LLM"
+              }
+            },
+            "llm": {
+              "model_name": "gpt-4o",
+              "provider": "openai",
+              "system": "openai",
+              "invocation_parameters": {
+                "model": "gpt-4o",
+                "temperature": 0.2
+              },
+              "token_count": {
+                "prompt": 1900,
+                "completion": 96,
+                "total": 1996
+              },
+              "input_messages": [
+                {
+                  "message": {
+                    "role": "system",
+                    "content": "Cite page numbers."
+                  }
+                },
+                {
+                  "message": {
+                    "role": "user",
+                    "content": "NBK net interest margin trend?"
+                  }
+                }
+              ],
+              "output_messages": [
+                {
+                  "message": {
+                    "role": "assistant",
+                    "content": "NIM compressed 18bps QoQ to 2.94% (p.11)."
+                  }
+                }
+              ]
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "messages": [
+                  {
+                    "role": "system",
+                    "content": "Cite page numbers."
+                  },
+                  {
+                    "role": "user",
+                    "content": "NBK net interest margin trend?"
+                  }
+                ]
+              }
+            },
+            "output": {
+              "value": "NIM compressed 18bps QoQ to 2.94% (p.11)."
+            },
+            "session": {
+              "id": "sess_financial_02_cf819bc2"
+            },
+            "user": {
+              "id": "user-1187"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "19eacd8a955167d9",
+          "arthur_span_version": "arthur_span_v1"
+        }
+      ]
+    },
+    {
+      "trace_id": "988a4ad6f21ca1be259b4a3a82727f28",
+      "root_span_id": "9b23e870683540b3",
+      "spans": [
+        {
+          "traceId": "988a4ad6f21ca1be259b4a3a82727f28",
+          "spanId": "9b23e870683540b3",
+          "name": "analyst.request",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788552905572999936",
+          "endTimeUnixNano": "1788552908022000128",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "AGENT"
+              }
+            },
+            "input": {
+              "value": "Where does that put them for Q3?"
+            },
+            "output": {
+              "value": "Extending the 18bps quarterly compression implies roughly 2.76% in Q3, though the filing gives no forward guidance \u2014 this is an extrapolation, not a disclosed figure."
+            },
+            "agent": {
+              "name": "research-copilot"
+            },
+            "metadata": {
+              "desk": "equity-research",
+              "model_version": "2026-08-rc3",
+              "compliance_reviewed": false
+            },
+            "session": {
+              "id": "sess_financial_02_cf819bc2"
+            },
+            "user": {
+              "id": "user-1187"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "988a4ad6f21ca1be259b4a3a82727f28",
+          "spanId": "66dfe5ec06fe2d30",
+          "name": "ChatCompletion",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788552905595500032",
+          "endTimeUnixNano": "1788552907995500032",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "LLM"
+              }
+            },
+            "llm": {
+              "model_name": "gpt-4o",
+              "provider": "openai",
+              "system": "openai",
+              "invocation_parameters": {
+                "model": "gpt-4o",
+                "temperature": 0.2
+              },
+              "token_count": {
+                "prompt": 2100,
+                "completion": 128,
+                "total": 2228
+              },
+              "input_messages": [
+                {
+                  "message": {
+                    "role": "system",
+                    "content": "Flag clearly when a figure is inferred rather than disclosed."
+                  }
+                },
+                {
+                  "message": {
+                    "role": "user",
+                    "content": "Where does that put them for Q3?"
+                  }
+                }
+              ],
+              "output_messages": [
+                {
+                  "message": {
+                    "role": "assistant",
+                    "content": "Roughly 2.76% if the trend holds \u2014 extrapolated, not disclosed."
+                  }
+                }
+              ]
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "messages": [
+                  {
+                    "role": "system",
+                    "content": "Flag clearly when a figure is inferred rather than disclosed."
+                  },
+                  {
+                    "role": "user",
+                    "content": "Where does that put them for Q3?"
+                  }
+                ]
+              }
+            },
+            "output": {
+              "value": "Roughly 2.76% if the trend holds \u2014 extrapolated, not disclosed."
+            },
+            "session": {
+              "id": "sess_financial_02_cf819bc2"
+            },
+            "user": {
+              "id": "user-1187"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "9b23e870683540b3",
+          "arthur_span_version": "arthur_span_v1"
+        }
+      ]
+    }
+  ]
+}

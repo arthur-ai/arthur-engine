@@ -1,0 +1,272 @@
+{
+  "session_id": "sess_customer_03_8544c524",
+  "user_id": "user-903",
+  "task_id": "3f7c1b2a-9d44-4c1e-8b0a-2c5e6f7a8b90",
+  "agent_kind": "customer_support",
+  "scenario": "Single-turn session \u2014 user got what they needed immediately.",
+  "resource_attributes": {
+    "service.name": "support-agent",
+    "arthur.task": "3f7c1b2a-9d44-4c1e-8b0a-2c5e6f7a8b90"
+  },
+  "trace_count": 1,
+  "span_count": 4,
+  "traces": [
+    {
+      "trace_id": "0d0cd6d5b7905c636e5645a5c6ffaa67",
+      "root_span_id": "be141b6969f03e7b",
+      "spans": [
+        {
+          "traceId": "0d0cd6d5b7905c636e5645a5c6ffaa67",
+          "spanId": "be141b6969f03e7b",
+          "name": "support-agent.run",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788564060000000000",
+          "endTimeUnixNano": "1788564061912000000",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "AGENT"
+              }
+            },
+            "input": {
+              "value": "Where is my order #9034?"
+            },
+            "output": {
+              "value": "Your order #9034 is delivered and should arrive Sep 2."
+            },
+            "session": {
+              "id": "sess_customer_03_8544c524"
+            },
+            "user": {
+              "id": "user-903"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "0d0cd6d5b7905c636e5645a5c6ffaa67",
+          "spanId": "072e31f65c8fd263",
+          "name": "ChatCompletion",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788564060015000064",
+          "endTimeUnixNano": "1788564060795000064",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "LLM"
+              }
+            },
+            "llm": {
+              "model_name": "gpt-4o-mini",
+              "provider": "openai",
+              "system": "openai",
+              "invocation_parameters": {
+                "model": "gpt-4o-mini",
+                "temperature": 0.2
+              },
+              "token_count": {
+                "prompt": 412,
+                "completion": 24,
+                "total": 436
+              },
+              "input_messages": [
+                {
+                  "message": {
+                    "role": "system",
+                    "content": "You are a support agent for an online retailer."
+                  }
+                },
+                {
+                  "message": {
+                    "role": "user",
+                    "content": "Where is my order #9034?"
+                  }
+                }
+              ],
+              "output_messages": [
+                {
+                  "message": {
+                    "role": "assistant",
+                    "tool_calls": [
+                      {
+                        "tool_call": {
+                          "id": "call_6217caac1538",
+                          "function": {
+                            "name": "lookup_order",
+                            "arguments": "{\"order_id\": \"9034\"}"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "messages": [
+                  {
+                    "role": "system",
+                    "content": "You are a support agent for an online retailer."
+                  },
+                  {
+                    "role": "user",
+                    "content": "Where is my order #9034?"
+                  }
+                ]
+              }
+            },
+            "session": {
+              "id": "sess_customer_03_8544c524"
+            },
+            "user": {
+              "id": "user-903"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "be141b6969f03e7b",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "0d0cd6d5b7905c636e5645a5c6ffaa67",
+          "spanId": "e0935746e46eab1d",
+          "name": "lookup_order",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788564060799000064",
+          "endTimeUnixNano": "1788564060979000064",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "TOOL"
+              }
+            },
+            "tool": {
+              "name": "lookup_order",
+              "description": "Look up an order by its ID."
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "order_id": "9034"
+              }
+            },
+            "output": {
+              "mime_type": "application/json",
+              "value": {
+                "status": "delivered",
+                "eta": "Sep 2"
+              }
+            },
+            "session": {
+              "id": "sess_customer_03_8544c524"
+            },
+            "user": {
+              "id": "user-903"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "be141b6969f03e7b",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "0d0cd6d5b7905c636e5645a5c6ffaa67",
+          "spanId": "23929066a672a02f",
+          "name": "ChatCompletion",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788564060983000064",
+          "endTimeUnixNano": "1788564061892999936",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "LLM"
+              }
+            },
+            "llm": {
+              "model_name": "gpt-4o-mini",
+              "provider": "openai",
+              "system": "openai",
+              "invocation_parameters": {
+                "model": "gpt-4o-mini",
+                "temperature": 0.2
+              },
+              "token_count": {
+                "prompt": 468,
+                "completion": 31,
+                "total": 499
+              },
+              "input_messages": [
+                {
+                  "message": {
+                    "role": "system",
+                    "content": "You are a support agent."
+                  }
+                },
+                {
+                  "message": {
+                    "role": "user",
+                    "content": "Where is my order #9034?"
+                  }
+                },
+                {
+                  "message": {
+                    "role": "tool",
+                    "content": "{\"status\": \"delivered\", \"eta\": \"Sep 2\"}"
+                  }
+                }
+              ],
+              "output_messages": [
+                {
+                  "message": {
+                    "role": "assistant",
+                    "content": "Your order #9034 is delivered and should arrive Sep 2."
+                  }
+                }
+              ]
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "messages": [
+                  {
+                    "role": "system",
+                    "content": "You are a support agent."
+                  },
+                  {
+                    "role": "user",
+                    "content": "Where is my order #9034?"
+                  },
+                  {
+                    "role": "tool",
+                    "content": "{\"status\": \"delivered\", \"eta\": \"Sep 2\"}"
+                  }
+                ]
+              }
+            },
+            "output": {
+              "value": "Your order #9034 is delivered and should arrive Sep 2."
+            },
+            "session": {
+              "id": "sess_customer_03_8544c524"
+            },
+            "user": {
+              "id": "user-903"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "be141b6969f03e7b",
+          "arthur_span_version": "arthur_span_v1"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,806 @@
+{
+  "session_id": "sess_customer_05_f6363edc",
+  "user_id": "user-77",
+  "task_id": "3f7c1b2a-9d44-4c1e-8b0a-2c5e6f7a8b90",
+  "agent_kind": "customer_support",
+  "scenario": "Long thread \u2014 four turns, mixed tool use and policy lookups.",
+  "resource_attributes": {
+    "service.name": "support-agent",
+    "arthur.task": "3f7c1b2a-9d44-4c1e-8b0a-2c5e6f7a8b90"
+  },
+  "trace_count": 4,
+  "span_count": 13,
+  "traces": [
+    {
+      "trace_id": "d791ae8315eb9c06f7d41c91c5d3a957",
+      "root_span_id": "653ac30787e0b346",
+      "spans": [
+        {
+          "traceId": "d791ae8315eb9c06f7d41c91c5d3a957",
+          "spanId": "653ac30787e0b346",
+          "name": "support-agent.run",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788586500000000000",
+          "endTimeUnixNano": "1788586501912000000",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "AGENT"
+              }
+            },
+            "input": {
+              "value": "Where is my order #5567?"
+            },
+            "output": {
+              "value": "Your order #5567 is in transit and should arrive Sep 8."
+            },
+            "session": {
+              "id": "sess_customer_05_f6363edc"
+            },
+            "user": {
+              "id": "user-77"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "d791ae8315eb9c06f7d41c91c5d3a957",
+          "spanId": "905cf744e4ca687b",
+          "name": "ChatCompletion",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788586500015000064",
+          "endTimeUnixNano": "1788586500795000064",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "LLM"
+              }
+            },
+            "llm": {
+              "model_name": "gpt-4o-mini",
+              "provider": "openai",
+              "system": "openai",
+              "invocation_parameters": {
+                "model": "gpt-4o-mini",
+                "temperature": 0.2
+              },
+              "token_count": {
+                "prompt": 412,
+                "completion": 24,
+                "total": 436
+              },
+              "input_messages": [
+                {
+                  "message": {
+                    "role": "system",
+                    "content": "You are a support agent for an online retailer."
+                  }
+                },
+                {
+                  "message": {
+                    "role": "user",
+                    "content": "Where is my order #5567?"
+                  }
+                }
+              ],
+              "output_messages": [
+                {
+                  "message": {
+                    "role": "assistant",
+                    "tool_calls": [
+                      {
+                        "tool_call": {
+                          "id": "call_cc2ce9d69d14",
+                          "function": {
+                            "name": "lookup_order",
+                            "arguments": "{\"order_id\": \"5567\"}"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "messages": [
+                  {
+                    "role": "system",
+                    "content": "You are a support agent for an online retailer."
+                  },
+                  {
+                    "role": "user",
+                    "content": "Where is my order #5567?"
+                  }
+                ]
+              }
+            },
+            "session": {
+              "id": "sess_customer_05_f6363edc"
+            },
+            "user": {
+              "id": "user-77"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "653ac30787e0b346",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "d791ae8315eb9c06f7d41c91c5d3a957",
+          "spanId": "21547fd036807210",
+          "name": "lookup_order",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788586500799000064",
+          "endTimeUnixNano": "1788586500979000064",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "TOOL"
+              }
+            },
+            "tool": {
+              "name": "lookup_order",
+              "description": "Look up an order by its ID."
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "order_id": "5567"
+              }
+            },
+            "output": {
+              "mime_type": "application/json",
+              "value": {
+                "status": "in_transit",
+                "eta": "Sep 8"
+              }
+            },
+            "session": {
+              "id": "sess_customer_05_f6363edc"
+            },
+            "user": {
+              "id": "user-77"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "653ac30787e0b346",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "d791ae8315eb9c06f7d41c91c5d3a957",
+          "spanId": "542db47cb8c36ee0",
+          "name": "ChatCompletion",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788586500983000064",
+          "endTimeUnixNano": "1788586501892999936",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "LLM"
+              }
+            },
+            "llm": {
+              "model_name": "gpt-4o-mini",
+              "provider": "openai",
+              "system": "openai",
+              "invocation_parameters": {
+                "model": "gpt-4o-mini",
+                "temperature": 0.2
+              },
+              "token_count": {
+                "prompt": 468,
+                "completion": 31,
+                "total": 499
+              },
+              "input_messages": [
+                {
+                  "message": {
+                    "role": "system",
+                    "content": "You are a support agent."
+                  }
+                },
+                {
+                  "message": {
+                    "role": "user",
+                    "content": "Where is my order #5567?"
+                  }
+                },
+                {
+                  "message": {
+                    "role": "tool",
+                    "content": "{\"status\": \"in_transit\", \"eta\": \"Sep 8\"}"
+                  }
+                }
+              ],
+              "output_messages": [
+                {
+                  "message": {
+                    "role": "assistant",
+                    "content": "Your order #5567 is in transit and should arrive Sep 8."
+                  }
+                }
+              ]
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "messages": [
+                  {
+                    "role": "system",
+                    "content": "You are a support agent."
+                  },
+                  {
+                    "role": "user",
+                    "content": "Where is my order #5567?"
+                  },
+                  {
+                    "role": "tool",
+                    "content": "{\"status\": \"in_transit\", \"eta\": \"Sep 8\"}"
+                  }
+                ]
+              }
+            },
+            "output": {
+              "value": "Your order #5567 is in transit and should arrive Sep 8."
+            },
+            "session": {
+              "id": "sess_customer_05_f6363edc"
+            },
+            "user": {
+              "id": "user-77"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "653ac30787e0b346",
+          "arthur_span_version": "arthur_span_v1"
+        }
+      ]
+    },
+    {
+      "trace_id": "f287fb09d958c6aebb37f7c9a7b36bf4",
+      "root_span_id": "e95a6c38f1bc9eaf",
+      "spans": [
+        {
+          "traceId": "f287fb09d958c6aebb37f7c9a7b36bf4",
+          "spanId": "e95a6c38f1bc9eaf",
+          "name": "support-agent.run",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788586568912000000",
+          "endTimeUnixNano": "1788586570604999936",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "AGENT"
+              }
+            },
+            "input": {
+              "value": "And if I want to return it instead?"
+            },
+            "output": {
+              "value": "You can return it within 30 days; refunds reach your original payment method within 10 business days."
+            },
+            "session": {
+              "id": "sess_customer_05_f6363edc"
+            },
+            "user": {
+              "id": "user-77"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "f287fb09d958c6aebb37f7c9a7b36bf4",
+          "spanId": "8bdff1f2457033df",
+          "name": "VectorStoreRetriever.get_relevant_documents",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788586568924499968",
+          "endTimeUnixNano": "1788586569164499968",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "RETRIEVER"
+              }
+            },
+            "input": {
+              "value": "And if I want to return it instead?"
+            },
+            "retrieval": {
+              "documents": [
+                {
+                  "document": {
+                    "id": "doc-114",
+                    "content": "Orders delayed beyond 5 business days qualify for a full refund.",
+                    "score": 0.87,
+                    "metadata": {
+                      "source": "policies/shipping.pdf",
+                      "page": 3
+                    }
+                  }
+                },
+                {
+                  "document": {
+                    "id": "doc-208",
+                    "content": "Refunds are issued to the original payment method within 10 business days.",
+                    "score": 0.71,
+                    "metadata": {
+                      "source": "policies/refunds.pdf",
+                      "page": 1
+                    }
+                  }
+                }
+              ]
+            },
+            "session": {
+              "id": "sess_customer_05_f6363edc"
+            },
+            "user": {
+              "id": "user-77"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "e95a6c38f1bc9eaf",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "f287fb09d958c6aebb37f7c9a7b36bf4",
+          "spanId": "d158b985ff7b7ebb",
+          "name": "ChatCompletion",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788586569168499968",
+          "endTimeUnixNano": "1788586570588499968",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "LLM"
+              }
+            },
+            "llm": {
+              "model_name": "gpt-4o-mini",
+              "provider": "openai",
+              "system": "openai",
+              "invocation_parameters": {
+                "model": "gpt-4o-mini",
+                "temperature": 0.2
+              },
+              "token_count": {
+                "prompt": 890,
+                "completion": 88,
+                "total": 978
+              },
+              "input_messages": [
+                {
+                  "message": {
+                    "role": "system",
+                    "content": "Answer using the retrieved policy excerpts."
+                  }
+                },
+                {
+                  "message": {
+                    "role": "user",
+                    "content": "And if I want to return it instead?"
+                  }
+                }
+              ],
+              "output_messages": [
+                {
+                  "message": {
+                    "role": "assistant",
+                    "content": "You can return it within 30 days; refunds reach your original payment method within 10 business days."
+                  }
+                }
+              ]
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "messages": [
+                  {
+                    "role": "system",
+                    "content": "Answer using the retrieved policy excerpts."
+                  },
+                  {
+                    "role": "user",
+                    "content": "And if I want to return it instead?"
+                  }
+                ]
+              }
+            },
+            "output": {
+              "value": "You can return it within 30 days; refunds reach your original payment method within 10 business days."
+            },
+            "session": {
+              "id": "sess_customer_05_f6363edc"
+            },
+            "user": {
+              "id": "user-77"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "e95a6c38f1bc9eaf",
+          "arthur_span_version": "arthur_span_v1"
+        }
+      ]
+    },
+    {
+      "trace_id": "0dba2da6a9f175b198553dbce2ebf513",
+      "root_span_id": "7a629c8ca7281f43",
+      "spans": [
+        {
+          "traceId": "0dba2da6a9f175b198553dbce2ebf513",
+          "spanId": "7a629c8ca7281f43",
+          "name": "support-agent.run",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788586605604999936",
+          "endTimeUnixNano": "1788586607184999936",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "AGENT"
+              }
+            },
+            "input": {
+              "value": "Can you change my shipping address to 742 Evergreen Terrace, Springfield?"
+            },
+            "output": {
+              "value": "Done \u2014 future orders will ship to 742 Evergreen Terrace, Springfield."
+            },
+            "session": {
+              "id": "sess_customer_05_f6363edc"
+            },
+            "user": {
+              "id": "user-77"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "0dba2da6a9f175b198553dbce2ebf513",
+          "spanId": "bd9ca600dcec366c",
+          "name": "ChatCompletion",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788586605619000064",
+          "endTimeUnixNano": "1788586606308999936",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "LLM"
+              }
+            },
+            "llm": {
+              "model_name": "gpt-4o-mini",
+              "provider": "openai",
+              "system": "openai",
+              "invocation_parameters": {
+                "model": "gpt-4o-mini",
+                "temperature": 0.2
+              },
+              "token_count": {
+                "prompt": 356,
+                "completion": 27,
+                "total": 383
+              },
+              "input_messages": [
+                {
+                  "message": {
+                    "role": "system",
+                    "content": "You are a support agent."
+                  }
+                },
+                {
+                  "message": {
+                    "role": "user",
+                    "content": "Can you change my shipping address to 742 Evergreen Terrace, Springfield?"
+                  }
+                }
+              ],
+              "output_messages": [
+                {
+                  "message": {
+                    "role": "assistant",
+                    "tool_calls": [
+                      {
+                        "tool_call": {
+                          "id": "call_762311209339",
+                          "function": {
+                            "name": "update_address",
+                            "arguments": "{\"address\": \"742 Evergreen Terrace, Springfield\"}"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "messages": [
+                  {
+                    "role": "system",
+                    "content": "You are a support agent."
+                  },
+                  {
+                    "role": "user",
+                    "content": "Can you change my shipping address to 742 Evergreen Terrace, Springfield?"
+                  }
+                ]
+              }
+            },
+            "session": {
+              "id": "sess_customer_05_f6363edc"
+            },
+            "user": {
+              "id": "user-77"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "7a629c8ca7281f43",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "0dba2da6a9f175b198553dbce2ebf513",
+          "spanId": "10d0d16184250f98",
+          "name": "update_address",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788586606312999936",
+          "endTimeUnixNano": "1788586606523000064",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "TOOL"
+              }
+            },
+            "tool": {
+              "name": "update_address"
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "address": "742 Evergreen Terrace, Springfield"
+              }
+            },
+            "output": {
+              "mime_type": "application/json",
+              "value": {
+                "updated": true
+              }
+            },
+            "session": {
+              "id": "sess_customer_05_f6363edc"
+            },
+            "user": {
+              "id": "user-77"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "7a629c8ca7281f43",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "0dba2da6a9f175b198553dbce2ebf513",
+          "spanId": "8a525ae6973ebd0d",
+          "name": "ChatCompletion",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788586606527000064",
+          "endTimeUnixNano": "1788586607167000064",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "LLM"
+              }
+            },
+            "llm": {
+              "model_name": "gpt-4o-mini",
+              "provider": "openai",
+              "system": "openai",
+              "invocation_parameters": {
+                "model": "gpt-4o-mini",
+                "temperature": 0.2
+              },
+              "token_count": {
+                "prompt": 402,
+                "completion": 18,
+                "total": 420
+              },
+              "input_messages": [
+                {
+                  "message": {
+                    "role": "system",
+                    "content": "You are a support agent."
+                  }
+                },
+                {
+                  "message": {
+                    "role": "user",
+                    "content": "Can you change my shipping address to 742 Evergreen Terrace, Springfield?"
+                  }
+                }
+              ],
+              "output_messages": [
+                {
+                  "message": {
+                    "role": "assistant",
+                    "content": "Done \u2014 future orders will ship to 742 Evergreen Terrace, Springfield."
+                  }
+                }
+              ]
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "messages": [
+                  {
+                    "role": "system",
+                    "content": "You are a support agent."
+                  },
+                  {
+                    "role": "user",
+                    "content": "Can you change my shipping address to 742 Evergreen Terrace, Springfield?"
+                  }
+                ]
+              }
+            },
+            "output": {
+              "value": "Done \u2014 future orders will ship to 742 Evergreen Terrace, Springfield."
+            },
+            "session": {
+              "id": "sess_customer_05_f6363edc"
+            },
+            "user": {
+              "id": "user-77"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "7a629c8ca7281f43",
+          "arthur_span_version": "arthur_span_v1"
+        }
+      ]
+    },
+    {
+      "trace_id": "959cb773b37ea993ec69ee647d341c2a",
+      "root_span_id": "86b3cd2e8263bbd2",
+      "spans": [
+        {
+          "traceId": "959cb773b37ea993ec69ee647d341c2a",
+          "spanId": "86b3cd2e8263bbd2",
+          "name": "support-agent.run",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788586673184999936",
+          "endTimeUnixNano": "1788586673614000128",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "AGENT"
+              }
+            },
+            "input": {
+              "value": "Thanks, that's all!"
+            },
+            "output": {
+              "value": "Happy to help. Have a great day!"
+            },
+            "session": {
+              "id": "sess_customer_05_f6363edc"
+            },
+            "user": {
+              "id": "user-77"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "959cb773b37ea993ec69ee647d341c2a",
+          "spanId": "776b385075dfa03c",
+          "name": "ChatCompletion",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788586673192500224",
+          "endTimeUnixNano": "1788586673602499840",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "LLM"
+              }
+            },
+            "llm": {
+              "model_name": "gpt-4o-mini",
+              "provider": "openai",
+              "system": "openai",
+              "invocation_parameters": {
+                "model": "gpt-4o-mini",
+                "temperature": 0.2
+              },
+              "token_count": {
+                "prompt": 298,
+                "completion": 12,
+                "total": 310
+              },
+              "input_messages": [
+                {
+                  "message": {
+                    "role": "system",
+                    "content": "You are a support agent."
+                  }
+                },
+                {
+                  "message": {
+                    "role": "user",
+                    "content": "Thanks, that's all!"
+                  }
+                }
+              ],
+              "output_messages": [
+                {
+                  "message": {
+                    "role": "assistant",
+                    "content": "Happy to help. Have a great day!"
+                  }
+                }
+              ]
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "messages": [
+                  {
+                    "role": "system",
+                    "content": "You are a support agent."
+                  },
+                  {
+                    "role": "user",
+                    "content": "Thanks, that's all!"
+                  }
+                ]
+              }
+            },
+            "output": {
+              "value": "Happy to help. Have a great day!"
+            },
+            "session": {
+              "id": "sess_customer_05_f6363edc"
+            },
+            "user": {
+              "id": "user-77"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "86b3cd2e8263bbd2",
+          "arthur_span_version": "arthur_span_v1"
+        }
+      ]
+    }
+  ]
+}

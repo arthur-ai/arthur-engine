@@ -1,0 +1,679 @@
+{
+  "session_id": "sess_customer_02_1e5d9a0e",
+  "user_id": "user-1187",
+  "task_id": "3f7c1b2a-9d44-4c1e-8b0a-2c5e6f7a8b90",
+  "agent_kind": "customer_support",
+  "scenario": "Frustrated customer: a tool call fails and is retried before escalation succeeds.",
+  "resource_attributes": {
+    "service.name": "support-agent",
+    "arthur.task": "3f7c1b2a-9d44-4c1e-8b0a-2c5e6f7a8b90"
+  },
+  "trace_count": 3,
+  "span_count": 11,
+  "traces": [
+    {
+      "trace_id": "847370304a531762ae3aad33ae4c8742",
+      "root_span_id": "fdb804f294ea0a44",
+      "spans": [
+        {
+          "traceId": "847370304a531762ae3aad33ae4c8742",
+          "spanId": "fdb804f294ea0a44",
+          "name": "support-agent.run",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788552840000000000",
+          "endTimeUnixNano": "1788552841912000000",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "AGENT"
+              }
+            },
+            "input": {
+              "value": "Where is my order #6120?"
+            },
+            "output": {
+              "value": "Your order #6120 is delayed and should arrive Sep 11."
+            },
+            "session": {
+              "id": "sess_customer_02_1e5d9a0e"
+            },
+            "user": {
+              "id": "user-1187"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "847370304a531762ae3aad33ae4c8742",
+          "spanId": "2164adaec404cb08",
+          "name": "ChatCompletion",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788552840015000064",
+          "endTimeUnixNano": "1788552840795000064",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "LLM"
+              }
+            },
+            "llm": {
+              "model_name": "gpt-4o-mini",
+              "provider": "openai",
+              "system": "openai",
+              "invocation_parameters": {
+                "model": "gpt-4o-mini",
+                "temperature": 0.2
+              },
+              "token_count": {
+                "prompt": 412,
+                "completion": 24,
+                "total": 436
+              },
+              "input_messages": [
+                {
+                  "message": {
+                    "role": "system",
+                    "content": "You are a support agent for an online retailer."
+                  }
+                },
+                {
+                  "message": {
+                    "role": "user",
+                    "content": "Where is my order #6120?"
+                  }
+                }
+              ],
+              "output_messages": [
+                {
+                  "message": {
+                    "role": "assistant",
+                    "tool_calls": [
+                      {
+                        "tool_call": {
+                          "id": "call_10656a13c193",
+                          "function": {
+                            "name": "lookup_order",
+                            "arguments": "{\"order_id\": \"6120\"}"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "messages": [
+                  {
+                    "role": "system",
+                    "content": "You are a support agent for an online retailer."
+                  },
+                  {
+                    "role": "user",
+                    "content": "Where is my order #6120?"
+                  }
+                ]
+              }
+            },
+            "session": {
+              "id": "sess_customer_02_1e5d9a0e"
+            },
+            "user": {
+              "id": "user-1187"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "fdb804f294ea0a44",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "847370304a531762ae3aad33ae4c8742",
+          "spanId": "e5fabbedf5e55a8f",
+          "name": "lookup_order",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788552840799000064",
+          "endTimeUnixNano": "1788552840979000064",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "TOOL"
+              }
+            },
+            "tool": {
+              "name": "lookup_order",
+              "description": "Look up an order by its ID."
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "order_id": "6120"
+              }
+            },
+            "output": {
+              "mime_type": "application/json",
+              "value": {
+                "status": "delayed",
+                "eta": "Sep 11"
+              }
+            },
+            "session": {
+              "id": "sess_customer_02_1e5d9a0e"
+            },
+            "user": {
+              "id": "user-1187"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "fdb804f294ea0a44",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "847370304a531762ae3aad33ae4c8742",
+          "spanId": "c2223ddc3b03555d",
+          "name": "ChatCompletion",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788552840983000064",
+          "endTimeUnixNano": "1788552841892999936",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "LLM"
+              }
+            },
+            "llm": {
+              "model_name": "gpt-4o-mini",
+              "provider": "openai",
+              "system": "openai",
+              "invocation_parameters": {
+                "model": "gpt-4o-mini",
+                "temperature": 0.2
+              },
+              "token_count": {
+                "prompt": 468,
+                "completion": 31,
+                "total": 499
+              },
+              "input_messages": [
+                {
+                  "message": {
+                    "role": "system",
+                    "content": "You are a support agent."
+                  }
+                },
+                {
+                  "message": {
+                    "role": "user",
+                    "content": "Where is my order #6120?"
+                  }
+                },
+                {
+                  "message": {
+                    "role": "tool",
+                    "content": "{\"status\": \"delayed\", \"eta\": \"Sep 11\"}"
+                  }
+                }
+              ],
+              "output_messages": [
+                {
+                  "message": {
+                    "role": "assistant",
+                    "content": "Your order #6120 is delayed and should arrive Sep 11."
+                  }
+                }
+              ]
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "messages": [
+                  {
+                    "role": "system",
+                    "content": "You are a support agent."
+                  },
+                  {
+                    "role": "user",
+                    "content": "Where is my order #6120?"
+                  },
+                  {
+                    "role": "tool",
+                    "content": "{\"status\": \"delayed\", \"eta\": \"Sep 11\"}"
+                  }
+                ]
+              }
+            },
+            "output": {
+              "value": "Your order #6120 is delayed and should arrive Sep 11."
+            },
+            "session": {
+              "id": "sess_customer_02_1e5d9a0e"
+            },
+            "user": {
+              "id": "user-1187"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "fdb804f294ea0a44",
+          "arthur_span_version": "arthur_span_v1"
+        }
+      ]
+    },
+    {
+      "trace_id": "e8a2b30d15df931b10d91358196827db",
+      "root_span_id": "a1c4b31fa4db1db7",
+      "spans": [
+        {
+          "traceId": "e8a2b30d15df931b10d91358196827db",
+          "spanId": "a1c4b31fa4db1db7",
+          "name": "support-agent.run",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788552866912000000",
+          "endTimeUnixNano": "1788552871812999936",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "AGENT"
+              }
+            },
+            "input": {
+              "value": "This is the third time I've asked about my delayed order. I want a human."
+            },
+            "output": {
+              "value": "I've escalated this to a specialist \u2014 ticket SUP-4471. Someone will reply within 2 hours."
+            },
+            "session": {
+              "id": "sess_customer_02_1e5d9a0e"
+            },
+            "user": {
+              "id": "user-1187"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "e8a2b30d15df931b10d91358196827db",
+          "spanId": "3eb3f25d07fa7669",
+          "name": "ChatCompletion",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788552866929500160",
+          "endTimeUnixNano": "1788552867649499904",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "LLM"
+              }
+            },
+            "llm": {
+              "model_name": "gpt-4o-mini",
+              "provider": "openai",
+              "system": "openai",
+              "invocation_parameters": {
+                "model": "gpt-4o-mini",
+                "temperature": 0.2
+              },
+              "token_count": {
+                "prompt": 388,
+                "completion": 29,
+                "total": 417
+              },
+              "input_messages": [
+                {
+                  "message": {
+                    "role": "system",
+                    "content": "You are a support agent. Escalate when the user is frustrated."
+                  }
+                },
+                {
+                  "message": {
+                    "role": "user",
+                    "content": "This is the third time I've asked about my delayed order. I want a human."
+                  }
+                }
+              ],
+              "output_messages": [
+                {
+                  "message": {
+                    "role": "assistant",
+                    "tool_calls": [
+                      {
+                        "tool_call": {
+                          "id": "call_d011c315628d",
+                          "function": {
+                            "name": "create_ticket",
+                            "arguments": "{\"priority\": \"high\", \"summary\": \"my delayed order\"}"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "messages": [
+                  {
+                    "role": "system",
+                    "content": "You are a support agent. Escalate when the user is frustrated."
+                  },
+                  {
+                    "role": "user",
+                    "content": "This is the third time I've asked about my delayed order. I want a human."
+                  }
+                ]
+              }
+            },
+            "session": {
+              "id": "sess_customer_02_1e5d9a0e"
+            },
+            "user": {
+              "id": "user-1187"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "a1c4b31fa4db1db7",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "e8a2b30d15df931b10d91358196827db",
+          "spanId": "75412a01698e04f5",
+          "name": "create_ticket",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788552867653500160",
+          "endTimeUnixNano": "1788552870663500032",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "TOOL"
+              }
+            },
+            "tool": {
+              "name": "create_ticket"
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "priority": "high",
+                "summary": "my delayed order"
+              }
+            },
+            "output": {
+              "mime_type": "application/json",
+              "value": {
+                "error": "upstream timeout contacting ticketing system"
+              }
+            },
+            "session": {
+              "id": "sess_customer_02_1e5d9a0e"
+            },
+            "user": {
+              "id": "user-1187"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_ERROR",
+            "message": "ToolExecutionError: upstream timeout"
+          },
+          "parentSpanId": "a1c4b31fa4db1db7",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "e8a2b30d15df931b10d91358196827db",
+          "spanId": "27dedbf561a5c6ff",
+          "name": "create_ticket",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788552870667500032",
+          "endTimeUnixNano": "1788552870907500032",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "TOOL"
+              }
+            },
+            "tool": {
+              "name": "create_ticket"
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "priority": "high",
+                "summary": "my delayed order"
+              }
+            },
+            "output": {
+              "mime_type": "application/json",
+              "value": {
+                "ticket_id": "SUP-4471",
+                "sla_hours": 2
+              }
+            },
+            "session": {
+              "id": "sess_customer_02_1e5d9a0e"
+            },
+            "user": {
+              "id": "user-1187"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "a1c4b31fa4db1db7",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "e8a2b30d15df931b10d91358196827db",
+          "spanId": "c1de33ca51cd3f66",
+          "name": "ChatCompletion",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788552870911500032",
+          "endTimeUnixNano": "1788552871791500032",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "LLM"
+              }
+            },
+            "llm": {
+              "model_name": "gpt-4o-mini",
+              "provider": "openai",
+              "system": "openai",
+              "invocation_parameters": {
+                "model": "gpt-4o-mini",
+                "temperature": 0.2
+              },
+              "token_count": {
+                "prompt": 501,
+                "completion": 34,
+                "total": 535
+              },
+              "input_messages": [
+                {
+                  "message": {
+                    "role": "system",
+                    "content": "You are a support agent."
+                  }
+                },
+                {
+                  "message": {
+                    "role": "user",
+                    "content": "This is the third time I've asked about my delayed order. I want a human."
+                  }
+                }
+              ],
+              "output_messages": [
+                {
+                  "message": {
+                    "role": "assistant",
+                    "content": "I've escalated this to a specialist \u2014 ticket SUP-4471. Someone will reply within 2 hours."
+                  }
+                }
+              ]
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "messages": [
+                  {
+                    "role": "system",
+                    "content": "You are a support agent."
+                  },
+                  {
+                    "role": "user",
+                    "content": "This is the third time I've asked about my delayed order. I want a human."
+                  }
+                ]
+              }
+            },
+            "output": {
+              "value": "I've escalated this to a specialist \u2014 ticket SUP-4471. Someone will reply within 2 hours."
+            },
+            "session": {
+              "id": "sess_customer_02_1e5d9a0e"
+            },
+            "user": {
+              "id": "user-1187"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "a1c4b31fa4db1db7",
+          "arthur_span_version": "arthur_span_v1"
+        }
+      ]
+    },
+    {
+      "trace_id": "bb526de1e5bae4546260b1d565ab1d29",
+      "root_span_id": "8df3436459512a42",
+      "spans": [
+        {
+          "traceId": "bb526de1e5bae4546260b1d565ab1d29",
+          "spanId": "8df3436459512a42",
+          "name": "support-agent.run",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788552955812999936",
+          "endTimeUnixNano": "1788552956242000128",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "AGENT"
+              }
+            },
+            "input": {
+              "value": "Thanks, that's all!"
+            },
+            "output": {
+              "value": "Happy to help. Have a great day!"
+            },
+            "session": {
+              "id": "sess_customer_02_1e5d9a0e"
+            },
+            "user": {
+              "id": "user-1187"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "bb526de1e5bae4546260b1d565ab1d29",
+          "spanId": "7767f5a9fd437aa7",
+          "name": "ChatCompletion",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788552955820499968",
+          "endTimeUnixNano": "1788552956230500096",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "LLM"
+              }
+            },
+            "llm": {
+              "model_name": "gpt-4o-mini",
+              "provider": "openai",
+              "system": "openai",
+              "invocation_parameters": {
+                "model": "gpt-4o-mini",
+                "temperature": 0.2
+              },
+              "token_count": {
+                "prompt": 298,
+                "completion": 12,
+                "total": 310
+              },
+              "input_messages": [
+                {
+                  "message": {
+                    "role": "system",
+                    "content": "You are a support agent."
+                  }
+                },
+                {
+                  "message": {
+                    "role": "user",
+                    "content": "Thanks, that's all!"
+                  }
+                }
+              ],
+              "output_messages": [
+                {
+                  "message": {
+                    "role": "assistant",
+                    "content": "Happy to help. Have a great day!"
+                  }
+                }
+              ]
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "messages": [
+                  {
+                    "role": "system",
+                    "content": "You are a support agent."
+                  },
+                  {
+                    "role": "user",
+                    "content": "Thanks, that's all!"
+                  }
+                ]
+              }
+            },
+            "output": {
+              "value": "Happy to help. Have a great day!"
+            },
+            "session": {
+              "id": "sess_customer_02_1e5d9a0e"
+            },
+            "user": {
+              "id": "user-1187"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "8df3436459512a42",
+          "arthur_span_version": "arthur_span_v1"
+        }
+      ]
+    }
+  ]
+}

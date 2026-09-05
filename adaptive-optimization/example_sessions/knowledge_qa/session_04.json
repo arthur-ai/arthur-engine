@@ -1,0 +1,187 @@
+{
+  "session_id": "sess_knowledge_04_f6702e69",
+  "user_id": "user-2260",
+  "task_id": "b81d4a55-2f0e-4c7a-9d13-6e2f8a4b7c11",
+  "agent_kind": "knowledge_qa",
+  "scenario": "Weak grounding: top scores are 0.38-0.41 and the model answers anyway.",
+  "resource_attributes": {
+    "service.name": "policy-copilot",
+    "arthur.task": "b81d4a55-2f0e-4c7a-9d13-6e2f8a4b7c11"
+  },
+  "trace_count": 1,
+  "span_count": 3,
+  "traces": [
+    {
+      "trace_id": "617d1111247c1e2da6a1deee1b23c7f2",
+      "root_span_id": "5116a370225f46f8",
+      "spans": [
+        {
+          "traceId": "617d1111247c1e2da6a1deee1b23c7f2",
+          "spanId": "5116a370225f46f8",
+          "name": "qa.pipeline",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788575280000000000",
+          "endTimeUnixNano": "1788575281917999872",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "CHAIN"
+              }
+            },
+            "input": {
+              "value": "What's the criteria for a promotion to staff engineer?"
+            },
+            "output": {
+              "value": "Promotion cycles run twice yearly in March and September, and managers discuss growth during quarterly check-ins. Specific staff-level criteria aren't covered in the handbook."
+            },
+            "session": {
+              "id": "sess_knowledge_04_f6702e69"
+            },
+            "user": {
+              "id": "user-2260"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "617d1111247c1e2da6a1deee1b23c7f2",
+          "spanId": "a0c98f68ff21cdbc",
+          "name": "PineconeRetriever.similarity_search",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788575280009999872",
+          "endTimeUnixNano": "1788575280320000000",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "RETRIEVER"
+              }
+            },
+            "input": {
+              "value": "What's the criteria for a promotion to staff engineer?"
+            },
+            "retrieval": {
+              "documents": [
+                {
+                  "document": {
+                    "id": "hr-0140",
+                    "content": "Managers should discuss career growth during quarterly check-ins.",
+                    "score": 0.41,
+                    "metadata": {
+                      "source": "handbook/performance.md",
+                      "section": "Check-ins"
+                    }
+                  }
+                },
+                {
+                  "document": {
+                    "id": "hr-0155",
+                    "content": "Promotion cycles run twice yearly in March and September.",
+                    "score": 0.38,
+                    "metadata": {
+                      "source": "handbook/performance.md",
+                      "section": "Promotion"
+                    }
+                  }
+                }
+              ]
+            },
+            "session": {
+              "id": "sess_knowledge_04_f6702e69"
+            },
+            "user": {
+              "id": "user-2260"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "5116a370225f46f8",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "617d1111247c1e2da6a1deee1b23c7f2",
+          "spanId": "8cef4d257ebddacd",
+          "name": "ChatCompletion",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788575280324000000",
+          "endTimeUnixNano": "1788575281904000000",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "LLM"
+              }
+            },
+            "llm": {
+              "model_name": "gpt-4o",
+              "provider": "openai",
+              "system": "openai",
+              "invocation_parameters": {
+                "model": "gpt-4o",
+                "temperature": 0.2
+              },
+              "token_count": {
+                "prompt": 1210,
+                "completion": 96,
+                "total": 1306
+              },
+              "input_messages": [
+                {
+                  "message": {
+                    "role": "system",
+                    "content": "Answer only from the provided excerpts. Cite the source filename."
+                  }
+                },
+                {
+                  "message": {
+                    "role": "user",
+                    "content": "What's the criteria for a promotion to staff engineer?"
+                  }
+                }
+              ],
+              "output_messages": [
+                {
+                  "message": {
+                    "role": "assistant",
+                    "content": "Promotion cycles run twice yearly in March and September, and managers discuss growth during quarterly check-ins. Specific staff-level criteria aren't covered in the handbook."
+                  }
+                }
+              ]
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "messages": [
+                  {
+                    "role": "system",
+                    "content": "Answer only from the provided excerpts. Cite the source filename."
+                  },
+                  {
+                    "role": "user",
+                    "content": "What's the criteria for a promotion to staff engineer?"
+                  }
+                ]
+              }
+            },
+            "output": {
+              "value": "Promotion cycles run twice yearly in March and September, and managers discuss growth during quarterly check-ins. Specific staff-level criteria aren't covered in the handbook."
+            },
+            "session": {
+              "id": "sess_knowledge_04_f6702e69"
+            },
+            "user": {
+              "id": "user-2260"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "5116a370225f46f8",
+          "arthur_span_version": "arthur_span_v1"
+        }
+      ]
+    }
+  ]
+}

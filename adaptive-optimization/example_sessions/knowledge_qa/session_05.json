@@ -1,0 +1,703 @@
+{
+  "session_id": "sess_knowledge_05_46b90879",
+  "user_id": "user-77",
+  "task_id": "b81d4a55-2f0e-4c7a-9d13-6e2f8a4b7c11",
+  "agent_kind": "knowledge_qa",
+  "scenario": "Parental leave \u2014 a four-turn sitting where the user drills into specifics.",
+  "resource_attributes": {
+    "service.name": "policy-copilot",
+    "arthur.task": "b81d4a55-2f0e-4c7a-9d13-6e2f8a4b7c11"
+  },
+  "trace_count": 4,
+  "span_count": 12,
+  "traces": [
+    {
+      "trace_id": "9bc661efd313ae843f0c53477b6e1487",
+      "root_span_id": "97387b7f93d62cc0",
+      "spans": [
+        {
+          "traceId": "9bc661efd313ae843f0c53477b6e1487",
+          "spanId": "97387b7f93d62cc0",
+          "name": "qa.pipeline",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788586500000000000",
+          "endTimeUnixNano": "1788586501917999872",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "CHAIN"
+              }
+            },
+            "input": {
+              "value": "How long is parental leave?"
+            },
+            "output": {
+              "value": "Birthing parents receive 16 weeks paid; non-birthing parents receive 12 (handbook/parental-leave.md)."
+            },
+            "session": {
+              "id": "sess_knowledge_05_46b90879"
+            },
+            "user": {
+              "id": "user-77"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "9bc661efd313ae843f0c53477b6e1487",
+          "spanId": "a1df612a51723127",
+          "name": "PineconeRetriever.similarity_search",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788586500009999872",
+          "endTimeUnixNano": "1788586500320000000",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "RETRIEVER"
+              }
+            },
+            "input": {
+              "value": "How long is parental leave?"
+            },
+            "retrieval": {
+              "documents": [
+                {
+                  "document": {
+                    "id": "hr-0077",
+                    "content": "Birthing parents receive 16 weeks of paid leave; non-birthing parents receive 12.",
+                    "score": 0.92,
+                    "metadata": {
+                      "source": "handbook/parental-leave.md",
+                      "section": "Duration"
+                    }
+                  }
+                },
+                {
+                  "document": {
+                    "id": "hr-0078",
+                    "content": "Leave must begin within 12 months of birth or placement.",
+                    "score": 0.8,
+                    "metadata": {
+                      "source": "handbook/parental-leave.md",
+                      "section": "Timing"
+                    }
+                  }
+                }
+              ]
+            },
+            "session": {
+              "id": "sess_knowledge_05_46b90879"
+            },
+            "user": {
+              "id": "user-77"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "97387b7f93d62cc0",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "9bc661efd313ae843f0c53477b6e1487",
+          "spanId": "5cd20eb913c4c55b",
+          "name": "ChatCompletion",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788586500324000000",
+          "endTimeUnixNano": "1788586501904000000",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "LLM"
+              }
+            },
+            "llm": {
+              "model_name": "gpt-4o",
+              "provider": "openai",
+              "system": "openai",
+              "invocation_parameters": {
+                "model": "gpt-4o",
+                "temperature": 0.2
+              },
+              "token_count": {
+                "prompt": 1080,
+                "completion": 61,
+                "total": 1141
+              },
+              "input_messages": [
+                {
+                  "message": {
+                    "role": "system",
+                    "content": "Answer only from the provided excerpts. Cite the source filename."
+                  }
+                },
+                {
+                  "message": {
+                    "role": "user",
+                    "content": "How long is parental leave?"
+                  }
+                }
+              ],
+              "output_messages": [
+                {
+                  "message": {
+                    "role": "assistant",
+                    "content": "Birthing parents receive 16 weeks paid; non-birthing parents receive 12 (handbook/parental-leave.md)."
+                  }
+                }
+              ]
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "messages": [
+                  {
+                    "role": "system",
+                    "content": "Answer only from the provided excerpts. Cite the source filename."
+                  },
+                  {
+                    "role": "user",
+                    "content": "How long is parental leave?"
+                  }
+                ]
+              }
+            },
+            "output": {
+              "value": "Birthing parents receive 16 weeks paid; non-birthing parents receive 12 (handbook/parental-leave.md)."
+            },
+            "session": {
+              "id": "sess_knowledge_05_46b90879"
+            },
+            "user": {
+              "id": "user-77"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "97387b7f93d62cc0",
+          "arthur_span_version": "arthur_span_v1"
+        }
+      ]
+    },
+    {
+      "trace_id": "2e8b7878772a56af73b749270d73e19e",
+      "root_span_id": "f8c4cacb7f3a7fa1",
+      "spans": [
+        {
+          "traceId": "2e8b7878772a56af73b749270d73e19e",
+          "spanId": "f8c4cacb7f3a7fa1",
+          "name": "qa.pipeline",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788586519917999872",
+          "endTimeUnixNano": "1788586521836000000",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "CHAIN"
+              }
+            },
+            "input": {
+              "value": "Can I split it across the year?"
+            },
+            "output": {
+              "value": "The handbook specifies leave must begin within 12 months of birth or placement, but doesn't address splitting it into blocks."
+            },
+            "session": {
+              "id": "sess_knowledge_05_46b90879"
+            },
+            "user": {
+              "id": "user-77"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "2e8b7878772a56af73b749270d73e19e",
+          "spanId": "e600a83fe9698ab5",
+          "name": "PineconeRetriever.similarity_search",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788586519928000000",
+          "endTimeUnixNano": "1788586520237999872",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "RETRIEVER"
+              }
+            },
+            "input": {
+              "value": "Can I split it across the year?"
+            },
+            "retrieval": {
+              "documents": [
+                {
+                  "document": {
+                    "id": "hr-0077",
+                    "content": "Birthing parents receive 16 weeks of paid leave; non-birthing parents receive 12.",
+                    "score": 0.92,
+                    "metadata": {
+                      "source": "handbook/parental-leave.md",
+                      "section": "Duration"
+                    }
+                  }
+                },
+                {
+                  "document": {
+                    "id": "hr-0078",
+                    "content": "Leave must begin within 12 months of birth or placement.",
+                    "score": 0.8,
+                    "metadata": {
+                      "source": "handbook/parental-leave.md",
+                      "section": "Timing"
+                    }
+                  }
+                }
+              ]
+            },
+            "session": {
+              "id": "sess_knowledge_05_46b90879"
+            },
+            "user": {
+              "id": "user-77"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "f8c4cacb7f3a7fa1",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "2e8b7878772a56af73b749270d73e19e",
+          "spanId": "a4efbfe3ee7f8b02",
+          "name": "ChatCompletion",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788586520242000128",
+          "endTimeUnixNano": "1788586521822000128",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "LLM"
+              }
+            },
+            "llm": {
+              "model_name": "gpt-4o",
+              "provider": "openai",
+              "system": "openai",
+              "invocation_parameters": {
+                "model": "gpt-4o",
+                "temperature": 0.2
+              },
+              "token_count": {
+                "prompt": 1140,
+                "completion": 74,
+                "total": 1214
+              },
+              "input_messages": [
+                {
+                  "message": {
+                    "role": "system",
+                    "content": "Answer only from the provided excerpts. Cite the source filename."
+                  }
+                },
+                {
+                  "message": {
+                    "role": "user",
+                    "content": "Can I split it across the year?"
+                  }
+                }
+              ],
+              "output_messages": [
+                {
+                  "message": {
+                    "role": "assistant",
+                    "content": "The handbook specifies leave must begin within 12 months of birth or placement, but doesn't address splitting it into blocks."
+                  }
+                }
+              ]
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "messages": [
+                  {
+                    "role": "system",
+                    "content": "Answer only from the provided excerpts. Cite the source filename."
+                  },
+                  {
+                    "role": "user",
+                    "content": "Can I split it across the year?"
+                  }
+                ]
+              }
+            },
+            "output": {
+              "value": "The handbook specifies leave must begin within 12 months of birth or placement, but doesn't address splitting it into blocks."
+            },
+            "session": {
+              "id": "sess_knowledge_05_46b90879"
+            },
+            "user": {
+              "id": "user-77"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "f8c4cacb7f3a7fa1",
+          "arthur_span_version": "arthur_span_v1"
+        }
+      ]
+    },
+    {
+      "trace_id": "90eabeddaaf22cf33ef1cda5096e1d06",
+      "root_span_id": "7213a4ca737b4765",
+      "spans": [
+        {
+          "traceId": "90eabeddaaf22cf33ef1cda5096e1d06",
+          "spanId": "7213a4ca737b4765",
+          "name": "qa.pipeline",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788586569836000000",
+          "endTimeUnixNano": "1788586571753999872",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "CHAIN"
+              }
+            },
+            "input": {
+              "value": "Is it paid at full salary?"
+            },
+            "output": {
+              "value": "The excerpts confirm the leave is paid but don't state the percentage of salary."
+            },
+            "session": {
+              "id": "sess_knowledge_05_46b90879"
+            },
+            "user": {
+              "id": "user-77"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "90eabeddaaf22cf33ef1cda5096e1d06",
+          "spanId": "7e7bc7f8bfe7defb",
+          "name": "PineconeRetriever.similarity_search",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788586569845999872",
+          "endTimeUnixNano": "1788586570156000000",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "RETRIEVER"
+              }
+            },
+            "input": {
+              "value": "Is it paid at full salary?"
+            },
+            "retrieval": {
+              "documents": [
+                {
+                  "document": {
+                    "id": "hr-0077",
+                    "content": "Birthing parents receive 16 weeks of paid leave; non-birthing parents receive 12.",
+                    "score": 0.92,
+                    "metadata": {
+                      "source": "handbook/parental-leave.md",
+                      "section": "Duration"
+                    }
+                  }
+                },
+                {
+                  "document": {
+                    "id": "hr-0078",
+                    "content": "Leave must begin within 12 months of birth or placement.",
+                    "score": 0.8,
+                    "metadata": {
+                      "source": "handbook/parental-leave.md",
+                      "section": "Timing"
+                    }
+                  }
+                }
+              ]
+            },
+            "session": {
+              "id": "sess_knowledge_05_46b90879"
+            },
+            "user": {
+              "id": "user-77"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "7213a4ca737b4765",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "90eabeddaaf22cf33ef1cda5096e1d06",
+          "spanId": "d136c3ccd2ee772a",
+          "name": "ChatCompletion",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788586570160000000",
+          "endTimeUnixNano": "1788586571740000000",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "LLM"
+              }
+            },
+            "llm": {
+              "model_name": "gpt-4o",
+              "provider": "openai",
+              "system": "openai",
+              "invocation_parameters": {
+                "model": "gpt-4o",
+                "temperature": 0.2
+              },
+              "token_count": {
+                "prompt": 1160,
+                "completion": 55,
+                "total": 1215
+              },
+              "input_messages": [
+                {
+                  "message": {
+                    "role": "system",
+                    "content": "Answer only from the provided excerpts. Cite the source filename."
+                  }
+                },
+                {
+                  "message": {
+                    "role": "user",
+                    "content": "Is it paid at full salary?"
+                  }
+                }
+              ],
+              "output_messages": [
+                {
+                  "message": {
+                    "role": "assistant",
+                    "content": "The excerpts confirm the leave is paid but don't state the percentage of salary."
+                  }
+                }
+              ]
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "messages": [
+                  {
+                    "role": "system",
+                    "content": "Answer only from the provided excerpts. Cite the source filename."
+                  },
+                  {
+                    "role": "user",
+                    "content": "Is it paid at full salary?"
+                  }
+                ]
+              }
+            },
+            "output": {
+              "value": "The excerpts confirm the leave is paid but don't state the percentage of salary."
+            },
+            "session": {
+              "id": "sess_knowledge_05_46b90879"
+            },
+            "user": {
+              "id": "user-77"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "7213a4ca737b4765",
+          "arthur_span_version": "arthur_span_v1"
+        }
+      ]
+    },
+    {
+      "trace_id": "ce9396cdc0f925d61f9ef3181135e73f",
+      "root_span_id": "74b40438d52e6126",
+      "spans": [
+        {
+          "traceId": "ce9396cdc0f925d61f9ef3181135e73f",
+          "spanId": "74b40438d52e6126",
+          "name": "qa.pipeline",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788586641753999872",
+          "endTimeUnixNano": "1788586643672000000",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "CHAIN"
+              }
+            },
+            "input": {
+              "value": "Who do I notify?"
+            },
+            "output": {
+              "value": "That isn't covered in the retrieved sections of handbook/parental-leave.md."
+            },
+            "session": {
+              "id": "sess_knowledge_05_46b90879"
+            },
+            "user": {
+              "id": "user-77"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "ce9396cdc0f925d61f9ef3181135e73f",
+          "spanId": "77a70a8cd7a2f14f",
+          "name": "PineconeRetriever.similarity_search",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788586641764000000",
+          "endTimeUnixNano": "1788586642073999872",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "RETRIEVER"
+              }
+            },
+            "input": {
+              "value": "Who do I notify?"
+            },
+            "retrieval": {
+              "documents": [
+                {
+                  "document": {
+                    "id": "hr-0077",
+                    "content": "Birthing parents receive 16 weeks of paid leave; non-birthing parents receive 12.",
+                    "score": 0.92,
+                    "metadata": {
+                      "source": "handbook/parental-leave.md",
+                      "section": "Duration"
+                    }
+                  }
+                },
+                {
+                  "document": {
+                    "id": "hr-0078",
+                    "content": "Leave must begin within 12 months of birth or placement.",
+                    "score": 0.8,
+                    "metadata": {
+                      "source": "handbook/parental-leave.md",
+                      "section": "Timing"
+                    }
+                  }
+                }
+              ]
+            },
+            "session": {
+              "id": "sess_knowledge_05_46b90879"
+            },
+            "user": {
+              "id": "user-77"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "74b40438d52e6126",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "ce9396cdc0f925d61f9ef3181135e73f",
+          "spanId": "7d4710ae643628e4",
+          "name": "ChatCompletion",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788586642078000128",
+          "endTimeUnixNano": "1788586643657999872",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "LLM"
+              }
+            },
+            "llm": {
+              "model_name": "gpt-4o",
+              "provider": "openai",
+              "system": "openai",
+              "invocation_parameters": {
+                "model": "gpt-4o",
+                "temperature": 0.2
+              },
+              "token_count": {
+                "prompt": 1100,
+                "completion": 38,
+                "total": 1138
+              },
+              "input_messages": [
+                {
+                  "message": {
+                    "role": "system",
+                    "content": "Answer only from the provided excerpts. Cite the source filename."
+                  }
+                },
+                {
+                  "message": {
+                    "role": "user",
+                    "content": "Who do I notify?"
+                  }
+                }
+              ],
+              "output_messages": [
+                {
+                  "message": {
+                    "role": "assistant",
+                    "content": "That isn't covered in the retrieved sections of handbook/parental-leave.md."
+                  }
+                }
+              ]
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "messages": [
+                  {
+                    "role": "system",
+                    "content": "Answer only from the provided excerpts. Cite the source filename."
+                  },
+                  {
+                    "role": "user",
+                    "content": "Who do I notify?"
+                  }
+                ]
+              }
+            },
+            "output": {
+              "value": "That isn't covered in the retrieved sections of handbook/parental-leave.md."
+            },
+            "session": {
+              "id": "sess_knowledge_05_46b90879"
+            },
+            "user": {
+              "id": "user-77"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "74b40438d52e6126",
+          "arthur_span_version": "arthur_span_v1"
+        }
+      ]
+    }
+  ]
+}

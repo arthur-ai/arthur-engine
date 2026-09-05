@@ -1,0 +1,647 @@
+{
+  "session_id": "sess_revenue_04_0567b2f8",
+  "user_id": "user-2260",
+  "task_id": "e7b104d9-3c88-4a52-9f61-0d84c2a7b6e5",
+  "agent_kind": "revenue_agent",
+  "scenario": "Misroute: a billing question lands on the onboarding agent, which hands it back.",
+  "resource_attributes": {
+    "service.name": "revenue-agent",
+    "arthur.task": "e7b104d9-3c88-4a52-9f61-0d84c2a7b6e5"
+  },
+  "trace_count": 2,
+  "span_count": 11,
+  "traces": [
+    {
+      "trace_id": "f8702d358e6492d6fe539ac80ac7b2c8",
+      "root_span_id": "d5314aa5df04d8b7",
+      "spans": [
+        {
+          "traceId": "f8702d358e6492d6fe539ac80ac7b2c8",
+          "spanId": "d5314aa5df04d8b7",
+          "name": "router.dispatch",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788575280000000000",
+          "endTimeUnixNano": "1788575281487000064",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "CHAIN"
+              }
+            },
+            "input": {
+              "value": "My invoice shows the wrong VAT rate."
+            },
+            "output": {
+              "value": "That's a billing question \u2014 let me route you correctly."
+            },
+            "metadata": {
+              "route": "onboarding",
+              "confidence": 0.52,
+              "router_version": "v3"
+            },
+            "session": {
+              "id": "sess_revenue_04_0567b2f8"
+            },
+            "user": {
+              "id": "user-2260"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "f8702d358e6492d6fe539ac80ac7b2c8",
+          "spanId": "4091ede370a0498a",
+          "name": "ChatCompletion",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788575280017499904",
+          "endTimeUnixNano": "1788575280537499904",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "LLM"
+              }
+            },
+            "llm": {
+              "model_name": "gpt-4o-mini",
+              "provider": "openai",
+              "system": "openai",
+              "invocation_parameters": {
+                "model": "gpt-4o-mini",
+                "temperature": 0.2
+              },
+              "token_count": {
+                "prompt": 410,
+                "completion": 8,
+                "total": 418
+              },
+              "input_messages": [
+                {
+                  "message": {
+                    "role": "system",
+                    "content": "Route the message to one of: billing, sales, onboarding."
+                  }
+                },
+                {
+                  "message": {
+                    "role": "user",
+                    "content": "My invoice shows the wrong VAT rate."
+                  }
+                }
+              ],
+              "output_messages": [
+                {
+                  "message": {
+                    "role": "assistant",
+                    "content": "onboarding"
+                  }
+                }
+              ]
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "messages": [
+                  {
+                    "role": "system",
+                    "content": "Route the message to one of: billing, sales, onboarding."
+                  },
+                  {
+                    "role": "user",
+                    "content": "My invoice shows the wrong VAT rate."
+                  }
+                ]
+              }
+            },
+            "output": {
+              "value": "onboarding"
+            },
+            "metadata": {
+              "candidates": [
+                "billing",
+                "sales",
+                "onboarding"
+              ]
+            },
+            "session": {
+              "id": "sess_revenue_04_0567b2f8"
+            },
+            "user": {
+              "id": "user-2260"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "d5314aa5df04d8b7",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "f8702d358e6492d6fe539ac80ac7b2c8",
+          "spanId": "55ff5a7169c29070",
+          "name": "onboarding-agent.run",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788575280541500160",
+          "endTimeUnixNano": "1788575281465500160",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "AGENT"
+              }
+            },
+            "input": {
+              "value": "My invoice shows the wrong VAT rate."
+            },
+            "output": {
+              "value": "Out of scope; returned to router."
+            },
+            "agent": {
+              "name": "onboarding-agent"
+            },
+            "graph": {
+              "node": {
+                "id": "onboarding-agent"
+              }
+            },
+            "session": {
+              "id": "sess_revenue_04_0567b2f8"
+            },
+            "user": {
+              "id": "user-2260"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "d5314aa5df04d8b7",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "f8702d358e6492d6fe539ac80ac7b2c8",
+          "spanId": "77f5d5383d696744",
+          "name": "ChatCompletion",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788575280556499968",
+          "endTimeUnixNano": "1788575281446500096",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "LLM"
+              }
+            },
+            "llm": {
+              "model_name": "gpt-4o-mini",
+              "provider": "openai",
+              "system": "openai",
+              "invocation_parameters": {
+                "model": "gpt-4o-mini",
+                "temperature": 0.2
+              },
+              "token_count": {
+                "prompt": 720,
+                "completion": 28,
+                "total": 748
+              },
+              "input_messages": [
+                {
+                  "message": {
+                    "role": "system",
+                    "content": "You handle setup and activation only."
+                  }
+                },
+                {
+                  "message": {
+                    "role": "user",
+                    "content": "My invoice shows the wrong VAT rate."
+                  }
+                }
+              ],
+              "output_messages": [
+                {
+                  "message": {
+                    "role": "assistant",
+                    "content": "This is a billing matter."
+                  }
+                }
+              ]
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "messages": [
+                  {
+                    "role": "system",
+                    "content": "You handle setup and activation only."
+                  },
+                  {
+                    "role": "user",
+                    "content": "My invoice shows the wrong VAT rate."
+                  }
+                ]
+              }
+            },
+            "output": {
+              "value": "This is a billing matter."
+            },
+            "session": {
+              "id": "sess_revenue_04_0567b2f8"
+            },
+            "user": {
+              "id": "user-2260"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "55ff5a7169c29070",
+          "arthur_span_version": "arthur_span_v1"
+        }
+      ]
+    },
+    {
+      "trace_id": "34efbbaad8239dab02993598dc302299",
+      "root_span_id": "edf245afee661715",
+      "spans": [
+        {
+          "traceId": "34efbbaad8239dab02993598dc302299",
+          "spanId": "edf245afee661715",
+          "name": "router.dispatch",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788575372487000064",
+          "endTimeUnixNano": "1788575375506000128",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "CHAIN"
+              }
+            },
+            "input": {
+              "value": "My invoice shows the wrong VAT rate."
+            },
+            "output": {
+              "value": "Your account was set to the wrong tax region. I've corrected it to DE (19%) and reissued invoice INV-2291."
+            },
+            "metadata": {
+              "route": "billing",
+              "confidence": 0.91,
+              "router_version": "v3"
+            },
+            "session": {
+              "id": "sess_revenue_04_0567b2f8"
+            },
+            "user": {
+              "id": "user-2260"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "34efbbaad8239dab02993598dc302299",
+          "spanId": "105be03a21aaeead",
+          "name": "ChatCompletion",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788575372504499968",
+          "endTimeUnixNano": "1788575373024499968",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "LLM"
+              }
+            },
+            "llm": {
+              "model_name": "gpt-4o-mini",
+              "provider": "openai",
+              "system": "openai",
+              "invocation_parameters": {
+                "model": "gpt-4o-mini",
+                "temperature": 0.2
+              },
+              "token_count": {
+                "prompt": 410,
+                "completion": 8,
+                "total": 418
+              },
+              "input_messages": [
+                {
+                  "message": {
+                    "role": "system",
+                    "content": "Route the message to one of: billing, sales, onboarding."
+                  }
+                },
+                {
+                  "message": {
+                    "role": "user",
+                    "content": "My invoice shows the wrong VAT rate."
+                  }
+                }
+              ],
+              "output_messages": [
+                {
+                  "message": {
+                    "role": "assistant",
+                    "content": "billing"
+                  }
+                }
+              ]
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "messages": [
+                  {
+                    "role": "system",
+                    "content": "Route the message to one of: billing, sales, onboarding."
+                  },
+                  {
+                    "role": "user",
+                    "content": "My invoice shows the wrong VAT rate."
+                  }
+                ]
+              }
+            },
+            "output": {
+              "value": "billing"
+            },
+            "metadata": {
+              "candidates": [
+                "billing",
+                "sales",
+                "onboarding"
+              ]
+            },
+            "session": {
+              "id": "sess_revenue_04_0567b2f8"
+            },
+            "user": {
+              "id": "user-2260"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "edf245afee661715",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "34efbbaad8239dab02993598dc302299",
+          "spanId": "1331e3da7fc0cdda",
+          "name": "billing-agent.run",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788575373028499968",
+          "endTimeUnixNano": "1788575375484499968",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "AGENT"
+              }
+            },
+            "input": {
+              "value": "My invoice shows the wrong VAT rate."
+            },
+            "output": {
+              "value": "Corrected tax region and reissued the invoice."
+            },
+            "agent": {
+              "name": "billing-agent"
+            },
+            "graph": {
+              "node": {
+                "id": "billing-agent"
+              }
+            },
+            "session": {
+              "id": "sess_revenue_04_0567b2f8"
+            },
+            "user": {
+              "id": "user-2260"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "edf245afee661715",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "34efbbaad8239dab02993598dc302299",
+          "spanId": "ed0eaabca54366a2",
+          "name": "lookup_account",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788575373043500032",
+          "endTimeUnixNano": "1788575373273499904",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "TOOL"
+              }
+            },
+            "tool": {
+              "name": "lookup_account"
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "invoice": "INV-2291"
+              }
+            },
+            "output": {
+              "mime_type": "application/json",
+              "value": {
+                "tax_region": "US",
+                "billing_country": "DE"
+              }
+            },
+            "session": {
+              "id": "sess_revenue_04_0567b2f8"
+            },
+            "user": {
+              "id": "user-2260"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "1331e3da7fc0cdda",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "34efbbaad8239dab02993598dc302299",
+          "spanId": "d5ecf1f17ee54421",
+          "name": "ChatCompletion",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788575373277499904",
+          "endTimeUnixNano": "1788575374577500160",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "LLM"
+              }
+            },
+            "llm": {
+              "model_name": "gpt-4o",
+              "provider": "openai",
+              "system": "openai",
+              "invocation_parameters": {
+                "model": "gpt-4o",
+                "temperature": 0.2
+              },
+              "token_count": {
+                "prompt": 940,
+                "completion": 38,
+                "total": 978
+              },
+              "input_messages": [
+                {
+                  "message": {
+                    "role": "system",
+                    "content": "Correct tax configuration errors."
+                  }
+                },
+                {
+                  "message": {
+                    "role": "user",
+                    "content": "My invoice shows the wrong VAT rate."
+                  }
+                }
+              ],
+              "output_messages": [
+                {
+                  "message": {
+                    "role": "assistant",
+                    "tool_calls": [
+                      {
+                        "tool_call": {
+                          "id": "call_af0544c5c756",
+                          "function": {
+                            "name": "update_tax_region",
+                            "arguments": "{\"region\": \"DE\"}"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "messages": [
+                  {
+                    "role": "system",
+                    "content": "Correct tax configuration errors."
+                  },
+                  {
+                    "role": "user",
+                    "content": "My invoice shows the wrong VAT rate."
+                  }
+                ]
+              }
+            },
+            "session": {
+              "id": "sess_revenue_04_0567b2f8"
+            },
+            "user": {
+              "id": "user-2260"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "1331e3da7fc0cdda",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "34efbbaad8239dab02993598dc302299",
+          "spanId": "1e61722b9f867f3f",
+          "name": "update_tax_region",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788575374581500160",
+          "endTimeUnixNano": "1788575374941499904",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "TOOL"
+              }
+            },
+            "tool": {
+              "name": "update_tax_region",
+              "description": "Change the account tax region. Mutates billing state."
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "region": "DE"
+              }
+            },
+            "output": {
+              "mime_type": "application/json",
+              "value": {
+                "updated": true,
+                "vat_pct": 19
+              }
+            },
+            "session": {
+              "id": "sess_revenue_04_0567b2f8"
+            },
+            "user": {
+              "id": "user-2260"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "1331e3da7fc0cdda",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "34efbbaad8239dab02993598dc302299",
+          "spanId": "d918d58c76afbae6",
+          "name": "reissue_invoice",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788575374945499904",
+          "endTimeUnixNano": "1788575375465500160",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "TOOL"
+              }
+            },
+            "tool": {
+              "name": "reissue_invoice"
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "invoice": "INV-2291"
+              }
+            },
+            "output": {
+              "mime_type": "application/json",
+              "value": {
+                "reissued": true,
+                "new_total": 7140.0
+              }
+            },
+            "session": {
+              "id": "sess_revenue_04_0567b2f8"
+            },
+            "user": {
+              "id": "user-2260"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "1331e3da7fc0cdda",
+          "arthur_span_version": "arthur_span_v1"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,432 @@
+{
+  "session_id": "sess_customer_04_a6335ced",
+  "user_id": "user-2260",
+  "task_id": "3f7c1b2a-9d44-4c1e-8b0a-2c5e6f7a8b90",
+  "agent_kind": "customer_support",
+  "scenario": "Account maintenance plus a weakly-grounded warranty answer (retrieval scores 0.58-0.64).",
+  "resource_attributes": {
+    "service.name": "support-agent",
+    "arthur.task": "3f7c1b2a-9d44-4c1e-8b0a-2c5e6f7a8b90"
+  },
+  "trace_count": 2,
+  "span_count": 7,
+  "traces": [
+    {
+      "trace_id": "cbd37be4ff9a812e160719dbe92b9d71",
+      "root_span_id": "d491742fefbc8884",
+      "spans": [
+        {
+          "traceId": "cbd37be4ff9a812e160719dbe92b9d71",
+          "spanId": "d491742fefbc8884",
+          "name": "support-agent.run",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788575280000000000",
+          "endTimeUnixNano": "1788575281580000000",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "AGENT"
+              }
+            },
+            "input": {
+              "value": "Can you change my shipping address to 221B Baker Street, London?"
+            },
+            "output": {
+              "value": "Done \u2014 future orders will ship to 221B Baker Street, London."
+            },
+            "session": {
+              "id": "sess_customer_04_a6335ced"
+            },
+            "user": {
+              "id": "user-2260"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "cbd37be4ff9a812e160719dbe92b9d71",
+          "spanId": "35c02b31a0b5c714",
+          "name": "ChatCompletion",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788575280013999872",
+          "endTimeUnixNano": "1788575280704000000",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "LLM"
+              }
+            },
+            "llm": {
+              "model_name": "gpt-4o-mini",
+              "provider": "openai",
+              "system": "openai",
+              "invocation_parameters": {
+                "model": "gpt-4o-mini",
+                "temperature": 0.2
+              },
+              "token_count": {
+                "prompt": 356,
+                "completion": 27,
+                "total": 383
+              },
+              "input_messages": [
+                {
+                  "message": {
+                    "role": "system",
+                    "content": "You are a support agent."
+                  }
+                },
+                {
+                  "message": {
+                    "role": "user",
+                    "content": "Can you change my shipping address to 221B Baker Street, London?"
+                  }
+                }
+              ],
+              "output_messages": [
+                {
+                  "message": {
+                    "role": "assistant",
+                    "tool_calls": [
+                      {
+                        "tool_call": {
+                          "id": "call_68f5fefcc020",
+                          "function": {
+                            "name": "update_address",
+                            "arguments": "{\"address\": \"221B Baker Street, London\"}"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "messages": [
+                  {
+                    "role": "system",
+                    "content": "You are a support agent."
+                  },
+                  {
+                    "role": "user",
+                    "content": "Can you change my shipping address to 221B Baker Street, London?"
+                  }
+                ]
+              }
+            },
+            "session": {
+              "id": "sess_customer_04_a6335ced"
+            },
+            "user": {
+              "id": "user-2260"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "d491742fefbc8884",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "cbd37be4ff9a812e160719dbe92b9d71",
+          "spanId": "dd5cfec0e932aa68",
+          "name": "update_address",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788575280708000000",
+          "endTimeUnixNano": "1788575280917999872",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "TOOL"
+              }
+            },
+            "tool": {
+              "name": "update_address"
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "address": "221B Baker Street, London"
+              }
+            },
+            "output": {
+              "mime_type": "application/json",
+              "value": {
+                "updated": true
+              }
+            },
+            "session": {
+              "id": "sess_customer_04_a6335ced"
+            },
+            "user": {
+              "id": "user-2260"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "d491742fefbc8884",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "cbd37be4ff9a812e160719dbe92b9d71",
+          "spanId": "93720507fdfb9370",
+          "name": "ChatCompletion",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788575280921999872",
+          "endTimeUnixNano": "1788575281562000128",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "LLM"
+              }
+            },
+            "llm": {
+              "model_name": "gpt-4o-mini",
+              "provider": "openai",
+              "system": "openai",
+              "invocation_parameters": {
+                "model": "gpt-4o-mini",
+                "temperature": 0.2
+              },
+              "token_count": {
+                "prompt": 402,
+                "completion": 18,
+                "total": 420
+              },
+              "input_messages": [
+                {
+                  "message": {
+                    "role": "system",
+                    "content": "You are a support agent."
+                  }
+                },
+                {
+                  "message": {
+                    "role": "user",
+                    "content": "Can you change my shipping address to 221B Baker Street, London?"
+                  }
+                }
+              ],
+              "output_messages": [
+                {
+                  "message": {
+                    "role": "assistant",
+                    "content": "Done \u2014 future orders will ship to 221B Baker Street, London."
+                  }
+                }
+              ]
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "messages": [
+                  {
+                    "role": "system",
+                    "content": "You are a support agent."
+                  },
+                  {
+                    "role": "user",
+                    "content": "Can you change my shipping address to 221B Baker Street, London?"
+                  }
+                ]
+              }
+            },
+            "output": {
+              "value": "Done \u2014 future orders will ship to 221B Baker Street, London."
+            },
+            "session": {
+              "id": "sess_customer_04_a6335ced"
+            },
+            "user": {
+              "id": "user-2260"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "d491742fefbc8884",
+          "arthur_span_version": "arthur_span_v1"
+        }
+      ]
+    },
+    {
+      "trace_id": "cecdbdea124a56251e7ffa33a540396e",
+      "root_span_id": "f9d99a0d9cbd5879",
+      "spans": [
+        {
+          "traceId": "cecdbdea124a56251e7ffa33a540396e",
+          "spanId": "f9d99a0d9cbd5879",
+          "name": "support-agent.run",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788575341580000000",
+          "endTimeUnixNano": "1788575343272999936",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "AGENT"
+              }
+            },
+            "input": {
+              "value": "Is a cracked screen covered?"
+            },
+            "output": {
+              "value": "Electronics carry a 12-month limited warranty, but accidental damage such as a cracked screen isn't covered under it."
+            },
+            "session": {
+              "id": "sess_customer_04_a6335ced"
+            },
+            "user": {
+              "id": "user-2260"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "cecdbdea124a56251e7ffa33a540396e",
+          "spanId": "0a88af30e1c4cb7e",
+          "name": "VectorStoreRetriever.get_relevant_documents",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788575341592499968",
+          "endTimeUnixNano": "1788575341832499968",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "RETRIEVER"
+              }
+            },
+            "input": {
+              "value": "Is a cracked screen covered?"
+            },
+            "retrieval": {
+              "documents": [
+                {
+                  "document": {
+                    "id": "doc-902",
+                    "content": "Electronics carry a 12-month limited warranty against manufacturing defects.",
+                    "score": 0.64,
+                    "metadata": {
+                      "source": "policies/warranty.pdf",
+                      "page": 2
+                    }
+                  }
+                },
+                {
+                  "document": {
+                    "id": "doc-311",
+                    "content": "Accidental damage is not covered under the standard warranty.",
+                    "score": 0.58,
+                    "metadata": {
+                      "source": "policies/warranty.pdf",
+                      "page": 4
+                    }
+                  }
+                }
+              ]
+            },
+            "session": {
+              "id": "sess_customer_04_a6335ced"
+            },
+            "user": {
+              "id": "user-2260"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "f9d99a0d9cbd5879",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "cecdbdea124a56251e7ffa33a540396e",
+          "spanId": "2f8013a5ec740a36",
+          "name": "ChatCompletion",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788575341836499968",
+          "endTimeUnixNano": "1788575343256499968",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "LLM"
+              }
+            },
+            "llm": {
+              "model_name": "gpt-4o-mini",
+              "provider": "openai",
+              "system": "openai",
+              "invocation_parameters": {
+                "model": "gpt-4o-mini",
+                "temperature": 0.2
+              },
+              "token_count": {
+                "prompt": 890,
+                "completion": 88,
+                "total": 978
+              },
+              "input_messages": [
+                {
+                  "message": {
+                    "role": "system",
+                    "content": "Answer using the retrieved policy excerpts."
+                  }
+                },
+                {
+                  "message": {
+                    "role": "user",
+                    "content": "Is a cracked screen covered?"
+                  }
+                }
+              ],
+              "output_messages": [
+                {
+                  "message": {
+                    "role": "assistant",
+                    "content": "Electronics carry a 12-month limited warranty, but accidental damage such as a cracked screen isn't covered under it."
+                  }
+                }
+              ]
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "messages": [
+                  {
+                    "role": "system",
+                    "content": "Answer using the retrieved policy excerpts."
+                  },
+                  {
+                    "role": "user",
+                    "content": "Is a cracked screen covered?"
+                  }
+                ]
+              }
+            },
+            "output": {
+              "value": "Electronics carry a 12-month limited warranty, but accidental damage such as a cracked screen isn't covered under it."
+            },
+            "session": {
+              "id": "sess_customer_04_a6335ced"
+            },
+            "user": {
+              "id": "user-2260"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "f9d99a0d9cbd5879",
+          "arthur_span_version": "arthur_span_v1"
+        }
+      ]
+    }
+  ]
+}

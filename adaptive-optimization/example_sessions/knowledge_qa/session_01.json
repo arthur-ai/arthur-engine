@@ -1,0 +1,359 @@
+{
+  "session_id": "sess_knowledge_01_cb319882",
+  "user_id": "user-42",
+  "task_id": "b81d4a55-2f0e-4c7a-9d13-6e2f8a4b7c11",
+  "agent_kind": "knowledge_qa",
+  "scenario": "Straightforward policy lookups with strong retrieval \u2014 the baseline to compare against.",
+  "resource_attributes": {
+    "service.name": "policy-copilot",
+    "arthur.task": "b81d4a55-2f0e-4c7a-9d13-6e2f8a4b7c11"
+  },
+  "trace_count": 2,
+  "span_count": 6,
+  "traces": [
+    {
+      "trace_id": "6ee6817adcf55f767f97a9635eef9083",
+      "root_span_id": "35685fe1b5416804",
+      "spans": [
+        {
+          "traceId": "6ee6817adcf55f767f97a9635eef9083",
+          "spanId": "35685fe1b5416804",
+          "name": "qa.pipeline",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788541620000000000",
+          "endTimeUnixNano": "1788541621917999872",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "CHAIN"
+              }
+            },
+            "input": {
+              "value": "How much PTO do I accrue per month?"
+            },
+            "output": {
+              "value": "You accrue 1.67 days per month, capped at 30 days (handbook/time-off.md)."
+            },
+            "session": {
+              "id": "sess_knowledge_01_cb319882"
+            },
+            "user": {
+              "id": "user-42"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "6ee6817adcf55f767f97a9635eef9083",
+          "spanId": "e48d67b4e49adf32",
+          "name": "PineconeRetriever.similarity_search",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788541620009999872",
+          "endTimeUnixNano": "1788541620320000000",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "RETRIEVER"
+              }
+            },
+            "input": {
+              "value": "How much PTO do I accrue per month?"
+            },
+            "retrieval": {
+              "documents": [
+                {
+                  "document": {
+                    "id": "hr-0021",
+                    "content": "Full-time employees accrue 1.67 days of PTO per month, capped at 30 days.",
+                    "score": 0.91,
+                    "metadata": {
+                      "source": "handbook/time-off.md",
+                      "section": "Accrual"
+                    }
+                  }
+                },
+                {
+                  "document": {
+                    "id": "hr-0022",
+                    "content": "Unused PTO above the cap is forfeited at year end unless local law requires payout.",
+                    "score": 0.83,
+                    "metadata": {
+                      "source": "handbook/time-off.md",
+                      "section": "Carryover"
+                    }
+                  }
+                }
+              ]
+            },
+            "session": {
+              "id": "sess_knowledge_01_cb319882"
+            },
+            "user": {
+              "id": "user-42"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "35685fe1b5416804",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "6ee6817adcf55f767f97a9635eef9083",
+          "spanId": "7b0c5cf510f8ba83",
+          "name": "ChatCompletion",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788541620324000000",
+          "endTimeUnixNano": "1788541621904000000",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "LLM"
+              }
+            },
+            "llm": {
+              "model_name": "gpt-4o",
+              "provider": "openai",
+              "system": "openai",
+              "invocation_parameters": {
+                "model": "gpt-4o",
+                "temperature": 0.2
+              },
+              "token_count": {
+                "prompt": 1120,
+                "completion": 64,
+                "total": 1184
+              },
+              "input_messages": [
+                {
+                  "message": {
+                    "role": "system",
+                    "content": "Answer only from the provided excerpts. Cite the source filename."
+                  }
+                },
+                {
+                  "message": {
+                    "role": "user",
+                    "content": "How much PTO do I accrue per month?"
+                  }
+                }
+              ],
+              "output_messages": [
+                {
+                  "message": {
+                    "role": "assistant",
+                    "content": "You accrue 1.67 days per month, capped at 30 days (handbook/time-off.md)."
+                  }
+                }
+              ]
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "messages": [
+                  {
+                    "role": "system",
+                    "content": "Answer only from the provided excerpts. Cite the source filename."
+                  },
+                  {
+                    "role": "user",
+                    "content": "How much PTO do I accrue per month?"
+                  }
+                ]
+              }
+            },
+            "output": {
+              "value": "You accrue 1.67 days per month, capped at 30 days (handbook/time-off.md)."
+            },
+            "session": {
+              "id": "sess_knowledge_01_cb319882"
+            },
+            "user": {
+              "id": "user-42"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "35685fe1b5416804",
+          "arthur_span_version": "arthur_span_v1"
+        }
+      ]
+    },
+    {
+      "trace_id": "92a47811c7d0ee1a537eea19caa5aa7d",
+      "root_span_id": "b4506d3c650bff32",
+      "spans": [
+        {
+          "traceId": "92a47811c7d0ee1a537eea19caa5aa7d",
+          "spanId": "b4506d3c650bff32",
+          "name": "qa.pipeline",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788541642917999872",
+          "endTimeUnixNano": "1788541644836000000",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "CHAIN"
+              }
+            },
+            "input": {
+              "value": "What happens to unused days at year end?"
+            },
+            "output": {
+              "value": "PTO above the 30-day cap is forfeited at year end unless local law requires a payout (handbook/time-off.md)."
+            },
+            "session": {
+              "id": "sess_knowledge_01_cb319882"
+            },
+            "user": {
+              "id": "user-42"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "92a47811c7d0ee1a537eea19caa5aa7d",
+          "spanId": "fd3892996199daff",
+          "name": "PineconeRetriever.similarity_search",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788541642928000000",
+          "endTimeUnixNano": "1788541643237999872",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "RETRIEVER"
+              }
+            },
+            "input": {
+              "value": "What happens to unused days at year end?"
+            },
+            "retrieval": {
+              "documents": [
+                {
+                  "document": {
+                    "id": "hr-0021",
+                    "content": "Full-time employees accrue 1.67 days of PTO per month, capped at 30 days.",
+                    "score": 0.91,
+                    "metadata": {
+                      "source": "handbook/time-off.md",
+                      "section": "Accrual"
+                    }
+                  }
+                },
+                {
+                  "document": {
+                    "id": "hr-0022",
+                    "content": "Unused PTO above the cap is forfeited at year end unless local law requires payout.",
+                    "score": 0.83,
+                    "metadata": {
+                      "source": "handbook/time-off.md",
+                      "section": "Carryover"
+                    }
+                  }
+                }
+              ]
+            },
+            "session": {
+              "id": "sess_knowledge_01_cb319882"
+            },
+            "user": {
+              "id": "user-42"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "b4506d3c650bff32",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "92a47811c7d0ee1a537eea19caa5aa7d",
+          "spanId": "f5c2c9064baa13b0",
+          "name": "ChatCompletion",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788541643242000128",
+          "endTimeUnixNano": "1788541644822000128",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "LLM"
+              }
+            },
+            "llm": {
+              "model_name": "gpt-4o",
+              "provider": "openai",
+              "system": "openai",
+              "invocation_parameters": {
+                "model": "gpt-4o",
+                "temperature": 0.2
+              },
+              "token_count": {
+                "prompt": 1180,
+                "completion": 71,
+                "total": 1251
+              },
+              "input_messages": [
+                {
+                  "message": {
+                    "role": "system",
+                    "content": "Answer only from the provided excerpts. Cite the source filename."
+                  }
+                },
+                {
+                  "message": {
+                    "role": "user",
+                    "content": "What happens to unused days at year end?"
+                  }
+                }
+              ],
+              "output_messages": [
+                {
+                  "message": {
+                    "role": "assistant",
+                    "content": "PTO above the 30-day cap is forfeited at year end unless local law requires a payout (handbook/time-off.md)."
+                  }
+                }
+              ]
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "messages": [
+                  {
+                    "role": "system",
+                    "content": "Answer only from the provided excerpts. Cite the source filename."
+                  },
+                  {
+                    "role": "user",
+                    "content": "What happens to unused days at year end?"
+                  }
+                ]
+              }
+            },
+            "output": {
+              "value": "PTO above the 30-day cap is forfeited at year end unless local law requires a payout (handbook/time-off.md)."
+            },
+            "session": {
+              "id": "sess_knowledge_01_cb319882"
+            },
+            "user": {
+              "id": "user-42"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "b4506d3c650bff32",
+          "arthur_span_version": "arthur_span_v1"
+        }
+      ]
+    }
+  ]
+}

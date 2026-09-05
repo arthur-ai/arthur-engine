@@ -1,0 +1,184 @@
+{
+  "session_id": "sess_financial_05_4e5643c0",
+  "user_id": "user-77",
+  "task_id": "5d2a8e14-7b93-4f06-a2c8-9e0b3d6f1a47",
+  "agent_kind": "financial_analyst",
+  "scenario": "Single quick lookup \u2014 the kind of trace that dominates volume.",
+  "resource_attributes": {
+    "service.name": "research-copilot",
+    "arthur.task": "5d2a8e14-7b93-4f06-a2c8-9e0b3d6f1a47"
+  },
+  "trace_count": 1,
+  "span_count": 3,
+  "traces": [
+    {
+      "trace_id": "898a99181b846147a5f1734b0eac1d0a",
+      "root_span_id": "68c6ebab8a7a9116",
+      "spans": [
+        {
+          "traceId": "898a99181b846147a5f1734b0eac1d0a",
+          "spanId": "68c6ebab8a7a9116",
+          "name": "analyst.request",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788586500000000000",
+          "endTimeUnixNano": "1788586500732999936",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "AGENT"
+              }
+            },
+            "input": {
+              "value": "What's ACME trading at?"
+            },
+            "output": {
+              "value": "ACME last traded at $184.20, up 1.4% on the session."
+            },
+            "agent": {
+              "name": "research-copilot"
+            },
+            "metadata": {
+              "desk": "equity-research",
+              "model_version": "2026-08-rc3",
+              "compliance_reviewed": false
+            },
+            "session": {
+              "id": "sess_financial_05_4e5643c0"
+            },
+            "user": {
+              "id": "user-77"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "898a99181b846147a5f1734b0eac1d0a",
+          "spanId": "9fd3732a86dfa651",
+          "name": "market_data.quote",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788586500022500096",
+          "endTimeUnixNano": "1788586500182499840",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "TOOL"
+              }
+            },
+            "tool": {
+              "name": "market_data.quote",
+              "description": "Fetch a delayed equity quote."
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "ticker": "ACME"
+              }
+            },
+            "output": {
+              "mime_type": "application/json",
+              "value": {
+                "price": 184.2,
+                "change_pct": 1.4,
+                "as_of": "2026-09-04T20:00:00Z"
+              }
+            },
+            "session": {
+              "id": "sess_financial_05_4e5643c0"
+            },
+            "user": {
+              "id": "user-77"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "68c6ebab8a7a9116",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "898a99181b846147a5f1734b0eac1d0a",
+          "spanId": "f2b668c684a20788",
+          "name": "ChatCompletion",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788586500186500096",
+          "endTimeUnixNano": "1788586500706500096",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "LLM"
+              }
+            },
+            "llm": {
+              "model_name": "gpt-4o-mini",
+              "provider": "openai",
+              "system": "openai",
+              "invocation_parameters": {
+                "model": "gpt-4o-mini",
+                "temperature": 0.2
+              },
+              "token_count": {
+                "prompt": 320,
+                "completion": 18,
+                "total": 338
+              },
+              "input_messages": [
+                {
+                  "message": {
+                    "role": "system",
+                    "content": "Answer tersely."
+                  }
+                },
+                {
+                  "message": {
+                    "role": "user",
+                    "content": "What's ACME trading at?"
+                  }
+                }
+              ],
+              "output_messages": [
+                {
+                  "message": {
+                    "role": "assistant",
+                    "content": "$184.20, +1.4%."
+                  }
+                }
+              ]
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "messages": [
+                  {
+                    "role": "system",
+                    "content": "Answer tersely."
+                  },
+                  {
+                    "role": "user",
+                    "content": "What's ACME trading at?"
+                  }
+                ]
+              }
+            },
+            "output": {
+              "value": "$184.20, +1.4%."
+            },
+            "session": {
+              "id": "sess_financial_05_4e5643c0"
+            },
+            "user": {
+              "id": "user-77"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "68c6ebab8a7a9116",
+          "arthur_span_version": "arthur_span_v1"
+        }
+      ]
+    }
+  ]
+}

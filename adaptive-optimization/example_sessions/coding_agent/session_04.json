@@ -1,0 +1,396 @@
+{
+  "session_id": "sess_coding_04_b9a61c73",
+  "user_id": "user-2260",
+  "task_id": "c4e9f70b-6a21-4d88-bf35-11a0d7c5e932",
+  "agent_kind": "coding_agent",
+  "scenario": "Two short tasks in one work block \u2014 a docs PR and a dependency bump.",
+  "resource_attributes": {
+    "service.name": "pr-review-agent",
+    "arthur.task": "c4e9f70b-6a21-4d88-bf35-11a0d7c5e932"
+  },
+  "trace_count": 2,
+  "span_count": 7,
+  "traces": [
+    {
+      "trace_id": "2cbbca2a95b1cae101c21789417ef333",
+      "root_span_id": "a8a52713fa2ef6dc",
+      "spans": [
+        {
+          "traceId": "2cbbca2a95b1cae101c21789417ef333",
+          "spanId": "a8a52713fa2ef6dc",
+          "name": "review_pr",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788575280000000000",
+          "endTimeUnixNano": "1788575281717999872",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "AGENT"
+              }
+            },
+            "input": {
+              "value": "Review PR #2251: Update SDK README"
+            },
+            "output": {
+              "value": "No findings. Docs-only change, table matches the code."
+            },
+            "agent": {
+              "name": "pr-review-agent"
+            },
+            "metadata": {
+              "repo": "arthur-ai/arthur-engine",
+              "pr": 2251,
+              "base": "dev"
+            },
+            "session": {
+              "id": "sess_coding_04_b9a61c73"
+            },
+            "user": {
+              "id": "user-2260"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "2cbbca2a95b1cae101c21789417ef333",
+          "spanId": "88253c6af099ecac",
+          "name": "get_diff",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788575280029999872",
+          "endTimeUnixNano": "1788575280280000000",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "TOOL"
+              }
+            },
+            "tool": {
+              "name": "get_diff"
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "pr": 2251
+              }
+            },
+            "output": {
+              "mime_type": "application/json",
+              "value": {
+                "files": 1,
+                "additions": 18,
+                "deletions": 3
+              }
+            },
+            "session": {
+              "id": "sess_coding_04_b9a61c73"
+            },
+            "user": {
+              "id": "user-2260"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "a8a52713fa2ef6dc",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "2cbbca2a95b1cae101c21789417ef333",
+          "spanId": "57dac8fa1caee073",
+          "name": "ChatCompletion",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788575280284000000",
+          "endTimeUnixNano": "1788575281684000000",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "LLM"
+              }
+            },
+            "llm": {
+              "model_name": "claude-sonnet-5",
+              "provider": "anthropic",
+              "system": "anthropic",
+              "invocation_parameters": {
+                "model": "claude-sonnet-5",
+                "temperature": 0.2
+              },
+              "token_count": {
+                "prompt": 2100,
+                "completion": 90,
+                "total": 2190
+              },
+              "input_messages": [
+                {
+                  "message": {
+                    "role": "system",
+                    "content": "You are a code review agent. Investigate before editing."
+                  }
+                },
+                {
+                  "message": {
+                    "role": "user",
+                    "content": "Anything to flag?"
+                  }
+                }
+              ],
+              "output_messages": [
+                {
+                  "message": {
+                    "role": "assistant",
+                    "content": "Docs only. The instrumentor table gains a row; matches arthur.py."
+                  }
+                }
+              ]
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "messages": [
+                  {
+                    "role": "system",
+                    "content": "You are a code review agent. Investigate before editing."
+                  },
+                  {
+                    "role": "user",
+                    "content": "Anything to flag?"
+                  }
+                ]
+              }
+            },
+            "output": {
+              "value": "Docs only. The instrumentor table gains a row; matches arthur.py."
+            },
+            "session": {
+              "id": "sess_coding_04_b9a61c73"
+            },
+            "user": {
+              "id": "user-2260"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "a8a52713fa2ef6dc",
+          "arthur_span_version": "arthur_span_v1"
+        }
+      ]
+    },
+    {
+      "trace_id": "3826101a79c4476d04c5a5f71847d067",
+      "root_span_id": "0f940e6afaabc900",
+      "spans": [
+        {
+          "traceId": "3826101a79c4476d04c5a5f71847d067",
+          "spanId": "0f940e6afaabc900",
+          "name": "review_pr",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788575295717999872",
+          "endTimeUnixNano": "1788575297624999936",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "AGENT"
+              }
+            },
+            "input": {
+              "value": "Review PR #2252: Bump zod to 4.5.2"
+            },
+            "output": {
+              "value": "No findings. Manifest and lockfile updated together."
+            },
+            "agent": {
+              "name": "pr-review-agent"
+            },
+            "metadata": {
+              "repo": "arthur-ai/arthur-engine",
+              "pr": 2252,
+              "base": "dev"
+            },
+            "session": {
+              "id": "sess_coding_04_b9a61c73"
+            },
+            "user": {
+              "id": "user-2260"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "3826101a79c4476d04c5a5f71847d067",
+          "spanId": "8b7dbb2210b4a6aa",
+          "name": "get_diff",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788575295748000000",
+          "endTimeUnixNano": "1788575295988000000",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "TOOL"
+              }
+            },
+            "tool": {
+              "name": "get_diff"
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "pr": 2252
+              }
+            },
+            "output": {
+              "mime_type": "application/json",
+              "value": {
+                "files": 2,
+                "additions": 4,
+                "deletions": 4
+              }
+            },
+            "session": {
+              "id": "sess_coding_04_b9a61c73"
+            },
+            "user": {
+              "id": "user-2260"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "0f940e6afaabc900",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "3826101a79c4476d04c5a5f71847d067",
+          "spanId": "795aa1797c7fe0c4",
+          "name": "grep",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788575295992000000",
+          "endTimeUnixNano": "1788575296086999808",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "TOOL"
+              }
+            },
+            "tool": {
+              "name": "grep"
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "pattern": "uv.lock",
+                "path": "src/"
+              }
+            },
+            "output": {
+              "mime_type": "application/json",
+              "value": {
+                "matches": [
+                  "genai-engine/uv.lock",
+                  "ml-engine/uv.lock"
+                ]
+              }
+            },
+            "session": {
+              "id": "sess_coding_04_b9a61c73"
+            },
+            "user": {
+              "id": "user-2260"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "0f940e6afaabc900",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "3826101a79c4476d04c5a5f71847d067",
+          "spanId": "83c3e1187edf07a3",
+          "name": "ChatCompletion",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788575296091000064",
+          "endTimeUnixNano": "1788575297591000064",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "LLM"
+              }
+            },
+            "llm": {
+              "model_name": "claude-sonnet-5",
+              "provider": "anthropic",
+              "system": "anthropic",
+              "invocation_parameters": {
+                "model": "claude-sonnet-5",
+                "temperature": 0.2
+              },
+              "token_count": {
+                "prompt": 2600,
+                "completion": 130,
+                "total": 2730
+              },
+              "input_messages": [
+                {
+                  "message": {
+                    "role": "system",
+                    "content": "You are a code review agent. Investigate before editing."
+                  }
+                },
+                {
+                  "message": {
+                    "role": "user",
+                    "content": "Is the lockfile in sync?"
+                  }
+                }
+              ],
+              "output_messages": [
+                {
+                  "message": {
+                    "role": "assistant",
+                    "content": "package.json and yarn.lock both updated. Consistent."
+                  }
+                }
+              ]
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "messages": [
+                  {
+                    "role": "system",
+                    "content": "You are a code review agent. Investigate before editing."
+                  },
+                  {
+                    "role": "user",
+                    "content": "Is the lockfile in sync?"
+                  }
+                ]
+              }
+            },
+            "output": {
+              "value": "package.json and yarn.lock both updated. Consistent."
+            },
+            "session": {
+              "id": "sess_coding_04_b9a61c73"
+            },
+            "user": {
+              "id": "user-2260"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "0f940e6afaabc900",
+          "arthur_span_version": "arthur_span_v1"
+        }
+      ]
+    }
+  ]
+}

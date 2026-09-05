@@ -1,0 +1,772 @@
+{
+  "session_id": "sess_revenue_05_d4e42048",
+  "user_id": "user-77",
+  "task_id": "e7b104d9-3c88-4a52-9f61-0d84c2a7b6e5",
+  "agent_kind": "revenue_agent",
+  "scenario": "Collections outreach \u2014 three short traces, one of which fails at the payment provider.",
+  "resource_attributes": {
+    "service.name": "revenue-agent",
+    "arthur.task": "e7b104d9-3c88-4a52-9f61-0d84c2a7b6e5"
+  },
+  "trace_count": 3,
+  "span_count": 14,
+  "traces": [
+    {
+      "trace_id": "2c70ff37bac4435bf2c416bb92a7a06c",
+      "root_span_id": "12064658d36ab56a",
+      "spans": [
+        {
+          "traceId": "2c70ff37bac4435bf2c416bb92a7a06c",
+          "spanId": "12064658d36ab56a",
+          "name": "router.dispatch",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788586500000000000",
+          "endTimeUnixNano": "1788586501071000064",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "CHAIN"
+              }
+            },
+            "input": {
+              "value": "I got an email saying my payment failed."
+            },
+            "output": {
+              "value": "Your card ending 4242 expired. I've sent a secure link to update it."
+            },
+            "metadata": {
+              "route": "billing",
+              "confidence": 0.96,
+              "router_version": "v3"
+            },
+            "session": {
+              "id": "sess_revenue_05_d4e42048"
+            },
+            "user": {
+              "id": "user-77"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "2c70ff37bac4435bf2c416bb92a7a06c",
+          "spanId": "51e2a73019dd4e46",
+          "name": "ChatCompletion",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788586500017499904",
+          "endTimeUnixNano": "1788586500537499904",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "LLM"
+              }
+            },
+            "llm": {
+              "model_name": "gpt-4o-mini",
+              "provider": "openai",
+              "system": "openai",
+              "invocation_parameters": {
+                "model": "gpt-4o-mini",
+                "temperature": 0.2
+              },
+              "token_count": {
+                "prompt": 410,
+                "completion": 8,
+                "total": 418
+              },
+              "input_messages": [
+                {
+                  "message": {
+                    "role": "system",
+                    "content": "Route the message to one of: billing, sales, onboarding."
+                  }
+                },
+                {
+                  "message": {
+                    "role": "user",
+                    "content": "I got an email saying my payment failed."
+                  }
+                }
+              ],
+              "output_messages": [
+                {
+                  "message": {
+                    "role": "assistant",
+                    "content": "billing"
+                  }
+                }
+              ]
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "messages": [
+                  {
+                    "role": "system",
+                    "content": "Route the message to one of: billing, sales, onboarding."
+                  },
+                  {
+                    "role": "user",
+                    "content": "I got an email saying my payment failed."
+                  }
+                ]
+              }
+            },
+            "output": {
+              "value": "billing"
+            },
+            "metadata": {
+              "candidates": [
+                "billing",
+                "sales",
+                "onboarding"
+              ]
+            },
+            "session": {
+              "id": "sess_revenue_05_d4e42048"
+            },
+            "user": {
+              "id": "user-77"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "12064658d36ab56a",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "2c70ff37bac4435bf2c416bb92a7a06c",
+          "spanId": "044d5ef0be548879",
+          "name": "billing-agent.run",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788586500541500160",
+          "endTimeUnixNano": "1788586501049499904",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "AGENT"
+              }
+            },
+            "input": {
+              "value": "I got an email saying my payment failed."
+            },
+            "output": {
+              "value": "Sent a card-update link."
+            },
+            "agent": {
+              "name": "billing-agent"
+            },
+            "graph": {
+              "node": {
+                "id": "billing-agent"
+              }
+            },
+            "session": {
+              "id": "sess_revenue_05_d4e42048"
+            },
+            "user": {
+              "id": "user-77"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "12064658d36ab56a",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "2c70ff37bac4435bf2c416bb92a7a06c",
+          "spanId": "5a867b7ae7d9f89c",
+          "name": "lookup_payment_method",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788586500556499968",
+          "endTimeUnixNano": "1788586500736499968",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "TOOL"
+              }
+            },
+            "tool": {
+              "name": "lookup_payment_method"
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "account": "ACC-8812"
+              }
+            },
+            "output": {
+              "mime_type": "application/json",
+              "value": {
+                "brand": "visa",
+                "last4": "4242",
+                "expired": true
+              }
+            },
+            "session": {
+              "id": "sess_revenue_05_d4e42048"
+            },
+            "user": {
+              "id": "user-77"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "044d5ef0be548879",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "2c70ff37bac4435bf2c416bb92a7a06c",
+          "spanId": "d91c20081e7b86fe",
+          "name": "send_update_link",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788586500740499968",
+          "endTimeUnixNano": "1788586501030499840",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "TOOL"
+              }
+            },
+            "tool": {
+              "name": "send_update_link"
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "account": "ACC-8812"
+              }
+            },
+            "output": {
+              "mime_type": "application/json",
+              "value": {
+                "sent": true,
+                "expires_min": 30
+              }
+            },
+            "session": {
+              "id": "sess_revenue_05_d4e42048"
+            },
+            "user": {
+              "id": "user-77"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "044d5ef0be548879",
+          "arthur_span_version": "arthur_span_v1"
+        }
+      ]
+    },
+    {
+      "trace_id": "81195c91f190ccc6a0d635e115dcd9d7",
+      "root_span_id": "382cec86b6c95cf8",
+      "spans": [
+        {
+          "traceId": "81195c91f190ccc6a0d635e115dcd9d7",
+          "spanId": "382cec86b6c95cf8",
+          "name": "router.dispatch",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788586521071000064",
+          "endTimeUnixNano": "1788586531072000000",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "CHAIN"
+              }
+            },
+            "input": {
+              "value": "I updated the card, can you retry the charge?"
+            },
+            "output": {
+              "value": "The retry didn't go through \u2014 the provider returned a temporary error. I'll try again automatically in an hour."
+            },
+            "metadata": {
+              "route": "billing",
+              "confidence": 0.93,
+              "router_version": "v3"
+            },
+            "session": {
+              "id": "sess_revenue_05_d4e42048"
+            },
+            "user": {
+              "id": "user-77"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "81195c91f190ccc6a0d635e115dcd9d7",
+          "spanId": "c5b65b1de7ae4e4c",
+          "name": "ChatCompletion",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788586521088499968",
+          "endTimeUnixNano": "1788586521608499968",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "LLM"
+              }
+            },
+            "llm": {
+              "model_name": "gpt-4o-mini",
+              "provider": "openai",
+              "system": "openai",
+              "invocation_parameters": {
+                "model": "gpt-4o-mini",
+                "temperature": 0.2
+              },
+              "token_count": {
+                "prompt": 410,
+                "completion": 8,
+                "total": 418
+              },
+              "input_messages": [
+                {
+                  "message": {
+                    "role": "system",
+                    "content": "Route the message to one of: billing, sales, onboarding."
+                  }
+                },
+                {
+                  "message": {
+                    "role": "user",
+                    "content": "I updated the card, can you retry the charge?"
+                  }
+                }
+              ],
+              "output_messages": [
+                {
+                  "message": {
+                    "role": "assistant",
+                    "content": "billing"
+                  }
+                }
+              ]
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "messages": [
+                  {
+                    "role": "system",
+                    "content": "Route the message to one of: billing, sales, onboarding."
+                  },
+                  {
+                    "role": "user",
+                    "content": "I updated the card, can you retry the charge?"
+                  }
+                ]
+              }
+            },
+            "output": {
+              "value": "billing"
+            },
+            "metadata": {
+              "candidates": [
+                "billing",
+                "sales",
+                "onboarding"
+              ]
+            },
+            "session": {
+              "id": "sess_revenue_05_d4e42048"
+            },
+            "user": {
+              "id": "user-77"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "382cec86b6c95cf8",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "81195c91f190ccc6a0d635e115dcd9d7",
+          "spanId": "f5444b7cf94178f7",
+          "name": "billing-agent.run",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788586521612499968",
+          "endTimeUnixNano": "1788586531050499840",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "AGENT"
+              }
+            },
+            "input": {
+              "value": "I updated the card, can you retry the charge?"
+            },
+            "output": {
+              "value": "Retry failed at the provider."
+            },
+            "agent": {
+              "name": "billing-agent"
+            },
+            "graph": {
+              "node": {
+                "id": "billing-agent"
+              }
+            },
+            "session": {
+              "id": "sess_revenue_05_d4e42048"
+            },
+            "user": {
+              "id": "user-77"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "382cec86b6c95cf8",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "81195c91f190ccc6a0d635e115dcd9d7",
+          "spanId": "c3cfffa780f6ecd4",
+          "name": "retry_charge",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788586521627500032",
+          "endTimeUnixNano": "1788586529827500032",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "TOOL"
+              }
+            },
+            "tool": {
+              "name": "retry_charge"
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "account": "ACC-8812",
+                "amount": 249.0
+              }
+            },
+            "output": {
+              "mime_type": "application/json",
+              "value": {
+                "error": "processor_unavailable"
+              }
+            },
+            "session": {
+              "id": "sess_revenue_05_d4e42048"
+            },
+            "user": {
+              "id": "user-77"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_ERROR",
+            "message": "PaymentError: processor_unavailable"
+          },
+          "parentSpanId": "f5444b7cf94178f7",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "81195c91f190ccc6a0d635e115dcd9d7",
+          "spanId": "9b6952430f9831e4",
+          "name": "ChatCompletion",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788586529831500032",
+          "endTimeUnixNano": "1788586531031500032",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "LLM"
+              }
+            },
+            "llm": {
+              "model_name": "gpt-4o",
+              "provider": "openai",
+              "system": "openai",
+              "invocation_parameters": {
+                "model": "gpt-4o",
+                "temperature": 0.2
+              },
+              "token_count": {
+                "prompt": 860,
+                "completion": 44,
+                "total": 904
+              },
+              "input_messages": [
+                {
+                  "message": {
+                    "role": "system",
+                    "content": "Explain payment failures without blaming the customer."
+                  }
+                },
+                {
+                  "message": {
+                    "role": "user",
+                    "content": "can you retry the charge?"
+                  }
+                }
+              ],
+              "output_messages": [
+                {
+                  "message": {
+                    "role": "assistant",
+                    "content": "Temporary provider error; we'll retry in an hour."
+                  }
+                }
+              ]
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "messages": [
+                  {
+                    "role": "system",
+                    "content": "Explain payment failures without blaming the customer."
+                  },
+                  {
+                    "role": "user",
+                    "content": "can you retry the charge?"
+                  }
+                ]
+              }
+            },
+            "output": {
+              "value": "Temporary provider error; we'll retry in an hour."
+            },
+            "session": {
+              "id": "sess_revenue_05_d4e42048"
+            },
+            "user": {
+              "id": "user-77"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "f5444b7cf94178f7",
+          "arthur_span_version": "arthur_span_v1"
+        }
+      ]
+    },
+    {
+      "trace_id": "79e4f3a45797da9924f9ec82366b67fb",
+      "root_span_id": "af7a8e650c281bf6",
+      "spans": [
+        {
+          "traceId": "79e4f3a45797da9924f9ec82366b67fb",
+          "spanId": "af7a8e650c281bf6",
+          "name": "router.dispatch",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788586618072000000",
+          "endTimeUnixNano": "1788586618839000064",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "CHAIN"
+              }
+            },
+            "input": {
+              "value": "Did it work?"
+            },
+            "output": {
+              "value": "Yes \u2014 the charge cleared just now. You're all set."
+            },
+            "metadata": {
+              "route": "billing",
+              "confidence": 0.95,
+              "router_version": "v3"
+            },
+            "session": {
+              "id": "sess_revenue_05_d4e42048"
+            },
+            "user": {
+              "id": "user-77"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "79e4f3a45797da9924f9ec82366b67fb",
+          "spanId": "8fc2b6e41bd399eb",
+          "name": "ChatCompletion",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788586618089499904",
+          "endTimeUnixNano": "1788586618609499904",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "LLM"
+              }
+            },
+            "llm": {
+              "model_name": "gpt-4o-mini",
+              "provider": "openai",
+              "system": "openai",
+              "invocation_parameters": {
+                "model": "gpt-4o-mini",
+                "temperature": 0.2
+              },
+              "token_count": {
+                "prompt": 410,
+                "completion": 8,
+                "total": 418
+              },
+              "input_messages": [
+                {
+                  "message": {
+                    "role": "system",
+                    "content": "Route the message to one of: billing, sales, onboarding."
+                  }
+                },
+                {
+                  "message": {
+                    "role": "user",
+                    "content": "Did it work?"
+                  }
+                }
+              ],
+              "output_messages": [
+                {
+                  "message": {
+                    "role": "assistant",
+                    "content": "billing"
+                  }
+                }
+              ]
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "messages": [
+                  {
+                    "role": "system",
+                    "content": "Route the message to one of: billing, sales, onboarding."
+                  },
+                  {
+                    "role": "user",
+                    "content": "Did it work?"
+                  }
+                ]
+              }
+            },
+            "output": {
+              "value": "billing"
+            },
+            "metadata": {
+              "candidates": [
+                "billing",
+                "sales",
+                "onboarding"
+              ]
+            },
+            "session": {
+              "id": "sess_revenue_05_d4e42048"
+            },
+            "user": {
+              "id": "user-77"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "af7a8e650c281bf6",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "79e4f3a45797da9924f9ec82366b67fb",
+          "spanId": "a3bc5746fc7b4005",
+          "name": "billing-agent.run",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788586618613500160",
+          "endTimeUnixNano": "1788586618817500160",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "AGENT"
+              }
+            },
+            "input": {
+              "value": "Did it work?"
+            },
+            "output": {
+              "value": "Charge cleared."
+            },
+            "agent": {
+              "name": "billing-agent"
+            },
+            "graph": {
+              "node": {
+                "id": "billing-agent"
+              }
+            },
+            "session": {
+              "id": "sess_revenue_05_d4e42048"
+            },
+            "user": {
+              "id": "user-77"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "af7a8e650c281bf6",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "79e4f3a45797da9924f9ec82366b67fb",
+          "spanId": "e81dc60d3328dfae",
+          "name": "get_charge_status",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788586618628499968",
+          "endTimeUnixNano": "1788586618798500096",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "TOOL"
+              }
+            },
+            "tool": {
+              "name": "get_charge_status"
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "account": "ACC-8812"
+              }
+            },
+            "output": {
+              "mime_type": "application/json",
+              "value": {
+                "status": "succeeded",
+                "amount": 249.0
+              }
+            },
+            "session": {
+              "id": "sess_revenue_05_d4e42048"
+            },
+            "user": {
+              "id": "user-77"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "a3bc5746fc7b4005",
+          "arthur_span_version": "arthur_span_v1"
+        }
+      ]
+    }
+  ]
+}

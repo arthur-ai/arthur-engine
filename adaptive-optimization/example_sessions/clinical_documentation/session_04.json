@@ -1,0 +1,378 @@
+{
+  "session_id": "sess_clinical_04_51dff899",
+  "user_id": "user-2260",
+  "task_id": "9a3f2c68-4e15-4b7d-8c02-fd51e8b39a24",
+  "agent_kind": "clinical_documentation",
+  "scenario": "Patient-message triage \u2014 many short traces, no chart pull.",
+  "resource_attributes": {
+    "service.name": "clinical-scribe",
+    "arthur.task": "9a3f2c68-4e15-4b7d-8c02-fd51e8b39a24"
+  },
+  "trace_count": 3,
+  "span_count": 6,
+  "traces": [
+    {
+      "trace_id": "c3f807741a4d1dd41f93472734df4fb9",
+      "root_span_id": "d865628fe903bdc8",
+      "spans": [
+        {
+          "traceId": "c3f807741a4d1dd41f93472734df4fb9",
+          "spanId": "d865628fe903bdc8",
+          "name": "message.triage",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788575280000000000",
+          "endTimeUnixNano": "1788575280804000000",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "CHAIN"
+              }
+            },
+            "input": {
+              "value": "Patient message: 'my blood pressure cuff reads 150/95 today'"
+            },
+            "output": {
+              "value": "Triaged as urgent-routine. Routed to nurse line with a same-day callback flag."
+            },
+            "metadata": {
+              "channel": "patient_portal",
+              "phi": true
+            },
+            "session": {
+              "id": "sess_clinical_04_51dff899"
+            },
+            "user": {
+              "id": "user-2260"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "c3f807741a4d1dd41f93472734df4fb9",
+          "spanId": "64926e2f0fc60809",
+          "name": "ChatCompletion",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788575280009999872",
+          "endTimeUnixNano": "1788575280789999872",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "LLM"
+              }
+            },
+            "llm": {
+              "model_name": "gpt-4o-mini",
+              "provider": "openai",
+              "system": "openai",
+              "invocation_parameters": {
+                "model": "gpt-4o-mini",
+                "temperature": 0.2
+              },
+              "token_count": {
+                "prompt": 640,
+                "completion": 22,
+                "total": 662
+              },
+              "input_messages": [
+                {
+                  "message": {
+                    "role": "system",
+                    "content": "Triage patient messages into routine, urgent-routine, or emergent."
+                  }
+                },
+                {
+                  "message": {
+                    "role": "user",
+                    "content": "my blood pressure cuff reads 150/95 today"
+                  }
+                }
+              ],
+              "output_messages": [
+                {
+                  "message": {
+                    "role": "assistant",
+                    "content": "urgent-routine \u2014 same-day callback"
+                  }
+                }
+              ]
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "messages": [
+                  {
+                    "role": "system",
+                    "content": "Triage patient messages into routine, urgent-routine, or emergent."
+                  },
+                  {
+                    "role": "user",
+                    "content": "my blood pressure cuff reads 150/95 today"
+                  }
+                ]
+              }
+            },
+            "output": {
+              "value": "urgent-routine \u2014 same-day callback"
+            },
+            "session": {
+              "id": "sess_clinical_04_51dff899"
+            },
+            "user": {
+              "id": "user-2260"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "d865628fe903bdc8",
+          "arthur_span_version": "arthur_span_v1"
+        }
+      ]
+    },
+    {
+      "trace_id": "7c0cbc6e2d3137449a85031ce79ae22b",
+      "root_span_id": "0bb29fbaa8132967",
+      "spans": [
+        {
+          "traceId": "7c0cbc6e2d3137449a85031ce79ae22b",
+          "spanId": "0bb29fbaa8132967",
+          "name": "message.triage",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788575308804000000",
+          "endTimeUnixNano": "1788575309466000128",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "CHAIN"
+              }
+            },
+            "input": {
+              "value": "Patient message: 'refill request for metformin'"
+            },
+            "output": {
+              "value": "Triaged as routine. Routed to the refill queue."
+            },
+            "metadata": {
+              "channel": "patient_portal",
+              "phi": true
+            },
+            "session": {
+              "id": "sess_clinical_04_51dff899"
+            },
+            "user": {
+              "id": "user-2260"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "7c0cbc6e2d3137449a85031ce79ae22b",
+          "spanId": "172a4aab47484dc0",
+          "name": "ChatCompletion",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788575308812999936",
+          "endTimeUnixNano": "1788575309453000192",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "LLM"
+              }
+            },
+            "llm": {
+              "model_name": "gpt-4o-mini",
+              "provider": "openai",
+              "system": "openai",
+              "invocation_parameters": {
+                "model": "gpt-4o-mini",
+                "temperature": 0.2
+              },
+              "token_count": {
+                "prompt": 590,
+                "completion": 16,
+                "total": 606
+              },
+              "input_messages": [
+                {
+                  "message": {
+                    "role": "system",
+                    "content": "Triage patient messages."
+                  }
+                },
+                {
+                  "message": {
+                    "role": "user",
+                    "content": "refill request for metformin"
+                  }
+                }
+              ],
+              "output_messages": [
+                {
+                  "message": {
+                    "role": "assistant",
+                    "content": "routine \u2014 refill queue"
+                  }
+                }
+              ]
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "messages": [
+                  {
+                    "role": "system",
+                    "content": "Triage patient messages."
+                  },
+                  {
+                    "role": "user",
+                    "content": "refill request for metformin"
+                  }
+                ]
+              }
+            },
+            "output": {
+              "value": "routine \u2014 refill queue"
+            },
+            "session": {
+              "id": "sess_clinical_04_51dff899"
+            },
+            "user": {
+              "id": "user-2260"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "0bb29fbaa8132967",
+          "arthur_span_version": "arthur_span_v1"
+        }
+      ]
+    },
+    {
+      "trace_id": "09a5489577713904ae00cef5feb4bb91",
+      "root_span_id": "33287a2744f2134b",
+      "spans": [
+        {
+          "traceId": "09a5489577713904ae00cef5feb4bb91",
+          "spanId": "33287a2744f2134b",
+          "name": "message.triage",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788575339466000128",
+          "endTimeUnixNano": "1788575340201999872",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "CHAIN"
+              }
+            },
+            "input": {
+              "value": "Patient message: 'chest pressure since this morning'"
+            },
+            "output": {
+              "value": "Triaged as emergent. Escalated to on-call with an immediate page."
+            },
+            "metadata": {
+              "channel": "patient_portal",
+              "phi": true
+            },
+            "session": {
+              "id": "sess_clinical_04_51dff899"
+            },
+            "user": {
+              "id": "user-2260"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "09a5489577713904ae00cef5feb4bb91",
+          "spanId": "a87de18199df4f12",
+          "name": "ChatCompletion",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788575339476999936",
+          "endTimeUnixNano": "1788575340187000064",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "LLM"
+              }
+            },
+            "llm": {
+              "model_name": "gpt-4o-mini",
+              "provider": "openai",
+              "system": "openai",
+              "invocation_parameters": {
+                "model": "gpt-4o-mini",
+                "temperature": 0.2
+              },
+              "token_count": {
+                "prompt": 620,
+                "completion": 24,
+                "total": 644
+              },
+              "input_messages": [
+                {
+                  "message": {
+                    "role": "system",
+                    "content": "Triage patient messages."
+                  }
+                },
+                {
+                  "message": {
+                    "role": "user",
+                    "content": "chest pressure since this morning"
+                  }
+                }
+              ],
+              "output_messages": [
+                {
+                  "message": {
+                    "role": "assistant",
+                    "content": "emergent \u2014 page on-call immediately"
+                  }
+                }
+              ]
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "messages": [
+                  {
+                    "role": "system",
+                    "content": "Triage patient messages."
+                  },
+                  {
+                    "role": "user",
+                    "content": "chest pressure since this morning"
+                  }
+                ]
+              }
+            },
+            "output": {
+              "value": "emergent \u2014 page on-call immediately"
+            },
+            "session": {
+              "id": "sess_clinical_04_51dff899"
+            },
+            "user": {
+              "id": "user-2260"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "33287a2744f2134b",
+          "arthur_span_version": "arthur_span_v1"
+        }
+      ]
+    }
+  ]
+}

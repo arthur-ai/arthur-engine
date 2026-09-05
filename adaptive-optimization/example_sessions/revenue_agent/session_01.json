@@ -1,0 +1,365 @@
+{
+  "session_id": "sess_revenue_01_54846478",
+  "user_id": "user-42",
+  "task_id": "e7b104d9-3c88-4a52-9f61-0d84c2a7b6e5",
+  "agent_kind": "revenue_agent",
+  "scenario": "Billing dispute routed correctly; a refund tool mutates external state.",
+  "resource_attributes": {
+    "service.name": "revenue-agent",
+    "arthur.task": "e7b104d9-3c88-4a52-9f61-0d84c2a7b6e5"
+  },
+  "trace_count": 1,
+  "span_count": 6,
+  "traces": [
+    {
+      "trace_id": "d370e0f9d44027de9361d35db381f450",
+      "root_span_id": "a2c00794ac76466a",
+      "spans": [
+        {
+          "traceId": "d370e0f9d44027de9361d35db381f450",
+          "spanId": "a2c00794ac76466a",
+          "name": "router.dispatch",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788541620000000000",
+          "endTimeUnixNano": "1788541622694999808",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "CHAIN"
+              }
+            },
+            "input": {
+              "value": "I was double-charged for order #7781."
+            },
+            "output": {
+              "value": "You were charged twice on Sep 2. I've issued a $84.00 refund \u2014 it'll land in 5-7 days."
+            },
+            "metadata": {
+              "route": "billing",
+              "confidence": 0.94,
+              "router_version": "v3"
+            },
+            "session": {
+              "id": "sess_revenue_01_54846478"
+            },
+            "user": {
+              "id": "user-42"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "d370e0f9d44027de9361d35db381f450",
+          "spanId": "255a5aa3f2372aa1",
+          "name": "ChatCompletion",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788541620017499904",
+          "endTimeUnixNano": "1788541620537499904",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "LLM"
+              }
+            },
+            "llm": {
+              "model_name": "gpt-4o-mini",
+              "provider": "openai",
+              "system": "openai",
+              "invocation_parameters": {
+                "model": "gpt-4o-mini",
+                "temperature": 0.2
+              },
+              "token_count": {
+                "prompt": 410,
+                "completion": 8,
+                "total": 418
+              },
+              "input_messages": [
+                {
+                  "message": {
+                    "role": "system",
+                    "content": "Route the message to one of: billing, sales, onboarding."
+                  }
+                },
+                {
+                  "message": {
+                    "role": "user",
+                    "content": "I was double-charged for order #7781."
+                  }
+                }
+              ],
+              "output_messages": [
+                {
+                  "message": {
+                    "role": "assistant",
+                    "content": "billing"
+                  }
+                }
+              ]
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "messages": [
+                  {
+                    "role": "system",
+                    "content": "Route the message to one of: billing, sales, onboarding."
+                  },
+                  {
+                    "role": "user",
+                    "content": "I was double-charged for order #7781."
+                  }
+                ]
+              }
+            },
+            "output": {
+              "value": "billing"
+            },
+            "metadata": {
+              "candidates": [
+                "billing",
+                "sales",
+                "onboarding"
+              ]
+            },
+            "session": {
+              "id": "sess_revenue_01_54846478"
+            },
+            "user": {
+              "id": "user-42"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "a2c00794ac76466a",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "d370e0f9d44027de9361d35db381f450",
+          "spanId": "ed702afd0bc14ea4",
+          "name": "billing-agent.run",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788541620541500160",
+          "endTimeUnixNano": "1788541622673500160",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "AGENT"
+              }
+            },
+            "input": {
+              "value": "I was double-charged for order #7781."
+            },
+            "output": {
+              "value": "Refund of $84.00 issued."
+            },
+            "agent": {
+              "name": "billing-agent"
+            },
+            "graph": {
+              "node": {
+                "id": "billing-agent"
+              }
+            },
+            "session": {
+              "id": "sess_revenue_01_54846478"
+            },
+            "user": {
+              "id": "user-42"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "a2c00794ac76466a",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "d370e0f9d44027de9361d35db381f450",
+          "spanId": "866b785ff0ed7039",
+          "name": "lookup_charges",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788541620556499968",
+          "endTimeUnixNano": "1788541620766500096",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "TOOL"
+              }
+            },
+            "tool": {
+              "name": "lookup_charges"
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "order_id": "7781"
+              }
+            },
+            "output": {
+              "mime_type": "application/json",
+              "value": {
+                "charges": [
+                  {
+                    "amount": 84.0,
+                    "date": "2026-09-02"
+                  },
+                  {
+                    "amount": 84.0,
+                    "date": "2026-09-02"
+                  }
+                ]
+              }
+            },
+            "session": {
+              "id": "sess_revenue_01_54846478"
+            },
+            "user": {
+              "id": "user-42"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "ed702afd0bc14ea4",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "d370e0f9d44027de9361d35db381f450",
+          "spanId": "39012f122fd7fdb3",
+          "name": "ChatCompletion",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788541620770499840",
+          "endTimeUnixNano": "1788541622170500096",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "LLM"
+              }
+            },
+            "llm": {
+              "model_name": "gpt-4o",
+              "provider": "openai",
+              "system": "openai",
+              "invocation_parameters": {
+                "model": "gpt-4o",
+                "temperature": 0.2
+              },
+              "token_count": {
+                "prompt": 980,
+                "completion": 42,
+                "total": 1022
+              },
+              "input_messages": [
+                {
+                  "message": {
+                    "role": "system",
+                    "content": "Refund duplicate charges up to $200 without approval."
+                  }
+                },
+                {
+                  "message": {
+                    "role": "user",
+                    "content": "I was double-charged for order #7781."
+                  }
+                }
+              ],
+              "output_messages": [
+                {
+                  "message": {
+                    "role": "assistant",
+                    "tool_calls": [
+                      {
+                        "tool_call": {
+                          "id": "call_e25d9bd344e8",
+                          "function": {
+                            "name": "issue_refund",
+                            "arguments": "{\"order_id\": \"7781\", \"amount\": 84.0}"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "messages": [
+                  {
+                    "role": "system",
+                    "content": "Refund duplicate charges up to $200 without approval."
+                  },
+                  {
+                    "role": "user",
+                    "content": "I was double-charged for order #7781."
+                  }
+                ]
+              }
+            },
+            "session": {
+              "id": "sess_revenue_01_54846478"
+            },
+            "user": {
+              "id": "user-42"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "ed702afd0bc14ea4",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "d370e0f9d44027de9361d35db381f450",
+          "spanId": "e0e6d0db853771fd",
+          "name": "issue_refund",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788541622174500096",
+          "endTimeUnixNano": "1788541622654500096",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "TOOL"
+              }
+            },
+            "tool": {
+              "name": "issue_refund",
+              "description": "Issue a refund against an order. Mutates billing state."
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "order_id": "7781",
+                "amount": 84.0
+              }
+            },
+            "output": {
+              "mime_type": "application/json",
+              "value": {
+                "refund_id": "RF-7f73be08",
+                "eta_days": 6
+              }
+            },
+            "session": {
+              "id": "sess_revenue_01_54846478"
+            },
+            "user": {
+              "id": "user-42"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "ed702afd0bc14ea4",
+          "arthur_span_version": "arthur_span_v1"
+        }
+      ]
+    }
+  ]
+}

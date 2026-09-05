@@ -1,0 +1,394 @@
+{
+  "session_id": "sess_coding_01_3ac41b33",
+  "user_id": "user-42",
+  "task_id": "c4e9f70b-6a21-4d88-bf35-11a0d7c5e932",
+  "agent_kind": "coding_agent",
+  "scenario": "Clean review: reads the diff, checks callers, reports two findings.",
+  "resource_attributes": {
+    "service.name": "pr-review-agent",
+    "arthur.task": "c4e9f70b-6a21-4d88-bf35-11a0d7c5e932"
+  },
+  "trace_count": 1,
+  "span_count": 7,
+  "traces": [
+    {
+      "trace_id": "957d698c40ff9333dc1c9e4273c495bf",
+      "root_span_id": "f4eeaa0150787cb7",
+      "spans": [
+        {
+          "traceId": "957d698c40ff9333dc1c9e4273c495bf",
+          "spanId": "f4eeaa0150787cb7",
+          "name": "review_pr",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788541620000000000",
+          "endTimeUnixNano": "1788541672739000064",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "AGENT"
+              }
+            },
+            "input": {
+              "value": "Review PR #2231: Add retry to span exporter"
+            },
+            "output": {
+              "value": "2 findings: type mismatch on max_retries (config.py:210), missing test for backoff ceiling."
+            },
+            "agent": {
+              "name": "pr-review-agent"
+            },
+            "metadata": {
+              "repo": "arthur-ai/arthur-engine",
+              "pr": 2231,
+              "base": "dev"
+            },
+            "session": {
+              "id": "sess_coding_01_3ac41b33"
+            },
+            "user": {
+              "id": "user-42"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "957d698c40ff9333dc1c9e4273c495bf",
+          "spanId": "2922d6cdcd1e95e0",
+          "name": "get_diff",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788541620029999872",
+          "endTimeUnixNano": "1788541620349999872",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "TOOL"
+              }
+            },
+            "tool": {
+              "name": "get_diff"
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "pr": 2231
+              }
+            },
+            "output": {
+              "mime_type": "application/json",
+              "value": {
+                "files": 3,
+                "additions": 84,
+                "deletions": 12
+              }
+            },
+            "session": {
+              "id": "sess_coding_01_3ac41b33"
+            },
+            "user": {
+              "id": "user-42"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "f4eeaa0150787cb7",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "957d698c40ff9333dc1c9e4273c495bf",
+          "spanId": "0dc3b366b8325070",
+          "name": "ChatCompletion",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788541620354000128",
+          "endTimeUnixNano": "1788541622453999872",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "LLM"
+              }
+            },
+            "llm": {
+              "model_name": "claude-sonnet-5",
+              "provider": "anthropic",
+              "system": "anthropic",
+              "invocation_parameters": {
+                "model": "claude-sonnet-5",
+                "temperature": 0.2
+              },
+              "token_count": {
+                "prompt": 3400,
+                "completion": 180,
+                "total": 3580
+              },
+              "input_messages": [
+                {
+                  "message": {
+                    "role": "system",
+                    "content": "You are a code review agent. Investigate before editing."
+                  }
+                },
+                {
+                  "message": {
+                    "role": "user",
+                    "content": "Summarize what this diff changes."
+                  }
+                }
+              ],
+              "output_messages": [
+                {
+                  "message": {
+                    "role": "assistant",
+                    "content": "It adds exponential backoff to the OTLP exporter and a max_retries setting."
+                  }
+                }
+              ]
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "messages": [
+                  {
+                    "role": "system",
+                    "content": "You are a code review agent. Investigate before editing."
+                  },
+                  {
+                    "role": "user",
+                    "content": "Summarize what this diff changes."
+                  }
+                ]
+              }
+            },
+            "output": {
+              "value": "It adds exponential backoff to the OTLP exporter and a max_retries setting."
+            },
+            "session": {
+              "id": "sess_coding_01_3ac41b33"
+            },
+            "user": {
+              "id": "user-42"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "f4eeaa0150787cb7",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "957d698c40ff9333dc1c9e4273c495bf",
+          "spanId": "5d57ea7f70f955a6",
+          "name": "read_file",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788541622457999872",
+          "endTimeUnixNano": "1788541622497999872",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "TOOL"
+              }
+            },
+            "tool": {
+              "name": "read_file",
+              "description": "Read a file from the repository."
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "path": "genai-engine/src/services/trace/trace_ingestion_service.py"
+              }
+            },
+            "output": {
+              "mime_type": "application/json",
+              "value": {
+                "lines": 789,
+                "truncated": false
+              }
+            },
+            "session": {
+              "id": "sess_coding_01_3ac41b33"
+            },
+            "user": {
+              "id": "user-42"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "f4eeaa0150787cb7",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "957d698c40ff9333dc1c9e4273c495bf",
+          "spanId": "79a52fb5e7503c9e",
+          "name": "grep",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788541622502000128",
+          "endTimeUnixNano": "1788541622596999936",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "TOOL"
+              }
+            },
+            "tool": {
+              "name": "grep"
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "pattern": "max_retries",
+                "path": "src/"
+              }
+            },
+            "output": {
+              "mime_type": "application/json",
+              "value": {
+                "matches": [
+                  "telemetry.py:44",
+                  "config.py:210"
+                ]
+              }
+            },
+            "session": {
+              "id": "sess_coding_01_3ac41b33"
+            },
+            "user": {
+              "id": "user-42"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "f4eeaa0150787cb7",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "957d698c40ff9333dc1c9e4273c495bf",
+          "spanId": "0e3120e4a98443a0",
+          "name": "ChatCompletion",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788541622601000192",
+          "endTimeUnixNano": "1788541624700999936",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "LLM"
+              }
+            },
+            "llm": {
+              "model_name": "claude-sonnet-5",
+              "provider": "anthropic",
+              "system": "anthropic",
+              "invocation_parameters": {
+                "model": "claude-sonnet-5",
+                "temperature": 0.2
+              },
+              "token_count": {
+                "prompt": 5100,
+                "completion": 260,
+                "total": 5360
+              },
+              "input_messages": [
+                {
+                  "message": {
+                    "role": "system",
+                    "content": "You are a code review agent. Investigate before editing."
+                  }
+                },
+                {
+                  "message": {
+                    "role": "user",
+                    "content": "Are there callers that assume the old synchronous behaviour?"
+                  }
+                }
+              ],
+              "output_messages": [
+                {
+                  "message": {
+                    "role": "assistant",
+                    "content": "One: config.py:210 reads max_retries as a string. Flagging a type mismatch."
+                  }
+                }
+              ]
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "messages": [
+                  {
+                    "role": "system",
+                    "content": "You are a code review agent. Investigate before editing."
+                  },
+                  {
+                    "role": "user",
+                    "content": "Are there callers that assume the old synchronous behaviour?"
+                  }
+                ]
+              }
+            },
+            "output": {
+              "value": "One: config.py:210 reads max_retries as a string. Flagging a type mismatch."
+            },
+            "session": {
+              "id": "sess_coding_01_3ac41b33"
+            },
+            "user": {
+              "id": "user-42"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "f4eeaa0150787cb7",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "957d698c40ff9333dc1c9e4273c495bf",
+          "spanId": "cf7dbfb8237eb8d1",
+          "name": "run_tests",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788541624704999936",
+          "endTimeUnixNano": "1788541672704999936",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "TOOL"
+              }
+            },
+            "tool": {
+              "name": "run_tests"
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "suite": "unit"
+              }
+            },
+            "output": {
+              "mime_type": "application/json",
+              "value": {
+                "passed": 412,
+                "failed": 0,
+                "duration_s": 48
+              }
+            },
+            "session": {
+              "id": "sess_coding_01_3ac41b33"
+            },
+            "user": {
+              "id": "user-42"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "f4eeaa0150787cb7",
+          "arthur_span_version": "arthur_span_v1"
+        }
+      ]
+    }
+  ]
+}

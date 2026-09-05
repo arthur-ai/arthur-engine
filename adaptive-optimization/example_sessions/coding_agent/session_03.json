@@ -1,0 +1,727 @@
+{
+  "session_id": "sess_coding_03_6576c912",
+  "user_id": "user-903",
+  "task_id": "c4e9f70b-6a21-4d88-bf35-11a0d7c5e932",
+  "agent_kind": "coding_agent",
+  "scenario": "Long trace \u2014 20 spans of exploration on an unfamiliar module.",
+  "resource_attributes": {
+    "service.name": "pr-review-agent",
+    "arthur.task": "c4e9f70b-6a21-4d88-bf35-11a0d7c5e932"
+  },
+  "trace_count": 1,
+  "span_count": 13,
+  "traces": [
+    {
+      "trace_id": "48eb5ba6e6a9d427c55732dbcdc7dbcf",
+      "root_span_id": "c25d27f5aad27b46",
+      "spans": [
+        {
+          "traceId": "48eb5ba6e6a9d427c55732dbcdc7dbcf",
+          "spanId": "c25d27f5aad27b46",
+          "name": "review_pr",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788564060000000000",
+          "endTimeUnixNano": "1788564118497999872",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "AGENT"
+              }
+            },
+            "input": {
+              "value": "Review PR #2247: Refactor span normalization"
+            },
+            "output": {
+              "value": "1 behavioural gap (nested JSON deserialization), 1 missing test, 2 nits."
+            },
+            "agent": {
+              "name": "pr-review-agent"
+            },
+            "metadata": {
+              "repo": "arthur-ai/arthur-engine",
+              "pr": 2247,
+              "base": "dev"
+            },
+            "session": {
+              "id": "sess_coding_03_6576c912"
+            },
+            "user": {
+              "id": "user-903"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "48eb5ba6e6a9d427c55732dbcdc7dbcf",
+          "spanId": "68fd603ea825f40e",
+          "name": "get_diff",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788564060029999872",
+          "endTimeUnixNano": "1788564060369999872",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "TOOL"
+              }
+            },
+            "tool": {
+              "name": "get_diff"
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "pr": 2247
+              }
+            },
+            "output": {
+              "mime_type": "application/json",
+              "value": {
+                "files": 4,
+                "additions": 210,
+                "deletions": 178
+              }
+            },
+            "session": {
+              "id": "sess_coding_03_6576c912"
+            },
+            "user": {
+              "id": "user-903"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "c25d27f5aad27b46",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "48eb5ba6e6a9d427c55732dbcdc7dbcf",
+          "spanId": "9a7d3463bfb4fdc0",
+          "name": "ChatCompletion",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788564060374000128",
+          "endTimeUnixNano": "1788564062473999872",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "LLM"
+              }
+            },
+            "llm": {
+              "model_name": "claude-sonnet-5",
+              "provider": "anthropic",
+              "system": "anthropic",
+              "invocation_parameters": {
+                "model": "claude-sonnet-5",
+                "temperature": 0.2
+              },
+              "token_count": {
+                "prompt": 3100,
+                "completion": 220,
+                "total": 3320
+              },
+              "input_messages": [
+                {
+                  "message": {
+                    "role": "system",
+                    "content": "You are a code review agent. Investigate before editing."
+                  }
+                },
+                {
+                  "message": {
+                    "role": "user",
+                    "content": "Plan the review."
+                  }
+                }
+              ],
+              "output_messages": [
+                {
+                  "message": {
+                    "role": "assistant",
+                    "content": "Large refactor. Map the call graph before judging correctness."
+                  }
+                }
+              ]
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "messages": [
+                  {
+                    "role": "system",
+                    "content": "You are a code review agent. Investigate before editing."
+                  },
+                  {
+                    "role": "user",
+                    "content": "Plan the review."
+                  }
+                ]
+              }
+            },
+            "output": {
+              "value": "Large refactor. Map the call graph before judging correctness."
+            },
+            "session": {
+              "id": "sess_coding_03_6576c912"
+            },
+            "user": {
+              "id": "user-903"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "c25d27f5aad27b46",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "48eb5ba6e6a9d427c55732dbcdc7dbcf",
+          "spanId": "d7cd031564227ace",
+          "name": "read_file",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788564062477999872",
+          "endTimeUnixNano": "1788564062517999872",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "TOOL"
+              }
+            },
+            "tool": {
+              "name": "read_file",
+              "description": "Read a file from the repository."
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "path": "genai-engine/src/services/trace/span_normalization_service.py"
+              }
+            },
+            "output": {
+              "mime_type": "application/json",
+              "value": {
+                "lines": 388,
+                "truncated": false
+              }
+            },
+            "session": {
+              "id": "sess_coding_03_6576c912"
+            },
+            "user": {
+              "id": "user-903"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "c25d27f5aad27b46",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "48eb5ba6e6a9d427c55732dbcdc7dbcf",
+          "spanId": "0858e0e43c75c0b7",
+          "name": "read_file",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788564062522000128",
+          "endTimeUnixNano": "1788564062562000128",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "TOOL"
+              }
+            },
+            "tool": {
+              "name": "read_file",
+              "description": "Read a file from the repository."
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "path": "genai-engine/src/services/trace/span_semantic_conventions.py"
+              }
+            },
+            "output": {
+              "mime_type": "application/json",
+              "value": {
+                "lines": 240,
+                "truncated": false
+              }
+            },
+            "session": {
+              "id": "sess_coding_03_6576c912"
+            },
+            "user": {
+              "id": "user-903"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "c25d27f5aad27b46",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "48eb5ba6e6a9d427c55732dbcdc7dbcf",
+          "spanId": "16159021df8af522",
+          "name": "grep",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788564062565999872",
+          "endTimeUnixNano": "1788564062660999936",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "TOOL"
+              }
+            },
+            "tool": {
+              "name": "grep"
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "pattern": "normalize_span_to_nested_dict",
+                "path": "src/"
+              }
+            },
+            "output": {
+              "mime_type": "application/json",
+              "value": {
+                "matches": [
+                  "trace_ingestion_service.py:381",
+                  "conftest.py:35"
+                ]
+              }
+            },
+            "session": {
+              "id": "sess_coding_03_6576c912"
+            },
+            "user": {
+              "id": "user-903"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "c25d27f5aad27b46",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "48eb5ba6e6a9d427c55732dbcdc7dbcf",
+          "spanId": "f0dcca52c17a859d",
+          "name": "read_file",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788564062664999936",
+          "endTimeUnixNano": "1788564062704999936",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "TOOL"
+              }
+            },
+            "tool": {
+              "name": "read_file",
+              "description": "Read a file from the repository."
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "path": "genai-engine/src/services/trace/trace_ingestion_service.py"
+              }
+            },
+            "output": {
+              "mime_type": "application/json",
+              "value": {
+                "lines": 789,
+                "truncated": false
+              }
+            },
+            "session": {
+              "id": "sess_coding_03_6576c912"
+            },
+            "user": {
+              "id": "user-903"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "c25d27f5aad27b46",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "48eb5ba6e6a9d427c55732dbcdc7dbcf",
+          "spanId": "dbde20329d3b60eb",
+          "name": "ChatCompletion",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788564062709000192",
+          "endTimeUnixNano": "1788564066108999936",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "LLM"
+              }
+            },
+            "llm": {
+              "model_name": "claude-sonnet-5",
+              "provider": "anthropic",
+              "system": "anthropic",
+              "invocation_parameters": {
+                "model": "claude-sonnet-5",
+                "temperature": 0.2
+              },
+              "token_count": {
+                "prompt": 8800,
+                "completion": 420,
+                "total": 9220
+              },
+              "input_messages": [
+                {
+                  "message": {
+                    "role": "system",
+                    "content": "You are a code review agent. Investigate before editing."
+                  }
+                },
+                {
+                  "message": {
+                    "role": "user",
+                    "content": "Does the refactor preserve JSON deserialization behaviour?"
+                  }
+                }
+              ],
+              "output_messages": [
+                {
+                  "message": {
+                    "role": "assistant",
+                    "content": "Mostly. should_deserialize_as_json only compares the last dot-segment, so tool_call.function.arguments never matches."
+                  }
+                }
+              ]
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "messages": [
+                  {
+                    "role": "system",
+                    "content": "You are a code review agent. Investigate before editing."
+                  },
+                  {
+                    "role": "user",
+                    "content": "Does the refactor preserve JSON deserialization behaviour?"
+                  }
+                ]
+              }
+            },
+            "output": {
+              "value": "Mostly. should_deserialize_as_json only compares the last dot-segment, so tool_call.function.arguments never matches."
+            },
+            "session": {
+              "id": "sess_coding_03_6576c912"
+            },
+            "user": {
+              "id": "user-903"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "c25d27f5aad27b46",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "48eb5ba6e6a9d427c55732dbcdc7dbcf",
+          "spanId": "28d49524810801d8",
+          "name": "grep",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788564066112999936",
+          "endTimeUnixNano": "1788564066208000000",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "TOOL"
+              }
+            },
+            "tool": {
+              "name": "grep"
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "pattern": "tool_call.function.arguments",
+                "path": "src/"
+              }
+            },
+            "output": {
+              "mime_type": "application/json",
+              "value": {
+                "matches": [
+                  "span_semantic_conventions.py:44"
+                ]
+              }
+            },
+            "session": {
+              "id": "sess_coding_03_6576c912"
+            },
+            "user": {
+              "id": "user-903"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "c25d27f5aad27b46",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "48eb5ba6e6a9d427c55732dbcdc7dbcf",
+          "spanId": "93d29e0e1f6bd144",
+          "name": "read_file",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788564066212000000",
+          "endTimeUnixNano": "1788564066252000000",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "TOOL"
+              }
+            },
+            "tool": {
+              "name": "read_file",
+              "description": "Read a file from the repository."
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "path": "genai-engine/tests/unit/services/test_internal_trace_service.py"
+              }
+            },
+            "output": {
+              "mime_type": "application/json",
+              "value": {
+                "lines": 512,
+                "truncated": false
+              }
+            },
+            "session": {
+              "id": "sess_coding_03_6576c912"
+            },
+            "user": {
+              "id": "user-903"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "c25d27f5aad27b46",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "48eb5ba6e6a9d427c55732dbcdc7dbcf",
+          "spanId": "2d6b268688afa881",
+          "name": "ChatCompletion",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788564066256000000",
+          "endTimeUnixNano": "1788564068356000000",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "LLM"
+              }
+            },
+            "llm": {
+              "model_name": "claude-sonnet-5",
+              "provider": "anthropic",
+              "system": "anthropic",
+              "invocation_parameters": {
+                "model": "claude-sonnet-5",
+                "temperature": 0.2
+              },
+              "token_count": {
+                "prompt": 6400,
+                "completion": 190,
+                "total": 6590
+              },
+              "input_messages": [
+                {
+                  "message": {
+                    "role": "system",
+                    "content": "You are a code review agent. Investigate before editing."
+                  }
+                },
+                {
+                  "message": {
+                    "role": "user",
+                    "content": "Is there a test covering it?"
+                  }
+                }
+              ],
+              "output_messages": [
+                {
+                  "message": {
+                    "role": "assistant",
+                    "content": "No test asserts the deserialized form."
+                  }
+                }
+              ]
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "messages": [
+                  {
+                    "role": "system",
+                    "content": "You are a code review agent. Investigate before editing."
+                  },
+                  {
+                    "role": "user",
+                    "content": "Is there a test covering it?"
+                  }
+                ]
+              }
+            },
+            "output": {
+              "value": "No test asserts the deserialized form."
+            },
+            "session": {
+              "id": "sess_coding_03_6576c912"
+            },
+            "user": {
+              "id": "user-903"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "c25d27f5aad27b46",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "48eb5ba6e6a9d427c55732dbcdc7dbcf",
+          "spanId": "ab8ca83999358cd7",
+          "name": "run_tests",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788564068360000000",
+          "endTimeUnixNano": "1788564116360000000",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "TOOL"
+              }
+            },
+            "tool": {
+              "name": "run_tests"
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "suite": "unit"
+              }
+            },
+            "output": {
+              "mime_type": "application/json",
+              "value": {
+                "passed": 412,
+                "failed": 0,
+                "duration_s": 48
+              }
+            },
+            "session": {
+              "id": "sess_coding_03_6576c912"
+            },
+            "user": {
+              "id": "user-903"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "c25d27f5aad27b46",
+          "arthur_span_version": "arthur_span_v1"
+        },
+        {
+          "traceId": "48eb5ba6e6a9d427c55732dbcdc7dbcf",
+          "spanId": "279ec2fa746c7039",
+          "name": "ChatCompletion",
+          "kind": "SPAN_KIND_INTERNAL",
+          "startTimeUnixNano": "1788564116364000000",
+          "endTimeUnixNano": "1788564118464000000",
+          "attributes": {
+            "openinference": {
+              "span": {
+                "kind": "LLM"
+              }
+            },
+            "llm": {
+              "model_name": "claude-sonnet-5",
+              "provider": "anthropic",
+              "system": "anthropic",
+              "invocation_parameters": {
+                "model": "claude-sonnet-5",
+                "temperature": 0.2
+              },
+              "token_count": {
+                "prompt": 4200,
+                "completion": 380,
+                "total": 4580
+              },
+              "input_messages": [
+                {
+                  "message": {
+                    "role": "system",
+                    "content": "You are a code review agent. Investigate before editing."
+                  }
+                },
+                {
+                  "message": {
+                    "role": "user",
+                    "content": "Write up findings."
+                  }
+                }
+              ],
+              "output_messages": [
+                {
+                  "message": {
+                    "role": "assistant",
+                    "content": "1 behavioural gap, 1 missing test, 2 naming nits."
+                  }
+                }
+              ]
+            },
+            "input": {
+              "mime_type": "application/json",
+              "value": {
+                "messages": [
+                  {
+                    "role": "system",
+                    "content": "You are a code review agent. Investigate before editing."
+                  },
+                  {
+                    "role": "user",
+                    "content": "Write up findings."
+                  }
+                ]
+              }
+            },
+            "output": {
+              "value": "1 behavioural gap, 1 missing test, 2 naming nits."
+            },
+            "session": {
+              "id": "sess_coding_03_6576c912"
+            },
+            "user": {
+              "id": "user-903"
+            }
+          },
+          "status": {
+            "code": "STATUS_CODE_OK"
+          },
+          "parentSpanId": "c25d27f5aad27b46",
+          "arthur_span_version": "arthur_span_v1"
+        }
+      ]
+    }
+  ]
+}
