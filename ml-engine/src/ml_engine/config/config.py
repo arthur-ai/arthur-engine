@@ -54,3 +54,10 @@ class Config:
             settings.GENAI_ENGINE_MAX_PAGE_SIZE,
             "GENAI_ENGINE_MAX_PAGE_SIZE",
         )
+
+    @staticmethod
+    def ml_engine_health_port() -> int:
+        return arthur_common_config.convert_to_int(
+            settings.ML_ENGINE_PORT,
+            "ML_ENGINE_PORT",
+        )

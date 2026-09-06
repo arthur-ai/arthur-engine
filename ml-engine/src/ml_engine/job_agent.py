@@ -77,7 +77,9 @@ class JobAgent:
         self.running_jobs: Dict[str, RunningJob] = {}
         self.shutting_down = False
         self.shutdown_grace_period_seconds = shutdown_grace_period_seconds
-        self.health_check: HealthCheck = HealthCheck()
+        self.health_check: HealthCheck = HealthCheck(
+            port=Config.ml_engine_health_port(),
+        )
 
     def allocated_memory_mb(self) -> int:
         used_memory = sum(job.memory_requirements for job in self.running_jobs.values())

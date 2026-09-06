@@ -6,6 +6,7 @@ ARTHUR_API_HOST: https://platform.arthur.ai
 ###############################################
 # General settings
 FETCH_RAW_DATA_ENABLED: true
+ML_ENGINE_PORT: 7492
 ###############################################
 # Engine Internal Shield Connection
 GENAI_ENGINE_INTERNAL_API_KEY: ""

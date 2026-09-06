@@ -74,3 +74,13 @@ def test_genai_engine_max_page_size():
     with patch("config.config.settings") as mock_settings:
         mock_settings.GENAI_ENGINE_MAX_PAGE_SIZE = "750"
         assert Config.genai_engine_max_page_size() == 750
+
+
+def test_ml_engine_health_port():
+    with patch("config.config.settings") as mock_settings:
+        mock_settings.ML_ENGINE_PORT = 7492
+        assert Config.ml_engine_health_port() == 7492
+
+    with patch("config.config.settings") as mock_settings:
+        mock_settings.ML_ENGINE_PORT = "7495"
+        assert Config.ml_engine_health_port() == 7495
