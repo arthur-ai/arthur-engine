@@ -5,7 +5,7 @@
   "type": "module",
   "packageManager": "yarn@4.18.0",
   "resolutions": {
-    "@arizeai/openinference-semantic-conventions": "2.8.0",
+    "@arizeai/openinference-semantic-conventions": "2.9.0",
     "pdfjs-dist": "6.3.289"
   },
   "scripts": {
@@ -26,9 +26,9 @@
     "@amplitude/analytics-browser": "2.45.8",
     "@amplitude/experiment-js-client": "^1.21.1",
     "@amplitude/plugin-session-replay-browser": "^1.33.6",
-    "@arizeai/openinference-semantic-conventions": "2.8.0",
+    "@arizeai/openinference-semantic-conventions": "2.9.0",
     "@arthur/shared-components": "^3.23.3",
-    "@base-ui/react": "1.7.0",
+    "@base-ui/react": "1.8.0",
     "@dnd-kit/core": "6.3.1",
     "@dnd-kit/sortable": "10.0.0",
     "@dnd-kit/utilities": "3.2.2",
@@ -60,7 +60,7 @@
     "prism-react-renderer": "2.4.1",
     "react": "19.2.8",
     "react-dom": "19.2.8",
-    "react-error-boundary": "6.1.4",
+    "react-error-boundary": "6.1.5",
     "react-markdown": "10.1.0",
     "react-router": "^8.3.0",
     "react-use-measure": "2.1.7",
@@ -86,7 +86,7 @@
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.7",
     "@vitejs/plugin-react": "6.1.1",
-    "eslint": "10.9.1",
+    "eslint": "10.10.0",
     "eslint-config-prettier": "10.1.8",
     "eslint-plugin-import-x": "4.17.1",
     "eslint-plugin-react-hooks": "7.1.1",
