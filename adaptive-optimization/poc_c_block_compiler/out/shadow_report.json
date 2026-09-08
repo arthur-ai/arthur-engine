@@ -1,0 +1,247 @@
+{
+  "block": [
+    "block.dispatch",
+    "tool:lookup_order",
+    "block.render"
+  ],
+  "occurrences_baseline": 260,
+  "replay": {
+    "windows": 260,
+    "admitted": 260,
+    "coverage": 1.0,
+    "agreement": 1.0
+  },
+  "baseline_coverage": 1.0,
+  "baseline_agreement": 1.0,
+  "final_state": "DEMOTED",
+  "alerts": [
+    {
+      "day": 8,
+      "kind": "promote",
+      "message": "baseline established over 8 days: coverage 100.0%, sampled agreement 100.0%",
+      "action": "fast path serves guarded traffic; sampling continues at 20%"
+    },
+    {
+      "day": 10,
+      "kind": "coverage",
+      "message": "guard coverage 53.8% vs baseline 100.0% \u2014 the input distribution moved",
+      "action": "no quality risk: rejected traffic already falls back to the model. Savings shrink until the guard is re-fit."
+    },
+    {
+      "day": 11,
+      "kind": "coverage",
+      "message": "guard coverage 38.5% vs baseline 100.0% \u2014 the input distribution moved",
+      "action": "no quality risk: rejected traffic already falls back to the model. Savings shrink until the guard is re-fit."
+    },
+    {
+      "day": 12,
+      "kind": "coverage",
+      "message": "guard coverage 46.2% vs baseline 100.0% \u2014 the input distribution moved",
+      "action": "no quality risk: rejected traffic already falls back to the model. Savings shrink until the guard is re-fit."
+    },
+    {
+      "day": 13,
+      "kind": "coverage",
+      "message": "guard coverage 30.8% vs baseline 100.0% \u2014 the input distribution moved",
+      "action": "no quality risk: rejected traffic already falls back to the model. Savings shrink until the guard is re-fit."
+    },
+    {
+      "day": 14,
+      "kind": "coverage",
+      "message": "guard coverage 46.2% vs baseline 100.0% \u2014 the input distribution moved",
+      "action": "no quality risk: rejected traffic already falls back to the model. Savings shrink until the guard is re-fit."
+    },
+    {
+      "day": 15,
+      "kind": "agreement",
+      "message": "sampled agreement 0.0% vs baseline 100.0% on traffic the guard still accepts \u2014 the correct answer changed, not the input",
+      "action": "DEMOTE the fast path now. The guard cannot detect this class of failure; only the sampling slice can."
+    },
+    {
+      "day": 16,
+      "kind": "agreement",
+      "message": "sampled agreement 0.0% vs baseline 100.0% on traffic the guard still accepts \u2014 the correct answer changed, not the input",
+      "action": "DEMOTE the fast path now. The guard cannot detect this class of failure; only the sampling slice can."
+    },
+    {
+      "day": 17,
+      "kind": "agreement",
+      "message": "sampled agreement 0.0% vs baseline 100.0% on traffic the guard still accepts \u2014 the correct answer changed, not the input",
+      "action": "DEMOTE the fast path now. The guard cannot detect this class of failure; only the sampling slice can."
+    },
+    {
+      "day": 18,
+      "kind": "agreement",
+      "message": "sampled agreement 0.0% vs baseline 100.0% on traffic the guard still accepts \u2014 the correct answer changed, not the input",
+      "action": "DEMOTE the fast path now. The guard cannot detect this class of failure; only the sampling slice can."
+    },
+    {
+      "day": 19,
+      "kind": "agreement",
+      "message": "sampled agreement 0.0% vs baseline 100.0% on traffic the guard still accepts \u2014 the correct answer changed, not the input",
+      "action": "DEMOTE the fast path now. The guard cannot detect this class of failure; only the sampling slice can."
+    }
+  ],
+  "daily": [
+    {
+      "day": 0,
+      "phase": "baseline",
+      "seen": 26,
+      "coverage": 1.0,
+      "sampled": 5,
+      "sampled_agreement": 1.0
+    },
+    {
+      "day": 1,
+      "phase": "baseline",
+      "seen": 26,
+      "coverage": 1.0,
+      "sampled": 5,
+      "sampled_agreement": 1.0
+    },
+    {
+      "day": 2,
+      "phase": "baseline",
+      "seen": 26,
+      "coverage": 1.0,
+      "sampled": 5,
+      "sampled_agreement": 1.0
+    },
+    {
+      "day": 3,
+      "phase": "baseline",
+      "seen": 26,
+      "coverage": 1.0,
+      "sampled": 5,
+      "sampled_agreement": 1.0
+    },
+    {
+      "day": 4,
+      "phase": "baseline",
+      "seen": 26,
+      "coverage": 1.0,
+      "sampled": 6,
+      "sampled_agreement": 1.0
+    },
+    {
+      "day": 5,
+      "phase": "baseline",
+      "seen": 26,
+      "coverage": 1.0,
+      "sampled": 5,
+      "sampled_agreement": 1.0
+    },
+    {
+      "day": 6,
+      "phase": "baseline",
+      "seen": 26,
+      "coverage": 1.0,
+      "sampled": 5,
+      "sampled_agreement": 1.0
+    },
+    {
+      "day": 7,
+      "phase": "baseline",
+      "seen": 26,
+      "coverage": 1.0,
+      "sampled": 5,
+      "sampled_agreement": 1.0
+    },
+    {
+      "day": 8,
+      "phase": "baseline",
+      "seen": 26,
+      "coverage": 1.0,
+      "sampled": 5,
+      "sampled_agreement": 1.0
+    },
+    {
+      "day": 9,
+      "phase": "baseline",
+      "seen": 26,
+      "coverage": 1.0,
+      "sampled": 6,
+      "sampled_agreement": 1.0
+    },
+    {
+      "day": 10,
+      "phase": "input_drift",
+      "seen": 26,
+      "coverage": 0.5385,
+      "sampled": 2,
+      "sampled_agreement": 1.0
+    },
+    {
+      "day": 11,
+      "phase": "input_drift",
+      "seen": 26,
+      "coverage": 0.3846,
+      "sampled": 2,
+      "sampled_agreement": 1.0
+    },
+    {
+      "day": 12,
+      "phase": "input_drift",
+      "seen": 26,
+      "coverage": 0.4615,
+      "sampled": 3,
+      "sampled_agreement": 1.0
+    },
+    {
+      "day": 13,
+      "phase": "input_drift",
+      "seen": 26,
+      "coverage": 0.3077,
+      "sampled": 1,
+      "sampled_agreement": 1.0
+    },
+    {
+      "day": 14,
+      "phase": "input_drift",
+      "seen": 26,
+      "coverage": 0.4615,
+      "sampled": 3,
+      "sampled_agreement": 1.0
+    },
+    {
+      "day": 15,
+      "phase": "output_drift",
+      "seen": 26,
+      "coverage": 1.0,
+      "sampled": 5,
+      "sampled_agreement": 0.0
+    },
+    {
+      "day": 16,
+      "phase": "output_drift",
+      "seen": 26,
+      "coverage": 1.0,
+      "sampled": 5,
+      "sampled_agreement": 0.0
+    },
+    {
+      "day": 17,
+      "phase": "output_drift",
+      "seen": 26,
+      "coverage": 1.0,
+      "sampled": 5,
+      "sampled_agreement": 0.0
+    },
+    {
+      "day": 18,
+      "phase": "output_drift",
+      "seen": 26,
+      "coverage": 1.0,
+      "sampled": 6,
+      "sampled_agreement": 0.0
+    },
+    {
+      "day": 19,
+      "phase": "output_drift",
+      "seen": 26,
+      "coverage": 1.0,
+      "sampled": 5,
+      "sampled_agreement": 0.0
+    }
+  ]
+}

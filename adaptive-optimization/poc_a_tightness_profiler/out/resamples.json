@@ -1,0 +1,2992 @@
+{
+ "triage.urgency": [
+  {
+   "input": "[ticket] intermittent 500 error on report export",
+   "outputs": [
+    "p2",
+    "p2",
+    "p2"
+   ]
+  },
+  {
+   "input": "[ticket] can you send last month invoice again",
+   "outputs": [
+    "p3",
+    "p3",
+    "p3"
+   ]
+  },
+  {
+   "input": "[ticket] can you send last month invoice again",
+   "outputs": [
+    "p3",
+    "p3",
+    "p3"
+   ]
+  },
+  {
+   "input": "[ticket] is there a dark mode setting",
+   "outputs": [
+    "p3",
+    "p3",
+    "p3"
+   ]
+  },
+  {
+   "input": "[ticket] question about seat pricing for next year",
+   "outputs": [
+    "p3",
+    "p3",
+    "p3"
+   ]
+  },
+  {
+   "input": "[ticket] how do i change my billing email",
+   "outputs": [
+    "p3",
+    "p3",
+    "p3"
+   ]
+  },
+  {
+   "input": "[ticket] where do i find the audit log",
+   "outputs": [
+    "p3",
+    "p3",
+    "p3"
+   ]
+  },
+  {
+   "input": "[ticket] total outage across all regions",
+   "outputs": [
+    "p1",
+    "p1",
+    "p1"
+   ]
+  },
+  {
+   "input": "[ticket] production is hard down since 04:00",
+   "outputs": [
+    "p1",
+    "p1",
+    "p1"
+   ]
+  },
+  {
+   "input": "[ticket] webhooks are lagging by twenty minutes",
+   "outputs": [
+    "p2",
+    "p2",
+    "p2"
+   ]
+  },
+  {
+   "input": "[ticket] can you send last month invoice again",
+   "outputs": [
+    "p3",
+    "p3",
+    "p3"
+   ]
+  },
+  {
+   "input": "[ticket] search results are degraded for some users",
+   "outputs": [
+    "p2",
+    "p2",
+    "p2"
+   ]
+  },
+  {
+   "input": "[ticket] can you send last month invoice again",
+   "outputs": [
+    "p3",
+    "p3",
+    "p3"
+   ]
+  },
+  {
+   "input": "[ticket] question about seat pricing for next year",
+   "outputs": [
+    "p3",
+    "p3",
+    "p3"
+   ]
+  },
+  {
+   "input": "[ticket] nobody can access the dashboard",
+   "outputs": [
+    "p1",
+    "p1",
+    "p1"
+   ]
+  },
+  {
+   "input": "[ticket] data loss suspected after the failed migration",
+   "outputs": [
+    "p1",
+    "p1",
+    "p1"
+   ]
+  },
+  {
+   "input": "[ticket] where do i find the audit log",
+   "outputs": [
+    "p3",
+    "p3",
+    "p3"
+   ]
+  },
+  {
+   "input": "[ticket] search results are degraded for some users",
+   "outputs": [
+    "p2",
+    "p2",
+    "p2"
+   ]
+  },
+  {
+   "input": "[ticket] data loss suspected after the failed migration",
+   "outputs": [
+    "p1",
+    "p1",
+    "p1"
+   ]
+  },
+  {
+   "input": "[ticket] question about seat pricing for next year",
+   "outputs": [
+    "p3",
+    "p3",
+    "p3"
+   ]
+  },
+  {
+   "input": "[ticket] responses are extremely slow this morning",
+   "outputs": [
+    "p2",
+    "p2",
+    "p2"
+   ]
+  },
+  {
+   "input": "[ticket] how do i change my billing email",
+   "outputs": [
+    "p3",
+    "p3",
+    "p3"
+   ]
+  },
+  {
+   "input": "[ticket] how do i change my billing email",
+   "outputs": [
+    "p3",
+    "p3",
+    "p3"
+   ]
+  },
+  {
+   "input": "[ticket] search results are degraded for some users",
+   "outputs": [
+    "p2",
+    "p2",
+    "p2"
+   ]
+  },
+  {
+   "input": "[ticket] nobody can access the dashboard",
+   "outputs": [
+    "p1",
+    "p1",
+    "p1"
+   ]
+  },
+  {
+   "input": "[ticket] how do i change my billing email",
+   "outputs": [
+    "p3",
+    "p3",
+    "p3"
+   ]
+  },
+  {
+   "input": "[ticket] search results are degraded for some users",
+   "outputs": [
+    "p2",
+    "p2",
+    "p2"
+   ]
+  },
+  {
+   "input": "[ticket] webhooks are lagging by twenty minutes",
+   "outputs": [
+    "p2",
+    "p2",
+    "p2"
+   ]
+  },
+  {
+   "input": "[ticket] where do i find the audit log",
+   "outputs": [
+    "p3",
+    "p3",
+    "p3"
+   ]
+  },
+  {
+   "input": "[ticket] can you send last month invoice again",
+   "outputs": [
+    "p3",
+    "p3",
+    "p3"
+   ]
+  },
+  {
+   "input": "[ticket] how do i change my billing email",
+   "outputs": [
+    "p3",
+    "p3",
+    "p3"
+   ]
+  },
+  {
+   "input": "[ticket] nobody can access the dashboard",
+   "outputs": [
+    "p1",
+    "p1",
+    "p1"
+   ]
+  },
+  {
+   "input": "[ticket] search results are degraded for some users",
+   "outputs": [
+    "p2",
+    "p2",
+    "p2"
+   ]
+  },
+  {
+   "input": "[ticket] can you send last month invoice again",
+   "outputs": [
+    "p3",
+    "p3",
+    "p3"
+   ]
+  },
+  {
+   "input": "[ticket] we suspect a security breach in our account",
+   "outputs": [
+    "p1",
+    "p1",
+    "p1"
+   ]
+  },
+  {
+   "input": "[ticket] is there a dark mode setting",
+   "outputs": [
+    "p3",
+    "p3",
+    "p3"
+   ]
+  },
+  {
+   "input": "[ticket] please update our company address",
+   "outputs": [
+    "p3",
+    "p3",
+    "p3"
+   ]
+  },
+  {
+   "input": "[ticket] production is hard down since 04:00",
+   "outputs": [
+    "p1",
+    "p1",
+    "p1"
+   ]
+  },
+  {
+   "input": "[ticket] the checkout api is completely down",
+   "outputs": [
+    "p1",
+    "p1",
+    "p1"
+   ]
+  },
+  {
+   "input": "[ticket] search results are degraded for some users",
+   "outputs": [
+    "p2",
+    "p2",
+    "p2"
+   ]
+  },
+  {
+   "input": "[ticket] question about seat pricing for next year",
+   "outputs": [
+    "p3",
+    "p3",
+    "p3"
+   ]
+  },
+  {
+   "input": "[ticket] search results are degraded for some users",
+   "outputs": [
+    "p2",
+    "p2",
+    "p2"
+   ]
+  },
+  {
+   "input": "[ticket] production is hard down since 04:00",
+   "outputs": [
+    "p1",
+    "p1",
+    "p1"
+   ]
+  },
+  {
+   "input": "[ticket] responses are extremely slow this morning",
+   "outputs": [
+    "p2",
+    "p1",
+    "p2"
+   ]
+  },
+  {
+   "input": "[ticket] webhooks are lagging by twenty minutes",
+   "outputs": [
+    "p2",
+    "p2",
+    "p2"
+   ]
+  },
+  {
+   "input": "[ticket] how do i change my billing email",
+   "outputs": [
+    "p3",
+    "p3",
+    "p3"
+   ]
+  },
+  {
+   "input": "[ticket] intermittent 500 error on report export",
+   "outputs": [
+    "p2",
+    "p2",
+    "p2"
+   ]
+  },
+  {
+   "input": "[ticket] is there a dark mode setting",
+   "outputs": [
+    "p3",
+    "p3",
+    "p3"
+   ]
+  },
+  {
+   "input": "[ticket] question about seat pricing for next year",
+   "outputs": [
+    "p3",
+    "p3",
+    "p3"
+   ]
+  },
+  {
+   "input": "[ticket] question about seat pricing for next year",
+   "outputs": [
+    "p3",
+    "p3",
+    "p3"
+   ]
+  },
+  {
+   "input": "[ticket] responses are extremely slow this morning",
+   "outputs": [
+    "p2",
+    "p2",
+    "p2"
+   ]
+  },
+  {
+   "input": "[ticket] the checkout api is completely down",
+   "outputs": [
+    "p1",
+    "p1",
+    "p1"
+   ]
+  },
+  {
+   "input": "[ticket] the checkout api is completely down",
+   "outputs": [
+    "p1",
+    "p1",
+    "p1"
+   ]
+  },
+  {
+   "input": "[ticket] webhooks are lagging by twenty minutes",
+   "outputs": [
+    "p2",
+    "p2",
+    "p2"
+   ]
+  },
+  {
+   "input": "[ticket] can you send last month invoice again",
+   "outputs": [
+    "p3",
+    "p3",
+    "p3"
+   ]
+  },
+  {
+   "input": "[ticket] nobody can access the dashboard",
+   "outputs": [
+    "p1",
+    "p1",
+    "p1"
+   ]
+  },
+  {
+   "input": "[ticket] we suspect a security breach in our account",
+   "outputs": [
+    "p1",
+    "p1",
+    "p1"
+   ]
+  },
+  {
+   "input": "[ticket] where do i find the audit log",
+   "outputs": [
+    "p3",
+    "p3",
+    "p3"
+   ]
+  },
+  {
+   "input": "[ticket] is there a dark mode setting",
+   "outputs": [
+    "p3",
+    "p3",
+    "p3"
+   ]
+  },
+  {
+   "input": "[ticket] question about seat pricing for next year",
+   "outputs": [
+    "p3",
+    "p3",
+    "p3"
+   ]
+  }
+ ],
+ "route.team": [
+  {
+   "input": "subject: vat issue \u2014 urgent",
+   "outputs": [
+    "billing",
+    "billing",
+    "billing"
+   ]
+  },
+  {
+   "input": "subject: vat issue \u2014 urgent",
+   "outputs": [
+    "billing",
+    "billing",
+    "billing"
+   ]
+  },
+  {
+   "input": "subject: mfa issue \u2014 follow up",
+   "outputs": [
+    "security",
+    "security",
+    "security"
+   ]
+  },
+  {
+   "input": "subject: proration issue \u2014 urgent",
+   "outputs": [
+    "billing",
+    "billing",
+    "billing"
+   ]
+  },
+  {
+   "input": "subject: deploy issue \u2014 follow up",
+   "outputs": [
+    "platform",
+    "platform",
+    "platform"
+   ]
+  },
+  {
+   "input": "subject: soc2 issue \u2014 please advise",
+   "outputs": [
+    "security",
+    "security",
+    "security"
+   ]
+  },
+  {
+   "input": "subject: trial issue \u2014 urgent",
+   "outputs": [
+    "onboarding",
+    "onboarding",
+    "onboarding"
+   ]
+  },
+  {
+   "input": "something seems off since yesterday",
+   "outputs": [
+    "platform",
+    "platform",
+    "platform"
+   ]
+  },
+  {
+   "input": "subject: vat issue \u2014 follow up",
+   "outputs": [
+    "billing",
+    "billing",
+    "billing"
+   ]
+  },
+  {
+   "input": "subject: phishing issue \u2014 urgent",
+   "outputs": [
+    "security",
+    "security",
+    "security"
+   ]
+  },
+  {
+   "input": "subject: sandbox issue \u2014 please advise",
+   "outputs": [
+    "onboarding",
+    "onboarding",
+    "onboarding"
+   ]
+  },
+  {
+   "input": "subject: cluster issue \u2014 urgent",
+   "outputs": [
+    "platform",
+    "platform",
+    "platform"
+   ]
+  },
+  {
+   "input": "subject: proration issue \u2014 follow up",
+   "outputs": [
+    "billing",
+    "billing",
+    "billing"
+   ]
+  },
+  {
+   "input": "subject: throughput issue \u2014 urgent",
+   "outputs": [
+    "platform",
+    "platform",
+    "platform"
+   ]
+  },
+  {
+   "input": "subject: migration plan issue \u2014 follow up",
+   "outputs": [
+    "onboarding",
+    "onboarding",
+    "onboarding"
+   ]
+  },
+  {
+   "input": "subject: invoice issue \u2014 follow up",
+   "outputs": [
+    "billing",
+    "billing",
+    "billing"
+   ]
+  },
+  {
+   "input": "subject: mfa issue \u2014 please advise",
+   "outputs": [
+    "security",
+    "security",
+    "security"
+   ]
+  },
+  {
+   "input": "subject: kickoff issue \u2014 follow up",
+   "outputs": [
+    "onboarding",
+    "onboarding",
+    "onboarding"
+   ]
+  },
+  {
+   "input": "subject: quota issue \u2014 urgent",
+   "outputs": [
+    "platform",
+    "platform",
+    "platform"
+   ]
+  },
+  {
+   "input": "subject: deploy issue \u2014 follow up",
+   "outputs": [
+    "platform",
+    "platform",
+    "platform"
+   ]
+  },
+  {
+   "input": "subject: pentest issue \u2014 urgent",
+   "outputs": [
+    "security",
+    "security",
+    "security"
+   ]
+  },
+  {
+   "input": "this is not working properly",
+   "outputs": [
+    "security",
+    "security",
+    "security"
+   ]
+  },
+  {
+   "input": "subject: vat issue \u2014 urgent",
+   "outputs": [
+    "billing",
+    "billing",
+    "billing"
+   ]
+  },
+  {
+   "input": "subject: proration issue \u2014 follow up",
+   "outputs": [
+    "billing",
+    "billing",
+    "billing"
+   ]
+  },
+  {
+   "input": "subject: cluster issue \u2014 follow up",
+   "outputs": [
+    "platform",
+    "platform",
+    "platform"
+   ]
+  },
+  {
+   "input": "subject: sso setup issue \u2014 follow up",
+   "outputs": [
+    "onboarding",
+    "onboarding",
+    "onboarding"
+   ]
+  },
+  {
+   "input": "subject: sso setup issue \u2014 please advise",
+   "outputs": [
+    "onboarding",
+    "onboarding",
+    "onboarding"
+   ]
+  },
+  {
+   "input": "subject: deploy issue \u2014 follow up",
+   "outputs": [
+    "platform",
+    "platform",
+    "platform"
+   ]
+  },
+  {
+   "input": "this is not working properly",
+   "outputs": [
+    "billing",
+    "billing",
+    "billing"
+   ]
+  },
+  {
+   "input": "something seems off since yesterday",
+   "outputs": [
+    "onboarding",
+    "onboarding",
+    "onboarding"
+   ]
+  },
+  {
+   "input": "subject: mfa issue \u2014 urgent",
+   "outputs": [
+    "security",
+    "security",
+    "security"
+   ]
+  },
+  {
+   "input": "subject: proration issue \u2014 follow up",
+   "outputs": [
+    "billing",
+    "billing",
+    "billing"
+   ]
+  },
+  {
+   "input": "subject: phishing issue \u2014 urgent",
+   "outputs": [
+    "security",
+    "security",
+    "security"
+   ]
+  },
+  {
+   "input": "subject: quota issue \u2014 please advise",
+   "outputs": [
+    "platform",
+    "platform",
+    "platform"
+   ]
+  },
+  {
+   "input": "this is not working properly",
+   "outputs": [
+    "platform",
+    "platform",
+    "platform"
+   ]
+  },
+  {
+   "input": "this is not working properly",
+   "outputs": [
+    "billing",
+    "billing",
+    "billing"
+   ]
+  },
+  {
+   "input": "subject: provisioning issue \u2014 please advise",
+   "outputs": [
+    "onboarding",
+    "onboarding",
+    "onboarding"
+   ]
+  },
+  {
+   "input": "subject: provisioning issue \u2014 urgent",
+   "outputs": [
+    "onboarding",
+    "onboarding",
+    "onboarding"
+   ]
+  },
+  {
+   "input": "subject: sandbox issue \u2014 please advise",
+   "outputs": [
+    "onboarding",
+    "onboarding",
+    "onboarding"
+   ]
+  },
+  {
+   "input": "subject: throughput issue \u2014 please advise",
+   "outputs": [
+    "platform",
+    "platform",
+    "platform"
+   ]
+  },
+  {
+   "input": "subject: phishing issue \u2014 urgent",
+   "outputs": [
+    "security",
+    "security",
+    "security"
+   ]
+  },
+  {
+   "input": "subject: receipt issue \u2014 urgent",
+   "outputs": [
+    "billing",
+    "billing",
+    "billing"
+   ]
+  },
+  {
+   "input": "subject: provisioning issue \u2014 urgent",
+   "outputs": [
+    "onboarding",
+    "onboarding",
+    "onboarding"
+   ]
+  },
+  {
+   "input": "subject: invoice issue \u2014 follow up",
+   "outputs": [
+    "billing",
+    "billing",
+    "billing"
+   ]
+  },
+  {
+   "input": "subject: timeout issue \u2014 please advise",
+   "outputs": [
+    "platform",
+    "platform",
+    "platform"
+   ]
+  },
+  {
+   "input": "subject: mfa issue \u2014 please advise",
+   "outputs": [
+    "security",
+    "security",
+    "security"
+   ]
+  },
+  {
+   "input": "subject: mfa issue \u2014 follow up",
+   "outputs": [
+    "security",
+    "security",
+    "security"
+   ]
+  },
+  {
+   "input": "subject: soc2 issue \u2014 please advise",
+   "outputs": [
+    "security",
+    "security",
+    "security"
+   ]
+  },
+  {
+   "input": "subject: throughput issue \u2014 follow up",
+   "outputs": [
+    "platform",
+    "platform",
+    "onboarding"
+   ]
+  },
+  {
+   "input": "subject: refund issue \u2014 follow up",
+   "outputs": [
+    "billing",
+    "billing",
+    "billing"
+   ]
+  },
+  {
+   "input": "subject: breach issue \u2014 urgent",
+   "outputs": [
+    "security",
+    "security",
+    "security"
+   ]
+  },
+  {
+   "input": "subject: sandbox issue \u2014 urgent",
+   "outputs": [
+    "onboarding",
+    "onboarding",
+    "onboarding"
+   ]
+  },
+  {
+   "input": "subject: provisioning issue \u2014 urgent",
+   "outputs": [
+    "onboarding",
+    "onboarding",
+    "onboarding"
+   ]
+  },
+  {
+   "input": "subject: receipt issue \u2014 please advise",
+   "outputs": [
+    "billing",
+    "billing",
+    "billing"
+   ]
+  },
+  {
+   "input": "subject: vat issue \u2014 urgent",
+   "outputs": [
+    "billing",
+    "billing",
+    "billing"
+   ]
+  },
+  {
+   "input": "subject: proration issue \u2014 urgent",
+   "outputs": [
+    "billing",
+    "billing",
+    "billing"
+   ]
+  },
+  {
+   "input": "subject: trial issue \u2014 please advise",
+   "outputs": [
+    "onboarding",
+    "onboarding",
+    "onboarding"
+   ]
+  },
+  {
+   "input": "subject: refund issue \u2014 please advise",
+   "outputs": [
+    "billing",
+    "billing",
+    "billing"
+   ]
+  },
+  {
+   "input": "subject: throughput issue \u2014 urgent",
+   "outputs": [
+    "platform",
+    "platform",
+    "platform"
+   ]
+  },
+  {
+   "input": "subject: soc2 issue \u2014 follow up",
+   "outputs": [
+    "security",
+    "security",
+    "security"
+   ]
+  }
+ ],
+ "lang.detect": [
+  {
+   "input": "la factura esta incorrecta y necesito una copia corregida",
+   "outputs": [
+    "es",
+    "es",
+    "es"
+   ]
+  },
+  {
+   "input": "die rechnung ist falsch und ich brauche eine korrigierte kopie",
+   "outputs": [
+    "de",
+    "de",
+    "de"
+   ]
+  },
+  {
+   "input": "i cannot log in to my account this morning",
+   "outputs": [
+    "en",
+    "en",
+    "en"
+   ]
+  },
+  {
+   "input": "ich kann mich heute morgen nicht anmelden",
+   "outputs": [
+    "de",
+    "de",
+    "de"
+   ]
+  },
+  {
+   "input": "je ne peux pas me connecter a mon compte ce matin",
+   "outputs": [
+    "fr",
+    "fr",
+    "fr"
+   ]
+  },
+  {
+   "input": "la facture est incorrecte et je voudrais une copie corrigee",
+   "outputs": [
+    "fr",
+    "fr",
+    "fr"
+   ]
+  },
+  {
+   "input": "i cannot log in to my account this morning",
+   "outputs": [
+    "en",
+    "en",
+    "en"
+   ]
+  },
+  {
+   "input": "die rechnung ist falsch und ich brauche eine korrigierte kopie",
+   "outputs": [
+    "de",
+    "de",
+    "de"
+   ]
+  },
+  {
+   "input": "la factura esta incorrecta y necesito una copia corregida",
+   "outputs": [
+    "es",
+    "es",
+    "es"
+   ]
+  },
+  {
+   "input": "no puedo acceder a mi cuenta esta manana",
+   "outputs": [
+    "es",
+    "es",
+    "es"
+   ]
+  },
+  {
+   "input": "nao consigo entrar na minha conta esta manha",
+   "outputs": [
+    "pt",
+    "pt",
+    "pt"
+   ]
+  },
+  {
+   "input": "je ne peux pas me connecter a mon compte ce matin",
+   "outputs": [
+    "fr",
+    "fr",
+    "fr"
+   ]
+  },
+  {
+   "input": "i cannot log in to my account this morning",
+   "outputs": [
+    "en",
+    "en",
+    "en"
+   ]
+  },
+  {
+   "input": "la factura esta incorrecta y necesito una copia corregida",
+   "outputs": [
+    "es",
+    "es",
+    "es"
+   ]
+  },
+  {
+   "input": "no puedo acceder a mi cuenta esta manana",
+   "outputs": [
+    "es",
+    "es",
+    "es"
+   ]
+  },
+  {
+   "input": "nao consigo entrar na minha conta esta manha",
+   "outputs": [
+    "pt",
+    "pt",
+    "pt"
+   ]
+  },
+  {
+   "input": "la facture est incorrecte et je voudrais une copie corrigee",
+   "outputs": [
+    "fr",
+    "fr",
+    "fr"
+   ]
+  },
+  {
+   "input": "je ne peux pas me connecter a mon compte ce matin",
+   "outputs": [
+    "fr",
+    "fr",
+    "fr"
+   ]
+  },
+  {
+   "input": "no puedo acceder a mi cuenta esta manana",
+   "outputs": [
+    "de",
+    "es",
+    "es"
+   ]
+  },
+  {
+   "input": "die rechnung ist falsch und ich brauche eine korrigierte kopie",
+   "outputs": [
+    "de",
+    "de",
+    "de"
+   ]
+  },
+  {
+   "input": "the invoice is wrong and i need a corrected copy",
+   "outputs": [
+    "en",
+    "en",
+    "en"
+   ]
+  },
+  {
+   "input": "the invoice is wrong and i need a corrected copy",
+   "outputs": [
+    "en",
+    "en",
+    "en"
+   ]
+  },
+  {
+   "input": "je ne peux pas me connecter a mon compte ce matin",
+   "outputs": [
+    "fr",
+    "fr",
+    "fr"
+   ]
+  },
+  {
+   "input": "a fatura esta incorreta e preciso de uma copia corrigida",
+   "outputs": [
+    "pt",
+    "pt",
+    "pt"
+   ]
+  },
+  {
+   "input": "die rechnung ist falsch und ich brauche eine korrigierte kopie",
+   "outputs": [
+    "de",
+    "de",
+    "pt"
+   ]
+  },
+  {
+   "input": "la facture est incorrecte et je voudrais une copie corrigee",
+   "outputs": [
+    "fr",
+    "fr",
+    "fr"
+   ]
+  },
+  {
+   "input": "the invoice is wrong and i need a corrected copy",
+   "outputs": [
+    "en",
+    "en",
+    "en"
+   ]
+  },
+  {
+   "input": "la factura esta incorrecta y necesito una copia corregida",
+   "outputs": [
+    "es",
+    "es",
+    "es"
+   ]
+  },
+  {
+   "input": "i cannot log in to my account this morning",
+   "outputs": [
+    "en",
+    "en",
+    "en"
+   ]
+  },
+  {
+   "input": "la facture est incorrecte et je voudrais une copie corrigee",
+   "outputs": [
+    "fr",
+    "fr",
+    "fr"
+   ]
+  },
+  {
+   "input": "no puedo acceder a mi cuenta esta manana",
+   "outputs": [
+    "es",
+    "es",
+    "es"
+   ]
+  },
+  {
+   "input": "je ne peux pas me connecter a mon compte ce matin",
+   "outputs": [
+    "fr",
+    "fr",
+    "fr"
+   ]
+  },
+  {
+   "input": "je ne peux pas me connecter a mon compte ce matin",
+   "outputs": [
+    "fr",
+    "fr",
+    "en"
+   ]
+  },
+  {
+   "input": "je ne peux pas me connecter a mon compte ce matin",
+   "outputs": [
+    "fr",
+    "fr",
+    "fr"
+   ]
+  },
+  {
+   "input": "die rechnung ist falsch und ich brauche eine korrigierte kopie",
+   "outputs": [
+    "de",
+    "de",
+    "de"
+   ]
+  },
+  {
+   "input": "ich kann mich heute morgen nicht anmelden",
+   "outputs": [
+    "de",
+    "de",
+    "de"
+   ]
+  },
+  {
+   "input": "la factura esta incorrecta y necesito una copia corregida",
+   "outputs": [
+    "es",
+    "es",
+    "es"
+   ]
+  },
+  {
+   "input": "no puedo acceder a mi cuenta esta manana",
+   "outputs": [
+    "es",
+    "es",
+    "es"
+   ]
+  },
+  {
+   "input": "die rechnung ist falsch und ich brauche eine korrigierte kopie",
+   "outputs": [
+    "de",
+    "de",
+    "de"
+   ]
+  },
+  {
+   "input": "la factura esta incorrecta y necesito una copia corregida",
+   "outputs": [
+    "es",
+    "es",
+    "es"
+   ]
+  },
+  {
+   "input": "je ne peux pas me connecter a mon compte ce matin",
+   "outputs": [
+    "fr",
+    "fr",
+    "fr"
+   ]
+  },
+  {
+   "input": "i cannot log in to my account this morning",
+   "outputs": [
+    "en",
+    "en",
+    "fr"
+   ]
+  },
+  {
+   "input": "je ne peux pas me connecter a mon compte ce matin",
+   "outputs": [
+    "fr",
+    "fr",
+    "fr"
+   ]
+  },
+  {
+   "input": "la factura esta incorrecta y necesito una copia corregida",
+   "outputs": [
+    "es",
+    "es",
+    "es"
+   ]
+  },
+  {
+   "input": "la facture est incorrecte et je voudrais une copie corrigee",
+   "outputs": [
+    "fr",
+    "fr",
+    "fr"
+   ]
+  },
+  {
+   "input": "nao consigo entrar na minha conta esta manha",
+   "outputs": [
+    "pt",
+    "pt",
+    "pt"
+   ]
+  },
+  {
+   "input": "ich kann mich heute morgen nicht anmelden",
+   "outputs": [
+    "de",
+    "de",
+    "de"
+   ]
+  },
+  {
+   "input": "nao consigo entrar na minha conta esta manha",
+   "outputs": [
+    "pt",
+    "pt",
+    "pt"
+   ]
+  },
+  {
+   "input": "nao consigo entrar na minha conta esta manha",
+   "outputs": [
+    "pt",
+    "pt",
+    "pt"
+   ]
+  },
+  {
+   "input": "a fatura esta incorreta e preciso de uma copia corrigida",
+   "outputs": [
+    "pt",
+    "pt",
+    "pt"
+   ]
+  },
+  {
+   "input": "die rechnung ist falsch und ich brauche eine korrigierte kopie",
+   "outputs": [
+    "de",
+    "de",
+    "de"
+   ]
+  },
+  {
+   "input": "the invoice is wrong and i need a corrected copy",
+   "outputs": [
+    "en",
+    "en",
+    "en"
+   ]
+  },
+  {
+   "input": "la facture est incorrecte et je voudrais une copie corrigee",
+   "outputs": [
+    "fr",
+    "fr",
+    "fr"
+   ]
+  },
+  {
+   "input": "die rechnung ist falsch und ich brauche eine korrigierte kopie",
+   "outputs": [
+    "de",
+    "de",
+    "de"
+   ]
+  },
+  {
+   "input": "la facture est incorrecte et je voudrais une copie corrigee",
+   "outputs": [
+    "fr",
+    "fr",
+    "fr"
+   ]
+  },
+  {
+   "input": "la facture est incorrecte et je voudrais une copie corrigee",
+   "outputs": [
+    "fr",
+    "fr",
+    "fr"
+   ]
+  },
+  {
+   "input": "i cannot log in to my account this morning",
+   "outputs": [
+    "en",
+    "en",
+    "en"
+   ]
+  }
+ ],
+ "extract.order_id": [
+  {
+   "input": "order #47538 arrived damaged, please advise",
+   "outputs": [
+    "47538",
+    "47538",
+    "47538"
+   ]
+  },
+  {
+   "input": "can you check the status of #55542 for me",
+   "outputs": [
+    "55542",
+    "55542",
+    "55542"
+   ]
+  },
+  {
+   "input": "where is my order #83147? it was due last week",
+   "outputs": [
+    "83147",
+    "83147",
+    "83147"
+   ]
+  },
+  {
+   "input": "order #54357 arrived damaged, please advise",
+   "outputs": [
+    "54357",
+    "54357",
+    "54357"
+   ]
+  },
+  {
+   "input": "can you check the status of #47966 for me",
+   "outputs": [
+    "47966",
+    "47966",
+    "47966"
+   ]
+  },
+  {
+   "input": "can you check the status of #73894 for me",
+   "outputs": [
+    "73894",
+    "73894",
+    "73894"
+   ]
+  },
+  {
+   "input": "where is my order #14560? it was due last week",
+   "outputs": [
+    "14560",
+    "14560",
+    "14560"
+   ]
+  },
+  {
+   "input": "order #93594 arrived damaged, please advise",
+   "outputs": [
+    "93594",
+    "93594",
+    "93594"
+   ]
+  },
+  {
+   "input": "can you check the status of #91740 for me",
+   "outputs": [
+    "91740",
+    "91740",
+    "91740"
+   ]
+  },
+  {
+   "input": "where is my order #93815? it was due last week",
+   "outputs": [
+    "93815",
+    "93815",
+    "93815"
+   ]
+  },
+  {
+   "input": "can you check the status of #78808 for me",
+   "outputs": [
+    "78808",
+    "78808",
+    "78808"
+   ]
+  },
+  {
+   "input": "order #58473 arrived damaged, please advise",
+   "outputs": [
+    "58473",
+    "58473",
+    "58473"
+   ]
+  },
+  {
+   "input": "can you check the status of #36809 for me",
+   "outputs": [
+    "36809",
+    "36809",
+    "36809"
+   ]
+  },
+  {
+   "input": "i was charged twice for order #70291",
+   "outputs": [
+    "70291",
+    "70291",
+    "82901"
+   ]
+  },
+  {
+   "input": "where is my order #31404? it was due last week",
+   "outputs": [
+    "31404",
+    "31404",
+    "31404"
+   ]
+  },
+  {
+   "input": "where is my order #30669? it was due last week",
+   "outputs": [
+    "30669",
+    "30669",
+    "30669"
+   ]
+  },
+  {
+   "input": "i was charged twice for order #13808",
+   "outputs": [
+    "13808",
+    "13808",
+    "13808"
+   ]
+  },
+  {
+   "input": "where is my order #63081? it was due last week",
+   "outputs": [
+    "63081",
+    "63081",
+    "63081"
+   ]
+  },
+  {
+   "input": "order #65965 arrived damaged, please advise",
+   "outputs": [
+    "65965",
+    "65965",
+    "65965"
+   ]
+  },
+  {
+   "input": "where is my order #16023? it was due last week",
+   "outputs": [
+    "16023",
+    "16023",
+    "16023"
+   ]
+  },
+  {
+   "input": "where is my order #59028? it was due last week",
+   "outputs": [
+    "59028",
+    "59028",
+    "59028"
+   ]
+  },
+  {
+   "input": "i was charged twice for order #90737",
+   "outputs": [
+    "90737",
+    "90737",
+    "90737"
+   ]
+  },
+  {
+   "input": "order #77363 arrived damaged, please advise",
+   "outputs": [
+    "77363",
+    "77363",
+    "77363"
+   ]
+  },
+  {
+   "input": "where is my order #83430? it was due last week",
+   "outputs": [
+    "83430",
+    "83430",
+    "83430"
+   ]
+  },
+  {
+   "input": "can you check the status of #80234 for me",
+   "outputs": [
+    "80234",
+    "80234",
+    "80234"
+   ]
+  },
+  {
+   "input": "can you check the status of #59751 for me",
+   "outputs": [
+    "59751",
+    "59751",
+    "59751"
+   ]
+  },
+  {
+   "input": "can you check the status of #60906 for me",
+   "outputs": [
+    "60906",
+    "58473",
+    "60906"
+   ]
+  },
+  {
+   "input": "order #35255 arrived damaged, please advise",
+   "outputs": [
+    "35255",
+    "35255",
+    "35255"
+   ]
+  },
+  {
+   "input": "i was charged twice for order #68011",
+   "outputs": [
+    "68011",
+    "68011",
+    "68011"
+   ]
+  },
+  {
+   "input": "i was charged twice for order #94173",
+   "outputs": [
+    "94173",
+    "94173",
+    "94173"
+   ]
+  },
+  {
+   "input": "order #87548 arrived damaged, please advise",
+   "outputs": [
+    "87548",
+    "87548",
+    "87548"
+   ]
+  },
+  {
+   "input": "where is my order #1163? it was due last week",
+   "outputs": [
+    "1163",
+    "1163",
+    "1163"
+   ]
+  },
+  {
+   "input": "order #87548 arrived damaged, please advise",
+   "outputs": [
+    "87548",
+    "87548",
+    "87548"
+   ]
+  },
+  {
+   "input": "order #79612 arrived damaged, please advise",
+   "outputs": [
+    "79612",
+    "79612",
+    "79612"
+   ]
+  },
+  {
+   "input": "where is my order #59788? it was due last week",
+   "outputs": [
+    "59788",
+    "59788",
+    "59788"
+   ]
+  },
+  {
+   "input": "can you check the status of #9302 for me",
+   "outputs": [
+    "9302",
+    "9302",
+    "9302"
+   ]
+  },
+  {
+   "input": "where is my order #65936? it was due last week",
+   "outputs": [
+    "65936",
+    "65936",
+    "65936"
+   ]
+  },
+  {
+   "input": "can you check the status of #64632 for me",
+   "outputs": [
+    "64632",
+    "64632",
+    "64632"
+   ]
+  },
+  {
+   "input": "where is my order #54329? it was due last week",
+   "outputs": [
+    "54329",
+    "54329",
+    "54329"
+   ]
+  },
+  {
+   "input": "where is my order #91084? it was due last week",
+   "outputs": [
+    "91084",
+    "91084",
+    "91084"
+   ]
+  },
+  {
+   "input": "where is my order #14111? it was due last week",
+   "outputs": [
+    "14111",
+    "14111",
+    "14111"
+   ]
+  },
+  {
+   "input": "i was charged twice for order #5602",
+   "outputs": [
+    "5602",
+    "5602",
+    "5602"
+   ]
+  },
+  {
+   "input": "i was charged twice for order #91552",
+   "outputs": [
+    "91552",
+    "91552",
+    "91552"
+   ]
+  },
+  {
+   "input": "i was charged twice for order #44884",
+   "outputs": [
+    "44884",
+    "44884",
+    "44884"
+   ]
+  },
+  {
+   "input": "order #6853 arrived damaged, please advise",
+   "outputs": [
+    "6853",
+    "6853",
+    "6853"
+   ]
+  },
+  {
+   "input": "i was charged twice for order #54859",
+   "outputs": [
+    "54859",
+    "54859",
+    "54859"
+   ]
+  },
+  {
+   "input": "i was charged twice for order #83220",
+   "outputs": [
+    "83220",
+    "83220",
+    "83220"
+   ]
+  },
+  {
+   "input": "order #73011 arrived damaged, please advise",
+   "outputs": [
+    "73011",
+    "73011",
+    "73011"
+   ]
+  },
+  {
+   "input": "i was charged twice for order #83220",
+   "outputs": [
+    "83220",
+    "83220",
+    "83220"
+   ]
+  },
+  {
+   "input": "i was charged twice for order #52260",
+   "outputs": [
+    "52260",
+    "52260",
+    "52260"
+   ]
+  },
+  {
+   "input": "can you check the status of #61239 for me",
+   "outputs": [
+    "61239",
+    "61239",
+    "61239"
+   ]
+  },
+  {
+   "input": "i was charged twice for order #48835",
+   "outputs": [
+    "48835",
+    "48835",
+    "48835"
+   ]
+  },
+  {
+   "input": "i was charged twice for order #82129",
+   "outputs": [
+    "82129",
+    "82129",
+    "82129"
+   ]
+  },
+  {
+   "input": "where is my order #10766? it was due last week",
+   "outputs": [
+    "10766",
+    "10766",
+    "10766"
+   ]
+  },
+  {
+   "input": "order #59119 arrived damaged, please advise",
+   "outputs": [
+    "59119",
+    "59119",
+    "59119"
+   ]
+  },
+  {
+   "input": "order #77975 arrived damaged, please advise",
+   "outputs": [
+    "77975",
+    "77975",
+    "77975"
+   ]
+  },
+  {
+   "input": "i was charged twice for order #29069",
+   "outputs": [
+    "29069",
+    "29069",
+    "29069"
+   ]
+  },
+  {
+   "input": "where is my order #92353? it was due last week",
+   "outputs": [
+    "92353",
+    "92353",
+    "92353"
+   ]
+  },
+  {
+   "input": "i was charged twice for order #40344",
+   "outputs": [
+    "40344",
+    "40344",
+    "40344"
+   ]
+  },
+  {
+   "input": "i was charged twice for order #96147",
+   "outputs": [
+    "96147",
+    "96147",
+    "96147"
+   ]
+  }
+ ],
+ "summarize.thread": [
+  {
+   "input": "[thread of 7 messages] missing webhook deliveries escalated once already. missing webhook deliveries and asks for a callback.",
+   "outputs": [
+    "User describes missing webhook deliveries escalated once already.",
+    "User describes missing webhook deliveries escalated once already.",
+    "User describes missing webhook deliveries escalated once already."
+   ]
+  },
+  {
+   "input": "[thread of 3 messages] an unexpected charge with no clear next step. missing webhook deliveries and asks for a callback.",
+   "outputs": [
+    "User describes a billing discrepancy pending a fix from engineering.",
+    "User describes a billing discrepancy pending a fix from engineering.",
+    "User describes a billing discrepancy pending a fix from engineering."
+   ]
+  },
+  {
+   "input": "[thread of 4 messages] a billing discrepancy with two follow-ups unanswered. an unexpected charge pending a fix from engineering.",
+   "outputs": [
+    "Summary: missing webhook deliveries and asks for a callback.",
+    "Summary: missing webhook deliveries and asks for a callback.",
+    "Summary: missing webhook deliveries and asks for a callback."
+   ]
+  },
+  {
+   "input": "[thread of 3 messages] missing webhook deliveries pending a fix from engineering. repeated login failures and asks for a callback.",
+   "outputs": [
+    "Customer reports a billing discrepancy and appears resolved.",
+    "Customer reports a billing discrepancy and appears resolved.",
+    "Customer reports a billing discrepancy and appears resolved."
+   ]
+  },
+  {
+   "input": "[thread of 8 messages] slow export performance with no clear next step. an unexpected charge and appears resolved.",
+   "outputs": [
+    "Customer reports an unexpected charge and asks for a callback.",
+    "Customer reports an unexpected charge and asks for a callback.",
+    "Customer reports an unexpected charge and asks for a callback."
+   ]
+  },
+  {
+   "input": "[thread of 9 messages] a billing discrepancy and appears resolved. a billing discrepancy with no clear next step.",
+   "outputs": [
+    "Thread covers confusion about seat pricing with no clear next step.",
+    "Thread covers confusion about seat pricing with no clear next step.",
+    "Thread covers confusion about seat pricing with no clear next step."
+   ]
+  },
+  {
+   "input": "[thread of 9 messages] a request to change account details with no clear next step. an unexpected charge and appears resolved.",
+   "outputs": [
+    "User describes a billing discrepancy with two follow-ups unanswered.",
+    "User describes a billing discrepancy with two follow-ups unanswered.",
+    "User describes a billing discrepancy with two follow-ups unanswered."
+   ]
+  },
+  {
+   "input": "[thread of 5 messages] a request to change account details and appears resolved. repeated login failures with no clear next step.",
+   "outputs": [
+    "Ticket concerns an unexpected charge pending a fix from engineering.",
+    "Ticket concerns an unexpected charge pending a fix from engineering.",
+    "Ticket concerns an unexpected charge pending a fix from engineering."
+   ]
+  },
+  {
+   "input": "[thread of 7 messages] confusion about seat pricing and appears resolved. confusion about seat pricing and asks for a callback.",
+   "outputs": [
+    "Conversation is about a billing discrepancy and appears resolved.",
+    "Conversation is about a billing discrepancy and appears resolved.",
+    "Conversation is about a billing discrepancy and appears resolved."
+   ]
+  },
+  {
+   "input": "[thread of 6 messages] an unexpected charge and appears resolved. slow export performance and asks for a callback.",
+   "outputs": [
+    "Thread covers an unexpected charge with two follow-ups unanswered.",
+    "Thread covers an unexpected charge with two follow-ups unanswered.",
+    "Thread covers an unexpected charge with two follow-ups unanswered."
+   ]
+  },
+  {
+   "input": "[thread of 3 messages] missing webhook deliveries escalated once already. slow export performance with no clear next step.",
+   "outputs": [
+    "User describes a request to change account details escalated once already.",
+    "User describes a request to change account details escalated once already.",
+    "User describes a request to change account details escalated once already."
+   ]
+  },
+  {
+   "input": "[thread of 9 messages] a billing discrepancy with no clear next step. confusion about seat pricing with two follow-ups unanswered.",
+   "outputs": [
+    "Summary: a request to change account details and appears resolved.",
+    "Summary: a request to change account details and appears resolved.",
+    "Summary: a request to change account details and appears resolved."
+   ]
+  },
+  {
+   "input": "[thread of 8 messages] slow export performance and appears resolved. missing webhook deliveries and appears resolved.",
+   "outputs": [
+    "Summary: repeated login failures and appears resolved.",
+    "Summary: repeated login failures and appears resolved.",
+    "Summary: repeated login failures and appears resolved."
+   ]
+  },
+  {
+   "input": "[thread of 9 messages] an unexpected charge pending a fix from engineering. a request to change account details with two follow-ups unanswered.",
+   "outputs": [
+    "User describes confusion about seat pricing and appears resolved.",
+    "User describes confusion about seat pricing and appears resolved.",
+    "User describes confusion about seat pricing and appears resolved."
+   ]
+  },
+  {
+   "input": "[thread of 6 messages] repeated login failures pending a fix from engineering. confusion about seat pricing escalated once already.",
+   "outputs": [
+    "User describes slow export performance pending a fix from engineering.",
+    "User describes slow export performance pending a fix from engineering.",
+    "User describes slow export performance pending a fix from engineering."
+   ]
+  },
+  {
+   "input": "[thread of 8 messages] a billing discrepancy and appears resolved. slow export performance with two follow-ups unanswered.",
+   "outputs": [
+    "User describes repeated login failures pending a fix from engineering.",
+    "User describes repeated login failures pending a fix from engineering.",
+    "User describes repeated login failures pending a fix from engineering."
+   ]
+  },
+  {
+   "input": "[thread of 5 messages] slow export performance with no clear next step. an unexpected charge and appears resolved.",
+   "outputs": [
+    "User describes slow export performance with two follow-ups unanswered.",
+    "User describes slow export performance with two follow-ups unanswered.",
+    "User describes slow export performance with two follow-ups unanswered."
+   ]
+  },
+  {
+   "input": "[thread of 4 messages] slow export performance and asks for a callback. confusion about seat pricing with two follow-ups unanswered.",
+   "outputs": [
+    "Summary: a billing discrepancy pending a fix from engineering.",
+    "Summary: a billing discrepancy pending a fix from engineering.",
+    "Summary: a billing discrepancy pending a fix from engineering."
+   ]
+  },
+  {
+   "input": "[thread of 5 messages] an unexpected charge and asks for a callback. repeated login failures and appears resolved.",
+   "outputs": [
+    "User describes a request to change account details and asks for a callback.",
+    "User describes a request to change account details and asks for a callback.",
+    "User describes a request to change account details and asks for a callback."
+   ]
+  },
+  {
+   "input": "[thread of 6 messages] slow export performance escalated once already. slow export performance with no clear next step.",
+   "outputs": [
+    "Thread covers a request to change account details and appears resolved.",
+    "Thread covers a request to change account details and appears resolved.",
+    "Thread covers a request to change account details and appears resolved."
+   ]
+  },
+  {
+   "input": "[thread of 7 messages] slow export performance escalated once already. confusion about seat pricing and asks for a callback.",
+   "outputs": [
+    "Summary: an unexpected charge pending a fix from engineering.",
+    "Summary: an unexpected charge pending a fix from engineering.",
+    "Summary: an unexpected charge pending a fix from engineering."
+   ]
+  },
+  {
+   "input": "[thread of 4 messages] repeated login failures and asks for a callback. missing webhook deliveries and appears resolved.",
+   "outputs": [
+    "Ticket concerns confusion about seat pricing escalated once already.",
+    "Ticket concerns confusion about seat pricing escalated once already.",
+    "Ticket concerns confusion about seat pricing escalated once already."
+   ]
+  },
+  {
+   "input": "[thread of 6 messages] missing webhook deliveries with two follow-ups unanswered. a billing discrepancy with two follow-ups unanswered.",
+   "outputs": [
+    "Conversation is about a billing discrepancy with no clear next step.",
+    "Conversation is about a billing discrepancy with no clear next step.",
+    "Conversation is about a billing discrepancy with no clear next step."
+   ]
+  },
+  {
+   "input": "[thread of 5 messages] repeated login failures and asks for a callback. missing webhook deliveries pending a fix from engineering.",
+   "outputs": [
+    "Conversation is about slow export performance pending a fix from engineering.",
+    "Conversation is about slow export performance pending a fix from engineering.",
+    "Conversation is about slow export performance pending a fix from engineering."
+   ]
+  },
+  {
+   "input": "[thread of 9 messages] a request to change account details and asks for a callback. repeated login failures pending a fix from engineering.",
+   "outputs": [
+    "User describes repeated login failures escalated once already.",
+    "User describes repeated login failures escalated once already.",
+    "User describes repeated login failures escalated once already."
+   ]
+  },
+  {
+   "input": "[thread of 3 messages] a billing discrepancy and asks for a callback. slow export performance with no clear next step.",
+   "outputs": [
+    "Customer reports a billing discrepancy escalated once already.",
+    "Customer reports a billing discrepancy escalated once already.",
+    "Customer reports a billing discrepancy escalated once already."
+   ]
+  },
+  {
+   "input": "[thread of 5 messages] an unexpected charge with no clear next step. repeated login failures with no clear next step.",
+   "outputs": [
+    "Summary: slow export performance with no clear next step.",
+    "Summary: slow export performance with no clear next step.",
+    "Summary: slow export performance with no clear next step."
+   ]
+  },
+  {
+   "input": "[thread of 3 messages] repeated login failures pending a fix from engineering. confusion about seat pricing pending a fix from engineering.",
+   "outputs": [
+    "Thread covers repeated login failures with two follow-ups unanswered.",
+    "Thread covers repeated login failures with two follow-ups unanswered.",
+    "Thread covers repeated login failures with two follow-ups unanswered."
+   ]
+  },
+  {
+   "input": "[thread of 9 messages] repeated login failures and asks for a callback. slow export performance and appears resolved.",
+   "outputs": [
+    "Customer reports an unexpected charge with two follow-ups unanswered.",
+    "Customer reports an unexpected charge with two follow-ups unanswered.",
+    "Customer reports an unexpected charge with two follow-ups unanswered."
+   ]
+  },
+  {
+   "input": "[thread of 5 messages] repeated login failures with no clear next step. missing webhook deliveries with no clear next step.",
+   "outputs": [
+    "Conversation is about slow export performance and asks for a callback.",
+    "Conversation is about slow export performance and asks for a callback.",
+    "Conversation is about slow export performance and asks for a callback."
+   ]
+  },
+  {
+   "input": "[thread of 9 messages] a request to change account details with two follow-ups unanswered. confusion about seat pricing pending a fix from engineering.",
+   "outputs": [
+    "Summary: a request to change account details with two follow-ups unanswered.",
+    "Summary: a request to change account details with two follow-ups unanswered.",
+    "Summary: a request to change account details with two follow-ups unanswered."
+   ]
+  },
+  {
+   "input": "[thread of 7 messages] slow export performance escalated once already. missing webhook deliveries with no clear next step.",
+   "outputs": [
+    "Customer reports a request to change account details with no clear next step.",
+    "Customer reports a request to change account details with no clear next step.",
+    "Customer reports a request to change account details with no clear next step."
+   ]
+  },
+  {
+   "input": "[thread of 4 messages] repeated login failures and asks for a callback. a billing discrepancy pending a fix from engineering.",
+   "outputs": [
+    "Conversation is about confusion about seat pricing with no clear next step.",
+    "Conversation is about confusion about seat pricing with no clear next step.",
+    "Conversation is about confusion about seat pricing with no clear next step."
+   ]
+  },
+  {
+   "input": "[thread of 4 messages] a request to change account details with two follow-ups unanswered. a billing discrepancy escalated once already.",
+   "outputs": [
+    "Conversation is about a billing discrepancy pending a fix from engineering.",
+    "Conversation is about a billing discrepancy pending a fix from engineering.",
+    "Conversation is about a billing discrepancy pending a fix from engineering."
+   ]
+  },
+  {
+   "input": "[thread of 9 messages] confusion about seat pricing escalated once already. repeated login failures with no clear next step.",
+   "outputs": [
+    "Summary: confusion about seat pricing escalated once already.",
+    "Summary: confusion about seat pricing escalated once already.",
+    "Summary: confusion about seat pricing escalated once already."
+   ]
+  },
+  {
+   "input": "[thread of 4 messages] slow export performance with two follow-ups unanswered. a request to change account details escalated once already.",
+   "outputs": [
+    "Thread covers repeated login failures and appears resolved.",
+    "Thread covers repeated login failures and appears resolved.",
+    "Thread covers repeated login failures and appears resolved."
+   ]
+  },
+  {
+   "input": "[thread of 7 messages] a request to change account details and asks for a callback. missing webhook deliveries escalated once already.",
+   "outputs": [
+    "User describes a billing discrepancy escalated once already.",
+    "User describes a billing discrepancy escalated once already.",
+    "User describes a billing discrepancy escalated once already."
+   ]
+  },
+  {
+   "input": "[thread of 4 messages] slow export performance pending a fix from engineering. a request to change account details with two follow-ups unanswered.",
+   "outputs": [
+    "Ticket concerns confusion about seat pricing with no clear next step.",
+    "Ticket concerns confusion about seat pricing with no clear next step.",
+    "Ticket concerns confusion about seat pricing with no clear next step."
+   ]
+  },
+  {
+   "input": "[thread of 6 messages] missing webhook deliveries and appears resolved. a billing discrepancy with no clear next step.",
+   "outputs": [
+    "Summary: missing webhook deliveries and asks for a callback.",
+    "Summary: missing webhook deliveries and asks for a callback.",
+    "Summary: missing webhook deliveries and asks for a callback."
+   ]
+  },
+  {
+   "input": "[thread of 3 messages] repeated login failures with two follow-ups unanswered. a billing discrepancy with no clear next step.",
+   "outputs": [
+    "User describes an unexpected charge with no clear next step.",
+    "User describes an unexpected charge with no clear next step.",
+    "User describes an unexpected charge with no clear next step."
+   ]
+  },
+  {
+   "input": "[thread of 3 messages] an unexpected charge with two follow-ups unanswered. a billing discrepancy with two follow-ups unanswered.",
+   "outputs": [
+    "Summary: repeated login failures and asks for a callback.",
+    "Summary: repeated login failures and asks for a callback.",
+    "Summary: repeated login failures and asks for a callback."
+   ]
+  },
+  {
+   "input": "[thread of 5 messages] a request to change account details with no clear next step. a request to change account details with two follow-ups unanswered.",
+   "outputs": [
+    "Summary: a billing discrepancy with two follow-ups unanswered.",
+    "Summary: a billing discrepancy with two follow-ups unanswered.",
+    "Summary: a billing discrepancy with two follow-ups unanswered."
+   ]
+  },
+  {
+   "input": "[thread of 9 messages] an unexpected charge and appears resolved. confusion about seat pricing and appears resolved.",
+   "outputs": [
+    "Conversation is about missing webhook deliveries pending a fix from engineering.",
+    "Conversation is about missing webhook deliveries pending a fix from engineering.",
+    "Conversation is about missing webhook deliveries pending a fix from engineering."
+   ]
+  },
+  {
+   "input": "[thread of 4 messages] confusion about seat pricing with no clear next step. confusion about seat pricing and appears resolved.",
+   "outputs": [
+    "Customer reports a billing discrepancy and appears resolved.",
+    "Customer reports a billing discrepancy and appears resolved.",
+    "Customer reports a billing discrepancy and appears resolved."
+   ]
+  },
+  {
+   "input": "[thread of 4 messages] a billing discrepancy with two follow-ups unanswered. a billing discrepancy pending a fix from engineering.",
+   "outputs": [
+    "Ticket concerns missing webhook deliveries with two follow-ups unanswered.",
+    "Ticket concerns missing webhook deliveries with two follow-ups unanswered.",
+    "Ticket concerns missing webhook deliveries with two follow-ups unanswered."
+   ]
+  },
+  {
+   "input": "[thread of 3 messages] a request to change account details pending a fix from engineering. an unexpected charge and asks for a callback.",
+   "outputs": [
+    "Thread covers missing webhook deliveries escalated once already.",
+    "Thread covers missing webhook deliveries escalated once already.",
+    "Thread covers missing webhook deliveries escalated once already."
+   ]
+  },
+  {
+   "input": "[thread of 6 messages] a billing discrepancy with two follow-ups unanswered. confusion about seat pricing with no clear next step.",
+   "outputs": [
+    "Thread covers an unexpected charge escalated once already.",
+    "Thread covers an unexpected charge escalated once already.",
+    "Thread covers an unexpected charge escalated once already."
+   ]
+  },
+  {
+   "input": "[thread of 9 messages] slow export performance escalated once already. a billing discrepancy with two follow-ups unanswered.",
+   "outputs": [
+    "Thread covers missing webhook deliveries pending a fix from engineering.",
+    "Thread covers missing webhook deliveries pending a fix from engineering.",
+    "Thread covers missing webhook deliveries pending a fix from engineering."
+   ]
+  },
+  {
+   "input": "[thread of 8 messages] repeated login failures and asks for a callback. repeated login failures escalated once already.",
+   "outputs": [
+    "Thread covers a request to change account details and asks for a callback.",
+    "Thread covers a request to change account details and asks for a callback.",
+    "Thread covers a request to change account details and asks for a callback."
+   ]
+  },
+  {
+   "input": "[thread of 5 messages] missing webhook deliveries escalated once already. an unexpected charge with no clear next step.",
+   "outputs": [
+    "Summary: a billing discrepancy and asks for a callback.",
+    "Summary: a billing discrepancy and asks for a callback.",
+    "Summary: a billing discrepancy and asks for a callback."
+   ]
+  },
+  {
+   "input": "[thread of 3 messages] missing webhook deliveries with two follow-ups unanswered. slow export performance pending a fix from engineering.",
+   "outputs": [
+    "Summary: repeated login failures escalated once already.",
+    "Summary: repeated login failures escalated once already.",
+    "Summary: repeated login failures escalated once already."
+   ]
+  },
+  {
+   "input": "[thread of 4 messages] confusion about seat pricing escalated once already. confusion about seat pricing and asks for a callback.",
+   "outputs": [
+    "Ticket concerns slow export performance and asks for a callback.",
+    "Ticket concerns slow export performance and asks for a callback.",
+    "Ticket concerns slow export performance and asks for a callback."
+   ]
+  }
+ ],
+ "draft.reply": [
+  {
+   "input": "[draft a reply] customer says: production is hard down since 04:00",
+   "outputs": [
+    "Happy to help here \u2014 It looks like I've updated the setting on your behalf.",
+    "Happy to help here \u2014 It looks like I've updated the setting on your behalf.",
+    "Happy to help here \u2014 It looks like I've updated the setting on your behalf."
+   ]
+  },
+  {
+   "input": "[draft a reply] customer says: question about seat pricing for next year",
+   "outputs": [
+    "Sorry about the confusion \u2014 Looking at the logs, I've escalated this to the platform team.",
+    "Sorry about the confusion \u2014 Looking at the logs, I've escalated this to the platform team.",
+    "Sorry about the confusion \u2014 Looking at the logs, I've escalated this to the platform team."
+   ]
+  },
+  {
+   "input": "[draft a reply] customer says: we suspect a security breach in our account",
+   "outputs": [
+    "Apologies for the trouble \u2014 I've checked your account and our engineers are deploying a fix this afternoon.",
+    "Apologies for the trouble \u2014 I've checked your account and our engineers are deploying a fix this afternoon.",
+    "Apologies for the trouble \u2014 I've checked your account and our engineers are deploying a fix this afternoon."
+   ]
+  },
+  {
+   "input": "[draft a reply] customer says: the checkout api is completely down",
+   "outputs": [
+    "Happy to help here \u2014 I've checked your account and you should see this resolved shortly.",
+    "Happy to help here \u2014 I've checked your account and you should see this resolved shortly.",
+    "Happy to help here \u2014 I've checked your account and you should see this resolved shortly."
+   ]
+  },
+  {
+   "input": "[draft a reply] customer says: total outage across all regions",
+   "outputs": [
+    "Sorry about the confusion \u2014 I can confirm that our engineers are deploying a fix this afternoon.",
+    "Sorry about the confusion \u2014 I can confirm that our engineers are deploying a fix this afternoon.",
+    "Sorry about the confusion \u2014 I can confirm that our engineers are deploying a fix this afternoon."
+   ]
+  },
+  {
+   "input": "[draft a reply] customer says: production is hard down since 04:00",
+   "outputs": [
+    "Thanks for your patience \u2014 I've checked your account and I've escalated this to the platform team.",
+    "Thanks for your patience \u2014 I've checked your account and I've escalated this to the platform team.",
+    "Thanks for your patience \u2014 I've checked your account and I've escalated this to the platform team."
+   ]
+  },
+  {
+   "input": "[draft a reply] customer says: the export job keeps timing out",
+   "outputs": [
+    "Happy to help here \u2014 After reviewing this, I've updated the setting on your behalf.",
+    "Happy to help here \u2014 After reviewing this, I've updated the setting on your behalf.",
+    "Happy to help here \u2014 After reviewing this, I've updated the setting on your behalf."
+   ]
+  },
+  {
+   "input": "[draft a reply] customer says: total outage across all regions",
+   "outputs": [
+    "Apologies for the trouble \u2014 Looking at the logs, I've escalated this to the platform team.",
+    "Apologies for the trouble \u2014 Looking at the logs, I've escalated this to the platform team.",
+    "Apologies for the trouble \u2014 Looking at the logs, I've escalated this to the platform team."
+   ]
+  },
+  {
+   "input": "[draft a reply] customer says: the export job keeps timing out",
+   "outputs": [
+    "Sorry about the confusion \u2014 After reviewing this, our engineers are deploying a fix this afternoon.",
+    "Sorry about the confusion \u2014 After reviewing this, our engineers are deploying a fix this afternoon.",
+    "Sorry about the confusion \u2014 After reviewing this, our engineers are deploying a fix this afternoon."
+   ]
+  },
+  {
+   "input": "[draft a reply] customer says: data loss suspected after the failed migration",
+   "outputs": [
+    "Sorry about the confusion \u2014 I can confirm that you should see this resolved shortly.",
+    "Sorry about the confusion \u2014 I can confirm that you should see this resolved shortly.",
+    "Sorry about the confusion \u2014 I can confirm that you should see this resolved shortly."
+   ]
+  },
+  {
+   "input": "[draft a reply] customer says: webhooks are lagging by twenty minutes",
+   "outputs": [
+    "Thanks for reaching out \u2014 I've checked your account and you should see this resolved shortly.",
+    "Thanks for reaching out \u2014 I've checked your account and you should see this resolved shortly.",
+    "Thanks for reaching out \u2014 I've checked your account and you should see this resolved shortly."
+   ]
+  },
+  {
+   "input": "[draft a reply] customer says: the export job keeps timing out",
+   "outputs": [
+    "Thanks for your patience \u2014 I can confirm that the charge will be reversed within five business days.",
+    "Thanks for your patience \u2014 I can confirm that the charge will be reversed within five business days.",
+    "Thanks for your patience \u2014 I can confirm that the charge will be reversed within five business days."
+   ]
+  },
+  {
+   "input": "[draft a reply] customer says: please update our company address",
+   "outputs": [
+    "Sorry about the confusion \u2014 I've checked your account and you should see this resolved shortly.",
+    "Sorry about the confusion \u2014 I've checked your account and you should see this resolved shortly.",
+    "Sorry about the confusion \u2014 I've checked your account and you should see this resolved shortly."
+   ]
+  },
+  {
+   "input": "[draft a reply] customer says: how do i change my billing email",
+   "outputs": [
+    "Thanks for reaching out \u2014 I've checked your account and our engineers are deploying a fix this afternoon.",
+    "Thanks for reaching out \u2014 I've checked your account and our engineers are deploying a fix this afternoon.",
+    "Thanks for reaching out \u2014 I've checked your account and our engineers are deploying a fix this afternoon."
+   ]
+  },
+  {
+   "input": "[draft a reply] customer says: search results are degraded for some users",
+   "outputs": [
+    "Sorry about the confusion \u2014 After reviewing this, you should see this resolved shortly.",
+    "Sorry about the confusion \u2014 After reviewing this, you should see this resolved shortly.",
+    "Sorry about the confusion \u2014 After reviewing this, you should see this resolved shortly."
+   ]
+  },
+  {
+   "input": "[draft a reply] customer says: data loss suspected after the failed migration",
+   "outputs": [
+    "Sorry about the confusion \u2014 After reviewing this, our engineers are deploying a fix this afternoon.",
+    "Sorry about the confusion \u2014 After reviewing this, our engineers are deploying a fix this afternoon.",
+    "Sorry about the confusion \u2014 After reviewing this, our engineers are deploying a fix this afternoon."
+   ]
+  },
+  {
+   "input": "[draft a reply] customer says: intermittent 500 error on report export",
+   "outputs": [
+    "Happy to help here \u2014 Looking at the logs, I've updated the setting on your behalf.",
+    "Happy to help here \u2014 Looking at the logs, I've updated the setting on your behalf.",
+    "Happy to help here \u2014 Looking at the logs, I've updated the setting on your behalf."
+   ]
+  },
+  {
+   "input": "[draft a reply] customer says: please update our company address",
+   "outputs": [
+    "Happy to help here \u2014 It looks like our engineers are deploying a fix this afternoon.",
+    "Happy to help here \u2014 It looks like our engineers are deploying a fix this afternoon.",
+    "Happy to help here \u2014 It looks like our engineers are deploying a fix this afternoon."
+   ]
+  },
+  {
+   "input": "[draft a reply] customer says: total outage across all regions",
+   "outputs": [
+    "Apologies for the trouble \u2014 I can confirm that I've updated the setting on your behalf.",
+    "Apologies for the trouble \u2014 I can confirm that I've updated the setting on your behalf.",
+    "Apologies for the trouble \u2014 I can confirm that I've updated the setting on your behalf."
+   ]
+  },
+  {
+   "input": "[draft a reply] customer says: webhooks are lagging by twenty minutes",
+   "outputs": [
+    "Apologies for the trouble \u2014 It looks like I've updated the setting on your behalf.",
+    "Apologies for the trouble \u2014 It looks like I've updated the setting on your behalf.",
+    "Apologies for the trouble \u2014 It looks like I've updated the setting on your behalf."
+   ]
+  },
+  {
+   "input": "[draft a reply] customer says: production is hard down since 04:00",
+   "outputs": [
+    "Thanks for reaching out \u2014 I can confirm that the charge will be reversed within five business days.",
+    "Thanks for reaching out \u2014 I can confirm that the charge will be reversed within five business days.",
+    "Thanks for reaching out \u2014 I can confirm that the charge will be reversed within five business days."
+   ]
+  },
+  {
+   "input": "[draft a reply] customer says: the checkout api is completely down",
+   "outputs": [
+    "Sorry about the confusion \u2014 It looks like I've escalated this to the platform team.",
+    "Sorry about the confusion \u2014 It looks like I've escalated this to the platform team.",
+    "Sorry about the confusion \u2014 It looks like I've escalated this to the platform team."
+   ]
+  },
+  {
+   "input": "[draft a reply] customer says: data loss suspected after the failed migration",
+   "outputs": [
+    "Apologies for the trouble \u2014 I can confirm that I've updated the setting on your behalf.",
+    "Apologies for the trouble \u2014 I can confirm that I've updated the setting on your behalf.",
+    "Apologies for the trouble \u2014 I can confirm that I've updated the setting on your behalf."
+   ]
+  },
+  {
+   "input": "[draft a reply] customer says: is there a dark mode setting",
+   "outputs": [
+    "Thanks for your patience \u2014 It looks like our engineers are deploying a fix this afternoon.",
+    "Thanks for your patience \u2014 It looks like our engineers are deploying a fix this afternoon.",
+    "Thanks for your patience \u2014 It looks like our engineers are deploying a fix this afternoon."
+   ]
+  },
+  {
+   "input": "[draft a reply] customer says: webhooks are lagging by twenty minutes",
+   "outputs": [
+    "Thanks for your patience \u2014 I've checked your account and you should see this resolved shortly.",
+    "Thanks for your patience \u2014 I've checked your account and you should see this resolved shortly.",
+    "Thanks for your patience \u2014 I've checked your account and you should see this resolved shortly."
+   ]
+  },
+  {
+   "input": "[draft a reply] customer says: question about seat pricing for next year",
+   "outputs": [
+    "Apologies for the trouble \u2014 It looks like you should see this resolved shortly.",
+    "Apologies for the trouble \u2014 It looks like you should see this resolved shortly.",
+    "Apologies for the trouble \u2014 It looks like you should see this resolved shortly."
+   ]
+  },
+  {
+   "input": "[draft a reply] customer says: intermittent 500 error on report export",
+   "outputs": [
+    "Thanks for reaching out \u2014 I've checked your account and our engineers are deploying a fix this afternoon.",
+    "Thanks for reaching out \u2014 I've checked your account and our engineers are deploying a fix this afternoon.",
+    "Thanks for reaching out \u2014 I've checked your account and our engineers are deploying a fix this afternoon."
+   ]
+  },
+  {
+   "input": "[draft a reply] customer says: search results are degraded for some users",
+   "outputs": [
+    "Apologies for the trouble \u2014 I can confirm that our engineers are deploying a fix this afternoon.",
+    "Apologies for the trouble \u2014 I can confirm that our engineers are deploying a fix this afternoon.",
+    "Apologies for the trouble \u2014 I can confirm that our engineers are deploying a fix this afternoon."
+   ]
+  },
+  {
+   "input": "[draft a reply] customer says: the checkout api is completely down",
+   "outputs": [
+    "Apologies for the trouble \u2014 I can confirm that I've updated the setting on your behalf.",
+    "Apologies for the trouble \u2014 I can confirm that I've updated the setting on your behalf.",
+    "Apologies for the trouble \u2014 I can confirm that I've updated the setting on your behalf."
+   ]
+  },
+  {
+   "input": "[draft a reply] customer says: how do i change my billing email",
+   "outputs": [
+    "Sorry about the confusion \u2014 I've checked your account and I've updated the setting on your behalf.",
+    "Sorry about the confusion \u2014 I've checked your account and I've updated the setting on your behalf.",
+    "Sorry about the confusion \u2014 I've checked your account and I've updated the setting on your behalf."
+   ]
+  },
+  {
+   "input": "[draft a reply] customer says: total outage across all regions",
+   "outputs": [
+    "Happy to help here \u2014 Looking at the logs, the charge will be reversed within five business days.",
+    "Happy to help here \u2014 Looking at the logs, the charge will be reversed within five business days.",
+    "Happy to help here \u2014 Looking at the logs, the charge will be reversed within five business days."
+   ]
+  },
+  {
+   "input": "[draft a reply] customer says: where do i find the audit log",
+   "outputs": [
+    "Apologies for the trouble \u2014 It looks like our engineers are deploying a fix this afternoon.",
+    "Apologies for the trouble \u2014 It looks like our engineers are deploying a fix this afternoon.",
+    "Apologies for the trouble \u2014 It looks like our engineers are deploying a fix this afternoon."
+   ]
+  },
+  {
+   "input": "[draft a reply] customer says: can you send last month invoice again",
+   "outputs": [
+    "Thanks for reaching out \u2014 I've checked your account and you should see this resolved shortly.",
+    "Thanks for reaching out \u2014 I've checked your account and you should see this resolved shortly.",
+    "Thanks for reaching out \u2014 I've checked your account and you should see this resolved shortly."
+   ]
+  },
+  {
+   "input": "[draft a reply] customer says: can you send last month invoice again",
+   "outputs": [
+    "Thanks for reaching out \u2014 I can confirm that the charge will be reversed within five business days.",
+    "Thanks for reaching out \u2014 I can confirm that the charge will be reversed within five business days.",
+    "Thanks for reaching out \u2014 I can confirm that the charge will be reversed within five business days."
+   ]
+  },
+  {
+   "input": "[draft a reply] customer says: is there a dark mode setting",
+   "outputs": [
+    "Happy to help here \u2014 After reviewing this, our engineers are deploying a fix this afternoon.",
+    "Happy to help here \u2014 After reviewing this, our engineers are deploying a fix this afternoon.",
+    "Happy to help here \u2014 After reviewing this, our engineers are deploying a fix this afternoon."
+   ]
+  },
+  {
+   "input": "[draft a reply] customer says: the export job keeps timing out",
+   "outputs": [
+    "Sorry about the confusion \u2014 After reviewing this, our engineers are deploying a fix this afternoon.",
+    "Sorry about the confusion \u2014 After reviewing this, our engineers are deploying a fix this afternoon.",
+    "Sorry about the confusion \u2014 After reviewing this, our engineers are deploying a fix this afternoon."
+   ]
+  },
+  {
+   "input": "[draft a reply] customer says: can you send last month invoice again",
+   "outputs": [
+    "Happy to help here \u2014 It looks like you should see this resolved shortly.",
+    "Happy to help here \u2014 It looks like you should see this resolved shortly.",
+    "Happy to help here \u2014 It looks like you should see this resolved shortly."
+   ]
+  }
+ ],
+ "sentiment.gate": [
+  {
+   "input": "[gate] production is hard down since 04:00",
+   "outputs": [
+    "neutral",
+    "neutral",
+    "neutral"
+   ]
+  },
+  {
+   "input": "[gate] how do i change my billing email",
+   "outputs": [
+    "neutral",
+    "neutral",
+    "neutral"
+   ]
+  },
+  {
+   "input": "[gate] production is hard down since 04:00",
+   "outputs": [
+    "neutral",
+    "neutral",
+    "neutral"
+   ]
+  },
+  {
+   "input": "[gate] can you send last month invoice again",
+   "outputs": [
+    "neutral",
+    "neutral",
+    "neutral"
+   ]
+  },
+  {
+   "input": "[gate] question about seat pricing for next year",
+   "outputs": [
+    "neutral",
+    "neutral",
+    "neutral"
+   ]
+  },
+  {
+   "input": "[gate] where do i find the audit log",
+   "outputs": [
+    "neutral",
+    "neutral",
+    "neutral"
+   ]
+  },
+  {
+   "input": "[gate] how do i change my billing email",
+   "outputs": [
+    "neutral",
+    "neutral",
+    "neutral"
+   ]
+  },
+  {
+   "input": "[gate] question about seat pricing for next year",
+   "outputs": [
+    "neutral",
+    "neutral",
+    "neutral"
+   ]
+  },
+  {
+   "input": "[gate] search results are degraded for some users",
+   "outputs": [
+    "neutral",
+    "neutral",
+    "neutral"
+   ]
+  },
+  {
+   "input": "[gate] total outage across all regions",
+   "outputs": [
+    "neutral",
+    "neutral",
+    "neutral"
+   ]
+  },
+  {
+   "input": "[gate] intermittent 500 error on report export",
+   "outputs": [
+    "neutral",
+    "neutral",
+    "neutral"
+   ]
+  },
+  {
+   "input": "[gate] question about seat pricing for next year",
+   "outputs": [
+    "neutral",
+    "neutral",
+    "neutral"
+   ]
+  },
+  {
+   "input": "[gate] the export job keeps timing out",
+   "outputs": [
+    "neutral",
+    "neutral",
+    "neutral"
+   ]
+  },
+  {
+   "input": "[gate] total outage across all regions",
+   "outputs": [
+    "neutral",
+    "neutral",
+    "neutral"
+   ]
+  },
+  {
+   "input": "[gate] responses are extremely slow this morning",
+   "outputs": [
+    "neutral",
+    "neutral",
+    "neutral"
+   ]
+  },
+  {
+   "input": "[gate] how do i change my billing email",
+   "outputs": [
+    "neutral",
+    "neutral",
+    "neutral"
+   ]
+  },
+  {
+   "input": "[gate] total outage across all regions",
+   "outputs": [
+    "neutral",
+    "neutral",
+    "neutral"
+   ]
+  },
+  {
+   "input": "[gate] please update our company address",
+   "outputs": [
+    "neutral",
+    "neutral",
+    "neutral"
+   ]
+  },
+  {
+   "input": "[gate] can you send last month invoice again",
+   "outputs": [
+    "neutral",
+    "neutral",
+    "neutral"
+   ]
+  },
+  {
+   "input": "[gate] production is hard down since 04:00",
+   "outputs": [
+    "neutral",
+    "neutral",
+    "neutral"
+   ]
+  },
+  {
+   "input": "[gate] question about seat pricing for next year",
+   "outputs": [
+    "neutral",
+    "neutral",
+    "neutral"
+   ]
+  },
+  {
+   "input": "[gate] webhooks are lagging by twenty minutes",
+   "outputs": [
+    "neutral",
+    "neutral",
+    "neutral"
+   ]
+  },
+  {
+   "input": "[gate] question about seat pricing for next year",
+   "outputs": [
+    "neutral",
+    "neutral",
+    "neutral"
+   ]
+  },
+  {
+   "input": "[gate] responses are extremely slow this morning",
+   "outputs": [
+    "neutral",
+    "neutral",
+    "neutral"
+   ]
+  },
+  {
+   "input": "[gate] the export job keeps timing out",
+   "outputs": [
+    "neutral",
+    "neutral",
+    "neutral"
+   ]
+  },
+  {
+   "input": "[gate] data loss suspected after the failed migration",
+   "outputs": [
+    "neutral",
+    "neutral",
+    "neutral"
+   ]
+  },
+  {
+   "input": "[gate] total outage across all regions",
+   "outputs": [
+    "neutral",
+    "neutral",
+    "neutral"
+   ]
+  },
+  {
+   "input": "[gate] how do i change my billing email",
+   "outputs": [
+    "neutral",
+    "neutral",
+    "neutral"
+   ]
+  },
+  {
+   "input": "[gate] where do i find the audit log",
+   "outputs": [
+    "neutral",
+    "neutral",
+    "neutral"
+   ]
+  },
+  {
+   "input": "[gate] how do i change my billing email",
+   "outputs": [
+    "neutral",
+    "neutral",
+    "neutral"
+   ]
+  },
+  {
+   "input": "[gate] can you send last month invoice again",
+   "outputs": [
+    "neutral",
+    "neutral",
+    "neutral"
+   ]
+  },
+  {
+   "input": "[gate] where do i find the audit log",
+   "outputs": [
+    "neutral",
+    "neutral",
+    "neutral"
+   ]
+  },
+  {
+   "input": "[gate] search results are degraded for some users",
+   "outputs": [
+    "neutral",
+    "neutral",
+    "neutral"
+   ]
+  },
+  {
+   "input": "[gate] the export job keeps timing out",
+   "outputs": [
+    "neutral",
+    "neutral",
+    "neutral"
+   ]
+  },
+  {
+   "input": "[gate] can you send last month invoice again",
+   "outputs": [
+    "neutral",
+    "neutral",
+    "neutral"
+   ]
+  },
+  {
+   "input": "[gate] we suspect a security breach in our account",
+   "outputs": [
+    "neutral",
+    "neutral",
+    "neutral"
+   ]
+  },
+  {
+   "input": "[gate] total outage across all regions",
+   "outputs": [
+    "neutral",
+    "neutral",
+    "neutral"
+   ]
+  },
+  {
+   "input": "[gate] data loss suspected after the failed migration",
+   "outputs": [
+    "neutral",
+    "neutral",
+    "neutral"
+   ]
+  },
+  {
+   "input": "[gate] data loss suspected after the failed migration",
+   "outputs": [
+    "neutral",
+    "neutral",
+    "neutral"
+   ]
+  },
+  {
+   "input": "[gate] we suspect a security breach in our account",
+   "outputs": [
+    "neutral",
+    "neutral",
+    "neutral"
+   ]
+  },
+  {
+   "input": "[gate] total outage across all regions",
+   "outputs": [
+    "neutral",
+    "neutral",
+    "neutral"
+   ]
+  },
+  {
+   "input": "[gate] total outage across all regions",
+   "outputs": [
+    "neutral",
+    "neutral",
+    "neutral"
+   ]
+  },
+  {
+   "input": "[gate] total outage across all regions",
+   "outputs": [
+    "neutral",
+    "neutral",
+    "neutral"
+   ]
+  },
+  {
+   "input": "[gate] webhooks are lagging by twenty minutes",
+   "outputs": [
+    "neutral",
+    "neutral",
+    "neutral"
+   ]
+  },
+  {
+   "input": "[gate] nobody can access the dashboard",
+   "outputs": [
+    "neutral",
+    "neutral",
+    "neutral"
+   ]
+  },
+  {
+   "input": "[gate] production is hard down since 04:00",
+   "outputs": [
+    "neutral",
+    "neutral",
+    "neutral"
+   ]
+  }
+ ]
+}

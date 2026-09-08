@@ -1,0 +1,16 @@
+{
+  "seed": 424242,
+  "traces": 520,
+  "llm_spans": 2340,
+  "corpus_window": "1 day (extrapolate x30 for monthly projections)",
+  "ground_truth": {
+    "triage.urgency": "TIGHT",
+    "route.team": "PARTIAL",
+    "lang.detect": "TIGHT",
+    "extract.order_id": "TIGHT",
+    "summarize.thread": "LOOSE",
+    "draft.reply": "LOOSE",
+    "sentiment.gate": "DEGENERATE"
+  },
+  "notes": "Labels are the generator's intent, not a model's opinion. Sampling noise was injected per call site to make the self-agreement measurement non-trivial."
+}

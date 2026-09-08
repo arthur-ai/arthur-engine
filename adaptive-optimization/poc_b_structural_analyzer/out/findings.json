@@ -1,0 +1,2572 @@
+[
+ {
+  "trace_id": "36c500a9a17d8a5e56576493178cef55",
+  "span_id": "23881ca6fa4fe7da",
+  "call_site": "policy.check",
+  "pattern": "rebuilt_prefix",
+  "confidence": "ADVISORY",
+  "saving_usd": 0.0005,
+  "saving_ms": 0.0,
+  "detail": "~100 tokens of identical context re-sent across 3 calls in one trace \u2014 a caching change, not a script",
+  "evidence": {
+   "calls_sharing_prefix": 3,
+   "approx_prefix_tokens": 100
+  }
+ },
+ {
+  "trace_id": "0d1ea17463d50a1b902cf86b861e41ec",
+  "span_id": "9b01b6ba48c49755",
+  "call_site": "policy.check",
+  "pattern": "rebuilt_prefix",
+  "confidence": "ADVISORY",
+  "saving_usd": 0.0005,
+  "saving_ms": 0.0,
+  "detail": "~100 tokens of identical context re-sent across 3 calls in one trace \u2014 a caching change, not a script",
+  "evidence": {
+   "calls_sharing_prefix": 3,
+   "approx_prefix_tokens": 100
+  }
+ },
+ {
+  "trace_id": "546b3deabf048110372af7a33abf188b",
+  "span_id": "2df0471fee0c9046",
+  "call_site": "policy.check",
+  "pattern": "rebuilt_prefix",
+  "confidence": "ADVISORY",
+  "saving_usd": 0.0005,
+  "saving_ms": 0.0,
+  "detail": "~100 tokens of identical context re-sent across 3 calls in one trace \u2014 a caching change, not a script",
+  "evidence": {
+   "calls_sharing_prefix": 3,
+   "approx_prefix_tokens": 100
+  }
+ },
+ {
+  "trace_id": "27805aabe9ec0222fcb3dc449cfa2e9d",
+  "span_id": "a372d5c1f9ff9f0c",
+  "call_site": "agent.format_result",
+  "pattern": "passthrough_reformat",
+  "confidence": "LOCAL",
+  "saving_usd": 0.00126,
+  "saving_ms": 760.0,
+  "detail": "output introduces 0 new content tokens out of 6; it restates `track_order` output and can be a template render",
+  "evidence": {
+   "novel_tokens": [],
+   "preceding_tool": "track_order"
+  }
+ },
+ {
+  "trace_id": "ccc4603eb81c39073d5d08478f04de88",
+  "span_id": "77a2aab7bfcdaa75",
+  "call_site": "triage.urgency",
+  "pattern": "redundant_call",
+  "confidence": "PROVABLE",
+  "saving_usd": 0.001005,
+  "saving_ms": 820.0,
+  "detail": "identical input already sent to this call site as span 8556323c in the same trace \u2014 memoize within the trace",
+  "evidence": {
+   "first_span": "8556323c356cbefe"
+  }
+ },
+ {
+  "trace_id": "734f77f8d64652abcaafa71b06a15952",
+  "span_id": "4cda3b420ae7e523",
+  "call_site": "agent.emotion_probe",
+  "pattern": "dead_llm_call",
+  "confidence": "PROVABLE",
+  "saving_usd": 0.00117,
+  "saving_ms": 640.0,
+  "detail": "5 of 6 content tokens from this output appear nowhere downstream or in the trace answer \u2014 the call can be deleted outright, no fast path needed",
+  "evidence": {
+   "model": "gpt-4o",
+   "tokens": 402
+  }
+ },
+ {
+  "trace_id": "2af9164d46c3687399238bccc4ad6311",
+  "span_id": "7a9a5f371918aee4",
+  "call_site": "policy.check",
+  "pattern": "rebuilt_prefix",
+  "confidence": "ADVISORY",
+  "saving_usd": 0.0005,
+  "saving_ms": 0.0,
+  "detail": "~100 tokens of identical context re-sent across 3 calls in one trace \u2014 a caching change, not a script",
+  "evidence": {
+   "calls_sharing_prefix": 3,
+   "approx_prefix_tokens": 100
+  }
+ },
+ {
+  "trace_id": "d0c8c054cfc0f8b184417fc9df7f6cab",
+  "span_id": "9158dd6a1a37e907",
+  "call_site": "agent.format_result",
+  "pattern": "passthrough_reformat",
+  "confidence": "LOCAL",
+  "saving_usd": 0.00126,
+  "saving_ms": 760.0,
+  "detail": "output introduces 0 new content tokens out of 6; it restates `track_order` output and can be a template render",
+  "evidence": {
+   "novel_tokens": [],
+   "preceding_tool": "track_order"
+  }
+ },
+ {
+  "trace_id": "bd8462a55a4f7c2e412dc89b2b4bed30",
+  "span_id": "7879315408913d3c",
+  "call_site": "agent.format_result",
+  "pattern": "passthrough_reformat",
+  "confidence": "LOCAL",
+  "saving_usd": 0.00126,
+  "saving_ms": 760.0,
+  "detail": "output introduces 0 new content tokens out of 6; it restates `track_order` output and can be a template render",
+  "evidence": {
+   "novel_tokens": [],
+   "preceding_tool": "track_order"
+  }
+ },
+ {
+  "trace_id": "6d052cbb1227842a22a2b43c00a9bf23",
+  "span_id": "58384e05ecc42158",
+  "call_site": "agent.dispatch",
+  "pattern": "verbatim_dispatch",
+  "confidence": "LOCAL",
+  "saving_usd": 0.001335,
+  "saving_ms": 869.999872,
+  "detail": "every argument (order_id) appears verbatim in the input; the model is doing string extraction, not tool selection. Tool-name determinism still needs corpus confirmation before substitution",
+  "evidence": {
+   "arguments": {
+    "order_id": "9034"
+   },
+   "tool": "lookup_charges"
+  }
+ },
+ {
+  "trace_id": "9e4a86028d676ff1ad7d0acc9552a5c1",
+  "span_id": "71784178fb2e469c",
+  "call_site": "agent.format_result",
+  "pattern": "passthrough_reformat",
+  "confidence": "LOCAL",
+  "saving_usd": 0.00126,
+  "saving_ms": 760.0,
+  "detail": "output introduces 0 new content tokens out of 6; it restates `track_order` output and can be a template render",
+  "evidence": {
+   "novel_tokens": [],
+   "preceding_tool": "track_order"
+  }
+ },
+ {
+  "trace_id": "0960ef3cf7f708778cabc0517db0430f",
+  "span_id": "79f0664888d60cbf",
+  "call_site": "agent.format_result",
+  "pattern": "passthrough_reformat",
+  "confidence": "LOCAL",
+  "saving_usd": 0.00126,
+  "saving_ms": 760.0,
+  "detail": "output introduces 0 new content tokens out of 6; it restates `track_order` output and can be a template render",
+  "evidence": {
+   "novel_tokens": [],
+   "preceding_tool": "track_order"
+  }
+ },
+ {
+  "trace_id": "ccc5b0238f826361b2f1a677babc8293",
+  "span_id": "89f13df9f3905f24",
+  "call_site": "agent.dispatch",
+  "pattern": "verbatim_dispatch",
+  "confidence": "LOCAL",
+  "saving_usd": 0.001335,
+  "saving_ms": 869.999872,
+  "detail": "every argument (order_id) appears verbatim in the input; the model is doing string extraction, not tool selection. Tool-name determinism still needs corpus confirmation before substitution",
+  "evidence": {
+   "arguments": {
+    "order_id": "5567"
+   },
+   "tool": "lookup_charges"
+  }
+ },
+ {
+  "trace_id": "0560a87fd405bc9901a7b9da9f822847",
+  "span_id": "49e4eb0d150af60d",
+  "call_site": "agent.format_result",
+  "pattern": "passthrough_reformat",
+  "confidence": "LOCAL",
+  "saving_usd": 0.00126,
+  "saving_ms": 760.0,
+  "detail": "output introduces 0 new content tokens out of 6; it restates `track_order` output and can be a template render",
+  "evidence": {
+   "novel_tokens": [],
+   "preceding_tool": "track_order"
+  }
+ },
+ {
+  "trace_id": "57dea35556ac87914b061b05bc1b4437",
+  "span_id": "0224ea6896a57dd6",
+  "call_site": "policy.check",
+  "pattern": "rebuilt_prefix",
+  "confidence": "ADVISORY",
+  "saving_usd": 0.0005,
+  "saving_ms": 0.0,
+  "detail": "~100 tokens of identical context re-sent across 3 calls in one trace \u2014 a caching change, not a script",
+  "evidence": {
+   "calls_sharing_prefix": 3,
+   "approx_prefix_tokens": 100
+  }
+ },
+ {
+  "trace_id": "5359b91d527f9c62763dea8bbb1f32c8",
+  "span_id": "3fecdd82ee05ecb5",
+  "call_site": "agent.format_result",
+  "pattern": "passthrough_reformat",
+  "confidence": "LOCAL",
+  "saving_usd": 0.00126,
+  "saving_ms": 760.0,
+  "detail": "output introduces 0 new content tokens out of 6; it restates `track_order` output and can be a template render",
+  "evidence": {
+   "novel_tokens": [],
+   "preceding_tool": "track_order"
+  }
+ },
+ {
+  "trace_id": "e3e7f2918284415605e8e6f3eb1992b1",
+  "span_id": "7ce9acecd18669cb",
+  "call_site": "agent.emotion_probe",
+  "pattern": "dead_llm_call",
+  "confidence": "PROVABLE",
+  "saving_usd": 0.00117,
+  "saving_ms": 640.0,
+  "detail": "5 of 6 content tokens from this output appear nowhere downstream or in the trace answer \u2014 the call can be deleted outright, no fast path needed",
+  "evidence": {
+   "model": "gpt-4o",
+   "tokens": 402
+  }
+ },
+ {
+  "trace_id": "2d63664a8f57a2349202155eaf12d627",
+  "span_id": "4e607507d122d020",
+  "call_site": "agent.format_result",
+  "pattern": "passthrough_reformat",
+  "confidence": "LOCAL",
+  "saving_usd": 0.00126,
+  "saving_ms": 760.0,
+  "detail": "output introduces 0 new content tokens out of 6; it restates `track_order` output and can be a template render",
+  "evidence": {
+   "novel_tokens": [],
+   "preceding_tool": "track_order"
+  }
+ },
+ {
+  "trace_id": "a716f967f9fe743d385f0a0e10bf8896",
+  "span_id": "49d87c093ae57117",
+  "call_site": "agent.dispatch",
+  "pattern": "verbatim_dispatch",
+  "confidence": "LOCAL",
+  "saving_usd": 0.001335,
+  "saving_ms": 869.999872,
+  "detail": "every argument (order_id) appears verbatim in the input; the model is doing string extraction, not tool selection. Tool-name determinism still needs corpus confirmation before substitution",
+  "evidence": {
+   "arguments": {
+    "order_id": "5567"
+   },
+   "tool": "lookup_charges"
+  }
+ },
+ {
+  "trace_id": "0c4230390a19d26d88bd96e955b8ab12",
+  "span_id": "b09f06b7c61b8aae",
+  "call_site": "policy.check",
+  "pattern": "rebuilt_prefix",
+  "confidence": "ADVISORY",
+  "saving_usd": 0.0005,
+  "saving_ms": 0.0,
+  "detail": "~100 tokens of identical context re-sent across 3 calls in one trace \u2014 a caching change, not a script",
+  "evidence": {
+   "calls_sharing_prefix": 3,
+   "approx_prefix_tokens": 100
+  }
+ },
+ {
+  "trace_id": "99dd6994b73391a2adbd21ecd7f6c88c",
+  "span_id": "9396e360a8aa7857",
+  "call_site": "agent.dispatch",
+  "pattern": "verbatim_dispatch",
+  "confidence": "LOCAL",
+  "saving_usd": 0.001335,
+  "saving_ms": 869.999872,
+  "detail": "every argument (order_id) appears verbatim in the input; the model is doing string extraction, not tool selection. Tool-name determinism still needs corpus confirmation before substitution",
+  "evidence": {
+   "arguments": {
+    "order_id": "4412"
+   },
+   "tool": "lookup_charges"
+  }
+ },
+ {
+  "trace_id": "604db0f3d75d55483d848b775d977daf",
+  "span_id": "f5b4a9273f2b7c09",
+  "call_site": "agent.emotion_probe",
+  "pattern": "dead_llm_call",
+  "confidence": "PROVABLE",
+  "saving_usd": 0.00117,
+  "saving_ms": 640.0,
+  "detail": "5 of 6 content tokens from this output appear nowhere downstream or in the trace answer \u2014 the call can be deleted outright, no fast path needed",
+  "evidence": {
+   "model": "gpt-4o",
+   "tokens": 402
+  }
+ },
+ {
+  "trace_id": "3ba20a11793156100712c66630bb0a34",
+  "span_id": "036680f30f22c686",
+  "call_site": "agent.format_result",
+  "pattern": "passthrough_reformat",
+  "confidence": "LOCAL",
+  "saving_usd": 0.00126,
+  "saving_ms": 760.0,
+  "detail": "output introduces 0 new content tokens out of 6; it restates `track_order` output and can be a template render",
+  "evidence": {
+   "novel_tokens": [],
+   "preceding_tool": "track_order"
+  }
+ },
+ {
+  "trace_id": "c68c9dde7713eb0e117666e20c00c0ce",
+  "span_id": "4ed6b61b0d51aac1",
+  "call_site": "policy.check",
+  "pattern": "rebuilt_prefix",
+  "confidence": "ADVISORY",
+  "saving_usd": 0.0005,
+  "saving_ms": 0.0,
+  "detail": "~100 tokens of identical context re-sent across 3 calls in one trace \u2014 a caching change, not a script",
+  "evidence": {
+   "calls_sharing_prefix": 3,
+   "approx_prefix_tokens": 100
+  }
+ },
+ {
+  "trace_id": "61206d0737fb8c4d7d5e6a7038ed4b86",
+  "span_id": "08a3ad7a27845b4b",
+  "call_site": "triage.urgency",
+  "pattern": "redundant_call",
+  "confidence": "PROVABLE",
+  "saving_usd": 0.001005,
+  "saving_ms": 820.0,
+  "detail": "identical input already sent to this call site as span f690bc1b in the same trace \u2014 memoize within the trace",
+  "evidence": {
+   "first_span": "f690bc1b27149504"
+  }
+ },
+ {
+  "trace_id": "27062c2398f2acfa2f0c3b99bc5f6dfb",
+  "span_id": "a0ebb30157c8cb6f",
+  "call_site": "policy.check",
+  "pattern": "rebuilt_prefix",
+  "confidence": "ADVISORY",
+  "saving_usd": 0.0005,
+  "saving_ms": 0.0,
+  "detail": "~100 tokens of identical context re-sent across 3 calls in one trace \u2014 a caching change, not a script",
+  "evidence": {
+   "calls_sharing_prefix": 3,
+   "approx_prefix_tokens": 100
+  }
+ },
+ {
+  "trace_id": "2bfabbf25105ee5b6ea0b92023d07866",
+  "span_id": "ec37f65e9395a521",
+  "call_site": "agent.emotion_probe",
+  "pattern": "dead_llm_call",
+  "confidence": "PROVABLE",
+  "saving_usd": 0.00117,
+  "saving_ms": 640.0,
+  "detail": "5 of 6 content tokens from this output appear nowhere downstream or in the trace answer \u2014 the call can be deleted outright, no fast path needed",
+  "evidence": {
+   "model": "gpt-4o",
+   "tokens": 402
+  }
+ },
+ {
+  "trace_id": "c87b2509f059353aa13fe12aa4ad9f66",
+  "span_id": "ea140292c5e1fbec",
+  "call_site": "agent.format_result",
+  "pattern": "passthrough_reformat",
+  "confidence": "LOCAL",
+  "saving_usd": 0.00126,
+  "saving_ms": 760.0,
+  "detail": "output introduces 0 new content tokens out of 6; it restates `track_order` output and can be a template render",
+  "evidence": {
+   "novel_tokens": [],
+   "preceding_tool": "track_order"
+  }
+ },
+ {
+  "trace_id": "52a0e176ff2ef55b3c126986aaa7faf5",
+  "span_id": "17aa487df03a3211",
+  "call_site": "agent.dispatch",
+  "pattern": "verbatim_dispatch",
+  "confidence": "LOCAL",
+  "saving_usd": 0.001335,
+  "saving_ms": 869.999872,
+  "detail": "every argument (order_id) appears verbatim in the input; the model is doing string extraction, not tool selection. Tool-name determinism still needs corpus confirmation before substitution",
+  "evidence": {
+   "arguments": {
+    "order_id": "4412"
+   },
+   "tool": "lookup_charges"
+  }
+ },
+ {
+  "trace_id": "734e745f673455ce8a841a6d35c419da",
+  "span_id": "442383acf14deac9",
+  "call_site": "agent.emotion_probe",
+  "pattern": "dead_llm_call",
+  "confidence": "PROVABLE",
+  "saving_usd": 0.00117,
+  "saving_ms": 640.0,
+  "detail": "5 of 6 content tokens from this output appear nowhere downstream or in the trace answer \u2014 the call can be deleted outright, no fast path needed",
+  "evidence": {
+   "model": "gpt-4o",
+   "tokens": 402
+  }
+ },
+ {
+  "trace_id": "ece31f8c21f4c1f0e4e57e669bb6b550",
+  "span_id": "f9ca273e9f98a9cf",
+  "call_site": "agent.dispatch",
+  "pattern": "verbatim_dispatch",
+  "confidence": "LOCAL",
+  "saving_usd": 0.001335,
+  "saving_ms": 869.999872,
+  "detail": "every argument (order_id) appears verbatim in the input; the model is doing string extraction, not tool selection. Tool-name determinism still needs corpus confirmation before substitution",
+  "evidence": {
+   "arguments": {
+    "order_id": "7781"
+   },
+   "tool": "lookup_charges"
+  }
+ },
+ {
+  "trace_id": "20a9d518d8ca0d2125544e8a9f20b8e7",
+  "span_id": "93b55e49bbba58a0",
+  "call_site": "agent.format_result",
+  "pattern": "passthrough_reformat",
+  "confidence": "LOCAL",
+  "saving_usd": 0.00126,
+  "saving_ms": 760.0,
+  "detail": "output introduces 0 new content tokens out of 6; it restates `track_order` output and can be a template render",
+  "evidence": {
+   "novel_tokens": [],
+   "preceding_tool": "track_order"
+  }
+ },
+ {
+  "trace_id": "25b90d24c0dc2263e8cf8cc305d902e6",
+  "span_id": "8793d98a74b303df",
+  "call_site": "agent.format_result",
+  "pattern": "passthrough_reformat",
+  "confidence": "LOCAL",
+  "saving_usd": 0.00126,
+  "saving_ms": 760.0,
+  "detail": "output introduces 0 new content tokens out of 6; it restates `track_order` output and can be a template render",
+  "evidence": {
+   "novel_tokens": [],
+   "preceding_tool": "track_order"
+  }
+ },
+ {
+  "trace_id": "7aed6661139091d43afe6446b476e991",
+  "span_id": "0cf353bba43fe0f0",
+  "call_site": "agent.emotion_probe",
+  "pattern": "dead_llm_call",
+  "confidence": "PROVABLE",
+  "saving_usd": 0.00117,
+  "saving_ms": 640.0,
+  "detail": "5 of 6 content tokens from this output appear nowhere downstream or in the trace answer \u2014 the call can be deleted outright, no fast path needed",
+  "evidence": {
+   "model": "gpt-4o",
+   "tokens": 402
+  }
+ },
+ {
+  "trace_id": "07600b60e3cec80637a8619ac40254e1",
+  "span_id": "8b2f9379be13f4f6",
+  "call_site": "agent.format_result",
+  "pattern": "passthrough_reformat",
+  "confidence": "LOCAL",
+  "saving_usd": 0.00126,
+  "saving_ms": 760.0,
+  "detail": "output introduces 0 new content tokens out of 6; it restates `track_order` output and can be a template render",
+  "evidence": {
+   "novel_tokens": [],
+   "preceding_tool": "track_order"
+  }
+ },
+ {
+  "trace_id": "a44a385beb97a28224cef018c82b4872",
+  "span_id": "b99699a3f48ef0c6",
+  "call_site": "policy.check",
+  "pattern": "rebuilt_prefix",
+  "confidence": "ADVISORY",
+  "saving_usd": 0.0005,
+  "saving_ms": 0.0,
+  "detail": "~100 tokens of identical context re-sent across 3 calls in one trace \u2014 a caching change, not a script",
+  "evidence": {
+   "calls_sharing_prefix": 3,
+   "approx_prefix_tokens": 100
+  }
+ },
+ {
+  "trace_id": "d6d75d347c2fe3c39e30114787aadf1b",
+  "span_id": "1b74ee6647f68d89",
+  "call_site": "agent.format_result",
+  "pattern": "passthrough_reformat",
+  "confidence": "LOCAL",
+  "saving_usd": 0.00126,
+  "saving_ms": 760.0,
+  "detail": "output introduces 0 new content tokens out of 6; it restates `track_order` output and can be a template render",
+  "evidence": {
+   "novel_tokens": [],
+   "preceding_tool": "track_order"
+  }
+ },
+ {
+  "trace_id": "52b0d5daabb952d71299029dcdb18841",
+  "span_id": "9336009e50c3cc6b",
+  "call_site": "agent.format_result",
+  "pattern": "passthrough_reformat",
+  "confidence": "LOCAL",
+  "saving_usd": 0.00126,
+  "saving_ms": 760.0,
+  "detail": "output introduces 0 new content tokens out of 6; it restates `track_order` output and can be a template render",
+  "evidence": {
+   "novel_tokens": [],
+   "preceding_tool": "track_order"
+  }
+ },
+ {
+  "trace_id": "1aacb1d87923ed22e5b514206c3663b3",
+  "span_id": "b76758c5810a4912",
+  "call_site": "agent.emotion_probe",
+  "pattern": "dead_llm_call",
+  "confidence": "PROVABLE",
+  "saving_usd": 0.00117,
+  "saving_ms": 640.0,
+  "detail": "5 of 6 content tokens from this output appear nowhere downstream or in the trace answer \u2014 the call can be deleted outright, no fast path needed",
+  "evidence": {
+   "model": "gpt-4o",
+   "tokens": 402
+  }
+ },
+ {
+  "trace_id": "b9dae370365399a6f8eab507ba0d6ce2",
+  "span_id": "29f8c06c3b53bef4",
+  "call_site": "agent.emotion_probe",
+  "pattern": "dead_llm_call",
+  "confidence": "PROVABLE",
+  "saving_usd": 0.00117,
+  "saving_ms": 640.0,
+  "detail": "5 of 6 content tokens from this output appear nowhere downstream or in the trace answer \u2014 the call can be deleted outright, no fast path needed",
+  "evidence": {
+   "model": "gpt-4o",
+   "tokens": 402
+  }
+ },
+ {
+  "trace_id": "2d7323aac572bf9a65c2ab9de842a2a7",
+  "span_id": "f3beaf241e5353ec",
+  "call_site": "triage.urgency",
+  "pattern": "redundant_call",
+  "confidence": "PROVABLE",
+  "saving_usd": 0.001005,
+  "saving_ms": 820.0,
+  "detail": "identical input already sent to this call site as span e4385d18 in the same trace \u2014 memoize within the trace",
+  "evidence": {
+   "first_span": "e4385d18db9d7e5f"
+  }
+ },
+ {
+  "trace_id": "713089d53d9e1112d6e085d0aa933be1",
+  "span_id": "f0ef95627e777364",
+  "call_site": "triage.urgency",
+  "pattern": "redundant_call",
+  "confidence": "PROVABLE",
+  "saving_usd": 0.001005,
+  "saving_ms": 820.0,
+  "detail": "identical input already sent to this call site as span 296d6751 in the same trace \u2014 memoize within the trace",
+  "evidence": {
+   "first_span": "296d675132fc3520"
+  }
+ },
+ {
+  "trace_id": "ec3ebc57f5556f918a7febfcaad9ac79",
+  "span_id": "8bc8ff746e2ef22b",
+  "call_site": "policy.check",
+  "pattern": "rebuilt_prefix",
+  "confidence": "ADVISORY",
+  "saving_usd": 0.0005,
+  "saving_ms": 0.0,
+  "detail": "~100 tokens of identical context re-sent across 3 calls in one trace \u2014 a caching change, not a script",
+  "evidence": {
+   "calls_sharing_prefix": 3,
+   "approx_prefix_tokens": 100
+  }
+ },
+ {
+  "trace_id": "ab3f150147f46f1928346e72ccbffc5f",
+  "span_id": "09e9b916ad010be3",
+  "call_site": "agent.dispatch",
+  "pattern": "verbatim_dispatch",
+  "confidence": "LOCAL",
+  "saving_usd": 0.001335,
+  "saving_ms": 869.999872,
+  "detail": "every argument (order_id) appears verbatim in the input; the model is doing string extraction, not tool selection. Tool-name determinism still needs corpus confirmation before substitution",
+  "evidence": {
+   "arguments": {
+    "order_id": "6120"
+   },
+   "tool": "lookup_charges"
+  }
+ },
+ {
+  "trace_id": "432628f4bdef14d67c7e56adc9a291aa",
+  "span_id": "f6465bd3eac185c6",
+  "call_site": "agent.emotion_probe",
+  "pattern": "dead_llm_call",
+  "confidence": "PROVABLE",
+  "saving_usd": 0.00117,
+  "saving_ms": 640.0,
+  "detail": "5 of 6 content tokens from this output appear nowhere downstream or in the trace answer \u2014 the call can be deleted outright, no fast path needed",
+  "evidence": {
+   "model": "gpt-4o",
+   "tokens": 402
+  }
+ },
+ {
+  "trace_id": "b1634e334bf5aa8a630cd7115afa6720",
+  "span_id": "a9fffa94c7ad4630",
+  "call_site": "agent.format_result",
+  "pattern": "passthrough_reformat",
+  "confidence": "LOCAL",
+  "saving_usd": 0.00126,
+  "saving_ms": 760.0,
+  "detail": "output introduces 0 new content tokens out of 6; it restates `track_order` output and can be a template render",
+  "evidence": {
+   "novel_tokens": [],
+   "preceding_tool": "track_order"
+  }
+ },
+ {
+  "trace_id": "7dd6eef764ad1fd5842056a4d26381af",
+  "span_id": "f71a5ba0e13e973b",
+  "call_site": "agent.format_result",
+  "pattern": "passthrough_reformat",
+  "confidence": "LOCAL",
+  "saving_usd": 0.00126,
+  "saving_ms": 760.0,
+  "detail": "output introduces 0 new content tokens out of 6; it restates `track_order` output and can be a template render",
+  "evidence": {
+   "novel_tokens": [],
+   "preceding_tool": "track_order"
+  }
+ },
+ {
+  "trace_id": "1d82ff44a2aaff0bd3ace1aaf07ec5b2",
+  "span_id": "6e936977526512b1",
+  "call_site": "agent.emotion_probe",
+  "pattern": "dead_llm_call",
+  "confidence": "PROVABLE",
+  "saving_usd": 0.00117,
+  "saving_ms": 640.0,
+  "detail": "5 of 6 content tokens from this output appear nowhere downstream or in the trace answer \u2014 the call can be deleted outright, no fast path needed",
+  "evidence": {
+   "model": "gpt-4o",
+   "tokens": 402
+  }
+ },
+ {
+  "trace_id": "29277c75e2e29065e1810fcf5404be01",
+  "span_id": "568e9b99ec0c0490",
+  "call_site": "triage.urgency",
+  "pattern": "redundant_call",
+  "confidence": "PROVABLE",
+  "saving_usd": 0.001005,
+  "saving_ms": 820.0,
+  "detail": "identical input already sent to this call site as span 5232f1e6 in the same trace \u2014 memoize within the trace",
+  "evidence": {
+   "first_span": "5232f1e6426bce50"
+  }
+ },
+ {
+  "trace_id": "b90f943fff71b78669193928af2dcaa5",
+  "span_id": "d8c9a68613df73c6",
+  "call_site": "agent.emotion_probe",
+  "pattern": "dead_llm_call",
+  "confidence": "PROVABLE",
+  "saving_usd": 0.00117,
+  "saving_ms": 640.0,
+  "detail": "5 of 6 content tokens from this output appear nowhere downstream or in the trace answer \u2014 the call can be deleted outright, no fast path needed",
+  "evidence": {
+   "model": "gpt-4o",
+   "tokens": 402
+  }
+ },
+ {
+  "trace_id": "902cf5bde748eaa5637a69964d434736",
+  "span_id": "0a892205767bc7d2",
+  "call_site": "agent.dispatch",
+  "pattern": "verbatim_dispatch",
+  "confidence": "LOCAL",
+  "saving_usd": 0.001335,
+  "saving_ms": 869.999872,
+  "detail": "every argument (order_id) appears verbatim in the input; the model is doing string extraction, not tool selection. Tool-name determinism still needs corpus confirmation before substitution",
+  "evidence": {
+   "arguments": {
+    "order_id": "4412"
+   },
+   "tool": "lookup_charges"
+  }
+ },
+ {
+  "trace_id": "af21a7c17fdbcabf45888f2b2f21fb9e",
+  "span_id": "8a84ce316d584e2e",
+  "call_site": "agent.emotion_probe",
+  "pattern": "dead_llm_call",
+  "confidence": "PROVABLE",
+  "saving_usd": 0.00117,
+  "saving_ms": 640.0,
+  "detail": "5 of 6 content tokens from this output appear nowhere downstream or in the trace answer \u2014 the call can be deleted outright, no fast path needed",
+  "evidence": {
+   "model": "gpt-4o",
+   "tokens": 402
+  }
+ },
+ {
+  "trace_id": "2dd53d7f5fe91e49f18603bf215f7712",
+  "span_id": "317e303b505e6ab0",
+  "call_site": "agent.format_result",
+  "pattern": "passthrough_reformat",
+  "confidence": "LOCAL",
+  "saving_usd": 0.00126,
+  "saving_ms": 760.0,
+  "detail": "output introduces 0 new content tokens out of 6; it restates `track_order` output and can be a template render",
+  "evidence": {
+   "novel_tokens": [],
+   "preceding_tool": "track_order"
+  }
+ },
+ {
+  "trace_id": "cc4233e97aa6d8338021520885b82ad8",
+  "span_id": "b3813de79becb6fc",
+  "call_site": "triage.urgency",
+  "pattern": "redundant_call",
+  "confidence": "PROVABLE",
+  "saving_usd": 0.001005,
+  "saving_ms": 820.0,
+  "detail": "identical input already sent to this call site as span 98e1cb21 in the same trace \u2014 memoize within the trace",
+  "evidence": {
+   "first_span": "98e1cb213b70be7f"
+  }
+ },
+ {
+  "trace_id": "dac06850c8c02c3cad26f4e681457279",
+  "span_id": "62f052c2f6f6887d",
+  "call_site": "agent.dispatch",
+  "pattern": "verbatim_dispatch",
+  "confidence": "LOCAL",
+  "saving_usd": 0.001335,
+  "saving_ms": 869.999872,
+  "detail": "every argument (order_id) appears verbatim in the input; the model is doing string extraction, not tool selection. Tool-name determinism still needs corpus confirmation before substitution",
+  "evidence": {
+   "arguments": {
+    "order_id": "6120"
+   },
+   "tool": "lookup_charges"
+  }
+ },
+ {
+  "trace_id": "887e4195a5a511b036a125fcb84e2fff",
+  "span_id": "3601f26845f6845f",
+  "call_site": "agent.emotion_probe",
+  "pattern": "dead_llm_call",
+  "confidence": "PROVABLE",
+  "saving_usd": 0.00117,
+  "saving_ms": 640.0,
+  "detail": "5 of 6 content tokens from this output appear nowhere downstream or in the trace answer \u2014 the call can be deleted outright, no fast path needed",
+  "evidence": {
+   "model": "gpt-4o",
+   "tokens": 402
+  }
+ },
+ {
+  "trace_id": "cfc127cb419413528994929b2683c34f",
+  "span_id": "c1a897964f1ef581",
+  "call_site": "agent.dispatch",
+  "pattern": "verbatim_dispatch",
+  "confidence": "LOCAL",
+  "saving_usd": 0.001335,
+  "saving_ms": 869.999872,
+  "detail": "every argument (order_id) appears verbatim in the input; the model is doing string extraction, not tool selection. Tool-name determinism still needs corpus confirmation before substitution",
+  "evidence": {
+   "arguments": {
+    "order_id": "6120"
+   },
+   "tool": "lookup_charges"
+  }
+ },
+ {
+  "trace_id": "e30b78f27f1fe6845ed1546b0cb2ecfc",
+  "span_id": "a0bd15b4ec71706c",
+  "call_site": "triage.urgency",
+  "pattern": "redundant_call",
+  "confidence": "PROVABLE",
+  "saving_usd": 0.001005,
+  "saving_ms": 820.0,
+  "detail": "identical input already sent to this call site as span 0df7ddbb in the same trace \u2014 memoize within the trace",
+  "evidence": {
+   "first_span": "0df7ddbbfb3e35f7"
+  }
+ },
+ {
+  "trace_id": "80fd5bf5665b32dece920576bf53919a",
+  "span_id": "3cfe50383d0c52fd",
+  "call_site": "agent.dispatch",
+  "pattern": "verbatim_dispatch",
+  "confidence": "LOCAL",
+  "saving_usd": 0.001335,
+  "saving_ms": 869.999872,
+  "detail": "every argument (order_id) appears verbatim in the input; the model is doing string extraction, not tool selection. Tool-name determinism still needs corpus confirmation before substitution",
+  "evidence": {
+   "arguments": {
+    "order_id": "5567"
+   },
+   "tool": "lookup_charges"
+  }
+ },
+ {
+  "trace_id": "41b4446b087ba03c9ecef5b78591026b",
+  "span_id": "4bf66e75d96c9baf",
+  "call_site": "agent.emotion_probe",
+  "pattern": "dead_llm_call",
+  "confidence": "PROVABLE",
+  "saving_usd": 0.00117,
+  "saving_ms": 640.0,
+  "detail": "5 of 6 content tokens from this output appear nowhere downstream or in the trace answer \u2014 the call can be deleted outright, no fast path needed",
+  "evidence": {
+   "model": "gpt-4o",
+   "tokens": 402
+  }
+ },
+ {
+  "trace_id": "470a7a952eff99142f44446d67fc4c6f",
+  "span_id": "fef85a565b2f4b28",
+  "call_site": "agent.format_result",
+  "pattern": "passthrough_reformat",
+  "confidence": "LOCAL",
+  "saving_usd": 0.00126,
+  "saving_ms": 760.0,
+  "detail": "output introduces 0 new content tokens out of 6; it restates `track_order` output and can be a template render",
+  "evidence": {
+   "novel_tokens": [],
+   "preceding_tool": "track_order"
+  }
+ },
+ {
+  "trace_id": "a9f50c9ddad8debf9c513256dc3a726c",
+  "span_id": "12d1d4a6d701c24c",
+  "call_site": "agent.dispatch",
+  "pattern": "verbatim_dispatch",
+  "confidence": "LOCAL",
+  "saving_usd": 0.001335,
+  "saving_ms": 869.999872,
+  "detail": "every argument (order_id) appears verbatim in the input; the model is doing string extraction, not tool selection. Tool-name determinism still needs corpus confirmation before substitution",
+  "evidence": {
+   "arguments": {
+    "order_id": "7781"
+   },
+   "tool": "lookup_charges"
+  }
+ },
+ {
+  "trace_id": "7cb9fce130b8e87676b7195c40734037",
+  "span_id": "8c934180788aa3cb",
+  "call_site": "triage.urgency",
+  "pattern": "redundant_call",
+  "confidence": "PROVABLE",
+  "saving_usd": 0.001005,
+  "saving_ms": 820.0,
+  "detail": "identical input already sent to this call site as span 40a3004e in the same trace \u2014 memoize within the trace",
+  "evidence": {
+   "first_span": "40a3004e45be2237"
+  }
+ },
+ {
+  "trace_id": "1606ea4e180a2788a3a0e97ca099ffe7",
+  "span_id": "34105e9315cac3fb",
+  "call_site": "triage.urgency",
+  "pattern": "redundant_call",
+  "confidence": "PROVABLE",
+  "saving_usd": 0.001005,
+  "saving_ms": 820.0,
+  "detail": "identical input already sent to this call site as span ff8dbe85 in the same trace \u2014 memoize within the trace",
+  "evidence": {
+   "first_span": "ff8dbe85e211dc49"
+  }
+ },
+ {
+  "trace_id": "38cedd0b690f990f5e3455677f0b2483",
+  "span_id": "e9fed684d371b0b9",
+  "call_site": "policy.check",
+  "pattern": "rebuilt_prefix",
+  "confidence": "ADVISORY",
+  "saving_usd": 0.0005,
+  "saving_ms": 0.0,
+  "detail": "~100 tokens of identical context re-sent across 3 calls in one trace \u2014 a caching change, not a script",
+  "evidence": {
+   "calls_sharing_prefix": 3,
+   "approx_prefix_tokens": 100
+  }
+ },
+ {
+  "trace_id": "db24b4de094826abbf0256916efa3287",
+  "span_id": "a1d53a4002658c82",
+  "call_site": "triage.urgency",
+  "pattern": "redundant_call",
+  "confidence": "PROVABLE",
+  "saving_usd": 0.001005,
+  "saving_ms": 820.0,
+  "detail": "identical input already sent to this call site as span 8a5b629b in the same trace \u2014 memoize within the trace",
+  "evidence": {
+   "first_span": "8a5b629b72c3238e"
+  }
+ },
+ {
+  "trace_id": "890358253838c6948d934f52e6879b2f",
+  "span_id": "06bc909b8b571fc6",
+  "call_site": "triage.urgency",
+  "pattern": "redundant_call",
+  "confidence": "PROVABLE",
+  "saving_usd": 0.001005,
+  "saving_ms": 820.0,
+  "detail": "identical input already sent to this call site as span 2f2de8d1 in the same trace \u2014 memoize within the trace",
+  "evidence": {
+   "first_span": "2f2de8d17286c8ef"
+  }
+ },
+ {
+  "trace_id": "5c1aac41223ea44787f744dd9ac9efba",
+  "span_id": "70f0adc6285e1f27",
+  "call_site": "agent.dispatch",
+  "pattern": "verbatim_dispatch",
+  "confidence": "LOCAL",
+  "saving_usd": 0.001335,
+  "saving_ms": 869.999872,
+  "detail": "every argument (order_id) appears verbatim in the input; the model is doing string extraction, not tool selection. Tool-name determinism still needs corpus confirmation before substitution",
+  "evidence": {
+   "arguments": {
+    "order_id": "9034"
+   },
+   "tool": "lookup_charges"
+  }
+ },
+ {
+  "trace_id": "5a3d8c20f0cccc5ca041c02630e1dd65",
+  "span_id": "ee060101158ffb39",
+  "call_site": "triage.urgency",
+  "pattern": "redundant_call",
+  "confidence": "PROVABLE",
+  "saving_usd": 0.001005,
+  "saving_ms": 820.0,
+  "detail": "identical input already sent to this call site as span f0adc9a2 in the same trace \u2014 memoize within the trace",
+  "evidence": {
+   "first_span": "f0adc9a2bcbfc798"
+  }
+ },
+ {
+  "trace_id": "1a0434252ad2701178555e947a9ebae1",
+  "span_id": "e07a6285d70f087d",
+  "call_site": "agent.format_result",
+  "pattern": "passthrough_reformat",
+  "confidence": "LOCAL",
+  "saving_usd": 0.00126,
+  "saving_ms": 760.0,
+  "detail": "output introduces 0 new content tokens out of 6; it restates `track_order` output and can be a template render",
+  "evidence": {
+   "novel_tokens": [],
+   "preceding_tool": "track_order"
+  }
+ },
+ {
+  "trace_id": "34fdad1db38d4986366b30ee9859145e",
+  "span_id": "596cc334e6e661b3",
+  "call_site": "triage.urgency",
+  "pattern": "redundant_call",
+  "confidence": "PROVABLE",
+  "saving_usd": 0.001005,
+  "saving_ms": 820.0,
+  "detail": "identical input already sent to this call site as span 20868e06 in the same trace \u2014 memoize within the trace",
+  "evidence": {
+   "first_span": "20868e06492120af"
+  }
+ },
+ {
+  "trace_id": "a2a565bfafe22734fdd9b2c5cc35b3ed",
+  "span_id": "242f929853eba08b",
+  "call_site": "policy.check",
+  "pattern": "rebuilt_prefix",
+  "confidence": "ADVISORY",
+  "saving_usd": 0.0005,
+  "saving_ms": 0.0,
+  "detail": "~100 tokens of identical context re-sent across 3 calls in one trace \u2014 a caching change, not a script",
+  "evidence": {
+   "calls_sharing_prefix": 3,
+   "approx_prefix_tokens": 100
+  }
+ },
+ {
+  "trace_id": "32706bf28889764fa61fc84c4a9f9534",
+  "span_id": "adf239dc291a6e4c",
+  "call_site": "triage.urgency",
+  "pattern": "redundant_call",
+  "confidence": "PROVABLE",
+  "saving_usd": 0.001005,
+  "saving_ms": 820.0,
+  "detail": "identical input already sent to this call site as span 5e535a2d in the same trace \u2014 memoize within the trace",
+  "evidence": {
+   "first_span": "5e535a2de567e1bd"
+  }
+ },
+ {
+  "trace_id": "aec00b8faa91f005b658b91932fae27d",
+  "span_id": "cc7978ec0771c8f2",
+  "call_site": "agent.dispatch",
+  "pattern": "verbatim_dispatch",
+  "confidence": "LOCAL",
+  "saving_usd": 0.001335,
+  "saving_ms": 869.999872,
+  "detail": "every argument (order_id) appears verbatim in the input; the model is doing string extraction, not tool selection. Tool-name determinism still needs corpus confirmation before substitution",
+  "evidence": {
+   "arguments": {
+    "order_id": "7781"
+   },
+   "tool": "lookup_charges"
+  }
+ },
+ {
+  "trace_id": "119eb06f8f5cb56c36a765e9176e35e0",
+  "span_id": "5dd58ed39821703c",
+  "call_site": "agent.emotion_probe",
+  "pattern": "dead_llm_call",
+  "confidence": "PROVABLE",
+  "saving_usd": 0.00117,
+  "saving_ms": 640.0,
+  "detail": "5 of 6 content tokens from this output appear nowhere downstream or in the trace answer \u2014 the call can be deleted outright, no fast path needed",
+  "evidence": {
+   "model": "gpt-4o",
+   "tokens": 402
+  }
+ },
+ {
+  "trace_id": "db2707c66d3d7f7a8a4cf7cac2551b8b",
+  "span_id": "c3797bb35a9ce25e",
+  "call_site": "agent.emotion_probe",
+  "pattern": "dead_llm_call",
+  "confidence": "PROVABLE",
+  "saving_usd": 0.00117,
+  "saving_ms": 640.0,
+  "detail": "5 of 6 content tokens from this output appear nowhere downstream or in the trace answer \u2014 the call can be deleted outright, no fast path needed",
+  "evidence": {
+   "model": "gpt-4o",
+   "tokens": 402
+  }
+ },
+ {
+  "trace_id": "dc360832f2efed46fbab3baf1686c5d8",
+  "span_id": "e713099a234bf756",
+  "call_site": "agent.emotion_probe",
+  "pattern": "dead_llm_call",
+  "confidence": "PROVABLE",
+  "saving_usd": 0.00117,
+  "saving_ms": 640.0,
+  "detail": "5 of 6 content tokens from this output appear nowhere downstream or in the trace answer \u2014 the call can be deleted outright, no fast path needed",
+  "evidence": {
+   "model": "gpt-4o",
+   "tokens": 402
+  }
+ },
+ {
+  "trace_id": "689444d2547c5126e3447626fd2dabf1",
+  "span_id": "71ada860135c7bc3",
+  "call_site": "agent.dispatch",
+  "pattern": "verbatim_dispatch",
+  "confidence": "LOCAL",
+  "saving_usd": 0.001335,
+  "saving_ms": 869.999872,
+  "detail": "every argument (order_id) appears verbatim in the input; the model is doing string extraction, not tool selection. Tool-name determinism still needs corpus confirmation before substitution",
+  "evidence": {
+   "arguments": {
+    "order_id": "8890"
+   },
+   "tool": "lookup_charges"
+  }
+ },
+ {
+  "trace_id": "d59be6ded10150ad49923e1804f3a09d",
+  "span_id": "6fcef79ccf26bd7a",
+  "call_site": "agent.emotion_probe",
+  "pattern": "dead_llm_call",
+  "confidence": "PROVABLE",
+  "saving_usd": 0.00117,
+  "saving_ms": 640.0,
+  "detail": "5 of 6 content tokens from this output appear nowhere downstream or in the trace answer \u2014 the call can be deleted outright, no fast path needed",
+  "evidence": {
+   "model": "gpt-4o",
+   "tokens": 402
+  }
+ },
+ {
+  "trace_id": "3707070bb9a859cce31451935c3aff52",
+  "span_id": "59e843aa1d179aa4",
+  "call_site": "agent.format_result",
+  "pattern": "passthrough_reformat",
+  "confidence": "LOCAL",
+  "saving_usd": 0.00126,
+  "saving_ms": 760.0,
+  "detail": "output introduces 0 new content tokens out of 6; it restates `track_order` output and can be a template render",
+  "evidence": {
+   "novel_tokens": [],
+   "preceding_tool": "track_order"
+  }
+ },
+ {
+  "trace_id": "39e05ea3b87ff8e79e88239208ae1ff1",
+  "span_id": "efd9a3d164687d2c",
+  "call_site": "agent.format_result",
+  "pattern": "passthrough_reformat",
+  "confidence": "LOCAL",
+  "saving_usd": 0.00126,
+  "saving_ms": 760.0,
+  "detail": "output introduces 0 new content tokens out of 6; it restates `track_order` output and can be a template render",
+  "evidence": {
+   "novel_tokens": [],
+   "preceding_tool": "track_order"
+  }
+ },
+ {
+  "trace_id": "634d666814a12be48c3e73aad96a7548",
+  "span_id": "dff70fecc48c054c",
+  "call_site": "triage.urgency",
+  "pattern": "redundant_call",
+  "confidence": "PROVABLE",
+  "saving_usd": 0.001005,
+  "saving_ms": 820.0,
+  "detail": "identical input already sent to this call site as span a4640157 in the same trace \u2014 memoize within the trace",
+  "evidence": {
+   "first_span": "a4640157374d23b0"
+  }
+ },
+ {
+  "trace_id": "7971480775b85ef4283be2c45f718f0b",
+  "span_id": "ed9b6f9d0c5b881d",
+  "call_site": "agent.dispatch",
+  "pattern": "verbatim_dispatch",
+  "confidence": "LOCAL",
+  "saving_usd": 0.001335,
+  "saving_ms": 869.999872,
+  "detail": "every argument (order_id) appears verbatim in the input; the model is doing string extraction, not tool selection. Tool-name determinism still needs corpus confirmation before substitution",
+  "evidence": {
+   "arguments": {
+    "order_id": "9034"
+   },
+   "tool": "lookup_charges"
+  }
+ },
+ {
+  "trace_id": "7f2623a776ca4f1dded9162b924f699b",
+  "span_id": "80fd5d5a9f8a5da3",
+  "call_site": "agent.format_result",
+  "pattern": "passthrough_reformat",
+  "confidence": "LOCAL",
+  "saving_usd": 0.00126,
+  "saving_ms": 760.0,
+  "detail": "output introduces 0 new content tokens out of 6; it restates `track_order` output and can be a template render",
+  "evidence": {
+   "novel_tokens": [],
+   "preceding_tool": "track_order"
+  }
+ },
+ {
+  "trace_id": "6beffa0f8c57a29c03e421725c90ff79",
+  "span_id": "3d537be1d1da549d",
+  "call_site": "agent.format_result",
+  "pattern": "passthrough_reformat",
+  "confidence": "LOCAL",
+  "saving_usd": 0.00126,
+  "saving_ms": 760.0,
+  "detail": "output introduces 0 new content tokens out of 6; it restates `track_order` output and can be a template render",
+  "evidence": {
+   "novel_tokens": [],
+   "preceding_tool": "track_order"
+  }
+ },
+ {
+  "trace_id": "06257b102f177d45866c08d222f9b708",
+  "span_id": "04a9b39c2ad87b08",
+  "call_site": "agent.dispatch",
+  "pattern": "verbatim_dispatch",
+  "confidence": "LOCAL",
+  "saving_usd": 0.001335,
+  "saving_ms": 869.999872,
+  "detail": "every argument (order_id) appears verbatim in the input; the model is doing string extraction, not tool selection. Tool-name determinism still needs corpus confirmation before substitution",
+  "evidence": {
+   "arguments": {
+    "order_id": "8890"
+   },
+   "tool": "lookup_charges"
+  }
+ },
+ {
+  "trace_id": "5f503d48d998f9f94580caea87cfcfae",
+  "span_id": "318c03bbb8230b70",
+  "call_site": "agent.emotion_probe",
+  "pattern": "dead_llm_call",
+  "confidence": "PROVABLE",
+  "saving_usd": 0.00117,
+  "saving_ms": 640.0,
+  "detail": "5 of 6 content tokens from this output appear nowhere downstream or in the trace answer \u2014 the call can be deleted outright, no fast path needed",
+  "evidence": {
+   "model": "gpt-4o",
+   "tokens": 402
+  }
+ },
+ {
+  "trace_id": "b34b3a62020d7782c7cd4d4c8f94cdba",
+  "span_id": "9786fc2fc2c5a8e9",
+  "call_site": "policy.check",
+  "pattern": "rebuilt_prefix",
+  "confidence": "ADVISORY",
+  "saving_usd": 0.0005,
+  "saving_ms": 0.0,
+  "detail": "~100 tokens of identical context re-sent across 3 calls in one trace \u2014 a caching change, not a script",
+  "evidence": {
+   "calls_sharing_prefix": 3,
+   "approx_prefix_tokens": 100
+  }
+ },
+ {
+  "trace_id": "d9ce8354661353c1fa95ef7c8febfe8a",
+  "span_id": "54e5e4d0ce8e13ca",
+  "call_site": "agent.emotion_probe",
+  "pattern": "dead_llm_call",
+  "confidence": "PROVABLE",
+  "saving_usd": 0.00117,
+  "saving_ms": 640.0,
+  "detail": "5 of 6 content tokens from this output appear nowhere downstream or in the trace answer \u2014 the call can be deleted outright, no fast path needed",
+  "evidence": {
+   "model": "gpt-4o",
+   "tokens": 402
+  }
+ },
+ {
+  "trace_id": "b64b6f97d8f7084e0bac73e94bb16194",
+  "span_id": "61c1d9ccf7475e2f",
+  "call_site": "agent.format_result",
+  "pattern": "passthrough_reformat",
+  "confidence": "LOCAL",
+  "saving_usd": 0.00126,
+  "saving_ms": 760.0,
+  "detail": "output introduces 0 new content tokens out of 6; it restates `track_order` output and can be a template render",
+  "evidence": {
+   "novel_tokens": [],
+   "preceding_tool": "track_order"
+  }
+ },
+ {
+  "trace_id": "582b5b621e3ffb94475ce68c58224021",
+  "span_id": "a84c2d309a881ba9",
+  "call_site": "agent.dispatch",
+  "pattern": "verbatim_dispatch",
+  "confidence": "LOCAL",
+  "saving_usd": 0.001335,
+  "saving_ms": 869.999872,
+  "detail": "every argument (order_id) appears verbatim in the input; the model is doing string extraction, not tool selection. Tool-name determinism still needs corpus confirmation before substitution",
+  "evidence": {
+   "arguments": {
+    "order_id": "7781"
+   },
+   "tool": "lookup_charges"
+  }
+ },
+ {
+  "trace_id": "fb5b748dce9c01c3be72e3578aff99fb",
+  "span_id": "4d2a33ba1f62c2a6",
+  "call_site": "agent.format_result",
+  "pattern": "passthrough_reformat",
+  "confidence": "LOCAL",
+  "saving_usd": 0.00126,
+  "saving_ms": 760.0,
+  "detail": "output introduces 0 new content tokens out of 6; it restates `track_order` output and can be a template render",
+  "evidence": {
+   "novel_tokens": [],
+   "preceding_tool": "track_order"
+  }
+ },
+ {
+  "trace_id": "9a52e2110a4007c9cd3ff9183ba0b993",
+  "span_id": "59e6a3ee99a9c827",
+  "call_site": "agent.dispatch",
+  "pattern": "verbatim_dispatch",
+  "confidence": "LOCAL",
+  "saving_usd": 0.001335,
+  "saving_ms": 869.999872,
+  "detail": "every argument (order_id) appears verbatim in the input; the model is doing string extraction, not tool selection. Tool-name determinism still needs corpus confirmation before substitution",
+  "evidence": {
+   "arguments": {
+    "order_id": "8890"
+   },
+   "tool": "lookup_charges"
+  }
+ },
+ {
+  "trace_id": "64b2f8ce35f0c247e55fc6ef1108e42a",
+  "span_id": "59648eba150f78aa",
+  "call_site": "agent.dispatch",
+  "pattern": "verbatim_dispatch",
+  "confidence": "LOCAL",
+  "saving_usd": 0.001335,
+  "saving_ms": 869.999872,
+  "detail": "every argument (order_id) appears verbatim in the input; the model is doing string extraction, not tool selection. Tool-name determinism still needs corpus confirmation before substitution",
+  "evidence": {
+   "arguments": {
+    "order_id": "8890"
+   },
+   "tool": "lookup_charges"
+  }
+ },
+ {
+  "trace_id": "295da99b9b942f1f6a38458a41a2c847",
+  "span_id": "67e9676d5b1491fe",
+  "call_site": "agent.emotion_probe",
+  "pattern": "dead_llm_call",
+  "confidence": "PROVABLE",
+  "saving_usd": 0.00117,
+  "saving_ms": 640.0,
+  "detail": "5 of 6 content tokens from this output appear nowhere downstream or in the trace answer \u2014 the call can be deleted outright, no fast path needed",
+  "evidence": {
+   "model": "gpt-4o",
+   "tokens": 402
+  }
+ },
+ {
+  "trace_id": "47256d74c2507267bbb416e9a1213df8",
+  "span_id": "354efe405cbcf0af",
+  "call_site": "agent.format_result",
+  "pattern": "passthrough_reformat",
+  "confidence": "LOCAL",
+  "saving_usd": 0.00126,
+  "saving_ms": 760.0,
+  "detail": "output introduces 0 new content tokens out of 6; it restates `track_order` output and can be a template render",
+  "evidence": {
+   "novel_tokens": [],
+   "preceding_tool": "track_order"
+  }
+ },
+ {
+  "trace_id": "cb916feb6a0a296c347f2f288e1adbc8",
+  "span_id": "82bce819fd47dbdf",
+  "call_site": "policy.check",
+  "pattern": "rebuilt_prefix",
+  "confidence": "ADVISORY",
+  "saving_usd": 0.0005,
+  "saving_ms": 0.0,
+  "detail": "~100 tokens of identical context re-sent across 3 calls in one trace \u2014 a caching change, not a script",
+  "evidence": {
+   "calls_sharing_prefix": 3,
+   "approx_prefix_tokens": 100
+  }
+ },
+ {
+  "trace_id": "11b6aad23ccb7c00f6dcb627bb1cef8c",
+  "span_id": "eb1e83545c5db117",
+  "call_site": "policy.check",
+  "pattern": "rebuilt_prefix",
+  "confidence": "ADVISORY",
+  "saving_usd": 0.0005,
+  "saving_ms": 0.0,
+  "detail": "~100 tokens of identical context re-sent across 3 calls in one trace \u2014 a caching change, not a script",
+  "evidence": {
+   "calls_sharing_prefix": 3,
+   "approx_prefix_tokens": 100
+  }
+ },
+ {
+  "trace_id": "877d26ef331087716124963a8be4b86c",
+  "span_id": "a83b95fe20d9e2af",
+  "call_site": "triage.urgency",
+  "pattern": "redundant_call",
+  "confidence": "PROVABLE",
+  "saving_usd": 0.001005,
+  "saving_ms": 820.0,
+  "detail": "identical input already sent to this call site as span 14acaea7 in the same trace \u2014 memoize within the trace",
+  "evidence": {
+   "first_span": "14acaea755b3f83d"
+  }
+ },
+ {
+  "trace_id": "1f9b382a7886fb5ab5d2e0f31d20de3a",
+  "span_id": "c42c548371b98fb1",
+  "call_site": "policy.check",
+  "pattern": "rebuilt_prefix",
+  "confidence": "ADVISORY",
+  "saving_usd": 0.0005,
+  "saving_ms": 0.0,
+  "detail": "~100 tokens of identical context re-sent across 3 calls in one trace \u2014 a caching change, not a script",
+  "evidence": {
+   "calls_sharing_prefix": 3,
+   "approx_prefix_tokens": 100
+  }
+ },
+ {
+  "trace_id": "3af8b3ce90894a189ee9fe60e6e185e2",
+  "span_id": "420ae40106c239e8",
+  "call_site": "agent.emotion_probe",
+  "pattern": "dead_llm_call",
+  "confidence": "PROVABLE",
+  "saving_usd": 0.00117,
+  "saving_ms": 640.0,
+  "detail": "5 of 6 content tokens from this output appear nowhere downstream or in the trace answer \u2014 the call can be deleted outright, no fast path needed",
+  "evidence": {
+   "model": "gpt-4o",
+   "tokens": 402
+  }
+ },
+ {
+  "trace_id": "f3df9a807d34ce4f021f53ad684350ea",
+  "span_id": "561939aaaedf5ce1",
+  "call_site": "agent.format_result",
+  "pattern": "passthrough_reformat",
+  "confidence": "LOCAL",
+  "saving_usd": 0.00126,
+  "saving_ms": 760.0,
+  "detail": "output introduces 0 new content tokens out of 6; it restates `track_order` output and can be a template render",
+  "evidence": {
+   "novel_tokens": [],
+   "preceding_tool": "track_order"
+  }
+ },
+ {
+  "trace_id": "aaaa86f513fa6aabce668dc39618d7c7",
+  "span_id": "71a6e27a0d4f5ed0",
+  "call_site": "policy.check",
+  "pattern": "rebuilt_prefix",
+  "confidence": "ADVISORY",
+  "saving_usd": 0.0005,
+  "saving_ms": 0.0,
+  "detail": "~100 tokens of identical context re-sent across 3 calls in one trace \u2014 a caching change, not a script",
+  "evidence": {
+   "calls_sharing_prefix": 3,
+   "approx_prefix_tokens": 100
+  }
+ },
+ {
+  "trace_id": "17ef460f02ccd7c4acf94d1326f45413",
+  "span_id": "322d2138749d32cf",
+  "call_site": "agent.dispatch",
+  "pattern": "verbatim_dispatch",
+  "confidence": "LOCAL",
+  "saving_usd": 0.001335,
+  "saving_ms": 869.999872,
+  "detail": "every argument (order_id) appears verbatim in the input; the model is doing string extraction, not tool selection. Tool-name determinism still needs corpus confirmation before substitution",
+  "evidence": {
+   "arguments": {
+    "order_id": "5567"
+   },
+   "tool": "lookup_charges"
+  }
+ },
+ {
+  "trace_id": "5f64607216f4294c61783dc77b1fe2a0",
+  "span_id": "cc789ba1a414bcda",
+  "call_site": "triage.urgency",
+  "pattern": "redundant_call",
+  "confidence": "PROVABLE",
+  "saving_usd": 0.001005,
+  "saving_ms": 820.0,
+  "detail": "identical input already sent to this call site as span 394d5647 in the same trace \u2014 memoize within the trace",
+  "evidence": {
+   "first_span": "394d5647817f4d28"
+  }
+ },
+ {
+  "trace_id": "5dc2c7562ae42b21fda333ed885ad759",
+  "span_id": "ccb4b4261ee52c12",
+  "call_site": "agent.format_result",
+  "pattern": "passthrough_reformat",
+  "confidence": "LOCAL",
+  "saving_usd": 0.00126,
+  "saving_ms": 760.0,
+  "detail": "output introduces 0 new content tokens out of 6; it restates `track_order` output and can be a template render",
+  "evidence": {
+   "novel_tokens": [],
+   "preceding_tool": "track_order"
+  }
+ },
+ {
+  "trace_id": "9f5be033bdec889af37e30258e587d40",
+  "span_id": "2269907e8c98a07b",
+  "call_site": "agent.emotion_probe",
+  "pattern": "dead_llm_call",
+  "confidence": "PROVABLE",
+  "saving_usd": 0.00117,
+  "saving_ms": 640.0,
+  "detail": "5 of 6 content tokens from this output appear nowhere downstream or in the trace answer \u2014 the call can be deleted outright, no fast path needed",
+  "evidence": {
+   "model": "gpt-4o",
+   "tokens": 402
+  }
+ },
+ {
+  "trace_id": "0a1dd4475408d05499db6ad959dd410c",
+  "span_id": "57367d27621522ce",
+  "call_site": "agent.format_result",
+  "pattern": "passthrough_reformat",
+  "confidence": "LOCAL",
+  "saving_usd": 0.00126,
+  "saving_ms": 760.0,
+  "detail": "output introduces 0 new content tokens out of 6; it restates `track_order` output and can be a template render",
+  "evidence": {
+   "novel_tokens": [],
+   "preceding_tool": "track_order"
+  }
+ },
+ {
+  "trace_id": "f2686787cce39d3a2418c942e3ebbc68",
+  "span_id": "f974712ec6c8644d",
+  "call_site": "agent.emotion_probe",
+  "pattern": "dead_llm_call",
+  "confidence": "PROVABLE",
+  "saving_usd": 0.00117,
+  "saving_ms": 640.0,
+  "detail": "5 of 6 content tokens from this output appear nowhere downstream or in the trace answer \u2014 the call can be deleted outright, no fast path needed",
+  "evidence": {
+   "model": "gpt-4o",
+   "tokens": 402
+  }
+ },
+ {
+  "trace_id": "d8fc742f87962ec2eff8c5ea48f90aa1",
+  "span_id": "a02106b78f3fe30b",
+  "call_site": "triage.urgency",
+  "pattern": "redundant_call",
+  "confidence": "PROVABLE",
+  "saving_usd": 0.001005,
+  "saving_ms": 820.0,
+  "detail": "identical input already sent to this call site as span 1e9e62d0 in the same trace \u2014 memoize within the trace",
+  "evidence": {
+   "first_span": "1e9e62d0b29bf844"
+  }
+ },
+ {
+  "trace_id": "293a2d5ff9da304eb4b8d01e4b558863",
+  "span_id": "e19622f86b91d76b",
+  "call_site": "agent.format_result",
+  "pattern": "passthrough_reformat",
+  "confidence": "LOCAL",
+  "saving_usd": 0.00126,
+  "saving_ms": 760.0,
+  "detail": "output introduces 0 new content tokens out of 6; it restates `track_order` output and can be a template render",
+  "evidence": {
+   "novel_tokens": [],
+   "preceding_tool": "track_order"
+  }
+ },
+ {
+  "trace_id": "fad438d7dc29539e4c6da3a9ce9bf199",
+  "span_id": "f845f20e1e967756",
+  "call_site": "agent.dispatch",
+  "pattern": "verbatim_dispatch",
+  "confidence": "LOCAL",
+  "saving_usd": 0.001335,
+  "saving_ms": 869.999872,
+  "detail": "every argument (order_id) appears verbatim in the input; the model is doing string extraction, not tool selection. Tool-name determinism still needs corpus confirmation before substitution",
+  "evidence": {
+   "arguments": {
+    "order_id": "5567"
+   },
+   "tool": "lookup_charges"
+  }
+ },
+ {
+  "trace_id": "debf37636e3c6734895e5da65a3234e3",
+  "span_id": "9725d082c6e284dd",
+  "call_site": "agent.dispatch",
+  "pattern": "verbatim_dispatch",
+  "confidence": "LOCAL",
+  "saving_usd": 0.001335,
+  "saving_ms": 869.999872,
+  "detail": "every argument (order_id) appears verbatim in the input; the model is doing string extraction, not tool selection. Tool-name determinism still needs corpus confirmation before substitution",
+  "evidence": {
+   "arguments": {
+    "order_id": "6120"
+   },
+   "tool": "lookup_charges"
+  }
+ },
+ {
+  "trace_id": "c08aaf541d97919a3b59807faa12269f",
+  "span_id": "a8b9ce39bd8ba131",
+  "call_site": "policy.check",
+  "pattern": "rebuilt_prefix",
+  "confidence": "ADVISORY",
+  "saving_usd": 0.0005,
+  "saving_ms": 0.0,
+  "detail": "~100 tokens of identical context re-sent across 3 calls in one trace \u2014 a caching change, not a script",
+  "evidence": {
+   "calls_sharing_prefix": 3,
+   "approx_prefix_tokens": 100
+  }
+ },
+ {
+  "trace_id": "ddf567cffe4c10c0bbffe15d0a14e005",
+  "span_id": "d54158abf46e871b",
+  "call_site": "agent.dispatch",
+  "pattern": "verbatim_dispatch",
+  "confidence": "LOCAL",
+  "saving_usd": 0.001335,
+  "saving_ms": 869.999872,
+  "detail": "every argument (order_id) appears verbatim in the input; the model is doing string extraction, not tool selection. Tool-name determinism still needs corpus confirmation before substitution",
+  "evidence": {
+   "arguments": {
+    "order_id": "6120"
+   },
+   "tool": "lookup_charges"
+  }
+ },
+ {
+  "trace_id": "3b025665ee6fd8730b879796cee69df1",
+  "span_id": "02cd43def7e0c299",
+  "call_site": "agent.format_result",
+  "pattern": "passthrough_reformat",
+  "confidence": "LOCAL",
+  "saving_usd": 0.00126,
+  "saving_ms": 760.0,
+  "detail": "output introduces 0 new content tokens out of 6; it restates `track_order` output and can be a template render",
+  "evidence": {
+   "novel_tokens": [],
+   "preceding_tool": "track_order"
+  }
+ },
+ {
+  "trace_id": "8471b76944f05aa23d31e795bc842a3a",
+  "span_id": "d652dbfc14aa745f",
+  "call_site": "agent.dispatch",
+  "pattern": "verbatim_dispatch",
+  "confidence": "LOCAL",
+  "saving_usd": 0.001335,
+  "saving_ms": 869.999872,
+  "detail": "every argument (order_id) appears verbatim in the input; the model is doing string extraction, not tool selection. Tool-name determinism still needs corpus confirmation before substitution",
+  "evidence": {
+   "arguments": {
+    "order_id": "6120"
+   },
+   "tool": "lookup_charges"
+  }
+ },
+ {
+  "trace_id": "3a12d483544d8ed18571cf9568081d93",
+  "span_id": "4431436288e006b5",
+  "call_site": "agent.emotion_probe",
+  "pattern": "dead_llm_call",
+  "confidence": "PROVABLE",
+  "saving_usd": 0.00117,
+  "saving_ms": 640.0,
+  "detail": "5 of 6 content tokens from this output appear nowhere downstream or in the trace answer \u2014 the call can be deleted outright, no fast path needed",
+  "evidence": {
+   "model": "gpt-4o",
+   "tokens": 402
+  }
+ },
+ {
+  "trace_id": "ce0aedcd6e16b27742f779329de49219",
+  "span_id": "8676fab0e18673e7",
+  "call_site": "agent.dispatch",
+  "pattern": "verbatim_dispatch",
+  "confidence": "LOCAL",
+  "saving_usd": 0.001335,
+  "saving_ms": 869.999872,
+  "detail": "every argument (order_id) appears verbatim in the input; the model is doing string extraction, not tool selection. Tool-name determinism still needs corpus confirmation before substitution",
+  "evidence": {
+   "arguments": {
+    "order_id": "4412"
+   },
+   "tool": "lookup_charges"
+  }
+ },
+ {
+  "trace_id": "0ff0d6922047df4642e47dce363e19ff",
+  "span_id": "29612f9d7b9983e3",
+  "call_site": "triage.urgency",
+  "pattern": "redundant_call",
+  "confidence": "PROVABLE",
+  "saving_usd": 0.001005,
+  "saving_ms": 820.0,
+  "detail": "identical input already sent to this call site as span 4e841a26 in the same trace \u2014 memoize within the trace",
+  "evidence": {
+   "first_span": "4e841a26c218ea87"
+  }
+ },
+ {
+  "trace_id": "6efd2e2993ccb47ebe2c0c29c35f8aaa",
+  "span_id": "fd6cc11df2d0eab8",
+  "call_site": "agent.dispatch",
+  "pattern": "verbatim_dispatch",
+  "confidence": "LOCAL",
+  "saving_usd": 0.001335,
+  "saving_ms": 869.999872,
+  "detail": "every argument (order_id) appears verbatim in the input; the model is doing string extraction, not tool selection. Tool-name determinism still needs corpus confirmation before substitution",
+  "evidence": {
+   "arguments": {
+    "order_id": "6120"
+   },
+   "tool": "lookup_charges"
+  }
+ },
+ {
+  "trace_id": "bdeb4c74eb8db5e12155890fb54c1efc",
+  "span_id": "cea920a129b71391",
+  "call_site": "agent.emotion_probe",
+  "pattern": "dead_llm_call",
+  "confidence": "PROVABLE",
+  "saving_usd": 0.00117,
+  "saving_ms": 640.0,
+  "detail": "5 of 6 content tokens from this output appear nowhere downstream or in the trace answer \u2014 the call can be deleted outright, no fast path needed",
+  "evidence": {
+   "model": "gpt-4o",
+   "tokens": 402
+  }
+ },
+ {
+  "trace_id": "a96245d1d5dde457f7350a2fd08dda58",
+  "span_id": "6a54277b3fef5979",
+  "call_site": "agent.dispatch",
+  "pattern": "verbatim_dispatch",
+  "confidence": "LOCAL",
+  "saving_usd": 0.001335,
+  "saving_ms": 869.999872,
+  "detail": "every argument (order_id) appears verbatim in the input; the model is doing string extraction, not tool selection. Tool-name determinism still needs corpus confirmation before substitution",
+  "evidence": {
+   "arguments": {
+    "order_id": "6120"
+   },
+   "tool": "lookup_charges"
+  }
+ },
+ {
+  "trace_id": "17bfb7070dcf50614f5a774823efea1f",
+  "span_id": "c264e912d848392d",
+  "call_site": "triage.urgency",
+  "pattern": "redundant_call",
+  "confidence": "PROVABLE",
+  "saving_usd": 0.001005,
+  "saving_ms": 820.0,
+  "detail": "identical input already sent to this call site as span 818e5e0c in the same trace \u2014 memoize within the trace",
+  "evidence": {
+   "first_span": "818e5e0cc44b1a0d"
+  }
+ },
+ {
+  "trace_id": "5a2ee68282dc386f5888e54ca28fa3cd",
+  "span_id": "236a73d743f79427",
+  "call_site": "agent.format_result",
+  "pattern": "passthrough_reformat",
+  "confidence": "LOCAL",
+  "saving_usd": 0.00126,
+  "saving_ms": 760.0,
+  "detail": "output introduces 0 new content tokens out of 6; it restates `track_order` output and can be a template render",
+  "evidence": {
+   "novel_tokens": [],
+   "preceding_tool": "track_order"
+  }
+ },
+ {
+  "trace_id": "b4d1f7411a36149dff204f53ccfa1558",
+  "span_id": "47eeb778cc47c940",
+  "call_site": "agent.emotion_probe",
+  "pattern": "dead_llm_call",
+  "confidence": "PROVABLE",
+  "saving_usd": 0.00117,
+  "saving_ms": 640.0,
+  "detail": "5 of 6 content tokens from this output appear nowhere downstream or in the trace answer \u2014 the call can be deleted outright, no fast path needed",
+  "evidence": {
+   "model": "gpt-4o",
+   "tokens": 402
+  }
+ },
+ {
+  "trace_id": "fb7d9ba94fceb17b3f195279dbcde182",
+  "span_id": "ba200881ef911538",
+  "call_site": "policy.check",
+  "pattern": "rebuilt_prefix",
+  "confidence": "ADVISORY",
+  "saving_usd": 0.0005,
+  "saving_ms": 0.0,
+  "detail": "~100 tokens of identical context re-sent across 3 calls in one trace \u2014 a caching change, not a script",
+  "evidence": {
+   "calls_sharing_prefix": 3,
+   "approx_prefix_tokens": 100
+  }
+ },
+ {
+  "trace_id": "19f6f0a6f3cfb5822288217f25a37d8f",
+  "span_id": "e4ebe7d92e2feff0",
+  "call_site": "agent.emotion_probe",
+  "pattern": "dead_llm_call",
+  "confidence": "PROVABLE",
+  "saving_usd": 0.00117,
+  "saving_ms": 640.0,
+  "detail": "5 of 6 content tokens from this output appear nowhere downstream or in the trace answer \u2014 the call can be deleted outright, no fast path needed",
+  "evidence": {
+   "model": "gpt-4o",
+   "tokens": 402
+  }
+ },
+ {
+  "trace_id": "f0fa1bfdc13775b3a5c6462e4c806af8",
+  "span_id": "8b3eda247a1cdcc4",
+  "call_site": "agent.dispatch",
+  "pattern": "verbatim_dispatch",
+  "confidence": "LOCAL",
+  "saving_usd": 0.001335,
+  "saving_ms": 869.999872,
+  "detail": "every argument (order_id) appears verbatim in the input; the model is doing string extraction, not tool selection. Tool-name determinism still needs corpus confirmation before substitution",
+  "evidence": {
+   "arguments": {
+    "order_id": "5567"
+   },
+   "tool": "lookup_charges"
+  }
+ },
+ {
+  "trace_id": "c5a3744805b3d6452243ad07472dfbd4",
+  "span_id": "bf806ac9268c4079",
+  "call_site": "policy.check",
+  "pattern": "rebuilt_prefix",
+  "confidence": "ADVISORY",
+  "saving_usd": 0.0005,
+  "saving_ms": 0.0,
+  "detail": "~100 tokens of identical context re-sent across 3 calls in one trace \u2014 a caching change, not a script",
+  "evidence": {
+   "calls_sharing_prefix": 3,
+   "approx_prefix_tokens": 100
+  }
+ },
+ {
+  "trace_id": "3de264ac6542b767baba1b700680202f",
+  "span_id": "d22c2c81b41725ab",
+  "call_site": "agent.emotion_probe",
+  "pattern": "dead_llm_call",
+  "confidence": "PROVABLE",
+  "saving_usd": 0.00117,
+  "saving_ms": 640.0,
+  "detail": "5 of 6 content tokens from this output appear nowhere downstream or in the trace answer \u2014 the call can be deleted outright, no fast path needed",
+  "evidence": {
+   "model": "gpt-4o",
+   "tokens": 402
+  }
+ },
+ {
+  "trace_id": "19045bb1686fcb19d9ac5a895ed03105",
+  "span_id": "522bfdd37fbb3ed0",
+  "call_site": "policy.check",
+  "pattern": "rebuilt_prefix",
+  "confidence": "ADVISORY",
+  "saving_usd": 0.0005,
+  "saving_ms": 0.0,
+  "detail": "~100 tokens of identical context re-sent across 3 calls in one trace \u2014 a caching change, not a script",
+  "evidence": {
+   "calls_sharing_prefix": 3,
+   "approx_prefix_tokens": 100
+  }
+ },
+ {
+  "trace_id": "484995b0585aa2302d416a7fbd74e9ee",
+  "span_id": "a017aeb19513f7da",
+  "call_site": "policy.check",
+  "pattern": "rebuilt_prefix",
+  "confidence": "ADVISORY",
+  "saving_usd": 0.0005,
+  "saving_ms": 0.0,
+  "detail": "~100 tokens of identical context re-sent across 3 calls in one trace \u2014 a caching change, not a script",
+  "evidence": {
+   "calls_sharing_prefix": 3,
+   "approx_prefix_tokens": 100
+  }
+ },
+ {
+  "trace_id": "75672b0fc2cc714edec67fbf282c97cf",
+  "span_id": "ab0ab04119f3dacc",
+  "call_site": "triage.urgency",
+  "pattern": "redundant_call",
+  "confidence": "PROVABLE",
+  "saving_usd": 0.001005,
+  "saving_ms": 820.0,
+  "detail": "identical input already sent to this call site as span da63d33c in the same trace \u2014 memoize within the trace",
+  "evidence": {
+   "first_span": "da63d33c13dd6f29"
+  }
+ },
+ {
+  "trace_id": "e5a4912b79c8fbd8e6057b8954674892",
+  "span_id": "3a344f54f70e0ee6",
+  "call_site": "triage.urgency",
+  "pattern": "redundant_call",
+  "confidence": "PROVABLE",
+  "saving_usd": 0.001005,
+  "saving_ms": 820.0,
+  "detail": "identical input already sent to this call site as span bf2a7933 in the same trace \u2014 memoize within the trace",
+  "evidence": {
+   "first_span": "bf2a7933befe68f1"
+  }
+ },
+ {
+  "trace_id": "f2b3ae8a20843bfaa6b6fc1ca8929959",
+  "span_id": "7fa1b0780ddba10e",
+  "call_site": "triage.urgency",
+  "pattern": "redundant_call",
+  "confidence": "PROVABLE",
+  "saving_usd": 0.001005,
+  "saving_ms": 820.0,
+  "detail": "identical input already sent to this call site as span a939c82f in the same trace \u2014 memoize within the trace",
+  "evidence": {
+   "first_span": "a939c82f04182ad0"
+  }
+ },
+ {
+  "trace_id": "6f282d87a93d455b430fbe2565e68e82",
+  "span_id": "bdc93ef2ed5cf197",
+  "call_site": "agent.dispatch",
+  "pattern": "verbatim_dispatch",
+  "confidence": "LOCAL",
+  "saving_usd": 0.001335,
+  "saving_ms": 869.999872,
+  "detail": "every argument (order_id) appears verbatim in the input; the model is doing string extraction, not tool selection. Tool-name determinism still needs corpus confirmation before substitution",
+  "evidence": {
+   "arguments": {
+    "order_id": "9034"
+   },
+   "tool": "lookup_charges"
+  }
+ },
+ {
+  "trace_id": "0a19ef851546a30ec5241878ce62d3df",
+  "span_id": "d44a452db7fb9420",
+  "call_site": "policy.check",
+  "pattern": "rebuilt_prefix",
+  "confidence": "ADVISORY",
+  "saving_usd": 0.0005,
+  "saving_ms": 0.0,
+  "detail": "~100 tokens of identical context re-sent across 3 calls in one trace \u2014 a caching change, not a script",
+  "evidence": {
+   "calls_sharing_prefix": 3,
+   "approx_prefix_tokens": 100
+  }
+ },
+ {
+  "trace_id": "a5ec690f10612c9aed64c22bf455edd0",
+  "span_id": "44d1c26f9ff38e28",
+  "call_site": "agent.dispatch",
+  "pattern": "verbatim_dispatch",
+  "confidence": "LOCAL",
+  "saving_usd": 0.001335,
+  "saving_ms": 869.999872,
+  "detail": "every argument (order_id) appears verbatim in the input; the model is doing string extraction, not tool selection. Tool-name determinism still needs corpus confirmation before substitution",
+  "evidence": {
+   "arguments": {
+    "order_id": "4412"
+   },
+   "tool": "lookup_charges"
+  }
+ },
+ {
+  "trace_id": "5fb365815fac812a9758236b3f02340b",
+  "span_id": "285e2f98996fb9fd",
+  "call_site": "agent.format_result",
+  "pattern": "passthrough_reformat",
+  "confidence": "LOCAL",
+  "saving_usd": 0.00126,
+  "saving_ms": 760.0,
+  "detail": "output introduces 0 new content tokens out of 6; it restates `track_order` output and can be a template render",
+  "evidence": {
+   "novel_tokens": [],
+   "preceding_tool": "track_order"
+  }
+ },
+ {
+  "trace_id": "1a6e51586b831671ea0280f54a56ea05",
+  "span_id": "64389759dd7b2e9a",
+  "call_site": "triage.urgency",
+  "pattern": "redundant_call",
+  "confidence": "PROVABLE",
+  "saving_usd": 0.001005,
+  "saving_ms": 820.0,
+  "detail": "identical input already sent to this call site as span 37f64783 in the same trace \u2014 memoize within the trace",
+  "evidence": {
+   "first_span": "37f64783665a5b1e"
+  }
+ },
+ {
+  "trace_id": "366a6f038ac763345de5708d9dff28e1",
+  "span_id": "b719b77fddbb17fd",
+  "call_site": "policy.check",
+  "pattern": "rebuilt_prefix",
+  "confidence": "ADVISORY",
+  "saving_usd": 0.0005,
+  "saving_ms": 0.0,
+  "detail": "~100 tokens of identical context re-sent across 3 calls in one trace \u2014 a caching change, not a script",
+  "evidence": {
+   "calls_sharing_prefix": 3,
+   "approx_prefix_tokens": 100
+  }
+ },
+ {
+  "trace_id": "e414825c0522273712a34625557755e6",
+  "span_id": "c8571e7a9a0c3435",
+  "call_site": "triage.urgency",
+  "pattern": "redundant_call",
+  "confidence": "PROVABLE",
+  "saving_usd": 0.001005,
+  "saving_ms": 820.0,
+  "detail": "identical input already sent to this call site as span 621c2863 in the same trace \u2014 memoize within the trace",
+  "evidence": {
+   "first_span": "621c2863372832c7"
+  }
+ },
+ {
+  "trace_id": "02d68b67f8df57a338d0fd0a8a7f7f31",
+  "span_id": "5203e1f04132f5d8",
+  "call_site": "triage.urgency",
+  "pattern": "redundant_call",
+  "confidence": "PROVABLE",
+  "saving_usd": 0.001005,
+  "saving_ms": 820.0,
+  "detail": "identical input already sent to this call site as span 2d812777 in the same trace \u2014 memoize within the trace",
+  "evidence": {
+   "first_span": "2d812777b4cbcc2b"
+  }
+ },
+ {
+  "trace_id": "c64aa60923e6d5f45043f74df6468a43",
+  "span_id": "ba95e25d748542bd",
+  "call_site": "triage.urgency",
+  "pattern": "redundant_call",
+  "confidence": "PROVABLE",
+  "saving_usd": 0.001005,
+  "saving_ms": 820.0,
+  "detail": "identical input already sent to this call site as span 79d0f9bd in the same trace \u2014 memoize within the trace",
+  "evidence": {
+   "first_span": "79d0f9bd5accb276"
+  }
+ },
+ {
+  "trace_id": "539b6747e39b34544099812eb0ac81b6",
+  "span_id": "7c86a246380a15fc",
+  "call_site": "agent.emotion_probe",
+  "pattern": "dead_llm_call",
+  "confidence": "PROVABLE",
+  "saving_usd": 0.00117,
+  "saving_ms": 640.0,
+  "detail": "5 of 6 content tokens from this output appear nowhere downstream or in the trace answer \u2014 the call can be deleted outright, no fast path needed",
+  "evidence": {
+   "model": "gpt-4o",
+   "tokens": 402
+  }
+ },
+ {
+  "trace_id": "436890e1502c98f49d4de210f81de795",
+  "span_id": "4021b8b3bbad6df7",
+  "call_site": "triage.urgency",
+  "pattern": "redundant_call",
+  "confidence": "PROVABLE",
+  "saving_usd": 0.001005,
+  "saving_ms": 820.0,
+  "detail": "identical input already sent to this call site as span b15833af in the same trace \u2014 memoize within the trace",
+  "evidence": {
+   "first_span": "b15833afc663cbb8"
+  }
+ },
+ {
+  "trace_id": "12723c403c9a4fe51fe6af7f53e2956b",
+  "span_id": "49197cd3cde13c37",
+  "call_site": "agent.format_result",
+  "pattern": "passthrough_reformat",
+  "confidence": "LOCAL",
+  "saving_usd": 0.00126,
+  "saving_ms": 760.0,
+  "detail": "output introduces 0 new content tokens out of 6; it restates `track_order` output and can be a template render",
+  "evidence": {
+   "novel_tokens": [],
+   "preceding_tool": "track_order"
+  }
+ },
+ {
+  "trace_id": "1c70a7d5edf7d7d6b4a4bb3b92b484e8",
+  "span_id": "f8a62dd82e7e0e18",
+  "call_site": "agent.format_result",
+  "pattern": "passthrough_reformat",
+  "confidence": "LOCAL",
+  "saving_usd": 0.00126,
+  "saving_ms": 760.0,
+  "detail": "output introduces 0 new content tokens out of 6; it restates `track_order` output and can be a template render",
+  "evidence": {
+   "novel_tokens": [],
+   "preceding_tool": "track_order"
+  }
+ },
+ {
+  "trace_id": "34b6b346478efffc6481b6b58c89565f",
+  "span_id": "57027bb117b86260",
+  "call_site": "policy.check",
+  "pattern": "rebuilt_prefix",
+  "confidence": "ADVISORY",
+  "saving_usd": 0.0005,
+  "saving_ms": 0.0,
+  "detail": "~100 tokens of identical context re-sent across 3 calls in one trace \u2014 a caching change, not a script",
+  "evidence": {
+   "calls_sharing_prefix": 3,
+   "approx_prefix_tokens": 100
+  }
+ },
+ {
+  "trace_id": "a14471562202f64cf556446b811b2cec",
+  "span_id": "1fdb1be539688093",
+  "call_site": "agent.dispatch",
+  "pattern": "verbatim_dispatch",
+  "confidence": "LOCAL",
+  "saving_usd": 0.001335,
+  "saving_ms": 869.999872,
+  "detail": "every argument (order_id) appears verbatim in the input; the model is doing string extraction, not tool selection. Tool-name determinism still needs corpus confirmation before substitution",
+  "evidence": {
+   "arguments": {
+    "order_id": "6120"
+   },
+   "tool": "lookup_charges"
+  }
+ },
+ {
+  "trace_id": "46b8ab2be8b7f7cf4fa9417736db56e8",
+  "span_id": "dc5761b1db453609",
+  "call_site": "agent.emotion_probe",
+  "pattern": "dead_llm_call",
+  "confidence": "PROVABLE",
+  "saving_usd": 0.00117,
+  "saving_ms": 640.0,
+  "detail": "5 of 6 content tokens from this output appear nowhere downstream or in the trace answer \u2014 the call can be deleted outright, no fast path needed",
+  "evidence": {
+   "model": "gpt-4o",
+   "tokens": 402
+  }
+ },
+ {
+  "trace_id": "a4508d9a4b06fc9e9e0c7cf7970ce4c3",
+  "span_id": "5d225bf8dfcf2769",
+  "call_site": "agent.emotion_probe",
+  "pattern": "dead_llm_call",
+  "confidence": "PROVABLE",
+  "saving_usd": 0.00117,
+  "saving_ms": 640.0,
+  "detail": "5 of 6 content tokens from this output appear nowhere downstream or in the trace answer \u2014 the call can be deleted outright, no fast path needed",
+  "evidence": {
+   "model": "gpt-4o",
+   "tokens": 402
+  }
+ },
+ {
+  "trace_id": "0273d00b9d5f598e9f9b0a20e482100e",
+  "span_id": "5dcea2e71aed7d1a",
+  "call_site": "agent.dispatch",
+  "pattern": "verbatim_dispatch",
+  "confidence": "LOCAL",
+  "saving_usd": 0.001335,
+  "saving_ms": 869.999872,
+  "detail": "every argument (order_id) appears verbatim in the input; the model is doing string extraction, not tool selection. Tool-name determinism still needs corpus confirmation before substitution",
+  "evidence": {
+   "arguments": {
+    "order_id": "7781"
+   },
+   "tool": "lookup_charges"
+  }
+ },
+ {
+  "trace_id": "a22a4ecdd8756dd7962be653360ccf73",
+  "span_id": "59ef0c4de7f6b125",
+  "call_site": "policy.check",
+  "pattern": "rebuilt_prefix",
+  "confidence": "ADVISORY",
+  "saving_usd": 0.0005,
+  "saving_ms": 0.0,
+  "detail": "~100 tokens of identical context re-sent across 3 calls in one trace \u2014 a caching change, not a script",
+  "evidence": {
+   "calls_sharing_prefix": 3,
+   "approx_prefix_tokens": 100
+  }
+ },
+ {
+  "trace_id": "c16e90513621261f5df8864c94cd05d7",
+  "span_id": "d4bf1a2bad61eb1d",
+  "call_site": "agent.emotion_probe",
+  "pattern": "dead_llm_call",
+  "confidence": "PROVABLE",
+  "saving_usd": 0.00117,
+  "saving_ms": 640.0,
+  "detail": "5 of 6 content tokens from this output appear nowhere downstream or in the trace answer \u2014 the call can be deleted outright, no fast path needed",
+  "evidence": {
+   "model": "gpt-4o",
+   "tokens": 402
+  }
+ },
+ {
+  "trace_id": "ee830951a0c463fa2173bf4447411ac2",
+  "span_id": "7cce8d1ed7fea3c4",
+  "call_site": "agent.dispatch",
+  "pattern": "verbatim_dispatch",
+  "confidence": "LOCAL",
+  "saving_usd": 0.001335,
+  "saving_ms": 869.999872,
+  "detail": "every argument (order_id) appears verbatim in the input; the model is doing string extraction, not tool selection. Tool-name determinism still needs corpus confirmation before substitution",
+  "evidence": {
+   "arguments": {
+    "order_id": "4412"
+   },
+   "tool": "lookup_charges"
+  }
+ },
+ {
+  "trace_id": "919c57b4993dc01506ee142fec2f78d7",
+  "span_id": "9edd550f0f4d236d",
+  "call_site": "agent.dispatch",
+  "pattern": "verbatim_dispatch",
+  "confidence": "LOCAL",
+  "saving_usd": 0.001335,
+  "saving_ms": 869.999872,
+  "detail": "every argument (order_id) appears verbatim in the input; the model is doing string extraction, not tool selection. Tool-name determinism still needs corpus confirmation before substitution",
+  "evidence": {
+   "arguments": {
+    "order_id": "6120"
+   },
+   "tool": "lookup_charges"
+  }
+ },
+ {
+  "trace_id": "6dc64c989fac98bca375697ee01d2b8f",
+  "span_id": "578a813513f61b65",
+  "call_site": "agent.emotion_probe",
+  "pattern": "dead_llm_call",
+  "confidence": "PROVABLE",
+  "saving_usd": 0.00117,
+  "saving_ms": 640.0,
+  "detail": "5 of 6 content tokens from this output appear nowhere downstream or in the trace answer \u2014 the call can be deleted outright, no fast path needed",
+  "evidence": {
+   "model": "gpt-4o",
+   "tokens": 402
+  }
+ },
+ {
+  "trace_id": "4d85466bbbef68eff6e0f7dbf6712270",
+  "span_id": "f63c05727ec094ad",
+  "call_site": "agent.emotion_probe",
+  "pattern": "dead_llm_call",
+  "confidence": "PROVABLE",
+  "saving_usd": 0.00117,
+  "saving_ms": 640.0,
+  "detail": "5 of 6 content tokens from this output appear nowhere downstream or in the trace answer \u2014 the call can be deleted outright, no fast path needed",
+  "evidence": {
+   "model": "gpt-4o",
+   "tokens": 402
+  }
+ },
+ {
+  "trace_id": "df3556914bf9d916ff86eca6af7a6938",
+  "span_id": "9c69849a023fa7b7",
+  "call_site": "agent.dispatch",
+  "pattern": "verbatim_dispatch",
+  "confidence": "LOCAL",
+  "saving_usd": 0.001335,
+  "saving_ms": 869.999872,
+  "detail": "every argument (order_id) appears verbatim in the input; the model is doing string extraction, not tool selection. Tool-name determinism still needs corpus confirmation before substitution",
+  "evidence": {
+   "arguments": {
+    "order_id": "6120"
+   },
+   "tool": "lookup_charges"
+  }
+ },
+ {
+  "trace_id": "b06a206545bb128d8c98bed0f9f78b09",
+  "span_id": "e96962f801e6ec78",
+  "call_site": "policy.check",
+  "pattern": "rebuilt_prefix",
+  "confidence": "ADVISORY",
+  "saving_usd": 0.0005,
+  "saving_ms": 0.0,
+  "detail": "~100 tokens of identical context re-sent across 3 calls in one trace \u2014 a caching change, not a script",
+  "evidence": {
+   "calls_sharing_prefix": 3,
+   "approx_prefix_tokens": 100
+  }
+ },
+ {
+  "trace_id": "cfe05e33b69f28ed3478e21cdabbd5d7",
+  "span_id": "49fc905178f73276",
+  "call_site": "agent.dispatch",
+  "pattern": "verbatim_dispatch",
+  "confidence": "LOCAL",
+  "saving_usd": 0.001335,
+  "saving_ms": 869.999872,
+  "detail": "every argument (order_id) appears verbatim in the input; the model is doing string extraction, not tool selection. Tool-name determinism still needs corpus confirmation before substitution",
+  "evidence": {
+   "arguments": {
+    "order_id": "4412"
+   },
+   "tool": "lookup_charges"
+  }
+ },
+ {
+  "trace_id": "c718ef554715ae1653f4b480ad8423a6",
+  "span_id": "27701965fe610f1d",
+  "call_site": "agent.format_result",
+  "pattern": "passthrough_reformat",
+  "confidence": "LOCAL",
+  "saving_usd": 0.00126,
+  "saving_ms": 760.0,
+  "detail": "output introduces 0 new content tokens out of 6; it restates `track_order` output and can be a template render",
+  "evidence": {
+   "novel_tokens": [],
+   "preceding_tool": "track_order"
+  }
+ },
+ {
+  "trace_id": "5deb80366502c0181614616d9027babe",
+  "span_id": "d9fa2b5094e4a000",
+  "call_site": "triage.urgency",
+  "pattern": "redundant_call",
+  "confidence": "PROVABLE",
+  "saving_usd": 0.001005,
+  "saving_ms": 820.0,
+  "detail": "identical input already sent to this call site as span 41f91ed2 in the same trace \u2014 memoize within the trace",
+  "evidence": {
+   "first_span": "41f91ed2ef0f488f"
+  }
+ },
+ {
+  "trace_id": "176ec142e5123fcd43d41a4acc98aab2",
+  "span_id": "400d17765ab06d32",
+  "call_site": "policy.check",
+  "pattern": "rebuilt_prefix",
+  "confidence": "ADVISORY",
+  "saving_usd": 0.0005,
+  "saving_ms": 0.0,
+  "detail": "~100 tokens of identical context re-sent across 3 calls in one trace \u2014 a caching change, not a script",
+  "evidence": {
+   "calls_sharing_prefix": 3,
+   "approx_prefix_tokens": 100
+  }
+ },
+ {
+  "trace_id": "8515604dc2a2cb5aed32a7c3144aebcc",
+  "span_id": "51e2df0174e28376",
+  "call_site": "triage.urgency",
+  "pattern": "redundant_call",
+  "confidence": "PROVABLE",
+  "saving_usd": 0.001005,
+  "saving_ms": 820.0,
+  "detail": "identical input already sent to this call site as span 0d9d26c3 in the same trace \u2014 memoize within the trace",
+  "evidence": {
+   "first_span": "0d9d26c3ba1d2997"
+  }
+ },
+ {
+  "trace_id": "8f0119cf2b904241e35baf32f5daec24",
+  "span_id": "20d33e5139ac1809",
+  "call_site": "agent.dispatch",
+  "pattern": "verbatim_dispatch",
+  "confidence": "LOCAL",
+  "saving_usd": 0.001335,
+  "saving_ms": 869.999872,
+  "detail": "every argument (order_id) appears verbatim in the input; the model is doing string extraction, not tool selection. Tool-name determinism still needs corpus confirmation before substitution",
+  "evidence": {
+   "arguments": {
+    "order_id": "8890"
+   },
+   "tool": "lookup_charges"
+  }
+ },
+ {
+  "trace_id": "ab43d0b0ae2294ac56becbd65381c94e",
+  "span_id": "bdfcb9b9519ac23f",
+  "call_site": "agent.format_result",
+  "pattern": "passthrough_reformat",
+  "confidence": "LOCAL",
+  "saving_usd": 0.00126,
+  "saving_ms": 760.0,
+  "detail": "output introduces 0 new content tokens out of 6; it restates `track_order` output and can be a template render",
+  "evidence": {
+   "novel_tokens": [],
+   "preceding_tool": "track_order"
+  }
+ },
+ {
+  "trace_id": "b9420578b7db3439df3d3e1cf86d856e",
+  "span_id": "a75e7ba78951c0f4",
+  "call_site": "agent.format_result",
+  "pattern": "passthrough_reformat",
+  "confidence": "LOCAL",
+  "saving_usd": 0.00126,
+  "saving_ms": 760.0,
+  "detail": "output introduces 0 new content tokens out of 6; it restates `track_order` output and can be a template render",
+  "evidence": {
+   "novel_tokens": [],
+   "preceding_tool": "track_order"
+  }
+ },
+ {
+  "trace_id": "7127c51fdcd9364c107e64958f35d810",
+  "span_id": "8df5ad99753589aa",
+  "call_site": "policy.check",
+  "pattern": "rebuilt_prefix",
+  "confidence": "ADVISORY",
+  "saving_usd": 0.0005,
+  "saving_ms": 0.0,
+  "detail": "~100 tokens of identical context re-sent across 3 calls in one trace \u2014 a caching change, not a script",
+  "evidence": {
+   "calls_sharing_prefix": 3,
+   "approx_prefix_tokens": 100
+  }
+ },
+ {
+  "trace_id": "620be945a1c8e359afa3ea4049bee06a",
+  "span_id": "a0f852b7aa7813e0",
+  "call_site": "policy.check",
+  "pattern": "rebuilt_prefix",
+  "confidence": "ADVISORY",
+  "saving_usd": 0.0005,
+  "saving_ms": 0.0,
+  "detail": "~100 tokens of identical context re-sent across 3 calls in one trace \u2014 a caching change, not a script",
+  "evidence": {
+   "calls_sharing_prefix": 3,
+   "approx_prefix_tokens": 100
+  }
+ },
+ {
+  "trace_id": "97785ea1ca46c9808bc0cb45b601e4fa",
+  "span_id": "99a4ea80fb63836e",
+  "call_site": "agent.emotion_probe",
+  "pattern": "dead_llm_call",
+  "confidence": "PROVABLE",
+  "saving_usd": 0.00117,
+  "saving_ms": 640.0,
+  "detail": "5 of 6 content tokens from this output appear nowhere downstream or in the trace answer \u2014 the call can be deleted outright, no fast path needed",
+  "evidence": {
+   "model": "gpt-4o",
+   "tokens": 402
+  }
+ },
+ {
+  "trace_id": "a830cf7c62be8041759e668ccefeabaa",
+  "span_id": "4326fe8c2ebe6425",
+  "call_site": "agent.dispatch",
+  "pattern": "verbatim_dispatch",
+  "confidence": "LOCAL",
+  "saving_usd": 0.001335,
+  "saving_ms": 869.999872,
+  "detail": "every argument (order_id) appears verbatim in the input; the model is doing string extraction, not tool selection. Tool-name determinism still needs corpus confirmation before substitution",
+  "evidence": {
+   "arguments": {
+    "order_id": "6120"
+   },
+   "tool": "lookup_charges"
+  }
+ },
+ {
+  "trace_id": "74289135f03c2af558a0015825c17459",
+  "span_id": "d6460cb1f50f4fd2",
+  "call_site": "agent.format_result",
+  "pattern": "passthrough_reformat",
+  "confidence": "LOCAL",
+  "saving_usd": 0.00126,
+  "saving_ms": 760.0,
+  "detail": "output introduces 0 new content tokens out of 6; it restates `track_order` output and can be a template render",
+  "evidence": {
+   "novel_tokens": [],
+   "preceding_tool": "track_order"
+  }
+ },
+ {
+  "trace_id": "60a0551106d18eb79d491728e89f43e9",
+  "span_id": "1bbe180fee2d9cc3",
+  "call_site": "agent.emotion_probe",
+  "pattern": "dead_llm_call",
+  "confidence": "PROVABLE",
+  "saving_usd": 0.00117,
+  "saving_ms": 640.0,
+  "detail": "5 of 6 content tokens from this output appear nowhere downstream or in the trace answer \u2014 the call can be deleted outright, no fast path needed",
+  "evidence": {
+   "model": "gpt-4o",
+   "tokens": 402
+  }
+ },
+ {
+  "trace_id": "2d60618aeb982a1ea210e7101f5272db",
+  "span_id": "304c2a057021cd20",
+  "call_site": "agent.emotion_probe",
+  "pattern": "dead_llm_call",
+  "confidence": "PROVABLE",
+  "saving_usd": 0.00117,
+  "saving_ms": 640.0,
+  "detail": "5 of 6 content tokens from this output appear nowhere downstream or in the trace answer \u2014 the call can be deleted outright, no fast path needed",
+  "evidence": {
+   "model": "gpt-4o",
+   "tokens": 402
+  }
+ },
+ {
+  "trace_id": "d72142a679b31482bb0a4024096c8738",
+  "span_id": "19d62de10372c6ea",
+  "call_site": "agent.emotion_probe",
+  "pattern": "dead_llm_call",
+  "confidence": "PROVABLE",
+  "saving_usd": 0.00117,
+  "saving_ms": 640.0,
+  "detail": "5 of 6 content tokens from this output appear nowhere downstream or in the trace answer \u2014 the call can be deleted outright, no fast path needed",
+  "evidence": {
+   "model": "gpt-4o",
+   "tokens": 402
+  }
+ },
+ {
+  "trace_id": "d44e6c72c318a43b7f32f25f2d17ae38",
+  "span_id": "d3a3013be0d44c4c",
+  "call_site": "agent.emotion_probe",
+  "pattern": "dead_llm_call",
+  "confidence": "PROVABLE",
+  "saving_usd": 0.00117,
+  "saving_ms": 640.0,
+  "detail": "5 of 6 content tokens from this output appear nowhere downstream or in the trace answer \u2014 the call can be deleted outright, no fast path needed",
+  "evidence": {
+   "model": "gpt-4o",
+   "tokens": 402
+  }
+ },
+ {
+  "trace_id": "515a53f4c882d07edbf094b44011bd42",
+  "span_id": "300bee82e17f6937",
+  "call_site": "agent.dispatch",
+  "pattern": "verbatim_dispatch",
+  "confidence": "LOCAL",
+  "saving_usd": 0.001335,
+  "saving_ms": 869.999872,
+  "detail": "every argument (order_id) appears verbatim in the input; the model is doing string extraction, not tool selection. Tool-name determinism still needs corpus confirmation before substitution",
+  "evidence": {
+   "arguments": {
+    "order_id": "9034"
+   },
+   "tool": "lookup_charges"
+  }
+ }
+]

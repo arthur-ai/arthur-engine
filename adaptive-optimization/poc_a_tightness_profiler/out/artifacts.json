@@ -1,0 +1,126 @@
+[
+  {
+    "call_site": "triage.urgency",
+    "call_site_key": "f6efba4bba0e",
+    "model_replaced": "gpt-4o",
+    "strategy": "keyword_rules",
+    "rationale": "3 distinct outputs; 13 tokens predict a single label, chosen by greedy cover over 3 labels. Purity bar calibrated to observed self-agreement 0.974 (bar 0.914). Training inputs left uncovered per label: {'p1': 4, 'p2': 4, 'p3': 4}.",
+    "script": "_RULES = {\n    \"p1\": [\n        \"down\",\n        \"dashboard\",\n        \"migration\",\n        \"total\",\n        \"suspect\"\n    ],\n    \"p2\": [\n        \"are\",\n        \"export\"\n    ],\n    \"p3\": [\n        \"next\",\n        \"change\",\n        \"last\",\n        \"mode\",\n        \"find\",\n        \"address\"\n    ]\n}\n_FALLBACK = 'p3'\n\n\ndef fast_path(text):\n    \"\"\"Score the input against per-label keyword sets.\"\"\"\n    toks = set(re.findall(r\"[a-z0-9_#]+\", text.lower()))\n    best, best_hits = None, 0\n    for label, keywords in _RULES.items():\n        hits = len(toks & set(keywords))\n        if hits > best_hits:\n            best, best_hits = label, hits\n    return best if best_hits else _FALLBACK\n",
+    "guard": "\n\ndef guard(text):\n    \"\"\"Apply only when at least one known keyword is present.\n\n    Inputs carrying no recognised keyword are exactly the unfamiliar ones the\n    fallback exists for, so rejecting them is correct behaviour, not a miss.\n    \"\"\"\n    toks = set(re.findall(r\"[a-z0-9_#]+\", text.lower()))\n    return any(toks & set(kw) for kw in _RULES.values())\n",
+    "fallback": {
+      "action": "call_model",
+      "model": "gpt-4o",
+      "when": "guard returns False, script returns None, or the sampling slice is selected"
+    },
+    "evidence": {
+      "holdout_calls": 147,
+      "coverage": 1.0,
+      "agreement_in_guard": 0.9728,
+      "model_self_agreement": 0.974,
+      "model_self_agreement_n": 537,
+      "z_vs_model": -0.084,
+      "conditional_bits": 0.196
+    },
+    "projected_monthly": {
+      "monthly_calls": 14670,
+      "calls_replaced": 13936,
+      "sampling_rate": 0.05,
+      "gross_saving_usd": 24.77,
+      "residual_model_spend_usd": 1.3,
+      "note": "Illustrative rate card; sampling keeps 5% of guarded traffic on the model."
+    }
+  },
+  {
+    "call_site": "route.team",
+    "call_site_key": "2d47078c3fcb",
+    "model_replaced": "gpt-4o",
+    "strategy": "keyword_rules",
+    "rationale": "4 distinct outputs; 24 tokens predict a single label, chosen by greedy cover over 4 labels. Purity bar calibrated to observed self-agreement 0.946 (bar 0.886). Training inputs left uncovered per label: {'billing': 13, 'onboarding': 9, 'security': 10, 'platform': 14}.",
+    "script": "_RULES = {\n    \"billing\": [\n        \"invoice\",\n        \"receipt\",\n        \"proration\",\n        \"refund\",\n        \"chargeback\",\n        \"vat\"\n    ],\n    \"onboarding\": [\n        \"trial\",\n        \"sandbox\",\n        \"sso\",\n        \"provisioning\",\n        \"migration\",\n        \"kickoff\"\n    ],\n    \"security\": [\n        \"soc2\",\n        \"phishing\",\n        \"pentest\",\n        \"breach\",\n        \"mfa\",\n        \"credential\"\n    ],\n    \"platform\": [\n        \"cluster\",\n        \"throughput\",\n        \"latency\",\n        \"quota\",\n        \"deploy\",\n        \"timeout\"\n    ]\n}\n_FALLBACK = 'billing'\n\n\ndef fast_path(text):\n    \"\"\"Score the input against per-label keyword sets.\"\"\"\n    toks = set(re.findall(r\"[a-z0-9_#]+\", text.lower()))\n    best, best_hits = None, 0\n    for label, keywords in _RULES.items():\n        hits = len(toks & set(keywords))\n        if hits > best_hits:\n            best, best_hits = label, hits\n    return best if best_hits else _FALLBACK\n",
+    "guard": "\n\ndef guard(text):\n    \"\"\"Apply only when at least one known keyword is present.\n\n    Inputs carrying no recognised keyword are exactly the unfamiliar ones the\n    fallback exists for, so rejecting them is correct behaviour, not a miss.\n    \"\"\"\n    toks = set(re.findall(r\"[a-z0-9_#]+\", text.lower()))\n    return any(toks & set(kw) for kw in _RULES.values())\n",
+    "fallback": {
+      "action": "call_model",
+      "model": "gpt-4o",
+      "when": "guard returns False, script returns None, or the sampling slice is selected"
+    },
+    "evidence": {
+      "holdout_calls": 132,
+      "coverage": 0.8409,
+      "agreement_in_guard": 0.982,
+      "model_self_agreement": 0.9473,
+      "model_self_agreement_n": 550,
+      "z_vs_model": 1.577,
+      "conditional_bits": 0.2889
+    },
+    "projected_monthly": {
+      "monthly_calls": 13170,
+      "calls_replaced": 10521,
+      "sampling_rate": 0.05,
+      "gross_saving_usd": 16.66,
+      "residual_model_spend_usd": 4.19,
+      "note": "Illustrative rate card; sampling keeps 5% of guarded traffic on the model."
+    }
+  },
+  {
+    "call_site": "extract.order_id",
+    "call_site_key": "1193f7fab81e",
+    "model_replaced": "gpt-4o-mini",
+    "strategy": "extraction",
+    "rationale": "Output is a verbatim substring of the input in 220/221 calls, matching order-style #NNNN. This is extraction, not judgment.",
+    "script": "_RX = re.compile(r\"#(\\d{3,})\", re.IGNORECASE)\n\n\ndef fast_path(text):\n    \"\"\"Extract the identifier the model was being asked to echo back.\"\"\"\n    m = _RX.search(text)\n    return m.group(1).lower() if m else None\n",
+    "guard": "\n\ndef guard(text):\n    \"\"\"Apply only when exactly one candidate identifier is present.\"\"\"\n    return len(_RX.findall(text)) == 1\n",
+    "fallback": {
+      "action": "call_model",
+      "model": "gpt-4o-mini",
+      "when": "guard returns False, script returns None, or the sampling slice is selected"
+    },
+    "evidence": {
+      "holdout_calls": 96,
+      "coverage": 1.0,
+      "agreement_in_guard": 0.9896,
+      "model_self_agreement": 0.9844,
+      "model_self_agreement_n": 245,
+      "z_vs_model": 0.366,
+      "conditional_bits": 0.0317
+    },
+    "projected_monthly": {
+      "monthly_calls": 9510,
+      "calls_replaced": 9034,
+      "sampling_rate": 0.05,
+      "gross_saving_usd": 0.36,
+      "residual_model_spend_usd": 0.02,
+      "note": "Illustrative rate card; sampling keeps 5% of guarded traffic on the model."
+    }
+  },
+  {
+    "call_site": "lang.detect",
+    "call_site_key": "7c2e016ce83a",
+    "model_replaced": "gpt-4o-mini",
+    "strategy": "keyword_rules",
+    "rationale": "5 distinct outputs; 9 tokens predict a single label, chosen by greedy cover over 5 labels. Purity bar calibrated to observed self-agreement 0.984 (bar 0.924). Training inputs left uncovered per label: {'es': 1, 'pt': 1, 'en': 2}.",
+    "script": "_RULES = {\n    \"es\": [\n        \"una\",\n        \"acceder\"\n    ],\n    \"pt\": [\n        \"conta\",\n        \"uma\"\n    ],\n    \"de\": [\n        \"ich\"\n    ],\n    \"en\": [\n        \"account\",\n        \"wrong\"\n    ],\n    \"fr\": [\n        \"connecter\",\n        \"incorrecte\"\n    ]\n}\n_FALLBACK = 'en'\n\n\ndef fast_path(text):\n    \"\"\"Score the input against per-label keyword sets.\"\"\"\n    toks = set(re.findall(r\"[a-z0-9_#]+\", text.lower()))\n    best, best_hits = None, 0\n    for label, keywords in _RULES.items():\n        hits = len(toks & set(keywords))\n        if hits > best_hits:\n            best, best_hits = label, hits\n    return best if best_hits else _FALLBACK\n",
+    "guard": "\n\ndef guard(text):\n    \"\"\"Apply only when at least one known keyword is present.\n\n    Inputs carrying no recognised keyword are exactly the unfamiliar ones the\n    fallback exists for, so rejecting them is correct behaviour, not a miss.\n    \"\"\"\n    toks = set(re.findall(r\"[a-z0-9_#]+\", text.lower()))\n    return any(toks & set(kw) for kw in _RULES.values())\n",
+    "fallback": {
+      "action": "call_model",
+      "model": "gpt-4o-mini",
+      "when": "guard returns False, script returns None, or the sampling slice is selected"
+    },
+    "evidence": {
+      "holdout_calls": 106,
+      "coverage": 1.0,
+      "agreement_in_guard": 1.0,
+      "model_self_agreement": 0.9896,
+      "model_self_agreement_n": 383,
+      "z_vs_model": 1.052,
+      "conditional_bits": 0.0758
+    },
+    "projected_monthly": {
+      "monthly_calls": 10590,
+      "calls_replaced": 10060,
+      "sampling_rate": 0.05,
+      "gross_saving_usd": 0.34,
+      "residual_model_spend_usd": 0.02,
+      "note": "Illustrative rate card; sampling keeps 5% of guarded traffic on the model."
+    }
+  }
+]

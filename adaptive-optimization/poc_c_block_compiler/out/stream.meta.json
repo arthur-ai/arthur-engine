@@ -1,0 +1,22 @@
+{
+ "seed": 777001,
+ "traces": 520,
+ "phases": {
+  "baseline": [
+   0,
+   9
+  ],
+  "input_drift": [
+   10,
+   14
+  ],
+  "output_drift": [
+   15,
+   19
+  ]
+ },
+ "expected": {
+  "input_drift": "guard coverage should fall; agreement inside the guard should hold",
+  "output_drift": "guard coverage should hold; sampled agreement should fall \u2014 only sampling can see this"
+ }
+}
