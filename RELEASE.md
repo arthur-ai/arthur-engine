@@ -20,7 +20,7 @@ All production publishing is triggered by the version bump commit landing on `ma
 
 **[Arthur Engine CI](https://github.com/arthur-ai/arthur-engine/actions/workflows/arthur-engine-workflow.yml)**
 - GenAI Engine Docker images (CPU + GPU) → Docker Hub
-- ML Engine Docker images → Docker Hub + Artifactory
+- ML Engine Docker images → Docker Hub
 - Models Docker images → Docker Hub
 - CloudFormation templates → S3
 - Helm charts → GHCR + Docker Hub
