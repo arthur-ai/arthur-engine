@@ -17987,7 +17987,7 @@
                 "title": "APIKeysRolesEnum"
             },
             "AgentCreationSource": {
-                "anyOf": [
+                "oneOf": [
                     {
                         "$ref": "#/components/schemas/GCPAgentCreationSource"
                     },
@@ -17998,10 +17998,27 @@
                         "$ref": "#/components/schemas/ManualAgentCreationSource"
                     },
                     {
+                        "$ref": "#/components/schemas/CloudAgentCreationSource"
+                    },
+                    {
+                        "$ref": "#/components/schemas/SIEMAgentCreationSource"
+                    },
+                    {
                         "$ref": "#/components/schemas/EndpointAgentCreationSource"
                     }
                 ],
-                "title": "AgentCreationSource"
+                "title": "AgentCreationSource",
+                "discriminator": {
+                    "propertyName": "type",
+                    "mapping": {
+                        "CLOUD": "#/components/schemas/CloudAgentCreationSource",
+                        "ENDPOINT": "#/components/schemas/EndpointAgentCreationSource",
+                        "GCP": "#/components/schemas/GCPAgentCreationSource",
+                        "MANUAL": "#/components/schemas/ManualAgentCreationSource",
+                        "OTEL": "#/components/schemas/OTELAgentCreationSource",
+                        "SIEM": "#/components/schemas/SIEMAgentCreationSource"
+                    }
+                }
             },
             "AgentMetadata": {
                 "properties": {
@@ -18066,6 +18083,113 @@
                 ],
                 "title": "AgentMetadataResponse",
                 "description": "Agent metadata for responses."
+            },
+            "AgentObservations": {
+                "properties": {
+                    "install_path": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Install Path",
+                        "description": "Install location, shaped to '~/...' rather than '/Users/<name>/...' so a username does not travel in a path."
+                    },
+                    "version": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Version",
+                        "description": "Version read statically, never by executing the discovered binary."
+                    },
+                    "host_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Host Name",
+                        "description": "Host the agent was observed on, e.g. 'MBP-4471'."
+                    },
+                    "host_group": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Host Group",
+                        "description": "Grouping the host belongs to: a Jamf site or smart group, a cloud resource group."
+                    },
+                    "os_version": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Os Version",
+                        "description": "Guest OS version, e.g. 'macOS 15.3 (24D60)'."
+                    },
+                    "assigned_user": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Assigned User",
+                        "description": "User the source attributes the host to. PERSONAL DATA: this is the field that makes a finding attributable to an individual, and is subject to works-council and DPIA review before EU deployment. Omit it where that review has not happened."
+                    },
+                    "permissions": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Permissions",
+                        "description": "Capabilities the agent declared for itself, e.g. a browser extension's manifest permissions ('tabs', 'nativeMessaging', '<all_urls>'). A cloud agent's action groups or service-account scopes answer the same question, which is why this is shared rather than endpoint-only."
+                    },
+                    "service_names": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Service Names",
+                        "description": "Service names this agent emits telemetry under. What links a discovered agent to traces already arriving."
+                    },
+                    "classification": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Classification",
+                        "description": "Short catalog label shown beside the name, e.g. 'Personal agent'. Free text so the catalog can add one without a schema release. Absent for uncatalogued software, which must still render."
+                    }
+                },
+                "type": "object",
+                "title": "AgentObservations",
+                "description": "What a sensor could see about an agent. Shared across categories, all optional.\n\nAn absent field means the sensor cannot see it, not that collection failed. That\npromise is kept by each source declaring ``observable_fields()``, which is also\nwhat lets visibility be computed without a per-vendor branch in consumers."
             },
             "AgenticAnnotationAnalyticsResponse": {
                 "properties": {
@@ -19548,13 +19672,22 @@
                         "type": "string",
                         "enum": [
                             "enabled",
-                            "adaptive"
+                            "adaptive",
+                            "disabled"
                         ],
                         "title": "Type"
                     },
                     "budget_tokens": {
                         "type": "integer",
                         "title": "Budget Tokens"
+                    },
+                    "display": {
+                        "type": "string",
+                        "enum": [
+                            "summarized",
+                            "omitted"
+                        ],
+                        "title": "Display"
                     }
                 },
                 "type": "object",
@@ -19566,13 +19699,22 @@
                         "type": "string",
                         "enum": [
                             "enabled",
-                            "adaptive"
+                            "adaptive",
+                            "disabled"
                         ],
                         "title": "Type"
                     },
                     "budget_tokens": {
                         "type": "integer",
                         "title": "Budget Tokens"
+                    },
+                    "display": {
+                        "type": "string",
+                        "enum": [
+                            "summarized",
+                            "omitted"
+                        ],
+                        "title": "Display"
                     }
                 },
                 "additionalProperties": false,
@@ -20483,6 +20625,36 @@
                     "history"
                 ],
                 "title": "ChatbotRequest"
+            },
+            "CloudAgentCreationSource": {
+                "properties": {
+                    "vendor": {
+                        "type": "string",
+                        "title": "Vendor",
+                        "description": "Upstream product this came from, e.g. 'splunk_enterprise', 'jamf_pro', 'aws_bedrock'. FREE TEXT, and deliberately not enumerated here: nothing in this package branches on the vendor -- capability and evidence ceilings are declared per source class -- so enumerating it would make every new vendor a release of this package plus a repin in three services. The registry is app_plane's discovery source type catalog, which is also where the display name lives. Values are `<platform>_<product>`, always, so a vendor shipping a second product that could be a source does not force a rename of the first."
+                    },
+                    "address": {
+                        "$ref": "#/components/schemas/SourceAddress",
+                        "description": "Where to find this agent again upstream. Required: a discovered agent that cannot be located again is not actionable."
+                    },
+                    "observations": {
+                        "$ref": "#/components/schemas/AgentObservations",
+                        "description": "What the sensor could see. Only fields in `observable_fields()` are ever populated by this category."
+                    },
+                    "type": {
+                        "type": "string",
+                        "const": "CLOUD",
+                        "title": "Type",
+                        "default": "CLOUD"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "vendor",
+                    "address"
+                ],
+                "title": "CloudAgentCreationSource",
+                "description": "An agent read out of a cloud provider's agent runtime.\n\nEnumerated rather than searched, so ``address.query`` is absent. Account and region\nare part of the address because scanning is multi-account and multi-region."
             },
             "CompletionRequest": {
                 "properties": {
@@ -22187,158 +22359,33 @@
             },
             "EndpointAgentCreationSource": {
                 "properties": {
+                    "vendor": {
+                        "type": "string",
+                        "title": "Vendor",
+                        "description": "Upstream product this came from, e.g. 'splunk_enterprise', 'jamf_pro', 'aws_bedrock'. FREE TEXT, and deliberately not enumerated here: nothing in this package branches on the vendor -- capability and evidence ceilings are declared per source class -- so enumerating it would make every new vendor a release of this package plus a repin in three services. The registry is app_plane's discovery source type catalog, which is also where the display name lives. Values are `<platform>_<product>`, always, so a vendor shipping a second product that could be a source does not force a rename of the first."
+                    },
+                    "address": {
+                        "$ref": "#/components/schemas/SourceAddress",
+                        "description": "Where to find this agent again upstream. Required: a discovered agent that cannot be located again is not actionable."
+                    },
+                    "observations": {
+                        "$ref": "#/components/schemas/AgentObservations",
+                        "description": "What the sensor could see. Only fields in `observable_fields()` are ever populated by this category."
+                    },
                     "type": {
                         "type": "string",
                         "const": "ENDPOINT",
                         "title": "Type",
                         "default": "ENDPOINT"
-                    },
-                    "mdm": {
-                        "type": "string",
-                        "const": "jamf_pro",
-                        "title": "Mdm",
-                        "description": "The device management system that reported this agent.",
-                        "default": "jamf_pro"
-                    },
-                    "software_key": {
-                        "type": "string",
-                        "title": "Software Key",
-                        "description": "Stable, version-free identifier for the discovered software. Frozen wire contract: with device_key it forms the finding's identity, and changing either derivation orphans every existing agent AND duplicates it, because the Agents API has no delete."
-                    },
-                    "device_key": {
-                        "type": "string",
-                        "title": "Device Key",
-                        "description": "Stable device identity, e.g. 'serial:C02XL4KHQ6NV'. Part of the frozen wire contract alongside software_key."
-                    },
-                    "device_name": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Device Name",
-                        "description": "MDM device name, e.g. 'MBP-4471'."
-                    },
-                    "device_group": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Device Group",
-                        "description": "MDM grouping the device belongs to, e.g. a Jamf site or smart group."
-                    },
-                    "assigned_user": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Assigned User",
-                        "description": "User the MDM assigns the device to. PERSONAL DATA -- this is the field that makes an endpoint finding attributable to an individual, and it is subject to the works-council and DPIA review the design calls for before EU deployment. Omit it where that review has not happened."
-                    },
-                    "os_version": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Os Version",
-                        "description": "Guest OS version, e.g. 'macOS 15.3 (24D60)'."
-                    },
-                    "process_cmdline": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Process Cmdline",
-                        "description": "Full command line of the running process, e.g. 'openclaw --serve --port 8788'. Absent when the agent is installed but not running, which is a meaningful difference and not a collection failure."
-                    },
-                    "parent_process": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Parent Process",
-                        "description": "Parent of the observed process, e.g. '/bin/zsh'. Distinguishes an agent a human launched from a terminal from one a LaunchAgent starts unattended."
-                    },
-                    "install_path": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Install Path",
-                        "description": "Where the software is installed, PATH-SHAPED to '~/...' rather than '/Users/<name>/...'. The collector shapes it; usernames must not travel here in a path when assigned_user already carries identity explicitly."
-                    },
-                    "version": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Version",
-                        "description": "Version read statically from the install path. Never obtained by executing the discovered binary."
-                    },
-                    "first_seen": {
-                        "anyOf": [
-                            {
-                                "type": "string",
-                                "format": "date-time"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "First Seen",
-                        "description": "When the collector first observed this software on this device. Reconstructed by diffing inventory snapshots, since MDM relay is snapshot- rather than event-shaped."
-                    },
-                    "classification": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Classification",
-                        "description": "Short catalog-assigned label shown beside the name, e.g. 'Personal agent' or 'Local model'. Free-form rather than an enum so the catalog can add one without a schema release and a client regeneration -- the same reason the catalog itself lives in the collector. Keep the vocabulary small; it is a glanceable pill, not a taxonomy. Absent for uncatalogued software, which is a finding in its own right and must still render."
                     }
                 },
                 "type": "object",
                 "required": [
-                    "software_key",
-                    "device_key"
+                    "vendor",
+                    "address"
                 ],
                 "title": "EndpointAgentCreationSource",
-                "description": "One agent discovered on one managed endpoint.\n\nGRAIN IS PER (SOFTWARE, DEVICE), not per software. The Discovery list shows a row\nper machine -- \"OpenClaw / MBP-4471 / openclaw --serve\" -- so the device is part of\nthe finding's identity rather than a count attached to it. An earlier draft carried\n``device_count`` instead and was the wrong shape: it could not name the machine, the\nuser, or what the process was actually doing.\n\nEvery field here is obtainable from a ONE-SHOT osquery invocation plus MDM inventory.\nDeliberately absent, because they are not:\n\n* **Destination hostname.** ``process_open_sockets`` returns ``remote_address`` as an\n  IP. Recovering ``api.anthropic.com`` needs reverse DNS, which is unreliable against\n  CDN and anycast ranges, or SNI capture.\n* **Connection counts over a window.** Only ``socket_events`` yields those, and it is\n  event-based: a one-shot run reports \"events are disabled\". It requires osqueryd\n  running persistently with the audit subsystem -- which is the decision that would\n  put code signing, notarization and PPPC back on the critical path.\n\nNeither is modelled as a nullable field, on purpose. A column that is always null\nreads as \"not collected yet\" rather than \"this sensor cannot see it.\""
+                "description": "One agent observed on one managed endpoint.\n\nGrain is per (software, device): ``address.instance`` is the device and\n``address.resource_id`` the software, because the Discovery list shows a row per\nmachine.\n\nWhat it fills comes from three places: the collector's on-disk output, the MDM's\ndevice record, and the collector's catalog.\n\nWhere the collector's six output columns land, so none is unaccounted for:\n\n========  =============================================\ncolumn    carried as\n========  =============================================\nkind      ``address.resource_kind``\nid        ``address.resource_id``\nver       ``observations.version``\nloc       ``observations.install_path``\nperms     ``observations.permissions``\nextra     nothing -- see below\n========  =============================================\n\n``extra`` means a different thing per kind (browser type, image size, deb arch,\nunit state, listening address) and a field here means one thing for every sensor.\nThe listening address is the one value in it worth its own field eventually.\n\n``scan`` rows must never arrive: that kind marks a branch that could not look, not\nan agent that was found.\n\nA one-shot sweep sees the machine, not behaviour over time. Anything needing\npersistent event capture -- outbound destinations, connection counts -- is out of\nreach until osqueryd runs with the audit subsystem, which would put code signing,\nnotarization and PPPC on the critical path."
             },
             "EngineConfigResponse": {
                 "properties": {
@@ -23405,17 +23452,51 @@
                         },
                         "type": "array",
                         "title": "Service Names",
-                        "description": "Service names associated with this agent"
+                        "description": "Service names associated with this agent. Deprecated and will be removed; use observations.service_names, which is the one read path for every variant. Populated at query time from service_name_task_mappings.",
+                        "deprecated": true
+                    },
+                    "vendor": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Vendor",
+                        "description": "The vendor this shape has always meant, named the way the rest name it.",
+                        "readOnly": true
+                    },
+                    "address": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/SourceAddress"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "The flat GCP fields in the shape every other source uses.",
+                        "readOnly": true
+                    },
+                    "observations": {
+                        "$ref": "#/components/schemas/AgentObservations",
+                        "readOnly": true
                     }
                 },
                 "type": "object",
                 "required": [
                     "gcp_project_id",
                     "gcp_region",
-                    "gcp_reasoning_engine_id"
+                    "gcp_reasoning_engine_id",
+                    "vendor",
+                    "address",
+                    "observations"
                 ],
                 "title": "GCPAgentCreationSource",
-                "description": "Creation source for GCP-discovered agents."
+                "description": "DEPRECATED. Use ``CloudAgentCreationSource`` with ``cloud=gcp_vertex``.\n\nDeprecated and to be removed. A Vertex finding is a cloud finding, and nothing\nabout GCP warrants its own union member now that Cloud exists.\n\nIt cannot go yet because ``tasks_repository.find_by_gcp_engine_id`` reads\n``task_metadata->'creation_source'->>'gcp_reasoning_engine_id'`` directly, and that\nis step 4 of the task-resolution ladder. Removal, in four safe steps rather than\none risky one -- which is what serializing ``address`` below buys:\n\n1. Backfill ``address``; rows rewritten through this model gain it for free.\n2. Repoint that query at ``address->>'resource_id'``.\n3. Move the three prod call sites to ``CloudAgentCreationSource``\n   with ``vendor=\"gcp_vertex\"``.\n4. Delete this class and its ``service_names`` field.",
+                "deprecated": true
             },
             "GCPAgentMetadata": {
                 "properties": {
@@ -25352,11 +25433,44 @@
                         "const": "MANUAL",
                         "title": "Type",
                         "default": "MANUAL"
+                    },
+                    "vendor": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Vendor",
+                        "description": "None: nobody reported this agent, someone typed it in.",
+                        "readOnly": true
+                    },
+                    "address": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/SourceAddress"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "readOnly": true
+                    },
+                    "observations": {
+                        "$ref": "#/components/schemas/AgentObservations",
+                        "readOnly": true
                     }
                 },
                 "type": "object",
+                "required": [
+                    "vendor",
+                    "address",
+                    "observations"
+                ],
                 "title": "ManualAgentCreationSource",
-                "description": "Creation source for manually created tasks."
+                "description": "A hand-created task. Nothing to address, nothing observed, no evidence to grade."
             },
             "MeResponse": {
                 "properties": {
@@ -26800,12 +26914,47 @@
                         },
                         "type": "array",
                         "title": "Service Names",
-                        "description": "Service names associated with this agent"
+                        "description": "Service names associated with this agent. Deprecated and will be removed; use observations.service_names. The class is not deprecated, only this flattened accessor.",
+                        "deprecated": true
+                    },
+                    "vendor": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Vendor",
+                        "description": "None: nothing upstream reported this agent.",
+                        "readOnly": true
+                    },
+                    "address": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/SourceAddress"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "None: a self-instrumented agent was not found in an upstream system.",
+                        "readOnly": true
+                    },
+                    "observations": {
+                        "$ref": "#/components/schemas/AgentObservations",
+                        "readOnly": true
                     }
                 },
                 "type": "object",
+                "required": [
+                    "vendor",
+                    "address",
+                    "observations"
+                ],
                 "title": "OTELAgentCreationSource",
-                "description": "Creation source for OTEL-discovered agents (auto-created from traces)."
+                "description": "An agent that instrumented itself; its traces arrived.\n\nNot a discovery source and not deprecated. There is no upstream system to address."
             },
             "OnboardingTryItOutFormData": {
                 "properties": {
@@ -30349,6 +30498,36 @@
                 ],
                 "title": "RuleType"
             },
+            "SIEMAgentCreationSource": {
+                "properties": {
+                    "vendor": {
+                        "type": "string",
+                        "title": "Vendor",
+                        "description": "Upstream product this came from, e.g. 'splunk_enterprise', 'jamf_pro', 'aws_bedrock'. FREE TEXT, and deliberately not enumerated here: nothing in this package branches on the vendor -- capability and evidence ceilings are declared per source class -- so enumerating it would make every new vendor a release of this package plus a repin in three services. The registry is app_plane's discovery source type catalog, which is also where the display name lives. Values are `<platform>_<product>`, always, so a vendor shipping a second product that could be a source does not force a rename of the first."
+                    },
+                    "address": {
+                        "$ref": "#/components/schemas/SourceAddress",
+                        "description": "Where to find this agent again upstream. Required: a discovered agent that cannot be located again is not actionable."
+                    },
+                    "observations": {
+                        "$ref": "#/components/schemas/AgentObservations",
+                        "description": "What the sensor could see. Only fields in `observable_fields()` are ever populated by this category."
+                    },
+                    "type": {
+                        "type": "string",
+                        "const": "SIEM",
+                        "title": "Type",
+                        "default": "SIEM"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "vendor",
+                    "address"
+                ],
+                "title": "SIEMAgentCreationSource",
+                "description": "An agent surfaced by a query against the customer's security stack.\n\nOne variant for all three SIEMs, discriminated by ``siem``: the payload is\nidentical in every case and only the query language differs, which belongs to the\nconnector that runs the query.\n\nHOW MUCH IT OBSERVES DEPENDS ON WHAT THE CUSTOMER INDEXES, not on the vendor. A\nquery over proxy or DNS logs sees a destination and little else, which is what\nevery v1 example query does. One over host-enriched data can carry the OS and the\ncloud -- ECS has ``host.os.platform``, ``host.os.version`` and ``cloud.provider``;\nSentinel's Heartbeat table has ``OSName`` and ``ComputerEnvironment``. Since the\ncustomer's own query controls the output columns, either is reachable.\n\nOBSERVABLE_FIELDS below is therefore a ceiling in the fullest sense: it says what a\nSIEM query *can* project, and most will project almost none of it."
+            },
             "SavedPromptConfig": {
                 "properties": {
                     "type": {
@@ -30944,6 +31123,63 @@
                 ],
                 "title": "SetRagNotebookStateRequest",
                 "description": "Request to set the RAG notebook state"
+            },
+            "SourceAddress": {
+                "properties": {
+                    "instance": {
+                        "type": "string",
+                        "title": "Instance",
+                        "description": "Instance that was scanned: an account, project, SIEM workspace or device. Part of the address, so two instances of one vendor stay distinct."
+                    },
+                    "scope": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Scope",
+                        "description": "Subdivision queried, where the source has one: a cloud region, a Splunk index, a Sentinel table, an Elastic data stream."
+                    },
+                    "resource_kind": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Resource Kind",
+                        "description": "Namespace `resource_id` lives in: a bundle id, npm package, launchd label, listening port, browser extension id. Identity rather than observation, and needed because '8788' and 'openclaw' are otherwise indistinguishable strings from colliding namespaces. Absent for sources with one kind of resource, which is every cloud and SIEM vendor -- there the vendor implies the kind, so carrying it would duplicate `vendor`. Free text: the vocabulary belongs to the collector's route registry, not to this schema."
+                    },
+                    "resource_id": {
+                        "type": "string",
+                        "title": "Resource Id",
+                        "description": "The resource within that instance, in the namespace `resource_kind` names. For endpoints this is the software, with the device in `instance` -- the grain is per (software, device)."
+                    },
+                    "query": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Query",
+                        "description": "Query text that produced this record, so a finding can be explained and reproduced. Absent for sources that are enumerated rather than searched. Never parsed here -- only the output columns are contracted."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "instance",
+                    "resource_id"
+                ],
+                "title": "SourceAddress",
+                "description": "How to find a discovered agent again in the system that reported it.\n\nOne shape for every sensor, widest to narrowest:\n\n==============  ================  ==================  ==========  ============\nsensor          instance          scope               kind        resource_id\n==============  ================  ==================  ==========  ============\nBedrock         AWS account       region              --          agent id\nVertex          GCP project       region              --          engine id\nSplunk          instance          index+sourcetype    --          record id\nSentinel        LA workspace      table               --          record id\nElastic         deployment        data stream         --          record id\nJamf / osquery  device key        --                  npm, app\u2026   software key\n==============  ================  ==================  ==========  ============\n\nOnly endpoints fill ``resource_kind``: they are the one sensor whose ids come from\nseveral namespaces at once. Every cloud and SIEM vendor addresses exactly one kind\nof resource, so the kind is implied by the vendor and stays absent.\n\nReused by Provenance rather than re-declared there, so a finding and the task it\nresolves to address the upstream system identically. A vendor needing to address a\nsub-resource -- a Bedrock alias, a Vertex version -- is one more optional field\nhere, not a new shape."
             },
             "SpanListResponse": {
                 "properties": {
