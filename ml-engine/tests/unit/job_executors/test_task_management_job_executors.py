@@ -234,6 +234,8 @@ def deleted_dataset_ids(server: HTTPServer) -> list[str]:
         ("unknown", None),
         ("1.4", None),
         ("1.x.2592", None),
+        # isdigit() accepts these, int() does not.
+        ("1.4.25¹²", None),
         ("", None),
         (None, None),
     ],

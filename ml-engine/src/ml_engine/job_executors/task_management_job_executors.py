@@ -94,7 +94,7 @@ def _parse_platform_release_version(
     if not version:
         return None
     parts = version.strip().split("-", 1)[0].split(".")
-    if len(parts) < 3 or not all(part.isdigit() for part in parts[:3]):
+    if len(parts) < 3 or not all(part.isdecimal() for part in parts[:3]):
         return None
     return int(parts[0]), int(parts[1]), int(parts[2])
 
@@ -579,9 +579,28 @@ class _TaskDatasetAndModelCreator(_ValidationKeyManager):
         # datasets it created, so this retry starts from a fresh dataset.
         legacy_problem_type = self._legacy_single_dataset_problem_type()
         legacy_spec = next(
-            spec
-            for spec in dataset_specs
-            if spec.model_problem_type == legacy_problem_type
+            (
+                spec
+                for spec in dataset_specs
+                if spec.model_problem_type == legacy_problem_type
+            ),
+            None,
+        )
+        if legacy_spec is None:
+            # Only reachable if LEGACY_SINGLE_DATASET_FALLBACK_PROBLEM_TYPE is
+            # changed to a problem type no task dataset uses. Say why rather than
+            # letting a bare StopIteration out of next().
+            raise ValueError(
+                f"No task dataset is defined for problem type {legacy_problem_type}. "
+                "LEGACY_SINGLE_DATASET_FALLBACK_PROBLEM_TYPE must name one of "
+                f"{[spec.model_problem_type for spec in dataset_specs]}.",
+            )
+        # Log it: on this path the task is created without its complementary
+        # dataset, and the job log is the only place that is visible.
+        self.logger.warning(
+            f"Creating the legacy single-dataset task shape ({legacy_problem_type.value}) "
+            "because this platform predates the task dataset consolidation; the "
+            "complementary dataset is not created",
         )
         # Pre-consolidation the single dataset was named after the task with no
         # suffix, so keep that name: it is what everything else on such a platform
