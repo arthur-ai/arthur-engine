@@ -98,6 +98,18 @@ class JobSpecRawParser:
         spec = CreateModelTaskJobSpec.model_validate(job_spec_dict)
         return spec
 
+    def create_model_task_legacy_task_type(self) -> str | None:
+        """
+        A pre-consolidation platform still sends task_type on the create-task spec
+        and the current spec model drops it, but the engine needs it to pick the
+        single dataset such a platform accepts (UP-5022).
+        """
+        job_spec_dict = self._parse_job_spec_field()
+        if not isinstance(job_spec_dict, dict):
+            return None
+        task_type = job_spec_dict.get("task_type")
+        return str(task_type) if task_type is not None else None
+
     def to_update_model_task_spec(self) -> UpdateModelTaskRulesJobSpec:
         return UpdateModelTaskRulesJobSpec.model_validate(self._parse_job_spec_field())
 
@@ -285,6 +297,7 @@ class JobExecutor:
                             self.logger,
                         ).execute(job.job_spec.actual_instance)
                     case JobKind.CREATE_MODEL_TASK:
+                        create_task_spec_parser = JobSpecRawParser(job_resp.raw_data)
                         CreateTaskJobExecutor(
                             self.models_client,
                             self.datasets_client,
@@ -292,9 +305,8 @@ class JobExecutor:
                             self.connector_constructor,
                             self.logger,
                         ).execute(
-                            job_spec=JobSpecRawParser(
-                                job_resp.raw_data,
-                            ).to_create_model_task_spec(),
+                            job_spec=create_task_spec_parser.to_create_model_task_spec(),
+                            legacy_task_type=create_task_spec_parser.create_model_task_legacy_task_type(),
                         )
                     case JobKind.UPDATE_MODEL_TASK_RULES:
                         UpdateTaskJobExecutor(
