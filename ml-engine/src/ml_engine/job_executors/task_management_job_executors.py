@@ -1,9 +1,11 @@
 import logging
-from typing import Tuple
+from functools import cached_property
+from typing import NamedTuple, Tuple
 
 import arthur_client
 import genai_client.exceptions
 from arthur_client.api_bindings import (
+    ApiException,
     ConnectorType,
     ContinuousEvalResponse,
     CreateModelLinkTaskJobSpec,
@@ -11,6 +13,7 @@ from arthur_client.api_bindings import (
     DatasetLocator,
     DatasetLocatorField,
     DatasetsV1Api,
+    DefaultApi,
     Eval,
     Model,
     ModelProblemType,
@@ -18,6 +21,7 @@ from arthur_client.api_bindings import (
     PostDataset,
     PostModel,
     PostTaskValidationAPIKey,
+    PutDatasetSchema,
     PutTaskConnectionInfo,
     PutTaskStateCacheRequest,
     RegenerateTaskValidationKeyJobSpec,
@@ -48,6 +52,56 @@ from tools.converters import common_to_client_put_dataset_schema
 
 class InvalidConnectorException(Exception):
     pass
+
+
+# Platform releases before this one require an Arthur shield model to be linked to
+# exactly one dataset, so they reject the consolidated two-dataset task shape with a
+# 400 and the engine has to fall back to the legacy single-dataset shape (UP-5022).
+MIN_CONSOLIDATED_TASK_DATASETS_PLATFORM_RELEASE = (1, 4, 2592)
+
+# Which dataset a task keeps when the engine must emit the legacy single-dataset
+# shape but cannot tell what kind of task it is. Only the link path lands here: its
+# job spec never carried task_type and TaskResponse.is_agentic is now always True, so
+# the task's original kind is unrecoverable. PENDING PRODUCT DECISION (UP-5022) —
+# ARTHUR_SHIELD keeps guardrails, AGENTIC_TRACE would keep traces and evals instead.
+# Flip this one value to change it.
+LEGACY_SINGLE_DATASET_FALLBACK_PROBLEM_TYPE = ModelProblemType.ARTHUR_SHIELD
+
+# arthur-common dropped TaskType along with the consolidation, so the values a
+# pre-consolidation platform sends are matched as plain strings.
+_LEGACY_AGENTIC_TASK_TYPE = "agentic"
+_LEGACY_TRADITIONAL_TASK_TYPE = "traditional"
+
+# Fragment of the pre-consolidation platform's rejection body. Matched so the
+# fallback still fires when /api/health reports no usable version.
+_SINGLE_DATASET_CONSTRAINT_ERROR = "must be linked to exactly one dataset"
+
+
+class _TaskDatasetSpec(NamedTuple):
+    dataset_name: str
+    dataset_schema: PutDatasetSchema
+    model_problem_type: ModelProblemType
+
+
+def _parse_platform_release_version(
+    version: str | None,
+) -> Tuple[int, int, int] | None:
+    """
+    /api/health's release_version is environment-sourced, so it can be absent, the
+    literal "unknown", or a deploy tag with a suffix ("1.4.2594-release"). Returns
+    None for anything that is not a readable major.minor.patch.
+    """
+    if not version:
+        return None
+    parts = version.strip().split("-", 1)[0].split(".")
+    if len(parts) < 3 or not all(part.isdecimal() for part in parts[:3]):
+        return None
+    return int(parts[0]), int(parts[1]), int(parts[2])
+
+
+def _is_single_dataset_constraint_rejection(exc: ApiException) -> bool:
+    # str() renders whichever of the deserialized data or the raw body is present.
+    return exc.status == 400 and _SINGLE_DATASET_CONSTRAINT_ERROR in str(exc)
 
 
 class TaskManagementJobExecutor:
@@ -476,6 +530,7 @@ class _TaskDatasetAndModelCreator(_ValidationKeyManager):
         models_client: ModelsV1Api,
         tasks_client: TasksV1Api,
         logger: logging.Logger,
+        legacy_task_type: str | None = None,
     ) -> None:
         self.conn = conn
         self.task = task
@@ -484,6 +539,7 @@ class _TaskDatasetAndModelCreator(_ValidationKeyManager):
         self.models_client = models_client
         self.tasks_client = tasks_client
         self.logger = logger
+        self.legacy_task_type = legacy_task_type
 
         super().__init__(self.conn, self.tasks_client, self.logger)
 
@@ -495,26 +551,77 @@ class _TaskDatasetAndModelCreator(_ValidationKeyManager):
         #
         # Both bind to the same task via the task_id locator; one model links both.
         dataset_specs = [
-            (
-                "traces",
+            _TaskDatasetSpec(
+                f"{self.task.name} - traces",
                 common_to_client_put_dataset_schema(AGENTIC_TRACE_SCHEMA()),
                 ModelProblemType.AGENTIC_TRACE,
             ),
-            (
-                "guardrails",
+            _TaskDatasetSpec(
+                f"{self.task.name} - guardrails",
                 common_to_client_put_dataset_schema(SHIELD_SCHEMA()),
                 ModelProblemType.ARTHUR_SHIELD,
             ),
         ]
 
+        if self._platform_supports_consolidated_task_datasets:
+            try:
+                return self._create_datasets_and_model(dataset_specs)
+            except ApiException as e:
+                if not _is_single_dataset_constraint_rejection(e):
+                    raise
+                # The probe read the platform as new but it enforces the old
+                # constraint, so its release_version is unset or misreported.
+                self.logger.warning(
+                    "Platform rejected the consolidated task datasets, retrying with a single dataset",
+                )
+
+        # When the two-dataset attempt above ran, its rollback already deleted the
+        # datasets it created, so this retry starts from a fresh dataset.
+        legacy_problem_type = self._legacy_single_dataset_problem_type()
+        legacy_spec = next(
+            (
+                spec
+                for spec in dataset_specs
+                if spec.model_problem_type == legacy_problem_type
+            ),
+            None,
+        )
+        if legacy_spec is None:
+            # Only reachable if LEGACY_SINGLE_DATASET_FALLBACK_PROBLEM_TYPE is
+            # changed to a problem type no task dataset uses. Say why rather than
+            # letting a bare StopIteration out of next().
+            raise ValueError(
+                f"No task dataset is defined for problem type {legacy_problem_type}. "
+                "LEGACY_SINGLE_DATASET_FALLBACK_PROBLEM_TYPE must name one of "
+                f"{[spec.model_problem_type for spec in dataset_specs]}.",
+            )
+        # Log it: on this path the task is created without its complementary
+        # dataset, and the job log is the only place that is visible.
+        self.logger.warning(
+            f"Creating the legacy single-dataset task shape ({legacy_problem_type.value}) "
+            "because this platform predates the task dataset consolidation; the "
+            "complementary dataset is not created",
+        )
+        # Pre-consolidation the single dataset was named after the task with no
+        # suffix, so keep that name: it is what everything else on such a platform
+        # looks like, and it leaves the platform's later consolidation migration a
+        # clean name to derive the complementary dataset from.
+        return self._create_datasets_and_model(
+            [legacy_spec._replace(dataset_name=self.task.name)],
+        )
+
+    def _create_datasets_and_model(
+        self,
+        dataset_specs: list[_TaskDatasetSpec],
+    ) -> Tuple[Model, list[Dataset]]:
         # enter rollback block so we can clean up datasets if any later creation fails
         datasets: list[Dataset] = []
         try:
-            for name_suffix, dataset_schema, model_problem_type in dataset_specs:
+            for spec in dataset_specs:
                 dataset = self.datasets_client.post_connector_dataset(
                     connector_id=self.conn.connector_config.id,
                     post_dataset=PostDataset(
-                        name=f"{self.task.name} - {name_suffix}",
+                        name=spec.dataset_name,
                         dataset_locator=DatasetLocator(
                             fields=[
                                 DatasetLocatorField(
@@ -523,8 +630,8 @@ class _TaskDatasetAndModelCreator(_ValidationKeyManager):
                                 ),
                             ],
                         ),
-                        dataset_schema=dataset_schema,
-                        model_problem_type=model_problem_type,
+                        dataset_schema=spec.dataset_schema,
+                        model_problem_type=spec.model_problem_type,
                     ),
                 )
                 self.logger.info(
@@ -543,6 +650,42 @@ class _TaskDatasetAndModelCreator(_ValidationKeyManager):
                 self.datasets_client.delete_dataset(dataset_id=dataset.id)
             self.logger.warning("Dataset rollback complete")
             raise
+
+    def _legacy_single_dataset_problem_type(self) -> ModelProblemType:
+        # A pre-consolidation platform still sends task_type on the create-task job
+        # spec, which says exactly which dataset that task used to get. The link
+        # path has no equivalent signal.
+        if self.legacy_task_type == _LEGACY_AGENTIC_TASK_TYPE:
+            return ModelProblemType.AGENTIC_TRACE
+        if self.legacy_task_type == _LEGACY_TRADITIONAL_TASK_TYPE:
+            return ModelProblemType.ARTHUR_SHIELD
+        return LEGACY_SINGLE_DATASET_FALLBACK_PROBLEM_TYPE
+
+    @cached_property
+    def _platform_supports_consolidated_task_datasets(self) -> bool:
+        """
+        Probed once per job. An unreachable or unreadable version reads as supported
+        so a platform that does not publish its release version still gets the
+        current shape, with the 400 fallback in create() as the safety net.
+        """
+        try:
+            health = DefaultApi(
+                self.models_client.api_client,
+            ).health_check_api_health_get()
+        except Exception as e:
+            self.logger.warning(
+                f"Could not read the platform release version from /api/health: {e}",
+            )
+            return True
+
+        release_version = _parse_platform_release_version(health.release_version)
+        if release_version is None:
+            self.logger.warning(
+                f"Platform reported an unreadable release version: {health.release_version}",
+            )
+            return True
+
+        return release_version >= MIN_CONSOLIDATED_TASK_DATASETS_PLATFORM_RELEASE
 
     def _create_task_model(
         self,
@@ -580,6 +723,7 @@ class TaskCreator:
         models_client: ModelsV1Api,
         tasks_client: TasksV1Api,
         logger: logging.Logger,
+        legacy_task_type: str | None = None,
     ) -> None:
         self.conn = conn
         self.job_spec = job_spec
@@ -587,6 +731,7 @@ class TaskCreator:
         self.models_client = models_client
         self.tasks_client = tasks_client
         self.logger = logger
+        self.legacy_task_type = legacy_task_type
 
     def create(self) -> Tuple[Model, list[Dataset], TaskResponse]:
         # create the task in shield
@@ -649,6 +794,7 @@ class TaskCreator:
             models_client=self.models_client,
             tasks_client=self.tasks_client,
             logger=self.logger,
+            legacy_task_type=self.legacy_task_type,
         )
         model, datasets = dataset_model_creator.create()
         return model, datasets, task
@@ -754,7 +900,11 @@ class _TaskAndModelDeleter(_ValidationKeyManager):
 
 
 class CreateTaskJobExecutor(TaskManagementJobExecutor):
-    def execute(self, job_spec: CreateModelTaskJobSpec) -> None:
+    def execute(
+        self,
+        job_spec: CreateModelTaskJobSpec,
+        legacy_task_type: str | None = None,
+    ) -> None:
         conn: ShieldBaseConnector = self.get_shield_connector_from_connector_id(
             str(job_spec.connector_id),
         )
@@ -765,6 +915,7 @@ class CreateTaskJobExecutor(TaskManagementJobExecutor):
             models_client=self.models_client,
             tasks_client=self.tasks_client,
             logger=self.logger,
+            legacy_task_type=legacy_task_type,
         )
         model, _, task = creator.create()
         self.upload_final_task_state(
