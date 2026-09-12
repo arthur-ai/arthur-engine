@@ -17,7 +17,7 @@ dependencies = [
   "sse-starlette==3.4.11",
   "fastapi-sqlalchemy==0.2.1",
   "alembic==1.19.2",
-  "boto3==1.43.90",
+  "boto3==1.43.91",
   "python-dotenv==1.2.3",
   "psycopg2-binary==2.9.12",
   "sqlalchemy==2.0.52",
