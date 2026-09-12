@@ -8,7 +8,7 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "2026-09-09T08:04:58.522274377Z"
+exclude-newer = "0001-01-01T00:00:00Z" # This has no effect and is included for backwards compatibility when using relative exclude-newer values.
 exclude-newer-span = "P3D"
 
 [options.exclude-newer-package]
@@ -1744,11 +1744,11 @@ wheels = [
 
 [[package]]
 name = "openinference-semantic-conventions"
-version = "0.1.35"
+version = "0.1.36"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/e0/cd/1c26841447249b9fc402e342b9b3c042f8916b5abb485b8eb4e63ea6397c/openinference_semantic_conventions-0.1.35.tar.gz", hash = "sha256:b64864a5961fee7bf37d2e11491499baab223fac18efe671065dede55ccd5a3a", size = 14262, upload-time = "2026-09-04T20:16:04.645Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/1f/13/263a30de40dcce1bfdb03997c1b70121c35ac5bbe9e2ca3b0de983955ddf/openinference_semantic_conventions-0.1.36.tar.gz", hash = "sha256:5574eee0de8cbc84f7c1555c0f69d8a343451dacab74165d2ab6f5d549b397b6", size = 14365, upload-time = "2026-09-09T07:32:24.733Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/4d/34/434cedb6f39b14e6eb8f203c33e97cee3907fc7f994d7c3cfcfbd4575787/openinference_semantic_conventions-0.1.35-py3-none-any.whl", hash = "sha256:a418df584fb3ec41d4214ac44562908f596df042c382d1445fafb26df2834cb2", size = 11484, upload-time = "2026-09-04T20:16:03.668Z" },
+    { url = "https://files.pythonhosted.org/packages/fe/75/ad184f21d07a58fdc2d04574842f9f67570fda5c19e00a5391718a0c5b57/openinference_semantic_conventions-0.1.36-py3-none-any.whl", hash = "sha256:7e5c8a59f90ce963ac3a4b249597b1667cb494ae159a480b663acb8c78e81c0f", size = 11579, upload-time = "2026-09-09T07:32:23.604Z" },
 ]
 
 [[package]]
