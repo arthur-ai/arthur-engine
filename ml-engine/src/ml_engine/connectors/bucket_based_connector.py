@@ -3,6 +3,7 @@ import concurrent.futures
 import json
 import os
 import re
+from _pydatetime import tzinfo
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
@@ -12,7 +13,6 @@ from typing import Any, Optional, cast
 import pandas as pd
 import pyarrow.parquet as pq
 import pytz
-from _pydatetime import tzinfo
 from arthur_client.api_bindings import (
     AvailableDataset,
     ConnectorCheckOutcome,
