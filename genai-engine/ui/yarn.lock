@@ -37,10 +37,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@amplitude/analytics-connector@npm:^1.6.4, @amplitude/analytics-connector@npm:^1.6.7":
+"@amplitude/analytics-connector@npm:^1.6.4":
   version: 1.6.7
   resolution: "@amplitude/analytics-connector@npm:1.6.7"
   checksum: 10c0/568c3494a2f9a6d48aeb4d104bf19d0c6b1ec97f85d23349cee810d9567d27bd9e4a51d5c49d0c09f7205a1d73543abdcbf563a5f0e8df6d191dade6d70e6f13
+  languageName: node
+  linkType: hard
+
+"@amplitude/analytics-connector@npm:^1.6.8":
+  version: 1.6.8
+  resolution: "@amplitude/analytics-connector@npm:1.6.8"
+  checksum: 10c0/fe2c36c8295509bb875143a2f9b52e498552e54a84f059731ae1793d04f36870e90708a807589088f39e8aaf4de326b022b09b32d17f00fc116a66af6baadc67
   languageName: node
   linkType: hard
 
@@ -93,25 +100,25 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@amplitude/experiment-core@npm:^0.13.5":
-  version: 0.13.5
-  resolution: "@amplitude/experiment-core@npm:0.13.5"
+"@amplitude/experiment-core@npm:^0.13.6":
+  version: 0.13.6
+  resolution: "@amplitude/experiment-core@npm:0.13.6"
   dependencies:
     js-base64: "npm:^3.7.5"
-  checksum: 10c0/c3bd4b67a4c3d8a4a4820fba25ee5f6d34035d9c6aadf381b762effefcecd968c969c1a9b60f797f4768b6656793a0b3c11aa8e213d3967eb4d16ef772afcce5
+  checksum: 10c0/960cddcb0a74d3d291d9ce3e52ca705126115a2e5bcbefb1d31088908f07b57656a47b3a464acecb30bcc0c181f6c844ac33bedf90fa9e6f2b5501caf03fcda0
   languageName: node
   linkType: hard
 
 "@amplitude/experiment-js-client@npm:^1.21.1":
-  version: 1.23.0
-  resolution: "@amplitude/experiment-js-client@npm:1.23.0"
+  version: 1.23.1
+  resolution: "@amplitude/experiment-js-client@npm:1.23.1"
   dependencies:
-    "@amplitude/analytics-connector": "npm:^1.6.7"
-    "@amplitude/experiment-core": "npm:^0.13.5"
+    "@amplitude/analytics-connector": "npm:^1.6.8"
+    "@amplitude/experiment-core": "npm:^0.13.6"
     "@amplitude/ua-parser-js": "npm:^0.7.31"
     base64-js: "npm:1.5.1"
     unfetch: "npm:4.1.0"
-  checksum: 10c0/490711fc165619f8fdfca855e2ef9fe0021629d995d114cea17b97a2569a70545e6320a7f76f830ac6766625051c3ab2784279531bfa45cf282fb20ecc65cf47
+  checksum: 10c0/4448e49d16eb1e1cedc49ceb0b6f92fed65c9b781fbbff57984d1af4d1159421ade06afe8b00b29f8bb0a79f2a80887f317d83f0279a2791e2139d8a6f51e613
   languageName: node
   linkType: hard
 
