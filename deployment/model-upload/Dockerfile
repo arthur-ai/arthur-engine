@@ -60,11 +60,17 @@ RUN python generate_aibom.py \
 # into the distroless runtime images below, so the binaries that actually ship
 # contain the fixes (the distroless base's dpkg metadata, which scanners read,
 # stays stale — see security/vex/openvex.json).
+#
+# libexpat1 is installed, not just upgraded: it is absent from
+# python:3.12-slim-bookworm, and `apt-get upgrade` only touches packages that are
+# already installed. Without it there is no /usr/lib/*/libexpat.so.1 for the /lib
+# mirror below to copy, so the distroless base's own libexpat survived into the
+# runtime images at 2.5.0-1+deb12u2 while bookworm-security ships u3.
 # =============================================================================
 FROM python:3.12-slim-bookworm AS builder
 ARG BACKEND
 
-RUN apt-get update && apt-get upgrade -y && apt-get clean && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get upgrade -y && apt-get install -y libexpat1 && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 RUN pip install --no-cache-dir uv==0.12.0

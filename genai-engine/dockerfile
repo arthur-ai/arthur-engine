@@ -30,11 +30,17 @@ RUN uv export --frozen \
     --index-strategy unsafe-best-match \
     -r /tmp/requirements.txt
 
-# Upgrade OS packages to pick up Debian security fixes (libssl3, libc6,
-# libexpat1, ...) and install lsof for healthchecks. These libraries live in
-# /usr/lib and are copied into the distroless final image below, so upgrading
-# here patches the shared objects that actually ship.
-RUN apt-get update && apt-get upgrade -y && apt-get install -y lsof && apt-get clean && rm -rf /var/lib/apt/lists/*
+# Upgrade OS packages to pick up Debian security fixes (libssl3, libc6, ...) and
+# install lsof for healthchecks. These libraries live in /usr/lib and are copied
+# into the distroless final image below, so upgrading here patches the shared
+# objects that actually ship.
+#
+# libexpat1 is installed, not just upgraded: it is absent from
+# python:3.12-slim-bookworm, and `apt-get upgrade` only touches packages that are
+# already installed. Without it there is no /usr/lib/*/libexpat.so.1 for the /lib
+# mirror below to copy, so the distroless base's own libexpat survived into the
+# final image at 2.5.0-1+deb12u2 while bookworm-security ships u3.
+RUN apt-get update && apt-get upgrade -y && apt-get install -y lsof libexpat1 && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 
 # GPU Install: Install PyTorch for GPU
