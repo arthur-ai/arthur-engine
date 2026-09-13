@@ -17,7 +17,7 @@ dependencies = [
   "sse-starlette==3.4.11",
   "fastapi-sqlalchemy==0.2.1",
   "alembic==1.19.2",
-  "boto3==1.43.91",
+  "boto3==1.43.92",
   "python-dotenv==1.2.3",
   "psycopg2-binary==2.9.13",
   "sqlalchemy==2.0.52",
@@ -82,7 +82,7 @@ dependencies = [
   "google-cloud-aiplatform>=1.38",
   "google-cloud-trace>=1.11.0,<2",
   "opentelemetry-semantic-conventions>=0.60b1,<0.61",
-  "arthur-client==1.4.2646",
+  "arthur-client==1.4.2647",
 ]
 
 [project.scripts]
