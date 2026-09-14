@@ -293,8 +293,11 @@ class TaskRepository:
 
         Reads creation_source directly from task_metadata.
         For tasks without task_metadata, infers creation source from task properties.
-        Injects task.service_names (from service_name_task_mappings) into the
-        returned GCP/OTEL creation_source.
+        Injects task.service_names (from service_name_task_mappings) into every
+        creation source that has somewhere to put them: a flat field on the
+        pre-category GCP and OTEL variants, and observations.service_names on the
+        discovery categories. MANUAL records a human decision rather than an
+        observation, so it passes through untouched.
 
         Args:
             task: Task object with service_names already populated
