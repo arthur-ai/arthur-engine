@@ -10,6 +10,7 @@ from arthur_common.models.agent_governance_schemas import (
     SIEMAgentCreationSource,
     SourceAddress,
 )
+from pydantic import ValidationError
 
 from schemas.internal_schemas import _legacy_gcp_metadata
 
@@ -88,3 +89,30 @@ def test_a_cloud_source_from_another_vendor_is_not_treated_as_vertex():
         )
         is None
     )
+
+
+@pytest.mark.unit_tests
+def test_a_region_less_cloud_source_cannot_reach_this_mapping():
+    """The upstream guarantee the region cast depends on.
+
+    _legacy_gcp_metadata narrows `address.scope` to str with no runtime check,
+    which is sound only while arthur_common rejects a CLOUD source that carries no
+    region. Asserted here, in the repo that relies on it, so a downgrade or a
+    loosened validator fails as this test rather than as a region of "" on the
+    wire -- the shape the `or ""` fallback used to produce.
+    """
+    with pytest.raises(ValidationError):
+        CloudAgentCreationSource(
+            vendor="gcp_vertex",
+            address=SourceAddress(instance="proj-a", resource_id="eng-1"),
+        )
+
+
+@pytest.mark.unit_tests
+def test_an_empty_region_is_rejected_too():
+    """The exact value the old fallback substituted."""
+    with pytest.raises(ValidationError):
+        CloudAgentCreationSource(
+            vendor="gcp_vertex",
+            address=SourceAddress(instance="proj-a", resource_id="eng-1", scope=""),
+        )

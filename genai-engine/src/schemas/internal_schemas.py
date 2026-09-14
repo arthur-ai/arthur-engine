@@ -2,7 +2,7 @@ import json
 import logging
 import uuid
 from datetime import datetime
-from typing import Any, Dict, List, Literal, Optional, Union
+from typing import Any, Dict, List, Literal, Optional, Union, cast
 
 from arthur_common.models.agent_governance_schemas import (
     AgentCreationSource,
@@ -615,9 +615,14 @@ def _legacy_gcp_metadata(
         address = creation_source.address
         return GCPAgentMetadataResponse(
             project_id=address.instance,
-            # scope carries the region for a cloud source, but it is optional on
-            # SourceAddress while the legacy model requires a string.
-            region=address.scope or "",
+            # `scope` is Optional on SourceAddress -- endpoints have no subdivision
+            # and a SIEM query may span every index -- but arthur_common 2.4.78 makes
+            # it mandatory on a CLOUD source, rejecting a missing or empty region. So
+            # it is narrowed rather than defaulted: `or ""` used to put a region of ""
+            # on the wire, describing an agent as running somewhere that does not
+            # exist. If that guarantee is ever lost, GCPAgentMetadataResponse rejects
+            # None by name, which beats any check written here.
+            region=cast(str, address.scope),
             resource_id=address.resource_id,
         )
 
