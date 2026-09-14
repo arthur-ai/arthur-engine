@@ -6,6 +6,7 @@ from uuid import UUID
 from arthur_common.models.agent_governance_schemas import (
     AgentCreationSource,
     DataSource,
+    DiscoveryAgentCreationSource,
     EnrichedAgentMetadata,
     GCPAgentCreationSource,
     LLMModel,
@@ -292,8 +293,11 @@ class TaskRepository:
 
         Reads creation_source directly from task_metadata.
         For tasks without task_metadata, infers creation source from task properties.
-        Injects task.service_names (from service_name_task_mappings) into the
-        returned GCP/OTEL creation_source.
+        Injects task.service_names (from service_name_task_mappings) into every
+        creation source that has somewhere to put them: a flat field on the
+        pre-category GCP and OTEL variants, and observations.service_names on the
+        discovery categories. MANUAL records a human decision rather than an
+        observation, so it passes through untouched.
 
         Args:
             task: Task object with service_names already populated
@@ -305,14 +309,29 @@ class TaskRepository:
 
         if task.task_metadata and task.task_metadata.creation_source:
             cs = task.task_metadata.creation_source.root
-            if isinstance(cs, GCPAgentCreationSource):
+
+            # The pre-category variants carry service names as a flat field.
+            if isinstance(cs, (GCPAgentCreationSource, OTELAgentCreationSource)):
                 return AgentCreationSource(
                     root=cs.model_copy(update={"service_names": service_names}),
                 )
-            elif isinstance(cs, OTELAgentCreationSource):
+
+            # The discovery categories carry them in observations. Without this they
+            # are dropped: EnrichedTaskResponse has no service_names of its own, so
+            # the creation source is the only route they take to a caller, and the
+            # link between a discovered agent and traces already arriving is exactly
+            # what the fetch job needs.
+            if isinstance(cs, DiscoveryAgentCreationSource):
                 return AgentCreationSource(
-                    root=cs.model_copy(update={"service_names": service_names}),
+                    root=cs.model_copy(
+                        update={
+                            "observations": cs.observations.model_copy(
+                                update={"service_names": service_names},
+                            ),
+                        },
+                    ),
                 )
+
             return AgentCreationSource(root=cs)
 
         # No task_metadata — infer from task properties

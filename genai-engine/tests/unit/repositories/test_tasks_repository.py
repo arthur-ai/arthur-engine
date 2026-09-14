@@ -2,6 +2,17 @@ import uuid
 from datetime import datetime, timedelta
 
 import pytest
+from arthur_common.models.agent_governance_schemas import (
+    AgentCreationSource,
+    CloudAgentCreationSource,
+    EndpointAgentCreationSource,
+    GCPAgentCreationSource,
+    ManualAgentCreationSource,
+    OTELAgentCreationSource,
+    SIEMAgentCreationSource,
+    SourceAddress,
+    TaskMetadata,
+)
 from arthur_common.models.enums import PaginationSortMethod
 
 from db_models import DatabaseTask
@@ -11,6 +22,7 @@ from repositories.metrics_repository import MetricRepository
 from repositories.rules_repository import RuleRepository
 from repositories.tasks_repository import TaskRepository
 from schemas.enums import TaskSortField
+from schemas.internal_schemas import Task
 from tests.clients.base_test_client import override_get_db_session
 from utils.constants import DEFAULT_ORG_ID
 
@@ -77,7 +89,10 @@ def test_last_active_filter_includes_old_task_with_recent_trace(repo_env):
 
     # Task created 30 days ago but with a trace that ended 1 day ago.
     old_task = _add_task(
-        client, db_session, "old-but-active", created_at=now - timedelta(days=30)
+        client,
+        db_session,
+        "old-but-active",
+        created_at=now - timedelta(days=30),
     )
     trace = _add_trace(db_session, old_task, end_time=now - timedelta(days=1))
     created["task_ids"].append(old_task)
@@ -99,17 +114,26 @@ def test_last_active_filter_excludes_only_old_or_traceless_tasks(repo_env):
     now = datetime.now()
 
     recent_task = _add_task(
-        client, db_session, "recent", created_at=now - timedelta(days=30)
+        client,
+        db_session,
+        "recent",
+        created_at=now - timedelta(days=30),
     )
     recent_trace = _add_trace(db_session, recent_task, end_time=now - timedelta(days=2))
 
     stale_task = _add_task(
-        client, db_session, "stale", created_at=now - timedelta(days=30)
+        client,
+        db_session,
+        "stale",
+        created_at=now - timedelta(days=30),
     )
     stale_trace = _add_trace(db_session, stale_task, end_time=now - timedelta(days=60))
 
     traceless_task = _add_task(
-        client, db_session, "traceless", created_at=now - timedelta(days=1)
+        client,
+        db_session,
+        "traceless",
+        created_at=now - timedelta(days=1),
     )
 
     created["task_ids"] += [recent_task, stale_task, traceless_task]
@@ -132,11 +156,17 @@ def test_no_filter_returns_all_including_traceless(repo_env):
     now = datetime.now()
 
     active_task = _add_task(
-        client, db_session, "active", created_at=now - timedelta(days=30)
+        client,
+        db_session,
+        "active",
+        created_at=now - timedelta(days=30),
     )
     active_trace = _add_trace(db_session, active_task, end_time=now - timedelta(days=1))
     traceless_task = _add_task(
-        client, db_session, "traceless", created_at=now - timedelta(days=2)
+        client,
+        db_session,
+        "traceless",
+        created_at=now - timedelta(days=2),
     )
 
     created["task_ids"] += [active_task, traceless_task]
@@ -158,10 +188,15 @@ def test_last_active_end_time_bound(repo_env):
     now = datetime.now()
 
     recent_task = _add_task(
-        client, db_session, "recent", created_at=now - timedelta(days=30)
+        client,
+        db_session,
+        "recent",
+        created_at=now - timedelta(days=30),
     )
     recent_trace = _add_trace(
-        db_session, recent_task, end_time=now - timedelta(hours=1)
+        db_session,
+        recent_task,
+        end_time=now - timedelta(hours=1),
     )
     old_task = _add_task(client, db_session, "old", created_at=now - timedelta(days=30))
     old_trace = _add_trace(db_session, old_task, end_time=now - timedelta(days=20))
@@ -187,7 +222,10 @@ def test_default_sort_matches_created_at_desc(repo_env):
 
     first = _add_task(client, db_session, "a-first", created_at=now - timedelta(days=3))
     second = _add_task(
-        client, db_session, "b-second", created_at=now - timedelta(days=2)
+        client,
+        db_session,
+        "b-second",
+        created_at=now - timedelta(days=2),
     )
     third = _add_task(client, db_session, "c-third", created_at=now - timedelta(days=1))
     created["task_ids"] += [first, second, third]
@@ -213,7 +251,10 @@ def test_sort_by_name(repo_env):
 
     # created_at order is deliberately the reverse of alphabetical name order.
     charlie = _add_task(
-        client, db_session, "charlie", created_at=now - timedelta(days=1)
+        client,
+        db_session,
+        "charlie",
+        created_at=now - timedelta(days=1),
     )
     bravo = _add_task(client, db_session, "bravo", created_at=now - timedelta(days=2))
     alpha = _add_task(client, db_session, "alpha", created_at=now - timedelta(days=3))
@@ -287,7 +328,10 @@ def test_sort_by_last_active_nulls_last(repo_env):
     older = _add_task(client, db_session, "older", created_at=now - timedelta(days=5))
     older_trace = _add_trace(db_session, older, end_time=now - timedelta(days=10))
     traceless = _add_task(
-        client, db_session, "traceless", created_at=now - timedelta(days=5)
+        client,
+        db_session,
+        "traceless",
+        created_at=now - timedelta(days=5),
     )
 
     created["task_ids"] += [recent, older, traceless]
@@ -342,3 +386,126 @@ def test_last_active_filter_respects_org_scope(repo_env):
     )
     assert count == 0
     assert tasks == []
+
+
+# --- _get_task_creation_source: service names reach every category (UP-4974) -------
+#
+# These call the method off an uninitialised instance. It touches no `self`, so a
+# real TaskRepository would mean a DB session, a rules repo, a metrics repo and an
+# application config for a pure mapping -- a fixture cost that buys nothing and
+# hides which input produced which output.
+
+
+def _task_carrying(creation_source, service_names):
+    """A task holding one creation source, with query-time service names attached."""
+    now = datetime.now()
+    return Task(
+        id=str(uuid.uuid4()),
+        name="agent-task",
+        created_at=now,
+        updated_at=now,
+        org_id=uuid.uuid4(),
+        task_metadata=TaskMetadata(
+            creation_source=AgentCreationSource(root=creation_source),
+        ),
+        service_names=service_names,
+    )
+
+
+def _resolve(creation_source, service_names):
+    repo = TaskRepository.__new__(TaskRepository)
+    return repo._get_task_creation_source(
+        _task_carrying(creation_source, service_names),
+    )
+
+
+DISCOVERY_SOURCES = [
+    pytest.param(
+        CloudAgentCreationSource(
+            vendor="aws_bedrock",
+            address=SourceAddress(
+                instance="111122223333",
+                resource_id="AGENT1",
+                scope="us-east-1",
+            ),
+        ),
+        id="CLOUD",
+    ),
+    pytest.param(
+        SIEMAgentCreationSource(
+            vendor="splunk_es",
+            address=SourceAddress(instance="splunk-prod", resource_id="rec-1"),
+        ),
+        id="SIEM",
+    ),
+    pytest.param(
+        EndpointAgentCreationSource(
+            vendor="jamf_pro",
+            address=SourceAddress(instance="serial:X", resource_id="openclaw"),
+        ),
+        id="ENDPOINT",
+    ),
+]
+
+
+@pytest.mark.unit_tests
+@pytest.mark.parametrize("creation_source", DISCOVERY_SOURCES)
+def test_discovery_categories_receive_service_names(creation_source):
+    """The discovery categories nest service names under observations.
+
+    Every category needs its own case rather than one representative: the bug this
+    replaces dropped the names for whichever variants the isinstance chain did not
+    name, so a sample would reproduce exactly that blind spot.
+    """
+    resolved = _resolve(creation_source, ["svc-a", "svc-b"])
+
+    assert resolved is not None
+    assert resolved.root.observations.service_names == ["svc-a", "svc-b"]
+
+
+@pytest.mark.unit_tests
+@pytest.mark.parametrize("creation_source", DISCOVERY_SOURCES)
+def test_injecting_service_names_changes_nothing_else(creation_source):
+    """Identity has to survive the copy, or the task resolves to the wrong agent."""
+    resolved = _resolve(creation_source, ["svc-a"])
+
+    assert resolved.root.type == creation_source.type
+    assert resolved.root.vendor == creation_source.vendor
+    assert resolved.root.address == creation_source.address
+
+
+@pytest.mark.unit_tests
+@pytest.mark.parametrize(
+    "creation_source",
+    [
+        pytest.param(
+            GCPAgentCreationSource(
+                gcp_project_id="p",
+                gcp_region="us-central1",
+                gcp_reasoning_engine_id="e",
+            ),
+            id="GCP",
+        ),
+        pytest.param(OTELAgentCreationSource(), id="OTEL"),
+    ],
+)
+def test_pre_category_variants_still_use_the_flat_field(creation_source):
+    """Regression guard: widening the dispatch must not move these.
+
+    Their service_names is a flat field, deprecated but still the only one the
+    existing task-resolution path reads.
+    """
+    resolved = _resolve(creation_source, ["svc-a"])
+
+    assert resolved.root.service_names == ["svc-a"]
+
+
+@pytest.mark.unit_tests
+def test_a_manual_source_gains_nothing():
+    """MANUAL records a human decision, not an observation, so it has nowhere to put
+    service names and must pass through untouched."""
+    source = ManualAgentCreationSource()
+
+    resolved = _resolve(source, ["svc-a"])
+
+    assert resolved.root == source
