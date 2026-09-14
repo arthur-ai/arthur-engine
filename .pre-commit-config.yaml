@@ -91,7 +91,10 @@ repos:
         files: ^genai-engine/src/
       - id: genai-engine-api-changelog-check
         name: "genai-engine: api changelog"
-        entry: bash -c "export GENAI_ENGINE_SECRET_STORE_KEY=changeme_secret_store_key && uv run --project genai-engine generate_changelog"
+        # Runs from genai-engine with src on the path: changelog.py imports `server`,
+        # which lives in genai-engine/src, so invoking this from the repo root fails
+        # with ModuleNotFoundError and blocks any commit touching src/schemas/.
+        entry: bash -c "cd genai-engine && export GENAI_ENGINE_SECRET_STORE_KEY=changeme_secret_store_key PYTHONPATH=src && uv run generate_changelog"
         language: system
         always_run: false
         files: ^genai-engine/src/schemas/
