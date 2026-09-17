@@ -20,7 +20,7 @@ dependencies = [
   "boto3==1.43.94",
   "python-dotenv==1.2.3",
   "psycopg2-binary==2.9.13",
-  "sqlalchemy==2.0.52",
+  "sqlalchemy==2.0.53",
   "pgvector==0.5.0",
   "python-multipart==0.0.32",
   "pypdf==6.18.1",
@@ -82,7 +82,7 @@ dependencies = [
   "google-cloud-aiplatform>=1.38",
   "google-cloud-trace>=1.11.0,<2",
   "opentelemetry-semantic-conventions>=0.60b1,<0.61",
-  "arthur-client==1.4.2659",
+  "arthur-client==1.4.2660",
 ]
 
 [project.scripts]
