@@ -8,7 +8,7 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "2026-09-14T15:59:57.381795882Z"
+exclude-newer = "0001-01-01T00:00:00Z" # This has no effect and is included for backwards compatibility when using relative exclude-newer values.
 exclude-newer-span = "P3D"
 
 [options.exclude-newer-package]
@@ -788,7 +788,7 @@ wheels = [
 
 [[package]]
 name = "gcsfs"
-version = "2026.8.0"
+version = "2026.8.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
@@ -800,9 +800,9 @@ dependencies = [
     { name = "google-cloud-storage-control" },
     { name = "requests" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/68/3a/194b5e67b78586a45fb36958800a30783c24c07b7f1c0e82d347f01346c6/gcsfs-2026.8.0.tar.gz", hash = "sha256:c2a7c0ffee2d0837243b4f838efaa185c152a4eb4cc529e41b3569bf00b9781e", size = 1090432, upload-time = "2026-08-13T11:46:49.018Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/d0/08/cb32ace6483b8016e8954f009f133799d299dc1bb35b310ced04bd46a925/gcsfs-2026.8.1.tar.gz", hash = "sha256:738da7dcc74817c7668d032f932598482a23cce1b061c537e54278be44d2fff8", size = 1090574, upload-time = "2026-09-11T08:02:18.931Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/67/a0/ad756cfa675322303eba197fdd87ff6dd5b6fc0425ade6e6ee2348c94418/gcsfs-2026.8.0-py3-none-any.whl", hash = "sha256:adf616a543ac38557ae87dcf6a282020fad54cdd6778cc9e30ab01a85ef91fdc", size = 91402, upload-time = "2026-08-13T11:46:47.359Z" },
+    { url = "https://files.pythonhosted.org/packages/04/e1/1db9ecfb9f22a71624413ee158b933c18538aacfde77acbb7413cea21a6e/gcsfs-2026.8.1-py3-none-any.whl", hash = "sha256:66e6316690b17e1887a4f4bc0902eee53f5b3fd860cc3f0377d65c5be3313b1f", size = 91383, upload-time = "2026-09-11T08:02:17.135Z" },
 ]
 
 [[package]]
@@ -1530,7 +1530,7 @@ requires-dist = [
     { name = "duckdb", specifier = "==1.5.5" },
     { name = "flask", specifier = "==3.1.3" },
     { name = "fsspec", specifier = "==2026.7.0" },
-    { name = "gcsfs", specifier = "==2026.8.0" },
+    { name = "gcsfs", specifier = "==2026.8.1" },
     { name = "google-cloud-aiplatform", specifier = ">=1.68.0,<2" },
     { name = "google-cloud-bigquery", specifier = "==3.45.0" },
     { name = "google-cloud-trace", specifier = ">=1.13.0,<2" },
