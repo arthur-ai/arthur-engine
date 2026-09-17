@@ -8,7 +8,7 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "2026-09-14T15:59:57.381795882Z"
+exclude-newer = "0001-01-01T00:00:00Z" # This has no effect and is included for backwards compatibility when using relative exclude-newer values.
 exclude-newer-span = "P3D"
 
 [options.exclude-newer-package]
@@ -151,7 +151,7 @@ wheels = [
 
 [[package]]
 name = "arthur-client"
-version = "1.4.2647"
+version = "1.4.2659"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "authlib" },
@@ -163,14 +163,14 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/49/c7/44a9d2d0ec923e7aed7857b1ec2c9917cb83814f0b886ff1626f17df7b35/arthur_client-1.4.2647.tar.gz", hash = "sha256:7d12910ef58d2e75ead01eca04dc5022eb46db28527ceaaa28ab6eba5c7d1d49", size = 473788, upload-time = "2026-09-13T21:12:24.512Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/4f/1b/76a322b873a5b417e1c019941339e9a3a042ecd6aabec8a42d9b2e499634/arthur_client-1.4.2659.tar.gz", hash = "sha256:7933810604362a25741cda4a9afa432546b8f8e3edc84cf52e82716fc47d2dc7", size = 474621, upload-time = "2026-09-17T14:16:07.504Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/04/ad/0db7a5320db5bb31233c7927cf50ae406b8b7152c6b3c7833712db671119/arthur_client-1.4.2647-py3-none-any.whl", hash = "sha256:6833afd272b35ca5687a1316bfcc9d02e263aab6a282f4b6affcd2b06cca24fa", size = 1683221, upload-time = "2026-09-13T21:12:22.155Z" },
+    { url = "https://files.pythonhosted.org/packages/7b/06/f1d6491e9461184d2ae005702936442c294daf9a1413625157972632f445/arthur_client-1.4.2659-py3-none-any.whl", hash = "sha256:5f00cc7a8770efb11874ef3c1baed0e342bd49f12ad960f2098b8fed0be53a41", size = 1683907, upload-time = "2026-09-17T14:16:06.182Z" },
 ]
 
 [[package]]
 name = "arthur-common"
-version = "2.4.78"
+version = "2.4.79"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "datasketches" },
@@ -186,9 +186,9 @@ dependencies = [
     { name = "types-requests" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/20/46/6bc81dc025a3580684c236a770c54915bb358120311bb1fd01de2efa871a/arthur_common-2.4.78.tar.gz", hash = "sha256:5d7d6a9cb8c8dd5ab45fdb51cfd0892d366ff1ed28c9e5f52220aa02cbadb50a", size = 14712581, upload-time = "2026-09-14T04:51:16.558Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c0/3e/c14551abf5f2973fc4e748f8cb058e9434370cc0d0c670daac7592f97b6c/arthur_common-2.4.79.tar.gz", hash = "sha256:1c91bf337c89d80cca6b43dae923a27495bcce3ee92f3079c3a705623fe4eb89", size = 14712550, upload-time = "2026-09-14T15:43:20.763Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/97/85/f145f4931bcdab2821b2b56ba7206e5bdc86c84833cd42f5044cd24ba9e0/arthur_common-2.4.78-py3-none-any.whl", hash = "sha256:c993380094d423ded1d730aa16cb181e6e7f264d26b52edf6e009a4da2520651", size = 99715, upload-time = "2026-09-14T04:51:14.508Z" },
+    { url = "https://files.pythonhosted.org/packages/27/39/c9e4b9041a1fe217a2b49573e46f894473eeaceff1eca45b236af58832c8/arthur_common-2.4.79-py3-none-any.whl", hash = "sha256:775df260cfc17f25f020ad8dfb416a800cce75f2da64ad1f403ea4938e54a9e0", size = 99713, upload-time = "2026-09-14T15:43:19.229Z" },
 ]
 
 [[package]]
@@ -1521,8 +1521,8 @@ linters = [
 [package.metadata]
 requires-dist = [
     { name = "adlfs", specifier = "==2026.8.0" },
-    { name = "arthur-client", specifier = "==1.4.2647" },
-    { name = "arthur-common", specifier = "==2.4.78" },
+    { name = "arthur-client", specifier = "==1.4.2659" },
+    { name = "arthur-common", specifier = "==2.4.79" },
     { name = "croniter", specifier = "==6.2.4" },
     { name = "databricks-sdk", specifier = ">=0.84.0,<1" },
     { name = "databricks-sqlalchemy", specifier = ">=2.0,<3" },
