@@ -3,7 +3,9 @@
   "description": [
     "Renovate updates pyproject.toml and regenerates uv.lock as a separate artifact step. When that regeneration fails — almost always because the new version violates a transitive constraint of another pinned dependency — Renovate opens the PR with the manifest edit ALONE, and does not reliably say so in the PR body (#2134 carried no artifact warning at all).",
     "There is no configuration option that makes Renovate fail closed instead: that is upstream behaviour, not something this file can switch off. The backstop is therefore CI — .github/workflows/arthur-engine-workflow.yml runs check-dependency-automation, which fails any PR whose uv.lock disagrees with its pyproject.toml.",
-    "What this file CAN do is stop Renovate re-proposing updates already known to be unsatisfiable. See the allowedVersions rules below; each names the dependency imposing the ceiling and the condition for lifting it."
+    "What this file CAN do is stop Renovate re-proposing updates already known to be unsatisfiable. See the allowedVersions rules below; each names the dependency imposing the ceiling and the condition for lifting it.",
+    "The same applies to updates that are possible but are migrations rather than bumps. Labelling such a PR 'heavy' takes it out of the auto-fixer's scope; .github/workflows/renovate-defer.yml then turns that label into an 'enabled: false' defer rule at the bottom of packageRules, so Renovate stops re-proposing the update while it is ticketed. Each defer rule names the PR it came from, and deleting the rule is how the update comes back.",
+    "vulnerabilityAlerts sets enabled: true because an 'enabled: false' packageRule otherwise silences security updates for that package too — which would mean every deferred package quietly stops receiving vulnerability fixes."
   ],
   "extends": ["config:recommended"],
   "minimumReleaseAge": "3 days",
@@ -25,6 +27,7 @@
   "prConcurrentLimit": 10,
   "prHourlyLimit": 6,
   "vulnerabilityAlerts": {
+    "enabled": true,
     "labels": ["security"]
   },
   "lockFileMaintenance": {
@@ -155,6 +158,16 @@
         "TomLisankie"
       ],
       "reviewersSampleSize": 1
+    },
+    {
+      "description": "Deferred by PR #2307 (Update material-ui monorepo to v9), labelled heavy: this update is a migration, not a bump, and is tracked on its own ticket. Delete this rule to let Renovate propose it again.",
+      "matchPackageNames": [
+        "@mui/icons-material",
+        "@mui/material",
+        "@mui/x-charts",
+        "@mui/x-date-pickers"
+      ],
+      "enabled": false
     }
   ]
 }
