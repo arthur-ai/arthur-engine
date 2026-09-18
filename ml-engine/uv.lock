@@ -8,7 +8,7 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "2026-09-15T09:12:38.604975294Z"
+exclude-newer = "0001-01-01T00:00:00Z" # This has no effect and is included for backwards compatibility when using relative exclude-newer values.
 exclude-newer-span = "P3D"
 
 [options.exclude-newer-package]
@@ -151,7 +151,7 @@ wheels = [
 
 [[package]]
 name = "arthur-client"
-version = "1.4.2661"
+version = "1.4.2665"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "authlib" },
@@ -163,9 +163,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/2c/30/7c80ff86508e989d5ba1550c1abd63c0b1bf7e49bf7614d1dec8c1c0837b/arthur_client-1.4.2661.tar.gz", hash = "sha256:4fe74a511a6ce9472b36b8a71d8b4467630b8684cb9126b3437ed2b412680f42", size = 490300, upload-time = "2026-09-18T00:12:40.093Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/2e/df/611027d6382ba9c41f150897eece9c565c70e7978573c562ab57ad674d34/arthur_client-1.4.2665.tar.gz", hash = "sha256:1399f0c5a5fe487b0d68117848d0ac57a456d637aba01174871b322a42e8e51d", size = 490317, upload-time = "2026-09-18T13:13:54.756Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/8c/d3/55f7ead8f8b55485605d66516a0c719533d34522ae2d509c629f9b7e9e63/arthur_client-1.4.2661-py3-none-any.whl", hash = "sha256:e555dd7c7aafbdeb7615061e39adc601884389df58963aabd5c84507063fef6f", size = 1722340, upload-time = "2026-09-18T00:12:37.821Z" },
+    { url = "https://files.pythonhosted.org/packages/47/bd/2e15eb79be178cae08b2d60018e21b710290729b1be99d8e87c5e14a83e1/arthur_client-1.4.2665-py3-none-any.whl", hash = "sha256:f3c14f1103563f81f8b327de6f4e4a187ccb6b88385094e60d68cb99e7b98a5e", size = 1722343, upload-time = "2026-09-18T13:13:57.021Z" },
 ]
 
 [[package]]
@@ -1521,7 +1521,7 @@ linters = [
 [package.metadata]
 requires-dist = [
     { name = "adlfs", specifier = "==2026.8.0" },
-    { name = "arthur-client", specifier = "==1.4.2661" },
+    { name = "arthur-client", specifier = "==1.4.2665" },
     { name = "arthur-common", specifier = "==2.4.79" },
     { name = "croniter", specifier = "==6.2.4" },
     { name = "databricks-sdk", specifier = ">=0.84.0,<1" },
