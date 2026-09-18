@@ -1,0 +1,110 @@
+name: Renovate Defer
+
+# Labelling a Renovate PR 'heavy' says the update is a migration, not a bump: it needs
+# its own ticket and its own PR. That label already takes the PR out of the auto-fixer's
+# scope (renovate-autofix.yml), but it does nothing to Renovate itself — the branch keeps
+# getting rebased, CI keeps running on it, and the next release brings a fresh PR.
+#
+# This workflow closes that gap: on the label event it opens a PR adding the update's
+# packages to the defer list in /renovate.json (one `enabled: false` rule per deferred
+# PR), so Renovate stops proposing them until someone deletes the rule.
+#
+# The defer PR is a normal reviewed change — this workflow never writes to dev. Merging
+# it is what stops the updates; the heavy PR then retires on Renovate's next run.
+#
+# pull_request_target (not pull_request) so the version of this workflow on the default
+# branch is the one that runs. It checks out dev and never the PR head: nothing from the
+# labelled branch is executed here, only its diff is read through the API.
+
+on:
+  pull_request_target:
+    types: [labeled]
+
+permissions: {}
+
+jobs:
+  defer:
+    # Renovate PRs only, and only the 'heavy' label. The author check matters: the label
+    # is human-applied, so without it any PR branch named renovate/* could pull its own
+    # dependencies onto the defer list.
+    if: >-
+      github.event.label.name == 'heavy' &&
+      github.event.pull_request.user.login == 'renovate[bot]' &&
+      startsWith(github.event.pull_request.head.ref, 'renovate/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Needed to read the Arthur GitHub Automator App credentials.
+    environment: shared-protected-branch-secrets
+    steps:
+      - name: Generate Automator App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.ARTHUR_GH_AUTOMATOR_APP_ID }}
+          private-key: ${{ secrets.ARTHUR_GH_AUTOMATOR_APP_PRIVATE_KEY }}
+
+      - name: Checkout dev
+        uses: actions/checkout@v5
+        with:
+          ref: dev
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Add the update to the defer list
+        id: defer
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          # 3 = every package is already deferred (a re-label, or a second heavy PR for
+          # the same family); 4 = the PR changes no manifest dependency at all (a
+          # lockfile-only refresh). Both are no-ops, not failures.
+          set +e
+          .github/scripts/renovate_defer.sh "$PR"
+          rc=$?
+          set -e
+          if [ "$rc" -eq 3 ] || [ "$rc" -eq 4 ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::Nothing to add to the defer list for #$PR."
+            exit 0
+          fi
+          [ "$rc" -eq 0 ] || exit "$rc"
+          npx --yes --package renovate renovate-config-validator renovate.json
+
+      - name: Open the defer PR
+        if: steps.defer.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          PR: ${{ github.event.pull_request.number }}
+          DEPS: ${{ steps.defer.outputs.deps }}
+          TITLE: ${{ steps.defer.outputs.title }}
+        run: |
+          set -euo pipefail
+          BRANCH="renovate-defer/pr-${PR}"
+          git config user.name 'arthur-github-automator-app[bot]'
+          git config user.email 'arthur-github-automator-app[bot]@users.noreply.github.com'
+          git checkout -b "$BRANCH"
+          git add renovate.json
+          git commit -m "chore(renovate): defer ${TITLE} (#${PR})" \
+            -m "Labelled heavy: this update is a migration, not a bump. Deferring ${DEPS} so Renovate stops re-proposing it while the work is ticketed."
+          git push --force origin "$BRANCH"
+
+          EXISTING=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number // empty')
+          if [ -n "$EXISTING" ]; then
+            echo "Updated existing defer PR #$EXISTING."
+            exit 0
+          fi
+          BODY=$(cat <<EOF
+          #${PR} was labelled \`heavy\`, so this adds its packages to the defer list in \`renovate.json\`:
+
+          \`${DEPS}\`
+
+          Renovate stops proposing these once this merges, and #${PR} retires on its next run. Deleting the rule is how the update comes back — do that as part of the migration PR.
+
+          Opened by [renovate-defer.yml](.github/workflows/renovate-defer.yml).
+          EOF
+          )
+          URL=$(gh pr create --base dev --head "$BRANCH" \
+            --title "chore(renovate): defer ${TITLE} (#${PR})" --body "$BODY")
+
+          gh pr comment "$PR" --body "🤖 Labelled \`heavy\`, so these packages are being added to the defer list: ${URL}"
