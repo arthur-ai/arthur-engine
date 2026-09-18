@@ -11,6 +11,10 @@
 # table on large groups (#2307, the material-ui v9 monorepo update, lost most of its rows
 # to the platform limit).
 #
+# The extractor covers every manager in enabledManagers, but it can always fall behind
+# what Renovate proposes. It exits 4 rather than silently emitting a short list when a PR
+# yields nothing, so the caller can say so instead of reporting success.
+#
 # Appends one rule per PR rather than editing a shared list, so each entry carries the PR
 # that produced it and removing a deferral is deleting one block.
 #
@@ -26,7 +30,8 @@ DEPS=$(gh pr diff "$PR" | awk '
   /^\+\+\+ b\// {
     path = substr($2, 3)
     manifest = (path ~ /(^|\/)package\.json$/ || path ~ /(^|\/)pyproject\.toml$/ ||
-                path ~ /(^|\/)[Dd]ockerfile(_[a-zA-Z]+)?$/)
+                path ~ /(^|\/)[Dd]ockerfile(_[a-zA-Z]+)?$/ ||
+                path ~ /(^|\/)docker-compose[^\/]*\.ya?ml$/)
     next
   }
   !manifest { next }
@@ -35,9 +40,26 @@ DEPS=$(gh pr diff "$PR" | awk '
     if (match($0, /"[^"]+"[[:space:]]*:[[:space:]]*"[~^]?[0-9]/)) {
       s = substr($0, RSTART + 1); print substr(s, 1, index(s, "\"") - 1); next
     }
-    # pyproject.toml / Dockerfile:   "litellm==1.96.2"   uv==0.9.9
-    if (match($0, /[A-Za-z][A-Za-z0-9._-]*[[:space:]]*(==|>=|~=)[[:space:]]*[0-9]/)) {
-      s = substr($0, RSTART, RLENGTH); sub(/[[:space:]]*(==|>=|~=).*$/, "", s); print s
+    # pyproject.toml / Dockerfile:   "psycopg[binary]==3.3.5"   uv==0.9.9
+    # The extras group is optional and stripped: matchPackageNames wants the bare name.
+    # Brackets are spelled [[] and []] because a backslash-escaped [ outside a bracket
+    # expression is undefined in POSIX ERE, and CI runs mawk rather than the BWK awk a
+    # developer laptop is likely to have.
+    if (match($0, /[A-Za-z][A-Za-z0-9._-]*([[][A-Za-z0-9._,-]+[]])?[[:space:]]*(==|>=|~=)[[:space:]]*[0-9]/)) {
+      s = substr($0, RSTART, RLENGTH); sub(/[[:space:]]*([[]|==|>=|~=).*$/, "", s); print s; next
+    }
+    # Dockerfile FROM / compose image:. The tag is what makes a token an image reference,
+    # so internal stage refs (FROM preinstall AS cpu-install, FROM ${TORCH_DEVICE}-install)
+    # carry none and fall through, as do variable-interpolated tags. depName is the image
+    # minus its tag, which keeps registry-qualified names whole the way Renovate does:
+    # postgres, node, gcr.io/distroless/python3-debian12.
+    if (match($0, /(^[-+]FROM[[:space:]]|[[:space:]]image:[[:space:]]*)/)) {
+      n = split($0, f, /[[:space:]]+/)
+      for (i = 1; i <= n; i++) {
+        if (f[i] ~ /^--/ || f[i] == "AS" || f[i] !~ /:/) continue
+        if (f[i] ~ /\$/ || f[i] ~ /^image:/) continue
+        sub(/:.*$/, "", f[i]); print f[i]; break
+      }
     }
   }
 ' | sort -u)

@@ -57,22 +57,24 @@ jobs:
         run: |
           set -euo pipefail
           # 3 = every package is already deferred (a re-label, or a second heavy PR for
-          # the same family); 4 = the PR changes no manifest dependency at all (a
-          # lockfile-only refresh). Both are no-ops, not failures.
+          # the same family); 4 = nothing could be extracted from the diff. Neither is a
+          # failure, but both leave the label with no effect, so both get reported back
+          # onto the PR rather than passing as a silent green check.
           set +e
           .github/scripts/renovate_defer.sh "$PR"
           rc=$?
           set -e
           if [ "$rc" -eq 3 ] || [ "$rc" -eq 4 ]; then
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-            echo "::notice::Nothing to add to the defer list for #$PR."
+            echo "skip=$rc" >> "$GITHUB_OUTPUT"
+            echo "::notice::Nothing added to the defer list for #$PR (exit $rc)."
             exit 0
           fi
+          echo "skip=0" >> "$GITHUB_OUTPUT"
           [ "$rc" -eq 0 ] || exit "$rc"
           npx --yes --package renovate renovate-config-validator renovate.json
 
       - name: Open the defer PR
-        if: steps.defer.outputs.skip != 'true'
+        if: steps.defer.outputs.skip == '0'
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           PR: ${{ github.event.pull_request.number }}
@@ -108,3 +110,22 @@ jobs:
             --title "chore(renovate): defer ${TITLE} (#${PR})" --body "$BODY")
 
           gh pr comment "$PR" --body "🤖 Labelled \`heavy\`, so these packages are being added to the defer list: ${URL}"
+
+      - name: Report a no-op back onto the PR
+        # The extractor covers every manager in enabledManagers, but Renovate can always
+        # propose a shape it does not parse. Without this the only signal that the label
+        # did nothing is the absence of a comment, which looks identical to the
+        # already-deferred case — and identical to success from a distance.
+        if: steps.defer.outputs.skip != '0'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          PR: ${{ github.event.pull_request.number }}
+          SKIP: ${{ steps.defer.outputs.skip }}
+        run: |
+          set -euo pipefail
+          if [ "$SKIP" = "3" ]; then
+            MSG="🤖 Labelled \`heavy\`, but every package in this update is already on the defer list in \`renovate.json\` — no new rule needed."
+          else
+            MSG="🤖 Labelled \`heavy\`, but no dependency could be read out of this diff, so **the defer list was not updated and Renovate will keep proposing this update**. Add a rule to \`renovate.json\` by hand, and teach the extractor this shape in [renovate_defer.sh](.github/scripts/renovate_defer.sh)."
+          fi
+          gh pr comment "$PR" --body "$MSG"
