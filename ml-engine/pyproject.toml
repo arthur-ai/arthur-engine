@@ -36,11 +36,11 @@ dependencies = [
   "pyarrow==25.0.1",
   "arthur-common==2.4.79",
   "gunicorn>=26,<27",
-  "sqlalchemy==2.0.53",
+  "sqlalchemy==2.0.54",
   "snowflake-sqlalchemy==1.11.1",
   "databricks-sqlalchemy>=2.0,<3",
   "databricks-sdk>=0.84.0,<1",
-  "arthur-client==1.4.2665",
+  "arthur-client==1.4.2669",
 ]
 
 [dependency-groups]
