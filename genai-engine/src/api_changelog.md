@@ -2,6 +2,44 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 09/11/2026
+- **BREAKING CHANGE** for **URL**: /api/v2/agent-tasks  added '#/components/schemas/GCPAgentCreationSource, #/components/schemas/OTELAgentCreationSource, #/components/schemas/ManualAgentCreationSource, #/components/schemas/CloudAgentCreationSource, #/components/schemas/SIEMAgentCreationSource, #/components/schemas/EndpointAgentCreationSource' to the '/items/creation_source/anyOf[subschema #1: AgentCreationSource]/' response property 'oneOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  added the new 'disabled' enum value to the 'config/anyOf[subschema #1: LLMBaseConfigSettings]/thinking/anyOf[subschema #1: AnthropicThinkingParam]/type' response property for the response status '200'
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/tags/{tag}
+- **CHANGE**warning [response-property-enum-value-added] at /Users/nori/github/arthur-engine/genai-engine/new.openapi.json
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags  added the new 'disabled' enum value to the 'config/anyOf[subschema #1: LLMBaseConfigSettings]/thinking/anyOf[subschema #1: AnthropicThinkingParam]/type' response property for the response status '200'
+- **CHANGE** in API POST /api/v1/tasks/{task_id}/prompts/{prompt_name}
+- **CHANGE**warning [response-property-enum-value-added] at /Users/nori/github/arthur-engine/genai-engine/new.openapi.json
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  added the new 'disabled' enum value to the 'config/anyOf[subschema #1: LLMConfigSettings]/thinking/anyOf[subschema #1: AnthropicThinkingParam]/type' response property for the response status '200'
+- **CHANGE** in API POST /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders
+- **CHANGE**warning [response-property-enum-value-added] at /Users/nori/github/arthur-engine/genai-engine/new.openapi.json
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/ml_evals/{eval_name}  added the new 'disabled' enum value to the 'config/anyOf[subschema #1: LLMBaseConfigSettings]/thinking/anyOf[subschema #1: AnthropicThinkingParam]/type' response property for the response status '200'
+- **CHANGE** in API POST /api/v1/completions
+- **CHANGE** in API POST /api/v1/completions
+- **CHANGE** in API POST /api/v1/tasks/{task_id}/llm_evals/{eval_name}
+- **CHANGE** in API POST /api/v1/tasks/{task_id}/llm_evals/{eval_name}
+- **CHANGE** in API POST /api/v1/tasks/{task_id}/llm_evals/{eval_name}
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/tags/{tag}
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}
+- **CHANGE** in API PUT /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags
+- **CHANGE** in API POST /api/v1/tasks/{task_id}/prompts/{prompt_name}
+- **CHANGE** in API POST /api/v1/tasks/{task_id}/prompts/{prompt_name}
+- **CHANGE** in API POST /api/v1/tasks/{task_id}/prompts/{prompt_name}
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/tags/{tag}
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}
+- **CHANGE** in API POST /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders
+- **CHANGE** in API PUT /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/tags
+- **CHANGE** in API GET /api/v2/agent-tasks
+- **CHANGE** in API GET /api/v2/agent-tasks
+- **CHANGE** in API POST /api/v2/datasets/{dataset_id}/versions/{version_number}/generate-synthetic
+- **CHANGE** in API POST /api/v2/datasets/{dataset_id}/versions/{version_number}/generate-synthetic
+- **CHANGE** in API POST /api/v2/datasets/{dataset_id}/versions/{version_number}/generate-synthetic/message
+- **CHANGE** in API POST /api/v2/datasets/{dataset_id}/versions/{version_number}/generate-synthetic/message
+- **CHANGE** in API POST /api/v2/tasks/{task_id}/ml_evals/{eval_name}
+
 # 08/28/2026
 - **CHANGE** for **URL**: /api/v2/agent-tasks  added '#/components/schemas/EndpointAgentCreationSource' to the '/items/creation_source/anyOf[subschema #1: AgentCreationSource]/' response property 'anyOf' list for the response status '200'
 - **CHANGE** for **URL**: /api/v2/tasks  the 'is_agentic' request property default value 'false' was removed

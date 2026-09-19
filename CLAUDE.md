@@ -39,6 +39,11 @@ Renovate opens PRs that edit the manifest without the lock whenever its lockfile
 way to fail closed — that gate is the only thing that catches it. See the `description` at the top of
 [renovate.json](renovate.json).
 
+An update that is a migration rather than a bump gets the `heavy` label on its Renovate PR. That takes it
+out of the auto-fixer's scope, and [renovate-defer.yml](.github/workflows/renovate-defer.yml) opens a PR
+adding its packages to the defer list at the bottom of `renovate.json`. Deleting that rule is how the
+update comes back — do it in the migration PR.
+
 ## Code style
 
 Write code that reads like the surrounding code: match its comment density, naming, and idiom.

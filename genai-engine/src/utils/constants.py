@@ -465,7 +465,7 @@ MAX_BULK_ADD_TRACES = 25
 
 # System Tasks
 SYNTHETIC_DATASET_TASK_ID = "00000000-da7a-0000-0000-000000000001"
-SYNTHETIC_DATASET_TASK_NAME = "Synthetic Dataset Generation"
+SYNTHETIC_DATASET_TASK_NAME = "__synthetic_dataset_generation__"
 SYNTHETIC_DATA_SYSTEM_PROMPT_NAME = "synthetic-data-system-prompt"
 SYNTHETIC_DATA_INITIAL_USER_PROMPT_NAME = "synthetic-data-initial-user-prompt"
 SYNTHETIC_DATA_CONVERSATION_USER_PROMPT_NAME = "synthetic-data-conversation-user-prompt"
