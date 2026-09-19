@@ -1,18 +1,23 @@
 """
-Executor for discovering agents from GCP data planes.
+Executor for the DISCOVER_AGENTS job.
 
-This executor:
-1. Triggers synchronous polling to fetch up-to-date trace data
-2. Fetches enriched agent tasks from GenAI Engine and publishes to the Agents API
+Two shapes of job arrive here. A job carrying a materialized discovery source config
+(D-06) is a scan of that one source: it runs through the connector seams in
+`discovery_scan`, publishing each batch as it arrives so a mid-scan failure keeps what
+it already collected. A job carrying no config is the older GCP data-plane sweep,
+which triggers synchronous polling in GenAI Engine and syncs the enriched agent tasks
+to the Agents API. Both shapes are live until D-14 migrates GCP onto a source config.
 """
 
 import logging
-from typing import List
+from math import ceil
+from typing import List, Optional
 
 from arthur_client.api_bindings import Agent as ScopeAgent
 from arthur_client.api_bindings import (
     AgentsV1Api,
     DiscoverAgentsJobSpec,
+    DiscoverySourceConfigSpec,
     Job,
     PutAgents,
 )
@@ -24,6 +29,15 @@ from genai_client import (
     TasksApi,
 )
 
+from job_executors.discovery_scan import (
+    SOURCE_SCANNERS,
+    DiscoveryRecordSink,
+    DiscoveryScanOutcome,
+    DiscoverySourceScanner,
+    UnsupportedDiscoveryVendorError,
+    run_source_scan,
+)
+
 
 class DiscoverAgentsExecutor:
     def __init__(
@@ -32,18 +46,146 @@ class DiscoverAgentsExecutor:
         logger: logging.Logger,
         genai_engine_url: str,
         genai_engine_api_key: str,
+        record_sink: Optional[DiscoveryRecordSink] = None,
+        scanners: Optional[dict[str, DiscoverySourceScanner]] = None,
     ) -> None:
         self.agents_client = agents_client
         self.logger = logger
         self.genai_engine_url = genai_engine_url
         self.genai_engine_api_key = genai_engine_api_key
+        self.record_sink = record_sink
+        self.scanners = SOURCE_SCANNERS if scanners is None else scanners
 
     def execute(self, job: Job, job_spec: DiscoverAgentsJobSpec) -> None:
-        """Execute agent discovery job.
+        """Run the job, on whichever of the two shapes it carries."""
+        if (
+            job_spec.discovery_source_config is not None
+            or job_spec.discovery_source_config_id is not None
+        ):
+            self._execute_source_scan(job, job_spec)
+            return
 
-        Triggers synchronous polling then fetches enriched agent-tasks and
-        syncs them to the Agents API.
+        self._execute_gcp_sweep(job_spec)
+
+    def _execute_source_scan(
+        self,
+        job: Job,
+        job_spec: DiscoverAgentsJobSpec,
+    ) -> None:
+        """Scan the single source config this job was dispatched for.
+
+        The config is read from the job rather than fetched by ID: D-06 snapshots it at
+        dispatch so the run stays reproducible and the query that ran is the query
+        recorded, even if the config is edited or deleted afterwards.
         """
+        config = self._require_source_config(job_spec)
+        workspace_id = str(job_spec.workspace_id)
+        data_plane_id = str(job_spec.data_plane_id)
+        lookback_hours = self._lookback_hours(job_spec, config)
+
+        outcome = DiscoveryScanOutcome(
+            discovery_source_config_id=str(job_spec.discovery_source_config_id),
+            discovery_source_config_name=config.name,
+            discovery_source_id=str(config.discovery_source_id),
+            vendor=config.vendor,
+            job_id=str(job.id),
+            scan_id=str(job_spec.scan_id) if job_spec.scan_id else None,
+            lookback_hours=lookback_hours,
+        )
+
+        self.logger.info(
+            f"Starting discovery scan of source config '{config.name}' "
+            f"({config.vendor}) over the last {lookback_hours}h",
+            extra={
+                "workspace_id": workspace_id,
+                "data_plane_id": data_plane_id,
+                "discovery_source_config_id": outcome.discovery_source_config_id,
+                "vendor": config.vendor,
+            },
+        )
+
+        scanner = self.scanners.get(config.vendor)
+        if scanner is None:
+            outcome.record_failure(
+                UnsupportedDiscoveryVendorError(
+                    f"No discovery connector is registered for vendor "
+                    f"'{config.vendor}' (source config '{config.name}')",
+                ),
+            )
+            self.logger.error(
+                outcome.error,
+                extra={"vendor": config.vendor},
+            )
+            raise UnsupportedDiscoveryVendorError(outcome.error)
+
+        if self.record_sink is None:
+            raise RuntimeError(
+                "No discovery record sink is configured; discovery records cannot be "
+                "published until task resolution (D-08) lands.",
+            )
+
+        run_source_scan(
+            config=config,
+            lookback_hours=lookback_hours,
+            workspace_id=workspace_id,
+            data_plane_id=data_plane_id,
+            outcome=outcome,
+            scanner=scanner,
+            sink=self.record_sink,
+            logger=self.logger,
+        )
+
+        self.logger.info(
+            f"Discovery scan of source config '{config.name}' published "
+            f"{outcome.records_published} record(s)",
+            extra={
+                "discovery_source_config_id": outcome.discovery_source_config_id,
+                "records_published": outcome.records_published,
+            },
+        )
+
+    @staticmethod
+    def _require_source_config(
+        job_spec: DiscoverAgentsJobSpec,
+    ) -> DiscoverySourceConfigSpec:
+        """Hold the dispatcher to one config per job.
+
+        D-06 guarantees this on the Platform side; failing loudly here is what keeps a
+        half-populated spec from being scanned as though it named a source. A job
+        missing either half is a dispatch bug, and guessing the other half would scan
+        something nobody asked for.
+        """
+        if job_spec.discovery_source_config_id is None:
+            raise ValueError(
+                "Discovery scan job carries a source config with no "
+                "discovery_source_config_id.",
+            )
+        if job_spec.discovery_source_config is None:
+            raise ValueError(
+                f"Discovery scan job names source config "
+                f"{job_spec.discovery_source_config_id} but carries no materialized "
+                f"config to scan.",
+            )
+        return job_spec.discovery_source_config
+
+    @staticmethod
+    def _lookback_hours(
+        job_spec: DiscoverAgentsJobSpec,
+        config: DiscoverySourceConfigSpec,
+    ) -> int:
+        """The window to scan, in whole hours.
+
+        D-06 already rounds the config's window up into `lookback_hours`; recomputing
+        it from the config is the fallback for a job dispatched before that landed, and
+        keeps the two from disagreeing about which window actually ran.
+        """
+        if job_spec.lookback_hours is not None:
+            return int(job_spec.lookback_hours)
+        # Rounded up, like D-06 does: a 90-minute window scans 2 hours rather than 1.
+        return ceil(int(config.lookback_window_seconds) / 3600)
+
+    def _execute_gcp_sweep(self, job_spec: DiscoverAgentsJobSpec) -> None:
+        """Trigger synchronous polling then sync enriched agent-tasks to the Agents API."""
         workspace_id = str(job_spec.workspace_id)
         data_plane_id = str(job_spec.data_plane_id)
 
