@@ -20,20 +20,20 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@amplitude/analytics-browser@npm:2.45.8":
-  version: 2.45.8
-  resolution: "@amplitude/analytics-browser@npm:2.45.8"
+"@amplitude/analytics-browser@npm:2.45.10":
+  version: 2.45.10
+  resolution: "@amplitude/analytics-browser@npm:2.45.10"
   dependencies:
-    "@amplitude/analytics-core": "npm:2.55.0"
-    "@amplitude/plugin-autocapture-browser": "npm:1.29.0"
+    "@amplitude/analytics-core": "npm:2.56.0"
+    "@amplitude/plugin-autocapture-browser": "npm:1.29.1"
     "@amplitude/plugin-custom-enrichment-browser": "npm:0.1.22"
-    "@amplitude/plugin-event-property-attribution-browser": "npm:0.2.14"
-    "@amplitude/plugin-network-capture-browser": "npm:1.10.14"
-    "@amplitude/plugin-page-url-enrichment-browser": "npm:0.7.24"
-    "@amplitude/plugin-page-view-tracking-browser": "npm:2.11.14"
-    "@amplitude/plugin-web-vitals-browser": "npm:1.1.46"
+    "@amplitude/plugin-event-property-attribution-browser": "npm:0.2.15"
+    "@amplitude/plugin-network-capture-browser": "npm:1.10.15"
+    "@amplitude/plugin-page-url-enrichment-browser": "npm:0.7.25"
+    "@amplitude/plugin-page-view-tracking-browser": "npm:2.11.15"
+    "@amplitude/plugin-web-vitals-browser": "npm:1.1.47"
     tslib: "npm:^2.4.1"
-  checksum: 10c0/f2f825241e6d3ef6c5c8b0228d6c7c5bce5e45ac040838501c0ac5f5de47edefb706cd2f60904fba99fd1dd7e1479abfc945ca79ff402bbd5acfe000e3dd50a6
+  checksum: 10c0/248cd04c22a5b92c9bdba4fa793c41df72940f082cf676fc77a22f33fc12d7ac61f32155eef0fc880d3c71c7be90aab07d71b4a3f4ad572adc36a31ba7b8c60f
   languageName: node
   linkType: hard
 
@@ -65,6 +65,19 @@ __metadata:
     tslib: "npm:^2.4.1"
     zen-observable: "npm:0.10.0"
   checksum: 10c0/12c5d6578206c10693e564add3c9545a91d78c1672768cdab3273ed786d59753f27528a3b48aeb364ac4a31d2e327996d196570cc44b13f26c131240677f7b70
+  languageName: node
+  linkType: hard
+
+"@amplitude/analytics-core@npm:2.56.0":
+  version: 2.56.0
+  resolution: "@amplitude/analytics-core@npm:2.56.0"
+  dependencies:
+    "@amplitude/analytics-connector": "npm:^1.6.4"
+    "@types/zen-observable": "npm:0.8.3"
+    safe-json-stringify: "npm:1.2.0"
+    tslib: "npm:^2.4.1"
+    zen-observable: "npm:0.10.0"
+  checksum: 10c0/dd55fc17f6787341eed6a0842863b808815488f999885c859a4e5e89fa0c48bc373a3b4d6a272957c8562f55dcfbec5add7e66d5430e0546a27b3203b36c3f29
   languageName: node
   linkType: hard
 
@@ -125,14 +138,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@amplitude/plugin-autocapture-browser@npm:1.29.0":
-  version: 1.29.0
-  resolution: "@amplitude/plugin-autocapture-browser@npm:1.29.0"
+"@amplitude/plugin-autocapture-browser@npm:1.29.1":
+  version: 1.29.1
+  resolution: "@amplitude/plugin-autocapture-browser@npm:1.29.1"
   dependencies:
-    "@amplitude/analytics-core": "npm:2.55.0"
+    "@amplitude/analytics-core": "npm:2.56.0"
     "@amplitude/element-selector": "npm:0.3.0"
     tslib: "npm:^2.4.1"
-  checksum: 10c0/8d5d3d3b0933c1be631837bf9ed2430e97c04aed3fb3d1d6e64b17a7d94854f74a80507ecf6bf6862c5a880af78f7228efa706556f153730750e7ac022bdad9d
+  checksum: 10c0/1374407644e214ebbd9ec6bf2fc55387d77797071cfb6d2f101de9a015f7e30eecfdb2269b4cf6195951e83f88fd19accddfa417492673fcc95dfc81a3e58900
   languageName: node
   linkType: hard
 
@@ -146,23 +159,23 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@amplitude/plugin-event-property-attribution-browser@npm:0.2.14":
-  version: 0.2.14
-  resolution: "@amplitude/plugin-event-property-attribution-browser@npm:0.2.14"
+"@amplitude/plugin-event-property-attribution-browser@npm:0.2.15":
+  version: 0.2.15
+  resolution: "@amplitude/plugin-event-property-attribution-browser@npm:0.2.15"
   dependencies:
-    "@amplitude/analytics-core": "npm:2.55.0"
+    "@amplitude/analytics-core": "npm:2.56.0"
     tslib: "npm:^2.4.1"
-  checksum: 10c0/893d10e30e9b482a1103d850aed2aed06b1b65f28d4aac3a23b58684c12042b4722894b495b44faeddbceb21c438266984682368424ecfcfcdbd4accf5467bb9
+  checksum: 10c0/69fe4905f94a2490f221324beb71f2c6c2907b2c6bc0bdf27b54693d93448a87f4db0ae0c41e1b7fd4ba50fd622cbb40fa55704f920cbda55276d72bc3029e50
   languageName: node
   linkType: hard
 
-"@amplitude/plugin-network-capture-browser@npm:1.10.14":
-  version: 1.10.14
-  resolution: "@amplitude/plugin-network-capture-browser@npm:1.10.14"
+"@amplitude/plugin-network-capture-browser@npm:1.10.15":
+  version: 1.10.15
+  resolution: "@amplitude/plugin-network-capture-browser@npm:1.10.15"
   dependencies:
-    "@amplitude/analytics-core": "npm:2.55.0"
+    "@amplitude/analytics-core": "npm:2.56.0"
     tslib: "npm:^2.4.1"
-  checksum: 10c0/0141742657e85ae9b91859fa0a1f68ab4290889d97d0d956aaec6a0f4479e5fdac6eb4df1dcf61a84a04bb4abf6dc5b3af202062ced6684ea72be446575e89ba
+  checksum: 10c0/51c6bda6a6941fecd9f28b7a6434d2286f5f34698026b5d3ee68cfdef978a61c1fdef8b49d8dfc5198dfc4ba6bcb8127a25d12acedc9eb56dbcb8c0c5cfb7632
   languageName: node
   linkType: hard
 
@@ -186,23 +199,23 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@amplitude/plugin-page-url-enrichment-browser@npm:0.7.24":
-  version: 0.7.24
-  resolution: "@amplitude/plugin-page-url-enrichment-browser@npm:0.7.24"
+"@amplitude/plugin-page-url-enrichment-browser@npm:0.7.25":
+  version: 0.7.25
+  resolution: "@amplitude/plugin-page-url-enrichment-browser@npm:0.7.25"
   dependencies:
-    "@amplitude/analytics-core": "npm:2.55.0"
+    "@amplitude/analytics-core": "npm:2.56.0"
     tslib: "npm:^2.4.1"
-  checksum: 10c0/3cf8b88bea5d7e2ebe2a0fd88a255326d5f1e2ff16b53a0458c8cd20d8fb8671063c2027574c17dedc1a8fde2921b551ecc01da00ed4753fc3bcef4c503616a5
+  checksum: 10c0/7b255cd934c95526881ebb51e097b506f58bc1465b92c3dce3f206577b34e87b551b46c373dbc925274ee5e2df52ad9dcaa23d8c077f90701c9d33020d6a885a
   languageName: node
   linkType: hard
 
-"@amplitude/plugin-page-view-tracking-browser@npm:2.11.14":
-  version: 2.11.14
-  resolution: "@amplitude/plugin-page-view-tracking-browser@npm:2.11.14"
+"@amplitude/plugin-page-view-tracking-browser@npm:2.11.15":
+  version: 2.11.15
+  resolution: "@amplitude/plugin-page-view-tracking-browser@npm:2.11.15"
   dependencies:
-    "@amplitude/analytics-core": "npm:2.55.0"
+    "@amplitude/analytics-core": "npm:2.56.0"
     tslib: "npm:^2.4.1"
-  checksum: 10c0/8419521830c03465b9a11b5aae138aa8667ac0ba6974365e516fb3e5e8dd6edabb4c6dde84992326fb5855395a06ed294fe6f5d61057441c04a52c7a4327d1f6
+  checksum: 10c0/eeec91c244574e211cdd6a7a1d3af0058b571d645b3951d894fb9dfde1620bf4a5c97ac9451da722241ae2a29e5ffc1bb0ba5c51a05f6ad33554b2e19b162041
   languageName: node
   linkType: hard
 
@@ -217,27 +230,27 @@ __metadata:
   linkType: hard
 
 "@amplitude/plugin-session-replay-browser@npm:^1.33.6":
-  version: 1.35.0
-  resolution: "@amplitude/plugin-session-replay-browser@npm:1.35.0"
+  version: 1.35.1
+  resolution: "@amplitude/plugin-session-replay-browser@npm:1.35.1"
   dependencies:
-    "@amplitude/analytics-core": "npm:2.55.0"
+    "@amplitude/analytics-core": "npm:2.56.0"
     "@amplitude/analytics-types": "npm:2.11.1"
     "@amplitude/rrweb-plugin-console-record": "npm:2.0.0-alpha.40"
     "@amplitude/rrweb-record": "npm:2.0.0-alpha.40"
-    "@amplitude/session-replay-browser": "npm:1.50.0"
+    "@amplitude/session-replay-browser": "npm:1.50.1"
     tslib: "npm:^2.4.1"
-  checksum: 10c0/3fe725cf177c021c735d7ffe555d13512759dd3a221ffa9abbcf573c8dda6d9d5398ce0087edc59d7b36686bd62c9cded2b9f19ad351c508826f0cc0b797b329
+  checksum: 10c0/279f812ba8cf11df6e6761a22cbe20f19bd4d4a32c9751c5fbf5b6796793ad8f2215e6b4b9ebaee3ee04324721b06bd251b08a9dc74842f898ad1e2c881e0039
   languageName: node
   linkType: hard
 
-"@amplitude/plugin-web-vitals-browser@npm:1.1.46":
-  version: 1.1.46
-  resolution: "@amplitude/plugin-web-vitals-browser@npm:1.1.46"
+"@amplitude/plugin-web-vitals-browser@npm:1.1.47":
+  version: 1.1.47
+  resolution: "@amplitude/plugin-web-vitals-browser@npm:1.1.47"
   dependencies:
-    "@amplitude/analytics-core": "npm:2.55.0"
+    "@amplitude/analytics-core": "npm:2.56.0"
     tslib: "npm:^2.4.1"
     web-vitals: "npm:5.1.0"
-  checksum: 10c0/52cfb08684cae931d114365e1ffb91edbd93acbc094e68e0a615ad00ef6968629816fb6de630f8e28eca9b11f4a9966bef00dcb8751f408e8bc78dc4102947e6
+  checksum: 10c0/4488be6f4d497848729389ec6f4264958de88db587e4d2ae77deadf216e5fb835d4f7218d218a0c404bb2494f1de5518b7bb165569f6a873a6e5af62a4c05cfa
   languageName: node
   linkType: hard
 
@@ -326,11 +339,11 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@amplitude/session-replay-browser@npm:1.50.0":
-  version: 1.50.0
-  resolution: "@amplitude/session-replay-browser@npm:1.50.0"
+"@amplitude/session-replay-browser@npm:1.50.1":
+  version: 1.50.1
+  resolution: "@amplitude/session-replay-browser@npm:1.50.1"
   dependencies:
-    "@amplitude/analytics-core": "npm:2.55.0"
+    "@amplitude/analytics-core": "npm:2.56.0"
     "@amplitude/analytics-types": "npm:2.11.1"
     "@amplitude/rrweb-plugin-console-record": "npm:2.0.0-alpha.40"
     "@amplitude/rrweb-record": "npm:2.0.0-alpha.40"
@@ -338,7 +351,7 @@ __metadata:
     "@amplitude/targeting": "npm:0.3.10"
     idb: "npm:8.0.0"
     tslib: "npm:^2.4.1"
-  checksum: 10c0/3185c590abcb6b0e506b79947393ed2f15aae040b74024f9bd53379c01b954fda44d6ffdd8cf1c5f28a57cbdf893d23a8de4caa99dfb16b4f2893f1ebab3b2a5
+  checksum: 10c0/63f31b92fbf01ded0203b0328116f865d32bef009980ccfdc96dd09cb255149cc2574b6d1982b32b0e44de8c1437cebe2c1d78ea4939b71738599cef4836c50e
   languageName: node
   linkType: hard
 
@@ -475,28 +488,28 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@asamuzakjp/css-color@npm:^6.0.5":
-  version: 6.0.7
-  resolution: "@asamuzakjp/css-color@npm:6.0.7"
+"@asamuzakjp/css-color@npm:^7.0.0":
+  version: 7.0.0
+  resolution: "@asamuzakjp/css-color@npm:7.0.0"
   dependencies:
     "@csstools/css-calc": "npm:^3.3.0"
-    "@csstools/css-color-parser": "npm:^4.1.10"
+    "@csstools/css-color-parser": "npm:^4.2.0"
     "@csstools/css-parser-algorithms": "npm:^4.0.0"
     "@csstools/css-tokenizer": "npm:^4.0.0"
     lru-cache: "npm:^11.5.2"
-  checksum: 10c0/1f83d5b56624ca1d4cf7031bb29cfe08fe903c7acdf8e4cd7c84bb7cd122b0836bf12cd3929f0038537281c24fdb5f3c8cc8827e9b0909b3ad50842ad131eb4a
+  checksum: 10c0/4b26ea2a7f5ab7280a304721cfaf2ceeaa1ae66cfffaaf2e53e37fe3fb97c6dc93ed7cec08067761541a12cb429a1f8e1099d2598758375777bd8833fa917c44
   languageName: node
   linkType: hard
 
-"@asamuzakjp/dom-selector@npm:^8.3.0":
-  version: 8.3.2
-  resolution: "@asamuzakjp/dom-selector@npm:8.3.2"
+"@asamuzakjp/dom-selector@npm:^9.1.2":
+  version: 9.1.4
+  resolution: "@asamuzakjp/dom-selector@npm:9.1.4"
   dependencies:
-    bidi-js: "npm:^1.0.3"
+    bidi-js: "npm:^1.1.0"
     css-tree: "npm:^3.2.1"
     is-potential-custom-element-name: "npm:^1.0.1"
     lru-cache: "npm:^11.5.2"
-  checksum: 10c0/f39e2cee4e6ef034af405e0fe272c8e3d27dcf8cc123fd6a5801a9dea3f8bbdfeee05a1a58e08f364ca8f7608a2749bd6e21c61265e15c2a0e6dd913e2f63bba
+  checksum: 10c0/5b2865e4862360c3486e11d156113a8e743d749a6c9fad1c3278bf8cf361e4e7f9a9d940684a5d79bb4308464770c26f85690aff56193323fa4a352122c6224a
   languageName: node
   linkType: hard
 
@@ -853,7 +866,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@csstools/css-color-parser@npm:^4.1.10":
+"@csstools/css-color-parser@npm:^4.2.0":
   version: 4.2.3
   resolution: "@csstools/css-color-parser@npm:4.2.3"
   dependencies:
@@ -875,7 +888,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@csstools/css-syntax-patches-for-csstree@npm:^1.1.7":
+"@csstools/css-syntax-patches-for-csstree@npm:^1.1.13":
   version: 1.1.14
   resolution: "@csstools/css-syntax-patches-for-csstree@npm:1.1.14"
   peerDependencies:
@@ -3669,7 +3682,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"bidi-js@npm:^1.0.3":
+"bidi-js@npm:^1.1.0":
   version: 1.1.0
   resolution: "bidi-js@npm:1.1.0"
   dependencies:
@@ -5764,13 +5777,13 @@ __metadata:
   linkType: hard
 
 "jsdom@npm:^30.0.0":
-  version: 30.0.1
-  resolution: "jsdom@npm:30.0.1"
+  version: 30.1.0
+  resolution: "jsdom@npm:30.1.0"
   dependencies:
-    "@asamuzakjp/css-color": "npm:^6.0.5"
-    "@asamuzakjp/dom-selector": "npm:^8.3.0"
+    "@asamuzakjp/css-color": "npm:^7.0.0"
+    "@asamuzakjp/dom-selector": "npm:^9.1.2"
     "@bramus/specificity": "npm:^2.4.2"
-    "@csstools/css-syntax-patches-for-csstree": "npm:^1.1.7"
+    "@csstools/css-syntax-patches-for-csstree": "npm:^1.1.13"
     "@exodus/bytes": "npm:^1.15.1"
     css-tree: "npm:^3.2.1"
     data-urls: "npm:^7.0.0"
@@ -5780,20 +5793,19 @@ __metadata:
     lru-cache: "npm:^11.5.2"
     parse5: "npm:^8.0.1"
     saxes: "npm:^6.0.0"
-    symbol-tree: "npm:^3.2.4"
     tough-cookie: "npm:^6.0.2"
-    undici: "npm:^8.9.0"
+    undici: "npm:^8.10.2"
     w3c-xmlserializer: "npm:^5.0.0"
     webidl-conversions: "npm:^8.0.1"
     whatwg-mimetype: "npm:^5.0.0"
-    whatwg-url: "npm:^17.1.0"
+    whatwg-url: "npm:^17.1.1"
     xml-name-validator: "npm:^5.0.0"
   peerDependencies:
     canvas: ^3.2.3
   peerDependenciesMeta:
     canvas:
       optional: true
-  checksum: 10c0/2e3c04c30da46f373259b33ffb1a7786d351370aada3bfa3d7766dc97956659727dc78f49e01813b313e873d32851c842dc319b89d099f9e9decb55339dca155
+  checksum: 10c0/23158f83f66cbd57b8c1f613231423b65345cbde8d8dc4fc40ee47d7b8a276c441db133ef09062756e8868742b704a616f473616a3f9758bbcc0a3e3ef01f6e4
   languageName: node
   linkType: hard
 
@@ -8539,13 +8551,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"symbol-tree@npm:^3.2.4":
-  version: 3.2.4
-  resolution: "symbol-tree@npm:3.2.4"
-  checksum: 10c0/dfbe201ae09ac6053d163578778c53aa860a784147ecf95705de0cd23f42c851e1be7889241495e95c37cabb058edb1052f141387bef68f705afc8f9dd358509
-  languageName: node
-  linkType: hard
-
 "tabbable@npm:^6.0.0, tabbable@npm:^6.4.0":
   version: 6.5.0
   resolution: "tabbable@npm:6.5.0"
@@ -8793,7 +8798,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "ui@workspace:."
   dependencies:
-    "@amplitude/analytics-browser": "npm:2.45.8"
+    "@amplitude/analytics-browser": "npm:2.45.10"
     "@amplitude/experiment-js-client": "npm:^1.21.1"
     "@amplitude/plugin-session-replay-browser": "npm:^1.33.6"
     "@arizeai/openinference-semantic-conventions": "npm:2.11.0"
@@ -8889,7 +8894,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"undici@npm:^8.4.1, undici@npm:^8.9.0":
+"undici@npm:^8.10.2, undici@npm:^8.4.1":
   version: 8.10.2
   resolution: "undici@npm:8.10.2"
   checksum: 10c0/66d7fc69149207cab570d6abbc9e965b6afe1ae889a7d46945b431165c973d6a56f3dd8b70a856e7ae1e550b6366a1cde6f06e68640587f0dadca38de72995ee
@@ -9338,7 +9343,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"whatwg-url@npm:^17.1.0":
+"whatwg-url@npm:^17.1.1":
   version: 17.1.1
   resolution: "whatwg-url@npm:17.1.1"
   dependencies:
