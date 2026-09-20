@@ -8,14 +8,14 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "2026-09-17T05:57:10.742767637Z"
+exclude-newer = "0001-01-01T00:00:00Z" # This has no effect and is included for backwards compatibility when using relative exclude-newer values.
 exclude-newer-span = "P3D"
 
 [options.exclude-newer-package]
-arthur-common = false
-torch = false
 arthur-client = false
+arthur-common = false
 fastapi-pagination = false
+torch = false
 
 [manifest]
 constraints = [{ name = "hf-xet", specifier = ">=1.5.2" }]
@@ -1197,7 +1197,7 @@ wheels = [
 
 [[package]]
 name = "gevent"
-version = "26.8.0"
+version = "26.9.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cffi", marker = "platform_python_implementation == 'CPython' and sys_platform == 'win32'" },
@@ -1205,17 +1205,17 @@ dependencies = [
     { name = "zope-event" },
     { name = "zope-interface" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b8/eb/5f2db8013f1a4a6df2c23201f384a066f13ff5764a9f62a608c8a50ac8cc/gevent-26.8.0.tar.gz", hash = "sha256:96039f41bbde6dcd72559e5ffbd408a04f46774b47d991d4cf032da8fa79e5a0", size = 6625998, upload-time = "2026-08-10T18:02:28.038Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/2b/ac/dd3137ae695aef399373088c84c66398f3eac597fba542f0a22280bc21d6/gevent-26.9.0.tar.gz", hash = "sha256:4dd4703d71737a456c1c9df5cd43a82934e5b10c87549caa02495f487d1ef0b1", size = 6718097, upload-time = "2026-09-16T18:05:35.008Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/56/94/a5d38541f3a9fd77aa8defe8bb66698176be959cebda9c2be00fc5ad9e63/gevent-26.8.0-cp312-cp312-macosx_11_0_universal2.whl", hash = "sha256:94544a0f5a1d14b711cd630eab0581a53f3ea89370f8963df9ced62ec6552ca9", size = 2968165, upload-time = "2026-08-10T16:56:19.816Z" },
-    { url = "https://files.pythonhosted.org/packages/14/99/b82608b486cd9f79a4ebb480779900e7bb7dc095dc9217991fdb173b0084/gevent-26.8.0-cp312-cp312-manylinux_2_28_aarch64.whl", hash = "sha256:108614bd47ec714ed93d141965bac8c17e44bbae08e238696da6261f013caa83", size = 1811374, upload-time = "2026-08-10T17:58:49.637Z" },
-    { url = "https://files.pythonhosted.org/packages/ae/9b/cfbc57b758d0435889be2726a5ae1570e6563a24976f4b62e5ecf81b3c3d/gevent-26.8.0-cp312-cp312-manylinux_2_28_ppc64le.whl", hash = "sha256:102087dab60f43f52be74e4be7e42345de27d1968707ded31c785e91d41978b1", size = 1911009, upload-time = "2026-08-10T17:48:09.222Z" },
-    { url = "https://files.pythonhosted.org/packages/c7/2a/82ab6a41a064792e3df4a9c03e1e90ccf622f8f3352d9a22c1e03e2f159e/gevent-26.8.0-cp312-cp312-manylinux_2_28_s390x.whl", hash = "sha256:c2730709f8e894c167415e1d3752d63e6ed40f28b60bdb2ba7bdf973fa29296a", size = 1858831, upload-time = "2026-08-10T17:54:27.214Z" },
-    { url = "https://files.pythonhosted.org/packages/4f/f4/a49ac5d1b508dfcc9af2d08435d9c2c71fdc12d44fe75156c6441f6127de/gevent-26.8.0-cp312-cp312-manylinux_2_28_x86_64.whl", hash = "sha256:8e2be34e41557387a422e78c0124e2b90a4df9f1cc87c891503bf34a95ae1ce5", size = 2143187, upload-time = "2026-08-10T17:19:21.507Z" },
-    { url = "https://files.pythonhosted.org/packages/05/59/967712d5cbabb82fb0619914b82266d0150322966376430df4c73dfbfda4/gevent-26.8.0-cp312-cp312-musllinux_1_2_aarch64.whl", hash = "sha256:946848924dd80d29184367c0c9a4fc809411d17afbe157128687df8d7d838560", size = 1824469, upload-time = "2026-08-10T17:42:38.125Z" },
-    { url = "https://files.pythonhosted.org/packages/6d/16/f06ee39db14422d5f749cdcfeb7b8a7b426e087dace9d2c8675633fe6eb4/gevent-26.8.0-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:2d2c9c23cf68e2d4565505f8b5cd31b269259e1fbfb57bcc3d4d1cd34ee274d1", size = 2170288, upload-time = "2026-08-10T17:23:49.646Z" },
-    { url = "https://files.pythonhosted.org/packages/1e/ef/783f68a240e17d95badc39087af62e2e4394f1e0fe24776d8bd8267d0877/gevent-26.8.0-cp312-cp312-win_amd64.whl", hash = "sha256:f3f47e7a0c8e73a3c43072fdd997f6cf1e4d1623c43d619185aea9f8037f89ab", size = 1695386, upload-time = "2026-08-10T17:03:06.831Z" },
-    { url = "https://files.pythonhosted.org/packages/1a/d1/6bcb527be3fcf942d58e5f2f76730af391a01c762218285e9505bba07b05/gevent-26.8.0-cp312-cp312-win_arm64.whl", hash = "sha256:67bd80acf2f715ec1e197faff68241dea9499916ffe3783b24c70a1747c99e9c", size = 1568205, upload-time = "2026-08-10T16:59:16.35Z" },
+    { url = "https://files.pythonhosted.org/packages/f1/90/2f09ad04b52ad8888fe6a0a4a543c5445b27c78ccbde8f3104ee3ac618f8/gevent-26.9.0-cp312-cp312-macosx_11_0_universal2.whl", hash = "sha256:979caf5b96f5806cb5b66fd2c7972f1043cc4069d1ee8b2998c42cb0b39dc445", size = 3078823, upload-time = "2026-09-16T16:16:12.412Z" },
+    { url = "https://files.pythonhosted.org/packages/c3/7f/1068c8eef85f04bb9d8490140f6adba47c0676d95e66a2d9549bdad0c22c/gevent-26.9.0-cp312-cp312-manylinux_2_28_aarch64.whl", hash = "sha256:0b3f0ad9dc8e2ba585e0f6498c96b78ba61b1214f5b2e17081839c93b69a58c3", size = 1861416, upload-time = "2026-09-16T17:23:55.662Z" },
+    { url = "https://files.pythonhosted.org/packages/0a/7a/c237d66fe48e0391d88f03448576ad127befc9d30ff0f9e3269272e15d1c/gevent-26.9.0-cp312-cp312-manylinux_2_28_ppc64le.whl", hash = "sha256:83c51ffa0ef9c960fe3b6bc0a9de8997cd04a9476ff5d4e682c0c62481ef3924", size = 1965629, upload-time = "2026-09-16T17:09:24.075Z" },
+    { url = "https://files.pythonhosted.org/packages/8a/95/7bcd42a2aaceb7ad464f66fdd2be8df640c288713fd3b932f86f22e0fa86/gevent-26.9.0-cp312-cp312-manylinux_2_28_s390x.whl", hash = "sha256:ab1db9defde9ea9bd1825057fd90474148f74dcc57d104ddc62343092eaa256f", size = 1912220, upload-time = "2026-09-16T17:10:08.2Z" },
+    { url = "https://files.pythonhosted.org/packages/05/89/c07717de442a898229a5e8ec6fbaf878e4d328868362c905fe14c5a72521/gevent-26.9.0-cp312-cp312-manylinux_2_28_x86_64.whl", hash = "sha256:c59d95daacf71dfb763824b85a89b06ca4faa74b2e7df926714d439d5a47ee26", size = 2201889, upload-time = "2026-09-16T16:39:07.925Z" },
+    { url = "https://files.pythonhosted.org/packages/df/23/fad2ba73045e4ee0dccf2e35a6fe19908309bd6176d1e5e3a18bb780e96b/gevent-26.9.0-cp312-cp312-musllinux_1_2_aarch64.whl", hash = "sha256:f91b87ca2ac3af502f7ee806c266ba6f64e4d1591e2e29456ed7cc538e5473ec", size = 1875679, upload-time = "2026-09-16T17:24:45.124Z" },
+    { url = "https://files.pythonhosted.org/packages/a2/73/a4414d7e95be1287b3dbe6310331c2658395bd4ada69a19f98c3aecba4c9/gevent-26.9.0-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:810cd040eda484e8ce73d649fa994a4fc247b427023db52d4daaa10e8fd2f4aa", size = 2230243, upload-time = "2026-09-16T16:47:52.283Z" },
+    { url = "https://files.pythonhosted.org/packages/a1/6a/d5e9de5e2dbe5a58814d7a04ada307d7aca145c40484aa30894edda7cc7b/gevent-26.9.0-cp312-cp312-win_amd64.whl", hash = "sha256:44a0d58301a333608aad5fef0c19ca8122eb7753484416f000c1f00b4b407697", size = 1725939, upload-time = "2026-09-16T16:19:41.956Z" },
+    { url = "https://files.pythonhosted.org/packages/fc/4b/525d4da671e7b6d21dceaca33fa65edc13917189b80e9b3a30318e6345bd/gevent-26.9.0-cp312-cp312-win_arm64.whl", hash = "sha256:f9ff7c692028c577937ad00bdd1183371a086f7d6908c7c1f18f1c51ccf8caac", size = 1596884, upload-time = "2026-09-16T16:20:44.976Z" },
 ]
 
 [[package]]
@@ -1426,7 +1426,7 @@ wheels = [
 
 [[package]]
 name = "google-genai"
-version = "2.23.0"
+version = "2.24.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
@@ -1440,9 +1440,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "websockets" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ae/9a/db14adffb0144584889e05f433a4e8ce540f9ed2928ed8b23cc65ab96178/google_genai-2.23.0.tar.gz", hash = "sha256:1ceebffdcd2af30c039a922ba05de61cd4054bb61c94be7649c4bf9ff8b33c5f", size = 686707, upload-time = "2026-09-10T22:55:31.12Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/35/26/176d04f442e82d60cadc74cfaf81f01017062ce274a790455a57aec48c8f/google_genai-2.24.0.tar.gz", hash = "sha256:814b63d05dca4776c5a322699eb30c565040cf8d5fd77c38714076535fb2e019", size = 705409, upload-time = "2026-09-16T22:38:37.367Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/7f/b0/f6bc58a6a7c8ad7ad2b6a36b0bf4732b3504dd7d48c6674f848304548869/google_genai-2.23.0-py3-none-any.whl", hash = "sha256:1e63211d44d188b8069c2b354d92b9bde25c1e821513fdbe1948b7c0d9f6b922", size = 1093785, upload-time = "2026-09-10T22:55:29.282Z" },
+    { url = "https://files.pythonhosted.org/packages/84/5b/87913fe392ba7b6402577259289ed3740c577956554a674b191a2971d33e/google_genai-2.24.0-py3-none-any.whl", hash = "sha256:59e5f2d88bc2d6ed04aa1aa14cb5629090cfe9458401745e620b24d1fe9893d7", size = 1142675, upload-time = "2026-09-16T22:38:35.332Z" },
 ]
 
 [[package]]
@@ -2745,11 +2745,11 @@ wheels = [
 
 [[package]]
 name = "platformdirs"
-version = "4.11.8"
+version = "4.11.9"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/53/18/f3bb8ef0d3b930692343da8aa4d3cbcd6749477c053959395ac81965a6e9/platformdirs-4.11.8.tar.gz", hash = "sha256:f23abafea7dd4276d1f29104b83598d7dcc567cafd07c9c951e66665645437fc", size = 37182, upload-time = "2026-09-08T22:20:42.866Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/58/b9/8adc4e1b422b27fd88540ec7bf1f406f77ef393ec070e26fc430e914cde8/platformdirs-4.11.9.tar.gz", hash = "sha256:e2c66a8d384596cd98e3c4aea2d761df7bac95d9d8a2cc3946daa8cdafdaebc1", size = 38345, upload-time = "2026-09-16T13:31:45.259Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f4/e1/5b7b8bbb55084d1425bcb9bc823ff519e1b2be05f6ebb0089e2eacc38413/platformdirs-4.11.8-py3-none-any.whl", hash = "sha256:52f2f181bbfde907966932cc8312d967d02976422d66d537ea16092b8e291081", size = 24027, upload-time = "2026-09-08T22:20:41.537Z" },
+    { url = "https://files.pythonhosted.org/packages/f3/94/803ba86705257d7eedddac4b02eb88a7483b1600e9200c1fefc6f1a9a3ff/platformdirs-4.11.9-py3-none-any.whl", hash = "sha256:0a3958f58a9e30321eaef0a424dd0b77cce242886b36b8aa992f9731ef2d59c1", size = 24472, upload-time = "2026-09-16T13:31:44.049Z" },
 ]
 
 [[package]]
@@ -3836,13 +3836,13 @@ resolution-markers = [
     "sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32'",
 ]
 dependencies = [
-    { name = "filelock", marker = "sys_platform != 'linux' and sys_platform != 'win32'" },
-    { name = "fsspec", marker = "sys_platform != 'linux' and sys_platform != 'win32'" },
-    { name = "jinja2", marker = "sys_platform != 'linux' and sys_platform != 'win32'" },
-    { name = "networkx", marker = "sys_platform != 'linux' and sys_platform != 'win32'" },
-    { name = "setuptools", marker = "sys_platform != 'linux' and sys_platform != 'win32'" },
-    { name = "sympy", marker = "sys_platform != 'linux' and sys_platform != 'win32'" },
-    { name = "typing-extensions", marker = "sys_platform != 'linux' and sys_platform != 'win32'" },
+    { name = "filelock" },
+    { name = "fsspec" },
+    { name = "jinja2" },
+    { name = "networkx" },
+    { name = "setuptools" },
+    { name = "sympy" },
+    { name = "typing-extensions" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/c4/3a/ed0f4d4d1dcde03bced7aac9a28e800abcdc0cbd06b6775044c9fbd877b7/torch-2.13.0-cp312-cp312-macosx_14_0_arm64.whl", hash = "sha256:2fe228aba290d14b9f31b049be550dbd469c3fd3013d7a19705b30454da97027", size = 111213045, upload-time = "2026-07-08T16:05:22.997Z" },
@@ -3856,13 +3856,13 @@ resolution-markers = [
     "sys_platform == 'linux' or sys_platform == 'win32'",
 ]
 dependencies = [
-    { name = "filelock", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
-    { name = "fsspec", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
-    { name = "jinja2", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
-    { name = "networkx", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
-    { name = "setuptools", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
-    { name = "sympy", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
-    { name = "typing-extensions", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+    { name = "filelock" },
+    { name = "fsspec" },
+    { name = "jinja2" },
+    { name = "networkx" },
+    { name = "setuptools" },
+    { name = "sympy" },
+    { name = "typing-extensions" },
 ]
 wheels = [
     { url = "https://download-r2.pytorch.org/whl/cpu/torch-2.13.0%2Bcpu-cp312-cp312-linux_s390x.whl", hash = "sha256:ffadde149901c8afa138daa38d898264003cfcf1a3336ca5cd964b5af227d867", upload-time = "2026-07-08T19:28:41Z" },
