@@ -17,7 +17,7 @@ dependencies = [
   "google-cloud-aiplatform>=1.68.0,<2",
   "pandas==3.0.5",
   "psycopg[binary]==3.3.5",
-  "pymysql==1.2.0",
+  "pymysql==1.2.2",
   "pyodbc==5.3.0",
   "pyyaml==6.0.3",
   "requests==2.34.2",
@@ -40,7 +40,7 @@ dependencies = [
   "snowflake-sqlalchemy==1.11.1",
   "databricks-sqlalchemy>=2.0,<3",
   "databricks-sdk>=0.84.0,<1",
-  "arthur-client==1.4.2671",
+  "arthur-client==1.4.2672",
 ]
 
 [dependency-groups]
