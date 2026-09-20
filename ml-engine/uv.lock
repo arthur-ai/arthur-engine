@@ -8,7 +8,7 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "2026-09-17T12:39:02.480511877Z"
+exclude-newer = "0001-01-01T00:00:00Z" # This has no effect and is included for backwards compatibility when using relative exclude-newer values.
 exclude-newer-span = "P3D"
 
 [options.exclude-newer-package]
@@ -1542,7 +1542,7 @@ requires-dist = [
     { name = "psutil", specifier = "==7.2.2" },
     { name = "psycopg", extras = ["binary"], specifier = "==3.3.5" },
     { name = "pyarrow", specifier = "==25.0.1" },
-    { name = "pymysql", specifier = "==1.2.2" },
+    { name = "pymysql", specifier = "==1.2.3" },
     { name = "pyodbc", specifier = "==5.3.0" },
     { name = "pyyaml", specifier = "==6.0.3" },
     { name = "requests", specifier = "==2.34.2" },
@@ -2108,11 +2108,11 @@ crypto = [
 
 [[package]]
 name = "pymysql"
-version = "1.2.2"
+version = "1.2.3"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/c2/e3/f5bd944315536bbf09b737b9f22f042091509054939d6feea39055f4699d/pymysql-1.2.2.tar.gz", hash = "sha256:26b81847ae4a6c0aace8bfd1575774d8e247957b46691550acd7c33084f96123", size = 50487, upload-time = "2026-09-17T10:24:24.811Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/b1/d4/c15b459e25a23767d2f4065ef40968920320f04e302889574310c21c96a3/pymysql-1.2.3.tar.gz", hash = "sha256:d5b288529782e536ae171866df3ca9dc4f6cbfb3cc2f18e6f837fbb90dbc262b", size = 50629, upload-time = "2026-09-17T12:22:49.146Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/69/64/83ab9a32e8798a4001089088d30bf6832239766d842e4ce35e30311ae395/pymysql-1.2.2-py3-none-any.whl", hash = "sha256:22314b466986ce23831dae89e980950db730291384ba3201da9a0a8177c295be", size = 46699, upload-time = "2026-09-17T10:24:22.603Z" },
+    { url = "https://files.pythonhosted.org/packages/a9/4b/0a906d8184f011ff8dbd4722743783867589b33269d2c5fff238d636fdcb/pymysql-1.2.3-py3-none-any.whl", hash = "sha256:14f1c68e2ed859243ae5ca41ffbe677027fc46bc136a9f0be8a4e928e5e7415a", size = 46740, upload-time = "2026-09-17T12:22:47.826Z" },
 ]
 
 [[package]]
