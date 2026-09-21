@@ -1,5 +1,5 @@
 import logging
-from typing import Optional
+from typing import Iterable, Optional
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -7,6 +7,9 @@ from sqlalchemy.orm import Session
 from db_models import DatabaseServiceNameTaskMapping
 
 logger = logging.getLogger(__name__)
+
+# Names per IN clause when looking mappings up in bulk.
+_LOOKUP_CHUNK_SIZE = 500
 
 
 class ServiceNameMappingRepository:
@@ -34,6 +37,43 @@ class ServiceNameMappingRepository:
             .first()
         )
         return mapping.task_id if mapping else None
+
+    def get_task_ids_by_service_names(
+        self,
+        service_names: Iterable[str],
+    ) -> dict[str, str]:
+        """Bulk form of `get_task_id_by_service_name`.
+
+        One query for a whole scan's worth of keys instead of one per record. A scan
+        that resolves 500 findings and changes nothing -- the normal case, since scans
+        re-report the same fleet -- then costs a single round trip rather than 500.
+
+        Args:
+            service_names: The service names to look up. Duplicates are fine.
+
+        Returns:
+            dict: service_name -> task_id, holding only the names that have a mapping.
+        """
+        names = list(dict.fromkeys(service_names))
+        if not names:
+            return {}
+
+        mappings: dict[str, str] = {}
+        # Chunked because the caller's batch size is not this repository's to trust,
+        # and a few thousand bind parameters is where drivers start refusing the query.
+        for start in range(0, len(names), _LOOKUP_CHUNK_SIZE):
+            chunk = names[start : start + _LOOKUP_CHUNK_SIZE]
+            rows = (
+                self.db_session.query(
+                    DatabaseServiceNameTaskMapping.service_name,
+                    DatabaseServiceNameTaskMapping.task_id,
+                )
+                .filter(DatabaseServiceNameTaskMapping.service_name.in_(chunk))
+                .all()
+            )
+            mappings.update({service_name: task_id for service_name, task_id in rows})
+
+        return mappings
 
     def mapping_exists(self, service_name: str) -> bool:
         """Check if a mapping exists for a service name.
