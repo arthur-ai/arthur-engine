@@ -67,6 +67,10 @@ from sqlalchemy.orm import Session, sessionmaker
 from weaviate.collections.classes.grpc import HybridFusion, TargetVectorJoinType
 
 from config.database_config import DatabaseConfig
+from schemas.agent_discovery_schemas import (
+    DiscoveredAgentRecord,
+    ResolveDiscoveredAgentsResponse,
+)
 from schemas.agentic_prompt_schemas import AgenticPrompt
 from schemas.enums import (
     RagAPIKeyAuthenticationProviderEnum,
@@ -398,6 +402,33 @@ class GenaiEngineTestClientBase(httpx.Client):
                 [EnrichedTaskResponse.model_validate(task) for task in resp.json()]
                 if resp.status_code == 200
                 else []
+            ),
+        )
+
+    def resolve_discovered_agents(
+        self,
+        records: list[DiscoveredAgentRecord],
+    ) -> tuple[int, ResolveDiscoveredAgentsResponse | None]:
+        """Resolve discovery-scan records to tasks.
+
+        Returns:
+            Tuple of (status_code, ResolveDiscoveredAgentsResponse)
+        """
+        path = "api/v2/agent-tasks/resolve"
+
+        resp = self.base_client.post(
+            path,
+            json={"records": [record.model_dump(mode="json") for record in records]},
+            headers=self.authorized_user_api_key_headers,
+        )
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                ResolveDiscoveredAgentsResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
             ),
         )
 
