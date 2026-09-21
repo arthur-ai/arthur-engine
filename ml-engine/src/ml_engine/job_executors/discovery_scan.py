@@ -52,6 +52,14 @@ class DiscoveryRecordSink(Protocol):
     Returns the number of records it accepted, which is what a run reports as this
     source's contribution. Publishing a discovery record means resolving it onto a task
     keyed on ``external_id``, which is D-08's, so there is no implementation yet.
+
+    A batch must be published atomically: an implementation that raises has committed
+    nothing. The return value is the only channel by which the caller learns what the
+    Platform accepted, so a sink that commits half a batch and then throws has no way
+    to say so, and the run under-reports its own contribution. An implementation that
+    genuinely cannot be atomic owes this module an exception carrying the accepted
+    count, applied to the outcome before the failure propagates -- but the count still
+    has to come from the sink either way, so atomicity is the simpler contract.
     """
 
     def publish(
