@@ -8502,8 +8502,8 @@ __metadata:
   linkType: hard
 
 "swagger-typescript-api@npm:^13.12.6":
-  version: 13.12.6
-  resolution: "swagger-typescript-api@npm:13.12.6"
+  version: 13.13.0
+  resolution: "swagger-typescript-api@npm:13.13.0"
   dependencies:
     "@apidevtools/swagger-parser": "npm:12.1.0"
     "@biomejs/js-api": "npm:6.0.0"
@@ -8524,7 +8524,7 @@ __metadata:
     yummies: "npm:7.20.1"
   bin:
     swagger-typescript-api: dist/cli.mjs
-  checksum: 10c0/726aeced7bb9cd4e8b42b14c3b4aad1f543e0366b6124cb872b9e304efde7711de6f3addc2566cb2931b3d59ee73715efbe267f5d2e28f5617cc1162ca3144ec
+  checksum: 10c0/8c709507112eaaec9a771a0ba641822561987829c8d5e30a8576763827bd8dad9290cd249188b37854f6e7216a1a50045d4ff9cd5698a3b02bfa6d136bccb25d
   languageName: node
   linkType: hard
 
