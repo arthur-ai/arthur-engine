@@ -79,7 +79,11 @@ class DiscoverAgentsExecutor:
         dispatch so the run stays reproducible and the query that ran is the query
         recorded, even if the config is edited or deleted afterwards.
         """
-        config = self._require_source_config(job_spec)
+        try:
+            config = self._require_source_config(job_spec)
+        except ValueError as e:
+            self._fail_before_scan(self._unscannable_outcome(job, job_spec), e)
+
         workspace_id = str(job_spec.workspace_id)
         data_plane_id = str(job_spec.data_plane_id)
         lookback_hours = self._lookback_hours(job_spec, config)
@@ -142,6 +146,43 @@ class DiscoverAgentsExecutor:
                 "discovery_source_config_id": outcome.discovery_source_config_id,
                 "records_published": outcome.records_published,
             },
+        )
+
+    def _unscannable_outcome(
+        self,
+        job: Job,
+        job_spec: DiscoverAgentsJobSpec,
+    ) -> DiscoveryScanOutcome:
+        """The outcome for a job too malformed to say what it meant to scan.
+
+        Whichever half of the config pair the dispatcher left out is reported as null
+        rather than filled in with a placeholder: the run store aggregates per source,
+        and a stand-in vendor or name would land there as though a real source had
+        been scanned. What the record is for is that the run is accounted for at all.
+        """
+        config = job_spec.discovery_source_config
+        return DiscoveryScanOutcome(
+            discovery_source_config_id=(
+                str(job_spec.discovery_source_config_id)
+                if job_spec.discovery_source_config_id is not None
+                else None
+            ),
+            discovery_source_config_name=config.name if config is not None else None,
+            discovery_source_id=(
+                str(config.discovery_source_id) if config is not None else None
+            ),
+            vendor=config.vendor if config is not None else None,
+            job_id=str(job.id),
+            scan_id=str(job_spec.scan_id) if job_spec.scan_id else None,
+            lookback_hours=(
+                self._lookback_hours(job_spec, config)
+                if config is not None
+                else (
+                    int(job_spec.lookback_hours)
+                    if job_spec.lookback_hours is not None
+                    else None
+                )
+            ),
         )
 
     def _fail_before_scan(

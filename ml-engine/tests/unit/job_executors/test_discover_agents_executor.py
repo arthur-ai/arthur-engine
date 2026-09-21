@@ -275,11 +275,65 @@ def test_job_naming_a_config_it_does_not_carry_is_rejected() -> None:
         _executor(scanner).execute(_job(), _spec(None))
 
 
+def test_job_naming_a_config_it_does_not_carry_still_reports_an_outcome() -> None:
+    """A dispatch bug is still a run, and a run the Platform never hears about is
+    indistinguishable from one that was never enqueued."""
+    logger = logging.getLogger("test-discovery-outcome-no-config")
+    records = _capture(logger)
+
+    with pytest.raises(ValueError):
+        _executor(FakeScanner([]), logger=logger).execute(_job(), _spec(None))
+
+    outcome = _find_outcome(records)
+    assert outcome["succeeded"] is False
+    assert outcome["error_count"] == 1
+    assert "no materialized config" in outcome["error"]
+    assert outcome["finished_at"] is not None
+    assert outcome["records_published"] == 0
+    # The half the dispatcher did send, and nulls for the half it did not.
+    assert outcome["discovery_source_config_id"] == CONFIG_ID
+    assert outcome["scan_id"] == SCAN_ID
+    assert outcome["discovery_source_config_name"] is None
+    assert outcome["discovery_source_id"] is None
+    assert outcome["vendor"] is None
+
+
 def test_job_carrying_a_config_with_no_id_is_rejected() -> None:
     scanner = FakeScanner([[_record("a")]])
 
     with pytest.raises(ValueError, match="no discovery_source_config_id"):
         _executor(scanner).execute(_job(), _spec(_config(), config_id=None))
+
+
+def test_job_carrying_a_config_with_no_id_still_reports_an_outcome() -> None:
+    logger = logging.getLogger("test-discovery-outcome-no-id")
+    records = _capture(logger)
+
+    with pytest.raises(ValueError):
+        _executor(FakeScanner([]), logger=logger).execute(
+            _job(),
+            _spec(_config(), config_id=None),
+        )
+
+    outcome = _find_outcome(records)
+    assert outcome["succeeded"] is False
+    assert outcome["error_count"] == 1
+    assert "no discovery_source_config_id" in outcome["error"]
+    assert outcome["finished_at"] is not None
+    assert outcome["records_published"] == 0
+    assert outcome["discovery_source_config_id"] is None
+    assert outcome["discovery_source_config_name"] == "splunk prod"
+    assert outcome["discovery_source_id"] == SOURCE_ID
+    assert outcome["vendor"] == "splunk_enterprise"
+
+
+def test_a_rejected_job_publishes_nothing() -> None:
+    sink = RecordingSink()
+
+    with pytest.raises(ValueError):
+        _executor(FakeScanner([[_record("a")]]), sink).execute(_job(), _spec(None))
+
+    assert sink.batches == []
 
 
 def test_lookback_falls_back_to_the_configs_window_rounded_up() -> None:

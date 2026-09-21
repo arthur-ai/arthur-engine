@@ -77,13 +77,16 @@ class DiscoveryScanOutcome:
     a structured record has to be *in* the message to survive the trip to the Platform.
     """
 
-    discovery_source_config_id: str
-    discovery_source_config_name: str
-    discovery_source_id: str
-    vendor: str
+    # Everything naming the source is optional: a job whose spec is too malformed to
+    # say what it would have scanned still owes the Platform a record that it ran and
+    # failed, and a guessed-at vendor would be aggregated as a real source by D-11.
+    discovery_source_config_id: Optional[str]
+    discovery_source_config_name: Optional[str]
+    discovery_source_id: Optional[str]
+    vendor: Optional[str]
     job_id: str
     scan_id: Optional[str]
-    lookback_hours: int
+    lookback_hours: Optional[int]
     started_at: datetime = field(
         default_factory=lambda: datetime.now(timezone.utc),
     )
