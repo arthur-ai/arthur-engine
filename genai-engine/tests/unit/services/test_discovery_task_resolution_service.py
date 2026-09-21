@@ -1,0 +1,447 @@
+"""Resolution of discovered records to tasks (UP-4980 / D-08).
+
+These tests are the identity guarantee for agentic discovery. Everything downstream --
+the fetch job, the inventory, coverage counts, triage -- operates on whatever tasks
+this step produced, and none of it can correct a bad key afterwards, so the scale case
+is tested at the scale it has to work at rather than with two rows.
+"""
+
+import uuid
+from typing import Generator, Iterable
+
+import pytest
+from arthur_common.models.agent_governance_schemas import (
+    AgentCreationSource,
+    AgentObservations,
+    EndpointAgentCreationSource,
+    SIEMAgentCreationSource,
+    SourceAddress,
+)
+from fastapi import HTTPException
+from pydantic import ValidationError
+
+from db_models import DatabaseTask
+from db_models.telemetry_models import DatabaseServiceNameTaskMapping
+from dependencies import get_application_config
+from repositories.metrics_repository import MetricRepository
+from repositories.rules_repository import RuleRepository
+from repositories.service_name_mapping_repository import ServiceNameMappingRepository
+from repositories.tasks_repository import TaskRepository
+from schemas.agent_discovery_schemas import (
+    DiscoveredAgentRecord,
+    TaskResolutionMethod,
+)
+from services.task.discovery_task_resolution_service import (
+    DiscoveryTaskResolutionService,
+)
+from services.trace.trace_ingestion_service import TraceIngestionService
+from tests.clients.base_test_client import override_get_db_session
+
+
+@pytest.fixture
+def db_session():
+    session = override_get_db_session()
+    yield session
+    session.close()
+
+
+@pytest.fixture
+def resolver(db_session) -> DiscoveryTaskResolutionService:
+    task_repo = TaskRepository(
+        db_session,
+        RuleRepository(db_session),
+        MetricRepository(db_session),
+        get_application_config(session=db_session),
+    )
+    return DiscoveryTaskResolutionService(db_session, task_repo)
+
+
+@pytest.fixture
+def tracked_tasks(db_session) -> Generator[list[str], None, None]:
+    """Task IDs to delete, with their mappings, when the test finishes."""
+    task_ids: list[str] = []
+    yield task_ids
+
+    if task_ids:
+        db_session.query(DatabaseServiceNameTaskMapping).filter(
+            DatabaseServiceNameTaskMapping.task_id.in_(task_ids),
+        ).delete(synchronize_session=False)
+        db_session.query(DatabaseTask).filter(
+            DatabaseTask.id.in_(task_ids),
+        ).delete(synchronize_session=False)
+        db_session.commit()
+
+
+def _run_id() -> str:
+    """A prefix unique to one test, since the mapping table is keyed on the name."""
+    return uuid.uuid4().hex[:8]
+
+
+def _endpoint_record(
+    external_id: str,
+    name: str | None = None,
+    service_names: Iterable[str] = (),
+    device: str = "C02XL4KHQ6NV",
+    task_id: str | None = None,
+) -> DiscoveredAgentRecord:
+    """A Jamf finding: one agent on one managed device."""
+    return DiscoveredAgentRecord(
+        external_id=external_id,
+        name=name or external_id,
+        task_id=task_id,
+        creation_source=AgentCreationSource(
+            root=EndpointAgentCreationSource(
+                vendor="jamf_pro",
+                address=SourceAddress(
+                    instance=f"serial:{device}",
+                    resource_kind="app",
+                    resource_id=external_id,
+                ),
+                observations=AgentObservations(service_names=list(service_names)),
+            ),
+        ),
+    )
+
+
+def _siem_record(
+    external_id: str,
+    name: str | None = None,
+    service_names: Iterable[str] = (),
+    instance: str = "splunk-prod",
+) -> DiscoveredAgentRecord:
+    """A finding surfaced by a query against the customer's security stack."""
+    return DiscoveredAgentRecord(
+        external_id=external_id,
+        name=name or external_id,
+        creation_source=AgentCreationSource(
+            root=SIEMAgentCreationSource(
+                vendor="splunk_enterprise",
+                address=SourceAddress(
+                    instance=instance,
+                    scope="index=proxy",
+                    resource_id=external_id,
+                    query="index=proxy | stats count by agent",
+                ),
+                observations=AgentObservations(service_names=list(service_names)),
+            ),
+        ),
+    )
+
+
+@pytest.mark.unit_tests
+def test_five_hundred_findings_produce_five_hundred_tasks_and_rescan_produces_none(
+    resolver,
+    db_session,
+    tracked_tasks,
+):
+    """The scale case, and the re-scan that follows it.
+
+    A Jamf fleet sweep returns hundreds of rows from one engine. Each is a distinct
+    (software, device) finding and must end up on its own task; the run after it must
+    land on exactly those tasks and mint nothing.
+    """
+    run = _run_id()
+    records = [
+        _endpoint_record(f"{run}-finding-{i}", device=f"C02XL4KHQ6N{i:03d}")
+        for i in range(500)
+    ]
+
+    first_run = resolver.resolve_records(records)
+    tracked_tasks.extend(r.task_id for r in first_run)
+
+    assert len(first_run) == 500
+    assert len({r.task_id for r in first_run}) == 500
+    assert {r.resolved_by for r in first_run} == {TaskResolutionMethod.CREATED}
+
+    task_ids = [r.task_id for r in first_run]
+    assert (
+        db_session.query(DatabaseTask).filter(DatabaseTask.id.in_(task_ids)).count()
+        == 500
+    )
+
+    second_run = resolver.resolve_records(records)
+
+    assert {r.resolved_by for r in second_run} == {TaskResolutionMethod.EXTERNAL_ID}
+    assert {r.external_id: r.task_id for r in second_run} == {
+        r.external_id: r.task_id for r in first_run
+    }
+
+
+@pytest.mark.unit_tests
+def test_unknown_record_creates_a_task_carrying_its_sensor(
+    resolver,
+    db_session,
+    tracked_tasks,
+):
+    """A record nothing knows yet mints a task that records what found it."""
+    run = _run_id()
+    record = _siem_record(f"{run}-splunk-1", name="Checkout Agent")
+
+    [resolved] = resolver.resolve_records([record])
+    tracked_tasks.append(resolved.task_id)
+
+    assert resolved.resolved_by is TaskResolutionMethod.CREATED
+    assert resolved.name == "Checkout Agent"
+
+    db_task = db_session.query(DatabaseTask).filter_by(id=resolved.task_id).one()
+    assert db_task.is_agentic is True
+    assert db_task.is_autocreated is True
+    assert db_task.task_metadata["creation_source"]["type"] == "SIEM"
+    assert db_task.task_metadata["creation_source"]["vendor"] == "splunk_enterprise"
+    # Nobody asked for this task, and an agent that is not sending traces has
+    # nothing for a rule to evaluate.
+    assert db_task.rule_links == []
+
+
+@pytest.mark.unit_tests
+def test_matching_external_id_routes_to_the_existing_task(
+    resolver,
+    tracked_tasks,
+):
+    """A second sighting of a known identity routes to its task, name changes included.
+
+    Renaming on every scan would churn a field people sort and search on, so the task
+    keeps the name it was minted with.
+    """
+    run = _run_id()
+    external_id = f"{run}-openclaw"
+
+    [first] = resolver.resolve_records([_endpoint_record(external_id, name="OpenClaw")])
+    tracked_tasks.append(first.task_id)
+
+    [second] = resolver.resolve_records(
+        [_endpoint_record(external_id, name="OpenClaw (renamed upstream)")],
+    )
+
+    assert second.task_id == first.task_id
+    assert second.resolved_by is TaskResolutionMethod.EXTERNAL_ID
+    assert second.name == "OpenClaw"
+
+
+@pytest.mark.unit_tests
+def test_ha_install_reported_from_two_instances_shares_one_task(
+    resolver,
+    tracked_tasks,
+):
+    """Tasks are cluster-level: one external_id is one task, however many hosts run it.
+
+    This is what keeps task volume tractable, and it is a property of the key rather
+    than of the payload -- the address differs between these two records and must not
+    enter the identity.
+    """
+    run = _run_id()
+    external_id = f"{run}-regional-install"
+
+    resolved = resolver.resolve_records(
+        [
+            _siem_record(external_id, instance="splunk-us-east-1"),
+            _siem_record(external_id, instance="splunk-us-west-2"),
+        ],
+    )
+    tracked_tasks.extend(r.task_id for r in resolved)
+
+    assert len({r.task_id for r in resolved}) == 1
+    assert [r.resolved_by for r in resolved] == [
+        TaskResolutionMethod.CREATED,
+        TaskResolutionMethod.EXTERNAL_ID,
+    ]
+
+
+@pytest.mark.unit_tests
+def test_agent_instrumented_after_discovery_keeps_its_discovered_task(
+    resolver,
+    db_session,
+    tracked_tasks,
+):
+    """The convergence the whole design turns on, in the order it usually happens.
+
+    Someone instruments an agent a scan already found. Its traces arrive under a
+    service name the sensor reported, and OTEL resolution finds the row discovery
+    already wrote instead of auto-creating a second task.
+    """
+    run = _run_id()
+    service_name = f"checkout-agent-{run}"
+
+    [resolved] = resolver.resolve_records(
+        [_siem_record(f"{run}-splunk-1", service_names=[service_name])],
+    )
+    tracked_tasks.append(resolved.task_id)
+    assert resolved.resolved_by is TaskResolutionMethod.CREATED
+
+    trace_task_id = TraceIngestionService(db_session)._resolve_task_id(
+        explicit_task_id=None,
+        service_name=service_name,
+        resource_attributes={},
+    )
+
+    assert trace_task_id == resolved.task_id
+
+
+@pytest.mark.unit_tests
+def test_discovered_agent_already_sending_traces_joins_its_otel_task(
+    resolver,
+    db_session,
+    tracked_tasks,
+):
+    """The same convergence from the other direction.
+
+    An agent auto-created from its own traces is then found by a scan. It joins the
+    task it already has, and its external_id is keyed to that task so the next scan
+    resolves without consulting service names at all.
+    """
+    run = _run_id()
+    service_name = f"already-traced-{run}"
+    external_id = f"{run}-splunk-1"
+
+    otel_task_id = TraceIngestionService(db_session)._resolve_task_id(
+        explicit_task_id=None,
+        service_name=service_name,
+        resource_attributes={},
+    )
+    tracked_tasks.append(otel_task_id)
+
+    [resolved] = resolver.resolve_records(
+        [_siem_record(external_id, service_names=[service_name])],
+    )
+
+    assert resolved.task_id == otel_task_id
+    assert resolved.resolved_by is TaskResolutionMethod.SERVICE_NAME
+    assert (
+        ServiceNameMappingRepository(db_session).get_task_id_by_service_name(
+            external_id,
+        )
+        == otel_task_id
+    )
+
+
+@pytest.mark.unit_tests
+def test_two_sources_reporting_one_agent_mint_two_tasks_without_a_shared_name(
+    resolver,
+    tracked_tasks,
+):
+    """v1's answer, recorded before D-03 assumes one.
+
+    external_id is canonical and no identity resolution runs across sensors, so two
+    sensors that share no key describe two agents as far as this step can tell.
+    Corroboration is provenance's to express, by holding two evidence records against
+    one task (D-09), not this resolver's to guess at.
+    """
+    run = _run_id()
+
+    resolved = resolver.resolve_records(
+        [
+            _siem_record(f"{run}-splunk-1", name="Checkout Agent"),
+            _endpoint_record(f"{run}-jamf-1", name="Checkout Agent"),
+        ],
+    )
+    tracked_tasks.extend(r.task_id for r in resolved)
+
+    assert len({r.task_id for r in resolved}) == 2
+
+
+@pytest.mark.unit_tests
+def test_two_sources_that_agree_on_a_service_name_share_one_task(
+    resolver,
+    tracked_tasks,
+):
+    """The one way two sensors do converge: they saw the same telemetry name."""
+    run = _run_id()
+    service_name = f"checkout-agent-{run}"
+
+    resolved = resolver.resolve_records(
+        [
+            _siem_record(f"{run}-splunk-1", service_names=[service_name]),
+            _endpoint_record(f"{run}-jamf-1", service_names=[service_name]),
+        ],
+    )
+    tracked_tasks.extend(r.task_id for r in resolved)
+
+    assert len({r.task_id for r in resolved}) == 1
+    assert [r.resolved_by for r in resolved] == [
+        TaskResolutionMethod.CREATED,
+        TaskResolutionMethod.SERVICE_NAME,
+    ]
+
+
+@pytest.mark.unit_tests
+def test_explicit_task_id_routes_to_that_task_and_keys_the_identity_to_it(
+    resolver,
+    db_session,
+    tracked_tasks,
+):
+    """A caller that already knows the task is believed, and the key is written."""
+    run = _run_id()
+    external_id = f"{run}-splunk-1"
+
+    [existing] = resolver.resolve_records([_siem_record(f"{run}-existing")])
+    tracked_tasks.append(existing.task_id)
+
+    [resolved] = resolver.resolve_records(
+        [_endpoint_record(external_id, task_id=existing.task_id)],
+    )
+
+    assert resolved.task_id == existing.task_id
+    assert resolved.resolved_by is TaskResolutionMethod.EXPLICIT_TASK_ID
+    assert (
+        ServiceNameMappingRepository(db_session).get_task_id_by_service_name(
+            external_id,
+        )
+        == existing.task_id
+    )
+
+
+@pytest.mark.unit_tests
+def test_explicit_task_id_that_does_not_exist_is_rejected(resolver):
+    """Naming a task that is not there is a client error, not a silent mint."""
+    run = _run_id()
+    record = _endpoint_record(f"{run}-splunk-1", task_id=str(uuid.uuid4()))
+
+    with pytest.raises(HTTPException) as exc_info:
+        resolver.resolve_records([record])
+
+    assert exc_info.value.status_code == 404
+    assert f"{run}-splunk-1" in exc_info.value.detail
+
+
+@pytest.mark.unit_tests
+def test_archived_task_still_wins_its_identity(resolver, db_session, tracked_tasks):
+    """Archiving decides what is shown, not who an agent is.
+
+    Minting a second task because the first was archived would break identity exactly
+    where it matters most, so resolution routes to the archived task -- the same
+    choice trace ingestion makes.
+    """
+    run = _run_id()
+    external_id = f"{run}-openclaw"
+
+    [first] = resolver.resolve_records([_endpoint_record(external_id)])
+    tracked_tasks.append(first.task_id)
+    db_session.query(DatabaseTask).filter_by(id=first.task_id).update(
+        {"archived": True},
+    )
+    db_session.commit()
+
+    [second] = resolver.resolve_records([_endpoint_record(external_id)])
+
+    assert second.task_id == first.task_id
+    assert second.resolved_by is TaskResolutionMethod.EXTERNAL_ID
+
+
+@pytest.mark.unit_tests
+def test_record_without_an_external_id_never_reaches_resolution():
+    """The engine's backstop behind the connector output contract (D-13).
+
+    A finding with no identity must fail, rather than route to the unmapped task and
+    collapse silently together with every other such finding.
+    """
+    creation_source = _siem_record("placeholder").creation_source
+
+    with pytest.raises(ValidationError):
+        DiscoveredAgentRecord(name="Checkout Agent", creation_source=creation_source)
+
+    with pytest.raises(ValidationError):
+        DiscoveredAgentRecord(
+            external_id="",
+            name="Checkout Agent",
+            creation_source=creation_source,
+        )
