@@ -22,7 +22,7 @@ dependencies = [
   "pyyaml==6.0.3",
   "requests==2.34.2",
   "adlfs==2026.8.0",
-  "s3fs==2026.7.0",
+  "s3fs==2026.9.0",
   "simple-settings==1.2.0",
   "httpx==0.28.1",
   "duckdb==1.5.5",
