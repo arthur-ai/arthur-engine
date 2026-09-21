@@ -11,9 +11,9 @@ from typing import Generator, Iterable
 
 import pytest
 from arthur_common.models.agent_governance_schemas import (
-    AgentCreationSource,
     AgentObservations,
     EndpointAgentCreationSource,
+    OTELAgentCreationSource,
     SIEMAgentCreationSource,
     SourceAddress,
 )
@@ -89,16 +89,14 @@ def _endpoint_record(
         external_id=external_id,
         name=name or external_id,
         task_id=task_id,
-        creation_source=AgentCreationSource(
-            root=EndpointAgentCreationSource(
-                vendor="jamf_pro",
-                address=SourceAddress(
-                    instance=f"serial:{device}",
-                    resource_kind="app",
-                    resource_id=external_id,
-                ),
-                observations=AgentObservations(service_names=list(service_names)),
+        creation_source=EndpointAgentCreationSource(
+            vendor="jamf_pro",
+            address=SourceAddress(
+                instance=f"serial:{device}",
+                resource_kind="app",
+                resource_id=external_id,
             ),
+            observations=AgentObservations(service_names=list(service_names)),
         ),
     )
 
@@ -113,17 +111,15 @@ def _siem_record(
     return DiscoveredAgentRecord(
         external_id=external_id,
         name=name or external_id,
-        creation_source=AgentCreationSource(
-            root=SIEMAgentCreationSource(
-                vendor="splunk_enterprise",
-                address=SourceAddress(
-                    instance=instance,
-                    scope="index=proxy",
-                    resource_id=external_id,
-                    query="index=proxy | stats count by agent",
-                ),
-                observations=AgentObservations(service_names=list(service_names)),
+        creation_source=SIEMAgentCreationSource(
+            vendor="splunk_enterprise",
+            address=SourceAddress(
+                instance=instance,
+                scope="index=proxy",
+                resource_id=external_id,
+                query="index=proxy | stats count by agent",
             ),
+            observations=AgentObservations(service_names=list(service_names)),
         ),
     )
 
@@ -444,4 +440,19 @@ def test_record_without_an_external_id_never_reaches_resolution():
             external_id="",
             name="Checkout Agent",
             creation_source=creation_source,
+        )
+
+
+@pytest.mark.unit_tests
+def test_a_source_a_scan_cannot_be_is_rejected():
+    """OTEL and MANUAL are not things a scan finds.
+
+    A record claiming either would mint a task whose provenance says nobody discovered
+    it, so the input type does not admit them and the discriminator refuses the tag.
+    """
+    with pytest.raises(ValidationError):
+        DiscoveredAgentRecord(
+            external_id="checkout-agent",
+            name="Checkout Agent",
+            creation_source=OTELAgentCreationSource(),
         )

@@ -154,7 +154,7 @@ class DiscoveryTaskResolutionService:
         # Rung 4: nothing knows this agent yet.
         task = self.task_repo.create_discovered_task(
             name=record.name,
-            creation_source=record.creation_source,
+            creation_source=record.task_creation_source,
             org_id=org_id,
         )
         logger.info(

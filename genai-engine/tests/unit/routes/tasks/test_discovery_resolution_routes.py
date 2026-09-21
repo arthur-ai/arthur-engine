@@ -10,7 +10,6 @@ import uuid
 
 import pytest
 from arthur_common.models.agent_governance_schemas import (
-    AgentCreationSource,
     AgentObservations,
     SIEMAgentCreationSource,
     SourceAddress,
@@ -32,16 +31,14 @@ def _record(external_id: str, name: str, service_names=()) -> DiscoveredAgentRec
     return DiscoveredAgentRecord(
         external_id=external_id,
         name=name,
-        creation_source=AgentCreationSource(
-            root=SIEMAgentCreationSource(
-                vendor="splunk_enterprise",
-                address=SourceAddress(
-                    instance="splunk-prod",
-                    scope="index=proxy",
-                    resource_id=external_id,
-                ),
-                observations=AgentObservations(service_names=list(service_names)),
+        creation_source=SIEMAgentCreationSource(
+            vendor="splunk_enterprise",
+            address=SourceAddress(
+                instance="splunk-prod",
+                scope="index=proxy",
+                resource_id=external_id,
             ),
+            observations=AgentObservations(service_names=list(service_names)),
         ),
     )
 

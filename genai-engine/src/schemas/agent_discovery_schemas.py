@@ -1,11 +1,13 @@
 from enum import Enum
+from typing import Annotated, Union
 
 from arthur_common.models.agent_governance_schemas import (
-    DISCOVERY_SOURCE_CLASSES,
     AgentCreationSource,
-    SourceClass,
+    CloudAgentCreationSource,
+    EndpointAgentCreationSource,
+    SIEMAgentCreationSource,
 )
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field
 
 
 class ExecutePollingResponse(BaseModel):
@@ -31,6 +33,23 @@ class DiscoverAndPollResponse(BaseModel):
 MAX_DISCOVERED_RECORDS_PER_REQUEST = 1000
 
 
+# The creation sources a scan can report, narrower than the union a task can carry.
+# OTEL and MANUAL are not things a scan finds, and a record claiming to be either would
+# mint a task whose provenance says nobody discovered it; deprecated GCP is not an input
+# anyone should start using. Spelled out rather than validated after the fact against
+# DISCOVERY_SOURCE_CLASSES so the OpenAPI schema -- and therefore the generated client
+# the scan job calls this with -- states what it accepts. A fourth discovery category
+# lands here as one more member.
+DiscoverySourceUnion = Annotated[
+    Union[
+        CloudAgentCreationSource,
+        SIEMAgentCreationSource,
+        EndpointAgentCreationSource,
+    ],
+    Field(discriminator="type"),
+]
+
+
 class DiscoveredAgentRecord(BaseModel):
     """One record from a discovery scan, on its way to becoming a task.
 
@@ -54,11 +73,9 @@ class DiscoveredAgentRecord(BaseModel):
         "minted. Never rewrites the name of a task that already exists -- renaming on "
         "every scan would churn a field people sort and search on.",
     )
-    creation_source: AgentCreationSource = Field(
+    creation_source: DiscoverySourceUnion = Field(
         description="The sensor that reported this agent, its upstream address and what "
-        "it observed. Must be one of the discovery categories: OTEL and MANUAL are not "
-        "things a scan finds, and a record claiming to be either would mint a task whose "
-        "provenance says nobody discovered it.",
+        "it observed.",
     )
     task_id: str | None = Field(
         default=None,
@@ -67,16 +84,10 @@ class DiscoveredAgentRecord(BaseModel):
         "IDs. Every record still comes back with one.",
     )
 
-    @model_validator(mode="after")
-    def _source_must_be_a_discovery_sensor(self) -> "DiscoveredAgentRecord":
-        source_class = SourceClass.for_creation_source(self.creation_source)
-        if source_class not in DISCOVERY_SOURCE_CLASSES:
-            raise ValueError(
-                f"creation_source must be a discovery source "
-                f"({', '.join(sorted(c.value for c in DISCOVERY_SOURCE_CLASSES))}), "
-                f"got {source_class.value!r}",
-            )
-        return self
+    @property
+    def task_creation_source(self) -> AgentCreationSource:
+        """The creation source in the shape a task stores it."""
+        return AgentCreationSource(root=self.creation_source)
 
     @property
     def service_names(self) -> list[str]:
@@ -86,7 +97,7 @@ class DiscoveredAgentRecord(BaseModel):
         the creation source rather than duplicated as a field of its own so there is
         one place it can come from.
         """
-        return list(self.creation_source.root.observations.service_names)
+        return list(self.creation_source.observations.service_names)
 
 
 class TaskResolutionMethod(str, Enum):
