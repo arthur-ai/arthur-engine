@@ -151,21 +151,23 @@ class DiscoveryTaskResolutionService:
                 resolved_by=TaskResolutionMethod.SERVICE_NAME,
             )
 
-        # Rung 4: nothing knows this agent yet.
-        task = self.task_repo.create_discovered_task(
+        # Rung 4: nothing knows this agent yet. Bound to its own name because the
+        # repository hands back the internal `Task`, not the `DatabaseTask` the rungs
+        # above resolve to.
+        created_task = self.task_repo.create_discovered_task(
             name=record.name,
             creation_source=record.task_creation_source,
             org_id=org_id,
         )
         logger.info(
-            f"Minted task '{task.name}' ({task.id}) for discovered record "
-            f"'{record.external_id}'",
+            f"Minted task '{created_task.name}' ({created_task.id}) for discovered "
+            f"record '{record.external_id}'",
         )
-        self._map_keys_to_task(record, task.id, known_mappings)
+        self._map_keys_to_task(record, created_task.id, known_mappings)
         return ResolvedAgentTask(
             external_id=record.external_id,
-            task_id=task.id,
-            name=task.name,
+            task_id=created_task.id,
+            name=created_task.name,
             resolved_by=TaskResolutionMethod.CREATED,
         )
 
