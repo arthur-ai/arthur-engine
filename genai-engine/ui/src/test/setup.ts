@@ -1,4 +1,4 @@
-import { vi } from "vitest";
+import { afterAll, vi } from "vitest";
 
 class TestIntersectionObserver implements IntersectionObserver {
   readonly root: Element | Document | null = null;
@@ -55,3 +55,18 @@ if (typeof window.AnimationEvent === "undefined") {
   window.AnimationEvent = AnimationEventPolyfill as unknown as typeof AnimationEvent;
   vi.stubGlobal("AnimationEvent", window.AnimationEvent);
 }
+
+// React routes commits and passive-effect flushes through its Scheduler, which uses
+// setImmediate under Node. An update that lands outside act() (a late promise or timer)
+// leaves that work queued, and if Vitest tears the jsdom environment down first the callback
+// reads `window` after it is gone — an uncaught ReferenceError that fails the run even though
+// every test passed. Drain the queue while the environment is still alive; each callback can
+// schedule the next step (commit, then passive effects, then any follow-up update), so drain
+// a handful of ticks instead of one.
+afterAll(async () => {
+  for (let i = 0; i < 10; i++) {
+    await new Promise<void>((resolve) => {
+      setImmediate(() => resolve());
+    });
+  }
+});
