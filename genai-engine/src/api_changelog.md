@@ -2,6 +2,9 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 09/21/2026
+- **CHANGE** for **URL**: /api/v2/agent-tasks/resolve  endpoint added
+
 # 09/11/2026
 - **BREAKING CHANGE** for **URL**: /api/v2/agent-tasks  added '#/components/schemas/GCPAgentCreationSource, #/components/schemas/OTELAgentCreationSource, #/components/schemas/ManualAgentCreationSource, #/components/schemas/CloudAgentCreationSource, #/components/schemas/SIEMAgentCreationSource, #/components/schemas/EndpointAgentCreationSource' to the '/items/creation_source/anyOf[subschema #1: AgentCreationSource]/' response property 'oneOf' list for the response status '200'
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  added the new 'disabled' enum value to the 'config/anyOf[subschema #1: LLMBaseConfigSettings]/thinking/anyOf[subschema #1: AnthropicThinkingParam]/type' response property for the response status '200'

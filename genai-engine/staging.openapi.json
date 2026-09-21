@@ -1365,6 +1365,53 @@
                 ]
             }
         },
+        "/api/v2/agent-tasks/resolve": {
+            "post": {
+                "tags": [
+                    "Tasks"
+                ],
+                "summary": "Resolve Discovered Agents",
+                "description": "Resolve records from a discovery scan to tasks, minting a task for any agent not already known. Every submitted record comes back with a task ID, and re-submitting the same records resolves them to the same tasks.",
+                "operationId": "resolve_discovered_agents_api_v2_agent_tasks_resolve_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ResolveDiscoveredAgentsRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ResolveDiscoveredAgentsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ]
+            }
+        },
         "/api/v2/task": {
             "post": {
                 "tags": [
@@ -22215,6 +22262,65 @@
                 "title": "DiscoverAndPollResponse",
                 "description": "Response model for the execute-all agent polling endpoint."
             },
+            "DiscoveredAgentRecord": {
+                "properties": {
+                    "external_id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "title": "External Id",
+                        "description": "The source's own identifier for this agent, and the identity the whole feature keys on. Required: a record without one has no stable identity, and routing it to the unmapped task would silently collapse every such finding together. The connector's output contract rejects it upstream; this bound is the engine's own backstop."
+                    },
+                    "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "title": "Name",
+                        "description": "Human-readable agent name, used as the task name when a task is minted. Never rewrites the name of a task that already exists -- renaming on every scan would churn a field people sort and search on."
+                    },
+                    "creation_source": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/CloudAgentCreationSource"
+                            },
+                            {
+                                "$ref": "#/components/schemas/SIEMAgentCreationSource"
+                            },
+                            {
+                                "$ref": "#/components/schemas/EndpointAgentCreationSource"
+                            }
+                        ],
+                        "title": "Creation Source",
+                        "description": "The sensor that reported this agent, its upstream address and what it observed.",
+                        "discriminator": {
+                            "propertyName": "type",
+                            "mapping": {
+                                "CLOUD": "#/components/schemas/CloudAgentCreationSource",
+                                "ENDPOINT": "#/components/schemas/EndpointAgentCreationSource",
+                                "SIEM": "#/components/schemas/SIEMAgentCreationSource"
+                            }
+                        }
+                    },
+                    "task_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Task Id",
+                        "description": "Existing task to route this record to, when the caller already knows it. Optional HERE AND ONLY HERE -- a SIEM does not know Arthur's task IDs. Every record still comes back with one."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "external_id",
+                    "name",
+                    "creation_source"
+                ],
+                "title": "DiscoveredAgentRecord",
+                "description": "One record from a discovery scan, on its way to becoming a task.\n\nTask-shaped and keyed on ``external_id``: everything the engine needs to mint a\ntask, plus the identity the source knows the agent by. The scan job builds one of\nthese per row its connector returned, after that row has passed the connector's\noutput contract (``DiscoveryOutputRecord``)."
+            },
             "DisplaySettingsResponse": {
                 "properties": {
                     "default_currency": {
@@ -30337,6 +30443,76 @@
                 "title": "RequestTimeParameterSource",
                 "description": "Variable source from request-time parameters (e.g., tokens, API keys)"
             },
+            "ResolveDiscoveredAgentsRequest": {
+                "properties": {
+                    "records": {
+                        "items": {
+                            "$ref": "#/components/schemas/DiscoveredAgentRecord"
+                        },
+                        "type": "array",
+                        "maxItems": 1000,
+                        "minItems": 1,
+                        "title": "Records",
+                        "description": "Records to resolve. Order is preserved in the response."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "records"
+                ],
+                "title": "ResolveDiscoveredAgentsRequest",
+                "description": "A scan's worth of discovered records to resolve to tasks."
+            },
+            "ResolveDiscoveredAgentsResponse": {
+                "properties": {
+                    "resolved": {
+                        "items": {
+                            "$ref": "#/components/schemas/ResolvedAgentTask"
+                        },
+                        "type": "array",
+                        "title": "Resolved",
+                        "description": "Resolution outcome per record, in request order"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "resolved"
+                ],
+                "title": "ResolveDiscoveredAgentsResponse",
+                "description": "One entry per submitted record, in the order they were submitted."
+            },
+            "ResolvedAgentTask": {
+                "properties": {
+                    "external_id": {
+                        "type": "string",
+                        "title": "External Id",
+                        "description": "Identity the record arrived with"
+                    },
+                    "task_id": {
+                        "type": "string",
+                        "title": "Task Id",
+                        "description": "Task this record's findings belong to"
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Name of the resolved task, which for an existing task is its current name rather than the name the record carried"
+                    },
+                    "resolved_by": {
+                        "$ref": "#/components/schemas/TaskResolutionMethod",
+                        "description": "Which rung of the resolution ladder answered"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "external_id",
+                    "task_id",
+                    "name",
+                    "resolved_by"
+                ],
+                "title": "ResolvedAgentTask",
+                "description": "What one discovered record resolved to. Always carries a task ID."
+            },
             "ResponseValidationRequest": {
                 "properties": {
                     "response": {
@@ -31141,7 +31317,7 @@
                             }
                         ],
                         "title": "Scope",
-                        "description": "Subdivision queried, where the source has one: a cloud region, a Splunk index, a Sentinel table, an Elastic data stream."
+                        "description": "Subdivision queried, where the source has one: a cloud region, a Splunk index, a Sentinel table, an Elastic data stream. Optional here because endpoints have no subdivision and a SIEM query may span every index, but required for CLOUD sources, which enforce it: there the region is part of the agent's identity rather than of the query."
                     },
                     "resource_kind": {
                         "anyOf": [
@@ -31179,7 +31355,7 @@
                     "resource_id"
                 ],
                 "title": "SourceAddress",
-                "description": "How to find a discovered agent again in the system that reported it.\n\nOne shape for every sensor, widest to narrowest:\n\n==============  ================  ==================  ==========  ============\nsensor          instance          scope               kind        resource_id\n==============  ================  ==================  ==========  ============\nBedrock         AWS account       region              --          agent id\nVertex          GCP project       region              --          engine id\nSplunk          instance          index+sourcetype    --          record id\nSentinel        LA workspace      table               --          record id\nElastic         deployment        data stream         --          record id\nJamf / osquery  device key        --                  npm, app\u2026   software key\n==============  ================  ==================  ==========  ============\n\nOnly endpoints fill ``resource_kind``: they are the one sensor whose ids come from\nseveral namespaces at once. Every cloud and SIEM vendor addresses exactly one kind\nof resource, so the kind is implied by the vendor and stays absent.\n\nReused by Provenance rather than re-declared there, so a finding and the task it\nresolves to address the upstream system identically. A vendor needing to address a\nsub-resource -- a Bedrock alias, a Vertex version -- is one more optional field\nhere, not a new shape."
+                "description": "How to find a discovered agent again in the system that reported it.\n\nOne shape for every sensor, widest to narrowest:\n\n==============  ================  ==================  ==========  ============\nsensor          instance          scope               kind        resource_id\n==============  ================  ==================  ==========  ============\nBedrock         AWS account       region              --          agent id\nVertex          GCP project       region              --          engine id\nSplunk          instance          index+sourcetype    --          record id\nSentinel        LA workspace      table               --          record id\nElastic         deployment        data stream         --          record id\nJamf / osquery  device key        --                  npm, app\u2026   software key\n==============  ================  ==================  ==========  ============\n\nOnly endpoints fill ``resource_kind``: they are the one sensor whose ids come from\nseveral namespaces at once. Every cloud and SIEM vendor addresses exactly one kind\nof resource, so the kind is implied by the vendor and stays absent.\n\n``scope`` carries two readings this one name does not separate. For a cloud source\nit addresses the *agent*: us-east-1 and us-west-2 hold different agents, so\n``CloudAgentCreationSource`` requires it. For a SIEM it addresses the *sighting*,\nand one agent may surface under two indexes, so it stays optional there. Code\ncomparing addresses across sources has to read `source_class` to know which it is\nlooking at.\n\nReused by Provenance rather than re-declared there, so a finding and the task it\nresolves to address the upstream system identically. A vendor needing to address a\nsub-resource -- a Bedrock alias, a Vertex version -- is one more optional field\nhere, not a new shape."
             },
             "SpanListResponse": {
                 "properties": {
@@ -32001,6 +32177,17 @@
                 ],
                 "title": "TaskAnalyticsBucketSize",
                 "description": "Time bucket granularity for task analytics time-series metrics."
+            },
+            "TaskResolutionMethod": {
+                "type": "string",
+                "enum": [
+                    "explicit_task_id",
+                    "external_id",
+                    "service_name",
+                    "created"
+                ],
+                "title": "TaskResolutionMethod",
+                "description": "Which rung of the resolution ladder answered for a record.\n\nReturned per record because the caller cannot otherwise tell a stable re-scan from\na run that minted 500 duplicates, and that difference is the whole identity\nguarantee. Not stored: it describes one resolution, not the task."
             },
             "TaskResponse": {
                 "properties": {
