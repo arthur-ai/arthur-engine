@@ -243,6 +243,14 @@ class PermissionLevelsEnum(Enum):
     AGENT_POLLING_ADMIN = frozenset(
         [constants.ORG_ADMIN, constants.TASK_ADMIN],
     )
+    # Mint or route tasks for records a discovery scan found. Admin-only, and
+    # for the same reason OTEL auto-creation is: the records arrive from the ML
+    # Engine scan job rather than from a tenant, and resolution reads and writes
+    # the engine-wide service-name key space, so a tenant key has no scope to
+    # enforce against here.
+    AGENT_DISCOVERY_WRITE = frozenset(
+        [constants.ORG_ADMIN, constants.TASK_ADMIN],
+    )
     # Read of telemetry that isn't tied to any task (orphaned root spans,
     # cross-task debug views). Admin-only — tenants have no use for this
     # data and seeing it could expose other tenants' span names.

@@ -39,6 +39,10 @@ from repositories.tasks_repository import TaskRepository
 from repositories.tasks_rules_repository import TasksRulesRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
+from schemas.agent_discovery_schemas import (
+    ResolveDiscoveredAgentsRequest,
+    ResolveDiscoveredAgentsResponse,
+)
 from schemas.enums import PermissionLevelsEnum, TaskSortField
 from schemas.internal_schemas import (
     ApplicationConfiguration,
@@ -46,6 +50,9 @@ from schemas.internal_schemas import (
     Rule,
     Task,
     User,
+)
+from services.task.discovery_task_resolution_service import (
+    DiscoveryTaskResolutionService,
 )
 from utils import constants
 from utils.constants import DEFAULT_ORG_ID
@@ -296,6 +303,44 @@ def get_agent_tasks(
         enriched_responses.append(enriched_response)
 
     return enriched_responses
+
+
+@task_management_routes.post(
+    "/agent-tasks/resolve",
+    description="Resolve records from a discovery scan to tasks, minting a task for "
+    "any agent not already known. Every submitted record comes back with a task ID, "
+    "and re-submitting the same records resolves them to the same tasks.",
+    response_model=ResolveDiscoveredAgentsResponse,
+    tags=["Tasks"],
+)
+@permission_checker(permissions=PermissionLevelsEnum.AGENT_DISCOVERY_WRITE.value)
+def resolve_discovered_agents(
+    request: ResolveDiscoveredAgentsRequest,
+    db_session: Session = Depends(get_db_session),
+    application_config: ApplicationConfiguration = Depends(get_application_config),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> ResolveDiscoveredAgentsResponse:
+    """Resolve discovered records to tasks.
+
+    Called by the ML Engine scan job with the records one connector returned. The
+    resolution ladder, and the guarantees it makes, are documented on
+    `DiscoveryTaskResolutionService`.
+
+    Admin-only, so tasks minted here land in the `default` org, matching where OTEL
+    auto-created tasks land.
+    """
+    tasks_repo = TaskRepository(
+        db_session,
+        RuleRepository(db_session),
+        MetricRepository(db_session),
+        application_config,
+    )
+    resolution_service = DiscoveryTaskResolutionService(db_session, tasks_repo)
+
+    resolved = resolution_service.resolve_records(
+        request.records, org_id=DEFAULT_ORG_ID
+    )
+    return ResolveDiscoveredAgentsResponse(resolved=resolved)
 
 
 @task_management_routes.post(
