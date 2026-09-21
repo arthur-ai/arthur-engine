@@ -622,30 +622,6 @@ jobs:
           slug: ml-engine
           dockerhub-username: ${{ secrets.DOCKERHUB_ENTERPRISE_USERNAME }}
           dockerhub-token: ${{ secrets.DOCKERHUB_ENTERPRISE_TOKEN }}
-      # Do NOT `docker logout` here: `imagetools create` below reads the source image from
-      # Docker Hub (logged in above) and writes to Artifactory (logged in now). Both sessions
-      # coexist in the docker config.
-      - name: Login to Artifactory
-        run: |
-          echo "${{ secrets.NEXUS_REPOSITORY_PASSWORD }}" | docker login docker.arthur.ai -u "${{ secrets.NEXUS_REPOSITORY_USERNAME }}" --password-stdin
-      # imagetools copies the full image (incl. the SBOM attestation) registry-to-registry.
-      # Required because buildx `push: true` does not load the image into the local docker
-      # store, so the old `docker tag` on a local image would no longer find it.
-      - name: Retag and push image to Artifactory
-        run: |
-          docker buildx imagetools create \
-            --tag docker.arthur.ai/arthur/scope/ml-engine:${{ env.VERSION }} \
-            arthurplatform/ml-engine:${{ env.VERSION }}
-          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
-            docker buildx imagetools create \
-              --tag docker.arthur.ai/arthur/scope/ml-engine:latest \
-              arthurplatform/ml-engine:${{ env.VERSION }}
-          fi
-          if [ "${{ github.ref }}" = "refs/heads/dev" ]; then
-            docker buildx imagetools create \
-              --tag docker.arthur.ai/arthur/scope/ml-engine:latest-dev \
-              arthurplatform/ml-engine:${{ env.VERSION }}
-          fi
 
   check-models-updates:
     environment: shared-protected-branch-secrets
