@@ -157,8 +157,22 @@ def run_source_scan(
         )
         raise
     finally:
-        outcome.finished_at = datetime.now(timezone.utc)
-        # In the message, not in `extra`: ScopeJobLogExporter ships getMessage() only.
-        logger.info(json.dumps(outcome.to_log_payload(), sort_keys=True))
+        finalize_outcome(outcome, logger)
 
+    return outcome
+
+
+def finalize_outcome(
+    outcome: DiscoveryScanOutcome,
+    logger: logging.Logger,
+) -> DiscoveryScanOutcome:
+    """Close out a run and report it, however it ended.
+
+    Every exit from a source-scoped job goes through here, including the ones that fail
+    before a scanner is ever reached, so the Platform gets one outcome record per job
+    rather than silence for the sources that never got as far as the vendor call.
+    """
+    outcome.finished_at = datetime.now(timezone.utc)
+    # In the message, not in `extra`: ScopeJobLogExporter ships getMessage() only.
+    logger.info(json.dumps(outcome.to_log_payload(), sort_keys=True))
     return outcome

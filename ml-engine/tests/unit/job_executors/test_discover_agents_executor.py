@@ -228,6 +228,46 @@ def test_unregistered_vendor_fails_only_this_job() -> None:
     assert sink.batches == []
 
 
+def test_unregistered_vendor_still_reports_an_outcome() -> None:
+    """A job that never reaches the vendor owes the Platform an outcome all the same."""
+    logger = logging.getLogger("test-discovery-outcome-vendor")
+    records = _capture(logger)
+
+    with pytest.raises(UnsupportedDiscoveryVendorError):
+        _executor(logger=logger).execute(_job(), _spec(_config(vendor="jamf_pro")))
+
+    outcome = _find_outcome(records)
+    assert outcome["succeeded"] is False
+    assert outcome["error_count"] == 1
+    assert "jamf_pro" in outcome["error"]
+    assert outcome["vendor"] == "jamf_pro"
+    assert outcome["records_published"] == 0
+    assert outcome["finished_at"] is not None
+
+
+def test_missing_record_sink_still_reports_an_outcome() -> None:
+    logger = logging.getLogger("test-discovery-outcome-sink")
+    records = _capture(logger)
+    executor = DiscoverAgentsExecutor(
+        agents_client=MagicMock(),
+        logger=logger,
+        genai_engine_url="http://genai",
+        genai_engine_api_key="key",
+        record_sink=None,
+        scanners={"splunk_enterprise": FakeScanner([[_record("a")]])},
+    )
+
+    with pytest.raises(RuntimeError, match="No discovery record sink"):
+        executor.execute(_job(), _spec(_config()))
+
+    outcome = _find_outcome(records)
+    assert outcome["succeeded"] is False
+    assert outcome["error_count"] == 1
+    assert outcome["error"].startswith("RuntimeError: No discovery record sink")
+    assert outcome["records_published"] == 0
+    assert outcome["finished_at"] is not None
+
+
 def test_job_naming_a_config_it_does_not_carry_is_rejected() -> None:
     scanner = FakeScanner([[_record("a")]])
 

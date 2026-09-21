@@ -11,7 +11,7 @@ to the Agents API. Both shapes are live until D-14 migrates GCP onto a source co
 
 import logging
 from math import ceil
-from typing import List, Optional
+from typing import List, NoReturn, Optional
 
 from arthur_client.api_bindings import Agent as ScopeAgent
 from arthur_client.api_bindings import (
@@ -35,6 +35,7 @@ from job_executors.discovery_scan import (
     DiscoveryScanOutcome,
     DiscoverySourceScanner,
     UnsupportedDiscoveryVendorError,
+    finalize_outcome,
     run_source_scan,
 )
 
@@ -106,22 +107,21 @@ class DiscoverAgentsExecutor:
 
         scanner = self.scanners.get(config.vendor)
         if scanner is None:
-            outcome.record_failure(
+            self._fail_before_scan(
+                outcome,
                 UnsupportedDiscoveryVendorError(
                     f"No discovery connector is registered for vendor "
                     f"'{config.vendor}' (source config '{config.name}')",
                 ),
             )
-            self.logger.error(
-                outcome.error,
-                extra={"vendor": config.vendor},
-            )
-            raise UnsupportedDiscoveryVendorError(outcome.error)
 
         if self.record_sink is None:
-            raise RuntimeError(
-                "No discovery record sink is configured; discovery records cannot be "
-                "published until task resolution (D-08) lands.",
+            self._fail_before_scan(
+                outcome,
+                RuntimeError(
+                    "No discovery record sink is configured; discovery records cannot "
+                    "be published until task resolution (D-08) lands.",
+                ),
             )
 
         run_source_scan(
@@ -143,6 +143,25 @@ class DiscoverAgentsExecutor:
                 "records_published": outcome.records_published,
             },
         )
+
+    def _fail_before_scan(
+        self,
+        outcome: DiscoveryScanOutcome,
+        error: Exception,
+    ) -> NoReturn:
+        """End a run that failed before the source was ever contacted.
+
+        These failures owe the Platform the same outcome record as a scan that got as
+        far as the vendor, so they close the run through the shared finalization rather
+        than raising straight out and leaving the run unreported.
+        """
+        outcome.record_failure(error)
+        self.logger.error(
+            outcome.error,
+            extra={"vendor": outcome.vendor},
+        )
+        finalize_outcome(outcome, self.logger)
+        raise error
 
     @staticmethod
     def _require_source_config(
