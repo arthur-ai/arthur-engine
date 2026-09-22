@@ -82,9 +82,18 @@ mypy_path = "src/ml_engine"
 namespace_packages = true
 exclude = ["src/genai_client", "src/ml_engine/discovery/_vendor"]
 
+# The vendored upstream tree is verbatim and must stay that way. Excluded here rather
+# than only in .pre-commit-config.yaml because CI invokes black and isort directly, so a
+# pre-commit-only exclusion is honoured on a developer's machine and ignored in the one
+# place that gates the merge. Found exactly that way: `would reformat
+# discovery/_vendor/classify.py`, on a branch whose local hooks were clean.
+[tool.black]
+extend-exclude = "^/src/ml_engine/discovery/_vendor/"
+
 [tool.isort]
 profile = "black"
 src_paths = ["src/ml_engine", "tests"]
+extend_skip_glob = ["src/ml_engine/discovery/_vendor/*"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src", "src/genai_client"]
