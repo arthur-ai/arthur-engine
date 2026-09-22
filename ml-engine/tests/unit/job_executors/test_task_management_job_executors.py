@@ -47,6 +47,7 @@ from job_executors.task_management_job_executors import (
     LEGACY_SINGLE_DATASET_FALLBACK_PROBLEM_TYPE,
     TaskManagementJobExecutor,
     _parse_platform_release_version,
+    _platform_rejection_detail,
     _TaskDatasetAndModelCreator,
 )
 
@@ -59,6 +60,13 @@ SINGLE_DATASET_REJECTION_DETAIL = (
 
 OLD_PLATFORM_RELEASE = "1.4.2582"
 NEW_PLATFORM_RELEASE = "1.4.2600"
+
+# The exact cutoff boundary. 1.4.2593-release is the last release that still carries
+# the platform's "must be linked to exactly one dataset" guard (scope
+# scope/app_plane/app/operators/models_operator.py:390-395 at 1.4.2593-release);
+# 1.4.2594-release is the first release without it.
+LAST_LEGACY_PLATFORM_RELEASE = "1.4.2593"
+FIRST_CONSOLIDATED_PLATFORM_RELEASE = "1.4.2594"
 
 CONNECTOR_ID = "0f0b7bb5-2e64-4b27-9b5c-4b4c6b8f0a11"
 PROJECT_ID = "8b0e1e2c-3d4f-4a5b-8c7d-9e0f1a2b3c4d"
@@ -247,6 +255,37 @@ def test_parse_platform_release_version(
     assert _parse_platform_release_version(version) == expected
 
 
+@pytest.mark.parametrize(
+    "body, expected",
+    [
+        (json.dumps({"detail": "  two   datasets  "}), "two datasets"),
+        ("plain text, not json", "plain text, not json"),
+        (json.dumps(["not", "a", "mapping"]), '["not", "a", "mapping"]'),
+        (json.dumps({"no_detail_key": "x"}), '{"no_detail_key": "x"}'),
+        (None, "no error message in the platform's response"),
+        ("   ", "no error message in the platform's response"),
+        (json.dumps({"detail": "x" * 600}), "x" * 500 + "..."),
+    ],
+    ids=[
+        "detail_is_whitespace_normalized",
+        "body_is_not_json",
+        "body_is_not_a_mapping",
+        "body_has_no_detail",
+        "body_is_absent",
+        "body_is_blank",
+        "runaway_body_is_truncated",
+    ],
+)
+def test_platform_rejection_detail_degrades_gracefully(
+    body: str | None,
+    expected: str,
+):
+    """
+    The retry log line reads this, so an odd response body must not be what raises.
+    """
+    assert _platform_rejection_detail(ApiException(status=400, body=body)) == expected
+
+
 def test_new_platform_creates_both_datasets(
     app_plane_http_server: HTTPServer,
     api_client: ApiClient,
@@ -327,6 +366,58 @@ def test_old_platform_creates_single_dataset(
 
 
 @pytest.mark.parametrize(
+    "release_version, expected_dataset_ids",
+    [
+        (LAST_LEGACY_PLATFORM_RELEASE, ["only_dataset"]),
+        (
+            FIRST_CONSOLIDATED_PLATFORM_RELEASE,
+            ["traces_dataset", "guardrails_dataset"],
+        ),
+    ],
+    ids=["last_legacy_release_1_4_2593", "first_consolidated_release_1_4_2594"],
+)
+def test_consolidated_datasets_cutoff_boundary_is_pinned_at_2594(
+    app_plane_http_server: HTTPServer,
+    api_client: ApiClient,
+    release_version: str,
+    expected_dataset_ids: list[str],
+):
+    """
+    Pins MIN_CONSOLIDATED_TASK_DATASETS_PLATFORM_RELEASE to the exact boundary. The
+    two versions are one patch apart, so moving the constant in either direction
+    fails this test. 1.4.2593 must take the legacy single-dataset path straight from
+    the version probe - that platform still rejects two datasets, and the 400
+    fallback is a safety net rather than the intended route - and 1.4.2594 must keep
+    the consolidated two-dataset path unchanged.
+    """
+    task = task_response()
+    expect_health_request(
+        app_plane_http_server,
+        HealthStatus(release_version=release_version),
+    )
+    stub_task_creation(
+        app_plane_http_server,
+        task,
+        dataset_ids=expected_dataset_ids,
+    )
+
+    model, datasets = build_creator(api_client, task).create()
+
+    assert model.id == MODEL_ID
+    assert len(datasets) == len(expected_dataset_ids)
+
+    # The shape came from the version probe alone: exactly one POST /models means no
+    # rejection and no retry, and no DELETE means no rolled-back first attempt.
+    model_bodies = posted_model_bodies(app_plane_http_server)
+    assert len(model_bodies) == 1
+    assert model_bodies[0]["dataset_ids"] == expected_dataset_ids
+    assert len(posted_dataset_bodies(app_plane_http_server)) == len(
+        expected_dataset_ids,
+    )
+    assert deleted_dataset_ids(app_plane_http_server) == []
+
+
+@pytest.mark.parametrize(
     "health_status",
     [
         HealthStatus(release_version="unknown"),
@@ -349,10 +440,21 @@ def test_unusable_version_falls_back_on_rejection(
         reject_model_creates=1,
     )
 
-    model, datasets = build_creator(api_client, task).create()
+    creator = build_creator(api_client, task)
+    model, datasets = creator.create()
 
     assert model.id == MODEL_ID
     assert len(datasets) == 1
+
+    # The retry is logged with the platform's own reason, not just the fact of it.
+    retry_logs = [
+        call.args[0]
+        for call in creator.logger.warning.call_args_list
+        if "retrying with a single dataset" in call.args[0]
+    ]
+    assert len(retry_logs) == 1
+    assert "HTTP 400" in retry_logs[0]
+    assert SINGLE_DATASET_REJECTION_DETAIL in retry_logs[0]
 
     dataset_bodies = posted_dataset_bodies(app_plane_http_server)
     assert [body["model_problem_type"] for body in dataset_bodies] == [

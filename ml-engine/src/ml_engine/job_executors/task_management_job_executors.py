@@ -1,3 +1,4 @@
+import json
 import logging
 from functools import cached_property
 from typing import NamedTuple, Tuple
@@ -57,7 +58,10 @@ class InvalidConnectorException(Exception):
 # Platform releases before this one require an Arthur shield model to be linked to
 # exactly one dataset, so they reject the consolidated two-dataset task shape with a
 # 400 and the engine has to fall back to the legacy single-dataset shape (UP-5022).
-MIN_CONSOLIDATED_TASK_DATASETS_PLATFORM_RELEASE = (1, 4, 2592)
+# The consolidation commit first appears in version tag 1.4.2592, but the earliest
+# *release* tag that ships it is 1.4.2594-release: the guard is still present in
+# 1.4.2591-release, 1.4.2592-release and 1.4.2593-release, so the cutoff is 2594.
+MIN_CONSOLIDATED_TASK_DATASETS_PLATFORM_RELEASE = (1, 4, 2594)
 
 # Which dataset a task keeps when the engine must emit the legacy single-dataset
 # shape but cannot tell what kind of task it is. Only the link path lands here: its
@@ -102,6 +106,35 @@ def _parse_platform_release_version(
 def _is_single_dataset_constraint_rejection(exc: ApiException) -> bool:
     # str() renders whichever of the deserialized data or the raw body is present.
     return exc.status == 400 and _SINGLE_DATASET_CONSTRAINT_ERROR in str(exc)
+
+
+def _platform_rejection_detail(exc: ApiException) -> str:
+    """
+    The platform's own error text from a rejection, for the retry log line. Only the
+    response body is read - never str(exc), which also renders the response headers.
+    The body can be absent, not JSON, or not a mapping, so every step degrades to the
+    next rather than raising: a log line must not be what breaks the fallback.
+    """
+    detail = getattr(getattr(exc, "data", None), "detail", None)
+    if not isinstance(detail, str) or not detail.strip():
+        body = exc.body
+        if isinstance(body, (bytes, bytearray)):
+            body = body.decode("utf-8", errors="replace")
+        if not isinstance(body, str) or not body.strip():
+            return "no error message in the platform's response"
+        try:
+            parsed = json.loads(body)
+        except ValueError:
+            parsed = None
+        parsed_detail = parsed.get("detail") if isinstance(parsed, dict) else None
+        detail = (
+            parsed_detail
+            if isinstance(parsed_detail, str) and parsed_detail.strip()
+            else body
+        )
+    detail = " ".join(detail.split())
+    # The platform's messages are short; a runaway body must not flood the job log.
+    return detail if len(detail) <= 500 else f"{detail[:500]}..."
 
 
 class TaskManagementJobExecutor:
@@ -572,7 +605,9 @@ class _TaskDatasetAndModelCreator(_ValidationKeyManager):
                 # The probe read the platform as new but it enforces the old
                 # constraint, so its release_version is unset or misreported.
                 self.logger.warning(
-                    "Platform rejected the consolidated task datasets, retrying with a single dataset",
+                    "Platform rejected the consolidated task datasets, retrying with "
+                    f"a single dataset. Platform said (HTTP {e.status}): "
+                    f"{_platform_rejection_detail(e)}",
                 )
 
         # When the two-dataset attempt above ran, its rollback already deleted the
