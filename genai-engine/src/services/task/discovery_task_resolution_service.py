@@ -2,6 +2,7 @@ import logging
 from typing import Optional
 from uuid import UUID
 
+from arthur_common.models.agent_discovery_schemas import DiscoveredAgentRecord
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from starlette import status
@@ -10,7 +11,6 @@ from db_models import DatabaseTask
 from repositories.service_name_mapping_repository import ServiceNameMappingRepository
 from repositories.tasks_repository import TaskRepository
 from schemas.agent_discovery_schemas import (
-    DiscoveredAgentRecord,
     ResolvedAgentTask,
     TaskResolutionMethod,
 )

@@ -1,13 +1,10 @@
 from enum import Enum
-from typing import Annotated, Union
 
-from arthur_common.models.agent_governance_schemas import (
-    AgentCreationSource,
-    CloudAgentCreationSource,
-    EndpointAgentCreationSource,
-    SIEMAgentCreationSource,
+from arthur_common.models.agent_discovery_schemas import (
+    MAX_DISCOVERED_RECORDS_PER_REQUEST,
+    DiscoveredAgentRecord,
 )
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 
 
 class ExecutePollingResponse(BaseModel):
@@ -25,98 +22,6 @@ class DiscoverAndPollResponse(BaseModel):
     traces_fetched: int = Field(
         description="Total number of traces fetched across all tasks (0 in async mode)"
     )
-
-
-# Cap on one resolve request. A scan that finds more than this splits into several
-# calls; the limit exists so a runaway connector cannot hand the engine an unbounded
-# batch, not because any smaller batch is meaningful.
-MAX_DISCOVERED_RECORDS_PER_REQUEST = 1000
-
-
-# The creation sources a scan can report, narrower than the union a task can carry.
-# OTEL and MANUAL are not things a scan finds, and a record claiming to be either would
-# mint a task whose provenance says nobody discovered it; deprecated GCP is not an input
-# anyone should start using. Spelled out rather than validated after the fact against
-# DISCOVERY_SOURCE_CLASSES so the OpenAPI schema -- and therefore the generated client
-# the scan job calls this with -- states what it accepts. A fourth discovery category
-# lands here as one more member.
-DiscoverySourceUnion = Annotated[
-    Union[
-        CloudAgentCreationSource,
-        SIEMAgentCreationSource,
-        EndpointAgentCreationSource,
-    ],
-    Field(discriminator="type"),
-]
-
-
-class DiscoveredAgentRecord(BaseModel):
-    """One record from a discovery scan, on its way to becoming a task.
-
-    Task-shaped and keyed on ``external_id``: everything the engine needs to mint a
-    task, plus the identity the source knows the agent by. The scan job builds one of
-    these per row its connector returned, after that row has passed the connector's
-    output contract (``DiscoveryOutputRecord``).
-    """
-
-    external_id: str = Field(
-        min_length=1,
-        description="The source's own identifier for this agent, and the identity the "
-        "whole feature keys on. Required: a record without one has no stable identity, "
-        "and routing it to the unmapped task would silently collapse every such finding "
-        "together. The connector's output contract rejects it upstream; this bound is "
-        "the engine's own backstop.",
-    )
-    name: str = Field(
-        min_length=1,
-        description="Human-readable agent name, used as the task name when a task is "
-        "minted. Never rewrites the name of a task that already exists -- renaming on "
-        "every scan would churn a field people sort and search on.",
-    )
-    creation_source: DiscoverySourceUnion = Field(
-        description="The sensor that reported this agent, its upstream address and what "
-        "it observed.",
-    )
-    task_id: str | None = Field(
-        default=None,
-        description="Existing task to route this record to, when the caller already "
-        "knows it. Optional HERE AND ONLY HERE -- a SIEM does not know Arthur's task "
-        "IDs. Every record still comes back with one.",
-    )
-
-    @field_validator("external_id", "name")
-    @classmethod
-    def _must_not_be_blank(cls, value: str) -> str:
-        """Reject a value that is only whitespace.
-
-        `min_length` alone lets a single space through, and a space is not an
-        identity: two agents whose sources both report one would key to the same
-        mapping and collapse onto one task -- the failure `external_id` exists to
-        prevent, arriving through the backstop meant to stop it. A blank `name`
-        would mint a task that reads as nameless everywhere it is listed.
-
-        The value is returned unchanged rather than stripped: what the source calls
-        the agent is the source's to decide, and silently rewriting a key would
-        make the identity depend on this engine's idea of trailing space.
-        """
-        if not value.strip():
-            raise ValueError("must contain a non-whitespace character")
-        return value
-
-    @property
-    def task_creation_source(self) -> AgentCreationSource:
-        """The creation source in the shape a task stores it."""
-        return AgentCreationSource(root=self.creation_source)
-
-    @property
-    def service_names(self) -> list[str]:
-        """Service names this agent emits telemetry under, if the sensor saw any.
-
-        The link between a discovered agent and traces already arriving, and read off
-        the creation source rather than duplicated as a field of its own so there is
-        one place it can come from.
-        """
-        return list(self.creation_source.observations.service_names)
 
 
 class TaskResolutionMethod(str, Enum):

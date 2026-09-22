@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import Any, Dict, Union
 
 import httpx
+from arthur_common.models.agent_discovery_schemas import DiscoveredAgentRecord
 from arthur_common.models.agent_governance_schemas import EnrichedTaskResponse
 from arthur_common.models.common_schemas import (
     ExamplesConfig,
@@ -67,10 +68,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from weaviate.collections.classes.grpc import HybridFusion, TargetVectorJoinType
 
 from config.database_config import DatabaseConfig
-from schemas.agent_discovery_schemas import (
-    DiscoveredAgentRecord,
-    ResolveDiscoveredAgentsResponse,
-)
+from schemas.agent_discovery_schemas import ResolveDiscoveredAgentsResponse
 from schemas.agentic_prompt_schemas import AgenticPrompt
 from schemas.enums import (
     RagAPIKeyAuthenticationProviderEnum,

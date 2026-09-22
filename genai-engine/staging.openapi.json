@@ -22268,13 +22268,75 @@
                         "type": "string",
                         "minLength": 1,
                         "title": "External Id",
-                        "description": "The source's own identifier for this agent, and the identity the whole feature keys on. Required: a record without one has no stable identity, and routing it to the unmapped task would silently collapse every such finding together. The connector's output contract rejects it upstream; this bound is the engine's own backstop."
+                        "description": "Stable identity from the source. Required, and canonical: no identity resolution runs across sensors in v1."
                     },
                     "name": {
                         "type": "string",
                         "minLength": 1,
                         "title": "Name",
-                        "description": "Human-readable agent name, used as the task name when a task is minted. Never rewrites the name of a task that already exists -- renaming on every scan would churn a field people sort and search on."
+                        "description": "Human-readable agent name."
+                    },
+                    "last_seen": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Last Seen",
+                        "description": "When the source last observed this agent."
+                    },
+                    "llm_models": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/LLMModel"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Llm Models"
+                    },
+                    "tools": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/Tool"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Tools"
+                    },
+                    "sub_agents": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/SubAgent"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Sub Agents"
+                    },
+                    "data_sources": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/DataSource"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Data Sources"
                     },
                     "creation_source": {
                         "oneOf": [
@@ -22289,7 +22351,7 @@
                             }
                         ],
                         "title": "Creation Source",
-                        "description": "The sensor that reported this agent, its upstream address and what it observed.",
+                        "description": "The sensor that reported this agent, its upstream address and what it observed. Supplied by the connector, never by the source's query.",
                         "discriminator": {
                             "propertyName": "type",
                             "mapping": {
@@ -22316,10 +22378,11 @@
                 "required": [
                     "external_id",
                     "name",
+                    "last_seen",
                     "creation_source"
                 ],
                 "title": "DiscoveredAgentRecord",
-                "description": "One record from a discovery scan, on its way to becoming a task.\n\nTask-shaped and keyed on ``external_id``: everything the engine needs to mint a\ntask, plus the identity the source knows the agent by. The scan job builds one of\nthese per row its connector returned, after that row has passed the connector's\noutput contract (``DiscoveryOutputRecord``)."
+                "description": "One record from a discovery scan, on its way to becoming a task.\n\n`DiscoveryOutputRecord` is what a source's QUERY must return; this is what a\nCONNECTOR hands onward, which is the same columns plus the two things only the\nconnector knows. Modelled as an extension rather than a separate shape because that\nis the actual relationship, and because the alternative -- putting `creation_source`\non the output contract itself -- would make a customer's SPL nominally owe a column\nno query can produce, and would force `required_columns()` to be hand-listed rather\nthan derived.\n\n**Column validation runs against `DiscoveryOutputRecord`, never against this.**\n`required_columns()` is inherited and would answer for this model's fields too, so a\nvalidator that reaches for it through a record instance gets the wrong answer."
             },
             "DisplaySettingsResponse": {
                 "properties": {
@@ -31304,6 +31367,7 @@
                 "properties": {
                     "instance": {
                         "type": "string",
+                        "minLength": 1,
                         "title": "Instance",
                         "description": "Instance that was scanned: an account, project, SIEM workspace or device. Part of the address, so two instances of one vendor stay distinct."
                     },
@@ -31333,6 +31397,7 @@
                     },
                     "resource_id": {
                         "type": "string",
+                        "minLength": 1,
                         "title": "Resource Id",
                         "description": "The resource within that instance, in the namespace `resource_kind` names. For endpoints this is the software, with the device in `instance` -- the grain is per (software, device)."
                     },

@@ -7,8 +7,10 @@ rejected at the boundary.
 """
 
 import uuid
+from datetime import datetime, timezone
 
 import pytest
+from arthur_common.models.agent_discovery_schemas import DiscoveredAgentRecord
 from arthur_common.models.agent_governance_schemas import (
     AgentObservations,
     SIEMAgentCreationSource,
@@ -17,20 +19,22 @@ from arthur_common.models.agent_governance_schemas import (
 
 from db_models import DatabaseTask
 from db_models.telemetry_models import DatabaseServiceNameTaskMapping
-from schemas.agent_discovery_schemas import (
-    DiscoveredAgentRecord,
-    TaskResolutionMethod,
-)
+from schemas.agent_discovery_schemas import TaskResolutionMethod
 from tests.clients.base_test_client import (
     GenaiEngineTestClientBase,
     override_get_db_session,
 )
+
+# Every record carries the time its source last saw the agent. Resolution does not read
+# it, so one fixed instant keeps it out of the way of what these tests are about.
+LAST_SEEN = datetime(2026, 9, 1, tzinfo=timezone.utc)
 
 
 def _record(external_id: str, name: str, service_names=()) -> DiscoveredAgentRecord:
     return DiscoveredAgentRecord(
         external_id=external_id,
         name=name,
+        last_seen=LAST_SEEN,
         creation_source=SIEMAgentCreationSource(
             vendor="splunk_enterprise",
             address=SourceAddress(

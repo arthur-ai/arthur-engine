@@ -2,6 +2,20 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 09/22/2026
+- **CHANGE** for **URL**: /api/v2/agent-tasks  the `items/creation_source/anyOf[subschema #1: AgentCreationSource]/oneOf[subschema #1: GCPAgentCreationSource]/address/anyOf[subschema #1: SourceAddress]/instance` response property's minLength was set to `1` for the response status `200`
+- **CHANGE** for **URL**: /api/v2/agent-tasks  the `items/creation_source/anyOf[subschema #1: AgentCreationSource]/oneOf[subschema #1: GCPAgentCreationSource]/address/anyOf[subschema #1: SourceAddress]/resource_id` response property's minLength was set to `1` for the response status `200`
+- **CHANGE** for **URL**: /api/v2/agent-tasks  the `items/creation_source/anyOf[subschema #1: AgentCreationSource]/oneOf[subschema #2: OTELAgentCreationSource]/address/anyOf[subschema #1: SourceAddress]/instance` response property's minLength was set to `1` for the response status `200`
+- **CHANGE** for **URL**: /api/v2/agent-tasks  the `items/creation_source/anyOf[subschema #1: AgentCreationSource]/oneOf[subschema #2: OTELAgentCreationSource]/address/anyOf[subschema #1: SourceAddress]/resource_id` response property's minLength was set to `1` for the response status `200`
+- **CHANGE** for **URL**: /api/v2/agent-tasks  the `items/creation_source/anyOf[subschema #1: AgentCreationSource]/oneOf[subschema #3: ManualAgentCreationSource]/address/anyOf[subschema #1: SourceAddress]/instance` response property's minLength was set to `1` for the response status `200`
+- **CHANGE** for **URL**: /api/v2/agent-tasks  the `items/creation_source/anyOf[subschema #1: AgentCreationSource]/oneOf[subschema #3: ManualAgentCreationSource]/address/anyOf[subschema #1: SourceAddress]/resource_id` response property's minLength was set to `1` for the response status `200`
+- **CHANGE** for **URL**: /api/v2/agent-tasks  the `items/creation_source/anyOf[subschema #1: AgentCreationSource]/oneOf[subschema #4: CloudAgentCreationSource]/address/instance` response property's minLength was set to `1` for the response status `200`
+- **CHANGE** for **URL**: /api/v2/agent-tasks  the `items/creation_source/anyOf[subschema #1: AgentCreationSource]/oneOf[subschema #4: CloudAgentCreationSource]/address/resource_id` response property's minLength was set to `1` for the response status `200`
+- **CHANGE** for **URL**: /api/v2/agent-tasks  the `items/creation_source/anyOf[subschema #1: AgentCreationSource]/oneOf[subschema #5: SIEMAgentCreationSource]/address/instance` response property's minLength was set to `1` for the response status `200`
+- **CHANGE** for **URL**: /api/v2/agent-tasks  the `items/creation_source/anyOf[subschema #1: AgentCreationSource]/oneOf[subschema #5: SIEMAgentCreationSource]/address/resource_id` response property's minLength was set to `1` for the response status `200`
+- **CHANGE** for **URL**: /api/v2/agent-tasks  the `items/creation_source/anyOf[subschema #1: AgentCreationSource]/oneOf[subschema #6: EndpointAgentCreationSource]/address/instance` response property's minLength was set to `1` for the response status `200`
+- **CHANGE** for **URL**: /api/v2/agent-tasks  the `items/creation_source/anyOf[subschema #1: AgentCreationSource]/oneOf[subschema #6: EndpointAgentCreationSource]/address/resource_id` response property's minLength was set to `1` for the response status `200`
+
 # 09/21/2026
 - **CHANGE** for **URL**: /api/v2/agent-tasks/resolve  endpoint added
 

@@ -7,9 +7,11 @@ is tested at the scale it has to work at rather than with two rows.
 """
 
 import uuid
+from datetime import datetime, timezone
 from typing import Generator, Iterable
 
 import pytest
+from arthur_common.models.agent_discovery_schemas import DiscoveredAgentRecord
 from arthur_common.models.agent_governance_schemas import (
     AgentObservations,
     EndpointAgentCreationSource,
@@ -27,15 +29,16 @@ from repositories.metrics_repository import MetricRepository
 from repositories.rules_repository import RuleRepository
 from repositories.service_name_mapping_repository import ServiceNameMappingRepository
 from repositories.tasks_repository import TaskRepository
-from schemas.agent_discovery_schemas import (
-    DiscoveredAgentRecord,
-    TaskResolutionMethod,
-)
+from schemas.agent_discovery_schemas import TaskResolutionMethod
 from services.task.discovery_task_resolution_service import (
     DiscoveryTaskResolutionService,
 )
 from services.trace.trace_ingestion_service import TraceIngestionService
 from tests.clients.base_test_client import override_get_db_session
+
+# Every record carries the time its source last saw the agent. Resolution does not read
+# it, so one fixed instant keeps it out of the way of what these tests are about.
+LAST_SEEN = datetime(2026, 9, 1, tzinfo=timezone.utc)
 
 
 @pytest.fixture
@@ -88,6 +91,7 @@ def _endpoint_record(
     return DiscoveredAgentRecord(
         external_id=external_id,
         name=name or external_id,
+        last_seen=LAST_SEEN,
         task_id=task_id,
         creation_source=EndpointAgentCreationSource(
             vendor="jamf_pro",
@@ -111,6 +115,7 @@ def _siem_record(
     return DiscoveredAgentRecord(
         external_id=external_id,
         name=name or external_id,
+        last_seen=LAST_SEEN,
         creation_source=SIEMAgentCreationSource(
             vendor="splunk_enterprise",
             address=SourceAddress(
@@ -433,12 +438,15 @@ def test_record_without_an_external_id_never_reaches_resolution():
     creation_source = _siem_record("placeholder").creation_source
 
     with pytest.raises(ValidationError):
-        DiscoveredAgentRecord(name="Checkout Agent", creation_source=creation_source)
+        DiscoveredAgentRecord(
+            name="Checkout Agent", creation_source=creation_source, last_seen=LAST_SEEN
+        )
 
     with pytest.raises(ValidationError):
         DiscoveredAgentRecord(
             external_id="",
             name="Checkout Agent",
+            last_seen=LAST_SEEN,
             creation_source=creation_source,
         )
 
@@ -449,6 +457,7 @@ def test_record_without_an_external_id_never_reaches_resolution():
         DiscoveredAgentRecord(
             external_id="   ",
             name="Checkout Agent",
+            last_seen=LAST_SEEN,
             creation_source=creation_source,
         )
 
@@ -462,6 +471,7 @@ def test_record_with_a_blank_name_is_refused():
         DiscoveredAgentRecord(
             external_id="splunk-1",
             name="  ",
+            last_seen=LAST_SEEN,
             creation_source=creation_source,
         )
 
@@ -545,5 +555,6 @@ def test_a_source_a_scan_cannot_be_is_rejected():
         DiscoveredAgentRecord(
             external_id="checkout-agent",
             name="Checkout Agent",
+            last_seen=LAST_SEEN,
             creation_source=OTELAgentCreationSource(),
         )
