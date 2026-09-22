@@ -147,7 +147,7 @@ class Matcher:
         catalog: Mapping[str, Any],
         routes: Mapping[str, Any],
         logger: Optional[logging.Logger] = None,
-        catalog_source: Optional[str] = None,
+        catalog_source: Optional[bytes] = None,
     ) -> None:
         self._catalog = dict(catalog)
         self._routes = dict(routes)
@@ -197,13 +197,18 @@ class Matcher:
         change rather than an image rebuild, and so an engine with no route out to the
         internet can still be updated. The floor is what an unconfigured source gets.
         """
-        catalog_text = catalog_yaml if catalog_yaml else _FLOOR_CATALOG.read_text()
-        routes_text = routes_yaml if routes_yaml else _FLOOR_ROUTES.read_text()
-        catalog = yaml.safe_load(catalog_text)
-        routes = yaml.safe_load(routes_text)
+        catalog_bytes = (
+            catalog_yaml.encode() if catalog_yaml else _FLOOR_CATALOG.read_bytes()
+        )
+        routes_bytes = (
+            routes_yaml.encode() if routes_yaml else _FLOOR_ROUTES.read_bytes()
+        )
+        catalog = yaml.safe_load(catalog_bytes.decode("utf-8"))
+        routes = yaml.safe_load(routes_bytes.decode("utf-8"))
         if not isinstance(catalog, dict) or not isinstance(routes, dict):
             raise ValueError("catalog and routes must each parse to a YAML mapping")
-        return cls(catalog, routes, logger, catalog_source=catalog_text)
+        _validate(catalog, routes)
+        return cls(catalog, routes, logger, catalog_source=catalog_bytes)
 
     @property
     def catalog_sha(self) -> str:
@@ -218,6 +223,11 @@ class Matcher:
         perfectly stable number that silently agrees with nothing: measured on the
         vendored catalog, file bytes give dbb22a107953 and a normalized dump gives
         9557c8387835. Only the first joins against upstream's own telemetry.
+
+        Bytes rather than decoded text for the same reason. `Path.read_text()` performs
+        universal-newline translation, so a CRLF catalog decodes to LF and re-encodes to
+        different bytes than the file holds -- a hash that is stable, plausible, and not
+        the one upstream computed.
         """
         if self._catalog_source is None:
             # Built from a mapping with no source text. Still stable and still useful
@@ -225,7 +235,7 @@ class Matcher:
             # is marked rather than passed off as one.
             blob = yaml.safe_dump(self._catalog, sort_keys=True).encode()
             return "norm:" + hashlib.sha256(blob).hexdigest()[:12]
-        return hashlib.sha256(self._catalog_source.encode()).hexdigest()[:12]
+        return hashlib.sha256(self._catalog_source).hexdigest()[:12]
 
     @property
     def agent_count(self) -> int:
@@ -307,6 +317,40 @@ class Matcher:
             ),
             permissions=tuple(p for p in perms.split(",") if p),
         )
+
+
+def _validate(catalog: Mapping[str, Any], routes: Mapping[str, Any]) -> None:
+    """Fail a malformed catalog once, at load, rather than once per device.
+
+    The vendored matcher reaches for these keys directly, and it builds its registry and
+    index inside `classify()` -- which runs per device. So a catalog missing `agents`, or
+    an agent missing `id`, raises KeyError on the first Mac, the second, and the ten
+    thousandth, each time as a scan failure naming a key rather than a config naming
+    itself. A source config is the one place a human types this, so it is worth saying
+    which entry is wrong.
+    """
+    agents = catalog.get("agents")
+    if not isinstance(agents, list):
+        raise ValueError("catalog has no 'agents' list")
+    for i, agent in enumerate(agents):
+        if not isinstance(agent, dict):
+            raise ValueError(f"catalog agent at index {i} is not a mapping")
+        for key in ("id", "name", "classification"):
+            if not agent.get(key):
+                where = agent.get("id") or f"index {i}"
+                raise ValueError(f"catalog agent {where} has no '{key}'")
+
+    if not isinstance(routes.get("platforms"), list):
+        raise ValueError("routes has no 'platforms' list")
+    declared = routes.get("routes")
+    if not isinstance(declared, dict):
+        raise ValueError("routes has no 'routes' mapping")
+    for name, spec in declared.items():
+        if not isinstance(spec, dict):
+            raise ValueError(f"route {name} is not a mapping")
+        for key in ("kind", "match"):
+            if not spec.get(key):
+                raise ValueError(f"route {name} has no '{key}'")
 
 
 def is_gap(row: Mapping[str, Any]) -> bool:

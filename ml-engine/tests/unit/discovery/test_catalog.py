@@ -262,3 +262,89 @@ def test_real_payload_reconciles_and_collapses_routes() -> None:
     # The grain actually collapsing something, on real evidence rather than a fixture.
     assert evidence > len(result.findings)
     assert result.scanned_at is not None
+
+
+class TestLoadTimeValidation:
+    """A malformed catalog fails once, at load, not once per device.
+
+    The vendored matcher reaches for these keys directly and rebuilds its index inside
+    classify(), which runs per Mac -- so without this a bad config raises KeyError on
+    every device in the fleet, each time as a scan failure naming a key rather than a
+    config naming itself.
+    """
+
+    @pytest.mark.parametrize(
+        "catalog,expected",
+        [
+            ({"version": 2}, "no 'agents' list"),
+            (
+                {"version": 2, "agents": [{"name": "x", "classification": "c"}]},
+                "index 0",
+            ),
+            (
+                {"version": 2, "agents": [{"id": "aider", "classification": "c"}]},
+                "aider has no 'name'",
+            ),
+            ({"version": 2, "agents": ["not-a-mapping"]}, "not a mapping"),
+        ],
+    )
+    def test_a_malformed_catalog_is_refused_with_the_entry_named(
+        self,
+        catalog: dict,
+        expected: str,
+    ) -> None:
+        """The message names the agent id when there is one, else its index."""
+        with pytest.raises(ValueError, match=expected):
+            Matcher.from_source(catalog_yaml=yaml.safe_dump(catalog))
+
+    @pytest.mark.parametrize(
+        "routes,expected",
+        [
+            ({"routes": {}}, "no 'platforms' list"),
+            ({"platforms": ["darwin"]}, "no 'routes' mapping"),
+            (
+                {"platforms": ["darwin"], "routes": {"npm": {"kind": "npm"}}},
+                "route npm has no 'match'",
+            ),
+            (
+                {"platforms": ["darwin"], "routes": {"npm": {"match": "exact"}}},
+                "route npm has no 'kind'",
+            ),
+        ],
+    )
+    def test_malformed_routes_are_refused_with_the_route_named(
+        self,
+        routes: dict,
+        expected: str,
+    ) -> None:
+        with pytest.raises(ValueError, match=expected):
+            Matcher.from_source(
+                catalog_yaml=CATALOG,
+                routes_yaml=yaml.safe_dump(routes),
+            )
+
+    def test_the_vendored_floor_passes_its_own_validation(self) -> None:
+        """The guard must not have made the shipped catalog unloadable."""
+        assert Matcher.from_source().agent_count == 22
+
+
+class TestCatalogHashUsesFileBytes:
+    """`catalog_sha` exists to join against upstream's telemetry, so it must be upstream's
+    number -- which is sha256 over the file's BYTES."""
+
+    def test_the_floor_still_matches_upstreams_value(self) -> None:
+        assert Matcher.from_source().catalog_sha == "dbb22a107953"
+
+    def test_crlf_does_not_change_the_hash_the_way_read_text_would(
+        self,
+        tmp_path: pathlib.Path,
+    ) -> None:
+        """Path.read_text() performs universal-newline translation, so a CRLF catalog
+        decodes to LF and re-encodes to different bytes than the file holds -- a hash
+        that is stable, plausible, and not the one upstream computed."""
+        import hashlib
+
+        crlf = CATALOG.replace("\n", "\r\n")
+        expected = hashlib.sha256(crlf.encode()).hexdigest()[:12]
+        assert Matcher.from_source(catalog_yaml=crlf).catalog_sha == expected
+        assert expected != hashlib.sha256(CATALOG.encode()).hexdigest()[:12]

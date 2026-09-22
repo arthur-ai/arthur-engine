@@ -31,6 +31,7 @@ import binascii
 import gzip
 import io
 import json
+import zlib
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Optional
@@ -211,7 +212,13 @@ def read(value: Optional[str]) -> Envelope:
 
     try:
         raw = _gunzip_bounded(blob)
-    except (OSError, EOFError, ValueError) as exc:
+    except (OSError, EOFError, ValueError, zlib.error) as exc:
+        # zlib.error is listed explicitly because it derives from Exception and from
+        # neither OSError nor ValueError. gzip raises BadGzipFile (an OSError) for a bad
+        # header and EOFError for a truncated member, but a member with a GOOD header and
+        # a corrupted deflate body raises zlib.error -- which would escape this function,
+        # break the never-raises contract above, and fail a whole fleet scan for one
+        # device's bad value.
         return _malformed(f"gzip did not decompress: {exc}")
 
     try:

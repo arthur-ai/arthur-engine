@@ -214,3 +214,26 @@ def test_reader_recovers_real_collector_output_byte_for_byte() -> None:
     assert env.outcome is EnvelopeOutcome.OK
     assert len(env.rows) == len(json.loads(expected))
     assert {r["kind"] for r in env.rows} >= {"app", "scan"}
+
+
+def test_a_corrupted_deflate_body_is_malformed_rather_than_an_exception() -> None:
+    """zlib.error derives from Exception, not OSError or ValueError.
+
+    gzip raises BadGzipFile (an OSError) for a bad header and EOFError for a truncated
+    member, so both were already caught. A member with a GOOD header and a corrupted
+    body raises zlib.error, which escaped -- breaking the never-raises contract and
+    failing an entire fleet scan for one device's bad value.
+    """
+    buf = io.BytesIO()
+    with gzip.GzipFile(fileobj=buf, mode="wb") as gz:
+        gz.write(json.dumps([row() for _ in range(40)]).encode())
+    raw = bytearray(buf.getvalue())
+    for i in range(
+        20,
+        60,
+    ):  # corrupt the deflate stream, leave the 10-byte header intact
+        raw[i] ^= 0xFF
+
+    env = read(FRAME_PREFIX + base64.b64encode(bytes(raw)).decode())
+    assert env.outcome is EnvelopeOutcome.MALFORMED
+    assert "gzip did not decompress" in (env.detail or "")
