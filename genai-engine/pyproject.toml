@@ -1,6 +1,6 @@
 [project]
 name = "arthur-genai-engine"
-version = "2.1.932"
+version = "2.1.938"
 description = ""
 authors = [{ name = "Arthur", email = "engineering@arthur.ai" }]
 readme = "README.md"
@@ -17,7 +17,7 @@ dependencies = [
   "sse-starlette==3.4.11",
   "fastapi-sqlalchemy==0.2.1",
   "alembic==1.20.0",
-  "boto3==1.43.97",
+  "boto3==1.43.98",
   "python-dotenv==1.2.3",
   "psycopg2-binary==2.9.13",
   "sqlalchemy==2.0.54",
