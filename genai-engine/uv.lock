@@ -8,7 +8,7 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "0001-01-01T00:00:00Z" # This has no effect and is included for backwards compatibility when using relative exclude-newer values.
+exclude-newer = "2026-09-19T22:13:26.769480001Z"
 exclude-newer-span = "P3D"
 
 [options.exclude-newer-package]
@@ -144,7 +144,7 @@ wheels = [
 
 [[package]]
 name = "arthur-client"
-version = "1.4.2682"
+version = "1.4.2683"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "authlib" },
@@ -156,9 +156,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/5d/a9/59ec372d9730159f10a0e99299f644948b90ea0a060d754c2d2bd87b51d0/arthur_client-1.4.2682.tar.gz", hash = "sha256:c5de21ca683cf01debe9c8772161e5917d7e3fff5fa1967f1079b3e16f0a40e5", size = 498536, upload-time = "2026-09-22T17:12:35.116Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ed/3f/83ca99c0ab0e53d44eed468f4266a30d76496dd57ed7234b22ded04a7716/arthur_client-1.4.2683.tar.gz", hash = "sha256:14e0d1556a3135d6d7024561dbcba62d39f1af0d5edafa911284fc907a15f18b", size = 498535, upload-time = "2026-09-22T21:13:22.037Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/12/12/6c95c06879c1edc2f8bd7fe1c6c2ad9b831c2f7f4b1722c1cd2c9a44133b/arthur_client-1.4.2682-py3-none-any.whl", hash = "sha256:8ddf5a04841fa1f07caa2f1eb93f7f1d0cdc0392b3cdeea23b5189f7f5cdc6b4", size = 1744872, upload-time = "2026-09-22T17:12:32.929Z" },
+    { url = "https://files.pythonhosted.org/packages/42/27/c6ad5f9b8eb8aed286a33954935f1b76b37b56100cd851ec6c306b35affc/arthur_client-1.4.2683-py3-none-any.whl", hash = "sha256:6f175d4f142fce15f4bc9d97c8552fc3ea01f0ab97b1b09f44035ee1b7ce63fa", size = 1744872, upload-time = "2026-09-22T21:13:24.179Z" },
 ]
 
 [[package]]
@@ -186,7 +186,7 @@ wheels = [
 
 [[package]]
 name = "arthur-genai-engine"
-version = "2.1.938"
+version = "2.1.939"
 source = { editable = "." }
 dependencies = [
     { name = "alembic" },
@@ -281,7 +281,7 @@ performance = [
 requires-dist = [
     { name = "alembic", specifier = "==1.20.0" },
     { name = "amplitude-analytics", specifier = ">=1.1.5,<2" },
-    { name = "arthur-client", specifier = "==1.4.2682" },
+    { name = "arthur-client", specifier = "==1.4.2683" },
     { name = "arthur-common", specifier = "==2.4.81" },
     { name = "authlib", specifier = "==1.8.0" },
     { name = "azure-storage-blob", specifier = "==12.30.2" },
@@ -3836,13 +3836,13 @@ resolution-markers = [
     "sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32'",
 ]
 dependencies = [
-    { name = "filelock" },
-    { name = "fsspec" },
-    { name = "jinja2" },
-    { name = "networkx" },
-    { name = "setuptools" },
-    { name = "sympy" },
-    { name = "typing-extensions" },
+    { name = "filelock", marker = "sys_platform != 'linux' and sys_platform != 'win32'" },
+    { name = "fsspec", marker = "sys_platform != 'linux' and sys_platform != 'win32'" },
+    { name = "jinja2", marker = "sys_platform != 'linux' and sys_platform != 'win32'" },
+    { name = "networkx", marker = "sys_platform != 'linux' and sys_platform != 'win32'" },
+    { name = "setuptools", marker = "sys_platform != 'linux' and sys_platform != 'win32'" },
+    { name = "sympy", marker = "sys_platform != 'linux' and sys_platform != 'win32'" },
+    { name = "typing-extensions", marker = "sys_platform != 'linux' and sys_platform != 'win32'" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/c4/3a/ed0f4d4d1dcde03bced7aac9a28e800abcdc0cbd06b6775044c9fbd877b7/torch-2.13.0-cp312-cp312-macosx_14_0_arm64.whl", hash = "sha256:2fe228aba290d14b9f31b049be550dbd469c3fd3013d7a19705b30454da97027", size = 111213045, upload-time = "2026-07-08T16:05:22.997Z" },
@@ -3856,13 +3856,13 @@ resolution-markers = [
     "sys_platform == 'linux' or sys_platform == 'win32'",
 ]
 dependencies = [
-    { name = "filelock" },
-    { name = "fsspec" },
-    { name = "jinja2" },
-    { name = "networkx" },
-    { name = "setuptools" },
-    { name = "sympy" },
-    { name = "typing-extensions" },
+    { name = "filelock", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+    { name = "fsspec", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+    { name = "jinja2", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+    { name = "networkx", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+    { name = "setuptools", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+    { name = "sympy", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+    { name = "typing-extensions", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
 ]
 wheels = [
     { url = "https://download-r2.pytorch.org/whl/cpu/torch-2.13.0%2Bcpu-cp312-cp312-linux_s390x.whl", hash = "sha256:ffadde149901c8afa138daa38d898264003cfcf1a3336ca5cd964b5af227d867", upload-time = "2026-07-08T19:28:41Z" },
