@@ -2112,9 +2112,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@rollup/rollup-linux-x64-gnu@npm:4.63.3":
-  version: 4.63.3
-  resolution: "@rollup/rollup-linux-x64-gnu@npm:4.63.3"
+"@rollup/rollup-linux-x64-gnu@npm:4.63.4":
+  version: 4.63.4
+  resolution: "@rollup/rollup-linux-x64-gnu@npm:4.63.4"
   conditions: os=linux & cpu=x64 & libc=glibc
   languageName: node
   linkType: hard
@@ -8817,7 +8817,7 @@ __metadata:
     "@mui/material": "npm:7.3.11"
     "@mui/x-charts": "npm:8.29.3"
     "@mui/x-date-pickers": "npm:7.29.4"
-    "@rollup/rollup-linux-x64-gnu": "npm:4.63.3"
+    "@rollup/rollup-linux-x64-gnu": "npm:4.63.4"
     "@tailwindcss/vite": "npm:4.3.3"
     "@tanstack/eslint-plugin-query": "npm:5.103.1"
     "@tanstack/react-form": "npm:1.33.5"
