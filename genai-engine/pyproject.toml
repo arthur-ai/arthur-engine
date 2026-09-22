@@ -1,13 +1,13 @@
 [project]
 name = "arthur-genai-engine"
-version = "2.1.931"
+version = "2.1.938"
 description = ""
 authors = [{ name = "Arthur", email = "engineering@arthur.ai" }]
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
 
 dependencies = [
-  # Held at 2.x: litellm 1.100.1 requires openai<3.0.0. Renovate's openai v3 bump (#2134)
+  # Held at 2.x: litellm 1.101.0 requires openai<3.0.0. Renovate's openai v3 bump (#2134)
   # edited this pin without relocking, so uv.lock kept 2.54.0 and `uv lock` could not
   # re-resolve at all. Raise this only once litellm supports openai v3.
   "openai==2.54.0",
@@ -17,7 +17,7 @@ dependencies = [
   "sse-starlette==3.4.11",
   "fastapi-sqlalchemy==0.2.1",
   "alembic==1.20.0",
-  "boto3==1.43.97",
+  "boto3==1.43.98",
   "python-dotenv==1.2.3",
   "psycopg2-binary==2.9.13",
   "sqlalchemy==2.0.54",
@@ -73,16 +73,16 @@ dependencies = [
   "sentencepiece==0.2.2",
   "gliner==0.2.29",
   "openinference-semantic-conventions>=0.1.12,<0.2",
-  "litellm==1.100.1",
+  "litellm==1.101.0",
   "jinja2>=3.1.6,<4",
   "python-benedict>=0.38,<0.39",
   "weaviate-client>=4.17.0,<5",
-  "arthur-common==2.4.79",
+  "arthur-common==2.4.80",
   "google-auth>=2.48.0,<3",
   "google-cloud-aiplatform>=1.38",
   "google-cloud-trace>=1.11.0,<2",
   "opentelemetry-semantic-conventions>=0.60b1,<0.61",
-  "arthur-client==1.4.2677",
+  "arthur-client==1.4.2681",
 ]
 
 [project.scripts]
