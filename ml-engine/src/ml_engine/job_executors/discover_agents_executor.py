@@ -10,7 +10,6 @@ to the Agents API. Both shapes are live until D-14 migrates GCP onto a source co
 """
 
 import logging
-from math import ceil
 from typing import List, NoReturn, Optional
 
 from arthur_client.api_bindings import Agent as ScopeAgent
@@ -33,12 +32,13 @@ from genai_client import (
 from job_executors.discovery_scan import (
     SOURCE_SCANNERS,
     DiscoveryRecordSink,
+    DiscoveryScannerFactory,
     DiscoveryScanOutcome,
-    DiscoverySourceScanner,
     UnsupportedDiscoveryVendorError,
     finalize_outcome,
     run_source_scan,
 )
+from log_redaction import register_secrets, secret_values
 
 
 class DiscoverAgentsExecutor:
@@ -50,7 +50,7 @@ class DiscoverAgentsExecutor:
         genai_engine_api_key: str,
         discovery_sources_client: Optional[DiscoverySourcesV1Api] = None,
         record_sink: Optional[DiscoveryRecordSink] = None,
-        scanners: Optional[dict[str, DiscoverySourceScanner]] = None,
+        scanners: Optional[dict[str, DiscoveryScannerFactory]] = None,
     ) -> None:
         self.agents_client = agents_client
         self.logger = logger
@@ -58,7 +58,9 @@ class DiscoverAgentsExecutor:
         self.genai_engine_api_key = genai_engine_api_key
         self.discovery_sources_client = discovery_sources_client
         self.record_sink = record_sink
-        self.scanners = SOURCE_SCANNERS if scanners is None else scanners
+        # A copy, so registering a scanner on one executor cannot change the registry
+        # every other executor in the process reads.
+        self.scanners = dict(SOURCE_SCANNERS if scanners is None else scanners)
 
     def execute(self, job: Job, job_spec: DiscoverAgentsJobSpec) -> None:
         """Run the job, on whichever of the two shapes it carries."""
@@ -84,12 +86,12 @@ class DiscoverAgentsExecutor:
         """
         try:
             config = self._require_source_config(job_spec)
+            lookback_hours = self._lookback_hours(job_spec)
         except ValueError as e:
             self._fail_before_scan(self._unscannable_outcome(job, job_spec), e)
 
         workspace_id = str(job_spec.workspace_id)
         data_plane_id = str(job_spec.data_plane_id)
-        lookback_hours = self._lookback_hours(job_spec, config)
 
         outcome = DiscoveryScanOutcome(
             discovery_source_config_id=str(job_spec.discovery_source_config_id),
@@ -112,8 +114,8 @@ class DiscoverAgentsExecutor:
             },
         )
 
-        scanner = self.scanners.get(config.vendor)
-        if scanner is None:
+        scanner_factory = self.scanners.get(config.vendor)
+        if scanner_factory is None:
             self._fail_before_scan(
                 outcome,
                 UnsupportedDiscoveryVendorError(
@@ -139,7 +141,7 @@ class DiscoverAgentsExecutor:
             workspace_id=workspace_id,
             data_plane_id=data_plane_id,
             outcome=outcome,
-            scanner=scanner,
+            scanner=scanner_factory(),
             sink=self.record_sink,
             logger=self.logger,
             credentials=credentials,
@@ -162,9 +164,10 @@ class DiscoverAgentsExecutor:
 
         Deliberately not carried in the job spec -- the route says as much -- so it is
         fetched here rather than dispatched with the job. The values serve twice: the
-        scanner authenticates with them, and anything this job writes to the job log
-        has them removed by exact match, which is the only form of redaction that does
-        not depend on guessing how a vendor SDK formats its errors.
+        scanner authenticates with them, and they are registered with the job's logger,
+        which removes them by exact match from everything it ships -- the message, the
+        traceback and the job error alike. Exact removal is the only form of redaction
+        that does not depend on guessing how a vendor SDK formats its errors.
         """
         if self.discovery_sources_client is None:
             self._fail_before_scan(
@@ -182,11 +185,13 @@ class DiscoverAgentsExecutor:
                     config_id,
                 )
             )
-            return credentials
         except Exception as e:
             # Reported without a scrub set: nothing was returned, so there is no
             # credential to take back out, and the failure names only the config.
             self._fail_before_scan(outcome, e)
+
+        register_secrets(self.logger, secret_values(credentials))
+        return credentials
 
     def _unscannable_outcome(
         self,
@@ -214,15 +219,7 @@ class DiscoverAgentsExecutor:
             vendor=config.vendor if config is not None else None,
             job_id=str(job.id),
             scan_id=str(job_spec.scan_id) if job_spec.scan_id else None,
-            lookback_hours=(
-                self._lookback_hours(job_spec, config)
-                if config is not None
-                else (
-                    int(job_spec.lookback_hours)
-                    if job_spec.lookback_hours is not None
-                    else None
-                )
-            ),
+            lookback_hours=job_spec.lookback_hours,
         )
 
     def _fail_before_scan(
@@ -269,20 +266,19 @@ class DiscoverAgentsExecutor:
         return job_spec.discovery_source_config
 
     @staticmethod
-    def _lookback_hours(
-        job_spec: DiscoverAgentsJobSpec,
-        config: DiscoverySourceConfigSpec,
-    ) -> int:
-        """The window to scan, in whole hours.
+    def _lookback_hours(job_spec: DiscoverAgentsJobSpec) -> int:
+        """The window to scan, in whole hours, exactly as D-06 dispatched it.
 
-        D-06 already rounds the config's window up into `lookback_hours`; recomputing
-        it from the config is the fallback for a job dispatched before that landed, and
-        keeps the two from disagreeing about which window actually ran.
+        D-06 rounds the config's window up into `lookback_hours`, and that is the only
+        window read here -- the config's own `lookback_window_seconds` is never
+        consulted, so the window that ran is always the one the Platform recorded. The
+        wire format cannot deliver a null (the binding substitutes its 720-hour default
+        for a missing or null field), so the check below guards only a spec built in
+        Python, and fails the job rather than guessing a window.
         """
-        if job_spec.lookback_hours is not None:
-            return int(job_spec.lookback_hours)
-        # Rounded up, like D-06 does: a 90-minute window scans 2 hours rather than 1.
-        return ceil(int(config.lookback_window_seconds) / 3600)
+        if job_spec.lookback_hours is None:
+            raise ValueError("Discovery scan job carries no lookback_hours.")
+        return int(job_spec.lookback_hours)
 
     def _execute_gcp_sweep(self, job_spec: DiscoverAgentsJobSpec) -> None:
         """Trigger synchronous polling then sync enriched agent-tasks to the Agents API."""

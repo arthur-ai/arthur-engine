@@ -15,19 +15,20 @@ than per engine.
 
 Credentials are not a seam: D-05 has landed, so the executor reads this config's
 sensitive fields at the point of the scan and hands them to the scanner. They serve
-twice, because the same values are what this module removes by exact match from
-anything bound for the job log.
+twice, because the same values are registered with the job's logger, which removes
+them by exact match from everything it ships (see `log_redaction`).
 """
 
 import json
 import logging
-import re
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Iterator, Mapping, Optional, Protocol, Sequence
+from typing import Callable, Iterator, Mapping, Optional, Protocol, Sequence
 
 from arthur_client.api_bindings import DiscoverySourceConfigSpec
 from arthur_common.models.agent_discovery_schemas import DiscoveryOutputRecord
+
+from log_redaction import redact_secrets, secret_values
 
 
 class UnsupportedDiscoveryVendorError(Exception):
@@ -70,12 +71,10 @@ class DiscoveryRecordSink(Protocol):
     present it as a count of new agents.
 
     A batch must be published atomically: an implementation that raises has committed
-    nothing. The return value is the only channel by which the caller learns what the
-    Platform accepted, so a sink that commits half a batch and then throws has no way
-    to say so, and the run under-reports its own contribution. An implementation that
-    genuinely cannot be atomic owes this module an exception carrying the accepted
-    count, applied to the outcome before the failure propagates -- but the count still
-    has to come from the sink either way, so atomicity is the simpler contract.
+    nothing, and the run counts nothing for that batch. The return value is the only
+    channel by which the caller learns what the Platform accepted, so a sink that
+    commits half a batch and then throws would leave the run under-reporting its own
+    contribution. That is a bug in the sink, not a case this module accounts for.
     """
 
     def publish(
@@ -87,80 +86,16 @@ class DiscoveryRecordSink(Protocol):
     ) -> int: ...
 
 
-# Vendor -> scanner, populated by D-13 as connectors land. Keyed on
-# DiscoverySourceVendor values, e.g. "splunk_enterprise".
-SOURCE_SCANNERS: dict[str, DiscoverySourceScanner] = {}
+# Builds a fresh scanner for one scan. A factory rather than an instance because
+# low-memory jobs run as threads in one interpreter: two configs for the same vendor
+# are two concurrent jobs, and a shared scanner would share whatever per-scan state it
+# holds -- session, paging cursor, the credentials it was just handed -- between them.
+DiscoveryScannerFactory = Callable[[], DiscoverySourceScanner]
 
-
-_REDACTED = "[redacted]"
-
-# The minimum length of a credential value worth removing by exact match. A value
-# shorter than this is not a credential anyone issued, and scrubbing every occurrence
-# of a two-character string would shred the message it was meant to protect.
-_MIN_SECRET_LENGTH = 4
-
-# The backstop, for credentials nobody handed us. `retrieve_discovery_source_credentials`
-# returns the *configured* fields, so exact removal covers those completely -- but not
-# what they are exchanged for at run time. An OAuth access token minted from a
-# client_secret, or a Splunk session key minted from a password, exists only inside the
-# scan, and is exactly what an SDK stringifies into an Authorization header when the
-# call fails. These three rules cover that shape and nothing else: a generic
-# `key: value` rule was tried and removed, because everything it caught was already
-# covered exactly, while `token:`, `auth:` and `cookie:` in ordinary error prose made it
-# eat the diagnosis.
-_SECRET_PATTERNS: tuple[re.Pattern[str], ...] = (
-    # Any auth scheme, named or not: Bearer, Basic, Splunk, AWS4-HMAC-SHA256. Matching
-    # the header rather than a list of schemes is what keeps an unrecognised one from
-    # redacting the scheme word and leaving the credential behind it.
-    re.compile(
-        r"(?P<keep>\bauthorization\b[\"']?\s*[:=]\s*[\"']?)[^,;}\]\n\"']+",
-        re.IGNORECASE,
-    ),
-    # The same value logged without its header name. Length-bounded so the word
-    # "token" followed by a short English word is left alone.
-    re.compile(
-        r"(?P<keep>\b(?:bearer|basic|splunk|token)\s+)[A-Za-z0-9\-._~+/=]{8,}",
-        re.IGNORECASE,
-    ),
-    # Credential-named query parameters only, so a failing search still reports the
-    # parameters that explain it (output_mode, count, earliest).
-    re.compile(
-        r"(?P<keep>[?&](?:[\w-]*"
-        r"(?:token|key|sig|signature|secret|password|auth|credential)[\w-]*)=)"
-        r"[^&\s#]+",
-        re.IGNORECASE,
-    ),
-)
-
-
-def redact_secrets(text: str, known_secrets: Sequence[str] = ()) -> str:
-    """Strip credentials out of text bound for the job log.
-
-    Exact removal of the values in `known_secrets` is the control: those are the fields
-    the Platform just handed this scan, so removing them needs no guess about how a
-    vendor SDK formats its errors, and cannot take anything else with it. The patterns
-    are a backstop for credentials derived during the scan, which were never in that
-    set -- see `_SECRET_PATTERNS`.
-    """
-    # Longest first: a short secret that happens to be a substring of a longer one must
-    # not blank part of it and leave the remainder looking like ordinary text.
-    for secret in sorted(set(known_secrets), key=len, reverse=True):
-        if len(secret) >= _MIN_SECRET_LENGTH:
-            text = text.replace(secret, _REDACTED)
-    for pattern in _SECRET_PATTERNS:
-        text = pattern.sub(lambda match: f"{match.group('keep')}{_REDACTED}", text)
-    return text
-
-
-def secret_values(credentials: Mapping[str, Optional[str]]) -> tuple[str, ...]:
-    """The scrub set for one scan: every value the credentials route returned.
-
-    The route returns sensitive fields *only*, so every value in it is a secret and no
-    filtering is needed here. Keys are left out deliberately -- a field named
-    "username" is not sensitive on its own, and removing the key names would redact the
-    vocabulary an error uses to say which field was wrong.
-    """
-    return tuple(value for value in credentials.values() if value)
+# Vendor -> scanner factory, populated by D-13 as connectors land. Keyed on
+# DiscoverySourceVendor values, e.g. "splunk_enterprise". A scanner class is itself a
+# factory, so registering one is `SOURCE_SCANNERS["splunk_enterprise"] = SplunkScanner`.
+SOURCE_SCANNERS: dict[str, DiscoveryScannerFactory] = {}
 
 
 @dataclass
@@ -168,8 +103,8 @@ class DiscoveryScanOutcome:
     """What one source contributed to one run, and how it ended.
 
     This is the shape D-11's run store will persist. Until it exists the outcome is
-    emitted as JSON in the job log -- the log exporter ships only the message text, so
-    a structured record has to be *in* the message to survive the trip to the Platform.
+    emitted as JSON in the job log -- the log exporter drops `extra`, so a structured
+    record has to be *in* the message to survive the trip to the Platform.
     """
 
     # Everything naming the source is optional: a job whose spec is too malformed to
@@ -245,6 +180,10 @@ def run_source_scan(
     the job fails -- the Platform derives this source's leg of the scan from job state,
     and a source that failed must not read as succeeded just because it published
     something first.
+
+    The catch is `BaseException`: a scan killed part-way -- the job agent shutting down,
+    or the scanner's generator being closed -- still runs the `finally` below, and
+    without a recorded failure its outcome would report a partial scan as a success.
     """
     known_secrets = secret_values(credentials)
     try:
@@ -254,7 +193,7 @@ def run_source_scan(
             accepted = sink.publish(workspace_id, data_plane_id, config, batch)
             outcome.batches_published += 1
             outcome.records_published += accepted
-    except Exception as e:
+    except BaseException as e:
         outcome.record_failure(e, known_secrets)
         logger.error(
             f"Discovery scan of source config '{config.name}' failed after "
@@ -285,6 +224,6 @@ def finalize_outcome(
     rather than silence for the sources that never got as far as the vendor call.
     """
     outcome.finished_at = datetime.now(timezone.utc)
-    # In the message, not in `extra`: ScopeJobLogExporter ships getMessage() only.
+    # In the message, not in `extra`: ScopeJobLogExporter does not ship `extra`.
     logger.info(json.dumps(outcome.to_log_payload(), sort_keys=True))
     return outcome

@@ -2,7 +2,7 @@ import json
 import logging
 from datetime import datetime, timezone
 from typing import Iterator, Mapping, Sequence
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, call
 
 import pytest
 from arthur_client.api_bindings import (
@@ -14,10 +14,11 @@ from arthur_common.models.agent_discovery_schemas import DiscoveryOutputRecord
 
 from job_executors.discover_agents_executor import DiscoverAgentsExecutor
 from job_executors.discovery_scan import (
+    SOURCE_SCANNERS,
     UnsupportedDiscoveryVendorError,
-    redact_secrets,
-    secret_values,
 )
+from job_log_exporter import ExportContextedLogger, ScopeJobLogExporter
+from log_redaction import redact_secrets, secret_values
 
 WORKSPACE_ID = "11111111-1111-1111-1111-111111111111"
 DATA_PLANE_ID = "22222222-2222-2222-2222-222222222222"
@@ -92,13 +93,32 @@ class RecordingSink:
         return len(records)
 
 
+class RaisingSink(RecordingSink):
+    """Accepts batches until the given one, then throws having committed nothing."""
+
+    def __init__(self, fail_on_batch: int) -> None:
+        super().__init__()
+        self.fail_on_batch = fail_on_batch
+
+    def publish(
+        self,
+        workspace_id: str,
+        data_plane_id: str,
+        config: DiscoverySourceConfigSpec,
+        records: Sequence[DiscoveryOutputRecord],
+    ) -> int:
+        if len(self.batches) + 1 == self.fail_on_batch:
+            raise RuntimeError("platform rejected the batch")
+        return super().publish(workspace_id, data_plane_id, config, records)
+
+
 class FakeScanner:
     """Yields the given batches, then optionally throws."""
 
     def __init__(
         self,
         batches: list[list[DiscoveryOutputRecord]],
-        raises: Exception | None = None,
+        raises: BaseException | None = None,
     ) -> None:
         self.batches = batches
         self.raises = raises
@@ -147,7 +167,7 @@ def _executor(
         genai_engine_api_key="key",
         discovery_sources_client=credentials_client or _credentials_client(),
         record_sink=sink or RecordingSink(),
-        scanners={vendor: scanner} if scanner is not None else {},
+        scanners={vendor: lambda: scanner} if scanner is not None else {},
     )
 
 
@@ -278,7 +298,7 @@ def test_missing_record_sink_still_reports_an_outcome() -> None:
         genai_engine_url="http://genai",
         genai_engine_api_key="key",
         record_sink=None,
-        scanners={"splunk_enterprise": FakeScanner([[_record("a")]])},
+        scanners={"splunk_enterprise": lambda: FakeScanner([[_record("a")]])},
     )
 
     with pytest.raises(RuntimeError, match="No discovery record sink"):
@@ -360,15 +380,121 @@ def test_a_rejected_job_publishes_nothing() -> None:
     assert sink.batches == []
 
 
-def test_lookback_falls_back_to_the_configs_window_rounded_up() -> None:
+def test_lookback_is_the_dispatched_window_not_the_configs() -> None:
+    """D-06 already rounded the config's window into lookback_hours; that is what runs."""
     scanner = FakeScanner([])
 
     _executor(scanner).execute(
         _job(),
-        _spec(_config(lookback_window_seconds=5400), lookback_hours=None),
+        _spec(_config(lookback_window_seconds=5400), lookback_hours=6),
     )
 
-    assert scanner.calls == [("splunk prod", 2)]
+    assert scanner.calls == [("splunk prod", 6)]
+
+
+def test_job_carrying_no_lookback_is_rejected_rather_than_guessed() -> None:
+    logger = logging.getLogger("test-discovery-outcome-no-lookback")
+    records = _capture(logger)
+    scanner = FakeScanner([[_record("a")]])
+
+    with pytest.raises(ValueError, match="no lookback_hours"):
+        _executor(scanner, logger=logger).execute(
+            _job(),
+            _spec(_config(), lookback_hours=None),
+        )
+
+    outcome = _find_outcome(records)
+    assert outcome["succeeded"] is False
+    assert outcome["lookback_hours"] is None
+    assert scanner.calls == []
+
+
+def test_missing_credentials_client_still_reports_an_outcome() -> None:
+    logger = logging.getLogger("test-discovery-outcome-no-client")
+    records = _capture(logger)
+    sink = RecordingSink()
+    executor = DiscoverAgentsExecutor(
+        agents_client=MagicMock(),
+        logger=logger,
+        genai_engine_url="http://genai",
+        genai_engine_api_key="key",
+        discovery_sources_client=None,
+        record_sink=sink,
+        scanners={"splunk_enterprise": lambda: FakeScanner([[_record("a")]])},
+    )
+
+    with pytest.raises(RuntimeError, match="No discovery sources client"):
+        executor.execute(_job(), _spec(_config()))
+
+    outcome = _find_outcome(records)
+    assert outcome["succeeded"] is False
+    assert outcome["error"].startswith("RuntimeError: No discovery sources client")
+    assert sink.batches == []
+
+
+def test_a_failing_publish_counts_only_the_batches_that_landed() -> None:
+    """The sink's half of the resiliency contract: a batch that raised committed
+    nothing, so it is not counted, while the batches before it still are."""
+    logger = logging.getLogger("test-discovery-outcome-sink-raises")
+    records = _capture(logger)
+    sink = RaisingSink(fail_on_batch=2)
+    scanner = FakeScanner([[_record("a"), _record("b")], [_record("c")], [_record("d")]])
+
+    with pytest.raises(RuntimeError, match="platform rejected the batch"):
+        _executor(scanner, sink, logger=logger).execute(_job(), _spec(_config()))
+
+    assert sink.batches == [["a", "b"]]
+    outcome = _find_outcome(records)
+    assert outcome["batches_published"] == 1
+    assert outcome["records_published"] == 2
+    assert outcome["error"] == "RuntimeError: platform rejected the batch"
+    assert outcome["succeeded"] is False
+
+
+def test_a_killed_scan_is_not_reported_as_a_success() -> None:
+    """Shutdown mid-scan skips `except Exception` but still runs the finally."""
+    logger = logging.getLogger("test-discovery-outcome-killed")
+    records = _capture(logger)
+    scanner = FakeScanner([[_record("a"), _record("b")]], raises=KeyboardInterrupt())
+
+    with pytest.raises(KeyboardInterrupt):
+        _executor(scanner, logger=logger).execute(_job(), _spec(_config()))
+
+    outcome = _find_outcome(records)
+    assert outcome["succeeded"] is False
+    assert outcome["error"] == "KeyboardInterrupt: "
+    assert outcome["error_count"] == 1
+    assert outcome["records_published"] == 2
+
+
+def test_every_scan_gets_its_own_scanner() -> None:
+    """Two jobs for the same vendor must not share per-scan state."""
+    built: list[FakeScanner] = []
+
+    def factory() -> FakeScanner:
+        built.append(FakeScanner([[_record("a")]]))
+        return built[-1]
+
+    executor = _executor()
+    executor.scanners = {"splunk_enterprise": factory}
+    executor.execute(_job(), _spec(_config()))
+    executor.execute(_job(), _spec(_config()))
+
+    assert len(built) == 2
+    assert all(len(scanner.calls) == 1 for scanner in built)
+
+
+def test_an_executor_does_not_alias_the_global_registry() -> None:
+    executor = DiscoverAgentsExecutor(
+        agents_client=MagicMock(),
+        logger=logging.getLogger("test-discovery-registry"),
+        genai_engine_url="http://genai",
+        genai_engine_api_key="key",
+    )
+
+    executor.scanners["jamf_pro"] = lambda: FakeScanner([])
+
+    assert "jamf_pro" not in SOURCE_SCANNERS
 
 
 def test_empty_batches_are_not_published() -> None:
@@ -457,6 +583,63 @@ def test_the_backstop_leaves_ordinary_error_prose_alone(message: str) -> None:
     assert redact_secrets(message) == message
 
 
+@pytest.mark.parametrize(
+    "message",
+    [
+        "ConnectionError: splunk enterprise host unreachable",
+        "ValueError: Basic configuration missing for connector",
+        "TimeoutError: token refresh_endpoint timed out",
+        "GET /x?design=modern&assignee=alice&monkey=1&keyword=agents&author=bob",
+        "HTTPError: 400 for https://s3.amazonaws.com/b/o?signature_version=v4",
+    ],
+)
+def test_the_backstop_leaves_scheme_words_and_lookalike_names_alone(
+    message: str,
+) -> None:
+    """A scheme word followed by ordinary prose, and a parameter whose name merely
+    contains a credential word, are not credentials."""
+    assert redact_secrets(message) == message
+
+
+@pytest.mark.parametrize(
+    ("message", "expected"),
+    [
+        (
+            "HTTPError: 401 Authorization: Bearer abc12345 while GET "
+            "https://splunk.example.com/services/search returned 401",
+            "HTTPError: 401 Authorization: Bearer [redacted] while GET "
+            "https://splunk.example.com/services/search returned 401",
+        ),
+        (
+            "HTTPError: 401 Authorization: abc12345 while GET /services/search",
+            "HTTPError: 401 Authorization: [redacted] while GET /services/search",
+        ),
+        (
+            "GET /services/search?access_token=abc12345&count=100 returned 401",
+            "GET /services/search?access_token=[redacted]&count=100 returned 401",
+        ),
+    ],
+)
+def test_the_backstop_takes_the_credential_and_not_the_rest_of_the_line(
+    message: str,
+    expected: str,
+) -> None:
+    """An SDK stringifying the request it failed on puts the credential mid-line;
+    the URL and status after it are the diagnosis."""
+    assert redact_secrets(message) == expected
+
+
+def test_redacting_twice_changes_nothing() -> None:
+    """The filter and the exporter both scrub, so a second pass must be a no-op."""
+    message = (
+        f"401 for {CONFIGURED_SECRET}; Authorization: Splunk drv-fake-access-token-value"
+        " at /x?api_key=abc12345&count=1"
+    )
+    once = redact_secrets(message, (CONFIGURED_SECRET,))
+
+    assert redact_secrets(once, (CONFIGURED_SECRET,)) == once
+
+
 def test_the_scan_is_handed_the_credentials_it_authenticates_with() -> None:
     scanner = FakeScanner([[_record("a")]])
     credentials = {"username": "svc", "password": CONFIGURED_SECRET}
@@ -493,6 +676,60 @@ def test_neither_kind_of_credential_reaches_the_job_log() -> None:
     # Not just the outcome: every message this job emits is shipped.
     for secret in (CONFIGURED_SECRET, "drv-fake-access-token-value"):
         assert not any(secret in record.getMessage() for record in records)
+
+
+def test_neither_kind_of_credential_reaches_the_platform() -> None:
+    """Through the real exporter, as JobExecutor wires it.
+
+    A record logged with exc_info ships three payloads -- the message, the formatted
+    traceback, and `str(exc)` as a job error -- and JobExecutor logs the escaping
+    exception that way a second time. Every one of them, and the stdout path, must come
+    out clean.
+    """
+    derived = "drv-fake-access-token-value"
+    logger = logging.getLogger("test-discovery-exporter-redaction")
+    logger.setLevel(logging.INFO)
+    stdout_records = _capture(logger)
+    jobs_client = MagicMock()
+    exporter = ScopeJobLogExporter(
+        job_id="job",
+        job_run_id="run",
+        jobs_client=jobs_client,
+    )
+    scanner = FakeScanner(
+        [[_record("a")]],
+        raises=RuntimeError(
+            f"401 for user svc ({CONFIGURED_SECRET}); "
+            f"retried with Authorization: Splunk {derived}",
+        ),
+    )
+
+    with ExportContextedLogger(logger, exporter):
+        try:
+            _executor(scanner, logger=logger).execute(_job(), _spec(_config()))
+        except RuntimeError as e:
+            # JobExecutor.execute's own handler.
+            logger.error("Error executing job", exc_info=e)
+
+    shipped = [
+        log.log
+        for posted in jobs_client.post_job_logs.call_args_list
+        for log in posted.args[2].logs
+    ] + [
+        error.error
+        for posted in jobs_client.post_job_errors.call_args_list
+        for error in posted.kwargs["job_errors"].errors
+    ]
+    assert jobs_client.post_job_errors.call_count == 2
+    assert any("401 for user svc" in text for text in shipped)
+    formatter = logging.Formatter()
+    printed = [formatter.format(record) for record in stdout_records]
+    for secret in (CONFIGURED_SECRET, derived):
+        assert not any(secret in text for text in shipped)
+        assert not any(secret in text for text in printed)
+    # The filter is the job's, and leaves with it.
+    assert logger.filters == []
+    assert jobs_client.post_job_logs.call_args_list[0] != call()
 
 
 def test_a_credentials_fetch_failure_still_reports_an_outcome() -> None:
