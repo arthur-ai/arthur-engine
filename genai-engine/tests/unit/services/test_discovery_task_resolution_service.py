@@ -442,6 +442,97 @@ def test_record_without_an_external_id_never_reaches_resolution():
             creation_source=creation_source,
         )
 
+    # A space is not an identity. `min_length` alone lets one through, and two agents
+    # whose sources both reported one would key to the same mapping and collapse onto
+    # a single task -- through the backstop meant to prevent exactly that.
+    with pytest.raises(ValidationError):
+        DiscoveredAgentRecord(
+            external_id="   ",
+            name="Checkout Agent",
+            creation_source=creation_source,
+        )
+
+
+@pytest.mark.unit_tests
+def test_record_with_a_blank_name_is_refused():
+    """A whitespace-only name would mint a task that reads as nameless everywhere."""
+    creation_source = _siem_record("placeholder").creation_source
+
+    with pytest.raises(ValidationError):
+        DiscoveredAgentRecord(
+            external_id="splunk-1",
+            name="  ",
+            creation_source=creation_source,
+        )
+
+
+@pytest.mark.unit_tests
+def test_names_keep_the_whitespace_the_source_reported(resolver, tracked_tasks):
+    """Only blank values are refused; what a source calls an agent is left alone.
+
+    Stripping would make the identity depend on this engine's idea of trailing space,
+    which is the sort of quiet rewrite that turns one agent into two across a version
+    bump.
+    """
+    run = _run_id()
+    external_id = f" {run}-padded "
+
+    [resolved] = resolver.resolve_records(
+        [_endpoint_record(external_id, name=" Checkout Agent ")],
+    )
+    tracked_tasks.append(resolved.task_id)
+
+    assert resolved.external_id == external_id
+    assert resolved.name == " Checkout Agent "
+
+
+@pytest.mark.unit_tests
+def test_losing_a_concurrent_identity_claim_yields_to_the_winner(
+    resolver,
+    db_session,
+    tracked_tasks,
+):
+    """The race rung 4 cannot read its way out of.
+
+    Between reading the mappings and writing one, another request -- a second
+    connector's batch, or trace ingestion auto-creating for a service name this scan
+    is discovering -- can take `external_id` for a task of its own. `create_mapping`
+    hands back the row that won, so the record resolves to the winner instead of
+    reporting a task no key points at, and the task minted on the way is not left
+    behind to be counted as an agent nobody will ever attribute a finding to.
+
+    The winner is planted directly, which is what the losing request would have found
+    had it committed a moment later.
+    """
+    run = _run_id()
+    external_id = f"{run}-contested"
+
+    [winner] = resolver.resolve_records([_siem_record(f"{run}-winner")])
+    tracked_tasks.append(winner.task_id)
+
+    # Claim the identity behind the resolver's back, after it has read the mappings.
+    mapping_repo = ServiceNameMappingRepository(db_session)
+    original_create = resolver.mapping_repo.create_mapping
+
+    def claim_first(key: str, task_id: str):
+        if key == external_id:
+            mapping_repo.create_mapping(key, winner.task_id)
+        return original_create(key, task_id)
+
+    resolver.mapping_repo.create_mapping = claim_first
+
+    [resolved] = resolver.resolve_records([_endpoint_record(external_id)])
+
+    assert resolved.task_id == winner.task_id
+    assert resolved.resolved_by is TaskResolutionMethod.EXTERNAL_ID
+    # The task minted before the claim was lost is gone, not orphaned in the inventory.
+    assert (
+        db_session.query(DatabaseTask)
+        .filter(DatabaseTask.name == external_id, DatabaseTask.id != winner.task_id)
+        .count()
+        == 0
+    )
+
 
 @pytest.mark.unit_tests
 def test_a_source_a_scan_cannot_be_is_rejected():

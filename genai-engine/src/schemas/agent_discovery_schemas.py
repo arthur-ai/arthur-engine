@@ -7,7 +7,7 @@ from arthur_common.models.agent_governance_schemas import (
     EndpointAgentCreationSource,
     SIEMAgentCreationSource,
 )
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class ExecutePollingResponse(BaseModel):
@@ -84,6 +84,25 @@ class DiscoveredAgentRecord(BaseModel):
         "IDs. Every record still comes back with one.",
     )
 
+    @field_validator("external_id", "name")
+    @classmethod
+    def _must_not_be_blank(cls, value: str) -> str:
+        """Reject a value that is only whitespace.
+
+        `min_length` alone lets a single space through, and a space is not an
+        identity: two agents whose sources both report one would key to the same
+        mapping and collapse onto one task -- the failure `external_id` exists to
+        prevent, arriving through the backstop meant to stop it. A blank `name`
+        would mint a task that reads as nameless everywhere it is listed.
+
+        The value is returned unchanged rather than stripped: what the source calls
+        the agent is the source's to decide, and silently rewriting a key would
+        make the identity depend on this engine's idea of trailing space.
+        """
+        if not value.strip():
+            raise ValueError("must contain a non-whitespace character")
+        return value
+
     @property
     def task_creation_source(self) -> AgentCreationSource:
         """The creation source in the shape a task stores it."""
@@ -152,9 +171,3 @@ class ResolveDiscoveredAgentsResponse(BaseModel):
     resolved: list[ResolvedAgentTask] = Field(
         description="Resolution outcome per record, in request order",
     )
-
-    @property
-    def created_count(self) -> int:
-        return sum(
-            1 for r in self.resolved if r.resolved_by == TaskResolutionMethod.CREATED
-        )

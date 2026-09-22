@@ -76,13 +76,14 @@ def test_resolve_returns_a_task_per_record_in_request_order(
         assert all(
             r.resolved_by is TaskResolutionMethod.CREATED for r in response.resolved
         )
-        assert response.created_count == 3
 
         # Resubmitting the same batch is the re-scan case, over the wire.
         status_code, second = client.resolve_discovered_agents(records)
         assert status_code == 200
         assert [r.task_id for r in second.resolved] == task_ids
-        assert second.created_count == 0
+        assert all(
+            r.resolved_by is TaskResolutionMethod.EXTERNAL_ID for r in second.resolved
+        )
     finally:
         _cleanup(task_ids)
 

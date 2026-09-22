@@ -14,6 +14,7 @@ from schemas.agent_discovery_schemas import (
     ResolvedAgentTask,
     TaskResolutionMethod,
 )
+from schemas.internal_schemas import Task
 
 logger = logging.getLogger(__name__)
 
@@ -163,7 +164,14 @@ class DiscoveryTaskResolutionService:
             f"Minted task '{created_task.name}' ({created_task.id}) for discovered "
             f"record '{record.external_id}'",
         )
-        self._map_keys_to_task(record, created_task.id, known_mappings)
+        identity_owner_id = self._map_keys_to_task(
+            record,
+            created_task.id,
+            known_mappings,
+        )
+        if identity_owner_id != created_task.id:
+            return self._yield_identity_to(record, created_task, identity_owner_id)
+
         return ResolvedAgentTask(
             external_id=record.external_id,
             task_id=created_task.id,
@@ -171,12 +179,49 @@ class DiscoveryTaskResolutionService:
             resolved_by=TaskResolutionMethod.CREATED,
         )
 
+    def _yield_identity_to(
+        self,
+        record: DiscoveredAgentRecord,
+        created_task: Task,
+        owner_task_id: str,
+    ) -> ResolvedAgentTask:
+        """Give up a task minted for an identity another request claimed first.
+
+        Between rung 4 reading the mappings and writing one, a concurrent request --
+        another connector's batch, or trace ingestion auto-creating for a service name
+        this scan is discovering -- can take `external_id` for a task of its own. The
+        mapping is immutable and the other side won, so this request's task is now a
+        task no key points at: invisible to every later scan, but counted in the
+        inventory and the coverage numbers as an agent nobody will ever attribute a
+        finding to. It is deleted rather than left, because it was minted moments ago
+        by this call and nothing has had the chance to reference it.
+
+        The record then resolves to the winner and reports `EXTERNAL_ID`, which is
+        what actually answered: by the time the caller hears back, the identity was
+        already mapped. Reporting `CREATED` would tell the scan job it minted a task
+        that no longer exists.
+        """
+        logger.info(
+            f"Discovered record '{record.external_id}' lost its identity claim to "
+            f"task '{owner_task_id}'; discarding the task minted for it "
+            f"({created_task.id})",
+        )
+        self.task_repo.delete_task(created_task.id)
+
+        owner_task = self._require_task(owner_task_id, record.external_id)
+        return ResolvedAgentTask(
+            external_id=record.external_id,
+            task_id=owner_task.id,
+            name=owner_task.name,
+            resolved_by=TaskResolutionMethod.EXTERNAL_ID,
+        )
+
     def _map_keys_to_task(
         self,
         record: DiscoveredAgentRecord,
         task_id: str,
         known_mappings: dict[str, str],
-    ) -> None:
+    ) -> str:
         """Key this record's identity, and the names it emits under, to its task.
 
         Mapping `external_id` is what makes the next scan a lookup instead of a
@@ -185,13 +230,46 @@ class DiscoveryTaskResolutionService:
 
         Mappings are immutable, so a key already pointing somewhere is left alone: the
         first answer wins, and a source that starts reporting a name another task
-        already owns does not steal it.
+        already owns does not steal it. `create_mapping` enforces that against
+        concurrent writers too -- on a conflict it returns the mapping that won rather
+        than raising -- so what goes into `known_mappings` is the row that is actually
+        in the table, not the one this call hoped to write.
+
+        The identity is claimed before any service name, and a lost claim stops the
+        rest: the service names would otherwise be keyed to a task rung 4 is about to
+        delete, and the request that won the identity maps them to the winner anyway.
+
+        Returns:
+            The task that owns `record.external_id` once the writes are done, which is
+            `task_id` unless another request claimed the identity first. Only rung 4
+            acts on this: the lower rungs resolved to a task that already existed, so
+            losing the race leaves nothing behind to clean up.
         """
-        for key in (record.external_id, *record.service_names):
-            if key in known_mappings:
-                continue
-            self.mapping_repo.create_mapping(key, task_id)
-            known_mappings[key] = task_id
+        owner_task_id = self._claim_key(record.external_id, task_id, known_mappings)
+        if owner_task_id != task_id:
+            return owner_task_id
+
+        for service_name in record.service_names:
+            self._claim_key(service_name, task_id, known_mappings)
+
+        return owner_task_id
+
+    def _claim_key(
+        self,
+        key: str,
+        task_id: str,
+        known_mappings: dict[str, str],
+    ) -> str:
+        """Point one key at a task, and report which task it actually points at.
+
+        `create_mapping` returns the mapping that won on a conflict rather than
+        raising, so the task recorded here is the row that is in the table -- which is
+        not always the one this call asked for.
+        """
+        if key not in known_mappings:
+            known_mappings[key] = self.mapping_repo.create_mapping(key, task_id).task_id
+
+        return known_mappings[key]
 
     def _require_task(self, task_id: str, external_id: str) -> DatabaseTask:
         """Fetch a task the caller or a mapping pointed at, archived ones included.
