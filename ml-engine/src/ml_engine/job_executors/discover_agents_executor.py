@@ -18,6 +18,7 @@ from arthur_client.api_bindings import (
     AgentsV1Api,
     DiscoverAgentsJobSpec,
     DiscoverySourceConfigSpec,
+    DiscoverySourcesV1Api,
     Job,
     PutAgents,
 )
@@ -47,6 +48,7 @@ class DiscoverAgentsExecutor:
         logger: logging.Logger,
         genai_engine_url: str,
         genai_engine_api_key: str,
+        discovery_sources_client: Optional[DiscoverySourcesV1Api] = None,
         record_sink: Optional[DiscoveryRecordSink] = None,
         scanners: Optional[dict[str, DiscoverySourceScanner]] = None,
     ) -> None:
@@ -54,6 +56,7 @@ class DiscoverAgentsExecutor:
         self.logger = logger
         self.genai_engine_url = genai_engine_url
         self.genai_engine_api_key = genai_engine_api_key
+        self.discovery_sources_client = discovery_sources_client
         self.record_sink = record_sink
         self.scanners = SOURCE_SCANNERS if scanners is None else scanners
 
@@ -128,6 +131,8 @@ class DiscoverAgentsExecutor:
                 ),
             )
 
+        credentials = self._source_credentials(outcome)
+
         run_source_scan(
             config=config,
             lookback_hours=lookback_hours,
@@ -137,6 +142,7 @@ class DiscoverAgentsExecutor:
             scanner=scanner,
             sink=self.record_sink,
             logger=self.logger,
+            credentials=credentials,
         )
 
         self.logger.info(
@@ -147,6 +153,40 @@ class DiscoverAgentsExecutor:
                 "records_published": outcome.records_published,
             },
         )
+
+    def _source_credentials(
+        self,
+        outcome: DiscoveryScanOutcome,
+    ) -> dict[str, Optional[str]]:
+        """Read this config's sensitive fields, once, at the point of the scan.
+
+        Deliberately not carried in the job spec -- the route says as much -- so it is
+        fetched here rather than dispatched with the job. The values serve twice: the
+        scanner authenticates with them, and anything this job writes to the job log
+        has them removed by exact match, which is the only form of redaction that does
+        not depend on guessing how a vendor SDK formats its errors.
+        """
+        if self.discovery_sources_client is None:
+            self._fail_before_scan(
+                outcome,
+                RuntimeError(
+                    "No discovery sources client is configured; source credentials "
+                    "cannot be read.",
+                ),
+            )
+
+        config_id = outcome.discovery_source_config_id
+        try:
+            credentials: dict[str, Optional[str]] = (
+                self.discovery_sources_client.retrieve_discovery_source_credentials(
+                    config_id,
+                )
+            )
+            return credentials
+        except Exception as e:
+            # Reported without a scrub set: nothing was returned, so there is no
+            # credential to take back out, and the failure names only the config.
+            self._fail_before_scan(outcome, e)
 
     def _unscannable_outcome(
         self,
