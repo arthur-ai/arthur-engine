@@ -80,7 +80,7 @@ implicit_reexport = true
 explicit_package_bases = true
 mypy_path = "src/ml_engine"
 namespace_packages = true
-exclude = ["src/genai_client"]
+exclude = ["src/genai_client", "src/ml_engine/discovery/_vendor"]
 
 [tool.isort]
 profile = "black"
