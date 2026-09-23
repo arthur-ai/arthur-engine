@@ -1,0 +1,101 @@
+name: Endpoint AI Discovery CI
+
+# Two gates, and the second one is why this file exists. test/lint.sh is static: it reads
+# dist/collect.sh and proves the framing is there, that the payload carries the vendored
+# tree and that every flag the collector passes is still one bin/discover accepts. It
+# cannot prove the collector RUNS, and for a long time nothing did -- the extraction
+# preamble was exercised only when somebody ran it by hand on their own Mac. The defect
+# table in the integration's CLAUDE.md already holds one of exactly that shape: an empty
+# bash array under `set -u`, bash 3.2 only, which worked locally and died on every Mac.
+#
+# The queries, the runner, the Docker guard and the wall-clock bound are NOT tested here.
+# They are vendored at a pinned ref and their suite is upstream's -- thirteen VM scenarios
+# and all six Docker daemon states. Re-creating any of it here is how two implementations
+# drifted unnoticed once already.
+
+on:
+  pull_request:
+    paths:
+      - 'integrations/endpoint-ai-discovery/**'
+      - '.github/workflows/endpoint-ai-discovery.yml'
+  push:
+    branches: [dev, main]
+    paths:
+      - 'integrations/endpoint-ai-discovery/**'
+      - '.github/workflows/endpoint-ai-discovery.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: endpoint-ai-discovery-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+defaults:
+  run:
+    working-directory: integrations/endpoint-ai-discovery
+
+jobs:
+  lint:
+    name: Static checks
+    # No osquery and no Mac needed: this reads files. Cheap enough to gate every push.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: test/lint.sh
+        run: test/lint.sh
+
+      # THE COLLECTOR MUST REFUSE BY NAME, NOT BY FALLING OVER. It carries
+      # dist/discovery-darwin.sql alone, and bin/discover picks its artifact from
+      # `uname -s` -- so without the guard the failure on Linux would be a message about a
+      # missing file for what is really a statement about this build.
+      #
+      # ON THE ARTIFACT IT NAMES, NOT ON THE SENTENCE AROUND IT. This matched
+      # `*macOS-only*` until the extraction half moved upstream, and then failed against a
+      # refusal that was working perfectly. That wording is upstream's to change, and
+      # pinning it here turns their prose into a breaking change for this tree.
+      - name: The collector refuses to run off macOS, and says why
+        run: |
+          set +e
+          out="$(dist/collect.sh 2>&1)"; status=$?
+          set -e
+          echo "$out"
+          [ "$status" -eq 1 ] || { echo "::error::expected exit 1 on Linux, got $status"; exit 1; }
+          case "$out" in
+            *discovery-darwin.sql*) echo "ok: refused, naming the artifact it carries" ;;
+            *) echo "::error::the refusal does not name the cause"; exit 1 ;;
+          esac
+
+  collector:
+    name: The deployable, run on a Mac
+    # Pinned rather than macos-latest: a reissued image is drift this should catch rather
+    # than absorb, and the collector's prerequisite claim -- osquery and nothing else -- is
+    # a claim about a stock Mac.
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v5
+
+      # The same version upstream tests against, and the one whose flags were checked when
+      # the wall-clock bound was written: osquery has no per-query timeout, so the bound is
+      # a property of this release, not of osquery in general.
+      - name: Install osquery
+        run: |
+          curl -fsSL -o /tmp/osquery.pkg \
+            "https://pkg.osquery.io/darwin/osquery-${OSQUERY_VERSION}.pkg"
+          sudo installer -pkg /tmp/osquery.pkg -target /
+        env:
+          OSQUERY_VERSION: 5.23.1
+
+      # AS ROOT, BECAUSE A POLICY RUNS IT AS ROOT. The assertions do not depend on it --
+      # the script runs fine unprivileged and says so -- but the row count does, and a
+      # collector that only works for the user who wrote it is the failure this tree keeps
+      # finding. About 15s.
+      - name: test/run-collector.sh
+        run: sudo -n test/run-collector.sh
+
+      # NOT TESTED HERE, AND WORTH SAYING SO. A hosted runner has no Docker, so the
+      # container branch reports `absent` and the cold-daemon ping bound raised to 15s is
+      # not exercised by anything on this page. The daemon states it exists for are
+      # upstream's test/docker_states.sh, against the vendored runner.
+      - name: What this job did not prove
+        run: |
+          echo "no Docker on a hosted runner, so the container branch reported absent"
+          echo "rather than ok, and the 15s cold-ping bound was never reached"
