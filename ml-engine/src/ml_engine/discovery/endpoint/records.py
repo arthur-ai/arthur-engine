@@ -171,7 +171,13 @@ def _last_seen(
     inventory, which is later than when it scanned.
     """
     if scanned_at is not None:
-        return datetime.fromtimestamp(scanned_at, tz=timezone.utc)
+        try:
+            return datetime.fromtimestamp(scanned_at, tz=timezone.utc)
+        except (ValueError, OverflowError, OSError):
+            # A `ver` outside the representable range is unusable, not fatal. Falling
+            # through to the MDM's date -- and then to the skip-with-warning path -- keeps
+            # one device's bad payload from ending the scan for every device behind it.
+            pass
     if reported_at:
         try:
             return datetime.fromisoformat(reported_at.replace("Z", "+00:00"))

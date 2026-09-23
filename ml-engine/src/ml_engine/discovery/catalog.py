@@ -114,9 +114,9 @@ class MatchResult:
         mtime without changing the truth.
         """
         stamps = [
-            int(r["ver"])
-            for r in (*self.scans, *self.gaps)
-            if str(r.get("ver", "")).isdigit()
+            e
+            for e in (_epoch(r.get("ver")) for r in (*self.scans, *self.gaps))
+            if e is not None
         ]
         return max(stamps) if stamps else None
 
@@ -322,6 +322,18 @@ def _validate(catalog: Mapping[str, Any], routes: Mapping[str, Any]) -> None:
         for key in ("kind", "match"):
             if not spec.get(key):
                 raise ValueError(f"route {name} has no '{key}'")
+
+
+def _epoch(value: Any) -> Optional[int]:
+    """A scan row's `ver` as unix seconds, or None if it is not one.
+
+    `str.isdigit()` is true for characters `int()` refuses -- "²" among them -- so the
+    check has to be the conversion itself.
+    """
+    try:
+        return int(str(value))
+    except (TypeError, ValueError):
+        return None
 
 
 def is_gap(row: Mapping[str, Any]) -> bool:

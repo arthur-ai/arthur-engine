@@ -730,3 +730,29 @@ def test_a_transport_failure_that_never_clears_fails_with_the_cause() -> None:
 
     with pytest.raises(JamfError, match="unreachable"):
         list(client_for(Dead([[]])).devices_since(None))
+
+
+@pytest.mark.parametrize("ver", ["999999999999", "-99999999999999"])
+def test_an_out_of_range_scan_timestamp_does_not_end_the_fleet_scan(
+    ver: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """datetime.fromtimestamp raises on a `ver` outside the representable range. That
+    comes off a device payload, so it must cost that device and no others."""
+    payload = frame(
+        [row("npm", "@openai/codex"), row("scan", "packages", ver=ver, extra="ok")],
+    )
+    devices = [
+        computer("bad", payload, ident=1),
+        computer("good", full_payload(), ident=2),
+    ]
+    fake = FakeJamf(devices=devices, page_size=5)
+    monkeypatch.setattr(
+        "discovery.endpoint.jamf.scanner.JamfClient",
+        lambda s, logger=None: client_for(fake),
+    )
+    records = [r for b in JamfScanner().scan(FakeConfig(CATALOG), 0, CREDS) for r in b]  # type: ignore[arg-type]
+
+    # The bad device falls back to the MDM's own report date, which is the designed
+    # behaviour; what matters is that it does not raise and take the rest of the fleet.
+    assert any(r.external_id.startswith("good:") for r in records)

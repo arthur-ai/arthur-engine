@@ -348,3 +348,19 @@ class TestCatalogHashUsesFileBytes:
         expected = hashlib.sha256(crlf.encode()).hexdigest()[:12]
         assert Matcher.from_source(catalog_yaml=crlf).catalog_sha == expected
         assert expected != hashlib.sha256(CATALOG.encode()).hexdigest()[:12]
+
+
+class TestScanTimestamps:
+    """A scan row's `ver` comes off a device payload, so it can be anything."""
+
+    @pytest.mark.parametrize("ver", ["²", "not-a-number", "", "1e9"])
+    def test_an_unparseable_ver_is_ignored_rather_than_raising(self, ver: str) -> None:
+        """`str.isdigit()` is true for characters `int()` refuses -- "²" among them -- so
+        the check has to be the conversion itself."""
+        m = Matcher.from_source(catalog_yaml=CATALOG)
+        assert m.match([scan("apps", ver=ver)]).scanned_at is None
+
+    def test_a_usable_ver_still_wins(self) -> None:
+        m = Matcher.from_source(catalog_yaml=CATALOG)
+        result = m.match([scan("apps", ver="²"), scan("browser", ver="1790100381")])
+        assert result.scanned_at == 1790100381

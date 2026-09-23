@@ -40,7 +40,9 @@ NO_CACHE = "no-cache"
 ROW_COLUMNS = frozenset({"kind", "id", "ver", "loc", "extra", "perms"})
 
 # Three orders of magnitude above the measured ~127 KB payload. Decompressing untrusted
-# bytes without a limit is how a scan job becomes an out-of-memory kill.
+# bytes without a limit is how a scan job becomes an out-of-memory kill. RecursionError is
+# caught alongside the parse errors for the same reason: deeply nested arrays are cheap to
+# write and would otherwise escape.
 MAX_DECOMPRESSED_BYTES = 16 * 1024 * 1024
 
 
@@ -129,6 +131,13 @@ def _validate_rows(
     for i, row in enumerate(doc):
         if not isinstance(row, dict):
             return None, f"row {i} is {type(row).__name__}, expected an object"
+        bad = [k for k, v in row.items() if not isinstance(v, str)]
+        if bad and frozenset(row) == ROW_COLUMNS:
+            # Every column is a JSON string in the six-column contract. A non-string
+            # reaches the matcher as-is -- a null `id` raises TypeError inside its regex
+            # and takes the whole scan with it.
+            return None, f"row {i} has non-string column(s): {sorted(bad)}"
+
         keys = frozenset(row)
         if keys != ROW_COLUMNS:
             missing = sorted(ROW_COLUMNS - keys)
@@ -194,7 +203,7 @@ def read(value: Optional[str]) -> Envelope:
 
     try:
         doc = json.loads(raw)
-    except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+    except (json.JSONDecodeError, UnicodeDecodeError, RecursionError) as exc:
         return _malformed(f"payload is not valid JSON: {exc}")
 
     rows, reason = _validate_rows(doc)
