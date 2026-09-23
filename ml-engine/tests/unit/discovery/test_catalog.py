@@ -460,3 +460,39 @@ class TestCatalogShapes:
 
     def test_the_shipped_floor_still_loads(self) -> None:
         assert Matcher.from_source().agent_count == 22
+
+    def test_a_catalog_sharing_fields_through_an_anchor_still_loads(self) -> None:
+        """`<<` carries a tag PyYAML has no constructor for -- construct_mapping flattens
+        it -- so the duplicate check has to skip it rather than construct it. Otherwise
+        every catalog using an anchor fails to load while yaml.safe_load accepts it."""
+        shared = (
+            "version: 2\n"
+            "classifications: [Coding agent]\n"
+            "_base: &base\n"
+            "  classification: Coding agent\n"
+            "  platforms: [darwin]\n"
+            "agents:\n"
+            "  - id: codex-cli\n"
+            "    name: Codex CLI\n"
+            "    <<: *base\n"
+            "    npm: ['@openai/codex']\n"
+        )
+        m = Matcher.from_source(catalog_yaml=shared)
+        assert m.agent_count == 1
+        result = m.match([row("npm", "@openai/codex")])
+        assert [f.agent_id for f in result.findings] == ["codex-cli"]
+
+    def test_a_merge_key_does_not_disable_duplicate_detection(self) -> None:
+        """The skip must be for the merge tag alone, not for the check."""
+        dupe = (
+            "version: 2\n"
+            "_base: &base {classification: Coding agent, platforms: [darwin]}\n"
+            "agents:\n"
+            "  - id: x\n"
+            "    name: X\n"
+            "    <<: *base\n"
+            "    npm: ['a']\n"
+            "    npm: ['b']\n"
+        )
+        with pytest.raises(ValueError, match="duplicate key"):
+            Matcher.from_source(catalog_yaml=dupe)

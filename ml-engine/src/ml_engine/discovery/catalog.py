@@ -39,9 +39,18 @@ class _StrictLoader(yaml.SafeLoader):  # type: ignore[misc]
     pass
 
 
+# `<<` carries a tag PyYAML has no constructor for -- `construct_mapping` flattens it
+# instead -- so it must be skipped here rather than constructed. Without this, every
+# catalog that shares fields through an anchor fails to load while `yaml.safe_load`
+# accepts it, and the scan dies before matching starts.
+_MERGE_TAG = "tag:yaml.org,2002:merge"
+
+
 def _no_duplicate_keys(loader: "_StrictLoader", node: Any) -> dict[Any, Any]:
     seen = set()
     for key_node, _ in node.value:
+        if key_node.tag == _MERGE_TAG:
+            continue
         key = loader.construct_object(key_node, deep=True)
         if key in seen:
             raise ValueError(
