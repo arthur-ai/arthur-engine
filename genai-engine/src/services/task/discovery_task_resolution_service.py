@@ -218,7 +218,22 @@ class DiscoveryTaskResolutionService:
                 f"Discovered record '{record.external_id}' matched task "
                 f"'{task.name}' ({task.id}) via service name '{service_name}'",
             )
-            self._map_keys_to_task(record, task.id, known_mappings)
+            identity_owner_id = self._map_keys_to_task(
+                record,
+                task.id,
+                known_mappings,
+            )
+            if identity_owner_id != task.id:
+                # Another request claimed `external_id` between this batch reading
+                # the mappings and writing one. The matched task existed before this
+                # call, so there is nothing to discard -- only the answer changes.
+                logger.info(
+                    f"Discovered record '{record.external_id}' lost its identity "
+                    f"claim to task '{identity_owner_id}'; resolving to the owner "
+                    f"instead of '{task.id}'",
+                )
+                return self._resolve_to_owner(record, identity_owner_id)
+
             return ResolvedAgentTask(
                 external_id=record.external_id,
                 task_id=task.id,
@@ -281,7 +296,19 @@ class DiscoveryTaskResolutionService:
             f"({created_task.id})",
         )
         self.task_repo.delete_task(created_task.id)
+        return self._resolve_to_owner(record, owner_task_id)
 
+    def _resolve_to_owner(
+        self,
+        record: DiscoveredAgentRecord,
+        owner_task_id: str,
+    ) -> ResolvedAgentTask:
+        """Resolve a record to the task that won its identity from under this batch.
+
+        Reports `EXTERNAL_ID`, which is what actually answered: by the time the caller
+        hears back, the identity was already mapped, and the next scan resolves the
+        same way at rung 2.
+        """
         owner_task = self._require_task(owner_task_id)
         return ResolvedAgentTask(
             external_id=record.external_id,
@@ -315,9 +342,11 @@ class DiscoveryTaskResolutionService:
 
         Returns:
             The task that owns `record.external_id` once the writes are done, which is
-            `task_id` unless another request claimed the identity first. Only rung 4
-            acts on this: the lower rungs resolved to a task that already existed, so
-            losing the race leaves nothing behind to clean up.
+            `task_id` unless another request claimed the identity first. Every rung
+            that can write the identity acts on it, so the response names the task
+            the table does: rungs 1 and 3 resolve to the owner, and rung 4 also
+            discards the task it minted. Rung 2 read the identity from the view, so
+            its claim never writes and cannot lose.
         """
         owner_task_id = self._claim_key(
             (MappingKeyKind.EXTERNAL_ID, record.external_id),

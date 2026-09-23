@@ -753,6 +753,64 @@ def test_losing_a_concurrent_identity_claim_yields_to_the_winner(
 
 
 @pytest.mark.unit_tests
+def test_losing_the_identity_claim_after_a_service_name_match_yields_to_the_winner(
+    resolver,
+    db_session,
+    tracked_tasks,
+):
+    """The same race, reached through rung 3.
+
+    The record matches task A through a service name, but before its `external_id` is
+    written another request claims it for task B. The mapping is immutable, so the
+    table now routes every later scan to B; reporting A would flip the agent between
+    the two from this scan to the retry. Neither task was minted by this call, so
+    nothing is discarded -- only the answer changes.
+    """
+    run = _run_id()
+    service_name = f"contested-name-{run}"
+    external_id = f"{run}-contested"
+
+    [matched] = resolver.resolve_records(
+        [_siem_record(f"{run}-named", service_names=[service_name])],
+    ).resolved
+    [winner] = resolver.resolve_records([_siem_record(f"{run}-winner")]).resolved
+    tracked_tasks.extend([matched.task_id, winner.task_id])
+
+    # Claim the identity behind the resolver's back, after it has read the mappings.
+    mapping_repo = ServiceNameMappingRepository(db_session)
+    original_create = resolver.mapping_repo.create_mapping
+
+    def claim_first(key: str, task_id: str, key_kind: MappingKeyKind):
+        if key == external_id:
+            mapping_repo.create_mapping(key, winner.task_id, key_kind)
+        return original_create(key, task_id, key_kind)
+
+    resolver.mapping_repo.create_mapping = claim_first
+
+    [resolved] = resolver.resolve_records(
+        [_endpoint_record(external_id, service_names=[service_name])],
+    ).resolved
+
+    assert resolved.task_id == winner.task_id
+    assert resolved.name == winner.name
+    assert resolved.resolved_by is TaskResolutionMethod.EXTERNAL_ID
+    # A retry reads the same answer back instead of flipping to the other task.
+    resolver.mapping_repo.create_mapping = original_create
+    [retried] = resolver.resolve_records(
+        [_endpoint_record(external_id, service_names=[service_name])],
+    ).resolved
+    assert retried.task_id == winner.task_id
+    # The service name stays with the task that already owned it.
+    assert (
+        mapping_repo.get_task_id_by_service_name(
+            service_name,
+            MappingKeyKind.SERVICE_NAME,
+        )
+        == matched.task_id
+    )
+
+
+@pytest.mark.unit_tests
 def test_a_source_a_scan_cannot_be_is_rejected():
     """OTEL and MANUAL are not things a scan finds.
 
