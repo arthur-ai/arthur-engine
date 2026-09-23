@@ -44,6 +44,7 @@ from db_models.rule_result_models import (
 from db_models.task_models import DatabaseTask, DatabaseTaskToRules
 from db_models.agentic_annotation_models import DatabaseAgenticAnnotation
 from db_models.agent_polling_models import DatabaseTaskPollingState
+from db_models.task_provenance_models import DatabaseTaskProvenanceSource
 from db_models.telemetry_models import (
     DatabaseMetric,
     DatabaseMetricResult,
@@ -186,6 +187,7 @@ __all__ = [
     "DatabaseTraceTransformVersion",
     # Agent Polling models
     "DatabaseTaskPollingState",
+    "DatabaseTaskProvenanceSource",
     # Onboarding models
     "DatabaseOnboardingSubmission",
     # Demo certificate models

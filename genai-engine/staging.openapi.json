@@ -1340,29 +1340,79 @@
                     "Tasks"
                 ],
                 "summary": "Get Agent Tasks",
-                "description": "Get agentic tasks with enriched agent metadata (tools, sub-agents, models). Returns only agentic tasks.",
+                "description": "Get agentic tasks with enriched agent metadata (tools, sub-agents, models) and provenance. Returns only agentic tasks. Filter by `discovery_source_id` and `reported_since` to get the tasks one discovery source reported in a window.",
                 "operationId": "get_agent_tasks_api_v2_agent_tasks_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "discovery_source_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string",
+                                    "format": "uuid"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Only return tasks this Discovery Source has reported. A task counts whether the source's scan minted it or resolved to it, so a re-scan returns the agents it found again, not only the new ones.",
+                            "title": "Discovery Source Id"
+                        },
+                        "description": "Only return tasks this Discovery Source has reported. A task counts whether the source's scan minted it or resolved to it, so a re-scan returns the agents it found again, not only the new ones."
+                    },
+                    {
+                        "name": "reported_since",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string",
+                                    "format": "date-time"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Only return tasks a discovery scan reported on or after this time; UTC if no offset is given. Tasks no discovery source has reported are excluded when this filter is set.",
+                            "title": "Reported Since"
+                        },
+                        "description": "Only return tasks a discovery scan reported on or after this time; UTC if no offset is given. Tasks no discovery source has reported are excluded when this filter is set."
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "Successful Response",
                         "content": {
                             "application/json": {
                                 "schema": {
+                                    "type": "array",
                                     "items": {
                                         "$ref": "#/components/schemas/EnrichedTaskResponse"
                                     },
-                                    "type": "array",
                                     "title": "Response Get Agent Tasks Api V2 Agent Tasks Get"
                                 }
                             }
                         }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
                     }
-                },
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ]
+                }
             }
         },
         "/api/v2/agent-tasks/resolve": {
@@ -22711,6 +22761,17 @@
                         "type": "array",
                         "title": "Rules",
                         "description": "Rules associated with this task"
+                    },
+                    "provenance": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/Provenance"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Every sensor that has reported this agent, and where upstream each reported it. Absent only for a task with no creation source recorded."
                     }
                 },
                 "type": "object",
@@ -22721,7 +22782,7 @@
                     "updated_at"
                 ],
                 "title": "EnrichedTaskResponse",
-                "description": "Response model for agent-tasks endpoint with enriched metadata."
+                "description": "The agent-tasks response, with the task's provenance.\n\nExtends the shared model rather than living in it only until `arthur_common` carries\n`provenance` on `EnrichedTaskResponse` itself, at which point this subclass goes.\nNamed the same so the OpenAPI component, and the generated clients built from it,\nkeep their name either way."
             },
             "Eval": {
                 "properties": {
@@ -27669,6 +27730,16 @@
                 ],
                 "title": "PasswordResetRequest"
             },
+            "Platform": {
+                "type": "string",
+                "enum": [
+                    "darwin",
+                    "linux",
+                    "windows"
+                ],
+                "title": "Platform",
+                "description": "Which OS the agent runs on.\n\nA COMPANION TO RunsOn, not a widening of it. ``runs_on`` answers where the machine\nis, this answers which OS it runs. Neither implies the other: a darwin machine can\nbe a managed laptop (``runs_on=ENDPOINT``) or an EC2 Mac instance\n(``runs_on=AWS``), and a linux machine can be either a laptop or a cloud VM.\n\nEnumerated, unlike ``vendor``: this set is bounded and stable, and a typo like\n\"macos\" for \"darwin\" would silently break a filter. Vendors are open and growing,\nwhich is why they are free text."
+            },
             "PromptCompletionRequest": {
                 "properties": {
                     "variables": {
@@ -28390,6 +28461,101 @@
                 ],
                 "title": "PromptVersionResultListResponse",
                 "description": "Paginated list of results for a specific prompt version"
+            },
+            "Provenance": {
+                "properties": {
+                    "sources": {
+                        "items": {
+                            "$ref": "#/components/schemas/ProvenanceSource"
+                        },
+                        "type": "array",
+                        "minItems": 1,
+                        "title": "Sources",
+                        "description": "Every sensor that has reported this agent, one entry each. Grows as sensors corroborate."
+                    },
+                    "runs_on": {
+                        "$ref": "#/components/schemas/RunsOn",
+                        "description": "Deployment substrate the agent runs on. Scalar, unlike sources: where an agent runs is one fact even when several sensors report it, and the more specific answer wins. Defaults to UNKNOWN, which for a SIEM row is usually the honest answer and for a managed laptop is simply correct.",
+                        "default": "unknown"
+                    },
+                    "platform": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/Platform"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "OS the agent runs on, paired with `runs_on` rather than folded into it: neither implies the other, since a darwin machine can be a managed laptop or an EC2 Mac instance. Not endpoint-only -- a SIEM query over host-enriched data can project it, ECS calls it `host.os.platform` with these same values, though a proxy-log query cannot. Absent when the query did not carry it: a column always populated with a guess is worse than one honestly empty."
+                    },
+                    "source_classes": {
+                        "items": {
+                            "$ref": "#/components/schemas/SourceClass"
+                        },
+                        "type": "array",
+                        "title": "Source Classes",
+                        "description": "Distinct source classes behind this agent, in first-seen order.\n\nDerived so it cannot disagree with ``sources``, and serialized because it backs\nthe inventory's \"Found by\" column and filter.",
+                        "readOnly": true
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "sources",
+                    "source_classes"
+                ],
+                "title": "Provenance",
+                "description": "Where an agent was found and what it runs on.\n\nThe single source of truth for both: there is no flat ``infrastructure`` enum\nbeside it and no standalone ``location`` object. Set on the task at resolution\ntime and served through the API intact."
+            },
+            "ProvenanceSource": {
+                "properties": {
+                    "source_class": {
+                        "$ref": "#/components/schemas/SourceClass",
+                        "description": "Where this contribution was observed from."
+                    },
+                    "source_id": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uuid"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Source Id",
+                        "description": "The Discovery Source behind it. Absent for agents predating discovery, and retained after a source is deleted."
+                    },
+                    "vendor": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Vendor",
+                        "description": "Upstream product behind this contribution, e.g. 'splunk_enterprise'. Same value and same registry as the finding's `vendor`. Absent for OTEL and manual agents, which have no upstream product."
+                    },
+                    "address": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/SourceAddress"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Where upstream this came from -- the same type the creation source carries, so a finding and its task address the system identically. Absent for OTEL and manual agents."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "source_class"
+                ],
+                "title": "ProvenanceSource",
+                "description": "One sensor's contribution to a task's provenance.\n\nProvenance holds a list of these rather than scalars beside a list of sensor\nclasses: with scalars, an agent corroborated by two sensors has two entries in\nfound_by but one address, and nothing says which sensor it belongs to."
             },
             "PutModelProviderCredentials": {
                 "properties": {
@@ -30548,6 +30714,12 @@
             },
             "ResolveDiscoveredAgentsRequest": {
                 "properties": {
+                    "source_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Source Id",
+                        "description": "The Discovery Source whose scan produced these records, recorded in each resolved task's provenance. Per request rather than per record because a scan job runs exactly one source config, and so one source. Required: a record resolved without it could never be fetched back for its source."
+                    },
                     "records": {
                         "items": {
                             "$ref": "#/components/schemas/DiscoveredAgentRecord"
@@ -30561,6 +30733,7 @@
                 },
                 "type": "object",
                 "required": [
+                    "source_id",
                     "records"
                 ],
                 "title": "ResolveDiscoveredAgentsRequest",
@@ -30784,6 +30957,18 @@
                     "ToxicityRule"
                 ],
                 "title": "RuleType"
+            },
+            "RunsOn": {
+                "type": "string",
+                "enum": [
+                    "aws",
+                    "azure",
+                    "gcp",
+                    "endpoint",
+                    "unknown"
+                ],
+                "title": "RunsOn",
+                "description": "Where the machine hosting a discovered agent is. ONE AXIS: location.\n\nLives on Provenance rather than being derived from the source type: a Jamf finding\nruns on a laptop, not on the cloud hosting the engine that reported it.\n\nDeliberately NOT a place for `docker` or `kubernetes`. Those answer a different\nquestion -- how the agent is packaged on the machine -- and mixing the two makes\nthe common case lossy: an agent in an EKS pod is both `aws` and orchestrated, and\none field can only say one. They are also values nothing can currently fill. In the\nendpoint collector Docker is a detection ROUTE (`docker_images`, surfaced as\n``resource_kind=image``), and in app_plane `Infrastructure.Docker` describes how\nthe ENGINE was deployed. Neither is a statement about where a discovered agent\nruns. If the packaging axis starts mattering, it wants its own field.\n\n``on_prem`` is the natural next member on this axis and is left out only because\nnothing in v1 can fill it: on-prem findings arrive through a SIEM, which cannot see\nthe machine, so UNKNOWN is already the honest answer there."
             },
             "SIEMAgentCreationSource": {
                 "properties": {
@@ -31469,6 +31654,18 @@
                 ],
                 "title": "SourceAddress",
                 "description": "How to find a discovered agent again in the system that reported it.\n\nOne shape for every sensor, widest to narrowest:\n\n==============  ================  ==================  ==========  ============\nsensor          instance          scope               kind        resource_id\n==============  ================  ==================  ==========  ============\nBedrock         AWS account       region              --          agent id\nVertex          GCP project       region              --          engine id\nSplunk          instance          index+sourcetype    --          record id\nSentinel        LA workspace      table               --          record id\nElastic         deployment        data stream         --          record id\nJamf / osquery  device key        --                  npm, app\u2026   software key\n==============  ================  ==================  ==========  ============\n\nOnly endpoints fill ``resource_kind``: they are the one sensor whose ids come from\nseveral namespaces at once. Every cloud and SIEM vendor addresses exactly one kind\nof resource, so the kind is implied by the vendor and stays absent.\n\n``scope`` carries two readings this one name does not separate. For a cloud source\nit addresses the *agent*: us-east-1 and us-west-2 hold different agents, so\n``CloudAgentCreationSource`` requires it. For a SIEM it addresses the *sighting*,\nand one agent may surface under two indexes, so it stays optional there. Code\ncomparing addresses across sources has to read `source_class` to know which it is\nlooking at.\n\nReused by Provenance rather than re-declared there, so a finding and the task it\nresolves to address the upstream system identically. A vendor needing to address a\nsub-resource -- a Bedrock alias, a Vertex version -- is one more optional field\nhere, not a new shape."
+            },
+            "SourceClass": {
+                "type": "string",
+                "enum": [
+                    "cloud",
+                    "siem",
+                    "endpoint",
+                    "otel",
+                    "manual"
+                ],
+                "title": "SourceClass",
+                "description": "Where a source observes from. One name for this concept everywhere.\n\nThe design docs' \"source class\"; earlier API drafts called it ``vantage_point``.\nUsed on a configured discovery source and on a task's provenance alike, so the two\nare the same vocabulary rather than two that have to be reconciled.\n\nConsumers branch on this -- capability and evidence ceilings are declared per class\n-- which is why it is a closed enum while the vendor is not."
             },
             "SpanListResponse": {
                 "properties": {

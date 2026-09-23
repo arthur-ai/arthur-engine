@@ -3,12 +3,14 @@ from typing import Iterable, Optional
 from uuid import UUID
 
 from arthur_common.models.agent_discovery_schemas import DiscoveredAgentRecord
+from arthur_common.models.agent_governance_schemas import ProvenanceSource
 from fastapi import HTTPException
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from db_models import DatabaseTask
 from repositories.service_name_mapping_repository import ServiceNameMappingRepository
+from repositories.task_provenance_repository import TaskProvenanceRepository
 from repositories.tasks_repository import TaskRepository
 from schemas.agent_discovery_schemas import (
     DiscoveredRecordFailureReason,
@@ -70,12 +72,17 @@ class DiscoveryTaskResolutionService:
     answer: they converge only if they agree on `external_id` or if their observed
     service names overlap (rung 3). Otherwise they mint two tasks. That is v1's
     intended behavior -- `external_id` is canonical and no identity resolution runs
-    across sensors -- and the corroboration case is D-09's provenance to express, by
-    holding several evidence records against one task, not this resolver's to guess at.
+    across sensors -- and the corroboration case is provenance's to express, by holding
+    several entries against one task, not this resolver's to guess at.
+
+    EVERY RESOLVED RECORD IS RECORDED IN ITS TASK'S PROVENANCE, whichever rung answered:
+    the source that reported it, the address it reported, and when. That is what lets
+    the fetch job ask for "every task source X reported since T" and get the agents a
+    re-scan found again, not only the ones it minted.
 
     WHAT THIS DELIBERATELY DOES NOT DO: rename an existing task to the name the record
     carried, or rewrite its creation source from a later scan. Identity is stable; the
-    per-sensor record of what was seen when is evidence, which D-09 persists. A record
+    per-sensor record of what was seen where is provenance, which grows instead. A record
     without an `external_id` never reaches here -- the connector output contract
     rejects it upstream, and the request model refuses it here -- so no finding is ever
     routed to the unmapped task.
@@ -89,10 +96,12 @@ class DiscoveryTaskResolutionService:
         self.db_session = db_session
         self.task_repo = task_repo
         self.mapping_repo = ServiceNameMappingRepository(db_session)
+        self.provenance_repo = TaskProvenanceRepository(db_session)
 
     def resolve_records(
         self,
         records: list[DiscoveredAgentRecord],
+        source_id: UUID,
         org_id: Optional[UUID] = None,
     ) -> ResolveDiscoveredAgentsResponse:
         """Resolve a scan's worth of records to tasks, in the order submitted.
@@ -114,8 +123,15 @@ class DiscoveryTaskResolutionService:
         that fails it is reported in `failed` while the rest resolve. A task that
         disappears mid-batch is caught the same way.
 
+        Provenance for the whole batch is written once, after every record has
+        resolved: one upsert rather than one per record. A batch that fails before
+        then has written none, which the retry puts right, since the records resolve
+        again to the same tasks and are recorded then.
+
         Args:
             records: The discovered records to resolve.
+            source_id: The Discovery Source that reported them, recorded in the
+                provenance of every task they resolve to.
             org_id: Owning org for any task minted here. Defaults to the `default` org.
 
         Returns:
@@ -151,22 +167,36 @@ class DiscoveryTaskResolutionService:
 
         resolved: list[ResolvedAgentTask] = []
         failed: list[FailedDiscoveredRecord] = []
+        reports: list[tuple[str, str, ProvenanceSource]] = []
         for record in records:
             if record.task_id and record.task_id not in known_tasks:
                 failed.append(self._task_not_found(record, record.task_id))
                 continue
 
             try:
-                resolved.append(
-                    self._resolve_record(
-                        record,
-                        known_tasks,
-                        known_mappings,
-                        org_id,
-                    ),
+                resolution = self._resolve_record(
+                    record,
+                    known_tasks,
+                    known_mappings,
+                    org_id,
                 )
             except _TaskNotFound as e:
                 failed.append(self._task_not_found(record, e.task_id))
+                continue
+
+            resolved.append(resolution)
+            reports.append(
+                (
+                    record.external_id,
+                    resolution.task_id,
+                    ProvenanceSource.from_creation_source(
+                        record.task_creation_source,
+                        source_id=source_id,
+                    ),
+                ),
+            )
+
+        self.provenance_repo.record_reports(reports)
 
         return ResolveDiscoveredAgentsResponse(resolved=resolved, failed=failed)
 

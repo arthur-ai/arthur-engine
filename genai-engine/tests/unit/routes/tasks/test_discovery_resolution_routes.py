@@ -1,13 +1,14 @@
-"""The endpoint the ML Engine scan job calls (UP-4980 / D-08).
+"""The endpoints the ML Engine discovery jobs call (UP-4980 / D-08, UP-4981 / D-09).
 
 Resolution itself is covered in tests/unit/services; what is tested here is the wire:
 that a scan's batch round-trips through the API, that order is preserved so the caller
-can line results up with the rows it sent, and that a record with no identity is
-rejected at the boundary.
+can line results up with the rows it sent, that a record with no identity is rejected
+at the boundary, and that the fetch job can read back exactly the tasks one source
+reported in a window, provenance intact.
 """
 
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from arthur_common.models.agent_discovery_schemas import DiscoveredAgentRecord
@@ -17,7 +18,7 @@ from arthur_common.models.agent_governance_schemas import (
     SourceAddress,
 )
 
-from db_models import DatabaseTask
+from db_models import DatabaseTask, DatabaseTaskProvenanceSource
 from db_models.telemetry_models import DatabaseServiceNameTaskMapping
 from schemas.agent_discovery_schemas import (
     DiscoveredRecordFailureReason,
@@ -59,6 +60,9 @@ def _record(
 def _cleanup(task_ids: list[str]) -> None:
     db_session = override_get_db_session()
     try:
+        db_session.query(DatabaseTaskProvenanceSource).filter(
+            DatabaseTaskProvenanceSource.task_id.in_(task_ids),
+        ).delete(synchronize_session=False)
         db_session.query(DatabaseServiceNameTaskMapping).filter(
             DatabaseServiceNameTaskMapping.task_id.in_(task_ids),
         ).delete(synchronize_session=False)
@@ -172,7 +176,7 @@ def test_record_without_an_external_id_is_rejected_at_the_boundary(
 
     resp = client.base_client.post(
         "api/v2/agent-tasks/resolve",
-        json={"records": [payload]},
+        json={"source_id": str(uuid.uuid4()), "records": [payload]},
         headers=client.authorized_user_api_key_headers,
     )
 
@@ -183,8 +187,121 @@ def test_record_without_an_external_id_is_rejected_at_the_boundary(
 def test_empty_batch_is_rejected(client: GenaiEngineTestClientBase):
     resp = client.base_client.post(
         "api/v2/agent-tasks/resolve",
-        json={"records": []},
+        json={"source_id": str(uuid.uuid4()), "records": []},
         headers=client.authorized_user_api_key_headers,
     )
 
     assert resp.status_code == 400
+
+
+@pytest.mark.unit_tests
+def test_batch_without_a_source_is_rejected(client: GenaiEngineTestClientBase):
+    """A record resolved without a source could never be fetched back for it."""
+    payload = _record("placeholder", name="Checkout Agent").model_dump(mode="json")
+
+    resp = client.base_client.post(
+        "api/v2/agent-tasks/resolve",
+        json={"records": [payload]},
+        headers=client.authorized_user_api_key_headers,
+    )
+
+    assert resp.status_code == 400
+
+
+@pytest.mark.unit_tests
+def test_agent_tasks_scoped_to_a_source_return_only_its_tasks(
+    client: GenaiEngineTestClientBase,
+):
+    """What the fetch job reads after a scan: that source's tasks, with provenance."""
+    run = uuid.uuid4().hex[:8]
+    ours, theirs = uuid.uuid4(), uuid.uuid4()
+
+    _, our_batch = client.resolve_discovered_agents(
+        [_record(f"{run}-ours-{i}", name=f"Ours {i}") for i in range(2)],
+        source_id=ours,
+    )
+    _, their_batch = client.resolve_discovered_agents(
+        [_record(f"{run}-theirs", name="Theirs")],
+        source_id=theirs,
+    )
+    our_task_ids = {r.task_id for r in our_batch.resolved}
+    task_ids = [*our_task_ids, *(r.task_id for r in their_batch.resolved)]
+
+    try:
+        status_code, agent_tasks = client.get_agent_tasks(discovery_source_id=ours)
+        assert status_code == 200
+
+        assert {task.id for task in agent_tasks} == our_task_ids
+        for task in agent_tasks:
+            [entry] = task.provenance.sources
+            assert entry.source_id == ours
+            assert entry.vendor == "splunk_enterprise"
+            assert entry.address.instance == "splunk-prod"
+    finally:
+        _cleanup(task_ids)
+
+
+@pytest.mark.unit_tests
+def test_agent_tasks_since_include_rescanned_tasks_and_exclude_stale_ones(
+    client: GenaiEngineTestClientBase,
+):
+    """The window is on when a scan last reported the task, not when it was minted.
+
+    A re-scan resolves to tasks that already exist; if the window were on creation, the
+    fetch job would hear about an agent only on the day it was first found.
+    """
+    run = uuid.uuid4().hex[:8]
+    source_id = uuid.uuid4()
+    rescanned = _record(f"{run}-rescanned", name="Rescanned")
+    stale = _record(f"{run}-stale", name="Stale")
+
+    _, first = client.resolve_discovered_agents([rescanned, stale], source_id=source_id)
+    task_ids = [r.task_id for r in first.resolved]
+    rescanned_task_id, stale_task_id = task_ids
+
+    try:
+        # Both were first reported a day ago...
+        a_day_ago = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=1)
+        db_session = override_get_db_session()
+        try:
+            db_session.query(DatabaseTaskProvenanceSource).filter(
+                DatabaseTaskProvenanceSource.task_id.in_(task_ids),
+            ).update(
+                {"first_reported_at": a_day_ago, "last_reported_at": a_day_ago},
+                synchronize_session=False,
+            )
+            db_session.commit()
+        finally:
+            db_session.close()
+
+        # ...and only one of them turned up again in this scan.
+        window_start = datetime.now(timezone.utc) - timedelta(minutes=5)
+        _, second = client.resolve_discovered_agents([rescanned], source_id=source_id)
+        assert second.resolved[0].task_id == rescanned_task_id
+
+        status_code, agent_tasks = client.get_agent_tasks(
+            discovery_source_id=source_id,
+            reported_since=window_start,
+        )
+        assert status_code == 200
+        assert [task.id for task in agent_tasks] == [rescanned_task_id]
+
+        # Widening the window brings the stale one back.
+        _, everything = client.get_agent_tasks(
+            discovery_source_id=source_id,
+            reported_since=window_start - timedelta(days=2),
+        )
+        assert {task.id for task in everything} == {rescanned_task_id, stale_task_id}
+    finally:
+        _cleanup(task_ids)
+
+
+@pytest.mark.unit_tests
+def test_agent_tasks_for_a_source_with_no_reports_is_empty(
+    client: GenaiEngineTestClientBase,
+):
+    """An empty answer, not every task: a filter matching nothing must not fall away."""
+    status_code, agent_tasks = client.get_agent_tasks(discovery_source_id=uuid.uuid4())
+
+    assert status_code == 200
+    assert agent_tasks == []

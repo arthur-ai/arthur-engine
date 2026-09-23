@@ -1,9 +1,15 @@
 from enum import Enum
+from typing import Optional
+from uuid import UUID
 
 from arthur_common.models.agent_discovery_schemas import (
     MAX_DISCOVERED_RECORDS_PER_REQUEST,
     DiscoveredAgentRecord,
 )
+from arthur_common.models.agent_governance_schemas import (
+    EnrichedTaskResponse as CommonEnrichedTaskResponse,
+)
+from arthur_common.models.agent_governance_schemas import Provenance
 from pydantic import BaseModel, Field
 
 
@@ -83,6 +89,12 @@ class FailedDiscoveredRecord(BaseModel):
 class ResolveDiscoveredAgentsRequest(BaseModel):
     """A scan's worth of discovered records to resolve to tasks."""
 
+    source_id: UUID = Field(
+        description="The Discovery Source whose scan produced these records, recorded "
+        "in each resolved task's provenance. Per request rather than per record because "
+        "a scan job runs exactly one source config, and so one source. Required: a "
+        "record resolved without it could never be fetched back for its source.",
+    )
     records: list[DiscoveredAgentRecord] = Field(
         min_length=1,
         max_length=MAX_DISCOVERED_RECORDS_PER_REQUEST,
@@ -104,4 +116,20 @@ class ResolveDiscoveredAgentsResponse(BaseModel):
         default_factory=list,
         description="Records that could not be resolved, in request order. "
         "Re-submitting one unchanged fails the same way.",
+    )
+
+
+class EnrichedTaskResponse(CommonEnrichedTaskResponse):
+    """The agent-tasks response, with the task's provenance.
+
+    Extends the shared model rather than living in it only until `arthur_common` carries
+    `provenance` on `EnrichedTaskResponse` itself, at which point this subclass goes.
+    Named the same so the OpenAPI component, and the generated clients built from it,
+    keep their name either way.
+    """
+
+    provenance: Optional[Provenance] = Field(
+        default=None,
+        description="Every sensor that has reported this agent, and where upstream each "
+        "reported it. Absent only for a task with no creation source recorded.",
     )

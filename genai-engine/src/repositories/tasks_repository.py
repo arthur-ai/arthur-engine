@@ -12,6 +12,9 @@ from arthur_common.models.agent_governance_schemas import (
     LLMModel,
     ManualAgentCreationSource,
     OTELAgentCreationSource,
+    Provenance,
+    ProvenanceSource,
+    SourceAddress,
     SubAgent,
     TaskMetadata,
     Tool,
@@ -31,6 +34,7 @@ from db_models import (
     DatabaseRule,
     DatabaseSpan,
     DatabaseTask,
+    DatabaseTaskProvenanceSource,
     DatabaseTaskToMetrics,
     DatabaseTaskToRules,
 )
@@ -40,6 +44,7 @@ from repositories.rules_repository import RuleRepository
 from repositories.service_name_mapping_repository import (
     ServiceNameMappingRepository,
 )
+from repositories.task_provenance_repository import TaskProvenanceRepository
 from schemas.enums import TaskSortField
 from schemas.internal_schemas import (
     ApplicationConfiguration,
@@ -88,6 +93,8 @@ class TaskRepository:
         page_size: Optional[int] = 10,
         page: int = 0,
         org_scope: Optional[UUID] = None,
+        reported_by_source_id: Optional[UUID] = None,
+        reported_since: Optional[datetime] = None,
     ) -> tuple[list[DatabaseTask], int]:
         stmt = self.db_session.query(DatabaseTask)
         # Tenant callers see only their own org's tasks. Admin (org_scope=None)
@@ -104,6 +111,17 @@ class TaskRepository:
             stmt = stmt.where(DatabaseTask.archived == True)
         elif not include_archived:
             stmt = stmt.where(DatabaseTask.archived == False)
+        # Provenance filters: the tasks a discovery source reported, and when. Only
+        # discovered tasks have provenance rows, so either filter excludes the rest.
+        if reported_by_source_id is not None or reported_since is not None:
+            stmt = stmt.where(
+                DatabaseTask.id.in_(
+                    TaskProvenanceRepository.reported_task_ids(
+                        source_id=reported_by_source_id,
+                        reported_since=reported_since,
+                    ),
+                ),
+            )
 
         # last_active is NOT a column on tasks: it is the most recent trace
         # end-time per task, derived from trace_metadata. We only join the
@@ -344,6 +362,51 @@ class TaskRepository:
             return AgentCreationSource(root=ManualAgentCreationSource())
         else:
             return None
+
+    @staticmethod
+    def _get_task_provenance(
+        creation_source: Optional[AgentCreationSource],
+        provenance_rows: list[DatabaseTaskProvenanceSource],
+    ) -> Optional[Provenance]:
+        """Assemble a task's provenance from its creation source and stored reports.
+
+        Each stored row is one discovery source's report of the agent at one address.
+        The creation source contributes an entry of its own only when no row stands in
+        for it: an OTEL, manual or legacy GCP task was never reported by a configured
+        source, so its creation source is the only provenance it has, while a task a
+        scan minted is already represented by that scan's row, which also names the
+        source. A discovered task with no rows at all falls back to its creation
+        source rather than to nothing.
+
+        Args:
+            creation_source: The task's creation source, as served.
+            provenance_rows: The task's stored reports, oldest first.
+
+        Returns:
+            Provenance, or None for a task with no creation source and no reports.
+        """
+        sources: list[ProvenanceSource] = []
+        if creation_source is not None and (
+            not provenance_rows
+            or not isinstance(creation_source.root, DiscoveryAgentCreationSource)
+        ):
+            sources.append(ProvenanceSource.from_creation_source(creation_source))
+
+        sources.extend(
+            ProvenanceSource(
+                source_class=row.source_class,
+                source_id=row.source_id,
+                vendor=row.vendor,
+                address=(
+                    SourceAddress.model_validate(row.address) if row.address else None
+                ),
+            )
+            for row in provenance_rows
+        )
+
+        if not sources:
+            return None
+        return Provenance(sources=sources)
 
     def _enrich_tasks_with_service_names(self, tasks: list[Task]) -> list[Task]:
         """Enrich tasks with service names from service_name_task_mappings.

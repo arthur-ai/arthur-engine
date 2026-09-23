@@ -24,7 +24,7 @@ from pydantic import ValidationError
 from sqlalchemy import event
 from sqlalchemy.exc import IntegrityError
 
-from db_models import DatabaseTask
+from db_models import DatabaseTask, DatabaseTaskProvenanceSource
 from db_models.telemetry_models import DatabaseServiceNameTaskMapping
 from dependencies import get_application_config
 from repositories.metrics_repository import MetricRepository
@@ -45,6 +45,10 @@ from tests.clients.base_test_client import override_get_db_session
 # Every record carries the time its source last saw the agent. Resolution does not read
 # it, so one fixed instant keeps it out of the way of what these tests are about.
 LAST_SEEN = datetime(2026, 9, 1, tzinfo=timezone.utc)
+
+# The Discovery Source every batch here claims to come from. Resolution records it in
+# provenance but never routes on it, so one source keeps it out of the way too.
+SOURCE_ID = uuid.uuid4()
 
 
 @pytest.fixture
@@ -72,6 +76,9 @@ def tracked_tasks(db_session) -> Generator[list[str], None, None]:
     yield task_ids
 
     if task_ids:
+        db_session.query(DatabaseTaskProvenanceSource).filter(
+            DatabaseTaskProvenanceSource.task_id.in_(task_ids),
+        ).delete(synchronize_session=False)
         db_session.query(DatabaseServiceNameTaskMapping).filter(
             DatabaseServiceNameTaskMapping.task_id.in_(task_ids),
         ).delete(synchronize_session=False)
@@ -169,7 +176,7 @@ def test_five_hundred_findings_produce_five_hundred_tasks_and_rescan_produces_no
         for i in range(500)
     ]
 
-    first_run = resolver.resolve_records(records).resolved
+    first_run = resolver.resolve_records(records, source_id=SOURCE_ID).resolved
     tracked_tasks.extend(r.task_id for r in first_run)
 
     assert len(first_run) == 500
@@ -182,7 +189,7 @@ def test_five_hundred_findings_produce_five_hundred_tasks_and_rescan_produces_no
         == 500
     )
 
-    second_run = resolver.resolve_records(records).resolved
+    second_run = resolver.resolve_records(records, source_id=SOURCE_ID).resolved
 
     assert {r.resolved_by for r in second_run} == {TaskResolutionMethod.EXTERNAL_ID}
     assert {r.external_id: r.task_id for r in second_run} == {
@@ -209,12 +216,15 @@ def test_a_rescan_costs_the_same_for_fifty_records_as_for_five_hundred(
     """
     run = _run_id()
     records = [_endpoint_record(f"{run}-finding-{i}") for i in range(500)]
-    tracked_tasks.extend(r.task_id for r in resolver.resolve_records(records).resolved)
+    tracked_tasks.extend(
+        r.task_id
+        for r in resolver.resolve_records(records, source_id=SOURCE_ID).resolved
+    )
 
     with _statements(db_session) as fifty:
-        small = resolver.resolve_records(records[:50]).resolved
+        small = resolver.resolve_records(records[:50], source_id=SOURCE_ID).resolved
     with _statements(db_session) as five_hundred:
-        large = resolver.resolve_records(records).resolved
+        large = resolver.resolve_records(records, source_id=SOURCE_ID).resolved
 
     # Both re-scans did the work, so an equal count is not two counts of nothing.
     assert {r.resolved_by for r in small + large} == {TaskResolutionMethod.EXTERNAL_ID}
@@ -233,7 +243,7 @@ def test_unknown_record_creates_a_task_carrying_its_sensor(
     run = _run_id()
     record = _siem_record(f"{run}-splunk-1", name="Checkout Agent")
 
-    [resolved] = resolver.resolve_records([record]).resolved
+    [resolved] = resolver.resolve_records([record], source_id=SOURCE_ID).resolved
     tracked_tasks.append(resolved.task_id)
 
     assert resolved.resolved_by is TaskResolutionMethod.CREATED
@@ -264,11 +274,13 @@ def test_matching_external_id_routes_to_the_existing_task(
 
     [first] = resolver.resolve_records(
         [_endpoint_record(external_id, name="OpenClaw")],
+        source_id=SOURCE_ID,
     ).resolved
     tracked_tasks.append(first.task_id)
 
     [second] = resolver.resolve_records(
         [_endpoint_record(external_id, name="OpenClaw (renamed upstream)")],
+        source_id=SOURCE_ID,
     ).resolved
 
     assert second.task_id == first.task_id
@@ -295,6 +307,7 @@ def test_ha_install_reported_from_two_instances_shares_one_task(
             _siem_record(external_id, instance="splunk-us-east-1"),
             _siem_record(external_id, instance="splunk-us-west-2"),
         ],
+        source_id=SOURCE_ID,
     ).resolved
     tracked_tasks.extend(r.task_id for r in resolved)
 
@@ -322,6 +335,7 @@ def test_agent_instrumented_after_discovery_keeps_its_discovered_task(
 
     [resolved] = resolver.resolve_records(
         [_siem_record(f"{run}-splunk-1", service_names=[service_name])],
+        source_id=SOURCE_ID,
     ).resolved
     tracked_tasks.append(resolved.task_id)
     assert resolved.resolved_by is TaskResolutionMethod.CREATED
@@ -360,6 +374,7 @@ def test_discovered_agent_already_sending_traces_joins_its_otel_task(
 
     [resolved] = resolver.resolve_records(
         [_siem_record(external_id, service_names=[service_name])],
+        source_id=SOURCE_ID,
     ).resolved
 
     assert resolved.task_id == otel_task_id
@@ -393,6 +408,7 @@ def test_external_id_is_not_reported_as_a_service_name(
             _siem_record(f"{run}-splunk-1"),
             _siem_record(f"{run}-splunk-2", service_names=[service_name]),
         ],
+        source_id=SOURCE_ID,
     ).resolved
     tracked_tasks.extend(r.task_id for r in resolved)
 
@@ -418,7 +434,9 @@ def test_trace_named_like_an_external_id_does_not_join_its_task(
     run = _run_id()
     external_id = f"{run}-shared-string"
 
-    [resolved] = resolver.resolve_records([_siem_record(external_id)]).resolved
+    [resolved] = resolver.resolve_records(
+        [_siem_record(external_id)], source_id=SOURCE_ID
+    ).resolved
     tracked_tasks.append(resolved.task_id)
 
     trace_task_id = TraceIngestionService(db_session)._resolve_task_id(
@@ -431,7 +449,9 @@ def test_trace_named_like_an_external_id_does_not_join_its_task(
     assert trace_task_id != resolved.task_id
 
     # Both rows now exist under the one string, and each still routes its own kind.
-    [rescanned] = resolver.resolve_records([_siem_record(external_id)]).resolved
+    [rescanned] = resolver.resolve_records(
+        [_siem_record(external_id)], source_id=SOURCE_ID
+    ).resolved
     assert rescanned.task_id == resolved.task_id
     assert rescanned.resolved_by is TaskResolutionMethod.EXTERNAL_ID
 
@@ -455,6 +475,7 @@ def test_two_sources_reporting_one_agent_mint_two_tasks_without_a_shared_name(
             _siem_record(f"{run}-splunk-1", name="Checkout Agent"),
             _endpoint_record(f"{run}-jamf-1", name="Checkout Agent"),
         ],
+        source_id=SOURCE_ID,
     ).resolved
     tracked_tasks.extend(r.task_id for r in resolved)
 
@@ -475,6 +496,7 @@ def test_two_sources_that_agree_on_a_service_name_share_one_task(
             _siem_record(f"{run}-splunk-1", service_names=[service_name]),
             _endpoint_record(f"{run}-jamf-1", service_names=[service_name]),
         ],
+        source_id=SOURCE_ID,
     ).resolved
     tracked_tasks.extend(r.task_id for r in resolved)
 
@@ -495,11 +517,14 @@ def test_explicit_task_id_routes_to_that_task_and_keys_the_identity_to_it(
     run = _run_id()
     external_id = f"{run}-splunk-1"
 
-    [existing] = resolver.resolve_records([_siem_record(f"{run}-existing")]).resolved
+    [existing] = resolver.resolve_records(
+        [_siem_record(f"{run}-existing")], source_id=SOURCE_ID
+    ).resolved
     tracked_tasks.append(existing.task_id)
 
     [resolved] = resolver.resolve_records(
         [_endpoint_record(external_id, task_id=existing.task_id)],
+        source_id=SOURCE_ID,
     ).resolved
 
     assert resolved.task_id == existing.task_id
@@ -530,8 +555,12 @@ def test_explicit_task_id_cannot_move_an_identity_already_mapped(
     external_id = f"{run}-openclaw"
     new_service_name = f"openclaw-{run}"
 
-    [first] = resolver.resolve_records([_endpoint_record(external_id)]).resolved
-    [other] = resolver.resolve_records([_siem_record(f"{run}-other")]).resolved
+    [first] = resolver.resolve_records(
+        [_endpoint_record(external_id)], source_id=SOURCE_ID
+    ).resolved
+    [other] = resolver.resolve_records(
+        [_siem_record(f"{run}-other")], source_id=SOURCE_ID
+    ).resolved
     tracked_tasks.extend([first.task_id, other.task_id])
 
     [rerouted] = resolver.resolve_records(
@@ -542,6 +571,7 @@ def test_explicit_task_id_cannot_move_an_identity_already_mapped(
                 task_id=other.task_id,
             ),
         ],
+        source_id=SOURCE_ID,
     ).resolved
 
     assert rerouted.task_id == first.task_id
@@ -557,7 +587,9 @@ def test_explicit_task_id_cannot_move_an_identity_already_mapped(
     )
     assert mapping_repo.get_task_id_by_service_name(new_service_name) == first.task_id
 
-    [next_scan] = resolver.resolve_records([_endpoint_record(external_id)]).resolved
+    [next_scan] = resolver.resolve_records(
+        [_endpoint_record(external_id)], source_id=SOURCE_ID
+    ).resolved
     assert next_scan.task_id == first.task_id
 
 
@@ -571,7 +603,7 @@ def test_explicit_task_id_that_does_not_exist_is_reported_not_minted(
     missing_task_id = str(uuid.uuid4())
     record = _endpoint_record(f"{run}-splunk-1", task_id=missing_task_id)
 
-    outcome = resolver.resolve_records([record])
+    outcome = resolver.resolve_records([record], source_id=SOURCE_ID)
 
     assert outcome.resolved == []
     [failure] = outcome.failed
@@ -609,7 +641,7 @@ def test_one_bad_task_id_does_not_fail_the_rest_of_the_batch(
         _siem_record(f"{run}-splunk-3"),
     ]
 
-    first = resolver.resolve_records(records)
+    first = resolver.resolve_records(records, source_id=SOURCE_ID)
     tracked_tasks.extend(r.task_id for r in first.resolved)
 
     assert [r.external_id for r in first.resolved] == [
@@ -618,7 +650,7 @@ def test_one_bad_task_id_does_not_fail_the_rest_of_the_batch(
     ]
     assert [f.external_id for f in first.failed] == [f"{run}-bad"]
 
-    retry = resolver.resolve_records(records)
+    retry = resolver.resolve_records(records, source_id=SOURCE_ID)
 
     assert [r.task_id for r in retry.resolved] == [r.task_id for r in first.resolved]
     assert {r.resolved_by for r in retry.resolved} == {
@@ -639,7 +671,9 @@ def test_task_deleted_mid_batch_fails_only_its_record(
     does not enforce the key in these tests, so the refusal is raised directly.
     """
     run = _run_id()
-    [target] = resolver.resolve_records([_siem_record(f"{run}-target")]).resolved
+    [target] = resolver.resolve_records(
+        [_siem_record(f"{run}-target")], source_id=SOURCE_ID
+    ).resolved
     tracked_tasks.append(target.task_id)
 
     original_create = resolver.mapping_repo.create_mapping
@@ -656,6 +690,7 @@ def test_task_deleted_mid_batch_fails_only_its_record(
             _endpoint_record(f"{run}-late", task_id=target.task_id),
             _siem_record(f"{run}-unaffected"),
         ],
+        source_id=SOURCE_ID,
     )
     tracked_tasks.extend(r.task_id for r in outcome.resolved)
 
@@ -676,14 +711,18 @@ def test_archived_task_still_wins_its_identity(resolver, db_session, tracked_tas
     run = _run_id()
     external_id = f"{run}-openclaw"
 
-    [first] = resolver.resolve_records([_endpoint_record(external_id)]).resolved
+    [first] = resolver.resolve_records(
+        [_endpoint_record(external_id)], source_id=SOURCE_ID
+    ).resolved
     tracked_tasks.append(first.task_id)
     db_session.query(DatabaseTask).filter_by(id=first.task_id).update(
         {"archived": True},
     )
     db_session.commit()
 
-    [second] = resolver.resolve_records([_endpoint_record(external_id)]).resolved
+    [second] = resolver.resolve_records(
+        [_endpoint_record(external_id)], source_id=SOURCE_ID
+    ).resolved
 
     assert second.task_id == first.task_id
     assert second.resolved_by is TaskResolutionMethod.EXTERNAL_ID
@@ -752,6 +791,7 @@ def test_names_keep_the_whitespace_the_source_reported(resolver, tracked_tasks):
 
     [resolved] = resolver.resolve_records(
         [_endpoint_record(external_id, name=" Checkout Agent ")],
+        source_id=SOURCE_ID,
     ).resolved
     tracked_tasks.append(resolved.task_id)
 
@@ -780,7 +820,9 @@ def test_losing_a_concurrent_identity_claim_yields_to_the_winner(
     run = _run_id()
     external_id = f"{run}-contested"
 
-    [winner] = resolver.resolve_records([_siem_record(f"{run}-winner")]).resolved
+    [winner] = resolver.resolve_records(
+        [_siem_record(f"{run}-winner")], source_id=SOURCE_ID
+    ).resolved
     tracked_tasks.append(winner.task_id)
 
     # Claim the identity behind the resolver's back, after it has read the mappings.
@@ -794,7 +836,9 @@ def test_losing_a_concurrent_identity_claim_yields_to_the_winner(
 
     resolver.mapping_repo.create_mapping = claim_first
 
-    [resolved] = resolver.resolve_records([_endpoint_record(external_id)]).resolved
+    [resolved] = resolver.resolve_records(
+        [_endpoint_record(external_id)], source_id=SOURCE_ID
+    ).resolved
 
     assert resolved.task_id == winner.task_id
     assert resolved.resolved_by is TaskResolutionMethod.EXTERNAL_ID
@@ -827,8 +871,11 @@ def test_losing_the_identity_claim_after_a_service_name_match_yields_to_the_winn
 
     [matched] = resolver.resolve_records(
         [_siem_record(f"{run}-named", service_names=[service_name])],
+        source_id=SOURCE_ID,
     ).resolved
-    [winner] = resolver.resolve_records([_siem_record(f"{run}-winner")]).resolved
+    [winner] = resolver.resolve_records(
+        [_siem_record(f"{run}-winner")], source_id=SOURCE_ID
+    ).resolved
     tracked_tasks.extend([matched.task_id, winner.task_id])
 
     # Claim the identity behind the resolver's back, after it has read the mappings.
@@ -844,6 +891,7 @@ def test_losing_the_identity_claim_after_a_service_name_match_yields_to_the_winn
 
     [resolved] = resolver.resolve_records(
         [_endpoint_record(external_id, service_names=[service_name])],
+        source_id=SOURCE_ID,
     ).resolved
 
     assert resolved.task_id == winner.task_id
@@ -853,6 +901,7 @@ def test_losing_the_identity_claim_after_a_service_name_match_yields_to_the_winn
     resolver.mapping_repo.create_mapping = original_create
     [retried] = resolver.resolve_records(
         [_endpoint_record(external_id, service_names=[service_name])],
+        source_id=SOURCE_ID,
     ).resolved
     assert retried.task_id == winner.task_id
     # The service name stays with the task that already owned it.

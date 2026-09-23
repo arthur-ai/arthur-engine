@@ -2,7 +2,6 @@ from datetime import datetime
 from typing import Annotated
 from uuid import UUID
 
-from arthur_common.models.agent_governance_schemas import EnrichedTaskResponse
 from arthur_common.models.common_schemas import PaginationParameters
 from arthur_common.models.enums import PaginationSortMethod, RuleScope, RuleType
 from arthur_common.models.request_schemas import (
@@ -34,12 +33,14 @@ from dependencies import get_application_config, get_db_session, get_org_scope
 from repositories.metrics_repository import MetricRepository
 from repositories.rules_repository import RuleRepository
 from repositories.task_polling_state_repository import TaskPollingStateRepository
+from repositories.task_provenance_repository import TaskProvenanceRepository
 from repositories.tasks_metrics_repository import TasksMetricsRepository
 from repositories.tasks_repository import TaskRepository
 from repositories.tasks_rules_repository import TasksRulesRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
 from schemas.agent_discovery_schemas import (
+    EnrichedTaskResponse,
     ResolveDiscoveredAgentsRequest,
     ResolveDiscoveredAgentsResponse,
 )
@@ -214,13 +215,26 @@ def get_task(
 
 @task_management_routes.get(
     "/agent-tasks",
-    description="Get agentic tasks with enriched agent metadata (tools, sub-agents, models). "
-    "Returns only agentic tasks.",
+    description="Get agentic tasks with enriched agent metadata (tools, sub-agents, models) "
+    "and provenance. Returns only agentic tasks. Filter by `discovery_source_id` and "
+    "`reported_since` to get the tasks one discovery source reported in a window.",
     response_model=list[EnrichedTaskResponse],
     tags=["Tasks"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
 def get_agent_tasks(
+    discovery_source_id: UUID | None = Query(
+        None,
+        description="Only return tasks this Discovery Source has reported. A task "
+        "counts whether the source's scan minted it or resolved to it, so a re-scan "
+        "returns the agents it found again, not only the new ones.",
+    ),
+    reported_since: datetime | None = Query(
+        None,
+        description="Only return tasks a discovery scan reported on or after this "
+        "time; UTC if no offset is given. Tasks no discovery source has reported are "
+        "excluded when this filter is set.",
+    ),
     db_session: Session = Depends(get_db_session),
     application_config: ApplicationConfiguration = Depends(get_application_config),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
@@ -234,9 +248,12 @@ def get_agent_tasks(
     - models: List of models used
     - num_spans: Total number of spans
 
-    Also includes creation_source information (GCP, OTEL, or manual).
+    Also includes creation_source information (GCP, OTEL, or manual), and provenance:
+    every sensor that has reported the agent, and where upstream.
 
     Args:
+        discovery_source_id: Only tasks this discovery source reported
+        reported_since: Only tasks a discovery scan reported since this time
         db_session: Database session
         application_config: Application configuration
         current_user: Current authenticated user
@@ -253,12 +270,21 @@ def get_agent_tasks(
         application_config,
     )
 
+    filtering_by_provenance = (
+        discovery_source_id is not None or reported_since is not None
+    )
+
     # Tenant callers see only their own org's tasks.
     db_tasks, _ = tasks_repo.query_tasks(
         include_archived=False,
-        page_size=1000,  # Large page size for now, add pagination later if needed
+        # Large page size for now, add pagination later if needed. A provenance filter
+        # lifts it: the fetch job has to see every task its source reported, and a
+        # silently truncated answer would read downstream as agents that disappeared.
+        page_size=None if filtering_by_provenance else 1000,
         page=0,
         org_scope=org_scope,
+        reported_by_source_id=discovery_source_id,
+        reported_since=reported_since,
     )
 
     # Convert to Task objects and enrich with service names
@@ -267,9 +293,16 @@ def get_agent_tasks(
 
     # Build enriched responses
     polling_state_repo = TaskPollingStateRepository(db_session)
+    provenance_rows = TaskProvenanceRepository(db_session).get_by_task_ids(
+        task.id for task in tasks
+    )
     enriched_responses = []
     for task in tasks:
         creation_source = tasks_repo._get_task_creation_source(task)
+        provenance = tasks_repo._get_task_provenance(
+            creation_source,
+            provenance_rows.get(task.id, []),
+        )
 
         # Get last_fetched from task_polling_state
         polling_state = polling_state_repo.get_by_task_id(task.id)
@@ -299,6 +332,7 @@ def get_agent_tasks(
             data_sources=agent_metadata["data_sources"],
             num_spans=agent_metadata["num_spans"],
             rules=response_rules,
+            provenance=provenance,
         )
         enriched_responses.append(enriched_response)
 
@@ -326,7 +360,8 @@ def resolve_discovered_agents(
 
     Called by the ML Engine scan job with the records one connector returned. The
     resolution ladder, and the guarantees it makes, are documented on
-    `DiscoveryTaskResolutionService`.
+    `DiscoveryTaskResolutionService`. Every resolved record is recorded in its task's
+    provenance under the request's `source_id`.
 
     Admin-only, so tasks minted here land in the `default` org, matching where OTEL
     auto-created tasks land.
@@ -339,7 +374,11 @@ def resolve_discovered_agents(
     )
     resolution_service = DiscoveryTaskResolutionService(db_session, tasks_repo)
 
-    return resolution_service.resolve_records(request.records, org_id=DEFAULT_ORG_ID)
+    return resolution_service.resolve_records(
+        request.records,
+        source_id=request.source_id,
+        org_id=DEFAULT_ORG_ID,
+    )
 
 
 @task_management_routes.post(

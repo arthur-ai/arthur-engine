@@ -3,6 +3,11 @@ The intention of this changelog is to document API changes as they happen to eff
 ---
 
 # 09/23/2026
+- **BREAKING CHANGE** for **URL**: /api/v2/agent-tasks/resolve  added the new required request property `source_id`
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added the new optional `query` request parameter `discovery_source_id`
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added the new optional `query` request parameter `reported_since`
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added the non-success response with the status `422`
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property `items/provenance` to the response with the `200` status
 - **CHANGE** for **URL**: /api/v2/agent-tasks/resolve  added the optional property `failed` to the response with the `200` status
 
 # 09/22/2026
