@@ -37,8 +37,8 @@ documented by Jamf.
 
 | Path | What it is |
 |---|---|
-| `vendor/osquery-ai-discovery/` | the queries, the runner and the catalog, at a pinned ref. **The only osquery implementation. Do not edit** — run `tools/vendor-queries.sh`. |
-| `tools/vendor-queries.sh` | vendor `bin/`, `dist/` and `catalog/` from the public repo at one ref. |
+| `vendor/osquery-ai-discovery/` | the queries and the runner, at a pinned ref. **The only osquery implementation. Do not edit** — run `tools/vendor-queries.sh`. |
+| `tools/vendor-queries.sh` | vendor `bin/` and `dist/` from the public repo at one ref. Not `catalog/` — that is the collector's. |
 | `tools/build-collector.py` | build `dist/collect.sh`, the single file an MDM deploys. Holds the `arthur1.` framing. |
 | `dist/collect.sh` | generated, and committed on purpose — a reviewer should see it change. |
 | `deploy/` | the LaunchDaemon, for fleets preferring a package to an MDM policy. |

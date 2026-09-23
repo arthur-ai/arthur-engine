@@ -150,10 +150,10 @@ containing usernames, and the Jamf inventory record is readable by every Jamf ad
 | `test/lint.sh` | everything this tree owns. ~1s, no VM — see [test/README.md](test/README.md) |
 | `docs/` | design and deployment docs |
 
-The catalog is vendored **for the collector** and is deliberately kept out of the payload.
-`build-collector.py` asserts it, and `test/lint.sh` re-asserts it against the built artifact —
-a Mac carrying the signatures it is supposed to enumerate past would be invisible inside a 21 KB
-base64 blob.
+The catalog is **not vendored here**: signatures are the collector's, and it vendors them into
+`ml-engine/src/ml_engine/discovery/`. `build-collector.py` and `test/lint.sh` both assert the
+payload carries none, because a Mac holding the signatures it is meant to enumerate past would
+be invisible inside a 21 KB base64 blob.
 
 ## Rebuilding
 

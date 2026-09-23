@@ -160,7 +160,7 @@ with osquery green is a different fault — read its Policy log, and see section
 **Build it here, not from the public repo.** The plist and the collector live in this tree,
 and `catalog/` must never reach a Mac at all — matching happens
 in the collector, and shipping the signatures to the endpoint is the one thing the design
-forbids. See [`architecture.md`](architecture.md).
+forbids. See [`architecture.md`](../architecture.md).
 
 There is also nothing left to lay out side by side. `dist/collect.sh` carries `bin/` and `dist/`
 inside it as an embedded payload and extracts them to a private temp directory at run time, so
@@ -371,11 +371,11 @@ carries a timestamp, a row count and ten branches, so **is** on any of those mat
 | A branch errored | **like** | `=error` | A query failed outright, typically an osquery build without a table it needs |
 | Serving a stale scan | **like** | `stale=` | The last scan is over a day old. The Mac is reporting real evidence, but the collector has not succeeded since — check the Policy log |
 
-**Staleness is not in the status token.** The first token says whether the last scan
-succeeded, not when it ran: a daemon that stopped a month ago keeps reporting `ok` with a
-month-old timestamp. Jamf cannot do date arithmetic inside a string, so treat the embedded
-timestamp as something a report checks. The payload carries a per-branch timestamp for exactly
-this, and `bin/classify` prints `STALE:` past a day.
+**The first token does not carry age.** It says whether the last scan succeeded, not when it
+ran, so a daemon that stopped a month ago keeps reporting `ok`. That is what the `stale=NNh`
+suffix is for: the status attribute computes it from the timestamp inside the value, because
+Jamf cannot do date arithmetic on a string — hence the `like stale=` group above. The payload
+also carries a per-branch timestamp, and `bin/classify` prints `STALE:` past a day.
 
 ## 07 · Scope and roll out — Jamf Pro
 
@@ -503,7 +503,7 @@ per-branch outcome.
 
 ---
 
-**What this treerts.** Names, paths, versions and declared permissions. No file contents, no
+**What this tree reports.** Names, paths, versions and declared permissions. No file contents, no
 secrets, no browser history or cookies, and nothing it discovers is executed. It also does
 nothing to the machine — no blocking, no remediation, no network calls of its own.
 

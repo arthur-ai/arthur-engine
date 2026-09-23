@@ -95,7 +95,7 @@ ever talks to the collector.**
                                    │   filtered on general.reportDate
                                    ▼
   ┌──── collector ─────────────────────────────────────────────────────────┐
-  │  arthur-discovery  (this tree)                                         │
+  │  ml-engine/src/ml_engine/discovery/                                    │
   │  • matching, against vendor/…/catalog/agents.yaml at the same tag      │
   │  • THE ONLY PLACE MATCHING HAPPENS. No Mac holds a catalog             │
   │  • matching · summaries                                                │
@@ -403,7 +403,7 @@ incremental server-to-server read, against push's `Mac → Jamf 154 B` plus `Mac
 |---|---|
 | The endpoint enumerates | A filtered endpoint never sends the evidence, so a new signature cannot re-match against what is already held — which is the property this tree's README already claims |
 | Matching happens only in the collector; the endpoint holds no catalog | One place to change, and changing it costs no fleet re-scan |
-| The catalog is authoritative in the public repo and vendored here | A catalog of published identifiers is osquery material, and keeping it public means a signature is added once, in the open, next to the queries and the reference matcher. A second private catalog would drift, which is the failure enumeration exists to prevent |
+| The catalog is authoritative in the public repo and vendored into the collector | A catalog of published identifiers is osquery material, and keeping it public means a signature is added once, in the open, next to the queries and the reference matcher. A second private catalog would drift, which is the failure enumeration exists to prevent |
 | No summary EA | Computing counts on the endpoint needs a catalog there. Under enumeration the retired summary query goes from 238 chars to **13,522**, with `ids=` naming **564** ids — Adobe, Citrix, stock Apple apps. And the counts stop meaning "AI things": `app=4` becomes `app=398` on the reference Mac. The status line carries collection health instead |
 | Jamf carries health only | Policies are managed in arthur-platform, so Jamf needs no findings targeting |
 | The collector **polls** Jamf; nothing connects to the collector | The Mac already talks to Jamf and nothing else, so the fleet needs no new route, firewall rule or device-held credential. Polling also means no inbound path to the collector — one fewer assumption than a webhook needs |
@@ -417,9 +417,9 @@ incremental server-to-server read, against push's `Mac → Jamf 154 B` plus `Mac
 
 ## Open questions
 
-- **What to pin.** The public repo's only tag is `v0.1.0` and it predates all of this work;
-  `main` is at `98eaeca`, which is what is vendored now — pinned as a bare commit and marked
-  `PROVISIONAL` in `vendor/…/VERSION`. A release should be cut, and this tree re-pinned to it.
+- ~~**What to pin.**~~ — closed. Upstream cuts releases and this tree pins a tag;
+  `vendor/osquery-ai-discovery/VERSION` records which. A bare commit still prints
+  `PROVISIONAL`, which is legitimate until a tag carries what you need.
 - **Jamf API credential scope and rotation.** One credential with `Read Computers`, held by
   the collector. Where it lives and how it rotates is undecided, and it is now the only
   secret in the data path.

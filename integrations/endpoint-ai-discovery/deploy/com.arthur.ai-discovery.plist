@@ -23,8 +23,8 @@
     cat /var/lib/arthur/inventory.json    ~127 KB, the readable form
     cat /var/lib/arthur/status.txt        one line, for a smart group to match on
 
-  Report the .ea file: the raw JSON is roughly six times its size, and framing it needs an
-  interpreter, so this job frames and the reporting path stays a cat.
+  Report the .ea file: the raw JSON is roughly six times its size. This job does the framing
+  with stock gzip/base64/plutil, so the reporting path stays a cat and needs nothing installed.
 
   Uninstall:
     launchctl bootout system/com.arthur.ai-discovery

@@ -56,7 +56,10 @@ out="$work/arthur"
 # there would replace the shell and skip the trap, which on an Ongoing schedule leaves one
 # copy of the payload behind per run and shows up months later as a full volume. Snapshot
 # rather than assert-none: another process's run is not this test's business.
-leaked() { ls -d "${TMPDIR:-/var/tmp}"/arthur-collect.* /var/tmp/arthur-collect.* 2>/dev/null | sort -u; }
+# The prefix is the vendored bundler's, not ours: tools/bundle.py mktemps
+# "${TMPDIR}/ai-discovery.XXXXXX". Searching for anything else makes this assertion
+# unfalsifiable -- it passes because it looks for a directory nothing creates.
+leaked() { ls -d "${TMPDIR:-/var/tmp}"/ai-discovery.* /var/tmp/ai-discovery.* 2>/dev/null | sort -u; }
 before="$(leaked)"
 
 echo "== a clean run =========================================================="
@@ -252,7 +255,7 @@ note "no previous scan: exit $status, no partial attribute value written"
 echo "== the payload directory is not left on disk ============================="
 after="$(leaked)"
 if [ "$before" = "$after" ]; then
-  note "no arthur-collect.* work directory left behind by three runs"
+  note "no ai-discovery.* work directory left behind by three runs"
 else
   bad "the extraction directory leaked: $(echo "$after" | comm -13 <(echo "$before") - | tr '\n' ' ')"
 fi
