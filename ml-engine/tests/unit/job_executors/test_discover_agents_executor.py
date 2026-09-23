@@ -124,15 +124,18 @@ class FakeScanner:
         self.raises = raises
         self.calls: list[tuple[str, int]] = []
         self.credentials: list[dict[str, str | None]] = []
+        self.loggers: list[logging.Logger] = []
 
     def scan(
         self,
         config: DiscoverySourceConfigSpec,
         lookback_hours: int,
         credentials: Mapping[str, str | None],
+        logger: logging.Logger,
     ) -> Iterator[Sequence[DiscoveryOutputRecord]]:
         self.calls.append((config.name, lookback_hours))
         self.credentials.append(dict(credentials))
+        self.loggers.append(logger)
         for batch in self.batches:
             yield batch
         if self.raises is not None:
@@ -686,10 +689,10 @@ def test_neither_kind_of_credential_reaches_the_job_log() -> None:
 def test_neither_kind_of_credential_reaches_the_platform() -> None:
     """Through the real exporter, as JobExecutor wires it.
 
-    A record logged with exc_info ships three payloads -- the message, the formatted
-    traceback, and `str(exc)` as a job error -- and JobExecutor logs the escaping
-    exception that way a second time. Every one of them, and the stdout path, must come
-    out clean.
+    The scan no longer logs with `exc_info`: the exporter formats that itself and posts
+    the result unredacted, so the traceback is redacted and carried in the message
+    instead. The escaping exception still reaches JobExecutor's own handler, which does
+    log with `exc_info` -- so its `args` are redacted in place before it is re-raised.
     """
     derived = "drv-fake-access-token-value"
     logger = logging.getLogger("test-discovery-exporter-redaction")
@@ -725,8 +728,10 @@ def test_neither_kind_of_credential_reaches_the_platform() -> None:
         for posted in jobs_client.post_job_errors.call_args_list
         for error in posted.kwargs["job_errors"].errors
     ]
-    assert jobs_client.post_job_errors.call_count == 2
+    assert jobs_client.post_job_errors.call_count >= 1
+    # The diagnosis survives: the message, and the traceback now carried inside it.
     assert any("401 for user svc" in text for text in shipped)
+    assert any("Traceback (most recent call last)" in text for text in shipped)
     formatter = logging.Formatter()
     printed = [formatter.format(record) for record in stdout_records]
     for secret in (CONFIGURED_SECRET, derived):

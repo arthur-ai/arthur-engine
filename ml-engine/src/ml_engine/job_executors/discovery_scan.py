@@ -21,6 +21,7 @@ them by exact match from everything it ships (see `log_redaction`).
 
 import json
 import logging
+import traceback
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Callable, Iterator, Mapping, Optional, Protocol, Sequence
@@ -47,6 +48,11 @@ class DiscoverySourceScanner(Protocol):
     here: the route that returns them says never to put the result in job parameters,
     so they are read once per scan at execution, and the caller that reads them is also
     what scrubs them out of anything bound for the job log.
+
+    THE LOGGER IS THE JOB'S, NOT THE MODULE'S. `ScopeJobLogExporter` is attached to the
+    per-job logger alone, so a scanner logging to `getLogger(__name__)` reaches process
+    stdout and never the Platform -- and every connector's "reported, not suppressed"
+    behaviour is worth nothing if the report does not leave the engine.
     """
 
     def scan(
@@ -54,6 +60,7 @@ class DiscoverySourceScanner(Protocol):
         config: DiscoverySourceConfigSpec,
         lookback_hours: int,
         credentials: Mapping[str, Optional[str]],
+        logger: logging.Logger,
     ) -> Iterator[Sequence[DiscoveryOutputRecord]]: ...
 
 
@@ -187,7 +194,7 @@ def run_source_scan(
     """
     known_secrets = secret_values(credentials)
     try:
-        for batch in scanner.scan(config, lookback_hours, credentials):
+        for batch in scanner.scan(config, lookback_hours, credentials, logger):
             if not batch:
                 continue
             accepted = sink.publish(workspace_id, data_plane_id, config, batch)
@@ -195,17 +202,29 @@ def run_source_scan(
             outcome.records_published += accepted
     except BaseException as e:
         outcome.record_failure(e, known_secrets)
+        # The traceback is redacted and carried IN THE MESSAGE rather than passed as
+        # `exc_info`. The exporter formats `exc_info` itself and posts the result
+        # unredacted, so a vendor exception quoting the request it failed on -- or a
+        # token minted from a configured secret -- would reach the Platform verbatim.
+        detail = redact_secrets(str(e), known_secrets)
+        trace = redact_secrets("".join(traceback.format_exception(e)), known_secrets)
         logger.error(
             f"Discovery scan of source config '{config.name}' failed after "
-            f"{outcome.records_published} record(s): "
-            f"{redact_secrets(str(e), known_secrets)}",
+            f"{outcome.records_published} record(s): {detail}\n{trace}",
             extra={
                 "discovery_source_config_id": outcome.discovery_source_config_id,
                 "vendor": config.vendor,
                 "records_published": outcome.records_published,
             },
-            exc_info=True,
         )
+        # REDACTED IN PLACE, THEN RE-RAISED UNCHANGED IN TYPE. JobExecutor.execute logs
+        # whatever it catches with `exc_info`, and the exporter posts
+        # `traceback.format_exception(...)` and `str(exc_value)` -- both of which read the
+        # message out of `args`. Rewriting args scrubs that second export while leaving
+        # the exception's type intact, which callers and tests depend on; wrapping it in a
+        # new type would fix the leak by breaking the contract.
+        if e.args:
+            e.args = (detail,) + tuple(e.args[1:])
         raise
     finally:
         finalize_outcome(outcome, logger)
