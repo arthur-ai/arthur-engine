@@ -19,12 +19,12 @@
   interval, so a reader never sees a missing file on a correctly configured Mac.
 
   Read it from your endpoint tool with:
-    cat /var/lib/arthur/inventory.ea      19 KB, fits a 30 KB attribute value
-    cat /var/lib/arthur/inventory.json    122 KB, the readable form
+    cat /var/lib/arthur/inventory.ea      ~21 KB, against a 256 KB cap
+    cat /var/lib/arthur/inventory.json    ~127 KB, the readable form
     cat /var/lib/arthur/status.txt        one line, for a smart group to match on
 
-  Report the .ea file. Raw JSON is roughly 394% of a 30 KB attribute cap, and framing it
-  needs an interpreter, so this job does the framing and the reporting path stays a cat.
+  Report the .ea file: the raw JSON is roughly six times its size, and framing it needs an
+  interpreter, so this job frames and the reporting path stays a cat.
 
   Uninstall:
     launchctl bootout system/com.arthur.ai-discovery

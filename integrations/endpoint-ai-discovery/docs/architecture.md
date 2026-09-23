@@ -90,7 +90,7 @@ ever talks to the collector.**
   │    serial · hostname · OS · general.reportDate  ◄── Jamf knows these   │
   └────────────────────────────────┬───────────────────────────────────────┘
                                    │ THE COLLECTOR REACHES OUT, on a schedule
-                                   │ GET /v1/computers-inventory
+                                   │ GET /api/v1/computers-inventory
                                    │   ?section=EXTENSION_ATTRIBUTES,GENERAL
                                    │   filtered on general.reportDate
                                    ▼

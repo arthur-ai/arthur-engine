@@ -93,6 +93,21 @@ if [ -f "$ROOT/vendor/osquery-ai-discovery/SHA256SUMS" ]; then
     echo "      The tree must be verbatim. Restore it, or re-vendor to adopt the change."
     fail=1
   fi
+
+  # AND THAT THE MANIFEST COVERS EVERY FILE. `shasum --check` reads the manifest, so a
+  # file ADDED to the tree passes it by not being mentioned -- and the build packs bin/
+  # and dist/ into dist/collect.sh, so an extra one there ships to every Mac.
+  extra="$( cd "$ROOT/vendor/osquery-ai-discovery" && \
+    comm -23 <(find . -type f ! -name VERSION ! -name SHA256SUMS | sort) \
+             <(sed 's/^[0-9a-f]*  //' SHA256SUMS | sort) )"
+  if [ -n "$extra" ]; then
+    echo "FAIL: vendored file(s) the manifest does not list:"
+    echo "$extra" | sed 's/^/      /'
+    echo "      Re-vendor to adopt them, or delete them. bin/ and dist/ ship to every Mac."
+    fail=1
+  else
+    echo "vendor tree: ok, the manifest lists every file present"
+  fi
 else
   echo "FAIL: vendor/osquery-ai-discovery/SHA256SUMS is missing; re-vendor to write it"
   fail=1

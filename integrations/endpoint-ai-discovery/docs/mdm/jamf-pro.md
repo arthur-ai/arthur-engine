@@ -167,8 +167,8 @@ inside it as an embedded payload and extracts them to a private temp directory a
 the whole deployable is one file for both paths below.
 
 ```bash
-git clone https://github.com/arthur-ai/arthur-discovery
-cd arthur-discovery
+git clone https://github.com/arthur-ai/arthur-engine
+cd arthur-engine/integrations/endpoint-ai-discovery
 
 # Already vendored and built in the tree. Only if you are moving to a newer upstream ref:
 tools/vendor-queries.sh <ref>          # verifies upstream's own build gate before copying

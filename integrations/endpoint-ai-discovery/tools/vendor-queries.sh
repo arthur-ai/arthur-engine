@@ -75,12 +75,17 @@ done
   echo "        bundler, so this repo cannot vendor a ref older than v0.6.0." >&2
   exit 1; }
 
-rm -rf "$DEST"
-mkdir -p "$DEST"
-cp -R "$work/src/bin" "$DEST/bin"
-cp -R "$work/src/dist" "$DEST/dist"
-mkdir -p "$DEST/tools"
-cp "$work/src/tools/bundle.py" "$DEST/tools/bundle.py"
+# FROM HERE THE DESTINATION IS GONE, SO A FAILED COPY MUST NOT REACH THE MANIFEST. A
+# partial tree with SHA256SUMS written over it is one test/lint.sh certifies as verbatim --
+# the integrity check approving the defect it exists to catch.
+fatal() { echo "vendor: $1" >&2; echo "        $DEST is now incomplete; re-run this script." >&2; exit 1; }
+
+rm -rf "$DEST" || fatal "could not clear the destination"
+mkdir -p "$DEST" || fatal "could not create the destination"
+cp -R "$work/src/bin" "$DEST/bin" || fatal "could not copy bin/"
+cp -R "$work/src/dist" "$DEST/dist" || fatal "could not copy dist/"
+mkdir -p "$DEST/tools" || fatal "could not create tools/"
+cp "$work/src/tools/bundle.py" "$DEST/tools/bundle.py" || fatal "could not copy bundle.py"
 chmod +x "$DEST"/bin/* 2>/dev/null
 
 # Arthur-specific deployment glue must not come across. Nothing upstream ships it today;
@@ -92,7 +97,7 @@ done
 # The manifest is what makes "verbatim" checkable: the ref stamp names a release, and only
 # this says the files still match it. test/lint.sh verifies it.
 ( cd "$DEST" && find . -type f ! -name VERSION ! -name SHA256SUMS -print0 \
-    | sort -z | xargs -0 shasum -a 256 > SHA256SUMS )
+    | sort -z | xargs -0 shasum -a 256 > SHA256SUMS ) || fatal "could not write SHA256SUMS"
 
 cat > "$DEST/VERSION" <<EOF
 repo   $REPO
