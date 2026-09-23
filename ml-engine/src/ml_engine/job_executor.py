@@ -47,6 +47,9 @@ from arthur_common.models.task_job_specs import (
 )
 from pydantic import StrictBytes
 
+# Imported for its side effect: registering the discovery connectors into
+# SOURCE_SCANNERS, which DiscoverAgentsExecutor resolves a source's vendor against.
+import discovery  # noqa: F401
 from config import Config
 from job_executors.alert_check_executor import AlertCheckExecutor
 from job_executors.compliance_policy_check_executor import (

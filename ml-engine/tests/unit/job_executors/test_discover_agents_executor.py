@@ -438,7 +438,9 @@ def test_a_failing_publish_counts_only_the_batches_that_landed() -> None:
     logger = logging.getLogger("test-discovery-outcome-sink-raises")
     records = _capture(logger)
     sink = RaisingSink(fail_on_batch=2)
-    scanner = FakeScanner([[_record("a"), _record("b")], [_record("c")], [_record("d")]])
+    scanner = FakeScanner(
+        [[_record("a"), _record("b")], [_record("c")], [_record("d")]],
+    )
 
     with pytest.raises(RuntimeError, match="platform rejected the batch"):
         _executor(scanner, sink, logger=logger).execute(_job(), _spec(_config()))
@@ -492,9 +494,11 @@ def test_an_executor_does_not_alias_the_global_registry() -> None:
         genai_engine_api_key="key",
     )
 
-    executor.scanners["jamf_pro"] = lambda: FakeScanner([])
+    # A vendor no connector registers, so this asserts the copy rather than which
+    # connectors happen to ship: `jamf_pro` is a real registered vendor now.
+    executor.scanners["not_a_real_vendor"] = lambda: FakeScanner([])
 
-    assert "jamf_pro" not in SOURCE_SCANNERS
+    assert "not_a_real_vendor" not in SOURCE_SCANNERS
 
 
 def test_empty_batches_are_not_published() -> None:
@@ -537,7 +541,8 @@ def test_a_secret_is_not_left_half_blanked_by_a_shorter_one() -> None:
 def test_values_too_short_to_be_credentials_are_left_alone() -> None:
     """Scrubbing a two-character value would shred the message it is protecting."""
     assert redact_secrets(
-        "ValueError: region eu is not valid", secret_values({"r": "eu"})
+        "ValueError: region eu is not valid",
+        secret_values({"r": "eu"}),
     ) == ("ValueError: region eu is not valid")
 
 
