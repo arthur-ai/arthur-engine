@@ -19,6 +19,12 @@ on:
       - '.github/workflows/endpoint-ai-discovery.yml'
   workflow_dispatch:
 
+# Read-only, and not left in the checkout. The macOS job runs the checked-out
+# test/run-collector.sh as root, so a write-capable token persisted into .git/config by
+# actions/checkout would be readable by it.
+permissions:
+  contents: read
+
 concurrency:
   group: endpoint-ai-discovery-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -34,6 +40,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
       - name: test/lint.sh
         run: test/lint.sh
 
@@ -59,6 +67,8 @@ jobs:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
 
       # The version upstream tests against. osquery has no per-query timeout, so the
       # wall-clock bound is a property of this release rather than of osquery.
