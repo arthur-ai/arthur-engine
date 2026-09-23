@@ -178,5 +178,3 @@ vendored runner does not accept.
 - [**AI Inventory on Jamf Pro**](docs/mdm/jamf-pro.md) — deployment runbook for the
   scheduled-writer pattern: two Extension Attributes, one LaunchDaemon, one script, with a
   verification step and expected output for each.
-- [Endpoint discovery: the OSS queries](docs/oss-queries-design.md) — design of the public
-  `osquery-ai-discovery` repo, and the reasoning that moved the queries out of this one.
