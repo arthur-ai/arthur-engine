@@ -12,10 +12,8 @@ one rule that decides most of the design: **the endpoint enumerates, the collect
 | Collector | `ml-engine/src/ml_engine/discovery/` | **matching**, summaries, the record sink, **and the catalog it matches against** | a copy of the queries |
 | Policies | arthur-platform | what to do about a finding | collection concerns |
 
-The seam has moved once already, in the direction of that table. `bin/discover --framed` used to
-write the `arthur1.` value upstream; it was removed there and rebuilt here, because the wire
-format is Arthur's and the size budget is a property of the reporting channel this tree chose —
-neither is a fact about osquery. `tools/build-collector.py` now owns the framing, and
+Framing is this tree's, not upstream's: the wire format is Arthur's and the size budget a
+property of the reporting channel, and neither is a fact about osquery. `tools/build-collector.py` now owns the framing, and
 `lint.sh` fails if `dist/collect.sh` passes `bin/discover` a flag the vendored runner no longer
 accepts, which is how that removal was caught rather than shipped.
 
@@ -136,9 +134,8 @@ they claim, and how strongly, is upstream's `docs/containers.md`. What matters h
 reach the deployed payload — `discover --write` runs every branch, so they appear without
 `--deep` — and so count against the size budget below.
 
-`model` was a tenth and is gone: upstream dropped the model runners
-from the catalog, and the manifest-glob branch that fed it went with them, since nothing
-consumed its rows, and the local query that still emitted it has since been deleted. A branch's first `UNION ALL` arm must alias all six by name: a
+`model` was a tenth and is gone: upstream dropped the model runners from the catalog, and
+the manifest-glob branch that fed it went with them. A branch's first `UNION ALL` arm must alias all six by name: a
 UNION takes its column names from the first arm alone, and an unaliased one silently inherits
 whatever precedes it. That shipped once — the pack's `browser` query returned 74
 correctly-counted rows keyed `'ext'` and `permissions || CASE WHEN manifest_json LIKE …`,
@@ -177,7 +174,7 @@ on them, so it does not grow silently.
  "findings": [ …rows… ]}
 ```
 
-Three changes from what the retired inline Extension Attribute script used to send:
+Three things the envelope does not carry, and why:
 
 - **`findings` becomes the enumerated rows** — 83 to roughly 759 on a reference Mac. The
   collector filters; the endpoint no longer does.
@@ -429,8 +426,7 @@ incremental server-to-server read, against push's `Mac → Jamf 154 B` plus `Mac
 
 ### Answered by polling Jamf
 
-Four questions this document previously carried are closed, and are recorded here because they
-were the reasons to doubt this direction:
+Four questions about this direction, and their answers:
 
 - ~~Whether webhook delivery is reliable enough~~ — **it is undocumented, so the question is
   moot.** The pull is required either way, and the webhook is gone.
@@ -443,10 +439,9 @@ were the reasons to doubt this direction:
 - ~~Envelope provenance~~ — `serial`, `host` and `os` come from the computer record the
   collector already fetches.
 
-## Consequences for this tree — carried out
+## One implementation
 
-This section used to list what the design would retire. It has been done: as of 2026-09-01
-this tree carries **one** osquery implementation, the vendored one.
+This tree carries **one** osquery implementation, the vendored one.
 
 | Path | What happened |
 |---|---|

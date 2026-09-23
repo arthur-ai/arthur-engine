@@ -4,11 +4,9 @@
     tools/build-collector.py            write dist/collect.sh
     tools/build-collector.py --check    fail if it does not carry the vendored tree
 
-THE SELF-EXTRACTING HALF IS UPSTREAM'S NOW, AND IT USED TO BE HERE. This file carried its
-own reproducible tar, its own base64/gzip wrapping and its own extraction preamble -- mktemp,
-`base64 -D` with a `-d` fallback, tar, chmod -- and from v0.6.0 upstream ships exactly that as
-tools/bundle.py, tested on its macOS AND Linux runners. Two copies of one mechanism is the
-failure this repo is organised around; the local one is gone.
+THE SELF-EXTRACTING HALF IS UPSTREAM'S. From v0.6.0 it ships tools/bundle.py -- reproducible
+tar, base64/gzip wrapping, the extraction preamble -- tested on its macOS and Linux runners.
+Do not re-implement it here.
 
 WHAT IS STILL OURS IS THE DRIVER, and it is the whole of what made the old file Arthur's:
 /var/lib/arthur, the 15s cold-Docker ping bound, the keep-the-last-good-scan policy, the
@@ -266,12 +264,10 @@ def collector(bundle, label):
 def driver_of(bundle, path):
     """The driver as it actually SHIPS, read back out of a built collector.
 
-    EVERY GUARD THAT USED TO GREP dist/collect.sh NEEDS THIS. The Arthur half is inside the
-    payload now -- base64 of gzip of a tar -- so `grep arthur1.` on the artifact finds
-    nothing, and a guard that finds nothing either fails for the wrong reason or passes
-    vacuously. Both are worse than the text scan they replaced. Reading the member back is
-    the version of that check which asserts on what a Mac will run, which is the standing
-    rule here: measure what actually ships.
+    EVERY GUARD OVER THE DRIVER NEEDS THIS. The Arthur half lives inside the payload --
+    base64 of gzip of a tar -- so `grep arthur1.` on the artifact finds nothing, and a guard
+    that finds nothing either fails for the wrong reason or passes vacuously. Reading the
+    member back asserts on what a Mac will actually run.
 
     THROUGH THE SUPPORTED READER, AND IT WAS NOT ONE WHEN THIS WAS WRITTEN. The first
     version unpacked the payload here, through the underscore-prefixed splitter, then gzip,

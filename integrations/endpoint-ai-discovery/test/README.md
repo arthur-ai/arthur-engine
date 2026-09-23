@@ -25,12 +25,8 @@ vendored here at the ref in `vendor/osquery-ai-discovery/VERSION`. Their tests l
 too, and at the vendored ref that is `test/lint.sh`, `test/docker_states.sh` and thirteen
 VM scenarios, run by upstream CI.
 
-**There used to be a copy of that suite in this directory, and deleting it was the point.**
-It ran eleven VM scenarios against a hand-written `endpoint/discovery.sql` that *filtered*
-to a list of known bundle identifiers, while the artifact a fleet actually receives
-*enumerates*. The two answered different questions about the same Mac, every scenario
-passed, and nothing said so. Upstream's suite is a superset — thirteen scenarios, all six
-Docker daemon states including `wedge`, and a whole-suite ceiling this copy never had.
+**Do not re-create that suite here.** A local copy would test a local query rather than the
+artifact a fleet receives, and it would pass while doing so.
 
 ## `test/lint.sh`
 
@@ -87,5 +83,5 @@ python3 -m json.tool /tmp/arthur/inventory.json | less
 
 With Docker down the run says so (`containers=unhealthy:000`) rather than reporting zero
 images. Needs osquery and nothing else; it writes three files and installs nothing. For what a
-reference Mac reports, see the [README](../README.md#try-it) — the numbers live in one
-place because three copies of them drifted apart once already.
+reference Mac reports, see the [README](../README.md#try-it). The numbers live in one place
+so they cannot disagree.

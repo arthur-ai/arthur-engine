@@ -157,10 +157,8 @@ with osquery green is a different fault — read its Policy log, and see section
 
 ## 01 · Build the payload — terminal
 
-**Build it here, not from the public repo.** This step used to clone `osquery-ai-discovery`,
-check out a tag and copy `bin dist catalog` to a staging root. Every part of that is now wrong:
-the plist and the collector live in *this* repo, so the `test -f deploy/…plist` guard it told
-you to run cannot pass upstream, and `catalog/` must never reach a Mac at all — matching happens
+**Build it here, not from the public repo.** The plist and the collector live in this tree,
+and `catalog/` must never reach a Mac at all — matching happens
 in the collector, and shipping the signatures to the endpoint is the one thing the design
 forbids. See [`architecture.md`](architecture.md).
 

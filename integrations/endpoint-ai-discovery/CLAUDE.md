@@ -11,12 +11,9 @@ wall-clock bound all live in
 here at a pinned ref. What this tree owns is the deployable: the vendoring, the build, the
 `arthur1.` wire format and the reporting size budget.
 
-This tree used to carry a second, hand-written implementation beside the vendored one — three
-`.sql` files and a runner with its own guard and its own bound. It **filtered** to a list of
-known bundle identifiers while the shipped artifact **enumerates**, so the two answered
-different questions about the same Mac, and the VM suite tested the copy rather than the
-artifact. All of it is deleted. `test/lint.sh` fails if a `.sql` file, an `osqueryi` call or a
-plaintext query reappears outside `vendor/`.
+A second implementation here would answer a different question about the same Mac than the
+shipped one does, and its tests would pass because they test the copy. `test/lint.sh` fails
+if a `.sql` file, an `osqueryi` call or a plaintext query appears outside `vendor/`.
 
 So: **a query change is an upstream change.** Open it there, vendor the new ref, rebuild.
 
@@ -187,5 +184,5 @@ deployable needed only osquery shipped and was false — the check behind it loo
 answer from the payload and counts invocations rather than mentions: it read three comments as
 a live dependency at the very ref that removed it.
 
-The [Tart](https://tart.run) VM harness that used to live here went upstream with the
-scenarios; if you need one, it is in `osquery-ai-discovery` at `test/run.sh`.
+A Tart VM harness lives upstream with the scenarios, at `test/run.sh` in
+[`osquery-ai-discovery`](https://github.com/arthur-ai/osquery-ai-discovery).
