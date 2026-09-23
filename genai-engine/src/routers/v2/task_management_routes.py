@@ -309,7 +309,9 @@ def get_agent_tasks(
     "/agent-tasks/resolve",
     description="Resolve records from a discovery scan to tasks, minting a task for "
     "any agent not already known. Every submitted record comes back with a task ID, "
-    "and re-submitting the same records resolves them to the same tasks.",
+    "and re-submitting the same records resolves them to the same tasks. A record "
+    "naming a task that does not exist is reported in `failed` without holding up "
+    "the rest of the batch.",
     response_model=ResolveDiscoveredAgentsResponse,
     tags=["Tasks"],
 )
@@ -337,10 +339,7 @@ def resolve_discovered_agents(
     )
     resolution_service = DiscoveryTaskResolutionService(db_session, tasks_repo)
 
-    resolved = resolution_service.resolve_records(
-        request.records, org_id=DEFAULT_ORG_ID
-    )
-    return ResolveDiscoveredAgentsResponse(resolved=resolved)
+    return resolution_service.resolve_records(request.records, org_id=DEFAULT_ORG_ID)
 
 
 @task_management_routes.post(

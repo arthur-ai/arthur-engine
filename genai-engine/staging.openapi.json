@@ -1371,7 +1371,7 @@
                     "Tasks"
                 ],
                 "summary": "Resolve Discovered Agents",
-                "description": "Resolve records from a discovery scan to tasks, minting a task for any agent not already known. Every submitted record comes back with a task ID, and re-submitting the same records resolves them to the same tasks.",
+                "description": "Resolve records from a discovery scan to tasks, minting a task for any agent not already known. Every submitted record comes back with a task ID, and re-submitting the same records resolves them to the same tasks. A record naming a task that does not exist is reported in `failed` without holding up the rest of the batch.",
                 "operationId": "resolve_discovered_agents_api_v2_agent_tasks_resolve_post",
                 "requestBody": {
                     "content": {
@@ -22384,6 +22384,14 @@
                 "title": "DiscoveredAgentRecord",
                 "description": "One record from a discovery scan, on its way to becoming a task.\n\n`DiscoveryOutputRecord` is what a source's QUERY must return; this is what a\nCONNECTOR hands onward, which is the same columns plus the two things only the\nconnector knows. Modelled as an extension rather than a separate shape because that\nis the actual relationship, and because the alternative -- putting `creation_source`\non the output contract itself -- would make a customer's SPL nominally owe a column\nno query can produce, and would force `required_columns()` to be hand-listed rather\nthan derived.\n\n**Column validation runs against `DiscoveryOutputRecord`, never against this.**\n`required_columns()` is inherited and would answer for this model's fields too, so a\nvalidator that reaches for it through a record instance gets the wrong answer."
             },
+            "DiscoveredRecordFailureReason": {
+                "type": "string",
+                "enum": [
+                    "task_not_found"
+                ],
+                "title": "DiscoveredRecordFailureReason",
+                "description": "Why a record came back in `failed` rather than `resolved`."
+            },
             "DisplaySettingsResponse": {
                 "properties": {
                     "default_currency": {
@@ -23518,6 +23526,38 @@
                     "name": "PII Rule",
                     "result": "Pass"
                 }
+            },
+            "FailedDiscoveredRecord": {
+                "properties": {
+                    "external_id": {
+                        "type": "string",
+                        "title": "External Id",
+                        "description": "Identity the record arrived with"
+                    },
+                    "task_id": {
+                        "type": "string",
+                        "title": "Task Id",
+                        "description": "Task the record named or resolved to, which does not exist"
+                    },
+                    "reason": {
+                        "$ref": "#/components/schemas/DiscoveredRecordFailureReason",
+                        "description": "Why the record could not be resolved"
+                    },
+                    "detail": {
+                        "type": "string",
+                        "title": "Detail",
+                        "description": "Human-readable explanation of the failure"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "external_id",
+                    "task_id",
+                    "reason",
+                    "detail"
+                ],
+                "title": "FailedDiscoveredRecord",
+                "description": "A record that could not be resolved, reported so the rest of its batch can be."
             },
             "FeedbackRequest": {
                 "properties": {
@@ -30534,7 +30574,15 @@
                         },
                         "type": "array",
                         "title": "Resolved",
-                        "description": "Resolution outcome per record, in request order"
+                        "description": "Records that resolved to a task, in request order"
+                    },
+                    "failed": {
+                        "items": {
+                            "$ref": "#/components/schemas/FailedDiscoveredRecord"
+                        },
+                        "type": "array",
+                        "title": "Failed",
+                        "description": "Records that could not be resolved, in request order. Re-submitting one unchanged fails the same way."
                     }
                 },
                 "type": "object",
@@ -30542,7 +30590,7 @@
                     "resolved"
                 ],
                 "title": "ResolveDiscoveredAgentsResponse",
-                "description": "One entry per submitted record, in the order they were submitted."
+                "description": "Every submitted record, in exactly one of `resolved` or `failed`.\n\nA record that cannot be resolved does not fail its batch: the rest resolve, and\nthe scan job can tell which records landed without re-submitting them."
             },
             "ResolvedAgentTask": {
                 "properties": {

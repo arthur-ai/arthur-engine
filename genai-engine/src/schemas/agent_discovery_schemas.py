@@ -60,6 +60,26 @@ class ResolvedAgentTask(BaseModel):
     )
 
 
+class DiscoveredRecordFailureReason(str, Enum):
+    """Why a record came back in `failed` rather than `resolved`."""
+
+    TASK_NOT_FOUND = "task_not_found"
+    """The record named a task, or resolved to one, that does not exist."""
+
+
+class FailedDiscoveredRecord(BaseModel):
+    """A record that could not be resolved, reported so the rest of its batch can be."""
+
+    external_id: str = Field(description="Identity the record arrived with")
+    task_id: str = Field(
+        description="Task the record named or resolved to, which does not exist",
+    )
+    reason: DiscoveredRecordFailureReason = Field(
+        description="Why the record could not be resolved",
+    )
+    detail: str = Field(description="Human-readable explanation of the failure")
+
+
 class ResolveDiscoveredAgentsRequest(BaseModel):
     """A scan's worth of discovered records to resolve to tasks."""
 
@@ -71,8 +91,17 @@ class ResolveDiscoveredAgentsRequest(BaseModel):
 
 
 class ResolveDiscoveredAgentsResponse(BaseModel):
-    """One entry per submitted record, in the order they were submitted."""
+    """Every submitted record, in exactly one of `resolved` or `failed`.
+
+    A record that cannot be resolved does not fail its batch: the rest resolve, and
+    the scan job can tell which records landed without re-submitting them.
+    """
 
     resolved: list[ResolvedAgentTask] = Field(
-        description="Resolution outcome per record, in request order",
+        description="Records that resolved to a task, in request order",
+    )
+    failed: list[FailedDiscoveredRecord] = Field(
+        default_factory=list,
+        description="Records that could not be resolved, in request order. "
+        "Re-submitting one unchanged fails the same way.",
     )

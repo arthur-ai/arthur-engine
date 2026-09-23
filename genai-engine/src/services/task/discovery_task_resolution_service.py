@@ -4,14 +4,17 @@ from uuid import UUID
 
 from arthur_common.models.agent_discovery_schemas import DiscoveredAgentRecord
 from fastapi import HTTPException
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
-from starlette import status
 
 from db_models import DatabaseTask
 from repositories.service_name_mapping_repository import ServiceNameMappingRepository
 from repositories.tasks_repository import TaskRepository
 from schemas.agent_discovery_schemas import (
+    DiscoveredRecordFailureReason,
+    FailedDiscoveredRecord,
     ResolvedAgentTask,
+    ResolveDiscoveredAgentsResponse,
     TaskResolutionMethod,
 )
 from schemas.enums import MappingKeyKind
@@ -21,6 +24,18 @@ logger = logging.getLogger(__name__)
 
 # A row of `service_name_task_mappings`, as the resolver's view of the table keys it.
 MappingKey = tuple[MappingKeyKind, str]
+
+
+class _TaskNotFound(Exception):
+    """A record named, or resolved to, a task that is not there.
+
+    Raised inside one record's resolution and caught by `resolve_records`, which
+    reports that record as failed and moves on to the next.
+    """
+
+    def __init__(self, task_id: str) -> None:
+        super().__init__(task_id)
+        self.task_id = task_id
 
 
 class DiscoveryTaskResolutionService:
@@ -79,7 +94,7 @@ class DiscoveryTaskResolutionService:
         self,
         records: list[DiscoveredAgentRecord],
         org_id: Optional[UUID] = None,
-    ) -> list[ResolvedAgentTask]:
+    ) -> ResolveDiscoveredAgentsResponse:
         """Resolve a scan's worth of records to tasks, in the order submitted.
 
         Records are resolved one at a time against a mapping view seeded by a single
@@ -90,13 +105,21 @@ class DiscoveryTaskResolutionService:
         records it already resolved durably resolved, which is what makes the retry
         safe: the scan job re-submits the same records and they come back down rung 2.
 
+        That only holds for a failure a retry can get past, so a record that names a
+        task that does not exist fails on its own instead. Every explicit `task_id` in
+        the batch is checked in one query before anything is written, and a record
+        that fails it is reported in `failed` while the rest resolve. A task that
+        disappears mid-batch is caught the same way.
+
         Args:
             records: The discovered records to resolve.
             org_id: Owning org for any task minted here. Defaults to the `default` org.
 
         Returns:
-            One ResolvedAgentTask per record, in request order.
+            Every record, in request order, in either `resolved` or `failed`.
         """
+        explicit_tasks = self._load_explicit_tasks(records)
+
         # Seed the view with every key this batch could possibly match on, one query
         # per kind. `dict.fromkeys` rather than a set so the order is stable and the
         # emitted SQL is the same run to run, which makes the query log readable.
@@ -113,20 +136,42 @@ class DiscoveryTaskResolutionService:
             ),
         )
 
-        return [
-            self._resolve_record(record, known_mappings, org_id) for record in records
-        ]
+        resolved: list[ResolvedAgentTask] = []
+        failed: list[FailedDiscoveredRecord] = []
+        for record in records:
+            if record.task_id and record.task_id not in explicit_tasks:
+                failed.append(self._task_not_found(record, record.task_id))
+                continue
+
+            try:
+                resolved.append(
+                    self._resolve_record(
+                        record,
+                        explicit_tasks,
+                        known_mappings,
+                        org_id,
+                    ),
+                )
+            except _TaskNotFound as e:
+                failed.append(self._task_not_found(record, e.task_id))
+
+        return ResolveDiscoveredAgentsResponse(resolved=resolved, failed=failed)
 
     def _resolve_record(
         self,
         record: DiscoveredAgentRecord,
+        explicit_tasks: dict[str, DatabaseTask],
         known_mappings: dict[MappingKey, str],
         org_id: Optional[UUID],
     ) -> ResolvedAgentTask:
-        """Walk one record down the ladder. See the class docstring for the rungs."""
+        """Walk one record down the ladder. See the class docstring for the rungs.
+
+        Raises:
+            _TaskNotFound: A task this record resolved to disappeared mid-batch.
+        """
         # Rung 1: the caller already knows the task.
         if record.task_id:
-            task = self._require_task(record.task_id, record.external_id)
+            task = explicit_tasks[record.task_id]
             identity_owner_id = self._map_keys_to_task(record, task.id, known_mappings)
             if identity_owner_id == task.id:
                 return ResolvedAgentTask(
@@ -151,7 +196,7 @@ class DiscoveryTaskResolutionService:
             (MappingKeyKind.EXTERNAL_ID, record.external_id),
         )
         if existing_task_id:
-            task = self._require_task(existing_task_id, record.external_id)
+            task = self._require_task(existing_task_id)
             self._map_keys_to_task(record, task.id, known_mappings)
             return ResolvedAgentTask(
                 external_id=record.external_id,
@@ -168,7 +213,7 @@ class DiscoveryTaskResolutionService:
             )
             if not mapped_task_id:
                 continue
-            task = self._require_task(mapped_task_id, record.external_id)
+            task = self._require_task(mapped_task_id)
             logger.info(
                 f"Discovered record '{record.external_id}' matched task "
                 f"'{task.name}' ({task.id}) via service name '{service_name}'",
@@ -237,7 +282,7 @@ class DiscoveryTaskResolutionService:
         )
         self.task_repo.delete_task(created_task.id)
 
-        owner_task = self._require_task(owner_task_id, record.external_id)
+        owner_task = self._require_task(owner_task_id)
         return ResolvedAgentTask(
             external_id=record.external_id,
             task_id=owner_task.id,
@@ -291,6 +336,46 @@ class DiscoveryTaskResolutionService:
 
         return owner_task_id
 
+    def _load_explicit_tasks(
+        self,
+        records: list[DiscoveredAgentRecord],
+    ) -> dict[str, DatabaseTask]:
+        """Fetch every task the batch names, archived ones included, in one query.
+
+        A named task missing from the result does not exist, which is how a bad
+        `task_id` is found before any record in the batch is written.
+        """
+        task_ids = list(
+            dict.fromkeys(record.task_id for record in records if record.task_id),
+        )
+        if not task_ids:
+            return {}
+
+        tasks, _ = self.task_repo.query_tasks(
+            ids=task_ids,
+            include_archived=True,
+            page_size=None,
+        )
+        return {task.id: task for task in tasks}
+
+    def _task_not_found(
+        self,
+        record: DiscoveredAgentRecord,
+        task_id: str,
+    ) -> FailedDiscoveredRecord:
+        """Report a record whose task is not there, and log it for the operator."""
+        detail = (
+            f"Discovered record '{record.external_id}' resolved to task "
+            f"'{task_id}', which does not exist"
+        )
+        logger.warning(detail)
+        return FailedDiscoveredRecord(
+            external_id=record.external_id,
+            task_id=task_id,
+            reason=DiscoveredRecordFailureReason.TASK_NOT_FOUND,
+            detail=detail,
+        )
+
     def _load_mappings(
         self,
         key_kind: MappingKeyKind,
@@ -316,31 +401,32 @@ class DiscoveryTaskResolutionService:
         `create_mapping` returns the mapping that won on a conflict rather than
         raising, so the task recorded here is the row that is in the table -- which is
         not always the one this call asked for.
+
+        Raises:
+            _TaskNotFound: `task_id` was deleted after this batch read it, so the
+                mapping's foreign key refused the write.
         """
         if key not in known_mappings:
             key_kind, name = key
-            known_mappings[key] = self.mapping_repo.create_mapping(
-                name,
-                task_id,
-                key_kind,
-            ).task_id
+            try:
+                mapping = self.mapping_repo.create_mapping(name, task_id, key_kind)
+            except IntegrityError:
+                raise _TaskNotFound(task_id)
+            known_mappings[key] = mapping.task_id
 
         return known_mappings[key]
 
-    def _require_task(self, task_id: str, external_id: str) -> DatabaseTask:
-        """Fetch a task the caller or a mapping pointed at, archived ones included.
+    def _require_task(self, task_id: str) -> DatabaseTask:
+        """Fetch a task a mapping pointed at, archived ones included.
 
         Archived tasks resolve normally, matching how trace ingestion routes to them:
         archiving is a decision about what to show, and minting a second task because
         the first was archived would break identity exactly where it matters most.
+
+        Raises:
+            _TaskNotFound: The task was deleted after this batch read the mapping.
         """
         try:
             return self.task_repo.get_db_task_by_id(task_id, include_archived=True)
         except HTTPException:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=(
-                    f"Discovered record '{external_id}' resolved to task "
-                    f"'{task_id}', which does not exist"
-                ),
-            )
+            raise _TaskNotFound(task_id)

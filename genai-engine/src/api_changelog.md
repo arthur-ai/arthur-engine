@@ -2,6 +2,9 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 09/23/2026
+- **CHANGE** for **URL**: /api/v2/agent-tasks/resolve  added the optional property `failed` to the response with the `200` status
+
 # 09/22/2026
 - **CHANGE** for **URL**: /api/v2/agent-tasks  the `items/creation_source/anyOf[subschema #1: AgentCreationSource]/oneOf[subschema #1: GCPAgentCreationSource]/address/anyOf[subschema #1: SourceAddress]/instance` response property's minLength was set to `1` for the response status `200`
 - **CHANGE** for **URL**: /api/v2/agent-tasks  the `items/creation_source/anyOf[subschema #1: AgentCreationSource]/oneOf[subschema #1: GCPAgentCreationSource]/address/anyOf[subschema #1: SourceAddress]/resource_id` response property's minLength was set to `1` for the response status `200`

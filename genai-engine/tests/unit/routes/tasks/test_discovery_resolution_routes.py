@@ -19,7 +19,10 @@ from arthur_common.models.agent_governance_schemas import (
 
 from db_models import DatabaseTask
 from db_models.telemetry_models import DatabaseServiceNameTaskMapping
-from schemas.agent_discovery_schemas import TaskResolutionMethod
+from schemas.agent_discovery_schemas import (
+    DiscoveredRecordFailureReason,
+    TaskResolutionMethod,
+)
 from tests.clients.base_test_client import (
     GenaiEngineTestClientBase,
     override_get_db_session,
@@ -30,11 +33,17 @@ from tests.clients.base_test_client import (
 LAST_SEEN = datetime(2026, 9, 1, tzinfo=timezone.utc)
 
 
-def _record(external_id: str, name: str, service_names=()) -> DiscoveredAgentRecord:
+def _record(
+    external_id: str,
+    name: str,
+    service_names=(),
+    task_id: str | None = None,
+) -> DiscoveredAgentRecord:
     return DiscoveredAgentRecord(
         external_id=external_id,
         name=name,
         last_seen=LAST_SEEN,
+        task_id=task_id,
         creation_source=SIEMAgentCreationSource(
             vendor="splunk_enterprise",
             address=SourceAddress(
@@ -77,6 +86,7 @@ def test_resolve_returns_a_task_per_record_in_request_order(
             r.external_id for r in records
         ]
         assert len(set(task_ids)) == 3
+        assert response.failed == []
         assert all(
             r.resolved_by is TaskResolutionMethod.CREATED for r in response.resolved
         )
@@ -90,6 +100,35 @@ def test_resolve_returns_a_task_per_record_in_request_order(
         )
     finally:
         _cleanup(task_ids)
+
+
+@pytest.mark.unit_tests
+def test_bad_task_id_is_reported_while_the_rest_of_the_batch_resolves(
+    client: GenaiEngineTestClientBase,
+):
+    """A 200 that says which records landed, rather than a 404 that says none did."""
+    run = uuid.uuid4().hex[:8]
+    missing_task_id = str(uuid.uuid4())
+    records = [
+        _record(f"{run}-splunk-1", name="Agent 1"),
+        _record(f"{run}-bad", name="Agent 2", task_id=missing_task_id),
+        _record(f"{run}-splunk-3", name="Agent 3"),
+    ]
+
+    status_code, response = client.resolve_discovered_agents(records)
+    assert status_code == 200
+
+    try:
+        assert [r.external_id for r in response.resolved] == [
+            f"{run}-splunk-1",
+            f"{run}-splunk-3",
+        ]
+        [failure] = response.failed
+        assert failure.external_id == f"{run}-bad"
+        assert failure.task_id == missing_task_id
+        assert failure.reason is DiscoveredRecordFailureReason.TASK_NOT_FOUND
+    finally:
+        _cleanup([r.task_id for r in response.resolved])
 
 
 @pytest.mark.unit_tests
