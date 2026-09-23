@@ -458,6 +458,54 @@ def test_explicit_task_id_routes_to_that_task_and_keys_the_identity_to_it(
 
 
 @pytest.mark.unit_tests
+def test_explicit_task_id_cannot_move_an_identity_already_mapped(
+    resolver,
+    db_session,
+    tracked_tasks,
+):
+    """A re-scan that names a different task resolves to the one that owns the identity.
+
+    Mappings are immutable, so the claim cannot re-route a known agent. What matters is
+    that the response agrees with the table: otherwise the agent's findings split
+    across two tasks, and it flips between them depending on whether the caller sends
+    `task_id`. The record's new service names follow the identity to its owner.
+    """
+    run = _run_id()
+    external_id = f"{run}-openclaw"
+    new_service_name = f"openclaw-{run}"
+
+    [first] = resolver.resolve_records([_endpoint_record(external_id)])
+    [other] = resolver.resolve_records([_siem_record(f"{run}-other")])
+    tracked_tasks.extend([first.task_id, other.task_id])
+
+    [rerouted] = resolver.resolve_records(
+        [
+            _endpoint_record(
+                external_id,
+                service_names=[new_service_name],
+                task_id=other.task_id,
+            ),
+        ],
+    )
+
+    assert rerouted.task_id == first.task_id
+    assert rerouted.resolved_by is TaskResolutionMethod.EXTERNAL_ID
+
+    mapping_repo = ServiceNameMappingRepository(db_session)
+    assert (
+        mapping_repo.get_task_id_by_service_name(
+            external_id,
+            MappingKeyKind.EXTERNAL_ID,
+        )
+        == first.task_id
+    )
+    assert mapping_repo.get_task_id_by_service_name(new_service_name) == first.task_id
+
+    [next_scan] = resolver.resolve_records([_endpoint_record(external_id)])
+    assert next_scan.task_id == first.task_id
+
+
+@pytest.mark.unit_tests
 def test_explicit_task_id_that_does_not_exist_is_rejected(resolver):
     """Naming a task that is not there is a client error, not a silent mint."""
     run = _run_id()

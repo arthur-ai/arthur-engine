@@ -34,7 +34,9 @@ class DiscoveryTaskResolutionService:
     The ladder, which deliberately mirrors `TraceIngestionService._resolve_task_id`:
 
     1. The record names a task -> use it. Optional on this input only, since a SIEM
-       does not know Arthur's task IDs.
+       does not know Arthur's task IDs. The one exception is an `external_id` that
+       already maps to a different task: mappings are immutable, so the claim cannot
+       move it, and the record resolves at rung 2 to the task that owns it.
     2. `external_id` already maps to a task -> use it. This is what makes a re-scan
        free: the first run wrote the mapping, every later run reads it.
     3. A service name the sensor observed already maps to a task -> use it, and map
@@ -125,12 +127,23 @@ class DiscoveryTaskResolutionService:
         # Rung 1: the caller already knows the task.
         if record.task_id:
             task = self._require_task(record.task_id, record.external_id)
-            self._map_keys_to_task(record, task.id, known_mappings)
-            return ResolvedAgentTask(
-                external_id=record.external_id,
-                task_id=task.id,
-                name=task.name,
-                resolved_by=TaskResolutionMethod.EXPLICIT_TASK_ID,
+            identity_owner_id = self._map_keys_to_task(record, task.id, known_mappings)
+            if identity_owner_id == task.id:
+                return ResolvedAgentTask(
+                    external_id=record.external_id,
+                    task_id=task.id,
+                    name=task.name,
+                    resolved_by=TaskResolutionMethod.EXPLICIT_TASK_ID,
+                )
+
+            # The identity already belongs elsewhere, and the mapping is immutable.
+            # Reporting the requested task anyway would split this agent's findings
+            # across two tasks and flip it between them from scan to scan, so it
+            # falls through to rung 2, which now finds the owner in the view.
+            logger.warning(
+                f"Discovered record '{record.external_id}' asked for task "
+                f"'{task.id}', but its identity already maps to task "
+                f"'{identity_owner_id}'; resolving to the owner",
             )
 
         # Rung 2: a previous scan already minted a task for this identity.
