@@ -82,11 +82,9 @@ for f in "$ROOT"/tools/vendor-queries.sh "$ROOT"/dist/collect.sh; do
 done
 
 # --- the vendored tree is verbatim --------------------------------------------------------
-# A repo-wide formatter reached into vendor/ and rewrote bin/classify and tools/bundle.py in
-# place. Nothing broke and every check here still passed, which is the point: a vendored
-# program that has been quietly reformatted is no longer the reference it is vendored to be,
-# and bundle.py is what BUILDS the deployable. The ref stamp cannot see this -- it still
-# named the right tag. Regenerate with tools/vendor-queries.sh.
+# The ref stamp names a release; only this says the files still match it. A formatter
+# reaching into vendor/ leaves the tag right and the bytes wrong, and tools/bundle.py is
+# what BUILDS the deployable. Regenerate with tools/vendor-queries.sh.
 if [ -f "$ROOT/vendor/osquery-ai-discovery/SHA256SUMS" ]; then
   if ( cd "$ROOT/vendor/osquery-ai-discovery" && shasum -a 256 --quiet --check SHA256SUMS >/dev/null 2>&1 ); then
     echo "vendor tree: ok, every file matches the manifest written when it was vendored"

@@ -91,10 +91,8 @@ for stray in "$DEST"/dist/jamf-collect.sh "$DEST"/dist/*.plist; do
   [ -e "$stray" ] && { echo "vendor: removing Arthur-specific $(basename "$stray") -- it belongs in this repo, not upstream"; rm -f "$stray"; }
 done
 
-# THE TREE IS VERBATIM, AND A MANIFEST IS HOW THAT STAYS TRUE. A repo-wide formatter
-# rewrote bin/classify and tools/bundle.py here once, in place, and every test still
-# passed -- a vendored program quietly reformatted is no longer the upstream it claims to
-# be, and the next re-vendor produces a diff nobody can explain. test/lint.sh checks this.
+# The manifest is what makes "verbatim" checkable: the ref stamp names a release, and only
+# this says the files still match it. test/lint.sh verifies it.
 ( cd "$DEST" && find . -type f ! -name VERSION ! -name SHA256SUMS -print0 \
     | sort -z | xargs -0 shasum -a 256 > SHA256SUMS )
 
