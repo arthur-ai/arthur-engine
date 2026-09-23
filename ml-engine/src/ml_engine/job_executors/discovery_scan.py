@@ -49,6 +49,12 @@ class DiscoverySourceScanner(Protocol):
     so they are read once per scan at execution, and the caller that reads them is also
     what scrubs them out of anything bound for the job log.
 
+    `source_fields` is the source's NON-SENSITIVE configuration, kept apart from
+    `credentials` rather than merged into it. Every vendor here needs at least one --
+    Jamf's `base_url`, Splunk's, Elastic's `elasticsearch_url` -- and none of them is a
+    secret. Merging them would also register them as scrub targets, so a URL would be
+    struck out of the very log lines that exist to say which host failed.
+
     THE LOGGER IS THE JOB'S, NOT THE MODULE'S. `ScopeJobLogExporter` is attached to the
     per-job logger alone, so a scanner logging to `getLogger(__name__)` reaches process
     stdout and never the Platform -- and every connector's "reported, not suppressed"
@@ -60,6 +66,7 @@ class DiscoverySourceScanner(Protocol):
         config: DiscoverySourceConfigSpec,
         lookback_hours: int,
         credentials: Mapping[str, Optional[str]],
+        source_fields: Mapping[str, str],
         logger: logging.Logger,
     ) -> Iterator[Sequence[DiscoveryOutputRecord]]: ...
 
@@ -178,6 +185,7 @@ def run_source_scan(
     sink: DiscoveryRecordSink,
     logger: logging.Logger,
     credentials: Mapping[str, Optional[str]],
+    source_fields: Mapping[str, str],
 ) -> DiscoveryScanOutcome:
     """Scan one source, publishing each batch as it arrives.
 
@@ -194,7 +202,13 @@ def run_source_scan(
     """
     known_secrets = secret_values(credentials)
     try:
-        for batch in scanner.scan(config, lookback_hours, credentials, logger):
+        for batch in scanner.scan(
+            config,
+            lookback_hours,
+            credentials,
+            source_fields,
+            logger,
+        ):
             if not batch:
                 continue
             accepted = sink.publish(workspace_id, data_plane_id, config, batch)

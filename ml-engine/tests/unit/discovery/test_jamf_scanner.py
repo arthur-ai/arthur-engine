@@ -40,8 +40,8 @@ CATALOG = yaml.safe_dump(
         ],
     },
 )
+FIELDS = {"base_url": "https://acme.jamfcloud.com"}
 CREDS = {
-    "base_url": "https://acme.jamfcloud.com",
     "client_id": "id",
     "client_secret": "shh",
 }
@@ -193,7 +193,7 @@ class FakeJamf:
 
 def client_for(fake: FakeJamf) -> JamfClient:
     return JamfClient(
-        JamfSettings(**CREDS, page_size=2),  # type: ignore[arg-type]
+        JamfSettings(**CREDS, **FIELDS, page_size=2),  # type: ignore[arg-type]
         session=fake,  # type: ignore[arg-type]
         sleep=lambda _s: None,
     )
@@ -343,7 +343,7 @@ def scan(fake: FakeJamf, monkeypatch: pytest.MonkeyPatch) -> list[Any]:
         lambda s, logger=None: client_for(fake),
     )
     scanner = JamfScanner()
-    return [r for batch in scanner.scan(FakeConfig(CATALOG), 24, CREDS, LOG) for r in batch]  # type: ignore[arg-type]
+    return [r for batch in scanner.scan(FakeConfig(CATALOG), 24, CREDS, FIELDS, LOG) for r in batch]  # type: ignore[arg-type]
 
 
 def test_a_healthy_mac_yields_one_record_per_agent(
@@ -438,8 +438,9 @@ def test_external_id_uses_the_management_id_not_the_serial(
 @pytest.mark.parametrize("missing", ["base_url", "client_id", "client_secret"])
 def test_a_missing_source_field_is_named(missing: str) -> None:
     creds = {k: v for k, v in CREDS.items() if k != missing}
+    fields = {k: v for k, v in FIELDS.items() if k != missing}
     with pytest.raises(ValueError, match=missing):
-        _settings_from(creds)
+        _settings_from(creds, fields)
 
 
 def test_importing_the_package_registers_the_connector() -> None:
@@ -456,7 +457,7 @@ def test_importing_the_package_registers_the_connector() -> None:
 
 
 def test_the_registered_scanner_satisfies_the_protocol() -> None:
-    """Structural, not nominal: the executor calls .scan(config, lookback, credentials)."""
+    """Structural, not nominal: the executor calls .scan(...) with five arguments."""
     import discovery  # noqa: F401
     from job_executors.discovery_scan import SOURCE_SCANNERS
 
@@ -558,7 +559,7 @@ def test_observations_carry_what_only_the_connector_saw(
         lambda s, logger=None: client_for(fake),
     )
     scanner = JamfScanner()
-    records = [r for b in scanner.scan(FakeConfig(catalog), 24, CREDS, LOG) for r in b]  # type: ignore[arg-type]
+    records = [r for b in scanner.scan(FakeConfig(catalog), 24, CREDS, FIELDS, LOG) for r in b]  # type: ignore[arg-type]
 
     obs = records[0].creation_source.observations
     assert obs.install_path == "/Applications/Claude.app"
@@ -631,7 +632,7 @@ def test_an_opaque_id_is_not_reported_as_an_install_path(
         "discovery.endpoint.jamf.scanner.JamfClient",
         lambda s, logger=None: client_for(fake),
     )
-    records = [r for b in JamfScanner().scan(FakeConfig(catalog), 24, CREDS, LOG) for r in b]  # type: ignore[arg-type]
+    records = [r for b in JamfScanner().scan(FakeConfig(catalog), 24, CREDS, FIELDS, LOG) for r in b]  # type: ignore[arg-type]
 
     assert records, "the finding itself must still be reported"
     assert records[0].creation_source.observations.install_path is None
@@ -669,7 +670,7 @@ def test_a_container_state_is_not_reported_as_a_version(
         "discovery.endpoint.jamf.scanner.JamfClient",
         lambda s, logger=None: client_for(fake),
     )
-    records = [r for b in JamfScanner().scan(FakeConfig(catalog), 24, CREDS, LOG) for r in b]  # type: ignore[arg-type]
+    records = [r for b in JamfScanner().scan(FakeConfig(catalog), 24, CREDS, FIELDS, LOG) for r in b]  # type: ignore[arg-type]
 
     assert records[0].creation_source.observations.version is None
 
@@ -685,7 +686,7 @@ def test_a_non_https_base_url_is_refused(url: str) -> None:
     """client_secret travels in the token request's BODY, so http sends it in cleartext.
     This is the only place it can be refused before it is on the wire."""
     with pytest.raises(ValueError, match="https"):
-        _settings_from({**CREDS, "base_url": url})
+        _settings_from(CREDS, {"base_url": url})
 
 
 def test_the_token_request_does_not_follow_redirects() -> None:
@@ -752,7 +753,7 @@ def test_an_out_of_range_scan_timestamp_does_not_end_the_fleet_scan(
         "discovery.endpoint.jamf.scanner.JamfClient",
         lambda s, logger=None: client_for(fake),
     )
-    records = [r for b in JamfScanner().scan(FakeConfig(CATALOG), 0, CREDS, LOG) for r in b]  # type: ignore[arg-type]
+    records = [r for b in JamfScanner().scan(FakeConfig(CATALOG), 0, CREDS, FIELDS, LOG) for r in b]  # type: ignore[arg-type]
 
     # The bad device falls back to the MDM's own report date, which is the designed
     # behaviour; what matters is that it does not raise and take the rest of the fleet.
@@ -831,8 +832,23 @@ def test_the_scan_logs_through_the_logger_it_is_handed(
         "discovery.endpoint.jamf.scanner.JamfClient",
         lambda s, logger=None: client_for(fake),
     )
-    list(JamfScanner().scan(FakeConfig(CATALOG), 24, CREDS, job_log))  # type: ignore[arg-type]
+    list(JamfScanner().scan(FakeConfig(CATALOG), 24, CREDS, FIELDS, job_log))  # type: ignore[arg-type]
 
     assert records, "nothing reached the job logger"
     assert any("no usable payload" in r.getMessage() for r in records)
     assert all(r.name == "a-particular-job-id" for r in records)
+
+
+def test_base_url_comes_from_the_source_fields_not_the_secrets() -> None:
+    """It is not a secret, and taking it from the credentials mapping would register it
+    as a scrub target -- striking the host out of the log lines that say which one
+    failed."""
+    settings = _settings_from(CREDS, FIELDS)
+    assert settings.base_url == "https://acme.jamfcloud.com"
+
+
+def test_base_url_in_the_credentials_is_ignored() -> None:
+    """A source that still declares it as a secret does not accidentally keep working:
+    the field is read from one place only."""
+    with pytest.raises(ValueError, match="base_url"):
+        _settings_from({**CREDS, "base_url": "https://sneaky.example"}, {})

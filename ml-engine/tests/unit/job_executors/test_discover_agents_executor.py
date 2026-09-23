@@ -1,6 +1,7 @@
 import json
 import logging
 from datetime import datetime, timezone
+from types import SimpleNamespace
 from typing import Iterator, Mapping, Sequence
 from unittest.mock import MagicMock, call
 
@@ -125,16 +126,19 @@ class FakeScanner:
         self.calls: list[tuple[str, int]] = []
         self.credentials: list[dict[str, str | None]] = []
         self.loggers: list[logging.Logger] = []
+        self.source_fields: list[dict[str, str]] = []
 
     def scan(
         self,
         config: DiscoverySourceConfigSpec,
         lookback_hours: int,
         credentials: Mapping[str, str | None],
+        source_fields: Mapping[str, str],
         logger: logging.Logger,
     ) -> Iterator[Sequence[DiscoveryOutputRecord]]:
         self.calls.append((config.name, lookback_hours))
         self.credentials.append(dict(credentials))
+        self.source_fields.append(dict(source_fields))
         self.loggers.append(logger)
         for batch in self.batches:
             yield batch
@@ -147,12 +151,20 @@ CONFIGURED_SECRET = "cfg-fake-credential-value"
 
 def _credentials_client(
     credentials: dict[str, str | None] | None = None,
+    source_fields: dict[str, str] | None = None,
 ) -> MagicMock:
-    """Stands in for the D-05 route, which returns the sensitive fields and only those."""
+    """Stands in for the D-05 route, which returns the sensitive fields and only those,
+    and for the source read that returns the non-sensitive ones."""
     client = MagicMock()
     client.retrieve_discovery_source_credentials.return_value = (
         {"password": CONFIGURED_SECRET} if credentials is None else credentials
     )
+    source = MagicMock()
+    source.fields = [
+        SimpleNamespace(key=k, value=v)
+        for k, v in (source_fields or {"base_url": "https://splunk.example"}).items()
+    ]
+    client.get_discovery_source.return_value = source
     return client
 
 

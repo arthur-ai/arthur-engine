@@ -35,6 +35,7 @@ class JamfScanner:
         config: DiscoverySourceConfigSpec,
         lookback_hours: int,
         credentials: Mapping[str, Optional[str]],
+        source_fields: Mapping[str, str],
         logger: logging.Logger,
     ) -> Iterator[Sequence[DiscoveredAgentRecord]]:
         """`logger` is the JOB's, so what this reports reaches the Platform job log.
@@ -42,7 +43,7 @@ class JamfScanner:
         A module logger would put every unreadable device and every gap on process
         stdout and nowhere else, which makes "reported, not suppressed" untrue.
         """
-        settings = _settings_from(credentials)
+        settings = _settings_from(credentials, source_fields)
         matcher = Matcher.from_source(
             catalog_yaml=config.query or None,
             logger=logger,
@@ -86,31 +87,31 @@ class JamfScanner:
         )
 
 
-def _settings_from(credentials: Mapping[str, Optional[str]]) -> JamfSettings:
-    """Read the tenant's address and credentials out of the source's fields.
+def _settings_from(
+    credentials: Mapping[str, Optional[str]],
+    source_fields: Mapping[str, str],
+) -> JamfSettings:
+    """The tenant's address from the source's fields, its credentials from the secrets.
 
-    `base_url` is NOT a secret, and `retrieve_discovery_source_credentials` returns
-    "current sensitive fields only" -- so strictly it should arrive by another route, and
-    the scan seam has none. Splunk (`base_url`) and Elastic (`elasticsearch_url`) have the
-    same shape, so this wants solving once in the framework rather than per connector.
-    Until then the source declares it alongside the secrets; the failure if it does not is
-    named rather than a KeyError three frames down.
+    `base_url` is not a secret and does not arrive with them. Taking it from the
+    non-sensitive fields is also what keeps it out of the scrub set, so a failure can say
+    which host did not answer instead of which [redacted] did not.
     """
-    missing = [
-        k for k in ("base_url", "client_id", "client_secret") if not credentials.get(k)
-    ]
+    base_url = (source_fields.get("base_url") or "").strip()
+    missing = [k for k in ("client_id", "client_secret") if not credentials.get(k)]
+    if not base_url:
+        missing.insert(0, "base_url")
     if missing:
         raise ValueError(
             f"Jamf source is missing required field(s): {', '.join(missing)}. "
-            f"base_url is not a secret and arrives here only because the scan seam "
-            f"carries no non-sensitive source fields.",
+            f"base_url is a source field; client_id and client_secret are secrets.",
         )
-    base_url = str(credentials["base_url"]).strip()
     if not base_url.lower().startswith("https://"):
         # client_secret travels in the token request's BODY. Over http it is in cleartext,
         # and a scheme check here is the only place it can be refused before it is sent.
         raise ValueError(
-            f"Jamf base_url must be https, got {base_url.split('://', 1)[0] or base_url!r}. "
+            f"Jamf base_url must be https, got "
+            f"{base_url.split('://', 1)[0] or base_url!r}. "
             f"The token request carries client_secret in its body.",
         )
     return JamfSettings(
