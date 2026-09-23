@@ -129,7 +129,8 @@ class DiscoverAgentsExecutor:
                 outcome,
                 RuntimeError(
                     "No discovery record sink is configured; discovery records cannot "
-                    "be published until task resolution (D-08) lands.",
+                    "be published until the connector framework's handoff to task "
+                    "resolution (D-13) lands.",
                 ),
             )
 

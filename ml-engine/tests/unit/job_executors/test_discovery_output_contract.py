@@ -18,7 +18,11 @@ from job_executors.discovery_output_contract import (
     passing_result,
     result_payload,
 )
-from job_executors.discovery_scan import DiscoveryScanOutcome, run_source_scan
+from job_executors.discovery_scan import (
+    DiscoveryPublishResult,
+    DiscoveryScanOutcome,
+    run_source_scan,
+)
 
 WORKSPACE_ID = "11111111-1111-1111-1111-111111111111"
 DATA_PLANE_ID = "22222222-2222-2222-2222-222222222222"
@@ -82,9 +86,9 @@ class RecordingSink:
         data_plane_id: str,
         config: DiscoverySourceConfigSpec,
         records: Sequence[DiscoveryOutputRecord],
-    ) -> int:
+    ) -> DiscoveryPublishResult:
         self.batches.append([r.external_id for r in records])
-        return len(records)
+        return DiscoveryPublishResult(accepted=len(records))
 
 
 def _scan(

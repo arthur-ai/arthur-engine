@@ -7,9 +7,10 @@ adds is the resiliency *within* one source -- a source that throws part-way thro
 must not discard the records it already produced.
 
 Making the vendor call is a scanner's, behind the first seam below. Resolving a
-discovery record onto a task is GenAI Engine's (D-08), behind the second, which has no
-implementation yet -- so a source-scoped job fails with a named reason, reported per
-job rather than per engine, as it does for a vendor with no scanner registered.
+discovery record onto a task is GenAI Engine's (D-08), behind the second, whose
+implementation is the connector framework's handoff (D-13) and has not landed yet -- so
+a source-scoped job fails with a named reason, reported per job rather than per engine,
+as it does for a vendor with no scanner registered.
 
 Checking the output columns is neither: it is this module's, run on every batch before
 it is published, so a connector cannot decide for itself what the contract means.
@@ -23,7 +24,7 @@ them by exact match from everything it ships (see `log_redaction`).
 import json
 import logging
 import traceback
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from typing import Callable, Iterator, Mapping, Optional, Protocol, Sequence
 
@@ -81,24 +82,53 @@ class DiscoverySourceScanner(Protocol):
     ) -> Iterator[Sequence[DiscoveryOutputRecord]]: ...
 
 
+@dataclass(frozen=True)
+class FailedDiscoveryRecord:
+    """A record GenAI Engine could not resolve onto a task, as the run reports it.
+
+    Mirrors GenAI Engine's `FailedDiscoveredRecord` but is declared here rather than
+    taken from the generated client, so the outcome D-11 persists does not change shape
+    whenever that client is regenerated.
+    """
+
+    external_id: str
+    # GenAI Engine's `DiscoveredRecordFailureReason`, e.g. "task_not_found".
+    reason: str
+    detail: str
+
+
+@dataclass(frozen=True)
+class DiscoveryPublishResult:
+    """What GenAI Engine made of one batch: every record is in exactly one of the two."""
+
+    accepted: int
+    failed: Sequence[FailedDiscoveryRecord] = ()
+
+
 class DiscoveryRecordSink(Protocol):
     """Where a batch of records goes once a scanner has produced it.
 
-    Returns the number of records it accepted, which is what a run reports as this
-    source's contribution. Publishing a discovery record means resolving it onto a task
-    keyed on ``external_id``, which is D-08's, so there is no implementation yet.
+    Publishing a discovery record means resolving it onto a task keyed on
+    ``external_id`` (D-08). The implementation is D-13's handoff to GenAI Engine, which
+    has not landed yet.
 
-    Accepted means every record the sink took, whether it created a task or updated one
+    Accepted means every record that resolved, whether it created a task or joined one
     that already existed -- a source that reports the same twenty agents every scan
     contributes twenty each time. The count says how much of what the source produced
     survived the trip, not how many agents are new, and nothing downstream should
     present it as a count of new agents.
 
-    A batch must be published atomically: an implementation that raises has committed
-    nothing, and the run counts nothing for that batch. The return value is the only
-    channel by which the caller learns what the Platform accepted, so a sink that
-    commits half a batch and then throws would leave the run under-reporting its own
-    contribution. That is a bug in the sink, not a case this module accounts for.
+    A RECORD THAT FAILS DOES NOT FAIL ITS BATCH. GenAI Engine resolves the rest and
+    reports the failure alongside them, and the sink hands both back. There is nothing
+    for the caller to decide: a failure is final for that input -- re-submitting the
+    record unchanged fails the same way -- so it is reported on the run for whoever
+    configured the source, and never retried.
+
+    A sink that raises is a different case: the request itself did not complete. Each
+    record GenAI Engine resolved before then stays resolved, so a batch is not atomic,
+    but re-publishing it is safe -- resolved records come back to the tasks they already
+    have. The run cannot know how much of a raising batch landed, so it counts none of
+    it, and its contribution is a lower bound on what reached the Platform.
     """
 
     def publish(
@@ -107,7 +137,7 @@ class DiscoveryRecordSink(Protocol):
         data_plane_id: str,
         config: DiscoverySourceConfigSpec,
         records: Sequence[DiscoveryOutputRecord],
-    ) -> int: ...
+    ) -> DiscoveryPublishResult: ...
 
 
 # Builds a fresh scanner for one scan. A factory rather than an instance because
@@ -148,6 +178,10 @@ class DiscoveryScanOutcome:
     batches_published: int = 0
     # Records the sink accepted, created and updated alike -- see DiscoveryRecordSink.
     records_published: int = 0
+    # Records GenAI Engine could not resolve. They do not fail the run: the source
+    # reported them and the rest of their batch landed, so the scan succeeded and these
+    # are something for whoever configured the source to fix.
+    failed_records: list[FailedDiscoveryRecord] = field(default_factory=list)
     error_count: int = 0
     error: Optional[str] = None
     # The D-02 column check for this run. Null means the run failed before a batch was
@@ -183,6 +217,8 @@ class DiscoveryScanOutcome:
             "finished_at": (self.finished_at.isoformat() if self.finished_at else None),
             "batches_published": self.batches_published,
             "records_published": self.records_published,
+            "records_failed": len(self.failed_records),
+            "failed_records": [asdict(record) for record in self.failed_records],
             "error_count": self.error_count,
             "error": self.error,
             "output_column_check": result_payload(self.output_column_check),
@@ -241,9 +277,18 @@ def run_source_scan(
             except OutputContractError as contract_error:
                 outcome.output_column_check = contract_error.result
                 raise
-            accepted = sink.publish(workspace_id, data_plane_id, config, batch)
+            result = sink.publish(workspace_id, data_plane_id, config, batch)
             outcome.batches_published += 1
-            outcome.records_published += accepted
+            outcome.records_published += result.accepted
+            if result.failed:
+                outcome.failed_records.extend(result.failed)
+                # Each failure's detail travels on the outcome; this is the line
+                # someone reading the job log sees first.
+                logger.warning(
+                    f"{len(result.failed)} record(s) from source config "
+                    f"'{config.name}' could not be resolved to a task; see "
+                    f"failed_records on the scan outcome",
+                )
     except BaseException as e:
         outcome.record_failure(e, known_secrets)
         # The traceback is redacted and carried IN THE MESSAGE rather than passed as
