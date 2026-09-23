@@ -6,12 +6,13 @@ jobs, and nothing here can reach outside the config it was handed. What this mod
 adds is the resiliency *within* one source -- a source that throws part-way through
 must not discard the records it already produced.
 
-The two seams below are deliberately empty. Making the vendor call and validating the
-output columns belong to the connector framework (D-13), and resolving a discovery
-record onto a task belongs to GenAI Engine (D-08). Neither exists yet, so no vendor is
-registered and every source-scoped job fails with a named reason -- which is the
-correct behaviour for an unsupported vendor either way, and is reported per job rather
-than per engine.
+Making the vendor call is a scanner's, behind the first seam below. Resolving a
+discovery record onto a task is GenAI Engine's (D-08), behind the second, which has no
+implementation yet -- so a source-scoped job fails with a named reason, reported per
+job rather than per engine, as it does for a vendor with no scanner registered.
+
+Checking the output columns is neither: it is this module's, run on every batch before
+it is published, so a connector cannot decide for itself what the contract means.
 
 Credentials are not a seam: D-05 has landed, so the executor reads this config's
 sensitive fields at the point of the scan and hands them to the scanner. They serve
@@ -26,9 +27,17 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Callable, Iterator, Mapping, Optional, Protocol, Sequence
 
-from arthur_client.api_bindings import DiscoverySourceConfigSpec
+from arthur_client.api_bindings import (
+    DiscoverySourceConfigSpec,
+    OutputColumnCheckResult,
+)
 from arthur_common.models.agent_discovery_schemas import DiscoveryOutputRecord
 
+from job_executors.discovery_output_contract import (
+    OutputContractError,
+    check_batch,
+    result_payload,
+)
 from log_redaction import redact_secrets, secret_values
 
 
@@ -43,8 +52,9 @@ class DiscoverySourceScanner(Protocol):
     fails half way through has still handed over everything it read before the failure.
     A scanner that can only fetch in one shot yields a single batch and loses nothing.
 
-    D-13 owns the real interface -- the native call and output-column validation sit
-    behind this method. Credentials arrive as an argument rather than being fetched
+    Only the native call sits behind this method. What it yields is checked against the
+    D-02 output contract by the caller, so a scanner owes typed records and nothing
+    else. Credentials arrive as an argument rather than being fetched
     here: the route that returns them says never to put the result in job parameters,
     so they are read once per scan at execution, and the caller that reads them is also
     what scrubs them out of anything bound for the job log.
@@ -140,6 +150,10 @@ class DiscoveryScanOutcome:
     records_published: int = 0
     error_count: int = 0
     error: Optional[str] = None
+    # The D-02 column check for this run. Null means the run failed before a batch was
+    # ever produced, which is not the same answer as a source that produced one and
+    # failed the contract.
+    output_column_check: Optional[OutputColumnCheckResult] = None
 
     def record_failure(
         self,
@@ -171,6 +185,7 @@ class DiscoveryScanOutcome:
             "records_published": self.records_published,
             "error_count": self.error_count,
             "error": self.error,
+            "output_column_check": result_payload(self.output_column_check),
             "succeeded": self.error is None,
         }
 
@@ -211,6 +226,21 @@ def run_source_scan(
         ):
             if not batch:
                 continue
+            # Checked before publishing, so a batch that fails the contract is never
+            # half-delivered: the run reports the columns rather than the sink
+            # reporting whatever it choked on.
+            #
+            # The failing result is taken off the exception rather than left to the
+            # assignment, which never runs when the check raises -- the outcome would
+            # otherwise carry the last batch's pass as its verdict on a failed run.
+            try:
+                outcome.output_column_check = check_batch(
+                    batch,
+                    f"Source config '{config.name}' ({config.vendor})",
+                )
+            except OutputContractError as contract_error:
+                outcome.output_column_check = contract_error.result
+                raise
             accepted = sink.publish(workspace_id, data_plane_id, config, batch)
             outcome.batches_published += 1
             outcome.records_published += accepted
