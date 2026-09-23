@@ -465,19 +465,49 @@ def test_a_device_whose_attributes_are_all_empty_reads_as_never_reported(
     assert EnvelopeOutcome.NEVER_REPORTED.value in caplog.text
 
 
-def test_two_framed_attributes_are_reported_rather_than_silently_picked(
+def test_two_attributes_that_disagree_yield_nothing_rather_than_a_guess(
     monkeypatch: pytest.MonkeyPatch,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """Two framed values are two collectors, or one attribute duplicated. Reading the
-    first is a guess about which is current, so it is said out loud."""
+    """Nothing on the wire says which of two payloads is current, so taking either
+    publishes a Mac's findings from a source chosen by dictionary order."""
     first = frame([row("npm", "@openai/codex"), scan_row("packages")])
     second = frame([row("npm", "@anthropic-ai/claude-code"), scan_row("packages")])
     device = computer("m1", first, extra_attributes=[_ea("Second Collector", second)])
     with caplog.at_level(logging.WARNING):
         records = scan(FakeJamf([[device]]), monkeypatch)
-    assert len(records) == 1
-    assert "carry a framed payload" in caplog.text
+    assert records == []
+    assert "disagree about this device's payload" in caplog.text
+    assert "Second Collector" in caplog.text
+
+
+def test_a_framed_payload_beside_an_oversize_marker_is_also_a_disagreement(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """The marker carries neither content nor a date, so preferring the payload would
+    still be a guess about which scan is the current one."""
+    payload = frame([row("npm", "@openai/codex"), scan_row("packages")])
+    device = computer(
+        "m1",
+        payload,
+        extra_attributes=[_ea("Other", "ERROR:oversize:271044")],
+    )
+    with caplog.at_level(logging.WARNING):
+        records = scan(FakeJamf([[device]]), monkeypatch)
+    assert records == []
+    assert "disagree" in caplog.text
+
+
+def test_duplicate_attributes_carrying_the_same_bytes_are_one_payload(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Two attributes running the same script read the same file, so identical
+    candidates are one payload seen twice -- not a conflict."""
+    payload = frame([row("npm", "@openai/codex"), scan_row("packages")])
+    device = computer("m1", payload, extra_attributes=[_ea("A Copy", payload)])
+    records = scan(FakeJamf([[device]]), monkeypatch)
+    assert [r.external_id for r in records] == ["m1:codex-cli"]
 
 
 def test_an_oversize_marker_is_found_by_its_prefix_too(
@@ -495,6 +525,32 @@ def test_an_oversize_marker_is_found_by_its_prefix_too(
     assert records == []
     assert "oversize" in caplog.text
     assert "271044" in caplog.text
+
+
+def test_a_scan_that_decodes_nothing_says_so_rather_than_reading_as_a_clean_fleet(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Publishing nothing makes "no agents anywhere" and "collection is broken"
+    identical in the only output anyone looks at."""
+    devices = [[computer("m1", None), computer("m2", "no-cache")]]
+    with caplog.at_level(logging.WARNING):
+        records = scan(FakeJamf(devices), monkeypatch)
+    assert records == []
+    assert "decoded 0 of 2 device(s)" in caplog.text
+
+
+def test_a_fleet_that_really_has_no_agents_is_not_reported_as_broken(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A Mac that scanned and matched nothing DECODED, so the warning must not fire --
+    otherwise the signal means nothing the first time it is right."""
+    clean = frame([row("app", "com.apple.Safari"), scan_row("apps")])
+    with caplog.at_level(logging.WARNING):
+        records = scan(FakeJamf([[computer("m1", clean)]]), monkeypatch)
+    assert records == []
+    assert "decoded 0" not in caplog.text
 
 
 def test_a_mac_that_scanned_and_matched_nothing_yields_no_records(

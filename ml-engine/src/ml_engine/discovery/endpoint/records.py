@@ -54,9 +54,11 @@ VERSION_IN_VER = frozenset({"app", "brew", "ext", "npm", "vscodeext", "deb", "rp
 
 def _inventory_value(
     device: ManagedDevice,
-    log: logging.Logger,
-) -> tuple[Optional[str], Optional[str]]:
+) -> tuple[Optional[str], Optional[str], Optional[str]]:
     """The device's payload, found by the payload's own prefix.
+
+    Returns the attribute it came from, its value, and -- when the device offers more
+    than one answer -- why no value was chosen.
 
     WHAT THE ADMIN CALLED THE ATTRIBUTE IS NOT AN INPUT. `arthur1.` is a magic prefix so
     that a reader can recognize the value without being told where to look; requiring the
@@ -64,45 +66,43 @@ def _inventory_value(
     fleet that renames its attributes keeps working, and no vendor schema carries a field
     for it.
 
+    TWO ATTRIBUTES AGREEING IS ONE ANSWER; TWO DISAGREEING IS NONE. Duplicate attributes
+    running the same script read the same file and carry the same bytes, so identical
+    candidates are one payload seen twice. Different bytes mean two collectors writing
+    different files, and nothing on the wire says which is current -- taking either would
+    publish one Mac's findings from a source chosen by dictionary order. That is a device
+    we cannot speak for, which is what `None` already means here.
+
     `no-cache` cannot identify the payload -- the status attribute carries the same
     sentinel, so a device in that state matches twice -- and an unpopulated attribute
     carries nothing to match at all. Both are read as a reason of last resort rather than
-    as the payload, which is what they are: a device we cannot speak for either way.
+    as the payload, which is what they are.
     """
-    framed: Optional[tuple[str, str]] = None
-    oversize: Optional[tuple[str, str]] = None
+    candidates: list[tuple[str, str]] = []
     stale_cache = False
-    duplicates = 0
 
     for name, raw in device.attributes.items():
         text = (raw or "").strip()
-        if text.startswith(FRAME_PREFIX):
-            if framed is None:
-                framed = (name, text)
-            else:
-                duplicates += 1
-        elif text.startswith(OVERSIZE_PREFIX):
-            oversize = oversize or (name, text)
+        if text.startswith((FRAME_PREFIX, OVERSIZE_PREFIX)):
+            candidates.append((name, text))
         elif text == NO_CACHE:
             stale_cache = True
 
-    if duplicates:
-        # Two framed values are two collectors, or one attribute duplicated. Reporting
-        # the first is a guess about which is current, so say so rather than pick quietly.
-        log.warning(
-            "%s: %s attribute(s) carry a framed payload; reading %r",
-            device.device_key,
-            duplicates + 1,
-            framed[0] if framed else None,
+    distinct = {text for _, text in candidates}
+    if len(distinct) > 1:
+        return (
+            None,
+            None,
+            f"{len(distinct)} attributes disagree about this device's payload "
+            f"({', '.join(sorted(name for name, _ in candidates))}); "
+            f"nothing on the wire says which is current",
         )
 
-    if framed is not None:
-        return framed
-    if oversize is not None:
-        return oversize
+    if candidates:
+        return candidates[0][0], candidates[0][1], None
     if stale_cache:
-        return None, NO_CACHE
-    return None, None
+        return None, NO_CACHE, None
+    return None, None, None
 
 
 def records_for(
@@ -117,7 +117,11 @@ def records_for(
     None a device we cannot speak for.
     """
     log = logger or logging.getLogger(__name__)
-    carrier, value = _inventory_value(device, log)
+    carrier, value, conflict = _inventory_value(device)
+    if conflict is not None:
+        log.warning("%s: no usable payload (%s)", device.device_key, conflict)
+        return None
+
     envelope = read(value)
 
     if envelope.outcome is not EnvelopeOutcome.OK:

@@ -77,6 +77,24 @@ class JamfScanner:
             unreadable,
         )
 
+        if seen and not reporting:
+            # A SCAN THAT READ DEVICES AND DECODED NONE IS NOT A FLEET WITHOUT AGENTS,
+            # and publishing nothing makes the two identical in the only output anyone
+            # looks at. Every cause below is a deployment or configuration fault that
+            # someone has to act on, so it goes to the job log rather than being left
+            # for a reader to infer from a zero.
+            #
+            # Not an exception: a fleet whose collector was deployed an hour ago is in
+            # this state legitimately, and failing a scheduled job forever is the wrong
+            # answer to "not yet".
+            logger.warning(
+                "Jamf scan decoded 0 of %s device(s). This reads as a clean fleet and "
+                "is almost never one: the collector may not be installed, its "
+                "Extension Attribute may not be scoped to these devices, or no Mac has "
+                "run `jamf recon` since it was deployed.",
+                seen,
+            )
+
 
 def _settings_from(
     credentials: Mapping[str, Optional[str]],

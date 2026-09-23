@@ -100,8 +100,14 @@ exists:
 | Empty bash array under `set -u` | bash 3.2 only, so it worked locally and died on every Mac |
 | A second implementation beside the vendored one | Filtered where the deployed one enumerates. Every test passed; they tested the copy |
 | 1s ping against a cold Docker Desktop | `unhealthy:000` on a healthy daemon holding 13 images. Warm it answers in 0.003s, so checking by hand always looked fine |
+| Collector looked the payload up by its Extension Attribute's display name | The deployed fleet had prefixed the name. Every Mac read as never-reported, the scan published nothing and exited 0 — a fleet covered in agents reported as clean |
 
 So: **assert on counts and specific identifiers, never on "did it parse".**
+
+And the corollary the last one added: **a fake built from an API's documentation confirms
+only that the code matches somebody's reading of it.** It cannot know what a tenant serves
+or what its admins named things. `ml-engine/scripts/jamf_smoke.py` runs the shipped client
+against a real tenant, read-only; run it before a tenant's first scan.
 
 ## Rules that came from being wrong
 
