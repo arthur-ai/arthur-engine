@@ -8,7 +8,7 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "2026-09-20T06:15:50.211183512Z"
+exclude-newer = "0001-01-01T00:00:00Z" # This has no effect and is included for backwards compatibility when using relative exclude-newer values.
 exclude-newer-span = "P3D"
 
 [options.exclude-newer-package]
@@ -1537,7 +1537,7 @@ requires-dist = [
     { name = "gunicorn", specifier = ">=26,<27" },
     { name = "httpx", specifier = "==0.28.1" },
     { name = "numpy", specifier = "==2.3.2" },
-    { name = "oracledb", specifier = ">=4.0.2,<5" },
+    { name = "oracledb", specifier = ">=26,<27" },
     { name = "pandas", specifier = "==3.0.6" },
     { name = "psutil", specifier = "==7.2.2" },
     { name = "psycopg", extras = ["binary"], specifier = "==3.3.6" },
@@ -1764,22 +1764,22 @@ wheels = [
 
 [[package]]
 name = "oracledb"
-version = "4.0.2"
+version = "26.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cryptography" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/87/ae/4576e5df7b8eadec51bb7d981a2bcc0d8387d7d6998a51d146c0886a523e/oracledb-4.0.2.tar.gz", hash = "sha256:0a380ab72853487ea2764c5df772f35026b4219868fc3eba68e193c9aea230ac", size = 881658, upload-time = "2026-07-14T17:21:28.876Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ad/0f/7eefd0e10328d94109180a877f9f1297b8b8dcc80f0bcccb0b0efea2ca9b/oracledb-26.0.0.tar.gz", hash = "sha256:d15728bae7546984203ae17f8296153d52d10ffdaf4929bebe46b70d5819d270", size = 912239, upload-time = "2026-09-10T16:39:01.602Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/2b/cb/e9ad24c2fa20ff977ca52b5a68a2010a054f724d420681be75e7e3d92b57/oracledb-4.0.2-cp313-cp313-macosx_10_13_universal2.whl", hash = "sha256:af4121112f0b68e8d61ce46a086c6aec8256fa2ca32d2e6467195a6c575c207b", size = 4352202, upload-time = "2026-07-14T17:23:13.202Z" },
-    { url = "https://files.pythonhosted.org/packages/f6/ad/583d85906b5c4b344600be2bf30077f3a6c2bf04ee01b4fee9856d1da269/oracledb-4.0.2-cp313-cp313-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:a814307ca8a6bf0649d8bf0a650a72f23030d9af052a2d4a481b94b6ab50d5a4", size = 2274847, upload-time = "2026-07-14T17:23:14.967Z" },
-    { url = "https://files.pythonhosted.org/packages/cf/53/badcc7e29ba9e9f2158f2e18214197d63c53d99c4720d436d8fc0b6b175f/oracledb-4.0.2-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:1b89c02670bafc9b1fcc0d15175f097bdc1968bc36ee4d66aa63aee09bfbbe30", size = 2474482, upload-time = "2026-07-14T17:23:16.605Z" },
-    { url = "https://files.pythonhosted.org/packages/b9/76/0bc64bdfc7ca794f4576c757da89617922be402f9fcf434bf5de7e44235a/oracledb-4.0.2-cp313-cp313-musllinux_1_2_aarch64.whl", hash = "sha256:db0d76199b6dffd721bda48dad4eeea6603942ce2e246f3b9301d85af6bda0ee", size = 2327237, upload-time = "2026-07-14T17:23:18.602Z" },
-    { url = "https://files.pythonhosted.org/packages/15/f5/2fc4e30b24a60e40fa6419dbadd8f869878a3ac49d28b7d16bca59dd2519/oracledb-4.0.2-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:f5ed684ab419603d53981e0f32b51da673e21a42d7dce1bf3f215a9301c7c108", size = 2504800, upload-time = "2026-07-14T17:23:20.025Z" },
-    { url = "https://files.pythonhosted.org/packages/2e/03/0a15a43a88addfb7b4f8d8343f0c47df68173510a27e2196b6b7347efb06/oracledb-4.0.2-cp313-cp313-win32.whl", hash = "sha256:a45a13e33509db5bd3622a05cb2e4a6cb41d56d1bfd2a32caeacd26f4ce8b988", size = 1493052, upload-time = "2026-07-14T17:23:21.603Z" },
-    { url = "https://files.pythonhosted.org/packages/bb/4a/9895cb5a1fffa68f2d9fb1cfb43de88628c049d313734de7ecef17099460/oracledb-4.0.2-cp313-cp313-win_amd64.whl", hash = "sha256:6444be4991f33754cd98f624cecef3eb98db3e87f8ac14e9b65bd3591c9dd252", size = 1864126, upload-time = "2026-07-14T17:23:22.985Z" },
-    { url = "https://files.pythonhosted.org/packages/0b/14/5c7c44a8f441783d461b9657994e03f8798e28bebe67395951c53c86c270/oracledb-4.0.2-cp313-cp313-win_arm64.whl", hash = "sha256:087fdf5bc36b03dc3c55f7abc944a163ba8edc9c802bc8baf91698a52041ee13", size = 1519906, upload-time = "2026-07-14T17:23:24.338Z" },
+    { url = "https://files.pythonhosted.org/packages/52/09/0c388ff9bf418abad68f492780d3cef8a33ca8a109ccdc71ff0e06344319/oracledb-26.0.0-cp313-cp313-macosx_10_13_universal2.whl", hash = "sha256:f69bafe46bf854c70f19e2f1d068c1b9f3d3066ff79cf90354e0adfeafac1b08", size = 4907337, upload-time = "2026-09-10T16:39:46.657Z" },
+    { url = "https://files.pythonhosted.org/packages/c5/74/f689dffb9abd3f008f081795677658ce7750371f4ec8718c78663648c19f/oracledb-26.0.0-cp313-cp313-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:26b9934aa9a2c431e9e3126b524a8154b78f1f3a12c258a9e7ee311b78135a78", size = 2442648, upload-time = "2026-09-10T16:39:48.349Z" },
+    { url = "https://files.pythonhosted.org/packages/fe/56/1bc5d3061ba4d35a70489757d2308865490b0a9abc5116cddfdf19954030/oracledb-26.0.0-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:587acb63db873dc9784284e02b8c690730289255791bfa1e1ca70cbad50ac130", size = 2643188, upload-time = "2026-09-10T16:39:49.933Z" },
+    { url = "https://files.pythonhosted.org/packages/44/09/db87288a174b1b03d36de305e96801f808e740d7986db96624ab5541c4eb/oracledb-26.0.0-cp313-cp313-musllinux_1_2_aarch64.whl", hash = "sha256:65275fc0f3e2c8f52549b6b8099d6eb5efe4748e6d62d4bd07bc3b006044aa60", size = 2497863, upload-time = "2026-09-10T16:39:51.392Z" },
+    { url = "https://files.pythonhosted.org/packages/2a/78/82fd386fcc679eae6f65b2866ea96d8b06ae0eecf17b176f847e8ece9aa5/oracledb-26.0.0-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:184869bbb43a1b074e4783b0da5b1793681e3129f4b02c305ad1ba4c6f931621", size = 2671060, upload-time = "2026-09-10T16:39:52.871Z" },
+    { url = "https://files.pythonhosted.org/packages/ea/fe/f4c5825ccd7e8c221dad1d16405e02fb57cf7f965837ff74715fc865cbe6/oracledb-26.0.0-cp313-cp313-win32.whl", hash = "sha256:d82d5cea25884ab76db46173e1469588093f35e066a3e972abf1a6a91775edec", size = 1575954, upload-time = "2026-09-10T16:39:54.282Z" },
+    { url = "https://files.pythonhosted.org/packages/3e/1a/7410ebf575438e2439827dc38be3851640b4406f880e69f78d92141892bc/oracledb-26.0.0-cp313-cp313-win_amd64.whl", hash = "sha256:747ec61dc933db33db4814b24c8cf0a57c7583482ca444b124e44c910f25bd54", size = 1969227, upload-time = "2026-09-10T16:39:55.578Z" },
+    { url = "https://files.pythonhosted.org/packages/5f/dc/1a5bd6233d3de25be8efe48c96077078e7cf940154096dea789e17c8af88/oracledb-26.0.0-cp313-cp313-win_arm64.whl", hash = "sha256:85c775fd2b9f93c2a6ff48cabc2be307ba9fa951b7556e5149dc2ee62c1fbfbe", size = 1620768, upload-time = "2026-09-10T16:39:56.901Z" },
 ]
 
 [[package]]
