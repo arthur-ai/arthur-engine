@@ -112,6 +112,9 @@ def test_resolved_tasks_show_up_as_agent_tasks(
         assert len(minted) == 1
         assert minted[0].creation_source.root.type == "SIEM"
         assert minted[0].creation_source.root.vendor == "splunk_enterprise"
+        # The record's external_id is keyed to this task, but it is not a name the
+        # agent emits telemetry under.
+        assert minted[0].creation_source.root.observations.service_names == []
     finally:
         _cleanup([task_id])
 

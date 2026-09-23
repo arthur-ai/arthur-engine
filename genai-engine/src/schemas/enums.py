@@ -294,6 +294,19 @@ class RagSearchKind(str, Enum):
     HYBRID_SEARCH = "hybrid_search"
 
 
+class MappingKeyKind(str, Enum):
+    """What a row in `service_name_task_mappings` is keyed on.
+
+    Both kinds share the table so one lookup can route a record to its task, but they
+    answer different questions: a service name is what an agent emits telemetry under,
+    and an external ID is what a discovery source calls it. Trace ingestion and the
+    task's reported service names read only the first kind.
+    """
+
+    SERVICE_NAME = "service_name"
+    EXTERNAL_ID = "external_id"
+
+
 class AgenticExperimentGeneratorType(str, Enum):
     UUID = "uuid"
     SESSION_ID = "session_id"

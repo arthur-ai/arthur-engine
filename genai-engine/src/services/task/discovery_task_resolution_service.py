@@ -1,5 +1,5 @@
 import logging
-from typing import Optional
+from typing import Iterable, Optional
 from uuid import UUID
 
 from arthur_common.models.agent_discovery_schemas import DiscoveredAgentRecord
@@ -14,9 +14,13 @@ from schemas.agent_discovery_schemas import (
     ResolvedAgentTask,
     TaskResolutionMethod,
 )
+from schemas.enums import MappingKeyKind
 from schemas.internal_schemas import Task
 
 logger = logging.getLogger(__name__)
+
+# A row of `service_name_task_mappings`, as the resolver's view of the table keys it.
+MappingKey = tuple[MappingKeyKind, str]
 
 
 class DiscoveryTaskResolutionService:
@@ -41,7 +45,9 @@ class DiscoveryTaskResolutionService:
     reads. That is the whole mechanism behind "a discovered agent someone later
     instruments resolves to the same task": its traces arrive carrying a service name,
     and the row is already there. Nothing reconciles the two afterwards, because
-    nothing has to.
+    nothing has to. `external_id` rows are written with `key_kind=external_id`, so
+    they route later scans without ever being read as a service name: not by trace
+    ingestion, and not by the service names a task reports.
 
     WHAT TWO SOURCES REPORTING ONE AGENT DOES, since D-03's upsert key assumes an
     answer: they converge only if they agree on `external_id` or if their observed
@@ -89,15 +95,21 @@ class DiscoveryTaskResolutionService:
         Returns:
             One ResolvedAgentTask per record, in request order.
         """
-        # Seed the view with every key this batch could possibly match on, in one
-        # query. `dict.fromkeys` rather than a set so the order is stable and the
+        # Seed the view with every key this batch could possibly match on, one query
+        # per kind. `dict.fromkeys` rather than a set so the order is stable and the
         # emitted SQL is the same run to run, which makes the query log readable.
-        lookup_keys = dict.fromkeys(
-            key
-            for record in records
-            for key in (record.external_id, *record.service_names)
+        known_mappings = self._load_mappings(
+            MappingKeyKind.EXTERNAL_ID,
+            dict.fromkeys(record.external_id for record in records),
         )
-        known_mappings = self.mapping_repo.get_task_ids_by_service_names(lookup_keys)
+        known_mappings.update(
+            self._load_mappings(
+                MappingKeyKind.SERVICE_NAME,
+                dict.fromkeys(
+                    name for record in records for name in record.service_names
+                ),
+            ),
+        )
 
         return [
             self._resolve_record(record, known_mappings, org_id) for record in records
@@ -106,7 +118,7 @@ class DiscoveryTaskResolutionService:
     def _resolve_record(
         self,
         record: DiscoveredAgentRecord,
-        known_mappings: dict[str, str],
+        known_mappings: dict[MappingKey, str],
         org_id: Optional[UUID],
     ) -> ResolvedAgentTask:
         """Walk one record down the ladder. See the class docstring for the rungs."""
@@ -122,7 +134,9 @@ class DiscoveryTaskResolutionService:
             )
 
         # Rung 2: a previous scan already minted a task for this identity.
-        existing_task_id = known_mappings.get(record.external_id)
+        existing_task_id = known_mappings.get(
+            (MappingKeyKind.EXTERNAL_ID, record.external_id),
+        )
         if existing_task_id:
             task = self._require_task(existing_task_id, record.external_id)
             self._map_keys_to_task(record, task.id, known_mappings)
@@ -136,7 +150,9 @@ class DiscoveryTaskResolutionService:
         # Rung 3: the agent is already known under a service name this sensor saw --
         # its own traces are arriving, or another source reported the same name.
         for service_name in record.service_names:
-            mapped_task_id = known_mappings.get(service_name)
+            mapped_task_id = known_mappings.get(
+                (MappingKeyKind.SERVICE_NAME, service_name),
+            )
             if not mapped_task_id:
                 continue
             task = self._require_task(mapped_task_id, record.external_id)
@@ -220,7 +236,7 @@ class DiscoveryTaskResolutionService:
         self,
         record: DiscoveredAgentRecord,
         task_id: str,
-        known_mappings: dict[str, str],
+        known_mappings: dict[MappingKey, str],
     ) -> str:
         """Key this record's identity, and the names it emits under, to its task.
 
@@ -245,20 +261,42 @@ class DiscoveryTaskResolutionService:
             acts on this: the lower rungs resolved to a task that already existed, so
             losing the race leaves nothing behind to clean up.
         """
-        owner_task_id = self._claim_key(record.external_id, task_id, known_mappings)
+        owner_task_id = self._claim_key(
+            (MappingKeyKind.EXTERNAL_ID, record.external_id),
+            task_id,
+            known_mappings,
+        )
         if owner_task_id != task_id:
             return owner_task_id
 
         for service_name in record.service_names:
-            self._claim_key(service_name, task_id, known_mappings)
+            self._claim_key(
+                (MappingKeyKind.SERVICE_NAME, service_name),
+                task_id,
+                known_mappings,
+            )
 
         return owner_task_id
 
+    def _load_mappings(
+        self,
+        key_kind: MappingKeyKind,
+        keys: Iterable[str],
+    ) -> dict[MappingKey, str]:
+        """Read the task each of `keys` already maps to, keyed for the resolver's view."""
+        return {
+            (key_kind, key): task_id
+            for key, task_id in self.mapping_repo.get_task_ids_by_service_names(
+                keys,
+                key_kind,
+            ).items()
+        }
+
     def _claim_key(
         self,
-        key: str,
+        key: MappingKey,
         task_id: str,
-        known_mappings: dict[str, str],
+        known_mappings: dict[MappingKey, str],
     ) -> str:
         """Point one key at a task, and report which task it actually points at.
 
@@ -267,7 +305,12 @@ class DiscoveryTaskResolutionService:
         not always the one this call asked for.
         """
         if key not in known_mappings:
-            known_mappings[key] = self.mapping_repo.create_mapping(key, task_id).task_id
+            key_kind, name = key
+            known_mappings[key] = self.mapping_repo.create_mapping(
+                name,
+                task_id,
+                key_kind,
+            ).task_id
 
         return known_mappings[key]
 

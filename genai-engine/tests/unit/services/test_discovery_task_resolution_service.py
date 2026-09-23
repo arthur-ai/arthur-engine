@@ -30,6 +30,7 @@ from repositories.rules_repository import RuleRepository
 from repositories.service_name_mapping_repository import ServiceNameMappingRepository
 from repositories.tasks_repository import TaskRepository
 from schemas.agent_discovery_schemas import TaskResolutionMethod
+from schemas.enums import MappingKeyKind
 from services.task.discovery_task_resolution_service import (
     DiscoveryTaskResolutionService,
 )
@@ -310,9 +311,73 @@ def test_discovered_agent_already_sending_traces_joins_its_otel_task(
     assert (
         ServiceNameMappingRepository(db_session).get_task_id_by_service_name(
             external_id,
+            MappingKeyKind.EXTERNAL_ID,
         )
         == otel_task_id
     )
+
+
+@pytest.mark.unit_tests
+def test_external_id_is_not_reported_as_a_service_name(
+    resolver,
+    db_session,
+    tracked_tasks,
+):
+    """A task's service names are the names it emits telemetry under, and only those.
+
+    `external_id` is keyed into the same table so the next scan can find the task, but
+    it is a source's record ID. Reported as a service name, it tells the fetch job to
+    look for traces under a name the agent never uses.
+    """
+    run = _run_id()
+    service_name = f"checkout-agent-{run}"
+
+    resolved = resolver.resolve_records(
+        [
+            _siem_record(f"{run}-splunk-1"),
+            _siem_record(f"{run}-splunk-2", service_names=[service_name]),
+        ],
+    )
+    tracked_tasks.extend(r.task_id for r in resolved)
+
+    task_repo = resolver.task_repo
+    assert not task_repo.get_task_by_id(resolved[0].task_id).service_names
+    assert task_repo.get_task_by_id(resolved[1].task_id).service_names == [
+        service_name,
+    ]
+
+
+@pytest.mark.unit_tests
+def test_trace_named_like_an_external_id_does_not_join_its_task(
+    resolver,
+    db_session,
+    tracked_tasks,
+):
+    """The same collision from the ingestion side.
+
+    A source's record ID is not a claim on the telemetry namespace, so a trace whose
+    `service.name` happens to match one is a different agent as far as ingestion can
+    tell, and gets a task of its own.
+    """
+    run = _run_id()
+    external_id = f"{run}-shared-string"
+
+    [resolved] = resolver.resolve_records([_siem_record(external_id)])
+    tracked_tasks.append(resolved.task_id)
+
+    trace_task_id = TraceIngestionService(db_session)._resolve_task_id(
+        explicit_task_id=None,
+        service_name=external_id,
+        resource_attributes={},
+    )
+    tracked_tasks.append(trace_task_id)
+
+    assert trace_task_id != resolved.task_id
+
+    # Both rows now exist under the one string, and each still routes its own kind.
+    [rescanned] = resolver.resolve_records([_siem_record(external_id)])
+    assert rescanned.task_id == resolved.task_id
+    assert rescanned.resolved_by is TaskResolutionMethod.EXTERNAL_ID
 
 
 @pytest.mark.unit_tests
@@ -386,6 +451,7 @@ def test_explicit_task_id_routes_to_that_task_and_keys_the_identity_to_it(
     assert (
         ServiceNameMappingRepository(db_session).get_task_id_by_service_name(
             external_id,
+            MappingKeyKind.EXTERNAL_ID,
         )
         == existing.task_id
     )
@@ -524,10 +590,10 @@ def test_losing_a_concurrent_identity_claim_yields_to_the_winner(
     mapping_repo = ServiceNameMappingRepository(db_session)
     original_create = resolver.mapping_repo.create_mapping
 
-    def claim_first(key: str, task_id: str):
+    def claim_first(key: str, task_id: str, key_kind: MappingKeyKind):
         if key == external_id:
-            mapping_repo.create_mapping(key, winner.task_id)
-        return original_create(key, task_id)
+            mapping_repo.create_mapping(key, winner.task_id, key_kind)
+        return original_create(key, task_id, key_kind)
 
     resolver.mapping_repo.create_mapping = claim_first
 
