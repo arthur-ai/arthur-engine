@@ -303,6 +303,13 @@ jobs:
               - 'ml-engine/**'
               - 'arthur-observability-sdk/**'
               - 'genai-engine/staging.openapi.json'
+              # ml-engine's tests assert that its vendored copy of osquery-ai-discovery
+              # names the same upstream ref as the endpoint's. tools/vendor-queries.sh
+              # writes only the endpoint copy, so a re-vendor produces a changeset
+              # confined to integrations/ -- and without this the parity test, the only
+              # thing that catches the two drifting apart, never runs on the one direction
+              # that script actually produces.
+              - 'integrations/endpoint-ai-discovery/vendor/**'
               # See the note in check-genai-engine-changes.
               - '.github/workflows/arthur-engine-workflow.yml'
               - '.github/workflows/composite-actions/**'

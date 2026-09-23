@@ -1,0 +1,22 @@
+.DS_Store
+
+# dist/collect.sh is GENERATED from vendor/ by tools/build-collector.py, but it is
+# committed on purpose: it is the artifact an MDM deploys, and a reviewer should see it
+# change. test/lint.sh fails if it does not carry the vendored tree.
+
+# Python writes __pycache__ beside a module it imports, and tools/build-collector.py
+# imports the bundler out of vendor/. One such .pyc was committed before anybody noticed.
+# build-collector.py no longer writes them; this is the second line of defence, and it
+# matters because a tracked artifact in vendor/ makes `tools/vendor-queries.sh` -- which
+# removes and rewrites that whole directory -- show a deletion every time it runs.
+__pycache__/
+*.pyc
+
+# The repository root ignores `dist`, which is right for build output and wrong for both
+# of these: dist/collect.sh is generated but committed on purpose, and
+# vendor/.../dist/ holds the composed artifacts the collector embeds. Directory-first,
+# because git will not re-include a file whose parent directory is still excluded.
+!dist/
+!dist/**
+!vendor/osquery-ai-discovery/dist/
+!vendor/osquery-ai-discovery/dist/**

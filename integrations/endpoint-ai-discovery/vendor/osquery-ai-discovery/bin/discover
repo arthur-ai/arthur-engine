@@ -1,0 +1,358 @@
+#!/usr/bin/env bash
+# Inventory this machine's AI tooling. The entry point for the shipped artifacts.
+# macOS and Linux both -- the composed artifact is chosen by `uname -s` below.
+#
+#     bin/discover                     # base inventory, as one JSON array
+#     bin/discover --deep              # base inventory plus a LIVE container scan
+#     bin/discover --write PATH        # EVERY branch, independently, into a cache file
+#     bin/discover --write PATH --status TXT   # ...and a one-line health summary
+#     bin/discover --cache PATH        # emit that file. no queries run, nothing can block
+#     bin/discover --deep | bin/classify
+#
+# TWO ARTIFACTS, TWO PROCESSES, AND THAT IS THE POINT.
+#
+#   dist/discovery-<platform>.sql  every fast and slow query for this platform,
+#                                  composed. ~1.2s, cannot block.
+#   dist/discovery-deep.sql  the expensive ones. CAN BLOCK FOREVER, so it runs behind a
+#                            health guard and a wall-clock kill -- bin/container-scan.
+#
+# osquery has no per-query timeout (5.23.1: --docker_socket is the only docker flag,
+# --alarm_timeout is shutdown-only, --schedule_timeout is osqueryd's schedule), so the only
+# bound available is a kill on a process. A kill is indivisible: composed into one file the
+# two would share one process, and bounding the container branch would mean discarding the
+# 580-odd rows the other branches had already produced. Separate processes is what makes
+# the bound cost nothing but the container rows.
+#
+# WITHOUT --deep NOTHING CHANGES. Same artifact, same single process, same cost as the
+# quickstart has always had. The flag is opt-in because the deep path talks to a daemon,
+# and a daemon is a dependency the base path deliberately does not have.
+#
+# A deep failure never costs the base rows. It prints them, plus one kind=scan marker row
+# saying why the container half is missing, and still exits 0 -- because the inventory did
+# succeed, and because a consumer that records stdout and discards the exit status sees only
+# what was printed,
+# so the marker row is the only channel the reason has. See bin/container-scan.
+set -uo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+# THE ARTIFACT IS PER PLATFORM, and picking the wrong one is not a soft failure: the
+# tables are disjoint, so a Linux artifact on macOS dies on the first table and prints
+# "[\n\n]" -- valid, empty, entirely plausible JSON. It does at least exit non-zero,
+# which is the only reason that state is recoverable.
+#
+# `uname -s` rather than a flag, because the endpoint has no operator to ask. An
+# unrecognised platform stops here rather than falling through to a missing file, where
+# the message would be about a path instead of about the platform.
+case "$(uname -s)" in
+  Darwin) PLATFORM=darwin ;;
+  Linux)  PLATFORM=linux ;;
+  *) echo "discover: unsupported platform $(uname -s). This repo ships darwin and linux;" \
+          "Windows is a separate implementation, not a port." >&2; exit 1 ;;
+esac
+BASE="${DISCOVER_BASE:-$ROOT/dist/discovery-$PLATFORM.sql}"
+DEEP_SCAN=0
+# --cache reads what a scheduled bin/container-scan --cache wrote, and never talks to a
+# daemon. That is the deployment shape to prefer: see bin/container-scan's cache_write.
+# --cache emits the file --write produced and RUNS NOTHING. The file already holds every
+# branch, so re-running the base query beside it double-counted the whole inventory: 773
+# rows read back as 1530. It is `cat` with a parse check, which is the point -- the endpoint
+# integration is a file read, and this is the same thing with a diagnostic.
+CACHE_PATH=""
+WRITE=""
+# --status writes ONE plain line, for a second attribute that inventory tooling can actually
+# match on. A consumer that compresses this payload for transport cannot see inside the result,
+# and a consumer that stores it as one blob cannot query it -- so the payload alone cannot
+# answer "show me every machine where the container scan is failing". This can:
+#
+#   degraded 2026-08-31T17:52:03Z apps=ok browser=ok containers=timeout:6 ...
+#
+# First token is ok or degraded, so a group is `like "degraded"`; per-branch tokens let a
+# group narrow to `like "containers=timeout"`.
+STATUS=""
+# One process per branch, for --write only. The composed artifact exists to save process
+# startup when something is WAITING; a scheduled writer has nobody waiting, and paying ~0.5s
+# per branch buys the reliability below. MEASURED, and it is not a small difference:
+#
+#   one branch's table unavailable, as on an older osquery:
+#     composed, one statement ..... 0 rows, exit 1, stdout "[\n\n]" -- five bytes of
+#                                   VALID EMPTY JSON. One missing table and the machine
+#                                   reports as though nothing is installed on it.
+#     independent ................. 6 of 6 branches, 757 rows, the bad one contributes 0
+#
+# Every query declares `min-osquery: 5.10.0`, so a table being absent is a real deployment
+# state and not a hypothetical. Independent execution also gives each branch its own bound
+# and its own scan row, so "we could not look" is per branch instead of all-or-nothing.
+# Overridable so test/docker_states.sh can hand this a pack containing a deliberately
+# broken query and assert the other branches still report. That assertion is the whole
+# justification for running branches apart, and it should not live only in CI.
+PACK="${DISCOVER_PACK:-$ROOT/dist/ai-discovery.conf}"
+# An array, so a socket path with a space in it survives. Appended to with `+=` and
+# expanded with the ${a[@]+...} guard, because bash 3.2 -- the only bash a managed Mac has
+# -- treats "${a[@]}" on an EMPTY array as an unbound variable under `set -u`. It is fixed
+# in bash 4.4, which is why this is a bug that works on a dev Mac and fails on a fleet.
+#
+# Sourcing bin/container-scan shares its namespace with this script, so nothing here may
+# reuse what it defines. Both halves of the list, because a function collides as silently as
+# a variable does:
+#
+#   globals    DEEP ROOT TIMEOUT SCAN_TIMEOUT SOCKET MARKER CACHE DOCKER_CODE DOCKER_SECS
+#              BOUNDED_OUT BOUNDED_SIGNAL
+#   functions  need_arg json_str json_row osq_run json_concat merge_sql merge_branches
+#              osqueryi_path docker_socket_path docker_probe docker_healthy docker_state
+#              run_bounded marker cache_write container_scan scan_and_cache
+#
+# Two globals have already bitten: DEEP was this script's --deep flag until it silently
+# became a file path, and CACHE was --cache's path until sourcing reset it to empty and every
+# --cache run quietly did a live scan instead. Hence CACHE_PATH. DOCKER_SECS is the one this
+# list was missing -- added to container-scan and never written down here, which is how the
+# next collision would have arrived.
+SCAN_ARGS=()
+
+usage() { sed -n '2,30p' "$0" | sed 's/^# \{0,1\}//'; }
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --deep)         DEEP_SCAN=1; shift ;;
+    # --cache implies --deep. Asking for the cached container data and then not including
+    # it would be a foot-gun with no legitimate use.
+    --cache)        [ -n "${2:-}" ] || { echo "discover: --cache needs a path" >&2; exit 1; }
+                    CACHE_PATH="$2"; shift 2 ;;
+    --write)        [ -n "${2:-}" ] || { echo "discover: --write needs a path" >&2; exit 1; }
+                    WRITE="$2"; shift 2 ;;
+    --status)       [ -n "${2:-}" ] || { echo "discover: --status needs a path" >&2; exit 1; }
+                    STATUS="$2"; shift 2 ;;
+    --scan-timeout) [ -n "${2:-}" ] || { echo "discover: --scan-timeout needs a value" >&2; exit 1; }
+                    SCAN_ARGS+=(--scan-timeout "$2"); shift 2 ;;
+    --socket)       [ -n "${2:-}" ] || { echo "discover: --socket needs a value" >&2; exit 1; }
+                    SCAN_ARGS+=(--socket "$2"); shift 2 ;;
+    -h|--help)      usage; exit 0 ;;
+    *) echo "discover: unknown argument: $1" >&2; exit 1 ;;
+  esac
+done
+# An argument error, so it is raised where arguments are. It sat inside the --cache block,
+# which made it reachable only once that mode had already been entered.
+[ -z "$CACHE_PATH" ] || [ -z "$WRITE" ] || {
+  echo "discover: --cache and --write are opposite ends of the same pipe; pick one" >&2; exit 1; }
+
+# bin/container-scan owns every candidate path; ask it rather than keeping a second list.
+# It lends the JSON helpers too -- json_str, json_row and osq_run. The name understates the
+# file: it is this repo's shell library. A third file would have to be added to release.yml's
+# asset list and to every deployment's install step, for isolation we already have.
+# shellcheck source=container-scan
+. "$ROOT/bin/container-scan"
+
+need_osqi() {
+  osqi="$(osqueryi_path)" || { echo "discover: no osqueryi found (set OSQI)" >&2; exit 1; }
+}
+
+# --cache: emit and stop. SPLIT IN TWO, because the halves need different things.
+#
+# A MISSING CACHE MUST ANSWER ON A MACHINE WITH NOTHING INSTALLED. That is the whole reason
+# the row exists, so that half builds one known row with the shell and runs before the
+# osqueryi lookup and before the artifact check -- it needs neither.
+#
+# A PRESENT cache is parsed rather than echoed, and the parser is osqueryi. The comment here
+# used to claim this path had to work where osquery was not installed at all. It never did:
+# the lookup sat above it and exited 1 first, and the parse was python3 besides. A reader
+# that genuinely has no osquery should use `cat`, which is what docs/deployment.md tells it
+# to use and what the payload is shaped for.
+if [ -n "$CACHE_PATH" ]; then
+  if [ ! -r "$CACHE_PATH" ]; then
+    # A missing cache is a fact about the deployment, not about this machine. Saying nothing
+    # would let it read as "nothing installed here".
+    echo "discover: no readable cache at $CACHE_PATH -- is the scheduled writer installed?" >&2
+    printf '[%s]\n' "$(json_row scan inventory "$(date +%s)" "$CACHE_PATH" no-cache '')"
+    exit 1
+  fi
+  need_osqi
+  # Parsed rather than echoed, so a truncated or half-written file is caught here instead of
+  # reaching a collector as "this machine reported nothing". The parser is osqueryi -- the
+  # same SQLite that wrote the file.
+  #
+  # THE VERDICT COMES BACK, NOT THE ROWS. json_valid() and json_type() answer `bad` on a
+  # malformed document rather than raising, so a corrupt cache is a value this shell can
+  # branch on; feeding the document through json_each() instead would make osqueryi exit 1
+  # and print "[\n\n]", and the failure would arrive wearing the shape of a clean machine.
+  # osq_run swallowing that is what makes the third arm below distinguishable at all.
+  #
+  # Then `cat`. The comment above calls this path "cat with a parse check" and it was not
+  # one -- it re-encoded, which normalised whatever the writer had chosen to put in the file.
+  # Emitting the bytes is what the comment always claimed.
+  verdict="$({ printf "WITH d(doc) AS (VALUES ('"
+               sed "s/'/''/g" "$CACHE_PATH"
+               printf "')) SELECT CASE WHEN json_valid(doc) AND json_type(doc)='array'"
+               printf " THEN 'ok' ELSE 'bad' END AS v FROM d;"
+             } | osq_run "$osqi" --csv --header=false)"
+  case "$verdict" in
+    ok)  cat "$CACHE_PATH"; exit 0 ;;
+    bad) echo "discover: $CACHE_PATH is not a JSON array. The writer may have been" \
+              "interrupted; it writes by rename, so this should not happen." >&2
+         # A corrupt cache said nothing at all before this, which is the same silence a
+         # stubbed interpreter produced. `error` is already in the kind=scan vocabulary.
+         printf '[%s]\n' "$(json_row scan inventory "$(date +%s)" "$CACHE_PATH" error '')"
+         exit 1 ;;
+    # A BROKEN VALIDATOR IS NOT A BROKEN CACHE, and reporting one as the other would send
+    # someone to look at the file. osq_run prints nothing on a non-zero exit, so this arm
+    # is reachable only when osqueryi itself failed to answer.
+    *)   echo "discover: could not validate $CACHE_PATH -- osqueryi did not answer." >&2
+         exit 1 ;;
+  esac
+fi
+
+# Every mode below this line runs queries, so both are prerequisites for all of them. The
+# artifact check no longer gates --cache, which never reads the artifact.
+need_osqi
+[ -s "$BASE" ] || { echo "discover: no $BASE (run tools/build.py)" >&2; exit 1; }
+
+# --write: every branch in its own process, then one payload. Runs before anything else
+# because it is a different mode rather than an addition to the default one.
+if [ -n "$WRITE" ]; then
+  [ -s "$PACK" ] || { echo "discover: no $PACK (run tools/build.py)" >&2; exit 1; }
+  tmpdir="$(mktemp -d "${TMPDIR:-/tmp}/discover.XXXXXX")" || exit 1
+  # The pack is the artifact that carries one named query per file, already flattened to a
+  # single argv-safe line. Running it is running what ships.
+  # FILTERED BY PLATFORM, or every branch for the other platform runs and fails. The pack
+  # carries every query for every platform -- that is what osqueryd's per-query `platform`
+  # field is for -- so on Linux the unfiltered list would run `apps`, `homebrew`, `runtime`
+  # and `native-messaging`, each dying on a missing table. Each would then write a
+  # kind=scan marker reading `error`, so a healthy Linux endpoint would report four gaps
+  # per scan and a reader would be told to go and fix a Mac.
+  #
+  # `posix` covers both, matching catalog/routes.yaml's platform_groups.
+  #
+  # One osqueryi for the branch list AND every branch's SQL. Lives in bin/container-scan so
+  # a test can assert the text arrives byte for byte; see pack_branches.
+  pack_lines="$(pack_branches "$osqi" "$PACK" "$PLATFORM")" \
+    || { echo "discover: could not read $PACK" >&2; exit 1; }
+
+  # A `while ... done <<EOF` loop runs in THIS shell, so $names survives it. Piping into
+  # the loop instead would run it in a subshell and leave $names empty -- with every branch
+  # silently unscanned and the payload holding nothing but markers.
+  names=""
+  while IFS="$(printf '\t')" read -r name qtext; do
+    [ -n "$name" ] || continue
+    printf '%s\n' "$qtext" > "$tmpdir/$name.sql"
+    names="$names $name"
+  done <<EOF
+$pack_lines
+EOF
+  [ -n "$names" ] || { echo "discover: no queries in $PACK for platform $PLATFORM" >&2; exit 1; }
+  for name in $names; do
+    if [ "$name" = containers ]; then
+      # The one branch that needs a health guard and a wall clock. Delegated rather than
+      # reimplemented, and its own scan row comes back with it.
+      "$ROOT/bin/container-scan" ${SCAN_ARGS[@]+"${SCAN_ARGS[@]}"} > "$tmpdir/$name" 2>>"$tmpdir/stderr"
+      continue
+    fi
+    # Bounded too, even though none of these touches a daemon today. A branch that cannot
+    # finish must cost one branch, not the whole inventory -- which is the entire point of
+    # running them apart.
+    #
+    # ON STDIN, NOT AS AN ARGUMENT, for the reason stated where the base artifact is run:
+    # osqueryi reads an argv query beginning with `--` as a command-line flag and returns no
+    # rows. No pack query opens with one today, so this is a hazard removed rather than a bug
+    # fixed -- but the base path has been careful about it since it cost a day, and the two
+    # paths disagreeing is how the next one arrives.
+    if run_bounded 30 "$tmpdir/$name.sql" "$osqi" --docker_socket=/nonexistent/docker.sock --json; then
+      printf '%s' "$BOUNDED_OUT" > "$tmpdir/$name"
+    else
+      # A SENTINEL, because an empty output file is ambiguous: a branch that ran and matched
+      # nothing writes the same zero bytes as a branch that never finished. Without this the
+      # merge called both "ok", so a failed branch reported success -- found by the
+      # one-broken-branch test, which is the entire reason that test exists.
+      : > "$tmpdir/$name"
+      : > "$tmpdir/$name.failed"
+      echo "discover: branch '$name' did not complete" >> "$tmpdir/stderr"
+    fi
+  done
+
+  # Merge by parsing, and give every branch a dated scan row -- present or absent, ok or
+  # not. A branch that returned nothing and a branch that never ran are different facts.
+  # The statement lives in bin/container-scan, where a test can hand it a broken branch.
+  merge_branches "$osqi" "$tmpdir" $names > "$tmpdir/payload"
+  [ -s "$tmpdir/payload" ] || { echo "discover: produced no payload; $WRITE left alone" >&2; rm -rf "$tmpdir"; exit 1; }
+  # Rename, never write in place: a `cat` that caught a half-written file yields truncated
+  # JSON, which a collector reads as a machine that reported nothing.
+  mkdir -p "$(dirname "$WRITE")" 2>/dev/null
+  mv -f "$tmpdir/payload" "$WRITE" || { echo "discover: could not write $WRITE" >&2; rm -rf "$tmpdir"; exit 1; }
+  chmod 644 "$WRITE" 2>/dev/null
+
+  if [ -n "$STATUS" ]; then
+    stmp="$(mktemp "${STATUS}.XXXXXX")" || exit 1
+    # ONE STATEMENT, and it reads back $WRITE rather than the rows on their way there, so
+    # the line describes the file a collector will actually find.
+    #
+    # COALESCE is load-bearing. group_concat over no rows returns NULL, and concatenating
+    # NULL in SQLite yields NULL -- so a payload with no scan rows would blank the WHOLE
+    # line rather than shortening it, and a status file that says nothing is a machine that
+    # looks fine. Unreachable today, since every branch gets a marker; explicit anyway.
+    #
+    # The ORDER BY sits in a subquery because SQLite gained ORDER BY inside an aggregate
+    # only in 3.44 and osquery 5.23.1 ships 3.42. Nothing consumes the token order.
+    status_line="$({ printf "WITH d(doc) AS (VALUES ('"
+                     sed "s/'/''/g" "$WRITE"
+                     printf "')), r AS (SELECT json_extract(e.value,'\$.kind') AS kind,"
+                     printf " json_extract(e.value,'\$.id') AS id,"
+                     printf " json_extract(e.value,'\$.extra') AS extra"
+                     printf " FROM d, json_each(d.doc) e)"
+                     printf " SELECT (CASE WHEN EXISTS (SELECT 1 FROM r WHERE kind='scan'"
+                     printf " AND extra IS NOT 'ok') THEN 'degraded' ELSE 'ok' END)"
+                     printf " || ' ' || strftime('%%Y-%%m-%%dT%%H:%%M:%%SZ','now')"
+                     printf " || ' rows=' || (SELECT count(*) FROM r) || ' ' ||"
+                     printf " COALESCE((SELECT group_concat(id || '=' || extra, ' ')"
+                     printf " FROM (SELECT id, extra FROM r WHERE kind='scan'"
+                     printf " ORDER BY id, extra)), '') AS line;"
+                   } | osq_run "$osqi" --line | sed -n 's/^ *line = //p')"
+    if [ -n "$status_line" ]; then
+      # printf, so the file ends in exactly one newline whatever osqueryi did with it.
+      printf '%s\n' "$status_line" > "$stmp"
+      mkdir -p "$(dirname "$STATUS")" 2>/dev/null
+      mv -f "$stmp" "$STATUS" && chmod 644 "$STATUS" 2>/dev/null
+    else
+      echo "discover: could not summarise $WRITE; $STATUS left alone" >&2
+      rm -f "$stmp"
+    fi
+  fi
+
+  [ -s "$tmpdir/stderr" ] && cat "$tmpdir/stderr" >&2
+  cat "$WRITE"; echo
+  rm -rf "$tmpdir"
+  exit 0
+fi
+
+# ON STDIN, NOT AS AN ARGUMENT. The artifact opens with a `--` banner and osqueryi reads an
+# argv query beginning with `--` as a command-line flag: it prints "unknown command line
+# flag", exits 0, and returns no rows. Silent and total.
+#
+# Unbounded, deliberately. The base artifact touches no daemon, no socket and no network --
+# every branch reads local state and the composed file measures 1.07s loaded, 1.20s on a
+# clean runner. There is nothing here for a kill to save us from, and a bound could only
+# discard good rows from a slow Mac.
+base="$("$osqi" --json < "$BASE")" || { echo "discover: the base query failed" >&2; exit 1; }
+
+if [ "$DEEP_SCAN" = 0 ]; then
+  printf '%s\n' "$base"
+  exit 0
+fi
+
+# Rows on stdout, the reason on stderr, the verdict in the exit code. Every outcome except
+# 0 also prints a marker row, so `deep` is never empty and never silently absent.
+deep="$("$ROOT/bin/container-scan" ${SCAN_ARGS[@]+"${SCAN_ARGS[@]}"})"; deep_rc=$?
+case "$deep_rc" in
+  0) ;;
+  2|3) ;;  # did not scan, or gave up. The marker row carries which, and base survives.
+  *) echo "discover: container-scan could not run (exit $deep_rc); reporting base rows only" >&2 ;;
+esac
+
+# Join by PARSING both documents, never by splicing brackets -- see json_concat, which
+# carries the reasoning and the rejected alternative.
+#
+# A FAILURE HERE MUST NOT PRINT. osq_run discards osqueryi's output on a non-zero exit, so a
+# document that will not parse leaves this empty rather than emitting the "[\n\n]" osqueryi
+# prints alongside its error -- and the base rows are reported as missing rather than as
+# absent. Exit 1 says the run failed; printing a plausible empty array would not.
+joined="$(json_concat "$osqi" "$base" "${deep:-[]}")" || {
+  echo "discover: could not join the base and deep rows; reporting nothing rather than" \
+       "an empty inventory" >&2; exit 1; }
+printf '%s\n' "$joined"
