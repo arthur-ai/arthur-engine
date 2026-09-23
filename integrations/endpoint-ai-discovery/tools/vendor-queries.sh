@@ -83,10 +83,8 @@ mkdir -p "$DEST/tools"
 cp "$work/src/tools/bundle.py" "$DEST/tools/bundle.py"
 chmod +x "$DEST"/bin/* 2>/dev/null
 
-# Arthur-specific deployment glue must not come across. Upstream has since deleted
-# dist/jamf-collect.sh itself -- the seam moved the right way -- so this no longer fires. It
-# stays because the boundary belongs in code rather than in a reviewer's memory, and glue is
-# exactly the kind of thing that reappears upstream by convenience.
+# Arthur-specific deployment glue must not come across. Nothing upstream ships it today;
+# the guard stays because the boundary belongs in code rather than a reviewer's memory.
 for stray in "$DEST"/dist/jamf-collect.sh "$DEST"/dist/*.plist; do
   [ -e "$stray" ] && { echo "vendor: removing Arthur-specific $(basename "$stray") -- it belongs in this repo, not upstream"; rm -f "$stray"; }
 done

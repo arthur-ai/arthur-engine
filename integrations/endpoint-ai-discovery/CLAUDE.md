@@ -152,6 +152,28 @@ So: **assert on counts and specific identifiers, never on "did it parse".**
 - A vendored ref pinned to a bare commit prints `PROVISIONAL`. That is legitimate; pin a tag
   once one carries it.
 
+### Comments state the rule, not the incident
+
+This tree's comments are dense on purpose — a guard nobody understands gets deleted. But
+density is not licence to narrate. **Write what a maintainer must not break; do not write
+what happened to whoever wrote it.**
+
+| Write this | Not this |
+|---|---|
+| "Count invocations, not mentions: comments discussing python3 read as a dependency." | "This counted mentions, and three comments kept the guard reporting python3 was required." |
+| "The cap is not a platform limit: 1 MB was measured as a floor, never a ceiling." | "The old 30 KB was guarding a limit that does not exist." |
+| "Strip comments before checking for the frame; the driver explains it at length." | "Changing it left the guard passing on its own explanation. This repo has made the same mistake three times." |
+
+The test: **delete the sentence and ask whether someone is now more likely to break
+something.** If not, it was a war story. The measurement that justifies a number stays — a
+cap without its evidence is a magic constant. The anecdote about how the number was once
+wrong does not.
+
+Specifically out: dates, "used to", "already once", "this repo has shipped", references to
+files or repositories that no longer exist, and cross-references that send a reader to
+another document to parse a comment. A reader arriving cold has none of that context and
+does not need it.
+
 ## Environment
 
 Apple Silicon. Running `dist/collect.sh` needs osquery and nothing else — no VM, and from

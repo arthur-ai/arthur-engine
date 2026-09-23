@@ -56,12 +56,9 @@ def vendored_bundler():
             f"no {path.relative_to(ROOT)} -- the collector is built by upstream's "
             f"bundler. Re-vendor at v0.6.0 or later with tools/vendor-queries.sh.",
         )
-    # WITHOUT LEAVING A .pyc IN THE VENDORED TREE. Importing writes __pycache__ beside the
-    # module by default, which is the build editing vendor/ -- the one directory this repo
-    # says is not edited -- and it got committed once before anybody noticed: a
-    # cpython-312 artifact in the tree, re-churning on every build and on every
-    # interpreter. Restored rather than left set, because this is a module a caller may
-    # have imported for one function.
+    # Importing writes __pycache__ beside the module, which would have the build editing
+    # vendor/ -- the one directory this tree does not edit. Restored rather than left set,
+    # because a caller may have imported this module for one function.
     was = sys.dont_write_bytecode
     sys.dont_write_bytecode = True
     try:
@@ -162,15 +159,12 @@ export DOCKER_PING_TIMEOUT="${DOCKER_PING_TIMEOUT:-15}"
   exit 1
 }
 
-# THE FRAMED VALUE IS BUILT HERE, AND USED TO BE bin/discover --framed. Upstream removed that
-# flag deliberately: `arthur1.` is Arthur's wire format and the size budget is a property of the
-# reporting channel this repo chose, and neither is a fact about osquery. The seam moved, so
-# the framing moved with it -- to the file that already owns the other end of it.
+# THE FRAMED VALUE IS BUILT HERE, not by bin/discover: `arthur1.` is Arthur's wire format and
+# the size budget a property of the reporting channel, and neither is a fact about osquery.
 #
-# WHY THE WRITER FRAMES AND NOT THE READER. The raw JSON is ~127 KB on a reference Mac, 48%
-# of the size budget; framed it is ~21 KB, 8%. So the reporting path cannot send
-# the raw file. Doing it here keeps the reporting side a literal `cat`, and the framing below
-# needs no interpreter at all -- so neither side carries one.
+# The writer frames rather than the reader because the raw JSON is ~127 KB on a reference Mac
+# against ~21 KB framed, so the reporting path cannot carry the raw file. Framing here keeps
+# that path a literal `cat`, and needs no interpreter on either side.
 #
 # BY RENAME, for the same reason as the payload above: a reader catching a half-written value
 # uploads a truncated base64 blob, which decodes to nothing at all.
@@ -215,25 +209,19 @@ eatmp="$OUT/inventory.ea.$$"
   exit 1
 }
 
-# 256 KB, AND THE OLD 30 KB WAS GUARDING AGAINST A LIMIT THAT DOES NOT EXIST. Measured on
-# 2026-09-05: a 1,048,576-byte Extension Attribute value survived script -> `jamf recon` ->
-# Jamf Pro -> API read with an IDENTICAL sha256. Not truncated, not rejected. Jamf documents
-# no value cap and the column is LONGTEXT; the old number was caution mistaken for a platform
-# fact, and at 68% of it on an ordinary developer Mac it was close to discarding real evidence.
+# 256 KB, and it is NOT a platform limit. Measured 2026-09-05: a 1,048,576-byte Extension
+# Attribute survived script -> `jamf recon` -> API read with an identical sha256. Jamf
+# documents no value cap and the column is LONGTEXT.
 #
-# STILL A BUDGET, AND THE REASON IS NOT BANDWIDTH. Fleet cost is the payload times the fleet
-# -- 10,000 Macs at 20 KB is 200 MB per sync whatever this number says -- so the cap buys back
-# no bytes. What it buys is WHOSE FAILURE FIRES FIRST. Ours is loud and known: it writes
-# ERROR:oversize:<bytes>, naming the fault and its size. What Jamf does past its own limit is
-# unobserved -- a floor of 1 MB was measured, never a ceiling -- and it might truncate, drop
-# the attribute, or refuse the whole submission and cost that Mac its entire recon. Margin is
-# how a known failure stays in front of an unknown one.
+# The budget is not about bandwidth -- fleet cost is payload x fleet whatever this number says
+# -- it is about WHOSE FAILURE FIRES FIRST. Ours is loud and known: ERROR:oversize:<bytes>,
+# naming the fault and its size. Past Jamf's own limit the behaviour is unobserved: 1 MB was
+# measured as a floor, never a ceiling, and it might truncate, drop the attribute, or refuse
+# the whole submission and cost that Mac its recon.
 #
-# 256 KB fires near 10,300 rows at the measured 25.4 framed bytes per row, against the ~840 a
-# loaded developer Mac carries: 13x a real machine, 4x under the measured floor. A Mac at
-# 10,000 rows is not a heavy Mac, it is a defect -- this repo has shipped exactly that, when
-# npm_packages recursion returned 883 rows instead of 7 -- so the cap doubles as the tripwire
-# for a runaway branch.
+# At the measured 25.4 framed bytes per row the cap fires near 10,300 rows, against the ~840 a
+# loaded developer Mac carries. A Mac at 10,000 rows is a defect rather than a heavy Mac, so
+# this doubles as a tripwire for a runaway branch.
 CAP=262144
 bytes=$(wc -c < "$eatmp" | tr -d ' ')
 if [ "$bytes" -gt "$CAP" ]; then

@@ -6,8 +6,7 @@
 # and the wall-clock bound live in osquery-ai-discovery and are vendored at a pinned ref;
 # their regression suite is upstream's — `test/lint.sh`, `test/docker_states.sh` and
 # thirteen VM scenarios at the vendored ref, run by upstream CI. Duplicating any of it here
-# is how the two drift, and the copy in this tree had already drifted: it asserted counts
-# against a query that filtered while the deployed one enumerates.
+# is how the two drift apart.
 #
 # So what is checked here is the seam: that nothing outside vendor/ implements discovery,
 # that the built collector carries the vendored tree, and that the framing this repo owns
@@ -154,11 +153,10 @@ if os.path.exists(built):
     _, _, _tail = _rest.partition(f"\n{_mark}\n")
     shipped = _head + _tail + "\n" + driver
 
-    # CODE, NOT THE PROSE ABOUT CODE. The two string-presence guards below ask whether the
-    # collector still WRITES `arthur1.` and `ERROR:oversize`, and the driver explains both at
-    # length in comments -- so changing `printf 'arthur1.'` to anything else left the guard
-    # passing on its own explanation. Measured: the frame was replaced and lint said PASS.
-    # This repo has now made the same mistake in three places, which is what a convention is.
+    # CODE, NOT THE PROSE ABOUT CODE. The guards below ask whether the collector still
+    # WRITES `arthur1.` and `ERROR:oversize`, and the driver explains both at length in
+    # comments -- so without stripping them, replacing the frame leaves the guard passing
+    # on its own explanation.
     driver_code = "\n".join(l for l in driver.splitlines()
                             if not l.strip().startswith("#"))
 
@@ -186,11 +184,9 @@ if os.path.exists(built):
         print("FAIL: dist/collect.sh has a nested payload marker -- it may be embedding a "
               "previous copy of itself"); sys.exit(1)
 
-    # THE COLLECTOR CALLS A VENDORED PROGRAM, AND UPSTREAM MAY DROP A FLAG. It did: `discover
-    # --framed` existed when this collector was written and was removed upstream, because
-    # `arthur1.` and the size budget are Arthur's, not osquery's. A vendor bump would then have
-    # shipped a collector whose only real work exits 1 on every Mac. Caught here rather than
-    # on a fleet: every flag the collector passes must still be a flag discover accepts.
+    # THE COLLECTOR CALLS A VENDORED PROGRAM, AND UPSTREAM MAY DROP A FLAG -- a bump would
+    # then ship a collector whose only real work exits 1 on every Mac. Every flag the
+    # collector passes must still be one discover accepts.
     disc = open(os.path.join(v, "bin", "discover")).read()
     accepted = set(re.findall(r"^\s*(--[a-z-]+)\)", disc, re.M))
     accepted |= set(re.findall(r"\|(--[a-z-]+)\)", disc))
@@ -208,9 +204,8 @@ if os.path.exists(built):
               f"it. The vendored runner changed; see tools/build-collector.py."); sys.exit(1)
     print(f"collector: ok, calls discover with {sorted(called)}, all still accepted")
 
-    # The framed value is this repo's job now that discover does not do it, and it is the
-    # ONLY implementation of it -- endpoint/discovery.sh used to be a second one. Dropping
-    # the step would leave the attribute empty, which reads as a Mac with nothing on it.
+    # Framing is this tree's job and this is the only implementation of it. Dropping the
+    # step would leave the attribute empty, which reads as a Mac with nothing on it.
     if "arthur1." not in driver_code:
         print("FAIL: dist/collect.sh writes no arthur1. value -- bin/discover no longer "
               "frames, so this repo must. See tools/build-collector.py."); sys.exit(1)
@@ -261,11 +256,9 @@ if os.path.exists(built):
     # Mac without Command Line Tools /usr/bin/python3 is a dead shim, so that claim sent an
     # operator looking anywhere but at the cause. Derive the prerequisite from the payload
     # instead of restating it, and fail when the runbook and the bytes disagree.
-    # INVOCATIONS, NOT MENTIONS, and the distinction is the whole guard. This counted any
-    # occurrence of the word and so counted COMMENTS: at the ref that removed the last
-    # interpreter from the endpoint, three comments saying so kept the guard reporting that
-    # python3 was still required. A check that cannot tell code from prose about code reports
-    # the state the tree used to be in, which is worse than not checking.
+    # INVOCATIONS, NOT MENTIONS. Counting any occurrence of the word counts COMMENTS, so a
+    # payload whose comments discuss python3 reads as one that requires it. A check that
+    # cannot tell code from prose about code reports the wrong state confidently.
     def _interp(path):
         hits = []
         for line in open(path):

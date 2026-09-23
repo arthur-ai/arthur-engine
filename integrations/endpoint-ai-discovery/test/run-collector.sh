@@ -13,8 +13,8 @@
 # shape of the empty-bash-array defect in CLAUDE.md's table: bash 3.2 only, so it worked on
 # the machine it was written on and died on every Mac.
 #
-# ASSERTS ON COUNTS AND IDENTIFIERS, NEVER ON "DID IT PARSE". Every defect this project has
-# found was plausible output with wrong values and exit code zero.
+# ASSERTS ON COUNTS AND IDENTIFIERS, NEVER ON "DID IT PARSE". The failure mode here is
+# plausible output with wrong values and exit code zero.
 #
 # ROOT IS NOT REQUIRED, and the assertions are chosen so it does not change the answer. A
 # Policy runs this as root and sees more rows; the properties checked below -- the framed
@@ -31,7 +31,7 @@ bad()  { printf 'FAIL: %s\n' "$1"; fail=1; }
 
 # NO PREREQUISITE PROBE HERE, DELIBERATELY. The obvious opening is a loop over the four
 # absolute paths the vendored runner searches -- and that is a copy of an upstream thing,
-# which this repo has already watched drift once. The collector finds its own interpreter
+# which will drift. The collector finds its own interpreter
 # of queries and says so when it cannot; a missing prerequisite is diagnosed below from
 # that message, by the code that owns the search rather than by a second copy of it.
 
@@ -100,12 +100,10 @@ case "$(head -c 8 "$out/inventory.ea")" in
   *) bad "inventory.ea does not start with arthur1." ;;
 esac
 
-# THE FRAMED VALUE MUST BE THIS SCAN, AND THAT IS THIS REPO'S OWN DEFECT. discover's exit
-# status used to be discarded, so a run that collected nothing left the previous
-# inventory.json in place and the framing step re-framed it into a fresh-looking value and
-# exited 0. A Mac that had lost osquery reported `ok` with a green policy, having collected
-# nothing. Round-tripping the attribute back to the payload is what makes that visible: it
-# proves the value was built from the bytes sitting next to it, not from a previous run.
+# THE FRAMED VALUE MUST BE THIS SCAN. If a failed run leaves the previous inventory.json in
+# place, framing it again produces a fresh-looking value from stale bytes -- a Mac that lost
+# osquery reporting `ok`. Round-tripping the attribute back to the payload proves the value
+# was built from the bytes sitting next to it.
 tail -c +9 "$out/inventory.ea" > "$work/frame.b64"
 if base64 -D -i "$work/frame.b64" -o "$work/frame.gz" 2>/dev/null \
    || base64 -d "$work/frame.b64" > "$work/frame.gz" 2>/dev/null; then
@@ -123,9 +121,8 @@ fi
 # UNDER THE CAP, AND THE CAP IS READ OFF THE COLLECTOR so the two cannot drift apart. The
 # budget is this repo's, not Jamf's -- what it buys is that our loud failure fires before
 # Jamf's unobserved one.
-# READ OUT OF THE PAYLOAD, because that is where the Arthur half lives now. `sed` over
-# dist/collect.sh used to find this line; the driver is inside the bundle, so the artifact's
-# text no longer carries it and the old form silently found nothing.
+# READ OUT OF THE PAYLOAD: the driver lives inside the bundle, so the artifact's own text
+# does not carry this line.
 cap="$("$ROOT/tools/build-collector.py" --driver-of "$COLLECT" \
         | sed -n 's/^CAP=\([0-9]*\)$/\1/p' | head -1)"
 [ -n "$cap" ] || bad "dist/collect.sh no longer sets CAP -- the size budget is unguarded"
