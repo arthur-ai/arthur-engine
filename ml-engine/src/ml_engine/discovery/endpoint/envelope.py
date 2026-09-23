@@ -1,32 +1,17 @@
 """Reading the `arthur1.` value an MDM hands back for one device.
 
-This is the one piece of the endpoint connector that is purely Arthur's wire format:
-the endpoint writes the value, this reads it, and osquery has no opinion about either.
-It is also MDM-neutral. Jamf calls the carrier an Extension Attribute, Intune a custom
-attribute, Kandji likewise; the string inside is identical, so nothing below knows which
-MDM fetched it.
-The producing side lives in `arthur-discovery/tools/build-collector.py`, which frames
-the value as::
+Arthur's wire format, not osquery's and not any MDM's: the endpoint writes
 
-    printf 'arthur1.'; gzip -9 -c inventory.json | base64 | tr -d '\n'
+    printf 'arthur1.'; gzip -9 -c inventory.json | base64 | tr -d '
+'
 
-so the inverse is prefix, base64, gunzip, parse -- and nothing else. There is no
-envelope object to unwrap: the payload is a BARE JSON ARRAY of six-column rows. The
-`{"scan": ..., "findings": ...}` shape in that repo's `docs/architecture.md` describes
-what the collector holds AFTER joining Jamf's own computer record, not what is on the
-wire; `serial`, `host` and `os` are deliberately absent from the value because Jamf
-already knows them and a second source of truth for a Mac's identity is a liability.
+and this reverses it. The payload is a BARE JSON ARRAY of six-column rows -- serial, host
+and OS are deliberately absent, because the MDM already knows them.
 
-WHY THIS RETURNS AN OUTCOME RATHER THAN RAISING OR RETURNING ROWS.
-An unreadable value and a Mac with no agents on it are different facts, and the entire
-endpoint design exists to keep them apart -- every silent defect this project has
-shipped was a wrong answer that looked like a right one. A reader that returned `[]`
-for a truncated payload would report a well-equipped Mac as clean, which is the one
-error the producing side goes to considerable lengths to avoid. So every failure here
-is named, and the caller is handed something it has to branch on.
-
-It also never raises on input. One Mac with a corrupt value must not fail the scan for
-the other nine thousand -- that device is reported as unread and the run continues.
+Returns a named outcome rather than rows or an exception. An unreadable value and a Mac
+with no agents on it are different facts, and returning `[]` for a truncated payload would
+report a well-equipped Mac as clean. It never raises on input either: one corrupt value
+must not fail the scan for the other nine thousand devices.
 """
 
 import base64
@@ -39,39 +24,32 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Optional
 
-# The frame, exactly as the producing side writes it. Eight bytes, and the dot is part
-# of it -- `arthur1.` is the version, so a future `arthur2.` is a different prefix
-# rather than a field inside the payload.
+# Eight bytes. The dot is part of it: a future `arthur2.` is a different prefix rather
+# than a version field inside the payload.
 FRAME_PREFIX = "arthur1."
 
-# Written INSTEAD of the payload when the framed value would exceed the collector's
-# 256 KiB cap, and deliberately unframed so a Jamf Smart Group can match it without
-# decoding anything. The integer tail is the size the framed value WOULD have been.
+# Written INSTEAD of the payload when it would exceed the 256 KiB cap, unframed so an MDM
+# can match it without decoding. The tail is the size the framed value would have been.
 OVERSIZE_PREFIX = "ERROR:oversize:"
 
-# The attribute script's own fallback, emitted when it cannot read the file the scheduled
-# job should have written. A deployment fault, not a fact about the Mac.
+# The attribute script's fallback when it cannot read the file. A deployment fault, not a
+# fact about the Mac.
 NO_CACHE = "no-cache"
 
-# The six-column contract, enforced on every row. Order is the contract upstream, but
-# by the time it is JSON the keys carry it, so a set is the right check here.
+# The six-column contract. Order carries it upstream; by the time it is JSON, the keys do.
 ROW_COLUMNS = frozenset({"kind", "id", "ver", "loc", "extra", "perms"})
 
-# A bound on what the gzip member may expand to. The measured payload is ~127 KB and
-# the framed value is capped at 256 KiB, so this is three orders of magnitude of slack
-# -- it exists because decompressing attacker-shaped bytes without a limit is how a
-# scan job becomes an out-of-memory kill, not because any real Mac approaches it.
+# Three orders of magnitude above the measured ~127 KB payload. Decompressing untrusted
+# bytes without a limit is how a scan job becomes an out-of-memory kill.
 MAX_DECOMPRESSED_BYTES = 16 * 1024 * 1024
 
 
 class EnvelopeOutcome(str, Enum):
-    """What a single device's attribute value turned out to be.
+    """What a device's attribute value turned out to be.
 
-    Closed, and every member is a distinct thing a consumer may need to act on. The
-    three failure members are NOT interchangeable: `NEVER_REPORTED` is a Mac Jamf has
-    not heard from, `NO_CACHE` is a Mac that reported while the collector was not
-    installed or never ran, and `MALFORMED` means we hold bytes we cannot read, which
-    is the only one that indicates a defect on this side.
+    The three failure members are not interchangeable: `NEVER_REPORTED` is a Mac the MDM
+    has not heard from, `NO_CACHE` a Mac that reported while the collector never ran, and
+    `MALFORMED` bytes we cannot read -- the only one indicating a defect on this side.
     """
 
     OK = "ok"
@@ -94,9 +72,8 @@ class EnvelopeOutcome(str, Enum):
 class Envelope:
     """One device's attribute value, decoded or explained.
 
-    `rows` is populated only for `OK` and is empty for every other outcome -- an empty
-    `rows` therefore never means "this Mac is clean" unless `outcome is OK`, which is
-    the distinction the whole type exists to force.
+    `rows` is populated only for `OK`, so an empty `rows` never means "this Mac is clean"
+    unless `outcome is OK`. Forcing that distinction is what the type is for.
     """
 
     outcome: EnvelopeOutcome
@@ -125,10 +102,8 @@ def _malformed(reason: str) -> Envelope:
 def _gunzip_bounded(blob: bytes) -> bytes:
     """Decompress one gzip member, refusing anything past the bound.
 
-    Reads one byte more than the limit so an overrun is detected rather than silently
-    truncated -- a truncated payload would parse as valid JSON if the cut happened to
-    land on a boundary, which is exactly the plausible-but-wrong failure this module is
-    written against.
+    Reads one byte past the limit so an overrun is detected rather than silently
+    truncated: a cut landing on a row boundary would parse as valid JSON.
     """
     with gzip.GzipFile(fileobj=io.BytesIO(blob)) as gz:
         out = gz.read(MAX_DECOMPRESSED_BYTES + 1)
@@ -144,11 +119,9 @@ def _validate_rows(
 ) -> tuple[Optional[tuple[dict[str, Any], ...]], Optional[str]]:
     """Check the decoded document against the six-column contract.
 
-    Returns `(rows, None)` or `(None, reason)`. A row whose key set differs is treated
-    as a contract violation for the whole device rather than dropped: the columns are
-    the wire format, so one wrong row means this reader may be misreading every other
-    row too, and quietly keeping the rest would turn a format change into a slow leak
-    of missing findings.
+    One wrong row fails the whole device rather than being dropped: the columns are the
+    wire format, so a row that does not match means this reader may be misreading all of
+    them, and keeping the rest would turn a format change into a slow leak of findings.
     """
     if not isinstance(doc, list):
         return None, f"payload is {type(doc).__name__}, expected a JSON array"
@@ -182,9 +155,8 @@ def read(value: Optional[str]) -> Envelope:
     if value is None:
         return Envelope(outcome=EnvelopeOutcome.NEVER_REPORTED)
 
-    # The file on disk ends in a newline. Command substitution in the attribute script
-    # strips it before the MDM ever sees it, so this is belt-and-braces against a value
-    # read by some other route.
+    # The file ends in a newline; the attribute script's command substitution strips it
+    # before the MDM sees it. Belt-and-braces for a value read by some other route.
     text = value.strip()
 
     if not text:
@@ -200,8 +172,7 @@ def read(value: Optional[str]) -> Envelope:
         )
 
     if not text.startswith(FRAME_PREFIX):
-        # Deliberately does not echo the value: it is up to 256 KiB and, on the paths
-        # that reach here, of unknown provenance.
+        # Does not echo the value: up to 256 KiB, and of unknown provenance here.
         return _malformed(f"value does not start with {FRAME_PREFIX!r}")
 
     encoded = text[len(FRAME_PREFIX) :]
@@ -216,12 +187,9 @@ def read(value: Optional[str]) -> Envelope:
     try:
         raw = _gunzip_bounded(blob)
     except (OSError, EOFError, ValueError, zlib.error) as exc:
-        # zlib.error is listed explicitly because it derives from Exception and from
-        # neither OSError nor ValueError. gzip raises BadGzipFile (an OSError) for a bad
-        # header and EOFError for a truncated member, but a member with a GOOD header and
-        # a corrupted deflate body raises zlib.error -- which would escape this function,
-        # break the never-raises contract above, and fail a whole fleet scan for one
-        # device's bad value.
+        # zlib.error needs naming separately: it derives from Exception, not OSError or
+        # ValueError. gzip covers a bad header (BadGzipFile) and truncation (EOFError);
+        # a GOOD header with a corrupted body raises zlib.error and would escape.
         return _malformed(f"gzip did not decompress: {exc}")
 
     try:
