@@ -19,16 +19,13 @@ from arthur_common.models.agent_discovery_schemas import DiscoveredAgentRecord
 
 from discovery.catalog import Matcher
 from discovery.endpoint.jamf.client import JamfClient, JamfSettings
-from discovery.endpoint.records import DEFAULT_INVENTORY_ATTRIBUTE, records_for
+from discovery.endpoint.records import records_for
 
 VENDOR = "jamf_pro"
 
 
 class JamfScanner:
     """Implements `job_executors.discovery_scan.DiscoverySourceScanner`."""
-
-    def __init__(self, attribute_name: str = DEFAULT_INVENTORY_ATTRIBUTE) -> None:
-        self._attribute = attribute_name
 
     def scan(
         self,
@@ -62,13 +59,7 @@ class JamfScanner:
 
         for device in client.devices_since(_since(lookback_hours)):
             seen += 1
-            records = records_for(
-                device,
-                matcher,
-                VENDOR,
-                self._attribute,
-                logger,
-            )
+            records = records_for(device, matcher, VENDOR, logger)
             if records is None:
                 unreadable += 1
                 continue

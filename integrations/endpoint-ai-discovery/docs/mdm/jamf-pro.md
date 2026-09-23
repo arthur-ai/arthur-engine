@@ -281,9 +281,14 @@ investigate, not as the night shift.**
 
 **Settings → Computer Management → Extension Attributes → New.**
 
+**The display name is yours to choose.** The collector finds this attribute by the
+`arthur1.` prefix on its value, not by name, so renaming it — or prefixing it to sit
+beside your other attributes — changes nothing. The names below are what the reference
+deployment uses.
+
 | Field | Value |
 |---|---|
-| Display Name | `AI Inventory` |
+| Display Name | `Arthur AI Inventory` |
 | Data Type | `String` |
 | Inventory Display | `Extension Attributes` |
 | Input Type | `Script` |
@@ -319,7 +324,7 @@ it** — you could collect the data and still have no way to ask which Macs are 
 
 | Field | Value |
 |---|---|
-| Display Name | `AI Inventory Status` |
+| Display Name | `Arthur AI Inventory Status` |
 | Data Type | `String` |
 | Inventory Display | `Extension Attributes` |
 | Input Type | `Script` |
@@ -358,7 +363,7 @@ First token is `ok` or `degraded`, then a UTC timestamp, a row count, and one
 
 ## 06 · Smart Groups — Jamf Pro
 
-All five read **AI Inventory Status**. The operator differs by row, and it is not cosmetic: `is`
+All five read **Arthur AI Inventory Status**. The operator differs by row, and it is not cosmetic: `is`
 is an exact match on the whole stored value, `like` is a substring test. `no-cache` is the only
 one whose stored value is the entire string; the rest are tokens inside a status line that also
 carries a timestamp, a row count and ten branches, so **is** on any of those matches nothing.
@@ -414,9 +419,9 @@ Every `branch=outcome` token, and what to do. This is the entire vocabulary.
 | `no-cache` | The daemon has **never** written here | Deployment problem. Check osquery is installed (section 00b), then the daemon and `/var/log/arthur-ai-discovery.log` |
 | `stale=NNh` | The value is a real scan, NNh old, kept because a later run could not collect | The evidence is still good; the collector is not. Read the Policy log — the Mac has been failing since that timestamp |
 
-Two values are not `branch=outcome` tokens at all. `ERROR:oversize:<bytes>` on `AI Inventory`
+Two values are not `branch=outcome` tokens at all. `ERROR:oversize:<bytes>` on `Arthur AI Inventory`
 means the payload framed larger than the 256 KB budget and the reason was reported in place of
-the evidence; `AI Inventory Status` is unaffected and still says which branches ran. `stale=NNh`
+the evidence; `Arthur AI Inventory Status` is unaffected and still says which branches ran. `stale=NNh`
 is appended by the status attribute itself, not written by the collector.
 
 **A failed Policy beside a healthy attribute is expected, not a contradiction.** The two carry

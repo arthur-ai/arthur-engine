@@ -1,7 +1,8 @@
 """Turning one device's payload into findings. Nothing here knows which MDM.
 
-Decodes the `arthur1.` attribute, matches the rows against the catalog, and emits one
-record per (device, agent). An MDM package supplies the device and the vendor tag.
+Finds the `arthur1.` payload among a device's attributes, matches the rows against the
+catalog, and emits one record per (device, agent). An MDM package supplies the device and
+the vendor tag.
 """
 
 import logging
@@ -17,11 +18,13 @@ from arthur_common.models.agent_governance_schemas import (
 
 from discovery.catalog import Finding, Matcher
 from discovery.endpoint.device import ManagedDevice
-from discovery.endpoint.envelope import EnvelopeOutcome, read
-
-# One name across vendors: the endpoint writes one file, and the admin naming the
-# attribute is following one runbook.
-DEFAULT_INVENTORY_ATTRIBUTE = "AI Inventory"
+from discovery.endpoint.envelope import (
+    FRAME_PREFIX,
+    NO_CACHE,
+    OVERSIZE_PREFIX,
+    EnvelopeOutcome,
+    read,
+)
 
 # `loc` and `ver` mean different things per kind, and two of those meanings are not what
 # `AgentObservations` names. Measured on a real Mac: aider matched through `images`, whose
@@ -49,11 +52,63 @@ PATH_IN_LOC = frozenset(
 VERSION_IN_VER = frozenset({"app", "brew", "ext", "npm", "vscodeext", "deb", "rpm"})
 
 
+def _inventory_value(
+    device: ManagedDevice,
+    log: logging.Logger,
+) -> tuple[Optional[str], Optional[str]]:
+    """The device's payload, found by the payload's own prefix.
+
+    WHAT THE ADMIN CALLED THE ATTRIBUTE IS NOT AN INPUT. `arthur1.` is a magic prefix so
+    that a reader can recognize the value without being told where to look; requiring the
+    display name as well would mean the format identifies itself and we ask anyway. A
+    fleet that renames its attributes keeps working, and no vendor schema carries a field
+    for it.
+
+    `no-cache` cannot identify the payload -- the status attribute carries the same
+    sentinel, so a device in that state matches twice -- and an unpopulated attribute
+    carries nothing to match at all. Both are read as a reason of last resort rather than
+    as the payload, which is what they are: a device we cannot speak for either way.
+    """
+    framed: Optional[tuple[str, str]] = None
+    oversize: Optional[tuple[str, str]] = None
+    stale_cache = False
+    duplicates = 0
+
+    for name, raw in device.attributes.items():
+        text = (raw or "").strip()
+        if text.startswith(FRAME_PREFIX):
+            if framed is None:
+                framed = (name, text)
+            else:
+                duplicates += 1
+        elif text.startswith(OVERSIZE_PREFIX):
+            oversize = oversize or (name, text)
+        elif text == NO_CACHE:
+            stale_cache = True
+
+    if duplicates:
+        # Two framed values are two collectors, or one attribute duplicated. Reporting
+        # the first is a guess about which is current, so say so rather than pick quietly.
+        log.warning(
+            "%s: %s attribute(s) carry a framed payload; reading %r",
+            device.device_key,
+            duplicates + 1,
+            framed[0] if framed else None,
+        )
+
+    if framed is not None:
+        return framed
+    if oversize is not None:
+        return oversize
+    if stale_cache:
+        return None, NO_CACHE
+    return None, None
+
+
 def records_for(
     device: ManagedDevice,
     matcher: Matcher,
     vendor: str,
-    attribute_name: str = DEFAULT_INVENTORY_ATTRIBUTE,
     logger: Optional[logging.Logger] = None,
 ) -> Optional[list[DiscoveredAgentRecord]]:
     """One device's findings, or None when its payload could not be read.
@@ -62,13 +117,15 @@ def records_for(
     None a device we cannot speak for.
     """
     log = logger or logging.getLogger(__name__)
-    envelope = read(device.attribute(attribute_name))
+    carrier, value = _inventory_value(device, log)
+    envelope = read(value)
 
     if envelope.outcome is not EnvelopeOutcome.OK:
         # A named reason, never an absence.
         log.warning(
-            "%s: no usable payload (%s%s)",
+            "%s: no usable payload from %s (%s%s)",
             device.device_key,
+            f"attribute {carrier!r}" if carrier else "any attribute",
             envelope.outcome.value,
             f": {envelope.detail}" if envelope.detail else "",
         )
