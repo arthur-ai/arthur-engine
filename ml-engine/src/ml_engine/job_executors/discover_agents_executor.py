@@ -134,6 +134,7 @@ class DiscoverAgentsExecutor:
             )
 
         credentials = self._source_credentials(outcome)
+        source_fields = self._source_fields(outcome)
 
         run_source_scan(
             config=config,
@@ -145,6 +146,7 @@ class DiscoverAgentsExecutor:
             sink=self.record_sink,
             logger=self.logger,
             credentials=credentials,
+            source_fields=source_fields,
         )
 
         self.logger.info(
@@ -192,6 +194,34 @@ class DiscoverAgentsExecutor:
 
         register_secrets(self.logger, secret_values(credentials))
         return credentials
+
+    def _source_fields(self, outcome: DiscoveryScanOutcome) -> dict[str, str]:
+        """The source's non-sensitive configuration: where to connect, not how to auth.
+
+        `retrieve_discovery_source_credentials` returns sensitive fields only, so without
+        this a vendor's endpoint URL has no route to its scanner and a source has to
+        declare it as a secret to work at all -- which then scrubs it from the logs that
+        exist to say which host failed.
+
+        A failure here is reported like any other pre-scan failure rather than degrading
+        to an empty mapping: a scanner given no address would fail further away, naming a
+        missing field instead of the fetch that could not answer.
+        """
+        if self.discovery_sources_client is None:
+            self._fail_before_scan(
+                outcome,
+                RuntimeError(
+                    "No discovery sources client is configured; source fields cannot "
+                    "be read.",
+                ),
+            )
+        try:
+            source = self.discovery_sources_client.get_discovery_source(
+                str(outcome.discovery_source_id),
+            )
+        except Exception as e:
+            self._fail_before_scan(outcome, e)
+        return {f.key: f.value for f in (source.fields or [])}
 
     def _unscannable_outcome(
         self,
