@@ -89,7 +89,11 @@ if [ -f "$ROOT/vendor/osquery-ai-discovery/SHA256SUMS" ]; then
     echo "vendor tree: ok, every file matches the manifest written when it was vendored"
   else
     echo "FAIL: a vendored file differs from the manifest:"
-    ( cd "$ROOT/vendor/osquery-ai-discovery" && shasum -a 256 --check SHA256SUMS 2>&1 | grep -v ': OK$' | sed 's/^/      /' )
+    # `|| true` because this file runs under `set -euo pipefail`: the failing shasum
+    # propagates through the pipe, the subshell is a bare command in an else body, and
+    # `set -e` would abort here -- taking the remediation line, `fail=1`, and every
+    # remaining check in this file with it.
+    ( cd "$ROOT/vendor/osquery-ai-discovery" && shasum -a 256 --check SHA256SUMS 2>&1 | grep -v ': OK$' | sed 's/^/      /' ) || true
     echo "      The tree must be verbatim. Restore it, or re-vendor to adopt the change."
     fail=1
   fi
@@ -99,7 +103,7 @@ if [ -f "$ROOT/vendor/osquery-ai-discovery/SHA256SUMS" ]; then
   # and dist/ into dist/collect.sh, so an extra one there ships to every Mac.
   extra="$( cd "$ROOT/vendor/osquery-ai-discovery" && \
     comm -23 <(find . -type f ! -name VERSION ! -name SHA256SUMS | sort) \
-             <(sed 's/^[0-9a-f]*  //' SHA256SUMS | sort) )"
+             <(sed 's/^[0-9a-f]*  //' SHA256SUMS | sort) || true )"
   if [ -n "$extra" ]; then
     echo "FAIL: vendored file(s) the manifest does not list:"
     echo "$extra" | sed 's/^/      /'
