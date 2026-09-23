@@ -23,6 +23,7 @@ from discovery.endpoint.jamf.client import JamfClient, JamfError, JamfSettings
 from discovery.endpoint.jamf.scanner import JamfScanner, _settings_from
 
 SCAN_AT = 1790100381
+LOG = logging.getLogger("discovery-test")
 CATALOG = yaml.safe_dump(
     {
         "version": 2,
@@ -341,8 +342,8 @@ def scan(fake: FakeJamf, monkeypatch: pytest.MonkeyPatch) -> list[Any]:
         "discovery.endpoint.jamf.scanner.JamfClient",
         lambda s, logger=None: client_for(fake),
     )
-    scanner = JamfScanner(logger=logging.getLogger("t"))
-    return [r for batch in scanner.scan(FakeConfig(CATALOG), 24, CREDS) for r in batch]  # type: ignore[arg-type]
+    scanner = JamfScanner()
+    return [r for batch in scanner.scan(FakeConfig(CATALOG), 24, CREDS, LOG) for r in batch]  # type: ignore[arg-type]
 
 
 def test_a_healthy_mac_yields_one_record_per_agent(
@@ -556,8 +557,8 @@ def test_observations_carry_what_only_the_connector_saw(
         "discovery.endpoint.jamf.scanner.JamfClient",
         lambda s, logger=None: client_for(fake),
     )
-    scanner = JamfScanner(logger=logging.getLogger("t"))
-    records = [r for b in scanner.scan(FakeConfig(catalog), 24, CREDS) for r in b]  # type: ignore[arg-type]
+    scanner = JamfScanner()
+    records = [r for b in scanner.scan(FakeConfig(catalog), 24, CREDS, LOG) for r in b]  # type: ignore[arg-type]
 
     obs = records[0].creation_source.observations
     assert obs.install_path == "/Applications/Claude.app"
@@ -630,7 +631,7 @@ def test_an_opaque_id_is_not_reported_as_an_install_path(
         "discovery.endpoint.jamf.scanner.JamfClient",
         lambda s, logger=None: client_for(fake),
     )
-    records = [r for b in JamfScanner().scan(FakeConfig(catalog), 24, CREDS) for r in b]  # type: ignore[arg-type]
+    records = [r for b in JamfScanner().scan(FakeConfig(catalog), 24, CREDS, LOG) for r in b]  # type: ignore[arg-type]
 
     assert records, "the finding itself must still be reported"
     assert records[0].creation_source.observations.install_path is None
@@ -668,7 +669,7 @@ def test_a_container_state_is_not_reported_as_a_version(
         "discovery.endpoint.jamf.scanner.JamfClient",
         lambda s, logger=None: client_for(fake),
     )
-    records = [r for b in JamfScanner().scan(FakeConfig(catalog), 24, CREDS) for r in b]  # type: ignore[arg-type]
+    records = [r for b in JamfScanner().scan(FakeConfig(catalog), 24, CREDS, LOG) for r in b]  # type: ignore[arg-type]
 
     assert records[0].creation_source.observations.version is None
 
@@ -751,7 +752,7 @@ def test_an_out_of_range_scan_timestamp_does_not_end_the_fleet_scan(
         "discovery.endpoint.jamf.scanner.JamfClient",
         lambda s, logger=None: client_for(fake),
     )
-    records = [r for b in JamfScanner().scan(FakeConfig(CATALOG), 0, CREDS) for r in b]  # type: ignore[arg-type]
+    records = [r for b in JamfScanner().scan(FakeConfig(CATALOG), 0, CREDS, LOG) for r in b]  # type: ignore[arg-type]
 
     # The bad device falls back to the MDM's own report date, which is the designed
     # behaviour; what matters is that it does not raise and take the rest of the fleet.
@@ -808,3 +809,30 @@ def test_the_roster_walk_keysets_on_id_rather_than_paging_by_offset() -> None:
     assert fake.gets[0].get("filter") is None
     assert fake.gets[1]["filter"].startswith("id=gt=")
     assert all(g["page"] == 0 for g in fake.gets)
+
+
+def test_the_scan_logs_through_the_logger_it_is_handed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """ScopeJobLogExporter is attached to the per-job logger alone, so a scanner logging
+    to getLogger(__name__) reaches process stdout and never the Platform."""
+    job_log = logging.getLogger("a-particular-job-id")
+    records: list[logging.LogRecord] = []
+
+    class Capture(logging.Handler):
+        def emit(self, record: logging.LogRecord) -> None:
+            records.append(record)
+
+    job_log.addHandler(Capture())
+    job_log.setLevel(logging.INFO)
+
+    fake = FakeJamf([[computer("m1", "no-cache")]])
+    monkeypatch.setattr(
+        "discovery.endpoint.jamf.scanner.JamfClient",
+        lambda s, logger=None: client_for(fake),
+    )
+    list(JamfScanner().scan(FakeConfig(CATALOG), 24, CREDS, job_log))  # type: ignore[arg-type]
+
+    assert records, "nothing reached the job logger"
+    assert any("no usable payload" in r.getMessage() for r in records)
+    assert all(r.name == "a-particular-job-id" for r in records)

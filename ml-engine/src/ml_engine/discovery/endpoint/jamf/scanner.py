@@ -27,12 +27,7 @@ VENDOR = "jamf_pro"
 class JamfScanner:
     """Implements `job_executors.discovery_scan.DiscoverySourceScanner`."""
 
-    def __init__(
-        self,
-        logger: Optional[logging.Logger] = None,
-        attribute_name: str = DEFAULT_INVENTORY_ATTRIBUTE,
-    ) -> None:
-        self._log = logger or logging.getLogger(__name__)
+    def __init__(self, attribute_name: str = DEFAULT_INVENTORY_ATTRIBUTE) -> None:
         self._attribute = attribute_name
 
     def scan(
@@ -40,15 +35,21 @@ class JamfScanner:
         config: DiscoverySourceConfigSpec,
         lookback_hours: int,
         credentials: Mapping[str, Optional[str]],
+        logger: logging.Logger,
     ) -> Iterator[Sequence[DiscoveredAgentRecord]]:
+        """`logger` is the JOB's, so what this reports reaches the Platform job log.
+
+        A module logger would put every unreadable device and every gap on process
+        stdout and nowhere else, which makes "reported, not suppressed" untrue.
+        """
         settings = _settings_from(credentials)
         matcher = Matcher.from_source(
             catalog_yaml=config.query or None,
-            logger=self._log,
+            logger=logger,
         )
-        client = JamfClient(settings, logger=self._log)
+        client = JamfClient(settings, logger=logger)
 
-        self._log.info(
+        logger.info(
             "Jamf scan starting against %s, catalog %s, %s agent(s), lookback %sh",
             settings.base_url,
             matcher.catalog_sha,
@@ -65,7 +66,7 @@ class JamfScanner:
                 matcher,
                 VENDOR,
                 self._attribute,
-                self._log,
+                logger,
             )
             if records is None:
                 unreadable += 1
@@ -77,7 +78,7 @@ class JamfScanner:
         # The denominator, which the run outcome has no field for yet. Without it, "12
         # machines have agents" cannot be told from "12 of 4,000, and 900 have not
         # reported in a week" -- different reports about the same fleet.
-        self._log.info(
+        logger.info(
             "Jamf scan read %s device(s): %s decoded, %s unreadable",
             seen,
             reporting,
