@@ -1,14 +1,12 @@
 """The vendored upstream tree is verbatim, and stays that way.
 
-This guard is here because it already failed once: running `black` over the discovery
-package reformatted upstream's `bin/classify` in place. Nothing broke and every test
-still passed -- which is the point. A vendored matcher that has been quietly rewritten
-is no longer the reference implementation it is vendored to be, and the next re-vendor
-would have produced a diff nobody could explain.
+Running a formatter over the discovery package once rewrote upstream's `bin/classify` in
+place. Nothing broke and every test passed -- which is the point: a vendored matcher that
+has been quietly rewritten is no longer the reference it is vendored to be.
 
-The formatters are excluded from `_vendor/` in `.pre-commit-config.yaml` and mypy
-excludes it in `pyproject.toml`. This asserts the outcome rather than the settings, so
-it still fails if some future tool arrives without an exclusion.
+The formatters are excluded from `_vendor/` in `pyproject.toml` and
+`.pre-commit-config.yaml`. This asserts the outcome rather than the settings, so a tool
+arriving without an exclusion still fails.
 """
 
 import hashlib

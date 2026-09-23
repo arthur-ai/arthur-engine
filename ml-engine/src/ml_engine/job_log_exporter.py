@@ -13,6 +13,8 @@ from arthur_client.api_bindings import (
     JobsV1Api,
 )
 
+from log_redaction import SecretRedactingFilter
+
 logger = logging.getLogger(__name__)
 
 logging_to_scope_levels = {
@@ -29,13 +31,17 @@ class ScopeJobLogExporter(logging.Handler):
         self.job_id = job_id
         self.job_run_id = job_run_id
         self.job_client = jobs_client
+        # Installed on the job's logger by ExportContextedLogger; held here too so the
+        # payloads built below are scrubbed even if a record reaches this handler some
+        # other way.
+        self.redactor = SecretRedactingFilter()
         logging.Handler.__init__(self=self)
 
     def emit(self, record: logging.LogRecord) -> None:
         # TODO: add to queue here and export via async thread
         log = JobLog(
             log_level=logging_to_scope_levels[record.levelno],
-            log=record.getMessage(),
+            log=self.redactor.redact(record.getMessage()),
             log_timestamp=datetime.fromtimestamp(record.created),
         )
         try:
@@ -48,8 +54,18 @@ class ScopeJobLogExporter(logging.Handler):
             logger.error("Failed to export logs")
             logger.error(str(exc), exc_info=True)
 
+        # The traceback and the error both carry the exception's own message, so they
+        # need the same scrub as the log line -- a credential redacted from the message
+        # alone would still ship twice here.
         if record.levelno == logging.ERROR and record.exc_info:
             exc_type, exc_value, exc_traceback = record.exc_info
+            formatted_traceback = record.exc_text or "".join(
+                traceback.format_exception(
+                    exc_type,
+                    exc_value,
+                    exc_traceback,
+                ),
+            )
             self.job_client.post_job_logs(
                 self.job_id,
                 self.job_run_id,
@@ -57,13 +73,7 @@ class ScopeJobLogExporter(logging.Handler):
                     logs=[
                         JobLog(
                             log_level=JobLogLevel.ERROR,
-                            log="".join(
-                                traceback.format_exception(
-                                    exc_type,
-                                    exc_value,
-                                    exc_traceback,
-                                ),
-                            ),
+                            log=self.redactor.redact(formatted_traceback),
                             log_timestamp=datetime.fromtimestamp(record.created),
                         ),
                     ],
@@ -72,7 +82,9 @@ class ScopeJobLogExporter(logging.Handler):
             self.job_client.post_job_errors(
                 self.job_id,
                 self.job_run_id,
-                job_errors=JobErrors(errors=[JobError(error=str(exc_value))]),
+                job_errors=JobErrors(
+                    errors=[JobError(error=self.redactor.redact(str(exc_value)))]
+                ),
             )
 
 
@@ -82,9 +94,11 @@ def ExportContextedLogger(
     logger: logging.Logger,
     handler: ScopeJobLogExporter,
 ) -> Generator[None, Any, Any]:
+    logger.addFilter(handler.redactor)
     logger.addHandler(handler)
     try:
         yield
     finally:
         logger.removeHandler(handler)
+        logger.removeFilter(handler.redactor)
         handler.close()

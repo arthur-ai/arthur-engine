@@ -19,6 +19,7 @@ from arthur_client.api_bindings import (
     DataRetrievalV1Api,
     DatasetsV1Api,
     DiscoverAgentsJobSpec,
+    DiscoverySourcesV1Api,
     JobKind,
     JobRun,
     JobState,
@@ -46,6 +47,9 @@ from arthur_common.models.task_job_specs import (
 )
 from pydantic import StrictBytes
 
+# Imported for its side effect: registering the discovery connectors into
+# SOURCE_SCANNERS, which DiscoverAgentsExecutor resolves a source's vendor against.
+import discovery  # noqa: F401
 from config import Config
 from job_executors.alert_check_executor import AlertCheckExecutor
 from job_executors.compliance_policy_check_executor import (
@@ -143,6 +147,7 @@ class JobExecutor:
         self.custom_aggregation_tests_client = CustomAggregationTestsV1Api(client)
         self.agents_client = AgentsV1Api(client)
         self.data_planes_client = DataPlanesV1Api(client)
+        self.discovery_sources_client = DiscoverySourcesV1Api(client)
         self.policies_client = PoliciesV1Api(client)
 
         self.logger: logging.Logger = logging.getLogger(str(uuid4()))
@@ -389,6 +394,7 @@ class JobExecutor:
                             self.logger,
                             genai_engine_url,
                             genai_engine_api_key,
+                            self.discovery_sources_client,
                         ).execute(job, job.job_spec.actual_instance)
                     case JobKind.COMPLIANCE_POLICY_CHECK:
                         if not isinstance(
