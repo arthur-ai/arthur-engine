@@ -81,6 +81,7 @@ from job_executors.task_management_job_executors import (
 )
 from job_log_exporter import ExportContextedLogger, ScopeJobLogExporter
 from tools.connector_constructor import ConnectorConstructor
+from tools.engine_version import set_engine_version_header
 
 logging.basicConfig()
 
@@ -133,10 +134,12 @@ class JobExecutor:
             ),
             verify=ssl_verify,
         )
-        client = ApiClient(
-            configuration=ArthurOAuthSessionAPIConfiguration(
-                session=sess,
-                verify_ssl=ssl_verify,
+        client = set_engine_version_header(
+            ApiClient(
+                configuration=ArthurOAuthSessionAPIConfiguration(
+                    session=sess,
+                    verify_ssl=ssl_verify,
+                ),
             ),
         )
         self.alerts_client = AlertsV1Api(client)

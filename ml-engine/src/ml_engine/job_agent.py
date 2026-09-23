@@ -30,6 +30,7 @@ from arthur_client.auth import (
 from config import Config
 from health_check import MLEngineHealthCheck as HealthCheck
 from job_runner import JobRunner, ProcessJobRunner, ThreadJobRunner
+from tools.engine_version import set_engine_version_header
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()
@@ -59,10 +60,12 @@ class JobAgent:
             ),
             verify=ssl_verify,
         )
-        client = ApiClient(
-            configuration=ArthurOAuthSessionAPIConfiguration(
-                session=sess,
-                verify_ssl=ssl_verify,
+        client = set_engine_version_header(
+            ApiClient(
+                configuration=ArthurOAuthSessionAPIConfiguration(
+                    session=sess,
+                    verify_ssl=ssl_verify,
+                ),
             ),
         )
         self.jobs_client = JobsV1Api(client)
