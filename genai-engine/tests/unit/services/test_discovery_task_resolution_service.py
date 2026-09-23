@@ -7,6 +7,7 @@ is tested at the scale it has to work at rather than with two rows.
 """
 
 import uuid
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from typing import Generator, Iterable
 
@@ -20,6 +21,7 @@ from arthur_common.models.agent_governance_schemas import (
     SourceAddress,
 )
 from pydantic import ValidationError
+from sqlalchemy import event
 from sqlalchemy.exc import IntegrityError
 
 from db_models import DatabaseTask
@@ -82,6 +84,22 @@ def tracked_tasks(db_session) -> Generator[list[str], None, None]:
 def _run_id() -> str:
     """A prefix unique to one test, since the mapping table is keyed on the name."""
     return uuid.uuid4().hex[:8]
+
+
+@contextmanager
+def _statements(db_session) -> Generator[list[str], None, None]:
+    """Every statement the block sends, so a test can assert on what it did not send."""
+    sent: list[str] = []
+    engine = db_session.get_bind()
+
+    def record(conn, cursor, statement, parameters, context, executemany):
+        sent.append(statement)
+
+    event.listen(engine, "before_cursor_execute", record)
+    try:
+        yield sent
+    finally:
+        event.remove(engine, "before_cursor_execute", record)
 
 
 def _endpoint_record(
@@ -173,6 +191,39 @@ def test_five_hundred_findings_produce_five_hundred_tasks_and_rescan_produces_no
 
 
 @pytest.mark.unit_tests
+def test_a_rescan_costs_the_same_for_fifty_records_as_for_five_hundred(
+    resolver,
+    db_session,
+    tracked_tasks,
+):
+    """The re-scan is the normal case, and it must not cost a query per record.
+
+    Sources re-report the same fleet every scan, so nearly every record resolves at
+    rung 2 to a task that already exists. The mapping view reads those mappings in one
+    query; reading the task each one names separately would hand that saving straight
+    back, which is what this asserts against.
+
+    Written as two batch sizes costing the same rather than as a fixed number, because
+    what matters is that the cost does not grow with the batch -- the number itself is
+    free to change when resolution starts doing more or less work per call.
+    """
+    run = _run_id()
+    records = [_endpoint_record(f"{run}-finding-{i}") for i in range(500)]
+    tracked_tasks.extend(r.task_id for r in resolver.resolve_records(records).resolved)
+
+    with _statements(db_session) as fifty:
+        small = resolver.resolve_records(records[:50]).resolved
+    with _statements(db_session) as five_hundred:
+        large = resolver.resolve_records(records).resolved
+
+    # Both re-scans did the work, so an equal count is not two counts of nothing.
+    assert {r.resolved_by for r in small + large} == {TaskResolutionMethod.EXTERNAL_ID}
+    assert len(large) == 500
+
+    assert len(five_hundred) == len(fifty)
+
+
+@pytest.mark.unit_tests
 def test_unknown_record_creates_a_task_carrying_its_sensor(
     resolver,
     db_session,
@@ -211,7 +262,9 @@ def test_matching_external_id_routes_to_the_existing_task(
     run = _run_id()
     external_id = f"{run}-openclaw"
 
-    [first] = resolver.resolve_records([_endpoint_record(external_id, name="OpenClaw")]).resolved
+    [first] = resolver.resolve_records(
+        [_endpoint_record(external_id, name="OpenClaw")],
+    ).resolved
     tracked_tasks.append(first.task_id)
 
     [second] = resolver.resolve_records(
@@ -647,7 +700,9 @@ def test_record_without_an_external_id_never_reaches_resolution():
 
     with pytest.raises(ValidationError):
         DiscoveredAgentRecord(
-            name="Checkout Agent", creation_source=creation_source, last_seen=LAST_SEEN
+            name="Checkout Agent",
+            creation_source=creation_source,
+            last_seen=LAST_SEEN,
         )
 
     with pytest.raises(ValidationError):
