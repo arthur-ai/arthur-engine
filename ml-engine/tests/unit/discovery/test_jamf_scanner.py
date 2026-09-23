@@ -14,7 +14,6 @@ import logging
 import re
 from datetime import datetime, timezone
 from typing import Any, Optional
-from urllib.parse import unquote
 
 import pytest
 import requests
@@ -172,16 +171,17 @@ class FakeJamf:
             return FakeResponse(200, {"totalCount": total, "results": results})
 
         where = params.get("filter")
-        if where is None:  # full enumeration: offset over id
+        if where is not None and where.startswith("id=gt="):
+            after = int(where.split("=gt=")[1])
             rows = sorted(self.devices, key=lambda d: int(d["id"]))
-            start = params["page"] * self.page_size
-            results = rows[start : start + self.page_size]
+            results = [d for d in rows if int(d["id"]) > after][: self.page_size]
+        elif where is None:  # first page of a roster walk
+            rows = sorted(self.devices, key=lambda d: int(d["id"]))
+            results = rows[: self.page_size]
         else:
             m = re.search(r'reportDate=gt="([^"]+)"', where)
             tie = re.search(r"id=gt=(\d+)", where)
-            cursor = (
-                (unquote(m.group(1)), int(tie.group(1)) if tie else None) if m else None
-            )
+            cursor = (m.group(1), int(tie.group(1)) if tie else None) if m else None
             results = self._after(cursor)[: self.page_size]
 
         self._calls += 1
@@ -756,3 +756,55 @@ def test_an_out_of_range_scan_timestamp_does_not_end_the_fleet_scan(
     # The bad device falls back to the MDM's own report date, which is the designed
     # behaviour; what matters is that it does not raise and take the rest of the fleet.
     assert any(r.external_id.startswith("good:") for r in records)
+
+
+def test_the_filter_is_not_percent_encoded_before_requests_encodes_it() -> None:
+    """requests encodes the param, so pre-quoting means Jamf decodes once and finds
+    `2026-09-22T09%3A00%3A00Z` inside the RSQL instead of a timestamp -- rejected with a
+    400, which is not retryable, so every incremental scan would fail.
+
+    Asserted on what reaches the wire rather than on the client's own string, because the
+    test fake decoding one extra time is what hid this in the first place.
+    """
+    import requests as _r
+
+    fake = FakeJamf([[computer("a", None)]])
+    list(client_for(fake).devices_since("2026-09-22T09:00:00Z"))
+    built = fake.gets[0]["filter"]
+    assert "%3A" not in built, "the client must not pre-encode"
+
+    on_wire = _r.Request("GET", "https://x/api", params={"filter": built}).prepare().url
+    assert on_wire is not None
+    from urllib.parse import unquote as _unq
+
+    assert "2026-09-22T09:00:00Z" in _unq(on_wire.split("filter=")[1])
+
+
+def test_a_deletion_mid_roster_does_not_skip_the_device_behind_it() -> None:
+    """`id` never changes, but an OFFSET over it still slips when a device is deleted:
+    every id after it moves down a position and one falls into a page already read."""
+    devices = [computer(c, None, ident=i) for i, c in enumerate("abcd", start=1)]
+
+    def delete_after_first_page(fake: "FakeJamf", call: int) -> None:
+        if call == 1:
+            fake.devices = [d for d in fake.devices if d["id"] != 1]
+
+    fake = FakeJamf(devices=devices, page_size=2, on_page=delete_after_first_page)
+    seen = [d.device_key for d in client_for(fake).devices_since(None)]
+    assert seen == [
+        "a",
+        "b",
+        "c",
+        "d",
+    ], "no device behind the deleted one may be skipped"
+
+
+def test_the_roster_walk_keysets_on_id_rather_than_paging_by_offset() -> None:
+    fake = FakeJamf(
+        devices=[computer(c, None, ident=i) for i, c in enumerate("abc", start=1)],
+        page_size=2,
+    )
+    list(client_for(fake).devices_since(None))
+    assert fake.gets[0].get("filter") is None
+    assert fake.gets[1]["filter"].startswith("id=gt=")
+    assert all(g["page"] == 0 for g in fake.gets)

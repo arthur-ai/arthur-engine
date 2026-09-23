@@ -27,7 +27,7 @@ import random
 import time
 from dataclasses import dataclass
 from typing import Any, Iterator, Optional
-from urllib.parse import quote, urljoin
+from urllib.parse import urljoin
 
 import requests
 
@@ -221,29 +221,40 @@ class JamfClient:
             yield from self._keyset_by_report_date(since_iso)
 
     def _enumerate_by_id(self) -> Iterator[ManagedDevice]:
-        """The full roster, paged on `id`, which does not move.
+        """The full roster, keyset on `id`.
 
         A keyset over `reportDate` cannot serve this case: filtering on it at all drops
         devices that have never reported, and those are exactly what a full enumeration
-        is for. `id` is immutable, so an offset over it cannot shift underneath the scan.
+        is for. `id` never changes for a device -- but an OFFSET over it still slips when
+        a device is DELETED mid-scan, because every id after it moves down one position
+        and one falls back into a page already read. A keyset does not care.
         """
-        page = 0
+        last_id: Optional[Any] = None
         while True:
-            body = self._get(
-                "/api/v1/computers-inventory",
-                {
-                    "section": list(SECTIONS),
-                    "page": page,
-                    "page-size": self._s.page_size,
-                    "sort": "id:asc",
-                },
-            )
+            params: dict[str, Any] = {
+                "section": list(SECTIONS),
+                "page": 0,
+                "page-size": self._s.page_size,
+                "sort": "id:asc",
+            }
+            if last_id is not None:
+                params["filter"] = f"id=gt={last_id}"
+
+            body = self._get("/api/v1/computers-inventory", params)
             results = body.get("results") or []
             if not results:
                 return
             for record in results:
                 yield _to_device(record)
-            page += 1
+
+            tail_id = results[-1].get("id")
+            if tail_id is None:
+                self._log.warning(
+                    "Jamf returned a record with no id; ending the roster walk rather "
+                    "than repeating the same filter",
+                )
+                return
+            last_id = tail_id
 
     def _keyset_by_report_date(self, since_iso: str) -> Iterator[ManagedDevice]:
         """The incremental window, paged by keyset rather than by offset.
@@ -260,15 +271,17 @@ class JamfClient:
         last_date, last_id = since_iso, None
 
         while True:
+            # NOT pre-quoted: requests percent-encodes the param, so quoting here too
+            # means Jamf decodes once and gets `2026-09-22T09%3A00%3A00Z` inside the RSQL
+            # rather than a timestamp -- rejected with a 400, which is not retryable.
             if last_id is None:
-                where = f'general.reportDate=gt="{quote(last_date, safe="")}"'
+                where = f'general.reportDate=gt="{last_date}"'
             else:
                 # RSQL: `,` is OR and `;` is AND -- after this date, or on it with a
                 # higher id.
-                stamp = quote(last_date, safe="")
                 where = (
-                    f'general.reportDate=gt="{stamp}",'
-                    f'(general.reportDate=="{stamp}";id=gt={last_id})'
+                    f'general.reportDate=gt="{last_date}",'
+                    f'(general.reportDate=="{last_date}";id=gt={last_id})'
                 )
 
             body = self._get(

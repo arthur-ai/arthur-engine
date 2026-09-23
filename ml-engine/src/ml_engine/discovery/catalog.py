@@ -29,6 +29,34 @@ _VENDOR = pathlib.Path(__file__).resolve().parent / "_vendor"
 _FLOOR_CATALOG = _VENDOR / "agents.yaml"
 _FLOOR_ROUTES = _VENDOR / "routes.yaml"
 
+
+# A YAML loader that refuses duplicate mapping keys. `yaml.safe_load` keeps the last
+# occurrence silently, so an agent carrying `npm:` twice loses its first list -- and the
+# fleet then reports a missed agent as absent, which is the failure this module exists to
+# prevent. A source config is typed by a person, so this is a live risk rather than a
+# theoretical one.
+class _StrictLoader(yaml.SafeLoader):  # type: ignore[misc]
+    pass
+
+
+def _no_duplicate_keys(loader: "_StrictLoader", node: Any) -> dict[Any, Any]:
+    seen = set()
+    for key_node, _ in node.value:
+        key = loader.construct_object(key_node, deep=True)
+        if key in seen:
+            raise ValueError(
+                f"duplicate key {key!r} at line {key_node.start_mark.line + 1}",
+            )
+        seen.add(key)
+    return loader.construct_mapping(node, deep=True)  # type: ignore[no-any-return]
+
+
+_StrictLoader.add_constructor(
+    yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
+    _no_duplicate_keys,
+)
+
+
 _GAP_KIND = "scan"
 _SCAN_OK = "ok"
 
@@ -185,8 +213,11 @@ class Matcher:
         routes_bytes = (
             routes_yaml.encode() if routes_yaml else _FLOOR_ROUTES.read_bytes()
         )
-        catalog = yaml.safe_load(catalog_bytes.decode("utf-8"))
-        routes = yaml.safe_load(routes_bytes.decode("utf-8"))
+        try:
+            catalog = yaml.load(catalog_bytes.decode("utf-8"), Loader=_StrictLoader)
+            routes = yaml.load(routes_bytes.decode("utf-8"), Loader=_StrictLoader)
+        except yaml.YAMLError as exc:
+            raise ValueError(f"catalog or routes is not valid YAML: {exc}") from exc
         if not isinstance(catalog, dict) or not isinstance(routes, dict):
             raise ValueError("catalog and routes must each parse to a YAML mapping")
         _validate(catalog, routes)
@@ -293,6 +324,15 @@ class Matcher:
         )
 
 
+# Derived from the vendored registry rather than hand-listed, so a mode upstream adds is
+# accepted as soon as it is vendored.
+_MATCH_MODES: frozenset[str] = frozenset(
+    str(r["match"])
+    for r in (yaml.safe_load(_FLOOR_ROUTES.read_text()).get("routes") or {}).values()
+    if isinstance(r, dict) and r.get("match")
+)
+
+
 def _validate(catalog: Mapping[str, Any], routes: Mapping[str, Any]) -> None:
     """Fail a malformed catalog once, at load, rather than once per device.
 
@@ -322,6 +362,44 @@ def _validate(catalog: Mapping[str, Any], routes: Mapping[str, Any]) -> None:
         for key in ("kind", "match"):
             if not spec.get(key):
                 raise ValueError(f"route {name} has no '{key}'")
+        if spec["match"] not in _MATCH_MODES:
+            # build_index raises KeyError on a mode it does not branch on, once per
+            # device rather than once at load.
+            raise ValueError(
+                f"route {name} has match mode {spec['match']!r}; the vendored matcher "
+                f"handles {sorted(_MATCH_MODES)}",
+            )
+
+    # Every route list an agent declares must be a list of strings. A scalar is indexed
+    # CHARACTER BY CHARACTER by the vendored matcher, so `npm: openclaw` silently becomes
+    # seven one-letter identifiers rather than one name -- wrong without being an error.
+    route_names = set((routes.get("routes") or {}))
+    reserved = {"id", "name", "classification", "platforms", "superseded"}
+    for i, agent in enumerate(agents):
+        for key, value in agent.items():
+            if key in reserved:
+                continue
+            if key not in route_names:
+                raise ValueError(
+                    f"catalog agent {agent.get('id') or i} declares unknown route {key!r}",
+                )
+            if not isinstance(value, list) or not all(
+                isinstance(v, str) for v in value
+            ):
+                raise ValueError(
+                    f"catalog agent {agent.get('id') or i} route {key!r} must be a list of "
+                    f"strings",
+                )
+        for j, sup in enumerate(agent.get("superseded") or []):
+            if (
+                not isinstance(sup, dict)
+                or not sup.get("route")
+                or not sup.get("value")
+            ):
+                raise ValueError(
+                    f"catalog agent {agent.get('id') or i} superseded[{j}] needs 'route' "
+                    f"and 'value'",
+                )
 
 
 def _epoch(value: Any) -> Optional[int]:

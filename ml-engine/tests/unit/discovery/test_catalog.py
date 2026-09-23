@@ -364,3 +364,99 @@ class TestScanTimestamps:
         m = Matcher.from_source(catalog_yaml=CATALOG)
         result = m.match([scan("apps", ver="²"), scan("browser", ver="1790100381")])
         assert result.scanned_at == 1790100381
+
+
+class TestCatalogShapes:
+    """A source config is typed by a person, so these are live risks."""
+
+    def test_a_duplicate_key_is_refused_rather_than_silently_losing_one(self) -> None:
+        """yaml.safe_load keeps the last occurrence. An agent carrying `npm:` twice would
+        lose its first list, and the fleet would report a missed agent as absent."""
+        dupe = (
+            "version: 2\n"
+            "agents:\n"
+            "  - id: codex-cli\n"
+            "    name: Codex CLI\n"
+            "    classification: Coding agent\n"
+            "    platforms: [darwin]\n"
+            "    npm: ['@openai/codex']\n"
+            "    npm: ['@openai/other']\n"
+        )
+        with pytest.raises(ValueError, match="duplicate key"):
+            Matcher.from_source(catalog_yaml=dupe)
+
+    def test_a_scalar_where_a_list_belongs_is_refused(self) -> None:
+        """The vendored matcher indexes a string CHARACTER BY CHARACTER, so
+        `npm: openclaw` becomes seven one-letter identifiers -- wrong without erroring.
+        """
+        scalar = yaml.safe_dump(
+            {
+                "version": 2,
+                "classifications": ["Coding agent"],
+                "agents": [
+                    {
+                        "id": "openclaw",
+                        "name": "OpenClaw",
+                        "classification": "Coding agent",
+                        "platforms": ["darwin"],
+                        "npm": "openclaw",
+                    },
+                ],
+            },
+        )
+        with pytest.raises(ValueError, match="list of strings"):
+            Matcher.from_source(catalog_yaml=scalar)
+
+    def test_an_unknown_route_on_an_agent_is_refused(self) -> None:
+        bad = yaml.safe_dump(
+            {
+                "version": 2,
+                "classifications": ["Coding agent"],
+                "agents": [
+                    {
+                        "id": "x",
+                        "name": "X",
+                        "classification": "Coding agent",
+                        "platforms": ["darwin"],
+                        "not_a_route": ["v"],
+                    },
+                ],
+            },
+        )
+        with pytest.raises(ValueError, match="unknown route"):
+            Matcher.from_source(catalog_yaml=bad)
+
+    def test_an_unhandled_match_mode_is_refused_at_load(self) -> None:
+        """build_index raises KeyError on a mode it does not branch on -- once per device
+        rather than once at load."""
+        routes = yaml.safe_dump(
+            {
+                "version": 1,
+                "platforms": ["darwin"],
+                "routes": {"npm": {"kind": "npm", "match": "fuzzy"}},
+            },
+        )
+        with pytest.raises(ValueError, match="match mode"):
+            Matcher.from_source(catalog_yaml=CATALOG, routes_yaml=routes)
+
+    def test_a_superseded_entry_without_its_key_is_refused(self) -> None:
+        bad = yaml.safe_dump(
+            {
+                "version": 2,
+                "classifications": ["Coding agent"],
+                "agents": [
+                    {
+                        "id": "x",
+                        "name": "X",
+                        "classification": "Coding agent",
+                        "platforms": ["darwin"],
+                        "superseded": [{"route": "npm"}],
+                    },
+                ],
+            },
+        )
+        with pytest.raises(ValueError, match="superseded"):
+            Matcher.from_source(catalog_yaml=bad)
+
+    def test_the_shipped_floor_still_loads(self) -> None:
+        assert Matcher.from_source().agent_count == 22
