@@ -15,7 +15,7 @@ import pathlib
 
 import pytest
 
-from discovery.jamf.envelope import (
+from discovery.endpoint.envelope import (
     FRAME_PREFIX,
     MAX_DECOMPRESSED_BYTES,
     EnvelopeOutcome,

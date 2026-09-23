@@ -1,7 +1,10 @@
-"""Reading the `arthur1.` Extension Attribute value Jamf hands back.
+"""Reading the `arthur1.` value an MDM hands back for one device.
 
 This is the one piece of the endpoint connector that is purely Arthur's wire format:
 the endpoint writes the value, this reads it, and osquery has no opinion about either.
+It is also MDM-neutral. Jamf calls the carrier an Extension Attribute, Intune a custom
+attribute, Kandji likewise; the string inside is identical, so nothing below knows which
+MDM fetched it.
 The producing side lives in `arthur-discovery/tools/build-collector.py`, which frames
 the value as::
 
@@ -46,8 +49,8 @@ FRAME_PREFIX = "arthur1."
 # decoding anything. The integer tail is the size the framed value WOULD have been.
 OVERSIZE_PREFIX = "ERROR:oversize:"
 
-# The Extension Attribute script's own fallback, emitted when it cannot read the file
-# the scheduled job should have written. A deployment fault, not a fact about the Mac.
+# The attribute script's own fallback, emitted when it cannot read the file the scheduled
+# job should have written. A deployment fault, not a fact about the Mac.
 NO_CACHE = "no-cache"
 
 # The six-column contract, enforced on every row. Order is the contract upstream, but
@@ -78,10 +81,10 @@ class EnvelopeOutcome(str, Enum):
     """The scan ran and its payload would not fit. `detail` is the would-be byte count."""
 
     NO_CACHE = "no-cache"
-    """The Extension Attribute could not read the file. Nothing has been written."""
+    """The attribute script could not read the file. Nothing has been written."""
 
     NEVER_REPORTED = "never-reported"
-    """Blank. This Mac has not submitted inventory since the attribute was created."""
+    """Blank. The MDM has not had inventory from this Mac since the attribute was made."""
 
     MALFORMED = "malformed"
     """Bytes arrived and could not be read. `detail` says where it broke."""
@@ -171,17 +174,17 @@ def _validate_rows(
 
 
 def read(value: Optional[str]) -> Envelope:
-    """Decode one `AI Inventory` Extension Attribute value.
+    """Decode one device's `AI Inventory` attribute value.
 
-    Accepts `None` and the empty string, because Jamf returns both for a computer whose
+    Accepts `None` and the empty string, because MDMs return both for a device whose
     attribute has never been populated, and neither is an error.
     """
     if value is None:
         return Envelope(outcome=EnvelopeOutcome.NEVER_REPORTED)
 
-    # The file on disk ends in a newline. Command substitution in the Extension
-    # Attribute script strips it before Jamf ever sees it, so this is belt-and-braces
-    # against a value read by some other route.
+    # The file on disk ends in a newline. Command substitution in the attribute script
+    # strips it before the MDM ever sees it, so this is belt-and-braces against a value
+    # read by some other route.
     text = value.strip()
 
     if not text:
