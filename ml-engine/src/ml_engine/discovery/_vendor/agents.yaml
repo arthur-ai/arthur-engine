@@ -1,0 +1,613 @@
+# Detection catalog for AI agents.
+#
+# EVERY ROUTE IS DECLARED IN catalog/routes.yaml, which says what it matches, how, and on
+# WHICH PLATFORM. Read that file before adding a route here -- and adding one there is the
+# whole edit, because the matcher, the validator, the coverage report and lint all derive
+# from it. It used to mean editing tools/validate_catalog.py's ROUTES and bin/classify's
+# KIND_ROUTES by hand, and `ext` was missing from one of them for months: the rows were
+# DROPPED rather than unmatched, invisible even under --show-unmatched.
+#
+# WHICH ROUTES ARE PLATFORM-SPECIFIC MATTERS WHEN YOU ADD AN AGENT:
+#
+#   darwin only   bundle_ids, homebrew, launchd_prefixes
+#   linux only    deb_packages, rpm_packages, desktop_ids, systemd_prefixes
+#   both          npm, pypi, extension_ids, native_messaging_hosts, vscode_extensions,
+#                 images, state_dirs, binaries, model_stores
+#
+# `platforms:` on each agent is REQUIRED and is checked against those: declaring
+# `deb_packages` without `linux` is a copy-paste error, and claiming a platform no route
+# can match on is a gap that belongs in docs/blind-spots.yaml rather than here.
+#
+# Windows has no routes at all. routes.yaml can express one; none is defined.
+#
+# One entry per tool, carrying EVERY route it ships through. A single agent commonly
+# arrives as a Homebrew cask, an npm global and a curl installer that wraps npm, and
+# each lands somewhere different. A fleet that standardised on one route is invisible
+# to a signature written for another.
+#
+# Identifiers are FACTS read off real installs, never taken from vendor documentation.
+# We shipped `bot.molt.mac` for OpenClaw once, straight from the vendor's own Homebrew
+# metadata, and it matched nothing on any Mac. See CONTRIBUTING.md.
+#
+# `images` is a container image REPOSITORY, matched exactly against a normalised
+# docker_images tag: no `docker.io/` prefix and no `library/` on Docker Hub, the registry
+# host present everywhere else. bin/classify's image_repo() does the normalising and
+# records the four rules it was read off. Two things about this route are worth knowing
+# before adding to it:
+#
+#   * An image name is CHOSEN BY WHOEVER TAGGED IT. `docker tag alpine ollama/ollama`
+#     produces a finding, and nothing can tell it from the real image. Every other route
+#     here names something a vendor controls; this one does not.
+#   * A local build is shaped exactly like a Docker Hub library image, so a one-segment
+#     value such as `ollama` would claim anybody's `ollama:latest` build. Prefer the
+#     two-segment published name.
+#
+# Every `images` value here was read off a real docker_images row, and the comment beside
+# each one records the row. Two of them needed a detour: Docker Hub pulls are blocked
+# daemon-side on the machine this was verified on, so the layers were fetched from the
+# registry directly and side-loaded as an OCI archive. CONTRIBUTING.md has the method. A
+# registry manifest alone would have been weaker -- authoritative about the NAME, silent
+# about how a row renders it -- and the detour was cheaper than that compromise.
+#
+# `classification` describes DEPLOYMENT SHAPE, not risk or quality. Whether an agent is
+# acceptable is the reader's judgement about their fleet, not ours about a vendor.
+#
+# A LISTENING PORT IS NOT AN IDENTIFIER, and the `ports` route is retired. It looked like
+# one -- 18789 is OpenClaw's gateway -- and it cannot be, for a reason the code already
+# encoded in two places before anyone said it out loud:
+#
+#   * bin/classify refuses a port unless the process holding it NAMES the agent
+#     (`if route == "ports" and not _corroborates(...)`). That guard is right: it is what
+#     stops 8080-held-by-java reading as llama.cpp. But it means the port only ever fires
+#     when something else has ALREADY identified the agent, so it adds no identifying
+#     power -- it is a second opinion from the same witness.
+#   * validate_catalog.py exempts ports from the duplicate-identifier check, because
+#     "8080 is legitimately shared". A value that two agents may both claim is not an
+#     identifier; that exemption was the admission.
+#
+# Measured, rather than argued: the gateway was started for real, the listener opened, the
+# row was collected, and the classifier declined it -- because OpenClaw runs under node and
+# the row reads /opt/homebrew/Cellar/node/26.8.1/bin/node. It has never produced a finding
+# in any run.
+#
+# What a port CAN tell you is that an agent is RUNNING rather than merely installed. That is
+# liveness, not identity, and if it is ever wanted it should be built as that and named as
+# that.
+
+# AN OLD IDENTIFIER IS KEPT, AND KEEPING IT COSTS EVIDENCE. Machines on an earlier release
+# still report it, so removing one blinds the fleet to those machines -- but "an earlier
+# release reported it" is a claim, and the `retired:` list it used to be written in
+# exempted a value from the coverage gate on nothing but a person's say-so.
+#
+# So `superseded:` carries the observation instead: which run produced it, which scenario,
+# and at what version. The tooling writes the record when a run stops reproducing an
+# identifier; nobody types one. See docs/signature-lifecycle-v2.md.
+
+# Four kinds of query literal are deliberately NOT catalog entries, because they are
+# structural rather than tool-specific:
+#
+#   ~/.local/pipx/venvs/%/          enumerate every pipx tool, not a named one
+#   ~/.local/share/uv/tools/%/      likewise for uv
+#   ~/.npm/_npx/%/node_modules/X/   the npx cache path is derived from the npm name,
+#                                   so `npm: [openclaw]` already implies it
+#
+# A matcher expands those; the catalog does not repeat them.
+
+# BUMPED TO 2 BECAUSE THE SCHEMA CHANGED: `platforms:` is required on every agent, and the
+# route vocabulary moved to catalog/routes.yaml. This field sat here unread for the whole
+# life of the file -- a version nothing could disagree with -- and bin/classify validates
+# it now: a catalog NEWER than the matcher understands warns on stderr and matches what it
+# can, because refusing would turn version skew into "no agents found", which is the one
+# error this repo exists to avoid.
+version: 2
+
+# THIS CATALOG DETECTS AGENTS. Two entries were REMOVED for failing that test, and the
+# reason is recorded here because the temptation to re-add them is obvious -- both show up
+# in an AI inventory and both were easy to detect:
+#
+#   mcp-sdk   the Model Context Protocol SDK is a LIBRARY an agent is built with. Agent
+#             tooling, not an agent. Detecting it says a developer imported a protocol.
+#   litellm   an LLM gateway an agent calls THROUGH. Detecting it says traffic may be
+#             proxied, not that anything is acting on a user's behalf.
+#
+# Neither acts on anyone's behalf, and counting them among "agents found on this Mac"
+# overstates the finding -- the kind of confident overstatement this repo exists to avoid.
+# Their rows are kept in the FIXTURES as negative controls: test/test_matcher.py asserts
+# they arrive and are declined, which is the only way to tell "correctly not an agent" from
+# "route quietly broken".
+#
+#   ollama, lm-studio, jan, llama-cpp
+#             MODEL RUNNERS. They serve language models; an agent is what drives one.
+#             Removed when the scope was tightened to agents only. They are the strongest
+#             candidates to come back if that scope ever widens, and the `model` query
+#             branch went with them -- nothing consumed its rows.
+#   docker    Docker Desktop is INSTRUMENTATION, not a finding. What we detect inside a
+#             container is the agent IMAGE -- ollama/ollama, ghcr.io/ggml-org/llama.cpp,
+#             paulgauthier/aider -- and the runtime is how we look, not what we are looking
+#             for. Whether Docker is present is already answered, and answered better, by
+#             the kind=scan marker row: `ok`, `absent`, `unhealthy:<code>`, `timeout:<n>`
+#             distinguish "no Docker" from "Docker wedged", which a bundle id cannot.
+#
+# WHAT WAS REMOVED, AND WHAT IT ACTUALLY IS. As data, because three places were describing
+# this list in prose -- CLAUDE.md, CONTRIBUTING.md and the generated report -- and a fourth,
+# README, was still using `ollama` as an example of a name the SQL never matches on, which
+# reads to a newcomer as though it were still detected.
+#
+# tools/agent_status.py renders the table from here, and tools/check_doc_numbers.py fails if
+# README names any of these: the front page should describe what the catalog HAS.
+removed:
+  - id: mcp-sdk
+    what_it_is: a library an agent is **built with**
+  - id: litellm
+    what_it_is: a gateway an agent **calls through**
+  - id: docker
+    what_it_is: "a runtime: **how we look**, not what we look for"
+  - id: ollama
+    what_it_is: a model runner. It **serves** models; an agent drives one
+  - id: lm-studio
+    what_it_is: a model runner, and a desktop app for one
+  - id: jan
+    what_it_is: a model runner
+  - id: llama-cpp
+    what_it_is: a model runner, and the engine several others embed
+
+classifications:
+  # --- acts on the user's behalf ---
+  - Coding agent        # operates on a codebase, usually with shell access
+  - Personal agent      # general-purpose, often bridged to messaging
+  - AI browser          # a browser whose AI features are the product
+  - Browser agent       # an extension that acts inside the browser on the user's behalf
+  - Desktop assistant   # chat client. Kept on THIS side of the line deliberately: the old
+                        # definition read "no autonomous execution", which stopped being
+                        # true when these clients gained MCP and began running tools
+                        # locally. Contested rather than settled, and overstating an agent
+                        # is the safer error for an inventory than missing one
+  # --- does not act on anyone's behalf; listed in not_agents below ---
+
+
+agents:
+  - id: claude-desktop
+    name: Claude Desktop
+    classification: Desktop assistant
+    platforms: [darwin]
+    bundle_ids: [com.anthropic.claudefordesktop]
+    homebrew: [claude]
+    native_messaging_hosts: [com.anthropic.claude_browser_extension.json]
+
+  # Its own entry rather than a route on claude-desktop, because it installs
+  # independently: no app bundle, no package manager, and it follows a Google account
+  # across machines. claude-desktop's native_messaging_hosts entry above is the DESKTOP
+  # side of the bridge this extension talks to -- related, separately installable, and a
+  # fleet can have either without the other.
+  #
+  # The id is a fact read off a real install, per the rule at the top of this file:
+  # collected by this repo's own browser query on a reference Mac, appearing three times
+  # -- v1.0.90 and v1.0.85 in one Chrome profile, v1.0.85 in another. A Chrome extension
+  # id is derived from the developer's public key, so it is stable across versions and
+  # across the profiles that carry it, which is what makes it worth matching on.
+  #
+  # Two further ids circulate for Anthropic-related extensions and are DELIBERATELY ABSENT:
+  # neither id was confirmed, so neither is a fact. Note this is a claim about the IDS, not
+  # about testability -- 45-claude-extension verifies an id by fetching the Web Store's
+  # signed CRX and deriving the id from its manifest key, so a confirmed id could be
+  # verified in minutes. See docs/signature-lifecycle-v2.md: a catalog may carry a guess, but
+  # it may not hide one.
+  - id: claude-in-chrome
+    name: Claude in Chrome
+    classification: Browser agent
+    platforms: [darwin, linux]
+    extension_ids: [fcoeoabgfenejglbffodgkkbkcdhcgfn]
+
+  - id: claude-code
+    name: Claude Code
+    classification: Coding agent
+    platforms: [darwin, linux]
+    # Ships as a native installer, NOT an npm package. The binary at ~/.local/bin/claude
+    # is a symlink into ~/.local/share/claude/versions/<ver>, which is where the version
+    # comes from. Never execute it to ask.
+    binaries: ["~/.local/bin/claude"]
+    npm: ["@anthropic-ai/claude-code"]
+    state_dirs: ["~/.claude"]
+
+  - id: openclaw
+    name: OpenClaw
+    classification: Personal agent
+    platforms: [darwin, linux]
+    # THE LINEAGE, read off the release assets rather than the cask. This project's macOS
+    # app has shipped under exactly three names across 243 releases:
+    #
+    #   Clawdis     v2.0.0-beta2 .. beta5
+    #   Clawdbot    v2026.1.x         com.clawdbot.mac, 57-clawdbot-era installs it
+    #   OpenClaw    v2026.2 onward    ai.openclaw.mac, read off a live 2026.7.1 install
+    #
+    # Both were read from the artifact's own Info.plist. The cask's zap stanza names other
+    # identifiers and is not a source: it is where the wrong one came from once.
+    bundle_ids: [ai.openclaw.mac, com.clawdbot.mac]
+    homebrew: [openclaw]
+    npm: [openclaw, clawdbot, moltbot]
+    state_dirs: ["~/.openclaw"]
+    launchd_prefixes: [ai.openclaw.]
+
+  - id: chatgpt-desktop
+    name: ChatGPT Desktop
+    classification: Desktop assistant
+    platforms: [darwin]
+    # BOTH IDS ARE REAL, and for a long time this catalog said one of them was a mistake.
+    # com.openai.codex is what a current build carries -- the app and Codex converged, and
+    # the version scheme went with it. com.openai.chat is what every build BEFORE that
+    # carries, and the note here used to call it "the obvious guess, and it is wrong".
+    #
+    # It was not wrong, it was old. Run 33511815638 installed the same `chatgpt` cask on two
+    # runners and got two builds: 26.721.41059 -> com.openai.codex on macos-15, and
+    # 1.2026.160 -> com.openai.chat on macos-14, whose Homebrew metadata was stale enough to
+    # still resolve the pre-rename release. A real install, read off a real Mac, of an
+    # identifier this catalog had written off.
+    #
+    # THE FLEET CONSEQUENCE IS THE POINT. A Mac that has not updated ChatGPT still reports
+    # com.openai.chat, and until now the brew route was the only thing that would have found
+    # it -- so a direct download, which is how most people install this app, was invisible.
+    bundle_ids: [com.openai.codex, com.openai.chat]
+    homebrew: [chatgpt]
+    # com.openai.chat IS NOT SUPERSEDED YET, and the distinction is the whole point of the
+    # field being evidence-backed. It was labelled retired on the reasoning that a fresh
+    # install cannot produce it -- and 10-desktop-apps produces it on every run, because
+    # one runner image's Homebrew is still stale enough to resolve the pre-rename build.
+    # An identifier CI proves today is current, whatever era it belongs to.
+    #
+    # The day that runner updates, the shrink guard will fire, the observation will be
+    # archived, and a `superseded:` record will land here carrying the run that last saw
+    # it. That is a fact the tooling will write, not a label someone types in advance.
+
+  - id: codex-cli
+    name: Codex CLI
+    classification: Coding agent
+    platforms: [darwin, linux]
+    npm: ["@openai/codex"]
+    homebrew: [codex]                  # a cask, not a formula; both land in homebrew_packages
+    state_dirs: ["~/.codex"]
+
+  - id: cursor
+    name: Cursor
+    classification: Coding agent
+    platforms: [darwin, linux]
+    # An opaque ToDesktop identifier. Unguessable; it must be pinned. Note `todesktop` is
+    # the PACKAGER, not the vendor -- a reverse-DNS prefix cannot be trusted to name who
+    # publishes a thing.
+    bundle_ids: [com.todesktop.230313mzl4w4u92]
+    homebrew: [cursor]
+    # LINUX. cursor.com/api/download offers a `debUrl` and an `rpmUrl` for both x64 and
+    # arm64, so both package routes carry a real identifier rather than one of them
+    # standing in for the other.
+    #
+    # Read off the installed .deb on 2026-09-04 -- cursor_3.19.7_amd64.deb, 200MB, in an
+    # Ubuntu 24.04 container. deb_packages rendered:
+    #   name=cursor  version=3.19.7-1788393004  section=devel
+    #   maintainer=Cursor <hi@cursor.com>
+    # The package name is `cursor`, not the filename and not the download URL. That
+    # distinction is the whole of the bot.molt.mac lesson.
+    #
+    # THE LOOKALIKES SHIP WITH THE BASE OS. Ubuntu carries `libxcursor1` and
+    # `libwayland-cursor0`, both real deb packages whose names contain this one. The route
+    # matches exactly, so both are declined -- and 73-linux-deb asserts that, because
+    # `libxdmcp` versus `mcp` is the same shape and it is the assertion that tells
+    # correctly-declined from never-looked-at.
+    deb_packages: [cursor]
+    rpm_packages: [cursor]
+    # THE ONLY ROUTE THAT CAN SEE CURSOR'S PRIMARY LINUX DOWNLOAD. cursor.com serves an
+    # AppImage first; an AppImage leaves no package record at all, so every package route
+    # is blind to it. Both the .deb and the AppImage write a .desktop entry.
+    #
+    # The .deb writes TWO -- cursor.desktop and cursor-url-handler.desktop, read off the
+    # same install. Only the first is listed: the url-handler entry is a second file from
+    # one install, not a second install, and matching both would double the evidence rows
+    # for one finding.
+    desktop_ids: [cursor.desktop]
+
+  - id: perplexity-comet
+    name: Perplexity Comet
+    classification: AI browser
+    platforms: [darwin]
+    # A Chromium fork, absent from osquery's browser_type, so it is detected as a bundle.
+    bundle_ids: [ai.perplexity.comet]
+    homebrew: [comet]
+
+  - id: perplexity-desktop
+    name: Perplexity
+    classification: Desktop assistant
+    platforms: [darwin]
+    bundle_ids: [ai.perplexity.macv3]  # a separate product from Comet; do not conflate
+    homebrew: [perplexity]
+
+  - id: windsurf
+    name: Windsurf
+    classification: Coding agent
+    platforms: [darwin]
+    bundle_ids: [com.exafunction.windsurf]
+    homebrew: [devin-desktop]          # cask renamed from `windsurf`
+
+  - id: orion
+    name: Orion
+    classification: AI browser
+    platforms: [darwin]
+    bundle_ids: [com.kagi.kagimacOS]
+    homebrew: [orion]
+
+  # KIRO, Amazon's agent-centric IDE. Same shape as cursor and windsurf above: a VS Code
+  # fork whose agent writes to your files and runs commands, so it is an agent by this
+  # repo's test rather than an editor with a chat panel bolted on.
+  #
+  # dev.kiro.desktop WAS READ OFF THE SHIPPED ARTIFACT, and the obvious guess is wrong.
+  # The cask's zap stanza lists `~/Library/Preferences/dev.kiro.cli.plist`, which invites
+  # `dev.kiro.cli` -- that is the CLI's preference domain, not this app's bundle id, and
+  # transcribing it is the bot.molt.mac mistake with a new vendor. Read from
+  # Kiro.app/Contents/Info.plist inside the 1.0.411 stable darwin-arm64 dmg, 2026-09-05,
+  # which is the same plist the `apps` table reads.
+  #
+  # KIRO CLI IS A DIFFERENT PRODUCT and is DELIBERATELY NOT HERE YET. It is worth writing
+  # down what was measured, because the next person will assume the ids rhyme and they do
+  # not: the `kiro-cli` cask carries old_tokens [amazon-q, codewhisperer], and its app ships
+  # bundle id `com.amazon.codewhisperer` -- unchanged from the CodeWhisperer era, at version
+  # 2.20.1. So the cask token was renamed twice while the bundle id never moved. Both were
+  # read for real (a machine here still carries `amazon-q` AND `kiro-cli` rows from the
+  # rename, plus a com.amazon.codewhisperer.launcher LaunchAgent). It is left out only
+  # because its dmg is 1.05GB and no scenario should pay that to prove a token; it is the
+  # strongest candidate to add next.
+  - id: kiro
+    name: Kiro
+    classification: Coding agent
+    platforms: [darwin]
+    bundle_ids: [dev.kiro.desktop]
+    homebrew: [kiro]
+
+  # GOOGLE ANTIGRAVITY. Two shipping products under one name, and they are ONE entry rather
+  # than two on purpose -- the contrast is perplexity-desktop and perplexity-comet, which
+  # are split because a chat client and a browser are different kinds of thing. These are
+  # two editions of one agentic-IDE product line, and the question a reader has is whether
+  # Antigravity is on the machine; `ver` and `loc` carry which edition.
+  #
+  # Both bundle ids read off the shipped artifacts on 2026-09-05, from
+  # Antigravity.app/Contents/Info.plist in the 2.11.0 hub dmg and
+  # `Antigravity IDE.app`/Contents/Info.plist in the 2.5.5 ide dmg. NOTE THE HYPHEN in
+  # com.google.antigravity-ide: it is legal under routes.yaml's bundle_ids value_pattern
+  # and it is what the artifact says, so it is not tidied to a dot.
+  #
+  # antigravity-cli is a third cask, binary-only with no app. Not carried: it would need a
+  # binaries route nothing here exercises yet.
+  - id: antigravity
+    name: Google Antigravity
+    classification: Coding agent
+    platforms: [darwin]
+    bundle_ids: [com.google.antigravity, com.google.antigravity-ide]
+    homebrew: [antigravity, antigravity-ide]
+
+  - id: aider
+    name: aider
+    classification: Coding agent
+    platforms: [darwin, linux]
+    homebrew: [aider]
+    # `npm: [aider]` WAS HERE AND IS REMOVED. npm's `aider` is "Lightweight website popular
+    # article component for static website", published by an unrelated maintainer -- not
+    # the AI pair programmer, which is a Python tool with no npm distribution at all. The
+    # comment beside it used to read "the usual route; the npm name differs", which is how
+    # a guess survives: it explained the discrepancy instead of questioning it.
+    #
+    # Found by the coverage report, not by review. It sat as DID NOT APPEAR -- a scenario
+    # installed aider and this identifier never showed up -- which is exactly the shape a
+    # wrong identifier makes: nothing can produce it, because it names something else.
+    # Same failure as npm `mcp`, which turned out to be Mintlify's package.
+    pypi: [aider-chat]
+    # ~/.aider NEEDS NO CREDENTIALS, contrary to the obvious assumption. `--version` exits
+    # before anything writes it, which is why a first attempt produced nothing and looked
+    # like an auth wall. aider's own source says otherwise: Path.home()/".aider" holds
+    # installs.json, analytics.json and oauth-keys.env, and installs.json is written by
+    # is_first_run_of_new_version() -- a VERSION CHECK, not a model call.
+    #
+    # So 25-python-agents runs `aider --just-check-update`, which triggers that check and
+    # exits without an API key, a network credential or a repository. Confirmed by the run,
+    # which now prints whether the directory appeared rather than leaving it to be inferred
+    # from a coverage number.
+    state_dirs: ["~/.aider"]
+    # Read off a real row: "paulgauthier/aider:latest", id cd375f1ecbd1. ENTRYPOINT is
+    # /venv/bin/aider, which is the same package the pypi route above names.
+    #
+    # NO OCI LABELS AT ALL, verified 2026-09-11 against the pulled image (id 0d54037f6c97,
+    # created 2026-02-12): docker_image_labels returns zero rows for it. So this agent is
+    # reachable only through the forgeable tag, and `image_labels` cannot corroborate it --
+    # which is the gap routes.yaml describes and not an omission here.
+    images: [paulgauthier/aider]
+
+  - id: openhands
+    name: OpenHands
+    classification: Coding agent
+    platforms: [darwin, linux]
+    # TWO REPOSITORIES, AND BOTH ARE LIVE. The project moved GitHub organisation and
+    # publishes under the new one; the old path still serves an image, so a machine that
+    # pulled before the move still has it and must still be found. Read off real rows on
+    # 2026-09-11:
+    #
+    #   "ghcr.io/openhands/openhands:latest"       id 17d0648956f9, created 2026-07-21
+    #   "ghcr.io/all-hands-ai/openhands:latest"    id 00968de77a7b, created 2025-10-10
+    #
+    # The stale one is listed second because that is what it is -- nine months behind, and
+    # the reason its labels are absent while the current image's are complete. Dropping it
+    # would hide every machine that pulled during the old org's lifetime.
+    images: [ghcr.io/openhands/openhands, ghcr.io/all-hands-ai/openhands]
+    # THE VENDOR-CONTROLLED HALF, and the reason this agent is the strongest container
+    # finding in the catalog. Read off the current image's own manifest, same day:
+    # org.opencontainers.image.source = https://github.com/OpenHands/OpenHands, beside
+    # title=OpenHands and version=main-amd64. Retagging anything as openhands reproduces
+    # the `images` value and cannot reproduce this one.
+    #
+    # Case is the vendor's: the GitHub organisation renders `OpenHands`, and the label
+    # carries it verbatim. Matching is exact, so the case here is a fact rather than a
+    # style choice.
+    image_labels: ["https://github.com/OpenHands/OpenHands"]
+
+  - id: goose
+    name: goose
+    classification: Coding agent
+    platforms: [darwin, linux]
+    # Read off a real row on 2026-09-11: "ghcr.io/block/goose:latest", id d85a724ee487,
+    # created 2026-04-06, ENTRYPOINT /usr/local/bin/goose.
+    images: [ghcr.io/block/goose]
+    # org.opencontainers.image.source off the same image, beside title=goose and
+    # vendor=Block -- the only image measured that set `vendor` correctly rather than
+    # inheriting its base image's. Only `source` is matched; routes.yaml says why.
+    image_labels: ["https://github.com/block/goose"]
+
+  - id: swe-agent
+    name: SWE-agent
+    classification: Coding agent
+    platforms: [darwin, linux]
+    # Read off a real row on 2026-09-11: "sweagent/swe-agent:latest", id 11206d866593.
+    #
+    # STALE, AND CATALOGUED ANYWAY. The image was created 2024-12-07 -- twenty-one months
+    # before this was written -- and a `latest` tag that has not moved in that long usually
+    # means the project stopped publishing there. It is listed because the registry still
+    # serves it, so it is still pullable and still lands on machines; an agent nobody
+    # updates is not an agent nobody runs.
+    #
+    # ITS LABELS ARE A TRAP, and they are why `image_labels` matches `source` alone. This
+    # image carries exactly two: org.opencontainers.image.ref.name=ubuntu and
+    # version=22.04, both INHERITED FROM ITS BASE IMAGE. A route keyed on `title` or
+    # `ref.name` would read this agent as Ubuntu. It carries no `source`, so it has no
+    # image_labels entry rather than a guessed one.
+    images: [sweagent/swe-agent]
+
+  - id: gemini-cli
+    name: Gemini CLI
+    classification: Coding agent
+    platforms: [darwin, linux]
+    homebrew: [gemini-cli]
+    npm: ["@google/gemini-cli"]        # a vendor scope, missed by @anthropic-ai/@openai globs
+
+  - id: copilot-cli
+    name: GitHub Copilot CLI
+    classification: Coding agent
+    platforms: [darwin, linux]
+    homebrew: [copilot-cli]
+    npm: ["@github/copilot"]
+
+  - id: cline
+    name: Cline
+    classification: Coding agent
+    platforms: [darwin, linux]
+    npm: [cline]
+    # ITS PRIMARY SHAPE, and until osquery 5.11.0 there was no table that could see it:
+    # docs/blind-spots.yaml said VS Code extensions were invisible, which was true when
+    # it was written and is not now.
+    #
+    # Read off a real install on 2026-09-04 -- `code --install-extension
+    # saoudrizwan.claude-dev` in an Ubuntu 24.04 container, osquery 5.23.1 rendering
+    # v4.1.17 at ~/.vscode/extensions/saoudrizwan.claude-dev-4.1.17.
+    #
+    # The value is the row's `name`, which already carries publisher and extension. Do
+    # NOT build it from `publisher_id`: that column is a GUID
+    # (6f42e67d-d7ea-4a53-8704-2ae8bf2d86f3 here), and `publisher` is the display name
+    # "Cline". routes.yaml records why that matters.
+    vscode_extensions: [saoudrizwan.claude-dev]
+
+  # THE ARGUMENT FOR THIS ENTRY IS THAT IT ACTS, and the artifact says so itself. Read off
+  # the installed extension's own package.json, not off the vendor's page:
+  #
+  #   displayName  Continue - open-source AI code agent
+  #   description  The leading open-source AI code agent
+  #
+  # A vendor calling its own product an agent is not sufficient on its own -- `litellm` is
+  # marketed as AI infrastructure and is a gateway -- so the test is what it DOES. Of the 38
+  # commands it contributes, these decide it:
+  #
+  #   continue.applyCodeFromChat        Apply code from chat
+  #   continue.acceptDiff               Accept Diff
+  #   continue.acceptVerticalDiffBlock  Accept Vertical Diff Block
+  #   continue.focusEdit                Add to Edit
+  #
+  # It writes to your files. That is acting on the user's behalf, which is the whole test.
+  #
+  # AND IT IS THE SAME SHAPE AS cline ABOVE, which has been catalogued as a Coding agent
+  # since before this route existed: both are bring-your-own-model VS Code extensions that
+  # edit code, with the same categories and the same contribution surface. Including one and
+  # not the other would have been a distinction nothing in the tree could justify.
+  #
+  # BYO-model is why it is not a model runner. ollama, lm-studio, jan and llama-cpp were all
+  # removed for SERVING models; this drives whichever one you point it at.
+  #
+  # ~/.continue IS DELIBERATELY ABSENT. It is the obvious second route and it would be a
+  # guess: verified on a real install that `code --install-extension continue.continue`
+  # leaves no such directory -- the home directory afterwards holds .cache, .config, .dotnet
+  # and .vscode and nothing else. It appears on first activation in the editor, which needs a
+  # GUI session that CI has not got. Same shape as the note on ~/.hermes above: when the
+  # directory appears depends on the route, and this repo does not ship the version it has
+  # not seen.
+  #
+  # No JetBrains and no npm route for the same reason. Continue ships a JetBrains plugin and
+  # osquery grew a `jetbrains_plugins` table after 5.12.1, but neither the table nor the
+  # plugin id has been read off anything here.
+  - id: continue
+    name: Continue
+    classification: Coding agent
+    platforms: [darwin, linux]
+    # Read off a real install on 2026-09-04: v2.0.0 at
+    # ~/.vscode/extensions/continue.continue-2.0.0-linux-arm64, osquery 5.23.1.
+    #
+    # The value is the row's `name`, which already carries publisher and extension. NOT
+    # built from `publisher_id`: that column is a GUID -- 8701b9ff-bc1c-483c-b95d-ac0ba7d51a0b
+    # here -- and `publisher` is the display name "Continue". catalog/routes.yaml records why
+    # that distinction cost a wrong identifier once already.
+    vscode_extensions: [continue.continue]
+
+  # Nous Research's terminal agent. Filed as a Personal agent rather than a Coding agent on
+  # the strength of what it ships: ONE GATEWAY PROCESS fronting Telegram, Discord, Slack,
+  # WhatsApp and Signal, plus cross-session memory. The Coding-agent reading is defensible --
+  # it depends on ripgrep and ships `hermes-acp`, an Agent Client Protocol adapter for
+  # editors -- but the messaging bridge is the product, which is OpenClaw's shape, not
+  # Claude Code's.
+  #
+  # THREE ROUTES, AND THE COMMAND NAME IS NOT THE PACKAGE NAME ON ANY OF THEM. The binary is
+  # `hermes`; every registry calls it `hermes-agent`. Each value below was read off the
+  # artifact, not off the vendor's page:
+  #
+  #   homebrew   a FORMULA, not a cask: homebrew-core Formula/h/hermes-agent.rb, a python
+  #              virtualenv build, stable 2026.8.31. Its install block writes THREE commands
+  #              -- hermes, hermes-agent, hermes-acp -- and none of them is what
+  #              homebrew_packages renders. The formula token is.
+  #   pypi       the wheel's own METADATA reads `Name: hermes-agent`, `Author: Nous
+  #              Research`, with console_scripts hermes/hermes-agent/hermes-acp. This route
+  #              is the STALE one: PyPI stops at 0.19.0 against a brew stable of 2026.8.31,
+  #              so it names a real distribution the project has moved past. Catalogued
+  #              anyway -- a Mac that installed it that way still carries the tool directory,
+  #              and that is the machine this route exists to find.
+  #   installer  `curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash`, the
+  #              vendor's primary route. Read off install.sh: it writes a launcher to
+  #              ~/.local/bin/hermes and puts everything else under HERMES_HOME.
+  - id: hermes
+    name: Hermes Agent
+    classification: Personal agent
+    platforms: [darwin, linux]
+    homebrew: [hermes-agent]
+    pypi: [hermes-agent]
+    # Anchored at the front rather than fullmatched, so the sibling commands land here too:
+    # ~/.local/bin/hermes-acp and ~/.local/bin/hermes-agent are the same install, and a uv
+    # tool install writes all three.
+    binaries: ["~/.local/bin/hermes"]
+    # HERMES_HOME, and WHEN IT APPEARS DEPENDS ON THE ROUTE -- the distinction that made
+    # ~/.aider read DID NOT APPEAR while a scenario installed aider on every run. The
+    # installer puts the checkout at $HERMES_HOME/hermes-agent, so a curl install creates
+    # this at install time. A Homebrew or uv install does not: their code lives in the Cellar
+    # or the tool venv, and this directory exists only once the agent has been run.
+    state_dirs: ["~/.hermes"]
+    # NO npm ROUTE, DELIBERATELY, and this is the interesting one. npm's `hermes-agent`
+    # resolves, is current (0.21.0, ahead of PyPI), and does install the real thing -- and it
+    # is published by `wyrtensi`, describing itself in its own description as an "Unofficial
+    # npm bridge", with a postinstall script. Every other identifier in this file names
+    # something the VENDOR controls; that one names a third party's postinstall.
+    #
+    # Excluding it costs nothing detectable: the bridge runs the vendor installer, so the
+    # machine carries ~/.hermes and is found by the route above. The fixture keeps the row
+    # and test_matcher asserts it is DECLINED, which is what makes this a recorded decision
+    # rather than an omission -- and reversible in one line if the bridge is ever adopted
+    # upstream.
+    #
+    # npm's `hermes-engine` is React Native's JavaScript engine and is not this agent at all.
+    # It is in the fixture as a negative control, for the same reason `libxdmcp` is: it is
+    # the row a substring match would claim.

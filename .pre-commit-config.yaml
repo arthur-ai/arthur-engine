@@ -3,9 +3,9 @@ repos:
     rev: v5.0.0
     hooks:
       - id: trailing-whitespace
-        exclude: (^genai-engine/staging.openapi.json)
+        exclude: (^genai-engine/staging.openapi.json|(?:^ml-engine/src/ml_engine/discovery/_vendor/|^integrations/endpoint-ai-discovery/vendor/|^integrations/endpoint-ai-discovery/dist/collect\.sh$))
       - id: end-of-file-fixer
-        exclude: (^genai-engine/staging.openapi.json)
+        exclude: (^genai-engine/staging.openapi.json|(?:^ml-engine/src/ml_engine/discovery/_vendor/|^integrations/endpoint-ai-discovery/vendor/|^integrations/endpoint-ai-discovery/dist/collect\.sh$))
       - id: check-yaml
         exclude: (^deployment/cloudformation/|^deployment/helm/|^genai-engine/helm/|^ml-engine/helm/)
       - id: debug-statements
@@ -31,7 +31,7 @@ repos:
           - "--remove-all-unused-imports"
           - "--recursive"
         fail_fast: true
-        exclude: (^genai-engine/src/routers/v2/routers.py|^arthur-observability-sdk/python/src/arthur_genai_client/)
+        exclude: (^genai-engine/src/routers/v2/routers.py|^arthur-observability-sdk/python/src/arthur_genai_client/|(?:^ml-engine/src/ml_engine/discovery/_vendor/|^integrations/endpoint-ai-discovery/vendor/|^integrations/endpoint-ai-discovery/dist/collect\.sh$))
   - repo: https://github.com/pycqa/isort
     rev: 7.0.0
     hooks:
@@ -39,20 +39,21 @@ repos:
         name: "sort imports"
         args: ["--profile", "black"]
         fail_fast: true
-        exclude: ^arthur-observability-sdk/python/src/arthur_genai_client/
+        exclude: (^arthur-observability-sdk/python/src/arthur_genai_client/|(?:^ml-engine/src/ml_engine/discovery/_vendor/|^integrations/endpoint-ai-discovery/vendor/|^integrations/endpoint-ai-discovery/dist/collect\.sh$))
   - repo: https://github.com/psf/black
     rev: 26.3.1
     hooks:
       - id: black
         language_version: python3.12
         fail_fast: true
-        exclude: ^arthur-observability-sdk/python/src/arthur_genai_client/
+        exclude: (^arthur-observability-sdk/python/src/arthur_genai_client/|(?:^ml-engine/src/ml_engine/discovery/_vendor/|^integrations/endpoint-ai-discovery/vendor/|^integrations/endpoint-ai-discovery/dist/collect\.sh$))
   - repo: https://github.com/asottile/add-trailing-comma
     rev: v3.1.0
     hooks:
       - id: add-trailing-comma
         name: "add trailing commas"
         fail_fast: true
+        exclude: (?:^ml-engine/src/ml_engine/discovery/_vendor/|^integrations/endpoint-ai-discovery/vendor/|^integrations/endpoint-ai-discovery/dist/collect\.sh$)
   - repo: local
     hooks:
       - id: genai-engine-ui-lint-format
