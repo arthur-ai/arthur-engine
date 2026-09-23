@@ -9,6 +9,7 @@ from sqlalchemy import (
     JSON,
     TIMESTAMP,
     Boolean,
+    Enum,
     Float,
     ForeignKey,
     Index,
@@ -21,6 +22,7 @@ from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from db_models.base import Base, IsArchivable
+from schemas.enums import MappingKeyKind
 
 if TYPE_CHECKING:
     from db_models.agentic_annotation_models import DatabaseAgenticAnnotation
@@ -151,14 +153,27 @@ class DatabaseResourceMetadata(Base):
 
 
 class DatabaseServiceNameTaskMapping(Base):
-    """Maps service names to task IDs.
+    """Maps service names, and discovered agents' external IDs, to task IDs.
 
-    Immutable once created - mappings are never updated.
+    Immutable once created - mappings are never updated. `service_name` holds the key
+    and `key_kind` says which of the two it is, so the same string can be both a
+    service name and an external ID without either resolving as the other.
     """
 
     __tablename__ = "service_name_task_mappings"
 
     service_name: Mapped[str] = mapped_column(String, primary_key=True)
+    key_kind: Mapped[MappingKeyKind] = mapped_column(
+        Enum(
+            MappingKeyKind,
+            values_callable=lambda e: [x.value for x in e],
+            native_enum=False,
+            create_constraint=False,
+        ),
+        primary_key=True,
+        server_default=MappingKeyKind.SERVICE_NAME.value,
+        default=MappingKeyKind.SERVICE_NAME,
+    )
     task_id: Mapped[str] = mapped_column(
         String,
         ForeignKey(

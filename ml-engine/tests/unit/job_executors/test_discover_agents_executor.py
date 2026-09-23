@@ -16,6 +16,8 @@ from arthur_common.models.agent_discovery_schemas import DiscoveryOutputRecord
 from job_executors.discover_agents_executor import DiscoverAgentsExecutor
 from job_executors.discovery_scan import (
     SOURCE_SCANNERS,
+    DiscoveryPublishResult,
+    FailedDiscoveryRecord,
     UnsupportedDiscoveryVendorError,
 )
 from job_log_exporter import ExportContextedLogger, ScopeJobLogExporter
@@ -88,14 +90,45 @@ class RecordingSink:
         data_plane_id: str,
         config: DiscoverySourceConfigSpec,
         records: Sequence[DiscoveryOutputRecord],
-    ) -> int:
+    ) -> DiscoveryPublishResult:
         self.batches.append([r.external_id for r in records])
         self.configs.append(config.name)
-        return len(records)
+        return DiscoveryPublishResult(accepted=len(records))
+
+
+class PartlyFailingSink(RecordingSink):
+    """Resolves every record except the named ones, which it reports as failed."""
+
+    def __init__(self, failing_external_ids: set[str]) -> None:
+        super().__init__()
+        self.failing_external_ids = failing_external_ids
+
+    def publish(
+        self,
+        workspace_id: str,
+        data_plane_id: str,
+        config: DiscoverySourceConfigSpec,
+        records: Sequence[DiscoveryOutputRecord],
+    ) -> DiscoveryPublishResult:
+        super().publish(workspace_id, data_plane_id, config, records)
+        failed = [
+            FailedDiscoveryRecord(
+                external_id=r.external_id,
+                reason="task_not_found",
+                detail=f"Discovered record '{r.external_id}' resolved to task "
+                "'missing-task', which does not exist",
+            )
+            for r in records
+            if r.external_id in self.failing_external_ids
+        ]
+        return DiscoveryPublishResult(
+            accepted=len(records) - len(failed),
+            failed=failed,
+        )
 
 
 class RaisingSink(RecordingSink):
-    """Accepts batches until the given one, then throws having committed nothing."""
+    """Accepts batches until the given one, then throws before it could report any."""
 
     def __init__(self, fail_on_batch: int) -> None:
         super().__init__()
@@ -107,7 +140,7 @@ class RaisingSink(RecordingSink):
         data_plane_id: str,
         config: DiscoverySourceConfigSpec,
         records: Sequence[DiscoveryOutputRecord],
-    ) -> int:
+    ) -> DiscoveryPublishResult:
         if len(self.batches) + 1 == self.fail_on_batch:
             raise RuntimeError("platform rejected the batch")
         return super().publish(workspace_id, data_plane_id, config, records)
@@ -447,9 +480,61 @@ def test_missing_credentials_client_still_reports_an_outcome() -> None:
     assert sink.batches == []
 
 
+def test_records_that_fail_resolution_are_reported_without_failing_the_scan() -> None:
+    """A mixed batch keeps both halves: the records that resolved count as the
+    source's contribution, the one that did not is carried on the outcome for whoever
+    configured the source, and the scan itself still succeeded."""
+    logger = logging.getLogger("test-discovery-outcome-partial")
+    records = _capture(logger)
+    sink = PartlyFailingSink({"b"})
+    scanner = FakeScanner([[_record("a"), _record("b"), _record("c")]])
+
+    _executor(scanner, sink, logger=logger).execute(_job(), _spec(_config()))
+
+    outcome = _find_outcome(records)
+    assert outcome["succeeded"] is True
+    assert outcome["records_published"] == 2
+    assert outcome["records_failed"] == 1
+    assert outcome["failed_records"] == [
+        {
+            "external_id": "b",
+            "reason": "task_not_found",
+            "detail": "Discovered record 'b' resolved to task 'missing-task', "
+            "which does not exist",
+        },
+    ]
+
+
+def test_failed_records_accumulate_across_batches() -> None:
+    logger = logging.getLogger("test-discovery-outcome-partial-batches")
+    records = _capture(logger)
+    sink = PartlyFailingSink({"a", "d"})
+    scanner = FakeScanner([[_record("a"), _record("b")], [_record("c"), _record("d")]])
+
+    _executor(scanner, sink, logger=logger).execute(_job(), _spec(_config()))
+
+    outcome = _find_outcome(records)
+    assert outcome["records_published"] == 2
+    assert [r["external_id"] for r in outcome["failed_records"]] == ["a", "d"]
+
+
+def test_a_clean_scan_reports_no_failed_records() -> None:
+    logger = logging.getLogger("test-discovery-outcome-no-failures")
+    records = _capture(logger)
+
+    _executor(FakeScanner([[_record("a")]]), logger=logger).execute(
+        _job(),
+        _spec(_config()),
+    )
+
+    outcome = _find_outcome(records)
+    assert outcome["records_failed"] == 0
+    assert outcome["failed_records"] == []
+
+
 def test_a_failing_publish_counts_only_the_batches_that_landed() -> None:
-    """The sink's half of the resiliency contract: a batch that raised committed
-    nothing, so it is not counted, while the batches before it still are."""
+    """A batch whose publish raised never reported what it resolved, so it is not
+    counted, while the batches before it still are."""
     logger = logging.getLogger("test-discovery-outcome-sink-raises")
     records = _capture(logger)
     sink = RaisingSink(fail_on_batch=2)
