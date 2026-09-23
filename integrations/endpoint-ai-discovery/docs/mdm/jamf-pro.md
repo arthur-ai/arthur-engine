@@ -116,6 +116,17 @@ contains the word, and a false positive here installs software on a Mac that did
 **is** with `old:` matches nothing, silently, and an empty Smart Group reads exactly like a
 healthy fleet.
 
+**A BLANK ATTRIBUTE IS NOT `absent`, AND NO GROUP ABOVE CAN SEE IT.** The script always
+prints one of four values, so it cannot produce a blank; a blank means it never ran on that
+Mac — the attribute was created after the Mac's last inventory submission. Those Macs are
+invisible to every criterion on this attribute, and to every criterion on the other two, by
+construction: an attribute with no value matches neither `is` nor `like` nor their negations.
+
+They are also the population most likely to be mistaken for coverage. A fleet where a third
+of the Macs stopped checking in months ago reads as a fleet where a third have no AI tooling,
+and no amount of narrowing on attribute values will show otherwise. **Only Jamf's own
+`Last Inventory Update` can see a Mac that is not reporting** — see the group in 06.
+
 A **blank** value is not a failure: it is a Mac that has not submitted inventory since you
 created the attribute, so the attribute has never run there. Those fill in within a day, and
 they are invisible to every criterion above including `is not`. To find them, use operator
@@ -375,6 +386,21 @@ carries a timestamp, a row count and ten branches, so **is** on any of those mat
 | Container scan blocked | **like** | `containers=timeout` | Answered `/_ping` then stalled. A wedged Docker engine — real and fixable |
 | A branch errored | **like** | `=error` | A query failed outright, typically an osquery build without a table it needs |
 | Serving a stale scan | **like** | `stale=` | The last scan is over a day old. The Mac is reporting real evidence, but the collector has not succeeded since — check the Policy log |
+
+One more, and it does **not** read an Extension Attribute:
+
+| Group | Criteria | Operator | Value | Meaning |
+|---|---|---|---|---|
+| Not reporting to Jamf | `Last Inventory Update` | **more than x days ago** | `30` | Jamf has not heard from this Mac. Nothing above can see it, whatever its attributes last said |
+
+**This is the denominator, and it is the group to build first.** Every other group here reads
+a value the Mac submitted; this one is the only one that can find a Mac that submitted
+nothing. Retired hardware lives here, and so does a Mac whose collector broke the same week it
+stopped checking in — which is why the two must not be counted together. Scope the discovery
+source to exclude it, or its coverage number is permanently wrong in a way no fix improves.
+
+Thirty days is a starting point, not a measurement: it wants to sit above your recon interval
+by enough that an ordinary laptop on holiday does not land in it.
 
 **The first token does not carry age.** It says whether the last scan succeeded, not when it
 ran, so a daemon that stopped a month ago keeps reporting `ok`. That is what the `stale=NNh`
