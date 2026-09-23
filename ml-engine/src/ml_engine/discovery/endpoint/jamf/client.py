@@ -106,6 +106,11 @@ class JamfClient:
 
         resp = self._http.post(
             self._url("/api/oauth/token"),
+            # The secret is in the BODY. requests follows redirects by default and on a
+            # 307/308 resends method and body to the Location host, stripping only the
+            # Authorization header -- so a redirect would hand client_secret to whatever
+            # host it names.
+            allow_redirects=False,
             data={
                 "grant_type": "client_credentials",
                 "client_id": self._s.client_id,
@@ -136,16 +141,25 @@ class JamfClient:
         last: Optional[str] = None
 
         for attempt in range(1, MAX_ATTEMPTS + 1):
-            resp = self._http.get(
-                self._url(path),
-                params=params,
-                headers={
-                    "Authorization": f"Bearer {self._bearer()}",
-                    "Accept": "application/json",
-                },
-                timeout=self._s.timeout_seconds,
-                verify=self._s.verify_ssl,
-            )
+            try:
+                resp = self._http.get(
+                    self._url(path),
+                    params=params,
+                    headers={
+                        "Authorization": f"Bearer {self._bearer()}",
+                        "Accept": "application/json",
+                    },
+                    timeout=self._s.timeout_seconds,
+                    verify=self._s.verify_ssl,
+                )
+            except (requests.ConnectionError, requests.Timeout) as exc:
+                # The most common failure on a hundred-page fleet scan, and it was
+                # escaping on the first occurrence: one reset on page 40 ended the scan.
+                if attempt == MAX_ATTEMPTS:
+                    raise JamfError(f"Jamf GET {path} unreachable: {exc}") from exc
+                last = type(exc).__name__
+                self._sleep(self._backoff(attempt, None))
+                continue
 
             if resp.status_code == 200:
                 body: dict[str, Any] = resp.json()
@@ -187,45 +201,105 @@ class JamfClient:
     # --- inventory ----------------------------------------------------------------
 
     def devices_since(self, since_iso: Optional[str]) -> Iterator[ManagedDevice]:
-        """Yield every computer whose inventory was reported since `since_iso`.
+        """Yield computers whose inventory was reported since `since_iso`.
 
-        Sorted ascending on the field being filtered, which is what makes a record that
-        shifts during pagination repeat rather than vanish. `since_iso` of None asks for
-        the whole roster -- the enumeration that answers which Macs have stopped
-        reporting at all, which no Extension Attribute can answer by construction.
+        `since_iso` of None asks for the whole roster -- the enumeration that answers
+        which Macs have stopped reporting at all, which no custom attribute can answer.
+
+        OFFSET PAGING CANNOT BE USED ON A FIELD THAT MUTATES. Sorting ascending on
+        `reportDate` saves the record that checks in mid-scan -- it moves to the end and
+        is read again -- but every record behind it shifts DOWN one position, and at a
+        page boundary one of them moves back into a page already read. With a=b=c=d and
+        page size 2: page 0 returns (a, b); `a` checks in, so the order becomes
+        (b, c, d, a); page 1 returns (d, a) and `c` is never returned at all.
+
+        So the two cases page differently, and neither uses an offset over reportDate.
+        """
+        if since_iso is None:
+            yield from self._enumerate_by_id()
+        else:
+            yield from self._keyset_by_report_date(since_iso)
+
+    def _enumerate_by_id(self) -> Iterator[ManagedDevice]:
+        """The full roster, paged on `id`, which does not move.
+
+        A keyset over `reportDate` cannot serve this case: filtering on it at all drops
+        devices that have never reported, and those are exactly what a full enumeration
+        is for. `id` is immutable, so an offset over it cannot shift underneath the scan.
         """
         page = 0
-        seen = 0
-        total: Optional[int] = None
+        while True:
+            body = self._get(
+                "/api/v1/computers-inventory",
+                {
+                    "section": list(SECTIONS),
+                    "page": page,
+                    "page-size": self._s.page_size,
+                    "sort": "id:asc",
+                },
+            )
+            results = body.get("results") or []
+            if not results:
+                return
+            for record in results:
+                yield _to_device(record)
+            page += 1
+
+    def _keyset_by_report_date(self, since_iso: str) -> Iterator[ManagedDevice]:
+        """The incremental window, paged by keyset rather than by offset.
+
+        Each page restarts at page 0 with a filter strictly after the last
+        `(reportDate, id)` read, so a record that checks in mid-scan moves ahead of the
+        cursor and is read again rather than displacing one behind it. `id` breaks ties:
+        `reportDate` has second resolution and a fleet check-in puts many devices on the
+        same value, which a cursor on the date alone would either skip or re-read forever.
+
+        Stops on an empty page. A `totalCount` captured from the first page counts a
+        fleet that is still changing, and re-reads make `seen` reach it early.
+        """
+        last_date, last_id = since_iso, None
 
         while True:
-            params: dict[str, Any] = {
-                "section": list(SECTIONS),
-                "page": page,
-                "page-size": self._s.page_size,
-                "sort": "general.reportDate:asc",
-            }
-            if since_iso:
-                params["filter"] = (
-                    f'general.reportDate=gt="{quote(since_iso, safe="")}"'
+            if last_id is None:
+                where = f'general.reportDate=gt="{quote(last_date, safe="")}"'
+            else:
+                # RSQL: `,` is OR and `;` is AND -- after this date, or on it with a
+                # higher id.
+                stamp = quote(last_date, safe="")
+                where = (
+                    f'general.reportDate=gt="{stamp}",'
+                    f'(general.reportDate=="{stamp}";id=gt={last_id})'
                 )
 
-            body = self._get("/api/v1/computers-inventory", params)
+            body = self._get(
+                "/api/v1/computers-inventory",
+                {
+                    "section": list(SECTIONS),
+                    "page": 0,
+                    "page-size": self._s.page_size,
+                    "sort": "general.reportDate:asc,id:asc",
+                    "filter": where,
+                },
+            )
             results = body.get("results") or []
-            if total is None:
-                total = body.get("totalCount")
-                self._log.info("Jamf reports %s computer(s) in scope", total)
-
             if not results:
                 return
 
             for record in results:
-                seen += 1
                 yield _to_device(record)
 
-            page += 1
-            if total is not None and seen >= int(total):
+            tail = results[-1]
+            tail_date = (tail.get("general") or {}).get("reportDate")
+            tail_id = tail.get("id")
+            if not tail_date or tail_id is None:
+                # Without both halves the cursor cannot advance, and repeating the same
+                # filter would loop forever. Stop and let the next run's window cover it.
+                self._log.warning(
+                    "Jamf returned a record with no reportDate or id; ending this page "
+                    "walk rather than repeating the same filter",
+                )
                 return
+            last_date, last_id = str(tail_date), tail_id
 
 
 def _to_device(record: dict[str, Any]) -> ManagedDevice:

@@ -104,8 +104,16 @@ def _settings_from(credentials: Mapping[str, Optional[str]]) -> JamfSettings:
             f"base_url is not a secret and arrives here only because the scan seam "
             f"carries no non-sensitive source fields.",
         )
+    base_url = str(credentials["base_url"]).strip()
+    if not base_url.lower().startswith("https://"):
+        # client_secret travels in the token request's BODY. Over http it is in cleartext,
+        # and a scheme check here is the only place it can be refused before it is sent.
+        raise ValueError(
+            f"Jamf base_url must be https, got {base_url.split('://', 1)[0] or base_url!r}. "
+            f"The token request carries client_secret in its body.",
+        )
     return JamfSettings(
-        base_url=str(credentials["base_url"]),
+        base_url=base_url,
         client_id=str(credentials["client_id"]),
         client_secret=str(credentials["client_secret"]),
     )

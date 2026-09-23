@@ -11,10 +11,13 @@ import gzip
 import io
 import json
 import logging
+import re
 from datetime import datetime, timezone
 from typing import Any, Optional
+from urllib.parse import unquote
 
 import pytest
+import requests
 import yaml
 
 from discovery.endpoint.jamf.client import JamfClient, JamfError, JamfSettings
@@ -65,8 +68,10 @@ def computer(
     mid: str,
     value: Optional[str],
     report_date: str = "2026-09-22T10:00:00Z",
+    ident: int = 0,
 ) -> dict[str, Any]:
     return {
+        "id": ident or (abs(hash(mid)) % 100000),
         "general": {
             "managementId": mid,
             "name": f"mac-{mid}",
@@ -98,19 +103,31 @@ class FakeResponse:
 
 
 class FakeJamf:
-    """Serves canned pages and records what was asked for."""
+    """A store that filters and sorts the way the real API does.
+
+    Serves from a mutable device list so a test can have a device check in mid-scan,
+    which is the only way to tell keyset paging from offset paging.
+    """
 
     def __init__(
         self,
-        pages: list[list[dict[str, Any]]],
+        pages: Optional[list[list[dict[str, Any]]]] = None,
+        devices: Optional[list[dict[str, Any]]] = None,
         total: Optional[int] = None,
         get_statuses: Optional[list[int]] = None,
+        page_size: int = 2,
+        on_page: Optional[Any] = None,
     ) -> None:
+        # `pages` is the simple form: whatever is listed comes back in order.
         self.pages = pages
-        self.total = sum(len(p) for p in pages) if total is None else total
+        self.devices = devices or []
+        self.page_size = page_size
+        self.on_page = on_page
+        self.total = total
         self.get_statuses = list(get_statuses or [])
         self.token_calls = 0
         self.gets: list[dict[str, Any]] = []
+        self._calls = 0
 
     def post(self, url: str, **kw: Any) -> FakeResponse:
         self.token_calls += 1
@@ -119,15 +136,58 @@ class FakeJamf:
             {"access_token": f"tok{self.token_calls}", "expires_in": 3600},
         )
 
+    @staticmethod
+    def _key(d: dict[str, Any]) -> tuple[str, int]:
+        return (d["general"]["reportDate"], int(d["id"]))
+
+    def _after(
+        self,
+        cursor: Optional[tuple[str, Optional[int]]],
+    ) -> list[dict[str, Any]]:
+        rows = sorted(self.devices, key=self._key)
+        if cursor is None:
+            return rows
+        date, ident = cursor
+        if ident is None:
+            return [d for d in rows if self._key(d)[0] > date]
+        return [d for d in rows if self._key(d) > (date, ident)]
+
     def get(self, url: str, params: dict[str, Any], **kw: Any) -> FakeResponse:
         if self.get_statuses:
             status = self.get_statuses.pop(0)
             if status != 200:
                 return FakeResponse(status, None, {"Retry-After": "0"})
         self.gets.append(dict(params))
-        page = params["page"]
-        results = self.pages[page] if page < len(self.pages) else []
-        return FakeResponse(200, {"totalCount": self.total, "results": results})
+
+        if self.pages is not None:
+            # Served in sequence, not by params["page"]: keyset paging always sends
+            # page 0 and advances by filter, so indexing on the page number would hand
+            # back the same page forever.
+            i = self._calls
+            self._calls += 1
+            results = self.pages[i] if i < len(self.pages) else []
+            total = (
+                sum(len(p) for p in self.pages) if self.total is None else self.total
+            )
+            return FakeResponse(200, {"totalCount": total, "results": results})
+
+        where = params.get("filter")
+        if where is None:  # full enumeration: offset over id
+            rows = sorted(self.devices, key=lambda d: int(d["id"]))
+            start = params["page"] * self.page_size
+            results = rows[start : start + self.page_size]
+        else:
+            m = re.search(r'reportDate=gt="([^"]+)"', where)
+            tie = re.search(r"id=gt=(\d+)", where)
+            cursor = (
+                (unquote(m.group(1)), int(tie.group(1)) if tie else None) if m else None
+            )
+            results = self._after(cursor)[: self.page_size]
+
+        self._calls += 1
+        if self.on_page:
+            self.on_page(self, self._calls)
+        return FakeResponse(200, {"totalCount": len(self.devices), "results": results})
 
 
 def client_for(fake: FakeJamf) -> JamfClient:
@@ -150,45 +210,85 @@ def test_pages_until_totalcount_is_reached() -> None:
     ]
 
 
-def test_filter_and_sort_are_on_the_same_field() -> None:
-    """Sorting ascending on the field being filtered is what makes a shifting record
-    repeat rather than vanish. If these ever disagree, paging silently loses devices."""
+def test_the_incremental_window_sorts_and_keys_on_the_same_pair() -> None:
+    """The cursor is (reportDate, id), so the sort has to be too, or the next page's
+    filter excludes rows the sort had not reached."""
     fake = FakeJamf([[computer("a", None)]])
     list(client_for(fake).devices_since("2026-09-22T09:00:00Z"))
     params = fake.gets[0]
-    assert params["sort"] == "general.reportDate:asc"
+    assert params["sort"] == "general.reportDate:asc,id:asc"
     assert "general.reportDate=gt=" in params["filter"]
+    assert params["page"] == 0, "keyset restarts at page 0; the filter is the cursor"
     assert "EXTENSION_ATTRIBUTES" in params["section"]
     assert "GENERAL" in params["section"]
 
 
-def test_a_full_enumeration_sends_no_filter() -> None:
+def test_a_full_enumeration_sends_no_filter_on_the_first_page() -> None:
     """The only thing that can answer which Macs stopped reporting at all."""
     fake = FakeJamf([[computer("a", None)]])
     list(client_for(fake).devices_since(None))
     assert "filter" not in fake.gets[0]
 
 
-def test_a_record_shifting_mid_pagination_repeats_rather_than_vanishes() -> None:
-    """UP-4893's acceptance criterion.
+def test_a_device_checking_in_mid_scan_displaces_nobody() -> None:
+    """The failure offset paging has and keyset paging does not.
 
-    'b' checks in again while page 0 is being read, so it moves to the end of the sort
-    and appears twice. Duplication is harmless -- resolution downstream is idempotent on
-    external_id -- and it is the outcome the ascending sort buys. The failure it replaces
-    is 'b' never being seen again.
+    Ascending sort saves the record that checks in -- it moves to the end and is read
+    again -- but under an OFFSET every record behind it shifts down one position, and at
+    a page boundary one of them moves back into a page already read. Here `a` checks in
+    after page 0, and `c` is the record that an offset would lose.
     """
+    devices = [
+        computer("a", None, "2026-09-22T09:00:00Z", ident=1),
+        computer("b", None, "2026-09-22T09:00:01Z", ident=2),
+        computer("c", None, "2026-09-22T09:00:02Z", ident=3),
+        computer("d", None, "2026-09-22T09:00:03Z", ident=4),
+    ]
+
+    def check_in_after_first_page(fake: "FakeJamf", call: int) -> None:
+        if call == 1:
+            fake.devices[0]["general"]["reportDate"] = "2026-09-22T09:00:09Z"
+
+    fake = FakeJamf(devices=devices, page_size=2, on_page=check_in_after_first_page)
+    seen = [
+        d.device_key for d in client_for(fake).devices_since("2026-09-22T08:00:00Z")
+    ]
+
+    assert "c" in seen, "a device behind the one that checked in must not be skipped"
+    assert set(seen) >= {"a", "b", "c", "d"}
+    assert seen.count("a") == 2, "the record that moved is simply read again"
+
+
+def test_a_tie_on_report_date_does_not_stall_or_skip() -> None:
+    """reportDate has second resolution and a fleet check-in lands many devices on one
+    value. A cursor on the date alone would re-read them forever or skip the rest."""
+    same = "2026-09-22T09:00:00Z"
     fake = FakeJamf(
-        [
-            [computer("a", None), computer("b", None)],
-            [computer("b", None), computer("c", None)],
+        devices=[
+            computer(c, None, same, ident=i) for i, c in enumerate("abcde", start=1)
         ],
-        total=4,
+        page_size=2,
     )
     seen = [
-        c.device_key for c in client_for(fake).devices_since("2026-09-22T09:00:00Z")
+        d.device_key for d in client_for(fake).devices_since("2026-09-22T08:00:00Z")
     ]
-    assert seen == ["a", "b", "b", "c"]
-    assert "c" in seen, "the shifting record must not push another off the end"
+    assert seen == ["a", "b", "c", "d", "e"]
+
+
+def test_a_full_enumeration_pages_on_id_which_does_not_move() -> None:
+    """Filtering on reportDate at all would drop devices that never reported, and those
+    are exactly what a full enumeration is for."""
+    fake = FakeJamf(
+        devices=[
+            computer(c, None, "2026-09-22T09:00:00Z", ident=i)
+            for i, c in enumerate("abc", start=1)
+        ],
+        page_size=2,
+    )
+    seen = [d.device_key for d in client_for(fake).devices_since(None)]
+    assert seen == ["a", "b", "c"]
+    assert fake.gets[0]["sort"] == "id:asc"
+    assert "filter" not in fake.gets[0]
 
 
 def test_a_429_is_retried_honouring_retry_after() -> None:
@@ -571,3 +671,62 @@ def test_a_container_state_is_not_reported_as_a_version(
     records = [r for b in JamfScanner().scan(FakeConfig(catalog), 24, CREDS) for r in b]  # type: ignore[arg-type]
 
     assert records[0].creation_source.observations.version is None
+
+
+# --- the secret in the token request's body ----------------------------------------
+
+
+@pytest.mark.parametrize(
+    "url",
+    ["http://acme.jamfcloud.com", "acme.jamfcloud.com", "ftp://x"],
+)
+def test_a_non_https_base_url_is_refused(url: str) -> None:
+    """client_secret travels in the token request's BODY, so http sends it in cleartext.
+    This is the only place it can be refused before it is on the wire."""
+    with pytest.raises(ValueError, match="https"):
+        _settings_from({**CREDS, "base_url": url})
+
+
+def test_the_token_request_does_not_follow_redirects() -> None:
+    """requests follows redirects by default, and on a 307/308 resends method and body to
+    the Location host -- stripping Authorization but not the body, so the secret would go
+    wherever the redirect names."""
+    seen: dict[str, Any] = {}
+
+    class Recording(FakeJamf):
+        def post(self, url: str, **kw: Any) -> FakeResponse:
+            seen.update(kw)
+            return super().post(url, **kw)
+
+    fake = Recording([[computer("a", None)]])
+    list(client_for(fake).devices_since(None))
+    assert seen.get("allow_redirects") is False
+
+
+# --- transport failures, not just statuses ------------------------------------------
+
+
+@pytest.mark.parametrize("exc", [requests.ConnectionError, requests.Timeout])
+def test_a_transport_failure_is_retried_rather_than_ending_the_scan(exc: type) -> None:
+    """One reset on page 40 of a hundred-page fleet scan should not end the scan."""
+    calls = {"n": 0}
+
+    class Flaky(FakeJamf):
+        def get(self, url: str, params: dict[str, Any], **kw: Any) -> FakeResponse:
+            calls["n"] += 1
+            if calls["n"] == 1:
+                raise exc("boom")
+            return super().get(url, params, **kw)
+
+    fake = Flaky([[computer("a", None)]])
+    assert [d.device_key for d in client_for(fake).devices_since(None)] == ["a"]
+    assert calls["n"] > 1, "the failed attempt must have been retried, not propagated"
+
+
+def test_a_transport_failure_that_never_clears_fails_with_the_cause() -> None:
+    class Dead(FakeJamf):
+        def get(self, url: str, params: dict[str, Any], **kw: Any) -> FakeResponse:
+            raise requests.ConnectionError("no route to host")
+
+    with pytest.raises(JamfError, match="unreachable"):
+        list(client_for(Dead([[]])).devices_since(None))
