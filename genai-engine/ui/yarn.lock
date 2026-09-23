@@ -4140,9 +4140,9 @@ __metadata:
   linkType: hard
 
 "copy-anything@npm:^4":
-  version: 4.1.0
-  resolution: "copy-anything@npm:4.1.0"
-  checksum: 10c0/b1c417fa84b76db5e062e9bbf406775eb25c149914b5433b0a6ae52b8a7f0b6f1b88176998e09ddb423b7db0a725e8c6982a4f2d3bc9be9f6f90b3defe08e9de
+  version: 4.1.1
+  resolution: "copy-anything@npm:4.1.1"
+  checksum: 10c0/12127518f68018949ceb98535fee440303d9663db9e62ded045a93ec874410c1015c678e09ddb3a3457eeb09663fda01ba2db30a610fb12b618d263aa9eec464
   languageName: node
   linkType: hard
 
