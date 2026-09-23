@@ -1,6 +1,5 @@
 import json
 import logging
-from functools import cached_property
 from typing import NamedTuple, Tuple
 
 import arthur_client
@@ -14,7 +13,6 @@ from arthur_client.api_bindings import (
     DatasetLocator,
     DatasetLocatorField,
     DatasetsV1Api,
-    DefaultApi,
     Eval,
     Model,
     ModelProblemType,
@@ -55,13 +53,20 @@ class InvalidConnectorException(Exception):
     pass
 
 
-# Platform releases before this one require an Arthur shield model to be linked to
-# exactly one dataset, so they reject the consolidated two-dataset task shape with a
-# 400 and the engine has to fall back to the legacy single-dataset shape (UP-5022).
-# The consolidation commit first appears in version tag 1.4.2592, but the earliest
-# *release* tag that ships it is 1.4.2594-release: the guard is still present in
-# 1.4.2591-release, 1.4.2592-release and 1.4.2593-release, so the cutoff is 2594.
-MIN_CONSOLIDATED_TASK_DATASETS_PLATFORM_RELEASE = (1, 4, 2594)
+# Platform releases before the task dataset consolidation require an Arthur shield
+# model to be linked to exactly one dataset, so they reject the consolidated
+# two-dataset task shape with a 400 and the engine falls back to the legacy
+# single-dataset shape (UP-5022).
+#
+# The engine does not try to tell the two kinds of platform apart in advance: it
+# always attempts the consolidated shape and treats that 400 as the answer. A
+# numeric cutoff on /api/health's release_version cannot work, because that value is
+# the build's git tag and deploy builds are tagged off the same version number as
+# the release that precedes them - arthur-scope CI strips only a trailing "-release"
+# (.gitlab-ci.yml, set-release-tag), so a deploy build reports e.g.
+# "1.4.2592-ab71a845-deploy-gcp-united". That tag contains the consolidation commit
+# 18896423 while 1.4.2592-release does not, so one version number names platforms of
+# both kinds and no cutoff can be right for both.
 
 # Which dataset a task keeps when the engine must emit the legacy single-dataset
 # shape but cannot tell what kind of task it is. Only the link path lands here: its
@@ -76,8 +81,8 @@ LEGACY_SINGLE_DATASET_FALLBACK_PROBLEM_TYPE = ModelProblemType.ARTHUR_SHIELD
 _LEGACY_AGENTIC_TASK_TYPE = "agentic"
 _LEGACY_TRADITIONAL_TASK_TYPE = "traditional"
 
-# Fragment of the pre-consolidation platform's rejection body. Matched so the
-# fallback still fires when /api/health reports no usable version.
+# Fragment of the pre-consolidation platform's rejection body. This is the only
+# signal the engine uses to tell a pre-consolidation platform from a current one.
 _SINGLE_DATASET_CONSTRAINT_ERROR = "must be linked to exactly one dataset"
 
 
@@ -85,22 +90,6 @@ class _TaskDatasetSpec(NamedTuple):
     dataset_name: str
     dataset_schema: PutDatasetSchema
     model_problem_type: ModelProblemType
-
-
-def _parse_platform_release_version(
-    version: str | None,
-) -> Tuple[int, int, int] | None:
-    """
-    /api/health's release_version is environment-sourced, so it can be absent, the
-    literal "unknown", or a deploy tag with a suffix ("1.4.2594-release"). Returns
-    None for anything that is not a readable major.minor.patch.
-    """
-    if not version:
-        return None
-    parts = version.strip().split("-", 1)[0].split(".")
-    if len(parts) < 3 or not all(part.isdecimal() for part in parts[:3]):
-        return None
-    return int(parts[0]), int(parts[1]), int(parts[2])
 
 
 def _is_single_dataset_constraint_rejection(exc: ApiException) -> bool:
@@ -596,22 +585,22 @@ class _TaskDatasetAndModelCreator(_ValidationKeyManager):
             ),
         ]
 
-        if self._platform_supports_consolidated_task_datasets:
-            try:
-                return self._create_datasets_and_model(dataset_specs)
-            except ApiException as e:
-                if not _is_single_dataset_constraint_rejection(e):
-                    raise
-                # The probe read the platform as new but it enforces the old
-                # constraint, so its release_version is unset or misreported.
-                self.logger.warning(
-                    "Platform rejected the consolidated task datasets, retrying with "
-                    f"a single dataset. Platform said (HTTP {e.status}): "
-                    f"{_platform_rejection_detail(e)}",
-                )
+        # Always attempt the consolidated shape first. Against a current platform this
+        # is the only attempt; a pre-consolidation platform answers it with the
+        # single-dataset 400, which is what selects the legacy shape below.
+        try:
+            return self._create_datasets_and_model(dataset_specs)
+        except ApiException as e:
+            if not _is_single_dataset_constraint_rejection(e):
+                raise
+            self.logger.warning(
+                "Platform rejected the consolidated task datasets, retrying with "
+                f"a single dataset. Platform said (HTTP {e.status}): "
+                f"{_platform_rejection_detail(e)}",
+            )
 
-        # When the two-dataset attempt above ran, its rollback already deleted the
-        # datasets it created, so this retry starts from a fresh dataset.
+        # The rejected two-dataset attempt's rollback already deleted the datasets it
+        # created, so this retry starts from a fresh dataset.
         legacy_problem_type = self._legacy_single_dataset_problem_type()
         legacy_spec = next(
             (
@@ -695,32 +684,6 @@ class _TaskDatasetAndModelCreator(_ValidationKeyManager):
         if self.legacy_task_type == _LEGACY_TRADITIONAL_TASK_TYPE:
             return ModelProblemType.ARTHUR_SHIELD
         return LEGACY_SINGLE_DATASET_FALLBACK_PROBLEM_TYPE
-
-    @cached_property
-    def _platform_supports_consolidated_task_datasets(self) -> bool:
-        """
-        Probed once per job. An unreachable or unreadable version reads as supported
-        so a platform that does not publish its release version still gets the
-        current shape, with the 400 fallback in create() as the safety net.
-        """
-        try:
-            health = DefaultApi(
-                self.models_client.api_client,
-            ).health_check_api_health_get()
-        except Exception as e:
-            self.logger.warning(
-                f"Could not read the platform release version from /api/health: {e}",
-            )
-            return True
-
-        release_version = _parse_platform_release_version(health.release_version)
-        if release_version is None:
-            self.logger.warning(
-                f"Platform reported an unreadable release version: {health.release_version}",
-            )
-            return True
-
-        return release_version >= MIN_CONSOLIDATED_TASK_DATASETS_PLATFORM_RELEASE
 
     def _create_task_model(
         self,

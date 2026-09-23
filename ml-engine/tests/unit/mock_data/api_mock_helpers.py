@@ -3,7 +3,6 @@ import multiprocessing
 
 from arthur_client.api_bindings import (
     Dataset,
-    HealthStatus,
     Job,
     JobRun,
     Model,
@@ -72,22 +71,6 @@ def expect_put_job_state(
         json.dumps(job_response.to_dict(), default=str),
         content_type="application/json",
     )
-    return handler.matcher
-
-
-def expect_health_request(
-    app_plane_http_server: HTTPServer,
-    health_status: HealthStatus | None,
-) -> RequestMatcher:
-    """Stubs the platform version probe. A None health_status makes it unreachable."""
-    handler = app_plane_http_server.expect_request("/api/health")
-    if health_status is None:
-        handler.respond_with_response(Response(status=500))
-    else:
-        handler.respond_with_data(
-            health_status.model_dump_json(),
-            content_type="application/json",
-        )
     return handler.matcher
 
 

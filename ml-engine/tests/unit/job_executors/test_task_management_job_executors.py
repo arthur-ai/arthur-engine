@@ -15,7 +15,6 @@ from arthur_client.api_bindings import (
     DatasetReference,
     DatasetSchema,
     DatasetsV1Api,
-    HealthStatus,
     Model,
     ModelProblemType,
     ModelsV1Api,
@@ -33,7 +32,6 @@ from arthur_common.models.connectors import SHIELD_DATASET_TASK_ID_FIELD
 from arthur_common.models.response_schemas import TaskResponse
 from mock_data.api_mock_helpers import (
     expect_delete_dataset,
-    expect_health_request,
     expect_post_connector_dataset,
     expect_post_model,
     expect_post_model_rejection,
@@ -46,7 +44,6 @@ from config import Config
 from job_executors.task_management_job_executors import (
     LEGACY_SINGLE_DATASET_FALLBACK_PROBLEM_TYPE,
     TaskManagementJobExecutor,
-    _parse_platform_release_version,
     _platform_rejection_detail,
     _TaskDatasetAndModelCreator,
 )
@@ -57,16 +54,6 @@ SINGLE_DATASET_REJECTION_DETAIL = (
     "model linked to a shield dataset, there cannot be additional datasets linked to "
     "the model."
 )
-
-OLD_PLATFORM_RELEASE = "1.4.2582"
-NEW_PLATFORM_RELEASE = "1.4.2600"
-
-# The exact cutoff boundary. 1.4.2593-release is the last release that still carries
-# the platform's "must be linked to exactly one dataset" guard (scope
-# scope/app_plane/app/operators/models_operator.py:390-395 at 1.4.2593-release);
-# 1.4.2594-release is the first release without it.
-LAST_LEGACY_PLATFORM_RELEASE = "1.4.2593"
-FIRST_CONSOLIDATED_PLATFORM_RELEASE = "1.4.2594"
 
 CONNECTOR_ID = "0f0b7bb5-2e64-4b27-9b5c-4b4c6b8f0a11"
 PROJECT_ID = "8b0e1e2c-3d4f-4a5b-8c7d-9e0f1a2b3c4d"
@@ -232,30 +219,6 @@ def deleted_dataset_ids(server: HTTPServer) -> list[str]:
 
 
 @pytest.mark.parametrize(
-    "version, expected",
-    [
-        ("1.4.2592", (1, 4, 2592)),
-        ("1.4.2594-release", (1, 4, 2594)),
-        ("1.4.2582-6d896546-deploy-gcp-united", (1, 4, 2582)),
-        ("  1.5.0  ", (1, 5, 0)),
-        ("1.4.2592.1", (1, 4, 2592)),
-        ("unknown", None),
-        ("1.4", None),
-        ("1.x.2592", None),
-        # isdigit() accepts these, int() does not.
-        ("1.4.25¹²", None),
-        ("", None),
-        (None, None),
-    ],
-)
-def test_parse_platform_release_version(
-    version: str | None,
-    expected: tuple[int, int, int] | None,
-):
-    assert _parse_platform_release_version(version) == expected
-
-
-@pytest.mark.parametrize(
     "body, expected",
     [
         (json.dumps({"detail": "  two   datasets  "}), "two datasets"),
@@ -286,15 +249,16 @@ def test_platform_rejection_detail_degrades_gracefully(
     assert _platform_rejection_detail(ApiException(status=400, body=body)) == expected
 
 
-def test_new_platform_creates_both_datasets(
+def test_consolidated_platform_creates_both_datasets_on_the_first_attempt(
     app_plane_http_server: HTTPServer,
     api_client: ApiClient,
 ):
+    """
+    Against a platform that accepts the consolidated shape nothing changed when the
+    version probe was removed: the same two dataset POSTs in the same order, then one
+    model POST, with no rejected attempt and no rollback.
+    """
     task = task_response()
-    expect_health_request(
-        app_plane_http_server,
-        HealthStatus(release_version=NEW_PLATFORM_RELEASE),
-    )
     stub_task_creation(
         app_plane_http_server,
         task,
@@ -336,12 +300,18 @@ def test_old_platform_creates_single_dataset(
     legacy_task_type: str | None,
     expected_problem_type: ModelProblemType,
 ):
+    """
+    Which dataset the fallback keeps: the create path reads it from the raw job
+    spec's legacy task_type, and the link path, which has no such signal, lands on
+    LEGACY_SINGLE_DATASET_FALLBACK_PROBLEM_TYPE.
+    """
     task = task_response()
-    expect_health_request(
+    stub_task_creation(
         app_plane_http_server,
-        HealthStatus(release_version=OLD_PLATFORM_RELEASE),
+        task,
+        dataset_ids=["traces_dataset", "guardrails_dataset", "only_dataset"],
+        reject_model_creates=1,
     )
-    stub_task_creation(app_plane_http_server, task, dataset_ids=["only_dataset"])
 
     model, datasets = build_creator(
         api_client,
@@ -353,86 +323,30 @@ def test_old_platform_creates_single_dataset(
     assert len(datasets) == 1
 
     dataset_bodies = posted_dataset_bodies(app_plane_http_server)
-    assert len(dataset_bodies) == 1
-    assert dataset_bodies[0]["model_problem_type"] == expected_problem_type.value
+    assert dataset_bodies[-1]["model_problem_type"] == expected_problem_type.value
     # Pre-consolidation the single dataset was named after the task, no suffix.
-    assert dataset_bodies[0]["name"] == task.name
+    assert dataset_bodies[-1]["name"] == task.name
 
     model_bodies = posted_model_bodies(app_plane_http_server)
-    assert len(model_bodies) == 1
-    assert model_bodies[0]["dataset_ids"] == ["only_dataset"]
-    # No two-dataset attempt was made, so nothing was rolled back.
-    assert deleted_dataset_ids(app_plane_http_server) == []
+    assert len(model_bodies) == 2
+    assert model_bodies[-1]["dataset_ids"] == ["only_dataset"]
+    # The rejected two-dataset attempt left nothing behind.
+    assert sorted(deleted_dataset_ids(app_plane_http_server)) == [
+        "guardrails_dataset",
+        "traces_dataset",
+    ]
 
 
-@pytest.mark.parametrize(
-    "release_version, expected_dataset_ids",
-    [
-        (LAST_LEGACY_PLATFORM_RELEASE, ["only_dataset"]),
-        (
-            FIRST_CONSOLIDATED_PLATFORM_RELEASE,
-            ["traces_dataset", "guardrails_dataset"],
-        ),
-    ],
-    ids=["last_legacy_release_1_4_2593", "first_consolidated_release_1_4_2594"],
-)
-def test_consolidated_datasets_cutoff_boundary_is_pinned_at_2594(
+def test_pre_consolidation_rejection_falls_back_to_a_single_dataset(
     app_plane_http_server: HTTPServer,
     api_client: ApiClient,
-    release_version: str,
-    expected_dataset_ids: list[str],
 ):
     """
-    Pins MIN_CONSOLIDATED_TASK_DATASETS_PLATFORM_RELEASE to the exact boundary. The
-    two versions are one patch apart, so moving the constant in either direction
-    fails this test. 1.4.2593 must take the legacy single-dataset path straight from
-    the version probe - that platform still rejects two datasets, and the 400
-    fallback is a safety net rather than the intended route - and 1.4.2594 must keep
-    the consolidated two-dataset path unchanged.
+    The whole of the old-platform path: one rejected two-dataset attempt whose
+    datasets are rolled back, the rejection logged with the platform's own words,
+    then the legacy single-dataset shape.
     """
     task = task_response()
-    expect_health_request(
-        app_plane_http_server,
-        HealthStatus(release_version=release_version),
-    )
-    stub_task_creation(
-        app_plane_http_server,
-        task,
-        dataset_ids=expected_dataset_ids,
-    )
-
-    model, datasets = build_creator(api_client, task).create()
-
-    assert model.id == MODEL_ID
-    assert len(datasets) == len(expected_dataset_ids)
-
-    # The shape came from the version probe alone: exactly one POST /models means no
-    # rejection and no retry, and no DELETE means no rolled-back first attempt.
-    model_bodies = posted_model_bodies(app_plane_http_server)
-    assert len(model_bodies) == 1
-    assert model_bodies[0]["dataset_ids"] == expected_dataset_ids
-    assert len(posted_dataset_bodies(app_plane_http_server)) == len(
-        expected_dataset_ids,
-    )
-    assert deleted_dataset_ids(app_plane_http_server) == []
-
-
-@pytest.mark.parametrize(
-    "health_status",
-    [
-        HealthStatus(release_version="unknown"),
-        HealthStatus(release_version=None),
-        None,
-    ],
-    ids=["unknown_version", "absent_version", "unreachable_health_endpoint"],
-)
-def test_unusable_version_falls_back_on_rejection(
-    app_plane_http_server: HTTPServer,
-    api_client: ApiClient,
-    health_status: HealthStatus | None,
-):
-    task = task_response()
-    expect_health_request(app_plane_http_server, health_status)
     stub_task_creation(
         app_plane_http_server,
         task,
@@ -486,10 +400,6 @@ def test_failed_retry_leaves_no_orphaned_datasets(
     api_client: ApiClient,
 ):
     task = task_response()
-    expect_health_request(
-        app_plane_http_server,
-        HealthStatus(release_version="unknown"),
-    )
     # Both the two-dataset attempt and the single-dataset retry are rejected.
     stub_task_creation(
         app_plane_http_server,
@@ -515,10 +425,6 @@ def test_unrelated_rejection_is_not_retried(
     api_client: ApiClient,
 ):
     task = task_response()
-    expect_health_request(
-        app_plane_http_server,
-        HealthStatus(release_version=NEW_PLATFORM_RELEASE),
-    )
     for dataset_id in ("traces_dataset", "guardrails_dataset"):
         expect_post_connector_dataset(
             app_plane_http_server,
