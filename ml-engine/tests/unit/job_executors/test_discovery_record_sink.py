@@ -61,13 +61,16 @@ class FakeTasks:
 
     def __init__(self, responses: Optional[list[WireResponse]] = None) -> None:
         self.requests: list[Any] = []
+        self.timeouts: list[Any] = []
         self._responses = list(responses or [])
 
     def resolve_discovered_agents_api_v2_agent_tasks_resolve_post(
         self,
         request: Any,
+        _request_timeout: Any = None,
     ) -> WireResponse:
         self.requests.append(request)
+        self.timeouts.append(_request_timeout)
         if self._responses:
             return self._responses.pop(0)
         return WireResponse(
@@ -185,6 +188,20 @@ def test_one_client_serves_every_batch(tasks: FakeTasks) -> None:
         sink.publish("ws", "dp", _config(), [_record(f"m{i}:codex-cli")])
     assert len(tasks.requests) == 3
     assert sink._client is not None
+
+
+def test_every_request_carries_a_finite_timeout(tasks: FakeTasks) -> None:
+    """The generated client defaults to `_request_timeout=None`, which is urllib3's
+    wait-forever. A scan job is a thread in the runner, so an engine that accepts the
+    connection and then stalls blocks it for the life of the process -- and the run
+    never fails, because finalize_outcome sits in a `finally` never reached."""
+    records = [_record(f"m{i}:codex-cli") for i in range(3)]
+    _sink(chunk_size=1).publish("ws", "dp", _config(), records)
+
+    assert len(tasks.timeouts) == 3, "every chunk, not just the first"
+    for timeout in tasks.timeouts:
+        connect, read = timeout
+        assert connect > 0 and read > 0
 
 
 # --- what came back ---------------------------------------------------------------

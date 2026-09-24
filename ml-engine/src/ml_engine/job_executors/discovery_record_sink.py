@@ -31,6 +31,18 @@ from genai_client import (
 
 from job_executors.discovery_scan import DiscoveryPublishResult, FailedDiscoveryRecord
 
+# (connect, read). The generated client defaults to `_request_timeout=None`, which is
+# urllib3's wait-forever -- and a scan job is a thread in the runner, so a GenAI Engine
+# that accepts the connection and then stalls blocks that thread for the life of the
+# process. The run never fails either, because `finalize_outcome` sits in a `finally`
+# that is never reached.
+#
+# The read bound is generous because it covers the largest request the endpoint accepts:
+# chunking caps one at MAX_DISCOVERED_RECORDS_PER_REQUEST records, each walking the
+# resolution ladder. It bounds a known maximum rather than a typical case, and it is a
+# bound on hanging rather than a performance target.
+RESOLVE_TIMEOUT_SECONDS = (10.0, 120.0)
+
 
 class GenAIEngineRecordSink:
     """Implements `discovery_scan.DiscoveryRecordSink`."""
@@ -41,6 +53,7 @@ class GenAIEngineRecordSink:
         genai_engine_api_key: str,
         logger: logging.Logger,
         chunk_size: int = MAX_DISCOVERED_RECORDS_PER_REQUEST,
+        timeout: tuple[float, float] = RESOLVE_TIMEOUT_SECONDS,
     ) -> None:
         self._url = genai_engine_url
         self._key = genai_engine_api_key
@@ -49,6 +62,7 @@ class GenAIEngineRecordSink:
         # declared in arthur_common so both ends read one number, and a request over it
         # is refused whole rather than truncated.
         self._chunk = max(1, min(chunk_size, MAX_DISCOVERED_RECORDS_PER_REQUEST))
+        self._timeout = timeout
         self._client: Optional[ApiClient] = None
 
     def _tasks(self) -> TasksApi:
@@ -98,6 +112,7 @@ class GenAIEngineRecordSink:
                     ResolveDiscoveredAgentsRequest(
                         records=[_as_wire(r) for r in chunk],
                     ),
+                    _request_timeout=self._timeout,
                 )
             )
             accepted += len(response.resolved)
