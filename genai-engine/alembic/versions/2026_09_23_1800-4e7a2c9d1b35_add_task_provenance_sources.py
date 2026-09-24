@@ -9,7 +9,9 @@ upstream address, and when a scan last handed it over. One row per (source,
 external_id), joined to `tasks`, rather than a JSON column on the task -- one agent
 can be reported at hundreds of addresses, and the fetch job's question, "which tasks
 did source X report since T", is answered by the (source_id, last_reported_at) index
-instead of by reading every task's JSON.
+instead of by reading every task's JSON. "Which tasks were reported since T", with no
+source, gets an index of its own on last_reported_at, since the composite one leads
+with the source and cannot serve a range on time alone.
 
 Nothing is backfilled: no discovery source has reported through the resolver before
 this revision, and tasks that predate discovery derive their provenance from their
@@ -65,9 +67,16 @@ def upgrade() -> None:
         ["source_id", "last_reported_at"],
         unique=False,
     )
+    op.create_index(
+        "idx_task_provenance_sources_reported",
+        TABLE,
+        ["last_reported_at"],
+        unique=False,
+    )
 
 
 def downgrade() -> None:
+    op.drop_index("idx_task_provenance_sources_reported", table_name=TABLE)
     op.drop_index("idx_task_provenance_sources_source_reported", table_name=TABLE)
     op.drop_index(op.f("ix_task_provenance_sources_task_id"), table_name=TABLE)
     op.drop_table(TABLE)

@@ -87,4 +87,7 @@ class DatabaseTaskProvenanceSource(Base):
             "source_id",
             "last_reported_at",
         ),
+        # A `reported_since` filter with no source: the index above leads with the
+        # source, so it cannot serve a range on time alone.
+        Index("idx_task_provenance_sources_reported", "last_reported_at"),
     )
