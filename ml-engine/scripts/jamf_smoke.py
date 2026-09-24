@@ -126,11 +126,15 @@ def main() -> int:
         action="store_true",
         help="print one raw record's shape",
     )
+    # Small by default so the cursor walk is actually exercised. Production pages at 100,
+    # but a tenant with fewer devices than that returns everything in one page and the
+    # paging assertions below would never run -- on a small fleet the default that matches
+    # production is the default that tests nothing.
     ap.add_argument(
         "--page-size",
         type=int,
-        default=100,
-        help="small value forces the cursor to advance",
+        default=2,
+        help="pages to fetch in; small values force the cursor to advance",
     )
     args = ap.parse_args()
 
@@ -139,6 +143,16 @@ def main() -> int:
     client_secret = (os.environ.get("JAMF_CLIENT_SECRET") or "").strip()
     if not (base and client_id and client_secret):
         print("Set JAMF_BASE_URL, JAMF_CLIENT_ID, JAMF_CLIENT_SECRET.", file=sys.stderr)
+        return 2
+    # BEFORE ANYTHING SENDS THE SECRET. The token request carries client_secret in its
+    # body, so over http it is on the wire in cleartext -- and step 0 posts directly rather
+    # than through JamfSettings, which is where the connector makes this check.
+    if not base.lower().startswith("https://"):
+        print(
+            f"JAMF_BASE_URL must be https, got {base.split('://', 1)[0]!r}. "
+            f"The token request carries the client secret in its body.",
+            file=sys.stderr,
+        )
         return 2
     SECRETS.extend([client_secret, client_id])
 
@@ -270,11 +284,21 @@ def main() -> int:
             len(keyed) == len(devices),
             f"{len(devices) - len(keyed)} blank",
         )
-        check(
-            "the id cursor advanced across pages",
-            len(devices) > args.page_size,
-            f"read {len(devices)} at page-size {args.page_size}",
-        )
+        if len(devices) > args.page_size:
+            check(
+                "the id cursor advanced across pages",
+                True,
+                f"read {len(devices)} at page-size {args.page_size}",
+            )
+        else:
+            # Not a failure: a walk that fits in one page never asks the cursor for a
+            # second. Reporting it as one would be an assertion that fails where the code
+            # is right, which is worse than not making it.
+            print(
+                f"  [SKIP] the id cursor advanced across pages -- read "
+                f"{len(devices)} at page-size {args.page_size}, so one page covered it; "
+                f"raise --limit or lower --page-size to exercise it",
+            )
         check(
             "no device was returned twice",
             len({d.device_key for d in devices}) == len(devices),
@@ -299,11 +323,18 @@ def main() -> int:
             True,
             f"{len(recent)} device(s)",
         )
-        check(
-            "the reportDate cursor advanced across pages",
-            len(recent) > args.page_size,
-            f"read {len(recent)} at page-size {args.page_size}",
-        )
+        if len(recent) > args.page_size:
+            check(
+                "the reportDate cursor advanced across pages",
+                True,
+                f"read {len(recent)} at page-size {args.page_size}",
+            )
+        else:
+            print(
+                f"  [SKIP] the reportDate cursor advanced across pages -- read "
+                f"{len(recent)} in the window at page-size {args.page_size}; "
+                f"widen --lookback-hours or lower --page-size to exercise it",
+            )
     except Exception as e:  # noqa: BLE001
         check(
             f"devices_since('{since}') was accepted",

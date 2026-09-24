@@ -156,7 +156,7 @@ without changing the truth. `extra` is a closed vocabulary:
 | `extra` | means |
 |---|---|
 | `ok` | the branch ran; its rows in this payload are real |
-| `absent` | no container runtime on this Mac at all. The only value here that is a fact rather than a fault, and the only one that does not make the status line's first token `degraded` |
+| `absent` | the scan found no runtime it can name — no Docker socket, and none of the other runtimes it probes for. A fact about the machine rather than a fault, and the only non-`ok` value that leaves the status line's first token `ok` |
 | `unreadable:<runtime>` | a runtime is installed but this scan does not read it — Podman, say. Containers it holds are uncounted, so this is a gap and not an absence |
 | `unhealthy:<code>` | the socket answered `<code>`, not 200. `000` is no reply inside the probe budget |
 | `timeout:<n>` | answered `/_ping`, then blocked on the query and was killed at `<n>`s |
@@ -167,11 +167,16 @@ without changing the truth. `extra` is a closed vocabulary:
 This vocabulary is a contract. Smart Groups match on these strings and the collector branches
 on them, so it does not grow silently.
 
-**Only `absent` says nothing is wrong.** Everything else in the table is a branch that could
-not look, and the difference is what makes the first token worth alerting on: a signal that
-fires on every Mac without Docker is one a fleet learns to ignore. `unreadable:<runtime>`
-exists because `absent` used to cover both — a Podman host reported the state needing action
-as the state needing none.
+**`ok` and `absent` are the two that say nothing is wrong** — one ran and found things, the
+other looked and there was nothing to find. The rest are branches that could not look, and
+keeping them apart is what makes the first token worth alerting on: a signal that fires on
+every Mac without Docker is one a fleet learns to ignore.
+
+`unreadable:<runtime>` exists because `absent` used to cover both cases — a Podman host
+reported the state needing action as the state needing none. It is also the bound on what
+`absent` claims: the scan names the runtimes it knows, so `absent` means none of those were
+found, not that no container can exist on the machine. That is the same bound every branch
+has — `apps=ok` reports what matched where it globbed.
 
 ### The envelope the collector receives
 

@@ -116,21 +116,21 @@ contains the word, and a false positive here installs software on a Mac that did
 **is** with `old:` matches nothing, silently, and an empty Smart Group reads exactly like a
 healthy fleet.
 
-**A BLANK ATTRIBUTE IS NOT `absent`, AND NO GROUP ABOVE CAN SEE IT.** The script always
-prints one of four values, so it cannot produce a blank; a blank means it never ran on that
-Mac — the attribute was created after the Mac's last inventory submission. Those Macs are
-invisible to every criterion on this attribute, and to every criterion on the other two, by
-construction: an attribute with no value matches neither `is` nor `like` nor their negations.
+**A BLANK ATTRIBUTE IS NOT `absent`.** The script always prints one of four values, so it
+cannot produce a blank. A blank is a Mac that has not submitted inventory since you created
+the attribute, so the script has never run there — the inventory record carries the attribute
+with no value. Those fill in within a day of the next recon.
 
-They are also the population most likely to be mistaken for coverage. A fleet where a third
-of the Macs stopped checking in months ago reads as a fleet where a third have no AI tooling,
-and no amount of narrowing on attribute values will show otherwise. **Only Jamf's own
-`Last Inventory Update` can see a Mac that is not reporting** — see the group in 06.
+They are invisible to the criteria above, including `is not`. To find them on the attribute
+itself, use operator **is** with an empty value, or sort an Advanced Search by the column.
 
-A **blank** value is not a failure: it is a Mac that has not submitted inventory since you
-created the attribute, so the attribute has never run there. Those fill in within a day, and
-they are invisible to every criterion above including `is not`. To find them, use operator
-**is** with an empty value, or sort an Advanced Search by the column.
+**For the fleet question, use `Last Inventory Update` instead.** A Mac that stopped checking
+in has blank values everywhere, so no criterion on any of the three attributes separates
+"never ran here" from "stopped reporting months ago" — and the second is the population most
+likely to be mistaken for coverage. A fleet where a third of the Macs went quiet reads as a
+fleet where a third have no AI tooling. `Last Inventory Update` is also what the collector
+reads as `general.reportDate`, so scoping on it matches what the findings are judged by —
+see the group in 06.
 
 ### Remediation
 
@@ -438,7 +438,7 @@ Every `branch=outcome` token, and what to do. This is the entire vocabulary.
 | Outcome | Meaning | Action |
 |---|---|---|
 | `ok` | The branch ran; its rows are in the payload | None |
-| `absent` | No Docker socket on this Mac | None. Correct for a Mac without Docker |
+| `absent` | No Docker socket, and no other runtime the scan probes for | None. Correct for a Mac that runs no containers |
 | `unhealthy:000` | Socket exists, nothing answered within the ping timeout. Docker installed and not running, or no user logged in | Expected with no user logged in. **On a Mac with Docker running it is a fault** — too short a ping cannot outlast a cold daemon, which is why the collector sets 15s |
 | `unhealthy:500` | Daemon up, engine not serving | Restart Docker |
 | `timeout:6` | Answered `/_ping`, then stalled and was killed at 6s | Restart Docker. This is the state the wall-clock bound exists for |
