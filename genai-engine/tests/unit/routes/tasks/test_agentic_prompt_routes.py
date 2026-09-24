@@ -2235,8 +2235,8 @@ def test_get_unsaved_prompt_variables_list_route_success(
     )
     assert response.status_code == 200
 
-    response_variables = response.json()["variables"].sort()
-    expected_variables = expected_variables.sort()
+    response_variables = sorted(response.json()["variables"])
+    expected_variables = sorted(expected_variables)
 
     assert response_variables == expected_variables
 
