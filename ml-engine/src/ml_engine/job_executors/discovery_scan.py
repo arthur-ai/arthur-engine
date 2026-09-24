@@ -109,8 +109,8 @@ class DiscoveryRecordSink(Protocol):
     """Where a batch of records goes once a scanner has produced it.
 
     Publishing a discovery record means resolving it onto a task keyed on
-    ``external_id`` (D-08). The implementation is D-13's handoff to GenAI Engine, which
-    has not landed yet.
+    ``external_id`` (D-08). `discovery_record_sink.GenAIEngineRecordSink` implements it
+    against that endpoint.
 
     Accepted means every record that resolved, whether it created a task or joined one
     that already existed -- a source that reports the same twenty agents every scan
