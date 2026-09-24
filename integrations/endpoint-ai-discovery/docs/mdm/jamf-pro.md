@@ -374,7 +374,7 @@ First token is `ok` or `degraded`, then a UTC timestamp, a row count, and one
 
 ## 06 · Smart Groups — Jamf Pro
 
-All five read **Arthur AI Inventory Status**. The operator differs by row, and it is not cosmetic: `is`
+All six read **Arthur AI Inventory Status**. The operator differs by row, and it is not cosmetic: `is`
 is an exact match on the whole stored value, `like` is a substring test. `no-cache` is the only
 one whose stored value is the entire string; the rest are tokens inside a status line that also
 carries a timestamp, a row count and ten branches, so **is** on any of those matches nothing.
@@ -382,8 +382,9 @@ carries a timestamp, a row count and ten branches, so **is** on any of those mat
 | Group | Operator | Value | Meaning |
 |---|---|---|---|
 | AI inventory — not reporting | **is** | `no-cache` | The daemon has never written. osquery missing, package failed, or daemon not loaded. **Fix first** |
-| AI inventory — degraded | **like** | `degraded` | At least one branch did not return `ok`. Often benign; narrow with the next two |
+| AI inventory — degraded | **like** | `degraded` | At least one branch could not look. A Mac with no container runtime does **not** land here, so this group is worth acting on rather than triaging |
 | Container scan blocked | **like** | `containers=timeout` | Answered `/_ping` then stalled. A wedged Docker engine — real and fixable |
+| A runtime nothing reads | **like** | `=unreadable:` | A container runtime is installed that this scan does not read, Podman typically. Whatever it holds is uncounted |
 | A branch errored | **like** | `=error` | A query failed outright, typically an osquery build without a table it needs |
 | Serving a stale scan | **like** | `stale=` | The last scan is over a day old. The Mac is reporting real evidence, but the collector has not succeeded since — check the Policy log |
 

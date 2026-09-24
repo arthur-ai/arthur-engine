@@ -507,7 +507,7 @@ EVENT_FIELDS = (
 # in either field, and forwarding it verbatim would turn an analytics property into a
 # channel for arbitrary text out of a machine we are supposed to be describing in counts.
 # Anything unrecognised becomes "other" -- which is itself a finding worth seeing.
-GAP_REASONS = ("absent", "no-cache", "error", "unhealthy", "timeout")
+GAP_REASONS = ("absent", "no-cache", "error", "unhealthy", "timeout", "unreadable")
 OTHER = "other"
 
 
@@ -898,6 +898,13 @@ def _run(state, started):
         elif reason.startswith("timeout:"):
             detail = (f"whatever answers{at or ' there'} accepted the connection and then "
                       f"stalled; gave up at {reason.split(':', 1)[1]}s")
+        elif reason.startswith("unreadable:"):
+            # `absent` was the only word a machine with no Docker socket could get, so a
+            # Podman host read as one with no containers. The runtime is named because the
+            # fix differs: Colima wants a candidate path in bin/container-scan, Podman
+            # wants a different tool.
+            detail = (f"a {reason.split(':', 1)[1]} runtime is installed{at} and is not "
+                      f"read by this scan. Any containers it holds are uncounted")
         else:
             detail = f"reported {reason!r}" + (f" for {where}" if where else "")
         print(f"COULD NOT LOOK: {branch} -- {detail}")

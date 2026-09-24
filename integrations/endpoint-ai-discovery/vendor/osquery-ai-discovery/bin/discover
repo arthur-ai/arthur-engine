@@ -69,6 +69,13 @@ WRITE=""
 #
 # First token is ok or degraded, so a group is `like "degraded"`; per-branch tokens let a
 # group narrow to `like "containers=timeout"`.
+#
+# `absent` DOES NOT DEGRADE. It is a stated fact about the machine -- no Docker, no systemd
+# bus -- not a branch that failed to look, and the two need different responses: one is
+# nothing to do, the other is someone's morning. Rolling them together makes the first token
+# fire on every machine that simply does not run Docker, which is the fastest way to teach a
+# fleet to ignore it. A branch that could not look still says so in its own token, so
+# narrowing to `like "containers="` loses nothing.
 STATUS=""
 # One process per branch, for --write only. The composed artifact exists to save process
 # startup when something is WAITING; a scheduled writer has nobody waiting, and paying ~0.5s
@@ -97,10 +104,11 @@ PACK="${DISCOVER_PACK:-$ROOT/dist/ai-discovery.conf}"
 # a variable does:
 #
 #   globals    DEEP ROOT TIMEOUT SCAN_TIMEOUT SOCKET MARKER CACHE DOCKER_CODE DOCKER_SECS
-#              BOUNDED_OUT BOUNDED_SIGNAL
+#              BOUNDED_OUT BOUNDED_SIGNAL RUNTIME_NAME RUNTIME_AT
 #   functions  need_arg json_str json_row osq_run json_concat merge_sql merge_branches
-#              osqueryi_path docker_socket_path docker_probe docker_healthy docker_state
-#              run_bounded marker cache_write container_scan scan_and_cache
+#              osqueryi_path docker_socket_path _runtime_seen other_runtime docker_probe
+#              docker_healthy docker_state run_bounded marker no_docker cache_write
+#              container_scan scan_and_cache
 #
 # Two globals have already bitten: DEEP was this script's --deep flag until it silently
 # became a file path, and CACHE was --cache's path until sourcing reset it to empty and every
@@ -297,7 +305,8 @@ EOF
                      printf " json_extract(e.value,'\$.extra') AS extra"
                      printf " FROM d, json_each(d.doc) e)"
                      printf " SELECT (CASE WHEN EXISTS (SELECT 1 FROM r WHERE kind='scan'"
-                     printf " AND extra IS NOT 'ok') THEN 'degraded' ELSE 'ok' END)"
+                     printf " AND extra IS NOT 'ok' AND extra IS NOT 'absent')"
+                     printf " THEN 'degraded' ELSE 'ok' END)"
                      printf " || ' ' || strftime('%%Y-%%m-%%dT%%H:%%M:%%SZ','now')"
                      printf " || ' rows=' || (SELECT count(*) FROM r) || ' ' ||"
                      printf " COALESCE((SELECT group_concat(id || '=' || extra, ' ')"

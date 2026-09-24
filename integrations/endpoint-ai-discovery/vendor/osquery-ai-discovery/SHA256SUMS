@@ -1,6 +1,6 @@
-59694d75acf013040802e0e6033fbe7143c46c496819baa978fde79e81354519  ./bin/classify
-f34635774aec3644506941f950d0bc7b9cef23d866e4db8ec566b2e5ddcc2619  ./bin/container-scan
-6d1537a83ff4c78113c40f5ef4a83dd6a956c565f1e82ba5a9142022065317a8  ./bin/discover
+fa3b693f5d132cba636b4f0616642f17829f75da7229035f5a18bb9e3162e3a6  ./bin/classify
+92a34cd25ab9f02d4121fff2877ef73e88de2b395f014119f9c4ecbcb67e8acd  ./bin/container-scan
+1ab6cf0f9340df69becf036d007b48b0925bac486eaf73ca0c0e5b06b8d827e2  ./bin/discover
 6efdc40eb916386e75eeb1a91721c1d65d359f7ab33e9253ee2d436db6d0742f  ./dist/ai-discovery.conf
 0f813327eaba71848adab608327ec0c2c91ce928ab823c8a2a575e2d479ffcb5  ./dist/discovery-darwin.sql
 72dd8c9b23f541ee6b5f803f7bc6e4c38bd09fda5e966c7e33d5d4cead448f4b  ./dist/discovery-deep.sql
