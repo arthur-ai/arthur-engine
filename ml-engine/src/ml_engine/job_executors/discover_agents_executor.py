@@ -4,30 +4,29 @@ Executor for the DISCOVER_AGENTS job.
 Two shapes of job arrive here. A job carrying a materialized discovery source config
 (D-06) is a scan of that one source: it runs through the connector seams in
 `discovery_scan`, publishing each batch as it arrives so a mid-scan failure keeps what
-it already collected. A job carrying no config is the older GCP data-plane sweep,
-which triggers synchronous polling in GenAI Engine and syncs the enriched agent tasks
-to the Agents API. Both shapes are live until D-14 migrates GCP onto a source config.
+it already collected, and then chains a FETCH_DISCOVERED_AGENTS job (D-10) that surfaces
+what it found to the Platform. A job carrying no config is the older GCP data-plane
+sweep, which triggers synchronous polling in GenAI Engine and syncs the enriched agent
+tasks to the Agents API. Both shapes are live until D-14 migrates GCP onto a source
+config.
 """
 
 import logging
+from datetime import datetime, timedelta, timezone
 from typing import List, NoReturn, Optional
 
-from arthur_client.api_bindings import Agent as ScopeAgent
 from arthur_client.api_bindings import (
     AgentsV1Api,
-)
-from arthur_client.api_bindings import Config as ScopeRuleConfig
-from arthur_client.api_bindings import (
     DiscoverAgentsJobSpec,
     DiscoverySourceConfigSpec,
     DiscoverySourcesV1Api,
-    ExamplesConfig,
+    FetchDiscoveredAgentsJobSpec,
     Job,
-    KeywordsConfig,
-    PIIConfig,
-    PutAgents,
-    RegexConfig,
-    ToxicityConfig,
+    JobsV1Api,
+    PostJob,
+    PostJobBatch,
+    PostJobKind,
+    PostJobSpec,
 )
 from genai_client import (
     AgentDiscoveryApi,
@@ -46,27 +45,15 @@ from job_executors.discovery_scan import (
     finalize_outcome,
     run_source_scan,
 )
+from job_executors.fetch_discovered_agents_executor import publish_enriched_tasks
 from log_redaction import register_secrets, secret_values
 
-# A rule's config model, by rule type. Both generated clients decode `config` as the
-# first anyOf member that validates, and ToxicityConfig -- every field optional, unknown
-# fields kept -- accepts a PII config; serialized again, it gains `threshold` beside the
-# PII fields, a shape none of the Agents API's config types accepts, and one such rule
-# gets the whole PUT refused. The rule's type says which config it carries.
-_RULE_CONFIG_MODELS: dict[
-    str,
-    type[ExamplesConfig]
-    | type[KeywordsConfig]
-    | type[PIIConfig]
-    | type[RegexConfig]
-    | type[ToxicityConfig],
-] = {
-    "KeywordRule": KeywordsConfig,
-    "ModelSensitiveDataRule": ExamplesConfig,
-    "PIIDataRule": PIIConfig,
-    "RegexRule": RegexConfig,
-    "ToxicityRule": ToxicityConfig,
-}
+# How far before the scan started its chained fetch reads from. GenAI Engine stamps a
+# report with its own clock and this engine records the start with its own, so the
+# window opens early by enough to absorb skew between the two. Re-reading a task the
+# previous fetch already uploaded costs an upsert; missing one costs an agent that
+# stays invisible until the standalone fetch.
+CHAINED_FETCH_SKEW = timedelta(minutes=10)
 
 
 class DiscoverAgentsExecutor:
@@ -79,6 +66,7 @@ class DiscoverAgentsExecutor:
         discovery_sources_client: Optional[DiscoverySourcesV1Api] = None,
         record_sink: Optional[DiscoveryRecordSink] = None,
         scanners: Optional[dict[str, DiscoveryScannerFactory]] = None,
+        jobs_client: Optional[JobsV1Api] = None,
     ) -> None:
         self.agents_client = agents_client
         self.logger = logger
@@ -86,6 +74,7 @@ class DiscoverAgentsExecutor:
         self.genai_engine_api_key = genai_engine_api_key
         self.discovery_sources_client = discovery_sources_client
         self.record_sink = record_sink
+        self.jobs_client = jobs_client
         # A copy, so registering a scanner on one executor cannot change the registry
         # every other executor in the process reads.
         self.scanners = dict(SOURCE_SCANNERS if scanners is None else scanners)
@@ -165,18 +154,27 @@ class DiscoverAgentsExecutor:
         credentials = self._source_credentials(outcome)
         source_fields = self._source_fields(config, outcome)
 
-        run_source_scan(
-            config=config,
-            lookback_hours=lookback_hours,
-            workspace_id=workspace_id,
-            data_plane_id=data_plane_id,
-            outcome=outcome,
-            scanner=scanner_factory(),
-            sink=self.record_sink,
-            logger=self.logger,
-            credentials=credentials,
-            source_fields=source_fields,
-        )
+        scan_started_at = datetime.now(timezone.utc)
+        try:
+            run_source_scan(
+                config=config,
+                lookback_hours=lookback_hours,
+                workspace_id=workspace_id,
+                data_plane_id=data_plane_id,
+                outcome=outcome,
+                scanner=scanner_factory(),
+                sink=self.record_sink,
+                logger=self.logger,
+                credentials=credentials,
+                source_fields=source_fields,
+            )
+        except Exception:
+            # A failed scan keeps what it published before it failed, and those
+            # records are only visible once something fetches them.
+            if outcome.records_published:
+                self._chain_fetch_after_failed_scan(job, job_spec, scan_started_at)
+            raise
+        self._chain_fetch(job, job_spec, scan_started_at)
 
         self.logger.info(
             f"Discovery scan of source config '{config.name}' published "
@@ -186,6 +184,80 @@ class DiscoverAgentsExecutor:
                 "records_published": outcome.records_published,
             },
         )
+
+    def _chain_fetch(
+        self,
+        job: Job,
+        job_spec: DiscoverAgentsJobSpec,
+        scan_started_at: datetime,
+    ) -> None:
+        """Enqueue the fetch that surfaces this scan's findings to the Platform.
+
+        Submitted by this job rather than dispatched by the Platform, the way the
+        metrics job submits its alert check: there is no DAG runner to express "after
+        this scan", so the scan says so itself. Scoped to the source rather than this
+        config, because the fetch reads by source, and windowed to reports since this
+        scan began, because the standalone fetch already covers everything older.
+
+        No nonce. A retried scan chains again, and the second fetch is an upsert of
+        the same agents, so nothing needs deduplicating -- whereas a nonce keyed on
+        this job would refuse the fetch after a retry that published more.
+
+        A failure to enqueue fails the job even though the scan succeeded, as a failed
+        alert-check submission fails a metrics job: the retry rescans, which is
+        idempotent, and chains again.
+        """
+        config = job_spec.discovery_source_config
+        if config is None:  # pragma: no cover -- checked before the scan ran
+            raise ValueError("Cannot chain a fetch for a job with no source config.")
+        if self.jobs_client is None:
+            raise RuntimeError(
+                "No jobs client is configured, so this scan cannot chain the fetch that "
+                "surfaces its findings. The job runner supplies one.",
+            )
+
+        fetch_spec = FetchDiscoveredAgentsJobSpec(
+            workspace_id=job_spec.workspace_id,
+            data_plane_id=job_spec.data_plane_id,
+            discovery_source_id=config.discovery_source_id,
+            reported_since=scan_started_at - CHAINED_FETCH_SKEW,
+        )
+        spawned = self.jobs_client.post_submit_jobs_batch(
+            project_id=str(job.project_id),
+            post_job_batch=PostJobBatch(
+                jobs=[
+                    PostJob(
+                        kind=PostJobKind.FETCH_DISCOVERED_AGENTS,
+                        job_spec=PostJobSpec(fetch_spec),
+                    ),
+                ],
+            ),
+        )
+        self.logger.info(
+            f"Chained fetch job {spawned.jobs[0].id if spawned.jobs else None} for "
+            f"discovery source {config.discovery_source_id}",
+            extra={"discovery_source_id": str(config.discovery_source_id)},
+        )
+
+    def _chain_fetch_after_failed_scan(
+        self,
+        job: Job,
+        job_spec: DiscoverAgentsJobSpec,
+        scan_started_at: datetime,
+    ) -> None:
+        """Chain the fetch for a scan that is already failing, without masking why.
+
+        The scan's own error is what the job reports, so a chaining failure on top of
+        it is logged rather than raised; the standalone fetch picks the records up.
+        """
+        try:
+            self._chain_fetch(job, job_spec, scan_started_at)
+        except Exception as e:
+            self.logger.error(
+                f"Could not chain a fetch after the failed scan; its published records "
+                f"surface at the next standalone fetch instead: {e}",
+                exc_info=True,
+            )
 
     def _source_credentials(
         self,
@@ -439,88 +511,16 @@ class DiscoverAgentsExecutor:
             self.logger.info("No enriched tasks to publish to Agents API")
             return
 
-        agent_objects: list[ScopeAgent] = []
-        unattributed: list[str] = []
-        for task in enriched_tasks:
-            agent = self._convert_enriched_task_to_agent(task, data_plane_id)
-            if agent is None:
-                unattributed.append(task.id)
-            else:
-                agent_objects.append(agent)
-
-        if unattributed:
-            # Left out rather than sent: one agent the Agents API refuses fails the
-            # whole PUT, so they would take every other task's agent down with them.
-            self.logger.warning(
-                f"Not publishing {len(unattributed)} auto-created task(s) that GenAI "
-                f"Engine recorded no creation source for: {', '.join(unattributed)}",
-                extra={
-                    "workspace_id": workspace_id,
-                    "num_unattributed": len(unattributed),
-                },
-            )
-        if not agent_objects:
-            self.logger.info("No enriched tasks to publish to Agents API")
-            return
-
-        put_request = PutAgents(agents=agent_objects)
-        response = self.agents_client.put_agents(
-            workspace_id=workspace_id,
-            put_agents=put_request,
+        num_upserted = publish_enriched_tasks(
+            self.agents_client,
+            self.logger,
+            workspace_id,
+            data_plane_id,
+            enriched_tasks,
+            include_provenance=False,
         )
 
         self.logger.info(
-            f"Published {len(response.agents)} agent(s) to Agents API",
-            extra={"workspace_id": workspace_id, "num_upserted": len(response.agents)},
+            f"Published {num_upserted} agent(s) to Agents API",
+            extra={"workspace_id": workspace_id, "num_upserted": num_upserted},
         )
-
-    @staticmethod
-    def _convert_enriched_task_to_agent(
-        enriched_task: EnrichedTaskResponse,
-        data_plane_id: str,
-    ) -> Optional[ScopeAgent]:
-        """Convert a genai_client EnrichedTaskResponse to an arthur_client Agent.
-
-        Bridges between the two auto-generated client libraries by converting
-        via dict representation and remapping fields.
-
-        None for an auto-created task with no creation source. The Agents API refuses an
-        agent that names no sensor (D-03), and naming one here would misreport who found
-        it. A task created by hand in GenAI Engine is sent as MANUAL, which is what it is.
-        """
-        task_dict = enriched_task.to_dict()
-
-        creation_source = task_dict.get("creation_source")
-        if creation_source is None:
-            if enriched_task.is_autocreated:
-                return None
-            creation_source = {"type": "MANUAL"}
-
-        agent_dict = {
-            "name": task_dict.get("name"),
-            "task_id": task_dict.get("id"),
-            "data_plane_id": data_plane_id,
-            "creation_source": creation_source,
-            "model_id": None,
-            "num_spans": task_dict.get("num_spans") or 0,
-            "is_autocreated": task_dict.get("is_autocreated", True),
-            "rules": task_dict.get("rules") or [],
-            "last_fetched": task_dict.get("last_fetched"),
-            "tools": task_dict.get("tools") or [],
-            "sub_agents": task_dict.get("sub_agents") or [],
-            "llm_models": task_dict.get("models") or [],
-            "data_sources": task_dict.get("data_sources") or [],
-        }
-
-        agent = ScopeAgent.from_dict(agent_dict)
-        for rule in agent.rules or []:
-            model = _RULE_CONFIG_MODELS.get(rule.type.value)
-            if model is None or rule.config is None:
-                continue
-            decoded = rule.config.to_dict() or {}
-            rule.config = ScopeRuleConfig(
-                model.from_dict(
-                    {k: v for k, v in decoded.items() if k in model.model_fields},
-                ),
-            )
-        return agent

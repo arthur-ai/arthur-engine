@@ -1,7 +1,7 @@
 import io
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 from typing import Iterator, Mapping, Sequence
 from unittest.mock import MagicMock, call
@@ -13,14 +13,20 @@ from arthur_client.api_bindings import (
     DiscoverAgentsJobSpec,
     DiscoverySourceConfigSpec,
     DiscoverySourcesV1Api,
+    FetchDiscoveredAgentsJobSpec,
     Job,
+    PostJobBatch,
+    PostJobKind,
 )
 from arthur_client.api_bindings.exceptions import ForbiddenException
 from arthur_client.api_bindings.rest import RESTResponse
 from arthur_common.models.agent_discovery_schemas import DiscoveryOutputRecord
 from genai_client import EnrichedTaskResponse
 
-from job_executors.discover_agents_executor import DiscoverAgentsExecutor
+from job_executors.discover_agents_executor import (
+    CHAINED_FETCH_SKEW,
+    DiscoverAgentsExecutor,
+)
 from job_executors.discovery_scan import (
     SOURCE_SCANNERS,
     DiscoveryPublishResult,
@@ -36,6 +42,7 @@ CONFIG_ID = "33333333-3333-3333-3333-333333333333"
 SOURCE_ID = "44444444-4444-4444-4444-444444444444"
 SIBLING_CONFIG_ID = "55555555-5555-5555-5555-555555555555"
 SCAN_ID = "66666666-6666-6666-6666-666666666666"
+PROJECT_ID = "88888888-8888-8888-8888-888888888888"
 FAKE_TOKEN = "shhh-this-is-a-fake-credential"
 
 
@@ -83,6 +90,7 @@ def _record(external_id: str) -> DiscoveryOutputRecord:
 def _job(job_id: str = "77777777-7777-7777-7777-777777777777") -> Job:
     job = MagicMock(spec=Job)
     job.id = job_id
+    job.project_id = PROJECT_ID
     return job
 
 
@@ -238,6 +246,7 @@ def _executor(
     vendor: str = "splunk_enterprise",
     logger: logging.Logger | None = None,
     credentials_client: DiscoverySourcesV1Api | None = None,
+    jobs_client: MagicMock | None = None,
 ) -> DiscoverAgentsExecutor:
     return DiscoverAgentsExecutor(
         agents_client=MagicMock(),
@@ -247,6 +256,7 @@ def _executor(
         discovery_sources_client=credentials_client or _credentials_client(),
         record_sink=sink or RecordingSink(),
         scanners={vendor: lambda: scanner} if scanner is not None else {},
+        jobs_client=jobs_client or MagicMock(),
     )
 
 
@@ -1071,6 +1081,119 @@ def test_job_without_a_source_config_runs_the_gcp_sweep() -> None:
     )
 
     executor._execute_gcp_sweep.assert_called_once()
+
+
+def _chained_fetches(jobs_client: MagicMock) -> list[tuple[str, PostJobBatch]]:
+    return [
+        (c.kwargs["project_id"], c.kwargs["post_job_batch"])
+        for c in jobs_client.post_submit_jobs_batch.call_args_list
+    ]
+
+
+def test_a_scan_chains_one_fetch_for_its_source() -> None:
+    """D-10: every scan completion chains a fetch for that same source, under the
+    scan's own project, so what it found reaches the Platform."""
+    jobs_client = MagicMock()
+    before = datetime.now(timezone.utc)
+
+    _executor(FakeScanner([[_record("a")]]), jobs_client=jobs_client).execute(
+        _job(),
+        _spec(_config()),
+    )
+
+    [(project_id, batch)] = _chained_fetches(jobs_client)
+    assert project_id == PROJECT_ID
+    [post_job] = batch.jobs
+    assert post_job.kind == PostJobKind.FETCH_DISCOVERED_AGENTS
+    spec = post_job.job_spec.actual_instance
+    assert isinstance(spec, FetchDiscoveredAgentsJobSpec)
+    assert str(spec.workspace_id) == WORKSPACE_ID
+    assert str(spec.data_plane_id) == DATA_PLANE_ID
+    assert str(spec.discovery_source_id) == SOURCE_ID
+    # The window opens before the scan did, by the skew allowance: a report stamped
+    # by GenAI Engine's clock must not land before a start stamped by this one.
+    assert spec.reported_since is not None
+    assert spec.reported_since <= before
+    assert spec.reported_since >= before - CHAINED_FETCH_SKEW - timedelta(seconds=5)
+    # no nonce: a retried scan chains again, and the fetch is an idempotent upsert
+    assert post_job.nonce is None
+
+
+def test_a_scan_that_found_nothing_still_chains_its_fetch() -> None:
+    """On all runs, not only the ones that found something."""
+    jobs_client = MagicMock()
+
+    _executor(FakeScanner([]), jobs_client=jobs_client).execute(
+        _job(),
+        _spec(_config()),
+    )
+
+    assert len(_chained_fetches(jobs_client)) == 1
+
+
+def test_a_failed_scan_chains_a_fetch_for_what_it_published() -> None:
+    """Records published before the failure are kept, and a fetch is what makes
+    them visible; the job still fails with the scan's own error."""
+    jobs_client = MagicMock()
+    scanner = FakeScanner([[_record("a")]], raises=RuntimeError("source went away"))
+
+    with pytest.raises(RuntimeError, match="source went away"):
+        _executor(scanner, jobs_client=jobs_client).execute(_job(), _spec(_config()))
+
+    assert len(_chained_fetches(jobs_client)) == 1
+
+
+def test_a_failed_scan_that_published_nothing_chains_nothing() -> None:
+    jobs_client = MagicMock()
+    scanner = FakeScanner([], raises=RuntimeError("source went away"))
+
+    with pytest.raises(RuntimeError, match="source went away"):
+        _executor(scanner, jobs_client=jobs_client).execute(_job(), _spec(_config()))
+
+    assert _chained_fetches(jobs_client) == []
+
+
+def test_a_chaining_failure_does_not_mask_why_the_scan_failed() -> None:
+    jobs_client = MagicMock()
+    jobs_client.post_submit_jobs_batch.side_effect = RuntimeError("platform down")
+    scanner = FakeScanner([[_record("a")]], raises=RuntimeError("source went away"))
+
+    with pytest.raises(RuntimeError, match="source went away"):
+        _executor(scanner, jobs_client=jobs_client).execute(_job(), _spec(_config()))
+
+
+def test_a_chaining_failure_fails_an_otherwise_successful_scan() -> None:
+    """As a failed alert-check submission fails a metrics job: the retry rescans,
+    which is idempotent, and chains again."""
+    jobs_client = MagicMock()
+    jobs_client.post_submit_jobs_batch.side_effect = RuntimeError("platform down")
+
+    with pytest.raises(RuntimeError, match="platform down"):
+        _executor(FakeScanner([[_record("a")]]), jobs_client=jobs_client).execute(
+            _job(),
+            _spec(_config()),
+        )
+
+
+def test_a_scan_that_never_reached_its_source_chains_nothing() -> None:
+    jobs_client = MagicMock()
+
+    with pytest.raises(UnsupportedDiscoveryVendorError):
+        _executor(
+            FakeScanner([[_record("a")]]),
+            vendor="some_other_vendor",
+            jobs_client=jobs_client,
+        ).execute(_job(), _spec(_config()))
+
+    assert _chained_fetches(jobs_client) == []
+
+
+def test_a_scan_without_a_jobs_client_fails_rather_than_dropping_its_fetch() -> None:
+    executor = _executor(FakeScanner([[_record("a")]]))
+    executor.jobs_client = None
+
+    with pytest.raises(RuntimeError, match="No jobs client"):
+        executor.execute(_job(), _spec(_config()))
 
 
 def _capture(logger: logging.Logger) -> list[logging.LogRecord]:
