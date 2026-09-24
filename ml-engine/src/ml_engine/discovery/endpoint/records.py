@@ -157,6 +157,11 @@ def records_for(
     if not result.complete:
         # Reported, not suppressed: the findings are real, but more may sit behind the
         # branch that could not look.
+        #
+        # Absences are deliberately silent here. A branch that read the machine and found
+        # no runtime there has nothing hiding behind it, and one line per Mac without
+        # Docker is a fleet's worth of noise that says nothing. How many devices are in
+        # that state is a run-level count, not a per-device warning.
         log.info(
             "%s: %s branch(es) could not look (%s)",
             device.device_key,

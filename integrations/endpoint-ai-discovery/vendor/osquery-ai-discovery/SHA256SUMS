@@ -1,4 +1,4 @@
-fa3b693f5d132cba636b4f0616642f17829f75da7229035f5a18bb9e3162e3a6  ./bin/classify
+bcc28143553e3f56ca62bce7eddbca235cc87f6d63b3c7daa89b45d2d8d4e3b4  ./bin/classify
 92a34cd25ab9f02d4121fff2877ef73e88de2b395f014119f9c4ecbcb67e8acd  ./bin/container-scan
 1ab6cf0f9340df69becf036d007b48b0925bac486eaf73ca0c0e5b06b8d827e2  ./bin/discover
 6efdc40eb916386e75eeb1a91721c1d65d359f7ab33e9253ee2d436db6d0742f  ./dist/ai-discovery.conf
