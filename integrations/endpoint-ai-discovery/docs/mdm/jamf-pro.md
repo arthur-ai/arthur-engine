@@ -116,10 +116,21 @@ contains the word, and a false positive here installs software on a Mac that did
 **is** with `old:` matches nothing, silently, and an empty Smart Group reads exactly like a
 healthy fleet.
 
-A **blank** value is not a failure: it is a Mac that has not submitted inventory since you
-created the attribute, so the attribute has never run there. Those fill in within a day, and
-they are invisible to every criterion above including `is not`. To find them, use operator
-**is** with an empty value, or sort an Advanced Search by the column.
+**A BLANK ATTRIBUTE IS NOT `absent`.** The script always prints one of four values, so it
+cannot produce a blank. A blank is a Mac that has not submitted inventory since you created
+the attribute, so the script has never run there — the inventory record carries the attribute
+with no value. Those fill in within a day of the next recon.
+
+They are invisible to the criteria above, including `is not`. To find them on the attribute
+itself, use operator **is** with an empty value, or sort an Advanced Search by the column.
+
+**For the fleet question, use `Last Inventory Update` instead.** A Mac that stopped checking
+in has blank values everywhere, so no criterion on any of the three attributes separates
+"never ran here" from "stopped reporting months ago" — and the second is the population most
+likely to be mistaken for coverage. A fleet where a third of the Macs went quiet reads as a
+fleet where a third have no AI tooling. `Last Inventory Update` is also what the collector
+reads as `general.reportDate`, so scoping on it matches what the findings are judged by —
+see the group in 06.
 
 ### Remediation
 
@@ -281,9 +292,14 @@ investigate, not as the night shift.**
 
 **Settings → Computer Management → Extension Attributes → New.**
 
+**The display name is yours to choose.** The collector finds this attribute by the
+`arthur1.` prefix on its value, not by name, so renaming it — or prefixing it to sit
+beside your other attributes — changes nothing. The names below are what the reference
+deployment uses.
+
 | Field | Value |
 |---|---|
-| Display Name | `AI Inventory` |
+| Display Name | `Arthur AI Inventory` |
 | Data Type | `String` |
 | Inventory Display | `Extension Attributes` |
 | Input Type | `Script` |
@@ -319,7 +335,7 @@ it** — you could collect the data and still have no way to ask which Macs are 
 
 | Field | Value |
 |---|---|
-| Display Name | `AI Inventory Status` |
+| Display Name | `Arthur AI Inventory Status` |
 | Data Type | `String` |
 | Inventory Display | `Extension Attributes` |
 | Input Type | `Script` |
@@ -358,7 +374,7 @@ First token is `ok` or `degraded`, then a UTC timestamp, a row count, and one
 
 ## 06 · Smart Groups — Jamf Pro
 
-All five read **AI Inventory Status**. The operator differs by row, and it is not cosmetic: `is`
+All six read **Arthur AI Inventory Status**. The operator differs by row, and it is not cosmetic: `is`
 is an exact match on the whole stored value, `like` is a substring test. `no-cache` is the only
 one whose stored value is the entire string; the rest are tokens inside a status line that also
 carries a timestamp, a row count and ten branches, so **is** on any of those matches nothing.
@@ -366,10 +382,26 @@ carries a timestamp, a row count and ten branches, so **is** on any of those mat
 | Group | Operator | Value | Meaning |
 |---|---|---|---|
 | AI inventory — not reporting | **is** | `no-cache` | The daemon has never written. osquery missing, package failed, or daemon not loaded. **Fix first** |
-| AI inventory — degraded | **like** | `degraded` | At least one branch did not return `ok`. Often benign; narrow with the next two |
+| AI inventory — degraded | **like** | `degraded` | At least one branch could not look. A Mac with no container runtime does **not** land here, so this group is worth acting on rather than triaging |
 | Container scan blocked | **like** | `containers=timeout` | Answered `/_ping` then stalled. A wedged Docker engine — real and fixable |
+| A runtime nothing reads | **like** | `=unreadable:` | A container runtime is installed that this scan does not read, Podman typically. Whatever it holds is uncounted |
 | A branch errored | **like** | `=error` | A query failed outright, typically an osquery build without a table it needs |
 | Serving a stale scan | **like** | `stale=` | The last scan is over a day old. The Mac is reporting real evidence, but the collector has not succeeded since — check the Policy log |
+
+One more, and it does **not** read an Extension Attribute:
+
+| Group | Criteria | Operator | Value | Meaning |
+|---|---|---|---|---|
+| Not reporting to Jamf | `Last Inventory Update` | **more than x days ago** | `30` | Jamf has not heard from this Mac. Nothing above can see it, whatever its attributes last said |
+
+**This is the denominator, and it is the group to build first.** Every other group here reads
+a value the Mac submitted; this one is the only one that can find a Mac that submitted
+nothing. Retired hardware lives here, and so does a Mac whose collector broke the same week it
+stopped checking in — which is why the two must not be counted together. Scope the discovery
+source to exclude it, or its coverage number is permanently wrong in a way no fix improves.
+
+Thirty days is a starting point, not a measurement: it wants to sit above your recon interval
+by enough that an ordinary laptop on holiday does not land in it.
 
 **The first token does not carry age.** It says whether the last scan succeeded, not when it
 ran, so a daemon that stopped a month ago keeps reporting `ok`. That is what the `stale=NNh`
@@ -406,7 +438,7 @@ Every `branch=outcome` token, and what to do. This is the entire vocabulary.
 | Outcome | Meaning | Action |
 |---|---|---|
 | `ok` | The branch ran; its rows are in the payload | None |
-| `absent` | No Docker socket on this Mac | None. Correct for a Mac without Docker |
+| `absent` | No Docker socket, and no other runtime the scan probes for | None. Correct for a Mac that runs no containers |
 | `unhealthy:000` | Socket exists, nothing answered within the ping timeout. Docker installed and not running, or no user logged in | Expected with no user logged in. **On a Mac with Docker running it is a fault** — too short a ping cannot outlast a cold daemon, which is why the collector sets 15s |
 | `unhealthy:500` | Daemon up, engine not serving | Restart Docker |
 | `timeout:6` | Answered `/_ping`, then stalled and was killed at 6s | Restart Docker. This is the state the wall-clock bound exists for |
@@ -414,9 +446,9 @@ Every `branch=outcome` token, and what to do. This is the entire vocabulary.
 | `no-cache` | The daemon has **never** written here | Deployment problem. Check osquery is installed (section 00b), then the daemon and `/var/log/arthur-ai-discovery.log` |
 | `stale=NNh` | The value is a real scan, NNh old, kept because a later run could not collect | The evidence is still good; the collector is not. Read the Policy log — the Mac has been failing since that timestamp |
 
-Two values are not `branch=outcome` tokens at all. `ERROR:oversize:<bytes>` on `AI Inventory`
+Two values are not `branch=outcome` tokens at all. `ERROR:oversize:<bytes>` on `Arthur AI Inventory`
 means the payload framed larger than the 256 KB budget and the reason was reported in place of
-the evidence; `AI Inventory Status` is unaffected and still says which branches ran. `stale=NNh`
+the evidence; `Arthur AI Inventory Status` is unaffected and still says which branches ran. `stale=NNh`
 is appended by the status attribute itself, not written by the collector.
 
 **A failed Policy beside a healthy attribute is expected, not a contradiction.** The two carry

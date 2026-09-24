@@ -1,23 +1,14 @@
 """Matching enumerated endpoint rows against the agent catalog.
 
-The endpoint enumerates and the collector classifies -- a managed Mac ships ~875 rows
-naming every application, Homebrew formula and browser extension on it, and holds no
-catalog at all. That split is what lets a new signature re-match evidence already
-collected instead of triggering a fleet re-scan, and it is why this module exists on
-this side of the wire.
+The endpoint enumerates and the collector classifies: a managed Mac ships ~875 rows naming
+every application, formula and extension on it, and holds no catalog. That split is what
+lets a new signature re-match evidence already collected instead of triggering a fleet
+re-scan.
 
-UPSTREAM'S MATCHER IS CALLED, NOT REIMPLEMENTED. `_vendor/classify.py` is `bin/classify`
-verbatim, and its own docstring says why: "if you want to know what a signature means,
-this is the answer, and any other implementation that disagrees with it is wrong." A
-second matcher here would be a second answer to that question, which is the failure the
-whole vendoring arrangement exists to prevent. Measured at 0.61 ms for an 875-row
-payload, so 10,000 Macs cost about six seconds and there is nothing to optimise by
-inlining the loop.
-
-Calling `classify()` as a library function also sends no telemetry. Upstream's
-Amplitude event is raised in `main()`, not in the matcher, so importing it is silent by
-construction rather than by remembering to set an environment variable -- which matters
-because this runs inside a customer network.
+Upstream's `bin/classify` is called, not reimplemented -- its own docstring says any
+implementation that disagrees with it is wrong. Measured at 0.61 ms for an 875-row
+payload, so 10,000 Macs cost about six seconds. Calling it as a library also sends no
+telemetry: upstream raises its Amplitude event in `main()`, not in the matcher.
 """
 
 import hashlib
@@ -38,6 +29,43 @@ _VENDOR = pathlib.Path(__file__).resolve().parent / "_vendor"
 _FLOOR_CATALOG = _VENDOR / "agents.yaml"
 _FLOOR_ROUTES = _VENDOR / "routes.yaml"
 
+
+# A YAML loader that refuses duplicate mapping keys. `yaml.safe_load` keeps the last
+# occurrence silently, so an agent carrying `npm:` twice loses its first list -- and the
+# fleet then reports a missed agent as absent, which is the failure this module exists to
+# prevent. A source config is typed by a person, so this is a live risk rather than a
+# theoretical one.
+class _StrictLoader(yaml.SafeLoader):  # type: ignore[misc]
+    pass
+
+
+# `<<` carries a tag PyYAML has no constructor for -- `construct_mapping` flattens it
+# instead -- so it must be skipped here rather than constructed. Without this, every
+# catalog that shares fields through an anchor fails to load while `yaml.safe_load`
+# accepts it, and the scan dies before matching starts.
+_MERGE_TAG = "tag:yaml.org,2002:merge"
+
+
+def _no_duplicate_keys(loader: "_StrictLoader", node: Any) -> dict[Any, Any]:
+    seen = set()
+    for key_node, _ in node.value:
+        if key_node.tag == _MERGE_TAG:
+            continue
+        key = loader.construct_object(key_node, deep=True)
+        if key in seen:
+            raise ValueError(
+                f"duplicate key {key!r} at line {key_node.start_mark.line + 1}",
+            )
+        seen.add(key)
+    return loader.construct_mapping(node, deep=True)  # type: ignore[no-any-return]
+
+
+_StrictLoader.add_constructor(
+    yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
+    _no_duplicate_keys,
+)
+
+
 _GAP_KIND = "scan"
 _SCAN_OK = "ok"
 
@@ -45,9 +73,8 @@ _SCAN_OK = "ok"
 def _load_matcher() -> ModuleType:
     """Import the vendored `bin/classify` as a module.
 
-    Loaded by path rather than as a normal import because upstream ships it as an
-    extensionless executable and it is vendored verbatim; renaming it to `.py` is the
-    only change the vendoring makes.
+    By path, because upstream ships it extensionless and it is vendored verbatim --
+    renaming it to `.py` is the only change the vendoring makes.
     """
     loader = importlib.machinery.SourceFileLoader(
         "_ai_discovery_classify",
@@ -70,11 +97,10 @@ _matcher = _load_matcher()
 class Finding:
     """One agent on one device, with every row that proved it.
 
-    The grain is per (device, agent) rather than per row: one agent commonly arrives
-    through several routes at once -- Codex CLI as both an npm package and a CLI shim,
-    Claude Desktop as a bundle id and a native-messaging host -- and emitting one
-    finding per route would report a single install several times over. Measured on a
-    developer Mac: 10 agents across 20 evidence rows.
+    Per (device, agent), not per row: one agent commonly arrives through several routes at
+    once -- Codex CLI as an npm package and a CLI shim, Claude Desktop as a bundle id and
+    a native-messaging host -- and a per-route finding reports one install several times.
+    Measured on a developer Mac: 10 agents across 20 evidence rows.
     """
 
     agent_id: str
@@ -82,6 +108,7 @@ class Finding:
     classification: str
     evidence: tuple[dict[str, Any], ...]
     primary_kind: str
+    primary_id: str
     version: Optional[str]
     install_path: Optional[str]
     permissions: tuple[str, ...]
@@ -99,37 +126,44 @@ class Finding:
 class MatchResult:
     """What one device's payload turned out to hold.
 
-    `gaps` is the half that is easy to drop and expensive to drop. A non-`ok` scan row
-    means a branch could not look -- a wedged Docker daemon, a table this osquery build
-    lacks -- and it is NOT a report that the branch found nothing. Absence is only
-    assertable for branches whose marker says `ok`, so a consumer that reads `findings`
-    without reading `gaps` is drawing the wrong conclusion from the right data.
+    A `gap` is a branch that could not look -- a wedged Docker daemon, a missing table --
+    not one that found nothing, so reading `findings` without `gaps` draws the wrong
+    conclusion.
+
+    `absences` are the third answer and NOT gaps: the branch read the machine and there
+    was nothing there, no container runtime or no systemd bus. Folding them in would make
+    every Mac without Docker permanently unable to say absence is assertable, which is
+    false about the thing anyone would ask. A runtime that IS present and unread reports
+    `unreadable:<runtime>`, which is a gap and stays one.
     """
 
     findings: tuple[Finding, ...]
     gaps: tuple[dict[str, Any], ...]
     scans: tuple[dict[str, Any], ...]
+    absences: tuple[dict[str, Any], ...]
     unmatched: int
     dropped: int
     rows_total: int
 
     @property
     def complete(self) -> bool:
-        """True when every branch reported `ok`, so absence means absence."""
+        """True when no branch was left unread, so absence means absence."""
         return not self.gaps
 
     @property
     def scanned_at(self) -> Optional[int]:
-        """The newest `ver` across scan rows: when this device last actually looked.
+        """The newest `ver` across scan rows: when this device last looked.
 
-        Unix seconds, and the payload's own timestamp rather than anything derived from
-        a file's mtime -- a config-management tool that redeploys the file resets the
-        mtime without changing the truth.
+        The payload's own timestamp, not a file mtime -- redeploying the file resets the
+        mtime without changing the truth. Every dated marker counts, whichever bucket it
+        landed in: a branch that reported `absent` still says when it looked.
         """
         stamps = [
-            int(r["ver"])
-            for r in (*self.scans, *self.gaps)
-            if str(r.get("ver", "")).isdigit()
+            e
+            for e in (
+                _epoch(r.get("ver")) for r in (*self.scans, *self.gaps, *self.absences)
+            )
+            if e is not None
         ]
         return max(stamps) if stamps else None
 
@@ -137,9 +171,8 @@ class MatchResult:
 class Matcher:
     """The catalog, loaded once and reused across every device in a scan.
 
-    Holding it is what makes the per-device cost 0.6 ms: upstream rebuilds its index
-    inside `classify()`, which is 13% of that and not worth defeating, but re-reading
-    and re-parsing the YAML per device would not be.
+    Upstream rebuilds its index inside `classify()` -- 13% of the 0.6 ms per device, not
+    worth defeating. Re-parsing the YAML per device would be.
     """
 
     def __init__(
@@ -157,8 +190,7 @@ class Matcher:
 
         version = self._catalog.get("version")
         if isinstance(version, int) and version > _matcher.CATALOG_VERSION:
-            # Upstream's choice, and the right one: refusing would read downstream as a
-            # clean fleet, which is the single error this project is built against.
+            # Refusing would read downstream as a clean fleet.
             self._log.warning(
                 "catalog is version %s; the vendored matcher understands %s. "
                 "Matching what it can -- newer routes arrive as unmatched rows.",
@@ -170,11 +202,9 @@ class Matcher:
     def _rank_routes(routes: Mapping[str, Any]) -> dict[str, int]:
         """Rank each row kind by where its route is declared in routes.yaml.
 
-        Used only to pick which row speaks for a finding when several proved it. The
-        order is upstream's, not ours -- it happens to put vendor-controlled identifiers
-        first (a bundle id before a path glob, an OCI label before a tag anyone can
-        set) which is the preference this project states anyway. A tie-break, not a
-        judgement about which evidence is true.
+        Picks which row speaks for a finding when several proved it. Upstream's order,
+        which puts vendor-controlled identifiers first -- a bundle id before a path glob,
+        an OCI label before a tag anyone can set. A tie-break, not a claim about truth.
         """
         rank: dict[str, int] = {}
         declared = routes.get("routes") or {}
@@ -193,9 +223,8 @@ class Matcher:
     ) -> "Matcher":
         """Build from config-supplied YAML, falling back to the vendored floor.
 
-        Signatures ride in the Discovery Source Config so that adding one is a config
-        change rather than an image rebuild, and so an engine with no route out to the
-        internet can still be updated. The floor is what an unconfigured source gets.
+        Signatures ride in the source config, so adding one is a config change rather than
+        an image rebuild and works on an engine with no route to the internet.
         """
         catalog_bytes = (
             catalog_yaml.encode() if catalog_yaml else _FLOOR_CATALOG.read_bytes()
@@ -203,8 +232,11 @@ class Matcher:
         routes_bytes = (
             routes_yaml.encode() if routes_yaml else _FLOOR_ROUTES.read_bytes()
         )
-        catalog = yaml.safe_load(catalog_bytes.decode("utf-8"))
-        routes = yaml.safe_load(routes_bytes.decode("utf-8"))
+        try:
+            catalog = yaml.load(catalog_bytes.decode("utf-8"), Loader=_StrictLoader)
+            routes = yaml.load(routes_bytes.decode("utf-8"), Loader=_StrictLoader)
+        except yaml.YAMLError as exc:
+            raise ValueError(f"catalog or routes is not valid YAML: {exc}") from exc
         if not isinstance(catalog, dict) or not isinstance(routes, dict):
             raise ValueError("catalog and routes must each parse to a YAML mapping")
         _validate(catalog, routes)
@@ -218,16 +250,9 @@ class Matcher:
         hand-bumped number is one more thing that can be wrong, and a hash is true by
         construction. Recorded per record so a finding stays diagnosable later.
 
-        Hashed over the SOURCE BYTES, because that is what upstream hashes -- its
-        `_sha()` reads the file. Hashing a re-serialized parse instead produces a
-        perfectly stable number that silently agrees with nothing: measured on the
-        vendored catalog, file bytes give dbb22a107953 and a normalized dump gives
-        9557c8387835. Only the first joins against upstream's own telemetry.
-
-        Bytes rather than decoded text for the same reason. `Path.read_text()` performs
-        universal-newline translation, so a CRLF catalog decodes to LF and re-encodes to
-        different bytes than the file holds -- a hash that is stable, plausible, and not
-        the one upstream computed.
+        Over the SOURCE BYTES, because that is what upstream's `_sha()` hashes. A
+        re-serialized parse, or text decoded through `read_text()`'s universal-newline
+        translation, gives a number that is stable, plausible and agrees with nothing.
         """
         if self._catalog_source is None:
             # Built from a mapping with no source text. Still stable and still useful
@@ -244,14 +269,12 @@ class Matcher:
     def match(self, rows: Sequence[Mapping[str, Any]]) -> MatchResult:
         """Classify one device's payload.
 
-        Reconciles its own arithmetic, because upstream drops a row whose `kind` is not
-        in the route registry -- neither matched nor unmatched, just gone. That is a
-        real bug this project has already shipped once: browser-extension rows were
-        collected correctly, with correct identifiers, and never appeared for months
-        while every row count stayed right. `dropped` is how a caller notices.
+        Reconciles its own arithmetic: upstream drops a row whose `kind` is not in the
+        route registry -- neither matched nor unmatched, just gone. That shipped once,
+        browser-extension rows invisible for months while row counts stayed right.
         """
         raw = [dict(r) for r in rows]
-        findings_by_agent, unmatched, gaps, scans = _matcher.classify(
+        findings_by_agent, unmatched, gaps, scans, absences = _matcher.classify(
             raw,
             self._catalog,
             self._routes,
@@ -270,7 +293,12 @@ class Matcher:
         evidence_rows = sum(len(f.evidence) for f in findings)
         dropped = max(
             0,
-            len(raw) - evidence_rows - len(unmatched) - len(gaps) - len(scans),
+            len(raw)
+            - evidence_rows
+            - len(unmatched)
+            - len(gaps)
+            - len(scans)
+            - len(absences),
         )
         if dropped:
             self._log.warning(
@@ -283,6 +311,7 @@ class Matcher:
             findings=findings,
             gaps=tuple(gaps),
             scans=tuple(scans),
+            absences=tuple(absences),
             unmatched=len(unmatched),
             dropped=dropped,
             rows_total=len(raw),
@@ -311,6 +340,7 @@ class Matcher:
             classification=str(meta.get("classification") or ""),
             evidence=tuple(rows),
             primary_kind=str(primary.get("kind") or ""),
+            primary_id=str(primary.get("id") or ""),
             version=str(primary.get("ver")) or None if primary.get("ver") else None,
             install_path=(
                 str(primary.get("loc")) or None if primary.get("loc") else None
@@ -319,15 +349,21 @@ class Matcher:
         )
 
 
+# Derived from the vendored registry rather than hand-listed, so a mode upstream adds is
+# accepted as soon as it is vendored.
+_MATCH_MODES: frozenset[str] = frozenset(
+    str(r["match"])
+    for r in (yaml.safe_load(_FLOOR_ROUTES.read_text()).get("routes") or {}).values()
+    if isinstance(r, dict) and r.get("match")
+)
+
+
 def _validate(catalog: Mapping[str, Any], routes: Mapping[str, Any]) -> None:
     """Fail a malformed catalog once, at load, rather than once per device.
 
-    The vendored matcher reaches for these keys directly, and it builds its registry and
-    index inside `classify()` -- which runs per device. So a catalog missing `agents`, or
-    an agent missing `id`, raises KeyError on the first Mac, the second, and the ten
-    thousandth, each time as a scan failure naming a key rather than a config naming
-    itself. A source config is the one place a human types this, so it is worth saying
-    which entry is wrong.
+    The matcher reaches for these keys directly and rebuilds its index inside `classify()`,
+    which runs per device -- so without this, a bad config raises KeyError on every Mac in
+    the fleet, each time naming a key rather than the config entry that is wrong.
     """
     agents = catalog.get("agents")
     if not isinstance(agents, list):
@@ -351,6 +387,56 @@ def _validate(catalog: Mapping[str, Any], routes: Mapping[str, Any]) -> None:
         for key in ("kind", "match"):
             if not spec.get(key):
                 raise ValueError(f"route {name} has no '{key}'")
+        if spec["match"] not in _MATCH_MODES:
+            # build_index raises KeyError on a mode it does not branch on, once per
+            # device rather than once at load.
+            raise ValueError(
+                f"route {name} has match mode {spec['match']!r}; the vendored matcher "
+                f"handles {sorted(_MATCH_MODES)}",
+            )
+
+    # Every route list an agent declares must be a list of strings. A scalar is indexed
+    # CHARACTER BY CHARACTER by the vendored matcher, so `npm: openclaw` silently becomes
+    # seven one-letter identifiers rather than one name -- wrong without being an error.
+    route_names = set((routes.get("routes") or {}))
+    reserved = {"id", "name", "classification", "platforms", "superseded"}
+    for i, agent in enumerate(agents):
+        for key, value in agent.items():
+            if key in reserved:
+                continue
+            if key not in route_names:
+                raise ValueError(
+                    f"catalog agent {agent.get('id') or i} declares unknown route {key!r}",
+                )
+            if not isinstance(value, list) or not all(
+                isinstance(v, str) for v in value
+            ):
+                raise ValueError(
+                    f"catalog agent {agent.get('id') or i} route {key!r} must be a list of "
+                    f"strings",
+                )
+        for j, sup in enumerate(agent.get("superseded") or []):
+            if (
+                not isinstance(sup, dict)
+                or not sup.get("route")
+                or not sup.get("value")
+            ):
+                raise ValueError(
+                    f"catalog agent {agent.get('id') or i} superseded[{j}] needs 'route' "
+                    f"and 'value'",
+                )
+
+
+def _epoch(value: Any) -> Optional[int]:
+    """A scan row's `ver` as unix seconds, or None if it is not one.
+
+    `str.isdigit()` is true for characters `int()` refuses -- "²" among them -- so the
+    check has to be the conversion itself.
+    """
+    try:
+        return int(str(value))
+    except (TypeError, ValueError):
+        return None
 
 
 def is_gap(row: Mapping[str, Any]) -> bool:

@@ -85,8 +85,8 @@ ever talks to the collector.**
                                    ▼
   ┌──────────────────────────── Jamf Pro ──────────────────────────────────┐
   │  the inventory record for this Mac                                     │
-  │    AI Inventory          the evidence                                  │
-  │    AI Inventory Status   the health line                               │
+  │    Arthur AI Inventory          the evidence                           │
+  │    Arthur AI Inventory Status   the health line                        │
   │    serial · hostname · OS · general.reportDate  ◄── Jamf knows these   │
   └────────────────────────────────┬───────────────────────────────────────┘
                                    │ THE COLLECTOR REACHES OUT, on a schedule
@@ -156,15 +156,27 @@ without changing the truth. `extra` is a closed vocabulary:
 | `extra` | means |
 |---|---|
 | `ok` | the branch ran; its rows in this payload are real |
-| `absent` | no Docker socket on this Mac |
+| `absent` | the scan found no runtime it can name — no Docker socket, and none of the other runtimes it probes for. A fact about the machine rather than a fault, and the only non-`ok` value that leaves the status line's first token `ok` |
+| `unreadable:<runtime>` | a runtime is installed but this scan does not read it — Podman, say. Containers it holds are uncounted, so this is a gap and not an absence |
 | `unhealthy:<code>` | the socket answered `<code>`, not 200. `000` is no reply inside the probe budget |
 | `timeout:<n>` | answered `/_ping`, then blocked on the query and was killed at `<n>`s |
 | `error` | the branch failed outright, typically a table this osquery build lacks |
 | `no-cache` | nothing has been written. A deployment fault, not a fact about the Mac |
-| `stale=NNh` | **not a scan-row value.** The *AI Inventory Status* attribute appends it when the served scan is over a day old — the collector keeps the last good payload when a run fails, so `ok` alone stopped implying recency. Derived by the EA from the timestamp in the value |
+| `stale=NNh` | **not a scan-row value.** The *status* attribute appends it when the served scan is over a day old — the collector keeps the last good payload when a run fails, so `ok` alone stopped implying recency. Derived by the EA from the timestamp in the value |
 
 This vocabulary is a contract. Smart Groups match on these strings and the collector branches
 on them, so it does not grow silently.
+
+**`ok` and `absent` are the two that say nothing is wrong** — one ran and found things, the
+other looked and there was nothing to find. The rest are branches that could not look, and
+keeping them apart is what makes the first token worth alerting on: a signal that fires on
+every Mac without Docker is one a fleet learns to ignore.
+
+`unreadable:<runtime>` exists because `absent` used to cover both cases — a Podman host
+reported the state needing action as the state needing none. It is also the bound on what
+`absent` claims: the scan names the runtimes it knows, so `absent` means none of those were
+found, not that no container can exist on the machine. That is the same bound every branch
+has — `apps=ok` reports what matched where it globbed.
 
 ### The envelope the collector receives
 
@@ -243,12 +255,14 @@ how Jamf satisfies each.
 for an integration that needs inventory data, and the reason the fleet needs no new
 networking.
 
-Two Extension Attributes, both written by the scheduled run and both read by `jamf recon`:
+Two Extension Attributes, both written by the scheduled run and both read by `jamf recon`.
+The names below are the reference deployment's; the collector finds the evidence by the
+`arthur1.` prefix on its value rather than by name, so a fleet may call them anything:
 
 | EA | Carries | Size |
 |---|---|---|
-| `AI Inventory` | the evidence — `arthur1.<base64(gzip(json))>`, or `ERROR:oversize:<bytes>` | ~21 KB, measured |
-| `AI Inventory Status` | collection health, plain text and greppable | 154 bytes, measured |
+| `Arthur AI Inventory` | the evidence — `arthur1.<base64(gzip(json))>`, or `ERROR:oversize:<bytes>` | ~21 KB, measured |
+| `Arthur AI Inventory Status` | collection health, plain text and greppable | 154 bytes, measured |
 
 The health line is the writer's own status output, unchanged:
 

@@ -15,7 +15,7 @@ import pathlib
 
 import pytest
 
-from discovery.jamf.envelope import (
+from discovery.endpoint.envelope import (
     FRAME_PREFIX,
     MAX_DECOMPRESSED_BYTES,
     EnvelopeOutcome,
@@ -237,3 +237,31 @@ def test_a_corrupted_deflate_body_is_malformed_rather_than_an_exception() -> Non
     env = read(FRAME_PREFIX + base64.b64encode(bytes(raw)).decode())
     assert env.outcome is EnvelopeOutcome.MALFORMED
     assert "gzip did not decompress" in (env.detail or "")
+
+
+@pytest.mark.parametrize(
+    "value,column",
+    [(None, "id"), (7, "ver"), ({"a": 1}, "extra"), ([], "perms")],
+)
+def test_a_non_string_column_is_refused(value: object, column: str) -> None:
+    """Every column is a JSON string in the six-column contract. A non-string reaches the
+    matcher as-is: a null `id` raises TypeError inside its regex and ends the scan."""
+    bad = row()
+    bad[column] = value  # type: ignore[assignment]
+    env = read(frame([bad]))
+    assert env.outcome is EnvelopeOutcome.MALFORMED
+    assert column in (env.detail or "")
+
+
+def test_deeply_nested_json_is_malformed_rather_than_a_recursion_error() -> None:
+    """Cheap to write, and it would otherwise escape read() and end the scan."""
+    depth = 200_000
+    env = read(FRAME_PREFIX + base64.b64encode(_gz(("[" * depth).encode())).decode())
+    assert env.outcome is EnvelopeOutcome.MALFORMED
+
+
+def _gz(raw: bytes) -> bytes:
+    buf = io.BytesIO()
+    with gzip.GzipFile(fileobj=buf, mode="wb", mtime=0) as gz:
+        gz.write(raw)
+    return buf.getvalue()
