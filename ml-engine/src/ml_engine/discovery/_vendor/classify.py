@@ -343,10 +343,22 @@ TOOL_DIR = re.compile(
 # anything. So the row built specifically to stop a wedged daemon reading as an empty
 # machine would have been swallowed by the classifier one hop after surviving the scan.
 GAP_KIND = "scan"
-# `extra` on a scan row: "ok" means the branch ran and the rows beside it are real. Anything
-# else is a reason it could not look. `ver` is when the scan ran, in unix seconds, so a
-# cached payload dates itself and a consumer can judge staleness without stat()ing anything.
+# `extra` on a scan row: "ok" means the branch ran and the rows beside it are real. `ver` is
+# when the scan ran, in unix seconds, so a cached payload dates itself and a consumer can
+# judge staleness without stat()ing anything.
 SCAN_OK = "ok"
+# THE THIRD ANSWER, AND IT IS NOT A REASON THE BRANCH COULD NOT LOOK. `absent` says the
+# branch read the machine and there was nothing there to read: no container runtime, no
+# systemd bus socket. Filed as a gap it withholds "No AI agents found." from every machine
+# that simply does not run containers -- the sentence is hedged whenever anything did not
+# return `ok`, so that machine can never reach the unhedged one.
+#
+# It is bounded by what this scan knows to look for, and so is every other branch: `apps=ok`
+# does not claim no AI app exists anywhere, only that none matched where it globbed. Holding
+# `absent` to a higher standard than `ok` buys nothing and costs the clean answer on most of
+# the fleet. A runtime that IS present and unread says `unreadable:<runtime>`, which is a gap
+# and stays one -- that split is what makes this one safe.
+SCAN_ABSENT = "absent"
 STALE_AFTER = 24 * 3600
 
 
@@ -356,11 +368,15 @@ def classify(rows, catalog, routes=None):
     The registry and the index are built ONCE here rather than per row, and the caller
     may pass a pre-loaded `routes` so a tool classifying many payloads does not re-read
     the file. Left optional so the existing two-argument call keeps working.
+
+    Returns `(findings, unmatched, gaps, scans, absences)`. `absences` is the bucket a
+    consumer is most likely to get wrong by leaving out of its row arithmetic: a
+    reconciliation that subtracts only gaps and scans reads those rows as DROPPED.
     """
     registry = Registry(routes if routes is not None else load_routes())
     exact, prefix, glob = build_index(catalog, registry)
     kind_routes = registry.kind_routes
-    findings, unmatched, gaps, scans = defaultdict(list), [], [], []
+    findings, unmatched, gaps, scans, absences = defaultdict(list), [], [], [], []
 
     for row in rows:
         kind, ident, loc = row.get("kind"), row.get("id", ""), row.get("loc", "")
@@ -369,7 +385,16 @@ def classify(rows, catalog, routes=None):
         if kind == GAP_KIND:
             # A dated success is provenance, not a gap. Splitting them here is what lets
             # `cat`-ing a cache file produce the same reading as a live scan.
-            (scans if row.get("extra") == SCAN_OK else gaps).append(row)
+            # Three buckets, not two: ran (`scans`), read and found nothing there
+            # (`absences`), could not read (`gaps`). Only the third makes findings
+            # incomplete, and only the third should make a reader hedge.
+            extra = row.get("extra")
+            if extra == SCAN_OK:
+                scans.append(row)
+            elif extra == SCAN_ABSENT:
+                absences.append(row)
+            else:
+                gaps.append(row)
             continue
 
         # A pipx/uv tool directory names its package. Try that before the path globs,
@@ -441,7 +466,7 @@ def classify(rows, catalog, routes=None):
             # discarded in silence -- see the note above kind_routes.
             unmatched.append(row)
 
-    return findings, unmatched, gaps, scans
+    return findings, unmatched, gaps, scans, absences
 
 
 # --- TELEMETRY -----------------------------------------------------------------------
@@ -494,7 +519,7 @@ EVENT_FIELDS = (
     "classify_sha",
     "rows_total", "findings_agents", "findings_rows", "unmatched_rows", "dropped_rows",
     "payload_bytes", "payload_packed_bytes",
-    "gap_rows", "scan_rows",
+    "gap_rows", "absence_rows", "scan_rows",
     "kinds_seen", "deep_scan",
     "gap_reasons", "gap_unhealthy_code", "gap_timeout_seconds",
     "stale_branches", "newest_scan_age_seconds",
@@ -507,7 +532,7 @@ EVENT_FIELDS = (
 # in either field, and forwarding it verbatim would turn an analytics property into a
 # channel for arbitrary text out of a machine we are supposed to be describing in counts.
 # Anything unrecognised becomes "other" -- which is itself a finding worth seeing.
-GAP_REASONS = ("absent", "no-cache", "error", "unhealthy", "timeout")
+GAP_REASONS = ("absent", "no-cache", "error", "unhealthy", "timeout", "unreadable")
 OTHER = "other"
 
 
@@ -792,7 +817,7 @@ def _run(state, started):
     state["phase"] = "classify"
     catalog = load_catalog(args.catalog)
     routes = load_routes(args.routes)
-    findings, unmatched, gaps, scans = classify(rows, catalog, routes)
+    findings, unmatched, gaps, scans, absences = classify(rows, catalog, routes)
     # ONE clock reading for the whole report. time.time() used to be called three times
     # per scan row inside a comprehension, so two rows in one payload could straddle a
     # second boundary and date themselves differently from the same scan.
@@ -800,8 +825,8 @@ def _run(state, started):
     aged = [(max(0, now - int(r.get("ver") or 0)), r) for r in scans]
     stale = [(a, r) for a, r in aged if a > STALE_AFTER]
 
-    state["props"].update(_measure(raw, rows, findings, unmatched, gaps, scans, aged,
-                                   stale, catalog, routes, args))
+    state["props"].update(_measure(raw, rows, findings, unmatched, gaps, scans, absences,
+                                   aged, stale, catalog, routes, args))
     if state["check"]:
         # Before rendering, and instead of it. This mode answers "what leaves my machine",
         # and mixing the report into that answer would make it harder to read and to pipe.
@@ -838,6 +863,10 @@ def _run(state, started):
             # look, and a consumer that treats findings as complete while a gap is open
             # is drawing the wrong conclusion from the right data.
             **({"gaps": gaps} if gaps else {}),
+            # Not folded into `gaps`: a branch that read the machine and found nothing to
+            # read is a different claim from one that could not read it, and a consumer
+            # that cannot tell them apart has to hedge on both.
+            **({"absences": absences} if absences else {}),
             # Provenance for the branches that DID run, with the age computed here so a
             # consumer never has to know that `ver` holds unix seconds.
             **({"scans": [{"id": r.get("id"), "at": int(r.get("ver") or 0),
@@ -879,13 +908,7 @@ def _run(state, started):
         # a place or the sentence does not claim one.
         reason, where, branch = row.get("extra", ""), row.get("loc") or "", row.get("id", "?")
         at = f" at {where}" if where else ""
-        if reason == "absent":
-            # Was "no Docker socket on this Mac". Two things wrong with that: containers
-            # are no longer the only branch that reports absent -- the Linux systemd
-            # branch does too -- and "this Mac" is not a safe thing for a matcher that
-            # reads a mixed-platform fleet payload to say about anything.
-            detail = f"no socket{at}" if where else "not present on this machine"
-        elif reason == "no-cache":
+        if reason == "no-cache":
             detail = (f"nothing has been written to {where or 'the cache'}. The scheduled "
                       f"writer is not installed, or has never run")
         elif reason == "error":
@@ -898,12 +921,30 @@ def _run(state, started):
         elif reason.startswith("timeout:"):
             detail = (f"whatever answers{at or ' there'} accepted the connection and then "
                       f"stalled; gave up at {reason.split(':', 1)[1]}s")
+        elif reason.startswith("unreadable:"):
+            # `absent` was the only word a machine with no Docker socket could get, so a
+            # Podman host read as one with no containers. The runtime is named because the
+            # fix differs: Colima wants a candidate path in bin/container-scan, Podman
+            # wants a different tool.
+            detail = (f"a {reason.split(':', 1)[1]} runtime is installed{at} and is not "
+                      f"read by this scan. Any containers it holds are uncounted")
         else:
             detail = f"reported {reason!r}" + (f" for {where}" if where else "")
         print(f"COULD NOT LOOK: {branch} -- {detail}")
     if gaps:
         print("  These are not findings and not an absence of them. That part of the "
               "machine was not read.\n")
+
+    for row in absences:
+        # No substituted noun here either: `loc` is the path the branch checked, so it is
+        # evidence of where we looked and not of something that was there.
+        where = row.get("loc") or ""
+        print(f"NOTHING TO LOOK AT: {row.get('id', '?')} -- not present on this machine"
+              + (f" (no {where})" if where else ""))
+    if absences:
+        # Deliberately NOT the sentence above. This branch read the machine; the absence
+        # it reports is a finding about the machine rather than a hole in the report.
+        print()
 
     if not findings:
         print("No AI agents found." if not gaps else
@@ -936,8 +977,8 @@ def _run(state, started):
     # Exit 0 either way. Finding nothing is a valid answer, not an error.
 
 
-def _measure(raw, rows, findings, unmatched, gaps, scans, aged, stale, catalog,
-             routes, args):
+def _measure(raw, rows, findings, unmatched, gaps, scans, absences, aged, stale,
+             catalog, routes, args):
     """Counts, and nothing but counts. Every value here is a number, a bool, or a word
     from a vocabulary this file declares.
     """
@@ -950,7 +991,10 @@ def _measure(raw, rows, findings, unmatched, gaps, scans, aged, stale, catalog,
 
     findings_rows = sum(len(hits) for hits in findings.values())
     reasons, codes, timeouts = set(), [], []
-    for row in gaps:
+    # Over both buckets. The split is about what a READER should conclude; how often each
+    # outcome happens is the same question it always was, and dropping `absent` here would
+    # silently retire a counter rather than change a meaning.
+    for row in (*gaps, *absences):
         extra = row.get("extra") or ""
         head = extra.split(":", 1)[0]
         reasons.add(head if head in GAP_REASONS else OTHER)
@@ -981,9 +1025,13 @@ def _measure(raw, rows, findings, unmatched, gaps, scans, aged, stale, catalog,
         # hid every browser-extension row for months, and it was found by accident. A
         # non-zero value here on somebody's fleet is the same bug happening again.
         "dropped_rows": max(0, len(rows) - findings_rows - len(unmatched) - len(gaps)
-                            - len(scans)),
+                            - len(scans) - len(absences)),
         "gap_rows": len(gaps),
         "scan_rows": len(scans),
+        # Counted apart from gap_rows for the same reason they are bucketed apart: a fleet
+        # where this is high and gap_rows is zero is a fleet without containers, not a
+        # fleet whose container scan is failing.
+        "absence_rows": len(absences),
         # DOES WHAT WE COLLECT STILL FIT THE CHANNEL IT HAS TO TRAVEL THROUGH? Measured
         # from the bytes this process actually read, because row counts cannot answer it:
         # a real payload here runs 110 bytes a row for `brew` and 293 for `ext`, a 2.7x

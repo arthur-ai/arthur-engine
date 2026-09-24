@@ -171,18 +171,57 @@ def test_a_healthy_scan_row_is_provenance_not_a_finding(matcher: Matcher) -> Non
 @pytest.mark.parametrize(
     "extra",
     [
-        "absent",
         "unhealthy:000",
         "unhealthy:no-units",
         "timeout:30",
         "error",
         "no-cache",
+        "unreadable:podman",
     ],
 )
-def test_every_non_ok_outcome_reads_as_a_gap(matcher: Matcher, extra: str) -> None:
+def test_a_branch_that_could_not_look_reads_as_a_gap(
+    matcher: Matcher,
+    extra: str,
+) -> None:
     result = matcher.match([scan("containers", extra=extra)])
     assert len(result.gaps) == 1
     assert is_gap(result.gaps[0])
+    assert not result.complete, "findings are partial while a branch went unread"
+
+
+def test_absent_is_a_reading_and_not_a_gap(matcher: Matcher) -> None:
+    """`absent` says the branch read the machine and there was nothing there -- no
+    container runtime, no systemd bus. Counting it as a gap makes every Mac without
+    Docker permanently unable to say absence is assertable, which is false about the
+    thing anyone would ask."""
+    result = matcher.match([scan("containers", extra="absent")])
+    assert result.gaps == ()
+    assert len(result.absences) == 1
+    assert result.complete, "nothing went unread, so absence means absence"
+
+
+def test_a_runtime_that_is_present_but_unread_is_still_a_gap(matcher: Matcher) -> None:
+    """The distinction `absent` is safe to reclassify BECAUSE of: a Podman host holds
+    containers this scan does not count, which is a hole and not an absence."""
+    result = matcher.match([scan("containers", extra="unreadable:podman")])
+    assert result.absences == ()
+    assert len(result.gaps) == 1
+    assert not result.complete
+
+
+def test_an_absence_is_not_counted_as_a_dropped_row(matcher: Matcher) -> None:
+    """The arithmetic reconciles rows against every bucket. A subtraction that forgot
+    absences would read them as rows the matcher lost, which is the alarm that says a
+    route is missing from routes.yaml."""
+    result = matcher.match(
+        [
+            scan("apps"),
+            scan("containers", extra="absent"),
+            scan("systemd", extra="absent"),
+        ],
+    )
+    assert result.dropped == 0
+    assert result.rows_total == 3
 
 
 def test_scanned_at_is_the_newest_ver_across_branches(matcher: Matcher) -> None:

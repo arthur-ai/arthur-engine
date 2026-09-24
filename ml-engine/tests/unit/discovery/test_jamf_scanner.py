@@ -19,6 +19,7 @@ import pytest
 import requests
 import yaml
 
+from discovery.endpoint.envelope import EnvelopeOutcome
 from discovery.endpoint.jamf.client import JamfClient, JamfError, JamfSettings
 from discovery.endpoint.jamf.scanner import JamfScanner, _settings_from
 
@@ -64,11 +65,18 @@ def scan_row(branch: str, extra: str = "ok") -> dict[str, str]:
     return row("scan", branch, ver=str(SCAN_AT), extra=extra)
 
 
+# Deliberately not the name any runbook suggests. The connector finds the payload by its
+# `arthur1.` prefix, so a fleet that renamed its attributes is not a fleet it stops
+# reading -- a test that used the documented name would pass either way.
+EA_NAME = "Renamed By The Customer"
+
+
 def computer(
     mid: str,
     value: Optional[str],
     report_date: str = "2026-09-22T10:00:00Z",
     ident: int = 0,
+    extra_attributes: Optional[list[dict[str, Any]]] = None,
 ) -> dict[str, Any]:
     return {
         "id": ident or (abs(hash(mid)) % 100000),
@@ -78,9 +86,10 @@ def computer(
             "reportDate": report_date,
             "extensionAttributes": [
                 {
-                    "name": "AI Inventory",
+                    "name": EA_NAME,
                     "values": [value] if value is not None else [],
                 },
+                *(extra_attributes or []),
             ],
         },
         "operatingSystem": {"version": "26.0"},
@@ -391,6 +400,157 @@ def test_an_unreadable_mac_yields_nothing_and_is_not_reported_as_clean(
         records = scan(FakeJamf([[computer("m1", value)]]), monkeypatch)
     assert records == []
     assert "no usable payload" in caplog.text, because
+
+
+def _ea(name: str, value: Optional[str]) -> dict[str, Any]:
+    return {"name": name, "values": [value] if value is not None else []}
+
+
+def test_the_payload_is_found_under_whatever_the_attribute_is_called(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`arthur1.` is a magic prefix so a reader can recognize the value without being
+    told where to look. The display name is the admin's, and is not an input."""
+    payload = frame([row("npm", "@openai/codex"), scan_row("packages")])
+    for name in ("AI Inventory", "Arthur AI Inventory", "\u00e9v\u00e9nement", "x"):
+        device = computer("m1", None)
+        device["general"]["extensionAttributes"] = [_ea(name, payload)]
+        records = scan(FakeJamf([[device]]), monkeypatch)
+        assert [r.external_id for r in records] == ["m1:codex-cli"], name
+
+
+def test_a_status_attribute_is_never_mistaken_for_the_payload(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The status attribute sits beside the payload on every real device and carries a
+    plain health line, which shares no prefix with a framed value."""
+    payload = frame([row("npm", "@openai/codex"), scan_row("packages")])
+    device = computer(
+        "m1",
+        payload,
+        extra_attributes=[
+            _ea("Arthur AI Inventory Status", "ok 2026-09-23T19:25:48Z apps=ok"),
+            _ea("Arthur AI Osquery Prereq", "5.23.1"),
+            _ea("Out of circulation", None),
+        ],
+    )
+    records = scan(FakeJamf([[device]]), monkeypatch)
+    assert [r.external_id for r in records] == ["m1:codex-cli"]
+
+
+def test_no_cache_on_two_attributes_still_reports_no_cache(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A device whose collector never wrote puts `no-cache` on BOTH the payload and the
+    status attribute, so the sentinel cannot identify which is which. It is read as a
+    reason rather than as the payload, which keeps the deployment fault distinguishable
+    from a Mac that has simply never reported."""
+    device = computer("m1", "no-cache", extra_attributes=[_ea("Status", "no-cache")])
+    with caplog.at_level(logging.WARNING):
+        records = scan(FakeJamf([[device]]), monkeypatch)
+    assert records == []
+    assert EnvelopeOutcome.NO_CACHE.value in caplog.text
+    assert EnvelopeOutcome.NEVER_REPORTED.value not in caplog.text
+
+
+def test_a_device_whose_attributes_are_all_empty_reads_as_never_reported(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    device = computer("m1", None, extra_attributes=[_ea("Status", None)])
+    with caplog.at_level(logging.WARNING):
+        records = scan(FakeJamf([[device]]), monkeypatch)
+    assert records == []
+    assert EnvelopeOutcome.NEVER_REPORTED.value in caplog.text
+
+
+def test_two_attributes_that_disagree_yield_nothing_rather_than_a_guess(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Nothing on the wire says which of two payloads is current, so taking either
+    publishes a Mac's findings from a source chosen by dictionary order."""
+    first = frame([row("npm", "@openai/codex"), scan_row("packages")])
+    second = frame([row("npm", "@anthropic-ai/claude-code"), scan_row("packages")])
+    device = computer("m1", first, extra_attributes=[_ea("Second Collector", second)])
+    with caplog.at_level(logging.WARNING):
+        records = scan(FakeJamf([[device]]), monkeypatch)
+    assert records == []
+    assert "disagree about this device's payload" in caplog.text
+    assert "Second Collector" in caplog.text
+
+
+def test_a_framed_payload_beside_an_oversize_marker_is_also_a_disagreement(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """The marker carries neither content nor a date, so preferring the payload would
+    still be a guess about which scan is the current one."""
+    payload = frame([row("npm", "@openai/codex"), scan_row("packages")])
+    device = computer(
+        "m1",
+        payload,
+        extra_attributes=[_ea("Other", "ERROR:oversize:271044")],
+    )
+    with caplog.at_level(logging.WARNING):
+        records = scan(FakeJamf([[device]]), monkeypatch)
+    assert records == []
+    assert "disagree" in caplog.text
+
+
+def test_duplicate_attributes_carrying_the_same_bytes_are_one_payload(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Two attributes running the same script read the same file, so identical
+    candidates are one payload seen twice -- not a conflict."""
+    payload = frame([row("npm", "@openai/codex"), scan_row("packages")])
+    device = computer("m1", payload, extra_attributes=[_ea("A Copy", payload)])
+    records = scan(FakeJamf([[device]]), monkeypatch)
+    assert [r.external_id for r in records] == ["m1:codex-cli"]
+
+
+def test_an_oversize_marker_is_found_by_its_prefix_too(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Unframed on purpose so an MDM can match it without decoding -- which is also what
+    lets this find it without being told the attribute's name."""
+    device = computer("m1", None)
+    device["general"]["extensionAttributes"] = [
+        _ea("Anything", "ERROR:oversize:271044"),
+    ]
+    with caplog.at_level(logging.WARNING):
+        records = scan(FakeJamf([[device]]), monkeypatch)
+    assert records == []
+    assert "oversize" in caplog.text
+    assert "271044" in caplog.text
+
+
+def test_a_scan_that_decodes_nothing_says_so_rather_than_reading_as_a_clean_fleet(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Publishing nothing makes "no agents anywhere" and "collection is broken"
+    identical in the only output anyone looks at."""
+    devices = [[computer("m1", None), computer("m2", "no-cache")]]
+    with caplog.at_level(logging.WARNING):
+        records = scan(FakeJamf(devices), monkeypatch)
+    assert records == []
+    assert "decoded 0 of 2 device(s)" in caplog.text
+
+
+def test_a_fleet_that_really_has_no_agents_is_not_reported_as_broken(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A Mac that scanned and matched nothing DECODED, so the warning must not fire --
+    otherwise the signal means nothing the first time it is right."""
+    clean = frame([row("app", "com.apple.Safari"), scan_row("apps")])
+    with caplog.at_level(logging.WARNING):
+        records = scan(FakeJamf([[computer("m1", clean)]]), monkeypatch)
+    assert records == []
+    assert "decoded 0" not in caplog.text
 
 
 def test_a_mac_that_scanned_and_matched_nothing_yields_no_records(

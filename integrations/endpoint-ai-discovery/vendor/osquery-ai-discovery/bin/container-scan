@@ -38,12 +38,12 @@
 #
 # AND SO DOES STDOUT, because on the path this was written for the exit code reaches
 # nobody. A consumer that records stdout and discards the exit status -- which is how most
-# inventory channels work -- sees only what was printed. So every non-success outcome also prints ONE row in the
-# six-column contract -- kind=scan, id=containers, extra=absent|unhealthy:<code>|timeout:<n>
-# -- and without it the EA value for a wedged daemon would be the empty array, byte for
-# byte what a machine with no containers reports. That is this project's recurring bug arriving
-# at the last hop, after the guard and the bound have both worked correctly. --no-marker
-# turns it off for a human reading the output.
+# inventory channels work -- sees only what was printed. So every non-success outcome also
+# prints ONE row in the six-column contract -- kind=scan, id=containers, extra=absent |
+# unreadable:<runtime> | unhealthy:<code> | timeout:<n>. Without it the EA value for a wedged
+# daemon would be the empty array, byte for byte what a machine with no containers reports.
+# That is this project's recurring bug arriving at the last hop, after the guard and the
+# bound have both worked correctly. --no-marker turns it off for a human reading the output.
 #
 # test/docker_states.sh asserts both the guard and the bound against every daemon state.
 # Sourcing this file defines the functions without running anything, and that test does
@@ -277,8 +277,8 @@ SELECT kind, id, ver, loc, extra, perms FROM (
   --
   -- A BRANCH MAY EMIT ITS OWN SCAN ROWS, and whether one REPLACES this branch's marker
   -- depends on whether it carries the same id. container-scan emits id=containers for the
-  -- containers branch -- same name, so it substitutes, and its reason (absent, unhealthy,
-  -- timeout) must not be overwritten with a bare "ok". queries/runtime-linux.sql emits
+  -- containers branch -- same name, so it substitutes, and its reason (absent, unreadable,
+  -- unhealthy, timeout) must not be overwritten with a bare "ok". runtime-linux.sql emits
   -- id=systemd, a DIFFERENT fact: whether the unit list could be read, inside a branch that
   -- ran fine. Treating that as a substitution dropped the runtime-linux marker altogether,
   -- so the status line said systemd=absent and never said whether the branch itself ran.
@@ -365,8 +365,13 @@ docker_socket_path() {
   # PODMAN IS DELIBERATELY ABSENT, and on Linux that costs more than it does on a Mac
   # because Podman is often the default there. /run/podman/podman.sock would pass the
   # health guard and then return zero images, because docker_images does not read
-  # Podman's store at all -- a manufactured "we looked". An honest gap in
-  # docs/blind-spots.yaml beats a probe that answers confidently about the wrong daemon.
+  # Podman's store at all -- a manufactured "we looked". A probe that answers confidently
+  # about the wrong daemon is worse than a gap.
+  #
+  # The gap is named rather than only documented: other_runtime() below looks for the
+  # evidence without talking to it, and the marker says `unreadable:podman`. Not probing
+  # was always right; reporting it as `absent` -- the word a machine with no containers
+  # gets -- was the half that was wrong. This function still returns 1 either way.
   for c in "${DOCKER_SOCKET:-}" "$host" /var/run/docker.sock \
            "${HOME:-/var/root}/.docker/run/docker.sock" \
            "${HOME:-/root}/.docker/run/docker.sock" \
@@ -374,6 +379,71 @@ docker_socket_path() {
            ${SUDO_USER:+"/home/$SUDO_USER/.docker/run/docker.sock"}; do
     [ -n "$c" ] && [ -S "$c" ] && { printf '%s\n' "$c"; return 0; }
   done
+  return 1
+}
+
+# --- a container runtime we do not read ------------------------------------------------
+#
+# Evidence that containers run here through something other than the Docker we probe for.
+# Sets RUNTIME_NAME and RUNTIME_AT; returns 1 when there is none.
+#
+# PRESENCE ONLY -- a socket or a binary on disk. It does not say a container is running, and
+# must not grow into asking: `podman ps` is a new dependency and a daemon conversation, and
+# a marker row may not depend on anything that could be the thing it reports.
+#
+# Paths rather than `command -v`, because a LaunchDaemon's PATH would miss a Homebrew
+# podman. None of these has been read off a real install: a path that misses leaves
+# `absent`, which is today's answer, while one that matches falsely needs the file to exist
+# under that exact name. Add a candidate a machine has shown; do not guess a pattern.
+#
+# containerd is excluded -- it is what Docker itself runs on, so it is present on every
+# Linux host with Docker installed, including one whose dockerd is merely stopped.
+RUNTIME_NAME=""
+RUNTIME_AT=""
+_runtime_seen() {
+  local name="$1" c
+  shift
+  for c in "$@"; do
+    [ -n "$c" ] || continue
+    # `-f` before `-x`, because a directory is executable too.
+    [ -S "$c" ] || { [ -f "$c" ] && [ -x "$c" ]; } || continue
+    RUNTIME_NAME="$name"; RUNTIME_AT="$c"; return 0
+  done
+  return 1
+}
+
+# Podman first: the only one here osquery genuinely cannot read. Colima and Rancher Desktop
+# serve Docker-API sockets, so they are unread only because docker_socket_path() does not
+# probe those paths -- probing them is the real fix and waits on someone measuring one,
+# since a socket that answers 200 and then serves zero images is the "we looked" this file
+# exists to prevent. A machine with two runtimes reports the first found; one name is enough
+# to stop a reader concluding "no containers".
+#
+# CONTAINER_RUNTIME_ROOT prefixes every candidate so the test can produce this row on a
+# runner that has none of these, and hold `absent` steady on one that has.
+other_runtime() {
+  local root="${CONTAINER_RUNTIME_ROOT:-}"
+  RUNTIME_NAME=""; RUNTIME_AT=""
+  _runtime_seen podman \
+      "$root/run/podman/podman.sock" "$root/var/run/podman/podman.sock" \
+      "$root${XDG_RUNTIME_DIR:-/nonexistent}/podman/podman.sock" \
+      "$root/opt/homebrew/bin/podman" "$root/usr/local/bin/podman" \
+      "$root/usr/bin/podman" && return 0
+  # Glob unquoted so it expands, prefix quoted so a $HOME with a space stays one word. An
+  # unmatched glob stays literal and matches no file, which is the no-hit case.
+  _runtime_seen colima \
+      "$root${HOME:-/var/root}"/.colima/*/docker.sock \
+      "$root${HOME:-/root}"/.colima/*/docker.sock \
+      "$root/opt/homebrew/bin/colima" "$root/usr/local/bin/colima" && return 0
+  # SUDO_USER for this one only: under `sudo bin/discover --deep` $HOME is root's, and this
+  # is the only runtime with no binary to fall back on. Colima's glob cannot expand inside
+  # the quotes ${SUDO_USER:+...} needs, and does not have to. A LaunchDaemon has no
+  # SUDO_USER either, so a per-user socket is still missed on the deployed path.
+  _runtime_seen rancher-desktop \
+      "$root${HOME:-/var/root}/.rd/docker.sock" \
+      "$root${HOME:-/root}/.rd/docker.sock" \
+      ${SUDO_USER:+"$root/Users/$SUDO_USER/.rd/docker.sock"} \
+      ${SUDO_USER:+"$root/home/$SUDO_USER/.rd/docker.sock"} && return 0
   return 1
 }
 
@@ -476,7 +546,8 @@ run_bounded() {
 }
 
 # One row saying why there are no rows. extra carries a closed vocabulary so a smart group
-# can match a substring without parsing JSON: absent | unhealthy:<http-code> | timeout:<n>.
+# can match a substring without parsing JSON:
+# absent | unreadable:<runtime> | unhealthy:<http-code> | timeout:<n>.
 # This was python3, and the comment here said printf could not be trusted because a socket
 # path is input and a quote in one would emit malformed JSON. The objection was never printf;
 # it was un-escaped interpolation. json_str is the escaper, so the row is built by the shell
@@ -485,6 +556,20 @@ run_bounded() {
 marker() {
   [ "$MARKER" = 1 ] || return 0
   printf '[%s]\n' "$(json_row scan containers "$(date +%s)" "${2:-}" "$1" '')"
+}
+
+# The marker for "no Docker socket here", which is two answers. `absent` is honest only when
+# no other runtime is installed either; when one is, whether the machine holds containers is
+# unknown rather than none. `loc` carries the evidence path, since the socket we did not
+# find is already on stderr. Both call sites come through here so they cannot drift.
+no_docker() {
+  if other_runtime; then
+    echo "container-scan: $RUNTIME_NAME is present at $RUNTIME_AT. docker_images does not" >&2
+    echo "  read it, so this machine may hold containers this scan did not see." >&2
+    marker "unreadable:$RUNTIME_NAME" "$RUNTIME_AT"
+  else
+    marker absent "${1:-}"
+  fi
 }
 
 # THE RECOMMENDED DEPLOYMENT, AND THE FILE IS THE PAYLOAD.
@@ -553,11 +638,11 @@ container_scan() {
     sock="$SOCKET"
     [ -S "$sock" ] || {
       echo "container-scan: not a socket: $sock -- did not scan" >&2
-      marker absent "$sock"; return 2; }
+      no_docker "$sock"; return 2; }
   else
     sock="$(docker_socket_path)" || {
       echo "container-scan: no docker socket -- did not scan" >&2
-      marker absent ""; return 2; }
+      no_docker ""; return 2; }
   fi
 
   docker_healthy "$sock" || {
