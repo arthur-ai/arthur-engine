@@ -475,6 +475,61 @@ def test_discovered_task_is_represented_by_its_rows_not_twice():
 
 
 @pytest.mark.unit_tests
+def test_minting_source_survives_another_source_converging_on_the_task():
+    """A task minted with no row of its own keeps its finding once others report it.
+
+    Tasks minted before rows were written, or whose minting scan failed to record its
+    report, have no row for the source that found them. A second source resolving to
+    the task later must not erase the first.
+    """
+    record = _siem_record("splunk-1")
+    other = DatabaseTaskProvenanceSource(
+        source_id=uuid.uuid4(),
+        external_id="elastic-1",
+        task_id=str(uuid.uuid4()),
+        source_class=SourceClass.SIEM,
+        vendor="elastic_cloud",
+        address={"instance": "elastic-prod", "resource_id": "elastic-1"},
+        first_reported_at=datetime(2026, 9, 1),
+        last_reported_at=datetime(2026, 9, 1),
+    )
+
+    provenance = TaskRepository._get_task_provenance(
+        record.task_creation_source,
+        [other],
+    )
+
+    assert [(entry.vendor, entry.source_id) for entry in provenance.sources] == [
+        ("splunk_enterprise", None),
+        ("elastic_cloud", other.source_id),
+    ]
+
+
+@pytest.mark.unit_tests
+def test_minting_row_still_stands_in_after_its_query_is_edited():
+    """The row holds the latest scan's query; the finding still matches it."""
+    record = _siem_record("splunk-1")
+    address = record.creation_source.address.model_dump(mode="json")
+    row = DatabaseTaskProvenanceSource(
+        source_id=uuid.uuid4(),
+        external_id="splunk-1",
+        task_id=str(uuid.uuid4()),
+        source_class=SourceClass.SIEM,
+        vendor="splunk_enterprise",
+        address={**address, "query": "search index=proxy | head 10"},
+        first_reported_at=datetime(2026, 9, 1),
+        last_reported_at=datetime(2026, 9, 2),
+    )
+
+    provenance = TaskRepository._get_task_provenance(
+        record.task_creation_source,
+        [row],
+    )
+
+    assert [entry.source_id for entry in provenance.sources] == [row.source_id]
+
+
+@pytest.mark.unit_tests
 def test_task_with_nothing_to_say_has_no_provenance():
     assert TaskRepository._get_task_provenance(None, []) is None
 

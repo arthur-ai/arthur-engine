@@ -374,9 +374,11 @@ class TaskRepository:
         The creation source contributes an entry of its own only when no row stands in
         for it: an OTEL, manual or legacy GCP task was never reported by a configured
         source, so its creation source is the only provenance it has, while a task a
-        scan minted is already represented by that scan's row, which also names the
-        source. A discovered task with no rows at all falls back to its creation
-        source rather than to nothing.
+        scan minted is usually represented by that scan's row, which also names the
+        source. "Usually", so a row has to match the finding before it replaces it: a
+        task minted before rows were written, or whose minting scan failed to record
+        its report, may have rows only from sources that converged on it later, and
+        dropping the finding then loses the source that actually found the agent.
 
         Args:
             creation_source: The task's creation source, as served.
@@ -386,11 +388,17 @@ class TaskRepository:
             Provenance, or None for a task with no creation source and no reports.
         """
         sources: list[ProvenanceSource] = []
-        if creation_source is not None and (
-            not provenance_rows
-            or not isinstance(creation_source.root, DiscoveryAgentCreationSource)
-        ):
-            sources.append(ProvenanceSource.from_creation_source(creation_source))
+        if creation_source is not None:
+            origin = ProvenanceSource.from_creation_source(creation_source)
+            represented = isinstance(
+                creation_source.root,
+                DiscoveryAgentCreationSource,
+            ) and any(
+                TaskRepository._reports_same_finding(origin, row)
+                for row in provenance_rows
+            )
+            if not represented:
+                sources.append(origin)
 
         sources.extend(
             ProvenanceSource(
@@ -407,6 +415,25 @@ class TaskRepository:
         if not sources:
             return None
         return Provenance(sources=sources)
+
+    @staticmethod
+    def _reports_same_finding(
+        origin: ProvenanceSource,
+        row: DatabaseTaskProvenanceSource,
+    ) -> bool:
+        """Whether a stored report is the finding a task was created from.
+
+        Compared on identity -- class, vendor and every address field but the query --
+        since a row holds the latest scan's address, and a source config's query can be
+        edited between the scan that minted the task and the one that last reported it.
+        """
+        if row.source_class != origin.source_class or row.vendor != origin.vendor:
+            return False
+        if origin.address is None or row.address is None:
+            return origin.address is None and row.address is None
+        return SourceAddress.model_validate(row.address).model_dump(
+            exclude={"query"},
+        ) == origin.address.model_dump(exclude={"query"})
 
     def _enrich_tasks_with_service_names(self, tasks: list[Task]) -> list[Task]:
         """Enrich tasks with service names from service_name_task_mappings.
