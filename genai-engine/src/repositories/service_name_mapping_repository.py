@@ -1,4 +1,5 @@
 import logging
+from collections import defaultdict
 from typing import Iterable, Optional
 
 from sqlalchemy.exc import IntegrityError
@@ -144,13 +145,13 @@ class ServiceNameMappingRepository:
             existing = self.get_mapping(service_name, key_kind)
             if existing:
                 logger.debug(
-                    f"Service name mapping already exists: {service_name} → {existing.task_id}"
+                    f"Service name mapping already exists: {service_name} → {existing.task_id}",
                 )
                 return existing
             else:
                 # It's a foreign key constraint failure (invalid task_id)
                 logger.error(
-                    f"Failed to create mapping for {service_name} → {task_id}: {e}"
+                    f"Failed to create mapping for {service_name} → {task_id}: {e}",
                 )
                 raise
 
@@ -222,6 +223,39 @@ class ServiceNameMappingRepository:
 
         logger.warning(f"Deleted service name mapping: {service_name}")
         return True
+
+    def get_service_names_by_task_ids(
+        self,
+        task_ids: Iterable[str],
+    ) -> dict[str, list[str]]:
+        """Service names mapped to each of many tasks, one query per chunk of IDs.
+
+        The bulk form of `get_service_names_by_task_id`, for listings that would
+        otherwise query once per task.
+
+        Args:
+            task_ids: The task IDs to look up
+
+        Returns:
+            dict: task_id -> service names, holding only tasks that have any.
+        """
+        ids = list(dict.fromkeys(task_ids))
+        by_task: dict[str, list[str]] = defaultdict(list)
+        for start in range(0, len(ids), _LOOKUP_CHUNK_SIZE):
+            mappings = (
+                self.db_session.query(DatabaseServiceNameTaskMapping)
+                .filter(
+                    DatabaseServiceNameTaskMapping.task_id.in_(
+                        ids[start : start + _LOOKUP_CHUNK_SIZE],
+                    ),
+                    DatabaseServiceNameTaskMapping.key_kind
+                    == MappingKeyKind.SERVICE_NAME,
+                )
+                .all()
+            )
+            for mapping in mappings:
+                by_task[mapping.task_id].append(mapping.service_name)
+        return dict(by_task)
 
     def get_service_names_by_task_id(self, task_id: str) -> list[str]:
         """Get all service names mapped to a task_id (reverse lookup).

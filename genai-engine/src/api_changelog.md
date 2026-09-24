@@ -2,6 +2,10 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 09/24/2026
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added the new optional `query` request parameter `page`
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added the new optional `query` request parameter `page_size`
+
 # 09/23/2026
 - **BREAKING CHANGE** for **URL**: /api/v2/agent-tasks/resolve  added the new required request property `source_id`
 - **CHANGE** for **URL**: /api/v2/agent-tasks  added the new optional `query` request parameter `discovery_source_id`

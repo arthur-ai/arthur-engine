@@ -1340,7 +1340,7 @@
                     "Tasks"
                 ],
                 "summary": "Get Agent Tasks",
-                "description": "Get agentic tasks with enriched agent metadata (tools, sub-agents, models) and provenance. Returns only agentic tasks. Filter by `discovery_source_id` and `reported_since` to get the tasks one discovery source reported in a window.",
+                "description": "Get agentic tasks with enriched agent metadata (tools, sub-agents, models) and provenance. Returns only agentic tasks. Filter by `discovery_source_id` and `reported_since` to get the tasks one discovery source reported in a window. Paged: a caller that needs every matching task requests pages until one comes back with fewer than `page_size` tasks.",
                 "operationId": "get_agent_tasks_api_v2_agent_tasks_get",
                 "security": [
                     {
@@ -1385,6 +1385,33 @@
                             "title": "Reported Since"
                         },
                         "description": "Only return tasks a discovery scan reported on or after this time; UTC if no offset is given. Tasks no discovery source has reported are excluded when this filter is set."
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Page to return, counting from 0.",
+                            "default": 0,
+                            "title": "Page"
+                        },
+                        "description": "Page to return, counting from 0."
+                    },
+                    {
+                        "name": "page_size",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "maximum": 1000,
+                            "minimum": 1,
+                            "description": "Tasks per page. A page shorter than this is the last one.",
+                            "default": 1000,
+                            "title": "Page Size"
+                        },
+                        "description": "Tasks per page. A page shorter than this is the last one."
                     }
                 ],
                 "responses": {

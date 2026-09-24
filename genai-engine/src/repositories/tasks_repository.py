@@ -1,4 +1,5 @@
 import uuid
+from collections import defaultdict
 from datetime import datetime, timedelta
 from typing import Any, Optional
 from uuid import UUID
@@ -63,6 +64,10 @@ LLM_RULE_TYPES = set(
         RuleType.MODEL_SENSITIVE_DATA,
     ],
 )
+
+# Task IDs per IN clause when reading spans in bulk. Smaller than the other bulk
+# lookups because each chunk also loads up to 30 days of those tasks' spans.
+_SPAN_LOOKUP_CHUNK_SIZE = 100
 
 
 class TaskRepository:
@@ -183,7 +188,10 @@ class TaskRepository:
             ordering = desc(order_column)
         if sorting_last_active:
             ordering = ordering.nulls_last()
-        stmt = stmt.order_by(ordering)
+        # The ID breaks ties, so a page boundary falls in the same place on every call
+        # and paging through tasks created in the same instant neither skips nor
+        # repeats any.
+        stmt = stmt.order_by(ordering, DatabaseTask.id)
 
         # Calculate the count prior to applying the offset
         count = stmt.count()
@@ -229,17 +237,37 @@ class TaskRepository:
     def _extract_agent_metadata(self, task_id: str) -> EnrichedAgentMetadata:
         """Extract tools, sub-agents, models, and span count from spans for an agent task.
 
-        Queries the spans table for the given task_id and extracts:
-        - Tools: spans where span_kind == TOOL (last 30 days)
-        - Sub-agents: spans where span_kind == AGENT (last 30 days)
-        - Models: extracted from LLM spans at attributes.llm.model_name (last 30 days)
-        - Total number of spans (all time, all span kinds)
+        See `_extract_agent_metadata_for_tasks`, which this is the single-task form of.
 
         Args:
             task_id: UUID of the task to extract metadata for
 
         Returns:
             EnrichedAgentMetadata TypedDict with keys: tools, sub_agents, models, num_spans
+        """
+        return self._extract_agent_metadata_for_tasks([task_id])[task_id]
+
+    def _extract_agent_metadata_for_tasks(
+        self,
+        task_ids: list[str],
+    ) -> dict[str, EnrichedAgentMetadata]:
+        """Extract tools, sub-agents, models, and span count from spans for many tasks.
+
+        Queries the spans table for the given task_ids and extracts, per task:
+        - Tools: spans where span_kind == TOOL (last 30 days)
+        - Sub-agents: spans where span_kind == AGENT (last 30 days)
+        - Models: extracted from LLM spans at attributes.llm.model_name (last 30 days)
+        - Total number of spans (all time, all span kinds)
+
+        Two queries per chunk of task IDs rather than two per task, since the
+        agent-tasks listing enriches every task it returns.
+
+        Args:
+            task_ids: UUIDs of the tasks to extract metadata for
+
+        Returns:
+            dict: task_id -> EnrichedAgentMetadata, for every task asked about, with
+            empty metadata for a task that has no spans.
         """
         # Query AGENT, TOOL, LLM spans for metadata extraction (last 30 days)
         relevant_span_kinds = [
@@ -248,63 +276,87 @@ class TaskRepository:
             OpenInferenceSpanKindValues.LLM.value,
         ]
         thirty_days_ago = datetime.now() - timedelta(days=30)
-        spans = (
-            self.db_session.query(DatabaseSpan)
-            .filter(
-                DatabaseSpan.task_id == task_id,
-                DatabaseSpan.span_kind.in_(relevant_span_kinds),
-                DatabaseSpan.created_at >= thirty_days_ago,
+
+        ids = list(dict.fromkeys(task_ids))
+        tools: dict[str, set[str]] = defaultdict(set)
+        sub_agents: dict[str, set[str]] = defaultdict(set)
+        models: dict[str, set[str]] = defaultdict(set)
+        data_sources: dict[str, set[str]] = defaultdict(set)
+        span_counts: dict[str, int] = {}
+
+        for start in range(0, len(ids), _SPAN_LOOKUP_CHUNK_SIZE):
+            chunk = ids[start : start + _SPAN_LOOKUP_CHUNK_SIZE]
+            spans = (
+                self.db_session.query(
+                    DatabaseSpan.task_id,
+                    DatabaseSpan.span_kind,
+                    DatabaseSpan.span_name,
+                    DatabaseSpan.raw_data,
+                )
+                .filter(
+                    DatabaseSpan.task_id.in_(chunk),
+                    DatabaseSpan.span_kind.in_(relevant_span_kinds),
+                    DatabaseSpan.created_at >= thirty_days_ago,
+                )
+                .all()
             )
-            .all()
-        )
 
-        # Count all spans for this task (not filtered by span_kind)
-        total_span_count = (
-            self.db_session.query(func.count(DatabaseSpan.id))
-            .filter(DatabaseSpan.task_id == task_id)
-            .scalar()
-        ) or 0
+            # Count all spans per task (not filtered by span_kind)
+            counts = (
+                self.db_session.query(DatabaseSpan.task_id, func.count(DatabaseSpan.id))
+                .filter(DatabaseSpan.task_id.in_(chunk))
+                .group_by(DatabaseSpan.task_id)
+                .all()
+            )
+            span_counts.update((task_id, count) for task_id, count in counts)
 
-        tools_set = set()
-        sub_agents_set = set()
-        models_set = set()
-        data_sources_set = set()
+            for span in spans:
+                raw_data = span.raw_data or {}
+                attributes = raw_data.get("attributes", {})
 
-        for span in spans:
-            raw_data = span.raw_data or {}
-            attributes = raw_data.get("attributes", {})
+                # Extract data_source from metadata for all span kinds
+                data_source = get_nested_value(attributes, "metadata.data_source")
+                if data_source:
+                    data_sources[span.task_id].add(data_source)
 
-            # Extract data_source from metadata for all span kinds
-            data_source = get_nested_value(attributes, "metadata.data_source")
-            if data_source:
-                data_sources_set.add(data_source)
+                if span.span_kind == OpenInferenceSpanKindValues.TOOL.value:
+                    tool_name = (
+                        get_nested_value(attributes, "tool_call.function.name")
+                        or span.span_name
+                    )
+                    if tool_name:
+                        tools[span.task_id].add(tool_name)
 
-            if span.span_kind == OpenInferenceSpanKindValues.TOOL.value:
-                tool_name = (
-                    get_nested_value(attributes, "tool_call.function.name")
-                    or span.span_name
-                )
-                if tool_name:
-                    tools_set.add(tool_name)
+                elif span.span_kind == OpenInferenceSpanKindValues.AGENT.value:
+                    agent_name = (
+                        get_nested_value(attributes, "agent.name") or span.span_name
+                    )
+                    if agent_name:
+                        sub_agents[span.task_id].add(agent_name)
 
-            elif span.span_kind == OpenInferenceSpanKindValues.AGENT.value:
-                agent_name = (
-                    get_nested_value(attributes, "agent.name") or span.span_name
-                )
-                if agent_name:
-                    sub_agents_set.add(agent_name)
-
-            elif span.span_kind == OpenInferenceSpanKindValues.LLM.value:
-                model_name = get_nested_value(attributes, "llm.model_name")
-                if model_name:
-                    models_set.add(model_name)
+                elif span.span_kind == OpenInferenceSpanKindValues.LLM.value:
+                    model_name = get_nested_value(attributes, "llm.model_name")
+                    if model_name:
+                        models[span.task_id].add(model_name)
 
         return {
-            "tools": [Tool(name=name, arguments=[]) for name in sorted(tools_set)],
-            "sub_agents": [SubAgent(name=name) for name in sorted(sub_agents_set)],
-            "models": [LLMModel(name=name) for name in sorted(models_set)],
-            "data_sources": [DataSource(url=url) for url in sorted(data_sources_set)],
-            "num_spans": total_span_count,
+            task_id: {
+                "tools": [
+                    Tool(name=name, arguments=[])
+                    for name in sorted(tools.get(task_id, ()))
+                ],
+                "sub_agents": [
+                    SubAgent(name=name) for name in sorted(sub_agents.get(task_id, ()))
+                ],
+                "models": [
+                    LLMModel(name=name) for name in sorted(models.get(task_id, ()))
+                ],
+                "data_sources": [
+                    DataSource(url=url) for url in sorted(data_sources.get(task_id, ()))
+                ],
+                "num_spans": span_counts.get(task_id, 0),
+            }
+            for task_id in ids
         }
 
     def _get_task_creation_source(self, task: Task) -> Optional[AgentCreationSource]:
@@ -446,13 +498,13 @@ class TaskRepository:
         Returns:
             List of tasks with service_names populated
         """
-        service_name_repo = ServiceNameMappingRepository(self.db_session)
+        service_names = ServiceNameMappingRepository(
+            self.db_session,
+        ).get_service_names_by_task_ids(task.id for task in tasks if task.is_agentic)
 
         for task in tasks:
-            if task.is_agentic:
-                service_names = service_name_repo.get_service_names_by_task_id(task.id)
-                if service_names:
-                    task.service_names = service_names
+            if task.id in service_names:
+                task.service_names = service_names[task.id]
 
         return tasks
 

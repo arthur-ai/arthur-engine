@@ -297,6 +297,53 @@ def test_agent_tasks_since_include_rescanned_tasks_and_exclude_stale_ones(
 
 
 @pytest.mark.unit_tests
+def test_agent_tasks_for_a_source_page_through_every_task_once(
+    client: GenaiEngineTestClientBase,
+):
+    """The fetch job pages until a short page, and sees each task exactly once.
+
+    All of these are minted in one request, so they share creation times closely enough
+    that only a tie-break on ID keeps a page boundary in the same place between calls.
+    """
+    run = uuid.uuid4().hex[:8]
+    source_id = uuid.uuid4()
+
+    _, batch = client.resolve_discovered_agents(
+        [_record(f"{run}-{i}", name=f"Paged {i}") for i in range(5)],
+        source_id=source_id,
+    )
+    task_ids = [r.task_id for r in batch.resolved]
+
+    try:
+        pages = []
+        for page in range(4):
+            status_code, agent_tasks = client.get_agent_tasks(
+                discovery_source_id=source_id,
+                page=page,
+                page_size=2,
+            )
+            assert status_code == 200
+            pages.append([task.id for task in agent_tasks])
+
+        assert [len(ids) for ids in pages] == [2, 2, 1, 0]
+        seen = [task_id for ids in pages for task_id in ids]
+        assert sorted(seen) == sorted(task_ids)
+    finally:
+        _cleanup(task_ids)
+
+
+@pytest.mark.unit_tests
+def test_agent_tasks_page_size_is_bounded(client: GenaiEngineTestClientBase):
+    """No caller can ask for an unbounded page, filtered or not."""
+    status_code, _ = client.get_agent_tasks(
+        discovery_source_id=uuid.uuid4(),
+        page_size=1001,
+    )
+
+    assert status_code == 400
+
+
+@pytest.mark.unit_tests
 def test_agent_tasks_for_a_source_with_no_reports_is_empty(
     client: GenaiEngineTestClientBase,
 ):

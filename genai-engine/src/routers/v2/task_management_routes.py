@@ -60,6 +60,10 @@ from utils.constants import DEFAULT_ORG_ID
 from utils.users import enforce_org_scope, enforce_query_org_scope, permission_checker
 from utils.utils import common_pagination_parameters, public_endpoint
 
+# Most tasks one GET /agent-tasks page returns, and the default: every task in it is
+# enriched from its spans, so a page is bounded even for a source reporting thousands.
+AGENT_TASKS_MAX_PAGE_SIZE = 1000
+
 task_management_routes = APIRouter(
     prefix="/api/v2",
     route_class=GenaiEngineRoute,
@@ -217,7 +221,9 @@ def get_task(
     "/agent-tasks",
     description="Get agentic tasks with enriched agent metadata (tools, sub-agents, models) "
     "and provenance. Returns only agentic tasks. Filter by `discovery_source_id` and "
-    "`reported_since` to get the tasks one discovery source reported in a window.",
+    "`reported_since` to get the tasks one discovery source reported in a window. "
+    "Paged: a caller that needs every matching task requests pages until one comes "
+    "back with fewer than `page_size` tasks.",
     response_model=list[EnrichedTaskResponse],
     tags=["Tasks"],
 )
@@ -234,6 +240,13 @@ def get_agent_tasks(
         description="Only return tasks a discovery scan reported on or after this "
         "time; UTC if no offset is given. Tasks no discovery source has reported are "
         "excluded when this filter is set.",
+    ),
+    page: int = Query(0, ge=0, description="Page to return, counting from 0."),
+    page_size: int = Query(
+        AGENT_TASKS_MAX_PAGE_SIZE,
+        ge=1,
+        le=AGENT_TASKS_MAX_PAGE_SIZE,
+        description="Tasks per page. A page shorter than this is the last one.",
     ),
     db_session: Session = Depends(get_db_session),
     application_config: ApplicationConfiguration = Depends(get_application_config),
@@ -254,6 +267,8 @@ def get_agent_tasks(
     Args:
         discovery_source_id: Only tasks this discovery source reported
         reported_since: Only tasks a discovery scan reported since this time
+        page: Page to return, counting from 0
+        page_size: Tasks per page
         db_session: Database session
         application_config: Application configuration
         current_user: Current authenticated user
@@ -270,18 +285,15 @@ def get_agent_tasks(
         application_config,
     )
 
-    filtering_by_provenance = (
-        discovery_source_id is not None or reported_since is not None
-    )
-
     # Tenant callers see only their own org's tasks.
     db_tasks, _ = tasks_repo.query_tasks(
         include_archived=False,
-        # Large page size for now, add pagination later if needed. A provenance filter
-        # lifts it: the fetch job has to see every task its source reported, and a
-        # silently truncated answer would read downstream as agents that disappeared.
-        page_size=None if filtering_by_provenance else 1000,
-        page=0,
+        # Paged rather than capped: the fetch job has to see every task its source
+        # reported, and a silently truncated answer would read downstream as agents
+        # that disappeared, while an unbounded one would enrich thousands of tasks in
+        # one request. The defaults return the first 1,000, as this always has.
+        page_size=page_size,
+        page=page,
         org_scope=org_scope,
         reported_by_source_id=discovery_source_id,
         reported_since=reported_since,
@@ -291,11 +303,12 @@ def get_agent_tasks(
     tasks = [Task._from_database_model(db_task) for db_task in db_tasks]
     tasks = tasks_repo._enrich_tasks_with_service_names(tasks)
 
-    # Build enriched responses
-    polling_state_repo = TaskPollingStateRepository(db_session)
-    provenance_rows = TaskProvenanceRepository(db_session).get_by_task_ids(
-        task.id for task in tasks
-    )
+    # Build enriched responses, reading what each task needs in bulk rather than a
+    # query or more per task.
+    task_ids = [task.id for task in tasks]
+    polling_states = TaskPollingStateRepository(db_session).get_by_task_ids(task_ids)
+    provenance_rows = TaskProvenanceRepository(db_session).get_by_task_ids(task_ids)
+    agent_metadata_by_task = tasks_repo._extract_agent_metadata_for_tasks(task_ids)
     enriched_responses = []
     for task in tasks:
         creation_source = tasks_repo._get_task_creation_source(task)
@@ -305,11 +318,10 @@ def get_agent_tasks(
         )
 
         # Get last_fetched from task_polling_state
-        polling_state = polling_state_repo.get_by_task_id(task.id)
+        polling_state = polling_states.get(task.id)
         last_fetched = polling_state.last_fetched if polling_state else None
 
-        # Extract agent metadata
-        agent_metadata = tasks_repo._extract_agent_metadata(task.id)
+        agent_metadata = agent_metadata_by_task[task.id]
 
         # Convert rule links to response models
         response_rules = []
