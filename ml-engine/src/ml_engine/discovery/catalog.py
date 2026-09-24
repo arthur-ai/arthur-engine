@@ -126,21 +126,28 @@ class Finding:
 class MatchResult:
     """What one device's payload turned out to hold.
 
-    A non-`ok` scan row means a branch could not look -- a wedged Docker daemon, a missing
-    table -- not that it found nothing. Absence is only assertable for branches whose
-    marker says `ok`, so reading `findings` without `gaps` draws the wrong conclusion.
+    A `gap` is a branch that could not look -- a wedged Docker daemon, a missing table --
+    not one that found nothing, so reading `findings` without `gaps` draws the wrong
+    conclusion.
+
+    `absences` are the third answer and NOT gaps: the branch read the machine and there
+    was nothing there, no container runtime or no systemd bus. Folding them in would make
+    every Mac without Docker permanently unable to say absence is assertable, which is
+    false about the thing anyone would ask. A runtime that IS present and unread reports
+    `unreadable:<runtime>`, which is a gap and stays one.
     """
 
     findings: tuple[Finding, ...]
     gaps: tuple[dict[str, Any], ...]
     scans: tuple[dict[str, Any], ...]
+    absences: tuple[dict[str, Any], ...]
     unmatched: int
     dropped: int
     rows_total: int
 
     @property
     def complete(self) -> bool:
-        """True when every branch reported `ok`, so absence means absence."""
+        """True when no branch was left unread, so absence means absence."""
         return not self.gaps
 
     @property
@@ -148,11 +155,14 @@ class MatchResult:
         """The newest `ver` across scan rows: when this device last looked.
 
         The payload's own timestamp, not a file mtime -- redeploying the file resets the
-        mtime without changing the truth.
+        mtime without changing the truth. Every dated marker counts, whichever bucket it
+        landed in: a branch that reported `absent` still says when it looked.
         """
         stamps = [
             e
-            for e in (_epoch(r.get("ver")) for r in (*self.scans, *self.gaps))
+            for e in (
+                _epoch(r.get("ver")) for r in (*self.scans, *self.gaps, *self.absences)
+            )
             if e is not None
         ]
         return max(stamps) if stamps else None
@@ -264,7 +274,7 @@ class Matcher:
         browser-extension rows invisible for months while row counts stayed right.
         """
         raw = [dict(r) for r in rows]
-        findings_by_agent, unmatched, gaps, scans = _matcher.classify(
+        findings_by_agent, unmatched, gaps, scans, absences = _matcher.classify(
             raw,
             self._catalog,
             self._routes,
@@ -283,7 +293,12 @@ class Matcher:
         evidence_rows = sum(len(f.evidence) for f in findings)
         dropped = max(
             0,
-            len(raw) - evidence_rows - len(unmatched) - len(gaps) - len(scans),
+            len(raw)
+            - evidence_rows
+            - len(unmatched)
+            - len(gaps)
+            - len(scans)
+            - len(absences),
         )
         if dropped:
             self._log.warning(
@@ -296,6 +311,7 @@ class Matcher:
             findings=findings,
             gaps=tuple(gaps),
             scans=tuple(scans),
+            absences=tuple(absences),
             unmatched=len(unmatched),
             dropped=dropped,
             rows_total=len(raw),

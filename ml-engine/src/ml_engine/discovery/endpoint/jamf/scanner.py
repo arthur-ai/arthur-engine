@@ -19,16 +19,13 @@ from arthur_common.models.agent_discovery_schemas import DiscoveredAgentRecord
 
 from discovery.catalog import Matcher
 from discovery.endpoint.jamf.client import JamfClient, JamfSettings
-from discovery.endpoint.records import DEFAULT_INVENTORY_ATTRIBUTE, records_for
+from discovery.endpoint.records import records_for
 
 VENDOR = "jamf_pro"
 
 
 class JamfScanner:
     """Implements `job_executors.discovery_scan.DiscoverySourceScanner`."""
-
-    def __init__(self, attribute_name: str = DEFAULT_INVENTORY_ATTRIBUTE) -> None:
-        self._attribute = attribute_name
 
     def scan(
         self,
@@ -62,13 +59,7 @@ class JamfScanner:
 
         for device in client.devices_since(_since(lookback_hours)):
             seen += 1
-            records = records_for(
-                device,
-                matcher,
-                VENDOR,
-                self._attribute,
-                logger,
-            )
+            records = records_for(device, matcher, VENDOR, logger)
             if records is None:
                 unreadable += 1
                 continue
@@ -85,6 +76,24 @@ class JamfScanner:
             reporting,
             unreadable,
         )
+
+        if seen and not reporting:
+            # A SCAN THAT READ DEVICES AND DECODED NONE IS NOT A FLEET WITHOUT AGENTS,
+            # and publishing nothing makes the two identical in the only output anyone
+            # looks at. Every cause below is a deployment or configuration fault that
+            # someone has to act on, so it goes to the job log rather than being left
+            # for a reader to infer from a zero.
+            #
+            # Not an exception: a fleet whose collector was deployed an hour ago is in
+            # this state legitimately, and failing a scheduled job forever is the wrong
+            # answer to "not yet".
+            logger.warning(
+                "Jamf scan decoded 0 of %s device(s). This reads as a clean fleet and "
+                "is almost never one: the collector may not be installed, its "
+                "Extension Attribute may not be scoped to these devices, or no Mac has "
+                "run `jamf recon` since it was deployed.",
+                seen,
+            )
 
 
 def _settings_from(

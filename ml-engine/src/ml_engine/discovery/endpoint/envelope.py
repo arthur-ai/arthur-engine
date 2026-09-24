@@ -156,7 +156,7 @@ def _validate_rows(
 
 
 def read(value: Optional[str]) -> Envelope:
-    """Decode one device's `AI Inventory` attribute value.
+    """Decode one device's inventory attribute value.
 
     Accepts `None` and the empty string, because MDMs return both for a device whose
     attribute has never been populated, and neither is an error.
