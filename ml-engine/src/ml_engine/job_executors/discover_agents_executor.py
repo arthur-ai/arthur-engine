@@ -128,9 +128,9 @@ class DiscoverAgentsExecutor:
             self._fail_before_scan(
                 outcome,
                 RuntimeError(
-                    "No discovery record sink is configured; discovery records cannot "
-                    "be published until the connector framework's handoff to task "
-                    "resolution (D-13) lands.",
+                    "No discovery record sink is configured, so this scan has nowhere "
+                    "to publish. The job runner supplies one; an executor built without "
+                    "it can scan a source and then discard everything it read.",
                 ),
             )
 

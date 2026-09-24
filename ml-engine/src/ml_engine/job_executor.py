@@ -57,6 +57,7 @@ from job_executors.compliance_policy_check_executor import (
 )
 from job_executors.connector_test_executor import ConnectorTestExecutor
 from job_executors.discover_agents_executor import DiscoverAgentsExecutor
+from job_executors.discovery_record_sink import GenAIEngineRecordSink
 from job_executors.fetch_data_executor import FetchDataExecutor
 from job_executors.list_datasets_executor import ListDatasetsExecutor
 from job_executors.metrics_calculation_executor import (
@@ -395,6 +396,14 @@ class JobExecutor:
                             genai_engine_url,
                             genai_engine_api_key,
                             self.discovery_sources_client,
+                            # Built per job rather than shared: it holds one HTTP client
+                            # for its life, and low-memory jobs run as threads in one
+                            # interpreter.
+                            record_sink=GenAIEngineRecordSink(
+                                genai_engine_url=genai_engine_url,
+                                genai_engine_api_key=genai_engine_api_key,
+                                logger=self.logger,
+                            ),
                         ).execute(job, job.job_spec.actual_instance)
                     case JobKind.COMPLIANCE_POLICY_CHECK:
                         if not isinstance(
