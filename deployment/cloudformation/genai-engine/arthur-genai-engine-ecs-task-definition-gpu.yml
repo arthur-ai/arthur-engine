@@ -173,6 +173,13 @@ Parameters:
       - 'false'
     Default: 'true'
     Description: 'Enable PII model v2'
+  GenaiEngineSkipModelLoading:
+    Type: String
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Default: 'false'
+    Description: 'Skip downloading and loading the guardrail ML models on startup. Significantly reduces startup time, but the rules backed by those models (PII, toxicity, prompt injection, hallucination claim classification) cannot run.'
   ChatEnabled:
     Type: String
     Description: 'Enable Arthur Chat'
@@ -381,6 +388,8 @@ Resources:
               Value: !Ref GenaiEngineSummaryTestCaseBatchSize
             - Name: 'GENAI_ENGINE_USE_PII_MODEL_V2'
               Value: !Ref GenaiEngineUsePIIModelV2
+            - Name: 'GENAI_ENGINE_SKIP_MODEL_LOADING'
+              Value: !Ref GenaiEngineSkipModelLoading
             - Name: 'GENAI_ENGINE_OPENAI_PROVIDER'
               Value: !Ref GenaiEngineOpenAIProvider
             - Name: 'GENAI_ENGINE_OPENAI_VERIFY_SSL'
