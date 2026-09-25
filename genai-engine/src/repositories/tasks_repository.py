@@ -1,6 +1,6 @@
 import uuid
 from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 from uuid import UUID
 
@@ -493,6 +493,13 @@ class TaskRepository:
                 vendor=row.vendor,
                 address=(
                     SourceAddress.model_validate(row.address) if row.address else None
+                ),
+                # Stored as naive UTC; served with its offset, so a consumer comparing
+                # it with its own clock cannot read it as local time.
+                last_seen=(
+                    row.last_seen.replace(tzinfo=timezone.utc)
+                    if row.last_seen
+                    else None
                 ),
             )
             for row in provenance_rows

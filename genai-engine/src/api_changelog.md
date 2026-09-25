@@ -2,6 +2,9 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 09/25/2026
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property `items/provenance/anyOf[subschema #1: Provenance]/sources/items/last_seen` to the response with the `200` status
+
 # 09/24/2026
 - **CHANGE** for **URL**: /api/v2/agent-tasks  added the new optional `query` request parameter `after_task_id`
 - **CHANGE** for **URL**: /api/v2/agent-tasks  added the new optional `query` request parameter `page_size`

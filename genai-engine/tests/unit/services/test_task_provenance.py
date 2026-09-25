@@ -1,4 +1,4 @@
-"""Provenance persistence and assembly for discovered tasks (UP-4981 / D-09).
+"""Provenance persistence and assembly for discovered tasks (UP-4981 / D-09, UP-5066).
 
 Provenance is what the fetch job reads back to tell the Platform where each agent was
 found, so what is asserted here is that it survives the resolver intact: the source,
@@ -99,11 +99,12 @@ def _run_id() -> str:
 def _siem_record(
     external_id: str,
     service_names: tuple[str, ...] = (),
+    last_seen: datetime = LAST_SEEN,
 ) -> DiscoveredAgentRecord:
     return DiscoveredAgentRecord(
         external_id=external_id,
         name=external_id,
-        last_seen=LAST_SEEN,
+        last_seen=last_seen,
         creation_source=SIEMAgentCreationSource(
             vendor="splunk_enterprise",
             address=SourceAddress(
@@ -142,11 +143,12 @@ def _endpoint_record(
     external_id: str,
     device: str,
     service_names: tuple[str, ...] = (),
+    last_seen: datetime = LAST_SEEN,
 ) -> DiscoveredAgentRecord:
     return DiscoveredAgentRecord(
         external_id=external_id,
         name=external_id,
-        last_seen=LAST_SEEN,
+        last_seen=last_seen,
         creation_source=EndpointAgentCreationSource(
             vendor="jamf_pro",
             address=SourceAddress(
@@ -201,6 +203,7 @@ def test_siem_finding_carries_its_instance_and_query(
     assert entry.vendor == "splunk_enterprise"
     assert entry.address.instance == "splunk-prod"
     assert entry.address.query == SPLUNK_QUERY
+    assert entry.last_seen == LAST_SEEN
     assert provenance.source_classes == [SourceClass.SIEM]
 
 
@@ -277,6 +280,91 @@ def test_rescan_updates_the_report_rather_than_adding_one(
 
 
 @pytest.mark.unit_tests
+def test_rescan_moves_last_seen_forward_and_never_back(
+    resolver,
+    task_repo,
+    db_session,
+    tracked_tasks,
+):
+    """A later sighting updates `last_seen`; an out-of-order earlier one does not."""
+    source_id = uuid.uuid4()
+    external_id = f"{_run_id()}-siem"
+
+    [resolved] = resolver.resolve_records(
+        [_siem_record(external_id)],
+        source_id=source_id,
+    ).resolved
+    tracked_tasks.append(resolved.task_id)
+
+    later = LAST_SEEN + timedelta(days=2)
+    resolver.resolve_records(
+        [_siem_record(external_id, last_seen=later)],
+        source_id=source_id,
+    )
+    [row] = _rows(db_session, resolved.task_id)
+    assert row.last_seen == utc_naive(later)
+
+    resolver.resolve_records(
+        [_siem_record(external_id, last_seen=LAST_SEEN + timedelta(days=1))],
+        source_id=source_id,
+    )
+    [row] = _rows(db_session, resolved.task_id)
+    assert row.last_seen == utc_naive(later)
+
+    [entry] = _served_provenance(task_repo, resolved.task_id).sources
+    assert entry.last_seen == later
+
+
+@pytest.mark.unit_tests
+def test_last_seen_is_filled_in_for_a_row_stored_without_one(
+    resolver,
+    db_session,
+    tracked_tasks,
+):
+    """Rows written before `last_seen` was stored take the next scan's value."""
+    source_id = uuid.uuid4()
+    external_id = f"{_run_id()}-siem"
+
+    [resolved] = resolver.resolve_records(
+        [_siem_record(external_id)],
+        source_id=source_id,
+    ).resolved
+    tracked_tasks.append(resolved.task_id)
+    [row] = _rows(db_session, resolved.task_id)
+    row.last_seen = None
+    db_session.commit()
+
+    resolver.resolve_records([_siem_record(external_id)], source_id=source_id)
+
+    [row] = _rows(db_session, resolved.task_id)
+    assert row.last_seen == utc_naive(LAST_SEEN)
+
+
+@pytest.mark.unit_tests
+def test_duplicate_key_in_one_batch_keeps_the_latest_last_seen(
+    resolver,
+    db_session,
+    tracked_tasks,
+):
+    """The batch is collapsed to one row per key before the upsert, and the row it
+    keeps must not be whichever sighting happened to come last in the batch."""
+    external_id = f"{_run_id()}-siem"
+    later = LAST_SEEN + timedelta(days=1)
+
+    resolved = resolver.resolve_records(
+        [
+            _siem_record(external_id, last_seen=later),
+            _siem_record(external_id, last_seen=LAST_SEEN),
+        ],
+        source_id=uuid.uuid4(),
+    ).resolved
+    tracked_tasks.append(resolved[0].task_id)
+
+    [row] = _rows(db_session, resolved[0].task_id)
+    assert row.last_seen == utc_naive(later)
+
+
+@pytest.mark.unit_tests
 def test_every_address_a_source_reports_is_kept(
     resolver,
     task_repo,
@@ -319,21 +407,31 @@ def test_two_sources_reporting_one_agent_both_appear(
     service_name = f"{run}-checkout-agent"
     siem_source, endpoint_source = uuid.uuid4(), uuid.uuid4()
 
+    siem_seen, endpoint_seen = LAST_SEEN, LAST_SEEN + timedelta(days=3)
+
     [from_siem] = resolver.resolve_records(
-        [_siem_record(f"{run}-siem", (service_name,))],
+        [_siem_record(f"{run}-siem", (service_name,), last_seen=siem_seen)],
         source_id=siem_source,
     ).resolved
     [from_endpoint] = resolver.resolve_records(
-        [_endpoint_record(f"{run}-endpoint", "DEVICE0", (service_name,))],
+        [
+            _endpoint_record(
+                f"{run}-endpoint",
+                "DEVICE0",
+                (service_name,),
+                last_seen=endpoint_seen,
+            ),
+        ],
         source_id=endpoint_source,
     ).resolved
     tracked_tasks.append(from_siem.task_id)
     assert from_endpoint.task_id == from_siem.task_id
 
     provenance = _served_provenance(task_repo, from_siem.task_id)
-    assert {entry.source_id for entry in provenance.sources} == {
-        siem_source,
-        endpoint_source,
+    # Each source keeps when it saw the agent, not whichever reported last.
+    assert {entry.source_id: entry.last_seen for entry in provenance.sources} == {
+        siem_source: siem_seen,
+        endpoint_source: endpoint_seen,
     }
     assert set(provenance.source_classes) == {SourceClass.SIEM, SourceClass.ENDPOINT}
 
@@ -414,6 +512,8 @@ def test_task_never_reported_by_a_source_takes_provenance_from_its_creation(
     [entry] = provenance.sources
     assert entry.source_class is source_class
     assert entry.source_id is None
+    # No discovery record, so nothing to say when a source last saw it.
+    assert entry.last_seen is None
 
 
 @pytest.mark.unit_tests
