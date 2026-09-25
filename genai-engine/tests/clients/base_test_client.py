@@ -1,12 +1,12 @@
 import os
 import random
 import urllib
+import uuid
 from datetime import datetime
 from typing import Any, Dict, Union
 
 import httpx
 from arthur_common.models.agent_discovery_schemas import DiscoveredAgentRecord
-from arthur_common.models.agent_governance_schemas import EnrichedTaskResponse
 from arthur_common.models.common_schemas import (
     ExamplesConfig,
     KeywordsConfig,
@@ -68,7 +68,10 @@ from sqlalchemy.orm import Session, sessionmaker
 from weaviate.collections.classes.grpc import HybridFusion, TargetVectorJoinType
 
 from config.database_config import DatabaseConfig
-from schemas.agent_discovery_schemas import ResolveDiscoveredAgentsResponse
+from schemas.agent_discovery_schemas import (
+    EnrichedTaskResponse,
+    ResolveDiscoveredAgentsResponse,
+)
 from schemas.agentic_prompt_schemas import AgenticPrompt
 from schemas.enums import (
     RagAPIKeyAuthenticationProviderEnum,
@@ -381,17 +384,40 @@ class GenaiEngineTestClientBase(httpx.Client):
 
     def get_agent_tasks(
         self,
+        discovery_source_id: uuid.UUID | None = None,
+        reported_since: datetime | None = None,
+        after_task_id: str | None = None,
+        page_size: int | None = None,
     ) -> tuple[int, list[EnrichedTaskResponse]]:
         """Get agentic tasks with enriched agent metadata.
 
         Returns only agentic tasks.
 
+        Args:
+            discovery_source_id: Only tasks this discovery source reported
+            reported_since: Only tasks a discovery scan reported since this time
+            after_task_id: The last task of the previous page, if any
+            page_size: Tasks per page
+
         Returns:
             Tuple of (status_code, list of EnrichedTaskResponse)
         """
         path = "api/v2/agent-tasks"
+        params: dict[str, str] = {}
+        if discovery_source_id is not None:
+            params["discovery_source_id"] = str(discovery_source_id)
+        if reported_since is not None:
+            params["reported_since"] = reported_since.isoformat()
+        if after_task_id is not None:
+            params["after_task_id"] = after_task_id
+        if page_size is not None:
+            params["page_size"] = str(page_size)
 
-        resp = self.base_client.get(path, headers=self.authorized_user_api_key_headers)
+        resp = self.base_client.get(
+            path,
+            params=params,
+            headers=self.authorized_user_api_key_headers,
+        )
         log_response(resp)
 
         return (
@@ -406,8 +432,14 @@ class GenaiEngineTestClientBase(httpx.Client):
     def resolve_discovered_agents(
         self,
         records: list[DiscoveredAgentRecord],
+        source_id: uuid.UUID | None = None,
     ) -> tuple[int, ResolveDiscoveredAgentsResponse | None]:
         """Resolve discovery-scan records to tasks.
+
+        Args:
+            records: The records one scan produced
+            source_id: The Discovery Source that produced them. A fresh one when
+                omitted, for tests that are not about which source reported what.
 
         Returns:
             Tuple of (status_code, ResolveDiscoveredAgentsResponse)
@@ -416,7 +448,10 @@ class GenaiEngineTestClientBase(httpx.Client):
 
         resp = self.base_client.post(
             path,
-            json={"records": [record.model_dump(mode="json") for record in records]},
+            json={
+                "source_id": str(source_id or uuid.uuid4()),
+                "records": [record.model_dump(mode="json") for record in records],
+            },
             headers=self.authorized_user_api_key_headers,
         )
         log_response(resp)

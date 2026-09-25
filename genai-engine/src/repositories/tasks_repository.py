@@ -1,4 +1,5 @@
 import uuid
+from collections import defaultdict
 from datetime import datetime, timedelta
 from typing import Any, Optional
 from uuid import UUID
@@ -12,6 +13,9 @@ from arthur_common.models.agent_governance_schemas import (
     LLMModel,
     ManualAgentCreationSource,
     OTELAgentCreationSource,
+    Provenance,
+    ProvenanceSource,
+    SourceAddress,
     SubAgent,
     TaskMetadata,
     Tool,
@@ -24,13 +28,14 @@ from arthur_common.models.enums import (
 from fastapi import HTTPException
 from openinference.semconv.trace import OpenInferenceSpanKindValues
 from opentelemetry import trace
-from sqlalchemy import asc, desc, func
+from sqlalchemy import and_, asc, desc, func, or_
 from sqlalchemy.orm import Session
 
 from db_models import (
     DatabaseRule,
     DatabaseSpan,
     DatabaseTask,
+    DatabaseTaskProvenanceSource,
     DatabaseTaskToMetrics,
     DatabaseTaskToRules,
 )
@@ -40,6 +45,7 @@ from repositories.rules_repository import RuleRepository
 from repositories.service_name_mapping_repository import (
     ServiceNameMappingRepository,
 )
+from repositories.task_provenance_repository import TaskProvenanceRepository
 from schemas.enums import TaskSortField
 from schemas.internal_schemas import (
     ApplicationConfiguration,
@@ -58,6 +64,10 @@ LLM_RULE_TYPES = set(
         RuleType.MODEL_SENSITIVE_DATA,
     ],
 )
+
+# Task IDs per IN clause when reading spans in bulk. Smaller than the other bulk
+# lookups because each chunk also loads up to 30 days of those tasks' spans.
+_SPAN_LOOKUP_CHUNK_SIZE = 100
 
 
 class TaskRepository:
@@ -88,6 +98,9 @@ class TaskRepository:
         page_size: Optional[int] = 10,
         page: int = 0,
         org_scope: Optional[UUID] = None,
+        reported_by_source_id: Optional[UUID] = None,
+        reported_since: Optional[datetime] = None,
+        after_task_id: Optional[str] = None,
     ) -> tuple[list[DatabaseTask], int]:
         stmt = self.db_session.query(DatabaseTask)
         # Tenant callers see only their own org's tasks. Admin (org_scope=None)
@@ -104,6 +117,17 @@ class TaskRepository:
             stmt = stmt.where(DatabaseTask.archived == True)
         elif not include_archived:
             stmt = stmt.where(DatabaseTask.archived == False)
+        # Provenance filters: the tasks a discovery source reported, and when. Only
+        # discovered tasks have provenance rows, so either filter excludes the rest.
+        if reported_by_source_id is not None or reported_since is not None:
+            stmt = stmt.where(
+                DatabaseTask.id.in_(
+                    TaskProvenanceRepository.reported_task_ids(
+                        source_id=reported_by_source_id,
+                        reported_since=reported_since,
+                    ),
+                ),
+            )
 
         # last_active is NOT a column on tasks: it is the most recent trace
         # end-time per task, derived from trace_metadata. We only join the
@@ -165,7 +189,43 @@ class TaskRepository:
             ordering = desc(order_column)
         if sorting_last_active:
             ordering = ordering.nulls_last()
-        stmt = stmt.order_by(ordering)
+        # The ID breaks ties, so a page boundary falls in the same place on every call
+        # and paging through tasks created in the same instant neither skips nor
+        # repeats any.
+        stmt = stmt.order_by(ordering, DatabaseTask.id)
+
+        # Keyset paging: resume after a task the caller already has, not at an offset.
+        # An offset moves whenever a task ahead of it is created or archived between
+        # calls, repeating or skipping one; a position in (created_at, id) does not.
+        if after_task_id is not None:
+            if sort_field not in (None, TaskSortField.CREATED_AT):
+                raise ValueError("after_task_id pages on creation time only.")
+            cursor_query = self.db_session.query(DatabaseTask.created_at).filter(
+                DatabaseTask.id == after_task_id,
+            )
+            if org_scope is not None:
+                cursor_query = cursor_query.filter(DatabaseTask.org_id == org_scope)
+            cursor_created_at = cursor_query.scalar()
+            if cursor_created_at is None:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Task %s not found." % after_task_id,
+                    headers={"full_stacktrace": "false"},
+                )
+            if sort == PaginationSortMethod.ASCENDING:
+                past_cursor = DatabaseTask.created_at > cursor_created_at
+            else:
+                past_cursor = DatabaseTask.created_at < cursor_created_at
+            # IDs break ties ascending in either direction, as in the ordering above.
+            stmt = stmt.where(
+                or_(
+                    past_cursor,
+                    and_(
+                        DatabaseTask.created_at == cursor_created_at,
+                        DatabaseTask.id > after_task_id,
+                    ),
+                ),
+            )
 
         # Calculate the count prior to applying the offset
         count = stmt.count()
@@ -211,17 +271,37 @@ class TaskRepository:
     def _extract_agent_metadata(self, task_id: str) -> EnrichedAgentMetadata:
         """Extract tools, sub-agents, models, and span count from spans for an agent task.
 
-        Queries the spans table for the given task_id and extracts:
-        - Tools: spans where span_kind == TOOL (last 30 days)
-        - Sub-agents: spans where span_kind == AGENT (last 30 days)
-        - Models: extracted from LLM spans at attributes.llm.model_name (last 30 days)
-        - Total number of spans (all time, all span kinds)
+        See `_extract_agent_metadata_for_tasks`, which this is the single-task form of.
 
         Args:
             task_id: UUID of the task to extract metadata for
 
         Returns:
             EnrichedAgentMetadata TypedDict with keys: tools, sub_agents, models, num_spans
+        """
+        return self._extract_agent_metadata_for_tasks([task_id])[task_id]
+
+    def _extract_agent_metadata_for_tasks(
+        self,
+        task_ids: list[str],
+    ) -> dict[str, EnrichedAgentMetadata]:
+        """Extract tools, sub-agents, models, and span count from spans for many tasks.
+
+        Queries the spans table for the given task_ids and extracts, per task:
+        - Tools: spans where span_kind == TOOL (last 30 days)
+        - Sub-agents: spans where span_kind == AGENT (last 30 days)
+        - Models: extracted from LLM spans at attributes.llm.model_name (last 30 days)
+        - Total number of spans (all time, all span kinds)
+
+        Two queries per chunk of task IDs rather than two per task, since the
+        agent-tasks listing enriches every task it returns.
+
+        Args:
+            task_ids: UUIDs of the tasks to extract metadata for
+
+        Returns:
+            dict: task_id -> EnrichedAgentMetadata, for every task asked about, with
+            empty metadata for a task that has no spans.
         """
         # Query AGENT, TOOL, LLM spans for metadata extraction (last 30 days)
         relevant_span_kinds = [
@@ -230,63 +310,87 @@ class TaskRepository:
             OpenInferenceSpanKindValues.LLM.value,
         ]
         thirty_days_ago = datetime.now() - timedelta(days=30)
-        spans = (
-            self.db_session.query(DatabaseSpan)
-            .filter(
-                DatabaseSpan.task_id == task_id,
-                DatabaseSpan.span_kind.in_(relevant_span_kinds),
-                DatabaseSpan.created_at >= thirty_days_ago,
+
+        ids = list(dict.fromkeys(task_ids))
+        tools: dict[str, set[str]] = defaultdict(set)
+        sub_agents: dict[str, set[str]] = defaultdict(set)
+        models: dict[str, set[str]] = defaultdict(set)
+        data_sources: dict[str, set[str]] = defaultdict(set)
+        span_counts: dict[str, int] = {}
+
+        for start in range(0, len(ids), _SPAN_LOOKUP_CHUNK_SIZE):
+            chunk = ids[start : start + _SPAN_LOOKUP_CHUNK_SIZE]
+            spans = (
+                self.db_session.query(
+                    DatabaseSpan.task_id,
+                    DatabaseSpan.span_kind,
+                    DatabaseSpan.span_name,
+                    DatabaseSpan.raw_data,
+                )
+                .filter(
+                    DatabaseSpan.task_id.in_(chunk),
+                    DatabaseSpan.span_kind.in_(relevant_span_kinds),
+                    DatabaseSpan.created_at >= thirty_days_ago,
+                )
+                .all()
             )
-            .all()
-        )
 
-        # Count all spans for this task (not filtered by span_kind)
-        total_span_count = (
-            self.db_session.query(func.count(DatabaseSpan.id))
-            .filter(DatabaseSpan.task_id == task_id)
-            .scalar()
-        ) or 0
+            # Count all spans per task (not filtered by span_kind)
+            counts = (
+                self.db_session.query(DatabaseSpan.task_id, func.count(DatabaseSpan.id))
+                .filter(DatabaseSpan.task_id.in_(chunk))
+                .group_by(DatabaseSpan.task_id)
+                .all()
+            )
+            span_counts.update((task_id, count) for task_id, count in counts)
 
-        tools_set = set()
-        sub_agents_set = set()
-        models_set = set()
-        data_sources_set = set()
+            for span in spans:
+                raw_data = span.raw_data or {}
+                attributes = raw_data.get("attributes", {})
 
-        for span in spans:
-            raw_data = span.raw_data or {}
-            attributes = raw_data.get("attributes", {})
+                # Extract data_source from metadata for all span kinds
+                data_source = get_nested_value(attributes, "metadata.data_source")
+                if data_source:
+                    data_sources[span.task_id].add(data_source)
 
-            # Extract data_source from metadata for all span kinds
-            data_source = get_nested_value(attributes, "metadata.data_source")
-            if data_source:
-                data_sources_set.add(data_source)
+                if span.span_kind == OpenInferenceSpanKindValues.TOOL.value:
+                    tool_name = (
+                        get_nested_value(attributes, "tool_call.function.name")
+                        or span.span_name
+                    )
+                    if tool_name:
+                        tools[span.task_id].add(tool_name)
 
-            if span.span_kind == OpenInferenceSpanKindValues.TOOL.value:
-                tool_name = (
-                    get_nested_value(attributes, "tool_call.function.name")
-                    or span.span_name
-                )
-                if tool_name:
-                    tools_set.add(tool_name)
+                elif span.span_kind == OpenInferenceSpanKindValues.AGENT.value:
+                    agent_name = (
+                        get_nested_value(attributes, "agent.name") or span.span_name
+                    )
+                    if agent_name:
+                        sub_agents[span.task_id].add(agent_name)
 
-            elif span.span_kind == OpenInferenceSpanKindValues.AGENT.value:
-                agent_name = (
-                    get_nested_value(attributes, "agent.name") or span.span_name
-                )
-                if agent_name:
-                    sub_agents_set.add(agent_name)
-
-            elif span.span_kind == OpenInferenceSpanKindValues.LLM.value:
-                model_name = get_nested_value(attributes, "llm.model_name")
-                if model_name:
-                    models_set.add(model_name)
+                elif span.span_kind == OpenInferenceSpanKindValues.LLM.value:
+                    model_name = get_nested_value(attributes, "llm.model_name")
+                    if model_name:
+                        models[span.task_id].add(model_name)
 
         return {
-            "tools": [Tool(name=name, arguments=[]) for name in sorted(tools_set)],
-            "sub_agents": [SubAgent(name=name) for name in sorted(sub_agents_set)],
-            "models": [LLMModel(name=name) for name in sorted(models_set)],
-            "data_sources": [DataSource(url=url) for url in sorted(data_sources_set)],
-            "num_spans": total_span_count,
+            task_id: {
+                "tools": [
+                    Tool(name=name, arguments=[])
+                    for name in sorted(tools.get(task_id, ()))
+                ],
+                "sub_agents": [
+                    SubAgent(name=name) for name in sorted(sub_agents.get(task_id, ()))
+                ],
+                "models": [
+                    LLMModel(name=name) for name in sorted(models.get(task_id, ()))
+                ],
+                "data_sources": [
+                    DataSource(url=url) for url in sorted(data_sources.get(task_id, ()))
+                ],
+                "num_spans": span_counts.get(task_id, 0),
+            }
+            for task_id in ids
         }
 
     def _get_task_creation_source(self, task: Task) -> Optional[AgentCreationSource]:
@@ -345,6 +449,78 @@ class TaskRepository:
         else:
             return None
 
+    @staticmethod
+    def _get_task_provenance(
+        creation_source: Optional[AgentCreationSource],
+        provenance_rows: list[DatabaseTaskProvenanceSource],
+    ) -> Optional[Provenance]:
+        """Assemble a task's provenance from its creation source and stored reports.
+
+        Each stored row is one discovery source's report of the agent at one address.
+        The creation source contributes an entry of its own only when no row stands in
+        for it: an OTEL, manual or legacy GCP task was never reported by a configured
+        source, so its creation source is the only provenance it has, while a task a
+        scan minted is usually represented by that scan's row, which also names the
+        source. "Usually", so a row has to match the finding before it replaces it: a
+        task minted before rows were written, or whose minting scan failed to record
+        its report, may have rows only from sources that converged on it later, and
+        dropping the finding then loses the source that actually found the agent.
+
+        Args:
+            creation_source: The task's creation source, as served.
+            provenance_rows: The task's stored reports, oldest first.
+
+        Returns:
+            Provenance, or None for a task with no creation source and no reports.
+        """
+        sources: list[ProvenanceSource] = []
+        if creation_source is not None:
+            origin = ProvenanceSource.from_creation_source(creation_source)
+            represented = isinstance(
+                creation_source.root,
+                DiscoveryAgentCreationSource,
+            ) and any(
+                TaskRepository._reports_same_finding(origin, row)
+                for row in provenance_rows
+            )
+            if not represented:
+                sources.append(origin)
+
+        sources.extend(
+            ProvenanceSource(
+                source_class=row.source_class,
+                source_id=row.source_id,
+                vendor=row.vendor,
+                address=(
+                    SourceAddress.model_validate(row.address) if row.address else None
+                ),
+            )
+            for row in provenance_rows
+        )
+
+        if not sources:
+            return None
+        return Provenance(sources=sources)
+
+    @staticmethod
+    def _reports_same_finding(
+        origin: ProvenanceSource,
+        row: DatabaseTaskProvenanceSource,
+    ) -> bool:
+        """Whether a stored report is the finding a task was created from.
+
+        Compared on identity -- class, vendor and every address field but the query --
+        since a row holds the latest scan's address, and a source config's query can be
+        edited between the scan that minted the task and the one that last reported it.
+        """
+        if row.source_class != origin.source_class or row.vendor != origin.vendor:
+            return False
+        if origin.address is None or row.address is None:
+            return origin.address is None and row.address is None
+        return SourceAddress.model_validate(row.address).model_dump(
+            exclude={"query"},
+        ) == origin.address.model_dump(exclude={"query"})
+
     def _enrich_tasks_with_service_names(self, tasks: list[Task]) -> list[Task]:
         """Enrich tasks with service names from service_name_task_mappings.
 
@@ -356,13 +532,13 @@ class TaskRepository:
         Returns:
             List of tasks with service_names populated
         """
-        service_name_repo = ServiceNameMappingRepository(self.db_session)
+        service_names = ServiceNameMappingRepository(
+            self.db_session,
+        ).get_service_names_by_task_ids(task.id for task in tasks if task.is_agentic)
 
         for task in tasks:
-            if task.is_agentic:
-                service_names = service_name_repo.get_service_names_by_task_id(task.id)
-                if service_names:
-                    task.service_names = service_names
+            if task.id in service_names:
+                task.service_names = service_names[task.id]
 
         return tasks
 

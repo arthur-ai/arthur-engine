@@ -133,6 +133,16 @@ def test_the_creation_source_reaches_the_wire(tasks: FakeTasks) -> None:
     assert source["observations"]["version"] == "0.5.0"
 
 
+def test_every_batch_names_the_source_that_scanned_it(tasks: FakeTasks) -> None:
+    """The endpoint files each resolved record under the request's source, and the
+    fetch job asks for a source's agents by that ID. A batch sent under no source, or
+    the wrong one, would resolve and then never be found again."""
+    records = [_record(f"m{i}:codex-cli") for i in range(3)]
+    _sink(chunk_size=2).publish("ws", "dp", _config(), records)
+
+    assert [_body(r)["source_id"] for r in tasks.requests] == [SOURCE_ID, SOURCE_ID]
+
+
 def test_an_unsupplied_column_is_never_an_empty_list(tasks: FakeTasks) -> None:
     """Absent and null both deserialize to None, so the generated client is free to
     send either -- and it sends null, because its `from_dict` sets every column

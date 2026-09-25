@@ -94,7 +94,9 @@ class GenAIEngineRecordSink:
 
         `workspace_id` and `data_plane_id` are not sent: the resolve endpoint scopes by
         the credential the request carries, so passing them would be inventing a second
-        answer to a question already settled at authentication.
+        answer to a question already settled at authentication. The config's
+        `discovery_source_id` is, because the endpoint records it in each resolved
+        task's provenance, and that is how the fetch job finds the source's agents again.
         """
         if not records:
             # The request declares `min_length=1`, so an empty batch is a 422 rather
@@ -110,6 +112,7 @@ class GenAIEngineRecordSink:
             response = (
                 self._tasks().resolve_discovered_agents_api_v2_agent_tasks_resolve_post(
                     ResolveDiscoveredAgentsRequest(
+                        source_id=config.discovery_source_id,
                         records=[_as_wire(r) for r in chunk],
                     ),
                     _request_timeout=self._timeout,
