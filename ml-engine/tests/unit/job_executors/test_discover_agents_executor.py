@@ -1,3 +1,4 @@
+import io
 import json
 import logging
 from datetime import datetime, timezone
@@ -6,11 +7,16 @@ from typing import Iterator, Mapping, Sequence
 from unittest.mock import MagicMock, call
 
 import pytest
+import urllib3
 from arthur_client.api_bindings import (
+    ApiClient,
     DiscoverAgentsJobSpec,
     DiscoverySourceConfigSpec,
+    DiscoverySourcesV1Api,
     Job,
 )
+from arthur_client.api_bindings.exceptions import ForbiddenException
+from arthur_client.api_bindings.rest import RESTResponse
 from arthur_common.models.agent_discovery_schemas import DiscoveryOutputRecord
 
 from job_executors.discover_agents_executor import DiscoverAgentsExecutor
@@ -182,22 +188,44 @@ class FakeScanner:
 CONFIGURED_SECRET = "cfg-fake-credential-value"
 
 
+def _http_response(status: int, body: object) -> RESTResponse:
+    """What the transport hands the generated client for one request."""
+    return RESTResponse(
+        urllib3.HTTPResponse(
+            body=io.BytesIO(json.dumps(body).encode()),
+            headers={"content-type": "application/json"},
+            status=status,
+            preload_content=False,
+        ),
+    )
+
+
 def _credentials_client(
     credentials: dict[str, str | None] | None = None,
     source_fields: dict[str, str] | None = None,
-) -> MagicMock:
+    status: int = 200,
+) -> DiscoverySourcesV1Api:
     """Stands in for the D-05 route, which returns the sensitive fields and only those,
-    and for the source read that returns the non-sensitive ones."""
-    client = MagicMock()
-    client.retrieve_discovery_source_credentials.return_value = (
-        {"password": CONFIGURED_SECRET} if credentials is None else credentials
+    and for the source read that returns the non-sensitive ones.
+
+    The credentials read goes through the real generated client over a stubbed
+    transport rather than a mock of its return value, so a response the client cannot
+    deserialize fails here instead of on the first real scan."""
+    client = DiscoverySourcesV1Api(ApiClient())
+    client.api_client.call_api = MagicMock(  # type: ignore[method-assign]
+        return_value=_http_response(
+            status,
+            {"password": CONFIGURED_SECRET} if credentials is None else credentials,
+        ),
     )
     source = MagicMock()
     source.fields = [
         SimpleNamespace(key=k, value=v)
         for k, v in (source_fields or {"base_url": "https://splunk.example"}).items()
     ]
-    client.get_discovery_source.return_value = source
+    client.get_discovery_source = MagicMock(  # type: ignore[method-assign]
+        return_value=source,
+    )
     return client
 
 
@@ -206,7 +234,7 @@ def _executor(
     sink: RecordingSink | None = None,
     vendor: str = "splunk_enterprise",
     logger: logging.Logger | None = None,
-    credentials_client: MagicMock | None = None,
+    credentials_client: DiscoverySourcesV1Api | None = None,
 ) -> DiscoverAgentsExecutor:
     return DiscoverAgentsExecutor(
         agents_client=MagicMock(),
@@ -843,7 +871,7 @@ def test_a_credentials_fetch_failure_still_reports_an_outcome() -> None:
     logger = logging.getLogger("test-discovery-outcome-creds")
     records = _capture(logger)
     client = _credentials_client()
-    client.retrieve_discovery_source_credentials.side_effect = RuntimeError(
+    client.api_client.call_api.side_effect = RuntimeError(  # type: ignore[attr-defined]
         "credentials unavailable",
     )
     sink = RecordingSink()
@@ -861,6 +889,30 @@ def test_a_credentials_fetch_failure_still_reports_an_outcome() -> None:
     assert outcome["error_count"] == 1
     assert outcome["records_published"] == 0
     assert outcome["finished_at"] is not None
+    assert sink.batches == []
+
+
+def test_a_denied_credentials_read_still_fails_the_run() -> None:
+    """Decoding the raw response must not swallow an error status: the route answers
+    403 to an engine that is not assigned the config, and that has to fail the run."""
+    logger = logging.getLogger("test-discovery-outcome-creds-denied")
+    records = _capture(logger)
+    sink = RecordingSink()
+
+    with pytest.raises(ForbiddenException):
+        _executor(
+            FakeScanner([[_record("a")]]),
+            sink,
+            logger=logger,
+            credentials_client=_credentials_client(
+                {"detail": "Discovery credential access denied."},
+                status=403,
+            ),
+        ).execute(_job(), _spec(_config()))
+
+    outcome = _find_outcome(records)
+    assert outcome["succeeded"] is False
+    assert outcome["records_published"] == 0
     assert sink.batches == []
 
 
