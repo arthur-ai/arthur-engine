@@ -364,6 +364,8 @@ Metadata:
           - GenaiEngineServerWorkerCount
           - GenaiEngineCacheTaskRulesCacheEnabled
           - GenaiEngineCacheTaskRulesCacheTTL
+          - GenaiEngineDemoMode
+          - RecaptchaEnterpriseApiKey
       - Label:
           default: 'Advanced GenAI Engine (IAM)'
         Parameters:
@@ -385,6 +387,9 @@ Metadata:
           - GenaiEngineLoadBalancerTarget5xxAlarmThreshold
           - GenaiEngineLoadBalancerTargetResponseTimeAlarmThreshold
           - GenaiEngineECSMemoryAlarmThreshold
+          - AuditLogEnabled
+          - AuditLogRetentionPeriod
+          - AuditLogOverridePath
       - Label:
           default: 'Advanced GenAI Engine (LLM)'
         Parameters:
@@ -393,8 +398,8 @@ Metadata:
           - GenaiEngineToxicityCheckMaxTokenLimit
           - GenaiEngineSummaryTestCaseBatchSize
           - GenaiEngineUsePIIModelV2
-          - GenaiEngineDemoMode
           - GenaiEngineDefaultTenantTokenLimit
+          - GenaiEngineSkipModelLoading
       - Label:
           default: 'Advanced GenAI Engine (Internal Model Repository)'
         Parameters:
