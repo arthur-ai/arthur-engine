@@ -740,6 +740,16 @@ def test_rescan_keeps_the_location_until_a_report_gives_another(
     [row] = _rows(db_session, resolved.task_id)
     assert (row.runs_on, row.platform) == (RunsOn.GCP, Platform.LINUX)
 
+    # UNKNOWN is the sensor saying it cannot tell, which is not an answer either. Were
+    # it stored, this task's only row would serve `unknown` for an agent known to run
+    # on GCP, where a second row saying UNKNOWN would not have.
+    resolver.resolve_records(
+        [_located(record, runs_on="unknown")],
+        source_id=source_id,
+    )
+    [row] = _rows(db_session, resolved.task_id)
+    assert row.runs_on is RunsOn.GCP
+
 
 @pytest.mark.unit_tests
 def test_duplicate_key_in_one_batch_keeps_the_last_location_given(
@@ -747,12 +757,16 @@ def test_duplicate_key_in_one_batch_keeps_the_last_location_given(
     db_session,
     tracked_tasks,
 ):
-    """Collapsing the batch to one row per key must not let a silent duplicate erase
-    what an earlier one in the same batch said."""
+    """Collapsing the batch to one row per key must not let a silent duplicate, or one
+    that cannot tell, erase what an earlier one in the same batch said."""
     record = _endpoint_record(f"{_run_id()}-jamf", device="C02")
 
     resolved = resolver.resolve_records(
-        [_located(record, runs_on="endpoint", platform="darwin"), record],
+        [
+            _located(record, runs_on="endpoint", platform="darwin"),
+            record,
+            _located(record, runs_on="unknown"),
+        ],
         source_id=uuid.uuid4(),
     ).resolved
     tracked_tasks.append(resolved[0].task_id)

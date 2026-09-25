@@ -9,7 +9,14 @@ from arthur_common.models.agent_governance_schemas import (
     ProvenanceSource,
     RunsOn,
 )
-from sqlalchemy import ColumnElement, Select, SQLColumnExpression, func, select
+from sqlalchemy import (
+    ColumnElement,
+    Select,
+    SQLColumnExpression,
+    func,
+    literal,
+    select,
+)
 from sqlalchemy.dialects.postgresql import Insert as PGInsertType
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.dialects.sqlite import Insert as SQLiteInsertType
@@ -60,6 +67,33 @@ def _later_of(
     return func.max(stored_or_incoming, incoming_or_stored)
 
 
+def _runs_on_to_keep(
+    incoming: Optional[RunsOn],
+    earlier: Optional[RunsOn],
+) -> Optional[RunsOn]:
+    """The `runs_on` a report leaves behind: its own answer only if it has one.
+
+    UNKNOWN is a sensor saying it cannot tell, which is no more an answer than silence,
+    so neither replaces a location already known. The same rule the served provenance
+    applies across rows, applied within one; `_runs_on_kept` is its SQL twin.
+    """
+    if incoming is not None and incoming is not RunsOn.UNKNOWN:
+        return incoming
+    return earlier if earlier is not None else incoming
+
+
+def _runs_on_kept(
+    stored: SQLColumnExpression[Optional[RunsOn]],
+    incoming: SQLColumnExpression[Optional[RunsOn]],
+) -> ColumnElement[Optional[RunsOn]]:
+    """`_runs_on_to_keep`, in SQL, for a report landing on a stored row."""
+    return func.coalesce(
+        func.nullif(incoming, literal(RunsOn.UNKNOWN.value)),
+        stored,
+        incoming,
+    )
+
+
 class ProvenanceReport(NamedTuple):
     """One resolved record, as `record_reports` stores it."""
 
@@ -97,7 +131,8 @@ class TaskProvenanceRepository:
         `last_seen` is not simply overwritten: it keeps the later of the stored and
         incoming values, so a batch that arrives out of order cannot move it backwards.
         Nor are `runs_on` and `platform`: a report that says nothing about them keeps
-        what an earlier one said, since silence is not a new answer.
+        what an earlier one said, since silence is not a new answer -- and a `runs_on`
+        of UNKNOWN says nothing either.
 
         Args:
             reports: One per resolved record. Every entry must carry a `source_id` -- a
@@ -110,6 +145,8 @@ class TaskProvenanceRepository:
         now = utc_naive(reported_at or datetime.now(timezone.utc))
         rows: dict[tuple[UUID, str], dict[str, object]] = {}
         latest_seen: dict[tuple[UUID, str], Optional[datetime]] = {}
+        kept_runs_on: dict[tuple[UUID, str], Optional[RunsOn]] = {}
+        kept_platform: dict[tuple[UUID, str], Optional[Platform]] = {}
         for external_id, task_id, entry, runs_on, platform in reports:
             if entry.source_id is None:
                 raise ValueError(
@@ -121,7 +158,10 @@ class TaskProvenanceRepository:
                 latest_seen.get(key),
                 utc_naive(entry.last_seen) if entry.last_seen else None,
             )
-            earlier = rows.get(key, {})
+            kept_runs_on[key] = _runs_on_to_keep(runs_on, kept_runs_on.get(key))
+            kept_platform[key] = (
+                platform if platform is not None else kept_platform.get(key)
+            )
             rows[key] = {
                 "source_id": entry.source_id,
                 "external_id": external_id,
@@ -134,10 +174,8 @@ class TaskProvenanceRepository:
                 "first_reported_at": now,
                 "last_reported_at": now,
                 "last_seen": latest_seen[key],
-                "runs_on": runs_on if runs_on is not None else earlier.get("runs_on"),
-                "platform": (
-                    platform if platform is not None else earlier.get("platform")
-                ),
+                "runs_on": kept_runs_on[key],
+                "platform": kept_platform[key],
             }
 
         if not rows:
@@ -168,9 +206,9 @@ class TaskProvenanceRepository:
                     stmt.excluded.last_seen,
                     is_postgres,
                 ),
-                "runs_on": func.coalesce(
-                    stmt.excluded.runs_on,
+                "runs_on": _runs_on_kept(
                     DatabaseTaskProvenanceSource.runs_on,
+                    stmt.excluded.runs_on,
                 ),
                 "platform": func.coalesce(
                     stmt.excluded.platform,

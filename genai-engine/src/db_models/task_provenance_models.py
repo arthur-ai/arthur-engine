@@ -93,8 +93,8 @@ class DatabaseTaskProvenanceSource(Base):
     # Where the record said the machine is, and which OS it runs, when the source could
     # tell. Per report rather than per task, so two sensors that disagree are both kept;
     # the task serves one answer of each, picked when provenance is assembled. A report
-    # that says nothing keeps what an earlier one said. Null for rows written before
-    # these were stored.
+    # that says nothing keeps what an earlier one said, and a `runs_on` of UNKNOWN says
+    # nothing. Null for rows written before these were stored.
     runs_on: Mapped[Optional[RunsOn]] = mapped_column(
         Enum(
             RunsOn,
