@@ -28581,6 +28581,19 @@
                             }
                         ],
                         "description": "Where upstream this came from -- the same type the creation source carries, so a finding and its task address the system identically. Absent for OTEL and manual agents."
+                    },
+                    "last_seen": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Last Seen",
+                        "description": "When this source last observed the agent -- the discovered record's own `last_seen`, not when a scan last reported it. Evidence recency rather than scan recency: a source can keep reporting an agent it has not actually seen for weeks. Only ever moves forward, so an out-of-order batch cannot make an agent look staler than it is. Absent for OTEL, manual and legacy GCP agents, which carry no discovery record."
                     }
                 },
                 "type": "object",

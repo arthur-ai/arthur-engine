@@ -77,9 +77,15 @@ class DatabaseTaskProvenanceSource(Base):
     )
     # UTC, naive, and the engine's clock rather than the sensor's: these say when a scan
     # handed the finding over, which is what the fetch job windows on. When the sensor
-    # itself saw the agent is evidence, and is the Platform's to hold.
+    # itself saw the agent is `last_seen`, below.
     first_reported_at: Mapped[datetime] = mapped_column(TIMESTAMP, nullable=False)
     last_reported_at: Mapped[datetime] = mapped_column(TIMESTAMP, nullable=False)
+    # UTC, naive, and the sensor's clock: the record's own `last_seen`, when the source
+    # last observed the agent. Evidence recency rather than scan recency -- a source
+    # can keep reporting an agent it has not seen for weeks. Only moves forward, so an
+    # out-of-order batch cannot make an agent look staler than it is. Null for rows
+    # written before it was stored.
+    last_seen: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP, nullable=True)
 
     __table_args__ = (
         Index(

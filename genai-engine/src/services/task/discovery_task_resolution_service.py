@@ -192,6 +192,7 @@ class DiscoveryTaskResolutionService:
                     ProvenanceSource.from_creation_source(
                         record.task_creation_source,
                         source_id=source_id,
+                        last_seen=record.last_seen,
                     ),
                 ),
             )
