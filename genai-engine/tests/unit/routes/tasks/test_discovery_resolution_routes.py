@@ -31,7 +31,8 @@ from tests.clients.base_test_client import (
 )
 
 # Every record carries the time its source last saw the agent. Resolution does not read
-# it, so one fixed instant keeps it out of the way of what these tests are about.
+# it, only provenance carries it through, so one fixed instant keeps it out of the way
+# of what these tests are about.
 LAST_SEEN = datetime(2026, 9, 1, tzinfo=timezone.utc)
 
 
@@ -238,6 +239,7 @@ def test_agent_tasks_scoped_to_a_source_return_only_its_tasks(
             assert entry.source_id == ours
             assert entry.vendor == "splunk_enterprise"
             assert entry.address.instance == "splunk-prod"
+            assert entry.last_seen == LAST_SEEN
     finally:
         _cleanup(task_ids)
 

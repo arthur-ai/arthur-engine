@@ -5,7 +5,7 @@ from typing import Iterable, Optional
 from uuid import UUID
 
 from arthur_common.models.agent_governance_schemas import ProvenanceSource
-from sqlalchemy import Select, select
+from sqlalchemy import ColumnElement, Select, SQLColumnExpression, func, select
 from sqlalchemy.dialects.postgresql import Insert as PGInsertType
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.dialects.sqlite import Insert as SQLiteInsertType
@@ -32,6 +32,30 @@ def utc_naive(moment: datetime) -> datetime:
     return moment.astimezone(timezone.utc).replace(tzinfo=None)
 
 
+def _latest(*moments: Optional[datetime]) -> Optional[datetime]:
+    """The latest of the moments given, ignoring missing ones."""
+    present = [moment for moment in moments if moment is not None]
+    return max(present) if present else None
+
+
+def _later_of(
+    stored: SQLColumnExpression[Optional[datetime]],
+    incoming: SQLColumnExpression[Optional[datetime]],
+    is_postgres: bool,
+) -> ColumnElement[Optional[datetime]]:
+    """The later of two nullable timestamps, in SQL, taking whichever one is present.
+
+    Postgres's GREATEST skips nulls, but SQLite's two-argument max returns null if
+    either is, so each side is coalesced with the other first: a row stored before
+    `last_seen` was, or a record that somehow lacks one, never erases the other value.
+    """
+    stored_or_incoming = func.coalesce(stored, incoming)
+    incoming_or_stored = func.coalesce(incoming, stored)
+    if is_postgres:
+        return func.greatest(stored_or_incoming, incoming_or_stored)
+    return func.max(stored_or_incoming, incoming_or_stored)
+
+
 class TaskProvenanceRepository:
     """Reads and writes the per-source provenance rows held against discovered tasks.
 
@@ -53,26 +77,33 @@ class TaskProvenanceRepository:
         overwritten rather than kept because the resolver just answered for it, and the
         resolver is where identity lives.
 
-        The record's own `last_seen` is not stored: `ProvenanceSource` has no field for
-        it yet, so these times are when a scan reported the agent, not when its source
-        last saw it. UP-5066 carries it through.
+        `last_seen` is the one field that is not simply overwritten: it keeps the later
+        of the stored and incoming values, so a batch that arrives out of order cannot
+        move it backwards.
 
         Args:
             reports: (external_id, task_id, entry) per resolved record. Every entry must
                 carry a `source_id` -- a report with no source cannot be found again by
                 the source that made it. A key repeated within the batch keeps its last
-                occurrence, since one statement cannot upsert the same row twice.
+                occurrence, and the latest `last_seen` among them, since one statement
+                cannot upsert the same row twice.
             reported_at: When the scan handed the batch over. Defaults to now.
         """
         now = utc_naive(reported_at or datetime.now(timezone.utc))
         rows: dict[tuple[UUID, str], dict[str, object]] = {}
+        latest_seen: dict[tuple[UUID, str], Optional[datetime]] = {}
         for external_id, task_id, entry in reports:
             if entry.source_id is None:
                 raise ValueError(
                     f"Provenance for '{external_id}' has no source_id; a discovery "
                     "report must name the source that made it",
                 )
-            rows[(entry.source_id, external_id)] = {
+            key = (entry.source_id, external_id)
+            latest_seen[key] = _latest(
+                latest_seen.get(key),
+                utc_naive(entry.last_seen) if entry.last_seen else None,
+            )
+            rows[key] = {
                 "source_id": entry.source_id,
                 "external_id": external_id,
                 "task_id": task_id,
@@ -83,6 +114,7 @@ class TaskProvenanceRepository:
                 ),
                 "first_reported_at": now,
                 "last_reported_at": now,
+                "last_seen": latest_seen[key],
             }
 
         if not rows:
@@ -91,8 +123,11 @@ class TaskProvenanceRepository:
         values = list(rows.values())
         stmt: PGInsertType | SQLiteInsertType
         # Postgres in production; SQLite backs the unit tests. Both spell the upsert the
-        # same way once the dialect's insert is chosen.
-        if self.db_session.bind and self.db_session.bind.dialect.name == "postgresql":
+        # same way once the dialect's insert is chosen; only "the later of two" differs.
+        is_postgres = bool(
+            self.db_session.bind and self.db_session.bind.dialect.name == "postgresql",
+        )
+        if is_postgres:
             stmt = pg_insert(DatabaseTaskProvenanceSource).values(values)
         else:
             stmt = sqlite_insert(DatabaseTaskProvenanceSource).values(values)
@@ -105,6 +140,11 @@ class TaskProvenanceRepository:
                 "vendor": stmt.excluded.vendor,
                 "address": stmt.excluded.address,
                 "last_reported_at": stmt.excluded.last_reported_at,
+                "last_seen": _later_of(
+                    DatabaseTaskProvenanceSource.last_seen,
+                    stmt.excluded.last_seen,
+                    is_postgres,
+                ),
             },
         )
         self.db_session.execute(stmt)
