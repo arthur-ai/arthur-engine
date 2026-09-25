@@ -113,13 +113,13 @@ class FetchDiscoveredAgentsExecutor:
             ),
         ) as api_client:
             tasks_api = TasksApi(api_client)
-            page = 0
+            after_task_id: str | None = None
             while True:
                 tasks: List[EnrichedTaskResponse] = (
                     tasks_api.get_agent_tasks_api_v2_agent_tasks_get(
                         discovery_source_id=source_id,
                         reported_since=job_spec.reported_since,
-                        page=page,
+                        after_task_id=after_task_id,
                         page_size=self.page_size,
                         _request_timeout=AGENT_TASKS_TIMEOUT_SECONDS,
                     )
@@ -136,7 +136,8 @@ class FetchDiscoveredAgentsExecutor:
                 # A short page is the last one, which is how the endpoint says so.
                 if len(tasks) < self.page_size:
                     break
-                page += 1
+                # Paged by cursor: the next page starts after this one's last task.
+                after_task_id = tasks[-1].id
 
         self.logger.info(
             f"Uploaded {uploaded} agent(s) from discovery source {source_id}",

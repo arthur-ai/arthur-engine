@@ -115,7 +115,7 @@ def test_fetches_the_one_source_in_its_window_and_uploads_every_page(
     _executor(agents_client).execute(_spec())
 
     requests = tasks_api.get_agent_tasks_api_v2_agent_tasks_get.call_args_list
-    assert [c.kwargs["page"] for c in requests] == [0, 1, 2]
+    assert [c.kwargs["after_task_id"] for c in requests] == [None, "t2", "t4"]
     for c in requests:
         assert c.kwargs["discovery_source_id"] == SOURCE_ID
         assert c.kwargs["reported_since"] == REPORTED_SINCE
