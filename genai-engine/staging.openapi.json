@@ -1340,7 +1340,7 @@
                     "Tasks"
                 ],
                 "summary": "Get Agent Tasks",
-                "description": "Get agentic tasks with enriched agent metadata (tools, sub-agents, models) and provenance. Returns only agentic tasks. Filter by `discovery_source_id` and `reported_since` to get the tasks one discovery source reported in a window. Paged: a caller that needs every matching task requests pages until one comes back with fewer than `page_size` tasks.",
+                "description": "Get agentic tasks with enriched agent metadata (tools, sub-agents, models) and provenance. Returns only agentic tasks. Filter by `discovery_source_id` and `reported_since` to get the tasks one discovery source reported in a window. Paged by cursor: a caller that needs every matching task passes the last task's ID as `after_task_id` until a page comes back with fewer than `page_size` tasks. A task created or archived mid-walk never repeats or skips another.",
                 "operationId": "get_agent_tasks_api_v2_agent_tasks_get",
                 "security": [
                     {
@@ -1387,17 +1387,23 @@
                         "description": "Only return tasks a discovery scan reported on or after this time; UTC if no offset is given. Tasks no discovery source has reported are excluded when this filter is set."
                     },
                     {
-                        "name": "page",
+                        "name": "after_task_id",
                         "in": "query",
                         "required": false,
                         "schema": {
-                            "type": "integer",
-                            "minimum": 0,
-                            "description": "Page to return, counting from 0.",
-                            "default": 0,
-                            "title": "Page"
+                            "anyOf": [
+                                {
+                                    "type": "string",
+                                    "format": "uuid"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Return the tasks after this one: the last task of the previous page. Omit it for the first page.",
+                            "title": "After Task Id"
                         },
-                        "description": "Page to return, counting from 0."
+                        "description": "Return the tasks after this one: the last task of the previous page. Omit it for the first page."
                     },
                     {
                         "name": "page_size",

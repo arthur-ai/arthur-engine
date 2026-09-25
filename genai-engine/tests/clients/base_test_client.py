@@ -386,7 +386,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         self,
         discovery_source_id: uuid.UUID | None = None,
         reported_since: datetime | None = None,
-        page: int | None = None,
+        after_task_id: str | None = None,
         page_size: int | None = None,
     ) -> tuple[int, list[EnrichedTaskResponse]]:
         """Get agentic tasks with enriched agent metadata.
@@ -396,7 +396,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         Args:
             discovery_source_id: Only tasks this discovery source reported
             reported_since: Only tasks a discovery scan reported since this time
-            page: Page to return, counting from 0
+            after_task_id: The last task of the previous page, if any
             page_size: Tasks per page
 
         Returns:
@@ -408,8 +408,8 @@ class GenaiEngineTestClientBase(httpx.Client):
             params["discovery_source_id"] = str(discovery_source_id)
         if reported_since is not None:
             params["reported_since"] = reported_since.isoformat()
-        if page is not None:
-            params["page"] = str(page)
+        if after_task_id is not None:
+            params["after_task_id"] = after_task_id
         if page_size is not None:
             params["page_size"] = str(page_size)
 

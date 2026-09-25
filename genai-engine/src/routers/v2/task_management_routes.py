@@ -222,8 +222,9 @@ def get_task(
     description="Get agentic tasks with enriched agent metadata (tools, sub-agents, models) "
     "and provenance. Returns only agentic tasks. Filter by `discovery_source_id` and "
     "`reported_since` to get the tasks one discovery source reported in a window. "
-    "Paged: a caller that needs every matching task requests pages until one comes "
-    "back with fewer than `page_size` tasks.",
+    "Paged by cursor: a caller that needs every matching task passes the last task's ID "
+    "as `after_task_id` until a page comes back with fewer than `page_size` tasks. A "
+    "task created or archived mid-walk never repeats or skips another.",
     response_model=list[EnrichedTaskResponse],
     tags=["Tasks"],
 )
@@ -241,7 +242,11 @@ def get_agent_tasks(
         "time; UTC if no offset is given. Tasks no discovery source has reported are "
         "excluded when this filter is set.",
     ),
-    page: int = Query(0, ge=0, description="Page to return, counting from 0."),
+    after_task_id: UUID | None = Query(
+        None,
+        description="Return the tasks after this one: the last task of the previous "
+        "page. Omit it for the first page.",
+    ),
     page_size: int = Query(
         AGENT_TASKS_MAX_PAGE_SIZE,
         ge=1,
@@ -267,7 +272,7 @@ def get_agent_tasks(
     Args:
         discovery_source_id: Only tasks this discovery source reported
         reported_since: Only tasks a discovery scan reported since this time
-        page: Page to return, counting from 0
+        after_task_id: The last task of the previous page, if any
         page_size: Tasks per page
         db_session: Database session
         application_config: Application configuration
@@ -291,9 +296,11 @@ def get_agent_tasks(
         # Paged rather than capped: the fetch job has to see every task its source
         # reported, and a silently truncated answer would read downstream as agents
         # that disappeared, while an unbounded one would enrich thousands of tasks in
-        # one request. The defaults return the first 1,000, as this always has.
+        # one request. The defaults return the first 1,000, as this always has. The
+        # cursor, not an offset, is what keeps a scan running alongside the walk from
+        # making it repeat or skip a task.
         page_size=page_size,
-        page=page,
+        after_task_id=str(after_task_id) if after_task_id is not None else None,
         org_scope=org_scope,
         reported_by_source_id=discovery_source_id,
         reported_since=reported_since,

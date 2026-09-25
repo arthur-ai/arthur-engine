@@ -8,6 +8,7 @@ reported in a window, provenance intact.
 """
 
 import uuid
+from collections.abc import Callable
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -296,6 +297,29 @@ def test_agent_tasks_since_include_rescanned_tasks_and_exclude_stale_ones(
         _cleanup(task_ids)
 
 
+def _walk_agent_tasks(
+    client: GenaiEngineTestClientBase,
+    source_id: uuid.UUID,
+    page_size: int,
+    between_pages: Callable[[list[list[str]]], None] = lambda pages: None,
+) -> list[list[str]]:
+    """Page through a source's tasks the way the fetch job does, until a short page."""
+    pages: list[list[str]] = []
+    after_task_id = None
+    while True:
+        status_code, agent_tasks = client.get_agent_tasks(
+            discovery_source_id=source_id,
+            after_task_id=after_task_id,
+            page_size=page_size,
+        )
+        assert status_code == 200
+        pages.append([task.id for task in agent_tasks])
+        if len(agent_tasks) < page_size:
+            return pages
+        after_task_id = agent_tasks[-1].id
+        between_pages(pages)
+
+
 @pytest.mark.unit_tests
 def test_agent_tasks_for_a_source_page_through_every_task_once(
     client: GenaiEngineTestClientBase,
@@ -315,21 +339,91 @@ def test_agent_tasks_for_a_source_page_through_every_task_once(
     task_ids = [r.task_id for r in batch.resolved]
 
     try:
-        pages = []
-        for page in range(4):
-            status_code, agent_tasks = client.get_agent_tasks(
-                discovery_source_id=source_id,
-                page=page,
-                page_size=2,
-            )
-            assert status_code == 200
-            pages.append([task.id for task in agent_tasks])
+        pages = _walk_agent_tasks(client, source_id, page_size=2)
 
-        assert [len(ids) for ids in pages] == [2, 2, 1, 0]
+        assert [len(ids) for ids in pages] == [2, 2, 1]
         seen = [task_id for ids in pages for task_id in ids]
         assert sorted(seen) == sorted(task_ids)
     finally:
         _cleanup(task_ids)
+
+
+@pytest.mark.unit_tests
+def test_agent_tasks_walk_neither_repeats_nor_skips_when_a_scan_changes_tasks(
+    client: GenaiEngineTestClientBase,
+):
+    """Another scan minting or archiving tasks mid-walk moves no page boundary.
+
+    With offsets, a task minted ahead of the next page pushes a seen task onto it, and
+    one archived behind it pulls an unseen task off it; the second reads downstream as
+    an agent that disappeared. The cursor is a position in the ordering, so neither
+    moves it. The minted task sorts ahead of the cursor, so this walk does not return
+    it; the next fetch does.
+    """
+    run = uuid.uuid4().hex[:8]
+    source_id = uuid.uuid4()
+
+    _, batch = client.resolve_discovered_agents(
+        [_record(f"{run}-{i}", name=f"Walked {i}") for i in range(6)],
+        source_id=source_id,
+    )
+    task_ids = [r.task_id for r in batch.resolved]
+    minted_task_ids: list[str] = []
+    archived_task_ids: list[str] = []
+
+    def another_scan_runs(pages: list[list[str]]) -> None:
+        if len(pages) != 1:
+            return
+        _, minted = client.resolve_discovered_agents(
+            [_record(f"{run}-minted", name="Minted mid-walk")],
+            source_id=source_id,
+        )
+        minted_task_ids.append(minted.resolved[0].task_id)
+        # Archive a task the walk has already returned.
+        archived_task_ids.append(pages[0][0])
+        db_session = override_get_db_session()
+        try:
+            db_session.query(DatabaseTask).filter(
+                DatabaseTask.id == archived_task_ids[0],
+            ).update({"archived": True}, synchronize_session=False)
+            db_session.commit()
+        finally:
+            db_session.close()
+
+    try:
+        pages = _walk_agent_tasks(
+            client,
+            source_id,
+            page_size=2,
+            between_pages=another_scan_runs,
+        )
+        seen = [task_id for ids in pages for task_id in ids]
+        assert len(seen) == len(set(seen))
+        assert sorted(seen) == sorted(task_ids)
+        assert minted_task_ids[0] not in seen
+
+        # The next fetch sees the world as it is now.
+        after = {
+            task_id
+            for ids in _walk_agent_tasks(client, source_id, page_size=2)
+            for task_id in ids
+        }
+        assert after == (set(task_ids) - set(archived_task_ids)) | set(minted_task_ids)
+    finally:
+        _cleanup(task_ids + minted_task_ids)
+
+
+@pytest.mark.unit_tests
+def test_agent_tasks_after_an_unknown_task_is_not_found(
+    client: GenaiEngineTestClientBase,
+):
+    """A cursor naming no task is an error, not a silent restart from the top."""
+    status_code, _ = client.get_agent_tasks(
+        discovery_source_id=uuid.uuid4(),
+        after_task_id=str(uuid.uuid4()),
+    )
+
+    assert status_code == 404
 
 
 @pytest.mark.unit_tests

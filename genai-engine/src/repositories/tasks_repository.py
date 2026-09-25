@@ -28,7 +28,7 @@ from arthur_common.models.enums import (
 from fastapi import HTTPException
 from openinference.semconv.trace import OpenInferenceSpanKindValues
 from opentelemetry import trace
-from sqlalchemy import asc, desc, func
+from sqlalchemy import and_, asc, desc, func, or_
 from sqlalchemy.orm import Session
 
 from db_models import (
@@ -100,6 +100,7 @@ class TaskRepository:
         org_scope: Optional[UUID] = None,
         reported_by_source_id: Optional[UUID] = None,
         reported_since: Optional[datetime] = None,
+        after_task_id: Optional[str] = None,
     ) -> tuple[list[DatabaseTask], int]:
         stmt = self.db_session.query(DatabaseTask)
         # Tenant callers see only their own org's tasks. Admin (org_scope=None)
@@ -192,6 +193,39 @@ class TaskRepository:
         # and paging through tasks created in the same instant neither skips nor
         # repeats any.
         stmt = stmt.order_by(ordering, DatabaseTask.id)
+
+        # Keyset paging: resume after a task the caller already has, not at an offset.
+        # An offset moves whenever a task ahead of it is created or archived between
+        # calls, repeating or skipping one; a position in (created_at, id) does not.
+        if after_task_id is not None:
+            if sort_field not in (None, TaskSortField.CREATED_AT):
+                raise ValueError("after_task_id pages on creation time only.")
+            cursor_query = self.db_session.query(DatabaseTask.created_at).filter(
+                DatabaseTask.id == after_task_id,
+            )
+            if org_scope is not None:
+                cursor_query = cursor_query.filter(DatabaseTask.org_id == org_scope)
+            cursor_created_at = cursor_query.scalar()
+            if cursor_created_at is None:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Task %s not found." % after_task_id,
+                    headers={"full_stacktrace": "false"},
+                )
+            if sort == PaginationSortMethod.ASCENDING:
+                past_cursor = DatabaseTask.created_at > cursor_created_at
+            else:
+                past_cursor = DatabaseTask.created_at < cursor_created_at
+            # IDs break ties ascending in either direction, as in the ordering above.
+            stmt = stmt.where(
+                or_(
+                    past_cursor,
+                    and_(
+                        DatabaseTask.created_at == cursor_created_at,
+                        DatabaseTask.id > after_task_id,
+                    ),
+                ),
+            )
 
         # Calculate the count prior to applying the offset
         count = stmt.count()
