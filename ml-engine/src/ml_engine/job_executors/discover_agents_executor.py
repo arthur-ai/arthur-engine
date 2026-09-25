@@ -21,7 +21,6 @@ from arthur_client.api_bindings import (
     Job,
     PutAgents,
 )
-from arthur_client.api_bindings.rest import RESTResponse
 from genai_client import (
     AgentDiscoveryApi,
     ApiClient,
@@ -40,17 +39,6 @@ from job_executors.discovery_scan import (
     run_source_scan,
 )
 from log_redaction import register_secrets, secret_values
-
-# The generated client declares the credentials route as `Dict[str, Optional[str]]`, a
-# type string its own deserializer cannot resolve: it looks `Optional[str]` up as a
-# model class and raises AttributeError on every successful response. The route returns
-# `dict[str, str]`, so the response is decoded against that instead, through the same
-# deserializer, which still raises the client's ApiException for an error status.
-_CREDENTIALS_RESPONSE_TYPES: dict[str, Optional[str]] = {
-    "200": "Dict[str, str]",
-    "422": "HTTPValidationError",
-    "500": "InternalServerError",
-}
 
 
 class DiscoverAgentsExecutor:
@@ -195,17 +183,10 @@ class DiscoverAgentsExecutor:
 
         config_id = outcome.discovery_source_config_id
         try:
-            response = RESTResponse(
-                self.discovery_sources_client.retrieve_discovery_source_credentials_without_preload_content(
-                    config_id,
-                ),
-            )
-            response.read()
             credentials: dict[str, Optional[str]] = (
-                self.discovery_sources_client.api_client.response_deserialize(
-                    response_data=response,
-                    response_types_map=_CREDENTIALS_RESPONSE_TYPES,
-                ).data
+                self.discovery_sources_client.retrieve_discovery_source_credentials(
+                    config_id,
+                )
             )
         except Exception as e:
             # Reported without a scrub set: nothing was returned, so there is no
