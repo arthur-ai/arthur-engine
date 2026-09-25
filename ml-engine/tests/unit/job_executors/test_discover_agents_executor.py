@@ -18,6 +18,7 @@ from arthur_client.api_bindings import (
 from arthur_client.api_bindings.exceptions import ForbiddenException
 from arthur_client.api_bindings.rest import RESTResponse
 from arthur_common.models.agent_discovery_schemas import DiscoveryOutputRecord
+from genai_client import EnrichedTaskResponse
 
 from job_executors.discover_agents_executor import DiscoverAgentsExecutor
 from job_executors.discovery_scan import (
@@ -944,6 +945,117 @@ def test_a_denied_credentials_read_still_fails_the_run() -> None:
     assert outcome["succeeded"] is False
     assert outcome["records_published"] == 0
     assert sink.batches == []
+
+
+OTEL_SOURCE = {
+    "type": "OTEL",
+    "service_names": ["checkout-agent"],
+    "vendor": None,
+    "address": None,
+    "observations": {},
+}
+PII_CONFIG = {
+    "disabled_pii_entities": ["EMAIL_ADDRESS"],
+    "confidence_threshold": 0.5,
+    "allow_list": ["arthur.ai"],
+}
+
+
+def _rule(rule_type: str, config: dict[str, object] | None) -> dict[str, object]:
+    return {
+        "id": f"rule-{rule_type}",
+        "name": rule_type,
+        "type": rule_type,
+        "apply_to_prompt": True,
+        "apply_to_response": False,
+        "scope": "task",
+        "created_at": 0,
+        "updated_at": 0,
+        "config": config,
+    }
+
+
+def _enriched_task(
+    task_id: str,
+    rules: list[dict[str, object]] | None = None,
+    is_autocreated: bool = True,
+    creation_source: dict[str, object] | None = OTEL_SOURCE,
+) -> EnrichedTaskResponse:
+    """A task as GenAI Engine's enriched-tasks route returns it, through genai_client."""
+    return EnrichedTaskResponse.from_dict(
+        {
+            "id": task_id,
+            "name": task_id,
+            "created_at": "2026-09-25T00:00:00Z",
+            "updated_at": "2026-09-25T00:00:00Z",
+            "is_autocreated": is_autocreated,
+            "creation_source": creation_source,
+            "rules": rules or [],
+        }
+    )
+
+
+def _published_agents(tasks: list[EnrichedTaskResponse]) -> list[dict[str, object]]:
+    """The agents the sweep PUTs, as the request body carries them."""
+    agents_client = MagicMock()
+    agents_client.put_agents.return_value.agents = []
+    DiscoverAgentsExecutor(
+        agents_client=agents_client,
+        logger=logging.getLogger("test-agents-sync"),
+        genai_engine_url="http://genai",
+        genai_engine_api_key="key",
+    )._publish_to_agents_api(WORKSPACE_ID, DATA_PLANE_ID, tasks)
+    if not agents_client.put_agents.called:
+        return []
+    body = agents_client.put_agents.call_args.kwargs["put_agents"].to_dict()
+    return list(body["agents"])
+
+
+def test_the_agents_sync_sends_each_rule_config_as_its_rule_type() -> None:
+    """Both generated clients decode a PII config as ToxicityConfig, which serializes
+    it back with a `threshold` no platform config type accepts -- and one such rule
+    got the whole PUT refused, so no agent reached the Platform."""
+    [agent] = _published_agents(
+        [
+            _enriched_task(
+                "t1",
+                rules=[
+                    _rule("PIIDataRule", PII_CONFIG),
+                    _rule("ToxicityRule", {"threshold": 0.7}),
+                    _rule("RegexRule", {"regex_patterns": ["\\d{3}-\\d{4}"]}),
+                    _rule("PromptInjectionRule", None),
+                ],
+            )
+        ]
+    )
+
+    configs = {rule["type"]: rule.get("config") for rule in agent["rules"]}
+    assert configs == {
+        "PIIDataRule": PII_CONFIG,
+        "ToxicityRule": {"threshold": 0.7},
+        "RegexRule": {"regex_patterns": ["\\d{3}-\\d{4}"]},
+        "PromptInjectionRule": None,
+    }
+
+
+def test_a_task_without_a_creation_source_is_sent_as_manual_only_if_made_by_hand() -> (
+    None
+):
+    """The Agents API refuses an agent that names no sensor (D-03), and one refused
+    agent fails the whole PUT, so an auto-created task nobody recorded a source for
+    is left out rather than sent -- and never guessed at."""
+    agents = _published_agents(
+        [
+            _enriched_task("hand-made", is_autocreated=False, creation_source=None),
+            _enriched_task("unattributed", is_autocreated=True, creation_source=None),
+            _enriched_task("discovered"),
+        ]
+    )
+
+    by_task = {agent["task_id"]: agent for agent in agents}
+    assert set(by_task) == {"hand-made", "discovered"}
+    assert by_task["hand-made"]["creation_source"] == {"type": "MANUAL"}
+    assert by_task["discovered"]["creation_source"]["type"] == "OTEL"  # type: ignore[index]
 
 
 def test_job_without_a_source_config_runs_the_gcp_sweep() -> None:
