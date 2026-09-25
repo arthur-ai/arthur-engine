@@ -4,7 +4,11 @@ import uuid
 from datetime import datetime
 from typing import Any, Optional
 
-from arthur_common.models.agent_governance_schemas import SourceClass
+from arthur_common.models.agent_governance_schemas import (
+    Platform,
+    RunsOn,
+    SourceClass,
+)
 from sqlalchemy import (
     JSON,
     TIMESTAMP,
@@ -86,6 +90,29 @@ class DatabaseTaskProvenanceSource(Base):
     # out-of-order batch cannot make an agent look staler than it is. Null for rows
     # written before it was stored.
     last_seen: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP, nullable=True)
+    # Where the record said the machine is, and which OS it runs, when the source could
+    # tell. Per report rather than per task, so two sensors that disagree are both kept;
+    # the task serves one answer of each, picked when provenance is assembled. A report
+    # that says nothing keeps what an earlier one said, and a `runs_on` of UNKNOWN says
+    # nothing. Null for rows written before these were stored.
+    runs_on: Mapped[Optional[RunsOn]] = mapped_column(
+        Enum(
+            RunsOn,
+            values_callable=lambda e: [x.value for x in e],
+            native_enum=False,
+            create_constraint=False,
+        ),
+        nullable=True,
+    )
+    platform: Mapped[Optional[Platform]] = mapped_column(
+        Enum(
+            Platform,
+            values_callable=lambda e: [x.value for x in e],
+            native_enum=False,
+            create_constraint=False,
+        ),
+        nullable=True,
+    )
 
     __table_args__ = (
         Index(

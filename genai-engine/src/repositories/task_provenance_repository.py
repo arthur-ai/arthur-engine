@@ -1,11 +1,22 @@
 import logging
 from collections import defaultdict
 from datetime import datetime, timezone
-from typing import Iterable, Optional
+from typing import Iterable, NamedTuple, Optional
 from uuid import UUID
 
-from arthur_common.models.agent_governance_schemas import ProvenanceSource
-from sqlalchemy import ColumnElement, Select, SQLColumnExpression, func, select
+from arthur_common.models.agent_governance_schemas import (
+    Platform,
+    ProvenanceSource,
+    RunsOn,
+)
+from sqlalchemy import (
+    ColumnElement,
+    Select,
+    SQLColumnExpression,
+    func,
+    literal,
+    select,
+)
 from sqlalchemy.dialects.postgresql import Insert as PGInsertType
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.dialects.sqlite import Insert as SQLiteInsertType
@@ -56,6 +67,46 @@ def _later_of(
     return func.max(stored_or_incoming, incoming_or_stored)
 
 
+def _runs_on_to_keep(
+    incoming: Optional[RunsOn],
+    earlier: Optional[RunsOn],
+) -> Optional[RunsOn]:
+    """The `runs_on` a report leaves behind: its own answer only if it has one.
+
+    UNKNOWN is a sensor saying it cannot tell, which is no more an answer than silence,
+    so neither replaces a location already known. The same rule the served provenance
+    applies across rows, applied within one; `_runs_on_kept` is its SQL twin.
+    """
+    if incoming is not None and incoming is not RunsOn.UNKNOWN:
+        return incoming
+    return earlier if earlier is not None else incoming
+
+
+def _runs_on_kept(
+    stored: SQLColumnExpression[Optional[RunsOn]],
+    incoming: SQLColumnExpression[Optional[RunsOn]],
+) -> ColumnElement[Optional[RunsOn]]:
+    """`_runs_on_to_keep`, in SQL, for a report landing on a stored row."""
+    return func.coalesce(
+        func.nullif(incoming, literal(RunsOn.UNKNOWN.value)),
+        stored,
+        incoming,
+    )
+
+
+class ProvenanceReport(NamedTuple):
+    """One resolved record, as `record_reports` stores it."""
+
+    external_id: str
+    task_id: str
+    entry: ProvenanceSource
+    # Where the record said the machine is and which OS it runs. Beside the entry rather
+    # than on it: a task's provenance serves these as one answer per task, not one per
+    # source, so the entry type has nowhere to carry them.
+    runs_on: Optional[RunsOn] = None
+    platform: Optional[Platform] = None
+
+
 class TaskProvenanceRepository:
     """Reads and writes the per-source provenance rows held against discovered tasks.
 
@@ -67,7 +118,7 @@ class TaskProvenanceRepository:
 
     def record_reports(
         self,
-        reports: Iterable[tuple[str, str, ProvenanceSource]],
+        reports: Iterable[ProvenanceReport],
         reported_at: Optional[datetime] = None,
     ) -> None:
         """Upsert what one scan reported, in a single statement.
@@ -77,22 +128,26 @@ class TaskProvenanceRepository:
         overwritten rather than kept because the resolver just answered for it, and the
         resolver is where identity lives.
 
-        `last_seen` is the one field that is not simply overwritten: it keeps the later
-        of the stored and incoming values, so a batch that arrives out of order cannot
-        move it backwards.
+        `last_seen` is not simply overwritten: it keeps the later of the stored and
+        incoming values, so a batch that arrives out of order cannot move it backwards.
+        Nor are `runs_on` and `platform`: a report that says nothing about them keeps
+        what an earlier one said, since silence is not a new answer -- and a `runs_on`
+        of UNKNOWN says nothing either.
 
         Args:
-            reports: (external_id, task_id, entry) per resolved record. Every entry must
-                carry a `source_id` -- a report with no source cannot be found again by
-                the source that made it. A key repeated within the batch keeps its last
-                occurrence, and the latest `last_seen` among them, since one statement
-                cannot upsert the same row twice.
+            reports: One per resolved record. Every entry must carry a `source_id` -- a
+                report with no source cannot be found again by the source that made it.
+                A key repeated within the batch keeps its last occurrence, the latest
+                `last_seen` among them, and the last `runs_on` and `platform` any of
+                them gave, since one statement cannot upsert the same row twice.
             reported_at: When the scan handed the batch over. Defaults to now.
         """
         now = utc_naive(reported_at or datetime.now(timezone.utc))
         rows: dict[tuple[UUID, str], dict[str, object]] = {}
         latest_seen: dict[tuple[UUID, str], Optional[datetime]] = {}
-        for external_id, task_id, entry in reports:
+        kept_runs_on: dict[tuple[UUID, str], Optional[RunsOn]] = {}
+        kept_platform: dict[tuple[UUID, str], Optional[Platform]] = {}
+        for external_id, task_id, entry, runs_on, platform in reports:
             if entry.source_id is None:
                 raise ValueError(
                     f"Provenance for '{external_id}' has no source_id; a discovery "
@@ -102,6 +157,10 @@ class TaskProvenanceRepository:
             latest_seen[key] = _latest(
                 latest_seen.get(key),
                 utc_naive(entry.last_seen) if entry.last_seen else None,
+            )
+            kept_runs_on[key] = _runs_on_to_keep(runs_on, kept_runs_on.get(key))
+            kept_platform[key] = (
+                platform if platform is not None else kept_platform.get(key)
             )
             rows[key] = {
                 "source_id": entry.source_id,
@@ -115,6 +174,8 @@ class TaskProvenanceRepository:
                 "first_reported_at": now,
                 "last_reported_at": now,
                 "last_seen": latest_seen[key],
+                "runs_on": kept_runs_on[key],
+                "platform": kept_platform[key],
             }
 
         if not rows:
@@ -144,6 +205,14 @@ class TaskProvenanceRepository:
                     DatabaseTaskProvenanceSource.last_seen,
                     stmt.excluded.last_seen,
                     is_postgres,
+                ),
+                "runs_on": _runs_on_kept(
+                    DatabaseTaskProvenanceSource.runs_on,
+                    stmt.excluded.runs_on,
+                ),
+                "platform": func.coalesce(
+                    stmt.excluded.platform,
+                    DatabaseTaskProvenanceSource.platform,
                 ),
             },
         )

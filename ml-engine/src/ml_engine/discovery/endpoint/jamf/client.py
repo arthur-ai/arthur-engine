@@ -30,6 +30,7 @@ from typing import Any, Iterator, Optional
 from urllib.parse import urljoin
 
 import requests
+from arthur_common.models.agent_governance_schemas import Platform
 
 from discovery.endpoint.device import ManagedDevice
 
@@ -51,6 +52,10 @@ PAGE_SIZE = 100
 # Refreshed at 80% of its life rather than on expiry, so a long scan does not discover the
 # token died between two pages.
 TOKEN_REFRESH_RATIO = 0.8
+
+# Jamf's `operatingSystem.name`, lowercased. Jamf Pro inventories Macs, and has called
+# their OS each of these over the years.
+_DARWIN_OS_NAMES = frozenset({"macos", "mac os x", "os x"})
 
 RETRY_STATUSES = frozenset({429, 500, 502, 503, 504})
 MAX_ATTEMPTS = 5
@@ -341,6 +346,14 @@ def _to_device(record: dict[str, Any]) -> ManagedDevice:
         name=general.get("name"),
         group=user.get("department") or user.get("building"),
         os_version=os_block.get("version"),
+        platform=_platform(os_block.get("name")),
         assigned_user=user.get("username"),
         attributes=attributes,
     )
+
+
+def _platform(os_name: Any) -> Optional[Platform]:
+    """The platform Jamf's OS name stands for, or None for one this does not know."""
+    if not isinstance(os_name, str):
+        return None
+    return Platform.DARWIN if os_name.strip().lower() in _DARWIN_OS_NAMES else None

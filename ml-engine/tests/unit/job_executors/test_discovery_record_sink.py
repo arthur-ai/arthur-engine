@@ -12,6 +12,8 @@ from arthur_common.models.agent_discovery_schemas import (
 from arthur_common.models.agent_governance_schemas import (
     AgentObservations,
     EndpointAgentCreationSource,
+    Platform,
+    RunsOn,
     SourceAddress,
 )
 from genai_client import ApiClient, Configuration
@@ -151,8 +153,28 @@ def test_an_unsupplied_column_is_never_an_empty_list(tasks: FakeTasks) -> None:
     _sink().publish("ws", "dp", _config(), [_record()])
 
     record = _body(tasks.requests[0])["records"][0]
-    for column in ("tools", "llm_models", "sub_agents", "data_sources"):
+    for column in (
+        "tools",
+        "llm_models",
+        "sub_agents",
+        "data_sources",
+        "runs_on",
+        "platform",
+    ):
         assert record.get(column) is None, f"{column} was fabricated as a reading"
+
+
+def test_where_the_agent_runs_reaches_the_wire(tasks: FakeTasks) -> None:
+    """Without it GenAI Engine serves every endpoint finding as `runs_on=unknown`, and
+    the Platform cannot show a laptop as a laptop."""
+    located = _record().model_copy(
+        update={"runs_on": RunsOn.ENDPOINT, "platform": Platform.DARWIN},
+    )
+    _sink().publish("ws", "dp", _config(), [located])
+
+    record = _body(tasks.requests[0])["records"][0]
+    assert record["runs_on"] == "endpoint"
+    assert record["platform"] == "darwin"
 
 
 def test_the_record_keeps_its_own_last_seen(tasks: FakeTasks) -> None:

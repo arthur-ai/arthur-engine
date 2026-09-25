@@ -10,7 +10,10 @@ from sqlalchemy.orm import Session
 
 from db_models import DatabaseTask
 from repositories.service_name_mapping_repository import ServiceNameMappingRepository
-from repositories.task_provenance_repository import TaskProvenanceRepository
+from repositories.task_provenance_repository import (
+    ProvenanceReport,
+    TaskProvenanceRepository,
+)
 from repositories.tasks_repository import TaskRepository
 from schemas.agent_discovery_schemas import (
     DiscoveredRecordFailureReason,
@@ -167,7 +170,7 @@ class DiscoveryTaskResolutionService:
 
         resolved: list[ResolvedAgentTask] = []
         failed: list[FailedDiscoveredRecord] = []
-        reports: list[tuple[str, str, ProvenanceSource]] = []
+        reports: list[ProvenanceReport] = []
         for record in records:
             if record.task_id and record.task_id not in known_tasks:
                 failed.append(self._task_not_found(record, record.task_id))
@@ -186,14 +189,16 @@ class DiscoveryTaskResolutionService:
 
             resolved.append(resolution)
             reports.append(
-                (
-                    record.external_id,
-                    resolution.task_id,
-                    ProvenanceSource.from_creation_source(
+                ProvenanceReport(
+                    external_id=record.external_id,
+                    task_id=resolution.task_id,
+                    entry=ProvenanceSource.from_creation_source(
                         record.task_creation_source,
                         source_id=source_id,
                         last_seen=record.last_seen,
                     ),
+                    runs_on=record.runs_on,
+                    platform=record.platform,
                 ),
             )
 

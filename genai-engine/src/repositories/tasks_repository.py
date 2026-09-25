@@ -13,8 +13,10 @@ from arthur_common.models.agent_governance_schemas import (
     LLMModel,
     ManualAgentCreationSource,
     OTELAgentCreationSource,
+    Platform,
     Provenance,
     ProvenanceSource,
+    RunsOn,
     SourceAddress,
     SubAgent,
     TaskMetadata,
@@ -466,6 +468,9 @@ class TaskRepository:
         its report, may have rows only from sources that converged on it later, and
         dropping the finding then loses the source that actually found the agent.
 
+        `runs_on` and `platform` are one answer each per task, however many reports it
+        has; see `_served_location` for which report's answer is served.
+
         Args:
             creation_source: The task's creation source, as served.
             provenance_rows: The task's stored reports, oldest first.
@@ -507,7 +512,43 @@ class TaskRepository:
 
         if not sources:
             return None
-        return Provenance(sources=sources)
+        runs_on, platform = TaskRepository._served_location(
+            creation_source,
+            provenance_rows,
+        )
+        return Provenance(sources=sources, runs_on=runs_on, platform=platform)
+
+    @staticmethod
+    def _served_location(
+        creation_source: Optional[AgentCreationSource],
+        provenance_rows: list[DatabaseTaskProvenanceSource],
+    ) -> tuple[RunsOn, Optional[Platform]]:
+        """Where a task's agent runs and on which OS, as one answer each.
+
+        The most recently reported answer wins, since the agent may have moved. UNKNOWN
+        is a sensor saying it cannot tell, so it never replaces one that could. A legacy
+        GCP task is a Vertex AI Agent Engine deployment, so it runs on GCP whatever any
+        report says: the answer is fixed by what the task is.
+
+        Returns:
+            runs_on, UNKNOWN when nothing could tell; and platform, None when nothing
+            said.
+        """
+        runs_on: Optional[RunsOn] = None
+        platform: Optional[Platform] = None
+        # Oldest report first, so a later answer replaces an earlier one. Rows reported
+        # by the same scan tie, and keep the order they were listed in.
+        for row in sorted(provenance_rows, key=lambda row: row.last_reported_at):
+            if row.runs_on is not None and row.runs_on is not RunsOn.UNKNOWN:
+                runs_on = row.runs_on
+            if row.platform is not None:
+                platform = row.platform
+        if creation_source is not None and isinstance(
+            creation_source.root,
+            GCPAgentCreationSource,
+        ):
+            runs_on = RunsOn.GCP
+        return runs_on or RunsOn.UNKNOWN, platform
 
     @staticmethod
     def _reports_same_finding(

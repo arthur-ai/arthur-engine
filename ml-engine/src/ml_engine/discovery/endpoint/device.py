@@ -8,6 +8,8 @@ downstream sees Jamf's `managementId`, Intune's `azureADDeviceId` or Kandji's
 from dataclasses import dataclass, field
 from typing import Mapping, Optional
 
+from arthur_common.models.agent_governance_schemas import Platform
+
 
 @dataclass(frozen=True)
 class ManagedDevice:
@@ -31,6 +33,14 @@ class ManagedDevice:
     name: Optional[str] = None
     group: Optional[str] = None
     os_version: Optional[str] = None
+    platform: Optional[Platform] = None
+    """Which OS the device runs, mapped from the MDM's own name for it.
+
+    None when the MDM's name is not one this package recognises, rather than a guess: a
+    wrong OS is worse than an absent one, since it would silently land an agent under
+    the wrong filter.
+    """
+
     assigned_user: Optional[str] = None
 
     attributes: Mapping[str, Optional[str]] = field(default_factory=dict)
