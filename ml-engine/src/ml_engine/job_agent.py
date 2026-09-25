@@ -8,7 +8,6 @@ from typing import Dict
 
 import psutil
 from arthur_client.api_bindings import (
-    ApiClient,
     Job,
     JobDequeueParameters,
     JobLog,
@@ -21,16 +20,10 @@ from arthur_client.api_bindings import (
     UsersV1Api,
 )
 from arthur_client.api_bindings.exceptions import ApiException
-from arthur_client.auth import (
-    ArthurClientCredentialsAPISession,
-    ArthurOAuthSessionAPIConfiguration,
-    ArthurOIDCMetadata,
-)
 
-from config import Config
 from health_check import MLEngineHealthCheck as HealthCheck
 from job_runner import JobRunner, ProcessJobRunner, ThreadJobRunner
-from tools.engine_version import set_engine_version_header
+from tools.platform_api_client import build_platform_api_client
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()
@@ -46,28 +39,7 @@ class RunningJob:
 
 class JobAgent:
     def __init__(self, shutdown_grace_period_seconds: int = 15) -> None:
-        ssl_verify = Config.get_bool(
-            "ARTHUR_API_HOST_SSL_VERIFY",
-            True,
-            fallback_keys=["KEYCLOAK_SSL_VERIFY"],
-        )
-        sess = ArthurClientCredentialsAPISession(
-            client_id=Config.settings.ARTHUR_CLIENT_ID,
-            client_secret=Config.settings.ARTHUR_CLIENT_SECRET,
-            metadata=ArthurOIDCMetadata(
-                arthur_host=Config.settings.ARTHUR_API_HOST,
-                verify_ssl=ssl_verify,
-            ),
-            verify=ssl_verify,
-        )
-        client = set_engine_version_header(
-            ApiClient(
-                configuration=ArthurOAuthSessionAPIConfiguration(
-                    session=sess,
-                    verify_ssl=ssl_verify,
-                ),
-            ),
-        )
+        client = build_platform_api_client()
         self.jobs_client = JobsV1Api(client)
         users_client = UsersV1Api(client)
         dpid = users_client.get_users_me().data_plane_id
