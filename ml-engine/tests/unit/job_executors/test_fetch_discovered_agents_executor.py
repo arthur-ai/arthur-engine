@@ -190,7 +190,7 @@ def test_an_upload_failure_fails_the_job_after_the_pages_before_it_landed(
 
 
 def test_an_agent_carries_its_task_and_its_provenance() -> None:
-    agent = enriched_task_to_agent(_task("t1"), DATA_PLANE_ID, include_provenance=True)
+    agent = enriched_task_to_agent(_task("t1"), DATA_PLANE_ID)
 
     assert agent.task_id == "t1"
     assert agent.data_plane_id == DATA_PLANE_ID
@@ -208,12 +208,3 @@ def test_the_fetch_job_uploads_provenance(tasks_api: MagicMock) -> None:
 
     [agent] = agents_client.put_agents.call_args.kwargs["put_agents"].agents
     assert agent.provenance is not None
-
-
-def test_the_gcp_sweeps_agents_keep_the_shape_they_had() -> None:
-    """The Platform reads infrastructure off provenance when it is present, so the
-    sweep, which uploads OTEL tasks too, leaves it out until D-14."""
-    agent = enriched_task_to_agent(_task("t1"), DATA_PLANE_ID, include_provenance=False)
-
-    assert agent.provenance is None
-    assert agent.task_id == "t1"

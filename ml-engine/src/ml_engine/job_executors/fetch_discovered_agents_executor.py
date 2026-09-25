@@ -131,7 +131,6 @@ class FetchDiscoveredAgentsExecutor:
                         workspace_id,
                         data_plane_id,
                         tasks,
-                        include_provenance=True,
                     )
                 # A short page is the last one, which is how the endpoint says so.
                 if len(tasks) < self.page_size:
@@ -155,13 +154,12 @@ def publish_enriched_tasks(
     workspace_id: str,
     data_plane_id: str,
     enriched_tasks: List[EnrichedTaskResponse],
-    include_provenance: bool,
 ) -> int:
     """Convert enriched tasks to agents and upsert them. Returns how many were upserted."""
     agent_objects: list[ScopeAgent] = []
     unattributed: list[str] = []
     for task in enriched_tasks:
-        agent = enriched_task_to_agent(task, data_plane_id, include_provenance)
+        agent = enriched_task_to_agent(task, data_plane_id)
         if agent is None:
             unattributed.append(task.id)
         else:
@@ -191,20 +189,18 @@ def publish_enriched_tasks(
 def enriched_task_to_agent(
     enriched_task: EnrichedTaskResponse,
     data_plane_id: str,
-    include_provenance: bool,
 ) -> Optional[ScopeAgent]:
     """Convert a genai_client EnrichedTaskResponse to an arthur_client Agent.
 
     Bridges between the two auto-generated client libraries by converting
     via dict representation and remapping fields.
 
-    `provenance` crosses as-is when included: both clients generate it from the one
-    arthur_common model, and the Platform's input form reads only the fields it stores,
-    leaving the derived `source_classes` behind. It is left out for the GCP sweep: the
-    Platform reads an agent's infrastructure off `provenance.runs_on` whenever
-    provenance is present and off its data plane otherwise, and the sweep uploads every
-    agentic task, OTEL ones included, so sending it there would change what those
-    agents show until D-14 moves GCP onto discovery.
+    The task's provenance is forwarded as GenAI Engine serves it (D-09). The Platform
+    reads an agent's `infrastructure` from `provenance.runs_on` and, for an agent
+    without provenance, falls back to the reporting engine's own cloud -- so without
+    it every endpoint finding renders as running on AWS. It crosses as-is: both
+    clients generate it from the one arthur_common model, and the Platform's input
+    form reads only the fields it stores, leaving the derived `source_classes` behind.
 
     None for an auto-created task with no creation source. The Agents API refuses an
     agent that names no sensor (D-03), and naming one here would misreport who found
@@ -223,7 +219,7 @@ def enriched_task_to_agent(
         "task_id": task_dict.get("id"),
         "data_plane_id": data_plane_id,
         "creation_source": creation_source,
-        "provenance": task_dict.get("provenance") if include_provenance else None,
+        "provenance": task_dict.get("provenance"),
         "model_id": None,
         "num_spans": task_dict.get("num_spans") or 0,
         "is_autocreated": task_dict.get("is_autocreated", True),

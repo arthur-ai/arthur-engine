@@ -517,7 +517,6 @@ class DiscoverAgentsExecutor:
             workspace_id,
             data_plane_id,
             enriched_tasks,
-            include_provenance=False,
         )
 
         self.logger.info(

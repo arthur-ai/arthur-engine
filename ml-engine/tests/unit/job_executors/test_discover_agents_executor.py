@@ -990,6 +990,7 @@ def _enriched_task(
     rules: list[dict[str, object]] | None = None,
     is_autocreated: bool = True,
     creation_source: dict[str, object] | None = OTEL_SOURCE,
+    provenance: dict[str, object] | None = None,
 ) -> EnrichedTaskResponse:
     """A task as GenAI Engine's enriched-tasks route returns it, through genai_client."""
     return EnrichedTaskResponse.from_dict(
@@ -1000,6 +1001,7 @@ def _enriched_task(
             "updated_at": "2026-09-25T00:00:00Z",
             "is_autocreated": is_autocreated,
             "creation_source": creation_source,
+            "provenance": provenance,
             "rules": rules or [],
         }
     )
@@ -1066,6 +1068,42 @@ def test_a_task_without_a_creation_source_is_sent_as_manual_only_if_made_by_hand
     assert set(by_task) == {"hand-made", "discovered"}
     assert by_task["hand-made"]["creation_source"] == {"type": "MANUAL"}
     assert by_task["discovered"]["creation_source"]["type"] == "OTEL"  # type: ignore[index]
+
+
+def test_the_agents_sync_forwards_each_tasks_provenance() -> None:
+    """The Platform reads `infrastructure` from `provenance.runs_on`, and without
+    provenance falls back to the reporting engine's cloud -- so a Jamf finding sent
+    without it renders as running on AWS."""
+    jamf_provenance = {
+        "sources": [
+            {
+                "source_class": "endpoint",
+                "source_id": None,
+                "vendor": "jamf_pro",
+                "address": {
+                    "instance": "C02XK0ABCDEF",
+                    "resource_kind": "app",
+                    "resource_id": "claude-code",
+                },
+            }
+        ],
+        "runs_on": "endpoint",
+        "platform": "darwin",
+        "source_classes": ["endpoint"],
+    }
+    agents = _published_agents(
+        [
+            _enriched_task("jamf", provenance=jamf_provenance),
+            _enriched_task("otel"),
+        ]
+    )
+
+    by_task = {agent["task_id"]: agent for agent in agents}
+    provenance = by_task["jamf"]["provenance"]
+    assert provenance["runs_on"] == "endpoint"  # type: ignore[index]
+    assert provenance["platform"] == "darwin"  # type: ignore[index]
+    assert [s["vendor"] for s in provenance["sources"]] == ["jamf_pro"]  # type: ignore[index]
+    assert by_task["otel"].get("provenance") is None
 
 
 def test_job_without_a_source_config_runs_the_gcp_sweep() -> None:
