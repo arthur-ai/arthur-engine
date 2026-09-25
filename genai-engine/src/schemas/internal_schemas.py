@@ -2,10 +2,12 @@ import json
 import logging
 import uuid
 from datetime import datetime
-from typing import Any, Dict, List, Literal, Optional, Union
+from typing import Any, Dict, List, Literal, Optional, Union, cast
 
 from arthur_common.models.agent_governance_schemas import (
     AgentCreationSource,
+    AgentCreationSourceBase,
+    CloudAgentCreationSource,
     GCPAgentCreationSource,
     ManualAgentCreationSource,
     TaskMetadata,
@@ -583,6 +585,50 @@ class TaskToMetricLink(BaseModel):
         )
 
 
+GCP_VERTEX_VENDOR = "gcp_vertex"
+
+
+def _legacy_gcp_metadata(
+    creation_source: AgentCreationSourceBase,
+) -> Optional[GCPAgentMetadataResponse]:
+    """Legacy GCP metadata for a Vertex finding, in either shape it can arrive in.
+
+    A Vertex finding is a CLOUD source with vendor gcp_vertex in arthur_common's
+    category model, and a GCPAgentCreationSource in the deprecated flat shape that
+    still backs stored rows. Both must map to provider=GCP here, or every Vertex task
+    silently reports EXTERNAL the moment the stored rows are migrated (D-14).
+
+    Returns None for everything else, which the legacy RegisteredAgentProvider can
+    only describe as EXTERNAL -- it has exactly two values.
+    """
+    if isinstance(creation_source, GCPAgentCreationSource):
+        return GCPAgentMetadataResponse(
+            project_id=creation_source.gcp_project_id,
+            region=creation_source.gcp_region,
+            resource_id=creation_source.gcp_reasoning_engine_id,
+        )
+
+    if (
+        isinstance(creation_source, CloudAgentCreationSource)
+        and creation_source.vendor == GCP_VERTEX_VENDOR
+    ):
+        address = creation_source.address
+        return GCPAgentMetadataResponse(
+            project_id=address.instance,
+            # `scope` is Optional on SourceAddress -- endpoints have no subdivision
+            # and a SIEM query may span every index -- but arthur_common 2.4.78 makes
+            # it mandatory on a CLOUD source, rejecting a missing or empty region. So
+            # it is narrowed rather than defaulted: `or ""` used to put a region of ""
+            # on the wire, describing an agent as running somewhere that does not
+            # exist. If that guarantee is ever lost, GCPAgentMetadataResponse rejects
+            # None by name, which beats any check written here.
+            region=cast(str, address.scope),
+            resource_id=address.resource_id,
+        )
+
+    return None
+
+
 class Task(BaseModel):
     id: str
     name: str
@@ -701,21 +747,16 @@ class Task(BaseModel):
         if self.task_metadata and self.task_metadata.creation_source:
             cs = self.task_metadata.creation_source.root
             svc_names = self.service_names or None
-            if isinstance(cs, GCPAgentCreationSource):
-                agent_metadata_response = AgentMetadataResponse(
-                    provider=RegisteredAgentProvider.GCP,
-                    gcp_metadata=GCPAgentMetadataResponse(
-                        project_id=cs.gcp_project_id,
-                        region=cs.gcp_region,
-                        resource_id=cs.gcp_reasoning_engine_id,
-                    ),
-                    service_names=svc_names,
-                )
-            else:
-                agent_metadata_response = AgentMetadataResponse(
-                    provider=RegisteredAgentProvider.EXTERNAL,
-                    service_names=svc_names,
-                )
+            gcp_metadata = _legacy_gcp_metadata(cs)
+            agent_metadata_response = AgentMetadataResponse(
+                provider=(
+                    RegisteredAgentProvider.GCP
+                    if gcp_metadata is not None
+                    else RegisteredAgentProvider.EXTERNAL
+                ),
+                gcp_metadata=gcp_metadata,
+                service_names=svc_names,
+            )
 
         return TaskResponse(
             id=self.id,

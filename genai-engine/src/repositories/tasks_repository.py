@@ -6,12 +6,14 @@ from uuid import UUID
 from arthur_common.models.agent_governance_schemas import (
     AgentCreationSource,
     DataSource,
+    DiscoveryAgentCreationSource,
     EnrichedAgentMetadata,
     GCPAgentCreationSource,
     LLMModel,
     ManualAgentCreationSource,
     OTELAgentCreationSource,
     SubAgent,
+    TaskMetadata,
     Tool,
 )
 from arthur_common.models.enums import (
@@ -292,8 +294,11 @@ class TaskRepository:
 
         Reads creation_source directly from task_metadata.
         For tasks without task_metadata, infers creation source from task properties.
-        Injects task.service_names (from service_name_task_mappings) into the
-        returned GCP/OTEL creation_source.
+        Injects task.service_names (from service_name_task_mappings) into every
+        creation source that has somewhere to put them: a flat field on the
+        pre-category GCP and OTEL variants, and observations.service_names on the
+        discovery categories. MANUAL records a human decision rather than an
+        observation, so it passes through untouched.
 
         Args:
             task: Task object with service_names already populated
@@ -305,14 +310,29 @@ class TaskRepository:
 
         if task.task_metadata and task.task_metadata.creation_source:
             cs = task.task_metadata.creation_source.root
-            if isinstance(cs, GCPAgentCreationSource):
+
+            # The pre-category variants carry service names as a flat field.
+            if isinstance(cs, (GCPAgentCreationSource, OTELAgentCreationSource)):
                 return AgentCreationSource(
                     root=cs.model_copy(update={"service_names": service_names}),
                 )
-            elif isinstance(cs, OTELAgentCreationSource):
+
+            # The discovery categories carry them in observations. Without this they
+            # are dropped: EnrichedTaskResponse has no service_names of its own, so
+            # the creation source is the only route they take to a caller, and the
+            # link between a discovered agent and traces already arriving is exactly
+            # what the fetch job needs.
+            if isinstance(cs, DiscoveryAgentCreationSource):
                 return AgentCreationSource(
-                    root=cs.model_copy(update={"service_names": service_names}),
+                    root=cs.model_copy(
+                        update={
+                            "observations": cs.observations.model_copy(
+                                update={"service_names": service_names},
+                            ),
+                        },
+                    ),
                 )
+
             return AgentCreationSource(root=cs)
 
         # No task_metadata — infer from task properties
@@ -467,6 +487,46 @@ class TaskRepository:
             is_agentic=True,
             is_autocreated=True,
             org_id=DEFAULT_ORG_ID,
+        )
+
+        return self.create_task(task, with_default_rules=False)
+
+    def create_discovered_task(
+        self,
+        name: str,
+        creation_source: AgentCreationSource,
+        org_id: Optional[UUID] = None,
+    ) -> Task:
+        """Create a task for an agent a discovery scan found.
+
+        The same task shape `create_auto_task` mints for an unregistered OTEL trace --
+        agentic, auto-created, no default rules -- differing only in that the sensor
+        that found it is recorded. Discovery and OTEL auto-creation are the same event
+        seen from two sides, and a scan-minted task that looked different from a
+        trace-minted one would show up as two kinds of agent in every downstream view.
+
+        Default rules are deliberately not applied: nobody asked for this task, and a
+        discovered agent that is not sending traces has nothing for a rule to evaluate.
+
+        Args:
+            name: Human-readable agent name, used as the task name.
+            creation_source: The sensor that reported the agent, with its upstream
+                address and observations.
+            org_id: Owning org. Defaults to the `default` org, as discovery is an
+                admin path in the same way OTEL auto-discovery is.
+
+        Returns:
+            Task: The created task.
+        """
+        task = Task(
+            id=str(uuid.uuid4()),
+            name=name,
+            created_at=datetime.now(),
+            updated_at=datetime.now(),
+            is_agentic=True,
+            is_autocreated=True,
+            org_id=org_id or DEFAULT_ORG_ID,
+            task_metadata=TaskMetadata(creation_source=creation_source),
         )
 
         return self.create_task(task, with_default_rules=False)

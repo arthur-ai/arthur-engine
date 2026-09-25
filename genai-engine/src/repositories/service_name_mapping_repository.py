@@ -1,12 +1,16 @@
 import logging
-from typing import Optional
+from typing import Iterable, Optional
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from db_models import DatabaseServiceNameTaskMapping
+from schemas.enums import MappingKeyKind
 
 logger = logging.getLogger(__name__)
+
+# Names per IN clause when looking mappings up in bulk.
+_LOOKUP_CHUNK_SIZE = 500
 
 
 class ServiceNameMappingRepository:
@@ -14,47 +18,95 @@ class ServiceNameMappingRepository:
 
     Handles creation, retrieval, and querying of immutable service name mappings.
     Mappings are never updated once created - they are permanent associations.
+
+    Every lookup is scoped to one `MappingKeyKind`, defaulting to service names, so
+    the external IDs discovery keys into the same table never answer a lookup meant
+    for telemetry, or the other way around.
     """
 
     def __init__(self, db_session: Session):
         self.db_session = db_session
 
-    def get_task_id_by_service_name(self, service_name: str) -> Optional[str]:
+    def get_task_id_by_service_name(
+        self,
+        service_name: str,
+        key_kind: MappingKeyKind = MappingKeyKind.SERVICE_NAME,
+    ) -> Optional[str]:
         """Retrieve task_id for a given service name.
 
         Args:
             service_name: The service name to lookup
+            key_kind: Which kind of key `service_name` is
 
         Returns:
             str: The task_id if mapping exists, None otherwise
         """
-        mapping = (
-            self.db_session.query(DatabaseServiceNameTaskMapping)
-            .filter(DatabaseServiceNameTaskMapping.service_name == service_name)
-            .first()
-        )
+        mapping = self.get_mapping(service_name, key_kind)
         return mapping.task_id if mapping else None
 
-    def mapping_exists(self, service_name: str) -> bool:
+    def get_task_ids_by_service_names(
+        self,
+        service_names: Iterable[str],
+        key_kind: MappingKeyKind = MappingKeyKind.SERVICE_NAME,
+    ) -> dict[str, str]:
+        """Bulk form of `get_task_id_by_service_name`.
+
+        One query for a whole scan's worth of keys instead of one per record. A scan
+        that resolves 500 findings and changes nothing -- the normal case, since scans
+        re-report the same fleet -- then costs a single round trip rather than 500.
+
+        Args:
+            service_names: The service names to look up. Duplicates are fine.
+            key_kind: Which kind of key every name in `service_names` is
+
+        Returns:
+            dict: service_name -> task_id, holding only the names that have a mapping.
+        """
+        names = list(dict.fromkeys(service_names))
+        if not names:
+            return {}
+
+        mappings: dict[str, str] = {}
+        # Chunked because the caller's batch size is not this repository's to trust,
+        # and a few thousand bind parameters is where drivers start refusing the query.
+        for start in range(0, len(names), _LOOKUP_CHUNK_SIZE):
+            chunk = names[start : start + _LOOKUP_CHUNK_SIZE]
+            rows = (
+                self.db_session.query(
+                    DatabaseServiceNameTaskMapping.service_name,
+                    DatabaseServiceNameTaskMapping.task_id,
+                )
+                .filter(
+                    DatabaseServiceNameTaskMapping.service_name.in_(chunk),
+                    DatabaseServiceNameTaskMapping.key_kind == key_kind,
+                )
+                .all()
+            )
+            mappings.update({service_name: task_id for service_name, task_id in rows})
+
+        return mappings
+
+    def mapping_exists(
+        self,
+        service_name: str,
+        key_kind: MappingKeyKind = MappingKeyKind.SERVICE_NAME,
+    ) -> bool:
         """Check if a mapping exists for a service name.
 
         Args:
             service_name: The service name to check
+            key_kind: Which kind of key `service_name` is
 
         Returns:
             bool: True if mapping exists, False otherwise
         """
-        return (
-            self.db_session.query(DatabaseServiceNameTaskMapping.service_name)
-            .filter(DatabaseServiceNameTaskMapping.service_name == service_name)
-            .first()
-            is not None
-        )
+        return self.get_mapping(service_name, key_kind) is not None
 
     def create_mapping(
         self,
         service_name: str,
         task_id: str,
+        key_kind: MappingKeyKind = MappingKeyKind.SERVICE_NAME,
     ) -> DatabaseServiceNameTaskMapping:
         """Create a new service name to task ID mapping.
 
@@ -65,6 +117,7 @@ class ServiceNameMappingRepository:
         Args:
             service_name: The service name
             task_id: The task ID to map to
+            key_kind: Which kind of key `service_name` is
 
         Returns:
             DatabaseServiceNameTaskMapping: The created or existing mapping
@@ -75,6 +128,7 @@ class ServiceNameMappingRepository:
         try:
             mapping = DatabaseServiceNameTaskMapping(
                 service_name=service_name,
+                key_kind=key_kind,
                 task_id=task_id,
             )
             self.db_session.add(mapping)
@@ -87,7 +141,7 @@ class ServiceNameMappingRepository:
             self.db_session.rollback()
 
             # Check if it's a duplicate key error (mapping already exists)
-            existing = self.get_mapping(service_name)
+            existing = self.get_mapping(service_name, key_kind)
             if existing:
                 logger.debug(
                     f"Service name mapping already exists: {service_name} → {existing.task_id}"
@@ -103,18 +157,23 @@ class ServiceNameMappingRepository:
     def get_mapping(
         self,
         service_name: str,
+        key_kind: MappingKeyKind = MappingKeyKind.SERVICE_NAME,
     ) -> Optional[DatabaseServiceNameTaskMapping]:
         """Retrieve full mapping record for a service name.
 
         Args:
             service_name: The service name to lookup
+            key_kind: Which kind of key `service_name` is
 
         Returns:
             DatabaseServiceNameTaskMapping if found, None otherwise
         """
         return (
             self.db_session.query(DatabaseServiceNameTaskMapping)
-            .filter(DatabaseServiceNameTaskMapping.service_name == service_name)
+            .filter(
+                DatabaseServiceNameTaskMapping.service_name == service_name,
+                DatabaseServiceNameTaskMapping.key_kind == key_kind,
+            )
             .first()
         )
 
@@ -137,7 +196,11 @@ class ServiceNameMappingRepository:
             .all()
         )
 
-    def delete_mapping(self, service_name: str) -> bool:
+    def delete_mapping(
+        self,
+        service_name: str,
+        key_kind: MappingKeyKind = MappingKeyKind.SERVICE_NAME,
+    ) -> bool:
         """Delete a service name mapping.
 
         WARNING: This is an admin operation. Deleting mappings can cause
@@ -145,11 +208,12 @@ class ServiceNameMappingRepository:
 
         Args:
             service_name: The service name mapping to delete
+            key_kind: Which kind of key `service_name` is
 
         Returns:
             bool: True if mapping was deleted, False if not found
         """
-        mapping = self.get_mapping(service_name)
+        mapping = self.get_mapping(service_name, key_kind)
         if not mapping:
             return False
 
@@ -162,6 +226,9 @@ class ServiceNameMappingRepository:
     def get_service_names_by_task_id(self, task_id: str) -> list[str]:
         """Get all service names mapped to a task_id (reverse lookup).
 
+        Only service names: a task's external IDs share the table but are not names
+        it emits telemetry under, and this is what callers report as exactly that.
+
         Args:
             task_id: The task ID to look up
 
@@ -170,7 +237,10 @@ class ServiceNameMappingRepository:
         """
         mappings = (
             self.db_session.query(DatabaseServiceNameTaskMapping)
-            .filter(DatabaseServiceNameTaskMapping.task_id == task_id)
+            .filter(
+                DatabaseServiceNameTaskMapping.task_id == task_id,
+                DatabaseServiceNameTaskMapping.key_kind == MappingKeyKind.SERVICE_NAME,
+            )
             .all()
         )
         return [mapping.service_name for mapping in mappings]
