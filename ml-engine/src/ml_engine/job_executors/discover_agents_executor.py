@@ -15,11 +15,19 @@ from typing import List, NoReturn, Optional
 from arthur_client.api_bindings import Agent as ScopeAgent
 from arthur_client.api_bindings import (
     AgentsV1Api,
+)
+from arthur_client.api_bindings import Config as ScopeRuleConfig
+from arthur_client.api_bindings import (
     DiscoverAgentsJobSpec,
     DiscoverySourceConfigSpec,
     DiscoverySourcesV1Api,
+    ExamplesConfig,
     Job,
+    KeywordsConfig,
+    PIIConfig,
     PutAgents,
+    RegexConfig,
+    ToxicityConfig,
 )
 from genai_client import (
     AgentDiscoveryApi,
@@ -39,6 +47,26 @@ from job_executors.discovery_scan import (
     run_source_scan,
 )
 from log_redaction import register_secrets, secret_values
+
+# A rule's config model, by rule type. Both generated clients decode `config` as the
+# first anyOf member that validates, and ToxicityConfig -- every field optional, unknown
+# fields kept -- accepts a PII config; serialized again, it gains `threshold` beside the
+# PII fields, a shape none of the Agents API's config types accepts, and one such rule
+# gets the whole PUT refused. The rule's type says which config it carries.
+_RULE_CONFIG_MODELS: dict[
+    str,
+    type[ExamplesConfig]
+    | type[KeywordsConfig]
+    | type[PIIConfig]
+    | type[RegexConfig]
+    | type[ToxicityConfig],
+] = {
+    "KeywordRule": KeywordsConfig,
+    "ModelSensitiveDataRule": ExamplesConfig,
+    "PIIDataRule": PIIConfig,
+    "RegexRule": RegexConfig,
+    "ToxicityRule": ToxicityConfig,
+}
 
 
 class DiscoverAgentsExecutor:
@@ -411,10 +439,29 @@ class DiscoverAgentsExecutor:
             self.logger.info("No enriched tasks to publish to Agents API")
             return
 
-        agent_objects = [
-            self._convert_enriched_task_to_agent(task, data_plane_id)
-            for task in enriched_tasks
-        ]
+        agent_objects: list[ScopeAgent] = []
+        unattributed: list[str] = []
+        for task in enriched_tasks:
+            agent = self._convert_enriched_task_to_agent(task, data_plane_id)
+            if agent is None:
+                unattributed.append(task.id)
+            else:
+                agent_objects.append(agent)
+
+        if unattributed:
+            # Left out rather than sent: one agent the Agents API refuses fails the
+            # whole PUT, so they would take every other task's agent down with them.
+            self.logger.warning(
+                f"Not publishing {len(unattributed)} auto-created task(s) that GenAI "
+                f"Engine recorded no creation source for: {', '.join(unattributed)}",
+                extra={
+                    "workspace_id": workspace_id,
+                    "num_unattributed": len(unattributed),
+                },
+            )
+        if not agent_objects:
+            self.logger.info("No enriched tasks to publish to Agents API")
+            return
 
         put_request = PutAgents(agents=agent_objects)
         response = self.agents_client.put_agents(
@@ -431,19 +478,29 @@ class DiscoverAgentsExecutor:
     def _convert_enriched_task_to_agent(
         enriched_task: EnrichedTaskResponse,
         data_plane_id: str,
-    ) -> ScopeAgent:
+    ) -> Optional[ScopeAgent]:
         """Convert a genai_client EnrichedTaskResponse to an arthur_client Agent.
 
         Bridges between the two auto-generated client libraries by converting
         via dict representation and remapping fields.
+
+        None for an auto-created task with no creation source. The Agents API refuses an
+        agent that names no sensor (D-03), and naming one here would misreport who found
+        it. A task created by hand in GenAI Engine is sent as MANUAL, which is what it is.
         """
         task_dict = enriched_task.to_dict()
+
+        creation_source = task_dict.get("creation_source")
+        if creation_source is None:
+            if enriched_task.is_autocreated:
+                return None
+            creation_source = {"type": "MANUAL"}
 
         agent_dict = {
             "name": task_dict.get("name"),
             "task_id": task_dict.get("id"),
             "data_plane_id": data_plane_id,
-            "creation_source": task_dict.get("creation_source"),
+            "creation_source": creation_source,
             "model_id": None,
             "num_spans": task_dict.get("num_spans") or 0,
             "is_autocreated": task_dict.get("is_autocreated", True),
@@ -455,4 +512,15 @@ class DiscoverAgentsExecutor:
             "data_sources": task_dict.get("data_sources") or [],
         }
 
-        return ScopeAgent.from_dict(agent_dict)
+        agent = ScopeAgent.from_dict(agent_dict)
+        for rule in agent.rules or []:
+            model = _RULE_CONFIG_MODELS.get(rule.type.value)
+            if model is None or rule.config is None:
+                continue
+            decoded = rule.config.to_dict() or {}
+            rule.config = ScopeRuleConfig(
+                model.from_dict(
+                    {k: v for k, v in decoded.items() if k in model.model_fields},
+                ),
+            )
+        return agent
