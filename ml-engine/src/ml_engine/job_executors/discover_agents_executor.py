@@ -487,6 +487,11 @@ class DiscoverAgentsExecutor:
         None for an auto-created task with no creation source. The Agents API refuses an
         agent that names no sensor (D-03), and naming one here would misreport who found
         it. A task created by hand in GenAI Engine is sent as MANUAL, which is what it is.
+
+        The task's provenance is forwarded as GenAI Engine serves it (D-09). The Platform
+        reads an agent's `infrastructure` from `provenance.runs_on` and, for an agent
+        without provenance, falls back to the reporting engine's own cloud -- so without
+        it every endpoint finding renders as running on AWS.
         """
         task_dict = enriched_task.to_dict()
 
@@ -501,6 +506,7 @@ class DiscoverAgentsExecutor:
             "task_id": task_dict.get("id"),
             "data_plane_id": data_plane_id,
             "creation_source": creation_source,
+            "provenance": task_dict.get("provenance"),
             "model_id": None,
             "num_spans": task_dict.get("num_spans") or 0,
             "is_autocreated": task_dict.get("is_autocreated", True),
