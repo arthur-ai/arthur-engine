@@ -391,7 +391,7 @@ Metadata:
           - AuditLogRetentionPeriod
           - AuditLogOverridePath
       - Label:
-          default: 'Advanced GenAI Engine (LLM)'
+          default: 'Advanced GenAI Engine (Models)'
         Parameters:
           - GenaiEngineSensitiveDataCheckMaxTokenLimit
           - GenaiEngineHallucinationCheckMaxTokenLimit
