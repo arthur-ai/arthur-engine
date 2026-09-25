@@ -1,10 +1,14 @@
 import logging
 from collections import defaultdict
 from datetime import datetime, timezone
-from typing import Iterable, Optional
+from typing import Iterable, NamedTuple, Optional
 from uuid import UUID
 
-from arthur_common.models.agent_governance_schemas import ProvenanceSource
+from arthur_common.models.agent_governance_schemas import (
+    Platform,
+    ProvenanceSource,
+    RunsOn,
+)
 from sqlalchemy import ColumnElement, Select, SQLColumnExpression, func, select
 from sqlalchemy.dialects.postgresql import Insert as PGInsertType
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -56,6 +60,19 @@ def _later_of(
     return func.max(stored_or_incoming, incoming_or_stored)
 
 
+class ProvenanceReport(NamedTuple):
+    """One resolved record, as `record_reports` stores it."""
+
+    external_id: str
+    task_id: str
+    entry: ProvenanceSource
+    # Where the record said the machine is and which OS it runs. Beside the entry rather
+    # than on it: a task's provenance serves these as one answer per task, not one per
+    # source, so the entry type has nowhere to carry them.
+    runs_on: Optional[RunsOn] = None
+    platform: Optional[Platform] = None
+
+
 class TaskProvenanceRepository:
     """Reads and writes the per-source provenance rows held against discovered tasks.
 
@@ -67,7 +84,7 @@ class TaskProvenanceRepository:
 
     def record_reports(
         self,
-        reports: Iterable[tuple[str, str, ProvenanceSource]],
+        reports: Iterable[ProvenanceReport],
         reported_at: Optional[datetime] = None,
     ) -> None:
         """Upsert what one scan reported, in a single statement.
@@ -77,22 +94,23 @@ class TaskProvenanceRepository:
         overwritten rather than kept because the resolver just answered for it, and the
         resolver is where identity lives.
 
-        `last_seen` is the one field that is not simply overwritten: it keeps the later
-        of the stored and incoming values, so a batch that arrives out of order cannot
-        move it backwards.
+        `last_seen` is not simply overwritten: it keeps the later of the stored and
+        incoming values, so a batch that arrives out of order cannot move it backwards.
+        Nor are `runs_on` and `platform`: a report that says nothing about them keeps
+        what an earlier one said, since silence is not a new answer.
 
         Args:
-            reports: (external_id, task_id, entry) per resolved record. Every entry must
-                carry a `source_id` -- a report with no source cannot be found again by
-                the source that made it. A key repeated within the batch keeps its last
-                occurrence, and the latest `last_seen` among them, since one statement
-                cannot upsert the same row twice.
+            reports: One per resolved record. Every entry must carry a `source_id` -- a
+                report with no source cannot be found again by the source that made it.
+                A key repeated within the batch keeps its last occurrence, the latest
+                `last_seen` among them, and the last `runs_on` and `platform` any of
+                them gave, since one statement cannot upsert the same row twice.
             reported_at: When the scan handed the batch over. Defaults to now.
         """
         now = utc_naive(reported_at or datetime.now(timezone.utc))
         rows: dict[tuple[UUID, str], dict[str, object]] = {}
         latest_seen: dict[tuple[UUID, str], Optional[datetime]] = {}
-        for external_id, task_id, entry in reports:
+        for external_id, task_id, entry, runs_on, platform in reports:
             if entry.source_id is None:
                 raise ValueError(
                     f"Provenance for '{external_id}' has no source_id; a discovery "
@@ -103,6 +121,7 @@ class TaskProvenanceRepository:
                 latest_seen.get(key),
                 utc_naive(entry.last_seen) if entry.last_seen else None,
             )
+            earlier = rows.get(key, {})
             rows[key] = {
                 "source_id": entry.source_id,
                 "external_id": external_id,
@@ -115,6 +134,10 @@ class TaskProvenanceRepository:
                 "first_reported_at": now,
                 "last_reported_at": now,
                 "last_seen": latest_seen[key],
+                "runs_on": runs_on if runs_on is not None else earlier.get("runs_on"),
+                "platform": (
+                    platform if platform is not None else earlier.get("platform")
+                ),
             }
 
         if not rows:
@@ -144,6 +167,14 @@ class TaskProvenanceRepository:
                     DatabaseTaskProvenanceSource.last_seen,
                     stmt.excluded.last_seen,
                     is_postgres,
+                ),
+                "runs_on": func.coalesce(
+                    stmt.excluded.runs_on,
+                    DatabaseTaskProvenanceSource.runs_on,
+                ),
+                "platform": func.coalesce(
+                    stmt.excluded.platform,
+                    DatabaseTaskProvenanceSource.platform,
                 ),
             },
         )

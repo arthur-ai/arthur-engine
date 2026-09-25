@@ -15,6 +15,8 @@ import pytest
 from arthur_common.models.agent_discovery_schemas import DiscoveredAgentRecord
 from arthur_common.models.agent_governance_schemas import (
     AgentObservations,
+    Platform,
+    RunsOn,
     SIEMAgentCreationSource,
     SourceAddress,
 )
@@ -41,12 +43,16 @@ def _record(
     name: str,
     service_names=(),
     task_id: str | None = None,
+    runs_on: RunsOn | None = None,
+    platform: Platform | None = None,
 ) -> DiscoveredAgentRecord:
     return DiscoveredAgentRecord(
         external_id=external_id,
         name=name,
         last_seen=LAST_SEEN,
         task_id=task_id,
+        runs_on=runs_on,
+        platform=platform,
         creation_source=SIEMAgentCreationSource(
             vendor="splunk_enterprise",
             address=SourceAddress(
@@ -218,8 +224,17 @@ def test_agent_tasks_scoped_to_a_source_return_only_its_tasks(
     run = uuid.uuid4().hex[:8]
     ours, theirs = uuid.uuid4(), uuid.uuid4()
 
+    # A SIEM query over host-enriched data can say where the machine is.
     _, our_batch = client.resolve_discovered_agents(
-        [_record(f"{run}-ours-{i}", name=f"Ours {i}") for i in range(2)],
+        [
+            _record(
+                f"{run}-ours-{i}",
+                name=f"Ours {i}",
+                runs_on=RunsOn.AWS,
+                platform=Platform.LINUX,
+            )
+            for i in range(2)
+        ],
         source_id=ours,
     )
     _, their_batch = client.resolve_discovered_agents(
@@ -240,6 +255,8 @@ def test_agent_tasks_scoped_to_a_source_return_only_its_tasks(
             assert entry.vendor == "splunk_enterprise"
             assert entry.address.instance == "splunk-prod"
             assert entry.last_seen == LAST_SEEN
+            assert task.provenance.runs_on is RunsOn.AWS
+            assert task.provenance.platform is Platform.LINUX
     finally:
         _cleanup(task_ids)
 

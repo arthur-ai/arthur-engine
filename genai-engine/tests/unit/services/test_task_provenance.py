@@ -1,4 +1,5 @@
-"""Provenance persistence and assembly for discovered tasks (UP-4981 / D-09, UP-5066).
+"""Provenance persistence and assembly for discovered tasks (UP-4981 / D-09, UP-5066,
+UP-4991).
 
 Provenance is what the fetch job reads back to tell the Platform where each agent was
 found, so what is asserted here is that it survives the resolver intact: the source,
@@ -20,7 +21,9 @@ from arthur_common.models.agent_governance_schemas import (
     GCPAgentCreationSource,
     ManualAgentCreationSource,
     OTELAgentCreationSource,
+    Platform,
     ProvenanceSource,
+    RunsOn,
     SIEMAgentCreationSource,
     SourceAddress,
     SourceClass,
@@ -32,6 +35,7 @@ from dependencies import get_application_config
 from repositories.metrics_repository import MetricRepository
 from repositories.rules_repository import RuleRepository
 from repositories.task_provenance_repository import (
+    ProvenanceReport,
     TaskProvenanceRepository,
     utc_naive,
 )
@@ -480,15 +484,21 @@ def test_report_without_a_source_is_refused(provenance_repo):
     )
 
     with pytest.raises(ValueError, match="no source_id"):
-        provenance_repo.record_reports([("x", str(uuid.uuid4()), entry)])
+        provenance_repo.record_reports(
+            [ProvenanceReport("x", str(uuid.uuid4()), entry)],
+        )
 
 
 @pytest.mark.unit_tests
 @pytest.mark.parametrize(
-    ("creation_source", "source_class"),
+    ("creation_source", "source_class", "runs_on"),
     [
-        (OTELAgentCreationSource(service_names=["checkout"]), SourceClass.OTEL),
-        (ManualAgentCreationSource(), SourceClass.MANUAL),
+        (
+            OTELAgentCreationSource(service_names=["checkout"]),
+            SourceClass.OTEL,
+            RunsOn.UNKNOWN,
+        ),
+        (ManualAgentCreationSource(), SourceClass.MANUAL, RunsOn.UNKNOWN),
         (
             GCPAgentCreationSource(
                 gcp_project_id="proj",
@@ -496,12 +506,15 @@ def test_report_without_a_source_is_refused(provenance_repo):
                 gcp_reasoning_engine_id="engine-1",
             ),
             SourceClass.CLOUD,
+            # A Vertex AI Agent Engine deployment: where it runs is what it is.
+            RunsOn.GCP,
         ),
     ],
 )
 def test_task_never_reported_by_a_source_takes_provenance_from_its_creation(
     creation_source,
     source_class,
+    runs_on,
 ):
     """OTEL, manual and legacy GCP tasks have no rows, and still have provenance."""
     provenance = TaskRepository._get_task_provenance(
@@ -514,6 +527,8 @@ def test_task_never_reported_by_a_source_takes_provenance_from_its_creation(
     assert entry.source_id is None
     # No discovery record, so nothing to say when a source last saw it.
     assert entry.last_seen is None
+    assert provenance.runs_on is runs_on
+    assert provenance.platform is None
 
 
 @pytest.mark.unit_tests
@@ -632,6 +647,159 @@ def test_minting_row_still_stands_in_after_its_query_is_edited():
 @pytest.mark.unit_tests
 def test_task_with_nothing_to_say_has_no_provenance():
     assert TaskRepository._get_task_provenance(None, []) is None
+
+
+def _located(
+    record: DiscoveredAgentRecord,
+    **location: object,
+) -> DiscoveredAgentRecord:
+    """The record, saying where its agent runs."""
+    return DiscoveredAgentRecord.model_validate(
+        {**record.model_dump(mode="json"), **location},
+    )
+
+
+def _row_saying(
+    runs_on: RunsOn | None,
+    platform: Platform | None,
+    reported: datetime,
+) -> DatabaseTaskProvenanceSource:
+    """A stored report giving this answer, last reported at this instant."""
+    external_id = f"{_run_id()}-siem"
+    return DatabaseTaskProvenanceSource(
+        source_id=uuid.uuid4(),
+        external_id=external_id,
+        task_id=str(uuid.uuid4()),
+        source_class=SourceClass.SIEM,
+        vendor="splunk_enterprise",
+        address={"instance": "splunk-prod", "resource_id": external_id},
+        first_reported_at=reported,
+        last_reported_at=reported,
+        runs_on=runs_on,
+        platform=platform,
+    )
+
+
+@pytest.mark.unit_tests
+def test_endpoint_finding_serves_where_it_runs(
+    resolver,
+    task_repo,
+    db_session,
+    tracked_tasks,
+):
+    """The Jamf connector knows its findings are on managed laptops. Before the record
+    could say so, every discovered agent's provenance read `runs_on=unknown`."""
+    run = _run_id()
+    laptop, siem = resolver.resolve_records(
+        [
+            _located(
+                _endpoint_record(f"{run}-jamf", device="C02"),
+                runs_on="endpoint",
+                platform="darwin",
+            ),
+            _siem_record(f"{run}-siem"),
+        ],
+        source_id=uuid.uuid4(),
+    ).resolved
+    tracked_tasks.extend([laptop.task_id, siem.task_id])
+
+    [row] = _rows(db_session, laptop.task_id)
+    assert (row.runs_on, row.platform) == (RunsOn.ENDPOINT, Platform.DARWIN)
+    served = _served_provenance(task_repo, laptop.task_id)
+    assert (served.runs_on, served.platform) == (RunsOn.ENDPOINT, Platform.DARWIN)
+
+    # A proxy-log query cannot see the machine, so it says nothing, and nothing is
+    # made up for it.
+    [row] = _rows(db_session, siem.task_id)
+    assert (row.runs_on, row.platform) == (None, None)
+    served = _served_provenance(task_repo, siem.task_id)
+    assert (served.runs_on, served.platform) == (RunsOn.UNKNOWN, None)
+
+
+@pytest.mark.unit_tests
+def test_rescan_keeps_the_location_until_a_report_gives_another(
+    resolver,
+    db_session,
+    tracked_tasks,
+):
+    """Silence is not a new answer; a different answer is."""
+    source_id = uuid.uuid4()
+    record = _siem_record(f"{_run_id()}-siem")
+
+    [resolved] = resolver.resolve_records(
+        [_located(record, runs_on="aws", platform="linux")],
+        source_id=source_id,
+    ).resolved
+    tracked_tasks.append(resolved.task_id)
+
+    resolver.resolve_records([record], source_id=source_id)
+    [row] = _rows(db_session, resolved.task_id)
+    assert (row.runs_on, row.platform) == (RunsOn.AWS, Platform.LINUX)
+
+    resolver.resolve_records([_located(record, runs_on="gcp")], source_id=source_id)
+    [row] = _rows(db_session, resolved.task_id)
+    assert (row.runs_on, row.platform) == (RunsOn.GCP, Platform.LINUX)
+
+
+@pytest.mark.unit_tests
+def test_duplicate_key_in_one_batch_keeps_the_last_location_given(
+    resolver,
+    db_session,
+    tracked_tasks,
+):
+    """Collapsing the batch to one row per key must not let a silent duplicate erase
+    what an earlier one in the same batch said."""
+    record = _endpoint_record(f"{_run_id()}-jamf", device="C02")
+
+    resolved = resolver.resolve_records(
+        [_located(record, runs_on="endpoint", platform="darwin"), record],
+        source_id=uuid.uuid4(),
+    ).resolved
+    tracked_tasks.append(resolved[0].task_id)
+
+    [row] = _rows(db_session, resolved[0].task_id)
+    assert (row.runs_on, row.platform) == (RunsOn.ENDPOINT, Platform.DARWIN)
+
+
+@pytest.mark.unit_tests
+def test_the_most_recent_answer_is_served_and_unknown_never_replaces_one():
+    """One answer per task however many reports it has. The agent may have moved, so
+    the latest wins, but a sensor that cannot tell does not outvote one that could."""
+    first, second, third = (datetime(2026, 9, day) for day in (1, 2, 3))
+    rows = [
+        _row_saying(RunsOn.AWS, Platform.LINUX, first),
+        _row_saying(RunsOn.UNKNOWN, None, third),
+        _row_saying(RunsOn.ENDPOINT, None, second),
+    ]
+
+    provenance = TaskRepository._get_task_provenance(
+        _endpoint_record("jamf-1", device="C02").task_creation_source,
+        rows,
+    )
+
+    assert provenance.runs_on is RunsOn.ENDPOINT
+    # No later report named an OS, so the earlier one stands.
+    assert provenance.platform is Platform.LINUX
+
+
+@pytest.mark.unit_tests
+def test_legacy_gcp_task_runs_on_gcp_whatever_a_report_says():
+    """What the task is fixes where it runs; a SIEM row naming another cloud is wrong."""
+    gcp = AgentCreationSource(
+        root=GCPAgentCreationSource(
+            gcp_project_id="proj",
+            gcp_region="us-central1",
+            gcp_reasoning_engine_id="engine-1",
+        ),
+    )
+
+    provenance = TaskRepository._get_task_provenance(
+        gcp,
+        [_row_saying(RunsOn.AWS, Platform.LINUX, datetime(2026, 9, 1))],
+    )
+
+    assert provenance.runs_on is RunsOn.GCP
+    assert provenance.platform is Platform.LINUX
 
 
 @pytest.mark.unit_tests

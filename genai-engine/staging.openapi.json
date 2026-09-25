@@ -22421,6 +22421,28 @@
                         ],
                         "title": "Data Sources"
                     },
+                    "runs_on": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/RunsOn"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Where the machine hosting the agent is, when the source can tell. Feeds the task's `provenance.runs_on`. Per finding rather than per vendor, as `RunsOn` explains: a managed-endpoint connector always knows the answer, a SIEM query over host-enriched data can project it, and one over proxy logs cannot. Absent rather than defaulted to UNKNOWN, so a record that says nothing about location is told apart from one that says it cannot tell."
+                    },
+                    "platform": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/Platform"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "OS the agent runs on, when the source can tell. Feeds the task's `provenance.platform`, and is paired with `runs_on` rather than implied by it."
+                    },
                     "creation_source": {
                         "oneOf": [
                             {

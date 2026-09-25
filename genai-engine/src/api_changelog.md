@@ -3,6 +3,8 @@ The intention of this changelog is to document API changes as they happen to eff
 ---
 
 # 09/25/2026
+- **CHANGE** for **URL**: /api/v2/agent-tasks/resolve  added the new optional request property 'records/items/platform'
+- **CHANGE** for **URL**: /api/v2/agent-tasks/resolve  added the new optional request property 'records/items/runs_on'
 - **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property `items/provenance/anyOf[subschema #1: Provenance]/sources/items/last_seen` to the response with the `200` status
 
 # 09/24/2026

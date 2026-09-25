@@ -18,6 +18,7 @@ from typing import Any, Optional
 import pytest
 import requests
 import yaml
+from arthur_common.models.agent_governance_schemas import Platform, RunsOn
 
 from discovery.endpoint.envelope import EnvelopeOutcome
 from discovery.endpoint.jamf.client import JamfClient, JamfError, JamfSettings
@@ -92,7 +93,7 @@ def computer(
                 *(extra_attributes or []),
             ],
         },
-        "operatingSystem": {"version": "26.0"},
+        "operatingSystem": {"name": "macOS", "version": "26.0"},
         "userAndLocation": {"username": "nori"},
         "hardware": {"serialNumber": f"SER{mid}"},
     }
@@ -729,6 +730,42 @@ def test_observations_carry_what_only_the_connector_saw(
     assert obs.host_name == "mac-m1"
     assert obs.os_version == "26.0"
     assert obs.assigned_user == "nori"
+
+
+def test_a_record_says_it_runs_on_a_managed_mac(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The sensor is the only thing that knows: a SIEM row can name a laptop too, so
+    nothing downstream can infer `endpoint` from the source class."""
+    records = scan(FakeJamf([[computer("m1", full_payload())]]), monkeypatch)
+    assert {(r.runs_on, r.platform) for r in records} == {
+        (RunsOn.ENDPOINT, Platform.DARWIN),
+    }
+
+
+@pytest.mark.parametrize("os_name", ["macOS", "Mac OS X", "OS X", " macos "])
+def test_every_name_jamf_has_given_macos_is_darwin(
+    os_name: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    device = computer("m1", full_payload())
+    device["operatingSystem"]["name"] = os_name
+    records = scan(FakeJamf([[device]]), monkeypatch)
+    assert records[0].platform is Platform.DARWIN
+
+
+@pytest.mark.parametrize("os_name", [None, "", "Plan 9"])
+def test_an_os_name_this_does_not_know_leaves_platform_absent(
+    os_name: Optional[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Absent, not guessed: a wrong OS would file the agent under the wrong filter.
+    Where the machine is does not depend on it, so `runs_on` still stands."""
+    device = computer("m1", full_payload())
+    device["operatingSystem"]["name"] = os_name
+    records = scan(FakeJamf([[device]]), monkeypatch)
+    assert records[0].platform is None
+    assert records[0].runs_on is RunsOn.ENDPOINT
 
 
 def test_service_names_is_empty_because_a_sweep_sees_installation_not_behaviour(
