@@ -147,7 +147,7 @@ class DiscoverAgentsExecutor:
             )
 
         credentials = self._source_credentials(outcome)
-        source_fields = self._source_fields(outcome)
+        source_fields = self._source_fields(config, outcome)
 
         run_source_scan(
             config=config,
@@ -215,7 +215,11 @@ class DiscoverAgentsExecutor:
         register_secrets(self.logger, secret_values(credentials))
         return credentials
 
-    def _source_fields(self, outcome: DiscoveryScanOutcome) -> dict[str, str]:
+    def _source_fields(
+        self,
+        config: DiscoverySourceConfigSpec,
+        outcome: DiscoveryScanOutcome,
+    ) -> dict[str, str]:
         """The source's non-sensitive configuration: where to connect, not how to auth.
 
         `retrieve_discovery_source_credentials` returns sensitive fields only, so without
@@ -223,10 +227,18 @@ class DiscoverAgentsExecutor:
         declare it as a secret to work at all -- which then scrubs it from the logs that
         exist to say which host failed.
 
+        Read from the job: the Platform snapshots them with the config at dispatch,
+        because reading the source takes an organization-level role and the engine's
+        account is bound to its workspace. The source read below serves only jobs
+        dispatched before the Platform snapshotted them.
+
         A failure here is reported like any other pre-scan failure rather than degrading
         to an empty mapping: a scanner given no address would fail further away, naming a
         missing field instead of the fetch that could not answer.
         """
+        if config.source_fields is not None:
+            return dict(config.source_fields)
+
         if self.discovery_sources_client is None:
             self._fail_before_scan(
                 outcome,

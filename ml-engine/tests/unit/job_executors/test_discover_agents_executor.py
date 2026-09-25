@@ -42,6 +42,7 @@ def _config(
     name: str = "splunk prod",
     vendor: str = "splunk_enterprise",
     lookback_window_seconds: int = 3600,
+    source_fields: dict[str, str] | None = None,
 ) -> DiscoverySourceConfigSpec:
     return DiscoverySourceConfigSpec(
         discovery_source_id=SOURCE_ID,
@@ -50,6 +51,7 @@ def _config(
         query="search index=agents",
         query_language="spl",
         lookback_window_seconds=lookback_window_seconds,
+        source_fields=source_fields,
     )
 
 
@@ -783,6 +785,34 @@ def test_the_scan_is_handed_the_credentials_it_authenticates_with() -> None:
     ).execute(_job(), _spec(_config()))
 
     assert scanner.credentials == [credentials]
+
+
+def test_the_scan_connects_where_the_job_says_without_reading_the_source() -> None:
+    """The engine's account cannot read the discovery source -- that takes an
+    organization-level role -- so the fields the Platform snapshotted into the job
+    are the ones used, and the source is never fetched."""
+    scanner = FakeScanner([[_record("a")]])
+    client = _credentials_client()
+
+    _executor(scanner, credentials_client=client).execute(
+        _job(),
+        _spec(_config(source_fields={"base_url": "https://jamf.example"})),
+    )
+
+    assert scanner.source_fields == [{"base_url": "https://jamf.example"}]
+    client.get_discovery_source.assert_not_called()  # type: ignore[attr-defined]
+
+
+def test_a_job_dispatched_before_the_snapshot_reads_the_source() -> None:
+    scanner = FakeScanner([[_record("a")]])
+    client = _credentials_client(source_fields={"base_url": "https://splunk.example"})
+
+    _executor(scanner, credentials_client=client).execute(_job(), _spec(_config()))
+
+    assert scanner.source_fields == [{"base_url": "https://splunk.example"}]
+    client.get_discovery_source.assert_called_once_with(  # type: ignore[attr-defined]
+        SOURCE_ID
+    )
 
 
 def test_neither_kind_of_credential_reaches_the_job_log() -> None:
