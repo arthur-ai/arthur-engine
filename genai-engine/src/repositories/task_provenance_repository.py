@@ -53,6 +53,10 @@ class TaskProvenanceRepository:
         overwritten rather than kept because the resolver just answered for it, and the
         resolver is where identity lives.
 
+        The record's own `last_seen` is not stored: `ProvenanceSource` has no field for
+        it yet, so these times are when a scan reported the agent, not when its source
+        last saw it. UP-5066 carries it through.
+
         Args:
             reports: (external_id, task_id, entry) per resolved record. Every entry must
                 carry a `source_id` -- a report with no source cannot be found again by
