@@ -278,6 +278,13 @@ Parameters:
       - 'false'
     Default: 'true'
     Description: 'Enable PII model v2'
+  GenaiEngineSkipModelLoading:
+    Type: String
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Default: 'false'
+    Description: 'Skip downloading and loading the guardrail ML models on startup. Significantly reduces startup time, but the rules backed by those models (PII, toxicity, prompt injection, hallucination claim classification) cannot run.'
   GenaiEngineDemoMode:
     Type: String
     AllowedValues:
@@ -583,6 +590,8 @@ Metadata:
           - GenaiEngineECSDeploymentMinimumHealthyPercent
           - GenaiEngineCacheTaskRulesCacheEnabled
           - GenaiEngineCacheTaskRulesCacheTTL
+          - GenaiEngineDemoMode
+          - RecaptchaEnterpriseApiKey
       - Label:
           default: 'Advanced - GenAI Engine (IAM)'
         Parameters:
@@ -625,16 +634,19 @@ Metadata:
           - GenaiEngineLoadBalancerTarget5xxAlarmThreshold
           - GenaiEngineLoadBalancerTargetResponseTimeAlarmThreshold
           - GenaiEngineECSMemoryAlarmThreshold
+          - AuditLogEnabled
+          - AuditLogRetentionPeriod
+          - AuditLogOverridePath
       - Label:
-          default: 'Advanced - GenAI Engine (LLM)'
+          default: 'Advanced - GenAI Engine (Models)'
         Parameters:
           - GenaiEngineSensitiveDataCheckMaxTokenLimit
           - GenaiEngineHallucinationCheckMaxTokenLimit
           - GenaiEngineToxicityCheckMaxTokenLimit
           - GenaiEngineSummaryTestCaseBatchSize
           - GenaiEngineUsePIIModelV2
-          - GenaiEngineDemoMode
           - GenaiEngineDefaultTenantTokenLimit
+          - GenaiEngineSkipModelLoading
       - Label:
           default: 'Advanced - GenAI Engine (Internal Model Repository)'
         Parameters:
@@ -776,6 +788,8 @@ Metadata:
         default: 'GenAI Engine Summary Test Case Batch Size'
       GenaiEngineUsePIIModelV2:
         default: 'GenAI Engine Use PII Model V2'
+      GenaiEngineSkipModelLoading:
+        default: 'GenAI Engine Skip Model Loading'
       GenaiEngineDemoMode:
         default: 'GenAI Engine Demo Mode'
       GenaiEngineDefaultTenantTokenLimit:
@@ -1062,6 +1076,7 @@ Resources:
         GenaiEngineToxicityCheckMaxTokenLimit: !Ref GenaiEngineToxicityCheckMaxTokenLimit
         GenaiEngineSummaryTestCaseBatchSize: !Ref GenaiEngineSummaryTestCaseBatchSize
         GenaiEngineUsePIIModelV2: !Ref GenaiEngineUsePIIModelV2
+        GenaiEngineSkipModelLoading: !Ref GenaiEngineSkipModelLoading
         GenaiEngineDemoMode: !Ref GenaiEngineDemoMode
         GenaiEngineDefaultTenantTokenLimit: !Ref GenaiEngineDefaultTenantTokenLimit
         RecaptchaEnterpriseProjectId: !Ref RecaptchaEnterpriseProjectId

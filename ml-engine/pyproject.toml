@@ -1,6 +1,6 @@
 [project]
 name = "ml-engine"
-version = "2.1.845"
+version = "2.1.962"
 description = ""
 authors = [{ name = "Arthur", email = "engineering@arthur.ai" }]
 license = "MIT"
@@ -9,44 +9,44 @@ requires-python = "==3.13.*"
 
 dependencies = [
   "croniter==6.2.4",
-  "oracledb>=4.0.2,<5",
+  "oracledb>=26,<27",
   "flask==3.1.3",
-  "gcsfs==2026.8.0",
-  "google-cloud-bigquery==3.43.0",
+  "gcsfs==2026.8.1",
+  "google-cloud-bigquery==3.45.2",
   "google-cloud-trace>=1.13.0,<2",
-  "google-cloud-aiplatform>=1.68.0,<2",
-  "pandas==3.0.5",
-  "psycopg[binary]==3.3.4",
-  "pymysql==1.2.0",
+  "google-cloud-aiplatform>=2.1.3,<3",
+  "pandas==3.0.6",
+  "psycopg[binary]==3.3.6",
+  "pymysql==1.2.3",
   "pyodbc==5.3.0",
   "pyyaml==6.0.3",
   "requests==2.34.2",
   "adlfs==2026.8.0",
-  "s3fs==2026.7.0",
+  "s3fs==2026.9.0",
   "simple-settings==1.2.0",
   "httpx==0.28.1",
   "duckdb==1.5.5",
-  "fsspec==2026.7.0",
+  "fsspec==2026.9.0",
   "datasketches==5.2.0",
   "numpy==2.3.2",
   "types-croniter==6.2.4.20260711",
-  "types-psutil==7.2.2.20260518",
-  "types-requests==2.33.0.20260712",
+  "types-psutil==7.2.2.20260906",
+  "types-requests==2.33.0.20260906",
   "psutil==7.2.2",
   "pyarrow==25.0.1",
-  "arthur-common==2.4.73",
+  "arthur-common==2.4.83",
   "gunicorn>=26,<27",
-  "sqlalchemy==2.0.52",
-  "snowflake-sqlalchemy==1.11.0",
+  "sqlalchemy==2.0.54",
+  "snowflake-sqlalchemy==1.11.1",
   "databricks-sqlalchemy>=2.0,<3",
   "databricks-sdk>=0.84.0,<1",
-  "arthur-client==1.4.2604",
+  "arthur-client==1.4.2729",
 ]
 
 [dependency-groups]
 dev = [
   "pytest==9.1.1",
-  "responses==0.26.2",
+  "responses==0.26.3",
   "pytest-httpserver==1.1.5",
   "pytest-asyncio==1.4.0",
   "pytest-httpx==0.36.2",
@@ -80,11 +80,20 @@ implicit_reexport = true
 explicit_package_bases = true
 mypy_path = "src/ml_engine"
 namespace_packages = true
-exclude = ["src/genai_client"]
+exclude = ["src/genai_client", "src/ml_engine/discovery/_vendor"]
+
+# The vendored upstream tree is verbatim and must stay that way. Excluded here rather
+# than only in .pre-commit-config.yaml because CI invokes black and isort directly, so a
+# pre-commit-only exclusion is honoured on a developer's machine and ignored in the one
+# place that gates the merge. Found exactly that way: `would reformat
+# discovery/_vendor/classify.py`, on a branch whose local hooks were clean.
+[tool.black]
+extend-exclude = "^/src/ml_engine/discovery/_vendor/"
 
 [tool.isort]
 profile = "black"
 src_paths = ["src/ml_engine", "tests"]
+extend_skip_glob = ["src/ml_engine/discovery/_vendor/*"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src", "src/genai_client"]

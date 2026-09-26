@@ -1,0 +1,57 @@
+"""One managed device, in the shape every MDM can describe.
+
+An MDM package's job is turning its own API's device record into one of these. Nothing
+downstream sees Jamf's `managementId`, Intune's `azureADDeviceId` or Kandji's
+`device_id`. A field only one vendor can fill belongs in that vendor's package, not here.
+"""
+
+from dataclasses import dataclass, field
+from typing import Mapping, Optional
+
+from arthur_common.models.agent_governance_schemas import Platform
+
+
+@dataclass(frozen=True)
+class ManagedDevice:
+    """A device as its MDM last saw it, plus the custom attributes it carries."""
+
+    device_key: str
+    """The MDM's own stable id.
+
+    Never the hardware serial: VMs and refurbished units produce empty or duplicate
+    serials, and an identity that churns mints a duplicate finding on every scan.
+    """
+
+    last_reported: Optional[str] = None
+    """When the MDM last received inventory from this device.
+
+    The freshness signal that belongs to the MDM rather than the payload, and the only
+    thing that separates "reported, and collection is broken" from "has not reported at
+    all" -- the second being invisible to a custom attribute by construction.
+    """
+
+    name: Optional[str] = None
+    group: Optional[str] = None
+    os_version: Optional[str] = None
+    platform: Optional[Platform] = None
+    """Which OS the device runs, mapped from the MDM's own name for it.
+
+    None when the MDM's name is not one this package recognises, rather than a guess: a
+    wrong OS is worse than an absent one, since it would silently land an agent under
+    the wrong filter.
+    """
+
+    assigned_user: Optional[str] = None
+
+    group_ids: frozenset[str] = frozenset()
+    """The MDM groups this device is in, by the MDM's own group id.
+
+    Ids rather than names: a group can be renamed between the scan resolving a
+    configured name and the device record naming its groups, and an id does not move.
+    """
+
+    attributes: Mapping[str, Optional[str]] = field(default_factory=dict)
+    """Custom attributes by display name, which is what an MDM admin sees."""
+
+    def attribute(self, name: str) -> Optional[str]:
+        return self.attributes.get(name)

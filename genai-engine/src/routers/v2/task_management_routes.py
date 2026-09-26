@@ -2,7 +2,6 @@ from datetime import datetime
 from typing import Annotated
 from uuid import UUID
 
-from arthur_common.models.agent_governance_schemas import EnrichedTaskResponse
 from arthur_common.models.common_schemas import PaginationParameters
 from arthur_common.models.enums import PaginationSortMethod, RuleScope, RuleType
 from arthur_common.models.request_schemas import (
@@ -34,11 +33,17 @@ from dependencies import get_application_config, get_db_session, get_org_scope
 from repositories.metrics_repository import MetricRepository
 from repositories.rules_repository import RuleRepository
 from repositories.task_polling_state_repository import TaskPollingStateRepository
+from repositories.task_provenance_repository import TaskProvenanceRepository
 from repositories.tasks_metrics_repository import TasksMetricsRepository
 from repositories.tasks_repository import TaskRepository
 from repositories.tasks_rules_repository import TasksRulesRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
+from schemas.agent_discovery_schemas import (
+    EnrichedTaskResponse,
+    ResolveDiscoveredAgentsRequest,
+    ResolveDiscoveredAgentsResponse,
+)
 from schemas.enums import PermissionLevelsEnum, TaskSortField
 from schemas.internal_schemas import (
     ApplicationConfiguration,
@@ -47,10 +52,17 @@ from schemas.internal_schemas import (
     Task,
     User,
 )
+from services.task.discovery_task_resolution_service import (
+    DiscoveryTaskResolutionService,
+)
 from utils import constants
 from utils.constants import DEFAULT_ORG_ID
 from utils.users import enforce_org_scope, enforce_query_org_scope, permission_checker
 from utils.utils import common_pagination_parameters, public_endpoint
+
+# Most tasks one GET /agent-tasks page returns, and the default: every task in it is
+# enriched from its spans, so a page is bounded even for a source reporting thousands.
+AGENT_TASKS_MAX_PAGE_SIZE = 1000
 
 task_management_routes = APIRouter(
     prefix="/api/v2",
@@ -207,13 +219,40 @@ def get_task(
 
 @task_management_routes.get(
     "/agent-tasks",
-    description="Get agentic tasks with enriched agent metadata (tools, sub-agents, models). "
-    "Returns only agentic tasks.",
+    description="Get agentic tasks with enriched agent metadata (tools, sub-agents, models) "
+    "and provenance. Returns only agentic tasks. Filter by `discovery_source_id` and "
+    "`reported_since` to get the tasks one discovery source reported in a window. "
+    "Paged by cursor: a caller that needs every matching task passes the last task's ID "
+    "as `after_task_id` until a page comes back with fewer than `page_size` tasks. A "
+    "task created or archived mid-walk never repeats or skips another.",
     response_model=list[EnrichedTaskResponse],
     tags=["Tasks"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
 def get_agent_tasks(
+    discovery_source_id: UUID | None = Query(
+        None,
+        description="Only return tasks this Discovery Source has reported. A task "
+        "counts whether the source's scan minted it or resolved to it, so a re-scan "
+        "returns the agents it found again, not only the new ones.",
+    ),
+    reported_since: datetime | None = Query(
+        None,
+        description="Only return tasks a discovery scan reported on or after this "
+        "time; UTC if no offset is given. Tasks no discovery source has reported are "
+        "excluded when this filter is set.",
+    ),
+    after_task_id: UUID | None = Query(
+        None,
+        description="Return the tasks after this one: the last task of the previous "
+        "page. Omit it for the first page.",
+    ),
+    page_size: int = Query(
+        AGENT_TASKS_MAX_PAGE_SIZE,
+        ge=1,
+        le=AGENT_TASKS_MAX_PAGE_SIZE,
+        description="Tasks per page. A page shorter than this is the last one.",
+    ),
     db_session: Session = Depends(get_db_session),
     application_config: ApplicationConfiguration = Depends(get_application_config),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
@@ -227,9 +266,14 @@ def get_agent_tasks(
     - models: List of models used
     - num_spans: Total number of spans
 
-    Also includes creation_source information (GCP, OTEL, or manual).
+    Also includes creation_source information (GCP, OTEL, or manual), and provenance:
+    every sensor that has reported the agent, and where upstream.
 
     Args:
+        discovery_source_id: Only tasks this discovery source reported
+        reported_since: Only tasks a discovery scan reported since this time
+        after_task_id: The last task of the previous page, if any
+        page_size: Tasks per page
         db_session: Database session
         application_config: Application configuration
         current_user: Current authenticated user
@@ -249,27 +293,42 @@ def get_agent_tasks(
     # Tenant callers see only their own org's tasks.
     db_tasks, _ = tasks_repo.query_tasks(
         include_archived=False,
-        page_size=1000,  # Large page size for now, add pagination later if needed
-        page=0,
+        # Paged rather than capped: the fetch job has to see every task its source
+        # reported, and a silently truncated answer would read downstream as agents
+        # that disappeared, while an unbounded one would enrich thousands of tasks in
+        # one request. The defaults return the first 1,000, as this always has. The
+        # cursor, not an offset, is what keeps a scan running alongside the walk from
+        # making it repeat or skip a task.
+        page_size=page_size,
+        after_task_id=str(after_task_id) if after_task_id is not None else None,
         org_scope=org_scope,
+        reported_by_source_id=discovery_source_id,
+        reported_since=reported_since,
     )
 
     # Convert to Task objects and enrich with service names
     tasks = [Task._from_database_model(db_task) for db_task in db_tasks]
     tasks = tasks_repo._enrich_tasks_with_service_names(tasks)
 
-    # Build enriched responses
-    polling_state_repo = TaskPollingStateRepository(db_session)
+    # Build enriched responses, reading what each task needs in bulk rather than a
+    # query or more per task.
+    task_ids = [task.id for task in tasks]
+    polling_states = TaskPollingStateRepository(db_session).get_by_task_ids(task_ids)
+    provenance_rows = TaskProvenanceRepository(db_session).get_by_task_ids(task_ids)
+    agent_metadata_by_task = tasks_repo._extract_agent_metadata_for_tasks(task_ids)
     enriched_responses = []
     for task in tasks:
         creation_source = tasks_repo._get_task_creation_source(task)
+        provenance = tasks_repo._get_task_provenance(
+            creation_source,
+            provenance_rows.get(task.id, []),
+        )
 
         # Get last_fetched from task_polling_state
-        polling_state = polling_state_repo.get_by_task_id(task.id)
+        polling_state = polling_states.get(task.id)
         last_fetched = polling_state.last_fetched if polling_state else None
 
-        # Extract agent metadata
-        agent_metadata = tasks_repo._extract_agent_metadata(task.id)
+        agent_metadata = agent_metadata_by_task[task.id]
 
         # Convert rule links to response models
         response_rules = []
@@ -292,10 +351,53 @@ def get_agent_tasks(
             data_sources=agent_metadata["data_sources"],
             num_spans=agent_metadata["num_spans"],
             rules=response_rules,
+            provenance=provenance,
         )
         enriched_responses.append(enriched_response)
 
     return enriched_responses
+
+
+@task_management_routes.post(
+    "/agent-tasks/resolve",
+    description="Resolve records from a discovery scan to tasks, minting a task for "
+    "any agent not already known. Every submitted record comes back with a task ID, "
+    "and re-submitting the same records resolves them to the same tasks. A record "
+    "naming a task that does not exist is reported in `failed` without holding up "
+    "the rest of the batch.",
+    response_model=ResolveDiscoveredAgentsResponse,
+    tags=["Tasks"],
+)
+@permission_checker(permissions=PermissionLevelsEnum.AGENT_DISCOVERY_WRITE.value)
+def resolve_discovered_agents(
+    request: ResolveDiscoveredAgentsRequest,
+    db_session: Session = Depends(get_db_session),
+    application_config: ApplicationConfiguration = Depends(get_application_config),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> ResolveDiscoveredAgentsResponse:
+    """Resolve discovered records to tasks.
+
+    Called by the ML Engine scan job with the records one connector returned. The
+    resolution ladder, and the guarantees it makes, are documented on
+    `DiscoveryTaskResolutionService`. Every resolved record is recorded in its task's
+    provenance under the request's `source_id`.
+
+    Admin-only, so tasks minted here land in the `default` org, matching where OTEL
+    auto-created tasks land.
+    """
+    tasks_repo = TaskRepository(
+        db_session,
+        RuleRepository(db_session),
+        MetricRepository(db_session),
+        application_config,
+    )
+    resolution_service = DiscoveryTaskResolutionService(db_session, tasks_repo)
+
+    return resolution_service.resolve_records(
+        request.records,
+        source_id=request.source_id,
+        org_id=DEFAULT_ORG_ID,
+    )
 
 
 @task_management_routes.post(
