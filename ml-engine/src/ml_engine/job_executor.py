@@ -34,6 +34,7 @@ from arthur_client.api_bindings import (
     SchemaInspectionJobSpec,
     TasksV1Api,
     TestCustomAggregationJobSpec,
+    TestDiscoverySourceJobSpec,
 )
 from arthur_client.auth import (
     ArthurClientCredentialsAPISession,
@@ -49,7 +50,8 @@ from arthur_common.models.task_job_specs import (
 from pydantic import StrictBytes
 
 # Imported for its side effect: registering the discovery connectors into
-# SOURCE_SCANNERS, which DiscoverAgentsExecutor resolves a source's vendor against.
+# SOURCE_SCANNERS, which DiscoverAgentsExecutor and DiscoverySourceTestExecutor
+# resolve a source's vendor against.
 import discovery  # noqa: F401
 from config import Config
 from job_executors.alert_check_executor import AlertCheckExecutor
@@ -59,6 +61,9 @@ from job_executors.compliance_policy_check_executor import (
 from job_executors.connector_test_executor import ConnectorTestExecutor
 from job_executors.discover_agents_executor import DiscoverAgentsExecutor
 from job_executors.discovery_record_sink import GenAIEngineRecordSink
+from job_executors.discovery_source_test_executor import (
+    DiscoverySourceTestExecutor,
+)
 from job_executors.fetch_data_executor import FetchDataExecutor
 from job_executors.fetch_discovered_agents_executor import (
     FetchDiscoveredAgentsExecutor,
@@ -420,6 +425,21 @@ class JobExecutor:
                             genai_engine_url,
                             genai_engine_api_key,
                         ).execute(job.job_spec.actual_instance)
+                    case JobKind.TEST_DISCOVERY_SOURCE:
+                        if not isinstance(
+                            job.job_spec.actual_instance,
+                            TestDiscoverySourceJobSpec,
+                        ):
+                            raise ValueError(
+                                f"Expected TestDiscoverySourceJobSpec type, got {type(job.job_spec.actual_instance)}.",
+                            )
+
+                        # No record sink and no GenAI Engine: a test reports a
+                        # preview to the Platform and publishes nothing.
+                        DiscoverySourceTestExecutor(
+                            self.discovery_sources_client,
+                            self.logger,
+                        ).execute(job, job_run.id, job.job_spec.actual_instance)
                     case JobKind.COMPLIANCE_POLICY_CHECK:
                         if not isinstance(
                             job.job_spec.actual_instance,
