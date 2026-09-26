@@ -273,12 +273,25 @@ class GlobalAgentPollingService(BaseQueueService[AgentPollingJob]):
                         org_id=DEFAULT_ORG_ID,
                         task_metadata=task_metadata,
                     )
+                    # The task is only flushed, so it commits together with its
+                    # mapping. A gcp_vertex Discovery Source can claim the resource
+                    # name between the check above and this write; create_mapping
+                    # then rolls back -- taking the flushed task with it -- and
+                    # returns the winner's mapping, so no unreferenced task is left.
                     created_task = task_repository.create_task(
-                        task, with_default_rules=False
+                        task, with_default_rules=False, commit=False
                     )
 
                     # Create service_name mapping using the resource path
-                    mapping_repo.create_mapping(resource_name, created_task.id)
+                    mapping = mapping_repo.create_mapping(
+                        resource_name, created_task.id
+                    )
+                    if mapping.task_id != created_task.id:
+                        logger.info(
+                            f"Resource {resource_name} was claimed by task "
+                            f"{mapping.task_id} during discovery; skipping"
+                        )
+                        continue
 
                     # Initialize polling state
                     polling_state_repo.get_or_create(created_task.id)

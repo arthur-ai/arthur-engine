@@ -6,12 +6,19 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from db_models import DatabaseTask
 from db_models.agent_polling_models import DatabaseTaskPollingState
+from db_models.telemetry_models import DatabaseServiceNameTaskMapping
 from arthur_common.models.agent_governance_schemas import (
     GCPAgentCreationSource,
     ManualAgentCreationSource,
     TaskMetadata,
 )
+from repositories.metrics_repository import MetricRepository
+from repositories.rules_repository import RuleRepository
+from repositories.service_name_mapping_repository import ServiceNameMappingRepository
+from repositories.tasks_repository import TaskRepository
+from dependencies import get_application_config
 from schemas.internal_schemas import Task
 from services.task.global_agent_polling_service import (
     AgentPollingJob,
@@ -21,6 +28,8 @@ from services.task.global_agent_polling_service import (
     shutdown_global_agent_polling_service,
     POLLING_ADVISORY_LOCK_KEY,
 )
+from tests.clients.base_test_client import override_get_db_session
+from utils.constants import DEFAULT_ORG_ID
 
 
 @pytest.mark.unit_tests
@@ -533,6 +542,9 @@ def _run_legacy_discovery(monkeypatch, mapped_task_id):
         task_repo = mock_task_repo_cls.return_value
         task_repo.find_by_gcp_engine_id.return_value = None
         task_repo.create_task.return_value = MagicMock(id="new-task", name="n")
+        mock_mapping_repo_cls.return_value.create_mapping.side_effect = (
+            lambda name, task_id, *args, **kwargs: MagicMock(task_id=task_id)
+        )
         mock_mapping_repo_cls.return_value.get_task_id_by_service_name.side_effect = (
             lambda name, key_kind=None: (
                 mapped_task_id if name == VERTEX_RESOURCE_NAME else None
@@ -572,3 +584,90 @@ def test_legacy_discovery_can_be_switched_off(mock_get_db, value, monkeypatch):
     monkeypatch.setenv("GENAI_ENGINE_LEGACY_GCP_DISCOVERY_ENABLED", value)
     assert GlobalAgentPollingService()._discover_gcp_agents() == 0
     mock_get_db.assert_not_called()
+
+
+@pytest.mark.unit_tests
+def test_legacy_discovery_yields_a_resource_claimed_after_its_check(monkeypatch):
+    """A gcp_vertex source can map the resource name between the legacy path's
+    "already mapped?" check and its own claim. The legacy task is only flushed until
+    its mapping commits, so losing the claim rolls it back: no unreferenced duplicate,
+    no polling state for it, and the source's task keeps the mapping."""
+    resource_name = (
+        "projects/123456789012/locations/us-central1/reasoningEngines/"
+        f"{uuid.uuid4().int % 10**19:019d}"
+    )
+    display_name = f"race-agent-{uuid.uuid4().hex[:8]}"
+    db_session = override_get_db_session()
+    task_repo = TaskRepository(
+        db_session,
+        RuleRepository(db_session),
+        MetricRepository(db_session),
+        get_application_config(session=db_session),
+    )
+    owner = task_repo.create_task(
+        Task(
+            id=str(uuid.uuid4()),
+            name="Discovery Source task",
+            created_at=datetime.now(),
+            updated_at=datetime.now(),
+            is_agentic=True,
+            is_autocreated=True,
+            org_id=DEFAULT_ORG_ID,
+        ),
+        with_default_rules=False,
+    )
+    ServiceNameMappingRepository(db_session).create_mapping(resource_name, owner.id)
+    polling_states_before = db_session.query(DatabaseTaskPollingState).count()
+
+    monkeypatch.setenv("GOOGLE_CLOUD_PROJECT", "example-project-123456")
+    monkeypatch.delenv("GENAI_ENGINE_LEGACY_GCP_DISCOVERY_ENABLED", raising=False)
+    agent = MagicMock()
+    agent.api_resource.name = resource_name
+    agent.api_resource.display_name = display_name
+    module = "services.task.global_agent_polling_service"
+    try:
+        with (
+            patch(
+                f"{module}.get_db_session",
+                side_effect=lambda: iter([override_get_db_session()]),
+            ),
+            patch(f"{module}.vertexai") as mock_vertexai,
+            # The engine-id lookup is Postgres JSON SQL, and the source's task has
+            # no GCP creation source for it to find anyway.
+            patch.object(TaskRepository, "find_by_gcp_engine_id", return_value=None),
+            # The race: the check ran before the source's mapping was written.
+            patch.object(
+                GlobalAgentPollingService,
+                "_resource_already_mapped",
+                return_value=False,
+            ),
+        ):
+            mock_vertexai.Client.return_value.agent_engines.list.return_value = [agent]
+            created = GlobalAgentPollingService()._discover_gcp_agents()
+
+        db_session.expire_all()
+        assert created == 0
+        assert (
+            db_session.query(DatabaseTask)
+            .filter(DatabaseTask.name == f"Vertex AI Agent: {display_name}")
+            .count()
+            == 0
+        )
+        assert db_session.query(DatabaseTaskPollingState).count() == (
+            polling_states_before
+        )
+        assert (
+            ServiceNameMappingRepository(db_session).get_task_id_by_service_name(
+                resource_name,
+            )
+            == owner.id
+        )
+    finally:
+        db_session.query(DatabaseServiceNameTaskMapping).filter(
+            DatabaseServiceNameTaskMapping.task_id == owner.id,
+        ).delete(synchronize_session=False)
+        db_session.query(DatabaseTask).filter(DatabaseTask.id == owner.id).delete(
+            synchronize_session=False,
+        )
+        db_session.commit()
+        db_session.close()
