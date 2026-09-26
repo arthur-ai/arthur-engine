@@ -183,15 +183,19 @@ class _PreviewRun:
         self.known_secrets = secret_values(credentials)
         register_secrets(self.logger, self.known_secrets)
 
-        scan = scanner_factory().scan(
-            self.config,
-            int(self.job_spec.lookback_hours),
-            credentials,
-            dict(self.config.source_fields or {}),
-            self.logger,
-        )
         deadline = self.executor.clock() + PREVIEW_DEADLINE_SECONDS
+        scan: Optional[Iterator[Sequence[DiscoveryOutputRecord]]] = None
         try:
+            # Built inside the classified block: a scanner that validates its config
+            # eagerly, before its first yield, is reporting a configuration problem,
+            # not an engine defect.
+            scan = scanner_factory().scan(
+                self.config,
+                int(self.job_spec.lookback_hours),
+                credentials,
+                dict(self.config.source_fields or {}),
+                self.logger,
+            )
             for batch in scan:
                 if not batch:
                     continue

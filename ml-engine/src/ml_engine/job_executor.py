@@ -34,7 +34,6 @@ from arthur_client.api_bindings import (
     SchemaInspectionJobSpec,
     TasksV1Api,
     TestCustomAggregationJobSpec,
-    TestDiscoverySourceJobSpec,
 )
 from arthur_client.auth import (
     ArthurClientCredentialsAPISession,
@@ -53,6 +52,11 @@ from pydantic import StrictBytes
 # SOURCE_SCANNERS, which DiscoverAgentsExecutor and DiscoverySourceTestExecutor
 # resolve a source's vendor against.
 import discovery  # noqa: F401
+from arthur_client_support import (
+    TEST_DISCOVERY_SOURCE_JOB_KIND,
+    TEST_DISCOVERY_SOURCE_SUPPORTED,
+    TEST_DISCOVERY_SOURCE_UNSUPPORTED_MESSAGE,
+)
 from config import Config
 from job_executors.alert_check_executor import AlertCheckExecutor
 from job_executors.compliance_policy_check_executor import (
@@ -61,9 +65,6 @@ from job_executors.compliance_policy_check_executor import (
 from job_executors.connector_test_executor import ConnectorTestExecutor
 from job_executors.discover_agents_executor import DiscoverAgentsExecutor
 from job_executors.discovery_record_sink import GenAIEngineRecordSink
-from job_executors.discovery_source_test_executor import (
-    DiscoverySourceTestExecutor,
-)
 from job_executors.fetch_data_executor import FetchDataExecutor
 from job_executors.fetch_discovered_agents_executor import (
     FetchDiscoveredAgentsExecutor,
@@ -86,6 +87,15 @@ from job_executors.task_management_job_executors import (
 )
 from job_log_exporter import ExportContextedLogger, ScopeJobLogExporter
 from tools.connector_constructor import ConnectorConstructor
+
+# Only with a client that has D-12's models: the executor imports them at load, and
+# without this guard a client that predates them would fail every job kind.
+if TEST_DISCOVERY_SOURCE_SUPPORTED:
+    from arthur_client.api_bindings import TestDiscoverySourceJobSpec
+
+    from job_executors.discovery_source_test_executor import (
+        DiscoverySourceTestExecutor,
+    )
 
 logging.basicConfig()
 
@@ -425,7 +435,13 @@ class JobExecutor:
                             genai_engine_url,
                             genai_engine_api_key,
                         ).execute(job.job_spec.actual_instance)
-                    case JobKind.TEST_DISCOVERY_SOURCE:
+                    # Matched by value, not JobKind.TEST_DISCOVERY_SOURCE: a client
+                    # that predates the kind has no such member to look up.
+                    case kind if kind == TEST_DISCOVERY_SOURCE_JOB_KIND:
+                        if not TEST_DISCOVERY_SOURCE_SUPPORTED:
+                            raise NotImplementedError(
+                                TEST_DISCOVERY_SOURCE_UNSUPPORTED_MESSAGE,
+                            )
                         if not isinstance(
                             job.job_spec.actual_instance,
                             TestDiscoverySourceJobSpec,

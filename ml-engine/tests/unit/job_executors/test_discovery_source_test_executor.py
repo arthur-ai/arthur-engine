@@ -15,6 +15,17 @@ from unittest.mock import MagicMock
 import pytest
 import requests
 import responses
+
+from arthur_client_support import TEST_DISCOVERY_SOURCE_SUPPORTED
+
+if not TEST_DISCOVERY_SOURCE_SUPPORTED:
+    pytest.skip(
+        "installed arthur-client predates TEST_DISCOVERY_SOURCE "
+        "(TestDiscoverySourceJobSpec, put_discovery_source_test_result)",
+        allow_module_level=True,
+    )
+
+# isort: split
 from arthur_client.api_bindings import (
     DiscoverySourceConfigSpec,
     DiscoverySourceReachability,
@@ -318,6 +329,38 @@ def test_a_missing_field_is_configuration_with_reachability_unknown(job_log) -> 
     assert result.error.category == DiscoverySourceTestErrorCategory.CONFIGURATION
     assert result.reachability == DiscoverySourceReachability.UNKNOWN
     assert "base_url" in result.error.message
+
+
+class EagerScanner:
+    """A scanner whose scan() is a plain function that validates before returning."""
+
+    def scan(
+        self,
+        config: DiscoverySourceConfigSpec,
+        lookback_hours: int,
+        credentials: Mapping[str, Optional[str]],
+        source_fields: Mapping[str, str],
+        logger: logging.Logger,
+    ) -> Iterator[Sequence[object]]:
+        raise ValueError(
+            f"source field 'base_url' is required; got {credentials['client_secret']}",
+        )
+
+
+def test_a_scanner_that_refuses_eagerly_is_configuration_not_internal(
+    job_log,
+) -> None:
+    logger, _ = job_log
+    client = _client()
+
+    _run(EagerScanner(), _spec(), client, logger)
+
+    result = _delivered(client)
+    assert result.outcome == DiscoverySourceTestOutcome.FAILED
+    assert result.error.category == DiscoverySourceTestErrorCategory.CONFIGURATION
+    assert result.reachability == DiscoverySourceReachability.UNKNOWN
+    assert "base_url" in result.error.message
+    assert CLIENT_SECRET not in result.error.message
 
 
 def test_unmapped_columns_are_named_and_the_raw_rows_shown(job_log) -> None:
