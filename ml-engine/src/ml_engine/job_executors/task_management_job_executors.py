@@ -1,9 +1,11 @@
+import json
 import logging
-from typing import Tuple
+from typing import NamedTuple, Tuple
 
 import arthur_client
 import genai_client.exceptions
 from arthur_client.api_bindings import (
+    ApiException,
     ConnectorType,
     ContinuousEvalResponse,
     CreateModelLinkTaskJobSpec,
@@ -18,6 +20,7 @@ from arthur_client.api_bindings import (
     PostDataset,
     PostModel,
     PostTaskValidationAPIKey,
+    PutDatasetSchema,
     PutTaskConnectionInfo,
     PutTaskStateCacheRequest,
     RegenerateTaskValidationKeyJobSpec,
@@ -48,6 +51,79 @@ from tools.converters import common_to_client_put_dataset_schema
 
 class InvalidConnectorException(Exception):
     pass
+
+
+# Platform releases before the task dataset consolidation require an Arthur shield
+# model to be linked to exactly one dataset, so they reject the consolidated
+# two-dataset task shape with a 400 and the engine falls back to the legacy
+# single-dataset shape (UP-5022).
+#
+# The engine does not try to tell the two kinds of platform apart in advance: it
+# always attempts the consolidated shape and treats that 400 as the answer. A
+# numeric cutoff on /api/health's release_version cannot work, because that value is
+# the build's git tag and deploy builds are tagged off the same version number as
+# the release that precedes them - arthur-scope CI strips only a trailing "-release"
+# (.gitlab-ci.yml, set-release-tag), so a deploy build reports e.g.
+# "1.4.2592-ab71a845-deploy-gcp-united". That tag contains the consolidation commit
+# 18896423 while 1.4.2592-release does not, so one version number names platforms of
+# both kinds and no cutoff can be right for both.
+
+# Which dataset a task keeps when the engine must emit the legacy single-dataset
+# shape but cannot tell what kind of task it is. Only the link path lands here: its
+# job spec never carried task_type and TaskResponse.is_agentic is now always True, so
+# the task's original kind is unrecoverable. PENDING PRODUCT DECISION (UP-5022) —
+# ARTHUR_SHIELD keeps guardrails, AGENTIC_TRACE would keep traces and evals instead.
+# Flip this one value to change it.
+LEGACY_SINGLE_DATASET_FALLBACK_PROBLEM_TYPE = ModelProblemType.ARTHUR_SHIELD
+
+# arthur-common dropped TaskType along with the consolidation, so the values a
+# pre-consolidation platform sends are matched as plain strings.
+_LEGACY_AGENTIC_TASK_TYPE = "agentic"
+_LEGACY_TRADITIONAL_TASK_TYPE = "traditional"
+
+# Fragment of the pre-consolidation platform's rejection body. This is the only
+# signal the engine uses to tell a pre-consolidation platform from a current one.
+_SINGLE_DATASET_CONSTRAINT_ERROR = "must be linked to exactly one dataset"
+
+
+class _TaskDatasetSpec(NamedTuple):
+    dataset_name: str
+    dataset_schema: PutDatasetSchema
+    model_problem_type: ModelProblemType
+
+
+def _is_single_dataset_constraint_rejection(exc: ApiException) -> bool:
+    # str() renders whichever of the deserialized data or the raw body is present.
+    return exc.status == 400 and _SINGLE_DATASET_CONSTRAINT_ERROR in str(exc)
+
+
+def _platform_rejection_detail(exc: ApiException) -> str:
+    """
+    The platform's own error text from a rejection, for the retry log line. Only the
+    response body is read - never str(exc), which also renders the response headers.
+    The body can be absent, not JSON, or not a mapping, so every step degrades to the
+    next rather than raising: a log line must not be what breaks the fallback.
+    """
+    detail = getattr(getattr(exc, "data", None), "detail", None)
+    if not isinstance(detail, str) or not detail.strip():
+        body = exc.body
+        if isinstance(body, (bytes, bytearray)):
+            body = body.decode("utf-8", errors="replace")
+        if not isinstance(body, str) or not body.strip():
+            return "no error message in the platform's response"
+        try:
+            parsed = json.loads(body)
+        except ValueError:
+            parsed = None
+        parsed_detail = parsed.get("detail") if isinstance(parsed, dict) else None
+        detail = (
+            parsed_detail
+            if isinstance(parsed_detail, str) and parsed_detail.strip()
+            else body
+        )
+    detail = " ".join(detail.split())
+    # The platform's messages are short; a runaway body must not flood the job log.
+    return detail if len(detail) <= 500 else f"{detail[:500]}..."
 
 
 class TaskManagementJobExecutor:
@@ -476,6 +552,7 @@ class _TaskDatasetAndModelCreator(_ValidationKeyManager):
         models_client: ModelsV1Api,
         tasks_client: TasksV1Api,
         logger: logging.Logger,
+        legacy_task_type: str | None = None,
     ) -> None:
         self.conn = conn
         self.task = task
@@ -484,6 +561,7 @@ class _TaskDatasetAndModelCreator(_ValidationKeyManager):
         self.models_client = models_client
         self.tasks_client = tasks_client
         self.logger = logger
+        self.legacy_task_type = legacy_task_type
 
         super().__init__(self.conn, self.tasks_client, self.logger)
 
@@ -495,26 +573,79 @@ class _TaskDatasetAndModelCreator(_ValidationKeyManager):
         #
         # Both bind to the same task via the task_id locator; one model links both.
         dataset_specs = [
-            (
-                "traces",
+            _TaskDatasetSpec(
+                f"{self.task.name} - traces",
                 common_to_client_put_dataset_schema(AGENTIC_TRACE_SCHEMA()),
                 ModelProblemType.AGENTIC_TRACE,
             ),
-            (
-                "guardrails",
+            _TaskDatasetSpec(
+                f"{self.task.name} - guardrails",
                 common_to_client_put_dataset_schema(SHIELD_SCHEMA()),
                 ModelProblemType.ARTHUR_SHIELD,
             ),
         ]
 
+        # Always attempt the consolidated shape first. Against a current platform this
+        # is the only attempt; a pre-consolidation platform answers it with the
+        # single-dataset 400, which is what selects the legacy shape below.
+        try:
+            return self._create_datasets_and_model(dataset_specs)
+        except ApiException as e:
+            if not _is_single_dataset_constraint_rejection(e):
+                raise
+            self.logger.warning(
+                "Platform rejected the consolidated task datasets, retrying with "
+                f"a single dataset. Platform said (HTTP {e.status}): "
+                f"{_platform_rejection_detail(e)}",
+            )
+
+        # The rejected two-dataset attempt's rollback already deleted the datasets it
+        # created, so this retry starts from a fresh dataset.
+        legacy_problem_type = self._legacy_single_dataset_problem_type()
+        legacy_spec = next(
+            (
+                spec
+                for spec in dataset_specs
+                if spec.model_problem_type == legacy_problem_type
+            ),
+            None,
+        )
+        if legacy_spec is None:
+            # Only reachable if LEGACY_SINGLE_DATASET_FALLBACK_PROBLEM_TYPE is
+            # changed to a problem type no task dataset uses. Say why rather than
+            # letting a bare StopIteration out of next().
+            raise ValueError(
+                f"No task dataset is defined for problem type {legacy_problem_type}. "
+                "LEGACY_SINGLE_DATASET_FALLBACK_PROBLEM_TYPE must name one of "
+                f"{[spec.model_problem_type for spec in dataset_specs]}.",
+            )
+        # Log it: on this path the task is created without its complementary
+        # dataset, and the job log is the only place that is visible.
+        self.logger.warning(
+            f"Creating the legacy single-dataset task shape ({legacy_problem_type.value}) "
+            "because this platform predates the task dataset consolidation; the "
+            "complementary dataset is not created",
+        )
+        # Pre-consolidation the single dataset was named after the task with no
+        # suffix, so keep that name: it is what everything else on such a platform
+        # looks like, and it leaves the platform's later consolidation migration a
+        # clean name to derive the complementary dataset from.
+        return self._create_datasets_and_model(
+            [legacy_spec._replace(dataset_name=self.task.name)],
+        )
+
+    def _create_datasets_and_model(
+        self,
+        dataset_specs: list[_TaskDatasetSpec],
+    ) -> Tuple[Model, list[Dataset]]:
         # enter rollback block so we can clean up datasets if any later creation fails
         datasets: list[Dataset] = []
         try:
-            for name_suffix, dataset_schema, model_problem_type in dataset_specs:
+            for spec in dataset_specs:
                 dataset = self.datasets_client.post_connector_dataset(
                     connector_id=self.conn.connector_config.id,
                     post_dataset=PostDataset(
-                        name=f"{self.task.name} - {name_suffix}",
+                        name=spec.dataset_name,
                         dataset_locator=DatasetLocator(
                             fields=[
                                 DatasetLocatorField(
@@ -523,8 +654,8 @@ class _TaskDatasetAndModelCreator(_ValidationKeyManager):
                                 ),
                             ],
                         ),
-                        dataset_schema=dataset_schema,
-                        model_problem_type=model_problem_type,
+                        dataset_schema=spec.dataset_schema,
+                        model_problem_type=spec.model_problem_type,
                     ),
                 )
                 self.logger.info(
@@ -543,6 +674,16 @@ class _TaskDatasetAndModelCreator(_ValidationKeyManager):
                 self.datasets_client.delete_dataset(dataset_id=dataset.id)
             self.logger.warning("Dataset rollback complete")
             raise
+
+    def _legacy_single_dataset_problem_type(self) -> ModelProblemType:
+        # A pre-consolidation platform still sends task_type on the create-task job
+        # spec, which says exactly which dataset that task used to get. The link
+        # path has no equivalent signal.
+        if self.legacy_task_type == _LEGACY_AGENTIC_TASK_TYPE:
+            return ModelProblemType.AGENTIC_TRACE
+        if self.legacy_task_type == _LEGACY_TRADITIONAL_TASK_TYPE:
+            return ModelProblemType.ARTHUR_SHIELD
+        return LEGACY_SINGLE_DATASET_FALLBACK_PROBLEM_TYPE
 
     def _create_task_model(
         self,
@@ -580,6 +721,7 @@ class TaskCreator:
         models_client: ModelsV1Api,
         tasks_client: TasksV1Api,
         logger: logging.Logger,
+        legacy_task_type: str | None = None,
     ) -> None:
         self.conn = conn
         self.job_spec = job_spec
@@ -587,6 +729,7 @@ class TaskCreator:
         self.models_client = models_client
         self.tasks_client = tasks_client
         self.logger = logger
+        self.legacy_task_type = legacy_task_type
 
     def create(self) -> Tuple[Model, list[Dataset], TaskResponse]:
         # create the task in shield
@@ -649,6 +792,7 @@ class TaskCreator:
             models_client=self.models_client,
             tasks_client=self.tasks_client,
             logger=self.logger,
+            legacy_task_type=self.legacy_task_type,
         )
         model, datasets = dataset_model_creator.create()
         return model, datasets, task
@@ -754,7 +898,11 @@ class _TaskAndModelDeleter(_ValidationKeyManager):
 
 
 class CreateTaskJobExecutor(TaskManagementJobExecutor):
-    def execute(self, job_spec: CreateModelTaskJobSpec) -> None:
+    def execute(
+        self,
+        job_spec: CreateModelTaskJobSpec,
+        legacy_task_type: str | None = None,
+    ) -> None:
         conn: ShieldBaseConnector = self.get_shield_connector_from_connector_id(
             str(job_spec.connector_id),
         )
@@ -765,6 +913,7 @@ class CreateTaskJobExecutor(TaskManagementJobExecutor):
             models_client=self.models_client,
             tasks_client=self.tasks_client,
             logger=self.logger,
+            legacy_task_type=legacy_task_type,
         )
         model, _, task = creator.create()
         self.upload_final_task_state(
