@@ -496,3 +496,79 @@ def test_initialize_is_idempotent():
     assert service1 is service2
 
     shutdown_global_agent_polling_service()
+
+
+# --- D-14 (UP-4986): migrating discovery onto a gcp_vertex Discovery Source ----------
+
+VERTEX_RESOURCE_NAME = (
+    "projects/123456789012/locations/us-central1/reasoningEngines/1111111111111111111"
+)
+
+
+def _run_legacy_discovery(monkeypatch, mapped_task_id):
+    """Run `_discover_gcp_agents` over one listed engine, with every collaborator mocked.
+
+    `mapped_task_id` is what the service-name mapping holds for the engine's resource
+    name: a task ID when a gcp_vertex Discovery Source has already resolved it, None when
+    nothing has. Returns (created count, the mocked task repository).
+    """
+    monkeypatch.setenv("GOOGLE_CLOUD_PROJECT", "example-project-123456")
+    monkeypatch.delenv("GENAI_ENGINE_LEGACY_GCP_DISCOVERY_ENABLED", raising=False)
+    agent = MagicMock()
+    agent.api_resource.name = VERTEX_RESOURCE_NAME
+    agent.api_resource.display_name = "personal-assistant"
+    module = "services.task.global_agent_polling_service"
+    with (
+        patch(f"{module}.get_db_session") as mock_get_db,
+        patch(f"{module}.vertexai") as mock_vertexai,
+        patch(f"{module}.TaskRepository") as mock_task_repo_cls,
+        patch(f"{module}.ServiceNameMappingRepository") as mock_mapping_repo_cls,
+        patch(f"{module}.TaskPollingStateRepository"),
+        patch(f"{module}.RuleRepository"),
+        patch(f"{module}.MetricRepository"),
+        patch(f"{module}.ConfigurationRepository"),
+    ):
+        mock_get_db.return_value = iter([MagicMock()])
+        mock_vertexai.Client.return_value.agent_engines.list.return_value = [agent]
+        task_repo = mock_task_repo_cls.return_value
+        task_repo.find_by_gcp_engine_id.return_value = None
+        task_repo.create_task.return_value = MagicMock(id="new-task", name="n")
+        mock_mapping_repo_cls.return_value.get_task_id_by_service_name.side_effect = (
+            lambda name, key_kind=None: (
+                mapped_task_id if name == VERTEX_RESOURCE_NAME else None
+            )
+        )
+        created = GlobalAgentPollingService()._discover_gcp_agents()
+    return created, task_repo
+
+
+@pytest.mark.unit_tests
+def test_legacy_discovery_skips_an_engine_a_discovery_source_already_resolved(
+    monkeypatch,
+):
+    """A task minted by a gcp_vertex source carries a CLOUD creation source, which
+    `find_by_gcp_engine_id` cannot see. The resource-name mapping it wrote can, and
+    without checking it every newly deployed agent would get a second task while both
+    discovery paths run."""
+    created, task_repo = _run_legacy_discovery(monkeypatch, mapped_task_id="task-x")
+    assert created == 0
+    task_repo.create_task.assert_not_called()
+
+
+@pytest.mark.unit_tests
+def test_legacy_discovery_still_creates_a_task_for_an_unmapped_engine(monkeypatch):
+    created, task_repo = _run_legacy_discovery(monkeypatch, mapped_task_id=None)
+    assert created == 1
+    task_repo.create_task.assert_called_once()
+
+
+@pytest.mark.unit_tests
+@pytest.mark.parametrize("value", ["false", "False", "0", "no"])
+@patch("services.task.global_agent_polling_service.get_db_session")
+def test_legacy_discovery_can_be_switched_off(mock_get_db, value, monkeypatch):
+    """Once a gcp_vertex source scans the project, the startup-variable discovery is
+    switched off without touching the trace-fetch phase."""
+    monkeypatch.setenv("GOOGLE_CLOUD_PROJECT", "example-project-123456")
+    monkeypatch.setenv("GENAI_ENGINE_LEGACY_GCP_DISCOVERY_ENABLED", value)
+    assert GlobalAgentPollingService()._discover_gcp_agents() == 0
+    mock_get_db.assert_not_called()
