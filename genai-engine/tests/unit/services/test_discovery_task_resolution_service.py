@@ -14,11 +14,16 @@ from typing import Generator, Iterable
 import pytest
 from arthur_common.models.agent_discovery_schemas import DiscoveredAgentRecord
 from arthur_common.models.agent_governance_schemas import (
+    AgentCreationSource,
     AgentObservations,
+    CloudAgentCreationSource,
     EndpointAgentCreationSource,
+    GCPAgentCreationSource,
     OTELAgentCreationSource,
+    RunsOn,
     SIEMAgentCreationSource,
     SourceAddress,
+    TaskMetadata,
 )
 from pydantic import ValidationError
 from sqlalchemy import event
@@ -39,8 +44,10 @@ from schemas.enums import MappingKeyKind
 from services.task.discovery_task_resolution_service import (
     DiscoveryTaskResolutionService,
 )
+from schemas.internal_schemas import Task
 from services.trace.trace_ingestion_service import TraceIngestionService
 from tests.clients.base_test_client import override_get_db_session
+from utils.constants import DEFAULT_ORG_ID
 
 # Every record carries the time its source last saw the agent. Resolution does not read
 # it, so one fixed instant keeps it out of the way of what these tests are about.
@@ -928,3 +935,97 @@ def test_a_source_a_scan_cannot_be_is_rejected():
             last_seen=LAST_SEEN,
             creation_source=OTELAgentCreationSource(),
         )
+
+
+# --- D-14 (UP-4986): Vertex AI discovery moving onto a gcp_vertex source ------------
+
+
+def _legacy_vertex_task(db_session, resource_name: str, engine_id: str) -> str:
+    """A task exactly as `global_agent_polling_service._discover_gcp_agents` leaves it:
+    a GCP creation source, and Google's resource name mapped as a SERVICE_NAME key."""
+    task_repo = TaskRepository(
+        db_session,
+        RuleRepository(db_session),
+        MetricRepository(db_session),
+        get_application_config(session=db_session),
+    )
+    created = task_repo.create_task(
+        Task(
+            id=str(uuid.uuid4()),
+            name="Vertex AI Agent: personal-assistant",
+            created_at=datetime.now(),
+            updated_at=datetime.now(),
+            is_agentic=True,
+            is_autocreated=True,
+            org_id=DEFAULT_ORG_ID,
+            task_metadata=TaskMetadata(
+                creation_source=AgentCreationSource(
+                    root=GCPAgentCreationSource(
+                        gcp_project_id="example-project-123456",
+                        gcp_region="us-central1",
+                        gcp_reasoning_engine_id=engine_id,
+                    ),
+                ),
+            ),
+        ),
+        with_default_rules=False,
+    )
+    ServiceNameMappingRepository(db_session).create_mapping(resource_name, created.id)
+    return created.id
+
+
+def _vertex_record(resource_name: str, engine_id: str) -> DiscoveredAgentRecord:
+    """A record in the shape ML Engine's gcp_vertex scanner emits: Google's resource
+    name verbatim as both external_id and the one service name, with the configured
+    project ID -- not the number in the name -- in the address."""
+    return DiscoveredAgentRecord(
+        external_id=resource_name,
+        name="personal-assistant",
+        last_seen=LAST_SEEN,
+        runs_on=RunsOn.GCP,
+        creation_source=CloudAgentCreationSource(
+            vendor="gcp_vertex",
+            address=SourceAddress(
+                instance="example-project-123456",
+                scope="us-central1",
+                resource_id=engine_id,
+            ),
+            observations=AgentObservations(service_names=[resource_name]),
+        ),
+    )
+
+
+@pytest.mark.unit_tests
+def test_a_vertex_source_joins_the_task_the_startup_variable_poller_created(
+    resolver,
+    db_session,
+    tracked_tasks,
+):
+    """No regression for customers on GCP discovery today: switching them to a
+    gcp_vertex source must not give any of their agents a second task.
+
+    The legacy task is found by its resource-name mapping (rung 3), and the record's
+    external_id is then keyed to it, so the next scan resolves at rung 2.
+    """
+    engine_id = str(uuid.uuid4().int)[:19]
+    resource_name = (
+        f"projects/123456789012/locations/us-central1/reasoningEngines/{engine_id}"
+    )
+    legacy_task_id = _legacy_vertex_task(db_session, resource_name, engine_id)
+    tracked_tasks.append(legacy_task_id)
+    tasks_before = db_session.query(DatabaseTask).count()
+
+    [first] = resolver.resolve_records(
+        [_vertex_record(resource_name, engine_id)],
+        source_id=SOURCE_ID,
+    ).resolved
+    [rescan] = resolver.resolve_records(
+        [_vertex_record(resource_name, engine_id)],
+        source_id=SOURCE_ID,
+    ).resolved
+
+    assert first.task_id == legacy_task_id
+    assert first.resolved_by is TaskResolutionMethod.SERVICE_NAME
+    assert rescan.task_id == legacy_task_id
+    assert rescan.resolved_by is TaskResolutionMethod.EXTERNAL_ID
+    assert db_session.query(DatabaseTask).count() == tasks_before

@@ -10,15 +10,24 @@ it.
 A vendor with no entry fails its own job with that reason, which is the right answer for
 an unsupported source and is reported per job rather than per engine.
 
-Adding an MDM is one more line here and one more package under `discovery.endpoint`.
+Adding an MDM is one more line here and one more package under `discovery.endpoint`;
+adding a cloud provider product is the same under `discovery.cloud`.
 Everything the new MDM shares with Jamf -- the `arthur1.` frame, the six-column rows,
 matching, the record shape -- is already neutral and is not touched.
 """
 
+from discovery.cloud.gcp_vertex.scanner import VENDOR as GCP_VERTEX_VENDOR
+from discovery.cloud.gcp_vertex.scanner import VertexAgentEngineScanner
 from discovery.endpoint.jamf.scanner import VENDOR as JAMF_VENDOR
 from discovery.endpoint.jamf.scanner import JamfScanner
 from job_executors.discovery_scan import SOURCE_SCANNERS
 
 SOURCE_SCANNERS[JAMF_VENDOR] = JamfScanner
+SOURCE_SCANNERS[GCP_VERTEX_VENDOR] = VertexAgentEngineScanner
 
-__all__ = ["JamfScanner", "JAMF_VENDOR"]
+__all__ = [
+    "JamfScanner",
+    "JAMF_VENDOR",
+    "VertexAgentEngineScanner",
+    "GCP_VERTEX_VENDOR",
+]
