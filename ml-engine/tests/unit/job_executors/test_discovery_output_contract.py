@@ -19,6 +19,7 @@ from job_executors.discovery_output_contract import (
     result_payload,
 )
 from job_executors.discovery_scan import (
+    DeviceCoverage,
     DiscoveryPublishResult,
     DiscoveryScanOutcome,
     run_source_scan,
@@ -288,6 +289,84 @@ def test_a_run_that_never_produced_a_batch_records_no_check() -> None:
     outcome, sink = _scan([])
     assert sink.batches == []
     assert outcome.output_column_check is None
+
+
+class CoverageScanner(YieldingScanner):
+    """An endpoint scanner: yields its batches, then says which devices it read."""
+
+    def __init__(self, batches: list[Sequence[object]], fail: bool = False) -> None:
+        super().__init__(batches)
+        self.fail = fail
+
+    def scan(
+        self,
+        config: DiscoverySourceConfigSpec,
+        lookback_hours: int,
+        credentials: Mapping[str, Optional[str]],
+        source_fields: Mapping[str, str],
+        logger: logging.Logger,
+    ) -> Iterator[Sequence[object]]:
+        yield from self.batches
+        if self.fail:
+            raise RuntimeError("page 2 timed out")
+
+    def device_coverage(self) -> Optional[DeviceCoverage]:
+        return DeviceCoverage(
+            devices_read=19,
+            devices_in_scope=12,
+            devices_decoded=9,
+            devices_unreadable=3,
+            devices_excluded=7,
+            excluded_by_group={"Contractors": 5, "Executives": 2},
+        )
+
+
+def _scan_with(scanner: YieldingScanner) -> DiscoveryScanOutcome:
+    """The outcome a scan records, whether or not it raised."""
+    outcome = _outcome()
+    try:
+        run_source_scan(
+            config=_config(),
+            lookback_hours=1,
+            workspace_id=WORKSPACE_ID,
+            data_plane_id=DATA_PLANE_ID,
+            outcome=outcome,
+            scanner=scanner,
+            sink=RecordingSink(),
+            logger=logging.getLogger("test-output-contract"),
+            credentials={},
+            source_fields={},
+        )
+    except RuntimeError:
+        pass
+    return outcome
+
+
+def test_an_endpoint_scanners_device_coverage_lands_on_the_outcome() -> None:
+    """The denominator, and what policy kept out, travel with the run rather than
+    only in a log line nobody can aggregate."""
+    outcome = _scan_with(CoverageScanner([[_record("a")]]))
+    assert outcome.device_coverage is not None
+    assert outcome.device_coverage.excluded_by_group == {
+        "Contractors": 5,
+        "Executives": 2,
+    }
+    payload = json.loads(json.dumps(outcome.to_log_payload(), sort_keys=True))
+    assert payload["device_coverage"]["devices_read"] == 19
+    assert payload["device_coverage"]["excluded_by_group"]["Contractors"] == 5
+
+
+def test_a_scan_that_fails_part_way_still_reports_the_devices_it_read() -> None:
+    outcome = _scan_with(CoverageScanner([[_record("a")]], fail=True))
+    assert outcome.error == "RuntimeError: page 2 timed out"
+    assert outcome.device_coverage is not None
+    assert outcome.device_coverage.devices_read == 19
+
+
+def test_a_source_that_reads_no_devices_reports_no_coverage() -> None:
+    outcome = _scan_with(YieldingScanner([[_record("a")]]))
+    assert outcome.device_coverage is None
+    assert outcome.to_log_payload()["device_coverage"] is None
 
 
 def test_the_outcome_payload_carries_the_check_and_is_json_serializable() -> None:

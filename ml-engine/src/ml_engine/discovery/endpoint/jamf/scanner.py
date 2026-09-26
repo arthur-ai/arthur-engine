@@ -2,8 +2,9 @@
 
 Pages computer inventory out of Jamf and hands each device to
 `discovery.endpoint.records`, which does everything that is not Jamf-specific. What is
-left here is the vendor tag, reading this source's fields, and turning `lookback_hours`
-into the filter Jamf's API wants.
+left here is the vendor tag, reading this source's fields, resolving its device-group
+scope against the tenant's computer groups, and turning `lookback_hours` into the filter
+Jamf's API wants.
 
 BATCHED PER DEVICE, BECAUSE THAT IS THE UNIT THAT CAN FAIL. A Mac with an unreadable
 payload is reported and skipped; the nine thousand behind it are unaffected. D-07
@@ -20,12 +21,30 @@ from arthur_common.models.agent_discovery_schemas import DiscoveredAgentRecord
 from discovery.catalog import Matcher
 from discovery.endpoint.jamf.client import JamfClient, JamfSettings
 from discovery.endpoint.records import records_for
+from discovery.endpoint.scope import DeviceScope, parse_group_names
+from job_executors.discovery_scan import DeviceCoverage
 
 VENDOR = "jamf_pro"
 
+# Non-sensitive source fields: comma-separated Jamf computer group names.
+INCLUDE_GROUPS_FIELD = "include_groups"
+EXCLUDE_GROUPS_FIELD = "exclude_groups"
+
 
 class JamfScanner:
-    """Implements `job_executors.discovery_scan.DiscoverySourceScanner`."""
+    """Implements `job_executors.discovery_scan.DiscoverySourceScanner` and
+    `ReportsDeviceCoverage`.
+
+    Holds one scan's coverage, which is safe only because a scanner is built fresh for
+    every scan -- see `DiscoveryScannerFactory`.
+    """
+
+    def __init__(self) -> None:
+        self._coverage: Optional[DeviceCoverage] = None
+
+    def device_coverage(self) -> Optional[DeviceCoverage]:
+        """None if the scan failed before reading a device, including on its scope."""
+        return self._coverage
 
     def scan(
         self,
@@ -47,36 +66,77 @@ class JamfScanner:
         )
         client = JamfClient(settings, logger=logger)
 
+        # Resolved before a single device is read, so a scope that cannot be applied
+        # fails the scan instead of scanning Macs it was meant to leave out.
+        scope = DeviceScope.everything()
+        if settings.scoped_to_groups:
+            scope = DeviceScope.resolve(
+                settings.include_groups,
+                settings.exclude_groups,
+                client.computer_groups(),
+            )
+        coverage = self._coverage = scope.new_coverage()
+
         logger.info(
-            "Jamf scan starting against %s, catalog %s, %s agent(s), lookback %sh",
+            "Jamf scan starting against %s, catalog %s, %s agent(s), lookback %sh, "
+            "scope: %s",
             settings.base_url,
             matcher.catalog_sha,
             matcher.agent_count,
             lookback_hours,
+            scope.describe(),
         )
 
-        seen = reporting = unreadable = 0
-
         for device in client.devices_since(_since(lookback_hours)):
-            seen += 1
+            # Before the payload is decoded: an out-of-scope device contributes counts
+            # and nothing else.
+            if not scope.admit(device, coverage):
+                continue
             records = records_for(device, matcher, VENDOR, logger)
             if records is None:
-                unreadable += 1
+                coverage.devices_unreadable += 1
                 continue
-            reporting += 1
+            coverage.devices_decoded += 1
             if records:
                 yield records
 
-        # The denominator, which the run outcome has no field for yet. Without it, "12
+        # The denominator, also on the run outcome as `device_coverage`. Without it, "12
         # machines have agents" cannot be told from "12 of 4,000, and 900 have not
         # reported in a week" -- different reports about the same fleet.
         logger.info(
             "Jamf scan read %s device(s): %s decoded, %s unreadable",
-            seen,
-            reporting,
-            unreadable,
+            coverage.devices_read,
+            coverage.devices_decoded,
+            coverage.devices_unreadable,
         )
+        if scope.is_restricted:
+            logger.info(
+                "Jamf scan scope kept %s of %s device(s); excluded %s%s",
+                coverage.devices_in_scope,
+                coverage.devices_read,
+                coverage.devices_excluded,
+                _breakdown(coverage.excluded_by_group),
+            )
+            if scope.include:
+                logger.info(
+                    "Jamf scan scope: %s device(s) in none of the included groups; "
+                    "in scope%s",
+                    coverage.devices_outside_included_groups,
+                    _breakdown(coverage.included_by_group),
+                )
+            if coverage.devices_read and not coverage.devices_in_scope:
+                # Every device read was left out. Possibly right for a narrow window, but
+                # also exactly what a scope that no longer matches the fleet looks like,
+                # and it publishes the same nothing as a fleet without agents.
+                logger.warning(
+                    "Jamf scan left all %s device(s) it read out of scope (%s). If "
+                    "that is not intended, check the source's include_groups and "
+                    "exclude_groups.",
+                    coverage.devices_read,
+                    scope.describe(),
+                )
 
+        seen, reporting = coverage.devices_in_scope, coverage.devices_decoded
         if seen and not reporting:
             # A SCAN THAT READ DEVICES AND DECODED NONE IS NOT A FLEET WITHOUT AGENTS,
             # and publishing nothing makes the two identical in the only output anyone
@@ -127,6 +187,17 @@ def _settings_from(
         base_url=base_url,
         client_id=str(credentials["client_id"]),
         client_secret=str(credentials["client_secret"]),
+        include_groups=parse_group_names(source_fields.get(INCLUDE_GROUPS_FIELD)),
+        exclude_groups=parse_group_names(source_fields.get(EXCLUDE_GROUPS_FIELD)),
+    )
+
+
+def _breakdown(by_group: Mapping[str, int]) -> str:
+    """` (Contractors: 5, Executives: 2)`, or nothing when no groups are configured."""
+    if not by_group:
+        return ""
+    return (
+        " (" + ", ".join(f"{name}: {count}" for name, count in by_group.items()) + ")"
     )
 
 
