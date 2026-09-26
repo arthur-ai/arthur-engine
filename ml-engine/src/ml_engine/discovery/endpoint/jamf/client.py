@@ -3,7 +3,8 @@
 Read-only, and outbound only. Nothing is installed on a device, nothing is executed on
 one, and no policy is written back -- the Mac already talks to Jamf and to nothing else,
 so the fleet needs no new route, no firewall rule and no device-held credential. The
-privilege this needs is *Read Computers* and nothing more.
+privilege this needs is *Read Computers*, plus *Read Smart Computer Groups* and *Read
+Static Computer Groups* when the source is scoped to device groups.
 
 TWO THINGS HERE ARE NOT OPTIONAL, AND BOTH COME FROM HOW reportDate BEHAVES.
 
@@ -33,6 +34,7 @@ import requests
 from arthur_common.models.agent_governance_schemas import Platform
 
 from discovery.endpoint.device import ManagedDevice
+from discovery.endpoint.scope import DeviceGroup
 
 # What the collector needs and nothing else. GENERAL carries `reportDate`, which is the
 # roster and the freshness signal; EXTENSION_ATTRIBUTES carries the payload. The other two
@@ -44,6 +46,9 @@ SECTIONS = (
     "USER_AND_LOCATION",
     "EXTENSION_ATTRIBUTES",
 )
+# Requested only when the source is scoped to device groups, so an unscoped source asks
+# Jamf for exactly what it did before.
+GROUP_MEMBERSHIPS_SECTION = "GROUP_MEMBERSHIPS"
 
 # Jamf's own published guidance is at most five concurrent connections. One page at a time
 # is deliberate; see the module docstring.
@@ -66,6 +71,10 @@ BACKOFF_CAP_SECONDS = 30.0
 class JamfError(RuntimeError):
     """A Jamf call failed in a way retrying will not fix."""
 
+    def __init__(self, message: str, status_code: Optional[int] = None) -> None:
+        super().__init__(message)
+        self.status_code = status_code
+
 
 @dataclass(frozen=True)
 class JamfSettings:
@@ -77,6 +86,13 @@ class JamfSettings:
     page_size: int = PAGE_SIZE
     timeout_seconds: float = 30.0
     verify_ssl: bool = True
+    # Computer group names the scan is limited to, and names it must leave out.
+    include_groups: tuple[str, ...] = ()
+    exclude_groups: tuple[str, ...] = ()
+
+    @property
+    def scoped_to_groups(self) -> bool:
+        return bool(self.include_groups or self.exclude_groups)
 
 
 class JamfClient:
@@ -99,6 +115,9 @@ class JamfClient:
         self._sleep = sleep
         self._token: Optional[str] = None
         self._token_expires_at = 0.0
+        self._sections = SECTIONS + (
+            (GROUP_MEMBERSHIPS_SECTION,) if settings.scoped_to_groups else ()
+        )
 
     # --- auth ---------------------------------------------------------------------
 
@@ -142,7 +161,7 @@ class JamfClient:
 
     # --- transport ----------------------------------------------------------------
 
-    def _get(self, path: str, params: dict[str, Any]) -> dict[str, Any]:
+    def _get(self, path: str, params: dict[str, Any]) -> Any:
         last: Optional[str] = None
 
         for attempt in range(1, MAX_ATTEMPTS + 1):
@@ -167,8 +186,7 @@ class JamfClient:
                 continue
 
             if resp.status_code == 200:
-                body: dict[str, Any] = resp.json()
-                return body
+                return resp.json()
 
             if resp.status_code == 401 and attempt < MAX_ATTEMPTS:
                 # The token died mid-scan despite the 80% refresh. Drop it and retry once
@@ -182,7 +200,10 @@ class JamfClient:
                 last = f"HTTP {resp.status_code}"
                 continue
 
-            raise JamfError(f"Jamf GET {path} failed with HTTP {resp.status_code}")
+            raise JamfError(
+                f"Jamf GET {path} failed with HTTP {resp.status_code}",
+                status_code=resp.status_code,
+            )
 
         raise JamfError(
             f"Jamf GET {path} still failing after {MAX_ATTEMPTS} attempts ({last})",
@@ -202,6 +223,34 @@ class JamfClient:
                 pass
         window = min(BACKOFF_BASE_SECONDS * (2 ** (attempt - 1)), BACKOFF_CAP_SECONDS)
         return random.uniform(0, window)
+
+    # --- groups -------------------------------------------------------------------
+
+    def computer_groups(self) -> list[DeviceGroup]:
+        """Every computer group in the tenant, smart and static alike.
+
+        One unpaginated call. Used to resolve the group names a source is scoped to, so
+        it is made only for a scoped source, and the privileges it needs are asked of
+        nobody else.
+        """
+        try:
+            body = self._get("/api/v1/computer-groups", {})
+        except JamfError as exc:
+            if exc.status_code == 403:
+                raise JamfError(
+                    f"{exc}. Scoping a Jamf source to device groups needs the API "
+                    "client's role to hold Read Smart Computer Groups and Read Static "
+                    "Computer Groups.",
+                    status_code=exc.status_code,
+                ) from exc
+            raise
+        if not isinstance(body, list):
+            raise JamfError("Jamf GET /api/v1/computer-groups did not return a list")
+        return [
+            DeviceGroup(id=str(group["id"]), name=str(group["name"]))
+            for group in body
+            if group.get("id") is not None and group.get("name") is not None
+        ]
 
     # --- inventory ----------------------------------------------------------------
 
@@ -237,7 +286,7 @@ class JamfClient:
         last_id: Optional[Any] = None
         while True:
             params: dict[str, Any] = {
-                "section": list(SECTIONS),
+                "section": list(self._sections),
                 "page": 0,
                 "page-size": self._s.page_size,
                 "sort": "id:asc",
@@ -292,7 +341,7 @@ class JamfClient:
             body = self._get(
                 "/api/v1/computers-inventory",
                 {
-                    "section": list(SECTIONS),
+                    "section": list(self._sections),
                     "page": 0,
                     "page-size": self._s.page_size,
                     "sort": "general.reportDate:asc,id:asc",
@@ -348,6 +397,11 @@ def _to_device(record: dict[str, Any]) -> ManagedDevice:
         os_version=os_block.get("version"),
         platform=_platform(os_block.get("name")),
         assigned_user=user.get("username"),
+        group_ids=frozenset(
+            str(membership["groupId"])
+            for membership in record.get("groupMemberships") or []
+            if membership.get("groupId") is not None
+        ),
         attributes=attributes,
     )
 

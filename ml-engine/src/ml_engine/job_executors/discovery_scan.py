@@ -26,7 +26,15 @@ import logging
 import traceback
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
-from typing import Callable, Iterator, Mapping, Optional, Protocol, Sequence
+from typing import (
+    Callable,
+    Iterator,
+    Mapping,
+    Optional,
+    Protocol,
+    Sequence,
+    runtime_checkable,
+)
 
 from arthur_client.api_bindings import (
     DiscoverySourceConfigSpec,
@@ -80,6 +88,46 @@ class DiscoverySourceScanner(Protocol):
         source_fields: Mapping[str, str],
         logger: logging.Logger,
     ) -> Iterator[Sequence[DiscoveryOutputRecord]]: ...
+
+
+@dataclass
+class DeviceCoverage:
+    """Which devices an endpoint scan read, and which of them it was allowed to use.
+
+    The denominator a findings count needs: "12 Macs have agents" cannot be told from
+    "12 of 4,000, and 900 are excluded by policy" without it. Counts cover the devices
+    this run was handed -- the lookback window, or the whole roster for a full
+    enumeration -- not the fleet's total size.
+
+    A device in several excluded groups counts toward each of them, so the per-group
+    counts can sum to more than `devices_excluded`. Those are two different questions:
+    how many devices policy kept out, and what each rule is keeping out.
+    """
+
+    devices_read: int = 0
+    devices_in_scope: int = 0
+    # In scope and carrying a payload that decoded, versus one that did not.
+    devices_decoded: int = 0
+    devices_unreadable: int = 0
+    devices_excluded: int = 0
+    # Group name -> devices it kept out.
+    excluded_by_group: dict[str, int] = field(default_factory=dict)
+    # Include groups were set and the device was in none of them.
+    devices_outside_included_groups: int = 0
+    # Group name -> in-scope devices it let in.
+    included_by_group: dict[str, int] = field(default_factory=dict)
+
+
+@runtime_checkable
+class ReportsDeviceCoverage(Protocol):
+    """A scanner that reads managed devices, and can say which it read and used.
+
+    Optional, so a query-language source owes nothing. Asked once the scan ends,
+    however it ended: a scan that fails on page 40 still read pages 1-39, and those
+    counts are what explain the findings that did land.
+    """
+
+    def device_coverage(self) -> Optional[DeviceCoverage]: ...
 
 
 @dataclass(frozen=True)
@@ -188,6 +236,9 @@ class DiscoveryScanOutcome:
     # ever produced, which is not the same answer as a source that produced one and
     # failed the contract.
     output_column_check: Optional[OutputColumnCheckResult] = None
+    # Endpoint sources only: the devices behind the findings, and the ones policy kept
+    # out. Null for a source that does not read devices.
+    device_coverage: Optional[DeviceCoverage] = None
 
     def record_failure(
         self,
@@ -222,6 +273,9 @@ class DiscoveryScanOutcome:
             "error_count": self.error_count,
             "error": self.error,
             "output_column_check": result_payload(self.output_column_check),
+            "device_coverage": (
+                asdict(self.device_coverage) if self.device_coverage else None
+            ),
             "succeeded": self.error is None,
         }
 
@@ -316,6 +370,8 @@ def run_source_scan(
             e.args = (detail,) + tuple(e.args[1:])
         raise
     finally:
+        if isinstance(scanner, ReportsDeviceCoverage):
+            outcome.device_coverage = scanner.device_coverage()
         finalize_outcome(outcome, logger)
 
     return outcome

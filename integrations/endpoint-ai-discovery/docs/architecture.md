@@ -285,7 +285,19 @@ pull(since)  ── scheduled ──  since = the last successful run
 
 `GET /api/v1/computers-inventory?section=EXTENSION_ATTRIBUTES,GENERAL`, filtered on
 `general.reportDate` — Jamf's documented parameter for "devices that have submitted inventory
-within the last day". The `Read Computers` privilege and nothing else.
+within the last day". The `Read Computers` privilege and nothing else — unless the source
+is scoped to device groups, below.
+
+**Device-group scope.** A Jamf source can name computer groups to include and to exclude, in
+its `include_groups` and `exclude_groups` fields (comma-separated names). Each scan resolves
+the names against `GET /api/v1/computer-groups` before reading a device, adds
+`GROUP_MEMBERSHIPS` to the inventory sections, and drops every out-of-scope Mac before its
+payload is decoded. Exclude wins over include; an empty include means the whole fleet. A name
+that matches no group — misspelled, or renamed in Jamf — fails the scan, because an exclude
+rule that quietly matched nothing would scan exactly the Macs it was meant to leave out.
+Scoping needs `Read Smart Computer Groups` and `Read Static Computer Groups` as well, and an
+unscoped source asks for neither. Each run reports devices read, in scope, and excluded per
+group, as `device_coverage` on the scan outcome.
 
 **Why not `ComputerInventoryCompleted`.** Jamf documents 24 webhook events and **documents no
 delivery semantics for any of them**: no retry policy, no delivery guarantee, no timeout, no
@@ -434,8 +446,9 @@ incremental server-to-server read, against push's `Mac → Jamf 154 B` plus `Mac
 - ~~**What to pin.**~~ — closed. Upstream cuts releases and this tree pins a tag;
   `vendor/osquery-ai-discovery/VERSION` records which. A bare commit still prints
   `PROVISIONAL`, which is legitimate until a tag carries what you need.
-- **Jamf API credential scope and rotation.** One credential with `Read Computers`, held by
-  the collector. Where it lives and how it rotates is undecided, and it is now the only
+- **Jamf API credential scope and rotation.** One credential with `Read Computers` (plus
+  `Read Smart Computer Groups` and `Read Static Computer Groups` for a group-scoped source),
+  held by the collector. Where it lives and how it rotates is undecided, and it is now the only
   secret in the data path.
 
 ### Answered by polling Jamf

@@ -7,6 +7,7 @@ a mid-pagination shift an acceptance criterion for exactly that reason.
 """
 
 import base64
+import dataclasses
 import gzip
 import io
 import json
@@ -23,6 +24,8 @@ from arthur_common.models.agent_governance_schemas import Platform, RunsOn
 from discovery.endpoint.envelope import EnvelopeOutcome
 from discovery.endpoint.jamf.client import JamfClient, JamfError, JamfSettings
 from discovery.endpoint.jamf.scanner import JamfScanner, _settings_from
+from discovery.endpoint.records import records_for
+from discovery.endpoint.scope import DeviceGroupError
 
 SCAN_AT = 1790100381
 LOG = logging.getLogger("discovery-test")
@@ -78,8 +81,9 @@ def computer(
     report_date: str = "2026-09-22T10:00:00Z",
     ident: int = 0,
     extra_attributes: Optional[list[dict[str, Any]]] = None,
+    groups: Optional[list[str]] = None,
 ) -> dict[str, Any]:
-    return {
+    record = {
         "id": ident or (abs(hash(mid)) % 100000),
         "general": {
             "managementId": mid,
@@ -97,6 +101,13 @@ def computer(
         "userAndLocation": {"username": "nori"},
         "hardware": {"serialNumber": f"SER{mid}"},
     }
+    if groups is not None:
+        # GROUP_MEMBERSHIPS, as Jamf returns it when the section is requested.
+        record["groupMemberships"] = [
+            {"groupId": gid, "groupName": f"group {gid}", "smartGroup": True}
+            for gid in groups
+        ]
+    return record
 
 
 class FakeResponse:
@@ -127,6 +138,8 @@ class FakeJamf:
         get_statuses: Optional[list[int]] = None,
         page_size: int = 2,
         on_page: Optional[Any] = None,
+        groups: Optional[list[dict[str, Any]]] = None,
+        groups_status: int = 200,
     ) -> None:
         # `pages` is the simple form: whatever is listed comes back in order.
         self.pages = pages
@@ -138,6 +151,10 @@ class FakeJamf:
         self.token_calls = 0
         self.gets: list[dict[str, Any]] = []
         self._calls = 0
+        # GET /api/v1/computer-groups: an unpaginated list of every computer group.
+        self.groups = groups or []
+        self.groups_status = groups_status
+        self.group_calls = 0
 
     def post(self, url: str, **kw: Any) -> FakeResponse:
         self.token_calls += 1
@@ -163,6 +180,11 @@ class FakeJamf:
         return [d for d in rows if self._key(d) > (date, ident)]
 
     def get(self, url: str, params: dict[str, Any], **kw: Any) -> FakeResponse:
+        if url.endswith("/api/v1/computer-groups"):
+            self.group_calls += 1
+            if self.groups_status != 200:
+                return FakeResponse(self.groups_status, None)
+            return FakeResponse(200, self.groups)
         if self.get_statuses:
             status = self.get_statuses.pop(0)
             if status != 200:
@@ -1049,3 +1071,238 @@ def test_base_url_in_the_credentials_is_ignored() -> None:
     the field is read from one place only."""
     with pytest.raises(ValueError, match="base_url"):
         _settings_from({**CREDS, "base_url": "https://sneaky.example"}, {})
+
+
+# --- device-group scope -----------------------------------------------------------
+
+JAMF_GROUPS = [
+    {"id": "1", "name": "All Managed Clients", "smartGroup": True},
+    {"id": "7", "name": "Engineering", "smartGroup": True},
+    {"id": "8", "name": "Contractors", "smartGroup": False},
+    {"id": "9", "name": "Executives", "smartGroup": True},
+]
+
+
+def scan_scoped(
+    fake: FakeJamf,
+    monkeypatch: pytest.MonkeyPatch,
+    include: str = "",
+    exclude: str = "",
+    scanner: Optional[JamfScanner] = None,
+) -> list[Any]:
+    """A scan whose client is built from the scanner's own settings, scope and all.
+
+    `scan` above hands every test the same fixed settings, which would drop the group
+    fields on the floor and test nothing.
+    """
+    monkeypatch.setattr(
+        "discovery.endpoint.jamf.scanner.JamfClient",
+        lambda s, logger=None: JamfClient(
+            dataclasses.replace(s, page_size=2),
+            session=fake,  # type: ignore[arg-type]
+            sleep=lambda _s: None,
+        ),
+    )
+    fields = {**FIELDS, "include_groups": include, "exclude_groups": exclude}
+    scanner = scanner or JamfScanner()
+    return [r for batch in scanner.scan(FakeConfig(CATALOG), 24, CREDS, fields, LOG) for r in batch]  # type: ignore[arg-type]
+
+
+def devices_found(records: list[Any]) -> set[str]:
+    return {r.external_id.split(":")[0] for r in records}
+
+
+def test_group_fields_are_read_from_the_source_fields() -> None:
+    settings = _settings_from(
+        CREDS,
+        {
+            **FIELDS,
+            "include_groups": "Engineering, Design",
+            "exclude_groups": " Executives ",
+        },
+    )
+    assert settings.include_groups == ("Engineering", "Design")
+    assert settings.exclude_groups == ("Executives",)
+    assert settings.scoped_to_groups
+    assert not _settings_from(CREDS, FIELDS).scoped_to_groups
+
+
+def test_an_excluded_group_keeps_its_macs_out_of_the_findings(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fake = FakeJamf(
+        [
+            [
+                computer("eng", full_payload(), groups=["1", "7"]),
+                computer("exec", full_payload(), groups=["1", "7", "9"]),
+            ],
+        ],
+        groups=JAMF_GROUPS,
+    )
+    scanner = JamfScanner()
+    records = scan_scoped(fake, monkeypatch, exclude="Executives", scanner=scanner)
+
+    assert devices_found(records) == {"eng"}
+    coverage = scanner.device_coverage()
+    assert coverage is not None
+    assert (
+        coverage.devices_read,
+        coverage.devices_in_scope,
+        coverage.devices_excluded,
+    ) == (2, 1, 1)
+    assert coverage.excluded_by_group == {"Executives": 1}
+
+
+def test_include_groups_limit_the_scan_to_their_members(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fake = FakeJamf(
+        [
+            [
+                computer("eng", full_payload(), groups=["1", "7"]),
+                computer("sales", full_payload(), groups=["1"]),
+            ],
+        ],
+        groups=JAMF_GROUPS,
+    )
+    scanner = JamfScanner()
+    records = scan_scoped(fake, monkeypatch, include="Engineering", scanner=scanner)
+
+    assert devices_found(records) == {"eng"}
+    coverage = scanner.device_coverage()
+    assert coverage is not None
+    assert coverage.devices_outside_included_groups == 1
+    assert coverage.included_by_group == {"Engineering": 1}
+
+
+def test_an_out_of_scope_mac_is_dropped_before_its_payload_is_decoded(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Nothing from an excluded Mac is decoded, logged or published -- it contributes
+    counts and nothing else."""
+    decoded: list[str] = []
+
+    def recording(device: Any, *args: Any) -> Any:
+        decoded.append(device.device_key)
+        return records_for(device, *args)
+
+    monkeypatch.setattr("discovery.endpoint.jamf.scanner.records_for", recording)
+    fake = FakeJamf(
+        [
+            [
+                computer("eng", full_payload(), groups=["7"]),
+                computer("exec", "not a payload", groups=["9"]),
+            ],
+        ],
+        groups=JAMF_GROUPS,
+    )
+    scanner = JamfScanner()
+    scan_scoped(fake, monkeypatch, exclude="Executives", scanner=scanner)
+
+    assert decoded == ["eng"]
+    coverage = scanner.device_coverage()
+    assert coverage is not None
+    assert coverage.devices_unreadable == 0, "an excluded Mac is not an unreadable one"
+
+
+def test_group_memberships_are_asked_for_only_when_the_source_is_scoped(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An unscoped source asks Jamf for exactly what it did before, and needs no group
+    privilege."""
+    unscoped = FakeJamf([[computer("m1", full_payload())]])
+    scan_scoped(unscoped, monkeypatch)
+    assert "GROUP_MEMBERSHIPS" not in unscoped.gets[0]["section"]
+    assert unscoped.group_calls == 0
+
+    scoped = FakeJamf(
+        [[computer("m1", full_payload(), groups=["1"])]],
+        groups=JAMF_GROUPS,
+    )
+    scan_scoped(scoped, monkeypatch, exclude="Contractors")
+    assert "GROUP_MEMBERSHIPS" in scoped.gets[0]["section"]
+    assert scoped.group_calls == 1
+
+
+def test_a_group_the_tenant_does_not_have_fails_before_any_mac_is_read(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A renamed or misspelled exclude group must not quietly scan the Macs it was
+    meant to leave out."""
+    fake = FakeJamf(
+        [[computer("exec", full_payload(), groups=["9"])]],
+        groups=JAMF_GROUPS,
+    )
+    scanner = JamfScanner()
+    with pytest.raises(DeviceGroupError, match="'Execs' not found"):
+        scan_scoped(fake, monkeypatch, exclude="Execs", scanner=scanner)
+    assert fake.gets == [], "no inventory page was requested"
+    assert scanner.device_coverage() is None
+
+
+def test_a_missing_group_privilege_names_the_privileges(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fake = FakeJamf([[computer("m1", full_payload())]], groups_status=403)
+    with pytest.raises(JamfError, match="Read Smart Computer Groups and Read Static"):
+        scan_scoped(fake, monkeypatch, exclude="Executives")
+
+
+def test_the_scope_and_its_counts_reach_the_job_log(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    fake = FakeJamf(
+        [
+            [
+                computer("m1", full_payload(), groups=["1"]),
+                computer("m2", full_payload(), groups=["8"]),
+            ],
+        ],
+        groups=JAMF_GROUPS,
+    )
+    with caplog.at_level(logging.INFO):
+        scan_scoped(fake, monkeypatch, exclude="Contractors, Executives")
+    assert "scope: exclude Contractors, Executives" in caplog.text
+    assert "kept 1 of 2 device(s); excluded 1 (Contractors: 1, Executives: 0)" in (
+        caplog.text
+    )
+
+
+def test_a_scope_that_leaves_every_mac_out_says_so(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """It publishes the same nothing as a fleet without agents, so it is called out."""
+    fake = FakeJamf(
+        [[computer("m1", full_payload(), groups=["8"])]],
+        groups=JAMF_GROUPS,
+    )
+    with caplog.at_level(logging.WARNING):
+        scan_scoped(fake, monkeypatch, exclude="Contractors")
+    assert "left all 1 device(s) it read out of scope" in caplog.text
+
+
+def test_an_unscoped_scan_still_reports_its_denominator(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fake = FakeJamf(
+        [
+            [
+                computer("m1", full_payload()),
+                computer("m2", "not a payload"),
+            ],
+        ],
+    )
+    scanner = JamfScanner()
+    scan_scoped(fake, monkeypatch, scanner=scanner)
+    coverage = scanner.device_coverage()
+    assert coverage is not None
+    assert (
+        coverage.devices_read,
+        coverage.devices_in_scope,
+        coverage.devices_decoded,
+        coverage.devices_unreadable,
+        coverage.devices_excluded,
+    ) == (2, 2, 1, 1, 0)
+    assert coverage.excluded_by_group == {}
