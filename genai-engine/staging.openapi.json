@@ -18286,7 +18286,7 @@
                             }
                         ],
                         "title": "Assigned User",
-                        "description": "User the source attributes the host to. PERSONAL DATA: this is the field that makes a finding attributable to an individual, and is subject to works-council and DPIA review before EU deployment. Omit it where that review has not happened."
+                        "description": "User the source attributes the host to. PERSONAL DATA: this is the field that makes a record attributable to an individual, and is subject to works-council and DPIA review before EU deployment. Omit it where that review has not happened."
                     },
                     "permissions": {
                         "items": {
@@ -18319,7 +18319,7 @@
                 },
                 "type": "object",
                 "title": "AgentObservations",
-                "description": "What a sensor could see about an agent. Shared across categories, all optional.\n\nAn absent field means the sensor cannot see it, not that collection failed. That\npromise is kept by each source declaring ``observable_fields()``, which is also\nwhat lets visibility be computed without a per-vendor branch in consumers."
+                "description": "What a source could see about an agent. Shared across categories, all optional.\n\nAn absent field means the source cannot see it, not that collection failed. That\npromise is kept by each source declaring ``observable_fields()``, which is also\nwhat lets visibility be computed without a per-vendor branch in consumers."
             },
             "AgenticAnnotationAnalyticsResponse": {
                 "properties": {
@@ -20769,7 +20769,7 @@
                     },
                     "observations": {
                         "$ref": "#/components/schemas/AgentObservations",
-                        "description": "What the sensor could see. Only fields in `observable_fields()` are ever populated by this category."
+                        "description": "What the source could see. Only fields in `observable_fields()` are ever populated by this category."
                     },
                     "type": {
                         "type": "string",
@@ -22351,7 +22351,7 @@
                         "type": "string",
                         "minLength": 1,
                         "title": "External Id",
-                        "description": "Stable identity from the source. Required, and canonical: no identity resolution runs across sensors in v1."
+                        "description": "Stable identity from the source. Required, and canonical: no identity resolution runs across sources in v1."
                     },
                     "name": {
                         "type": "string",
@@ -22430,7 +22430,7 @@
                                 "type": "null"
                             }
                         ],
-                        "description": "Where the machine hosting the agent is, when the source can tell. Feeds the task's `provenance.runs_on`. Per finding rather than per vendor, as `RunsOn` explains: a managed-endpoint connector always knows the answer, a SIEM query over host-enriched data can project it, and one over proxy logs cannot. Absent rather than defaulted to UNKNOWN, so a record that says nothing about location is told apart from one that says it cannot tell."
+                        "description": "Where the machine hosting the agent is, when the source can tell. Feeds the task's `provenance.runs_on`. Per record rather than per vendor, as `RunsOn` explains: a managed-endpoint connector always knows the answer, a SIEM query over host-enriched data can project it, and one over proxy logs cannot. Absent rather than defaulted to UNKNOWN, so a record that says nothing about location is told apart from one that says it cannot tell."
                     },
                     "platform": {
                         "anyOf": [
@@ -22456,7 +22456,7 @@
                             }
                         ],
                         "title": "Creation Source",
-                        "description": "The sensor that reported this agent, its upstream address and what it observed. Supplied by the connector, never by the source's query.",
+                        "description": "The source that reported this agent, its upstream address and what it observed. Supplied by the connector, never by the source's query.",
                         "discriminator": {
                             "propertyName": "type",
                             "mapping": {
@@ -22652,7 +22652,7 @@
                     },
                     "observations": {
                         "$ref": "#/components/schemas/AgentObservations",
-                        "description": "What the sensor could see. Only fields in `observable_fields()` are ever populated by this category."
+                        "description": "What the source could see. Only fields in `observable_fields()` are ever populated by this category."
                     },
                     "type": {
                         "type": "string",
@@ -22667,7 +22667,7 @@
                     "address"
                 ],
                 "title": "EndpointAgentCreationSource",
-                "description": "One agent observed on one managed endpoint.\n\nGrain is per (software, device): ``address.instance`` is the device and\n``address.resource_id`` the software, because the Discovery list shows a row per\nmachine.\n\nWhat it fills comes from three places: the collector's on-disk output, the MDM's\ndevice record, and the collector's catalog.\n\nWhere the collector's six output columns land, so none is unaccounted for:\n\n========  =============================================\ncolumn    carried as\n========  =============================================\nkind      ``address.resource_kind``\nid        ``address.resource_id``\nver       ``observations.version``\nloc       ``observations.install_path``\nperms     ``observations.permissions``\nextra     nothing -- see below\n========  =============================================\n\n``extra`` means a different thing per kind (browser type, image size, deb arch,\nunit state, listening address) and a field here means one thing for every sensor.\nThe listening address is the one value in it worth its own field eventually.\n\n``scan`` rows must never arrive: that kind marks a branch that could not look, not\nan agent that was found.\n\nA one-shot sweep sees the machine, not behaviour over time. Anything needing\npersistent event capture -- outbound destinations, connection counts -- is out of\nreach until osqueryd runs with the audit subsystem, which would put code signing,\nnotarization and PPPC on the critical path."
+                "description": "One agent observed on one managed endpoint.\n\nGrain is per (software, device): ``address.instance`` is the device and\n``address.resource_id`` the software, because the Discovery list shows a row per\nmachine.\n\nWhat it fills comes from three places: the collector's on-disk output, the MDM's\ndevice record, and the collector's catalog.\n\nWhere the collector's six output columns land, so none is unaccounted for:\n\n========  =============================================\ncolumn    carried as\n========  =============================================\nkind      ``address.resource_kind``\nid        ``address.resource_id``\nver       ``observations.version``\nloc       ``observations.install_path``\nperms     ``observations.permissions``\nextra     nothing -- see below\n========  =============================================\n\n``extra`` means a different thing per kind (browser type, image size, deb arch,\nunit state, listening address) and a field here means one thing for every source.\nThe listening address is the one value in it worth its own field eventually.\n\n``scan`` rows must never arrive: that kind marks a branch that could not look, not\nan agent that was found.\n\nA one-shot scan sees the machine, not behaviour over time. Anything needing\npersistent event capture -- outbound destinations, connection counts -- is out of\nreach until osqueryd runs with the audit subsystem, which would put code signing,\nnotarization and PPPC on the critical path."
             },
             "EngineConfigResponse": {
                 "properties": {
@@ -23820,7 +23820,7 @@
                     "observations"
                 ],
                 "title": "GCPAgentCreationSource",
-                "description": "DEPRECATED. Use ``CloudAgentCreationSource`` with ``cloud=gcp_vertex``.\n\nDeprecated and to be removed. A Vertex finding is a cloud finding, and nothing\nabout GCP warrants its own union member now that Cloud exists.\n\nIt cannot go yet because ``tasks_repository.find_by_gcp_engine_id`` reads\n``task_metadata->'creation_source'->>'gcp_reasoning_engine_id'`` directly, and that\nis step 4 of the task-resolution ladder. Removal, in four safe steps rather than\none risky one -- which is what serializing ``address`` below buys:\n\n1. Backfill ``address``; rows rewritten through this model gain it for free.\n2. Repoint that query at ``address->>'resource_id'``.\n3. Move the three prod call sites to ``CloudAgentCreationSource``\n   with ``vendor=\"gcp_vertex\"``.\n4. Delete this class and its ``service_names`` field.",
+                "description": "DEPRECATED. Use ``CloudAgentCreationSource`` with ``cloud=gcp_vertex``.\n\nDeprecated and to be removed. A Vertex record is a cloud record, and nothing\nabout GCP warrants its own union member now that Cloud exists.\n\nIt cannot go yet because ``tasks_repository.find_by_gcp_engine_id`` reads\n``task_metadata->'creation_source'->>'gcp_reasoning_engine_id'`` directly, and that\nis step 4 of the task-resolution ladder. Removal, in four safe steps rather than\none risky one -- which is what serializing ``address`` below buys:\n\n1. Backfill ``address``; rows rewritten through this model gain it for free.\n2. Repoint that query at ``address->>'resource_id'``.\n3. Move the three prod call sites to ``CloudAgentCreationSource``\n   with ``vendor=\"gcp_vertex\"``.\n4. Delete this class and its ``service_names`` field.",
                 "deprecated": true
             },
             "GCPAgentMetadata": {
@@ -28526,11 +28526,11 @@
                         "type": "array",
                         "minItems": 1,
                         "title": "Sources",
-                        "description": "Every sensor that has reported this agent, one entry each. Grows as sensors corroborate."
+                        "description": "Every source that has reported this agent, one entry each. Grows as sources corroborate."
                     },
                     "runs_on": {
                         "$ref": "#/components/schemas/RunsOn",
-                        "description": "Deployment substrate the agent runs on. Scalar, unlike sources: where an agent runs is one fact even when several sensors report it, and the more specific answer wins. Defaults to UNKNOWN, which for a SIEM row is usually the honest answer and for a managed laptop is simply correct.",
+                        "description": "Deployment substrate the agent runs on. Scalar, unlike sources: where an agent runs is one fact even when several sources report it, and the more specific answer wins. Defaults to UNKNOWN, which for a SIEM row is usually the honest answer and for a managed laptop is simply correct.",
                         "default": "unknown"
                     },
                     "platform": {
@@ -28591,7 +28591,7 @@
                             }
                         ],
                         "title": "Vendor",
-                        "description": "Upstream product behind this contribution, e.g. 'splunk_enterprise'. Same value and same registry as the finding's `vendor`. Absent for OTEL and manual agents, which have no upstream product."
+                        "description": "Upstream product behind this contribution, e.g. 'splunk_enterprise'. Same value and same registry as the record's `vendor`. Absent for OTEL and manual agents, which have no upstream product."
                     },
                     "address": {
                         "anyOf": [
@@ -28602,7 +28602,7 @@
                                 "type": "null"
                             }
                         ],
-                        "description": "Where upstream this came from -- the same type the creation source carries, so a finding and its task address the system identically. Absent for OTEL and manual agents."
+                        "description": "Where upstream this came from -- the same type the creation source carries, so a record and its task address the system identically. Absent for OTEL and manual agents."
                     },
                     "last_seen": {
                         "anyOf": [
@@ -28623,7 +28623,7 @@
                     "source_class"
                 ],
                 "title": "ProvenanceSource",
-                "description": "One sensor's contribution to a task's provenance.\n\nProvenance holds a list of these rather than scalars beside a list of sensor\nclasses: with scalars, an agent corroborated by two sensors has two entries in\nfound_by but one address, and nothing says which sensor it belongs to."
+                "description": "One source's contribution to a task's provenance.\n\nProvenance holds a list of these rather than scalars beside a list of source\nclasses: with scalars, an agent corroborated by two sources has two entries in\nfound_by but one address, and nothing says which source it belongs to."
             },
             "PutModelProviderCredentials": {
                 "properties": {
@@ -31036,7 +31036,7 @@
                     "unknown"
                 ],
                 "title": "RunsOn",
-                "description": "Where the machine hosting a discovered agent is. ONE AXIS: location.\n\nLives on Provenance rather than being derived from the source type: a Jamf finding\nruns on a laptop, not on the cloud hosting the engine that reported it.\n\nDeliberately NOT a place for `docker` or `kubernetes`. Those answer a different\nquestion -- how the agent is packaged on the machine -- and mixing the two makes\nthe common case lossy: an agent in an EKS pod is both `aws` and orchestrated, and\none field can only say one. They are also values nothing can currently fill. In the\nendpoint collector Docker is a detection ROUTE (`docker_images`, surfaced as\n``resource_kind=image``), and in app_plane `Infrastructure.Docker` describes how\nthe ENGINE was deployed. Neither is a statement about where a discovered agent\nruns. If the packaging axis starts mattering, it wants its own field.\n\n``on_prem`` is the natural next member on this axis and is left out only because\nnothing in v1 can fill it: on-prem findings arrive through a SIEM, which cannot see\nthe machine, so UNKNOWN is already the honest answer there."
+                "description": "Where the machine hosting a discovered agent is. ONE AXIS: location.\n\nLives on Provenance rather than being derived from the source type: a Jamf record\nruns on a laptop, not on the cloud hosting the engine that reported it.\n\nDeliberately NOT a place for `docker` or `kubernetes`. Those answer a different\nquestion -- how the agent is packaged on the machine -- and mixing the two makes\nthe common case lossy: an agent in an EKS pod is both `aws` and orchestrated, and\none field can only say one. They are also values nothing can currently fill. In the\nendpoint collector Docker is a detection ROUTE (`docker_images`, surfaced as\n``resource_kind=image``), and in app_plane `Infrastructure.Docker` describes how\nthe ENGINE was deployed. Neither is a statement about where a discovered agent\nruns. If the packaging axis starts mattering, it wants its own field.\n\n``on_prem`` is the natural next member on this axis and is left out only because\nnothing in v1 can fill it: on-prem records arrive through a SIEM, which cannot see\nthe machine, so UNKNOWN is already the honest answer there."
             },
             "SIEMAgentCreationSource": {
                 "properties": {
@@ -31051,7 +31051,7 @@
                     },
                     "observations": {
                         "$ref": "#/components/schemas/AgentObservations",
-                        "description": "What the sensor could see. Only fields in `observable_fields()` are ever populated by this category."
+                        "description": "What the source could see. Only fields in `observable_fields()` are ever populated by this category."
                     },
                     "type": {
                         "type": "string",
@@ -31712,7 +31712,7 @@
                             }
                         ],
                         "title": "Query",
-                        "description": "Query text that produced this record, so a finding can be explained and reproduced. Absent for sources that are enumerated rather than searched. Never parsed here -- only the output columns are contracted."
+                        "description": "Query text that produced this record, so it can be explained and reproduced. Absent for sources that are enumerated rather than searched. Never parsed here -- only the output columns are contracted."
                     }
                 },
                 "type": "object",
@@ -31721,7 +31721,7 @@
                     "resource_id"
                 ],
                 "title": "SourceAddress",
-                "description": "How to find a discovered agent again in the system that reported it.\n\nOne shape for every sensor, widest to narrowest:\n\n==============  ================  ==================  ==========  ============\nsensor          instance          scope               kind        resource_id\n==============  ================  ==================  ==========  ============\nBedrock         AWS account       region              --          agent id\nVertex          GCP project       region              --          engine id\nSplunk          instance          index+sourcetype    --          record id\nSentinel        LA workspace      table               --          record id\nElastic         deployment        data stream         --          record id\nJamf / osquery  device key        --                  npm, app\u2026   software key\n==============  ================  ==================  ==========  ============\n\nOnly endpoints fill ``resource_kind``: they are the one sensor whose ids come from\nseveral namespaces at once. Every cloud and SIEM vendor addresses exactly one kind\nof resource, so the kind is implied by the vendor and stays absent.\n\n``scope`` carries two readings this one name does not separate. For a cloud source\nit addresses the *agent*: us-east-1 and us-west-2 hold different agents, so\n``CloudAgentCreationSource`` requires it. For a SIEM it addresses the *sighting*,\nand one agent may surface under two indexes, so it stays optional there. Code\ncomparing addresses across sources has to read `source_class` to know which it is\nlooking at.\n\nReused by Provenance rather than re-declared there, so a finding and the task it\nresolves to address the upstream system identically. A vendor needing to address a\nsub-resource -- a Bedrock alias, a Vertex version -- is one more optional field\nhere, not a new shape."
+                "description": "How to find a discovered agent again in the system that reported it.\n\nOne shape for every source, widest to narrowest:\n\n==============  ================  ==================  ==========  ============\nsource          instance          scope               kind        resource_id\n==============  ================  ==================  ==========  ============\nBedrock         AWS account       region              --          agent id\nVertex          GCP project       region              --          engine id\nSplunk          instance          index+sourcetype    --          record id\nSentinel        LA workspace      table               --          record id\nElastic         deployment        data stream         --          record id\nJamf / osquery  device key        --                  npm, app\u2026   software key\n==============  ================  ==================  ==========  ============\n\nOnly endpoints fill ``resource_kind``: they are the one source whose ids come from\nseveral namespaces at once. Every cloud and SIEM vendor addresses exactly one kind\nof resource, so the kind is implied by the vendor and stays absent.\n\n``scope`` carries two readings this one name does not separate. For a cloud source\nit addresses the *agent*: us-east-1 and us-west-2 hold different agents, so\n``CloudAgentCreationSource`` requires it. For a SIEM it addresses the *sighting*,\nand one agent may surface under two indexes, so it stays optional there. Code\ncomparing addresses across sources has to read `source_class` to know which it is\nlooking at.\n\nReused by Provenance rather than re-declared there, so a record and the task it\nresolves to address the upstream system identically. A vendor needing to address a\nsub-resource -- a Bedrock alias, a Vertex version -- is one more optional field\nhere, not a new shape."
             },
             "SourceClass": {
                 "type": "string",
