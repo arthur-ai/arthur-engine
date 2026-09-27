@@ -19,7 +19,7 @@ class ManagedDevice:
     """The MDM's own stable id.
 
     Never the hardware serial: VMs and refurbished units produce empty or duplicate
-    serials, and an identity that churns mints a duplicate finding on every scan.
+    serials, and an identity that churns mints a duplicate record on every scan.
     """
 
     last_reported: Optional[str] = None

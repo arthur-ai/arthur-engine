@@ -62,7 +62,7 @@ def _outcome() -> DiscoveryScanOutcome:
     )
 
 
-class YieldingScanner:
+class YieldingConnector:
     def __init__(self, batches: list[Sequence[object]]) -> None:
         self.batches = batches
 
@@ -102,7 +102,7 @@ def _scan(
         workspace_id=WORKSPACE_ID,
         data_plane_id=DATA_PLANE_ID,
         outcome=outcome,
-        scanner=YieldingScanner(batches),
+        connector=YieldingConnector(batches),
         sink=sink,
         logger=logging.getLogger("test-output-contract"),
         credentials={},
@@ -236,7 +236,7 @@ def test_a_failing_batch_never_reaches_the_sink() -> None:
             workspace_id=WORKSPACE_ID,
             data_plane_id=DATA_PLANE_ID,
             outcome=outcome,
-            scanner=YieldingScanner([[{"external_id": "a"}]]),
+            connector=YieldingConnector([[{"external_id": "a"}]]),
             sink=sink,
             logger=logging.getLogger("test-output-contract"),
             credentials={},
@@ -263,7 +263,7 @@ def test_an_earlier_good_batch_is_kept_when_a_later_one_fails_the_contract() -> 
             workspace_id=WORKSPACE_ID,
             data_plane_id=DATA_PLANE_ID,
             outcome=outcome,
-            scanner=YieldingScanner([[_record("a")], [{"external_id": "b"}]]),
+            connector=YieldingConnector([[_record("a")], [{"external_id": "b"}]]),
             sink=sink,
             logger=logging.getLogger("test-output-contract"),
             credentials={},
@@ -291,8 +291,8 @@ def test_a_run_that_never_produced_a_batch_records_no_check() -> None:
     assert outcome.output_column_check is None
 
 
-class CoverageScanner(YieldingScanner):
-    """An endpoint scanner: yields its batches, then says which devices it read."""
+class CoverageConnector(YieldingConnector):
+    """An endpoint connector: yields its batches, then says which devices it read."""
 
     def __init__(self, batches: list[Sequence[object]], fail: bool = False) -> None:
         super().__init__(batches)
@@ -321,7 +321,7 @@ class CoverageScanner(YieldingScanner):
         )
 
 
-def _scan_with(scanner: YieldingScanner) -> DiscoveryScanOutcome:
+def _scan_with(connector: YieldingConnector) -> DiscoveryScanOutcome:
     """The outcome a scan records, whether or not it raised."""
     outcome = _outcome()
     try:
@@ -331,7 +331,7 @@ def _scan_with(scanner: YieldingScanner) -> DiscoveryScanOutcome:
             workspace_id=WORKSPACE_ID,
             data_plane_id=DATA_PLANE_ID,
             outcome=outcome,
-            scanner=scanner,
+            connector=connector,
             sink=RecordingSink(),
             logger=logging.getLogger("test-output-contract"),
             credentials={},
@@ -342,10 +342,10 @@ def _scan_with(scanner: YieldingScanner) -> DiscoveryScanOutcome:
     return outcome
 
 
-def test_an_endpoint_scanners_device_coverage_lands_on_the_outcome() -> None:
+def test_an_endpoint_connectors_device_coverage_lands_on_the_outcome() -> None:
     """The denominator, and what policy kept out, travel with the run rather than
     only in a log line nobody can aggregate."""
-    outcome = _scan_with(CoverageScanner([[_record("a")]]))
+    outcome = _scan_with(CoverageConnector([[_record("a")]]))
     assert outcome.device_coverage is not None
     assert outcome.device_coverage.excluded_by_group == {
         "Contractors": 5,
@@ -357,14 +357,14 @@ def test_an_endpoint_scanners_device_coverage_lands_on_the_outcome() -> None:
 
 
 def test_a_scan_that_fails_part_way_still_reports_the_devices_it_read() -> None:
-    outcome = _scan_with(CoverageScanner([[_record("a")]], fail=True))
+    outcome = _scan_with(CoverageConnector([[_record("a")]], fail=True))
     assert outcome.error == "RuntimeError: page 2 timed out"
     assert outcome.device_coverage is not None
     assert outcome.device_coverage.devices_read == 19
 
 
 def test_a_source_that_reads_no_devices_reports_no_coverage() -> None:
-    outcome = _scan_with(YieldingScanner([[_record("a")]]))
+    outcome = _scan_with(YieldingConnector([[_record("a")]]))
     assert outcome.device_coverage is None
     assert outcome.to_log_payload()["device_coverage"] is None
 

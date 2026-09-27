@@ -107,7 +107,7 @@ def describe(result: OutputColumnCheckResult, subject: str) -> str:
 
 
 def check_batch(batch: Sequence[object], subject: str) -> OutputColumnCheckResult:
-    """Hold a scanner to the contract before its batch reaches the sink.
+    """Hold a connector to the contract before its batch reaches the sink.
 
     The seam's type hint is not enforcement -- nothing checks it at runtime -- and a
     batch that is not what it claims fails inside task resolution instead, naming the

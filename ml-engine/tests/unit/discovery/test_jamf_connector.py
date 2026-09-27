@@ -1,4 +1,4 @@
-"""The Jamf client and scanner, against a fake Jamf.
+"""The Jamf client and connector, against a fake Jamf.
 
 The paging test is the one that matters most. `general.reportDate` is assigned at
 check-in, so records shift between pages while a scan is reading them -- and the failure
@@ -23,7 +23,7 @@ from arthur_common.models.agent_governance_schemas import Platform, RunsOn
 
 from discovery.endpoint.envelope import EnvelopeOutcome
 from discovery.endpoint.jamf.client import JamfClient, JamfError, JamfSettings
-from discovery.endpoint.jamf.scanner import JamfScanner, _settings_from
+from discovery.endpoint.jamf.connector import JamfConnector, _settings_from
 from discovery.endpoint.records import records_for
 from discovery.endpoint.scope import DeviceGroupError
 
@@ -359,7 +359,7 @@ def test_a_failed_token_call_does_not_echo_the_response() -> None:
     assert "hunter2" not in str(exc.value)
 
 
-# --- the scanner ------------------------------------------------------------------
+# --- the connector ------------------------------------------------------------------
 
 
 class FakeConfig:
@@ -371,11 +371,11 @@ class FakeConfig:
 
 def scan(fake: FakeJamf, monkeypatch: pytest.MonkeyPatch) -> list[Any]:
     monkeypatch.setattr(
-        "discovery.endpoint.jamf.scanner.JamfClient",
+        "discovery.endpoint.jamf.connector.JamfClient",
         lambda s, logger=None: client_for(fake),
     )
-    scanner = JamfScanner()
-    return [r for batch in scanner.scan(FakeConfig(CATALOG), 24, CREDS, FIELDS, LOG) for r in batch]  # type: ignore[arg-type]
+    connector = JamfConnector()
+    return [r for batch in connector.scan(FakeConfig(CATALOG), 24, CREDS, FIELDS, LOG) for r in batch]  # type: ignore[arg-type]
 
 
 def test_a_healthy_mac_yields_one_record_per_agent(
@@ -389,7 +389,7 @@ def test_a_healthy_mac_yields_one_record_per_agent(
         ],
     )
     records = scan(FakeJamf([[computer("m1", payload)]]), monkeypatch)
-    assert len(records) == 1, "two routes, one agent, one finding"
+    assert len(records) == 1, "two routes, one agent, one record"
     assert records[0].external_id == "m1:codex-cli"
     assert records[0].name == "Codex CLI"
 
@@ -397,7 +397,7 @@ def test_a_healthy_mac_yields_one_record_per_agent(
 def test_last_seen_is_the_scan_timestamp_not_the_poll(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """The payload dates itself. Using the poll time would date every finding to now."""
+    """The payload dates itself. Using the poll time would date every record to now."""
     payload = frame([row("npm", "@openai/codex"), scan_row("packages")])
     records = scan(FakeJamf([[computer("m1", payload)]]), monkeypatch)
     assert records[0].last_seen == datetime.fromtimestamp(SCAN_AT, tz=timezone.utc)
@@ -493,7 +493,7 @@ def test_two_attributes_that_disagree_yield_nothing_rather_than_a_guess(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     """Nothing on the wire says which of two payloads is current, so taking either
-    publishes a Mac's findings from a source chosen by dictionary order."""
+    publishes a Mac's records from a source chosen by dictionary order."""
     first = frame([row("npm", "@openai/codex"), scan_row("packages")])
     second = frame([row("npm", "@anthropic-ai/claude-code"), scan_row("packages")])
     device = computer("m1", first, extra_attributes=[_ea("Second Collector", second)])
@@ -627,25 +627,25 @@ def test_a_missing_source_field_is_named(missing: str) -> None:
 
 
 def test_importing_the_package_registers_the_connector() -> None:
-    """The executor resolves a source's vendor against SOURCE_SCANNERS, so a connector
+    """The executor resolves a source's vendor against SOURCE_CONNECTORS, so a connector
     nobody imported is a connector that fails its own job as an unsupported vendor."""
     import discovery  # noqa: F401
-    from job_executors.discovery_scan import SOURCE_SCANNERS
+    from job_executors.discovery_scan import SOURCE_CONNECTORS
 
-    assert "jamf_pro" in SOURCE_SCANNERS
-    # The registry holds factories, so each run gets its own scanner rather than sharing
+    assert "jamf_pro" in SOURCE_CONNECTORS
+    # The registry holds factories, so each run gets its own connector rather than sharing
     # one that carries a session and a paging cursor between them.
-    assert SOURCE_SCANNERS["jamf_pro"] is JamfScanner
-    assert isinstance(SOURCE_SCANNERS["jamf_pro"](), JamfScanner)
+    assert SOURCE_CONNECTORS["jamf_pro"] is JamfConnector
+    assert isinstance(SOURCE_CONNECTORS["jamf_pro"](), JamfConnector)
 
 
-def test_the_registered_scanner_satisfies_the_protocol() -> None:
+def test_the_registered_connector_satisfies_the_protocol() -> None:
     """Structural, not nominal: the executor calls .scan(...) with five arguments."""
     import discovery  # noqa: F401
-    from job_executors.discovery_scan import SOURCE_SCANNERS
+    from job_executors.discovery_scan import SOURCE_CONNECTORS
 
-    scanner = SOURCE_SCANNERS["jamf_pro"]()
-    assert callable(getattr(scanner, "scan", None))
+    connector = SOURCE_CONNECTORS["jamf_pro"]()
+    assert callable(getattr(connector, "scan", None))
 
 
 def test_a_computer_with_no_management_id_is_skipped_not_keyed_blank(
@@ -738,11 +738,11 @@ def test_observations_carry_what_only_the_connector_saw(
     )
     fake = FakeJamf([[computer("m1", full_payload())]])
     monkeypatch.setattr(
-        "discovery.endpoint.jamf.scanner.JamfClient",
+        "discovery.endpoint.jamf.connector.JamfClient",
         lambda s, logger=None: client_for(fake),
     )
-    scanner = JamfScanner()
-    records = [r for b in scanner.scan(FakeConfig(catalog), 24, CREDS, FIELDS, LOG) for r in b]  # type: ignore[arg-type]
+    connector = JamfConnector()
+    records = [r for b in connector.scan(FakeConfig(catalog), 24, CREDS, FIELDS, LOG) for r in b]  # type: ignore[arg-type]
 
     obs = records[0].creation_source.observations
     assert obs.install_path == "/Applications/Claude.app"
@@ -757,7 +757,7 @@ def test_observations_carry_what_only_the_connector_saw(
 def test_a_record_says_it_runs_on_a_managed_mac(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """The sensor is the only thing that knows: a SIEM row can name a laptop too, so
+    """The source is the only thing that knows: a SIEM row can name a laptop too, so
     nothing downstream can infer `endpoint` from the source class."""
     records = scan(FakeJamf([[computer("m1", full_payload())]]), monkeypatch)
     assert {(r.runs_on, r.platform) for r in records} == {
@@ -848,12 +848,12 @@ def test_an_opaque_id_is_not_reported_as_an_install_path(
     payload = frame([row(kind, ident, loc=loc, ver=ver), scan_row("containers")])
     fake = FakeJamf([[computer("m1", payload)]])
     monkeypatch.setattr(
-        "discovery.endpoint.jamf.scanner.JamfClient",
+        "discovery.endpoint.jamf.connector.JamfClient",
         lambda s, logger=None: client_for(fake),
     )
-    records = [r for b in JamfScanner().scan(FakeConfig(catalog), 24, CREDS, FIELDS, LOG) for r in b]  # type: ignore[arg-type]
+    records = [r for b in JamfConnector().scan(FakeConfig(catalog), 24, CREDS, FIELDS, LOG) for r in b]  # type: ignore[arg-type]
 
-    assert records, "the finding itself must still be reported"
+    assert records, "the record itself must still be reported"
     assert records[0].creation_source.observations.install_path is None
     # the id is not lost -- it is in the address, where it means what it says
     assert records[0].creation_source.address.resource_id == ident
@@ -886,10 +886,10 @@ def test_a_container_state_is_not_reported_as_a_version(
     )
     fake = FakeJamf([[computer("m1", payload)]])
     monkeypatch.setattr(
-        "discovery.endpoint.jamf.scanner.JamfClient",
+        "discovery.endpoint.jamf.connector.JamfClient",
         lambda s, logger=None: client_for(fake),
     )
-    records = [r for b in JamfScanner().scan(FakeConfig(catalog), 24, CREDS, FIELDS, LOG) for r in b]  # type: ignore[arg-type]
+    records = [r for b in JamfConnector().scan(FakeConfig(catalog), 24, CREDS, FIELDS, LOG) for r in b]  # type: ignore[arg-type]
 
     assert records[0].creation_source.observations.version is None
 
@@ -969,10 +969,10 @@ def test_an_out_of_range_scan_timestamp_does_not_end_the_fleet_scan(
     ]
     fake = FakeJamf(devices=devices, page_size=5)
     monkeypatch.setattr(
-        "discovery.endpoint.jamf.scanner.JamfClient",
+        "discovery.endpoint.jamf.connector.JamfClient",
         lambda s, logger=None: client_for(fake),
     )
-    records = [r for b in JamfScanner().scan(FakeConfig(CATALOG), 0, CREDS, FIELDS, LOG) for r in b]  # type: ignore[arg-type]
+    records = [r for b in JamfConnector().scan(FakeConfig(CATALOG), 0, CREDS, FIELDS, LOG) for r in b]  # type: ignore[arg-type]
 
     # The bad device falls back to the MDM's own report date, which is the designed
     # behaviour; what matters is that it does not raise and take the rest of the fleet.
@@ -1034,7 +1034,7 @@ def test_the_roster_walk_keysets_on_id_rather_than_paging_by_offset() -> None:
 def test_the_scan_logs_through_the_logger_it_is_handed(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """ScopeJobLogExporter is attached to the per-job logger alone, so a scanner logging
+    """ScopeJobLogExporter is attached to the per-job logger alone, so a connector logging
     to getLogger(__name__) reaches process stdout and never the Platform."""
     job_log = logging.getLogger("a-particular-job-id")
     records: list[logging.LogRecord] = []
@@ -1048,10 +1048,10 @@ def test_the_scan_logs_through_the_logger_it_is_handed(
 
     fake = FakeJamf([[computer("m1", "no-cache")]])
     monkeypatch.setattr(
-        "discovery.endpoint.jamf.scanner.JamfClient",
+        "discovery.endpoint.jamf.connector.JamfClient",
         lambda s, logger=None: client_for(fake),
     )
-    list(JamfScanner().scan(FakeConfig(CATALOG), 24, CREDS, FIELDS, job_log))  # type: ignore[arg-type]
+    list(JamfConnector().scan(FakeConfig(CATALOG), 24, CREDS, FIELDS, job_log))  # type: ignore[arg-type]
 
     assert records, "nothing reached the job logger"
     assert any("no usable payload" in r.getMessage() for r in records)
@@ -1088,15 +1088,15 @@ def scan_scoped(
     monkeypatch: pytest.MonkeyPatch,
     include: str = "",
     exclude: str = "",
-    scanner: Optional[JamfScanner] = None,
+    connector: Optional[JamfConnector] = None,
 ) -> list[Any]:
-    """A scan whose client is built from the scanner's own settings, scope and all.
+    """A scan whose client is built from the connector's own settings, scope and all.
 
     `scan` above hands every test the same fixed settings, which would drop the group
     fields on the floor and test nothing.
     """
     monkeypatch.setattr(
-        "discovery.endpoint.jamf.scanner.JamfClient",
+        "discovery.endpoint.jamf.connector.JamfClient",
         lambda s, logger=None: JamfClient(
             dataclasses.replace(s, page_size=2),
             session=fake,  # type: ignore[arg-type]
@@ -1104,8 +1104,8 @@ def scan_scoped(
         ),
     )
     fields = {**FIELDS, "include_groups": include, "exclude_groups": exclude}
-    scanner = scanner or JamfScanner()
-    return [r for batch in scanner.scan(FakeConfig(CATALOG), 24, CREDS, fields, LOG) for r in batch]  # type: ignore[arg-type]
+    connector = connector or JamfConnector()
+    return [r for batch in connector.scan(FakeConfig(CATALOG), 24, CREDS, fields, LOG) for r in batch]  # type: ignore[arg-type]
 
 
 def devices_found(records: list[Any]) -> set[str]:
@@ -1139,11 +1139,11 @@ def test_an_excluded_group_keeps_its_macs_out_of_the_findings(
         ],
         groups=JAMF_GROUPS,
     )
-    scanner = JamfScanner()
-    records = scan_scoped(fake, monkeypatch, exclude="Executives", scanner=scanner)
+    connector = JamfConnector()
+    records = scan_scoped(fake, monkeypatch, exclude="Executives", connector=connector)
 
     assert devices_found(records) == {"eng"}
-    coverage = scanner.device_coverage()
+    coverage = connector.device_coverage()
     assert coverage is not None
     assert (
         coverage.devices_read,
@@ -1165,11 +1165,11 @@ def test_include_groups_limit_the_scan_to_their_members(
         ],
         groups=JAMF_GROUPS,
     )
-    scanner = JamfScanner()
-    records = scan_scoped(fake, monkeypatch, include="Engineering", scanner=scanner)
+    connector = JamfConnector()
+    records = scan_scoped(fake, monkeypatch, include="Engineering", connector=connector)
 
     assert devices_found(records) == {"eng"}
-    coverage = scanner.device_coverage()
+    coverage = connector.device_coverage()
     assert coverage is not None
     assert coverage.devices_outside_included_groups == 1
     assert coverage.included_by_group == {"Engineering": 1}
@@ -1186,7 +1186,7 @@ def test_an_out_of_scope_mac_is_dropped_before_its_payload_is_decoded(
         decoded.append(device.device_key)
         return records_for(device, *args)
 
-    monkeypatch.setattr("discovery.endpoint.jamf.scanner.records_for", recording)
+    monkeypatch.setattr("discovery.endpoint.jamf.connector.records_for", recording)
     fake = FakeJamf(
         [
             [
@@ -1196,11 +1196,11 @@ def test_an_out_of_scope_mac_is_dropped_before_its_payload_is_decoded(
         ],
         groups=JAMF_GROUPS,
     )
-    scanner = JamfScanner()
-    scan_scoped(fake, monkeypatch, exclude="Executives", scanner=scanner)
+    connector = JamfConnector()
+    scan_scoped(fake, monkeypatch, exclude="Executives", connector=connector)
 
     assert decoded == ["eng"]
-    coverage = scanner.device_coverage()
+    coverage = connector.device_coverage()
     assert coverage is not None
     assert coverage.devices_unreadable == 0, "an excluded Mac is not an unreadable one"
 
@@ -1233,11 +1233,11 @@ def test_a_group_the_tenant_does_not_have_fails_before_any_mac_is_read(
         [[computer("exec", full_payload(), groups=["9"])]],
         groups=JAMF_GROUPS,
     )
-    scanner = JamfScanner()
+    connector = JamfConnector()
     with pytest.raises(DeviceGroupError, match="'Execs' not found"):
-        scan_scoped(fake, monkeypatch, exclude="Execs", scanner=scanner)
+        scan_scoped(fake, monkeypatch, exclude="Execs", connector=connector)
     assert fake.gets == [], "no inventory page was requested"
-    assert scanner.device_coverage() is None
+    assert connector.device_coverage() is None
 
 
 def test_a_missing_group_privilege_names_the_privileges(
@@ -1294,9 +1294,9 @@ def test_an_unscoped_scan_still_reports_its_denominator(
             ],
         ],
     )
-    scanner = JamfScanner()
-    scan_scoped(fake, monkeypatch, scanner=scanner)
-    coverage = scanner.device_coverage()
+    connector = JamfConnector()
+    scan_scoped(fake, monkeypatch, connector=connector)
+    coverage = connector.device_coverage()
     assert coverage is not None
     assert (
         coverage.devices_read,

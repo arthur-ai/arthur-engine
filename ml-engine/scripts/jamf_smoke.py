@@ -370,7 +370,7 @@ def main() -> int:
                 continue
             decoded += 1
             print(
-                f"  {device.device_key[:8]}...: {len(records)} finding(s)"
+                f"  {device.device_key[:8]}...: {len(records)} record(s)"
                 + (
                     f" -- {', '.join(sorted({r.name for r in records}))}"
                     if records

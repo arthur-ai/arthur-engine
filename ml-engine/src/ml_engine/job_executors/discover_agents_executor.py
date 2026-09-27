@@ -37,9 +37,9 @@ from genai_client import (
 )
 
 from job_executors.discovery_scan import (
-    SOURCE_SCANNERS,
+    SOURCE_CONNECTORS,
+    DiscoveryConnectorFactory,
     DiscoveryRecordSink,
-    DiscoveryScannerFactory,
     DiscoveryScanOutcome,
     UnsupportedDiscoveryVendorError,
     finalize_outcome,
@@ -65,7 +65,7 @@ class DiscoverAgentsExecutor:
         genai_engine_api_key: str,
         discovery_sources_client: Optional[DiscoverySourcesV1Api] = None,
         record_sink: Optional[DiscoveryRecordSink] = None,
-        scanners: Optional[dict[str, DiscoveryScannerFactory]] = None,
+        connectors: Optional[dict[str, DiscoveryConnectorFactory]] = None,
         jobs_client: Optional[JobsV1Api] = None,
     ) -> None:
         self.agents_client = agents_client
@@ -75,9 +75,9 @@ class DiscoverAgentsExecutor:
         self.discovery_sources_client = discovery_sources_client
         self.record_sink = record_sink
         self.jobs_client = jobs_client
-        # A copy, so registering a scanner on one executor cannot change the registry
+        # A copy, so registering a connector on one executor cannot change the registry
         # every other executor in the process reads.
-        self.scanners = dict(SOURCE_SCANNERS if scanners is None else scanners)
+        self.connectors = dict(SOURCE_CONNECTORS if connectors is None else connectors)
 
     def execute(self, job: Job, job_spec: DiscoverAgentsJobSpec) -> None:
         """Run the job, on whichever of the two shapes it carries."""
@@ -131,8 +131,8 @@ class DiscoverAgentsExecutor:
             },
         )
 
-        scanner_factory = self.scanners.get(config.vendor)
-        if scanner_factory is None:
+        connector_factory = self.connectors.get(config.vendor)
+        if connector_factory is None:
             self._fail_before_scan(
                 outcome,
                 UnsupportedDiscoveryVendorError(
@@ -162,7 +162,7 @@ class DiscoverAgentsExecutor:
                 workspace_id=workspace_id,
                 data_plane_id=data_plane_id,
                 outcome=outcome,
-                scanner=scanner_factory(),
+                connector=connector_factory(),
                 sink=self.record_sink,
                 logger=self.logger,
                 credentials=credentials,
@@ -191,7 +191,7 @@ class DiscoverAgentsExecutor:
         job_spec: DiscoverAgentsJobSpec,
         scan_started_at: datetime,
     ) -> None:
-        """Enqueue the fetch that surfaces this scan's findings to the Platform.
+        """Enqueue the fetch that surfaces this scan's records to the Platform.
 
         Submitted by this job rather than dispatched by the Platform, the way the
         metrics job submits its alert check: there is no DAG runner to express "after
@@ -213,7 +213,7 @@ class DiscoverAgentsExecutor:
         if self.jobs_client is None:
             raise RuntimeError(
                 "No jobs client is configured, so this scan cannot chain the fetch that "
-                "surfaces its findings. The job runner supplies one.",
+                "surfaces its records. The job runner supplies one.",
             )
 
         fetch_spec = FetchDiscoveredAgentsJobSpec(
@@ -267,7 +267,7 @@ class DiscoverAgentsExecutor:
 
         Deliberately not carried in the job spec -- the route says as much -- so it is
         fetched here rather than dispatched with the job. The values serve twice: the
-        scanner authenticates with them, and they are registered with the job's logger,
+        connector authenticates with them, and they are registered with the job's logger,
         which removes them by exact match from everything it ships -- the message, the
         traceback and the job error alike. Exact removal is the only form of redaction
         that does not depend on guessing how a vendor SDK formats its errors.
@@ -304,7 +304,7 @@ class DiscoverAgentsExecutor:
         """The source's non-sensitive configuration: where to connect, not how to auth.
 
         `retrieve_discovery_source_credentials` returns sensitive fields only, so without
-        this a vendor's endpoint URL has no route to its scanner and a source has to
+        this a vendor's endpoint URL has no route to its connector and a source has to
         declare it as a secret to work at all -- which then scrubs it from the logs that
         exist to say which host failed.
 
@@ -314,7 +314,7 @@ class DiscoverAgentsExecutor:
         dispatched before the Platform snapshotted them.
 
         A failure here is reported like any other pre-scan failure rather than degrading
-        to an empty mapping: a scanner given no address would fail further away, naming a
+        to an empty mapping: a connector given no address would fail further away, naming a
         missing field instead of the fetch that could not answer.
         """
         if config.source_fields is not None:

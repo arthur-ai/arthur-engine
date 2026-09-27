@@ -463,10 +463,10 @@ class TaskRepository:
         for it: an OTEL, manual or legacy GCP task was never reported by a configured
         source, so its creation source is the only provenance it has, while a task a
         scan minted is usually represented by that scan's row, which also names the
-        source. "Usually", so a row has to match the finding before it replaces it: a
+        source. "Usually", so a row has to match the record before it replaces it: a
         task minted before rows were written, or whose minting scan failed to record
         its report, may have rows only from sources that converged on it later, and
-        dropping the finding then loses the source that actually found the agent.
+        dropping the record then loses the source that actually found the agent.
 
         `runs_on` and `platform` are one answer each per task, however many reports it
         has; see `_served_location` for which report's answer is served.
@@ -526,7 +526,7 @@ class TaskRepository:
         """Where a task's agent runs and on which OS, as one answer each.
 
         The most recently reported answer wins, since the agent may have moved. UNKNOWN
-        is a sensor saying it cannot tell, so it never replaces one that could. A legacy
+        is a source saying it cannot tell, so it never replaces one that could. A legacy
         GCP task is a Vertex AI Agent Engine deployment, so it runs on GCP whatever any
         report says: the answer is fixed by what the task is.
 
@@ -555,7 +555,7 @@ class TaskRepository:
         origin: ProvenanceSource,
         row: DatabaseTaskProvenanceSource,
     ) -> bool:
-        """Whether a stored report is the finding a task was created from.
+        """Whether a stored report is the record a task was created from.
 
         Compared on identity -- class, vendor and every address field but the query --
         since a row holds the latest scan's address, and a source config's query can be
@@ -724,7 +724,7 @@ class TaskRepository:
         """Create a task for an agent a discovery scan found.
 
         The same task shape `create_auto_task` mints for an unregistered OTEL trace --
-        agentic, auto-created, no default rules -- differing only in that the sensor
+        agentic, auto-created, no default rules -- differing only in that the source
         that found it is recorded. Discovery and OTEL auto-creation are the same event
         seen from two sides, and a scan-minted task that looked different from a
         trace-minted one would show up as two kinds of agent in every downstream view.
@@ -734,7 +734,7 @@ class TaskRepository:
 
         Args:
             name: Human-readable agent name, used as the task name.
-            creation_source: The sensor that reported the agent, with its upstream
+            creation_source: The source that reported the agent, with its upstream
                 address and observations.
             org_id: Owning org. Defaults to the `default` org, as discovery is an
                 admin path in the same way OTEL auto-discovery is.
