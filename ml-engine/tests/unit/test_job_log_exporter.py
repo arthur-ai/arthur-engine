@@ -53,3 +53,12 @@ def test_the_flag_does_nothing_below_error() -> None:
         _record("just so you know", level=logging.WARNING, **REPORT_AS_JOB_ERROR),
     )
     assert _posted_errors(jobs_client) == []
+
+
+def test_a_failure_to_report_the_error_does_not_escape_the_log_call() -> None:
+    """The agents this line is about are already stored; a job-error API that is down
+    must not turn that into a failed job."""
+    exporter, jobs_client = _exporter()
+    jobs_client.post_job_errors.side_effect = RuntimeError("job errors API down")
+    exporter.emit(_record("agent for task b was not stored", **REPORT_AS_JOB_ERROR))
+    assert jobs_client.post_job_logs.call_count == 1, "the log line still went out"

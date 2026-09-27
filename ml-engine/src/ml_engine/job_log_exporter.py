@@ -97,13 +97,21 @@ class ScopeJobLogExporter(logging.Handler):
             "report_as_job_error",
             False,
         ):
-            self.job_client.post_job_errors(
-                self.job_id,
-                self.job_run_id,
-                job_errors=JobErrors(
-                    errors=[JobError(error=self.redactor.redact(record.getMessage()))],
-                ),
-            )
+            # A failure to report the error must not become one: the agents this line
+            # is about are already stored, and the job's outcome should say so.
+            try:
+                self.job_client.post_job_errors(
+                    self.job_id,
+                    self.job_run_id,
+                    job_errors=JobErrors(
+                        errors=[
+                            JobError(error=self.redactor.redact(record.getMessage())),
+                        ],
+                    ),
+                )
+            except Exception as exc:
+                logger.error("Failed to export job error")
+                logger.error(str(exc), exc_info=True)
 
 
 # Important thing here is to make sure handlers and removed and closed, otherwise they'll create a memory leak
