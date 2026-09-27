@@ -4,11 +4,12 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
-from arthur_client.api_bindings import FetchDiscoveredAgentsJobSpec
+from arthur_client.api_bindings import FetchDiscoveredAgentsJobSpec, RejectedAgent
 from genai_client import EnrichedTaskResponse
 
 from job_executors import fetch_discovered_agents_executor
 from job_executors.fetch_discovered_agents_executor import (
+    MAX_REPORTED_REJECTIONS,
     FetchDiscoveredAgentsExecutor,
     enriched_task_to_agent,
 )
@@ -76,8 +77,42 @@ def _agents_client() -> MagicMock:
     client = MagicMock()
     client.put_agents.side_effect = lambda workspace_id, put_agents: SimpleNamespace(
         agents=put_agents.agents,
+        rejected=[],
     )
     return client
+
+
+def _rejecting_agents_client(rejected_task_ids: set[str]) -> MagicMock:
+    """The Agents API storing every agent but these, which it lists in `rejected`."""
+
+    def put(workspace_id: str, put_agents: object) -> SimpleNamespace:
+        agents = put_agents.agents  # type: ignore[attr-defined]
+        return SimpleNamespace(
+            agents=[a for a in agents if a.task_id not in rejected_task_ids],
+            rejected=[
+                RejectedAgent(
+                    index=i,
+                    task_id=a.task_id,
+                    name=a.name,
+                    reason=f"Data plane {DATA_PLANE_ID} does not exist in workspace.",
+                )
+                for i, a in enumerate(agents)
+                if a.task_id in rejected_task_ids
+            ],
+        )
+
+    client = MagicMock()
+    client.put_agents.side_effect = put
+    return client
+
+
+def _job_errors(caplog: pytest.LogCaptureFixture) -> list[str]:
+    """Log lines the job exporter would also post as the job's errors."""
+    return [
+        record.getMessage()
+        for record in caplog.records
+        if getattr(record, "report_as_job_error", False)
+    ]
 
 
 def _executor(
@@ -179,7 +214,7 @@ def test_an_upload_failure_fails_the_job_after_the_pages_before_it_landed(
     ]
     agents_client = MagicMock()
     agents_client.put_agents.side_effect = [
-        SimpleNamespace(agents=[MagicMock(), MagicMock()]),
+        SimpleNamespace(agents=[MagicMock(), MagicMock()], rejected=[]),
         RuntimeError("platform down"),
     ]
 
@@ -208,3 +243,70 @@ def test_the_fetch_job_uploads_provenance(tasks_api: MagicMock) -> None:
 
     [agent] = agents_client.put_agents.call_args.kwargs["put_agents"].agents
     assert agent.provenance is not None
+
+
+# --- agents the Platform does not store (UP-5069) ---------------------------------
+
+
+def test_an_agent_the_platform_rejects_is_a_job_error_and_the_rest_still_count(
+    tasks_api: MagicMock,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """The Platform stores the rest of the batch and lists the refused ones, so the
+    PUT succeeds either way; the refused agent has to surface somewhere a person
+    looks, or its task simply never appears."""
+    tasks_api.get_agent_tasks_api_v2_agent_tasks_get.side_effect = [
+        [_task("a"), _task("b"), _task("c")],
+    ]
+    agents_client = _rejecting_agents_client({"b"})
+
+    with caplog.at_level(logging.INFO):
+        _executor(agents_client, page_size=5).execute(_spec())
+
+    assert _job_errors(caplog) == [
+        f"Agents API did not store the agent for task b (agent-b): Data plane "
+        f"{DATA_PLANE_ID} does not exist in workspace.",
+    ]
+    assert "Uploaded 2 agent(s)" in caplog.text, "only what landed is counted"
+
+
+def test_a_batch_refused_wholesale_is_summarized_rather_than_listed_in_full(
+    tasks_api: MagicMock,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Each reported rejection is a log line and a job error, so a thousand refused
+    agents must not become two thousand calls to the Platform."""
+    task_ids = [f"t{i}" for i in range(MAX_REPORTED_REJECTIONS + 5)]
+    tasks_api.get_agent_tasks_api_v2_agent_tasks_get.side_effect = [
+        [_task(task_id) for task_id in task_ids],
+    ]
+
+    with caplog.at_level(logging.ERROR):
+        _executor(
+            _rejecting_agents_client(set(task_ids)),
+            page_size=len(task_ids) + 1,
+        ).execute(_spec())
+
+    errors = _job_errors(caplog)
+    assert len(errors) == MAX_REPORTED_REJECTIONS + 1
+    assert errors[-1] == (
+        f"Agents API did not store {len(task_ids)} agent(s) in all; the first "
+        f"{MAX_REPORTED_REJECTIONS} are listed above."
+    )
+
+
+def test_a_platform_that_predates_rejected_reports_nothing_extra(
+    tasks_api: MagicMock,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """An older Platform omits `rejected`, which the client reads back as None."""
+    tasks_api.get_agent_tasks_api_v2_agent_tasks_get.side_effect = [[_task("a")]]
+    agents_client = MagicMock()
+    agents_client.put_agents.side_effect = lambda workspace_id, put_agents: (
+        SimpleNamespace(agents=put_agents.agents, rejected=None)
+    )
+
+    with caplog.at_level(logging.ERROR):
+        _executor(agents_client, page_size=5).execute(_spec())
+
+    assert _job_errors(caplog) == []

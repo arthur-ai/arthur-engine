@@ -17,6 +17,12 @@ from log_redaction import SecretRedactingFilter
 
 logger = logging.getLogger(__name__)
 
+# Pass as a log call's `extra` to record an ERROR line as one of the job's errors as
+# well as a log line. For a failure with no exception to carry: an agent the Agents API
+# rejected while the rest of its batch landed does not fail the job, and without this
+# would show up only in the log, not in the errors a scan's status counts.
+REPORT_AS_JOB_ERROR = {"report_as_job_error": True}
+
 logging_to_scope_levels = {
     logging.DEBUG: JobLogLevel.DEBUG,
     logging.INFO: JobLogLevel.INFO,
@@ -83,9 +89,29 @@ class ScopeJobLogExporter(logging.Handler):
                 self.job_id,
                 self.job_run_id,
                 job_errors=JobErrors(
-                    errors=[JobError(error=self.redactor.redact(str(exc_value)))]
+                    errors=[JobError(error=self.redactor.redact(str(exc_value)))],
                 ),
             )
+        elif record.levelno >= logging.ERROR and getattr(
+            record,
+            "report_as_job_error",
+            False,
+        ):
+            # A failure to report the error must not become one: the agents this line
+            # is about are already stored, and the job's outcome should say so.
+            try:
+                self.job_client.post_job_errors(
+                    self.job_id,
+                    self.job_run_id,
+                    job_errors=JobErrors(
+                        errors=[
+                            JobError(error=self.redactor.redact(record.getMessage())),
+                        ],
+                    ),
+                )
+            except Exception as exc:
+                logger.error("Failed to export job error")
+                logger.error(str(exc), exc_info=True)
 
 
 # Important thing here is to make sure handlers and removed and closed, otherwise they'll create a memory leak
