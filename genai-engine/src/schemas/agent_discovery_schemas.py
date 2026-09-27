@@ -45,7 +45,7 @@ class TaskResolutionMethod(str, Enum):
     """A previous scan already minted a task for this external_id."""
 
     SERVICE_NAME = "service_name"
-    """The agent is already known under a service name the sensor reported -- either
+    """The agent is already known under a service name the source reported -- either
     from its own traces or from another discovery source that saw the same name."""
 
     CREATED = "created"
@@ -56,7 +56,7 @@ class ResolvedAgentTask(BaseModel):
     """What one discovered record resolved to. Always carries a task ID."""
 
     external_id: str = Field(description="Identity the record arrived with")
-    task_id: str = Field(description="Task this record's findings belong to")
+    task_id: str = Field(description="Task this record resolved to")
     name: str = Field(
         description="Name of the resolved task, which for an existing task is its "
         "current name rather than the name the record carried",
@@ -130,6 +130,6 @@ class EnrichedTaskResponse(CommonEnrichedTaskResponse):
 
     provenance: Optional[Provenance] = Field(
         default=None,
-        description="Every sensor that has reported this agent, and where upstream each "
+        description="Every source that has reported this agent, and where upstream each "
         "reported it. Absent only for a task with no creation source recorded.",
     )

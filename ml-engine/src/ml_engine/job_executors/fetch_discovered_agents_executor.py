@@ -238,12 +238,12 @@ def enriched_task_to_agent(
     The task's provenance is forwarded as GenAI Engine serves it (D-09). The Platform
     reads an agent's `infrastructure` from `provenance.runs_on` and, for an agent
     without provenance, falls back to the reporting engine's own cloud -- so without
-    it every endpoint finding renders as running on AWS. It crosses as-is: both
+    it every endpoint record renders as running on AWS. It crosses as-is: both
     clients generate it from the one arthur_common model, and the Platform's input
     form reads only the fields it stores, leaving the derived `source_classes` behind.
 
     None for an auto-created task with no creation source. The Agents API refuses an
-    agent that names no sensor (D-03), and naming one here would misreport who found
+    agent that names no source (D-03), and naming one here would misreport who found
     it. A task created by hand in GenAI Engine is sent as MANUAL, which is what it is.
     """
     task_dict = enriched_task.to_dict()

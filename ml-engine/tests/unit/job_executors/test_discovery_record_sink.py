@@ -116,7 +116,7 @@ def _body(request: Any) -> dict[str, Any]:
     return json.loads(json.dumps(serialized))
 
 
-# --- the sensor attribution, which is the whole point of the trip ------------------
+# --- the source attribution, which is the whole point of the trip ------------------
 
 
 def test_the_creation_source_reaches_the_wire(tasks: FakeTasks) -> None:
@@ -128,7 +128,7 @@ def test_the_creation_source_reaches_the_wire(tasks: FakeTasks) -> None:
 
     body = _body(tasks.requests[0])
     source = body["records"][0]["creation_source"]
-    assert source is not None, "the sensor that found the agent was dropped"
+    assert source is not None, "the source that found the agent was dropped"
     assert source["vendor"] == "jamf_pro"
     assert source["address"]["instance"] == "m1"
     assert source["address"]["resource_id"] == "@openai/codex"
@@ -148,7 +148,7 @@ def test_every_batch_names_the_source_that_scanned_it(tasks: FakeTasks) -> None:
 def test_an_unsupplied_column_is_never_an_empty_list(tasks: FakeTasks) -> None:
     """Absent and null both deserialize to None, so the generated client is free to
     send either -- and it sends null, because its `from_dict` sets every column
-    explicitly. What must never happen is an empty list: that says the sensor looked
+    explicitly. What must never happen is an empty list: that says the source looked
     and found none, which is a different claim from not being able to look."""
     _sink().publish("ws", "dp", _config(), [_record()])
 
@@ -165,7 +165,7 @@ def test_an_unsupplied_column_is_never_an_empty_list(tasks: FakeTasks) -> None:
 
 
 def test_where_the_agent_runs_reaches_the_wire(tasks: FakeTasks) -> None:
-    """Without it GenAI Engine serves every endpoint finding as `runs_on=unknown`, and
+    """Without it GenAI Engine serves every endpoint record as `runs_on=unknown`, and
     the Platform cannot show a laptop as a laptop."""
     located = _record().model_copy(
         update={"runs_on": RunsOn.ENDPOINT, "platform": Platform.DARWIN},
@@ -178,7 +178,7 @@ def test_where_the_agent_runs_reaches_the_wire(tasks: FakeTasks) -> None:
 
 
 def test_the_record_keeps_its_own_last_seen(tasks: FakeTasks) -> None:
-    """The payload dates itself; the poll time would date every finding to now."""
+    """The payload dates itself; the poll time would date every record to now."""
     _sink().publish("ws", "dp", _config(), [_record()])
     body = _body(tasks.requests[0])
     assert body["records"][0]["last_seen"].startswith("2026-09-17T12:00:00")

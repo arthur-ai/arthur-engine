@@ -22826,7 +22826,7 @@
                                 "type": "null"
                             }
                         ],
-                        "description": "Every sensor that has reported this agent, and where upstream each reported it. Absent only for a task with no creation source recorded."
+                        "description": "Every source that has reported this agent, and where upstream each reported it. Absent only for a task with no creation source recorded."
                     }
                 },
                 "type": "object",
@@ -30843,7 +30843,7 @@
                     "task_id": {
                         "type": "string",
                         "title": "Task Id",
-                        "description": "Task this record's findings belong to"
+                        "description": "Task this record resolved to"
                     },
                     "name": {
                         "type": "string",

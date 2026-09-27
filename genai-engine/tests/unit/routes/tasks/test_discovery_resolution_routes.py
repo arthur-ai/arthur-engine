@@ -147,7 +147,7 @@ def test_bad_task_id_is_reported_while_the_rest_of_the_batch_resolves(
 def test_resolved_tasks_show_up_as_agent_tasks(
     client: GenaiEngineTestClientBase,
 ):
-    """A minted task is an agent like any other, and reads back with its sensor."""
+    """A minted task is an agent like any other, and reads back with its source."""
     run = uuid.uuid4().hex[:8]
     status_code, response = client.resolve_discovered_agents(
         [_record(f"{run}-splunk-1", name=f"Checkout Agent {run}")],

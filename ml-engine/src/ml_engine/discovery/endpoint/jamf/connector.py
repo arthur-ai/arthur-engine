@@ -31,12 +31,12 @@ INCLUDE_GROUPS_FIELD = "include_groups"
 EXCLUDE_GROUPS_FIELD = "exclude_groups"
 
 
-class JamfScanner:
-    """Implements `job_executors.discovery_scan.DiscoverySourceScanner` and
+class JamfConnector:
+    """Implements `job_executors.discovery_scan.DiscoverySourceConnector` and
     `ReportsDeviceCoverage`.
 
-    Holds one scan's coverage, which is safe only because a scanner is built fresh for
-    every scan -- see `DiscoveryScannerFactory`.
+    Holds one scan's coverage, which is safe only because a connector is built fresh for
+    every scan -- see `DiscoveryConnectorFactory`.
     """
 
     def __init__(self) -> None:

@@ -155,12 +155,12 @@ def _as_wire(record: DiscoveryOutputRecord) -> WireRecord:
     dict for it without resolving which member it is: the wrapper's `actual_instance`
     stays None, `to_dict()` then returns None for the field, and every record publishes
     with no vendor, no address and no observations. It validates, it serializes, and the
-    sensor attribution is gone. `from_dict` resolves the member, so a record whose
+    source attribution is gone. `from_dict` resolves the member, so a record whose
     creation source does not match one fails loudly here instead.
 
     `exclude_none` is the contract, not a size saving. An optional column is absent when
     a source cannot supply it and null never means anything else, so sending null would
-    turn "this sensor does not see tools" into "this sensor saw no tools".
+    turn "this source does not see tools" into "this source saw no tools".
     """
     wire = WireRecord.from_dict(record.model_dump(mode="json", exclude_none=True))
     if wire is None:  # pragma: no cover -- from_dict only returns None for a None input
