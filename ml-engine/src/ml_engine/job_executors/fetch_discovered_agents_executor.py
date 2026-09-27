@@ -27,6 +27,7 @@ from arthur_client.api_bindings import (
     PIIConfig,
     PutAgents,
     RegexConfig,
+    RejectedAgent,
     ToxicityConfig,
 )
 from genai_client import (
@@ -36,10 +37,16 @@ from genai_client import (
     TasksApi,
 )
 
+from job_log_exporter import REPORT_AS_JOB_ERROR
+
 # Tasks per GET, and so agents per PUT. Well under GenAI Engine's own cap of 1,000:
 # every task on a page is enriched from its spans, and the Platform upserts a PUT one
 # agent at a time inside a single request, so a smaller page bounds both calls.
 FETCH_PAGE_SIZE = 200
+
+# Rejected agents reported one by one before the rest are summarized: each is a log line
+# and a job error, so a batch the Platform refused wholesale does not become thousands.
+MAX_REPORTED_REJECTIONS = 20
 
 # (connect, read). The generated client defaults to waiting forever, and this job runs
 # as a thread in the runner; see `discovery_record_sink.RESOLVE_TIMEOUT_SECONDS`.
@@ -166,8 +173,9 @@ def publish_enriched_tasks(
             agent_objects.append(agent)
 
     if unattributed:
-        # Left out rather than sent: one agent the Agents API refuses fails the
-        # whole PUT, so they would take every other task's agent down with them.
+        # Left out rather than sent: the Agents API refuses an agent that names no
+        # sensor (D-03), and a Platform that predates UP-5069 refuses the whole PUT
+        # over one, taking every other task's agent down with it.
         logger.warning(
             f"Not publishing {len(unattributed)} auto-created task(s) that GenAI "
             f"Engine recorded no creation source for: {', '.join(unattributed)}",
@@ -183,7 +191,39 @@ def publish_enriched_tasks(
         workspace_id=workspace_id,
         put_agents=PutAgents(agents=agent_objects),
     )
+    report_rejected_agents(logger, workspace_id, response.rejected or [])
     return len(response.agents)
+
+
+def report_rejected_agents(
+    logger: logging.Logger,
+    workspace_id: str,
+    rejected: List[RejectedAgent],
+) -> None:
+    """Report each agent the Agents API did not store as one of the job's errors.
+
+    The Platform stores the rest of the batch and lists these in `rejected` (UP-5069),
+    so the PUT succeeds either way; without this, a task whose agent never lands would
+    show up nowhere. Reported rather than raised, since the batch's other agents did
+    land and a retry would be refused for the same reason. Empty against a Platform
+    that predates `rejected`.
+    """
+    for agent in rejected[:MAX_REPORTED_REJECTIONS]:
+        logger.error(
+            f"Agents API did not store the agent for task {agent.task_id} "
+            f"({agent.name}): {agent.reason}",
+            extra={
+                **REPORT_AS_JOB_ERROR,
+                "workspace_id": workspace_id,
+                "task_id": agent.task_id,
+            },
+        )
+    if len(rejected) > MAX_REPORTED_REJECTIONS:
+        logger.error(
+            f"Agents API did not store {len(rejected)} agent(s) in all; the first "
+            f"{MAX_REPORTED_REJECTIONS} are listed above.",
+            extra={**REPORT_AS_JOB_ERROR, "workspace_id": workspace_id},
+        )
 
 
 def enriched_task_to_agent(
