@@ -19,7 +19,13 @@ from typing import Any, Optional
 import pytest
 import requests
 import yaml
-from arthur_common.models.agent_governance_schemas import Platform, RunsOn
+from arthur_common.models.agent_governance_schemas import (
+    AgentObservations,
+    EndpointAgentCreationSource,
+    Platform,
+    RunsOn,
+    SourceAddress,
+)
 
 from discovery.endpoint.envelope import EnvelopeOutcome
 from discovery.endpoint.jamf.client import JamfClient, JamfError, JamfSettings
@@ -1306,3 +1312,148 @@ def test_an_unscoped_scan_still_reports_its_denominator(
         coverage.devices_excluded,
     ) == (2, 2, 1, 1, 0)
     assert coverage.excluded_by_group == {}
+
+
+# --- what is never collected ----------------------------------------------------------
+#
+# D-19's never-collected list: prompt and response contents, file contents, keystrokes
+# or screen data, personal browsing history. Enforced in three places, each with a test
+# here: the sections the connector asks Jamf for, the fields it keeps from a device
+# record, and the six columns it accepts from the collector. The record schema is the
+# fourth: it has no field that could carry any of them.
+
+PERSONAL = {
+    "email": "nori@example.com",
+    "phone": "+1 555 0100",
+    "real name": "Nori Tatsumi",
+    "ip address": "10.1.2.3",
+    "mac address": "aa:bb:cc:dd:ee:ff",
+    "an unrelated extension attribute": "PERSONAL NOTES ABOUT THIS USER",
+    "prompt text": "SECRET PROMPT TEXT",
+    "browsing history": "https://intranet.example.com/hr/review",
+}
+
+
+def prying_computer(mid: str, value: str) -> dict[str, Any]:
+    """A Jamf record padded with what the inventory API can say about a person and a
+    machine that this source has no business carrying."""
+    record = computer(
+        mid,
+        value,
+        extra_attributes=[_ea("Notes", PERSONAL["an unrelated extension attribute"])],
+    )
+    record["general"].update(
+        {
+            "lastIpAddress": PERSONAL["ip address"],
+            "lastReportedIp": PERSONAL["ip address"],
+        },
+    )
+    record["hardware"]["macAddress"] = PERSONAL["mac address"]
+    record["userAndLocation"].update(
+        {
+            "realname": PERSONAL["real name"],
+            "email": PERSONAL["email"],
+            "phone": PERSONAL["phone"],
+            "position": "Engineer",
+        },
+    )
+    record["localUserAccounts"] = [
+        {
+            "username": "nori",
+            "fullName": PERSONAL["real name"],
+            "homeDirectory": "/Users/nori",
+        },
+    ]
+    record["applications"] = [{"name": "Safari", "path": "/Applications/Safari.app"}]
+    record["attachments"] = [{"name": "hr-review.pdf"}]
+    return record
+
+
+def test_the_connector_asks_jamf_only_for_the_sections_it_reads() -> None:
+    """What is never requested cannot be collected. Applications, local user accounts,
+    attachments, certificates and the rest of the inventory are not on the list; a scoped
+    source adds only the group memberships it needs to apply its scope."""
+    fake = FakeJamf([[computer("m1", full_payload())]])
+    list(client_for(fake).devices_since(None))
+    assert set(fake.gets[0]["section"]) == {
+        "GENERAL",
+        "HARDWARE",
+        "OPERATING_SYSTEM",
+        "USER_AND_LOCATION",
+        "EXTENSION_ATTRIBUTES",
+    }
+
+
+def test_a_device_record_keeps_nothing_the_observations_do_not_name(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Jamf's record says far more about a machine and its user than this source
+    reports. The connector copies the fields `AgentObservations` names and drops the
+    record; nothing else survives to be serialized."""
+    records = scan(FakeJamf([[prying_computer("m1", full_payload())]]), monkeypatch)
+    assert records, "the padding must not make the device unreadable"
+
+    wire = json.dumps([r.model_dump(mode="json") for r in records])
+    for what, value in PERSONAL.items():
+        assert value not in wire, f"{what} reached the record"
+    assert '"assigned_user": "nori"' in wire, "the allow-listed user is still there"
+
+
+def test_a_row_with_more_than_the_six_columns_is_refused_not_forwarded(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A collector that starts writing what it read -- a prompt, a file -- fails the
+    device rather than shipping the extra column. The contract is the privacy boundary,
+    and the warning names the column, never its value."""
+    rows = [row("npm", "@openai/codex", ver="0.5.0"), scan_row("packages")]
+    rows[0]["contents"] = PERSONAL["prompt text"]
+    with caplog.at_level(logging.WARNING, logger=LOG.name):
+        records = scan(FakeJamf([[computer("m1", frame(rows))]]), monkeypatch)
+
+    assert records == []
+    assert "unexpected ['contents']" in caplog.text
+    assert PERSONAL["prompt text"] not in caplog.text
+
+
+def test_the_extra_column_never_reaches_a_record(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`extra` means something different per kind and is the one column with room for
+    free text. Nothing reads it into a record: it stays on the wire."""
+    rows = [
+        row("npm", "@openai/codex", ver="0.5.0", extra=PERSONAL["prompt text"]),
+        scan_row("packages"),
+    ]
+    records = scan(FakeJamf([[computer("m1", frame(rows))]]), monkeypatch)
+    assert len(records) == 1
+    assert PERSONAL["prompt text"] not in json.dumps(records[0].model_dump(mode="json"))
+
+
+def test_the_record_schema_has_no_field_for_what_is_never_collected() -> None:
+    """The allow-list, as the shape of the record itself: a field that is not here cannot
+    be filled by mistake. Adding one is a privacy review, not a refactor."""
+    assert set(EndpointAgentCreationSource.model_fields) == {
+        "type",
+        "vendor",
+        "address",
+        "observations",
+    }
+    assert set(SourceAddress.model_fields) == {
+        "instance",
+        "scope",
+        "resource_kind",
+        "resource_id",
+        "query",
+    }
+    assert set(AgentObservations.model_fields) == {
+        "install_path",
+        "version",
+        "host_name",
+        "host_group",
+        "os_version",
+        "assigned_user",
+        "permissions",
+        "service_names",
+        "classification",
+    }
