@@ -1,4 +1,4 @@
-"""D-12: the Test Connection executor, against a fake scanner and against Jamf's.
+"""D-12: the Test Connection executor, against a fake connector and against Jamf's.
 
 What is under test is the contract the Platform and the UI read: the first N mapped
 rows and no more, the output-column check naming unmapped columns, reachability that
@@ -41,7 +41,7 @@ from arthur_client.api_bindings.exceptions import ForbiddenException
 from arthur_common.models.agent_discovery_schemas import DiscoveryOutputRecord
 
 from discovery.endpoint.jamf.client import JamfError
-from discovery.endpoint.jamf.scanner import JamfScanner
+from discovery.endpoint.jamf.connector import JamfConnector
 from job_executors.discovery_source_test_executor import (
     PREVIEW_DEADLINE_SECONDS,
     DiscoverySourceTestExecutor,
@@ -94,7 +94,7 @@ def _record(external_id: str) -> DiscoveryOutputRecord:
     )
 
 
-class FakeScanner:
+class FakeConnector:
     """Yields the given batches, or raises after them; remembers how far it got."""
 
     def __init__(
@@ -155,7 +155,7 @@ def job_log() -> tuple[logging.Logger, io.StringIO]:
 
 
 def _run(
-    scanner: object,
+    connector: object,
     spec: TestDiscoverySourceJobSpec,
     client: MagicMock,
     logger: logging.Logger,
@@ -166,7 +166,7 @@ def _run(
     return DiscoverySourceTestExecutor(
         client,
         logger,
-        scanners={vendor: lambda: scanner},
+        connectors={vendor: lambda: connector},
         **kwargs,
     ).execute(_job(), JOB_RUN_ID, spec)
 
@@ -182,7 +182,7 @@ def _delivered(client: MagicMock) -> PutDiscoverySourceTestResult:
 
 def test_returns_the_first_n_mapped_rows_and_stops_reading(job_log) -> None:
     logger, _ = job_log
-    scanner = FakeScanner(
+    connector = FakeConnector(
         batches=[
             [_record("a"), _record("b"), _record("c")],
             [_record("d"), _record("e"), _record("f")],
@@ -191,7 +191,7 @@ def test_returns_the_first_n_mapped_rows_and_stops_reading(job_log) -> None:
     )
     client = _client()
 
-    _run(scanner, _spec(preview_limit=4), client, logger)
+    _run(connector, _spec(preview_limit=4), client, logger)
 
     result = _delivered(client)
     assert result.outcome == DiscoverySourceTestOutcome.SUCCEEDED
@@ -204,11 +204,11 @@ def test_returns_the_first_n_mapped_rows_and_stops_reading(job_log) -> None:
     assert result.output_column_check.outcome == ValidationOutcome.PASS
     assert result.error is None
     # the connector was stopped at the limit, not drained
-    assert scanner.yielded == 2
-    assert scanner.closed is True
-    # credentials were fetched at run time and handed to the scanner
+    assert connector.yielded == 2
+    assert connector.closed is True
+    # credentials were fetched at run time and handed to the connector
     client.retrieve_discovery_source_credentials.assert_called_once_with(CONFIG_ID)
-    assert scanner.seen_credentials["client_secret"] == CLIENT_SECRET
+    assert connector.seen_credentials["client_secret"] == CLIENT_SECRET
     # the only write is the result: no publish, no chained job, no run outcome
     assert {name for name, _, _ in client.method_calls} == {
         "retrieve_discovery_source_credentials",
@@ -218,7 +218,7 @@ def test_returns_the_first_n_mapped_rows_and_stops_reading(job_log) -> None:
 
 def test_a_401_is_reachable_and_surfaces_the_vendors_error_redacted(job_log) -> None:
     logger, log = job_log
-    scanner = FakeScanner(
+    connector = FakeConnector(
         raise_after=JamfError(
             f"Jamf token request failed with HTTP 401 for client_secret={CLIENT_SECRET} "
             "Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.minted.at.runtime",
@@ -226,7 +226,7 @@ def test_a_401_is_reachable_and_surfaces_the_vendors_error_redacted(job_log) -> 
     )
     client = _client()
 
-    _run(scanner, _spec(), client, logger)
+    _run(connector, _spec(), client, logger)
 
     result = _delivered(client)
     assert result.outcome == DiscoverySourceTestOutcome.FAILED
@@ -257,7 +257,7 @@ def test_jamfs_real_401_is_reported_as_authentication(job_log) -> None:
             body=f'{{"error":"invalid_client","echo":"{CLIENT_SECRET}"}}',
         )
         _run(
-            JamfScanner(),
+            JamfConnector(),
             _spec(vendor="jamf_pro", source_fields={"base_url": JAMF_URL}),
             client,
             logger,
@@ -287,7 +287,7 @@ def test_an_unreachable_host_is_not_an_authentication_failure(job_log) -> None:
             ),
         )
         _run(
-            JamfScanner(),
+            JamfConnector(),
             _spec(vendor="jamf_pro", source_fields={"base_url": JAMF_URL}),
             client,
             logger,
@@ -311,7 +311,7 @@ def test_a_wrapped_connection_timeout_reads_as_unreachable(job_log) -> None:
         error = wrapped
     client = _client()
 
-    _run(FakeScanner(raise_after=error), _spec(), client, logger)
+    _run(FakeConnector(raise_after=error), _spec(), client, logger)
 
     result = _delivered(client)
     assert result.reachability == DiscoverySourceReachability.UNREACHABLE
@@ -323,7 +323,7 @@ def test_a_missing_field_is_configuration_with_reachability_unknown(job_log) -> 
     client = _client()
 
     # no base_url source field: the Jamf connector refuses before any request
-    _run(JamfScanner(), _spec(vendor="jamf_pro"), client, logger, vendor="jamf_pro")
+    _run(JamfConnector(), _spec(vendor="jamf_pro"), client, logger, vendor="jamf_pro")
 
     result = _delivered(client)
     assert result.error.category == DiscoverySourceTestErrorCategory.CONFIGURATION
@@ -331,8 +331,8 @@ def test_a_missing_field_is_configuration_with_reachability_unknown(job_log) -> 
     assert "base_url" in result.error.message
 
 
-class EagerScanner:
-    """A scanner whose scan() is a plain function that validates before returning."""
+class EagerConnector:
+    """A connector whose scan() is a plain function that validates before returning."""
 
     def scan(
         self,
@@ -347,13 +347,13 @@ class EagerScanner:
         )
 
 
-def test_a_scanner_that_refuses_eagerly_is_configuration_not_internal(
+def test_a_connector_that_refuses_eagerly_is_configuration_not_internal(
     job_log,
 ) -> None:
     logger, _ = job_log
     client = _client()
 
-    _run(EagerScanner(), _spec(), client, logger)
+    _run(EagerConnector(), _spec(), client, logger)
 
     result = _delivered(client)
     assert result.outcome == DiscoverySourceTestOutcome.FAILED
@@ -365,7 +365,7 @@ def test_a_scanner_that_refuses_eagerly_is_configuration_not_internal(
 
 def test_unmapped_columns_are_named_and_the_raw_rows_shown(job_log) -> None:
     logger, _ = job_log
-    scanner = FakeScanner(
+    connector = FakeConnector(
         batches=[
             [
                 {
@@ -379,7 +379,7 @@ def test_unmapped_columns_are_named_and_the_raw_rows_shown(job_log) -> None:
     )
     client = _client()
 
-    _run(scanner, _spec(), client, logger)
+    _run(connector, _spec(), client, logger)
 
     result = _delivered(client)
     assert result.outcome == DiscoverySourceTestOutcome.FAILED
@@ -398,7 +398,7 @@ def test_an_empty_source_succeeds_without_a_column_check(job_log) -> None:
     logger, _ = job_log
     client = _client()
 
-    _run(FakeScanner(batches=[[], []]), _spec(), client, logger)
+    _run(FakeConnector(batches=[[], []]), _spec(), client, logger)
 
     result = _delivered(client)
     assert result.outcome == DiscoverySourceTestOutcome.SUCCEEDED
@@ -411,23 +411,23 @@ def test_an_empty_source_succeeds_without_a_column_check(job_log) -> None:
 def test_the_deadline_stops_reading_and_keeps_what_was_read(job_log) -> None:
     logger, _ = job_log
     ticks = iter([0.0, PREVIEW_DEADLINE_SECONDS + 1])
-    scanner = FakeScanner(batches=[[_record("a")], [_record("b")]])
+    connector = FakeConnector(batches=[[_record("a")], [_record("b")]])
     client = _client()
 
-    _run(scanner, _spec(preview_limit=10), client, logger, clock=lambda: next(ticks))
+    _run(connector, _spec(preview_limit=10), client, logger, clock=lambda: next(ticks))
 
     result = _delivered(client)
     assert result.outcome == DiscoverySourceTestOutcome.SUCCEEDED
     assert [row["external_id"] for row in result.rows] == ["a"]
     assert result.truncated is True
-    assert scanner.yielded == 1
+    assert connector.yielded == 1
 
 
 def test_an_unsupported_vendor_never_reads_credentials(job_log) -> None:
     logger, _ = job_log
     client = _client()
 
-    DiscoverySourceTestExecutor(client, logger, scanners={}).execute(
+    DiscoverySourceTestExecutor(client, logger, connectors={}).execute(
         _job(),
         JOB_RUN_ID,
         _spec(vendor="splunk_enterprise"),
@@ -442,10 +442,10 @@ def test_an_unsupported_vendor_never_reads_credentials(job_log) -> None:
 
 def test_refused_credentials_are_reported_not_scanned(job_log) -> None:
     logger, _ = job_log
-    scanner = FakeScanner(batches=[[_record("a")]])
+    connector = FakeConnector(batches=[[_record("a")]])
     client = _client(credentials_error=ForbiddenException(status=403, reason="no"))
 
-    _run(scanner, _spec(), client, logger)
+    _run(connector, _spec(), client, logger)
 
     result = _delivered(client)
     assert (
@@ -453,7 +453,7 @@ def test_refused_credentials_are_reported_not_scanned(job_log) -> None:
         == DiscoverySourceTestErrorCategory.CREDENTIALS_UNAVAILABLE
     )
     assert "HTTP 403" in result.error.message
-    assert scanner.yielded == 0
+    assert connector.yielded == 0
 
 
 def test_a_result_that_cannot_be_delivered_fails_the_job(job_log) -> None:
@@ -462,4 +462,4 @@ def test_a_result_that_cannot_be_delivered_fails_the_job(job_log) -> None:
     client.put_discovery_source_test_result.side_effect = RuntimeError("platform down")
 
     with pytest.raises(RuntimeError, match="platform down"):
-        _run(FakeScanner(batches=[[_record("a")]]), _spec(), client, logger)
+        _run(FakeConnector(batches=[[_record("a")]]), _spec(), client, logger)

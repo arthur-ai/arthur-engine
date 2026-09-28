@@ -1,4 +1,4 @@
-"""Turning one device's payload into findings. Nothing here knows which MDM.
+"""Turning one device's payload into records. Nothing here knows which MDM.
 
 Finds the `arthur1.` payload among a device's attributes, matches the rows against the
 catalog, and emits one record per (device, agent). An MDM package supplies the device and
@@ -71,7 +71,7 @@ def _inventory_value(
     running the same script read the same file and carry the same bytes, so identical
     candidates are one payload seen twice. Different bytes mean two collectors writing
     different files, and nothing on the wire says which is current -- taking either would
-    publish one Mac's findings from a source chosen by dictionary order. That is a device
+    publish one Mac's records from a source chosen by dictionary order. That is a device
     we cannot speak for, which is what `None` already means here.
 
     `no-cache` cannot identify the payload -- the status attribute carries the same
@@ -112,7 +112,7 @@ def records_for(
     vendor: str,
     logger: Optional[logging.Logger] = None,
 ) -> Optional[list[DiscoveredAgentRecord]]:
-    """One device's findings, or None when its payload could not be read.
+    """One device's records, or None when its payload could not be read.
 
     None and [] are different answers: [] is a device that scanned and matched nothing,
     None a device we cannot speak for.
@@ -156,7 +156,7 @@ def records_for(
         )
 
     if not result.complete:
-        # Reported, not suppressed: the findings are real, but more may sit behind the
+        # Reported, not suppressed: the matches are real, but more may sit behind the
         # branch that could not look.
         #
         # Absences are deliberately silent here. A branch that read the machine and found
@@ -174,7 +174,7 @@ def records_for(
     if last_seen is None:
         log.warning(
             "%s: payload carries no scan timestamp and the MDM reported no date; skipped, "
-            "because last_seen is required and inventing one would date the finding to "
+            "because last_seen is required and inventing one would date the record to "
             "the poll",
             device.device_key,
         )
@@ -185,7 +185,7 @@ def records_for(
             external_id=f"{device.device_key}:{finding.agent_id}",
             name=finding.name,
             last_seen=last_seen,
-            # An MDM only manages endpoints, so this sensor always knows where the
+            # An MDM only manages endpoints, so this source always knows where the
             # machine is. Declared here because nothing downstream can infer it: a SIEM
             # row can name a laptop too, so the source class does not imply it.
             runs_on=RunsOn.ENDPOINT,
@@ -201,14 +201,14 @@ def _source_for(
     device: ManagedDevice,
     vendor: str,
 ) -> EndpointAgentCreationSource:
-    """What this sensor saw, in the shape every discovery category reports.
+    """What this source saw, in the shape every discovery category reports.
 
     The address names the EVIDENCE; `external_id` names the AGENT. `external_id` is
     (device, agent), so uninstalling one of an agent's several routes does not churn its
     identity. The address is (device, primary route), because its job is finding the thing
     again on the machine -- a bundle id you can look up, not a catalog key you cannot.
 
-    `service_names` stays empty: a one-shot sweep sees installation, not behaviour.
+    `service_names` stays empty: a one-shot scan sees installation, not behaviour.
     """
     return EndpointAgentCreationSource(
         vendor=vendor,

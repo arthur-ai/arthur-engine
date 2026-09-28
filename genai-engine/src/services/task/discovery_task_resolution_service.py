@@ -48,7 +48,7 @@ class DiscoveryTaskResolutionService:
 
     Everything downstream -- the fetch job, the inventory, coverage counts, triage --
     operates on whatever tasks this step produced, and nothing downstream can correct
-    a bad key. Two findings that collapse onto one task stay collapsed; one agent that
+    a bad key. Two records that collapse onto one task stay collapsed; one agent that
     churns two tasks per scan stays churning.
 
     The ladder, which deliberately mirrors `TraceIngestionService._resolve_task_id`:
@@ -59,7 +59,7 @@ class DiscoveryTaskResolutionService:
        move it, and the record resolves at rung 2 to the task that owns it.
     2. `external_id` already maps to a task -> use it. This is what makes a re-scan
        free: the first run wrote the mapping, every later run reads it.
-    3. A service name the sensor observed already maps to a task -> use it, and map
+    3. A service name the source observed already maps to a task -> use it, and map
        `external_id` to that task so the next run resolves at rung 2.
     4. Nothing matched -> mint a task and map `external_id` to it.
 
@@ -75,7 +75,7 @@ class DiscoveryTaskResolutionService:
     answer: they converge only if they agree on `external_id` or if their observed
     service names overlap (rung 3). Otherwise they mint two tasks. That is v1's
     intended behavior -- `external_id` is canonical and no identity resolution runs
-    across sensors -- and the corroboration case is provenance's to express, by holding
+    across sources -- and the corroboration case is provenance's to express, by holding
     several entries against one task, not this resolver's to guess at.
 
     EVERY RESOLVED RECORD IS RECORDED IN ITS TASK'S PROVENANCE, whichever rung answered:
@@ -85,9 +85,9 @@ class DiscoveryTaskResolutionService:
 
     WHAT THIS DELIBERATELY DOES NOT DO: rename an existing task to the name the record
     carried, or rewrite its creation source from a later scan. Identity is stable; the
-    per-sensor record of what was seen where is provenance, which grows instead. A record
+    per-source record of what was seen where is provenance, which grows instead. A record
     without an `external_id` never reaches here -- the connector output contract
-    rejects it upstream, and the request model refuses it here -- so no finding is ever
+    rejects it upstream, and the request model refuses it here -- so no record is ever
     routed to the unmapped task.
     """
 
@@ -231,7 +231,7 @@ class DiscoveryTaskResolutionService:
                 )
 
             # The identity already belongs elsewhere, and the mapping is immutable.
-            # Reporting the requested task anyway would split this agent's findings
+            # Reporting the requested task anyway would split this agent's records
             # across two tasks and flip it between them from scan to scan, so it
             # falls through to rung 2, which now finds the owner in the view.
             logger.warning(
@@ -254,7 +254,7 @@ class DiscoveryTaskResolutionService:
                 resolved_by=TaskResolutionMethod.EXTERNAL_ID,
             )
 
-        # Rung 3: the agent is already known under a service name this sensor saw --
+        # Rung 3: the agent is already known under a service name this source saw --
         # its own traces are arriving, or another source reported the same name.
         for service_name in record.service_names:
             mapped_task_id = known_mappings.get(
@@ -337,7 +337,7 @@ class DiscoveryTaskResolutionService:
         mapping is immutable and the other side won, so this request's task is now a
         task no key points at: invisible to every later scan, but counted in the
         inventory and the coverage numbers as an agent nobody will ever attribute a
-        finding to. It is deleted rather than left, because it was minted moments ago
+        record to. It is deleted rather than left, because it was minted moments ago
         by this call and nothing has had the chance to reference it.
 
         The record then resolves to the winner and reports `EXTERNAL_ID`, which is

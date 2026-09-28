@@ -27,7 +27,7 @@ from db_models.base import Base
 class DatabaseTaskProvenanceSource(Base):
     """One discovery source's report of one agent, held against the task it resolved to.
 
-    A task's provenance is a list -- every sensor that has reported the agent, and every
+    A task's provenance is a list -- every source that has reported the agent, and every
     address each one reported it at -- and that list is unbounded: a Jamf source that
     finds one agent on 500 devices, all converging on one task through a shared service
     name, contributes 500 entries. That is why this is a table joined to `tasks` rather
@@ -38,9 +38,9 @@ class DatabaseTaskProvenanceSource(Base):
 
     KEYED ON (source_id, external_id), the grain a scan reports at. An external ID maps
     to exactly one task (see `service_name_task_mappings`), so the key also fixes the
-    task, and re-scanning the same finding updates its row rather than adding one.
+    task, and re-scanning the same record updates its row rather than adding one.
 
-    Only discovery findings land here. OTEL and manual tasks have no configured source
+    Only discovery records land here. OTEL and manual tasks have no configured source
     to key on, so their single provenance entry is derived from the task's creation
     source when the response is built, rather than stored twice.
     """
@@ -73,25 +73,25 @@ class DatabaseTaskProvenanceSource(Base):
     )
     vendor: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     # A `SourceAddress`, as JSON: instance, scope, resource kind and id, and the query
-    # that surfaced the finding. The latest scan's answer, since a source config's query
+    # that surfaced the record. The latest scan's answer, since a source config's query
     # can be edited between runs.
     address: Mapped[Optional[Any]] = mapped_column(
         JSON().with_variant(postgresql.JSONB, "postgresql"),
         nullable=True,
     )
-    # UTC, naive, and the engine's clock rather than the sensor's: these say when a scan
-    # handed the finding over, which is what the fetch job windows on. When the sensor
+    # UTC, naive, and the engine's clock rather than the source's: these say when a scan
+    # handed the record over, which is what the fetch job windows on. When the source
     # itself saw the agent is `last_seen`, below.
     first_reported_at: Mapped[datetime] = mapped_column(TIMESTAMP, nullable=False)
     last_reported_at: Mapped[datetime] = mapped_column(TIMESTAMP, nullable=False)
-    # UTC, naive, and the sensor's clock: the record's own `last_seen`, when the source
+    # UTC, naive, and the source's clock: the record's own `last_seen`, when the source
     # last observed the agent. Evidence recency rather than scan recency -- a source
     # can keep reporting an agent it has not seen for weeks. Only moves forward, so an
     # out-of-order batch cannot make an agent look staler than it is. Null for rows
     # written before it was stored.
     last_seen: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP, nullable=True)
     # Where the record said the machine is, and which OS it runs, when the source could
-    # tell. Per report rather than per task, so two sensors that disagree are both kept;
+    # tell. Per report rather than per task, so two sources that disagree are both kept;
     # the task serves one answer of each, picked when provenance is assembled. A report
     # that says nothing keeps what an earlier one said, and a `runs_on` of UNKNOWN says
     # nothing. Null for rows written before these were stored.

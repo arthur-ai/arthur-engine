@@ -116,7 +116,7 @@ def _endpoint_record(
     device: str = "C02XL4KHQ6NV",
     task_id: str | None = None,
 ) -> DiscoveredAgentRecord:
-    """A Jamf finding: one agent on one managed device."""
+    """A Jamf record: one agent on one managed device."""
     return DiscoveredAgentRecord(
         external_id=external_id,
         name=name or external_id,
@@ -140,7 +140,7 @@ def _siem_record(
     service_names: Iterable[str] = (),
     instance: str = "splunk-prod",
 ) -> DiscoveredAgentRecord:
-    """A finding surfaced by a query against the customer's security stack."""
+    """A record surfaced by a query against the customer's security stack."""
     return DiscoveredAgentRecord(
         external_id=external_id,
         name=name or external_id,
@@ -166,13 +166,13 @@ def test_five_hundred_findings_produce_five_hundred_tasks_and_rescan_produces_no
 ):
     """The scale case, and the re-scan that follows it.
 
-    A Jamf fleet sweep returns hundreds of rows from one engine. Each is a distinct
-    (software, device) finding and must end up on its own task; the run after it must
+    A Jamf fleet scan returns hundreds of rows from one engine. Each is a distinct
+    (software, device) record and must end up on its own task; the run after it must
     land on exactly those tasks and mint nothing.
     """
     run = _run_id()
     records = [
-        _endpoint_record(f"{run}-finding-{i}", device=f"C02XL4KHQ6N{i:03d}")
+        _endpoint_record(f"{run}-record-{i}", device=f"C02XL4KHQ6N{i:03d}")
         for i in range(500)
     ]
 
@@ -215,7 +215,7 @@ def test_a_rescan_costs_the_same_for_fifty_records_as_for_five_hundred(
     free to change when resolution starts doing more or less work per call.
     """
     run = _run_id()
-    records = [_endpoint_record(f"{run}-finding-{i}") for i in range(500)]
+    records = [_endpoint_record(f"{run}-record-{i}") for i in range(500)]
     tracked_tasks.extend(
         r.task_id
         for r in resolver.resolve_records(records, source_id=SOURCE_ID).resolved
@@ -327,7 +327,7 @@ def test_agent_instrumented_after_discovery_keeps_its_discovered_task(
     """The convergence the whole design turns on, in the order it usually happens.
 
     Someone instruments an agent a scan already found. Its traces arrive under a
-    service name the sensor reported, and OTEL resolution finds the row discovery
+    service name the source reported, and OTEL resolution finds the row discovery
     already wrote instead of auto-creating a second task.
     """
     run = _run_id()
@@ -463,8 +463,8 @@ def test_two_sources_reporting_one_agent_mint_two_tasks_without_a_shared_name(
 ):
     """v1's answer, recorded before D-03 assumes one.
 
-    external_id is canonical and no identity resolution runs across sensors, so two
-    sensors that share no key describe two agents as far as this step can tell.
+    external_id is canonical and no identity resolution runs across sources, so two
+    sources that share no key describe two agents as far as this step can tell.
     Corroboration is provenance's to express, by holding two evidence records against
     one task (D-09), not this resolver's to guess at.
     """
@@ -487,7 +487,7 @@ def test_two_sources_that_agree_on_a_service_name_share_one_task(
     resolver,
     tracked_tasks,
 ):
-    """The one way two sensors do converge: they saw the same telemetry name."""
+    """The one way two sources do converge: they saw the same telemetry name."""
     run = _run_id()
     service_name = f"checkout-agent-{run}"
 
@@ -547,7 +547,7 @@ def test_explicit_task_id_cannot_move_an_identity_already_mapped(
     """A re-scan that names a different task resolves to the one that owns the identity.
 
     Mappings are immutable, so the claim cannot re-route a known agent. What matters is
-    that the response agrees with the table: otherwise the agent's findings split
+    that the response agrees with the table: otherwise the agent's records split
     across two tasks, and it flips between them depending on whether the caller sends
     `task_id`. The record's new service names follow the identity to its owner.
     """
@@ -732,8 +732,8 @@ def test_archived_task_still_wins_its_identity(resolver, db_session, tracked_tas
 def test_record_without_an_external_id_never_reaches_resolution():
     """The engine's backstop behind the connector output contract (D-13).
 
-    A finding with no identity must fail, rather than route to the unmapped task and
-    collapse silently together with every other such finding.
+    A record with no identity must fail, rather than route to the unmapped task and
+    collapse silently together with every other such record.
     """
     creation_source = _siem_record("placeholder").creation_source
 
@@ -812,7 +812,7 @@ def test_losing_a_concurrent_identity_claim_yields_to_the_winner(
     is discovering -- can take `external_id` for a task of its own. `create_mapping`
     hands back the row that won, so the record resolves to the winner instead of
     reporting a task no key points at, and the task minted on the way is not left
-    behind to be counted as an agent nobody will ever attribute a finding to.
+    behind to be counted as an agent nobody will ever attribute a record to.
 
     The winner is planted directly, which is what the losing request would have found
     had it committed a moment later.

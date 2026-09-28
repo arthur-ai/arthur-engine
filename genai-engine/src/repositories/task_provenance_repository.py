@@ -73,7 +73,7 @@ def _runs_on_to_keep(
 ) -> Optional[RunsOn]:
     """The `runs_on` a report leaves behind: its own answer only if it has one.
 
-    UNKNOWN is a sensor saying it cannot tell, which is no more an answer than silence,
+    UNKNOWN is a source saying it cannot tell, which is no more an answer than silence,
     so neither replaces a location already known. The same rule the served provenance
     applies across rows, applied within one; `_runs_on_kept` is its SQL twin.
     """
@@ -123,7 +123,7 @@ class TaskProvenanceRepository:
     ) -> None:
         """Upsert what one scan reported, in a single statement.
 
-        A finding seen before keeps its `first_reported_at` and takes this scan's
+        A record seen before keeps its `first_reported_at` and takes this scan's
         address, task and `last_reported_at`; a new one gets a row. The task is
         overwritten rather than kept because the resolver just answered for it, and the
         resolver is where identity lives.

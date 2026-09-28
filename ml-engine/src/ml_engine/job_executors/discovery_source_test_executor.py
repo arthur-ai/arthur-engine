@@ -39,11 +39,11 @@ from arthur_client.api_bindings import (
 from arthur_common.models.agent_discovery_schemas import DiscoveryOutputRecord
 
 from job_executors.discovery_output_contract import OutputContractError, check_batch
-from job_executors.discovery_scan import SOURCE_SCANNERS, DiscoveryScannerFactory
+from job_executors.discovery_scan import SOURCE_CONNECTORS, DiscoveryConnectorFactory
 from log_redaction import redact_secrets, register_secrets, secret_values
 
 # How long a test may keep reading once it has started. Checked between batches: a
-# scanner blocked inside one vendor call is bounded by its own request timeout, not by
+# connector blocked inside one vendor call is bounded by its own request timeout, not by
 # this. A test is something a person is waiting on, and a preview that takes longer
 # than this to assemble is better reported as partial than not at all.
 PREVIEW_DEADLINE_SECONDS = 120.0
@@ -72,13 +72,13 @@ class DiscoverySourceTestExecutor:
         self,
         discovery_sources_client: DiscoverySourcesV1Api,
         logger: logging.Logger,
-        scanners: Optional[dict[str, DiscoveryScannerFactory]] = None,
+        connectors: Optional[dict[str, DiscoveryConnectorFactory]] = None,
         clock: Callable[[], float] = time.monotonic,
     ) -> None:
         self.discovery_sources_client = discovery_sources_client
         self.logger = logger
         # A copy, for the reason DiscoverAgentsExecutor copies it.
-        self.scanners = dict(SOURCE_SCANNERS if scanners is None else scanners)
+        self.connectors = dict(SOURCE_CONNECTORS if connectors is None else connectors)
         self.clock = clock
 
     def execute(
@@ -154,8 +154,8 @@ class _PreviewRun:
             )
 
     def _run(self) -> PutDiscoverySourceTestResult:
-        scanner_factory = self.executor.scanners.get(self.config.vendor)
-        if scanner_factory is None:
+        connector_factory = self.executor.connectors.get(self.config.vendor)
+        if connector_factory is None:
             return self._failed(
                 DiscoverySourceTestErrorCategory.UNSUPPORTED_VENDOR,
                 DiscoverySourceReachability.UNKNOWN,
@@ -186,10 +186,10 @@ class _PreviewRun:
         deadline = self.executor.clock() + PREVIEW_DEADLINE_SECONDS
         scan: Optional[Iterator[Sequence[DiscoveryOutputRecord]]] = None
         try:
-            # Built inside the classified block: a scanner that validates its config
+            # Built inside the classified block: a connector that validates its config
             # eagerly, before its first yield, is reporting a configuration problem,
             # not an engine defect.
-            scan = scanner_factory().scan(
+            scan = connector_factory().scan(
                 self.config,
                 int(self.job_spec.lookback_hours),
                 credentials,

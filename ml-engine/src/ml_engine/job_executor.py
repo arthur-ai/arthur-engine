@@ -8,7 +8,6 @@ from arthur_client.api_bindings import (
     AlertCheckJobSpec,
     AlertRulesV1Api,
     AlertsV1Api,
-    ApiClient,
     CompliancePolicyCheckJobSpec,
     ConnectorCheckJobSpec,
     ConnectorsV1Api,
@@ -35,11 +34,6 @@ from arthur_client.api_bindings import (
     TasksV1Api,
     TestCustomAggregationJobSpec,
 )
-from arthur_client.auth import (
-    ArthurClientCredentialsAPISession,
-    ArthurOAuthSessionAPIConfiguration,
-    ArthurOIDCMetadata,
-)
 from arthur_common.models.task_job_specs import (
     CreateModelTaskJobSpec,
     DeleteModelTaskJobSpec,
@@ -49,7 +43,7 @@ from arthur_common.models.task_job_specs import (
 from pydantic import StrictBytes
 
 # Imported for its side effect: registering the discovery connectors into
-# SOURCE_SCANNERS, which DiscoverAgentsExecutor and DiscoverySourceTestExecutor
+# SOURCE_CONNECTORS, which DiscoverAgentsExecutor and DiscoverySourceTestExecutor
 # resolve a source's vendor against.
 import discovery  # noqa: F401
 from arthur_client_support import (
@@ -87,6 +81,7 @@ from job_executors.task_management_job_executors import (
 )
 from job_log_exporter import ExportContextedLogger, ScopeJobLogExporter
 from tools.connector_constructor import ConnectorConstructor
+from tools.platform_api_client import build_platform_api_client
 
 # Only with a client that has D-12's models: the executor imports them at load, and
 # without this guard a client that predates them would fail every job kind.
@@ -134,26 +129,7 @@ class JobSpecRawParser:
 
 class JobExecutor:
     def __init__(self) -> None:
-        ssl_verify = Config.get_bool(
-            "ARTHUR_API_HOST_SSL_VERIFY",
-            True,
-            fallback_keys=["KEYCLOAK_SSL_VERIFY"],
-        )
-        sess = ArthurClientCredentialsAPISession(
-            client_id=Config.settings.ARTHUR_CLIENT_ID,
-            client_secret=Config.settings.ARTHUR_CLIENT_SECRET,
-            metadata=ArthurOIDCMetadata(
-                arthur_host=Config.settings.ARTHUR_API_HOST,
-                verify_ssl=ssl_verify,
-            ),
-            verify=ssl_verify,
-        )
-        client = ApiClient(
-            configuration=ArthurOAuthSessionAPIConfiguration(
-                session=sess,
-                verify_ssl=ssl_verify,
-            ),
-        )
+        client = build_platform_api_client()
         self.alerts_client = AlertsV1Api(client)
         self.alert_rules_client = AlertRulesV1Api(client)
         self.data_retrieval_client = DataRetrievalV1Api(client)
