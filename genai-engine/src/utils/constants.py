@@ -242,7 +242,7 @@ GENAI_ENGINE_AGENTIC_POLLING_INTERVAL_SECONDS_ENV_VAR = (
     "GENAI_ENGINE_AGENTIC_POLLING_INTERVAL_SECONDS"
 )
 # Set to "false" to stop the polling service from DISCOVERING Vertex AI agents from the
-# GOOGLE_CLOUD_PROJECT startup variables, once a gcp_vertex Discovery Source scans the
+# GOOGLE_CLOUD_PROJECT startup variables, once a gcp_vertex discovery source scans the
 # project instead (D-14, UP-4986). Trace fetching for GCP tasks is unaffected.
 GENAI_ENGINE_LEGACY_GCP_DISCOVERY_ENABLED_ENV_VAR = (
     "GENAI_ENGINE_LEGACY_GCP_DISCOVERY_ENABLED"

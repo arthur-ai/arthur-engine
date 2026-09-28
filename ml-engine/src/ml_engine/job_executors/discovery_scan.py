@@ -6,17 +6,17 @@ jobs, and nothing here can reach outside the config it was handed. What this mod
 adds is the resiliency *within* one source -- a source that throws part-way through
 must not discard the records it already produced.
 
-Making the vendor call is a scanner's, behind the first seam below. Resolving a
+Making the vendor call is a connector's, behind the first seam below. Resolving a
 discovery record onto a task is GenAI Engine's (D-08), behind the second, whose
 implementation is the connector framework's handoff (D-13) and has not landed yet -- so
 a source-scoped job fails with a named reason, reported per job rather than per engine,
-as it does for a vendor with no scanner registered.
+as it does for a vendor with no connector registered.
 
 Checking the output columns is neither: it is this module's, run on every batch before
 it is published, so a connector cannot decide for itself what the contract means.
 
 Credentials are not a seam: D-05 has landed, so the executor reads this config's
-sensitive fields at the point of the scan and hands them to the scanner. They serve
+sensitive fields at the point of the scan and hands them to the connector. They serve
 twice, because the same values are registered with the job's logger, which removes
 them by exact match from everything it ships (see `log_redaction`).
 """
@@ -26,7 +26,15 @@ import logging
 import traceback
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
-from typing import Callable, Iterator, Mapping, Optional, Protocol, Sequence
+from typing import (
+    Callable,
+    Iterator,
+    Mapping,
+    Optional,
+    Protocol,
+    Sequence,
+    runtime_checkable,
+)
 
 from arthur_client.api_bindings import (
     DiscoverySourceConfigSpec,
@@ -46,15 +54,15 @@ class UnsupportedDiscoveryVendorError(Exception):
     """No connector is registered for the vendor a source config names."""
 
 
-class DiscoverySourceScanner(Protocol):
+class DiscoverySourceConnector(Protocol):
     """One vendor's side of a scan, as the job handler needs to see it.
 
     Yields records in batches rather than returning them whole so that a source which
     fails half way through has still handed over everything it read before the failure.
-    A scanner that can only fetch in one shot yields a single batch and loses nothing.
+    A connector that can only fetch in one shot yields a single batch and loses nothing.
 
     Only the native call sits behind this method. What it yields is checked against the
-    D-02 output contract by the caller, so a scanner owes typed records and nothing
+    D-02 output contract by the caller, so a connector owes typed records and nothing
     else. Credentials arrive as an argument rather than being fetched
     here: the route that returns them says never to put the result in job parameters,
     so they are read once per scan at execution, and the caller that reads them is also
@@ -67,7 +75,7 @@ class DiscoverySourceScanner(Protocol):
     struck out of the very log lines that exist to say which host failed.
 
     THE LOGGER IS THE JOB'S, NOT THE MODULE'S. `ScopeJobLogExporter` is attached to the
-    per-job logger alone, so a scanner logging to `getLogger(__name__)` reaches process
+    per-job logger alone, so a connector logging to `getLogger(__name__)` reaches process
     stdout and never the Platform -- and every connector's "reported, not suppressed"
     behaviour is worth nothing if the report does not leave the engine.
     """
@@ -80,6 +88,46 @@ class DiscoverySourceScanner(Protocol):
         source_fields: Mapping[str, str],
         logger: logging.Logger,
     ) -> Iterator[Sequence[DiscoveryOutputRecord]]: ...
+
+
+@dataclass
+class DeviceCoverage:
+    """Which devices an endpoint scan read, and which of them it was allowed to use.
+
+    The denominator a record count needs: "12 Macs have agents" cannot be told from
+    "12 of 4,000, and 900 are excluded by policy" without it. Counts cover the devices
+    this run was handed -- the lookback window, or the whole roster for a full
+    enumeration -- not the fleet's total size.
+
+    A device in several excluded groups counts toward each of them, so the per-group
+    counts can sum to more than `devices_excluded`. Those are two different questions:
+    how many devices policy kept out, and what each rule is keeping out.
+    """
+
+    devices_read: int = 0
+    devices_in_scope: int = 0
+    # In scope and carrying a payload that decoded, versus one that did not.
+    devices_decoded: int = 0
+    devices_unreadable: int = 0
+    devices_excluded: int = 0
+    # Group name -> devices it kept out.
+    excluded_by_group: dict[str, int] = field(default_factory=dict)
+    # Include groups were set and the device was in none of them.
+    devices_outside_included_groups: int = 0
+    # Group name -> in-scope devices it let in.
+    included_by_group: dict[str, int] = field(default_factory=dict)
+
+
+@runtime_checkable
+class ReportsDeviceCoverage(Protocol):
+    """A connector that reads managed devices, and can say which it read and used.
+
+    Optional, so a query-language source owes nothing. Asked once the scan ends,
+    however it ended: a scan that fails on page 40 still read pages 1-39, and those
+    counts are what explain the records that did land.
+    """
+
+    def device_coverage(self) -> Optional[DeviceCoverage]: ...
 
 
 @dataclass(frozen=True)
@@ -106,7 +154,7 @@ class DiscoveryPublishResult:
 
 
 class DiscoveryRecordSink(Protocol):
-    """Where a batch of records goes once a scanner has produced it.
+    """Where a batch of records goes once a connector has produced it.
 
     Publishing a discovery record means resolving it onto a task keyed on
     ``external_id`` (D-08). `discovery_record_sink.GenAIEngineRecordSink` implements it
@@ -140,16 +188,16 @@ class DiscoveryRecordSink(Protocol):
     ) -> DiscoveryPublishResult: ...
 
 
-# Builds a fresh scanner for one scan. A factory rather than an instance because
+# Builds a fresh connector for one scan. A factory rather than an instance because
 # low-memory jobs run as threads in one interpreter: two configs for the same vendor
-# are two concurrent jobs, and a shared scanner would share whatever per-scan state it
+# are two concurrent jobs, and a shared connector would share whatever per-scan state it
 # holds -- session, paging cursor, the credentials it was just handed -- between them.
-DiscoveryScannerFactory = Callable[[], DiscoverySourceScanner]
+DiscoveryConnectorFactory = Callable[[], DiscoverySourceConnector]
 
-# Vendor -> scanner factory, populated by D-13 as connectors land. Keyed on
-# DiscoverySourceVendor values, e.g. "splunk_enterprise". A scanner class is itself a
-# factory, so registering one is `SOURCE_SCANNERS["splunk_enterprise"] = SplunkScanner`.
-SOURCE_SCANNERS: dict[str, DiscoveryScannerFactory] = {}
+# Vendor -> connector factory, populated by D-13 as connectors land. Keyed on
+# DiscoverySourceVendor values, e.g. "splunk_enterprise". A connector class is itself a
+# factory, so registering one is `SOURCE_CONNECTORS["splunk_enterprise"] = SplunkConnector`.
+SOURCE_CONNECTORS: dict[str, DiscoveryConnectorFactory] = {}
 
 
 @dataclass
@@ -188,6 +236,9 @@ class DiscoveryScanOutcome:
     # ever produced, which is not the same answer as a source that produced one and
     # failed the contract.
     output_column_check: Optional[OutputColumnCheckResult] = None
+    # Endpoint sources only: the devices behind the records, and the ones policy kept
+    # out. Null for a source that does not read devices.
+    device_coverage: Optional[DeviceCoverage] = None
 
     def record_failure(
         self,
@@ -222,6 +273,9 @@ class DiscoveryScanOutcome:
             "error_count": self.error_count,
             "error": self.error,
             "output_column_check": result_payload(self.output_column_check),
+            "device_coverage": (
+                asdict(self.device_coverage) if self.device_coverage else None
+            ),
             "succeeded": self.error is None,
         }
 
@@ -232,7 +286,7 @@ def run_source_scan(
     workspace_id: str,
     data_plane_id: str,
     outcome: DiscoveryScanOutcome,
-    scanner: DiscoverySourceScanner,
+    connector: DiscoverySourceConnector,
     sink: DiscoveryRecordSink,
     logger: logging.Logger,
     credentials: Mapping[str, Optional[str]],
@@ -248,12 +302,12 @@ def run_source_scan(
     something first.
 
     The catch is `BaseException`: a scan killed part-way -- the job agent shutting down,
-    or the scanner's generator being closed -- still runs the `finally` below, and
+    or the connector's generator being closed -- still runs the `finally` below, and
     without a recorded failure its outcome would report a partial scan as a success.
     """
     known_secrets = secret_values(credentials)
     try:
-        for batch in scanner.scan(
+        for batch in connector.scan(
             config,
             lookback_hours,
             credentials,
@@ -316,6 +370,8 @@ def run_source_scan(
             e.args = (detail,) + tuple(e.args[1:])
         raise
     finally:
+        if isinstance(connector, ReportsDeviceCoverage):
+            outcome.device_coverage = connector.device_coverage()
         finalize_outcome(outcome, logger)
 
     return outcome
@@ -328,7 +384,7 @@ def finalize_outcome(
     """Close out a run and report it, however it ended.
 
     Every exit from a source-scoped job goes through here, including the ones that fail
-    before a scanner is ever reached, so the Platform gets one outcome record per job
+    before a connector is ever reached, so the Platform gets one outcome record per job
     rather than silence for the sources that never got as far as the vendor call.
     """
     outcome.finished_at = datetime.now(timezone.utc)

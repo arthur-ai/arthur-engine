@@ -123,7 +123,7 @@ def _validate_rows(
 
     One wrong row fails the whole device rather than being dropped: the columns are the
     wire format, so a row that does not match means this reader may be misreading all of
-    them, and keeping the rest would turn a format change into a slow leak of findings.
+    them, and keeping the rest would turn a format change into a slow leak of records.
     """
     if not isinstance(doc, list):
         return None, f"payload is {type(doc).__name__}, expected a JSON array"

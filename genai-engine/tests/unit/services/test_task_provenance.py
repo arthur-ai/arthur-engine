@@ -215,9 +215,9 @@ def test_siem_finding_carries_its_instance_and_query(
 @pytest.mark.parametrize(
     ("vendor", "instance"),
     [
-        # A Bedrock finding: the AWS account, and the agent's ID within it.
+        # A Bedrock record: the AWS account, and the agent's ID within it.
         ("aws_bedrock", "123456789012"),
-        # A Vertex finding: the GCP project, and the reasoning engine's ID within it.
+        # A Vertex record: the GCP project, and the reasoning engine's ID within it.
         ("gcp_vertex", "arthur-prod-project"),
     ],
 )
@@ -591,7 +591,7 @@ def test_discovered_task_is_represented_by_its_rows_not_twice():
 
 @pytest.mark.unit_tests
 def test_minting_source_survives_another_source_converging_on_the_task():
-    """A task minted with no row of its own keeps its finding once others report it.
+    """A task minted with no row of its own keeps its record once others report it.
 
     Tasks minted before rows were written, or whose minting scan failed to record its
     report, have no row for the source that found them. A second source resolving to
@@ -622,7 +622,7 @@ def test_minting_source_survives_another_source_converging_on_the_task():
 
 @pytest.mark.unit_tests
 def test_minting_row_still_stands_in_after_its_query_is_edited():
-    """The row holds the latest scan's query; the finding still matches it."""
+    """The row holds the latest scan's query; the record still matches it."""
     record = _siem_record("splunk-1")
     address = record.creation_source.address.model_dump(mode="json")
     row = DatabaseTaskProvenanceSource(
@@ -687,7 +687,7 @@ def test_endpoint_finding_serves_where_it_runs(
     db_session,
     tracked_tasks,
 ):
-    """The Jamf connector knows its findings are on managed laptops. Before the record
+    """The Jamf connector knows its records are on managed laptops. Before the record
     could say so, every discovered agent's provenance read `runs_on=unknown`."""
     run = _run_id()
     laptop, siem = resolver.resolve_records(
@@ -740,7 +740,7 @@ def test_rescan_keeps_the_location_until_a_report_gives_another(
     [row] = _rows(db_session, resolved.task_id)
     assert (row.runs_on, row.platform) == (RunsOn.GCP, Platform.LINUX)
 
-    # UNKNOWN is the sensor saying it cannot tell, which is not an answer either. Were
+    # UNKNOWN is the source saying it cannot tell, which is not an answer either. Were
     # it stored, this task's only row would serve `unknown` for an agent known to run
     # on GCP, where a second row saying UNKNOWN would not have.
     resolver.resolve_records(
@@ -778,7 +778,7 @@ def test_duplicate_key_in_one_batch_keeps_the_last_location_given(
 @pytest.mark.unit_tests
 def test_the_most_recent_answer_is_served_and_unknown_never_replaces_one():
     """One answer per task however many reports it has. The agent may have moved, so
-    the latest wins, but a sensor that cannot tell does not outvote one that could."""
+    the latest wins, but a source that cannot tell does not outvote one that could."""
     first, second, third = (datetime(2026, 9, day) for day in (1, 2, 3))
     rows = [
         _row_saying(RunsOn.AWS, Platform.LINUX, first),

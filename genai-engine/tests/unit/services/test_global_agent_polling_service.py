@@ -507,7 +507,7 @@ def test_initialize_is_idempotent():
     shutdown_global_agent_polling_service()
 
 
-# --- D-14 (UP-4986): migrating discovery onto a gcp_vertex Discovery Source ----------
+# --- D-14 (UP-4986): migrating discovery onto a gcp_vertex discovery source ----------
 
 VERTEX_RESOURCE_NAME = (
     "projects/123456789012/locations/us-central1/reasoningEngines/1111111111111111111"
@@ -518,7 +518,7 @@ def _run_legacy_discovery(monkeypatch, mapped_task_id):
     """Run `_discover_gcp_agents` over one listed engine, with every collaborator mocked.
 
     `mapped_task_id` is what the service-name mapping holds for the engine's resource
-    name: a task ID when a gcp_vertex Discovery Source has already resolved it, None when
+    name: a task ID when a gcp_vertex discovery source has already resolved it, None when
     nothing has. Returns (created count, the mocked task repository).
     """
     monkeypatch.setenv("GOOGLE_CLOUD_PROJECT", "example-project-123456")
@@ -607,7 +607,7 @@ def test_legacy_discovery_yields_a_resource_claimed_after_its_check(monkeypatch)
     owner = task_repo.create_task(
         Task(
             id=str(uuid.uuid4()),
-            name="Discovery Source task",
+            name="discovery source task",
             created_at=datetime.now(),
             updated_at=datetime.now(),
             is_agentic=True,

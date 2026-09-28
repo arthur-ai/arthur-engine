@@ -19,7 +19,7 @@ class ManagedDevice:
     """The MDM's own stable id.
 
     Never the hardware serial: VMs and refurbished units produce empty or duplicate
-    serials, and an identity that churns mints a duplicate finding on every scan.
+    serials, and an identity that churns mints a duplicate record on every scan.
     """
 
     last_reported: Optional[str] = None
@@ -42,6 +42,13 @@ class ManagedDevice:
     """
 
     assigned_user: Optional[str] = None
+
+    group_ids: frozenset[str] = frozenset()
+    """The MDM groups this device is in, by the MDM's own group id.
+
+    Ids rather than names: a group can be renamed between the scan resolving a
+    configured name and the device record naming its groups, and an id does not move.
+    """
 
     attributes: Mapping[str, Optional[str]] = field(default_factory=dict)
     """Custom attributes by display name, which is what an MDM admin sees."""

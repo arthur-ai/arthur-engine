@@ -28,7 +28,7 @@ from job_executors.discover_agents_executor import (
     DiscoverAgentsExecutor,
 )
 from job_executors.discovery_scan import (
-    SOURCE_SCANNERS,
+    SOURCE_CONNECTORS,
     DiscoveryPublishResult,
     FailedDiscoveryRecord,
     UnsupportedDiscoveryVendorError,
@@ -163,7 +163,7 @@ class RaisingSink(RecordingSink):
         return super().publish(workspace_id, data_plane_id, config, records)
 
 
-class FakeScanner:
+class FakeConnector:
     """Yields the given batches, then optionally throws."""
 
     def __init__(
@@ -241,7 +241,7 @@ def _credentials_client(
 
 
 def _executor(
-    scanner: FakeScanner | None = None,
+    connector: FakeConnector | None = None,
     sink: RecordingSink | None = None,
     vendor: str = "splunk_enterprise",
     logger: logging.Logger | None = None,
@@ -255,43 +255,45 @@ def _executor(
         genai_engine_api_key="key",
         discovery_sources_client=credentials_client or _credentials_client(),
         record_sink=sink or RecordingSink(),
-        scanners={vendor: lambda: scanner} if scanner is not None else {},
+        connectors={vendor: lambda: connector} if connector is not None else {},
         jobs_client=jobs_client or MagicMock(),
     )
 
 
 def test_scan_publishes_every_batch_from_its_one_config() -> None:
-    scanner = FakeScanner([[_record("a"), _record("b")], [_record("c")]])
+    connector = FakeConnector([[_record("a"), _record("b")], [_record("c")]])
     sink = RecordingSink()
 
-    _executor(scanner, sink).execute(_job(), _spec(_config()))
+    _executor(connector, sink).execute(_job(), _spec(_config()))
 
     assert sink.batches == [["a", "b"], ["c"]]
     assert sink.configs == ["splunk prod", "splunk prod"]
-    assert scanner.calls == [("splunk prod", 1)]
+    assert connector.calls == [("splunk prod", 1)]
 
 
 def test_mid_scan_failure_keeps_already_published_records() -> None:
     """The acceptance criterion: partial results survive, and the job still fails."""
-    scanner = FakeScanner(
+    connector = FakeConnector(
         [[_record("a")], [_record("b")]],
         raises=RuntimeError("source went away"),
     )
     sink = RecordingSink()
 
     with pytest.raises(RuntimeError, match="source went away"):
-        _executor(scanner, sink).execute(_job(), _spec(_config()))
+        _executor(connector, sink).execute(_job(), _spec(_config()))
 
     assert sink.batches == [["a"], ["b"]]
 
 
 def test_failing_source_reports_its_contribution_and_its_failure() -> None:
-    scanner = FakeScanner([[_record("a"), _record("b")]], raises=RuntimeError("boom"))
+    connector = FakeConnector(
+        [[_record("a"), _record("b")]], raises=RuntimeError("boom")
+    )
     logger = logging.getLogger("test-discovery-outcome")
     records = _capture(logger)
 
     with pytest.raises(RuntimeError):
-        _executor(scanner, logger=logger).execute(_job(), _spec(_config()))
+        _executor(connector, logger=logger).execute(_job(), _spec(_config()))
 
     outcome = _find_outcome(records)
     assert outcome["records_published"] == 2
@@ -303,10 +305,10 @@ def test_failing_source_reports_its_contribution_and_its_failure() -> None:
 
 def test_successful_scan_reports_a_clean_outcome() -> None:
     logger = logging.getLogger("test-discovery-outcome-ok")
-    scanner = FakeScanner([[_record("a")]])
+    connector = FakeConnector([[_record("a")]])
     records = _capture(logger)
 
-    _executor(scanner, logger=logger).execute(_job(), _spec(_config()))
+    _executor(connector, logger=logger).execute(_job(), _spec(_config()))
 
     outcome = _find_outcome(records)
     assert outcome["succeeded"] is True
@@ -326,7 +328,7 @@ def test_a_sources_failure_does_not_touch_a_sibling_config() -> None:
     with its own lookback, and publishes its own records.
     """
     sink = RecordingSink()
-    failing = FakeScanner([[_record("a")]], raises=RuntimeError("splunk down"))
+    failing = FakeConnector([[_record("a")]], raises=RuntimeError("splunk down"))
 
     with pytest.raises(RuntimeError):
         _executor(failing, sink).execute(_job(), _spec(_config()))
@@ -339,7 +341,7 @@ def test_a_sources_failure_does_not_touch_a_sibling_config() -> None:
         query_language="none",
         lookback_window_seconds=14400,
     )
-    healthy = FakeScanner([[_record("z")]])
+    healthy = FakeConnector([[_record("z")]])
     sibling_spec = _spec(
         sibling_config,
         config_id=SIBLING_CONFIG_ID,
@@ -387,7 +389,7 @@ def test_missing_record_sink_still_reports_an_outcome() -> None:
         genai_engine_url="http://genai",
         genai_engine_api_key="key",
         record_sink=None,
-        scanners={"splunk_enterprise": lambda: FakeScanner([[_record("a")]])},
+        connectors={"splunk_enterprise": lambda: FakeConnector([[_record("a")]])},
     )
 
     with pytest.raises(RuntimeError, match="No discovery record sink"):
@@ -402,10 +404,10 @@ def test_missing_record_sink_still_reports_an_outcome() -> None:
 
 
 def test_job_naming_a_config_it_does_not_carry_is_rejected() -> None:
-    scanner = FakeScanner([[_record("a")]])
+    connector = FakeConnector([[_record("a")]])
 
     with pytest.raises(ValueError, match="no materialized config"):
-        _executor(scanner).execute(_job(), _spec(None))
+        _executor(connector).execute(_job(), _spec(None))
 
 
 def test_job_naming_a_config_it_does_not_carry_still_reports_an_outcome() -> None:
@@ -415,7 +417,7 @@ def test_job_naming_a_config_it_does_not_carry_still_reports_an_outcome() -> Non
     records = _capture(logger)
 
     with pytest.raises(ValueError):
-        _executor(FakeScanner([]), logger=logger).execute(_job(), _spec(None))
+        _executor(FakeConnector([]), logger=logger).execute(_job(), _spec(None))
 
     outcome = _find_outcome(records)
     assert outcome["succeeded"] is False
@@ -432,10 +434,10 @@ def test_job_naming_a_config_it_does_not_carry_still_reports_an_outcome() -> Non
 
 
 def test_job_carrying_a_config_with_no_id_is_rejected() -> None:
-    scanner = FakeScanner([[_record("a")]])
+    connector = FakeConnector([[_record("a")]])
 
     with pytest.raises(ValueError, match="no discovery_source_config_id"):
-        _executor(scanner).execute(_job(), _spec(_config(), config_id=None))
+        _executor(connector).execute(_job(), _spec(_config(), config_id=None))
 
 
 def test_job_carrying_a_config_with_no_id_still_reports_an_outcome() -> None:
@@ -443,7 +445,7 @@ def test_job_carrying_a_config_with_no_id_still_reports_an_outcome() -> None:
     records = _capture(logger)
 
     with pytest.raises(ValueError):
-        _executor(FakeScanner([]), logger=logger).execute(
+        _executor(FakeConnector([]), logger=logger).execute(
             _job(),
             _spec(_config(), config_id=None),
         )
@@ -464,30 +466,30 @@ def test_a_rejected_job_publishes_nothing() -> None:
     sink = RecordingSink()
 
     with pytest.raises(ValueError):
-        _executor(FakeScanner([[_record("a")]]), sink).execute(_job(), _spec(None))
+        _executor(FakeConnector([[_record("a")]]), sink).execute(_job(), _spec(None))
 
     assert sink.batches == []
 
 
 def test_lookback_is_the_dispatched_window_not_the_configs() -> None:
     """D-06 already rounded the config's window into lookback_hours; that is what runs."""
-    scanner = FakeScanner([])
+    connector = FakeConnector([])
 
-    _executor(scanner).execute(
+    _executor(connector).execute(
         _job(),
         _spec(_config(lookback_window_seconds=5400), lookback_hours=6),
     )
 
-    assert scanner.calls == [("splunk prod", 6)]
+    assert connector.calls == [("splunk prod", 6)]
 
 
 def test_job_carrying_no_lookback_is_rejected_rather_than_guessed() -> None:
     logger = logging.getLogger("test-discovery-outcome-no-lookback")
     records = _capture(logger)
-    scanner = FakeScanner([[_record("a")]])
+    connector = FakeConnector([[_record("a")]])
 
     with pytest.raises(ValueError, match="no lookback_hours"):
-        _executor(scanner, logger=logger).execute(
+        _executor(connector, logger=logger).execute(
             _job(),
             _spec(_config(), lookback_hours=None),
         )
@@ -495,7 +497,7 @@ def test_job_carrying_no_lookback_is_rejected_rather_than_guessed() -> None:
     outcome = _find_outcome(records)
     assert outcome["succeeded"] is False
     assert outcome["lookback_hours"] is None
-    assert scanner.calls == []
+    assert connector.calls == []
 
 
 def test_missing_credentials_client_still_reports_an_outcome() -> None:
@@ -509,7 +511,7 @@ def test_missing_credentials_client_still_reports_an_outcome() -> None:
         genai_engine_api_key="key",
         discovery_sources_client=None,
         record_sink=sink,
-        scanners={"splunk_enterprise": lambda: FakeScanner([[_record("a")]])},
+        connectors={"splunk_enterprise": lambda: FakeConnector([[_record("a")]])},
     )
 
     with pytest.raises(RuntimeError, match="No discovery sources client"):
@@ -528,9 +530,9 @@ def test_records_that_fail_resolution_are_reported_without_failing_the_scan() ->
     logger = logging.getLogger("test-discovery-outcome-partial")
     records = _capture(logger)
     sink = PartlyFailingSink({"b"})
-    scanner = FakeScanner([[_record("a"), _record("b"), _record("c")]])
+    connector = FakeConnector([[_record("a"), _record("b"), _record("c")]])
 
-    _executor(scanner, sink, logger=logger).execute(_job(), _spec(_config()))
+    _executor(connector, sink, logger=logger).execute(_job(), _spec(_config()))
 
     outcome = _find_outcome(records)
     assert outcome["succeeded"] is True
@@ -550,9 +552,11 @@ def test_failed_records_accumulate_across_batches() -> None:
     logger = logging.getLogger("test-discovery-outcome-partial-batches")
     records = _capture(logger)
     sink = PartlyFailingSink({"a", "d"})
-    scanner = FakeScanner([[_record("a"), _record("b")], [_record("c"), _record("d")]])
+    connector = FakeConnector(
+        [[_record("a"), _record("b")], [_record("c"), _record("d")]]
+    )
 
-    _executor(scanner, sink, logger=logger).execute(_job(), _spec(_config()))
+    _executor(connector, sink, logger=logger).execute(_job(), _spec(_config()))
 
     outcome = _find_outcome(records)
     assert outcome["records_published"] == 2
@@ -563,7 +567,7 @@ def test_a_clean_scan_reports_no_failed_records() -> None:
     logger = logging.getLogger("test-discovery-outcome-no-failures")
     records = _capture(logger)
 
-    _executor(FakeScanner([[_record("a")]]), logger=logger).execute(
+    _executor(FakeConnector([[_record("a")]]), logger=logger).execute(
         _job(),
         _spec(_config()),
     )
@@ -579,12 +583,12 @@ def test_a_failing_publish_counts_only_the_batches_that_landed() -> None:
     logger = logging.getLogger("test-discovery-outcome-sink-raises")
     records = _capture(logger)
     sink = RaisingSink(fail_on_batch=2)
-    scanner = FakeScanner(
+    connector = FakeConnector(
         [[_record("a"), _record("b")], [_record("c")], [_record("d")]],
     )
 
     with pytest.raises(RuntimeError, match="platform rejected the batch"):
-        _executor(scanner, sink, logger=logger).execute(_job(), _spec(_config()))
+        _executor(connector, sink, logger=logger).execute(_job(), _spec(_config()))
 
     assert sink.batches == [["a", "b"]]
     outcome = _find_outcome(records)
@@ -598,10 +602,12 @@ def test_a_killed_scan_is_not_reported_as_a_success() -> None:
     """Shutdown mid-scan skips `except Exception` but still runs the finally."""
     logger = logging.getLogger("test-discovery-outcome-killed")
     records = _capture(logger)
-    scanner = FakeScanner([[_record("a"), _record("b")]], raises=KeyboardInterrupt())
+    connector = FakeConnector(
+        [[_record("a"), _record("b")]], raises=KeyboardInterrupt()
+    )
 
     with pytest.raises(KeyboardInterrupt):
-        _executor(scanner, logger=logger).execute(_job(), _spec(_config()))
+        _executor(connector, logger=logger).execute(_job(), _spec(_config()))
 
     outcome = _find_outcome(records)
     assert outcome["succeeded"] is False
@@ -610,21 +616,21 @@ def test_a_killed_scan_is_not_reported_as_a_success() -> None:
     assert outcome["records_published"] == 2
 
 
-def test_every_scan_gets_its_own_scanner() -> None:
+def test_every_scan_gets_its_own_connector() -> None:
     """Two jobs for the same vendor must not share per-scan state."""
-    built: list[FakeScanner] = []
+    built: list[FakeConnector] = []
 
-    def factory() -> FakeScanner:
-        built.append(FakeScanner([[_record("a")]]))
+    def factory() -> FakeConnector:
+        built.append(FakeConnector([[_record("a")]]))
         return built[-1]
 
     executor = _executor()
-    executor.scanners = {"splunk_enterprise": factory}
+    executor.connectors = {"splunk_enterprise": factory}
     executor.execute(_job(), _spec(_config()))
     executor.execute(_job(), _spec(_config()))
 
     assert len(built) == 2
-    assert all(len(scanner.calls) == 1 for scanner in built)
+    assert all(len(connector.calls) == 1 for connector in built)
 
 
 def test_an_executor_does_not_alias_the_global_registry() -> None:
@@ -637,16 +643,16 @@ def test_an_executor_does_not_alias_the_global_registry() -> None:
 
     # A vendor no connector registers, so this asserts the copy rather than which
     # connectors happen to ship: `jamf_pro` is a real registered vendor now.
-    executor.scanners["not_a_real_vendor"] = lambda: FakeScanner([])
+    executor.connectors["not_a_real_vendor"] = lambda: FakeConnector([])
 
-    assert "not_a_real_vendor" not in SOURCE_SCANNERS
+    assert "not_a_real_vendor" not in SOURCE_CONNECTORS
 
 
 def test_empty_batches_are_not_published() -> None:
-    scanner = FakeScanner([[], [_record("a")], []])
+    connector = FakeConnector([[], [_record("a")], []])
     sink = RecordingSink()
 
-    _executor(scanner, sink).execute(_job(), _spec(_config()))
+    _executor(connector, sink).execute(_job(), _spec(_config()))
 
     assert sink.batches == [["a"]]
 
@@ -787,40 +793,40 @@ def test_redacting_twice_changes_nothing() -> None:
 
 
 def test_the_scan_is_handed_the_credentials_it_authenticates_with() -> None:
-    scanner = FakeScanner([[_record("a")]])
+    connector = FakeConnector([[_record("a")]])
     credentials = {"username": "svc", "password": CONFIGURED_SECRET}
 
     _executor(
-        scanner,
+        connector,
         credentials_client=_credentials_client(credentials),
     ).execute(_job(), _spec(_config()))
 
-    assert scanner.credentials == [credentials]
+    assert connector.credentials == [credentials]
 
 
 def test_the_scan_connects_where_the_job_says_without_reading_the_source() -> None:
     """The engine's account cannot read the discovery source -- that takes an
     organization-level role -- so the fields the Platform snapshotted into the job
     are the ones used, and the source is never fetched."""
-    scanner = FakeScanner([[_record("a")]])
+    connector = FakeConnector([[_record("a")]])
     client = _credentials_client()
 
-    _executor(scanner, credentials_client=client).execute(
+    _executor(connector, credentials_client=client).execute(
         _job(),
         _spec(_config(source_fields={"base_url": "https://jamf.example"})),
     )
 
-    assert scanner.source_fields == [{"base_url": "https://jamf.example"}]
+    assert connector.source_fields == [{"base_url": "https://jamf.example"}]
     client.get_discovery_source.assert_not_called()  # type: ignore[attr-defined]
 
 
 def test_a_job_dispatched_before_the_snapshot_reads_the_source() -> None:
-    scanner = FakeScanner([[_record("a")]])
+    connector = FakeConnector([[_record("a")]])
     client = _credentials_client(source_fields={"base_url": "https://splunk.example"})
 
-    _executor(scanner, credentials_client=client).execute(_job(), _spec(_config()))
+    _executor(connector, credentials_client=client).execute(_job(), _spec(_config()))
 
-    assert scanner.source_fields == [{"base_url": "https://splunk.example"}]
+    assert connector.source_fields == [{"base_url": "https://splunk.example"}]
     client.get_discovery_source.assert_called_once_with(  # type: ignore[attr-defined]
         SOURCE_ID
     )
@@ -831,7 +837,7 @@ def test_neither_kind_of_credential_reaches_the_job_log() -> None:
     carrying both a configured field and a token minted from it must leave neither."""
     logger = logging.getLogger("test-discovery-outcome-redaction")
     records = _capture(logger)
-    scanner = FakeScanner(
+    connector = FakeConnector(
         [[_record("a")]],
         raises=RuntimeError(
             f"401 for user svc ({CONFIGURED_SECRET}); "
@@ -840,7 +846,7 @@ def test_neither_kind_of_credential_reaches_the_job_log() -> None:
     )
 
     with pytest.raises(RuntimeError):
-        _executor(scanner, logger=logger).execute(_job(), _spec(_config()))
+        _executor(connector, logger=logger).execute(_job(), _spec(_config()))
 
     outcome = _find_outcome(records)
     assert CONFIGURED_SECRET not in outcome["error"]
@@ -870,7 +876,7 @@ def test_neither_kind_of_credential_reaches_the_platform() -> None:
         job_run_id="run",
         jobs_client=jobs_client,
     )
-    scanner = FakeScanner(
+    connector = FakeConnector(
         [[_record("a")]],
         raises=RuntimeError(
             f"401 for user svc ({CONFIGURED_SECRET}); "
@@ -880,7 +886,7 @@ def test_neither_kind_of_credential_reaches_the_platform() -> None:
 
     with ExportContextedLogger(logger, exporter):
         try:
-            _executor(scanner, logger=logger).execute(_job(), _spec(_config()))
+            _executor(connector, logger=logger).execute(_job(), _spec(_config()))
         except RuntimeError as e:
             # JobExecutor.execute's own handler.
             logger.error("Error executing job", exc_info=e)
@@ -919,7 +925,7 @@ def test_a_credentials_fetch_failure_still_reports_an_outcome() -> None:
 
     with pytest.raises(RuntimeError, match="credentials unavailable"):
         _executor(
-            FakeScanner([[_record("a")]]),
+            FakeConnector([[_record("a")]]),
             sink,
             logger=logger,
             credentials_client=client,
@@ -942,7 +948,7 @@ def test_a_denied_credentials_read_still_fails_the_run() -> None:
 
     with pytest.raises(ForbiddenException):
         _executor(
-            FakeScanner([[_record("a")]]),
+            FakeConnector([[_record("a")]]),
             sink,
             logger=logger,
             credentials_client=_credentials_client(
@@ -1053,7 +1059,7 @@ def test_the_agents_sync_sends_each_rule_config_as_its_rule_type() -> None:
 def test_a_task_without_a_creation_source_is_sent_as_manual_only_if_made_by_hand() -> (
     None
 ):
-    """The Agents API refuses an agent that names no sensor (D-03), and one refused
+    """The Agents API refuses an agent that names no source (D-03), and one refused
     agent fails the whole PUT, so an auto-created task nobody recorded a source for
     is left out rather than sent -- and never guessed at."""
     agents = _published_agents(
@@ -1072,7 +1078,7 @@ def test_a_task_without_a_creation_source_is_sent_as_manual_only_if_made_by_hand
 
 def test_the_agents_sync_forwards_each_tasks_provenance() -> None:
     """The Platform reads `infrastructure` from `provenance.runs_on`, and without
-    provenance falls back to the reporting engine's cloud -- so a Jamf finding sent
+    provenance falls back to the reporting engine's cloud -- so a Jamf record sent
     without it renders as running on AWS."""
     jamf_provenance = {
         "sources": [
@@ -1134,7 +1140,7 @@ def test_a_scan_chains_one_fetch_for_its_source() -> None:
     jobs_client = MagicMock()
     before = datetime.now(timezone.utc)
 
-    _executor(FakeScanner([[_record("a")]]), jobs_client=jobs_client).execute(
+    _executor(FakeConnector([[_record("a")]]), jobs_client=jobs_client).execute(
         _job(),
         _spec(_config()),
     )
@@ -1161,7 +1167,7 @@ def test_a_scan_that_found_nothing_still_chains_its_fetch() -> None:
     """On all runs, not only the ones that found something."""
     jobs_client = MagicMock()
 
-    _executor(FakeScanner([]), jobs_client=jobs_client).execute(
+    _executor(FakeConnector([]), jobs_client=jobs_client).execute(
         _job(),
         _spec(_config()),
     )
@@ -1173,20 +1179,20 @@ def test_a_failed_scan_chains_a_fetch_for_what_it_published() -> None:
     """Records published before the failure are kept, and a fetch is what makes
     them visible; the job still fails with the scan's own error."""
     jobs_client = MagicMock()
-    scanner = FakeScanner([[_record("a")]], raises=RuntimeError("source went away"))
+    connector = FakeConnector([[_record("a")]], raises=RuntimeError("source went away"))
 
     with pytest.raises(RuntimeError, match="source went away"):
-        _executor(scanner, jobs_client=jobs_client).execute(_job(), _spec(_config()))
+        _executor(connector, jobs_client=jobs_client).execute(_job(), _spec(_config()))
 
     assert len(_chained_fetches(jobs_client)) == 1
 
 
 def test_a_failed_scan_that_published_nothing_chains_nothing() -> None:
     jobs_client = MagicMock()
-    scanner = FakeScanner([], raises=RuntimeError("source went away"))
+    connector = FakeConnector([], raises=RuntimeError("source went away"))
 
     with pytest.raises(RuntimeError, match="source went away"):
-        _executor(scanner, jobs_client=jobs_client).execute(_job(), _spec(_config()))
+        _executor(connector, jobs_client=jobs_client).execute(_job(), _spec(_config()))
 
     assert _chained_fetches(jobs_client) == []
 
@@ -1194,10 +1200,10 @@ def test_a_failed_scan_that_published_nothing_chains_nothing() -> None:
 def test_a_chaining_failure_does_not_mask_why_the_scan_failed() -> None:
     jobs_client = MagicMock()
     jobs_client.post_submit_jobs_batch.side_effect = RuntimeError("platform down")
-    scanner = FakeScanner([[_record("a")]], raises=RuntimeError("source went away"))
+    connector = FakeConnector([[_record("a")]], raises=RuntimeError("source went away"))
 
     with pytest.raises(RuntimeError, match="source went away"):
-        _executor(scanner, jobs_client=jobs_client).execute(_job(), _spec(_config()))
+        _executor(connector, jobs_client=jobs_client).execute(_job(), _spec(_config()))
 
 
 def test_a_chaining_failure_fails_an_otherwise_successful_scan() -> None:
@@ -1207,7 +1213,7 @@ def test_a_chaining_failure_fails_an_otherwise_successful_scan() -> None:
     jobs_client.post_submit_jobs_batch.side_effect = RuntimeError("platform down")
 
     with pytest.raises(RuntimeError, match="platform down"):
-        _executor(FakeScanner([[_record("a")]]), jobs_client=jobs_client).execute(
+        _executor(FakeConnector([[_record("a")]]), jobs_client=jobs_client).execute(
             _job(),
             _spec(_config()),
         )
@@ -1218,7 +1224,7 @@ def test_a_scan_that_never_reached_its_source_chains_nothing() -> None:
 
     with pytest.raises(UnsupportedDiscoveryVendorError):
         _executor(
-            FakeScanner([[_record("a")]]),
+            FakeConnector([[_record("a")]]),
             vendor="some_other_vendor",
             jobs_client=jobs_client,
         ).execute(_job(), _spec(_config()))
@@ -1227,7 +1233,7 @@ def test_a_scan_that_never_reached_its_source_chains_nothing() -> None:
 
 
 def test_a_scan_without_a_jobs_client_fails_rather_than_dropping_its_fetch() -> None:
-    executor = _executor(FakeScanner([[_record("a")]]))
+    executor = _executor(FakeConnector([[_record("a")]]))
     executor.jobs_client = None
 
     with pytest.raises(RuntimeError, match="No jobs client"):

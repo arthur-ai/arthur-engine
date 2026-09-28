@@ -167,7 +167,7 @@ class GlobalAgentPollingService(BaseQueueService[AgentPollingJob]):
         Skips discovery if GOOGLE_CLOUD_PROJECT is not configured, or if it has been
         switched off with GENAI_ENGINE_LEGACY_GCP_DISCOVERY_ENABLED=false.
 
-        DEPRECATED (UP-4986): a gcp_vertex Discovery Source now discovers the same
+        DEPRECATED (UP-4986): a gcp_vertex discovery source now discovers the same
         agents through ML Engine's DISCOVER_AGENTS job. This phase stays until that
         source has been verified against every customer's data, and is then removed.
         Its trace-fetch sibling, `_poll_all_gcp_tasks`, is not deprecated by this.
@@ -240,7 +240,7 @@ class GlobalAgentPollingService(BaseQueueService[AgentPollingJob]):
                     if existing_task:
                         continue
 
-                    # A gcp_vertex Discovery Source maps the same resource name, as
+                    # A gcp_vertex discovery source maps the same resource name, as
                     # both a service name and its external_id, to a task whose
                     # creation source is CLOUD rather than GCP -- which the lookup
                     # above cannot see. Without this check, running both paths
@@ -274,7 +274,7 @@ class GlobalAgentPollingService(BaseQueueService[AgentPollingJob]):
                         task_metadata=task_metadata,
                     )
                     # The task is only flushed, so it commits together with its
-                    # mapping. A gcp_vertex Discovery Source can claim the resource
+                    # mapping. A gcp_vertex discovery source can claim the resource
                     # name between the check above and this write; create_mapping
                     # then rolls back -- taking the flushed task with it -- and
                     # returns the winner's mapping, so no unreferenced task is left.

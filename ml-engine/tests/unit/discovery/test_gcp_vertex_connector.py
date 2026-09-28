@@ -1,6 +1,6 @@
-"""The Vertex AI Agent Engine scanner, against a fake Vertex SDK.
+"""The Vertex AI Agent Engine connector, against a fake Vertex SDK.
 
-The test that matters most is the verbatim one. Tasks the startup-variable poller created
+The test that matters most is the verbatim one. Tasks the legacy Vertex poller created
 are mapped by Google's resource name exactly as the API returned it -- with the project
 NUMBER in it -- and GenAI Engine joins a record to such a task only when a service name
 matches that key byte for byte. A record that rebuilt the name from the configured project
@@ -23,19 +23,19 @@ from arthur_common.models.agent_governance_schemas import (
 from google.auth.credentials import Credentials
 
 import discovery  # noqa: F401  (registers the connectors)
-from discovery.cloud.gcp_vertex import scanner as vertex
-from discovery.cloud.gcp_vertex.scanner import (
+from discovery.cloud.gcp_vertex import connector as vertex
+from discovery.cloud.gcp_vertex.connector import (
     ALLOW_ADC_ENV_VAR,
     DEFAULT_LOCATION,
     VENDOR,
-    VertexAgentEngineScanner,
+    VertexAgentEngineConnector,
     VertexSettings,
     credentials_from,
     parse_resource_name,
     settings_from,
 )
 from job_executors.discovery_output_contract import check_batch
-from job_executors.discovery_scan import SOURCE_SCANNERS
+from job_executors.discovery_scan import SOURCE_CONNECTORS
 
 LOG = logging.getLogger("discovery-test")
 
@@ -132,7 +132,7 @@ def scan(
 ) -> list[list[Any]]:
     return [
         list(batch)
-        for batch in VertexAgentEngineScanner(lister=lister).scan(
+        for batch in VertexAgentEngineConnector(lister=lister).scan(
             config,
             24,
             CREDS if creds is None else creds,
@@ -408,7 +408,7 @@ def test_the_scan_never_logs_key_material(
 
 
 def test_importing_the_package_registers_the_connector() -> None:
-    assert SOURCE_SCANNERS["gcp_vertex"] is VertexAgentEngineScanner
-    scanner = SOURCE_SCANNERS["gcp_vertex"]()
-    assert isinstance(scanner, VertexAgentEngineScanner)
-    assert callable(getattr(scanner, "scan", None))
+    assert SOURCE_CONNECTORS["gcp_vertex"] is VertexAgentEngineConnector
+    connector = SOURCE_CONNECTORS["gcp_vertex"]()
+    assert isinstance(connector, VertexAgentEngineConnector)
+    assert callable(getattr(connector, "scan", None))

@@ -4,10 +4,10 @@ Lists the Agent Engines (Google's API still calls them reasoning engines) in one
 and region, and emits one record per engine. This replaces the discovery phase of GenAI
 Engine's `global_agent_polling_service`, which did the same listing from the engine's
 GOOGLE_CLOUD_PROJECT / GOOGLE_CLOUD_LOCATION startup variables; here the project and
-region come from a Discovery Source instead, so one engine can scan several projects and
+region come from a discovery source instead, so one engine can scan several projects and
 none needs a restart to change which.
 
-THE RESOURCE NAME IS COPIED, NEVER REBUILT. The startup-variable poller mapped each task
+THE RESOURCE NAME IS COPIED, NEVER REBUILT. The legacy Vertex poller mapped each task
 it created to Google's `api_resource.name` verbatim as a SERVICE_NAME key -- a path that
 carries the project NUMBER (`projects/123456789012/...`), not the project ID configured
 here. GenAI Engine's resolver joins a record to an existing task by matching its
@@ -22,7 +22,7 @@ CREDENTIALS. A source's `service_account_key` is a service account JSON key, rea
 that can name an executable or a file on this engine's disk. A source without a key uses
 Application Default Credentials only when the engine opts in with
 `ALLOW_ADC_ENV_VAR`; that is how a developer scans with their own `gcloud auth
-application-default login`, and how a GKE data plane would use Workload Identity. With
+application-default login`, and how an engine on GKE would use Workload Identity. With
 the flag unset a keyless source fails with a reason naming the field, rather than quietly
 scanning as whatever identity the engine pod happens to run under.
 """
@@ -52,7 +52,7 @@ PROJECT_ID_FIELD = "project_id"
 LOCATION_FIELD = "location"
 SERVICE_ACCOUNT_KEY_FIELD = "service_account_key"
 
-# The startup-variable poller's default, kept so a source that leaves the region blank
+# The legacy Vertex poller's default, kept so a source that leaves the region blank
 # scans what that poller scanned.
 DEFAULT_LOCATION = "us-central1"
 
@@ -83,7 +83,7 @@ def list_agent_engines(
 ) -> Iterable[Any]:
     """The Agent Engines in one project and region, as the Vertex SDK returns them.
 
-    The same call the startup-variable poller made, with credentials passed explicitly
+    The same call the legacy Vertex poller made, with credentials passed explicitly
     rather than taken from the process environment.
     """
     client = vertexai.Client(
@@ -95,8 +95,8 @@ def list_agent_engines(
     return engines
 
 
-class VertexAgentEngineScanner:
-    """Implements `job_executors.discovery_scan.DiscoverySourceScanner`."""
+class VertexAgentEngineConnector:
+    """Implements `job_executors.discovery_scan.DiscoverySourceConnector`."""
 
     def __init__(self, lister: AgentEngineLister = list_agent_engines) -> None:
         self._lister = lister
@@ -258,7 +258,7 @@ def record_for(
     if last_seen is None:
         logger.warning(
             "%s: Vertex AI reported neither an update nor a create time; skipped, "
-            "because last_seen is required and inventing one would date the finding to "
+            "because last_seen is required and inventing one would date the record to "
             "the scan",
             name,
         )
