@@ -8,7 +8,7 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "2026-09-24T17:35:21.489622055Z"
+exclude-newer = "2026-09-25T16:26:54.090293Z"
 exclude-newer-span = "P3D"
 
 [options.exclude-newer-package]
@@ -163,7 +163,7 @@ wheels = [
 
 [[package]]
 name = "arthur-common"
-version = "2.4.84"
+version = "2.4.85"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "datasketches" },
@@ -179,9 +179,9 @@ dependencies = [
     { name = "types-requests" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/79/d1/d2cf00e29a4bbe8cecc7235c2a7c77648092ce75599c71403de59cb230c3/arthur_common-2.4.84.tar.gz", hash = "sha256:2755acf111687bb4fedef2fdca14c2e369b5f306e3b4637ecea2e8636d44fcac", size = 14727876, upload-time = "2026-09-27T07:01:46.048Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/44/37/6afd58b547c53ea30b65084f5e17c9276b26860d608bdc4c8b94806796d0/arthur_common-2.4.85.tar.gz", hash = "sha256:beaff004842587de2957972ccf1fe0e46ab44f226f7ed1414e9985c9dd811ebb", size = 14727957, upload-time = "2026-09-28T15:46:01.672Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/4a/41/1b56353ced2eea8b63130488db95f2ab80101aa229c41f33766ea4b11c56/arthur_common-2.4.84-py3-none-any.whl", hash = "sha256:d669f68599ea2de5331996a6bccf7518047be96362f479c9d206ae6be8e20af0", size = 102135, upload-time = "2026-09-27T07:01:44Z" },
+    { url = "https://files.pythonhosted.org/packages/40/8d/350ec213397f11ad894635841d46012cfe01a48911d2d248ceaa3aba6e0b/arthur_common-2.4.85-py3-none-any.whl", hash = "sha256:a9619525a8c14926404f7e90c897b40b5f53ec463da687b92b26936b070dac36", size = 102246, upload-time = "2026-09-28T15:46:00.018Z" },
 ]
 
 [[package]]
@@ -282,7 +282,7 @@ requires-dist = [
     { name = "alembic", specifier = "==1.20.0" },
     { name = "amplitude-analytics", specifier = ">=1.1.5,<2" },
     { name = "arthur-client", specifier = "==1.4.2683" },
-    { name = "arthur-common", specifier = "==2.4.84" },
+    { name = "arthur-common", specifier = "==2.4.85" },
     { name = "authlib", specifier = "==1.8.0" },
     { name = "azure-storage-blob", specifier = "==12.30.2" },
     { name = "bcrypt", specifier = "==5.0.0" },
