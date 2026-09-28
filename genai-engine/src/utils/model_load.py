@@ -1,3 +1,4 @@
+import json
 import os
 from functools import wraps
 from multiprocessing import get_context
@@ -631,6 +632,34 @@ def get_gliner_model() -> GLiNER | None:
                         f"Could not cache GLiNER tokenizer into {model_path}: {e}. "
                         "Falling back to the base encoder named in gliner_config.json.",
                     )
+        # gliner_config.json as published on the Hub has no "encoder_config"
+        # entry. When it's absent, gliner builds the base encoder by calling
+        # AutoConfig.from_pretrained(config.model_name) - the bare Hub id
+        # (e.g. "microsoft/mdeberta-v3-base"), not model_path - which requires
+        # network access and fails offline. Embed the base encoder's config
+        # (resolved locally) into gliner_config.json so gliner never makes
+        # that Hub lookup. Best-effort, same as the tokenizer case above.
+        if local_files_only:
+            config_path = os.path.join(model_path, "gliner_config.json")
+            try:
+                with open(config_path) as f:
+                    gliner_config = json.load(f)
+            except OSError:
+                gliner_config = None
+            if gliner_config is not None and "encoder_config" not in gliner_config:
+                encoder_dir = get_local_model_path(gliner_config["model_name"])
+                encoder_config_path = os.path.join(encoder_dir, "config.json")
+                if os.path.exists(encoder_config_path):
+                    with open(encoder_config_path) as f:
+                        gliner_config["encoder_config"] = json.load(f)
+                    try:
+                        with open(config_path, "w") as f:
+                            json.dump(gliner_config, f)
+                    except OSError as e:
+                        logger.warning(
+                            f"Could not cache GLiNER encoder config into {config_path}: {e}. "
+                            "Falling back to the base encoder named in gliner_config.json.",
+                        )
         PII_GLINER_MODEL = GLiNER.from_pretrained(
             model_path,
             load_tokenizer=True,
