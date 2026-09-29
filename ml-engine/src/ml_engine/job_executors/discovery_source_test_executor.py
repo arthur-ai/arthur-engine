@@ -370,6 +370,9 @@ def _classify(e: BaseException, contacted: bool) -> _Classified:
             }.get(status, DiscoverySourceTestErrorCategory.VENDOR_ERROR)
             return _Classified(category, DiscoverySourceReachability.REACHABLE, status)
 
+    # Timeouts are looked for across the whole chain before connection errors: a
+    # timeout is also an OSError (and ConnectTimeout a ConnectionError), so a
+    # transport wrapper around one must not be read as the plainer NETWORK failure.
     for link in chain:
         if isinstance(link, requests.ConnectTimeout):
             return _Classified(
@@ -388,6 +391,8 @@ def _classify(e: BaseException, contacted: bool) -> _Classified:
                 ),
                 None,
             )
+
+    for link in chain:
         if isinstance(link, (requests.ConnectionError, ConnectionError, OSError)):
             return _Classified(
                 DiscoverySourceTestErrorCategory.NETWORK,

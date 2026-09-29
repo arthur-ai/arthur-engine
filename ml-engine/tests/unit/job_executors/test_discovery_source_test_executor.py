@@ -318,6 +318,35 @@ def test_a_wrapped_connection_timeout_reads_as_unreachable(job_log) -> None:
     assert result.error.category == DiscoverySourceTestErrorCategory.TIMEOUT
 
 
+@pytest.mark.parametrize(
+    ("timeout", "reachability"),
+    [
+        (requests.ReadTimeout("read timed out"), DiscoverySourceReachability.REACHABLE),
+        (TimeoutError("timed out"), DiscoverySourceReachability.UNREACHABLE),
+    ],
+)
+def test_a_timeout_under_a_connection_error_is_still_a_timeout(
+    job_log,
+    timeout: BaseException,
+    reachability: DiscoverySourceReachability,
+) -> None:
+    logger, _ = job_log
+    try:
+        try:
+            raise timeout
+        except type(timeout) as exc:
+            raise ConnectionError("connection aborted") from exc
+    except ConnectionError as wrapped:
+        error = wrapped
+    client = _client()
+
+    _run(FakeConnector(raise_after=error), _spec(), client, logger)
+
+    result = _delivered(client)
+    assert result.error.category == DiscoverySourceTestErrorCategory.TIMEOUT
+    assert result.reachability == reachability
+
+
 def test_a_missing_field_is_configuration_with_reachability_unknown(job_log) -> None:
     logger, _ = job_log
     client = _client()
