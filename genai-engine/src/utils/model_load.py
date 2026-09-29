@@ -638,7 +638,11 @@ def get_gliner_model() -> GLiNER | None:
         # (e.g. "microsoft/mdeberta-v3-base"), not model_path - which requires
         # network access and fails offline. Embed the base encoder's config
         # (resolved locally) into gliner_config.json so gliner never makes
-        # that Hub lookup. Best-effort, same as the tokenizer case above.
+        # that Hub lookup. Unlike the tokenizer case above, this isn't
+        # best-effort: local_files_only means the caller has already decided
+        # this model must load without the network, so if we can't guarantee
+        # that here, fail loudly and clearly now instead of letting the Hub
+        # lookup fail deep inside gliner's own boot path.
         if local_files_only:
             config_path = os.path.join(model_path, "gliner_config.json")
             try:
@@ -649,17 +653,35 @@ def get_gliner_model() -> GLiNER | None:
             if gliner_config is not None and "encoder_config" not in gliner_config:
                 encoder_dir = get_local_model_path(gliner_config["model_name"])
                 encoder_config_path = os.path.join(encoder_dir, "config.json")
-                if os.path.exists(encoder_config_path):
-                    with open(encoder_config_path) as f:
-                        gliner_config["encoder_config"] = json.load(f)
-                    try:
-                        with open(config_path, "w") as f:
-                            json.dump(gliner_config, f)
-                    except OSError as e:
-                        logger.warning(
-                            f"Could not cache GLiNER encoder config into {config_path}: {e}. "
-                            "Falling back to the base encoder named in gliner_config.json.",
-                        )
+                if not os.path.exists(encoder_config_path):
+                    raise RuntimeError(
+                        f"GLiNER model at {model_path} has no 'encoder_config' in "
+                        f"gliner_config.json, and the base encoder's config isn't "
+                        f"available locally at {encoder_config_path} to embed it. "
+                        "Without it, GLiNER falls back to fetching the encoder "
+                        f"config from the Hugging Face Hub by name "
+                        f"({gliner_config['model_name']!r}), which fails offline. "
+                        "Re-run the model-upload job (it now embeds encoder_config "
+                        "automatically), or make the base encoder available locally.",
+                    )
+                with open(encoder_config_path) as f:
+                    gliner_config["encoder_config"] = json.load(f)
+                tmp_path = f"{config_path}.tmp"
+                try:
+                    with open(tmp_path, "w") as f:
+                        json.dump(gliner_config, f)
+                    os.replace(tmp_path, config_path)
+                except OSError as e:
+                    raise RuntimeError(
+                        f"GLiNER model at {model_path} has no 'encoder_config' in "
+                        f"gliner_config.json, and {config_path} isn't writable to "
+                        f"patch it in ({e}). Without it, GLiNER falls back to "
+                        "fetching the encoder config from the Hugging Face Hub, "
+                        "which fails offline. Mount the model volume read-write "
+                        "(see modelPVC.readOnly in the Helm chart), or re-run the "
+                        "model-upload job so the config is pre-patched before "
+                        "mounting read-only.",
+                    ) from e
         PII_GLINER_MODEL = GLiNER.from_pretrained(
             model_path,
             load_tokenizer=True,

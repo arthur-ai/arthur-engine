@@ -189,12 +189,13 @@ def patch_gliner_encoder_config(models: dict[str, list[str]], output_dir: Path) 
             continue
         encoder_config_path = output_dir / gliner_config["model_name"] / "config.json"
         if not encoder_config_path.exists():
-            logger.warning(
+            raise RuntimeError(
                 f"Can't embed encoder_config into {config_path}: "
                 f"{encoder_config_path} not found (is the base encoder "
-                "in the same models config?)",
+                "in the same models config?). Without it, GLiNER falls back "
+                "to fetching the encoder config from the Hugging Face Hub at "
+                "runtime, which fails for any deployment that runs offline.",
             )
-            continue
         with open(encoder_config_path) as f:
             gliner_config["encoder_config"] = json.load(f)
         with open(config_path, "w") as f:
