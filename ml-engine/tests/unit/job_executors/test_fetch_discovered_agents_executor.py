@@ -356,6 +356,48 @@ def test_observations_go_nowhere_when_the_creation_record_cannot_be_told() -> No
     )
 
 
+def test_another_sources_creation_record_keeps_its_observations_to_itself() -> None:
+    """The task was created from another source's record. This source's record on the
+    same instance is not it, though it is the only one in this fetch, so it carries no
+    observations."""
+    other_source = "55555555-5555-5555-5555-555555555555"
+    task = _task(
+        "t1",
+        sources=[
+            _entry("t1", source_id=other_source, external_id="other-t1"),
+            _entry("rec-2", external_id="splunk-rec-2"),
+        ],
+    )
+
+    agent = enriched_task_to_agent(task, DATA_PLANE_ID, SOURCE_ID)
+
+    [record] = agent.evidence
+    assert record.external_id == "splunk-rec-2"
+    assert record.creation_source.actual_instance.observations is None
+
+
+def test_the_creation_source_entry_does_not_stand_in_for_a_record() -> None:
+    """When no stored report matches the creation source whole -- its record's address
+    has moved -- GenAI Engine adds an entry built from the creation source itself. It
+    names no source or record, so it is not matched: the moved record still is."""
+    origin_entry = {
+        "source_class": "siem",
+        "vendor": "splunk_enterprise",
+        "address": {"instance": "splunk.example.com", "resource_id": "t1"},
+    }
+    task = _task(
+        "t1",
+        sources=[origin_entry, _entry("another-route", external_id="splunk-t1")],
+    )
+
+    agent = enriched_task_to_agent(task, DATA_PLANE_ID, SOURCE_ID)
+
+    [record] = agent.evidence
+    assert record.creation_source.actual_instance.observations.service_names == [
+        "svc-t1"
+    ]
+
+
 def test_other_sources_entries_are_left_to_their_own_fetch() -> None:
     other_source = "55555555-5555-5555-5555-555555555555"
     task = _task(

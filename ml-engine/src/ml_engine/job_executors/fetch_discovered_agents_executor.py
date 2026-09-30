@@ -316,19 +316,29 @@ def source_evidence(
     so the record cannot be named and the entry is left out. `first_seen` is not sent:
     the Platform derives it from the sightings it receives, and `visibility` is graded
     there too, so the value sent only satisfies the schema.
+
+    The task's observations belong to the record it was created from, which may be
+    another source's: that record is picked among every source's records, and the
+    observations go on it only if it is one of this source's.
     """
     task_creation_source = task_dict.get("creation_source") or {}
     provenance = task_dict.get("provenance") or {}
-    evidence: list[dict[str, Any]] = []
+    records: list[dict[str, Any]] = []
     for entry in provenance.get("sources") or []:
-        if str(entry.get("source_id")) != discovery_source_id:
-            continue
         external_id = entry.get("external_id")
         creation_type = _CREATION_SOURCE_TYPES.get(entry.get("source_class"))
         last_seen = entry.get("last_seen") or entry.get("last_scanned")
-        if not external_id or creation_type is None or last_seen is None:
+        # The entry GenAI Engine builds from the creation source itself, when no
+        # stored report stands in for it, names no source or record, so is skipped
+        # here too.
+        if (
+            entry.get("source_id") is None
+            or not external_id
+            or creation_type is None
+            or last_seen is None
+        ):
             continue
-        evidence.append(
+        records.append(
             {
                 "creation_source": {
                     "type": creation_type,
@@ -342,12 +352,19 @@ def source_evidence(
                 "source_id": entry.get("source_id"),
             },
         )
+    evidence = [
+        record for record in records if str(record["source_id"]) == discovery_source_id
+    ]
 
     # What the source observed is carried by the record the task was created from, so
     # only that record's evidence can say it.
     observations = task_creation_source.get("observations")
-    origin = _creation_record(evidence, task_creation_source)
-    if observations is not None and origin is not None:
+    origin = _creation_record(records, task_creation_source)
+    if (
+        observations is not None
+        and origin is not None
+        and any(record is origin for record in evidence)
+    ):
         origin["creation_source"]["observations"] = observations
     return evidence
 
