@@ -28616,6 +28616,31 @@
                         ],
                         "title": "Last Seen",
                         "description": "When this source last observed the agent -- the discovered record's own `last_seen`, not when a scan last reported it. Evidence recency rather than scan recency: a source can keep reporting an agent it has not actually seen for weeks. Only ever moves forward, so an out-of-order batch cannot make an agent look staler than it is. Absent for OTEL, manual and legacy GCP agents, which carry no discovery record."
+                    },
+                    "external_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "External Id",
+                        "description": "The source's own identifier for the record behind this entry -- the record's `external_id`, canonical and never reconciled across sources. With `source_id` it names exactly one record, which is what a consumer keys that record's evidence on. Absent for OTEL, manual and legacy GCP agents, which carry no discovery record, and from producers that predate it."
+                    },
+                    "last_scanned": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Last Scanned",
+                        "description": "When a scan of this source last reported the record: scan recency on the reporting engine's clock, where `last_seen` is evidence recency on the source's. The same fact as `Evidence.last_scanned`, which staleness is derived from. Absent for OTEL, manual and legacy GCP agents, and from producers that predate it."
                     }
                 },
                 "type": "object",

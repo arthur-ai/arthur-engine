@@ -8,7 +8,7 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "2026-09-25T17:36:45.931379742Z"
+exclude-newer = "2026-09-27T15:02:37.04375Z"
 exclude-newer-span = "P3D"
 
 [options.exclude-newer-package]
@@ -163,7 +163,7 @@ wheels = [
 
 [[package]]
 name = "arthur-common"
-version = "2.4.85"
+version = "2.4.86"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "datasketches" },
@@ -179,9 +179,9 @@ dependencies = [
     { name = "types-requests" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/44/37/6afd58b547c53ea30b65084f5e17c9276b26860d608bdc4c8b94806796d0/arthur_common-2.4.85.tar.gz", hash = "sha256:beaff004842587de2957972ccf1fe0e46ab44f226f7ed1414e9985c9dd811ebb", size = 14727957, upload-time = "2026-09-28T15:46:01.672Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/63/2b/4e2f63bcaaf44a40e442a597cd916730802c488633410f77aa95d35e889d/arthur_common-2.4.86.tar.gz", hash = "sha256:a17c86eba7a52ebefc4278c9e4d2d94a17919e2c4ddab1960d87dfe849e195b7", size = 14728884, upload-time = "2026-09-30T14:55:55.961Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/40/8d/350ec213397f11ad894635841d46012cfe01a48911d2d248ceaa3aba6e0b/arthur_common-2.4.85-py3-none-any.whl", hash = "sha256:a9619525a8c14926404f7e90c897b40b5f53ec463da687b92b26936b070dac36", size = 102246, upload-time = "2026-09-28T15:46:00.018Z" },
+    { url = "https://files.pythonhosted.org/packages/f4/75/a2ef24bcc9b367b8d2a4c0e225713168d377c201fc8edf524b68b637b9ac/arthur_common-2.4.86-py3-none-any.whl", hash = "sha256:a8e21d2884495c84050766603c94459babeda09d41630b0305a42610876885ad", size = 102597, upload-time = "2026-09-30T14:55:54.309Z" },
 ]
 
 [[package]]
@@ -282,7 +282,7 @@ requires-dist = [
     { name = "alembic", specifier = "==1.20.0" },
     { name = "amplitude-analytics", specifier = ">=1.1.5,<2" },
     { name = "arthur-client", specifier = "==1.4.2683" },
-    { name = "arthur-common", specifier = "==2.4.85" },
+    { name = "arthur-common", specifier = "==2.4.86" },
     { name = "authlib", specifier = "==1.8.0" },
     { name = "azure-storage-blob", specifier = "==12.30.2" },
     { name = "bcrypt", specifier = "==5.0.0" },

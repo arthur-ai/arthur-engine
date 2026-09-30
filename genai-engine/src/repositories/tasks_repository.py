@@ -506,6 +506,12 @@ class TaskRepository:
                     if row.last_seen
                     else None
                 ),
+                # The row's key, with source_id: what names the record, so the fetch
+                # job can upload that record's evidence and the Platform key it.
+                external_id=row.external_id,
+                # When a scan last handed the record over -- what the Platform judges
+                # the record's staleness by.
+                last_scanned=row.last_reported_at.replace(tzinfo=timezone.utc),
             )
             for row in provenance_rows
         )
