@@ -569,6 +569,65 @@ def test_a_scan_that_decodes_nothing_says_so_rather_than_reading_as_a_clean_flee
     assert "decoded 0 of 2 device(s)" in caplog.text
 
 
+def _agentless_pages(pages: int) -> list[list[dict[str, Any]]]:
+    """A fleet with no discovered agents: Jamf pages on and the connector never yields."""
+    return [
+        [computer(f"m{p}-{i}", None, ident=p * 10 + i + 1) for i in range(2)]
+        for p in range(pages)
+    ]
+
+
+def test_a_stop_check_ends_a_scan_that_never_yields_between_pages(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """What bounds a Test Connection on a fleet with few agents: without the check the
+    connector would walk the whole inventory before the caller could stop it."""
+    fake = FakeJamf(_agentless_pages(10))
+    monkeypatch.setattr(
+        "discovery.endpoint.jamf.connector.JamfClient",
+        lambda s, logger=None: client_for(fake),
+    )
+    asked = {"n": 0}
+
+    def should_stop() -> bool:
+        asked["n"] += 1
+        return asked["n"] >= 3
+
+    connector = JamfConnector()
+    connector.stop_when(should_stop)
+    with caplog.at_level(logging.INFO):
+        batches = list(connector.scan(FakeConfig(CATALOG), 24, CREDS, FIELDS, LOG))  # type: ignore[arg-type]
+
+    assert batches == []
+    # Asked after each device; answered True on the third, the first of page two, so
+    # page three was never requested.
+    assert asked["n"] == 3
+    assert len(fake.gets) == 2
+    coverage = connector.device_coverage()
+    assert coverage is not None and coverage.devices_read == 3
+    assert "stopped early on request after 3 device(s)" in caplog.text
+
+
+def test_without_a_stop_check_a_scan_reads_the_whole_inventory(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A scheduled scan sets no check and must be unchanged by the option existing."""
+    fake = FakeJamf(_agentless_pages(10))
+    with caplog.at_level(logging.INFO):
+        assert scan(fake, monkeypatch) == []
+    # Every page, and the empty one that tells the keyset walk it has reached the end.
+    assert len(fake.gets) == 11
+    assert "stopped early" not in caplog.text
+
+
+def test_the_registered_connector_accepts_a_stop_check() -> None:
+    from job_executors.discovery_scan import AcceptsStopCheck
+
+    assert isinstance(JamfConnector(), AcceptsStopCheck)
+
+
 def test_a_fleet_that_really_has_no_agents_is_not_reported_as_broken(
     monkeypatch: pytest.MonkeyPatch,
     caplog: pytest.LogCaptureFixture,

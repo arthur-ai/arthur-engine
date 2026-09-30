@@ -39,13 +39,20 @@ from arthur_client.api_bindings import (
 from arthur_common.models.agent_discovery_schemas import DiscoveryOutputRecord
 
 from job_executors.discovery_output_contract import OutputContractError, check_batch
-from job_executors.discovery_scan import SOURCE_CONNECTORS, DiscoveryConnectorFactory
+from job_executors.discovery_scan import (
+    SOURCE_CONNECTORS,
+    AcceptsStopCheck,
+    DiscoveryConnectorFactory,
+)
 from log_redaction import redact_secrets, register_secrets, secret_values
 
-# How long a test may keep reading once it has started. Checked between batches: a
-# connector blocked inside one vendor call is bounded by its own request timeout, not by
-# this. A test is something a person is waiting on, and a preview that takes longer
-# than this to assemble is better reported as partial than not at all.
+# How long a test may keep reading once it has started. Checked after every batch the
+# connector yields, empty or not, and -- for a connector that implements
+# `AcceptsStopCheck` -- by the connector itself between its vendor calls, which is what
+# bounds one that pages for a long time without yielding (Jamf yields only for a device
+# that has agents). A single vendor call in flight is still bounded by its own request
+# timeout, not by this. A test is something a person is waiting on, and a preview that
+# takes longer than this to assemble is better reported as partial than not at all.
 PREVIEW_DEADLINE_SECONDS = 120.0
 
 # Kept under the Platform's 256 KiB bound so a preview this engine considers in-bounds
@@ -142,6 +149,8 @@ class _PreviewRun:
         self.column_check: Optional[OutputColumnCheckResult] = None
         self.batches_read = 0
         self.known_secrets: tuple[str, ...] = ()
+        self.deadline = float("inf")
+        self.stopped_at_deadline = False
 
     def run(self) -> PutDiscoverySourceTestResult:
         try:
@@ -183,13 +192,16 @@ class _PreviewRun:
         self.known_secrets = secret_values(credentials)
         register_secrets(self.logger, self.known_secrets)
 
-        deadline = self.executor.clock() + PREVIEW_DEADLINE_SECONDS
+        self.deadline = self.executor.clock() + PREVIEW_DEADLINE_SECONDS
         scan: Optional[Iterator[Sequence[DiscoveryOutputRecord]]] = None
         try:
             # Built inside the classified block: a connector that validates its config
             # eagerly, before its first yield, is reporting a configuration problem,
             # not an engine defect.
-            scan = connector_factory().scan(
+            connector = connector_factory()
+            if isinstance(connector, AcceptsStopCheck):
+                connector.stop_when(self._past_deadline)
+            scan = connector.scan(
                 self.config,
                 int(self.job_spec.lookback_hours),
                 credentials,
@@ -198,6 +210,9 @@ class _PreviewRun:
             )
             for batch in scan:
                 if not batch:
+                    # An empty batch is still a point at which to stop.
+                    if self._past_deadline():
+                        break
                     continue
                 self.batches_read += 1
                 try:
@@ -216,13 +231,7 @@ class _PreviewRun:
                         str(contract_error),
                     )
                 self._take(_mapped_row(record) for record in batch)
-                if self.truncated:
-                    break
-                if self.executor.clock() >= deadline:
-                    self.logger.info(
-                        f"Test stopped at its {PREVIEW_DEADLINE_SECONDS:.0f}s deadline",
-                    )
-                    self.truncated = True
+                if self.truncated or self._past_deadline():
                     break
         except Exception as e:
             classified = _classify(e, contacted=self.batches_read > 0)
@@ -251,6 +260,24 @@ class _PreviewRun:
             started_at=self.started_at,
             finished_at=datetime.now(timezone.utc),
         )
+
+    def _past_deadline(self) -> bool:
+        """True once the deadline has passed, which also marks the preview partial.
+
+        Asked by this loop between batches and handed to the connector as its stop
+        check, so a scan the connector ended on request is reported the same way as
+        one this loop broke off: truncated, with the stop in the job log once.
+        """
+        if self.stopped_at_deadline:
+            return True
+        if self.executor.clock() < self.deadline:
+            return False
+        self.logger.info(
+            f"Test stopped at its {PREVIEW_DEADLINE_SECONDS:.0f}s deadline",
+        )
+        self.stopped_at_deadline = True
+        self.truncated = True
+        return True
 
     def _take(self, rows: Iterator[dict[str, Any]]) -> None:
         """Keep rows up to the limit and the size bound, redacted, and no further."""

@@ -9,7 +9,7 @@ nothing published anywhere but the one result route.
 import io
 import logging
 from datetime import datetime, timezone
-from typing import Iterator, Mapping, Optional, Sequence
+from typing import Callable, Iterator, Mapping, Optional, Sequence
 from unittest.mock import MagicMock
 
 import pytest
@@ -450,6 +450,105 @@ def test_the_deadline_stops_reading_and_keeps_what_was_read(job_log) -> None:
     assert [row["external_id"] for row in result.rows] == ["a"]
     assert result.truncated is True
     assert connector.yielded == 1
+
+
+class PagingConnector:
+    """Pages a source that never yields, asking the stop check between pages, as Jamf
+    does on a fleet with no discovered agents."""
+
+    def __init__(self, pages: int, records_on_first_page: int = 0) -> None:
+        self.pages = pages
+        self.records_on_first_page = records_on_first_page
+        self.pages_read = 0
+        self.should_stop: Callable[[], bool] = lambda: False
+
+    def stop_when(self, should_stop: Callable[[], bool]) -> None:
+        self.should_stop = should_stop
+
+    def scan(
+        self,
+        config: DiscoverySourceConfigSpec,
+        lookback_hours: int,
+        credentials: Mapping[str, Optional[str]],
+        source_fields: Mapping[str, str],
+        logger: logging.Logger,
+    ) -> Iterator[Sequence[object]]:
+        for page in range(self.pages):
+            self.pages_read += 1
+            if page == 0 and self.records_on_first_page:
+                yield [_record(str(i)) for i in range(self.records_on_first_page)]
+            if self.should_stop():
+                return
+
+
+class SteppingClock:
+    """Starts at zero and advances by `step` on every read."""
+
+    def __init__(self, step: float) -> None:
+        self.now = -step
+        self.step = step
+
+    def __call__(self) -> float:
+        self.now += self.step
+        return self.now
+
+
+def test_the_deadline_stops_a_connector_that_never_yields(job_log) -> None:
+    logger, stream = job_log
+    connector = PagingConnector(pages=10_000)
+    client = _client()
+
+    # Ten seconds a page: the deadline passes on the twelfth.
+    _run(connector, _spec(), client, logger, clock=SteppingClock(10.0))
+
+    result = _delivered(client)
+    assert connector.pages_read == 12
+    assert result.outcome == DiscoverySourceTestOutcome.SUCCEEDED
+    assert result.rows == []
+    assert result.truncated is True
+    assert result.error is None
+    assert stream.getvalue().count("deadline") == 1
+
+
+def test_a_connector_stopped_at_the_deadline_keeps_what_it_yielded(job_log) -> None:
+    logger, _ = job_log
+    connector = PagingConnector(pages=10_000, records_on_first_page=2)
+    client = _client()
+
+    _run(connector, _spec(preview_limit=10), client, logger, clock=SteppingClock(10.0))
+
+    result = _delivered(client)
+    assert connector.pages_read < 20
+    assert result.outcome == DiscoverySourceTestOutcome.SUCCEEDED
+    assert [row["external_id"] for row in result.rows] == ["0", "1"]
+    assert result.truncated is True
+
+
+def test_the_deadline_is_checked_on_an_empty_batch(job_log) -> None:
+    """A connector without a stop check that yields [] as a heartbeat is bounded too."""
+    logger, _ = job_log
+    connector = FakeConnector(batches=[[]] * 10_000)
+    client = _client()
+
+    _run(connector, _spec(), client, logger, clock=SteppingClock(10.0))
+
+    result = _delivered(client)
+    assert connector.yielded == 12
+    assert connector.closed is True
+    assert result.outcome == DiscoverySourceTestOutcome.SUCCEEDED
+    assert result.truncated is True
+
+
+def test_a_source_that_ends_before_the_deadline_is_not_truncated(job_log) -> None:
+    logger, _ = job_log
+    connector = PagingConnector(pages=3)
+    client = _client()
+
+    _run(connector, _spec(), client, logger, clock=SteppingClock(1.0))
+
+    result = _delivered(client)
+    assert connector.pages_read == 3
+    assert result.truncated is False
 
 
 def test_an_unsupported_vendor_never_reads_credentials(job_log) -> None:

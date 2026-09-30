@@ -130,6 +130,30 @@ class ReportsDeviceCoverage(Protocol):
     def device_coverage(self) -> Optional[DeviceCoverage]: ...
 
 
+@runtime_checkable
+class AcceptsStopCheck(Protocol):
+    """A connector that can be told to end its scan early, between vendor calls.
+
+    Optional, like `ReportsDeviceCoverage`, and deliberately not a parameter of `scan`:
+    a Protocol method with an extra parameter, even a defaulted one, is a signature a
+    connector without it no longer satisfies, and every connector would have to change
+    to keep type-checking. A connector that implements this is handed the check before
+    `scan` is called; one that does not is simply never stopped early.
+
+    The caller that sets a check is the one with a deadline -- Test Connection, whose
+    preview someone is waiting on. A scan's caller sets none: a scheduled scan reads
+    the whole source.
+
+    A connector that honours it asks `should_stop()` between devices or pages and, when
+    it answers True, returns as if the source had ended: no exception, nothing more
+    requested from the vendor. It is a request to stop at the next safe point, not an
+    interruption, so a single vendor call in flight is still bounded only by its own
+    request timeout.
+    """
+
+    def stop_when(self, should_stop: Callable[[], bool]) -> None: ...
+
+
 @dataclass(frozen=True)
 class FailedDiscoveryRecord:
     """A record GenAI Engine could not resolve onto a task, as the run reports it.
