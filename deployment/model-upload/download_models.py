@@ -166,6 +166,43 @@ def load_models_config(config_path: str) -> dict[str, list[str]]:
         return json.load(f)
 
 
+def patch_gliner_encoder_config(models: dict[str, list[str]], output_dir: Path) -> None:
+    """Embed the base encoder's config into gliner_config.json.
+
+    gliner_config.json as published on the Hub has no "encoder_config" entry.
+    When it's absent, gliner builds the base encoder by calling
+    AutoConfig.from_pretrained(model_name) with the bare Hub id from
+    gliner_config.json's "model_name" (not the local model directory), which
+    requires network access - so any deployment that runs offline
+    (HF_HUB_OFFLINE=1) fails to load the model. Embedding the encoder's
+    config here, once, avoids that Hub lookup everywhere this is deployed.
+    """
+    for model_name, filenames in models.items():
+        if "gliner_config.json" not in filenames:
+            continue
+        config_path = output_dir / model_name / "gliner_config.json"
+        if not config_path.exists():
+            continue
+        with open(config_path) as f:
+            gliner_config = json.load(f)
+        if "encoder_config" in gliner_config:
+            continue
+        encoder_config_path = output_dir / gliner_config["model_name"] / "config.json"
+        if not encoder_config_path.exists():
+            raise RuntimeError(
+                f"Can't embed encoder_config into {config_path}: "
+                f"{encoder_config_path} not found (is the base encoder "
+                "in the same models config?). Without it, GLiNER falls back "
+                "to fetching the encoder config from the Hugging Face Hub at "
+                "runtime, which fails for any deployment that runs offline.",
+            )
+        with open(encoder_config_path) as f:
+            gliner_config["encoder_config"] = json.load(f)
+        with open(config_path, "w") as f:
+            json.dump(gliner_config, f, indent=2)
+        logger.info(f"Embedded encoder_config into {config_path}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Download Hugging Face models for airgapped deployment",
@@ -228,6 +265,8 @@ def main() -> None:
         sys.exit(1)
 
     print("\n✓ All models downloaded successfully!")
+
+    patch_gliner_encoder_config(models, args.output_dir)
 
     manifest_path = args.output_dir / "manifest.json"
     with open(manifest_path, "w") as f:
