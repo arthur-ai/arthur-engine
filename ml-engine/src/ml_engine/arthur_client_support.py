@@ -7,7 +7,11 @@ Such an executor is imported and dispatched only when the client it needs is ins
 """
 
 import arthur_client.api_bindings as api_bindings
-from arthur_client.api_bindings import DiscoverySourcesV1Api, JobKind
+from arthur_client.api_bindings import (
+    DiscoverySourcesV1Api,
+    JobDequeueParameters,
+    JobKind,
+)
 
 # The wire value of JobKind.TEST_DISCOVERY_SOURCE, compared by value so a job of this
 # kind can be named even by a client whose JobKind does not have the member.
@@ -39,3 +43,11 @@ def client_supports_test_discovery_source() -> bool:
 
 
 TEST_DISCOVERY_SOURCE_SUPPORTED = client_supports_test_discovery_source()
+
+# Whether this client's dequeue request can say the engine runs Test Connection jobs.
+# The Platform hands TEST_DISCOVERY_SOURCE jobs only to an engine whose last dequeue said
+# so, which is what keeps them away from engines that would fail to read them. A client
+# without the field cannot say it, and an engine on one is correctly left out.
+DEQUEUE_DECLARES_DISCOVERY_SOURCE_TEST = (
+    "discovery_source_test" in JobDequeueParameters.model_fields
+)
