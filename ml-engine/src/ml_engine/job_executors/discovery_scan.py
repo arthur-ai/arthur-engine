@@ -26,6 +26,7 @@ import logging
 import traceback
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
+from enum import Enum
 from typing import (
     Callable,
     Iterator,
@@ -52,6 +53,58 @@ from log_redaction import redact_secrets, secret_values
 
 class UnsupportedDiscoveryVendorError(Exception):
     """No connector is registered for the vendor a source config names."""
+
+
+class DiscoveryConfigurationError(ValueError):
+    """The source's settings or query cannot be scanned as they are.
+
+    A required field that is missing, a device group that resolves to nothing: a
+    person has to change the source before any retry can succeed. A ValueError, so a
+    caller that already catches one still does.
+    """
+
+
+class DiscoveryErrorCode(str, Enum):
+    """Why a run failed, as the Platform's run store accepts it (D-11).
+
+    The Platform writes what an admin reads from the code alone, so no vendor text
+    has to travel for a source to say why it is failing.
+    """
+
+    INVALID_JOB = "invalid_job"
+    UNSUPPORTED_VENDOR = "unsupported_vendor"
+    NOT_CONFIGURED = "not_configured"
+    CREDENTIALS_UNAVAILABLE = "credentials_unavailable"
+    AUTHENTICATION_FAILED = "authentication_failed"
+    PERMISSION_DENIED = "permission_denied"
+    PROVIDER_ERROR = "provider_error"
+    PUBLICATION_FAILED = "publication_failed"
+    CANCELLED = "cancelled"
+    INTERNAL_ERROR = "internal_error"
+
+
+def failure_code(exc: BaseException) -> DiscoveryErrorCode:
+    """The code for a failure raised while a connector was scanning.
+
+    A connector that talks HTTP says what the vendor answered through a `status_code`
+    attribute on what it raises, which is how 401 and 403 are told from the rest.
+    Anything else the vendor call raised is the vendor's error.
+    """
+    if not isinstance(exc, Exception):
+        # KeyboardInterrupt, SystemExit, GeneratorExit: the scan was stopped, and
+        # nothing about the source follows from that.
+        return DiscoveryErrorCode.CANCELLED
+    if isinstance(exc, UnsupportedDiscoveryVendorError):
+        return DiscoveryErrorCode.UNSUPPORTED_VENDOR
+    if isinstance(exc, (DiscoveryConfigurationError, OutputContractError)):
+        # A query whose output misses the contract is the config's to fix.
+        return DiscoveryErrorCode.NOT_CONFIGURED
+    status = getattr(exc, "status_code", None)
+    if status == 401:
+        return DiscoveryErrorCode.AUTHENTICATION_FAILED
+    if status == 403:
+        return DiscoveryErrorCode.PERMISSION_DENIED
+    return DiscoveryErrorCode.PROVIDER_ERROR
 
 
 class DiscoverySourceConnector(Protocol):
@@ -109,6 +162,10 @@ class DeviceCoverage:
     # In scope and carrying a payload that decoded, versus one that did not.
     devices_decoded: int = 0
     devices_unreadable: int = 0
+    # Why each unreadable device was, e.g. "never-reported" -> 120. Sums to
+    # `devices_unreadable`: a Mac that has not reported since the collector shipped
+    # asks for a different fix than a payload this side cannot parse.
+    unreadable_by_reason: dict[str, int] = field(default_factory=dict)
     devices_excluded: int = 0
     # Group name -> devices it kept out.
     excluded_by_group: dict[str, int] = field(default_factory=dict)
@@ -116,6 +173,10 @@ class DeviceCoverage:
     devices_outside_included_groups: int = 0
     # Group name -> in-scope devices it let in.
     included_by_group: dict[str, int] = field(default_factory=dict)
+
+    def count_unreadable(self, reason: str) -> None:
+        self.devices_unreadable += 1
+        self.unreadable_by_reason[reason] = self.unreadable_by_reason.get(reason, 0) + 1
 
 
 @runtime_checkable
@@ -188,6 +249,19 @@ class DiscoveryRecordSink(Protocol):
     ) -> DiscoveryPublishResult: ...
 
 
+class OutcomeReporter(Protocol):
+    """Where a finished run's outcome goes: D-11's run store, which also writes the
+    source's health from it. `discovery_run_reporter.PlatformRunReporter` implements
+    it against the Platform.
+
+    MUST NOT RAISE. A report that cannot be delivered is logged and dropped: the scan
+    has already happened, and failing its job over the report would make the retry
+    rescan the source to resend it.
+    """
+
+    def report(self, outcome: "DiscoveryScanOutcome") -> None: ...
+
+
 # Builds a fresh connector for one scan. A factory rather than an instance because
 # low-memory jobs run as threads in one interpreter: two configs for the same vendor
 # are two concurrent jobs, and a shared connector would share whatever per-scan state it
@@ -204,9 +278,11 @@ SOURCE_CONNECTORS: dict[str, DiscoveryConnectorFactory] = {}
 class DiscoveryScanOutcome:
     """What one source contributed to one run, and how it ended.
 
-    This is the shape D-11's run store will persist. Until it exists the outcome is
-    emitted as JSON in the job log -- the log exporter drops `extra`, so a structured
-    record has to be *in* the message to survive the trip to the Platform.
+    Delivered to D-11's run store by an `OutcomeReporter`, which is also what writes
+    the source's health there. It is emitted as JSON in the job log as well, for
+    what the run store does not keep (failed records, the column check, the redacted
+    error) -- the log exporter drops `extra`, so a structured record has to be *in*
+    the message to survive the trip to the Platform.
     """
 
     # Everything naming the source is optional: a job whose spec is too malformed to
@@ -232,6 +308,8 @@ class DiscoveryScanOutcome:
     failed_records: list[FailedDiscoveryRecord] = field(default_factory=list)
     error_count: int = 0
     error: Optional[str] = None
+    # What the run store is told instead of `error`, which stays in the job log.
+    error_code: Optional[DiscoveryErrorCode] = None
     # The D-02 column check for this run. Null means the run failed before a batch was
     # ever produced, which is not the same answer as a source that produced one and
     # failed the contract.
@@ -244,15 +322,20 @@ class DiscoveryScanOutcome:
         self,
         exc: BaseException,
         known_secrets: Sequence[str] = (),
+        error_code: Optional[DiscoveryErrorCode] = None,
     ) -> None:
         """Record a failure, with the credentials taken back out of its message.
 
         The scrub set is passed in rather than held on this object: an outcome exists
         to be serialized into the job log, and a record that carried the secrets it is
         supposed to be protecting would be one careless field away from emitting them.
+
+        `error_code` is for a caller that knows what failed better than the exception
+        says. Without one, the exception is classified as a connector's.
         """
         self.error_count += 1
         self.error = redact_secrets(f"{type(exc).__name__}: {exc}", known_secrets)
+        self.error_code = error_code or failure_code(exc)
 
     def to_log_payload(self) -> dict[str, object]:
         return {
@@ -272,6 +355,7 @@ class DiscoveryScanOutcome:
             "failed_records": [asdict(record) for record in self.failed_records],
             "error_count": self.error_count,
             "error": self.error,
+            "error_code": self.error_code.value if self.error_code else None,
             "output_column_check": result_payload(self.output_column_check),
             "device_coverage": (
                 asdict(self.device_coverage) if self.device_coverage else None
@@ -291,6 +375,7 @@ def run_source_scan(
     logger: logging.Logger,
     credentials: Mapping[str, Optional[str]],
     source_fields: Mapping[str, str],
+    reporter: Optional[OutcomeReporter] = None,
 ) -> DiscoveryScanOutcome:
     """Scan one source, publishing each batch as it arrives.
 
@@ -306,6 +391,7 @@ def run_source_scan(
     without a recorded failure its outcome would report a partial scan as a success.
     """
     known_secrets = secret_values(credentials)
+    publishing = False
     try:
         for batch in connector.scan(
             config,
@@ -331,7 +417,9 @@ def run_source_scan(
             except OutputContractError as contract_error:
                 outcome.output_column_check = contract_error.result
                 raise
+            publishing = True
             result = sink.publish(workspace_id, data_plane_id, config, batch)
+            publishing = False
             outcome.batches_published += 1
             outcome.records_published += result.accepted
             if result.failed:
@@ -344,7 +432,16 @@ def run_source_scan(
                     f"failed_records on the scan outcome",
                 )
     except BaseException as e:
-        outcome.record_failure(e, known_secrets)
+        # A publish that raised failed on GenAI Engine's side, not the vendor's.
+        outcome.record_failure(
+            e,
+            known_secrets,
+            (
+                DiscoveryErrorCode.PUBLICATION_FAILED
+                if publishing and isinstance(e, Exception)
+                else None
+            ),
+        )
         # The traceback is redacted and carried IN THE MESSAGE rather than passed as
         # `exc_info`. The exporter formats `exc_info` itself and posts the result
         # unredacted, so a vendor exception quoting the request it failed on -- or a
@@ -372,7 +469,7 @@ def run_source_scan(
     finally:
         if isinstance(connector, ReportsDeviceCoverage):
             outcome.device_coverage = connector.device_coverage()
-        finalize_outcome(outcome, logger)
+        finalize_outcome(outcome, logger, reporter)
 
     return outcome
 
@@ -380,6 +477,7 @@ def run_source_scan(
 def finalize_outcome(
     outcome: DiscoveryScanOutcome,
     logger: logging.Logger,
+    reporter: Optional[OutcomeReporter] = None,
 ) -> DiscoveryScanOutcome:
     """Close out a run and report it, however it ended.
 
@@ -390,4 +488,6 @@ def finalize_outcome(
     outcome.finished_at = datetime.now(timezone.utc)
     # In the message, not in `extra`: ScopeJobLogExporter does not ship `extra`.
     logger.info(json.dumps(outcome.to_log_payload(), sort_keys=True))
+    if reporter is not None:
+        reporter.report(outcome)
     return outcome

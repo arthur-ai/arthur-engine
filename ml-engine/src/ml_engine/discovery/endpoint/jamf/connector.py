@@ -22,7 +22,7 @@ from discovery.catalog import Matcher
 from discovery.endpoint.jamf.client import JamfClient, JamfSettings
 from discovery.endpoint.records import records_for
 from discovery.endpoint.scope import DeviceScope, parse_group_names
-from job_executors.discovery_scan import DeviceCoverage
+from job_executors.discovery_scan import DeviceCoverage, DiscoveryConfigurationError
 
 VENDOR = "jamf_pro"
 
@@ -92,13 +92,13 @@ class JamfConnector:
             # and nothing else.
             if not scope.admit(device, coverage):
                 continue
-            records = records_for(device, matcher, VENDOR, logger)
-            if records is None:
-                coverage.devices_unreadable += 1
+            read = records_for(device, matcher, VENDOR, logger)
+            if read.unreadable is not None:
+                coverage.count_unreadable(read.unreadable.value)
                 continue
             coverage.devices_decoded += 1
-            if records:
-                yield records
+            if read.records:
+                yield read.records
 
         # The denominator, also on the run outcome as `device_coverage`. Without it, "12
         # machines have agents" cannot be told from "12 of 4,000, and 900 have not
@@ -171,14 +171,14 @@ def _settings_from(
     if not base_url:
         missing.insert(0, "base_url")
     if missing:
-        raise ValueError(
+        raise DiscoveryConfigurationError(
             f"Jamf source is missing required field(s): {', '.join(missing)}. "
             f"base_url is a source field; client_id and client_secret are secrets.",
         )
     if not base_url.lower().startswith("https://"):
         # client_secret travels in the token request's BODY. Over http it is in cleartext,
         # and a scheme check here is the only place it can be refused before it is sent.
-        raise ValueError(
+        raise DiscoveryConfigurationError(
             f"Jamf base_url must be https, got "
             f"{base_url.split('://', 1)[0] or base_url!r}. "
             f"The token request carries client_secret in its body.",

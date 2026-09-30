@@ -25,10 +25,10 @@ from dataclasses import dataclass
 from typing import Iterable, Mapping, Optional, Sequence
 
 from discovery.endpoint.device import ManagedDevice
-from job_executors.discovery_scan import DeviceCoverage
+from job_executors.discovery_scan import DeviceCoverage, DiscoveryConfigurationError
 
 
-class DeviceGroupError(ValueError):
+class DeviceGroupError(DiscoveryConfigurationError):
     """A configured device group cannot be resolved to exactly one group in the MDM."""
 
 
