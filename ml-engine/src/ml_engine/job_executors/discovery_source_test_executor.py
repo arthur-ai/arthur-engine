@@ -370,6 +370,10 @@ def _status_of(e: BaseException) -> Optional[int]:
         getattr(e, "status_code", None),
         getattr(getattr(e, "response", None), "status_code", None),
         getattr(e, "status", None),
+        # Google API errors (google.api_core) carry the HTTP status only here, and
+        # their message has no "HTTP" prefix. urllib's HTTPError.code is a status
+        # too; gRPC codes are enums, not ints, so the range check below skips them.
+        getattr(e, "code", None),
     ):
         if isinstance(candidate, int) and 100 <= candidate <= 599:
             return candidate

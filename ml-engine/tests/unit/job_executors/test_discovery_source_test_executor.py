@@ -347,6 +347,42 @@ def test_a_timeout_under_a_connection_error_is_still_a_timeout(
     assert result.reachability == reachability
 
 
+@pytest.mark.parametrize(
+    ("name", "category"),
+    [
+        ("PermissionDenied", DiscoverySourceTestErrorCategory.AUTHORIZATION),
+        ("Unauthenticated", DiscoverySourceTestErrorCategory.AUTHENTICATION),
+    ],
+)
+def test_a_google_api_status_is_read_from_its_code(
+    job_log, name: str, category: DiscoverySourceTestErrorCategory
+) -> None:
+    google_exceptions = pytest.importorskip("google.api_core.exceptions")
+    logger, _ = job_log
+    error = getattr(google_exceptions, name)("Permission denied on resource")
+    client = _client()
+
+    _run(FakeConnector(raise_after=error), _spec(), client, logger)
+
+    result = _delivered(client)
+    assert result.error.category == category
+    assert result.reachability == DiscoverySourceReachability.REACHABLE
+
+
+def test_a_code_that_is_not_an_http_status_is_ignored(job_log) -> None:
+    logger, _ = job_log
+
+    class GrpcStyleError(Exception):
+        code = "PERMISSION_DENIED"  # not an int: says nothing about HTTP
+
+    client = _client()
+
+    _run(FakeConnector(raise_after=GrpcStyleError("denied")), _spec(), client, logger)
+
+    result = _delivered(client)
+    assert result.error.category != DiscoverySourceTestErrorCategory.AUTHORIZATION
+
+
 def test_a_missing_field_is_configuration_with_reachability_unknown(job_log) -> None:
     logger, _ = job_log
     client = _client()
