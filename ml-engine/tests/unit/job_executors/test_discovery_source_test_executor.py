@@ -8,6 +8,7 @@ nothing published anywhere but the one result route.
 
 import io
 import logging
+import ssl
 from datetime import datetime, timezone
 from typing import Callable, Iterator, Mapping, Optional, Sequence
 from unittest.mock import MagicMock
@@ -42,6 +43,7 @@ from arthur_common.models.agent_discovery_schemas import DiscoveryOutputRecord
 
 from discovery.endpoint.jamf.client import JamfError
 from discovery.endpoint.jamf.connector import JamfConnector
+from job_executors.discovery_output_contract import OutputContractError, check_columns
 from job_executors.discovery_source_test_executor import (
     PREVIEW_DEADLINE_SECONDS,
     DiscoverySourceTestExecutor,
@@ -355,7 +357,9 @@ def test_a_timeout_under_a_connection_error_is_still_a_timeout(
     ],
 )
 def test_a_google_api_status_is_read_from_its_code(
-    job_log, name: str, category: DiscoverySourceTestErrorCategory
+    job_log,
+    name: str,
+    category: DiscoverySourceTestErrorCategory,
 ) -> None:
     google_exceptions = pytest.importorskip("google.api_core.exceptions")
     logger, _ = job_log
@@ -426,6 +430,78 @@ def test_a_connector_that_refuses_eagerly_is_configuration_not_internal(
     assert result.reachability == DiscoverySourceReachability.UNKNOWN
     assert "base_url" in result.error.message
     assert CLIENT_SECRET not in result.error.message
+
+
+def _chained(outer: BaseException, cause: BaseException) -> BaseException:
+    outer.__cause__ = cause
+    return outer
+
+
+def test_a_refused_certificate_is_configuration_on_a_reachable_host(job_log) -> None:
+    """requests' SSLError is a ConnectionError, but a refused certificate is a host
+    that answered; the fix is the source's TLS settings, not the network."""
+    logger, _ = job_log
+    connector = FakeConnector(
+        raise_after=_chained(
+            RuntimeError(
+                "Splunk POST /services/search/v2/jobs: TLS verification failed",
+            ),
+            requests.exceptions.SSLError(
+                "certificate verify failed: Hostname mismatch",
+            ),
+        ),
+    )
+    client = _client()
+
+    _run(connector, _spec(), client, logger)
+
+    result = _delivered(client)
+    assert result.error.category == DiscoverySourceTestErrorCategory.CONFIGURATION
+    assert result.reachability == DiscoverySourceReachability.REACHABLE
+
+
+def test_a_ca_bundle_that_will_not_load_is_configuration_not_network(job_log) -> None:
+    """A bare ssl.SSLError from loading a CA is local; nothing was sent anywhere."""
+    logger, _ = job_log
+    connector = FakeConnector(
+        raise_after=_chained(
+            ValueError("source's ca_certificate is not a PEM certificate"),
+            ssl.SSLError("no start line: cadata does not contain a certificate"),
+        ),
+    )
+    client = _client()
+
+    _run(connector, _spec(), client, logger)
+
+    result = _delivered(client)
+    assert result.error.category == DiscoverySourceTestErrorCategory.CONFIGURATION
+    assert result.reachability == DiscoverySourceReachability.UNKNOWN
+
+
+def test_columns_a_connector_refuses_inside_scan_are_an_output_contract_failure(
+    job_log,
+) -> None:
+    """The SIEM connectors check the result's columns before building a record, so
+    the refusal arrives from `scan` rather than from `check_batch`."""
+    logger, _ = job_log
+    check = check_columns(["external_id", "agentName", "last_seen"])
+    connector = FakeConnector(
+        raise_after=OutputContractError(
+            "Source config does not satisfy the discovery output contract: missing "
+            "name; agentName not described by the contract.",
+            check,
+        ),
+    )
+    client = _client()
+
+    _run(connector, _spec(), client, logger)
+
+    result = _delivered(client)
+    assert result.error.category == DiscoverySourceTestErrorCategory.OUTPUT_CONTRACT
+    assert result.reachability == DiscoverySourceReachability.REACHABLE
+    assert result.output_column_check.outcome == ValidationOutcome.FAIL
+    assert result.output_column_check.missing_columns == ["name"]
+    assert result.output_column_check.unmapped_columns == ["agentName"]
 
 
 def test_unmapped_columns_are_named_and_the_raw_rows_shown(job_log) -> None:

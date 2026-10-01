@@ -368,6 +368,12 @@ def run_source_scan(
                     f"failed_records on the scan outcome",
                 )
     except BaseException as e:
+        if isinstance(e, OutputContractError):
+            # A connector that checks a result's columns before building records -- the
+            # SIEM connectors, so an unmapped column is refused rather than dropped --
+            # raises here, outside the per-batch check above. The run still owes the
+            # per-column verdict, not just the failure.
+            outcome.output_column_check = e.result
         outcome.record_failure(e, known_secrets)
         # The traceback is redacted and carried IN THE MESSAGE rather than passed as
         # `exc_info`. The exporter formats `exc_info` itself and posts the result

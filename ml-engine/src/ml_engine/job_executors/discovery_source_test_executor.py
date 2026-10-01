@@ -19,6 +19,7 @@ preview rows, and the pattern backstop catches tokens minted from them at run ti
 import json
 import logging
 import re
+import ssl
 import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -233,6 +234,18 @@ class _PreviewRun:
                 self._take(_mapped_row(record) for record in batch)
                 if self.truncated or self._past_deadline():
                     break
+        except OutputContractError as contract_error:
+            # Raised from inside `scan` by a connector that checks the result's columns
+            # before building a record (the SIEM connectors), rather than by
+            # `check_batch` on a batch it yielded. The source answered with the wrong
+            # columns, which is the same finding as the branch above and is reported
+            # the same way, per-column verdict included.
+            self.column_check = contract_error.result
+            return self._failed(
+                DiscoverySourceTestErrorCategory.OUTPUT_CONTRACT,
+                DiscoverySourceReachability.REACHABLE,
+                str(contract_error),
+            )
         except Exception as e:
             classified = _classify(e, contacted=self.batches_read > 0)
             return self._failed(
@@ -400,6 +413,34 @@ def _classify(e: BaseException, contacted: bool) -> _Classified:
                 403: DiscoverySourceTestErrorCategory.AUTHORIZATION,
             }.get(status, DiscoverySourceTestErrorCategory.VENDOR_ERROR)
             return _Classified(category, DiscoverySourceReachability.REACHABLE, status)
+
+    # TLS before timeouts and connection errors: requests' SSLError IS a
+    # ConnectionError, so without this a certificate the client refused reads as a host
+    # it never reached. A refused certificate is a handshake that happened -- the host
+    # answered -- and the fix is the source's TLS settings, not the network. A bare
+    # ssl.SSLError with no request around it is local, a CA bundle that would not load,
+    # and says nothing about the host.
+    for link in chain:
+        if isinstance(
+            link,
+            (requests.exceptions.SSLError, ssl.SSLCertVerificationError),
+        ):
+            return _Classified(
+                DiscoverySourceTestErrorCategory.CONFIGURATION,
+                DiscoverySourceReachability.REACHABLE,
+                None,
+            )
+    for link in chain:
+        if isinstance(link, ssl.SSLError):
+            return _Classified(
+                DiscoverySourceTestErrorCategory.CONFIGURATION,
+                (
+                    DiscoverySourceReachability.REACHABLE
+                    if contacted
+                    else DiscoverySourceReachability.UNKNOWN
+                ),
+                None,
+            )
 
     # Timeouts are looked for across the whole chain before connection errors: a
     # timeout is also an OSError (and ConnectTimeout a ConnectionError), so a
