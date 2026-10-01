@@ -33,7 +33,7 @@ import os
 from datetime import datetime
 from typing import Any, Callable, Iterable, Iterator, Mapping, Optional, Sequence
 
-import vertexai
+import agentplatform
 from arthur_client.api_bindings import DiscoverySourceConfigSpec
 from arthur_common.models.agent_discovery_schemas import DiscoveredAgentRecord
 from arthur_common.models.agent_governance_schemas import (
@@ -81,17 +81,22 @@ def list_agent_engines(
     settings: VertexSettings,
     credentials: Optional[Credentials],
 ) -> Iterable[Any]:
-    """The Agent Engines in one project and region, as the Vertex SDK returns them.
+    """The Agent Engines in one project and region, as Google's SDK returns them.
 
-    The same call the legacy Vertex poller made, with credentials passed explicitly
-    rather than taken from the process environment.
+    `agentplatform.Client().runtimes`, which google-cloud-aiplatform 2.x ships in place
+    of the deprecated `vertexai.Client().agent_engines`. It lists the same
+    `reasoningEngines` resources and each item carries the same `api_resource`
+    (name, display_name, create_time, update_time), so nothing downstream changes;
+    checked live against oval-day-438819-k4/us-central1, where both calls return the
+    same two engines. Credentials are passed explicitly rather than taken from the
+    process environment.
     """
-    client = vertexai.Client(
+    client = agentplatform.Client(
         project=settings.project_id,
         location=settings.location,
         credentials=credentials,
     )
-    engines: Iterable[Any] = client.agent_engines.list()
+    engines: Iterable[Any] = client.runtimes.list()
     return engines
 
 
@@ -253,7 +258,9 @@ def record_for(
     _, region, engine_id = parsed
 
     last_seen: Optional[datetime] = getattr(resource, "update_time", None) or getattr(
-        resource, "create_time", None
+        resource,
+        "create_time",
+        None,
     )
     if last_seen is None:
         logger.warning(
