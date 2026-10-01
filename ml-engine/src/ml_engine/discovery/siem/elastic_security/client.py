@@ -142,8 +142,25 @@ class ElasticClient:
 
 
 def _result_from(resp: requests.Response) -> EsqlResult:
-    payload = resp.json()
-    columns = [str(c["name"]) for c in payload.get("columns") or []]
+    """The answer of a 200, which is not always Elasticsearch's.
+
+    A proxy or load balancer in front of the cluster can answer 200 with an HTML page.
+    That is reported as the vendor's error, with its status, rather than left as a bare
+    ValueError, which Test Connection would read as a configuration mistake.
+    """
+    try:
+        payload = resp.json()
+    except ValueError:
+        payload = None
+    if not isinstance(payload, dict) or not isinstance(payload.get("columns"), list):
+        raise ElasticError(
+            f"Elastic POST /_query answered HTTP {resp.status_code} with a body that "
+            f"is not an ES|QL result ({resp.headers.get('Content-Type') or 'no content type'}). "
+            f"Check that elasticsearch_url is the Elasticsearch endpoint itself, not "
+            f"Kibana or a proxy's login page.",
+            status_code=resp.status_code,
+        )
+    columns = [str(c["name"]) for c in payload["columns"]]
     rows = [dict(zip(columns, values)) for values in payload.get("values") or []]
     return EsqlResult(
         columns=columns,
@@ -163,8 +180,11 @@ def warnings_from(header: Optional[str]) -> list[str]:
 
 def _error_of(resp: requests.Response) -> tuple[str, str]:
     try:
-        error = resp.json().get("error") or {}
+        body = resp.json()
     except ValueError:
+        return "", ""
+    error = body.get("error") if isinstance(body, dict) else None
+    if not error:
         return "", ""
     if isinstance(error, str):
         return "", error

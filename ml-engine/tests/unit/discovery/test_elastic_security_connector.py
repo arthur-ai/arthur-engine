@@ -459,3 +459,145 @@ def test_the_settings_object_is_what_the_client_is_built_from() -> None:
         )
     )
     assert seen[0].elasticsearch_url == FIELDS["elasticsearch_url"]
+
+
+# -- responses captured from Elasticsearch 9.5.4 --------------------------------------
+
+# Bodies exactly as a local Elasticsearch 9.5.4 returned them to a read-only API key
+# (`read` on `logs-*`), so a change in what the parsing above assumes shows up here
+# rather than against a customer's cluster. Captured from the reference query (with
+# the host filter that keeps the answer short), a FROM matching no index, an index
+# outside the key, and an unknown key.
+CAPTURED_OK = {
+    "took": 773,
+    "is_partial": False,
+    "completion_time_in_millis": 1790817188015,
+    "documents_found": 95,
+    "values_loaded": 190,
+    "rows_emitted": 211,
+    "bytes_read": 0,
+    "read_nanos": 0,
+    "cpu_nanos": 267979459,
+    "start_time_in_millis": 1790817187242,
+    "expiration_time_in_millis": 1791249187967,
+    "columns": [
+        {"name": "last_seen", "type": "date"},
+        {"name": "external_id", "type": "keyword"},
+        {"name": "name", "type": "keyword"},
+    ],
+    "values": [
+        ["2026-09-30T23:49:39.000Z", "build-server-07", "build-server-07"],
+        ["2026-09-30T23:35:53.000Z", "eng-laptop-042", "eng-laptop-042"],
+        ["2026-09-30T23:26:47.000Z", "svc-ingest-02", "svc-ingest-02"],
+    ],
+}
+CAPTURED_OK_WARNING = '299 Elasticsearch-9.5.4-9170df19cae1adb107b7b489b4d82dec66d7a337 "No limit defined, adding default limit of [1000]"'
+CAPTURED_NO_FIELDS = {
+    "took": 6,
+    "is_partial": False,
+    "completion_time_in_millis": 1790817188147,
+    "documents_found": 0,
+    "values_loaded": 0,
+    "rows_emitted": 0,
+    "bytes_read": 0,
+    "read_nanos": 0,
+    "cpu_nanos": 152583,
+    "start_time_in_millis": 1790817188141,
+    "expiration_time_in_millis": 1791249187967,
+    "columns": [{"name": "<no-fields>", "type": "null"}],
+    "values": [],
+}
+CAPTURED_UNKNOWN_INDEX = {
+    "error": {
+        "root_cause": [
+            {"type": "verification_exception", "reason": "Unknown index [secret-hr]"}
+        ],
+        "type": "verification_exception",
+        "reason": "Unknown index [secret-hr]",
+    },
+    "status": 400,
+}
+CAPTURED_BAD_KEY = {
+    "error": {
+        "root_cause": [
+            {
+                "type": "security_exception",
+                "reason": "unable to authenticate with provided credentials and anonymous access is not allowed for this request",
+                "additional_unsuccessful_credentials": "API key: unable to find apikey with id foo",
+                "header": {
+                    "WWW-Authenticate": [
+                        'Basic realm="security", charset="UTF-8"',
+                        'Bearer realm="security"',
+                        "ApiKey",
+                    ]
+                },
+            }
+        ],
+        "type": "security_exception",
+        "reason": "unable to authenticate with provided credentials and anonymous access is not allowed for this request",
+        "additional_unsuccessful_credentials": "API key: unable to find apikey with id foo",
+        "header": {
+            "WWW-Authenticate": [
+                'Basic realm="security", charset="UTF-8"',
+                'Bearer realm="security"',
+                "ApiKey",
+            ]
+        },
+    },
+    "status": 401,
+}
+
+
+def test_responses_captured_from_elasticsearch_9_5_parse(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    session = FakeSession(
+        FakeResponse(200, CAPTURED_OK, {"Warning": CAPTURED_OK_WARNING})
+    )
+    records = scan(session)
+    assert [(r.external_id, r.name, r.last_seen.isoformat()) for r in records] == [
+        ("build-server-07", "build-server-07", "2026-09-30T23:49:39+00:00"),
+        ("eng-laptop-042", "eng-laptop-042", "2026-09-30T23:35:53+00:00"),
+        ("svc-ingest-02", "svc-ingest-02", "2026-09-30T23:26:47+00:00"),
+    ]
+    # Three rows under the default cap: the no-LIMIT warning is not a truncation.
+    with caplog.at_level(logging.WARNING, logger=LOG.name):
+        scan(
+            FakeSession(
+                FakeResponse(200, CAPTURED_OK, {"Warning": CAPTURED_OK_WARNING})
+            )
+        )
+    assert "LIMIT" not in caplog.text
+
+    with caplog.at_level(logging.WARNING, logger=LOG.name):
+        assert scan(FakeSession(FakeResponse(200, CAPTURED_NO_FIELDS))) == []
+    assert "matched no index" in caplog.text
+
+    with pytest.raises(ElasticError) as unknown:
+        scan(FakeSession(FakeResponse(400, CAPTURED_UNKNOWN_INDEX)))
+    assert unknown.value.status_code == 400
+    assert "verification_exception: Unknown index [secret-hr]" in str(unknown.value)
+
+    with pytest.raises(ElasticError) as bad_key:
+        scan(FakeSession(FakeResponse(401, CAPTURED_BAD_KEY)))
+    assert bad_key.value.status_code == 401
+    assert "security_exception" in str(bad_key.value)
+
+
+@pytest.mark.parametrize("body", [None, ["not", "an", "object"], {"error": "x"}])
+def test_a_success_status_without_an_esql_result_is_the_vendors_error(
+    body: Any,
+) -> None:
+    # A proxy's login page answers 200 too. A bare ValueError here would read as a
+    # configuration mistake to Test Connection.
+    session = FakeSession(FakeResponse(200, body, {"Content-Type": "text/html"}))
+    with pytest.raises(ElasticError) as exc:
+        scan(session)
+    assert exc.value.status_code == 200
+    assert "not an ES|QL result" in str(exc.value)
+
+
+def test_an_error_body_that_is_not_an_object_still_reports_the_status() -> None:
+    with pytest.raises(ElasticError) as exc:
+        scan(FakeSession(FakeResponse(502, ["bad gateway"])))
+    assert exc.value.status_code == 502
