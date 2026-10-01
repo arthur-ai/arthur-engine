@@ -10,15 +10,19 @@ it.
 A vendor with no entry fails its own job with that reason, which is the right answer for
 an unsupported source and is reported per job rather than per engine.
 
-Adding an MDM is one more line here and one more package under `discovery.endpoint`.
+Adding an MDM is one more line here and one more package under `discovery.endpoint`;
+adding a SIEM is the same under `discovery.siem`.
 Everything the new MDM shares with Jamf -- the `arthur1.` frame, the six-column rows,
 matching, the record shape -- is already neutral and is not touched.
 """
 
 from discovery.endpoint.jamf.connector import VENDOR as JAMF_VENDOR
 from discovery.endpoint.jamf.connector import JamfConnector
+from discovery.siem.splunk.connector import VENDOR as SPLUNK_VENDOR
+from discovery.siem.splunk.connector import SplunkConnector
 from job_executors.discovery_scan import SOURCE_CONNECTORS
 
 SOURCE_CONNECTORS[JAMF_VENDOR] = JamfConnector
+SOURCE_CONNECTORS[SPLUNK_VENDOR] = SplunkConnector
 
-__all__ = ["JamfConnector", "JAMF_VENDOR"]
+__all__ = ["JamfConnector", "JAMF_VENDOR", "SplunkConnector", "SPLUNK_VENDOR"]
