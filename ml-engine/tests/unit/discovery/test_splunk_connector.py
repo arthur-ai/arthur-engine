@@ -14,6 +14,7 @@ import pytest
 import requests
 from arthur_common.models.agent_governance_schemas import SIEMAgentCreationSource
 
+from discovery.siem.records import records_from_rows
 from discovery.siem.splunk.client import SplunkClient, SplunkError, SplunkSettings
 from discovery.siem.splunk.connector import (
     VENDOR,
@@ -39,8 +40,9 @@ def row(i: int) -> dict[str, Any]:
     return {
         "external_id": f"10.0.0.{i}:api.anthropic.com",
         "name": f"api.anthropic.com client on 10.0.0.{i}",
-        # Splunk's JSON results carry every value as a string, epochs included.
-        "last_seen": str(1790790000 + i),
+        # Splunk's JSON results carry every value as a string, and `_time` is a
+        # fractional epoch -- the shape Splunk 10.4.4 returns.
+        "last_seen": f"{1790790000 + i}.191",
     }
 
 
@@ -214,7 +216,7 @@ def test_records_carry_the_instance_and_the_query_that_found_them() -> None:
     [[record]] = run(fake)
 
     assert record.external_id == "10.0.0.7:api.anthropic.com"
-    assert record.last_seen.timestamp() == 1790790007
+    assert record.last_seen.timestamp() == 1790790007.191
     source = record.creation_source
     assert isinstance(source, SIEMAgentCreationSource)
     assert source.vendor == "splunk_enterprise"
@@ -261,6 +263,74 @@ def test_a_stop_between_pages_keeps_what_was_published() -> None:
 
     assert [len(b) for b in run(fake, connector)] == [2]
     assert fake.deleted == ["sid-1"]
+
+
+def test_responses_captured_from_splunk_10_4_parse() -> None:
+    """Bodies from a real Splunk Enterprise 10.4.4, trimmed and with the host renamed.
+
+    The fake above is written to these; this pins them, so a drift in the fake cannot
+    hide a drift from what splunkd actually sends.
+    """
+    status = {
+        "entry": [
+            {
+                "content": {
+                    "dispatchState": "DONE",
+                    "isDone": True,
+                    "isFailed": False,
+                    "isFinalized": False,
+                    "resultCount": 2,
+                    "messages": [
+                        {
+                            "type": "INFO",
+                            "text": "Your timerange was substituted based on your "
+                            "search string",
+                        },
+                    ],
+                },
+            },
+        ],
+    }
+    results = {
+        "preview": False,
+        "init_offset": 0,
+        "messages": [],
+        "fields": [{"name": "external_id"}, {"name": "name"}, {"name": "last_seen"}],
+        "results": [
+            {
+                "external_id": "splunk-host:Metrics",
+                "name": "Metrics",
+                "last_seen": "1790815578.191",
+            },
+        ],
+        "highlighted": {},
+    }
+
+    class Captured:
+        def request(self, method: str, url: str, **kw: Any) -> FakeResponse:
+            return FakeResponse(
+                200,
+                results if url.endswith("/results") else status,
+            )
+
+    client = SplunkClient(settings_from(CREDS, FIELDS), session=Captured())  # type: ignore[arg-type]
+
+    job = client.job_status("1790815582.9")
+    assert (job.is_done, job.is_failed, job.is_finalized) == (True, False, False)
+    assert job.result_count == 2
+    assert job.messages == (
+        "Your timerange was substituted based on your search string",
+    )
+    columns, rows = client.results("1790815582.9", offset=0)
+    assert columns == COLUMNS
+    [record] = records_from_rows(
+        rows,
+        vendor=VENDOR,
+        instance="splunk-host:8089",
+        query=QUERY,
+        logger=LOG,
+    )
+    assert record.last_seen.timestamp() == 1790815578.191
 
 
 # --- the contract ------------------------------------------------------------------
