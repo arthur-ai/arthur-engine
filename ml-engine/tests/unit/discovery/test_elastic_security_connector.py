@@ -601,3 +601,20 @@ def test_an_error_body_that_is_not_an_object_still_reports_the_status() -> None:
     with pytest.raises(ElasticError) as exc:
         scan(FakeSession(FakeResponse(502, ["bad gateway"])))
     assert exc.value.status_code == 502
+
+
+@pytest.mark.parametrize(
+    "mode, assert_hostname",
+    [(TLSVerification.FULL, None), (TLSVerification.CA_ONLY, False)],
+)
+def test_the_tls_settings_reach_a_connection_made_through_a_proxy(
+    mode: TLSVerification, assert_hostname: Optional[bool]
+) -> None:
+    session = tls_session(None, mode, "Elastic")
+    adapter = session.get_adapter("https://es.example.com:9243")
+    direct = adapter.poolmanager.connection_pool_kw  # type: ignore[attr-defined]
+    proxied = adapter.proxy_manager_for(  # type: ignore[attr-defined]
+        "http://proxy.example.com:3128"
+    ).connection_pool_kw
+    assert proxied["ssl_context"] is direct["ssl_context"]
+    assert proxied.get("assert_hostname") == assert_hostname
