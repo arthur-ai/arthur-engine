@@ -6,7 +6,9 @@ the vendor tag.
 """
 
 import logging
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from enum import Enum
 from typing import Optional
 
 from arthur_common.models.agent_discovery_schemas import DiscoveredAgentRecord
@@ -51,6 +53,36 @@ PATH_IN_LOC = frozenset(
     },
 )
 VERSION_IN_VER = frozenset({"app", "brew", "ext", "npm", "vscodeext", "deb", "rpm"})
+
+
+class UnreadableReason(str, Enum):
+    """Why a device's records could not be read, as the run's device coverage counts it.
+
+    The four payload failures are the envelope's own outcomes, and they ask for
+    different fixes: a Mac that has not reported, a collector that has not run, a
+    payload too big to carry, and bytes this side cannot parse.
+    """
+
+    NEVER_REPORTED = EnvelopeOutcome.NEVER_REPORTED.value
+    NO_CACHE = EnvelopeOutcome.NO_CACHE.value
+    OVERSIZE = EnvelopeOutcome.OVERSIZE.value
+    MALFORMED = EnvelopeOutcome.MALFORMED.value
+    # Two attributes carry different payloads, and nothing says which is current.
+    CONFLICTING_ATTRIBUTES = "conflicting-attributes"
+    NO_DEVICE_ID = "no-device-id"
+    NO_SCAN_TIME = "no-scan-time"
+
+
+@dataclass(frozen=True)
+class DeviceRead:
+    """One device's records, or why it has none to give.
+
+    No records and no reason is a device that scanned and matched nothing. No records
+    and a reason is a device we cannot speak for.
+    """
+
+    records: list[DiscoveredAgentRecord] = field(default_factory=list)
+    unreadable: Optional[UnreadableReason] = None
 
 
 def _inventory_value(
@@ -111,17 +143,17 @@ def records_for(
     matcher: Matcher,
     vendor: str,
     logger: Optional[logging.Logger] = None,
-) -> Optional[list[DiscoveredAgentRecord]]:
-    """One device's records, or None when its payload could not be read.
+) -> DeviceRead:
+    """One device's records, or why its payload could not be read.
 
-    None and [] are different answers: [] is a device that scanned and matched nothing,
-    None a device we cannot speak for.
+    No records is a device that scanned and matched nothing; a reason is a device we
+    cannot speak for.
     """
     log = logger or logging.getLogger(__name__)
     carrier, value, conflict = _inventory_value(device)
     if conflict is not None:
         log.warning("%s: no usable payload (%s)", device.device_key, conflict)
-        return None
+        return DeviceRead(unreadable=UnreadableReason.CONFLICTING_ATTRIBUTES)
 
     envelope = read(value)
 
@@ -134,7 +166,7 @@ def records_for(
             envelope.outcome.value,
             f": {envelope.detail}" if envelope.detail else "",
         )
-        return None
+        return DeviceRead(unreadable=UnreadableReason(envelope.outcome.value))
 
     if not device.device_key.strip():
         # external_id is f"{device_key}:{agent_id}", so a blank half reads as
@@ -144,7 +176,7 @@ def records_for(
             "a device record carried no id; skipped, because a blank device key silently "
             "merges devices rather than failing",
         )
-        return None
+        return DeviceRead(unreadable=UnreadableReason.NO_DEVICE_ID)
 
     result = matcher.match(envelope.rows)
 
@@ -178,9 +210,9 @@ def records_for(
             "the poll",
             device.device_key,
         )
-        return None
+        return DeviceRead(unreadable=UnreadableReason.NO_SCAN_TIME)
 
-    return [
+    records = [
         DiscoveredAgentRecord(
             external_id=f"{device.device_key}:{finding.agent_id}",
             name=finding.name,
@@ -194,6 +226,7 @@ def records_for(
         )
         for finding in result.findings
     ]
+    return DeviceRead(records=records)
 
 
 def _source_for(
