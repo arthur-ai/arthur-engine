@@ -15,6 +15,7 @@ Every SIEM source carries the same two optional fields, `ca_certificate` and
 carried into urllib3 by an adapter instead.
 """
 
+import re
 import ssl
 from enum import Enum
 from typing import Any, Optional
@@ -43,6 +44,34 @@ def parse_tls_verification(raw: Optional[str], source_label: str) -> TLSVerifica
             f"{source_label} source's tls_verification is {value!r}; expected one of "
             f"{', '.join(m.value for m in TLSVerification)}.",
         ) from None
+
+
+# One PEM block, tolerant of where the line breaks went: a single-line form field strips
+# every newline from a pasted certificate, which OpenSSL then reads as "no start line".
+_PEM_BLOCK = re.compile(r"-----BEGIN ([A-Z0-9 ]+)-----(.*?)-----END \1-----", re.DOTALL)
+
+
+def normalize_pem(text: str) -> str:
+    """The certificate(s) in `text`, re-wrapped as OpenSSL expects.
+
+    A PEM block's body is base64, in which whitespace carries nothing, so stripping it
+    and wrapping at 64 columns gives back exactly the certificate that was pasted --
+    however many line breaks it lost on the way. Text with no PEM block is returned as
+    it came, so the load reports the real problem rather than this function guessing.
+    """
+    blocks = _PEM_BLOCK.findall(text)
+    if not blocks:
+        return text
+    out = []
+    for label, body in blocks:
+        b64 = "".join(body.split())
+        lines = [b64[i : i + 64] for i in range(0, len(b64), 64)]
+        out.append(
+            f"-----BEGIN {label}-----\n"
+            + "\n".join(lines)
+            + f"\n-----END {label}-----\n",
+        )
+    return "".join(out)
 
 
 class _TLSAdapter(HTTPAdapter):
@@ -77,12 +106,15 @@ def tls_session(
     context = ssl.create_default_context()
     if ca_certificate:
         try:
-            context.load_verify_locations(cadata=ca_certificate)
+            context.load_verify_locations(cadata=normalize_pem(ca_certificate))
         except ssl.SSLError as exc:
+            # Not chained: an ssl.SSLError is an OSError, and a classifier walking the
+            # chain would read a certificate that never loaded as a network failure.
+            # Nothing has been sent anywhere yet; this is the source's configuration.
             raise ValueError(
                 f"{source_label} source's ca_certificate is not a PEM certificate: "
                 f"{exc}",
-            ) from exc
+            ) from None
     if mode is not TLSVerification.FULL:
         context.check_hostname = False
     if mode is TLSVerification.OFF:

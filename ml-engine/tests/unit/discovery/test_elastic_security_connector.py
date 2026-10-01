@@ -7,6 +7,7 @@ bodies of a rejected key, an unreadable index and a query matching no index.
 """
 
 import base64
+import datetime as dt
 import logging
 from typing import Any, Optional
 
@@ -14,6 +15,10 @@ import pytest
 import requests
 from arthur_client.api_bindings import DiscoverySourceConfigSpec
 from arthur_common.models.agent_governance_schemas import SIEMAgentCreationSource
+from cryptography import x509
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.x509.oid import NameOID
 
 import discovery  # noqa: F401  (registers the connectors)
 from discovery.siem.elastic_security.client import (
@@ -29,7 +34,12 @@ from discovery.siem.elastic_security.connector import (
     esql_text,
     settings_from,
 )
-from discovery.siem.tls import TLSVerification, parse_tls_verification, tls_session
+from discovery.siem.tls import (
+    TLSVerification,
+    normalize_pem,
+    parse_tls_verification,
+    tls_session,
+)
 from job_executors.discovery_output_contract import OutputContractError, check_batch
 from job_executors.discovery_scan import SOURCE_CONNECTORS
 
@@ -618,3 +628,49 @@ def test_the_tls_settings_reach_a_connection_made_through_a_proxy(
     ).connection_pool_kw
     assert proxied["ssl_context"] is direct["ssl_context"]
     assert proxied.get("assert_hostname") == assert_hostname
+
+
+def test_a_ca_certificate_that_lost_its_line_breaks_still_loads() -> None:
+    """A single-line form field strips every newline from a pasted certificate. Seen
+    live: elastic-local's http_ca.crt saved from the Platform UI as 1,904 characters
+    with 0 newlines."""
+    pem = _a_ca_pem()
+    flattened = pem.replace("\n", "")
+
+    assert normalize_pem(flattened) == normalize_pem(pem)
+    tls_session(flattened, TLSVerification.FULL, "Elastic")  # does not raise
+
+
+def test_a_ca_certificate_error_is_not_chained_to_the_ssl_error() -> None:
+    """ssl.SSLError is an OSError; chained, a classifier reads it as the network."""
+    with pytest.raises(ValueError) as caught:
+        settings = settings_from(
+            CREDS,
+            {
+                **FIELDS,
+                "ca_certificate": "-----BEGIN CERTIFICATE-----nope-----END CERTIFICATE-----",
+            },
+        )
+        ElasticClient(settings)
+
+    assert caught.value.__cause__ is None
+    assert caught.value.__suppress_context__ is True
+
+
+def _a_ca_pem() -> str:
+    """A throwaway self-signed CA certificate, made for the test."""
+    key = ec.generate_private_key(ec.SECP256R1())
+    name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "test ca")])
+    now = dt.datetime.now(dt.timezone.utc)
+    cert = (
+        x509.CertificateBuilder()
+        .subject_name(name)
+        .issuer_name(name)
+        .public_key(key.public_key())
+        .serial_number(1)
+        .not_valid_before(now)
+        .not_valid_after(now + dt.timedelta(days=1))
+        .add_extension(x509.BasicConstraints(ca=True, path_length=None), critical=True)
+        .sign(key, hashes.SHA256())
+    )
+    return cert.public_bytes(serialization.Encoding.PEM).decode()
