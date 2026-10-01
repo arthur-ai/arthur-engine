@@ -5,6 +5,7 @@ created, polled, paged and deleted by sid -- so a test can tell a job that was c
 up from one that was left holding a search slot.
 """
 
+import datetime as dt
 import logging
 import ssl
 from typing import Any, Optional
@@ -13,6 +14,10 @@ from urllib.parse import urlsplit
 import pytest
 import requests
 from arthur_common.models.agent_governance_schemas import SIEMAgentCreationSource
+from cryptography import x509
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.x509.oid import NameOID
 
 from discovery.siem.records import records_from_rows
 from discovery.siem.splunk.client import SplunkClient, SplunkError, SplunkSettings
@@ -22,7 +27,7 @@ from discovery.siem.splunk.connector import (
     search_text,
     settings_from,
 )
-from discovery.siem.tls import TLSVerification, tls_session
+from discovery.siem.tls import TLSVerification, normalize_pem, tls_session
 from job_executors.discovery_output_contract import OutputContractError, check_batch
 
 LOG = logging.getLogger("test.splunk")
@@ -569,6 +574,48 @@ def test_the_tls_settings_reach_a_connection_made_through_a_proxy(
     assert ("assert_hostname" in proxied.connection_pool_kw) is (
         mode is TLSVerification.CA_ONLY
     )
+
+
+def test_a_ca_certificate_that_lost_its_line_breaks_still_loads() -> None:
+    """A single-line form field strips every newline from a pasted certificate. Seen
+    live: Splunk's cacert.pem saved as 1,388 characters with 0 newlines."""
+    pem = _a_ca_pem()
+    flattened = pem.replace("\n", "")
+
+    assert normalize_pem(flattened) == normalize_pem(pem)
+    tls_session(flattened, TLSVerification.CA_ONLY, "Splunk")  # does not raise
+
+
+def test_a_ca_certificate_error_is_not_chained_to_the_ssl_error() -> None:
+    """ssl.SSLError is an OSError; chained, a classifier reads it as the network."""
+    with pytest.raises(ValueError) as caught:
+        tls_session(
+            "-----BEGIN CERTIFICATE-----nope-----END CERTIFICATE-----",
+            TLSVerification.FULL,
+            "Splunk",
+        )
+
+    assert caught.value.__cause__ is None
+    assert caught.value.__suppress_context__ is True
+
+
+def _a_ca_pem() -> str:
+    """A throwaway self-signed CA certificate, made for the test."""
+    key = ec.generate_private_key(ec.SECP256R1())
+    name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "test ca")])
+    now = dt.datetime.now(dt.timezone.utc)
+    cert = (
+        x509.CertificateBuilder()
+        .subject_name(name)
+        .issuer_name(name)
+        .public_key(key.public_key())
+        .serial_number(1)
+        .not_valid_before(now)
+        .not_valid_after(now + dt.timedelta(days=1))
+        .add_extension(x509.BasicConstraints(ca=True, path_length=None), critical=True)
+        .sign(key, hashes.SHA256())
+    )
+    return cert.public_bytes(serialization.Encoding.PEM).decode()
 
 
 def test_a_ca_certificate_that_is_not_pem_is_a_configuration_error() -> None:
