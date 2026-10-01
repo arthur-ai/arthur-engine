@@ -22,9 +22,9 @@ from discovery.siem.splunk.client import (
     JobStatus,
     SplunkClient,
     SplunkSettings,
-    TLSVerification,
     wait_for_job,
 )
+from discovery.siem.tls import parse_tls_verification
 
 VENDOR = "splunk_enterprise"
 
@@ -215,14 +215,7 @@ def settings_from(
             f"request header.",
         )
 
-    raw_mode = (source_fields.get(TLS_VERIFICATION_FIELD) or "").strip().lower()
-    try:
-        mode = TLSVerification(raw_mode) if raw_mode else TLSVerification.FULL
-    except ValueError:
-        raise ValueError(
-            f"Splunk source's tls_verification is {raw_mode!r}; expected one of "
-            f"{', '.join(m.value for m in TLSVerification)}.",
-        ) from None
+    mode = parse_tls_verification(source_fields.get(TLS_VERIFICATION_FIELD), "Splunk")
 
     return SplunkSettings(
         base_url=base_url,

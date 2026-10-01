@@ -14,19 +14,14 @@ import pytest
 import requests
 from arthur_common.models.agent_governance_schemas import SIEMAgentCreationSource
 
-from discovery.siem.splunk.client import (
-    SplunkClient,
-    SplunkError,
-    SplunkSettings,
-    TLSVerification,
-    tls_session,
-)
+from discovery.siem.splunk.client import SplunkClient, SplunkError, SplunkSettings
 from discovery.siem.splunk.connector import (
     VENDOR,
     SplunkConnector,
     search_text,
     settings_from,
 )
+from discovery.siem.tls import TLSVerification, tls_session
 from job_executors.discovery_output_contract import OutputContractError, check_batch
 
 LOG = logging.getLogger("test.splunk")
@@ -439,9 +434,7 @@ def test_each_tls_mode_checks_what_it_says(
     check_hostname: bool,
     verify_mode: ssl.VerifyMode,
 ) -> None:
-    session = tls_session(
-        SplunkSettings(base_url="https://h", auth_token="t", tls_verification=mode),
-    )
+    session = tls_session(None, mode, "Splunk")
     adapter = session.get_adapter("https://h")
     context = adapter._ssl_context  # type: ignore[attr-defined]
 
@@ -451,9 +444,7 @@ def test_each_tls_mode_checks_what_it_says(
 
 def test_a_ca_certificate_that_is_not_pem_is_a_configuration_error() -> None:
     with pytest.raises(ValueError, match="ca_certificate"):
-        tls_session(
-            SplunkSettings(base_url="https://h", auth_token="t", ca_certificate="nope"),
-        )
+        tls_session("nope", TLSVerification.FULL, "Splunk")
 
 
 def test_splunk_is_registered_for_its_vendor() -> None:

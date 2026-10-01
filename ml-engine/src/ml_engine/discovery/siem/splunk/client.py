@@ -12,15 +12,14 @@ The v2 job endpoints, because v1's are deprecated since Splunk 9.0.1.
 """
 
 import logging
-import ssl
 import time
 from dataclasses import dataclass
-from enum import Enum
 from typing import Any, Callable, Optional
 from urllib.parse import quote, urljoin
 
 import requests
-from requests.adapters import HTTPAdapter
+
+from discovery.siem.tls import TLSVerification, tls_session
 
 # Under `[restapi] maxresultrows` (50,000 by default), which caps one results request
 # whatever `count` asks for.
@@ -31,14 +30,6 @@ PAGE_SIZE = 10_000
 REQUEST_TIMEOUT_SECONDS = 30.0
 
 _JOBS = "/services/search/v2/jobs"
-
-
-class TLSVerification(str, Enum):
-    """How the management port's certificate is checked. See the source type schema."""
-
-    FULL = "full"
-    CA_ONLY = "ca_only"
-    OFF = "off"
 
 
 class SplunkError(Exception):
@@ -81,52 +72,6 @@ class JobStatus:
     messages: tuple[str, ...]
 
 
-class _TLSAdapter(HTTPAdapter):
-    """Carries an SSL context, and whether to match the hostname, into urllib3.
-
-    Needed for `ca_only`: trusting a CA while not matching the hostname is a setting
-    `requests` has no parameter for -- `verify` is all or nothing.
-    """
-
-    def __init__(self, ssl_context: ssl.SSLContext, match_hostname: bool) -> None:
-        self._ssl_context = ssl_context
-        self._match_hostname = match_hostname
-        super().__init__()
-
-    def init_poolmanager(self, *args: Any, **kwargs: Any) -> None:
-        kwargs["ssl_context"] = self._ssl_context
-        if not self._match_hostname:
-            kwargs["assert_hostname"] = False
-        super().init_poolmanager(*args, **kwargs)
-
-
-def tls_session(settings: SplunkSettings) -> requests.Session:
-    """A session that trusts the management port the way the source says to."""
-    context = ssl.create_default_context()
-    if settings.ca_certificate:
-        try:
-            context.load_verify_locations(cadata=settings.ca_certificate)
-        except ssl.SSLError as exc:
-            raise ValueError(
-                f"Splunk source's ca_certificate is not a PEM certificate: {exc}",
-            ) from exc
-    if settings.tls_verification is not TLSVerification.FULL:
-        context.check_hostname = False
-    if settings.tls_verification is TLSVerification.OFF:
-        context.verify_mode = ssl.CERT_NONE
-
-    session = requests.Session()
-    session.verify = settings.tls_verification is not TLSVerification.OFF
-    session.mount(
-        "https://",
-        _TLSAdapter(
-            context,
-            match_hostname=settings.tls_verification is TLSVerification.FULL,
-        ),
-    )
-    return session
-
-
 class SplunkClient:
     """One search head, one token. Runs search jobs and pages their results."""
 
@@ -138,7 +83,11 @@ class SplunkClient:
     ) -> None:
         self._s = settings
         self._log = logger or logging.getLogger(__name__)
-        self._http = session or tls_session(settings)
+        self._http = session or tls_session(
+            settings.ca_certificate,
+            settings.tls_verification,
+            "Splunk",
+        )
 
     @property
     def page_size(self) -> int:
