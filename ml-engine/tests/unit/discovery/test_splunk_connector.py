@@ -47,13 +47,20 @@ def row(i: int) -> dict[str, Any]:
 
 
 class FakeResponse:
-    def __init__(self, status: int, body: Any = None) -> None:
+    def __init__(
+        self,
+        status: int,
+        body: Any = None,
+        raw: Optional[bytes] = None,
+    ) -> None:
         self.status_code, self._body = status, body
-        self.content = b"" if body is None else b"x"
+        # `raw` is a body that is not JSON, the way a proxy's own error page is.
+        self.content = raw if raw is not None else (b"" if body is None else b"x")
+        self._raw = raw
 
     def json(self) -> Any:
-        if self._body is None:
-            raise ValueError("no body")
+        if self._raw is not None or self._body is None:
+            raise ValueError("Expecting value: line 1 column 1 (char 0)")
         return self._body
 
 
@@ -436,6 +443,43 @@ def test_a_tls_failure_says_which_setting_fixes_it() -> None:
 
     with pytest.raises(SplunkError, match="ca_only"):
         client.create_job("search x", earliest=None, latest="now")
+
+
+@pytest.mark.parametrize(
+    "response,message",
+    [
+        (FakeResponse(200, raw=b"<html>Proxy login</html>"), "not JSON"),
+        (FakeResponse(200, ["not", "an", "object"]), "JSON list"),
+    ],
+)
+def test_a_success_body_that_is_not_a_json_object_is_a_splunk_error(
+    response: FakeResponse,
+    message: str,
+) -> None:
+    """A proxy or load balancer can answer 200 with its own page instead of splunkd."""
+
+    class Answers:
+        def request(self, *a: Any, **kw: Any) -> FakeResponse:
+            return response
+
+    client = SplunkClient(settings_from(CREDS, FIELDS), session=Answers())  # type: ignore[arg-type]
+
+    with pytest.raises(SplunkError, match=message) as caught:
+        client.create_job("search x", earliest=None, latest="now")
+    # the host answered, so Test Connection must still read it as reachable
+    assert caught.value.status_code == 200
+
+
+def test_an_error_body_that_is_not_an_object_still_reports_the_status() -> None:
+    class Answers:
+        def request(self, *a: Any, **kw: Any) -> FakeResponse:
+            return FakeResponse(401, ["unexpected"])
+
+    client = SplunkClient(settings_from(CREDS, FIELDS), session=Answers())  # type: ignore[arg-type]
+
+    with pytest.raises(SplunkError) as caught:
+        client.create_job("search x", earliest=None, latest="now")
+    assert caught.value.status_code == 401
 
 
 # --- configuration -----------------------------------------------------------------

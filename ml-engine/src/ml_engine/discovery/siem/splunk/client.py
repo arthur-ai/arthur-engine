@@ -104,7 +104,7 @@ class SplunkClient:
         ok: tuple[int, ...],
         params: Optional[dict[str, Any]] = None,
         data: Optional[dict[str, Any]] = None,
-    ) -> Any:
+    ) -> dict[str, Any]:
         try:
             resp = self._http.request(
                 method,
@@ -138,7 +138,7 @@ class SplunkClient:
             ) from exc
 
         if resp.status_code in ok:
-            return resp.json() if resp.content else None
+            return _object_body(resp, method, path)
         raise SplunkError(
             f"Splunk {method} {path} failed with HTTP {resp.status_code}"
             f"{_hint(resp.status_code)}{_messages_suffix(resp)}",
@@ -155,14 +155,14 @@ class SplunkClient:
         if earliest is not None:
             data["earliest_time"] = earliest
         body = self._call("POST", _JOBS, ok=(200, 201), data=data)
-        sid = (body or {}).get("sid")
+        sid = body.get("sid")
         if not sid:
             raise SplunkError("Splunk accepted the search but returned no sid")
         return str(sid)
 
     def job_status(self, sid: str) -> JobStatus:
         body = self._call("GET", f"{_JOBS}/{quote(sid, safe='')}", ok=(200,))
-        entries = (body or {}).get("entry") or []
+        entries = body.get("entry") or []
         if not entries:
             raise SplunkError(f"Splunk returned no status for search {sid}")
         content = entries[0].get("content") or {}
@@ -177,14 +177,11 @@ class SplunkClient:
 
     def results(self, sid: str, offset: int) -> tuple[list[str], list[dict[str, Any]]]:
         """One page of a finished job's results: the column names, then the rows."""
-        body = (
-            self._call(
-                "GET",
-                f"{_JOBS}/{quote(sid, safe='')}/results",
-                ok=(200,),
-                params={"offset": offset, "count": self._s.page_size},
-            )
-            or {}
+        body = self._call(
+            "GET",
+            f"{_JOBS}/{quote(sid, safe='')}/results",
+            ok=(200,),
+            params={"offset": offset, "count": self._s.page_size},
         )
         columns = [
             str(f.get("name") if isinstance(f, dict) else f)
@@ -280,11 +277,39 @@ def _hint(status: int) -> str:
     return ""
 
 
+def _object_body(resp: requests.Response, method: str, path: str) -> dict[str, Any]:
+    """A successful response's JSON object, or a SplunkError saying why it is not one.
+
+    A 200 is not proof splunkd answered: a proxy or load balancer in front of the search
+    head can send its own page. Raised as a SplunkError carrying the status, so the
+    failure names the call and still reads as a host that answered.
+    """
+    if not resp.content:
+        return {}
+    try:
+        body = resp.json()
+    except ValueError as exc:
+        raise SplunkError(
+            f"Splunk {method} {path} returned HTTP {resp.status_code} with a body that "
+            f"is not JSON. Something in front of the search head, such as a proxy or "
+            f"load balancer, may have answered instead of splunkd.",
+            status_code=resp.status_code,
+        ) from exc
+    if not isinstance(body, dict):
+        raise SplunkError(
+            f"Splunk {method} {path} returned HTTP {resp.status_code} with a JSON "
+            f"{type(body).__name__} where an object was expected.",
+            status_code=resp.status_code,
+        )
+    return body
+
+
 def _messages_suffix(resp: requests.Response) -> str:
     """Splunk's own error text, which names the bad SPL command or missing index."""
     try:
-        texts = _job_messages((resp.json() or {}).get("messages"))
+        body = resp.json()
     except ValueError:
         return ""
+    texts = _job_messages(body.get("messages")) if isinstance(body, dict) else []
     joined = "; ".join(texts)
     return f": {joined[:500]}" if joined else ""
