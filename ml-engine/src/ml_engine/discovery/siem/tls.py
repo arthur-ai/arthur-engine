@@ -59,6 +59,14 @@ class _TLSAdapter(HTTPAdapter):
             kwargs["assert_hostname"] = False
         super().init_poolmanager(*args, **kwargs)
 
+    def proxy_manager_for(self, proxy: str, **proxy_kwargs: Any) -> Any:
+        # An engine behind an HTTPS_PROXY reaches the server through a separate pool
+        # manager that `init_poolmanager` never sees, so the trust is carried here too.
+        proxy_kwargs["ssl_context"] = self._ssl_context
+        if not self._match_hostname:
+            proxy_kwargs["assert_hostname"] = False
+        return super().proxy_manager_for(proxy, **proxy_kwargs)
+
 
 def tls_session(
     ca_certificate: Optional[str],

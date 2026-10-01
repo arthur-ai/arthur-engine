@@ -556,6 +556,21 @@ def test_each_tls_mode_checks_what_it_says(
     assert context.verify_mode == verify_mode
 
 
+@pytest.mark.parametrize("mode", [TLSVerification.FULL, TLSVerification.CA_ONLY])
+def test_the_tls_settings_reach_a_connection_made_through_a_proxy(
+    mode: TLSVerification,
+) -> None:
+    """Behind an HTTPS_PROXY, requests builds a separate pool that never sees
+    `init_poolmanager`, so the CA and the hostname choice must be carried there too."""
+    adapter = tls_session(None, mode, "Splunk").get_adapter("https://h")
+    proxied = adapter.proxy_manager_for("http://proxy.example:3128")
+
+    assert proxied.connection_pool_kw["ssl_context"] is adapter._ssl_context  # type: ignore[attr-defined]
+    assert ("assert_hostname" in proxied.connection_pool_kw) is (
+        mode is TLSVerification.CA_ONLY
+    )
+
+
 def test_a_ca_certificate_that_is_not_pem_is_a_configuration_error() -> None:
     with pytest.raises(ValueError, match="ca_certificate"):
         tls_session("nope", TLSVerification.FULL, "Splunk")
