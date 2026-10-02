@@ -18,6 +18,7 @@ from arthur_client.api_bindings import (
     DataRetrievalV1Api,
     DatasetsV1Api,
     DiscoverAgentsJobSpec,
+    DiscoveryRunsV1Api,
     DiscoverySourcesV1Api,
     FetchDiscoveredAgentsJobSpec,
     JobKind,
@@ -59,6 +60,7 @@ from job_executors.compliance_policy_check_executor import (
 from job_executors.connector_test_executor import ConnectorTestExecutor
 from job_executors.discover_agents_executor import DiscoverAgentsExecutor
 from job_executors.discovery_record_sink import GenAIEngineRecordSink
+from job_executors.discovery_run_reporter import PlatformRunReporter
 from job_executors.fetch_data_executor import FetchDataExecutor
 from job_executors.fetch_discovered_agents_executor import (
     FetchDiscoveredAgentsExecutor,
@@ -144,6 +146,7 @@ class JobExecutor:
         self.agents_client = AgentsV1Api(client)
         self.data_planes_client = DataPlanesV1Api(client)
         self.discovery_sources_client = DiscoverySourcesV1Api(client)
+        self.discovery_runs_client = DiscoveryRunsV1Api(client)
         self.policies_client = PoliciesV1Api(client)
 
         self.logger: logging.Logger = logging.getLogger(str(uuid4()))
@@ -391,6 +394,14 @@ class JobExecutor:
                                 logger=self.logger,
                             ),
                             jobs_client=self.jobs_client,
+                            # Keyed on this attempt: the run store keeps one outcome
+                            # per attempt, so a retried job reports as a second run.
+                            run_reporter=PlatformRunReporter(
+                                self.discovery_runs_client,
+                                job_id=str(job.id),
+                                job_run_id=str(job_run.id),
+                                logger=self.logger,
+                            ),
                         ).execute(job, job.job_spec.actual_instance)
                     case JobKind.FETCH_DISCOVERED_AGENTS:
                         if not isinstance(

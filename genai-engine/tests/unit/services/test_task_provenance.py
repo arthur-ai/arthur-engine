@@ -189,6 +189,7 @@ def _rows(db_session, task_id: str) -> list[DatabaseTaskProvenanceSource]:
 def test_siem_finding_carries_its_instance_and_query(
     resolver,
     task_repo,
+    db_session,
     tracked_tasks,
 ):
     source_id = uuid.uuid4()
@@ -209,6 +210,11 @@ def test_siem_finding_carries_its_instance_and_query(
     assert entry.address.query == SPLUNK_QUERY
     assert entry.last_seen == LAST_SEEN
     assert provenance.source_classes == [SourceClass.SIEM]
+    # The record it came from, and when a scan last reported it (UP-4993): what the
+    # fetch job keys the record's evidence on and the Platform judges staleness by.
+    [row] = _rows(db_session, resolved.task_id)
+    assert entry.external_id == external_id
+    assert entry.last_scanned == row.last_reported_at.replace(tzinfo=timezone.utc)
 
 
 @pytest.mark.unit_tests
@@ -250,6 +256,7 @@ def test_cloud_finding_carries_its_account_and_resource(
 def test_rescan_updates_the_report_rather_than_adding_one(
     resolver,
     provenance_repo,
+    task_repo,
     db_session,
     tracked_tasks,
 ):
@@ -281,6 +288,10 @@ def test_rescan_updates_the_report_rather_than_adding_one(
     [row] = _rows(db_session, first.task_id)
     assert row.first_reported_at == first_reported_at - timedelta(hours=1)
     assert row.last_reported_at > row.first_reported_at
+
+    # The served scan time follows the latest report, not the first.
+    [entry] = _served_provenance(task_repo, first.task_id).sources
+    assert entry.last_scanned == row.last_reported_at.replace(tzinfo=timezone.utc)
 
 
 @pytest.mark.unit_tests
@@ -525,8 +536,11 @@ def test_task_never_reported_by_a_source_takes_provenance_from_its_creation(
     [entry] = provenance.sources
     assert entry.source_class is source_class
     assert entry.source_id is None
-    # No discovery record, so nothing to say when a source last saw it.
+    # No discovery record, so nothing to say when a source last saw it, no record to
+    # name and no scan that reported one.
     assert entry.last_seen is None
+    assert entry.external_id is None
+    assert entry.last_scanned is None
     assert provenance.runs_on is runs_on
     assert provenance.platform is None
 

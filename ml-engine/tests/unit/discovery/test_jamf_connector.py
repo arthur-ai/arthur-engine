@@ -363,6 +363,8 @@ def test_a_failed_token_call_does_not_echo_the_response() -> None:
     with pytest.raises(JamfError) as exc:
         list(client_for(fake).devices_since(None))
     assert "hunter2" not in str(exc.value)
+    # What the run reports as the credentials failing, not Jamf.
+    assert exc.value.status_code == 401
 
 
 # --- the connector ------------------------------------------------------------------
@@ -1371,6 +1373,41 @@ def test_an_unscoped_scan_still_reports_its_denominator(
         coverage.devices_excluded,
     ) == (2, 2, 1, 1, 0)
     assert coverage.excluded_by_group == {}
+
+
+def test_unreadable_macs_are_counted_by_why(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Each asks for a different fix, so the run says which, not only how many."""
+    other = frame([row("npm", "@openai/codex", ver="0.6.0"), scan_row("apps")])
+    fake = FakeJamf(
+        [
+            [
+                computer("read", full_payload()),
+                computer("silent", None),
+                computer("stale", EnvelopeOutcome.NO_CACHE.value),
+            ],
+            [
+                computer("huge", "ERROR:oversize:300000"),
+                computer("garbled", "arthur1.not-base64!"),
+                computer(
+                    "twice",
+                    full_payload(),
+                    extra_attributes=[{"name": "Second Copy", "values": [other]}],
+                ),
+            ],
+        ],
+    )
+    connector = JamfConnector()
+    scan_scoped(fake, monkeypatch, connector=connector)
+    coverage = connector.device_coverage()
+    assert coverage is not None
+    assert (coverage.devices_decoded, coverage.devices_unreadable) == (1, 5)
+    assert coverage.unreadable_by_reason == {
+        "never-reported": 1,
+        "no-cache": 1,
+        "oversize": 1,
+        "malformed": 1,
+        "conflicting-attributes": 1,
+    }
 
 
 # --- what is never collected ----------------------------------------------------------

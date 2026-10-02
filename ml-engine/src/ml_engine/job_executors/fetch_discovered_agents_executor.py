@@ -13,7 +13,7 @@ agents twice: task identity is stable across scans (D-08) and the Platform upser
 """
 
 import logging
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from arthur_client.api_bindings import Agent as ScopeAgent
 from arthur_client.api_bindings import (
@@ -138,6 +138,7 @@ class FetchDiscoveredAgentsExecutor:
                         workspace_id,
                         data_plane_id,
                         tasks,
+                        discovery_source_id=source_id,
                     )
                 # A short page is the last one, which is how the endpoint says so.
                 if len(tasks) < self.page_size:
@@ -161,12 +162,17 @@ def publish_enriched_tasks(
     workspace_id: str,
     data_plane_id: str,
     enriched_tasks: List[EnrichedTaskResponse],
+    discovery_source_id: Optional[str] = None,
 ) -> int:
-    """Convert enriched tasks to agents and upsert them. Returns how many were upserted."""
+    """Convert enriched tasks to agents and upsert them. Returns how many were upserted.
+
+    With a discovery source, each agent carries that source's evidence; see
+    `source_evidence`.
+    """
     agent_objects: list[ScopeAgent] = []
     unattributed: list[str] = []
     for task in enriched_tasks:
-        agent = enriched_task_to_agent(task, data_plane_id)
+        agent = enriched_task_to_agent(task, data_plane_id, discovery_source_id)
         if agent is None:
             unattributed.append(task.id)
         else:
@@ -229,6 +235,7 @@ def report_rejected_agents(
 def enriched_task_to_agent(
     enriched_task: EnrichedTaskResponse,
     data_plane_id: str,
+    discovery_source_id: Optional[str] = None,
 ) -> Optional[ScopeAgent]:
     """Convert a genai_client EnrichedTaskResponse to an arthur_client Agent.
 
@@ -245,6 +252,10 @@ def enriched_task_to_agent(
     None for an auto-created task with no creation source. The Agents API refuses an
     agent that names no source (D-03), and naming one here would misreport who found
     it. A task created by hand in GenAI Engine is sent as MANUAL, which is what it is.
+
+    Given the discovery source being fetched, the agent also carries that source's
+    evidence (`source_evidence`). Without any, the Platform lifts the creation source
+    into a placeholder record, which is what every upload got before.
     """
     task_dict = enriched_task.to_dict()
 
@@ -270,6 +281,10 @@ def enriched_task_to_agent(
         "llm_models": task_dict.get("models") or [],
         "data_sources": task_dict.get("data_sources") or [],
     }
+    if discovery_source_id is not None:
+        evidence = source_evidence(task_dict, discovery_source_id)
+        if evidence:
+            agent_dict["evidence"] = evidence
 
     agent = ScopeAgent.from_dict(agent_dict)
     for rule in agent.rules or []:
@@ -283,3 +298,124 @@ def enriched_task_to_agent(
             ),
         )
     return agent
+
+
+def source_evidence(
+    task_dict: dict[str, Any],
+    discovery_source_id: str,
+) -> list[dict[str, Any]]:
+    """The fetched source's evidence for one task: a record per provenance entry.
+
+    Each entry of this source that names its record becomes that record's evidence,
+    keyed on the record's own `external_id` and dated by the source's sighting
+    (`last_seen`) and the last scan that reported it (`last_scanned`). Only this
+    source's entries: the Platform merges evidence per source, and every other
+    source's entries reach it through that source's own fetch.
+
+    An entry with no `external_id` comes from a GenAI Engine that predates serving it,
+    so the record cannot be named and the entry is left out. `first_seen` is not sent:
+    the Platform derives it from the sightings it receives, and `visibility` is graded
+    there too, so the value sent only satisfies the schema.
+
+    The task's observations belong to the record it was created from, which may be
+    another source's: that record is picked among every source's records, and the
+    observations go on it only if it is one of this source's.
+    """
+    task_creation_source = task_dict.get("creation_source") or {}
+    provenance = task_dict.get("provenance") or {}
+    records: list[dict[str, Any]] = []
+    for entry in provenance.get("sources") or []:
+        external_id = entry.get("external_id")
+        creation_type = _CREATION_SOURCE_TYPES.get(entry.get("source_class"))
+        last_seen = entry.get("last_seen") or entry.get("last_scanned")
+        # The entry GenAI Engine builds from the creation source itself, when no
+        # stored report stands in for it, names no source or record, so is skipped
+        # here too.
+        if (
+            entry.get("source_id") is None
+            or not external_id
+            or creation_type is None
+            or last_seen is None
+        ):
+            continue
+        records.append(
+            {
+                "creation_source": {
+                    "type": creation_type,
+                    "vendor": entry.get("vendor"),
+                    "address": entry.get("address"),
+                },
+                "external_id": external_id,
+                "visibility": "limited",
+                "last_seen": last_seen,
+                "last_scanned": entry.get("last_scanned"),
+                "source_id": entry.get("source_id"),
+            },
+        )
+    evidence = [
+        record for record in records if str(record["source_id"]) == discovery_source_id
+    ]
+
+    # What the source observed is carried by the record the task was created from, so
+    # only that record's evidence can say it.
+    observations = task_creation_source.get("observations")
+    origin = _creation_record(records, task_creation_source)
+    if (
+        observations is not None
+        and origin is not None
+        and any(record is origin for record in evidence)
+    ):
+        origin["creation_source"]["observations"] = observations
+    return evidence
+
+
+# The creation source a discovery record of each class is reported as. OTEL and manual
+# entries have no configured source, so never belong to a fetched one.
+_CREATION_SOURCE_TYPES: dict[str, str] = {
+    "cloud": "CLOUD",
+    "endpoint": "ENDPOINT",
+    "siem": "SIEM",
+}
+
+# Address fields that say which record an entry is, most specific last. Never the
+# query, which a source config can have edited since the task was created.
+_IDENTITY_FIELDS = ("instance", "scope", "resource_kind", "resource_id")
+
+
+def _creation_record(
+    evidence: list[dict[str, Any]],
+    task_creation_source: dict[str, Any],
+) -> Optional[dict[str, Any]]:
+    """The evidence record the task was created from, if exactly one can be told.
+
+    First on the whole address but the query, as GenAI Engine matches a stored report
+    to a task's creation source. Then, if nothing matches that closely, on the address
+    instance alone, provided only one record shares it: an entry holds the latest scan's
+    address, and a Jamf record's address is its device's primary route to the agent,
+    which changes when that route is uninstalled though the record does not. An
+    ambiguous match names no record, since observations on the wrong one are worse than
+    none.
+    """
+    for fields in (_IDENTITY_FIELDS, _IDENTITY_FIELDS[:1]):
+        matches = [
+            record
+            for record in evidence
+            if _same_place(record["creation_source"], task_creation_source, fields)
+        ]
+        if matches:
+            return matches[0] if len(matches) == 1 else None
+    return None
+
+
+def _same_place(
+    creation_source: dict[str, Any],
+    task_creation_source: dict[str, Any],
+    fields: tuple[str, ...],
+) -> bool:
+    if creation_source["type"] != task_creation_source.get("type") or creation_source[
+        "vendor"
+    ] != task_creation_source.get("vendor"):
+        return False
+    address = creation_source.get("address") or {}
+    task_address = task_creation_source.get("address") or {}
+    return all(address.get(field) == task_address.get(field) for field in fields)
