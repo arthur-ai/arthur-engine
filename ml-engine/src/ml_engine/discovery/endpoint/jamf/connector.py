@@ -13,12 +13,13 @@ publishes each batch as it arrives, so a scan that dies on page 40 keeps pages 1
 
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Iterator, Mapping, Optional, Sequence
+from typing import Callable, Iterator, Mapping, Optional, Sequence
 
 from arthur_client.api_bindings import DiscoverySourceConfigSpec
 from arthur_common.models.agent_discovery_schemas import DiscoveredAgentRecord
 
 from discovery.catalog import Matcher
+from discovery.endpoint.device import ManagedDevice
 from discovery.endpoint.jamf.client import JamfClient, JamfSettings
 from discovery.endpoint.records import records_for
 from discovery.endpoint.scope import DeviceScope, parse_group_names
@@ -32,19 +33,45 @@ EXCLUDE_GROUPS_FIELD = "exclude_groups"
 
 
 class JamfConnector:
-    """Implements `job_executors.discovery_scan.DiscoverySourceConnector` and
-    `ReportsDeviceCoverage`.
+    """Implements `job_executors.discovery_scan.DiscoverySourceConnector`,
+    `ReportsDeviceCoverage` and `AcceptsStopCheck`.
 
-    Holds one scan's coverage, which is safe only because a connector is built fresh for
-    every scan -- see `DiscoveryConnectorFactory`.
+    Holds one scan's coverage and stop check, which is safe only because a connector is
+    built fresh for every scan -- see `DiscoveryConnectorFactory`.
     """
 
     def __init__(self) -> None:
         self._coverage: Optional[DeviceCoverage] = None
+        self._should_stop: Callable[[], bool] = lambda: False
+        self._stopped_early = False
 
     def device_coverage(self) -> Optional[DeviceCoverage]:
         """None if the scan failed before reading a device, including on its scope."""
         return self._coverage
+
+    def stop_when(self, should_stop: Callable[[], bool]) -> None:
+        """Asked after every device, so a stop never waits on another page.
+
+        This is what bounds a test on a fleet with few agents: Jamf yields only for a
+        device that has records, so without it a scan could page through the whole
+        inventory before the caller saw a single batch or got a chance to stop it.
+        """
+        self._should_stop = should_stop
+
+    def _until_stopped(
+        self,
+        devices: Iterator[ManagedDevice],
+    ) -> Iterator[ManagedDevice]:
+        """`devices`, ending as soon as the stop check answers True.
+
+        Asked after a device is handled and before the next is pulled, because pulling
+        the next is what requests the next page from Jamf.
+        """
+        for device in devices:
+            yield device
+            if self._should_stop():
+                self._stopped_early = True
+                return
 
     def scan(
         self,
@@ -87,7 +114,7 @@ class JamfConnector:
             scope.describe(),
         )
 
-        for device in client.devices_since(_since(lookback_hours)):
+        for device in self._until_stopped(client.devices_since(_since(lookback_hours))):
             # Before the payload is decoded: an out-of-scope device contributes counts
             # and nothing else.
             if not scope.admit(device, coverage):
@@ -99,6 +126,12 @@ class JamfConnector:
             coverage.devices_decoded += 1
             if read.records:
                 yield read.records
+
+        if self._stopped_early:
+            logger.info(
+                "Jamf scan stopped early on request after %s device(s)",
+                coverage.devices_read,
+            )
 
         # The denominator, also on the run outcome as `device_coverage`. Without it, "12
         # machines have agents" cannot be told from "12 of 4,000, and 900 have not
