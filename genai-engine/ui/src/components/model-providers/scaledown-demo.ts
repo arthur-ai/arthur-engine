@@ -4,6 +4,8 @@ import { ModelProvider, ModelProviderResponse, ModelProviderWhitelist, PutModelP
 // (BerriAI/litellm#44168) and arthur-common adds the enum value (arthur-common#228),
 // so the model-provider hooks answer ScaleDown requests from this browser-local store
 // instead of the API. Delete this file and its call sites once the backend supports it.
+//
+// Of the model pickers, only the LLM evaluator form (EvalFormModal) offers ScaleDown.
 
 export const SCALEDOWN: ModelProvider = "scaledown";
 
@@ -62,6 +64,8 @@ export const getScaleDownWhitelist = (): ModelProviderWhitelist => ({
   catalog: CATALOG,
   whitelist: read().whitelist,
 });
+
+export const getScaleDownAvailableModels = (): string[] => read().whitelist ?? CATALOG;
 
 export const setScaleDownWhitelist = async (models: string[] | null) => {
   await settle();

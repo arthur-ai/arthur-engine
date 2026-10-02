@@ -15,7 +15,7 @@ export const providersQueryOptions = ({ api }: { api: Api<unknown> }) =>
     },
     // Appended in select, not queryFn: useModelProviders shares this cache entry and
     // must not offer ScaleDown in model pickers while the backend can't call it.
-    select: (data) => [...data.providers.filter((p) => p.provider !== SCALEDOWN), getScaleDownProvider()],
+    select: (data) => [getScaleDownProvider(), ...data.providers.filter((p) => p.provider !== SCALEDOWN)],
   });
 
 export const useProviders = () => {
