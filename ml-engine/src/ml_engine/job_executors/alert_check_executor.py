@@ -188,13 +188,10 @@ class AlertCheckExecutor:
             f"Submitted compliance policy check job for model {job_spec.scope_model_id} "
             f"(window {job_spec.check_range_start_timestamp} -> {job_spec.check_range_end_timestamp})"
         )
-        # Stamp compliance_job_id on the affected assignment(s) so the FE
-        # chain widget can advance from "alerts done" to "compliance running".
-        # When this chain is bound to a single assignment (the policy/
-        # assignment-level entry points), stamp just that one. When it's a
-        # model-wide chain (POST /models/{id}/check_compliance), fan out to
-        # every assignment on the model — the spawned compliance job will
-        # evaluate each one.
+        # Stamp compliance_job_id on the assignment(s) whose chain this job
+        # heads, so the compliance check progress can advance from "alerts
+        # done" to "compliance running". The alert check of a scheduled run
+        # heads no chain and stamps nothing.
         if spawned.jobs:
             stamp_chain_job_id(
                 policies_client=self.policies_client,
@@ -203,6 +200,8 @@ class AlertCheckExecutor:
                 patch=PolicyAssignmentJobChainPatch(
                     compliance_job_id=spawned.jobs[0].id,
                 ),
+                current_job_id=job.id,
+                previous_stage="alerts_check_job",
             )
 
     def _get_all_alert_rules(self, model_id: str) -> List[AlertRule]:
