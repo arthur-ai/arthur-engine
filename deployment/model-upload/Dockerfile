@@ -66,6 +66,10 @@ RUN python generate_aibom.py \
 # already installed. Without it there is no /usr/lib/*/libexpat.so.1 for the /lib
 # mirror below to copy, so the distroless base's own libexpat survived into the
 # runtime images at 2.5.0-1+deb12u2 while bookworm-security ships u3.
+#
+# Debian fixes only reach these images on a rebuild; an unchanged image is
+# re-tagged on release (see security/README.md). Last rebuilt for libexpat1
+# 2.5.0-1+deb12u4 (CVE-2024-28757, CVE-2026-93990).
 # =============================================================================
 FROM python:3.12-slim-bookworm AS builder
 ARG BACKEND
