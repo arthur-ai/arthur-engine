@@ -4,7 +4,7 @@ import time
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from types import FrameType
-from typing import Dict
+from typing import Any, Dict
 
 import psutil
 from arthur_client.api_bindings import (
@@ -21,6 +21,10 @@ from arthur_client.api_bindings import (
 )
 from arthur_client.api_bindings.exceptions import ApiException
 
+from arthur_client_support import (
+    DEQUEUE_DECLARES_DISCOVERY_SOURCE_TEST,
+    TEST_DISCOVERY_SOURCE_SUPPORTED,
+)
 from health_check import MLEngineHealthCheck as HealthCheck
 from job_runner import JobRunner, ProcessJobRunner, ThreadJobRunner
 from tools.platform_api_client import build_platform_api_client
@@ -104,16 +108,77 @@ class JobAgent:
         try:
             job_run = self.jobs_client.post_dequeue_job(
                 self.data_plane_id,
-                job_dequeue_parameters=JobDequeueParameters(
-                    memory_limit_mb=self.available_memory_mb(),
-                ),
+                job_dequeue_parameters=self._dequeue_parameters(),
             )
             if job_run is not None:
-                job = self.jobs_client.get_job(job_run.job_id)
-                self._start_job(job, job_run)
+                job = self._read_job(job_run)
+                if job is not None:
+                    self._start_job(job, job_run)
         except ApiException as e:
             logger.error(
                 f"Failed to dequeue next job. Received status code, response: {e.status}, {e.body}",
+            )
+
+    def _dequeue_parameters(self) -> JobDequeueParameters:
+        """What this engine can take, including whether it runs Test Connection jobs.
+
+        `discovery_source_test` is sent only when the installed client both has the
+        field and can run the job; otherwise the request is exactly what it was before
+        the field existed. Built from a dict because the pinned client's model does
+        not declare the field, and a keyword it does not know would not type-check.
+        """
+        params: dict[str, Any] = {"memory_limit_mb": self.available_memory_mb()}
+        if TEST_DISCOVERY_SOURCE_SUPPORTED and DEQUEUE_DECLARES_DISCOVERY_SOURCE_TEST:
+            params["discovery_source_test"] = True
+        return JobDequeueParameters(**params)
+
+    def _read_job(self, job_run: JobRun) -> Job | None:
+        """The dequeued run's job, or None once a job this engine cannot read is failed.
+
+        A job the installed arthur-client cannot deserialize -- in practice a job kind
+        newer than this engine, whose spec matches none of the ones it knows -- raises a
+        plain ValueError, not an ApiException. Left to propagate it would end the agent
+        and strand every job it is running, so the one run is failed, with the reason
+        in its log, and the agent carries on.
+        """
+        try:
+            return self.jobs_client.get_job(job_run.job_id)
+        except ApiException:
+            raise
+        except Exception as e:
+            logger.error(
+                f"Could not read job {job_run.job_id} (run {job_run.id}); failing it",
+                exc_info=True,
+            )
+            self._fail_unreadable_job(job_run, e)
+            return None
+
+    def _fail_unreadable_job(self, job_run: JobRun, error: Exception) -> None:
+        """Best effort: a failure to report is logged, never raised into the loop."""
+        # The exception type only: the message of a deserialization failure echoes the
+        # job's whole JSON body back.
+        message = (
+            f"This engine could not read the job ({type(error).__name__}). It is most "
+            f"likely a job kind this engine version does not support; upgrade the "
+            f"engine to run it."
+        )
+        try:
+            self._post_job_log(message, job_run.job_id, job_run.id, JobLogLevel.ERROR)
+        except Exception:
+            logger.error(
+                f"Failed to post the log for unreadable job {job_run.job_id}",
+                exc_info=True,
+            )
+        try:
+            self.jobs_client.put_job_state(
+                job_run.job_id,
+                job_run_id=job_run.id,
+                put_job_state=PutJobState(job_state=JobState.FAILED),
+            )
+        except Exception:
+            logger.error(
+                f"Failed to mark unreadable job {job_run.job_id} as failed",
+                exc_info=True,
             )
 
     def _start_job(self, job: Job, job_run: JobRun) -> None:
@@ -231,8 +296,17 @@ class JobAgent:
             if self.shutting_down:
                 self._terminate_fail_running_jobs()
                 return
-            self.handle()
-            self.check_running_jobs()
+            try:
+                self.handle()
+                self.check_running_jobs()
+            except Exception:
+                # One bad iteration must not end the agent: every job it is running
+                # would stop reporting state until it was re-dequeued. Shutdown is
+                # unaffected -- it is checked above, and a signal only sets a flag.
+                logger.error(
+                    "Unexpected error in the job agent loop; continuing",
+                    exc_info=True,
+                )
             self.health_check.liveness_ping()
 
             counter += 1

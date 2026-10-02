@@ -7,8 +7,13 @@ Two shapes of job arrive here. A job carrying a materialized discovery source co
 it already collected, and then chains a FETCH_DISCOVERED_AGENTS job (D-10) that surfaces
 what it found to the Platform. A job carrying no config is the older GCP data-plane
 sweep, which triggers synchronous polling in GenAI Engine and syncs the enriched agent
-tasks to the Agents API. Both shapes are live until D-14 migrates GCP onto a source
-config.
+tasks to the Agents API.
+
+D-14 moved Vertex AI discovery onto a `gcp_vertex` source config
+(`discovery.cloud.gcp_vertex`). The no-config sweep stays for now: the polling it
+triggers still fetches traces for GCP tasks, and still runs GenAI Engine's
+startup-variable discovery for engines that have not switched it off
+(GENAI_ENGINE_LEGACY_GCP_DISCOVERY_ENABLED). It goes when that discovery phase does.
 """
 
 import logging
@@ -39,8 +44,10 @@ from genai_client import (
 from job_executors.discovery_scan import (
     SOURCE_CONNECTORS,
     DiscoveryConnectorFactory,
+    DiscoveryErrorCode,
     DiscoveryRecordSink,
     DiscoveryScanOutcome,
+    OutcomeReporter,
     UnsupportedDiscoveryVendorError,
     finalize_outcome,
     run_source_scan,
@@ -67,6 +74,7 @@ class DiscoverAgentsExecutor:
         record_sink: Optional[DiscoveryRecordSink] = None,
         connectors: Optional[dict[str, DiscoveryConnectorFactory]] = None,
         jobs_client: Optional[JobsV1Api] = None,
+        run_reporter: Optional[OutcomeReporter] = None,
     ) -> None:
         self.agents_client = agents_client
         self.logger = logger
@@ -75,6 +83,9 @@ class DiscoverAgentsExecutor:
         self.discovery_sources_client = discovery_sources_client
         self.record_sink = record_sink
         self.jobs_client = jobs_client
+        # Delivers each source scan's outcome to the Platform's run store. The legacy
+        # sweep has no source to report on and never uses it.
+        self.run_reporter = run_reporter
         # A copy, so registering a connector on one executor cannot change the registry
         # every other executor in the process reads.
         self.connectors = dict(SOURCE_CONNECTORS if connectors is None else connectors)
@@ -105,7 +116,11 @@ class DiscoverAgentsExecutor:
             config = self._require_source_config(job_spec)
             lookback_hours = self._lookback_hours(job_spec)
         except ValueError as e:
-            self._fail_before_scan(self._unscannable_outcome(job, job_spec), e)
+            self._fail_before_scan(
+                self._unscannable_outcome(job, job_spec),
+                e,
+                DiscoveryErrorCode.INVALID_JOB,
+            )
 
         workspace_id = str(job_spec.workspace_id)
         data_plane_id = str(job_spec.data_plane_id)
@@ -149,6 +164,7 @@ class DiscoverAgentsExecutor:
                     "to publish. The job runner supplies one; an executor built without "
                     "it can scan a source and then discard everything it read.",
                 ),
+                DiscoveryErrorCode.INTERNAL_ERROR,
             )
 
         credentials = self._source_credentials(outcome)
@@ -167,6 +183,7 @@ class DiscoverAgentsExecutor:
                 logger=self.logger,
                 credentials=credentials,
                 source_fields=source_fields,
+                reporter=self.run_reporter,
             )
         except Exception:
             # A failed scan keeps what it published before it failed, and those
@@ -279,6 +296,7 @@ class DiscoverAgentsExecutor:
                     "No discovery sources client is configured; source credentials "
                     "cannot be read.",
                 ),
+                DiscoveryErrorCode.INTERNAL_ERROR,
             )
 
         config_id = outcome.discovery_source_config_id
@@ -291,7 +309,11 @@ class DiscoverAgentsExecutor:
         except Exception as e:
             # Reported without a scrub set: nothing was returned, so there is no
             # credential to take back out, and the failure names only the config.
-            self._fail_before_scan(outcome, e)
+            self._fail_before_scan(
+                outcome,
+                e,
+                DiscoveryErrorCode.CREDENTIALS_UNAVAILABLE,
+            )
 
         register_secrets(self.logger, secret_values(credentials))
         return credentials
@@ -327,13 +349,14 @@ class DiscoverAgentsExecutor:
                     "No discovery sources client is configured; source fields cannot "
                     "be read.",
                 ),
+                DiscoveryErrorCode.INTERNAL_ERROR,
             )
         try:
             source = self.discovery_sources_client.get_discovery_source(
                 str(outcome.discovery_source_id),
             )
         except Exception as e:
-            self._fail_before_scan(outcome, e)
+            self._fail_before_scan(outcome, e, DiscoveryErrorCode.INTERNAL_ERROR)
         return {f.key: f.value for f in (source.fields or [])}
 
     def _unscannable_outcome(
@@ -369,19 +392,23 @@ class DiscoverAgentsExecutor:
         self,
         outcome: DiscoveryScanOutcome,
         error: Exception,
+        error_code: Optional[DiscoveryErrorCode] = None,
     ) -> NoReturn:
         """End a run that failed before the source was ever contacted.
 
         These failures owe the Platform the same outcome record as a scan that got as
         far as the vendor, so they close the run through the shared finalization rather
         than raising straight out and leaving the run unreported.
+
+        `error_code` says which step failed, where the exception alone would read as
+        the vendor's error. An unsupported vendor needs none: its type says so.
         """
-        outcome.record_failure(error)
+        outcome.record_failure(error, error_code=error_code)
         self.logger.error(
             outcome.error,
             extra={"vendor": outcome.vendor},
         )
-        finalize_outcome(outcome, self.logger)
+        finalize_outcome(outcome, self.logger, self.run_reporter)
         raise error
 
     @staticmethod

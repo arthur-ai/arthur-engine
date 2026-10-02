@@ -276,6 +276,50 @@ def test_an_earlier_good_batch_is_kept_when_a_later_one_fails_the_contract() -> 
     assert outcome.output_column_check.outcome is ValidationOutcome.FAIL
 
 
+class RefusingConnector(YieldingConnector):
+    """A SIEM connector that checks the result's columns before building a record,
+    and so raises from inside `scan` instead of yielding a batch to be checked."""
+
+    def scan(
+        self,
+        config: DiscoverySourceConfigSpec,
+        lookback_hours: int,
+        credentials: Mapping[str, Optional[str]],
+        source_fields: Mapping[str, str],
+        logger: logging.Logger,
+    ) -> Iterator[Sequence[object]]:
+        result = check_columns(["external_id", "agentName", "last_seen"])
+        raise OutputContractError(
+            "does not satisfy the discovery output contract",
+            result,
+        )
+        yield from ()  # pragma: no cover -- a generator, as connectors are
+
+
+def test_columns_a_connector_refuses_inside_scan_still_land_on_the_outcome() -> None:
+    """The run owes the per-column verdict whichever side of `scan` refused it."""
+    outcome, sink = _outcome(), RecordingSink()
+    with pytest.raises(OutputContractError):
+        run_source_scan(
+            config=_config(),
+            lookback_hours=1,
+            workspace_id=WORKSPACE_ID,
+            data_plane_id=DATA_PLANE_ID,
+            outcome=outcome,
+            connector=RefusingConnector([]),
+            sink=sink,
+            logger=logging.getLogger("test-output-contract"),
+            credentials={},
+            source_fields={},
+        )
+
+    assert sink.batches == []
+    assert outcome.output_column_check is not None
+    assert outcome.output_column_check.outcome is ValidationOutcome.FAIL
+    assert outcome.output_column_check.missing_columns == ["name"]
+    assert outcome.output_column_check.unmapped_columns == ["agentName"]
+
+
 def test_a_run_of_typed_records_records_a_pass() -> None:
     """A real pass rather than a null, so a run that published records is
     distinguishable from one that never got as far as checking."""

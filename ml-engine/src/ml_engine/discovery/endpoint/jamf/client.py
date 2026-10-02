@@ -147,7 +147,12 @@ class JamfClient:
         if resp.status_code != 200:
             # Deliberately does not echo the body: a failed token call is the one response
             # most likely to quote the request it failed on.
-            raise JamfError(f"Jamf token request failed with HTTP {resp.status_code}")
+            # With its status, so a rejected client secret reads as the credentials
+            # failing rather than as Jamf failing.
+            raise JamfError(
+                f"Jamf token request failed with HTTP {resp.status_code}",
+                status_code=resp.status_code,
+            )
 
         payload = resp.json()
         token = payload.get("access_token")
