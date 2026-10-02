@@ -29,7 +29,9 @@ from job_executors.discover_agents_executor import (
 )
 from job_executors.discovery_scan import (
     SOURCE_CONNECTORS,
+    DiscoveryConfigurationError,
     DiscoveryPublishResult,
+    DiscoveryScanOutcome,
     FailedDiscoveryRecord,
     UnsupportedDiscoveryVendorError,
 )
@@ -247,6 +249,7 @@ def _executor(
     logger: logging.Logger | None = None,
     credentials_client: DiscoverySourcesV1Api | None = None,
     jobs_client: MagicMock | None = None,
+    run_reporter: "RecordingReporter | None" = None,
 ) -> DiscoverAgentsExecutor:
     return DiscoverAgentsExecutor(
         agents_client=MagicMock(),
@@ -257,6 +260,7 @@ def _executor(
         record_sink=sink or RecordingSink(),
         connectors={vendor: lambda: connector} if connector is not None else {},
         jobs_client=jobs_client or MagicMock(),
+        run_reporter=run_reporter,
     )
 
 
@@ -1113,7 +1117,8 @@ def test_the_agents_sync_forwards_each_tasks_provenance() -> None:
 
 
 def test_job_without_a_source_config_runs_the_gcp_sweep() -> None:
-    executor = _executor()
+    reporter = RecordingReporter()
+    executor = _executor(run_reporter=reporter)
     executor._execute_gcp_sweep = MagicMock()  # type: ignore[method-assign]
 
     executor.execute(
@@ -1125,6 +1130,8 @@ def test_job_without_a_source_config_runs_the_gcp_sweep() -> None:
     )
 
     executor._execute_gcp_sweep.assert_called_once()
+    # No source, so nothing for the run store to hold.
+    assert reporter.outcomes == []
 
 
 def _chained_fetches(jobs_client: MagicMock) -> list[tuple[str, PostJobBatch]]:
@@ -1264,3 +1271,117 @@ def _find_outcome(records: list[logging.LogRecord]) -> dict:
         if payload.get("event") == "discovery_scan_outcome":
             return payload
     raise AssertionError("no discovery_scan_outcome was logged")
+
+
+# --- the run store (D-11) ------------------------------------------------------------
+
+
+class RecordingReporter:
+    """Keeps every outcome it is handed, as the run store would receive them."""
+
+    def __init__(self) -> None:
+        self.outcomes: list[DiscoveryScanOutcome] = []
+
+    def report(self, outcome: DiscoveryScanOutcome) -> None:
+        self.outcomes.append(outcome)
+
+
+class VendorHTTPError(RuntimeError):
+    """What an HTTP connector raises: the vendor's answer on `status_code`."""
+
+    def __init__(self, status_code: int) -> None:
+        super().__init__(f"vendor answered HTTP {status_code}")
+        self.status_code = status_code
+
+
+def test_a_finished_scan_reports_one_outcome_to_the_run_store() -> None:
+    reporter = RecordingReporter()
+
+    _executor(FakeConnector([[_record("a")]]), run_reporter=reporter).execute(
+        _job(),
+        _spec(_config()),
+    )
+
+    (outcome,) = reporter.outcomes
+    assert (outcome.error, outcome.error_code, outcome.records_published) == (
+        None,
+        None,
+        1,
+    )
+    assert outcome.finished_at is not None
+
+
+@pytest.mark.parametrize(
+    "executor_args,spec_args,code",
+    [
+        (
+            {"connector": FakeConnector([], raises=VendorHTTPError(401))},
+            {},
+            "authentication_failed",
+        ),
+        (
+            {"connector": FakeConnector([], raises=VendorHTTPError(403))},
+            {},
+            "permission_denied",
+        ),
+        (
+            {"connector": FakeConnector([], raises=VendorHTTPError(500))},
+            {},
+            "provider_error",
+        ),
+        (
+            {
+                "connector": FakeConnector(
+                    [], raises=DiscoveryConfigurationError("no base_url")
+                )
+            },
+            {},
+            "not_configured",
+        ),
+        (
+            {
+                "connector": FakeConnector([[_record("a")]]),
+                "sink": RaisingSink(fail_on_batch=1),
+            },
+            {},
+            "publication_failed",
+        ),
+        ({"connector": FakeConnector([], raises=KeyboardInterrupt())}, {}, "cancelled"),
+        (
+            {"connector": FakeConnector([]), "vendor": "elastic"},
+            {},
+            "unsupported_vendor",
+        ),
+        (
+            {
+                "connector": FakeConnector([]),
+                "credentials_client": _credentials_client(
+                    {"detail": "denied"}, status=403
+                ),
+            },
+            {},
+            "credentials_unavailable",
+        ),
+        ({"connector": FakeConnector([])}, {"config_id": None}, "invalid_job"),
+    ],
+    ids=lambda value: value if isinstance(value, str) else "",
+)
+def test_every_failure_reports_the_code_for_what_failed(
+    executor_args: dict,
+    spec_args: dict,
+    code: str,
+) -> None:
+    """The run store is told a code, never the error text, so the code has to say
+    which step failed: the vendor, its credentials, the publish, or the job itself."""
+    reporter = RecordingReporter()
+
+    with pytest.raises(BaseException):
+        _executor(run_reporter=reporter, **executor_args).execute(
+            _job(),
+            _spec(_config(), **spec_args),
+        )
+
+    (outcome,) = reporter.outcomes
+    assert outcome.error_code is not None
+    assert outcome.error_code.value == code
+    assert outcome.error_count == 1

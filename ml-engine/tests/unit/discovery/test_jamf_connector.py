@@ -363,6 +363,8 @@ def test_a_failed_token_call_does_not_echo_the_response() -> None:
     with pytest.raises(JamfError) as exc:
         list(client_for(fake).devices_since(None))
     assert "hunter2" not in str(exc.value)
+    # What the run reports as the credentials failing, not Jamf.
+    assert exc.value.status_code == 401
 
 
 # --- the connector ------------------------------------------------------------------
@@ -567,6 +569,65 @@ def test_a_scan_that_decodes_nothing_says_so_rather_than_reading_as_a_clean_flee
         records = scan(FakeJamf(devices), monkeypatch)
     assert records == []
     assert "decoded 0 of 2 device(s)" in caplog.text
+
+
+def _agentless_pages(pages: int) -> list[list[dict[str, Any]]]:
+    """A fleet with no discovered agents: Jamf pages on and the connector never yields."""
+    return [
+        [computer(f"m{p}-{i}", None, ident=p * 10 + i + 1) for i in range(2)]
+        for p in range(pages)
+    ]
+
+
+def test_a_stop_check_ends_a_scan_that_never_yields_between_pages(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """What bounds a Test Connection on a fleet with few agents: without the check the
+    connector would walk the whole inventory before the caller could stop it."""
+    fake = FakeJamf(_agentless_pages(10))
+    monkeypatch.setattr(
+        "discovery.endpoint.jamf.connector.JamfClient",
+        lambda s, logger=None: client_for(fake),
+    )
+    asked = {"n": 0}
+
+    def should_stop() -> bool:
+        asked["n"] += 1
+        return asked["n"] >= 3
+
+    connector = JamfConnector()
+    connector.stop_when(should_stop)
+    with caplog.at_level(logging.INFO):
+        batches = list(connector.scan(FakeConfig(CATALOG), 24, CREDS, FIELDS, LOG))  # type: ignore[arg-type]
+
+    assert batches == []
+    # Asked after each device; answered True on the third, the first of page two, so
+    # page three was never requested.
+    assert asked["n"] == 3
+    assert len(fake.gets) == 2
+    coverage = connector.device_coverage()
+    assert coverage is not None and coverage.devices_read == 3
+    assert "stopped early on request after 3 device(s)" in caplog.text
+
+
+def test_without_a_stop_check_a_scan_reads_the_whole_inventory(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A scheduled scan sets no check and must be unchanged by the option existing."""
+    fake = FakeJamf(_agentless_pages(10))
+    with caplog.at_level(logging.INFO):
+        assert scan(fake, monkeypatch) == []
+    # Every page, and the empty one that tells the keyset walk it has reached the end.
+    assert len(fake.gets) == 11
+    assert "stopped early" not in caplog.text
+
+
+def test_the_registered_connector_accepts_a_stop_check() -> None:
+    from job_executors.discovery_scan import AcceptsStopCheck
+
+    assert isinstance(JamfConnector(), AcceptsStopCheck)
 
 
 def test_a_fleet_that_really_has_no_agents_is_not_reported_as_broken(
@@ -1312,6 +1373,41 @@ def test_an_unscoped_scan_still_reports_its_denominator(
         coverage.devices_excluded,
     ) == (2, 2, 1, 1, 0)
     assert coverage.excluded_by_group == {}
+
+
+def test_unreadable_macs_are_counted_by_why(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Each asks for a different fix, so the run says which, not only how many."""
+    other = frame([row("npm", "@openai/codex", ver="0.6.0"), scan_row("apps")])
+    fake = FakeJamf(
+        [
+            [
+                computer("read", full_payload()),
+                computer("silent", None),
+                computer("stale", EnvelopeOutcome.NO_CACHE.value),
+            ],
+            [
+                computer("huge", "ERROR:oversize:300000"),
+                computer("garbled", "arthur1.not-base64!"),
+                computer(
+                    "twice",
+                    full_payload(),
+                    extra_attributes=[{"name": "Second Copy", "values": [other]}],
+                ),
+            ],
+        ],
+    )
+    connector = JamfConnector()
+    scan_scoped(fake, monkeypatch, connector=connector)
+    coverage = connector.device_coverage()
+    assert coverage is not None
+    assert (coverage.devices_decoded, coverage.devices_unreadable) == (1, 5)
+    assert coverage.unreadable_by_reason == {
+        "never-reported": 1,
+        "no-cache": 1,
+        "oversize": 1,
+        "malformed": 1,
+        "conflicting-attributes": 1,
+    }
 
 
 # --- what is never collected ----------------------------------------------------------

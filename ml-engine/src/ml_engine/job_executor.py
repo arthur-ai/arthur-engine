@@ -18,6 +18,7 @@ from arthur_client.api_bindings import (
     DataRetrievalV1Api,
     DatasetsV1Api,
     DiscoverAgentsJobSpec,
+    DiscoveryRunsV1Api,
     DiscoverySourcesV1Api,
     FetchDiscoveredAgentsJobSpec,
     JobKind,
@@ -43,8 +44,14 @@ from arthur_common.models.task_job_specs import (
 from pydantic import StrictBytes
 
 # Imported for its side effect: registering the discovery connectors into
-# SOURCE_CONNECTORS, which DiscoverAgentsExecutor resolves a source's vendor against.
+# SOURCE_CONNECTORS, which DiscoverAgentsExecutor and DiscoverySourceTestExecutor
+# resolve a source's vendor against.
 import discovery  # noqa: F401
+from arthur_client_support import (
+    TEST_DISCOVERY_SOURCE_JOB_KIND,
+    TEST_DISCOVERY_SOURCE_SUPPORTED,
+    TEST_DISCOVERY_SOURCE_UNSUPPORTED_MESSAGE,
+)
 from config import Config
 from job_executors.alert_check_executor import AlertCheckExecutor
 from job_executors.compliance_policy_check_executor import (
@@ -53,6 +60,7 @@ from job_executors.compliance_policy_check_executor import (
 from job_executors.connector_test_executor import ConnectorTestExecutor
 from job_executors.discover_agents_executor import DiscoverAgentsExecutor
 from job_executors.discovery_record_sink import GenAIEngineRecordSink
+from job_executors.discovery_run_reporter import PlatformRunReporter
 from job_executors.fetch_data_executor import FetchDataExecutor
 from job_executors.fetch_discovered_agents_executor import (
     FetchDiscoveredAgentsExecutor,
@@ -76,6 +84,15 @@ from job_executors.task_management_job_executors import (
 from job_log_exporter import ExportContextedLogger, ScopeJobLogExporter
 from tools.connector_constructor import ConnectorConstructor
 from tools.platform_api_client import build_platform_api_client
+
+# Only with a client that has D-12's models: the executor imports them at load, and
+# without this guard a client that predates them would fail every job kind.
+if TEST_DISCOVERY_SOURCE_SUPPORTED:
+    from arthur_client.api_bindings import TestDiscoverySourceJobSpec
+
+    from job_executors.discovery_source_test_executor import (
+        DiscoverySourceTestExecutor,
+    )
 
 logging.basicConfig()
 
@@ -129,6 +146,7 @@ class JobExecutor:
         self.agents_client = AgentsV1Api(client)
         self.data_planes_client = DataPlanesV1Api(client)
         self.discovery_sources_client = DiscoverySourcesV1Api(client)
+        self.discovery_runs_client = DiscoveryRunsV1Api(client)
         self.policies_client = PoliciesV1Api(client)
 
         self.logger: logging.Logger = logging.getLogger(str(uuid4()))
@@ -376,6 +394,14 @@ class JobExecutor:
                                 logger=self.logger,
                             ),
                             jobs_client=self.jobs_client,
+                            # Keyed on this attempt: the run store keeps one outcome
+                            # per attempt, so a retried job reports as a second run.
+                            run_reporter=PlatformRunReporter(
+                                self.discovery_runs_client,
+                                job_id=str(job.id),
+                                job_run_id=str(job_run.id),
+                                logger=self.logger,
+                            ),
                         ).execute(job, job.job_spec.actual_instance)
                     case JobKind.FETCH_DISCOVERED_AGENTS:
                         if not isinstance(
@@ -396,6 +422,27 @@ class JobExecutor:
                             genai_engine_url,
                             genai_engine_api_key,
                         ).execute(job.job_spec.actual_instance)
+                    # Matched by value, not JobKind.TEST_DISCOVERY_SOURCE: a client
+                    # that predates the kind has no such member to look up.
+                    case kind if kind == TEST_DISCOVERY_SOURCE_JOB_KIND:
+                        if not TEST_DISCOVERY_SOURCE_SUPPORTED:
+                            raise NotImplementedError(
+                                TEST_DISCOVERY_SOURCE_UNSUPPORTED_MESSAGE,
+                            )
+                        if not isinstance(
+                            job.job_spec.actual_instance,
+                            TestDiscoverySourceJobSpec,
+                        ):
+                            raise ValueError(
+                                f"Expected TestDiscoverySourceJobSpec type, got {type(job.job_spec.actual_instance)}.",
+                            )
+
+                        # No record sink and no GenAI Engine: a test reports a
+                        # preview to the Platform and publishes nothing.
+                        DiscoverySourceTestExecutor(
+                            self.discovery_sources_client,
+                            self.logger,
+                        ).execute(job, job_run.id, job.job_spec.actual_instance)
                     case JobKind.COMPLIANCE_POLICY_CHECK:
                         if not isinstance(
                             job.job_spec.actual_instance,
