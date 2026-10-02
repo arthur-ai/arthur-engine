@@ -1,5 +1,7 @@
 import { queryOptions, useQuery } from "@tanstack/react-query";
 
+import { getScaleDownProvider, SCALEDOWN } from "../scaledown-demo";
+
 import { useApi } from "@/hooks/useApi";
 import { Api } from "@/lib/api";
 import { queryKeys } from "@/lib/queryKeys";
@@ -11,7 +13,9 @@ export const providersQueryOptions = ({ api }: { api: Api<unknown> }) =>
       const response = await api.api.getModelProvidersApiV1ModelProvidersGet();
       return response.data;
     },
-    select: (data) => data.providers,
+    // Appended in select, not queryFn: useModelProviders shares this cache entry and
+    // must not offer ScaleDown in model pickers while the backend can't call it.
+    select: (data) => [getScaleDownProvider(), ...data.providers.filter((p) => p.provider !== SCALEDOWN)],
   });
 
 export const useProviders = () => {

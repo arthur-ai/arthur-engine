@@ -50,6 +50,9 @@ export const DEFAULT_VALUES = {
     api_base: "",
     api_version: "",
   },
+  scaledown: {
+    api_key: "",
+  },
 };
 
 export const CredentialsSchema = z.object({

@@ -357,6 +357,7 @@ const getProviderDisplayName = (provider: string): string => {
     vertex_ai: "Vertex AI",
     bedrock: "Amazon Bedrock",
     hosted_vllm: "vLLM",
+    scaledown: "ScaleDown",
   };
   return displayNames[provider] || provider.charAt(0).toUpperCase() + provider.slice(1);
 };
@@ -376,6 +377,7 @@ const getProviderIcon = (provider: string) => {
     bedrock: <img src="/logos/model_providers/bedrock-logo.svg" alt="Amazon Bedrock" style={{ width: 20, height: 20 }} />,
     hosted_vllm: <img src="/logos/model_providers/vllm-logo.svg" alt="vLLM" style={{ width: 20, height: 20 }} />,
     azure: <img src="/logos/model_providers/azure-logo.svg" alt="Azure" style={{ width: 20, height: 20 }} />,
+    scaledown: <img src="/logos/model_providers/scaledown-logo.svg" alt="ScaleDown" style={{ width: 20, height: 20 }} />,
   };
   return iconMap[provider] || <SmartToy sx={{ color: "primary.main" }} />;
 };

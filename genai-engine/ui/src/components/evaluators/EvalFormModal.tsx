@@ -19,6 +19,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useEvaluatorTemplates } from "./hooks/useEvaluatorTemplates";
 import { EvalFormModalProps } from "./types";
 
+import { getScaleDownAvailableModels, getScaleDownProvider, SCALEDOWN } from "@/components/model-providers/scaledown-demo";
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
 import type { CreateEvalRequest, Eval, ModelProvider, ModelProviderResponse } from "@/lib/api-client/api-client";
@@ -56,6 +57,7 @@ const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormM
       const providers = data.providers
         .filter((provider: ModelProviderResponse) => provider.enabled)
         .map((provider: ModelProviderResponse) => provider.provider);
+      if (getScaleDownProvider().enabled) providers.push(SCALEDOWN);
       setEnabledProviders(providers);
     } catch (error) {
       console.error("Failed to fetch providers:", error);
@@ -72,6 +74,7 @@ const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormM
 
     // Fetch models for all enabled providers in parallel
     const modelPromises = enabledProviders.map(async (provider) => {
+      if (provider === SCALEDOWN) return { provider, models: getScaleDownAvailableModels() };
       try {
         const response = await apiClient.api.getModelProvidersAvailableModelsApiV1ModelProvidersProviderAvailableModelsGet(provider as ModelProvider);
         return { provider, models: response.data.available_models };
