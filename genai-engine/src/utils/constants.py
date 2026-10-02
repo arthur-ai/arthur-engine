@@ -241,6 +241,12 @@ TELEMETRY_ENABLED_ENV_VAR = "TELEMETRY_ENABLED"
 GENAI_ENGINE_AGENTIC_POLLING_INTERVAL_SECONDS_ENV_VAR = (
     "GENAI_ENGINE_AGENTIC_POLLING_INTERVAL_SECONDS"
 )
+# Set to "false" to stop the polling service from DISCOVERING Vertex AI agents from the
+# GOOGLE_CLOUD_PROJECT startup variables, once a gcp_vertex discovery source scans the
+# project instead (D-14, UP-4986). Trace fetching for GCP tasks is unaffected.
+GENAI_ENGINE_LEGACY_GCP_DISCOVERY_ENABLED_ENV_VAR = (
+    "GENAI_ENGINE_LEGACY_GCP_DISCOVERY_ENABLED"
+)
 GENAI_ENGINE_CHATBOT_MAX_ITERATIONS_ENV_VAR = "GENAI_ENGINE_CHATBOT_MAX_ITERATIONS"
 
 ##################################################################
@@ -465,7 +471,7 @@ MAX_BULK_ADD_TRACES = 25
 
 # System Tasks
 SYNTHETIC_DATASET_TASK_ID = "00000000-da7a-0000-0000-000000000001"
-SYNTHETIC_DATASET_TASK_NAME = "Synthetic Dataset Generation"
+SYNTHETIC_DATASET_TASK_NAME = "__synthetic_dataset_generation__"
 SYNTHETIC_DATA_SYSTEM_PROMPT_NAME = "synthetic-data-system-prompt"
 SYNTHETIC_DATA_INITIAL_USER_PROMPT_NAME = "synthetic-data-initial-user-prompt"
 SYNTHETIC_DATA_CONVERSATION_USER_PROMPT_NAME = "synthetic-data-conversation-user-prompt"

@@ -15,8 +15,11 @@ name: Renovate Auto-Fix
 #      has to pass all 6 required checks on the PR AND on the merge-queue branch
 #      before it can merge. This workflow cannot bypass that.
 #   3. Scope/tool guards: runs only on renovate/* branches, only on CI failure,
-#      a bounded retry budget (default 3 attempts, then it hands off to a human),
-#      and a prompt bounded by invariants rather than a file allowlist. It forbids
+#      a `heavy` label that takes a PR out of scope entirely, a head-SHA dedupe so an
+#      unchanged commit is never attempted twice, a bounded retry budget (default 3
+#      attempts, then it hands off to a human) that counts attempts which FAILED as
+#      well as ones that succeeded — see .github/scripts/autofix_ledger.sh — and a
+#      prompt bounded by invariants rather than a file allowlist. It forbids
 #      weakening checks (the enforced rule set may never shrink), editing .github/
 #      or /renovate.json, and bypassing the 3-day release-age soak. Dependency
 #      constraints MAY be realigned — that is how a half-bumped lockstep family is
@@ -42,6 +45,12 @@ on:
     types: [completed]
 
 permissions: {}
+
+env:
+  # Label a PR with this to take it out of the auto-fix's scope entirely — for an update
+  # no single session can land, such as a framework major that is really a multi-day
+  # migration. Checked before the checkout, so a labelled PR costs nothing.
+  HEAVY_LABEL: heavy
 
 concurrency:
   group: renovate-autofix-${{ github.event.workflow_run.head_branch }}
@@ -110,10 +119,22 @@ jobs:
           fi
           # Defence in depth: confirm the PR really is Renovate-authored before this
           # job ever pushes to it or approves it.
-          AUTHOR=$(gh api "repos/${{ github.repository }}/pulls/$NUM" --jq '.user.login')
+          PR_JSON=$(gh api "repos/${{ github.repository }}/pulls/$NUM")
+          AUTHOR=$(echo "$PR_JSON" | jq -r '.user.login')
           if [ "$AUTHOR" != "renovate[bot]" ]; then
             echo "found=false" >> "$GITHUB_OUTPUT"
             echo "::warning::PR #$NUM author is '$AUTHOR', not renovate[bot]; refusing to act."
+            exit 0
+          fi
+          # A human can take a PR out of scope entirely by labelling it. Checked here,
+          # before the checkout and long before Claude, so a labelled PR costs nothing.
+          # This is the guard that matters most for this repo: Renovate rebases a
+          # long-lived major every time the base branch moves, and each rebase is a new
+          # head, a new CI failure, and another full-cost session on an update that no
+          # single session can land.
+          if [ "$(echo "$PR_JSON" | jq -r --arg L "$HEAVY_LABEL" 'any(.labels[]?; .name == $L)')" = "true" ]; then
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::PR #$NUM is labelled '$HEAVY_LABEL'; not analysing. This update needs a human."
             exit 0
           fi
           echo "number=$NUM" >> "$GITHUB_OUTPUT"
@@ -128,30 +149,26 @@ jobs:
           # Push identity = the Automator App (distinct from the approver below).
           token: ${{ steps.app-token.outputs.token }}
 
-      - name: Retry budget guard
+      - name: Attempt guard (head dedupe + retry budget)
         id: guard
         if: steps.pr.outputs.found == 'true'
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           PR_NUMBER: ${{ steps.pr.outputs.number }}
+        # Two guards, both backed by the attempt ledger in .github/scripts/autofix_ledger.sh:
+        #   - this exact head has not been attempted before (re-running CI on an unchanged
+        #     commit must not buy a second identical session), and
+        #   - the branch has attempts left, counting the ones that FAILED. The old budget
+        #     counted [claude-autofix] commits, which only a successful fix leaves, so a
+        #     decline or a timeout was free. See the script header for what that cost the
+        #     GitLab sibling.
+        # The ledger records the attempt before Claude starts, so a run cancelled or lost
+        # mid-flight still spends it. Reads and writes fail closed.
         run: |
           set -euo pipefail
-          MAX_ATTEMPTS=3
-          # Each Claude fix adds one [claude-autofix] commit, so the count reachable
-          # from HEAD is how many times Claude has already tried on this branch head.
-          # This lets a failed fix be retried (with the new failure logs) up to the
-          # budget, instead of giving up after a single attempt. A Renovate rebase
-          # drops these commits and resets the budget, which is the desired behaviour.
-          ATTEMPTS=$(git log --format=%s | grep -cF '[claude-autofix]' || true)
-          echo "Prior auto-fix attempts on this branch: ${ATTEMPTS}/${MAX_ATTEMPTS}."
-          if [ "$ATTEMPTS" -ge "$MAX_ATTEMPTS" ]; then
-            echo "proceed=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::Reached ${MAX_ATTEMPTS} auto-fix attempts; handing off to a human."
-            gh pr comment "$PR_NUMBER" --repo "${{ github.repository }}" --body \
-              "🤖 Auto-fix gave up after ${MAX_ATTEMPTS} attempts — CI is still failing on this dependency update. It needs a human." || true
-          else
-            echo "proceed=true" >> "$GITHUB_OUTPUT"
-          fi
+          HEAD_SHA=$(git rev-parse HEAD)
+          echo "head_sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"
+          .github/scripts/autofix_ledger.sh guard "$PR_NUMBER" "$HEAD_SHA"
 
       - name: Set up Arthur Engine tracing
         if: steps.guard.outputs.proceed == 'true'
@@ -162,6 +179,7 @@ jobs:
             echo "::warning::Arthur tracer could not be copied; continuing without tracing."
 
       - name: Claude auto-fix (edits + self-verify only; no commit)
+        id: claude
         if: steps.guard.outputs.proceed == 'true'
         # The success marker lives OUTSIDE the repo (in RUNNER_TEMP) so it cannot be
         # committed to the PR branch to forge a "verified" signal.
@@ -363,6 +381,7 @@ jobs:
             broken, unreviewed, or unverified edits.
 
       - name: Commit, push, then approve (minor/patch) or flag (major)
+        id: apply
         if: steps.guard.outputs.proceed == 'true'
         env:
           # Approve as github-actions[bot] — a DIFFERENT identity than the app that
@@ -400,6 +419,7 @@ jobs:
           # this is a non-fast-forward and is rejected — safe, a newer run handles the new head.
           git push "https://x-access-token:${APP_TOKEN}@github.com/${{ github.repository }}.git" \
             "HEAD:$HEAD_BRANCH"
+          echo "pushed=true" >> "$GITHUB_OUTPUT"
 
           # Major-version bumps are labelled 'major' by Renovate. For those we adapt the code
           # so CI passes, but do NOT self-approve — a human must review the major bump. We flag
@@ -449,3 +469,30 @@ jobs:
           if [ "$approved" != "true" ]; then
             echo "::warning::Could not confirm a sticking approval on $FIX_SHA after retries; leaving it for a human to approve."
           fi
+
+      - name: Record attempt outcome
+        # always(): the point of the ledger is to remember attempts that did NOT end well,
+        # so this has to run after a failed, timed-out or cancelled session too. The
+        # attempt itself was already counted by the guard; this only fills in how it ended,
+        # which is what the human-readable half of the ledger reports.
+        if: always() && steps.guard.outputs.proceed == 'true'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+          HEAD_SHA: ${{ steps.guard.outputs.head_sha }}
+          AUTOFIX_MARKER: ${{ runner.temp }}/claude-autofix-success
+        run: |
+          set -euo pipefail
+          if [ "${{ steps.apply.outputs.pushed }}" = "true" ]; then
+            OUTCOME=pushed
+          elif [ "${{ steps.claude.outcome }}" = "cancelled" ]; then
+            OUTCOME=cancelled
+          elif [ "${{ steps.claude.outcome }}" != "success" ]; then
+            OUTCOME=error
+          elif [ ! -f "$AUTOFIX_MARKER" ]; then
+            OUTCOME=declined
+          else
+            OUTCOME=no-changes
+          fi
+          echo "Attempt on ${HEAD_SHA:0:8} ended: $OUTCOME"
+          .github/scripts/autofix_ledger.sh record "$PR_NUMBER" "$HEAD_SHA" "$OUTCOME"
