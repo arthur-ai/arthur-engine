@@ -23,6 +23,8 @@ from typing import Any, Optional
 import requests
 from requests.adapters import HTTPAdapter
 
+from job_executors.discovery_scan import DiscoveryConfigurationError
+
 
 class TLSVerification(str, Enum):
     """How a source's certificate is checked. See the module docstring."""
@@ -40,7 +42,7 @@ def parse_tls_verification(raw: Optional[str], source_label: str) -> TLSVerifica
     try:
         return TLSVerification(value)
     except ValueError:
-        raise ValueError(
+        raise DiscoveryConfigurationError(
             f"{source_label} source's tls_verification is {value!r}; expected one of "
             f"{', '.join(m.value for m in TLSVerification)}.",
         ) from None
@@ -104,14 +106,16 @@ def tls_session(
 ) -> requests.Session:
     """A session that trusts the server the way the source says to."""
     context = ssl.create_default_context()
-    if ca_certificate:
+    # With verification off nothing reads the CA, so one that will not load must not
+    # stop a scan an admin has deliberately set to trust anything.
+    if ca_certificate and mode is not TLSVerification.OFF:
         try:
             context.load_verify_locations(cadata=normalize_pem(ca_certificate))
         except ssl.SSLError as exc:
             # Not chained: an ssl.SSLError is an OSError, and a classifier walking the
             # chain would read a certificate that never loaded as a network failure.
             # Nothing has been sent anywhere yet; this is the source's configuration.
-            raise ValueError(
+            raise DiscoveryConfigurationError(
                 f"{source_label} source's ca_certificate is not a PEM certificate: "
                 f"{exc}",
             ) from None

@@ -28,11 +28,18 @@ from urllib.parse import urljoin
 import requests
 
 from discovery.siem.tls import TLSVerification, tls_session
+from job_executors.discovery_scan import DiscoveryConfigurationError
 
-# Under Test Connection's 120s preview deadline, so a slow query fails as a timeout the
-# test can name instead of outliving the test. One call is the whole scan, so this
-# bounds the query itself.
-REQUEST_TIMEOUT_SECONDS = 90.0
+# (connect, read). requests applies a single number to the connect and to each socket
+# read separately, so one 90s value could let a call run past Test Connection's 120s
+# preview deadline. Elasticsearch writes its answer only once the query has finished,
+# so the read timeout bounds the query itself, and the two together stay under 120s.
+REQUEST_TIMEOUT_SECONDS = (10.0, 90.0)
+
+# Error types of a 400 that is the customer's ES|QL rather than the cluster: a syntax
+# error, an unknown column or function, an unknown index or one the key cannot read.
+# The fix is in the source config's query, not on Elasticsearch's side.
+_QUERY_ERROR_TYPES = frozenset({"parsing_exception", "verification_exception"})
 
 # The quoted text of a `Warning: 299 Elasticsearch-<version>-<hash> "<text>"` header.
 _WARNING_TEXT = re.compile(r'"((?:[^"\\]|\\.)*)"')
@@ -58,7 +65,7 @@ class ElasticSettings:
     api_key: str
     ca_certificate: Optional[str] = None
     tls_verification: TLSVerification = TLSVerification.FULL
-    timeout_seconds: float = REQUEST_TIMEOUT_SECONDS
+    timeout_seconds: tuple[float, float] = REQUEST_TIMEOUT_SECONDS
 
 
 @dataclass(frozen=True)
@@ -133,9 +140,19 @@ class ElasticClient:
             ) from exc
 
         if resp.status_code != 200:
+            kind, reason = _error_of(resp)
+            detail = f"{_reason_suffix(kind, reason)}{_hint(resp.status_code, reason)}"
+            if resp.status_code == 400 and kind in _QUERY_ERROR_TYPES:
+                # The source config's query, so the source is reported as needing a
+                # change rather than as Elasticsearch failing. It carries no
+                # status_code, and its text avoids "HTTP 400", either of which Test
+                # Connection would read as the vendor's error.
+                raise DiscoveryConfigurationError(
+                    f"Elasticsearch rejected the source config's ES|QL (status 400)"
+                    f"{detail}. Correct the query.",
+                )
             raise ElasticError(
-                f"Elastic POST /_query failed with HTTP {resp.status_code}"
-                f"{_reason_suffix(resp)}{_hint(resp)}",
+                f"Elastic POST /_query failed with HTTP {resp.status_code}{detail}",
                 status_code=resp.status_code,
             )
         return _result_from(resp)
@@ -191,16 +208,13 @@ def _error_of(resp: requests.Response) -> tuple[str, str]:
     return str(error.get("type") or ""), str(error.get("reason") or "")
 
 
-def _reason_suffix(resp: requests.Response) -> str:
-    kind, reason = _error_of(resp)
+def _reason_suffix(kind: str, reason: str) -> str:
     if not reason:
         return ""
     return f": {kind}: {reason}" if kind else f": {reason}"
 
 
-def _hint(resp: requests.Response) -> str:
-    _, reason = _error_of(resp)
-    status = resp.status_code
+def _hint(status: int, reason: str) -> str:
     if status == 401:
         return (
             ". The API key was rejected: it may be expired or invalidated, or not an "

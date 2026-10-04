@@ -17,6 +17,7 @@ log, never published as though it were complete.
 
 import base64
 import logging
+import re
 from typing import Callable, Iterator, Mapping, Optional, Sequence
 from urllib.parse import urlsplit
 
@@ -30,6 +31,7 @@ from discovery.siem.elastic_security.client import (
 )
 from discovery.siem.records import records_from_rows, require_contract_columns
 from discovery.siem.tls import parse_tls_verification
+from job_executors.discovery_scan import DiscoveryConfigurationError
 
 VENDOR = "elastic_security"
 
@@ -49,6 +51,12 @@ _DEFAULT_LIMIT_WARNING = "No limit defined, adding default limit of"
 # What ES|QL names the one column of a query whose FROM matched no index.
 _NO_FIELDS_COLUMN = "<no-fields>"
 
+# A bracketed or quoted span of an Elasticsearch warning. Evaluation warnings quote the
+# value that failed -- `failed to parse date field [alice@corp.com]` -- and a job log is
+# not where a customer's log data should be copied to, as `discovery.siem.records`
+# says of row values.
+_QUOTED_SPAN = re.compile(r"\[[^\]]*\]|'[^']*'|\"[^\"]*\"")
+
 # Records per published batch. The rows have all arrived already; this only bounds how
 # much one failed publish costs.
 BATCH_SIZE = 500
@@ -61,8 +69,8 @@ def _default_client(settings: ElasticSettings, logger: logging.Logger) -> Elasti
 
 
 class ElasticSecurityConnector:
-    """Implements `job_executors.discovery_scan.DiscoverySourceConnector`, and accepts a
-    stop check the way `AcceptsStopCheck` describes.
+    """Implements `job_executors.discovery_scan.DiscoverySourceConnector` and
+    `AcceptsStopCheck`.
 
     Holds one scan's stop check, which is safe only because a connector is built fresh
     for every scan -- see `DiscoveryConnectorFactory`.
@@ -104,7 +112,7 @@ class ElasticSecurityConnector:
         result = client.query(query, lookback_hours if lookback_hours > 0 else None)
         for warning in result.warnings:
             if not warning.startswith(_DEFAULT_LIMIT_WARNING):
-                logger.warning("Elasticsearch warned: %s", warning)
+                logger.warning("Elasticsearch warned: %s", _redacted(warning))
 
         if not result.rows and _NO_FIELDS_COLUMN in result.columns:
             logger.warning(
@@ -122,19 +130,22 @@ class ElasticSecurityConnector:
             query=query,
             logger=logger,
         )
-        published = 0
+        # Reported before the first batch is handed over, so a publish that fails part
+        # way cannot leave a capped or partial answer unannounced.
+        _report(logger, result, len(records), lookback_hours > 0)
         for start in range(0, len(records), BATCH_SIZE):
-            batch = records[start : start + BATCH_SIZE]
-            published += len(batch)
-            yield batch
-
-        _report(logger, result, published)
+            yield records[start : start + BATCH_SIZE]
 
 
-def _report(logger: logging.Logger, result: EsqlResult, published: int) -> None:
+def _report(
+    logger: logging.Logger,
+    result: EsqlResult,
+    records: int,
+    lookback_applied: bool,
+) -> None:
     """Say how complete the answer is. A partial answer must not read as a full one."""
     rows = len(result.rows)
-    logger.info("Elastic query returned %s row(s), %s record(s)", rows, published)
+    logger.info("Elastic query returned %s row(s), %s record(s)", rows, records)
 
     # TODO(UP-4990): report a capped result on the scan outcome, not only the job log,
     # once the framework has a way for a connector to say so. Splunk and Google SecOps
@@ -161,9 +172,20 @@ def _report(logger: logging.Logger, result: EsqlResult, published: int) -> None:
         )
     if rows == 0:
         logger.warning(
-            "Elastic query returned no rows. If agents are expected, check the lookback, "
-            "the index pattern, and that the API key has 'read' on those indices.",
+            "Elastic query returned no rows. If agents are expected, check the index "
+            "pattern, that the API key has 'read' on those indices%s.",
+            (
+                ", and that the indices keep their event time in @timestamp, which the "
+                "lookback filters on"
+                if lookback_applied
+                else ""
+            ),
         )
+
+
+def _redacted(warning: str) -> str:
+    """An Elasticsearch warning with the values it quotes taken out."""
+    return _QUOTED_SPAN.sub("[...]", warning)
 
 
 def esql_text(query: Optional[str]) -> str:
@@ -174,12 +196,12 @@ def esql_text(query: Optional[str]) -> str:
     """
     text = (query or "").strip()
     if not text:
-        raise ValueError(
+        raise DiscoveryConfigurationError(
             "Elastic source config has no query. It needs ES|QL whose results carry "
             "external_id, name and last_seen.",
         )
     if text.startswith("{"):
-        raise ValueError(
+        raise DiscoveryConfigurationError(
             "Elastic source config's query is Query DSL. Elastic sources take ES|QL "
             "(Elasticsearch 8.14 or later), because only ES|QL can name its output "
             "columns -- with STATS ... BY, EVAL, RENAME and KEEP -- and the result must "
@@ -204,14 +226,14 @@ def settings_from(
         if not v
     ]
     if missing:
-        raise ValueError(
+        raise DiscoveryConfigurationError(
             f"Elastic source is missing required field(s): {', '.join(missing)}. "
             f"elasticsearch_url is a source field; api_key is a secret.",
         )
     if not url.lower().startswith("https://"):
         # The key travels in a header. Over http it is in cleartext, and this is the
         # only place it can be refused before it is sent.
-        raise ValueError(
+        raise DiscoveryConfigurationError(
             f"Elastic elasticsearch_url must be https, got "
             f"{url.split('://', 1)[0] or url!r}. The API key travels in a request header.",
         )
@@ -239,11 +261,19 @@ def _encoded(api_key: str) -> str:
 
 
 def _instance(url: str) -> str:
-    """host:port, so two clusters behind one hostname stay distinct.
+    """The cluster as one stable string: host, a port other than 443, and any path.
 
+    The same cluster written with and without its default port is one instance, and
+    two clusters routed by path behind one gateway (`https://gw.corp/es-prod`,
+    `/es-dev`) are two. An IPv6 host keeps its brackets so the port stays readable.
     Built from the parsed host rather than taken as the netloc, which would carry any
     `user:password@` written into the URL onto every record.
     """
     parts = urlsplit(url)
-    host = parts.hostname or url
-    return f"{host}:{parts.port}" if parts.port else host
+    host = (parts.hostname or url).lower()
+    if ":" in host:
+        host = f"[{host}]"
+    if parts.port and parts.port != 443:
+        host = f"{host}:{parts.port}"
+    path = parts.path.rstrip("/")
+    return f"{host}{path}"

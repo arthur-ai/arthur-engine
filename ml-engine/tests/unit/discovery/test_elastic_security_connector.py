@@ -41,7 +41,13 @@ from discovery.siem.tls import (
     tls_session,
 )
 from job_executors.discovery_output_contract import OutputContractError, check_batch
-from job_executors.discovery_scan import SOURCE_CONNECTORS
+from job_executors.discovery_scan import (
+    SOURCE_CONNECTORS,
+    AcceptsStopCheck,
+    DiscoveryConfigurationError,
+    DiscoveryErrorCode,
+    failure_code,
+)
 
 LOG = logging.getLogger("test.elastic")
 API_KEY = "QnIzRzlLQUJyTkRXZy12T2lwTVk6c2VjcmV0LXZhbHVl"
@@ -187,7 +193,9 @@ def test_the_key_is_sent_as_an_api_key_header_and_redirects_are_refused() -> Non
     call = session.calls[0]
     assert call["headers"]["Authorization"] == f"ApiKey {API_KEY}"
     assert call["allow_redirects"] is False
-    assert call["timeout"] < 120
+    connect, read = call["timeout"]
+    # Each applies on its own, so together they must fit Test Connection's 120s.
+    assert connect + read < 120
 
 
 def test_a_url_with_a_path_keeps_it() -> None:
@@ -214,6 +222,22 @@ def test_a_record_carries_the_cluster_and_the_query_in_its_provenance() -> None:
     assert source.address.instance == "es.example.com:9243"
     assert source.address.query == QUERY
     assert source.address.resource_id == record.external_id
+
+
+@pytest.mark.parametrize(
+    "url, instance",
+    [
+        ("https://es.corp", "es.corp"),
+        ("https://es.corp:443/", "es.corp"),
+        ("https://ES.corp:9243", "es.corp:9243"),
+        ("https://gw.corp/es-prod/", "gw.corp/es-prod"),
+        ("https://gw.corp/es-dev", "gw.corp/es-dev"),
+        ("https://[::1]:9200", "[::1]:9200"),
+    ],
+)
+def test_one_cluster_is_one_instance_and_two_are_two(url: str, instance: str) -> None:
+    record, *_ = scan(FakeSession(), fields={"elasticsearch_url": url})
+    assert record.creation_source.address.instance == instance
 
 
 def test_the_instance_never_carries_credentials_written_into_the_url() -> None:
@@ -300,7 +324,21 @@ def test_other_elasticsearch_warnings_reach_the_job_log(
     )
     with caplog.at_level(logging.WARNING, logger=LOG.name):
         scan(FakeSession(ok(warning=warning)))
-    assert "evaluation of [MAX(x)] failed" in caplog.text
+    assert "evaluation of [...] failed" in caplog.text
+
+
+def test_values_quoted_in_an_elasticsearch_warning_stay_out_of_the_job_log(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    warning = (
+        '299 Elasticsearch-9.5.4 "Line 1:20: java.lang.IllegalArgumentException: '
+        "failed to parse date field [alice@corp.com] with format 'iso8601'\""
+    )
+    with caplog.at_level(logging.WARNING, logger=LOG.name):
+        scan(FakeSession(ok(warning=warning)))
+    assert "failed to parse date field" in caplog.text
+    assert "alice@corp.com" not in caplog.text
+    assert "iso8601" not in caplog.text
 
 
 def test_a_query_matching_no_index_reports_it_rather_than_failing_the_contract(
@@ -318,6 +356,28 @@ def test_zero_rows_names_the_likely_causes(caplog: pytest.LogCaptureFixture) -> 
     with caplog.at_level(logging.WARNING, logger=LOG.name):
         assert scan(FakeSession(ok(rows=[]))) == []
     assert "'read' on those indices" in caplog.text
+    # A lookback filters on @timestamp; an index keeping its time elsewhere reads empty.
+    assert "@timestamp" in caplog.text
+
+
+def test_zero_rows_without_a_lookback_does_not_blame_timestamp(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    with caplog.at_level(logging.WARNING, logger=LOG.name):
+        assert scan(FakeSession(ok(rows=[])), lookback_hours=0) == []
+    assert "@timestamp" not in caplog.text
+
+
+def test_a_capped_answer_is_reported_before_the_first_batch_is_handed_over(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    # The sink can fail on the first publish; the warning must already be in the log.
+    batches = connector_with(
+        FakeSession(ok(rows=values(1000), warning=NO_LIMIT_WARNING))
+    ).scan(config(), 24, CREDS, FIELDS, LOG)
+    with caplog.at_level(logging.WARNING, logger=LOG.name):
+        next(batches)
+    assert "no LIMIT and returned 1000 rows" in caplog.text
 
 
 def test_warnings_are_read_from_a_joined_header() -> None:
@@ -329,6 +389,10 @@ def test_warnings_are_read_from_a_joined_header() -> None:
 
 
 # -- stopping ------------------------------------------------------------------------
+
+
+def test_the_connector_accepts_a_stop_check() -> None:
+    assert isinstance(ElasticSecurityConnector(), AcceptsStopCheck)
 
 
 def test_a_stop_before_the_query_sends_nothing() -> None:
@@ -344,14 +408,14 @@ def test_a_stop_before_the_query_sends_nothing() -> None:
 
 def test_query_dsl_is_refused_before_anything_is_sent() -> None:
     session = FakeSession()
-    with pytest.raises(ValueError, match="Query DSL"):
+    with pytest.raises(DiscoveryConfigurationError, match="Query DSL"):
         scan(session, query='{"query": {"match_all": {}}}')
     assert session.calls == []
 
 
 @pytest.mark.parametrize("query", [None, "", "   "])
 def test_a_missing_query_is_named(query: Optional[str]) -> None:
-    with pytest.raises(ValueError, match="no query"):
+    with pytest.raises(DiscoveryConfigurationError, match="no query"):
         esql_text(query)
 
 
@@ -363,14 +427,14 @@ def test_esql_is_passed_through_stripped() -> None:
 
 
 def test_missing_fields_are_named() -> None:
-    with pytest.raises(ValueError) as exc:
+    with pytest.raises(DiscoveryConfigurationError) as exc:
         settings_from({}, {})
     assert "elasticsearch_url" in str(exc.value) and "api_key" in str(exc.value)
 
 
 def test_http_is_refused_before_the_key_is_sent() -> None:
     session = FakeSession()
-    with pytest.raises(ValueError, match="must be https"):
+    with pytest.raises(DiscoveryConfigurationError, match="must be https"):
         scan(session, fields={"elasticsearch_url": "http://es.example.com:9200"})
     assert session.calls == []
 
@@ -429,11 +493,60 @@ def test_an_unknown_index_names_both_causes() -> None:
     session = FakeSession(
         error(400, "verification_exception", "Unknown index [secret-hr]")
     )
-    with pytest.raises(ElasticError) as exc:
+    with pytest.raises(DiscoveryConfigurationError) as exc:
         scan(session)
-    assert exc.value.status_code == 400
     assert "Unknown index [secret-hr]" in str(exc.value)
     assert "lacks 'read'" in str(exc.value)
+
+
+@pytest.mark.parametrize(
+    "kind, reason",
+    [
+        ("parsing_exception", "line 1:20: mismatched input '<EOF>'"),
+        (
+            "verification_exception",
+            "Found 1 problem\nline 1:20: Unknown column [hostname]",
+        ),
+        ("verification_exception", "Unknown index [secret-hr]"),
+    ],
+)
+def test_es_ql_elasticsearch_rejects_is_the_source_configs_to_fix(
+    kind: str, reason: str
+) -> None:
+    with pytest.raises(DiscoveryConfigurationError) as exc:
+        scan(FakeSession(error(400, kind, reason)))
+    assert f"{kind}: {reason}" in str(exc.value)
+    # Not the vendor's fault on a scheduled scan, and no status for Test Connection
+    # to read as one.
+    assert failure_code(exc.value) is DiscoveryErrorCode.NOT_CONFIGURED
+    assert getattr(exc.value, "status_code", None) is None
+    assert exc.value.__cause__ is None
+    # Test Connection also reads a status out of the message text ("HTTP 400").
+    assert "HTTP" not in str(exc.value)
+
+
+def test_any_other_400_stays_the_vendors_error() -> None:
+    with pytest.raises(ElasticError) as exc:
+        scan(FakeSession(error(400, "illegal_argument_exception", "something else")))
+    assert exc.value.status_code == 400
+    assert failure_code(exc.value) is DiscoveryErrorCode.PROVIDER_ERROR
+
+
+@pytest.mark.parametrize(
+    "query, fields",
+    [
+        ('{"query": {"match_all": {}}}', None),
+        ("", None),
+        (None, {}),
+        (None, {"elasticsearch_url": "http://es.example.com:9200"}),
+    ],
+)
+def test_a_configuration_mistake_is_reported_as_not_configured(
+    query: Optional[str], fields: Optional[dict[str, str]]
+) -> None:
+    with pytest.raises(DiscoveryConfigurationError) as exc:
+        scan(FakeSession(), query=QUERY if query is None else query, fields=fields)
+    assert failure_code(exc.value) is DiscoveryErrorCode.NOT_CONFIGURED
 
 
 def test_a_tls_failure_points_at_the_tls_fields() -> None:
@@ -583,9 +696,8 @@ def test_responses_captured_from_elasticsearch_9_5_parse(
         assert scan(FakeSession(FakeResponse(200, CAPTURED_NO_FIELDS))) == []
     assert "matched no index" in caplog.text
 
-    with pytest.raises(ElasticError) as unknown:
+    with pytest.raises(DiscoveryConfigurationError) as unknown:
         scan(FakeSession(FakeResponse(400, CAPTURED_UNKNOWN_INDEX)))
-    assert unknown.value.status_code == 400
     assert "verification_exception: Unknown index [secret-hr]" in str(unknown.value)
 
     with pytest.raises(ElasticError) as bad_key:
@@ -674,3 +786,16 @@ def _a_ca_pem() -> str:
         .sign(key, hashes.SHA256())
     )
     return cert.public_bytes(serialization.Encoding.PEM).decode()
+
+
+def test_a_ca_that_will_not_load_is_a_configuration_error() -> None:
+    settings = settings_from(CREDS, {**FIELDS, "ca_certificate": "not a certificate"})
+    with pytest.raises(DiscoveryConfigurationError) as caught:
+        ElasticClient(settings)
+    assert failure_code(caught.value) is DiscoveryErrorCode.NOT_CONFIGURED
+
+
+def test_tls_off_does_not_load_the_ca_so_scanning_can_go_on() -> None:
+    # An admin whose pasted CA won't load can turn verification off meanwhile.
+    session = tls_session("not a certificate", TLSVerification.OFF, "Elastic")
+    assert session.verify is False
