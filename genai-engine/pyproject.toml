@@ -11,16 +11,16 @@ dependencies = [
   # edited this pin without relocking, so uv.lock kept 2.54.0 and `uv lock` could not
   # re-resolve at all. Raise this only once litellm supports openai v3.
   "openai==2.54.0",
-  "fastapi==0.141.1",
-  "uvicorn==0.53.0",
+  "fastapi==0.142.2",
+  "uvicorn==0.54.0",
   "pydantic==2.13.5",
-  "sse-starlette==3.4.11",
+  "sse-starlette==3.5.0",
   "fastapi-sqlalchemy==0.2.1",
   "alembic==1.20.0",
-  "boto3==1.43.98",
+  "boto3==1.43.106",
   "python-dotenv==1.2.3",
   "psycopg2-binary==2.9.13",
-  "sqlalchemy==2.0.54",
+  "sqlalchemy==2.1.1",
   "pgvector==0.5.0",
   "python-multipart==0.0.32",
   "pypdf==6.19.0",
@@ -30,11 +30,11 @@ dependencies = [
   "transformers==5.13.1",
   "authlib==1.8.0",
   "requests==2.34.2",
-  "starlette==1.6.0",
-  "pyjwt==2.15.0",
-  "azure-storage-blob==12.30.2",
+  "starlette==1.7.0",
+  "pyjwt==2.15.1",
+  "azure-storage-blob==12.31.0",
   "itsdangerous==2.2.0",
-  "newrelic==13.5.0",
+  "newrelic==13.6.1",
   # Held below 8.8.0: opentelemetry-api 1.39.1 (via opentelemetry-semantic-conventions
   # 0.60b1) requires importlib-metadata>=6.0,<8.8.0. See the importlib-metadata rule
   # in /renovate.json. Raise once the pinned OpenTelemetry stack widens its ceiling.
@@ -67,7 +67,7 @@ dependencies = [
   "langchain-community==0.4.2",
   "langchain-openai==1.5.2",
   "langsmith==0.11.1",
-  "msgpack==1.2.2",
+  "msgpack==1.2.3",
   "cloudpickle==3.1.2",
   "amplitude-analytics>=1.1.5,<2",
   "sentencepiece==0.2.2",
@@ -75,14 +75,14 @@ dependencies = [
   "openinference-semantic-conventions>=0.1.12,<0.2",
   "litellm==1.102.1",
   "jinja2>=3.1.6,<4",
-  "python-benedict>=0.38,<0.39",
+  "python-benedict>=0.39,<0.40",
   "weaviate-client>=4.17.0,<5",
   "arthur-common==2.4.86",
   "google-auth>=2.48.0,<3",
   "google-cloud-aiplatform>=1.38",
   "google-cloud-trace>=1.11.0,<2",
   "opentelemetry-semantic-conventions>=0.60b1,<0.61",
-  "arthur-client==1.4.2683",
+  "arthur-client==1.4.2774",
 ]
 
 [project.scripts]

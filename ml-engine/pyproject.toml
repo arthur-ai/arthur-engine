@@ -25,7 +25,7 @@ dependencies = [
   "s3fs==2026.9.0",
   "simple-settings==1.2.0",
   "httpx==0.28.1",
-  "duckdb==1.5.5",
+  "duckdb==1.5.6",
   "fsspec==2026.9.0",
   "datasketches==5.2.0",
   "numpy==2.3.2",
@@ -36,11 +36,11 @@ dependencies = [
   "pyarrow==25.0.1",
   "arthur-common==2.4.86",
   "gunicorn>=26,<27",
-  "sqlalchemy==2.0.54",
+  "sqlalchemy==2.1.1",
   "snowflake-sqlalchemy==1.11.1",
   "databricks-sqlalchemy>=2.0,<3",
   "databricks-sdk>=0.84.0,<1",
-  "arthur-client==1.4.2759",
+  "arthur-client==1.4.2774",
 ]
 
 [dependency-groups]
