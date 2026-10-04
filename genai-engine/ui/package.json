@@ -5,7 +5,7 @@
   "type": "module",
   "packageManager": "yarn@4.18.1",
   "resolutions": {
-    "@arizeai/openinference-semantic-conventions": "2.12.0",
+    "@arizeai/openinference-semantic-conventions": "2.13.0",
     "pdfjs-dist": "6.3.289"
   },
   "scripts": {
@@ -26,7 +26,7 @@
     "@amplitude/analytics-browser": "2.47.2",
     "@amplitude/experiment-js-client": "^1.21.1",
     "@amplitude/plugin-session-replay-browser": "^1.33.6",
-    "@arizeai/openinference-semantic-conventions": "2.12.0",
+    "@arizeai/openinference-semantic-conventions": "2.13.0",
     "@arthur/shared-components": "^3.23.3",
     "@base-ui/react": "1.8.0",
     "@dnd-kit/core": "6.3.1",
@@ -91,7 +91,7 @@
     "eslint-plugin-import-x": "4.17.1",
     "eslint-plugin-react-hooks": "7.1.1",
     "eslint-plugin-react-refresh": "0.5.7",
-    "globals": "17.12.0",
+    "globals": "17.13.0",
     "jsdom": "^30.0.0",
     "prettier": "3.9.9",
     "swagger-typescript-api": "^13.12.6",
