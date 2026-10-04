@@ -199,8 +199,7 @@ jobs:
                 "UserPromptSubmit": [{"matcher": "", "hooks": [{"type": "command", "command": "T=\"${{ runner.temp }}/claude_code_tracer.py\"; [ -f \"$T\" ] && python3 \"$T\" user_prompt_submit; true"}]}],
                 "PreToolUse": [{"matcher": "", "hooks": [{"type": "command", "command": "T=\"${{ runner.temp }}/claude_code_tracer.py\"; [ -f \"$T\" ] && python3 \"$T\" pre_tool; true"}]}],
                 "PostToolUse": [{"matcher": "", "hooks": [{"type": "command", "command": "T=\"${{ runner.temp }}/claude_code_tracer.py\"; [ -f \"$T\" ] && python3 \"$T\" post_tool; true"}]}],
-                "PostToolUseFailure": [{"matcher": "", "hooks": [{"type": "command", "command": "T=\"${{ runner.temp }}/claude_code_tracer.py\"; [ -f \"$T\" ] && python3 \"$T\" post_tool_failure; true"}]}],
-                "Stop": [{"matcher": "", "hooks": [{"type": "command", "command": "T=\"${{ runner.temp }}/claude_code_tracer.py\"; [ -f \"$T\" ] && python3 \"$T\" stop; true"}]}]
+                "PostToolUseFailure": [{"matcher": "", "hooks": [{"type": "command", "command": "T=\"${{ runner.temp }}/claude_code_tracer.py\"; [ -f \"$T\" ] && python3 \"$T\" post_tool_failure; true"}]}]
               }
             }
           # Allow the action to run even though the PR was authored by a bot.
@@ -379,6 +378,27 @@ jobs:
             invariants hold, verified, self-reviewed, and review findings addressed". The change still goes
             through the full CI + merge queue (and an independent Claude review) before merging. Never leave
             broken, unreviewed, or unverified edits.
+
+      # Finalize once the Action has written its Agent SDK execution log. A Stop
+      # hook would close and delete the trace state before this file is available.
+      - name: Finalize Arthur Engine trace
+        if: always() && steps.guard.outputs.proceed == 'true'
+        env:
+          USER: renovate-autofix-pr-${{ steps.pr.outputs.number }}
+          GENAI_ENGINE_API_KEY: ${{ secrets.GENAI_ENGINE_API_KEY }}
+          GENAI_ENGINE_TASK_ID: ${{ vars.GENAI_ENGINE_TASK_ID }}
+          GENAI_ENGINE_TRACE_ENDPOINT: ${{ vars.GENAI_ENGINE_TRACE_ENDPOINT }}
+          CLAUDE_SESSION_ID: ${{ steps.claude.outputs.session_id }}
+          CLAUDE_EXECUTION_FILE: ${{ steps.claude.outputs.execution_file }}
+        run: |
+          T="$RUNNER_TEMP/claude_code_tracer.py"
+          if { [ -n "$CLAUDE_SESSION_ID" ] || [ -f "$CLAUDE_EXECUTION_FILE" ]; } && [ -f "$T" ]; then
+            jq -cn \
+              --arg session_id "$CLAUDE_SESSION_ID" \
+              --arg execution_file "$CLAUDE_EXECUTION_FILE" \
+              '{session_id: $session_id, execution_file: $execution_file}' | \
+              timeout 120s python3 "$T" stop || true
+          fi
 
       - name: Commit, push, then approve (minor/patch) or flag (major)
         id: apply

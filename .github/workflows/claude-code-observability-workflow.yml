@@ -16,8 +16,8 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install pytest
-        run: pip install pytest
+      - name: Install test dependencies
+        run: pip install pytest -r integrations/claude-code-observability/requirements.txt
 
       - name: Run tests
         run: python3 -m pytest integrations/claude-code-observability/test_tracer.py -v
