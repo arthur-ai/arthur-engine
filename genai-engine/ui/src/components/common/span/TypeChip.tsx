@@ -38,4 +38,5 @@ const TYPE_COLORS = {
   [OpenInferenceSpanKind.GUARDRAIL]: "error",
   [OpenInferenceSpanKind.EVALUATOR]: "info",
   [OpenInferenceSpanKind.PROMPT]: "secondary",
+  [OpenInferenceSpanKind.DECISION]: "info",
 } as const;
