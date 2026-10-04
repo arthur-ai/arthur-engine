@@ -424,10 +424,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@arizeai/openinference-semantic-conventions@npm:2.12.0":
-  version: 2.12.0
-  resolution: "@arizeai/openinference-semantic-conventions@npm:2.12.0"
-  checksum: 10c0/e01b00f08a397f8560da7f045ff0151c37f111b444ef6a509efac92b2280594c78a9d7fdddc5a26dcd3c615e73a25ef34db4252ca883b79de5364f4d3d2135d6
+"@arizeai/openinference-semantic-conventions@npm:2.13.0":
+  version: 2.13.0
+  resolution: "@arizeai/openinference-semantic-conventions@npm:2.13.0"
+  checksum: 10c0/12936cf3b5b619b61dfe2fc25ec26a75d679141a385969c39601e53042b852dc3b3581fee15e1f03771cfd3a0e07fb012a7082765d6d51d898f66199384ab697
   languageName: node
   linkType: hard
 
@@ -5258,10 +5258,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"globals@npm:17.12.0":
-  version: 17.12.0
-  resolution: "globals@npm:17.12.0"
-  checksum: 10c0/8325cf8818c848871d17c32974c2c74e9c5f09c1b0e04421886f64f21e77c3e95f3ba25586743895a73acd860ada151132481d87d44a1f12993ae7758a694d03
+"globals@npm:17.13.0":
+  version: 17.13.0
+  resolution: "globals@npm:17.13.0"
+  checksum: 10c0/8371d9e4e5581640141b5cce70a098edd765d2e3ab063b14998e590698071e0afb4a4a6739ccfbdcbdeb2565c5553697ba07d95703c51039912cf341a7dba7a7
   languageName: node
   linkType: hard
 
@@ -8801,7 +8801,7 @@ __metadata:
     "@amplitude/analytics-browser": "npm:2.47.2"
     "@amplitude/experiment-js-client": "npm:^1.21.1"
     "@amplitude/plugin-session-replay-browser": "npm:^1.33.6"
-    "@arizeai/openinference-semantic-conventions": "npm:2.12.0"
+    "@arizeai/openinference-semantic-conventions": "npm:2.13.0"
     "@arthur/shared-components": "npm:^3.23.3"
     "@base-ui/react": "npm:1.8.0"
     "@dnd-kit/core": "npm:6.3.1"
@@ -8840,7 +8840,7 @@ __metadata:
     eslint-plugin-import-x: "npm:4.17.1"
     eslint-plugin-react-hooks: "npm:7.1.1"
     eslint-plugin-react-refresh: "npm:0.5.7"
-    globals: "npm:17.12.0"
+    globals: "npm:17.13.0"
     html-to-image: "npm:^1.11.13"
     jsdom: "npm:^30.0.0"
     material-react-table: "npm:3.2.1"
