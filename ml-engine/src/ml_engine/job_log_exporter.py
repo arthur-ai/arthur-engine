@@ -13,7 +13,15 @@ from arthur_client.api_bindings import (
     JobsV1Api,
 )
 
+from log_redaction import SecretRedactingFilter
+
 logger = logging.getLogger(__name__)
+
+# Pass as a log call's `extra` to record an ERROR line as one of the job's errors as
+# well as a log line. For a failure with no exception to carry: an agent the Agents API
+# rejected while the rest of its batch landed does not fail the job, and without this
+# would show up only in the log, not in the errors a scan's status counts.
+REPORT_AS_JOB_ERROR = {"report_as_job_error": True}
 
 logging_to_scope_levels = {
     logging.DEBUG: JobLogLevel.DEBUG,
@@ -29,13 +37,17 @@ class ScopeJobLogExporter(logging.Handler):
         self.job_id = job_id
         self.job_run_id = job_run_id
         self.job_client = jobs_client
+        # Installed on the job's logger by ExportContextedLogger; held here too so the
+        # payloads built below are scrubbed even if a record reaches this handler some
+        # other way.
+        self.redactor = SecretRedactingFilter()
         logging.Handler.__init__(self=self)
 
     def emit(self, record: logging.LogRecord) -> None:
         # TODO: add to queue here and export via async thread
         log = JobLog(
             log_level=logging_to_scope_levels[record.levelno],
-            log=record.getMessage(),
+            log=self.redactor.redact(record.getMessage()),
             log_timestamp=datetime.fromtimestamp(record.created),
         )
         try:
@@ -48,8 +60,18 @@ class ScopeJobLogExporter(logging.Handler):
             logger.error("Failed to export logs")
             logger.error(str(exc), exc_info=True)
 
+        # The traceback and the error both carry the exception's own message, so they
+        # need the same scrub as the log line -- a credential redacted from the message
+        # alone would still ship twice here.
         if record.levelno == logging.ERROR and record.exc_info:
             exc_type, exc_value, exc_traceback = record.exc_info
+            formatted_traceback = record.exc_text or "".join(
+                traceback.format_exception(
+                    exc_type,
+                    exc_value,
+                    exc_traceback,
+                ),
+            )
             self.job_client.post_job_logs(
                 self.job_id,
                 self.job_run_id,
@@ -57,13 +79,7 @@ class ScopeJobLogExporter(logging.Handler):
                     logs=[
                         JobLog(
                             log_level=JobLogLevel.ERROR,
-                            log="".join(
-                                traceback.format_exception(
-                                    exc_type,
-                                    exc_value,
-                                    exc_traceback,
-                                ),
-                            ),
+                            log=self.redactor.redact(formatted_traceback),
                             log_timestamp=datetime.fromtimestamp(record.created),
                         ),
                     ],
@@ -72,8 +88,30 @@ class ScopeJobLogExporter(logging.Handler):
             self.job_client.post_job_errors(
                 self.job_id,
                 self.job_run_id,
-                job_errors=JobErrors(errors=[JobError(error=str(exc_value))]),
+                job_errors=JobErrors(
+                    errors=[JobError(error=self.redactor.redact(str(exc_value)))],
+                ),
             )
+        elif record.levelno >= logging.ERROR and getattr(
+            record,
+            "report_as_job_error",
+            False,
+        ):
+            # A failure to report the error must not become one: the agents this line
+            # is about are already stored, and the job's outcome should say so.
+            try:
+                self.job_client.post_job_errors(
+                    self.job_id,
+                    self.job_run_id,
+                    job_errors=JobErrors(
+                        errors=[
+                            JobError(error=self.redactor.redact(record.getMessage())),
+                        ],
+                    ),
+                )
+            except Exception as exc:
+                logger.error("Failed to export job error")
+                logger.error(str(exc), exc_info=True)
 
 
 # Important thing here is to make sure handlers and removed and closed, otherwise they'll create a memory leak
@@ -82,9 +120,11 @@ def ExportContextedLogger(
     logger: logging.Logger,
     handler: ScopeJobLogExporter,
 ) -> Generator[None, Any, Any]:
+    logger.addFilter(handler.redactor)
     logger.addHandler(handler)
     try:
         yield
     finally:
         logger.removeHandler(handler)
+        logger.removeFilter(handler.redactor)
         handler.close()
