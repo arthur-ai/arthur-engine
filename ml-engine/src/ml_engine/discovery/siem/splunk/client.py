@@ -42,12 +42,19 @@ class SplunkError(Exception):
     """A Splunk call that failed, carrying the HTTP status when Splunk answered.
 
     `status_code` is what Test Connection reads to tell a 401 from a host that never
-    answered, so it is set whenever there was a response.
+    answered, so it is set whenever there was a response. `splunk_messages` is
+    Splunk's own error text, kept apart so it can be reported without the status.
     """
 
-    def __init__(self, message: str, status_code: Optional[int] = None) -> None:
+    def __init__(
+        self,
+        message: str,
+        status_code: Optional[int] = None,
+        splunk_messages: str = "",
+    ) -> None:
         super().__init__(message)
         self.status_code = status_code
+        self.splunk_messages = splunk_messages
 
 
 @dataclass(frozen=True)
@@ -129,10 +136,12 @@ class SplunkClient:
             if resp.status_code in RETRY_STATUSES and attempt < attempts:
                 self._sleep(backoff_seconds(attempt, resp.headers.get("Retry-After")))
                 continue
+            messages = _messages_suffix(resp)
             raise SplunkError(
                 f"Splunk {method} {path} failed with HTTP {resp.status_code}"
-                f"{_hint(resp.status_code, path)}{_messages_suffix(resp)}",
+                f"{_hint(resp.status_code, path)}{messages}",
                 status_code=resp.status_code,
+                splunk_messages=messages,
             )
         raise AssertionError("unreachable: the last attempt returns or raises")
 
@@ -191,9 +200,11 @@ class SplunkClient:
                 raise
             # Splunk parses the SPL when the job is created and answers 400 for a
             # command it does not know or a malformed pipeline: only the query can fix
-            # that. Not chained, so nothing reads the 400 as a vendor fault.
+            # that. Neither chained nor carrying "HTTP 400" in its text: Test Connection
+            # finds a status in either and would read it as a vendor fault.
             raise DiscoveryConfigurationError(
-                f"Splunk refused the source config's query: {exc}",
+                f"Splunk refused the source config's query (status 400)"
+                f"{exc.splunk_messages}",
             ) from None
         sid = body.get("sid")
         if not sid:

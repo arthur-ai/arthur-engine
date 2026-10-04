@@ -277,6 +277,7 @@ def test_a_search_splunk_accepts_then_fails_is_the_querys_to_fix() -> None:
     ) as caught:
         run(fake)
     assert fake.deleted == ["sid-1"]
+    assert "HTTP" not in str(caught.value)
     # a scheduled scan blames the config, not Splunk, and so does Test Connection
     assert failure_code(caught.value) is DiscoveryErrorCode.NOT_CONFIGURED
     assert connection_test_category(caught.value) == "configuration"
@@ -294,6 +295,9 @@ def test_a_search_splunk_refuses_to_parse_is_the_querys_to_fix() -> None:
 
     with pytest.raises(DiscoveryConfigurationError, match="tabel") as caught:
         run(fake)
+    # Test Connection reads a status out of "HTTP 400" in the text, which would make
+    # this a vendor error again
+    assert "HTTP" not in str(caught.value)
     assert failure_code(caught.value) is DiscoveryErrorCode.NOT_CONFIGURED
     assert connection_test_category(caught.value) == "configuration"
 
