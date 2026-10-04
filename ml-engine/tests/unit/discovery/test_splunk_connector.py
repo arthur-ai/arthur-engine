@@ -19,6 +19,7 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509.oid import NameOID
 
+from arthur_client_support import TEST_DISCOVERY_SOURCE_SUPPORTED
 from discovery.siem.records import records_from_rows
 from discovery.siem.splunk.client import SplunkClient, SplunkError, SplunkSettings
 from discovery.siem.splunk.connector import (
@@ -29,6 +30,11 @@ from discovery.siem.splunk.connector import (
 )
 from discovery.siem.tls import TLSVerification, normalize_pem, tls_session
 from job_executors.discovery_output_contract import OutputContractError, check_batch
+from job_executors.discovery_scan import (
+    DiscoveryConfigurationError,
+    DiscoveryErrorCode,
+    failure_code,
+)
 
 LOG = logging.getLogger("test.splunk")
 CREDS = {"auth_token": "tok-123"}
@@ -39,6 +45,15 @@ QUERY = (
     "| table external_id name last_seen"
 )
 COLUMNS = ["external_id", "name", "last_seen"]
+
+
+def connection_test_category(exc: BaseException) -> str:
+    """What Test Connection calls a failure raised before any batch arrived."""
+    if not TEST_DISCOVERY_SOURCE_SUPPORTED:
+        pytest.skip("installed arthur-client predates TEST_DISCOVERY_SOURCE")
+    from job_executors.discovery_source_test_executor import _classify
+
+    return str(_classify(exc, contacted=False).category.value)
 
 
 def row(i: int) -> dict[str, Any]:
@@ -59,6 +74,7 @@ class FakeResponse:
         raw: Optional[bytes] = None,
     ) -> None:
         self.status_code, self._body = status, body
+        self.headers: dict[str, str] = {}
         # `raw` is a body that is not JSON, the way a proxy's own error page is.
         self.content = raw if raw is not None else (b"" if body is None else b"x")
         self._raw = raw
@@ -82,6 +98,8 @@ class FakeSplunk:
         create_status: int = 201,
         create_body: Any = None,
         failed: bool = False,
+        max_rows: Optional[int] = None,
+        messages: Optional[list[dict[str, str]]] = None,
     ) -> None:
         self.rows = rows if rows is not None else [row(1), row(2), row(3)]
         self.columns = columns if columns is not None else COLUMNS
@@ -91,6 +109,9 @@ class FakeSplunk:
         self.create_status = create_status
         self.create_body = create_body
         self.failed = failed
+        # `[restapi] maxresultrows`: no results request returns more, whatever it asks.
+        self.max_rows = max_rows
+        self.messages = messages or []
         self.calls: list[dict[str, Any]] = []
         self.jobs: set[str] = set()
         self.deleted: list[str] = []
@@ -110,6 +131,7 @@ class FakeSplunk:
             return FakeResponse(200, {})
         if path.endswith("/results"):
             offset, count = kw["params"]["offset"], kw["params"]["count"]
+            count = min(count, self.max_rows or count)
             page = self.rows[offset : offset + count]
             fields = [{"name": c} for c in self.columns] if page else []
             return FakeResponse(200, {"fields": fields, "results": page})
@@ -128,7 +150,7 @@ class FakeSplunk:
                             "messages": (
                                 [{"type": "FATAL", "text": "Unknown search command"}]
                                 if self.failed
-                                else []
+                                else self.messages
                             ),
                         },
                     },
@@ -247,12 +269,63 @@ def test_a_job_left_queued_past_the_limit_names_the_search_quota() -> None:
     assert fake.deleted == ["sid-1"]
 
 
-def test_a_failed_search_reports_splunks_own_message() -> None:
+def test_a_search_splunk_accepts_then_fails_is_the_querys_to_fix() -> None:
     fake = FakeSplunk(failed=True)
 
-    with pytest.raises(SplunkError, match="Unknown search command"):
+    with pytest.raises(
+        DiscoveryConfigurationError, match="Unknown search command"
+    ) as caught:
         run(fake)
     assert fake.deleted == ["sid-1"]
+    # a scheduled scan blames the config, not Splunk, and so does Test Connection
+    assert failure_code(caught.value) is DiscoveryErrorCode.NOT_CONFIGURED
+    assert connection_test_category(caught.value) == "configuration"
+
+
+def test_a_search_splunk_refuses_to_parse_is_the_querys_to_fix() -> None:
+    fake = FakeSplunk(
+        create_status=400,
+        create_body={
+            "messages": [
+                {"type": "FATAL", "text": "Unknown search command 'tabel'."},
+            ],
+        },
+    )
+
+    with pytest.raises(DiscoveryConfigurationError, match="tabel") as caught:
+        run(fake)
+    assert failure_code(caught.value) is DiscoveryErrorCode.NOT_CONFIGURED
+    assert connection_test_category(caught.value) == "configuration"
+
+
+def test_a_page_capped_by_maxresultrows_does_not_end_the_scan() -> None:
+    """A search head whose maxresultrows is below the page size returns short pages;
+    every row Splunk counted must still be read."""
+    fake = FakeSplunk(rows=[row(i) for i in range(5)], max_rows=2)
+
+    batches = run(fake, connector=connector_for(fake, page_size=4))
+
+    assert sum(len(b) for b in batches) == 5
+
+
+def test_a_search_that_finished_with_a_warning_says_so(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    fake = FakeSplunk(
+        messages=[
+            {"type": "INFO", "text": "Your timerange was substituted"},
+            {
+                "type": "WARN",
+                "text": "Search peer idx-2 is down; results may be incomplete",
+            },
+        ],
+    )
+
+    with caplog.at_level(logging.WARNING):
+        run(fake)
+
+    assert "results may be incomplete" in caplog.text
+    assert "timerange" not in caplog.text
 
 
 def test_a_stop_while_splunk_is_still_searching_ends_the_scan_cleanly() -> None:
@@ -331,7 +404,7 @@ def test_responses_captured_from_splunk_10_4_parse() -> None:
     assert (job.is_done, job.is_failed, job.is_finalized) == (True, False, False)
     assert job.result_count == 2
     assert job.messages == (
-        "Your timerange was substituted based on your search string",
+        "INFO: Your timerange was substituted based on your search string",
     )
     columns, rows = client.results("1790815582.9", offset=0)
     assert columns == COLUMNS
@@ -497,6 +570,13 @@ def test_an_error_body_that_is_not_an_object_still_reports_the_status() -> None:
         (FIELDS, {}, "auth_token"),
         ({"base_url": "http://splunk:8089"}, CREDS, "must be https"),
         ({**FIELDS, "tls_verification": "maybe"}, CREDS, "tls_verification"),
+        ({"base_url": "https://admin:pw@splunk:8089"}, CREDS, "just https://host:port"),
+        (
+            {"base_url": "https://splunk:8089/en-US/app"},
+            CREDS,
+            "just https://host:port",
+        ),
+        ({"base_url": "https://splunk:8089?x=1"}, CREDS, "just https://host:port"),
     ],
 )
 def test_bad_configuration_is_refused_before_anything_is_sent(
@@ -504,8 +584,10 @@ def test_bad_configuration_is_refused_before_anything_is_sent(
     creds: dict[str, str],
     message: str,
 ) -> None:
-    with pytest.raises(ValueError, match=message):
+    with pytest.raises(DiscoveryConfigurationError, match=message) as caught:
         settings_from(creds, fields)
+    assert failure_code(caught.value) is DiscoveryErrorCode.NOT_CONFIGURED
+    assert "pw" not in str(caught.value)
 
 
 def test_settings_read_trust_from_the_source_fields() -> None:
@@ -536,7 +618,7 @@ def test_a_query_from_the_search_bar_gets_the_search_the_api_requires(
 
 
 def test_a_config_without_a_query_is_refused() -> None:
-    with pytest.raises(ValueError, match="no query"):
+    with pytest.raises(DiscoveryConfigurationError, match="no query"):
         search_text("  ")
 
 
@@ -588,7 +670,7 @@ def test_a_ca_certificate_that_lost_its_line_breaks_still_loads() -> None:
 
 def test_a_ca_certificate_error_is_not_chained_to_the_ssl_error() -> None:
     """ssl.SSLError is an OSError; chained, a classifier reads it as the network."""
-    with pytest.raises(ValueError) as caught:
+    with pytest.raises(DiscoveryConfigurationError) as caught:
         tls_session(
             "-----BEGIN CERTIFICATE-----nope-----END CERTIFICATE-----",
             TLSVerification.FULL,
@@ -619,8 +701,67 @@ def _a_ca_pem() -> str:
 
 
 def test_a_ca_certificate_that_is_not_pem_is_a_configuration_error() -> None:
-    with pytest.raises(ValueError, match="ca_certificate"):
+    with pytest.raises(DiscoveryConfigurationError, match="ca_certificate") as caught:
         tls_session("nope", TLSVerification.FULL, "Splunk")
+    assert failure_code(caught.value) is DiscoveryErrorCode.NOT_CONFIGURED
+
+
+def test_a_ca_certificate_is_not_loaded_when_verification_is_off() -> None:
+    """An admin whose CA will not load can still choose to scan without verifying."""
+    tls_session("nope", TLSVerification.OFF, "Splunk")  # does not raise
+
+
+class Flaky:
+    """Fails the first calls of each kind, then answers the way `answer` says."""
+
+    def __init__(self, failures: list[Any], answer: FakeResponse) -> None:
+        self.failures, self.answer, self.methods = list(failures), answer, []
+
+    def request(self, method: str, *a: Any, **kw: Any) -> FakeResponse:
+        self.methods.append(method)
+        if self.failures:
+            failure = self.failures.pop(0)
+            if isinstance(failure, Exception):
+                raise failure
+            return failure
+        return self.answer
+
+
+def _status_body() -> dict[str, Any]:
+    return {"entry": [{"content": {"dispatchState": "DONE", "isDone": True}}]}
+
+
+def test_a_status_poll_survives_a_passing_failure() -> None:
+    """One 503 or dropped keep-alive must not fail a long search's poll."""
+    flaky = Flaky(
+        [requests.ConnectionError("reset"), FakeResponse(503, {})],
+        FakeResponse(200, _status_body()),
+    )
+    client = SplunkClient(settings_from(CREDS, FIELDS), session=flaky, sleep=lambda s: None)  # type: ignore[arg-type]
+
+    assert client.job_status("sid-1").is_done
+    assert flaky.methods == ["GET", "GET", "GET"]
+
+
+def test_creating_a_search_is_not_retried() -> None:
+    """A retried POST that reached Splunk would start a second search."""
+    flaky = Flaky([FakeResponse(503, {})], FakeResponse(201, {"sid": "sid-1"}))
+    client = SplunkClient(settings_from(CREDS, FIELDS), session=flaky, sleep=lambda s: None)  # type: ignore[arg-type]
+
+    with pytest.raises(SplunkError) as caught:
+        client.create_job("search x", earliest=None, latest="now")
+    assert caught.value.status_code == 503
+    assert flaky.methods == ["POST"]
+
+
+def test_a_search_head_without_the_v2_api_names_the_version() -> None:
+    client = SplunkClient(
+        settings_from(CREDS, FIELDS),
+        session=Flaky([], FakeResponse(404, {})),  # type: ignore[arg-type]
+    )
+
+    with pytest.raises(SplunkError, match="9.0.1"):
+        client.create_job("search x", earliest=None, latest="now")
 
 
 def test_splunk_is_registered_for_its_vendor() -> None:

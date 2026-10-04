@@ -19,7 +19,9 @@ from urllib.parse import quote, urljoin
 
 import requests
 
+from discovery.retry import MAX_ATTEMPTS, RETRY_STATUSES, backoff_seconds
 from discovery.siem.tls import TLSVerification, tls_session
+from job_executors.discovery_scan import DiscoveryConfigurationError
 
 # Under `[restapi] maxresultrows` (50,000 by default), which caps one results request
 # whatever `count` asks for.
@@ -30,6 +32,10 @@ PAGE_SIZE = 10_000
 REQUEST_TIMEOUT_SECONDS = 30.0
 
 _JOBS = "/services/search/v2/jobs"
+
+# Safe to send twice. Creating a search is not: a retried POST whose first attempt
+# reached Splunk starts a second job, holding a second slot of the user's quota.
+_IDEMPOTENT = frozenset({"GET", "DELETE"})
 
 
 class SplunkError(Exception):
@@ -80,19 +86,16 @@ class SplunkClient:
         settings: SplunkSettings,
         logger: Optional[logging.Logger] = None,
         session: Optional[requests.Session] = None,
+        sleep: Callable[[float], None] = time.sleep,
     ) -> None:
         self._s = settings
         self._log = logger or logging.getLogger(__name__)
+        self._sleep = sleep
         self._http = session or tls_session(
             settings.ca_certificate,
             settings.tls_verification,
             "Splunk",
         )
-
-    @property
-    def page_size(self) -> int:
-        """Rows asked for per results request. A shorter page is the last one."""
-        return self._s.page_size
 
     def _url(self, path: str) -> str:
         return urljoin(self._s.base_url.rstrip("/") + "/", path.lstrip("/"))
@@ -105,8 +108,43 @@ class SplunkClient:
         params: Optional[dict[str, Any]] = None,
         data: Optional[dict[str, Any]] = None,
     ) -> dict[str, Any]:
+        """One REST call, retried when it is safe to repeat and the failure passes.
+
+        A scan polls a search for as long as it runs, so a single 503 or dropped
+        keep-alive would otherwise fail it and delete a search that was nearly done.
+        """
+        attempts = MAX_ATTEMPTS if method in _IDEMPOTENT else 1
+        for attempt in range(1, attempts + 1):
+            try:
+                resp = self._send(method, path, params, data)
+            except (requests.ConnectionError, requests.Timeout):
+                # A TLS failure is already a SplunkError by here: retrying cannot fix
+                # a certificate.
+                if attempt == attempts:
+                    raise
+                self._sleep(backoff_seconds(attempt, None))
+                continue
+            if resp.status_code in ok:
+                return _object_body(resp, method, path)
+            if resp.status_code in RETRY_STATUSES and attempt < attempts:
+                self._sleep(backoff_seconds(attempt, resp.headers.get("Retry-After")))
+                continue
+            raise SplunkError(
+                f"Splunk {method} {path} failed with HTTP {resp.status_code}"
+                f"{_hint(resp.status_code, path)}{_messages_suffix(resp)}",
+                status_code=resp.status_code,
+            )
+        raise AssertionError("unreachable: the last attempt returns or raises")
+
+    def _send(
+        self,
+        method: str,
+        path: str,
+        params: Optional[dict[str, Any]],
+        data: Optional[dict[str, Any]],
+    ) -> requests.Response:
         try:
-            resp = self._http.request(
+            return self._http.request(
                 method,
                 self._url(path),
                 params={**(params or {}), "output_mode": "json"},
@@ -137,14 +175,6 @@ class SplunkClient:
                 f"engine's address on its search-api IP allow list.",
             ) from exc
 
-        if resp.status_code in ok:
-            return _object_body(resp, method, path)
-        raise SplunkError(
-            f"Splunk {method} {path} failed with HTTP {resp.status_code}"
-            f"{_hint(resp.status_code)}{_messages_suffix(resp)}",
-            status_code=resp.status_code,
-        )
-
     def create_job(self, search: str, earliest: Optional[str], latest: str) -> str:
         """Start a search and return its sid. Does not wait for it."""
         data: dict[str, Any] = {
@@ -154,7 +184,17 @@ class SplunkClient:
         }
         if earliest is not None:
             data["earliest_time"] = earliest
-        body = self._call("POST", _JOBS, ok=(200, 201), data=data)
+        try:
+            body = self._call("POST", _JOBS, ok=(200, 201), data=data)
+        except SplunkError as exc:
+            if exc.status_code != 400:
+                raise
+            # Splunk parses the SPL when the job is created and answers 400 for a
+            # command it does not know or a malformed pipeline: only the query can fix
+            # that. Not chained, so nothing reads the 400 as a vendor fault.
+            raise DiscoveryConfigurationError(
+                f"Splunk refused the source config's query: {exc}",
+            ) from None
         sid = body.get("sid")
         if not sid:
             raise SplunkError("Splunk accepted the search but returned no sid")
@@ -220,7 +260,9 @@ def wait_for_job(
     while True:
         status = client.job_status(sid)
         if status.is_failed or status.dispatch_state == "FAILED":
-            raise SplunkError(
+            # Splunk accepted the search and then could not run it: an unknown command,
+            # a missing macro or lookup. The query is what has to change.
+            raise DiscoveryConfigurationError(
                 f"Splunk search {sid} failed"
                 + (f": {'; '.join(status.messages)}" if status.messages else ""),
             )
@@ -254,7 +296,9 @@ def _job_messages(raw: Any) -> list[str]:
     """A job's `messages` is a list of {type, text}, or a dict of type -> texts."""
     if isinstance(raw, list):
         return [
-            str(m.get("text")) for m in raw if isinstance(m, dict) and m.get("text")
+            f"{m['type']}: {m['text']}" if m.get("type") else str(m["text"])
+            for m in raw
+            if isinstance(m, dict) and m.get("text")
         ]
     if isinstance(raw, dict):
         out: list[str] = []
@@ -265,7 +309,7 @@ def _job_messages(raw: Any) -> list[str]:
     return []
 
 
-def _hint(status: int) -> str:
+def _hint(status: int, path: str) -> str:
     if status == 401:
         return (
             ". The token was refused: wrong or expired, issued by another instance, "
@@ -274,6 +318,8 @@ def _hint(status: int) -> str:
         )
     if status == 403:
         return ". The token's role lacks a capability this search needs"
+    if status == 404 and path == _JOBS:
+        return ". The v2 search API needs Splunk 9.0.1 or later"
     return ""
 
 

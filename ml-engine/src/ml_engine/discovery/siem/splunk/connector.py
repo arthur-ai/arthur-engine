@@ -25,6 +25,7 @@ from discovery.siem.splunk.client import (
     wait_for_job,
 )
 from discovery.siem.tls import parse_tls_verification
+from job_executors.discovery_scan import DiscoveryConfigurationError
 
 VENDOR = "splunk_enterprise"
 
@@ -39,10 +40,6 @@ QUEUED_LIMIT_SECONDS = 600.0
 ClientFactory = Callable[[SplunkSettings, logging.Logger], SplunkClient]
 
 
-def _default_client(settings: SplunkSettings, logger: logging.Logger) -> SplunkClient:
-    return SplunkClient(settings, logger=logger)
-
-
 class SplunkConnector:
     """Implements `job_executors.discovery_scan.DiscoverySourceConnector`, and accepts a
     stop check the way `AcceptsStopCheck` describes.
@@ -53,7 +50,7 @@ class SplunkConnector:
 
     def __init__(
         self,
-        client_factory: ClientFactory = _default_client,
+        client_factory: ClientFactory = SplunkClient,
         sleep: Callable[[float], None] = time.sleep,
         clock: Callable[[], float] = time.monotonic,
     ) -> None:
@@ -121,13 +118,16 @@ class SplunkConnector:
                 published += len(records)
                 if records:
                     yield records
-                if read >= status.result_count or len(rows) < client.page_size:
+                # Not on a short page: `[restapi] maxresultrows` can cap a page below
+                # the size asked for, and stopping there would drop every later row.
+                # Splunk said how many results there are, so read until that many.
+                if read >= status.result_count:
                     break
                 if self._should_stop():
                     stopped = True
                     break
 
-            _report(logger, sid, status.result_count, read, published, status, stopped)
+            _report(logger, sid, read, published, status, stopped)
         finally:
             client.delete_job(sid)
 
@@ -135,19 +135,24 @@ class SplunkConnector:
 def _report(
     logger: logging.Logger,
     sid: str,
-    result_count: int,
     read: int,
     published: int,
     status: JobStatus,
     stopped: bool,
 ) -> None:
     """Say how complete the answer is. A partial answer must not read as a full one."""
+    result_count = status.result_count
     logger.info(
         "Splunk scan read %s of %s result row(s), %s record(s)",
         read,
         result_count,
         published,
     )
+    for message in status.messages:
+        # A distributed search with a peer down still finishes DONE, and says so only
+        # here, as "results may be incomplete".
+        if message.startswith(("WARN:", "ERROR:", "FATAL:")):
+            logger.warning("Splunk search %s: %s", sid, message)
     if status.is_finalized:
         logger.warning(
             "Splunk finalized search %s before it completed (srchMaxTime or a manual "
@@ -181,7 +186,7 @@ def search_text(query: Optional[str]) -> str:
     """
     text = (query or "").strip()
     if not text:
-        raise ValueError(
+        raise DiscoveryConfigurationError(
             "Splunk source config has no query. It needs SPL whose results carry "
             "external_id, name and last_seen.",
         )
@@ -202,17 +207,26 @@ def settings_from(
     if not base_url:
         missing.insert(0, BASE_URL_FIELD)
     if missing:
-        raise ValueError(
+        raise DiscoveryConfigurationError(
             f"Splunk source is missing required field(s): {', '.join(missing)}. "
             f"base_url is a source field; auth_token is a secret.",
         )
     if not base_url.lower().startswith("https://"):
         # The token travels in a header. Over http it is in cleartext, and this is the
         # only place it can be refused before it is sent.
-        raise ValueError(
+        raise DiscoveryConfigurationError(
             f"Splunk base_url must be https, got "
             f"{base_url.split('://', 1)[0] or base_url!r}. The token travels in a "
             f"request header.",
+        )
+
+    parts = urlsplit(base_url)
+    if parts.username or parts.password or parts.path.strip("/") or parts.query:
+        # requests turns `user:pass@` into Basic auth that overrides the bearer token,
+        # and the search API lives at the root of the management port.
+        raise DiscoveryConfigurationError(
+            f"Splunk base_url must be just https://host:port, got {_instance(base_url)} "
+            f"with credentials, a path or a query string. The token is a secret field.",
         )
 
     mode = parse_tls_verification(source_fields.get(TLS_VERIFICATION_FIELD), "Splunk")
