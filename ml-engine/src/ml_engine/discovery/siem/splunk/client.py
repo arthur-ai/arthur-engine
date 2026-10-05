@@ -193,19 +193,23 @@ class SplunkClient:
         }
         if earliest is not None:
             data["earliest_time"] = earliest
+        refused: Optional[SplunkError] = None
         try:
             body = self._call("POST", _JOBS, ok=(200, 201), data=data)
         except SplunkError as exc:
             if exc.status_code != 400:
                 raise
+            refused = exc
+        if refused is not None:
             # Splunk parses the SPL when the job is created and answers 400 for a
             # command it does not know or a malformed pipeline: only the query can fix
-            # that. Neither chained nor carrying "HTTP 400" in its text: Test Connection
-            # finds a status in either and would read it as a vendor fault.
+            # that. Raised outside the except, so the 400 is not even its __context__,
+            # and without "HTTP 400" in the text: Test Connection finds a status in
+            # either and would read it as a vendor fault.
             raise DiscoveryConfigurationError(
                 f"Splunk refused the source config's query (status 400)"
-                f"{exc.splunk_messages}",
-            ) from None
+                f"{refused.splunk_messages}",
+            )
         sid = body.get("sid")
         if not sid:
             raise SplunkError("Splunk accepted the search but returned no sid")

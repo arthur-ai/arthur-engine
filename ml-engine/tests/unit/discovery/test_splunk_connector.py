@@ -298,6 +298,9 @@ def test_a_search_splunk_refuses_to_parse_is_the_querys_to_fix() -> None:
     # Test Connection reads a status out of "HTTP 400" in the text, which would make
     # this a vendor error again
     assert "HTTP" not in str(caught.value)
+    # nothing carrying the 400 is attached either, or a classifier walking the chain
+    # finds it there
+    assert caught.value.__cause__ is None and caught.value.__context__ is None
     assert failure_code(caught.value) is DiscoveryErrorCode.NOT_CONFIGURED
     assert connection_test_category(caught.value) == "configuration"
 
