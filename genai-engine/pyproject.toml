@@ -73,7 +73,7 @@ dependencies = [
   "sentencepiece==0.2.2",
   "gliner==0.2.29",
   "openinference-semantic-conventions>=0.1.12,<0.2",
-  "litellm==1.102.1",
+  "litellm==1.103.0",
   "jinja2>=3.1.6,<4",
   "python-benedict>=0.38,<0.39",
   "weaviate-client>=4.17.0,<5",
@@ -147,6 +147,8 @@ url = "https://gitlab.com/api/v4/projects/45576036/packages/pypi"
 explicit = true
 
 [tool.uv.sources]
+# DEMO ONLY: arthur-common#228 adds ModelProvider.SCALEDOWN. Remove once it's released and pinned above.
+arthur-common = { git = "https://github.com/arthur-ai/arthur-common", rev = "b5dd80ffd5e7e0200533e6cca2b7e7281939d04c" }
 torch = [
   { index = "pytorch-cpu", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
 ]

@@ -2,6 +2,65 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 10/05/2026
+- **BREAKING CHANGE** for **URL**: /api/v1/chatbot/config  added the new `scaledown` enum value to the `model_provider` response property for the response status `200`
+- **CHANGE** in API PUT /api/v1/chatbot/config
+- **CHANGE**error [response-property-enum-value-added] at /Users/thomaslisankie/.herdr/worktrees/arthur-engine/worktree-scaledown-model-support/genai-engine/new.openapi.json
+- **CHANGE**  The server may now return a value the previous contract excluded, so a client written against it may not handle the response. If the value set is meant to grow, declare it with x-extensible-enum.
+- **BREAKING CHANGE** for **URL**: /api/v1/model_providers/{provider}/available_models  added the new `scaledown` enum value to the `provider` response property for the response status `200`
+- **CHANGE** in API GET /api/v1/model_providers/{provider}/model_whitelist
+- **CHANGE**error [response-property-enum-value-added] at /Users/thomaslisankie/.herdr/worktrees/arthur-engine/worktree-scaledown-model-support/genai-engine/new.openapi.json
+- **CHANGE**  The server may now return a value the previous contract excluded, so a client written against it may not handle the response. If the value set is meant to grow, declare it with x-extensible-enum.
+- **BREAKING CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}  added the new `scaledown` enum value to the `state/prompt_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider` response property for the response status `200`
+- **CHANGE** in API PUT /api/v1/notebooks/{notebook_id}
+- **CHANGE**error [response-property-enum-value-added] at /Users/thomaslisankie/.herdr/worktrees/arthur-engine/worktree-scaledown-model-support/genai-engine/new.openapi.json
+- **CHANGE**  The server may now return a value the previous contract excluded, so a client written against it may not handle the response. If the value set is meant to grow, declare it with x-extensible-enum.
+- **BREAKING CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}/history  added the new `scaledown` enum value to the `data/items/prompt_configs/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider` response property for the response status `200`
+- **CHANGE** in API GET /api/v1/notebooks/{notebook_id}/state
+- **CHANGE**error [response-property-enum-value-added] at /Users/thomaslisankie/.herdr/worktrees/arthur-engine/worktree-scaledown-model-support/genai-engine/new.openapi.json
+- **CHANGE**  The server may now return a value the previous contract excluded, so a client written against it may not handle the response. If the value set is meant to grow, declare it with x-extensible-enum.
+- **BREAKING CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}/state  added the new `scaledown` enum value to the `state/prompt_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider` response property for the response status `200`
+- **CHANGE** in API GET /api/v1/prompt_experiments/{experiment_id}
+- **CHANGE**error [response-property-enum-value-added] at /Users/thomaslisankie/.herdr/worktrees/arthur-engine/worktree-scaledown-model-support/genai-engine/new.openapi.json
+- **CHANGE**  The server may now return a value the previous contract excluded, so a client written against it may not handle the response. If the value set is meant to grow, declare it with x-extensible-enum.
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  added the new `scaledown` enum value to the `model_provider/anyOf[subschema #1: ModelProvider]/` response property for the response status `200`
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions
+- **CHANGE**error [response-property-enum-value-added] at /Users/thomaslisankie/.herdr/worktrees/arthur-engine/worktree-scaledown-model-support/genai-engine/new.openapi.json
+- **CHANGE**  The server may now return a value the previous contract excluded, so a client written against it may not handle the response. If the value set is meant to grow, declare it with x-extensible-enum.
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  added the new `scaledown` enum value to the `model_provider/anyOf[subschema #1: ModelProvider]/` response property for the response status `200`
+- **CHANGE** in API PUT /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags
+- **CHANGE**error [response-property-enum-value-added] at /Users/thomaslisankie/.herdr/worktrees/arthur-engine/worktree-scaledown-model-support/genai-engine/new.openapi.json
+- **CHANGE**  The server may now return a value the previous contract excluded, so a client written against it may not handle the response. If the value set is meant to grow, declare it with x-extensible-enum.
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/notebooks  added the new `scaledown` enum value to the `state/prompt_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider` response property for the response status `201`
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/prompt_experiments
+- **CHANGE**error [response-property-enum-value-added] at /Users/thomaslisankie/.herdr/worktrees/arthur-engine/worktree-scaledown-model-support/genai-engine/new.openapi.json
+- **CHANGE**  The server may now return a value the previous contract excluded, so a client written against it may not handle the response. If the value set is meant to grow, declare it with x-extensible-enum.
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  added the new `scaledown` enum value to the `model_provider/anyOf[subschema #1: ModelProvider]/` response property for the response status `200`
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions
+- **CHANGE**error [response-property-enum-value-added] at /Users/thomaslisankie/.herdr/worktrees/arthur-engine/worktree-scaledown-model-support/genai-engine/new.openapi.json
+- **CHANGE**  The server may now return a value the previous contract excluded, so a client written against it may not handle the response. If the value set is meant to grow, declare it with x-extensible-enum.
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  added the new `scaledown` enum value to the `model_provider/anyOf[subschema #1: ModelProvider]/` response property for the response status `200`
+- **CHANGE** in API POST /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders
+- **CHANGE**error [response-property-enum-value-added] at /Users/thomaslisankie/.herdr/worktrees/arthur-engine/worktree-scaledown-model-support/genai-engine/new.openapi.json
+- **CHANGE**  The server may now return a value the previous contract excluded, so a client written against it may not handle the response. If the value set is meant to grow, declare it with x-extensible-enum.
+- **BREAKING CHANGE** for **URL**: /api/v2/datasets/synthetic-data/prompt-status  added the new `scaledown` enum value to the `model_provider/anyOf[subschema #1: ModelProvider]/` response property for the response status `200`
+- **CHANGE** in API POST /api/v2/tasks/{task_id}/ml_evals/{eval_name}
+- **CHANGE**info [api-version-not-bumped]
+- **CHANGE**info [request-property-enum-value-added] at /Users/thomaslisankie/.herdr/worktrees/arthur-engine/worktree-scaledown-model-support/genai-engine/new.openapi.json
+- **CHANGE**info [request-property-enum-value-added] at /Users/thomaslisankie/.herdr/worktrees/arthur-engine/worktree-scaledown-model-support/genai-engine/new.openapi.json
+- **CHANGE**info [request-parameter-enum-value-added] at /Users/thomaslisankie/.herdr/worktrees/arthur-engine/worktree-scaledown-model-support/genai-engine/new.openapi.json
+- **CHANGE**info [request-parameter-enum-value-added] at /Users/thomaslisankie/.herdr/worktrees/arthur-engine/worktree-scaledown-model-support/genai-engine/new.openapi.json
+- **CHANGE**info [request-parameter-enum-value-added] at /Users/thomaslisankie/.herdr/worktrees/arthur-engine/worktree-scaledown-model-support/genai-engine/new.openapi.json
+- **CHANGE**info [request-parameter-enum-value-added] at /Users/thomaslisankie/.herdr/worktrees/arthur-engine/worktree-scaledown-model-support/genai-engine/new.openapi.json
+- **CHANGE**info [request-parameter-enum-value-added] at /Users/thomaslisankie/.herdr/worktrees/arthur-engine/worktree-scaledown-model-support/genai-engine/new.openapi.json
+- **CHANGE**info [request-property-enum-value-added] at /Users/thomaslisankie/.herdr/worktrees/arthur-engine/worktree-scaledown-model-support/genai-engine/new.openapi.json
+- **CHANGE**info [request-property-enum-value-added] at /Users/thomaslisankie/.herdr/worktrees/arthur-engine/worktree-scaledown-model-support/genai-engine/new.openapi.json
+- **CHANGE**info [request-property-enum-value-added] at /Users/thomaslisankie/.herdr/worktrees/arthur-engine/worktree-scaledown-model-support/genai-engine/new.openapi.json
+- **CHANGE**info [request-property-enum-value-added] at /Users/thomaslisankie/.herdr/worktrees/arthur-engine/worktree-scaledown-model-support/genai-engine/new.openapi.json
+- **CHANGE**info [request-property-enum-value-added] at /Users/thomaslisankie/.herdr/worktrees/arthur-engine/worktree-scaledown-model-support/genai-engine/new.openapi.json
+- **CHANGE**info [request-property-enum-value-added] at /Users/thomaslisankie/.herdr/worktrees/arthur-engine/worktree-scaledown-model-support/genai-engine/new.openapi.json
+- **CHANGE**info [request-property-enum-value-added] at /Users/thomaslisankie/.herdr/worktrees/arthur-engine/worktree-scaledown-model-support/genai-engine/new.openapi.json
+
 # 09/30/2026
 - **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property '/items/provenance/anyOf[subschema #1: Provenance]/sources/items/external_id' to the response with the '200' status
 - **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property '/items/provenance/anyOf[subschema #1: Provenance]/sources/items/last_scanned' to the response with the '200' status

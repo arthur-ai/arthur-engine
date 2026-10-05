@@ -11,7 +11,8 @@ export const providersQueryOptions = ({ api }: { api: Api<unknown> }) =>
       const response = await api.api.getModelProvidersApiV1ModelProvidersGet();
       return response.data;
     },
-    select: (data) => data.providers,
+    // ScaleDown leads the list; the rest keep the API's order.
+    select: (data) => [...data.providers].sort((a, b) => Number(b.provider === "scaledown") - Number(a.provider === "scaledown")),
   });
 
 export const useProviders = () => {
