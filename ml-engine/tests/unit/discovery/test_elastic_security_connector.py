@@ -822,3 +822,19 @@ def test_a_malformed_esql_result_is_the_vendors_error(columns: Any, rows: Any) -
         scan(session)
     assert exc.value.status_code == 200
     assert "malformed ES|QL result" in str(exc.value)
+
+
+@pytest.mark.parametrize(
+    "url",
+    ["https://es.corp:abc", "https://es.corp:99999", "https://[broken", "https://"],
+)
+def test_a_malformed_url_is_a_configuration_error_before_anything_is_sent(
+    url: str,
+) -> None:
+    session = FakeSession()
+    with pytest.raises(DiscoveryConfigurationError) as exc:
+        scan(session, fields={"elasticsearch_url": url})
+    assert "elasticsearch_url" in str(exc.value)
+    assert failure_code(exc.value) is DiscoveryErrorCode.NOT_CONFIGURED
+    assert exc.value.__cause__ is None and exc.value.__context__ is None
+    assert session.calls == []

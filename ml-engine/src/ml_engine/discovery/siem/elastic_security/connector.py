@@ -237,6 +237,23 @@ def settings_from(
             f"Elastic elasticsearch_url must be https, got "
             f"{url.split('://', 1)[0] or url!r}. The API key travels in a request header.",
         )
+    # Parsed here, where a bad value is the source's to fix, rather than when the
+    # request or the record's address first reads it. The problem is raised after
+    # the except block, so no ValueError rides on __context__ for Test Connection to
+    # read as the vendor's.
+    problem: Optional[str] = None
+    try:
+        parts = urlsplit(url)
+        parts.port
+        if not parts.hostname:
+            problem = "it has no host"
+    except ValueError as exc:
+        problem = str(exc)
+    if problem is not None:
+        raise DiscoveryConfigurationError(
+            f"Elastic elasticsearch_url is not a valid URL ({problem}). Expected "
+            f"https://host or https://host:port.",
+        )
 
     return ElasticSettings(
         elasticsearch_url=url,
