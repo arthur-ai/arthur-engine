@@ -802,3 +802,23 @@ def test_tls_off_does_not_load_the_ca_so_scanning_can_go_on() -> None:
     # An admin whose pasted CA won't load can turn verification off meanwhile.
     session = tls_session("not a certificate", TLSVerification.OFF, "Elastic")
     assert session.verify is False
+
+
+@pytest.mark.parametrize(
+    "columns, rows",
+    [
+        (["external_id", "name", "last_seen"], [["a", "a", "2026-09-30T00:00:00Z"]]),
+        ([{"type": "keyword"}], [["a"]]),
+        ([{"name": ""}], [["a"]]),
+        ([{"name": 3}], [["a"]]),
+        (COLUMNS, "not rows"),
+        (COLUMNS, [["only", "two"]]),
+        (COLUMNS, [{"external_id": "a"}]),
+    ],
+)
+def test_a_malformed_esql_result_is_the_vendors_error(columns: Any, rows: Any) -> None:
+    session = FakeSession(FakeResponse(200, {"columns": columns, "values": rows}))
+    with pytest.raises(ElasticError) as exc:
+        scan(session)
+    assert exc.value.status_code == 200
+    assert "malformed ES|QL result" in str(exc.value)

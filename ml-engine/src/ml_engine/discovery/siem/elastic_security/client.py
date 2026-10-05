@@ -177,10 +177,28 @@ def _result_from(resp: requests.Response) -> EsqlResult:
             f"Kibana or a proxy's login page.",
             status_code=resp.status_code,
         )
-    columns = [str(c["name"]) for c in payload["columns"]]
-    rows = [dict(zip(columns, values)) for values in payload.get("values") or []]
+    columns = [
+        c.get("name") if isinstance(c, dict) else None for c in payload["columns"]
+    ]
+    values = payload.get("values") or []
+    if (
+        not all(isinstance(name, str) and name for name in columns)
+        or not isinstance(values, list)
+        or not all(isinstance(row, list) and len(row) == len(columns) for row in values)
+    ):
+        # A body shaped like a result but not one -- a column without a name, a row
+        # that is not a list of the columns' width. Reported as the vendor's answer,
+        # with its status, rather than left as a KeyError or TypeError.
+        raise ElasticError(
+            f"Elastic POST /_query answered HTTP {resp.status_code} with a malformed "
+            f"ES|QL result: every column needs a name and every row one value per "
+            f"column.",
+            status_code=resp.status_code,
+        )
+    names = [str(name) for name in columns]
+    rows = [dict(zip(names, row)) for row in values]
     return EsqlResult(
-        columns=columns,
+        columns=names,
         rows=rows,
         warnings=warnings_from(resp.headers.get("Warning")),
         is_partial=bool(payload.get("is_partial")),
