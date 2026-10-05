@@ -520,7 +520,10 @@ def test_es_ql_elasticsearch_rejects_is_the_source_configs_to_fix(
     # to read as one.
     assert failure_code(exc.value) is DiscoveryErrorCode.NOT_CONFIGURED
     assert getattr(exc.value, "status_code", None) is None
+    # Raised outside any except block, so no original error rides on __context__
+    # either: Test Connection walks __cause__ or __context__ for a status.
     assert exc.value.__cause__ is None
+    assert exc.value.__context__ is None
     # Test Connection also reads a status out of the message text ("HTTP 400").
     assert "HTTP" not in str(exc.value)
 
