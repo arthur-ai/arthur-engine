@@ -1,7 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { getScaleDownWhitelist, SCALEDOWN } from "../scaledown-demo";
-
 import { useApi } from "@/hooks/useApi";
 import { ModelProvider } from "@/lib/api-client/api-client";
 import { queryKeys } from "@/lib/queryKeys";
@@ -13,7 +11,6 @@ export const useModelWhitelist = (provider: ModelProvider, enabled: boolean) => 
   return useQuery({
     queryKey: queryKeys.providers.modelWhitelist(provider),
     queryFn: async () => {
-      if (provider === SCALEDOWN) return getScaleDownWhitelist();
       if (!api) throw new Error("API client not initialized");
       const response = await api.api.getModelProviderWhitelistApiV1ModelProvidersProviderModelWhitelistGet(provider);
       return response.data;

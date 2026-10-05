@@ -1,7 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { setScaleDownWhitelist, SCALEDOWN } from "../scaledown-demo";
-
 import { useApi } from "@/hooks/useApi";
 import { ModelProvider } from "@/lib/api-client/api-client";
 import { queryKeys } from "@/lib/queryKeys";
@@ -12,8 +10,6 @@ export const useSaveModelWhitelist = () => {
 
   return useMutation({
     mutationFn: async ({ provider, models }: { provider: ModelProvider; models: string[] | null }) => {
-      if (provider === SCALEDOWN) return setScaleDownWhitelist(models);
-
       await api.setModelProviderWhitelistApiV1ModelProvidersProviderModelWhitelistPut(provider, { models });
     },
     onSuccess: async (_data, { provider }) => {

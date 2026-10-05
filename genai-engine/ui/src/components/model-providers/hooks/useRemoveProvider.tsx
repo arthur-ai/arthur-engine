@@ -1,7 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { removeScaleDown, SCALEDOWN } from "../scaledown-demo";
-
 import { useApi } from "@/hooks/useApi";
 import { ModelProvider } from "@/lib/api-client/api-client";
 import { queryKeys } from "@/lib/queryKeys";
@@ -16,8 +14,6 @@ export const useRemoveProvider = ({ onSuccess }: Opts = {}) => {
 
   return useMutation({
     mutationFn: async (provider: ModelProvider) => {
-      if (provider === SCALEDOWN) return removeScaleDown();
-
       const response = await api.deleteModelProviderApiV1ModelProvidersProviderDelete(provider);
 
       return response.data;
