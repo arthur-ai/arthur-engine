@@ -41,7 +41,7 @@ def initialize_system_tasks(db_session: Session) -> None:
 
 
 def _ensure_synthetic_dataset_task(db_session: Session) -> None:
-    """Create the Synthetic Dataset Generation system task if it doesn't exist."""
+    """Create the synthetic dataset generation system task if it does not exist."""
     # 1. Create task if missing. Protect against a concurrent peer instance
     #    winning the insert race so a single losing replica doesn't abort
     #    the whole bootstrap.

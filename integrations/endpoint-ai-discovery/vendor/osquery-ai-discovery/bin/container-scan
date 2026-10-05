@@ -1,0 +1,745 @@
+#!/usr/bin/env bash
+# Scan this machine for container images, or say why it could not. macOS and Linux both.
+#
+#     bin/container-scan              # JSON rows on stdout, or a stated reason on stderr
+#     bin/container-scan | bin/classify        # the human view
+#     bin/container-scan --socket /tmp/arthur-fake-docker.sock
+#
+# containers.sql is declared `expensive`, so the build keeps it out of the composed artifacts
+# and composes it into dist/discovery-deep.sql instead. This is that file's entry point,
+# and bin/discover --deep is the same thing joined to the base inventory.
+#
+# TWO THINGS BOUND THIS, AND NEITHER IS ENOUGH ALONE.
+#
+# The guard. docker_images has no timeout of its own: against a daemon that accepts the
+# connection and never answers -- Docker Desktop mid-startup, or installed and not opened
+# today -- the query does not finish. `test -S` and a bare connect() both admit that
+# state, and `curl -s` exits 0 on an HTTP 500 whose zero rows are indistinguishable from a
+# machine with no containers. Only a full round trip requiring 200 separates "nothing
+# there" from "we could not look".
+#
+# The guard must also OUTLAST A WAKE: Resource Saver parks the engine after five idle
+# minutes and holds the first request ~2.5s. Too short a budget reports a sleeping Mac as
+# unreachable. See TIMEOUT below.
+#
+# The wall clock. The guard is a check at one instant, and a daemon that answers /_ping
+# with 200 can wedge on /images/json a moment later -- so the query still needs a hard
+# bound. osquery has no flag for it (5.23.1: --docker_socket is the only docker flag,
+# --alarm_timeout is shutdown-only with a 10s floor, --schedule_timeout is osqueryd's
+# schedule), so the bound is a kill on the process, and that is why this branch runs in a
+# process of its own rather than inside a composed artifact.
+#
+# Exit codes carry the distinction, and a caller that ignores them has thrown away the
+# only thing this script is for:
+#   0  scanned. stdout is the rows, possibly []
+#   2  did not scan. the daemon is absent, stale, hung or erroring -- we never asked
+#   3  asked and gave up. /_ping answered 200, then the query blocked past the wall clock
+#   1  could not run at all: no osqueryi, no deep artifact
+#
+# AND SO DOES STDOUT, because on the path this was written for the exit code reaches
+# nobody. A consumer that records stdout and discards the exit status -- which is how most
+# inventory channels work -- sees only what was printed. So every non-success outcome also
+# prints ONE row in the six-column contract -- kind=scan, id=containers, extra=absent |
+# unreadable:<runtime> | unhealthy:<code> | timeout:<n>. Without it the EA value for a wedged
+# daemon would be the empty array, byte for byte what a machine with no containers reports.
+# That is this project's recurring bug arriving at the last hop, after the guard and the
+# bound have both worked correctly. --no-marker turns it off for a human reading the output.
+#
+# test/docker_states.sh asserts both the guard and the bound against every daemon state.
+# Sourcing this file defines the functions without running anything, and that test does
+# exactly that rather than keeping a copy of the guard that drifts.
+set -uo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+DEEP="$ROOT/dist/discovery-deep.sql"
+# Seconds to wait for /_ping. A CEILING, NOT A COST: anything that answers returns in about
+# 0.1s whatever this is, so only a daemon that never answers pays it.
+#
+# It was 1, and a Docker Desktop wake does not fit in 1. Resource Saver parks the VM after
+# five idle minutes and HOLDS the first request while it resumes -- 2.6s measured -- so the
+# guard rejected a daemon it had itself just woken, and the next scan succeeded. 8 covers
+# the wake and keeps the worst case (accepts-never-replies, 8.2s) inside the 10s budget.
+# A longer nap is unmeasured; raise this if a fleet shows unhealthy:000 on idle Macs.
+# queries/COST.md has the per-state table.
+TIMEOUT="${DOCKER_PING_TIMEOUT:-8}"
+
+# Whole seconds of wall clock for the query itself. ~8s worst case on `wedge`: 6s here plus
+# osqueryi's startup inside it, plus 1s of SIGKILL grace. Healthy finishes in about 0.5s.
+#
+# WHAT EATS THIS IS DAEMON LATENCY, NOT IMAGE COUNT -- the comment here used to say the
+# opposite. osquery's own side is 0.23s at 18 images and 0.55s at 10,000. But one scan makes
+# three engine requests, so a daemon costing t each needs ~3t: 1s each fits, 3s each does
+# not. Do not raise it inside an EA.
+SCAN_TIMEOUT="${CONTAINER_SCAN_TIMEOUT:-6}"
+SOCKET=""
+MARKER=1
+CACHE=""
+
+# Set by run_bounded. A global rather than a command substitution, because the output has
+# to be discardable without ever being parsed.
+BOUNDED_OUT=""
+# The wait status of a killed query, and it is NOT one number. Both measured on 5.23.1:
+#
+#   docker_images alone            **0**. osqueryi installs a SIGTERM handler and shuts
+#                                  down cleanly, so a query we killed mid-stall is
+#                                  indistinguishable by exit code from one that succeeded.
+#   with docker_containers or      **137**. SIGTERM is ignored outright against a wedged
+#   docker_image_labels            daemon and run_bounded's SIGKILL is what ends it.
+#
+# Either of those arms alone is enough; it is not an interaction between them. Measured
+# 2026-09-13 against test/lib/fake_docker.py's wedge state on both platforms.
+#
+# Nothing branches on this -- test/docker_states.sh prints it every run so an osquery
+# upgrade that changes it is visible rather than discovered. It matters anyway, because it
+# is what makes the escalation below load-bearing rather than defensive.
+BOUNDED_SIGNAL=""
+
+need_arg() {
+  [ $# -ge 2 ] && [ -n "${2:-}" ] || { echo "container-scan: $1 needs a value" >&2; exit 1; }
+}
+
+# --- JSON, and the one line that decides how -------------------------------------------
+#
+# A SERIALIZER IS NOT A PARSER, AND ONLY ONE OF THEM IS WORTH A PROCESS. A six-column row
+# is six strings we already hold; handing them to an interpreter parses nothing and costs a
+# spawn. Reading someone else's document is the opposite job, and it is the one osqueryi
+# already does -- with the same SQLite that produced the document.
+#
+# Both halves were python3. On the managed Mac docs/deployment.md describes, that is a
+# STUB: without Command Line Tools /usr/bin/python3 prints an install prompt on stderr and
+# exits 1 with EMPTY STDOUT. So the no-cache marker -- the one row whose whole job is to say
+# the writer never ran -- was built by the interpreter that stopped the writer, and printed
+# nothing. A collector that records stdout reads nothing as a clean machine.
+#
+# A MARKER ROW MAY NOT DEPEND ON ANYTHING THAT COULD BE THE THING IT IS REPORTING.
+#
+# WHAT IS EXPENSIVE TO MAINTAIN HERE, SAID ONCE SO THE NEXT CHANGE KNOWS THE SHAPE OF IT:
+#
+#   * THE SIX COLUMNS ARE WRITTEN OUT IN FOUR PLACES -- json_row's printf, json_concat's
+#     SELECT, and merge_sql's three UNION arms plus its outer SELECT -- and in ci.yml twice.
+#     A seventh column means editing all of them, and MISSING ONE IS SILENT: json_extract
+#     returns NULL for a column that was not selected, and osqueryi renders NULL as "", so
+#     the row arrives complete and empty rather than short. If the contract ever changes,
+#     change it here first and let test/docker_states.sh tell you what you missed.
+#   * THE SQL IS BUILT BY printf AND CHECKED BY NOTHING until it runs. A typo surfaces as
+#     `Error: near ...` on stderr and, through osq_run, as an empty result -- which is why
+#     every caller must treat empty as failure rather than as no rows.
+#   * `sed "s/'/''/g"` IS THE ONLY ESCAPE, and it appears five times across both scripts.
+#     It is correct because a single-quoted SQL literal has exactly one metacharacter. Any
+#     new statement embedding data must use it, and must take that data through sed rather
+#     than through a printf format -- a document holding `%s` would otherwise be eaten as a
+#     conversion.
+
+# One JSON string: escape what JSON requires, then replace any control byte still standing.
+# Not a no-op even on trusted input -- a path may hold any byte but / and NUL. Replacing is
+# lossy and says so; emitting raw is lossy and does not, and a malformed array reads to a
+# collector as a machine that reported nothing, the exact outcome the row exists to prevent.
+json_str() {
+  local v="$1"
+  v="${v//\\/\\\\}"; v="${v//\"/\\\"}"
+  v="${v//$'\n'/\\n}"; v="${v//$'\r'/\\r}"; v="${v//$'\t'/\\t}"
+  case "$v" in *[[:cntrl:]]*) v="${v//[[:cntrl:]]/?}" ;; esac
+  printf '"%s"' "$v"
+}
+
+# One row of the six-column contract. Six positionals rather than a map, because the ORDER
+# is the contract: kind, id, ver, loc, extra, perms.
+json_row() {
+  printf '{"kind":%s,"id":%s,"ver":%s,"loc":%s,"extra":%s,"perms":%s}' \
+    "$(json_str "$1")" "$(json_str "$2")" "$(json_str "$3")" \
+    "$(json_str "$4")" "$(json_str "$5")" "$(json_str "$6")"
+}
+
+# osqueryi reading a statement on stdin, WITH ITS OUTPUT DISCARDED ON FAILURE.
+#
+# THE KILL DECIDES, NOT THE CHILD -- AND NEITHER DOES THE PARSER. Measured on 5.23.1: fed
+# malformed JSON, osqueryi writes "Error: malformed JSON" to stderr, exits 1, and STILL
+# PRINTS "[\n\n]" on stdout. Five bytes of valid, empty, entirely plausible JSON -- the same
+# lie a SIGTERM'd query tells, arriving through a different door. A caller that read stdout
+# without the status would report a clean machine because a document failed to parse, so the
+# guard lives here, once, instead of at every call site.
+#
+# Prints rather than setting a global the way run_bounded does, deliberately: a function on
+# the right of a pipe runs in a subshell, where a global set does not survive and a print
+# does. stderr is left alone -- osqueryi's own message is the reason, and dropping it would
+# leave the caller saying only that something failed.
+osq_run() {
+  local osqi="$1" out rc
+  shift
+  # Two statements. `local out="$(...)"` would mask osqueryi's status behind local's own.
+  out="$("$osqi" "$@")"; rc=$?
+  [ "$rc" = 0 ] || return "$rc"
+  printf '%s' "$out"
+}
+
+# Join JSON arrays of six-column rows into one, BY PARSING BOTH.
+#
+# Splicing on the brackets, or splitting one stream on a delimiter, would both bet that the
+# delimiter cannot appear in the data. A malformed array reads to a collector as a machine
+# that reported nothing, which is the single outcome every guard in this repo exists to
+# prevent, so it is not a bet worth taking to save a process. Splicing has one more problem
+# besides: osqueryi renders an empty result as "[\n\n]", which splices to "[\n\n,{...}]" --
+# invalid, and only on the machines that found nothing.
+#
+# Each document reaches the statement through sed, never through a printf format: a row
+# holding `%s` would otherwise be read as a conversion and vanish.
+json_concat() {
+  local osqi="$1" doc seq=0
+  shift
+  {
+    printf 'WITH d(seq, doc) AS (VALUES'
+    for doc in "$@"; do
+      seq=$(( seq + 1 ))
+      [ "$seq" = 1 ] || printf ','
+      printf "\n(%d,'" "$seq"
+      printf '%s' "${doc:-[]}" | sed "s/'/''/g"
+      printf "')"
+    done
+    cat <<'TAIL'
+)
+SELECT json_extract(e.value,'$.kind')  AS kind, json_extract(e.value,'$.id')    AS id,
+       json_extract(e.value,'$.ver')   AS ver,  json_extract(e.value,'$.loc')   AS loc,
+       json_extract(e.value,'$.extra') AS extra,json_extract(e.value,'$.perms') AS perms
+FROM d, json_each(d.doc) e ORDER BY d.seq, e.key;
+TAIL
+  } | osq_run "$osqi" --json
+}
+
+# The pack, filtered to one platform: one `name<TAB>query` line per branch, on stdout.
+#
+# ONE READ FOR BOTH ANSWERS -- the branch list and every branch's SQL. It was eleven
+# interpreter calls on a Mac: one to filter, then one per branch to pull a string out of a
+# file already read.
+#
+# HERE RATHER THAN INLINE IN --write FOR THE REASON merge_sql IS: reachable only through a
+# full writer run, the one thing worth asserting -- that each branch's SQL arrives BYTE FOR
+# BYTE as the pack holds it -- could not be asserted at all. A query that lost its tail would
+# still run, still return rows, and still look right in a row count.
+#
+# --line, not --csv: osqueryi's CSV is naive and does not quote, so a comma in a query would
+# split a field. --line prints the value raw after a fixed `    q = ` prefix, and it is the
+# only output mode here that carries SQL text unaltered.
+#
+# The TAB is safe BY CONSTRUCTION rather than by hope: tools/build.py's flatten() is
+# `" ".join(text.split())`, so no pack query can hold a tab or a newline. test/lint.sh
+# asserts that against the artifact, since it is a property of the builder.
+pack_branches() {
+  local osqi="$1" pack="$2" platform="$3"
+  { printf "SELECT key || char(9) || json_extract(value,'\$.query') AS q FROM json_each('"
+    sed "s/'/''/g" "$pack"
+    printf "','\$.queries') WHERE json_extract(value,'\$.platform')"
+    printf " IN ('%s','posix','all') ORDER BY key;" "$platform"
+  } | osq_run "$osqi" --line | sed -n 's/^ *q = //p'
+}
+
+# The statement that merges bin/discover --write's per-branch files into one payload.
+#
+# IT LIVES HERE RATHER THAN INLINE IN bin/discover BECAUSE OF WHAT THAT MAKES TESTABLE. As a
+# heredoc inside --write, the only way to reach it was a full writer run against real
+# branches, so the one input that matters -- a branch whose document is broken -- could not
+# be handed to it at all. As a function, test/docker_states.sh builds a tmpdir by hand and
+# points it at exactly that.
+#
+# Takes the tmpdir and the branch names; prints SQL. merge_branches runs it.
+merge_sql() {
+  local tmpdir="$1" name seq=0 failed
+  shift
+  printf 'WITH b(name, seq, failed, raw) AS (VALUES'
+  for name in "$@"; do
+    seq=$(( seq + 1 )); failed=0
+    [ -e "$tmpdir/$name.failed" ] && failed=1
+    [ "$seq" = 1 ] || printf ','
+    printf "\n('%s',%d,%d,'" "$name" "$seq" "$failed"
+    # The document arrives through sed and never through a printf format: a query's own
+    # `LIKE '%<all_urls>%'` would otherwise be read as a conversion and vanish.
+    sed "s/'/''/g" "$tmpdir/$name"
+    printf "')"
+  done
+  cat <<'TAIL'
+),
+-- A MALFORMED BRANCH IS ISOLATED TO ITS BRANCH. Handed the raw document, json_each raises,
+-- osqueryi exits 1, and the other nine branches go down with it -- an all-or-nothing merge
+-- inside the one mode that exists to run branches apart, writing no payload at all.
+-- Substituting '[]' and carrying a parallel ok flag keeps the failure where it happened and
+-- turns it into that branch's own `error` marker.
+--
+-- AN EMPTY DOCUMENT IS `error` TOO, and that is a fix rather than a port. The python merge
+-- read "" as [] and called it ok, so bin/container-scan exiting 1 -- "could not run at all",
+-- which prints an empty line -- was reported as containers=ok. A scan that never happened,
+-- reported as a scan that found nothing.
+s AS (SELECT name, seq,
+        CASE WHEN failed=1 OR NOT json_valid(raw) THEN '[]' ELSE raw END AS doc,
+        CASE WHEN failed=1 OR NOT json_valid(raw) THEN 0 ELSE 1 END AS ok
+      FROM b)
+SELECT kind, id, ver, loc, extra, perms FROM (
+  -- Non-scan rows, then the branch's OWN scan rows, then a marker only if none of them
+  -- carries this branch's name. grp is that ordering; e.key is the document's own.
+  --
+  -- A BRANCH MAY EMIT ITS OWN SCAN ROWS, and whether one REPLACES this branch's marker
+  -- depends on whether it carries the same id. container-scan emits id=containers for the
+  -- containers branch -- same name, so it substitutes, and its reason (absent, unreadable,
+  -- unhealthy, timeout) must not be overwritten with a bare "ok". runtime-linux.sql emits
+  -- id=systemd, a DIFFERENT fact: whether the unit list could be read, inside a branch that
+  -- ran fine. Treating that as a substitution dropped the runtime-linux marker altogether,
+  -- so the status line said systemd=absent and never said whether the branch itself ran.
+  --
+  -- IS NOT, never !=. A row with no kind yields NULL, and `NULL != 'scan'` is NULL, so !=
+  -- would DROP that row from both arms instead of keeping it out of the scan half.
+  SELECT s.seq AS bseq, 0 AS grp, e.key AS rk,
+         json_extract(e.value,'$.kind')  AS kind, json_extract(e.value,'$.id')    AS id,
+         json_extract(e.value,'$.ver')   AS ver,  json_extract(e.value,'$.loc')   AS loc,
+         json_extract(e.value,'$.extra') AS extra,json_extract(e.value,'$.perms') AS perms
+  FROM s, json_each(s.doc) e WHERE json_extract(e.value,'$.kind') IS NOT 'scan'
+  UNION ALL
+  SELECT s.seq, 1, e.key,
+         json_extract(e.value,'$.kind'),  json_extract(e.value,'$.id'),
+         json_extract(e.value,'$.ver'),   json_extract(e.value,'$.loc'),
+         json_extract(e.value,'$.extra'), json_extract(e.value,'$.perms')
+  FROM s, json_each(s.doc) e WHERE json_extract(e.value,'$.kind') = 'scan'
+  UNION ALL
+  -- 'now' is evaluated once per statement, so every synthetic marker in one payload shares
+  -- one timestamp -- which is what the python merge's single time.time() call gave.
+  SELECT s.seq, 2, 0, 'scan', s.name, CAST(strftime('%s','now') AS TEXT), '',
+         CASE WHEN s.ok=1 THEN 'ok' ELSE 'error' END, ''
+  FROM s WHERE NOT EXISTS (
+    SELECT 1 FROM json_each(s.doc) e2
+    WHERE json_extract(e2.value,'$.kind')='scan'
+      AND json_extract(e2.value,'$.id')=s.name)
+) ORDER BY bseq, grp, rk;
+TAIL
+}
+
+# merge_sql, run. Six columns named for the contract, so osqueryi --json emits the payload
+# directly rather than something that has to be unwrapped.
+merge_branches() {
+  local osqi="$1"
+  shift
+  merge_sql "$@" | osq_run "$osqi" --json
+}
+
+# Every candidate osqueryi, in the order tools/measure.py looks.
+#
+# /usr/bin/osqueryi is where the Linux deb and rpm both put it, verified on Ubuntu 24.04
+# and Fedora 41. The macOS paths stay first so a Mac's answer does not change.
+osqueryi_path() {
+  local c
+  for c in "${OSQI:-}" /usr/local/bin/osqueryi \
+           /opt/osquery/lib/osquery.app/Contents/MacOS/osqueryi \
+           /usr/bin/osqueryi; do
+    [ -n "$c" ] && [ -x "$c" ] && { printf '%s\n' "$c"; return 0; }
+  done
+  command -v osqueryi 2>/dev/null && return 0
+  return 1
+}
+
+# Docker Desktop points /var/run/docker.sock at the per-user socket, but only for the
+# user who ran the installer. Under sudo, $HOME is root's, so try the invoking user too.
+#
+# DOCKER DESKTOP ONLY. Colima (~/.colima/*/docker.sock), Rancher Desktop (~/.rd/docker.sock)
+# and Podman (/var/run/podman/podman.sock) are not looked for, and docker_images does not
+# read containerd or Podman image stores anyway. On those hosts this reports "did not scan",
+# which is the honest answer and is recorded as a blind spot in README.md.
+# EVERY VARIABLE HERE IS GUARDED, and the two that were not produced a wrong answer rather
+# than an error. Under `set -u`, `$HOME` and `${DOCKER_HOST#unix://}` are fatal when unset --
+# and a LaunchDaemon is not guaranteed either one. The failure was not a crash a reader would
+# notice: this function runs inside `sock="$(docker_socket_path)"`, so the unbound variable
+# killed only the command substitution, the `||` branch ran, and the scan reported
+# `containers=absent` on a Mac that has /var/run/docker.sock. A plausible answer, produced by
+# a crash, on the exact path this is deployed on. Reproduced with:
+#
+#   env -i PATH=/usr/bin:/bin OSQI=... bin/discover --write /tmp/x.json
+#
+# test/docker_states.sh pins it.
+docker_socket_path() {
+  local c host="${DOCKER_HOST:-}"
+  host="${host#unix://}"
+  # /var/run/docker.sock is the common case on both platforms and the ONLY one on a
+  # normal Linux host -- Docker Engine has no per-user socket, so the two Desktop-shaped
+  # candidates below are macOS-shaped and simply never hit there.
+  #
+  # ${HOME:-...} keeps its fallback because an unguarded $HOME under `set -u` crashed this
+  # probe once and it reported containers=absent on a Mac with a healthy daemon -- a
+  # plausible answer manufactured by a crash. /var/root is macOS root's home and /root is
+  # Linux's, so both are listed rather than one standing in for the other.
+  #
+  # PODMAN IS DELIBERATELY ABSENT, and on Linux that costs more than it does on a Mac
+  # because Podman is often the default there. /run/podman/podman.sock would pass the
+  # health guard and then return zero images, because docker_images does not read
+  # Podman's store at all -- a manufactured "we looked". A probe that answers confidently
+  # about the wrong daemon is worse than a gap.
+  #
+  # The gap is named rather than only documented: other_runtime() below looks for the
+  # evidence without talking to it, and the marker says `unreadable:podman`. Not probing
+  # was always right; reporting it as `absent` -- the word a machine with no containers
+  # gets -- was the half that was wrong. This function still returns 1 either way.
+  for c in "${DOCKER_SOCKET:-}" "$host" /var/run/docker.sock \
+           "${HOME:-/var/root}/.docker/run/docker.sock" \
+           "${HOME:-/root}/.docker/run/docker.sock" \
+           ${SUDO_USER:+"/Users/$SUDO_USER/.docker/run/docker.sock"} \
+           ${SUDO_USER:+"/home/$SUDO_USER/.docker/run/docker.sock"}; do
+    [ -n "$c" ] && [ -S "$c" ] && { printf '%s\n' "$c"; return 0; }
+  done
+  return 1
+}
+
+# --- a container runtime we do not read ------------------------------------------------
+#
+# Evidence that containers run here through something other than the Docker we probe for.
+# Sets RUNTIME_NAME and RUNTIME_AT; returns 1 when there is none.
+#
+# PRESENCE ONLY -- a socket or a binary on disk. It does not say a container is running, and
+# must not grow into asking: `podman ps` is a new dependency and a daemon conversation, and
+# a marker row may not depend on anything that could be the thing it reports.
+#
+# Paths rather than `command -v`, because a LaunchDaemon's PATH would miss a Homebrew
+# podman. None of these has been read off a real install: a path that misses leaves
+# `absent`, which is today's answer, while one that matches falsely needs the file to exist
+# under that exact name. Add a candidate a machine has shown; do not guess a pattern.
+#
+# containerd is excluded -- it is what Docker itself runs on, so it is present on every
+# Linux host with Docker installed, including one whose dockerd is merely stopped.
+RUNTIME_NAME=""
+RUNTIME_AT=""
+_runtime_seen() {
+  local name="$1" c
+  shift
+  for c in "$@"; do
+    [ -n "$c" ] || continue
+    # `-f` before `-x`, because a directory is executable too.
+    [ -S "$c" ] || { [ -f "$c" ] && [ -x "$c" ]; } || continue
+    RUNTIME_NAME="$name"; RUNTIME_AT="$c"; return 0
+  done
+  return 1
+}
+
+# Podman first: the only one here osquery genuinely cannot read. Colima and Rancher Desktop
+# serve Docker-API sockets, so they are unread only because docker_socket_path() does not
+# probe those paths -- probing them is the real fix and waits on someone measuring one,
+# since a socket that answers 200 and then serves zero images is the "we looked" this file
+# exists to prevent. A machine with two runtimes reports the first found; one name is enough
+# to stop a reader concluding "no containers".
+#
+# CONTAINER_RUNTIME_ROOT prefixes every candidate so the test can produce this row on a
+# runner that has none of these, and hold `absent` steady on one that has.
+other_runtime() {
+  local root="${CONTAINER_RUNTIME_ROOT:-}"
+  RUNTIME_NAME=""; RUNTIME_AT=""
+  _runtime_seen podman \
+      "$root/run/podman/podman.sock" "$root/var/run/podman/podman.sock" \
+      "$root${XDG_RUNTIME_DIR:-/nonexistent}/podman/podman.sock" \
+      "$root/opt/homebrew/bin/podman" "$root/usr/local/bin/podman" \
+      "$root/usr/bin/podman" && return 0
+  # Glob unquoted so it expands, prefix quoted so a $HOME with a space stays one word. An
+  # unmatched glob stays literal and matches no file, which is the no-hit case.
+  _runtime_seen colima \
+      "$root${HOME:-/var/root}"/.colima/*/docker.sock \
+      "$root${HOME:-/root}"/.colima/*/docker.sock \
+      "$root/opt/homebrew/bin/colima" "$root/usr/local/bin/colima" && return 0
+  # SUDO_USER for this one only: under `sudo bin/discover --deep` $HOME is root's, and this
+  # is the only runtime with no binary to fall back on. Colima's glob cannot expand inside
+  # the quotes ${SUDO_USER:+...} needs, and does not have to. A LaunchDaemon has no
+  # SUDO_USER either, so a per-user socket is still missed on the deployed path.
+  _runtime_seen rancher-desktop \
+      "$root${HOME:-/var/root}/.rd/docker.sock" \
+      "$root${HOME:-/root}/.rd/docker.sock" \
+      ${SUDO_USER:+"$root/Users/$SUDO_USER/.rd/docker.sock"} \
+      ${SUDO_USER:+"$root/home/$SUDO_USER/.rd/docker.sock"} && return 0
+  return 1
+}
+
+# ONE round trip, and everything else reads what it saw. The guard and the message used to
+# make the same request twice, costing 2x TIMEOUT -- 16.4s at today's budget. A probe is a
+# fact about a moment; asking twice does not get a better fact.
+#
+# It is also why a longer budget is affordable: this one trip both wakes a napping daemon
+# and waits for it, so the query behind it runs warm.
+DOCKER_CODE=""
+DOCKER_SECS=""
+docker_probe() {
+  local out
+  out="$(curl -s -o /dev/null -w '%{http_code} %{time_total}' --max-time "$TIMEOUT" \
+         --unix-socket "$1" http://localhost/_ping 2>/dev/null)"
+  DOCKER_CODE="${out%% *}"; DOCKER_SECS="${out##* }"
+}
+
+# A full round trip that demands 200. Do not weaken this to a socket test; see above.
+docker_healthy() {
+  [ -S "$1" ] || return 1
+  docker_probe "$1"
+  [ "$DOCKER_CODE" = "200" ]
+}
+
+# What the probe saw, in words: which state we are in changes what the operator should do,
+# and "not 200" does not say. curl gives 000 both for a daemon that never replies and for one
+# still thinking at the deadline -- a wedged engine answers 500, but ten seconds later. A
+# budget that outlasts a wake takes the third case out of this bucket: a paused engine now
+# answers 200. Both that remain are unscannable; the difference is whether a restart helps.
+docker_state() {
+  [ -n "$DOCKER_CODE" ] || docker_probe "$1"
+  case "$DOCKER_CODE" in
+    200) echo "healthy (200 in ${DOCKER_SECS}s)" ;;
+    000) echo "no reply within ${TIMEOUT}s -- hung, or mid-startup. A paused engine wakes in about 3s, so this is neither. Retry with --timeout 20 to wait out a wedged Docker Desktop, which answers 500 after about ten seconds" ;;
+    *)   echo "answered $DOCKER_CODE in ${DOCKER_SECS}s -- the daemon is up but its engine is not serving. Restart Docker" ;;
+  esac
+}
+
+# Run a command with a hard wall-clock bound, reading stdin from a file. Portable to bash
+# 3.2, which is the only bash a managed Mac has: no `wait -n`, no timeout(1), no coreutils.
+# Output lands in BOUNDED_OUT on success and is DISCARDED on a timeout. Returns 124 when
+# the bound fired, following timeout(1)'s convention, otherwise the command's own status.
+#
+# THE KILL DECIDES, NOT THE CHILD, and that is the whole reason this is not a one-liner.
+# Measured against a hung daemon on osquery 5.23.1: SIGTERM stops osqueryi in 0.35s and it
+# exits **0** having printed "[\n\n]\n" -- a valid, parseable, EMPTY JSON array. A wrapper
+# that read the child's exit code and stdout would therefore report "this machine has no
+# containers" about a daemon that never answered a single byte. That is the silent
+# zero-rows lie this file exists to prevent, so the output is thrown away on the strength
+# of us having fired the kill and on nothing else.
+run_bounded() {
+  local secs="$1" input="$2"; shift 2
+  local tmp rc pid waited grace
+  BOUNDED_OUT=""
+  tmp="$(mktemp "${TMPDIR:-/tmp}/container-scan.XXXXXX")" || return 1
+  "$@" <"$input" >"$tmp" 2>/dev/null &
+  pid=$!
+
+  # Tenths, because whole-second polling would add up to a second of slop to a bound
+  # measured against a ten-second budget.
+  waited=0
+  while [ "$waited" -lt "$(( secs * 10 ))" ]; do
+    kill -0 "$pid" 2>/dev/null || break
+    sleep 0.1
+    waited=$(( waited + 1 ))
+  done
+
+  if kill -0 "$pid" 2>/dev/null; then
+    kill -TERM "$pid" 2>/dev/null
+    # ESCALATE ON A DEADLINE OF ITS OWN, AND THIS IS NOW THE ONLY THING THAT ENDS THE QUERY.
+    #
+    # It was written as a precaution -- SIGTERM was enough in every state measured then, and
+    # a process wedged in the kernel is merely "not obliged" to honour it. That is no longer
+    # the case: measured 2026-09-13, a wedged osqueryi reading docker_containers or
+    # docker_image_labels IGNORES SIGTERM completely and only SIGKILL ends it.
+    #
+    # So deleting this loop does not lose a safety net, it leaves an unkillable osqueryi on
+    # every Mac whose Docker is wedged -- and the wall-clock bound above, which is the whole
+    # reason this branch runs in its own process, would bound nothing.
+    # test/docker_states.sh asserts SIGTERM's failure directly so the day it starts working
+    # again is a visible test result rather than an assumption nobody rechecked.
+    grace=0
+    while [ "$grace" -lt 10 ] && kill -0 "$pid" 2>/dev/null; do
+      sleep 0.1
+      grace=$(( grace + 1 ))
+    done
+    kill -KILL "$pid" 2>/dev/null
+    # Reaped inside a redirect, or the shell announces "Terminated"/"Killed: 9" on stderr
+    # and a caller reading stderr for the reason sees noise instead.
+    { wait "$pid"; BOUNDED_SIGNAL=$?; } 2>/dev/null
+    rm -f "$tmp"
+    return 124
+  fi
+
+  { wait "$pid"; rc=$?; } 2>/dev/null
+  BOUNDED_OUT="$(cat "$tmp")"
+  rm -f "$tmp"
+  return "$rc"
+}
+
+# One row saying why there are no rows. extra carries a closed vocabulary so a smart group
+# can match a substring without parsing JSON:
+# absent | unreadable:<runtime> | unhealthy:<http-code> | timeout:<n>.
+# This was python3, and the comment here said printf could not be trusted because a socket
+# path is input and a quote in one would emit malformed JSON. The objection was never printf;
+# it was un-escaped interpolation. json_str is the escaper, so the row is built by the shell
+# and the guard path loses a process -- the path where `absent`, `unhealthy:` and `timeout:`
+# are decided, and the one place a dependency on an interpreter buys nothing at all.
+marker() {
+  [ "$MARKER" = 1 ] || return 0
+  printf '[%s]\n' "$(json_row scan containers "$(date +%s)" "${2:-}" "$1" '')"
+}
+
+# The marker for "no Docker socket here", which is two answers. `absent` is honest only when
+# no other runtime is installed either; when one is, whether the machine holds containers is
+# unknown rather than none. `loc` carries the evidence path, since the socket we did not
+# find is already on stderr. Both call sites come through here so they cannot drift.
+no_docker() {
+  if other_runtime; then
+    echo "container-scan: $RUNTIME_NAME is present at $RUNTIME_AT. docker_images does not" >&2
+    echo "  read it, so this machine may hold containers this scan did not see." >&2
+    marker "unreadable:$RUNTIME_NAME" "$RUNTIME_AT"
+  else
+    marker absent "${1:-}"
+  fi
+}
+
+# THE RECOMMENDED DEPLOYMENT, AND THE FILE IS THE PAYLOAD.
+#
+# Nothing upstream will bound us. No macOS management tool we checked documents a per-script
+# timeout, and the evidence runs the other way: collection scripts measured at 21s, and
+# inventory *stalling* rather than being cut off. An unbounded collection script does not fail
+# fast; it hangs that machine's inventory.
+#
+# So the fix is not to make the blocking call faster, it is to not make it while something
+# is waiting. A scheduled job runs this scan and writes the file; the endpoint agent, EA or
+# collector does nothing but `cat` it. The same move as reading a cached plist rather than
+# invoking the command that produces it, and it takes the
+# container check from 7.4s worst case to the cost of reading a file.
+#
+# WHAT IS IN THE FILE IS EXACTLY WHAT SHOULD BE REPORTED: a bare JSON array of six-column
+# rows, complete and valid, with no envelope to unwrap and no field to extract. `cat` is the
+# whole integration. That constraint is why every payload -- success included -- carries one
+# kind=scan row:
+#
+#   {"kind":"scan","id":"containers","ver":"<unix seconds>","loc":"<socket>","extra":"ok"}
+#
+# `ver` is when the scan ran and `extra` is what happened, so the payload DATES ITSELF. A
+# reader that can only `cat` cannot check a file's mtime, and a stale cache that cannot say
+# it is stale is the same lie as an empty array from a wedged daemon. Age is then judged
+# wherever the data lands -- a smart group, a dashboard, bin/classify -- rather than needing
+# logic on the endpoint.
+cache_write() {
+  local rows="$1" dir tmp
+  dir="$(dirname "$CACHE")"
+  mkdir -p "$dir" 2>/dev/null || { echo "container-scan: cannot create $dir" >&2; return 1; }
+  tmp="$(mktemp "${CACHE}.XXXXXX")" || return 1
+  printf '%s\n' "$rows" > "$tmp" || { rm -f "$tmp"; return 1; }
+  # Rename, never write in place. A `cat` that caught a half-written file would yield
+  # truncated JSON, which a collector reads as "this machine reported nothing" -- the exact
+  # failure every guard in this file exists to prevent, reintroduced by the cache.
+  mv -f "$tmp" "$CACHE" || { rm -f "$tmp"; return 1; }
+  chmod 644 "$CACHE" 2>/dev/null
+  return 0
+}
+
+# Run what actually ships, rather than a copy of it: dist/discovery-deep.sql is the
+# artifact that carries the expensive branches, and dist/ is committed.
+#
+# ON STDIN, NOT AS AN ARGUMENT. The artifact opens with a `--` banner, and osqueryi reads
+# an argv query starting with `--` as a command-line flag: it prints "unknown command line
+# flag" and exits 0 with no rows. Same reason the quickstart redirects the artifact.
+#
+# test/lint.sh holds this file to one expensive query, because the guard below is
+# docker-specific. A second expensive branch that is not docker-shaped needs its own
+# guard, and this artifact needs splitting before it can have one.
+container_scan() {
+  local osqi sock rc state
+  # Whole seconds, at least one. A bound of 0 makes the poll loop expire before osqueryi
+  # has finished starting, so every scan would report a timeout -- and a script whose
+  # every answer is "we could not look" is indistinguishable from a broken one.
+  case "$SCAN_TIMEOUT" in
+    ''|*[!0-9]*|0) echo "container-scan: --scan-timeout needs whole seconds, at least 1 (got '$SCAN_TIMEOUT')" >&2
+                   return 1 ;;
+  esac
+  osqi="$(osqueryi_path)" || { echo "container-scan: no osqueryi found (set OSQI)" >&2; return 1; }
+  [ -s "$DEEP" ] || {
+    echo "container-scan: no deep artifact at $DEEP (run tools/build.py)" >&2; return 1; }
+
+  if [ -n "$SOCKET" ]; then
+    sock="$SOCKET"
+    [ -S "$sock" ] || {
+      echo "container-scan: not a socket: $sock -- did not scan" >&2
+      no_docker "$sock"; return 2; }
+  else
+    sock="$(docker_socket_path)" || {
+      echo "container-scan: no docker socket -- did not scan" >&2
+      no_docker ""; return 2; }
+  fi
+
+  docker_healthy "$sock" || {
+    state="$(docker_state "$sock")"
+    echo "container-scan: did not scan. $sock: $state" >&2
+    echo "  Zero rows from this daemon would be a lie, not an empty machine." >&2
+    # docker_state sets DOCKER_CODE as a side effect of the round trip it already makes,
+    # so the row carries the code without a third probe.
+    marker "unhealthy:${DOCKER_CODE:-000}" "$sock"; return 2; }
+
+  run_bounded "$SCAN_TIMEOUT" "$DEEP" "$osqi" --docker_socket="$sock" --json; rc=$?
+  if [ "$rc" = 124 ]; then
+    echo "container-scan: the daemon answered /_ping and then stalled on the query." >&2
+    echo "  Gave up at ${SCAN_TIMEOUT}s and discarded the output. osqueryi exits 0 with an" >&2
+    echo "  empty JSON array when it is interrupted, so those rows would have read as a host" >&2
+    echo "  with no containers." >&2
+    marker "timeout:${SCAN_TIMEOUT}" "$sock"
+    return 3
+  fi
+  [ "$rc" = 0 ] && [ -n "$BOUNDED_OUT" ] || {
+    echo "container-scan: osqueryi failed (exit $rc)" >&2; return 1; }
+
+  # Cheap, and it costs nothing to be sure: a truncated array parses as a collector error,
+  # and a collector error reads as "this machine reported nothing". The bound discards its own
+  # output, so this only catches an osqueryi that died mid-write of something else.
+  case "$BOUNDED_OUT" in
+    \[*\]) : ;;
+    *) echo "container-scan: osqueryi output is not a complete JSON array -- discarded" >&2
+       return 1 ;;
+  esac
+
+  # --pretty WAS HERE, AND WENT WITH THE INTERPRETER. It rendered the image rows as a table
+  # for a human, and it was the last python3 on this endpoint -- an operator convenience
+  # holding a dependency that a fleet path could not afford.
+  #
+  # Porting it was the alternative and it was worse than it looks. int(extra or 0) RAISES on
+  # a size that is not a number; SQLite's CAST returns 0, so the port would have turned an
+  # error into `0.00 GB` -- a wrong answer replacing a loud failure, on the one path nobody
+  # tests. Nothing did test it: it appeared in README.md and docs/containers.md and in no
+  # assertion anywhere.
+  #
+  # `bin/container-scan | bin/classify` is the human view now, and it is a better one: it
+  # names the agents rather than listing every image, which is the question being asked.
+
+  # Every payload dates itself, success included -- see cache_write. Appended by parsing
+  # both documents rather than splicing brackets, for the reasons written above json_concat.
+  #
+  # The SUCCESS path only, so the wall-clock budgets the wedged states are measured against
+  # are untouched by this call.
+  json_concat "$osqi" "$BOUNDED_OUT" "$(marker ok "$sock")" \
+    || { echo "container-scan: could not join the scan rows to their marker -- discarded" >&2
+         return 1; }
+}
+
+# The scan, plus the cache side of it. Kept separate from container_scan() so that the
+# outcome vocabulary is written down in exactly one place.
+# Scan, then persist exactly what was printed. There is no separate encoding step and no
+# second vocabulary: the file and stdout are byte-identical, so whatever a human sees when
+# they run this by hand is precisely what the endpoint will report.
+scan_and_cache() {
+  local rc out
+  out="$(container_scan)"; rc=$?
+  # Exit 1 is "could not run at all" -- no osqueryi, no artifact, bad argument. That says
+  # nothing about this machine's containers, so it must NOT overwrite a good cache with a
+  # verdict it did not earn.
+  if [ "$rc" = 1 ]; then
+    printf '%s\n' "$out"
+    [ -z "$CACHE" ] || echo "container-scan: left $CACHE untouched -- the scan never ran" >&2
+    return 1
+  fi
+  if [ -n "$CACHE" ]; then
+    cache_write "$out" || return 1
+  fi
+  printf '%s\n' "$out"
+  return "$rc"
+}
+
+# Sourced? Define and stop. Executed? Parse arguments and run.
+(return 0 2>/dev/null) && return 0
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --socket)       need_arg "$@"; SOCKET="$2"; shift 2 ;;
+    # --timeout is the /_ping round trip and keeps its name: docker_state's own message
+    # tells the operator to "Retry with --timeout 20" and that text ships. --ping-timeout
+    # is the same thing said unambiguously, for anyone writing a new invocation.
+    --timeout|--ping-timeout) need_arg "$@"; TIMEOUT="$2"; shift 2 ;;
+    --scan-timeout) need_arg "$@"; SCAN_TIMEOUT="$2"; shift 2 ;;
+    # --pretty is GONE, and it says so rather than falling through to "unknown argument":
+    # it shipped in README.md and docs/containers.md, so someone has it in a shell history.
+    --pretty)       echo "container-scan: --pretty was removed. Pipe to bin/classify for a" \
+                         "human view: bin/container-scan | bin/classify" >&2; exit 1 ;;
+    --no-marker)    MARKER=0; shift ;;
+    --cache)        need_arg "$@"; CACHE="$2"; shift 2 ;;
+    -h|--help)      sed -n '2,50p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    *) echo "container-scan: unknown argument: $1" >&2; exit 1 ;;
+  esac
+done
+
+scan_and_cache

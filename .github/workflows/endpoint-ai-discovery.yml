@@ -1,0 +1,94 @@
+name: Endpoint AI Discovery CI
+
+# lint.sh READS dist/collect.sh; the macOS job RUNS it. Both are needed: a static check
+# cannot catch a shell bug that only fires on a real Mac, and the deployable is bash 3.2
+# against a stock system.
+#
+# The queries, the runner and the Docker guard are vendored at a pinned ref and tested by
+# upstream. Do not re-create that suite here.
+
+on:
+  pull_request:
+    paths:
+      - 'integrations/endpoint-ai-discovery/**'
+      - '.github/workflows/endpoint-ai-discovery.yml'
+  push:
+    branches: [dev, main]
+    paths:
+      - 'integrations/endpoint-ai-discovery/**'
+      - '.github/workflows/endpoint-ai-discovery.yml'
+  workflow_dispatch:
+
+# Read-only, and not left in the checkout. The macOS job runs the checked-out
+# test/run-collector.sh as root, so a write-capable token persisted into .git/config by
+# actions/checkout would be readable by it.
+permissions:
+  contents: read
+
+concurrency:
+  group: endpoint-ai-discovery-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+defaults:
+  run:
+    working-directory: integrations/endpoint-ai-discovery
+
+jobs:
+  lint:
+    name: Static checks
+    # No osquery and no Mac needed: this reads files. Cheap enough to gate every push.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: test/lint.sh
+        run: test/lint.sh
+
+      # The collector embeds the darwin artifact alone, so it must refuse elsewhere by
+      # name rather than by failing on a missing file. Asserts on the artifact the message
+      # names, not on its wording -- the wording is upstream's to change.
+      - name: The collector refuses to run off macOS, and says why
+        run: |
+          set +e
+          out="$(dist/collect.sh 2>&1)"; status=$?
+          set -e
+          echo "$out"
+          [ "$status" -eq 1 ] || { echo "::error::expected exit 1 on Linux, got $status"; exit 1; }
+          case "$out" in
+            *discovery-darwin.sql*) echo "ok: refused, naming the artifact it carries" ;;
+            *) echo "::error::the refusal does not name the cause"; exit 1 ;;
+          esac
+
+  collector:
+    name: The deployable, run on a Mac
+    # Pinned rather than macos-latest: the prerequisite claim -- osquery and nothing else
+    # -- is a claim about a stock Mac, so a reissued image is drift worth catching.
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      # The version upstream tests against. osquery has no per-query timeout, so the
+      # wall-clock bound is a property of this release rather than of osquery.
+      - name: Install osquery
+        run: |
+          curl -fsSL -o /tmp/osquery.pkg \
+            "https://pkg.osquery.io/darwin/osquery-${OSQUERY_VERSION}.pkg"
+          sudo installer -pkg /tmp/osquery.pkg -target /
+        env:
+          OSQUERY_VERSION: 5.23.1
+
+      # As root, because an MDM policy runs it as root. The script works unprivileged,
+      # but the row count depends on it. ~15s.
+      - name: test/run-collector.sh
+        run: sudo -n test/run-collector.sh
+
+      # A hosted runner has no Docker, so the container branch reports `absent` and the
+      # 15s cold-ping bound is never reached. Daemon states are upstream's
+      # test/docker_states.sh.
+      - name: What this job did not prove
+        run: |
+          echo "no Docker on a hosted runner, so the container branch reported absent"
+          echo "rather than ok, and the 15s cold-ping bound was never reached"

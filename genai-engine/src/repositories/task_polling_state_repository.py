@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime
-from typing import Optional
+from typing import Iterable, Optional
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -8,6 +8,9 @@ from sqlalchemy.orm import Session
 from db_models.agent_polling_models import DatabaseTaskPollingState
 
 logger = logging.getLogger(__name__)
+
+# Task IDs per IN clause when reading polling state in bulk.
+_LOOKUP_CHUNK_SIZE = 500
 
 
 class TaskPollingStateRepository:
@@ -63,3 +66,27 @@ class TaskPollingStateRepository:
             .filter(DatabaseTaskPollingState.task_id == task_id)
             .first()
         )
+
+    def get_by_task_ids(
+        self,
+        task_ids: Iterable[str],
+    ) -> dict[str, DatabaseTaskPollingState]:
+        """Polling state for each of many tasks, one query per chunk of IDs.
+
+        Returns:
+            dict: task_id -> polling state, holding only tasks that have one.
+        """
+        ids = list(dict.fromkeys(task_ids))
+        by_task: dict[str, DatabaseTaskPollingState] = {}
+        for start in range(0, len(ids), _LOOKUP_CHUNK_SIZE):
+            states = (
+                self.db_session.query(DatabaseTaskPollingState)
+                .filter(
+                    DatabaseTaskPollingState.task_id.in_(
+                        ids[start : start + _LOOKUP_CHUNK_SIZE],
+                    ),
+                )
+                .all()
+            )
+            by_task.update((state.task_id, state) for state in states)
+        return by_task

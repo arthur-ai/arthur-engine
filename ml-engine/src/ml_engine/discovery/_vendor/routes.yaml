@@ -1,0 +1,348 @@
+# The route registry: the one place a detection route is declared.
+#
+# WHY THIS FILE EXISTS. The route vocabulary used to live in five hardcoded lists that
+# had to agree -- tools/validate_catalog.py's ROUTES, bin/classify's KIND_ROUTES,
+# tools/agent_status.py's EXACT_KINDS/GLOB_ROUTES/ALL_ROUTES, and test/lint.sh's KINDS --
+# plus a sixth copy of the path-route tuple ("state_dirs", "binaries", "model_stores")
+# repeated in three files. Drift between them is THE recurring bug class here: `ext` was
+# missing from KIND_ROUTES from the beginning, so every browser-extension row was
+# DROPPED rather than unmatched -- invisible even under --show-unmatched, for months,
+# while the row counts stayed right. Adding a route is now one edit, in this file.
+#
+# WHAT A ROUTE IS. A way an agent's identity reaches us: a package name, a bundle id, a
+# path shape. The endpoint enumerates and holds no catalog; matching happens off the
+# machine in bin/classify against catalog/agents.yaml. A route is the join between the
+# two, and every field below has a consumer -- see EVERY FIELD IS READ.
+#
+# EVERY FIELD IS READ. Deliberately. catalog/agents.yaml carried `version: 1` for its
+# whole life and nothing ever read it, which is how a schema grows fields that disagree
+# with reality because nothing can fail. So this file carries no field that no code
+# checks. Two that a coordinate-conscious reader will miss are absent for exactly that
+# reason and are recorded here instead of half-added:
+#
+#   purl:    the PURL type for the route. Omitted -- nothing emits a PURL yet, and two
+#            of the types we would need (`brew`, `chocolatey`) are NOT on the official
+#            list, so shipping them would put a coordinate an SBOM consumer rejects
+#            inside someone else's pipeline where nobody here can see it.
+#   version: what a row's `ver` column MEANS on this route -- a package version, a
+#            marketing version, an image tag that is not a version at all. Omitted until
+#            the output contract emits it. `table` and `min_osquery` below are present
+#            because test/lint.sh does check them against the query frontmatter.
+#
+# FIELDS
+#   platform      darwin | linux | windows | posix   (posix == darwin AND linux)
+#   kind          the row kind that carries this route, from the six-column contract
+#   match         how a catalog value is compared to a row -- see MATCH MODES
+#   table         the osquery table the evidence comes from. lint asserts some query
+#                 declares it in `-- tables:` for this route's platform, so a route
+#                 nothing can feed fails the build instead of quietly matching nothing
+#   min_osquery   the floor this route needs. lint asserts the feeding query declares
+#                 at least this in `-- min-osquery:`
+#   value_pattern optional regex every catalog value on this route must fullmatch
+#   retired       optional. The route no longer identifies anything, but rows of its
+#                 kind are still collected and MUST stay registered -- see `ports`
+#   values_from   optional. Index ANOTHER route's catalog values instead of a key of this
+#                 route's own name. For a route that matches the same identifiers through
+#                 a different row kind -- `container_images` reads `images:`, because a
+#                 running container and a pulled image name the same repository. Read by
+#                 bin/classify's build_index; deliberately NOT by tools/agent_status.py,
+#                 so an identifier reachable two ways is still counted once
+#
+# MATCH MODES
+#   exact             the value equals the row's id
+#   prefix            the value is a front-anchored prefix of the row's id
+#   exact-normalised  `images` only: the row's id is a tag LIST, each normalised to a
+#                     repository first. bin/classify's image_repo() owns the four rules
+#   home-dir          a `~/`-rooted DIRECTORY, anchored at both ends. `~/.claude` must
+#                     match `.../.claude` and `.../.claude/` and must NOT match
+#                     `.../.claudefoo` -- it did, for as long as the glob was
+#                     front-anchored only
+#   home-prefix       a `~/`-rooted path, front-anchored ON PURPOSE. `~/.local/bin/hermes`
+#                     has to keep matching hermes-acp and hermes-agent: one uv install
+#                     writes all three commands. This is why the missing `$` above is a
+#                     per-route fix and not a blanket one
+#   tool-dir          reached through bin/classify's TOOL_DIR bridge rather than the
+#                     generic loop: pipx and uv name each tool's directory after the
+#                     PACKAGE, so a path row can yield a package name. Excluded from the
+#                     generic per-kind list, which is what stops a PyPI-only signature
+#                     claiming an npm package of the same name -- npm's `mcp` is
+#                     Mintlify's, and it was reported as the MCP SDK until that split
+version: 1
+
+# The platform vocabulary. A value outside it is a typo, and `macos` used to build clean
+# and yield a pack query osqueryd silently never scheduled.
+platforms: [darwin, linux, windows]
+
+# `posix` is one word for darwin AND linux, and it is osqueryd's own word for it in the
+# pack format -- so a query's `-- platform:` and a route's `platform:` are drawn from one
+# vocabulary rather than two that have to be translated.
+platform_groups:
+  posix: [darwin, linux]
+
+routes:
+
+  # --- macOS -------------------------------------------------------------------------
+  bundle_ids:
+    platform: darwin
+    kind: app
+    match: exact
+    table: apps
+    min_osquery: 5.10.0
+    # Reverse-DNS, and case-SENSITIVE by necessity: com.kagi.kagimacOS is a real shipped
+    # identifier, so a lowercase-only pattern would reject a fact. Verified against all
+    # ten bundle_ids in the catalog before being written down.
+    value_pattern: '^[A-Za-z0-9-]+(\.[A-Za-z0-9-]+){2,}$'
+  homebrew:
+    platform: darwin
+    kind: brew
+    match: exact
+    table: homebrew_packages
+    min_osquery: 5.10.0
+  launchd_prefixes:
+    platform: darwin
+    kind: daemon
+    match: prefix
+    table: launchd
+    min_osquery: 5.10.0
+
+  # --- portable ----------------------------------------------------------------------
+  npm:
+    platform: posix
+    kind: npm
+    match: exact
+    table: npm_packages
+    min_osquery: 5.10.0
+  pypi:
+    platform: posix
+    kind: file
+    match: tool-dir
+    table: file
+    min_osquery: 5.10.0
+  extension_ids:
+    # Chromium extension ids are derived from the developer's public key, so they are
+    # identical on every OS and across every browser_type osquery enumerates.
+    platform: posix
+    kind: ext
+    match: exact
+    table: chrome_extensions
+    min_osquery: 5.10.0
+    # 32 characters from a-p: a base16 encoding of the first half of a SHA-256 over the
+    # key, remapped onto letters. A hex-looking id, one with a digit, or one of the
+    # wrong length was transcribed rather than read off an install.
+    value_pattern: '^[a-p]{32}$'
+  native_messaging_hosts:
+    # The VALUE is a portable filename. The DIRECTORY is per-OS and lives in the queries:
+    # macOS uses ~/Library/Application Support/<browser>/NativeMessagingHosts/, Linux
+    # uses ~/.config/<browser>/NativeMessagingHosts/ for the user scope and the
+    # lower-case /etc/opt/chrome/native-messaging-hosts/ for the system scope. Both
+    # casings were read off a real Chrome install; osquery's LIKE is case-sensitive.
+    platform: posix
+    kind: nmh
+    match: exact
+    table: file
+    min_osquery: 5.10.0
+  vscode_extensions:
+    # NEW, and it retires a blind spot rather than adding one. docs/blind-spots.yaml said
+    # "osquery has no table for them at all" -- true at 5.10.0, false from 5.11.0.
+    #
+    # THE VALUE IS THE `name` COLUMN ALONE, and reading that off a real install is what
+    # stopped a wrong identifier shipping. `name` already holds the FULL marketplace id
+    # -- `saoudrizwan.claude-dev` -- and `publisher_id`, which reads like the publisher
+    # slug, is a GUID: 6f42e67d-d7ea-4a53-8704-2ae8bf2d86f3 for Cline. The obvious
+    # expression `publisher_id || '.' || name` therefore yields
+    # `6f42e67d-....saoudrizwan.claude-dev`, which matches nothing and looks deliberate.
+    # `publisher` is a display name ("Cline"), not an id either. Verified 2026-09-04
+    # against osquery 5.23.1 with Cline 4.1.17 and Continue 2.0.0 installed by
+    # `code --install-extension`.
+    #
+    # min_osquery is 5.11.0, ABOVE the 5.10.0 floor every other route declares, which is
+    # the whole reason the bound is per-route and per-query rather than repo-wide. The
+    # `vscode_edition` column that tells VS Code from Cursor, Windsurf and VSCodium
+    # arrived later still (5.15.0) and ships in `extra`, so a build between the two
+    # loses the edition and keeps the identifier.
+    platform: posix
+    kind: vscodeext
+    match: exact
+    table: vscode_extensions
+    min_osquery: 5.11.0
+    value_pattern: '^[A-Za-z0-9][A-Za-z0-9._-]*\.[A-Za-z0-9][A-Za-z0-9._-]*$'
+  images:
+    platform: posix
+    kind: image
+    match: exact-normalised
+    table: docker_images
+    min_osquery: 5.10.0
+  container_images:
+    # THE SAME VALUES AS `images`, REACHED THROUGH A RUNNING CONTAINER. Catalogued under
+    # `images:` on the agent -- an agent does not need a second list -- and separate here
+    # only because the ROW KIND differs, which is what the registry keys on.
+    #
+    # WHY IT IS WORTH A SECOND ROUTE. docker_images answers "is this pulled", which is a
+    # fact about the disk. This answers "is it RUNNING", which no other route in this repo
+    # can answer about anything: every other one reports presence. A pulled-and-forgotten
+    # image and a live agent are different findings and were previously the same row.
+    #
+    # Measured 2026-09-11, Docker 28.4.0 / osquery 5.23.1: docker_containers lists RUNNING
+    # containers only -- two exited containers on the probe host produced ZERO rows. So
+    # this route never supersedes `images`, it corroborates it, and an agent that is
+    # installed but stopped is still seen by `images` alone.
+    #
+    # `image` on this table carries the full tag ("paulgauthier/aider:latest"), verified on
+    # that same host, so image_repo() normalises it exactly as it does a docker_images tag
+    # and the two routes cannot disagree about what a repository name is.
+    platform: posix
+    kind: container
+    match: exact-normalised
+    table: docker_containers
+    min_osquery: 5.10.0
+    # Reads `images:` off each agent rather than a list of its own. See bin/classify's
+    # Registry for why duplication was rejected, and note the consequence for coverage:
+    # an aliased route contributes no catalog key, so tools/agent_status.py counts the
+    # identifier ONCE, under `images`. One image, reached two ways, is one identifier.
+    values_from: images
+  image_labels:
+    # THE ONE CONTAINER IDENTIFIER A RETAGGER DOES NOT CONTROL. An image TAG is chosen by
+    # whoever ran `docker tag`, which makes `images` the only route here whose identifier
+    # is not vendor-controlled. An OCI label is written by the vendor in their own
+    # Dockerfile and travels in the image manifest, so it is the container equivalent of a
+    # bundle id: `docker tag alpine ghcr.io/block/goose` renames a local reference and adds
+    # no labels to anything.
+    #
+    # WHY IT MATCHES `org.opencontainers.image.source` AND NOTHING ELSE. Measured across
+    # eighteen real images on 2026-09-11: every image carrying `source` carried a correct
+    # vendor URL, while `title`, `vendor` and `ref.name` are INHERITED FROM THE BASE IMAGE
+    # and routinely wrong. litellm's own image reports title=wolfi-base, vendor=Chainguard
+    # while its source is correctly https://github.com/BerriAI/litellm; sweagent/swe-agent
+    # reports ref.name=ubuntu, version=22.04 and nothing else. A route keyed on `title`
+    # would offer "ubuntu" as an agent's identity, which is the confident wrong answer this
+    # repo exists to avoid. `version` is unreliable for the same reason -- goose reports
+    # "main", OpenHands "main-amd64" -- and is not emitted.
+    #
+    # WHAT CARRIES A LABEL IS A FACT ABOUT PUBLISHING, NOT ABOUT BEING AN AGENT, and that
+    # was worth learning the hard way. A first pass over stale images concluded agents do
+    # not set labels at all: paulgauthier/aider has NONE, sweagent/swe-agent only inherited
+    # Ubuntu ones, significantgravitas/auto-gpt only GIT_REVISION. Every one of those
+    # images was between seven months and two and a half years old. The CURRENTLY published
+    # agent images set them properly -- ghcr.io/openhands/openhands (2026-07-21) and
+    # ghcr.io/block/goose (2026-04-06) both carry a correct `source` -- because a modern
+    # release pipeline injects them. So this route covers the agents a fleet is most likely
+    # to be running NOW, and misses the abandoned ones, which is the opposite of the usual
+    # staleness problem and is why `images` stays beside it rather than being replaced.
+    platform: posix
+    kind: ilabel
+    match: exact
+    table: docker_image_labels
+    min_osquery: 5.10.0
+    # A URL, because that is what `source` holds. Anchored at both ends so a bare project
+    # name cannot be written here by someone reaching for `title` instead.
+    value_pattern: '^https?://[A-Za-z0-9.-]+/[A-Za-z0-9._~:/?#@!$&()*+,;=%-]+$'
+  state_dirs:
+    platform: posix
+    kind: file
+    match: home-dir
+    table: file
+    min_osquery: 5.10.0
+  binaries:
+    platform: posix
+    kind: file
+    match: home-prefix
+    table: file
+    min_osquery: 5.10.0
+  model_stores:
+    # Carries no values today: it went with the model runners, which are not agents.
+    # Kept registered because its kind is still collected -- see `ports` below for what
+    # unregistering a live kind costs.
+    platform: posix
+    kind: file
+    match: home-prefix
+    table: file
+    min_osquery: 5.10.0
+  ports:
+    # RETIRED AS A SIGNATURE, AND IT MUST STAY REGISTERED ANYWAY. A port only ever
+    # matched when the process holding it already named the agent, so it added no
+    # identifying power -- a second opinion from the same witness. catalog/agents.yaml's
+    # header has the measurement.
+    #
+    # But queries/ports.sql still emits kind='port' rows as raw evidence, and a kind
+    # absent from the registry is DROPPED by bin/classify, not unmatched. Deleting this
+    # entry would reproduce the `ext` bug exactly: rows collected, rows correct, rows
+    # invisible even under --show-unmatched. `retired` keeps the kind registered and the
+    # route unable to claim anything.
+    platform: posix
+    kind: port
+    match: exact
+    table: listening_ports
+    min_osquery: 5.10.0
+    retired: true
+
+  # --- Linux -------------------------------------------------------------------------
+  deb_packages:
+    # THE STATUS FILTER IS PART OF THE QUERY, NOT THIS ROUTE, and it is not optional.
+    # Verified in a container against a real `apt-get remove` without purge: dpkg keeps
+    # the row as `deinstall ok config-files` WITH THE VERSION STILL ATTACHED, and
+    # osquery reports it. Unfiltered, an uninstalled agent reads as an installed one.
+    # queries/packages-linux.sql carries the filter and the measurement.
+    platform: linux
+    kind: deb
+    match: exact
+    table: deb_packages
+    min_osquery: 5.10.0
+  rpm_packages:
+    # Verified to coexist with deb_packages in ONE composed artifact: on Debian this
+    # returns 0 rows and exit 0 with no stderr, and deb_packages does the same on
+    # Fedora. That is what lets a single dist/discovery-linux.sql serve both families
+    # instead of splitting the artifact per package manager.
+    platform: linux
+    kind: rpm
+    match: exact
+    table: rpm_packages
+    min_osquery: 5.10.0
+  desktop_ids:
+    # Linux's nearest analogue to a bundle id, and THE ONLY ROUTE THAT CAN SEE AN
+    # AppImage OR TARBALL INSTALL: neither leaves a package record, and both commonly
+    # write a .desktop entry. Cursor's primary Linux download is an AppImage, so without
+    # this route its most common install shape is invisible.
+    #
+    # A real google-chrome-stable install writes TWO entries -- com.google.Chrome.desktop
+    # and google-chrome.desktop -- so values on this route come in both a reverse-DNS
+    # and a bare shape, and the pattern below has to admit both.
+    platform: linux
+    kind: desktop
+    match: exact
+    table: file
+    min_osquery: 5.10.0
+    value_pattern: '^[A-Za-z0-9][A-Za-z0-9._+-]*\.desktop$'
+  systemd_prefixes:
+    # REGISTERED, AND CARRYING NO VALUES. That is the whole state of this route, and it is
+    # deliberate rather than unfinished.
+    #
+    # It was written expecting `systemd_prefixes: [ai.openclaw.]` to mirror the macOS
+    # `launchd_prefixes` entry. That would have been a GUESS: the launchd labels were read
+    # off a live OpenClaw install, and no equivalent has been read off a Linux one. The
+    # test that caught it is in test/test_matcher.py -- a unit named
+    # ai.openclaw.gateway.service resolved to nothing, because nothing claims it.
+    #
+    # SO WHY KEEP THE ROUTE AT ALL. Because queries/runtime-linux.sql emits kind='unit'
+    # rows, and a kind absent from this registry is DROPPED by bin/classify rather than
+    # reported unmatched -- invisible even under --show-unmatched. That is the `ext` bug,
+    # and it is why `ports` is still here too. Registering the kind is what keeps a
+    # systemd unit visible as EVIDENCE while nothing pretends it is a signature.
+    #
+    # IT IS NOT RETIRED, and the difference from `ports` matters. A port cannot identify
+    # anything in principle -- it only ever matched once something else had already named
+    # the agent. A unit name can: a vendor controls it the way it controls a launchd
+    # label. This route is unproven, not disproven, and the day a real install produces a
+    # vendor-named unit the value goes here and 76-linux-systemd's assertion changes with
+    # it. Until then docs/blind-spots.yaml carries the gap.
+    #
+    # systemd_units FAILS SOFT, which is why queries/runtime-linux.sql pairs it with a
+    # kind=scan marker: with no reachable system bus it logs to stderr, contributes ZERO
+    # rows, and the statement still exits 0 and returns every other row. Measured in a
+    # container: 0 units, exit 0, 131 other rows. Without the marker a chroot, a
+    # container or a locked-down host reports "no agent units" in the exact shape a clean
+    # host does.
+    platform: linux
+    kind: unit
+    match: prefix
+    table: systemd_units
+    min_osquery: 5.10.0

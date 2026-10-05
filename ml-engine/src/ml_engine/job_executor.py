@@ -8,7 +8,6 @@ from arthur_client.api_bindings import (
     AlertCheckJobSpec,
     AlertRulesV1Api,
     AlertsV1Api,
-    ApiClient,
     CompliancePolicyCheckJobSpec,
     ConnectorCheckJobSpec,
     ConnectorsV1Api,
@@ -19,6 +18,9 @@ from arthur_client.api_bindings import (
     DataRetrievalV1Api,
     DatasetsV1Api,
     DiscoverAgentsJobSpec,
+    DiscoveryRunsV1Api,
+    DiscoverySourcesV1Api,
+    FetchDiscoveredAgentsJobSpec,
     JobKind,
     JobRun,
     JobState,
@@ -33,11 +35,6 @@ from arthur_client.api_bindings import (
     TasksV1Api,
     TestCustomAggregationJobSpec,
 )
-from arthur_client.auth import (
-    ArthurClientCredentialsAPISession,
-    ArthurOAuthSessionAPIConfiguration,
-    ArthurOIDCMetadata,
-)
 from arthur_common.models.task_job_specs import (
     CreateModelTaskJobSpec,
     DeleteModelTaskJobSpec,
@@ -46,6 +43,15 @@ from arthur_common.models.task_job_specs import (
 )
 from pydantic import StrictBytes
 
+# Imported for its side effect: registering the discovery connectors into
+# SOURCE_CONNECTORS, which DiscoverAgentsExecutor and DiscoverySourceTestExecutor
+# resolve a source's vendor against.
+import discovery  # noqa: F401
+from arthur_client_support import (
+    TEST_DISCOVERY_SOURCE_JOB_KIND,
+    TEST_DISCOVERY_SOURCE_SUPPORTED,
+    TEST_DISCOVERY_SOURCE_UNSUPPORTED_MESSAGE,
+)
 from config import Config
 from job_executors.alert_check_executor import AlertCheckExecutor
 from job_executors.compliance_policy_check_executor import (
@@ -53,7 +59,12 @@ from job_executors.compliance_policy_check_executor import (
 )
 from job_executors.connector_test_executor import ConnectorTestExecutor
 from job_executors.discover_agents_executor import DiscoverAgentsExecutor
+from job_executors.discovery_record_sink import GenAIEngineRecordSink
+from job_executors.discovery_run_reporter import PlatformRunReporter
 from job_executors.fetch_data_executor import FetchDataExecutor
+from job_executors.fetch_discovered_agents_executor import (
+    FetchDiscoveredAgentsExecutor,
+)
 from job_executors.list_datasets_executor import ListDatasetsExecutor
 from job_executors.metrics_calculation_executor import (
     CustomAggregationTestExecutor,
@@ -72,6 +83,16 @@ from job_executors.task_management_job_executors import (
 )
 from job_log_exporter import ExportContextedLogger, ScopeJobLogExporter
 from tools.connector_constructor import ConnectorConstructor
+from tools.platform_api_client import build_platform_api_client
+
+# Only with a client that has D-12's models: the executor imports them at load, and
+# without this guard a client that predates them would fail every job kind.
+if TEST_DISCOVERY_SOURCE_SUPPORTED:
+    from arthur_client.api_bindings import TestDiscoverySourceJobSpec
+
+    from job_executors.discovery_source_test_executor import (
+        DiscoverySourceTestExecutor,
+    )
 
 logging.basicConfig()
 
@@ -110,26 +131,7 @@ class JobSpecRawParser:
 
 class JobExecutor:
     def __init__(self) -> None:
-        ssl_verify = Config.get_bool(
-            "ARTHUR_API_HOST_SSL_VERIFY",
-            True,
-            fallback_keys=["KEYCLOAK_SSL_VERIFY"],
-        )
-        sess = ArthurClientCredentialsAPISession(
-            client_id=Config.settings.ARTHUR_CLIENT_ID,
-            client_secret=Config.settings.ARTHUR_CLIENT_SECRET,
-            metadata=ArthurOIDCMetadata(
-                arthur_host=Config.settings.ARTHUR_API_HOST,
-                verify_ssl=ssl_verify,
-            ),
-            verify=ssl_verify,
-        )
-        client = ApiClient(
-            configuration=ArthurOAuthSessionAPIConfiguration(
-                session=sess,
-                verify_ssl=ssl_verify,
-            ),
-        )
+        client = build_platform_api_client()
         self.alerts_client = AlertsV1Api(client)
         self.alert_rules_client = AlertRulesV1Api(client)
         self.data_retrieval_client = DataRetrievalV1Api(client)
@@ -143,6 +145,8 @@ class JobExecutor:
         self.custom_aggregation_tests_client = CustomAggregationTestsV1Api(client)
         self.agents_client = AgentsV1Api(client)
         self.data_planes_client = DataPlanesV1Api(client)
+        self.discovery_sources_client = DiscoverySourcesV1Api(client)
+        self.discovery_runs_client = DiscoveryRunsV1Api(client)
         self.policies_client = PoliciesV1Api(client)
 
         self.logger: logging.Logger = logging.getLogger(str(uuid4()))
@@ -371,25 +375,74 @@ class JobExecutor:
                                 f"Expected DiscoverAgentsJobSpec type, got {type(job.job_spec.actual_instance)}.",
                             )
 
-                        # Get GenAI Engine configuration
-                        genai_engine_url = Config.settings.GENAI_ENGINE_INTERNAL_HOST
-                        genai_engine_api_key = (
-                            Config.settings.GENAI_ENGINE_INTERNAL_API_KEY
+                        genai_engine_url, genai_engine_api_key = (
+                            self._genai_engine_config()
                         )
-
-                        if not genai_engine_url or not genai_engine_api_key:
-                            self.logger.error(
-                                "GenAI Engine configuration missing. "
-                                "GENAI_ENGINE_INTERNAL_HOST and GENAI_ENGINE_INTERNAL_API_KEY must be set.",
-                            )
-                            raise ValueError("GenAI Engine configuration missing")
 
                         DiscoverAgentsExecutor(
                             self.agents_client,
                             self.logger,
                             genai_engine_url,
                             genai_engine_api_key,
+                            self.discovery_sources_client,
+                            # Built per job rather than shared: it holds one HTTP client
+                            # for its life, and low-memory jobs run as threads in one
+                            # interpreter.
+                            record_sink=GenAIEngineRecordSink(
+                                genai_engine_url=genai_engine_url,
+                                genai_engine_api_key=genai_engine_api_key,
+                                logger=self.logger,
+                            ),
+                            jobs_client=self.jobs_client,
+                            # Keyed on this attempt: the run store keeps one outcome
+                            # per attempt, so a retried job reports as a second run.
+                            run_reporter=PlatformRunReporter(
+                                self.discovery_runs_client,
+                                job_id=str(job.id),
+                                job_run_id=str(job_run.id),
+                                logger=self.logger,
+                            ),
                         ).execute(job, job.job_spec.actual_instance)
+                    case JobKind.FETCH_DISCOVERED_AGENTS:
+                        if not isinstance(
+                            job.job_spec.actual_instance,
+                            FetchDiscoveredAgentsJobSpec,
+                        ):
+                            raise ValueError(
+                                f"Expected FetchDiscoveredAgentsJobSpec type, got {type(job.job_spec.actual_instance)}.",
+                            )
+
+                        genai_engine_url, genai_engine_api_key = (
+                            self._genai_engine_config()
+                        )
+
+                        FetchDiscoveredAgentsExecutor(
+                            self.agents_client,
+                            self.logger,
+                            genai_engine_url,
+                            genai_engine_api_key,
+                        ).execute(job.job_spec.actual_instance)
+                    # Matched by value, not JobKind.TEST_DISCOVERY_SOURCE: a client
+                    # that predates the kind has no such member to look up.
+                    case kind if kind == TEST_DISCOVERY_SOURCE_JOB_KIND:
+                        if not TEST_DISCOVERY_SOURCE_SUPPORTED:
+                            raise NotImplementedError(
+                                TEST_DISCOVERY_SOURCE_UNSUPPORTED_MESSAGE,
+                            )
+                        if not isinstance(
+                            job.job_spec.actual_instance,
+                            TestDiscoverySourceJobSpec,
+                        ):
+                            raise ValueError(
+                                f"Expected TestDiscoverySourceJobSpec type, got {type(job.job_spec.actual_instance)}.",
+                            )
+
+                        # No record sink and no GenAI Engine: a test reports a
+                        # preview to the Platform and publishes nothing.
+                        DiscoverySourceTestExecutor(
+                            self.discovery_sources_client,
+                            self.logger,
+                        ).execute(job, job_run.id, job.job_spec.actual_instance)
                     case JobKind.COMPLIANCE_POLICY_CHECK:
                         if not isinstance(
                             job.job_spec.actual_instance,
@@ -425,3 +478,16 @@ class JobExecutor:
                     exc_info=e,
                 )
                 return JobState.FAILED
+
+    def _genai_engine_config(self) -> tuple[str, str]:
+        """The GenAI Engine a discovery job talks to, from this engine's environment."""
+        genai_engine_url = Config.settings.GENAI_ENGINE_INTERNAL_HOST
+        genai_engine_api_key = Config.settings.GENAI_ENGINE_INTERNAL_API_KEY
+
+        if not genai_engine_url or not genai_engine_api_key:
+            self.logger.error(
+                "GenAI Engine configuration missing. "
+                "GENAI_ENGINE_INTERNAL_HOST and GENAI_ENGINE_INTERNAL_API_KEY must be set.",
+            )
+            raise ValueError("GenAI Engine configuration missing")
+        return genai_engine_url, genai_engine_api_key
