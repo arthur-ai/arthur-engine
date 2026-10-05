@@ -1,5 +1,5 @@
 version = 1
-revision = 5
+revision = 3
 requires-python = "==3.13.*"
 resolution-markers = [
     "sys_platform == 'win32'",
@@ -8,7 +8,7 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "0001-01-01T00:00:00Z" # This has no effect and is included for backwards compatibility when using relative exclude-newer values.
+exclude-newer = "2026-10-02T02:33:32.809273Z"
 exclude-newer-span = "P3D"
 
 [options.exclude-newer-package]
@@ -1476,7 +1476,7 @@ wheels = [
 
 [[package]]
 name = "ml-engine"
-version = "2.1.976"
+version = "2.1.977"
 source = { editable = "." }
 dependencies = [
     { name = "adlfs" },
