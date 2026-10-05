@@ -1,7 +1,8 @@
 """Retrying a vendor call that failed for a reason that passes.
 
-Shared by the connectors that page through a vendor's REST API, where one dropped
-connection or 503 on page 40 of a long scan should not end it.
+For connectors that page through a vendor's REST API, where one dropped connection
+or 503 on page 40 of a long scan should not end it. Splunk's client uses it; Jamf's
+client carries the same backoff of its own until it moves here.
 """
 
 import random
