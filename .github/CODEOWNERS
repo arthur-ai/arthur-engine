@@ -1,0 +1,108 @@
+# Requires human review (any Arthur engineer)
+#
+# Any PR touching a path below needs approval from one member of
+# @arthur-ai/arthur-engineers before it can merge. This only takes effect once
+# "Require review from Code Owners" is enabled on the `dev` ruleset (feature
+# PRs merge into `dev`; `main` only receives automated release PRs). GitHub
+# reads this file from the PR's base branch.
+#
+# There is intentionally no "*" default owner: paths not listed here are NOT
+# gated, so ordinary PRs are left to the automated reviewer.
+#
+# Patterns starting with "/" are anchored to the repo root. Later lines win,
+# so a path with no owner at the bottom un-gates a file inside a gated dir.
+
+# --- this file + ci/cd ---
+# Covers CODEOWNERS itself, workflows, composite actions and CI scripts.
+/.github/**                                                       @arthur-ai/arthur-engineers
+/renovate.json                                                    @arthur-ai/arthur-engineers
+# Claude hooks; these run inside the CI Claude workflows.
+**/.claude/settings.json                                          @arthur-ai/arthur-engineers
+# Run as Claude hooks by renovate-autofix.yml with protected-branch secrets.
+/integrations/claude-code-observability/claude_code_tracer.py     @arthur-ai/arthur-engineers
+# CVE suppressions applied to release vulnerability reports.
+/security/vex/**                                                  @arthur-ai/arthur-engineers
+# Build/codegen for the wheel the release workflow publishes to PyPI.
+/arthur-observability-sdk/scripts/build_sdk_wheel.sh              @arthur-ai/arthur-engineers
+/arthur-observability-sdk/scripts/generate_openapi_client.sh      @arthur-ai/arthur-engineers
+# Generates the genai_client shipped inside the ml-engine release image.
+/ml-engine/scripts/openapitools.json                              @arthur-ai/arthur-engineers
+# Release image build: sends GITLAB_UNIFY_FRONTEND_TOKEN to the registry
+# configured here, and decides which env values are inlined into the bundle.
+/genai-engine/ui/.yarnrc.yml                                      @arthur-ai/arthur-engineers
+/genai-engine/ui/vite.config.ts                                   @arthur-ai/arthur-engineers
+
+# --- deploy / infra ---
+/deployment/helm/**                                               @arthur-ai/arthur-engineers
+/deployment/cloudformation/**                                     @arthur-ai/arthur-engineers
+/deployment/docker-compose/**                                     @arthur-ai/arthur-engineers
+/deployment/model-upload/**                                       @arthur-ai/arthur-engineers
+/genai-engine/dockerfile                                          @arthur-ai/arthur-engineers
+/genai-engine/src/docker-entrypoint.sh                            @arthur-ai/arthur-engineers
+/genai-engine/src/gunicorn.conf.py                                @arthur-ai/arthur-engineers
+/ml-engine/Dockerfile                                             @arthur-ai/arthur-engineers
+# ml-engine container ENTRYPOINT; builds the platform OAuth session.
+/ml-engine/src/ml_engine/job_agent.py                             @arthur-ai/arthur-engineers
+# Customers' Claude agents fetch these skills live from the repo and run them
+# (shell commands, platform client secret / token handling).
+/integrations/claude-code-skills/**                               @arthur-ai/arthur-engineers
+
+# --- auth: genai-engine ---
+/genai-engine/src/auth/**                                         @arthur-ai/arthur-engineers
+/genai-engine/src/clients/auth/**                                 @arthur-ai/arthur-engineers
+/genai-engine/src/clients/recaptcha/**                            @arthur-ai/arthur-engineers
+/genai-engine/src/dependencies.py                                 @arthur-ai/arthur-engineers
+/genai-engine/src/utils/users.py                                  @arthur-ai/arthur-engineers
+/genai-engine/src/schemas/enums.py                                @arthur-ai/arthur-engineers
+/genai-engine/src/db_models/auth_models.py                        @arthur-ai/arthur-engineers
+/genai-engine/src/repositories/api_key_repository.py              @arthur-ai/arthur-engineers
+/genai-engine/src/routers/auth_routes.py                          @arthur-ai/arthur-engineers
+/genai-engine/src/routers/api_key_routes.py                       @arthur-ai/arthur-engineers
+/genai-engine/src/routers/user_routes.py                          @arthur-ai/arthur-engineers
+/genai-engine/src/routers/v2/__init__.py                          @arthur-ai/arthur-engineers
+/genai-engine/src/routers/v2/tenant_signup_routes.py              @arthur-ai/arthur-engineers
+/genai-engine/routes_security_check.py                            @arthur-ai/arthur-engineers
+/genai-engine/ui/src/components/AuthGuard.tsx                     @arthur-ai/arthur-engineers
+/genai-engine/ui/src/contexts/AuthContext.tsx                     @arthur-ai/arthur-engineers
+/genai-engine/ui/src/lib/auth.ts                                  @arthur-ai/arthur-engineers
+
+# --- auth: test suites that pin authn/authz behaviour ---
+/genai-engine/tests/coverage/**                                   @arthur-ai/arthur-engineers
+/genai-engine/tests/unit/auth/**                                  @arthur-ai/arthur-engineers
+/genai-engine/tests/unit/routes/auth/**                           @arthur-ai/arthur-engineers
+/genai-engine/tests/unit/utils/test_api_key_admin_role_allowlist.py  @arthur-ai/arthur-engineers
+/genai-engine/tests/unit/utils/test_trace_route_permissions.py    @arthur-ai/arthur-engineers
+
+# --- auth: ml-engine ---
+# Second platform OAuth session; passes the genai-engine internal API key on.
+/ml-engine/src/ml_engine/job_executor.py                          @arthur-ai/arthur-engineers
+
+# --- migrations ---
+/genai-engine/alembic/**                                          @arthur-ai/arthur-engineers
+/genai-engine/alembic.ini                                         @arthur-ai/arthur-engineers
+/genai-engine/scripts/generate_migration.sh                       @arthur-ai/arthur-engineers
+# (ml-engine has no migrations: dataset loading uses in-memory duckdb.)
+
+# --- secrets / config: genai-engine ---
+/genai-engine/src/config/**                                       @arthur-ai/arthur-engineers
+/genai-engine/src/db_models/custom_types.py                       @arthur-ai/arthur-engineers
+/genai-engine/src/db_models/secret_storage_models.py              @arthur-ai/arthur-engineers
+/genai-engine/src/repositories/secrets_repository.py              @arthur-ai/arthur-engineers
+/genai-engine/src/repositories/model_provider_repository.py       @arthur-ai/arthur-engineers
+/genai-engine/src/routers/v1/secrets_routes.py                    @arthur-ai/arthur-engineers
+/genai-engine/.env                                                @arthur-ai/arthur-engineers
+# .env.templates, Helm secret templates and CloudFormation secrets-manager
+# stacks are covered by the /deployment/** globs above.
+
+# --- secrets / config: ml-engine ---
+/ml-engine/src/ml_engine/config/**                                @arthur-ai/arthur-engineers
+# Customer credentials: S3/GCS/BigQuery/Azure/Snowflake/ODBC/Databricks, and
+# genai-engine API key minting in shield_connector.py.
+/ml-engine/src/ml_engine/connectors/**                            @arthur-ai/arthur-engineers
+/ml-engine/src/ml_engine/tools/aws_credentials.py                 @arthur-ai/arthur-engineers
+/ml-engine/src/ml_engine/tools/connector_constructor.py           @arthur-ai/arthur-engineers
+
+# --- un-gated overrides (must stay last) ---
+# Renovate lockfile maintenance; not deploy config.
+/deployment/model-upload/uv.lock
+/deployment/model-upload/pyproject.toml
