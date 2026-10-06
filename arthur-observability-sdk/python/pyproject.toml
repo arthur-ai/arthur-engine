@@ -1,6 +1,6 @@
 [project]
 name = "arthur-observability-sdk"
-version = "2.1.978"
+version = "2.1.982"
 description = "Arthur Observability SDK — telemetry, prompt management, and framework instrumentation"
 authors = [{ name = "Arthur AI", email = "engineering@arthur.ai" }]
 readme = "README.md"
@@ -53,6 +53,7 @@ smolagents = ["openinference-instrumentation-smolagents"]
 together = ["openinference-instrumentation-together"]
 vertexai = ["openinference-instrumentation-vertexai"]
 claude-agent-sdk = ["openinference-instrumentation-claude-agent-sdk"]
+typesafe = ["openinference-instrumentation-typesafe"]
 all = [
   "openinference-instrumentation-ag2",
   "openinference-instrumentation-agentminds",
@@ -87,6 +88,7 @@ all = [
   "openinference-instrumentation-together",
   "openinference-instrumentation-vertexai",
   "openinference-instrumentation-claude-agent-sdk",
+  "openinference-instrumentation-typesafe",
 ]
 
 [dependency-groups]
