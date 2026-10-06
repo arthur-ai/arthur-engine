@@ -12,7 +12,7 @@ its third page has already published the first two.
 import logging
 import time
 from typing import Callable, Iterator, Mapping, Optional, Sequence
-from urllib.parse import urlsplit
+from urllib.parse import SplitResult, urlsplit
 
 from arthur_client.api_bindings import DiscoverySourceConfigSpec
 from arthur_common.models.agent_discovery_schemas import DiscoveredAgentRecord
@@ -220,7 +220,12 @@ def settings_from(
             f"request header.",
         )
 
-    parts = urlsplit(base_url)
+    parts = _parsed(base_url)
+    if parts is None or not parts.hostname:
+        raise DiscoveryConfigurationError(
+            "Splunk base_url is not a valid address. It must be https://host:port, "
+            "with a numeric port if one is given.",
+        )
     if parts.username or parts.password or parts.path.strip("/") or parts.query:
         # requests turns `user:pass@` into Basic auth that overrides the bearer token,
         # and the search API lives at the root of the management port.
@@ -237,6 +242,20 @@ def settings_from(
         ca_certificate=(source_fields.get(CA_CERTIFICATE_FIELD) or "").strip() or None,
         tls_verification=mode,
     )
+
+
+def _parsed(base_url: str) -> Optional[SplitResult]:
+    """The URL's parts, or None when it cannot be one.
+
+    urlsplit checks the port only when it is read, and an unclosed "[" raises at
+    once; either would otherwise surface mid-scan as a plain ValueError.
+    """
+    try:
+        parts = urlsplit(base_url)
+        parts.port
+    except ValueError:
+        return None
+    return parts
 
 
 def _instance(base_url: str) -> str:

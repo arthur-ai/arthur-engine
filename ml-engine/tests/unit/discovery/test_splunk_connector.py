@@ -584,6 +584,10 @@ def test_an_error_body_that_is_not_an_object_still_reports_the_status() -> None:
             "just https://host:port",
         ),
         ({"base_url": "https://splunk:8089?x=1"}, CREDS, "just https://host:port"),
+        ({"base_url": "https://[splunk:8089"}, CREDS, "not a valid address"),
+        ({"base_url": "https://splunk:abc"}, CREDS, "not a valid address"),
+        ({"base_url": "https://splunk:99999"}, CREDS, "not a valid address"),
+        ({"base_url": "https://"}, CREDS, "not a valid address"),
     ],
 )
 def test_bad_configuration_is_refused_before_anything_is_sent(
