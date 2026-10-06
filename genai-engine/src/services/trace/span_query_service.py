@@ -23,14 +23,7 @@ from sqlalchemy import (
     asc,
 )
 from sqlalchemy import cast as sqlalchemy_cast
-from sqlalchemy import (
-    desc,
-    exists,
-    func,
-    nullslast,
-    or_,
-    select,
-)
+from sqlalchemy import desc, exists, func, nullslast, or_, select
 from sqlalchemy.orm import InstrumentedAttribute, Session
 from sqlalchemy.types import Numeric
 

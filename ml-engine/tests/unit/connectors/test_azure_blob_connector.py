@@ -275,3 +275,10 @@ def test_azure_read_data(
             pagination_options=pagination_options,
         )
         assert len(rows) == expected_rows
+
+
+def test_azure_connector_does_not_share_filesystem_across_connectors():
+    spec = ConnectorSpec.model_validate(MOCK_AZURE_CONNECTOR_SPEC)
+    first, second = AzureBlobConnector(spec, logger), AzureBlobConnector(spec, logger)
+    assert first.file_system is not second.file_system
+    assert not first.file_system.dircache

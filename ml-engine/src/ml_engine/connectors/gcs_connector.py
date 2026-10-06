@@ -19,11 +19,14 @@ class GCSConnector(BucketBasedConnector):
         token = json.loads(creds) if creds else None
         location = connector_fields.get(GOOGLE_CONNECTOR_LOCATION_FIELD)
 
+        # fsspec caches filesystem instances by constructor args and an instance's listing cache never
+        # expires, so a shared instance keeps serving objects deleted elsewhere until the process restarts.
         self.fs = gcsfs.GCSFileSystem(
             project=str(connector_fields[GOOGLE_CONNECTOR_PROJECT_ID_FIELD]),
             access="read_only",
             token=token,
             default_location=location,
+            skip_instance_cache=True,
         )
         super().__init__(logger, connector_config)
 

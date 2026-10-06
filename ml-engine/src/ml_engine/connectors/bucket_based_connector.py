@@ -434,12 +434,11 @@ class BucketBasedConnector(Connector, ABC):
         """Reads all data for a static dataset (no time partitioning)."""
         inferences: list[dict[str, Any]] = []
         file_search_str = f"{self.bucket_name}/{locator_fields.file_prefix}"
-        try:
-            matching_files = self._get_matching_files(
-                file_search_str,
-                locator_fields.file_suffix,
-            )
-        except FileNotFoundError:
+        matching_files = self._get_matching_files(
+            file_search_str,
+            locator_fields.file_suffix,
+        )
+        if not matching_files:
             self.logger.info(
                 f"Found no files matching prefix {file_search_str}.",
             )
@@ -531,12 +530,11 @@ class BucketBasedConnector(Connector, ABC):
                     timestamp,
                     locator_fields.file_prefix,
                 )
-                try:
-                    matching_files = self._get_matching_files(
-                        rendered_file_search_str,
-                        locator_fields.file_suffix,
-                    )
-                except FileNotFoundError:
+                matching_files = self._get_matching_files(
+                    rendered_file_search_str,
+                    locator_fields.file_suffix,
+                )
+                if not matching_files:
                     # no files for this time range, move to next
                     self.logger.info(
                         f"Found no files that match prefix {rendered_file_search_str}. Moving to next time range.",

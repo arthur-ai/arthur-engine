@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Writes the AI inventory to a file that an endpoint agent, Jamf Extension Attribute,
+  Kandji custom fact or Munki condition reads with `cat`. Nothing on the reporting path
+  talks to a daemon, so nothing on the reporting path can block.
+
+  NOTE ON XML: a comment may not contain a double hyphen, so option names appear here as
+  words. Read "the write flag" as the long option shown by `bin/discover ‑h`.
+
+  Install (as root):
+    install -d -m 755 /usr/local/arthur
+    install -m 755 dist/collect.sh /usr/local/arthur/collect.sh
+    cp deploy/com.arthur.ai-discovery.plist /Library/LaunchDaemons/
+    chown root:wheel /Library/LaunchDaemons/com.arthur.ai-discovery.plist
+    chmod 644        /Library/LaunchDaemons/com.arthur.ai-discovery.plist
+    launchctl bootstrap system /Library/LaunchDaemons/com.arthur.ai-discovery.plist
+
+  RunAtLoad writes the file within seconds of install, rather than after the first
+  interval, so a reader never sees a missing file on a correctly configured Mac.
+
+  Read it from your endpoint tool with:
+    cat /var/lib/arthur/inventory.ea      ~21 KB, against a 256 KB cap
+    cat /var/lib/arthur/inventory.json    ~127 KB, the readable form
+    cat /var/lib/arthur/status.txt        one line, for a smart group to match on
+
+  Report the .ea file: the raw JSON is roughly six times its size. This job does the framing
+  with stock gzip/base64/plutil, so the reporting path stays a cat and needs nothing installed.
+
+  Uninstall:
+    launchctl bootout system/com.arthur.ai-discovery
+    rm /Library/LaunchDaemons/com.arthur.ai-discovery.plist
+    rm -rf /usr/local/arthur /var/lib/arthur
+
+  Only one file is installed. dist/collect.sh carries the runner and the queries inside it,
+  so there is no layout to preserve and nothing else to copy. Build it with
+  tools/build-collector.py after tools/vendor-queries.sh.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.arthur.ai-discovery</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/local/arthur/collect.sh</string>
+    </array>
+
+    <!-- Hourly. Every branch runs in its own bounded process, so the job costs a few
+         seconds against a healthy machine and a few more against a wedged Docker. NOTHING
+         IS WAITING FOR EITHER, which is the entire reason this file exists. -->
+    <key>StartInterval</key>
+    <integer>3600</integer>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <!-- stdout is the payload and the write flag already puts it in the file, so it is
+         discarded here. stderr carries why a branch did not run, which is the difference
+         between "nothing installed" and "we could not look": keep it. -->
+    <key>StandardOutPath</key>
+    <string>/dev/null</string>
+    <key>StandardErrorPath</key>
+    <string>/var/log/arthur-ai-discovery.log</string>
+
+    <!-- Root, because some branches read other users' home directories, and because
+         /var/run/docker.sock on a Docker Desktop Mac is owned by the installing user.
+         bin/container-scan looks under the invoking user's home and SUDO_USER for the
+         per user socket. -->
+    <!-- HOME is set explicitly because launchd does not guarantee it for a daemon, and
+         bin/container-scan looks under it for Docker Desktop's per user socket. The script
+         defaults to /var/root when HOME is unset, so this is belt and braces rather than
+         load bearing; it is here so a reader of this file does not have to know that. -->
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>HOME</key>
+        <string>/var/root</string>
+    </dict>
+
+    <key>ProcessType</key>
+    <string>Background</string>
+    <key>Nice</key>
+    <integer>5</integer>
+</dict>
+</plist>

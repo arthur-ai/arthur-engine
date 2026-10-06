@@ -135,6 +135,7 @@ class AlertCheckExecutor:
         alert_rules = self._get_all_alert_rules(job_spec.scope_model_id)
         self.logger.info(f"Checking {len(alert_rules)} alert rules")
         processing_exc = None
+        errored_alert_rule_ids: List[str] = []
         for alert_rule in alert_rules:
             try:
                 self._process_alert_rule(alert_rule, job, job_spec)
@@ -143,18 +144,25 @@ class AlertCheckExecutor:
                     f"Error creating alerts and processing alert rule {alert_rule.id}",
                     exc_info=e,
                 )
+                errored_alert_rule_ids.append(str(alert_rule.id))
                 processing_exc = e
+
+        # Compliance is submitted even when rules failed. A rule that never ran
+        # produces no alerts, which compliance would otherwise read as passing,
+        # so the ids are handed over to be reported as errored instead. Skipping
+        # the submit would strand every policy on this model: one bad rule stops
+        # all compliance metrics and the governance dashboards go empty.
+        self._submit_compliance_check_job(job, job_spec, errored_alert_rule_ids)
 
         # re-raise error so job is marked as failed if any alert rule was not processed
         if processing_exc:
             raise processing_exc
 
-        self._submit_compliance_check_job(job, job_spec)
-
     def _submit_compliance_check_job(
         self,
         job: Job,
         job_spec: AlertCheckJobSpec,
+        errored_alert_rule_ids: List[str],
     ) -> None:
         compliance_batch = PostJobBatch(
             jobs=[
@@ -166,6 +174,7 @@ class AlertCheckExecutor:
                             check_range_start_timestamp=job_spec.check_range_start_timestamp,
                             check_range_end_timestamp=job_spec.check_range_end_timestamp,
                             policy_assignment_id=job_spec.policy_assignment_id,
+                            errored_alert_rule_ids=errored_alert_rule_ids,
                         ),
                     ),
                 ),

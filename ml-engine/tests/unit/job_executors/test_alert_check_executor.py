@@ -165,6 +165,7 @@ def test_alert_check_executor_fault_tolerance():
     alerts_client = Mock()
     alert_rules_client = Mock()
     jobs_client = Mock()
+    jobs_client.post_submit_jobs_batch.return_value = Mock(jobs=[Mock(id=str(uuid4()))])
     metrics_client = Mock()
     logger = Mock()
     policies_client = Mock()
@@ -256,9 +257,15 @@ def test_alert_check_executor_fault_tolerance():
     assert isinstance(call_args_list[1][1]["exc_info"], Exception)
     assert str(call_args_list[1][1]["exc_info"]) == "Simulated failure for rule1"
 
-    # A failed alert-check job must not hand off to compliance.
-    jobs_client.post_submit_jobs_batch.assert_not_called()
-    policies_client.update_assignment_job_chain.assert_not_called()
+    # A failed alert-check job still hands off to compliance, naming the rules it
+    # could not evaluate. Skipping the hand-off would stall compliance for every
+    # policy on the model, and compliance reads "no alerts" as passing unless it
+    # is told which rules never ran.
+    jobs_client.post_submit_jobs_batch.assert_called_once()
+    submitted_spec = jobs_client.post_submit_jobs_batch.call_args.kwargs[
+        "post_job_batch"
+    ].jobs[0].job_spec.actual_instance
+    assert submitted_spec.errored_alert_rule_ids == [str(alert_rule1.id)]
 
 
 def test_alert_check_executor_submits_compliance_job_on_success():

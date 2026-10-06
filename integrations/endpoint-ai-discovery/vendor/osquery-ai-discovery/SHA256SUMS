@@ -1,0 +1,8 @@
+bcc28143553e3f56ca62bce7eddbca235cc87f6d63b3c7daa89b45d2d8d4e3b4  ./bin/classify
+92a34cd25ab9f02d4121fff2877ef73e88de2b395f014119f9c4ecbcb67e8acd  ./bin/container-scan
+1ab6cf0f9340df69becf036d007b48b0925bac486eaf73ca0c0e5b06b8d827e2  ./bin/discover
+6efdc40eb916386e75eeb1a91721c1d65d359f7ab33e9253ee2d436db6d0742f  ./dist/ai-discovery.conf
+0f813327eaba71848adab608327ec0c2c91ce928ab823c8a2a575e2d479ffcb5  ./dist/discovery-darwin.sql
+72dd8c9b23f541ee6b5f803f7bc6e4c38bd09fda5e966c7e33d5d4cead448f4b  ./dist/discovery-deep.sql
+0d99805f28212afe77ace8526be4a98d6a3efc367a78c23d8cdca77de0a050b4  ./dist/discovery-linux.sql
+a34ba97a60970d15d1412c8d52bcf1078e594076b450e46b8d34664918a6abaa  ./tools/bundle.py
