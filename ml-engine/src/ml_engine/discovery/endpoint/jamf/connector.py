@@ -14,6 +14,7 @@ publishes each batch as it arrives, so a scan that dies on page 40 keeps pages 1
 import logging
 from datetime import datetime, timedelta, timezone
 from typing import Callable, Iterator, Mapping, Optional, Sequence
+from urllib.parse import urlsplit
 
 from arthur_client.api_bindings import DiscoverySourceConfigSpec
 from arthur_common.models.agent_discovery_schemas import DiscoveredAgentRecord
@@ -216,6 +217,14 @@ def _settings_from(
             f"{base_url.split('://', 1)[0] or base_url!r}. "
             f"The token request carries client_secret in its body.",
         )
+    if not _is_usable_address(base_url):
+        # https alone is not an address. A bad port, an unclosed "[" or no host at all
+        # passes the check above and then fails inside requests as InvalidURL -- a
+        # ValueError, not a transport error -- which a scan would report as Jamf failing.
+        raise DiscoveryConfigurationError(
+            f"Jamf base_url {base_url!r} is not a valid URL: it needs a host, and a "
+            f"port, if given, must be a number from 0 to 65535.",
+        )
     return JamfSettings(
         base_url=base_url,
         client_id=str(credentials["client_id"]),
@@ -223,6 +232,20 @@ def _settings_from(
         include_groups=parse_group_names(source_fields.get(INCLUDE_GROUPS_FIELD)),
         exclude_groups=parse_group_names(source_fields.get(EXCLUDE_GROUPS_FIELD)),
     )
+
+
+def _is_usable_address(base_url: str) -> bool:
+    """Whether `base_url` parses to a host and, if it names one, a valid port.
+
+    Answers rather than raises, so the caller's DiscoveryConfigurationError is raised
+    outside this parse and does not carry the ValueError as its __context__.
+    """
+    try:
+        parts = urlsplit(base_url)
+        parts.port  # raises ValueError on a non-numeric or out-of-range port
+    except ValueError:
+        return False
+    return bool(parts.hostname)
 
 
 def _breakdown(by_group: Mapping[str, int]) -> str:
