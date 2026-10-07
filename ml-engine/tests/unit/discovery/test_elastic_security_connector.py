@@ -509,7 +509,7 @@ def test_a_ca_certificate_that_is_not_pem_is_named() -> None:
 
 def test_tls_off_turns_verification_off() -> None:
     assert tls_session(None, TLSVerification.OFF, "Elastic").verify is False
-    assert tls_session(None, TLSVerification.CA_ONLY, "Elastic").verify is True
+    assert tls_session(_a_ca_pem(), TLSVerification.CA_ONLY, "Elastic").verify is True
 
 
 # -- failures ------------------------------------------------------------------------
@@ -775,7 +775,8 @@ def test_an_error_body_that_is_not_an_object_still_reports_the_status() -> None:
 def test_the_tls_settings_reach_a_connection_made_through_a_proxy(
     mode: TLSVerification, assert_hostname: Optional[bool]
 ) -> None:
-    session = tls_session(None, mode, "Elastic")
+    ca = _a_ca_pem() if mode is TLSVerification.CA_ONLY else None
+    session = tls_session(ca, mode, "Elastic")
     adapter = session.get_adapter("https://es.example.com:9243")
     direct = adapter.poolmanager.connection_pool_kw  # type: ignore[attr-defined]
     proxied = adapter.proxy_manager_for(  # type: ignore[attr-defined]
