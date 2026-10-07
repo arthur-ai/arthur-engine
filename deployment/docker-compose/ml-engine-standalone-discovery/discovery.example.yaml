@@ -1,0 +1,66 @@
+# Standalone agent discovery config. Copy to discovery.yaml and edit.
+# Reference: ml-engine/docs/standalone-discovery.md
+#
+# Secrets: ${NAME} is replaced from the container's environment (set it in .env), and
+# {file: path} reads a file relative to this one -- secrets/ is mounted beside it.
+version: 1
+enabled: true
+
+schedule:
+  # How often each source/config is scanned: 90s, 15m, 6h, 1d, or seconds.
+  interval: 6h
+  # Scan once at startup rather than waiting one interval.
+  run_on_start: true
+  # Source/config pairs scanned at once.
+  max_concurrent_scans: 2
+
+sources:
+  # Vertex AI Agent Engine: lists the agent engines in one project and region.
+  - name: vertex-prod
+    vendor: gcp_vertex
+    fields:
+      - {key: project_id, value: my-gcp-project}
+      - {key: location, value: us-central1}
+      # A service account JSON key with permission to list Agent Engines.
+      - {key: service_account_key, value: {file: secrets/gcp-key.json}}
+    configs:
+      - name: agent-engines
+        query: ""
+        query_language: none
+        # Not applied for Vertex: every scan lists every engine in the region.
+        lookback_window_seconds: 21600
+
+  # Jamf Pro: the agent inventory Arthur's endpoint collector writes to each Mac.
+  # - name: corp-macs
+  #   vendor: jamf_pro
+  #   fields:
+  #     - {key: base_url, value: https://example.jamfcloud.com}
+  #     - {key: client_id, value: "${JAMF_CLIENT_ID}"}
+  #     - {key: client_secret, value: "${JAMF_CLIENT_SECRET}"}
+  #     # Optional, comma-separated computer group names.
+  #     - {key: include_groups, value: "Engineering,Data Science"}
+  #   configs:
+  #     - name: all-macs
+  #       query: ""            # "" uses the agent catalog the engine ships with
+  #       query_language: none
+  #       # At least the interval: devices that reported only in a gap are missed.
+  #       lookback_window_seconds: 21600
+
+# Exactly one destination.
+destination:
+  type: splunk_hec
+  url: https://splunk.example.com:8088/services/collector/event
+  token: ${SPLUNK_HEC_TOKEN}
+  # index: ai_inventory          # omitted: the token's default index
+  # verify_tls: true
+  # batch_size: 100
+
+# Or any HTTPS endpoint that takes a JSON array of events:
+# destination:
+#   type: webhook
+#   url: https://hooks.example.com/arthur
+#   headers:
+#     Authorization: "Bearer ${WEBHOOK_TOKEN}"
+
+# Also send each scan's outcome, so a broken source shows up at the destination.
+emit_scan_outcomes: true

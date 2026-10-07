@@ -530,3 +530,25 @@ def test_config_path_comes_from_the_environment(
 
     monkeypatch.setenv(DISCOVERY_CONFIG_ENV_VAR, "/etc/arthur/discovery.yaml")
     assert standalone_config_path() == Path("/etc/arthur/discovery.yaml")
+
+
+EXAMPLE_CONFIG = (
+    Path(__file__).resolve().parents[4]
+    / "deployment/docker-compose/ml-engine-standalone-discovery/discovery.example.yaml"
+)
+
+
+def test_the_documented_example_config_loads(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The example deployment ships a config; it has to be one the engine accepts."""
+    monkeypatch.setenv("SPLUNK_HEC_TOKEN", HEC_TOKEN)
+    write(tmp_path, GCP_KEY, "secrets/gcp-key.json")
+    path = write(tmp_path, EXAMPLE_CONFIG.read_text())
+
+    config = load_config(path)
+
+    assert config is not None
+    assert isinstance(config.destination, SplunkHecDestination)
+    assert [s.config.vendor for s in config.scans()] == ["gcp_vertex"]
