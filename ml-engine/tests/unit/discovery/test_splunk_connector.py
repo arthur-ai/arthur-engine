@@ -706,7 +706,9 @@ def test_each_tls_mode_checks_what_it_says(
     check_hostname: bool,
     verify_mode: ssl.VerifyMode,
 ) -> None:
-    session = tls_session(None, mode, "Splunk")
+    # ca_only trusts the source's CA and nothing else, so it needs one
+    ca = _a_ca_pem() if mode is TLSVerification.CA_ONLY else None
+    session = tls_session(ca, mode, "Splunk")
     adapter = session.get_adapter("https://h")
     context = adapter._ssl_context  # type: ignore[attr-defined]
 
@@ -720,7 +722,8 @@ def test_the_tls_settings_reach_a_connection_made_through_a_proxy(
 ) -> None:
     """Behind an HTTPS_PROXY, requests builds a separate pool that never sees
     `init_poolmanager`, so the CA and the hostname choice must be carried there too."""
-    adapter = tls_session(None, mode, "Splunk").get_adapter("https://h")
+    ca = _a_ca_pem() if mode is TLSVerification.CA_ONLY else None
+    adapter = tls_session(ca, mode, "Splunk").get_adapter("https://h")
     proxied = adapter.proxy_manager_for("http://proxy.example:3128")
 
     assert proxied.connection_pool_kw["ssl_context"] is adapter._ssl_context  # type: ignore[attr-defined]
