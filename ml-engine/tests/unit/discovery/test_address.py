@@ -1,6 +1,7 @@
-"""Whether a source's base_url is an address requests can send to.
+"""Whether a source's URL is an address requests can send to.
 
-Shared by the Jamf and Splunk connectors, whose own tests check only that they ask.
+Shared by the Jamf, Splunk and Elastic connectors, whose own tests check only that
+they ask.
 """
 
 import pytest
@@ -16,7 +17,7 @@ from discovery.address import address_problem
         "https://[acme.example.com",
         "https://",
         "https://acme example.com",
-        "https://acme.example.com​",
+        "https://acme.example.com\u200b",
         "https://.acme.example.com",
         "https://*.example.com",
         "https://acme.example.com%",
@@ -37,15 +38,16 @@ def test_an_address_requests_cannot_send_to_is_a_problem(url: str) -> None:
     "url",
     [
         "https://user:hunter2@acme.example.com",
+        "https://user@acme.example.com:9243",
+        "https://:hunter2@acme.example.com",
         "https://user:hunter2@acme.example.com:abc",
     ],
 )
 def test_credentials_in_the_address_are_a_problem_that_is_not_repeated(
     url: str,
 ) -> None:
-    """requests turns URL userinfo into a Basic header that replaces the Bearer token, so
-    every call would 401. base_url is outside the scrub set, so the answer must not
-    repeat it."""
+    """requests turns URL userinfo into a Basic header that replaces the connector's own
+    token. The URL field is outside the scrub set, so the answer must not repeat it."""
     problem = address_problem(url)
 
     assert problem is not None

@@ -133,7 +133,7 @@ class FakeSession:
 
 def connector_with(session: FakeSession) -> ElasticSecurityConnector:
     return ElasticSecurityConnector(
-        client_factory=lambda s, log: ElasticClient(s, logger=log, session=session)  # type: ignore[arg-type]
+        client_factory=lambda s, log: ElasticClient(s, logger=log, session=session),  # type: ignore[arg-type]
     )
 
 
@@ -240,19 +240,14 @@ def test_one_cluster_is_one_instance_and_two_are_two(url: str, instance: str) ->
     assert record.creation_source.address.instance == instance
 
 
-@pytest.mark.parametrize(
-    "url",
-    [
-        "https://elastic:hunter2@es.example.com",
-        "https://elastic@es.example.com:9243",
-        "https://:hunter2@es.example.com",
-    ],
-)
-def test_credentials_written_into_the_url_are_refused(url: str) -> None:
+def test_credentials_written_into_the_url_are_refused() -> None:
     # requests would send them as Basic auth in place of the ApiKey header.
     session = FakeSession()
     with pytest.raises(DiscoveryConfigurationError) as exc:
-        scan(session, fields={"elasticsearch_url": url})
+        scan(
+            session,
+            fields={"elasticsearch_url": "https://elastic:hunter2@es.example.com"},
+        )
     assert "username or password" in str(exc.value)
     assert "hunter2" not in str(exc.value)
     assert failure_code(exc.value) is DiscoveryErrorCode.NOT_CONFIGURED
@@ -269,7 +264,7 @@ def test_an_unmapped_column_fails_the_scan_instead_of_being_dropped() -> None:
         ok(
             columns=COLUMNS + [{"name": "hits", "type": "long"}],
             rows=[row + [40] for row in values(2)],
-        )
+        ),
     )
     with pytest.raises(OutputContractError) as exc:
         scan(session)
@@ -346,7 +341,10 @@ def test_no_limit_and_a_full_default_page_is_reported_as_capped(
     [(500, 500, True), (500, 499, False), (5_000, 3_000, False), (5_000, 5_000, True)],
 )
 def test_the_default_cap_is_read_from_the_clusters_warning(
-    default_size: int, rows: int, capped: bool, caplog: pytest.LogCaptureFixture
+    default_size: int,
+    rows: int,
+    capped: bool,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     # A cluster can lower or raise esql.query.result_truncation_default_size; its
     # warning states the value it applied.
@@ -414,7 +412,7 @@ def test_a_query_matching_no_index_reports_it_rather_than_failing_the_contract(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     session = FakeSession(
-        ok(columns=[{"name": "<no-fields>", "type": "null"}], rows=[])
+        ok(columns=[{"name": "<no-fields>", "type": "null"}], rows=[]),
     )
     with caplog.at_level(logging.WARNING, logger=LOG.name):
         assert scan(session) == []
@@ -442,7 +440,7 @@ def test_a_capped_answer_is_reported_before_the_first_batch_is_handed_over(
 ) -> None:
     # The sink can fail on the first publish; the warning must already be in the log.
     batches = connector_with(
-        FakeSession(ok(rows=values(1000), warning=NO_LIMIT_WARNING))
+        FakeSession(ok(rows=values(1000), warning=NO_LIMIT_WARNING)),
     ).scan(config(), 24, CREDS, FIELDS, LOG)
     with caplog.at_level(logging.WARNING, logger=LOG.name):
         next(batches)
@@ -550,7 +548,7 @@ def test_a_rejected_key_carries_its_status_and_a_hint() -> None:
             401,
             "security_exception",
             "unable to authenticate with provided credentials",
-        )
+        ),
     )
     with pytest.raises(ElasticError) as exc:
         scan(session)
@@ -560,7 +558,7 @@ def test_a_rejected_key_carries_its_status_and_a_hint() -> None:
 
 def test_an_unknown_index_names_both_causes() -> None:
     session = FakeSession(
-        error(400, "verification_exception", "Unknown index [secret-hr]")
+        error(400, "verification_exception", "Unknown index [secret-hr]"),
     )
     with pytest.raises(DiscoveryConfigurationError) as exc:
         scan(session)
@@ -580,7 +578,8 @@ def test_an_unknown_index_names_both_causes() -> None:
     ],
 )
 def test_es_ql_elasticsearch_rejects_is_the_source_configs_to_fix(
-    kind: str, reason: str
+    kind: str,
+    reason: str,
 ) -> None:
     with pytest.raises(DiscoveryConfigurationError) as exc:
         scan(FakeSession(error(400, kind, reason)))
@@ -614,7 +613,8 @@ def test_any_other_400_stays_the_vendors_error() -> None:
     ],
 )
 def test_a_configuration_mistake_is_reported_as_not_configured(
-    query: Optional[str], fields: Optional[dict[str, str]]
+    query: Optional[str],
+    fields: Optional[dict[str, str]],
 ) -> None:
     with pytest.raises(DiscoveryConfigurationError) as exc:
         scan(FakeSession(), query=QUERY if query is None else query, fields=fields)
@@ -654,8 +654,12 @@ def test_the_settings_object_is_what_the_client_is_built_from() -> None:
 
     list(
         ElasticSecurityConnector(client_factory=factory).scan(
-            config(), 24, CREDS, FIELDS, LOG
-        )
+            config(),
+            24,
+            CREDS,
+            FIELDS,
+            LOG,
+        ),
     )
     assert seen[0].elasticsearch_url == FIELDS["elasticsearch_url"]
 
@@ -709,7 +713,7 @@ CAPTURED_NO_FIELDS = {
 CAPTURED_UNKNOWN_INDEX = {
     "error": {
         "root_cause": [
-            {"type": "verification_exception", "reason": "Unknown index [secret-hr]"}
+            {"type": "verification_exception", "reason": "Unknown index [secret-hr]"},
         ],
         "type": "verification_exception",
         "reason": "Unknown index [secret-hr]",
@@ -728,9 +732,9 @@ CAPTURED_BAD_KEY = {
                         'Basic realm="security", charset="UTF-8"',
                         'Bearer realm="security"',
                         "ApiKey",
-                    ]
+                    ],
                 },
-            }
+            },
         ],
         "type": "security_exception",
         "reason": "unable to authenticate with provided credentials and anonymous access is not allowed for this request",
@@ -740,7 +744,7 @@ CAPTURED_BAD_KEY = {
                 'Basic realm="security", charset="UTF-8"',
                 'Bearer realm="security"',
                 "ApiKey",
-            ]
+            ],
         },
     },
     "status": 401,
@@ -751,7 +755,7 @@ def test_responses_captured_from_elasticsearch_9_5_parse(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     session = FakeSession(
-        FakeResponse(200, CAPTURED_OK, {"Warning": CAPTURED_OK_WARNING})
+        FakeResponse(200, CAPTURED_OK, {"Warning": CAPTURED_OK_WARNING}),
     )
     records = scan(session)
     assert [(r.external_id, r.name, r.last_seen.isoformat()) for r in records] == [
@@ -763,8 +767,8 @@ def test_responses_captured_from_elasticsearch_9_5_parse(
     with caplog.at_level(logging.WARNING, logger=LOG.name):
         scan(
             FakeSession(
-                FakeResponse(200, CAPTURED_OK, {"Warning": CAPTURED_OK_WARNING})
-            )
+                FakeResponse(200, CAPTURED_OK, {"Warning": CAPTURED_OK_WARNING}),
+            ),
         )
     assert "LIMIT" not in caplog.text
 
@@ -806,14 +810,15 @@ def test_an_error_body_that_is_not_an_object_still_reports_the_status() -> None:
     [(TLSVerification.FULL, None), (TLSVerification.CA_ONLY, False)],
 )
 def test_the_tls_settings_reach_a_connection_made_through_a_proxy(
-    mode: TLSVerification, assert_hostname: Optional[bool]
+    mode: TLSVerification,
+    assert_hostname: Optional[bool],
 ) -> None:
     ca = _a_ca_pem() if mode is TLSVerification.CA_ONLY else None
     session = tls_session(ca, mode, "Elastic")
     adapter = session.get_adapter("https://es.example.com:9243")
     direct = adapter.poolmanager.connection_pool_kw  # type: ignore[attr-defined]
     proxied = adapter.proxy_manager_for(  # type: ignore[attr-defined]
-        "http://proxy.example.com:3128"
+        "http://proxy.example.com:3128",
     ).connection_pool_kw
     assert proxied["ssl_context"] is direct["ssl_context"]
     assert proxied.get("assert_hostname") == assert_hostname
@@ -898,16 +903,11 @@ def test_a_malformed_esql_result_is_the_vendors_error(columns: Any, rows: Any) -
     assert "malformed ES|QL result" in str(exc.value)
 
 
-@pytest.mark.parametrize(
-    "url",
-    ["https://es.corp:abc", "https://es.corp:99999", "https://[broken", "https://"],
-)
-def test_a_malformed_url_is_a_configuration_error_before_anything_is_sent(
-    url: str,
-) -> None:
+def test_a_malformed_url_is_a_configuration_error_before_anything_is_sent() -> None:
+    # Which addresses are refused is tested with discovery.address.
     session = FakeSession()
     with pytest.raises(DiscoveryConfigurationError) as exc:
-        scan(session, fields={"elasticsearch_url": url})
+        scan(session, fields={"elasticsearch_url": "https://es..corp:9243"})
     assert "elasticsearch_url" in str(exc.value)
     assert failure_code(exc.value) is DiscoveryErrorCode.NOT_CONFIGURED
     assert exc.value.__cause__ is None and exc.value.__context__ is None

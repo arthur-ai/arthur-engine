@@ -24,6 +24,7 @@ from urllib.parse import urlsplit
 from arthur_client.api_bindings import DiscoverySourceConfigSpec
 from arthur_common.models.agent_discovery_schemas import DiscoveredAgentRecord
 
+from discovery.address import address_problem
 from discovery.siem.elastic_security.client import (
     ElasticClient,
     ElasticSettings,
@@ -253,29 +254,13 @@ def settings_from(
             f"Elastic elasticsearch_url must be https, got "
             f"{url.split('://', 1)[0] or url!r}. The API key travels in a request header.",
         )
-    # Parsed here, where a bad value is the source's to fix, rather than when the
-    # request or the record's address first reads it. The problem is raised after
-    # the except block, so no ValueError rides on __context__ for Test Connection to
-    # read as the vendor's.
-    problem: Optional[str] = None
-    try:
-        parts = urlsplit(url)
-        parts.port
-        if not parts.hostname:
-            problem = "it has no host"
-        elif parts.username or parts.password:
-            # requests would send these as Basic auth in place of the ApiKey header,
-            # so the scan would run as that user, and the password would sit in a
-            # field that is not a secret.
-            problem = (
-                "it carries a username or password; api_key is the only credential"
-            )
-    except ValueError as exc:
-        problem = str(exc)
-    if problem is not None:
+    # Checked here, where a bad value is the source's to fix, rather than when the
+    # request or the record's address first reads it.
+    problem = address_problem(url)
+    if problem:
         raise DiscoveryConfigurationError(
-            f"Elastic elasticsearch_url is not a valid URL ({problem}). Expected "
-            f"https://host or https://host:port.",
+            f"Elastic elasticsearch_url {problem}. Expected https://host or "
+            f"https://host:port.",
         )
 
     return ElasticSettings(
@@ -283,7 +268,8 @@ def settings_from(
         api_key=_encoded(api_key),
         ca_certificate=(source_fields.get(CA_CERTIFICATE_FIELD) or "").strip() or None,
         tls_verification=parse_tls_verification(
-            source_fields.get(TLS_VERIFICATION_FIELD), "Elastic"
+            source_fields.get(TLS_VERIFICATION_FIELD),
+            "Elastic",
         ),
     )
 
