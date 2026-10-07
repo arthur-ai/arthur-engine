@@ -77,6 +77,13 @@
 # Second platform OAuth session; passes the genai-engine internal API key on.
 /ml-engine/src/ml_engine/job_executor.py                          @arthur-ai/arthur-engineers
 
+# --- guardrails ---
+# Scorers + checks (PII, toxicity, prompt injection, hallucination, ...) and
+# the rules engine that runs them. Changes usually need evaluation and
+# benchmarking before they ship.
+/genai-engine/src/scorer/**                                       @arthur-ai/arthur-engineers
+/genai-engine/src/rules_engine.py                                 @arthur-ai/arthur-engineers
+
 # --- migrations ---
 /genai-engine/alembic/**                                          @arthur-ai/arthur-engineers
 /genai-engine/alembic.ini                                         @arthur-ai/arthur-engineers
