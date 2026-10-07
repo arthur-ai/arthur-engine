@@ -5,14 +5,18 @@ Every SIEM source carries the same two optional fields, `ca_certificate` and
 
 * `full` (the default): issuer and hostname, against the engine's system CAs plus the
   source's `ca_certificate` when it has one.
-* `ca_only`: issuer only. For a certificate that names no host the engine can reach it
-  by -- Splunk's default `SplunkServerDefaultCert`, or Elasticsearch's auto-generated one
-  reached through an alias it was not issued for. Trusting the CA without matching the
-  hostname is still a real check.
+* `ca_only`: issuer only, against the source's `ca_certificate` and nothing else. For a
+  certificate that names no host the engine can reach it by -- Splunk's default
+  `SplunkServerDefaultCert`, or Elasticsearch's auto-generated one reached through an
+  alias it was not issued for. Without the hostname check, trusting any public CA would
+  accept any public site's certificate, so the source's CA is the only trust and is
+  required.
 * `off`: no check at all, for the rest.
 
-`requests` cannot express `ca_only` -- `verify` is all or nothing -- so the context is
-carried into urllib3 by an adapter instead.
+`requests` cannot express either -- `verify` is all or nothing, and it loads certifi,
+or a `REQUESTS_CA_BUNDLE` / `CURL_CA_BUNDLE` path, into the connection whenever it is
+anything but False -- so the adapter carries the context into urllib3 and has the last
+word on what the connection trusts.
 """
 
 import re
@@ -77,12 +81,28 @@ def normalize_pem(text: str) -> str:
 
 
 class _TLSAdapter(HTTPAdapter):
-    """Carries an SSL context, and whether to match the hostname, into urllib3."""
+    """Carries an SSL context, and how the source's certificate is checked, into urllib3."""
 
-    def __init__(self, ssl_context: ssl.SSLContext, match_hostname: bool) -> None:
+    def __init__(self, ssl_context: ssl.SSLContext, mode: TLSVerification) -> None:
         self._ssl_context = ssl_context
-        self._match_hostname = match_hostname
+        self._mode = mode
+        self._match_hostname = mode is TLSVerification.FULL
         super().__init__()
+
+    def cert_verify(self, conn: Any, url: str, verify: Any, cert: Any) -> None:
+        # requests decides the connection's trust from `verify`, which an engine's
+        # REQUESTS_CA_BUNDLE / CURL_CA_BUNDLE replaces per request, and loads certifi
+        # or that bundle into it. The source's mode decides instead: `ca_only` trusts
+        # its context's one CA alone, and `off` stays off. `trust_env` is left on so the
+        # HTTPS_PROXY that `proxy_manager_for` serves still applies.
+        super().cert_verify(conn, url, verify, cert)  # type: ignore[no-untyped-call]
+        if self._mode is TLSVerification.FULL:
+            return
+        conn.ca_certs = None
+        conn.ca_cert_dir = None
+        conn.cert_reqs = (
+            "CERT_NONE" if self._mode is TLSVerification.OFF else "CERT_REQUIRED"
+        )
 
     def init_poolmanager(self, *args: Any, **kwargs: Any) -> None:
         kwargs["ssl_context"] = self._ssl_context
@@ -105,7 +125,17 @@ def tls_session(
     source_label: str,
 ) -> requests.Session:
     """A session that trusts the server the way the source says to."""
-    context = ssl.create_default_context()
+    if mode is TLSVerification.CA_ONLY and not ca_certificate:
+        raise DiscoveryConfigurationError(
+            f"{source_label} source's tls_verification is ca_only, which trusts the "
+            f"source's ca_certificate and nothing else, but it has no ca_certificate.",
+        )
+    if mode is TLSVerification.FULL:
+        context = ssl.create_default_context()
+    else:
+        # Empty: no system CAs. `ca_only` gets the source's CA below; `off` needs none.
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        context.check_hostname = False
     # With verification off nothing reads the CA, so one that will not load must not
     # stop a scan an admin has deliberately set to trust anything.
     if ca_certificate and mode is not TLSVerification.OFF:
@@ -119,15 +149,10 @@ def tls_session(
                 f"{source_label} source's ca_certificate is not a PEM certificate: "
                 f"{exc}",
             ) from None
-    if mode is not TLSVerification.FULL:
-        context.check_hostname = False
     if mode is TLSVerification.OFF:
         context.verify_mode = ssl.CERT_NONE
 
     session = requests.Session()
     session.verify = mode is not TLSVerification.OFF
-    session.mount(
-        "https://",
-        _TLSAdapter(context, match_hostname=mode is TLSVerification.FULL),
-    )
+    session.mount("https://", _TLSAdapter(context, mode))
     return session
