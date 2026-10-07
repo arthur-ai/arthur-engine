@@ -240,12 +240,23 @@ def test_one_cluster_is_one_instance_and_two_are_two(url: str, instance: str) ->
     assert record.creation_source.address.instance == instance
 
 
-def test_the_instance_never_carries_credentials_written_into_the_url() -> None:
-    record, *_ = scan(
-        FakeSession(),
-        fields={"elasticsearch_url": "https://elastic:hunter2@es.example.com"},
-    )
-    assert record.creation_source.address.instance == "es.example.com"
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://elastic:hunter2@es.example.com",
+        "https://elastic@es.example.com:9243",
+        "https://:hunter2@es.example.com",
+    ],
+)
+def test_credentials_written_into_the_url_are_refused(url: str) -> None:
+    # requests would send them as Basic auth in place of the ApiKey header.
+    session = FakeSession()
+    with pytest.raises(DiscoveryConfigurationError) as exc:
+        scan(session, fields={"elasticsearch_url": url})
+    assert "username or password" in str(exc.value)
+    assert "hunter2" not in str(exc.value)
+    assert failure_code(exc.value) is DiscoveryErrorCode.NOT_CONFIGURED
+    assert session.calls == []
 
 
 def test_output_satisfies_the_discovery_output_contract() -> None:
@@ -592,10 +603,14 @@ def test_a_configuration_mistake_is_reported_as_not_configured(
     assert failure_code(exc.value) is DiscoveryErrorCode.NOT_CONFIGURED
 
 
-def test_a_tls_failure_points_at_the_tls_fields() -> None:
+def test_a_tls_failure_is_the_sources_configuration() -> None:
     session = FakeSession(requests.exceptions.SSLError("certificate verify failed"))
-    with pytest.raises(ElasticError, match="ca_certificate"):
+    with pytest.raises(DiscoveryConfigurationError, match="ca_certificate") as exc:
         scan(session)
+    # A scheduled scan reports it as the source's to fix, as Test Connection does,
+    # which still finds the SSLError in the chain.
+    assert failure_code(exc.value) is DiscoveryErrorCode.NOT_CONFIGURED
+    assert isinstance(exc.value.__cause__, requests.exceptions.SSLError)
 
 
 def test_an_unreachable_cluster_stays_a_connection_error() -> None:

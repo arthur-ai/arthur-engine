@@ -247,6 +247,13 @@ def settings_from(
         parts.port
         if not parts.hostname:
             problem = "it has no host"
+        elif parts.username or parts.password:
+            # requests would send these as Basic auth in place of the ApiKey header,
+            # so the scan would run as that user, and the password would sit in a
+            # field that is not a secret.
+            problem = (
+                "it carries a username or password; api_key is the only credential"
+            )
     except ValueError as exc:
         problem = str(exc)
     if problem is not None:

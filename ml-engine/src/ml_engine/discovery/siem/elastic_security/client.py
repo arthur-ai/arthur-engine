@@ -124,11 +124,15 @@ class ElasticClient:
                 timeout=self._s.timeout_seconds,
             )
         except requests.exceptions.SSLError as exc:
-            raise ElasticError(
+            # The source's TLS settings, so the source is reported as needing a
+            # change rather than as Elasticsearch failing. Chained, so Test Connection
+            # still finds the SSLError and reads it the same way.
+            raise DiscoveryConfigurationError(
                 f"Elastic POST /_query: TLS verification failed ({exc}). If the "
                 f"cluster uses a private CA -- a self-managed cluster's auto-generated "
                 f"http_ca.crt, for one -- set ca_certificate; if its certificate does "
-                f"not name the host the engine uses, set tls_verification to ca_only.",
+                f"not name the host the engine uses, set tls_verification to ca_only "
+                f"with that ca_certificate.",
             ) from exc
         except (requests.ConnectionError, requests.Timeout) as exc:
             # Re-raised as the same kind so Test Connection still reads it as the
