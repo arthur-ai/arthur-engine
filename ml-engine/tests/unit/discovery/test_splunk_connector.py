@@ -488,6 +488,66 @@ def test_zero_rows_says_it_cannot_tell_a_clean_estate_from_no_access(
     assert "srchIndexesAllowed" in caplog.text
 
 
+def test_an_empty_result_carries_no_columns_to_check() -> None:
+    """Splunk Enterprise 10.4.4 sends no column names for a search with no rows, so
+    a query naming the wrong columns cannot be caught until a row comes back.
+
+    Captured from a live 10.4.4: zero-row searches, with the contract columns or a
+    wrong one, transforming or not, all answered GET .../results (any count) and
+    .../results_preview with `"fields": null` and the job had no field metadata. The
+    same search with rows sent `fields` as expected.
+    """
+
+    class EmptyResult:
+        def request(self, method: str, url: str, **kw: Any) -> FakeResponse:
+            if method == "POST":
+                return FakeResponse(201, {"sid": "sid-1"})
+            if method == "DELETE":
+                return FakeResponse(200, {})
+            if url.endswith("/results"):
+                return FakeResponse(
+                    200,
+                    {
+                        "fields": None,
+                        "results": [],
+                        "messages": [
+                            {"type": "INFO", "text": "No matching fields exist."}
+                        ],
+                    },
+                )
+            return FakeResponse(
+                200,
+                {
+                    "entry": [
+                        {
+                            "content": {
+                                "dispatchState": "DONE",
+                                "isDone": True,
+                                "resultCount": 0,
+                                "messages": [
+                                    {
+                                        "type": "INFO",
+                                        "text": "No matching fields exist.",
+                                    }
+                                ],
+                            }
+                        }
+                    ]
+                },
+            )
+
+    def factory(settings: SplunkSettings, logger: logging.Logger) -> SplunkClient:
+        return SplunkClient(settings, logger=logger, session=EmptyResult())  # type: ignore[arg-type]
+
+    client = factory(settings_from(CREDS, FIELDS), LOG)
+    assert client.results("sid-1", offset=0) == ([], [])
+
+    # nothing to check and nothing to publish, so the scan ends without a contract
+    # error even for a query whose columns are wrong
+    connector = SplunkConnector(client_factory=factory)
+    assert run(FakeSplunk(), connector=connector) == []
+
+
 # --- failures Test Connection has to name ------------------------------------------
 
 
