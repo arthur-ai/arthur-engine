@@ -26,15 +26,18 @@ round for a tool nobody asked to have installed. A hundred sequential pages for 
 import logging
 import time
 from dataclasses import dataclass
-from typing import Any, Iterator, Optional
-from urllib.parse import urljoin
+from typing import Any, Callable, Iterator, Optional
+from urllib.parse import urljoin, urlsplit
 
 import requests
 from arthur_common.models.agent_governance_schemas import Platform
+from requests.models import PreparedRequest
+from urllib3.exceptions import LocationValueError
 
 from discovery.endpoint.device import ManagedDevice
 from discovery.endpoint.scope import DeviceGroup
 from discovery.retry import MAX_ATTEMPTS, RETRY_STATUSES, backoff_seconds
+from job_executors.discovery_scan import DiscoveryConfigurationError
 
 # What the collector needs and nothing else. GENERAL carries `reportDate`, which is the
 # roster and the freshness signal; EXTENSION_ATTRIBUTES carries the payload. The other two
@@ -53,6 +56,36 @@ GROUP_MEMBERSHIPS_SECTION = "GROUP_MEMBERSHIPS"
 # Jamf's own published guidance is at most five concurrent connections. One page at a time
 # is deliberate; see the module docstring.
 PAGE_SIZE = 100
+
+# What requests and urllib3 raise for an address they cannot use. Both are ValueErrors,
+# not transport errors. They are also raised for a malformed proxy or redirect target,
+# so `_send` reports one as configuration only when the address it was given is bad.
+MALFORMED_URL = (requests.exceptions.InvalidURL, LocationValueError)
+
+
+def address_problem(url: str) -> Optional[str]:
+    """What is wrong with `url` as an address to send to, or None.
+
+    Checked with the code that will send to it rather than a second parser, which would
+    disagree with it somewhere: requests' URL preparation, then the IDNA encoding urllib3
+    applies to the host only when it opens the connection (an empty label passes the
+    first and fails the second).
+
+    The answer names the problem and never repeats `url`: base_url is outside the scrub
+    set, so a URL with a password in it would put that password in the job log.
+    """
+    try:
+        PreparedRequest().prepare_url(url, None)
+        parts = urlsplit(url)
+        (parts.hostname or "").encode("idna")
+    except ValueError:  # InvalidURL, LocationParseError and UnicodeError all are
+        return "is not a valid address: its host or port cannot be parsed"
+    if parts.username is not None or parts.password is not None:
+        # requests turns URL userinfo into a Basic Authorization header that replaces the
+        # Bearer token, so every call would 401 and read as the credentials failing.
+        return "must not contain a username or password"
+    return None
+
 
 # Refreshed at 80% of its life rather than on expiry, so a long scan does not discover the
 # token died between two pages.
@@ -123,7 +156,8 @@ class JamfClient:
         if self._token is not None and time.monotonic() < self._token_expires_at:
             return self._token
 
-        resp = self._http.post(
+        resp = self._send(
+            self._http.post,
             self._url("/api/oauth/token"),
             # The secret is in the BODY. requests follows redirects by default and on a
             # 307/308 resends method and body to the Location host, stripping only the
@@ -161,12 +195,33 @@ class JamfClient:
 
     # --- transport ----------------------------------------------------------------
 
+    @staticmethod
+    def _send(
+        method: Callable[..., requests.Response], url: str, **kw: Any
+    ) -> requests.Response:
+        """One request, with a `url` requests cannot use reported as configuration.
+
+        Only `url` itself: the same errors come from a malformed HTTPS_PROXY or redirect
+        target, which are not the source's settings, so those propagate unchanged.
+
+        Raised after the except block, so the error carries no __context__: the
+        InvalidURL it replaces quotes the whole URL, credentials and all.
+        """
+        try:
+            return method(url, **kw)
+        except MALFORMED_URL:
+            problem = address_problem(url)
+            if problem is None:
+                raise
+        raise DiscoveryConfigurationError(f"Jamf base_url {problem}.")
+
     def _get(self, path: str, params: dict[str, Any]) -> Any:
         last: Optional[str] = None
 
         for attempt in range(1, MAX_ATTEMPTS + 1):
             try:
-                resp = self._http.get(
+                resp = self._send(
+                    self._http.get,
                     self._url(path),
                     params=params,
                     headers={
