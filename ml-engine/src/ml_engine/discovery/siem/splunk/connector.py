@@ -12,11 +12,12 @@ its third page has already published the first two.
 import logging
 import time
 from typing import Callable, Iterator, Mapping, Optional, Sequence
-from urllib.parse import SplitResult, urlsplit
+from urllib.parse import urlsplit
 
 from arthur_client.api_bindings import DiscoverySourceConfigSpec
 from arthur_common.models.agent_discovery_schemas import DiscoveredAgentRecord
 
+from discovery.address import address_problem
 from discovery.siem.records import records_from_rows, require_contract_columns
 from discovery.siem.splunk.client import (
     JobStatus,
@@ -220,18 +221,17 @@ def settings_from(
             f"request header.",
         )
 
-    parts = _parsed(base_url)
-    if parts is None or not parts.hostname:
+    problem = address_problem(base_url)
+    if problem:
         raise DiscoveryConfigurationError(
-            "Splunk base_url is not a valid address. It must be https://host:port, "
-            "with a numeric port if one is given.",
+            f"Splunk base_url {problem}. It must be just https://host:port.",
         )
-    if parts.username or parts.password or parts.path.strip("/") or parts.query:
-        # requests turns `user:pass@` into Basic auth that overrides the bearer token,
-        # and the search API lives at the root of the management port.
+    parts = urlsplit(base_url)
+    if parts.path.strip("/") or parts.query:
+        # The search API lives at the root of the management port.
         raise DiscoveryConfigurationError(
             f"Splunk base_url must be just https://host:port, got {_instance(base_url)} "
-            f"with credentials, a path or a query string. The token is a secret field.",
+            f"with a path or a query string.",
         )
 
     mode = parse_tls_verification(source_fields.get(TLS_VERIFICATION_FIELD), "Splunk")
@@ -242,20 +242,6 @@ def settings_from(
         ca_certificate=(source_fields.get(CA_CERTIFICATE_FIELD) or "").strip() or None,
         tls_verification=mode,
     )
-
-
-def _parsed(base_url: str) -> Optional[SplitResult]:
-    """The URL's parts, or None when it cannot be one.
-
-    urlsplit checks the port only when it is read, and an unclosed "[" raises at
-    once; either would otherwise surface mid-scan as a plain ValueError.
-    """
-    try:
-        parts = urlsplit(base_url)
-        parts.port
-    except ValueError:
-        return None
-    return parts
 
 
 def _instance(base_url: str) -> str:
