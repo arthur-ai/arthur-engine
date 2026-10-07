@@ -87,8 +87,8 @@ def list_agent_engines(
     of the deprecated `vertexai.Client().agent_engines`. It lists the same
     `reasoningEngines` resources and each item carries the same `api_resource`
     (name, display_name, create_time, update_time), so nothing downstream changes;
-    checked live against oval-day-438819-k4/us-central1, where both calls return the
-    same two engines. Credentials are passed explicitly rather than taken from the
+    checked live against a project with two deployed engines, where both calls return
+    the same two. Credentials are passed explicitly rather than taken from the
     process environment.
     """
     client = agentplatform.Client(

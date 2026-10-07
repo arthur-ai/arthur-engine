@@ -24,10 +24,7 @@ from genai_client import (
     Configuration,
 )
 from genai_client import DiscoveredAgentRecord as WireRecord
-from genai_client import (
-    ResolveDiscoveredAgentsRequest,
-    TasksApi,
-)
+from genai_client import ResolveDiscoveredAgentsRequest, TasksApi
 
 from job_executors.discovery_scan import DiscoveryPublishResult, FailedDiscoveryRecord
 
