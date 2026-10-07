@@ -25,6 +25,16 @@ Application Default Credentials only when the engine opts in with
 application-default login`, and how an engine on GKE would use Workload Identity. With
 the flag unset a keyless source fails with a reason naming the field, rather than quietly
 scanning as whatever identity the engine pod happens to run under.
+
+WHAT GOOGLE ANSWERED. `discovery_scan.failure_code` tells a refused credential from a
+denied project by a `status_code` attribute on the exception, and leaves it to the
+connector to put one there. Google's SDK raises its own `APIError`, which carries the
+status on `.code`, so without a translation a key with no access to the project is
+reported as `provider_error` -- the code that sends an admin to Google's status page
+rather than to the project's IAM bindings. The attribute is set on the SDK's exception
+and that same exception is re-raised, never wrapped: `run_source_scan` redacts and
+re-raises what it catches unchanged in type, and a wrapper would trade the type the job
+log names for one that says less.
 """
 
 import json
@@ -43,6 +53,8 @@ from arthur_common.models.agent_governance_schemas import (
     SourceAddress,
 )
 from google.auth.credentials import Credentials
+from google.auth.exceptions import RefreshError
+from google.genai import errors as genai_errors
 from google.oauth2 import service_account
 from pydantic import BaseModel
 
@@ -137,7 +149,7 @@ class VertexAgentEngineConnector:
 
         listed = skipped = 0
         batch: list[DiscoveredAgentRecord] = []
-        for engine in self._lister(settings, google_credentials):
+        for engine in with_vendor_status(self._lister, settings, google_credentials):
             listed += 1
             record = record_for(engine, settings, logger)
             if record is None:
@@ -157,6 +169,37 @@ class VertexAgentEngineConnector:
             settings.location,
             skipped,
         )
+
+
+def with_vendor_status(
+    lister: AgentEngineLister,
+    settings: VertexSettings,
+    credentials: Optional[Credentials],
+) -> Iterator[Any]:
+    """The lister's engines, with a failure's status where `failure_code` reads it.
+
+    Wraps the call as well as the iteration. Today's `runtimes.list()` is a generator
+    and asks Google nothing until it is read, but a lister that fetched its first page
+    eagerly would otherwise fail outside the translation. See the module docstring for
+    why the exception is annotated rather than replaced.
+
+    A REFUSED CREDENTIAL IS 401, WHATEVER THE WIRE SAID. A revoked or deleted key, or
+    ADC whose user login has lapsed, fails before Vertex is ever asked: google-auth
+    cannot mint a token, and raises `RefreshError` -- usually off a 400 `invalid_grant`
+    from Google's token endpoint, which `failure_code` would not know to read as an
+    authentication failure. Only a non-retryable one is: google-auth marks the token
+    endpoint's own 5xx and `temporarily_unavailable` answers retryable, and those are
+    Google's outage, not the source's key.
+    """
+    try:
+        yield from lister(settings, credentials)
+    except genai_errors.APIError as e:
+        setattr(e, "status_code", e.code)
+        raise
+    except RefreshError as e:
+        if not e.retryable:
+            setattr(e, "status_code", 401)
+        raise
 
 
 def settings_from(source_fields: Mapping[str, str]) -> VertexSettings:
