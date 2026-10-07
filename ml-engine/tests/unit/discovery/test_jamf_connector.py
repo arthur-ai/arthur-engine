@@ -1723,6 +1723,9 @@ def test_a_malformed_proxy_is_not_blamed_on_a_valid_base_url(
     )
 
     assert failure_code(exc) != DiscoveryErrorCode.NOT_CONFIGURED
+    # A bypassed proxy would also fail (the lookup is refused), so only an empty lookup
+    # list shows the proxy is what failed.
+    assert lookups == []
 
 
 class _RedirectsToNowhere(requests.adapters.BaseAdapter):
