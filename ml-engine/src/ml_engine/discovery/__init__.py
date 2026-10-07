@@ -11,8 +11,8 @@ A vendor with no entry fails its own job with that reason, which is the right an
 an unsupported source and is reported per job rather than per engine.
 
 Adding an MDM is one more line here and one more package under `discovery.endpoint`;
-adding a cloud provider product is the same under `discovery.cloud`, and a SIEM under
-`discovery.siem`.
+adding a SIEM is the same under `discovery.siem`, and a cloud provider product under
+`discovery.cloud`.
 Everything the new MDM shares with Jamf -- the `arthur1.` frame, the six-column rows,
 matching, the record shape -- is already neutral and is not touched.
 """
@@ -23,10 +23,13 @@ from discovery.endpoint.jamf.connector import VENDOR as JAMF_VENDOR
 from discovery.endpoint.jamf.connector import JamfConnector
 from discovery.siem.elastic_security.connector import VENDOR as ELASTIC_SECURITY_VENDOR
 from discovery.siem.elastic_security.connector import ElasticSecurityConnector
+from discovery.siem.splunk.connector import VENDOR as SPLUNK_VENDOR
+from discovery.siem.splunk.connector import SplunkConnector
 from job_executors.discovery_scan import SOURCE_CONNECTORS
 
 SOURCE_CONNECTORS[JAMF_VENDOR] = JamfConnector
 SOURCE_CONNECTORS[GCP_VERTEX_VENDOR] = VertexAgentEngineConnector
+SOURCE_CONNECTORS[SPLUNK_VENDOR] = SplunkConnector
 SOURCE_CONNECTORS[ELASTIC_SECURITY_VENDOR] = ElasticSecurityConnector
 
 __all__ = [
@@ -34,6 +37,8 @@ __all__ = [
     "JAMF_VENDOR",
     "VertexAgentEngineConnector",
     "GCP_VERTEX_VENDOR",
+    "SplunkConnector",
+    "SPLUNK_VENDOR",
     "ElasticSecurityConnector",
     "ELASTIC_SECURITY_VENDOR",
 ]
