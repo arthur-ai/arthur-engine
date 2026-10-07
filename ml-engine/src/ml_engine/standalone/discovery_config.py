@@ -224,6 +224,9 @@ class ScheduleConfig(StrictModel):
 class ResolvedScan:
     """One config of one source, as a connector takes it: what a scan job supplies."""
 
+    # The source's name, which the config spec does not carry: the spec names the
+    # config, and what the scan reports wants both.
+    source_name: str
     discovery_source_config_id: str
     config: DiscoverySourceConfigSpec
     # The config's window rounded up to whole hours, as the Platform dispatches it.
@@ -268,6 +271,7 @@ class StandaloneDiscoveryConfig(StrictModel):
             for config in source.configs:
                 resolved.append(
                     ResolvedScan(
+                        source_name=source.name,
                         discovery_source_config_id=_id(
                             config.discovery_source_id,
                             config.name,
