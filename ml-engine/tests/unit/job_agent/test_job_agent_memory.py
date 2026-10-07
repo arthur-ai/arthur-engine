@@ -17,9 +17,11 @@ GB = 1024 * MB
 
 
 def _container(root: Path, limit: int, current: int) -> ContainerMemory:
+    # A cgroup v2 container in its own cgroup namespace.
+    (root / "cgroup.controllers").write_text("memory\n")
     (root / "memory.max").write_text(f"{limit}\n")
     (root / "memory.current").write_text(f"{current}\n")
-    return ContainerMemory.detect(root, {})
+    return ContainerMemory.detect(root, {}, root / "no-proc-self-cgroup")
 
 
 def _host_available(nbytes: int):
@@ -95,7 +97,7 @@ def test_host_mode_offers_what_it_did_before(
     test_data_plane_user: User,
     tmp_path: Path,
 ) -> None:
-    (tmp_path / "memory.max").write_text(f"{16 * GB}\n")
+    _container(tmp_path, 16 * GB, 0)
     memory = ContainerMemory.detect(tmp_path, {MEMORY_LIMIT_SOURCE_ENV: "host"})
     agent = _agent(memory, 30 * GB)
     assert agent.total_memory_mb == 30 * 1024 - 400
