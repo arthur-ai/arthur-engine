@@ -31,15 +31,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@a2ui/web_core@npm:0.9.0":
-  version: 0.9.0
-  resolution: "@a2ui/web_core@npm:0.9.0"
+"@a2ui/web_core@npm:^0.10.4":
+  version: 0.10.7
+  resolution: "@a2ui/web_core@npm:0.10.7"
   dependencies:
-    "@preact/signals-core": "npm:^1.13.0"
-    date-fns: "npm:^4.1.0"
+    "@preact/signals-core": "npm:^1.14.2"
+    date-fns: "npm:^4.4.0"
     zod: "npm:^3.25.76"
-    zod-to-json-schema: "npm:^3.25.1"
-  checksum: 10c0/0d69ff880d877148770a775425f86298e68cac82645b11c421384aca1a5882c966506172767757fae41911970506e408a8afe13d0dbbee8d0d45fd5f65049964
+    zod-to-json-schema: "npm:^3.25.2"
+  checksum: 10c0/16c3cc6fbedfa22637320523fd6f939acb3ca47dabbd3c76410cbfc2fe7230cdfc7cf010d5a6cbc5a0adeb04d6fc33febf0a45a13b76ffb763aa9d1db93f5e3f
   languageName: node
   linkType: hard
 
@@ -2471,9 +2471,9 @@ __metadata:
   linkType: hard
 
 "@fastify/busboy@npm:^3.1.1":
-  version: 3.2.0
-  resolution: "@fastify/busboy@npm:3.2.0"
-  checksum: 10c0/3e4fb00a27e3149d1c68de8ff14007d2bbcbbc171a9d050d0a8772e836727329d4d3f130995ebaa19cf537d5d2f5ce2a88000366e6192e751457bfcc2125f351
+  version: 3.2.2
+  resolution: "@fastify/busboy@npm:3.2.2"
+  checksum: 10c0/d19f67952b7e2b3305606444d3e9da8dc20e18537e52ec2f367429d4b4846fcbbd1b5b6b4e79c00dbf59c1734af2b2135a2dedb5b28eaa7f21b72eef40ca8f2f
   languageName: node
   linkType: hard
 
@@ -5118,10 +5118,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@preact/signals-core@npm:^1.13.0":
-  version: 1.14.2
-  resolution: "@preact/signals-core@npm:1.14.2"
-  checksum: 10c0/898e6e22a5d2a11bd3d5b109c8d9bacff0e9bc9f23c01455901b7feab8c441dc03fdd53cfd7b5f9275b0df052fcaeb8c8928f537cebb190d9e02a6f2a3ac441e
+"@preact/signals-core@npm:^1.14.2":
+  version: 1.14.4
+  resolution: "@preact/signals-core@npm:1.14.4"
+  checksum: 10c0/963622e5c1c98a6946ec1ad01e9901ebacf316ab0a7e3c56c6ebaefee5b2c8ea03c3bdb8ba74120612b5f8976f5dc94693134670e372dded79db9994045aadd1
   languageName: node
   linkType: hard
 
@@ -9719,7 +9719,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"date-fns@npm:^4.1.0":
+"date-fns@npm:^4.1.0, date-fns@npm:^4.4.0":
   version: 4.4.0
   resolution: "date-fns@npm:4.4.0"
   checksum: 10c0/988f0a13db183f5dfc85c36bbb6847a9c135a9225888bbea4005876ec15539a8613c21a07370a4e7ea543918d5a1cafb423c528b42cdbbde5fdfddb178126b21
@@ -19337,7 +19337,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"zod-to-json-schema@npm:^3.22.3, zod-to-json-schema@npm:^3.23.5, zod-to-json-schema@npm:^3.24.1, zod-to-json-schema@npm:^3.24.5, zod-to-json-schema@npm:^3.24.6, zod-to-json-schema@npm:^3.25.0, zod-to-json-schema@npm:^3.25.1":
+"zod-to-json-schema@npm:^3.22.3, zod-to-json-schema@npm:^3.23.5, zod-to-json-schema@npm:^3.24.1, zod-to-json-schema@npm:^3.24.5, zod-to-json-schema@npm:^3.24.6, zod-to-json-schema@npm:^3.25.0, zod-to-json-schema@npm:^3.25.1, zod-to-json-schema@npm:^3.25.2":
   version: 3.25.2
   resolution: "zod-to-json-schema@npm:3.25.2"
   peerDependencies:
