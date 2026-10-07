@@ -272,6 +272,46 @@ def test_a_missing_contract_column_fails_the_scan() -> None:
     assert "name" in str(exc.value)
 
 
+# Captured from Elasticsearch 9.5.4: a query whose WHERE matched nothing, and whose
+# STATS ... BY dropped the `name` column. ES|QL still names the columns of an empty
+# result, so the contract can be checked with no rows to look at.
+CAPTURED_ZERO_ROWS_WITHOUT_NAME = {
+    "took": 8,
+    "is_partial": False,
+    "completion_time_in_millis": 1791336421466,
+    "documents_found": 0,
+    "values_loaded": 0,
+    "rows_emitted": 0,
+    "bytes_read": 0,
+    "read_nanos": 0,
+    "cpu_nanos": 179625,
+    "start_time_in_millis": 1791336421458,
+    "expiration_time_in_millis": 1791768421384,
+    "columns": [
+        {"name": "last_seen", "type": "date"},
+        {"name": "external_id", "type": "keyword"},
+    ],
+    "values": [],
+}
+
+
+def test_a_zero_row_result_with_wrong_columns_fails_the_contract() -> None:
+    """An empty window must not let a query that can never produce `name` pass.
+
+    The columns are checked before any row is read, so no rows is no excuse.
+    """
+    session = FakeSession(FakeResponse(200, CAPTURED_ZERO_ROWS_WITHOUT_NAME))
+    with pytest.raises(OutputContractError) as exc:
+        scan(session)
+    assert "missing name" in str(exc.value)
+    assert failure_code(exc.value) is DiscoveryErrorCode.NOT_CONFIGURED
+
+
+def test_a_zero_row_result_with_contract_columns_ends_quietly() -> None:
+    body = {**CAPTURED_ZERO_ROWS_WITHOUT_NAME, "columns": COLUMNS}
+    assert scan(FakeSession(FakeResponse(200, body))) == []
+
+
 def test_records_are_batched() -> None:
     session = FakeSession(ok(rows=values(BATCH_SIZE + 1)))
     batches = list(connector_with(session).scan(config(), 24, CREDS, FIELDS, LOG))
