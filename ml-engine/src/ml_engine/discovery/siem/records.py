@@ -8,6 +8,7 @@ check takes the vendor's column names rather than records.
 """
 
 import logging
+from collections import Counter
 from typing import Any, Iterable, Mapping, Optional, Sequence
 
 from arthur_client.api_bindings import ValidationOutcome
@@ -65,6 +66,9 @@ def records_from_rows(
     """
     records: list[DiscoveredAgentRecord] = []
     skipped = 0
+    # One line per distinct problem with its count, not one per row: a query whose
+    # every row has the same bad column would otherwise log once per row.
+    problems: Counter[str] = Counter()
     for row in rows:
         fields = {k: v for k, v in row.items() if k in _CONTRACT_COLUMNS}
         try:
@@ -89,15 +93,19 @@ def records_from_rows(
             skipped += 1
             # The field names and pydantic's reasons, never the row's values: a log
             # line is not where a customer's log data should be copied to.
-            problems = ", ".join(
-                f"{'.'.join(str(p) for p in e['loc'])}: {e['msg']}"
-                for e in exc.errors()
+            problems.update(
+                {
+                    f"{'.'.join(str(p) for p in e['loc'])}: {e['msg']}"
+                    for e in exc.errors()
+                }
             )
-            logger.warning(
-                "%s: a result row could not become a record and was skipped (%s)",
-                vendor,
-                problems,
-            )
+    for problem, count in problems.most_common():
+        logger.warning(
+            "%s: %s result row(s) could not become a record (%s)",
+            vendor,
+            count,
+            problem,
+        )
     if skipped:
         logger.warning(
             "%s: %s of %s result row(s) skipped as invalid",
