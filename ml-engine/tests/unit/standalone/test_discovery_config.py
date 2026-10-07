@@ -22,8 +22,11 @@ from standalone.discovery_config import (
     load_config,
     standalone_config_path,
 )
+from standalone.sinks.siem.splunk_hec import SplunkHecDestination
+from standalone.sinks.webhook import WebhookDestination
 
 JAMF_SECRET = "jamf-s3cr3t-value-0001"
+HEC_TOKEN = "hec-t0ken-value-0002"
 
 FULL_CONFIG = """
 version: 1
@@ -54,6 +57,11 @@ sources:
         query: ""
         query_language: none
         lookback_window_seconds: 23400
+destination:
+  type: splunk_hec
+  url: https://splunk.acme.internal:8088/services/collector/event
+  token: ${HEC_TOKEN}
+  index: ai_inventory
 """
 
 GCP_KEY = '{\n  "type": "service_account",\n  "private_key": "-----BEGIN..."\n}\n'
@@ -80,6 +88,7 @@ def write(directory: Path, text: str, name: str = "discovery.yaml") -> Path:
 def full_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     monkeypatch.setenv("JAMF_CLIENT_ID", "jamf-client")
     monkeypatch.setenv("JAMF_CLIENT_SECRET", JAMF_SECRET)
+    monkeypatch.setenv("HEC_TOKEN", HEC_TOKEN)
     write(tmp_path, GCP_KEY, "secrets/gcp.json")
     write(tmp_path, CATALOG, "catalog.yaml")
     return write(tmp_path, FULL_CONFIG)
@@ -90,6 +99,13 @@ def minimal(**overrides: str) -> str:
     blocks = {
         "schedule": "schedule:\n  interval: 6h\n",
         "sources": VERTEX_SOURCE,
+        "destination": textwrap.dedent(
+            """\
+            destination:
+              type: webhook
+              url: https://hooks.example.com/ingest
+            """,
+        ),
     }
     blocks.update(overrides)
     return "version: 1\n" + "".join(blocks.values())
@@ -133,6 +149,8 @@ def test_loads_a_full_config(full_config: Path) -> None:
     assert config is not None
     assert config.schedule.interval == timedelta(hours=6)
     assert config.schedule.max_concurrent_scans == 2
+    assert isinstance(config.destination, SplunkHecDestination)
+    assert config.destination.token.get_secret_value() == HEC_TOKEN
     assert [s.name for s in config.sources] == ["corp-macs", "vertex-prod"]
     assert [s.config.name for s in config.scans()] == ["all-macs", "agent-engines"]
 
@@ -178,6 +196,7 @@ def test_credentials_stay_out_of_reprs(full_config: Path) -> None:
     assert JAMF_SECRET not in repr(config)
     assert JAMF_SECRET not in str(config)
     assert JAMF_SECRET not in repr(config.scans())
+    assert HEC_TOKEN not in repr(config)
     assert "client_secret=***" in repr(config.sources[0])
 
 
@@ -375,6 +394,65 @@ def test_a_misspelt_schedule_key_is_refused(tmp_path: Path) -> None:
     text = minimal(schedule="schedule:\n  interval: 6h\n  run_on_strat: false\n")
 
     assert "schedule.run_on_strat" in load_error(tmp_path, text)
+
+
+def test_a_missing_destination_secret_file_is_located(tmp_path: Path) -> None:
+    text = minimal(
+        destination=textwrap.dedent(
+            """\
+            destination:
+              type: splunk_hec
+              url: https://splunk.example.com/services/collector/event
+              token: {file: missing-token}
+            """,
+        ),
+    )
+
+    message = load_error(tmp_path, text)
+
+    assert "destination.splunk_hec.token" in message
+    assert "missing-token" in message
+
+
+def test_a_misspelt_destination_key_is_refused(tmp_path: Path) -> None:
+    text = minimal(
+        destination=textwrap.dedent(
+            """\
+            destination:
+              type: splunk_hec
+              url: https://splunk.example.com/services/collector/event
+              tokne: t
+            """,
+        ),
+    )
+
+    message = load_error(tmp_path, text)
+
+    assert "tokne" in message and "token" in message
+
+
+@pytest.mark.parametrize("allow", [False, True])
+def test_http_destination_needs_an_explicit_opt_in(
+    tmp_path: Path,
+    allow: bool,
+) -> None:
+    text = minimal(
+        destination=textwrap.dedent(
+            f"""\
+            destination:
+              type: webhook
+              url: http://localhost:8080/ingest
+              allow_insecure_http: {str(allow).lower()}
+            """,
+        ),
+    )
+
+    if allow:
+        config = load_config(write(tmp_path, text))
+        assert config is not None
+        assert isinstance(config.destination, WebhookDestination)
+    else:
+        assert "allow_insecure_http" in load_error(tmp_path, text)
 
 
 @pytest.mark.parametrize(

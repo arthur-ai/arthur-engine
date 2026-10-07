@@ -1,4 +1,4 @@
-"""The standalone discovery config file: what to scan, and how often.
+"""The standalone discovery config file: what to scan, how often, and where to send it.
 
 Loaded once at startup and validated whole, so a typo or a missing secret stops the
 container before it scans anything rather than surfacing as one source's failed run
@@ -12,9 +12,13 @@ accepts, and the connector that reads it is still the only code that checks it. 
 one thing the file cannot say that the Platform's type schema does is which fields are
 secret, so each connector declares that itself (`SENSITIVE_FIELDS`).
 
+WHERE RESULTS GO IS THE SINK TARGET'S TO SAY. `destination` is validated against the
+list of targets in `standalone.sinks`, each of which owns its own config model; nothing
+here knows what a Splunk token or a webhook header is.
+
 TWO WAYS TO SUPPLY A VALUE THAT SHOULD NOT LIVE IN THE FILE. Any string may reference
-an environment variable as `${NAME}`, and a field's value or a config's query may be
-given as `{file: path}` to read it from a mounted file.
+an environment variable as `${NAME}`, and a field's value, a config's query or a
+destination secret may be given as `{file: path}` to read it from a mounted file.
 Interpolation runs over parsed values rather than the raw text, so a substituted
 service account key -- a JSON document full of quotes and newlines -- cannot change how
 the YAML around it parses. A file's contents are never interpolated.
@@ -54,6 +58,7 @@ from standalone.config_values import (
     StrictModel,
     read_file_reference,
 )
+from standalone.sinks import Destination
 
 logger = logging.getLogger(__name__)
 
@@ -232,6 +237,10 @@ class StandaloneDiscoveryConfig(StrictModel):
     enabled: bool = True
     schedule: ScheduleConfig
     sources: list[StandaloneSource] = Field(min_length=1)
+    destination: Destination
+    # Send each scan's outcome to the destination too, so a source that stops working
+    # is visible where its agents are rather than only in this container's logs.
+    emit_scan_outcomes: bool = True
 
     @model_validator(mode="after")
     def _unique_names(self) -> "StandaloneDiscoveryConfig":

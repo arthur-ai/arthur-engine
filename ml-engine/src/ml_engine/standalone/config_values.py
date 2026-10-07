@@ -1,13 +1,14 @@
-"""Field types and value readers the standalone config file's models are built from.
+"""Field types the standalone config file and every sink target's config share.
 
-Kept apart from `discovery_config`, which holds the file's loader, so that any model
-validated as part of the file reads values the same way without importing the loader.
+Kept apart from `discovery_config` because that module imports the sink targets to
+know which destinations exist, and each target's config needs these: shared from
+either side, the two would import each other.
 """
 
 from pathlib import Path
-from typing import Any, Optional
+from typing import Annotated, Any, Optional
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, BeforeValidator, ConfigDict, SecretStr, ValidationInfo
 
 # The validation context key carrying the config file's directory, which relative paths
 # resolve against -- so a config and the files beside it can be mounted anywhere
@@ -41,3 +42,17 @@ def read_file_reference(value: Any, base_dir: Optional[Path], strip: bool) -> st
         # The OS error names the path and why, and nothing that was in the file.
         raise ValueError(f"could not read {path}: {e.strerror}") from None
     return text.strip() if strip else text
+
+
+def _secret_value(value: Any, info: ValidationInfo) -> Any:
+    if isinstance(value, dict):
+        base_dir = (info.context or {}).get(BASE_DIR_CONTEXT)
+        return read_file_reference(value, base_dir, strip=True)
+    if isinstance(value, str):
+        return value.strip()
+    return value
+
+
+# A credential given inline or as `{file: path}`, held as a SecretStr so it never
+# appears in a repr.
+Secret = Annotated[SecretStr, BeforeValidator(_secret_value)]
