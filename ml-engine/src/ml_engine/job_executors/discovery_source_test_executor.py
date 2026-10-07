@@ -39,9 +39,9 @@ from arthur_client.api_bindings import (
 )
 from arthur_common.models.agent_discovery_schemas import DiscoveryOutputRecord
 
+from discovery import source_connectors
 from job_executors.discovery_output_contract import OutputContractError, check_batch
 from job_executors.discovery_scan import (
-    SOURCE_CONNECTORS,
     AcceptsStopCheck,
     DiscoveryConfigurationError,
     DiscoveryConnectorFactory,
@@ -87,8 +87,10 @@ class DiscoverySourceTestExecutor:
     ) -> None:
         self.discovery_sources_client = discovery_sources_client
         self.logger = logger
-        # A copy, for the reason DiscoverAgentsExecutor copies it.
-        self.connectors = dict(SOURCE_CONNECTORS if connectors is None else connectors)
+        # Built here, as DiscoverAgentsExecutor builds it.
+        self.connectors = (
+            source_connectors() if connectors is None else dict(connectors)
+        )
         self.clock = clock
 
     def execute(
