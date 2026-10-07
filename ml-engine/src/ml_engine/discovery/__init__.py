@@ -21,6 +21,8 @@ from discovery.cloud.gcp_vertex.connector import VENDOR as GCP_VERTEX_VENDOR
 from discovery.cloud.gcp_vertex.connector import VertexAgentEngineConnector
 from discovery.endpoint.jamf.connector import VENDOR as JAMF_VENDOR
 from discovery.endpoint.jamf.connector import JamfConnector
+from discovery.siem.elastic_security.connector import VENDOR as ELASTIC_SECURITY_VENDOR
+from discovery.siem.elastic_security.connector import ElasticSecurityConnector
 from discovery.siem.splunk.connector import VENDOR as SPLUNK_VENDOR
 from discovery.siem.splunk.connector import SplunkConnector
 from job_executors.discovery_scan import SOURCE_CONNECTORS
@@ -28,6 +30,7 @@ from job_executors.discovery_scan import SOURCE_CONNECTORS
 SOURCE_CONNECTORS[JAMF_VENDOR] = JamfConnector
 SOURCE_CONNECTORS[GCP_VERTEX_VENDOR] = VertexAgentEngineConnector
 SOURCE_CONNECTORS[SPLUNK_VENDOR] = SplunkConnector
+SOURCE_CONNECTORS[ELASTIC_SECURITY_VENDOR] = ElasticSecurityConnector
 
 __all__ = [
     "JamfConnector",
@@ -36,4 +39,6 @@ __all__ = [
     "GCP_VERTEX_VENDOR",
     "SplunkConnector",
     "SPLUNK_VENDOR",
+    "ElasticSecurityConnector",
+    "ELASTIC_SECURITY_VENDOR",
 ]
