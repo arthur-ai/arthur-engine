@@ -14,15 +14,13 @@ publishes each batch as it arrives, so a scan that dies on page 40 keeps pages 1
 import logging
 from datetime import datetime, timedelta, timezone
 from typing import Callable, Iterator, Mapping, Optional, Sequence
-from urllib.parse import urlsplit
 
 from arthur_client.api_bindings import DiscoverySourceConfigSpec
 from arthur_common.models.agent_discovery_schemas import DiscoveredAgentRecord
-from requests.models import PreparedRequest
 
 from discovery.catalog import Matcher
 from discovery.endpoint.device import ManagedDevice
-from discovery.endpoint.jamf.client import JamfClient, JamfSettings
+from discovery.endpoint.jamf.client import JamfClient, JamfSettings, address_problem
 from discovery.endpoint.records import records_for
 from discovery.endpoint.scope import DeviceScope, parse_group_names
 from job_executors.discovery_scan import DeviceCoverage, DiscoveryConfigurationError
@@ -218,7 +216,7 @@ def _settings_from(
             f"{base_url.split('://', 1)[0] or base_url!r}. "
             f"The token request carries client_secret in its body.",
         )
-    problem = _address_problem(base_url)
+    problem = address_problem(base_url)
     if problem:
         # base_url is outside the scrub set, so the message names what is wrong with it
         # and never repeats it: a URL with a password in it would put that password in
@@ -231,28 +229,6 @@ def _settings_from(
         include_groups=parse_group_names(source_fields.get(INCLUDE_GROUPS_FIELD)),
         exclude_groups=parse_group_names(source_fields.get(EXCLUDE_GROUPS_FIELD)),
     )
-
-
-def _address_problem(base_url: str) -> Optional[str]:
-    """What is wrong with `base_url` as an address, or None.
-
-    Parsed with requests' own rules, since requests is what will send to it; a second
-    parser disagrees with it somewhere. The few hosts urllib3 refuses only at connect time
-    are caught where the client sends (`JamfClient._send`).
-
-    Answers rather than raises, so the caller's DiscoveryConfigurationError is raised
-    outside this parse and does not carry the ValueError as its __context__.
-    """
-    try:
-        PreparedRequest().prepare_url(base_url, None)
-        parts = urlsplit(base_url)
-    except ValueError:
-        return "is not a valid address: its host or port cannot be parsed"
-    if parts.username is not None or parts.password is not None:
-        # requests turns URL userinfo into a Basic Authorization header that replaces the
-        # Bearer token, so every call would 401 and read as the credentials failing.
-        return "must not contain a username or password"
-    return None
 
 
 def _breakdown(by_group: Mapping[str, int]) -> str:

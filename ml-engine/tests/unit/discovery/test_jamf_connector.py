@@ -16,6 +16,7 @@ import re
 import socket
 from datetime import datetime, timezone
 from typing import Any, Optional
+from urllib.parse import urlsplit
 
 import pytest
 import requests
@@ -27,6 +28,7 @@ from arthur_common.models.agent_governance_schemas import (
     RunsOn,
     SourceAddress,
 )
+from urllib3.exceptions import LocationValueError
 
 from discovery.endpoint.envelope import EnvelopeOutcome
 from discovery.endpoint.jamf.client import JamfClient, JamfError, JamfSettings
@@ -1627,11 +1629,26 @@ def lookups(monkeypatch: pytest.MonkeyPatch) -> list[str]:
     return seen
 
 
-def _scan_through_requests(url: str, monkeypatch: pytest.MonkeyPatch) -> BaseException:
+def _session(trust_env: bool = False) -> requests.Session:
+    """A real Session. Without the environment by default, so an HTTPS_PROXY on the
+    machine running the tests does not decide which host gets looked up."""
+    session = requests.Session()
+    session.trust_env = trust_env
+    return session
+
+
+def _scan_through_requests(
+    url: str,
+    monkeypatch: pytest.MonkeyPatch,
+    session: Optional[requests.Session] = None,
+) -> BaseException:
     """Run a scan with the real JamfClient and a real requests.Session."""
+    http = session or _session()
     monkeypatch.setattr(
         "discovery.endpoint.jamf.connector.JamfClient",
-        lambda s, logger=None: JamfClient(s, logger=logger, sleep=lambda _s: None),
+        lambda s, logger=None: JamfClient(
+            s, logger=logger, session=http, sleep=lambda _s: None
+        ),
     )
     with pytest.raises(Exception) as caught:
         list(
@@ -1668,6 +1685,92 @@ def test_a_well_formed_base_url_does_reach_the_network(
 
     assert "acme.jamfcloud.com" in lookups
     assert failure_code(exc) != DiscoveryErrorCode.NOT_CONFIGURED
+
+
+def test_a_host_urllib3_refuses_at_connect_is_caught_where_the_client_sends(
+    lookups: list[str],
+) -> None:
+    """The client's own check, behind the up-front one: if an address that urllib3
+    refuses ever reaches a send, it is still the source's configuration."""
+    with pytest.raises(DiscoveryConfigurationError) as caught:
+        JamfClient._send(
+            _session().post, "https://acme..jamfcloud.com/api/oauth/token", timeout=1
+        )
+
+    assert failure_code(caught.value) == DiscoveryErrorCode.NOT_CONFIGURED
+    assert caught.value.__cause__ is None and caught.value.__context__ is None
+    assert lookups == []
+
+
+@pytest.mark.parametrize(
+    "proxy",
+    ["http://proxy.internal:abc", "http://", "http://proxy..internal:3128"],
+)
+def test_a_malformed_proxy_is_not_blamed_on_a_valid_base_url(
+    proxy: str,
+    lookups: list[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """requests raises the same InvalidURL / LocationParseError for a bad HTTPS_PROXY as
+    for a bad base_url. The proxy is the engine's environment, not the source's settings,
+    so it must not read as the customer's base_url being wrong."""
+    for name in ("NO_PROXY", "no_proxy", "https_proxy"):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("HTTPS_PROXY", proxy)
+
+    exc = _scan_through_requests(
+        "https://acme.jamfcloud.com", monkeypatch, _session(trust_env=True)
+    )
+
+    assert failure_code(exc) != DiscoveryErrorCode.NOT_CONFIGURED
+
+
+class _RedirectsToNowhere(requests.adapters.BaseAdapter):
+    """Plays the configured host: mints a token, then answers every GET with a redirect
+    to an address urllib3 refuses. requests sends a redirect target without preparing it
+    again, so that request goes to a real HTTPAdapter, which is where it fails."""
+
+    HOME = "acme.jamfcloud.com"
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._real = requests.adapters.HTTPAdapter()
+
+    def send(self, request: requests.PreparedRequest, **kw: Any) -> requests.Response:
+        if urlsplit(str(request.url)).hostname != self.HOME:
+            return self._real.send(request, **kw)
+        resp = requests.Response()
+        resp.request, resp.url = request, str(request.url)
+        resp._content_consumed = True
+        if request.method == "POST":
+            resp.status_code = 200
+            resp._content = json.dumps(
+                {"access_token": "t", "expires_in": 600}
+            ).encode()
+        else:
+            resp.status_code = 302
+            resp._content = b""
+            resp.headers["Location"] = "https://acme..jamfcloud.com/next"
+        return resp
+
+    def close(self) -> None:
+        self._real.close()
+
+
+def test_a_bad_redirect_target_is_not_blamed_on_a_valid_base_url(
+    lookups: list[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The server answered, at the configured address; where it then pointed is not
+    something the source's settings can fix."""
+    session = _session()
+    session.mount("https://", _RedirectsToNowhere())
+
+    exc = _scan_through_requests("https://acme.jamfcloud.com", monkeypatch, session)
+
+    assert isinstance(exc, LocationValueError), exc
+    assert failure_code(exc) != DiscoveryErrorCode.NOT_CONFIGURED
+    assert lookups == []
 
 
 def test_a_well_formed_base_url_with_a_port_is_accepted() -> None:
