@@ -341,6 +341,24 @@ def test_no_limit_and_a_full_default_page_is_reported_as_capped(
     assert "no LIMIT and returned 1000 rows" in caplog.text
 
 
+@pytest.mark.parametrize(
+    "default_size, rows, capped",
+    [(500, 500, True), (500, 499, False), (5_000, 3_000, False), (5_000, 5_000, True)],
+)
+def test_the_default_cap_is_read_from_the_clusters_warning(
+    default_size: int, rows: int, capped: bool, caplog: pytest.LogCaptureFixture
+) -> None:
+    # A cluster can lower or raise esql.query.result_truncation_default_size; its
+    # warning states the value it applied.
+    warning = (
+        '299 Elasticsearch-9.5.4 "No limit defined, adding default limit of '
+        f'[{default_size}]"'
+    )
+    with caplog.at_level(logging.WARNING, logger=LOG.name):
+        scan(FakeSession(ok(rows=values(rows), warning=warning)))
+    assert ("Elasticsearch's default cap" in caplog.text) is capped
+
+
 def test_the_no_limit_warning_alone_is_not_a_cap(
     caplog: pytest.LogCaptureFixture,
 ) -> None:

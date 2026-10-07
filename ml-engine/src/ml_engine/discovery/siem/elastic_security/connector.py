@@ -47,6 +47,8 @@ TLS_VERIFICATION_FIELD = "tls_verification"
 DEFAULT_ROW_LIMIT = 1_000
 MAX_ROW_LIMIT = 10_000
 _DEFAULT_LIMIT_WARNING = "No limit defined, adding default limit of"
+# The cap the cluster applied, as its no-LIMIT warning states it: `... of [1000]`.
+_DEFAULT_LIMIT_VALUE = re.compile(r"adding default limit of \[(\d+)\]")
 
 # What ES|QL names the one column of a query whose FROM matched no index.
 _NO_FIELDS_COLUMN = "<no-fields>"
@@ -150,8 +152,8 @@ def _report(
     # TODO(UP-4990): report a capped result on the scan outcome, not only the job log,
     # once the framework has a way for a connector to say so. Splunk and Google SecOps
     # need the same.
-    default_limited = any(w.startswith(_DEFAULT_LIMIT_WARNING) for w in result.warnings)
-    if default_limited and rows >= DEFAULT_ROW_LIMIT:
+    default_limit = _default_limit(result.warnings)
+    if default_limit is not None and rows >= default_limit:
         logger.warning(
             "Elastic query has no LIMIT and returned %s rows, Elasticsearch's default "
             "cap, so rows past it were probably not read. Aggregate to one row per agent (STATS ... "
@@ -181,6 +183,20 @@ def _report(
                 else ""
             ),
         )
+
+
+def _default_limit(warnings: list[str]) -> Optional[int]:
+    """The row cap a query without LIMIT ran under, or None when it had a LIMIT.
+
+    Read from the warning, which states the cluster's own setting, so a cluster that
+    lowered or raised `esql.query.result_truncation_default_size` is judged by its
+    value. The shipped default stands in only if the warning's wording changes.
+    """
+    for warning in warnings:
+        if warning.startswith(_DEFAULT_LIMIT_WARNING):
+            match = _DEFAULT_LIMIT_VALUE.search(warning)
+            return int(match.group(1)) if match else DEFAULT_ROW_LIMIT
+    return None
 
 
 def _redacted(warning: str) -> str:
