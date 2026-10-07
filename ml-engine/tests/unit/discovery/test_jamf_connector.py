@@ -13,6 +13,7 @@ import io
 import json
 import logging
 import re
+import socket
 from datetime import datetime, timezone
 from typing import Any, Optional
 
@@ -32,7 +33,11 @@ from discovery.endpoint.jamf.client import JamfClient, JamfError, JamfSettings
 from discovery.endpoint.jamf.connector import JamfConnector, _settings_from
 from discovery.endpoint.records import records_for
 from discovery.endpoint.scope import DeviceGroupError
-from job_executors.discovery_scan import DiscoveryErrorCode, failure_code
+from job_executors.discovery_scan import (
+    DiscoveryConfigurationError,
+    DiscoveryErrorCode,
+    failure_code,
+)
 
 SCAN_AT = 1790100381
 LOG = logging.getLogger("discovery-test")
@@ -1559,22 +1564,6 @@ def test_the_record_schema_has_no_field_for_what_is_never_collected() -> None:
 # --- a base_url that is https but not a usable address ------------------------------
 
 
-class _NothingSent(requests.adapters.BaseAdapter):
-    """Mounted on a real Session so requests parses the URL as it would in a scan, and
-    records anything that got as far as being sent."""
-
-    def __init__(self) -> None:
-        super().__init__()
-        self.sent: list[str] = []
-
-    def send(self, request: requests.PreparedRequest, **kw: Any) -> requests.Response:
-        self.sent.append(str(request.url))
-        raise requests.ConnectionError("this test sends nothing")
-
-    def close(self) -> None:
-        pass
-
-
 @pytest.mark.parametrize(
     "url",
     [
@@ -1582,35 +1571,103 @@ class _NothingSent(requests.adapters.BaseAdapter):
         "https://acme.jamfcloud.com:99999",
         "https://[acme.jamfcloud.com",
         "https://",
+        "https://acme jamfcloud.com",
+        "https://acme.jamfcloud.com\u200b",
+        "https://.acme.jamfcloud.com",
+        "https://*.jamfcloud.com",
+        "https://acme.jamfcloud.com%",
     ],
 )
-def test_a_malformed_base_url_is_not_configured_and_nothing_is_sent(
+def test_a_malformed_base_url_is_not_configured(url: str) -> None:
+    """https passes the scheme check, but requests cannot send to any of these: it raises
+    InvalidURL, a ValueError the client's transport handling does not catch, so a
+    scheduled scan read it as the vendor failing."""
+    with pytest.raises(DiscoveryConfigurationError) as caught:
+        _settings_from(CREDS, {"base_url": url})
+
+    assert failure_code(caught.value) == DiscoveryErrorCode.NOT_CONFIGURED
+    assert "base_url" in str(caught.value)
+    # Test Connection walks __cause__/__context__; the parse error must not ride along.
+    assert caught.value.__cause__ is None and caught.value.__context__ is None
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://user:hunter2@acme.jamfcloud.com",
+        "https://user:hunter2@acme.jamfcloud.com:abc",
+    ],
+)
+def test_a_base_url_with_credentials_is_refused_without_repeating_them(
     url: str,
-    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """https passes the scheme check, but a bad port, an unclosed bracket or no host at all
-    makes requests raise InvalidURL -- a ValueError, which the client's transport handling
-    does not catch, so a scheduled scan read it as the vendor failing."""
-    adapter = _NothingSent()
-    session = requests.Session()
-    session.mount("https://", adapter)
+    """requests turns URL userinfo into a Basic header that replaces the Bearer token, so
+    every call would 401. base_url is outside the scrub set, so the message must not
+    repeat it."""
+    with pytest.raises(DiscoveryConfigurationError) as caught:
+        _settings_from(CREDS, {"base_url": url})
+
+    assert failure_code(caught.value) == DiscoveryErrorCode.NOT_CONFIGURED
+    assert "hunter2" not in str(caught.value)
+    assert "user:" not in str(caught.value)
+
+
+@pytest.fixture
+def lookups(monkeypatch: pytest.MonkeyPatch) -> list[str]:
+    """Hosts the real requests/urllib3 stack tried to resolve, i.e. tried to reach.
+
+    Each lookup is refused, so nothing leaves the machine either way."""
+    seen: list[str] = []
+
+    def refuse(host: str, *a: Any, **kw: Any) -> Any:
+        seen.append(host)
+        raise OSError("this test resolves nothing")
+
+    monkeypatch.setattr(socket, "getaddrinfo", refuse)
+    return seen
+
+
+def _scan_through_requests(url: str, monkeypatch: pytest.MonkeyPatch) -> BaseException:
+    """Run a scan with the real JamfClient and a real requests.Session."""
     monkeypatch.setattr(
         "discovery.endpoint.jamf.connector.JamfClient",
-        lambda s, logger=None: JamfClient(s, logger=logger, session=session),
+        lambda s, logger=None: JamfClient(s, logger=logger, sleep=lambda _s: None),
     )
-
     with pytest.raises(Exception) as caught:
         list(
             JamfConnector().scan(
                 FakeConfig(CATALOG), 24, CREDS, {"base_url": url}, LOG  # type: ignore[arg-type]
             ),
         )
+    return caught.value
 
-    assert failure_code(caught.value) == DiscoveryErrorCode.NOT_CONFIGURED
-    assert "base_url" in str(caught.value)
-    assert adapter.sent == []
-    # Test Connection walks __cause__/__context__; the parse error must not ride along.
-    assert caught.value.__cause__ is None and caught.value.__context__ is None
+
+def test_a_host_urllib3_refuses_at_connect_is_not_configured_and_never_reached(
+    lookups: list[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An empty label passes requests' URL preparation; urllib3 refuses it only when it
+    opens the connection, with LocationParseError. That is where the client classifies
+    it, before any lookup of the host."""
+    exc = _scan_through_requests("https://acme..jamfcloud.com", monkeypatch)
+
+    assert failure_code(exc) == DiscoveryErrorCode.NOT_CONFIGURED
+    assert exc.__cause__ is None and exc.__context__ is None
+    assert "acme" not in str(exc)
+    assert lookups == []
+
+
+def test_a_well_formed_base_url_does_reach_the_network(
+    lookups: list[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The control for the test above: the same path with a valid host does try to
+    resolve it, so an empty `lookups` there means the request was stopped, not that
+    lookups go unrecorded."""
+    exc = _scan_through_requests("https://acme.jamfcloud.com", monkeypatch)
+
+    assert "acme.jamfcloud.com" in lookups
+    assert failure_code(exc) != DiscoveryErrorCode.NOT_CONFIGURED
 
 
 def test_a_well_formed_base_url_with_a_port_is_accepted() -> None:

@@ -18,6 +18,7 @@ from urllib.parse import urlsplit
 
 from arthur_client.api_bindings import DiscoverySourceConfigSpec
 from arthur_common.models.agent_discovery_schemas import DiscoveredAgentRecord
+from requests.models import PreparedRequest
 
 from discovery.catalog import Matcher
 from discovery.endpoint.device import ManagedDevice
@@ -217,14 +218,12 @@ def _settings_from(
             f"{base_url.split('://', 1)[0] or base_url!r}. "
             f"The token request carries client_secret in its body.",
         )
-    if not _is_usable_address(base_url):
-        # https alone is not an address. A bad port, an unclosed "[" or no host at all
-        # passes the check above and then fails inside requests as InvalidURL -- a
-        # ValueError, not a transport error -- which a scan would report as Jamf failing.
-        raise DiscoveryConfigurationError(
-            f"Jamf base_url {base_url!r} is not a valid URL: it needs a host, and a "
-            f"port, if given, must be a number from 0 to 65535.",
-        )
+    problem = _address_problem(base_url)
+    if problem:
+        # base_url is outside the scrub set, so the message names what is wrong with it
+        # and never repeats it: a URL with a password in it would put that password in
+        # the job log.
+        raise DiscoveryConfigurationError(f"Jamf base_url {problem}.")
     return JamfSettings(
         base_url=base_url,
         client_id=str(credentials["client_id"]),
@@ -234,18 +233,26 @@ def _settings_from(
     )
 
 
-def _is_usable_address(base_url: str) -> bool:
-    """Whether `base_url` parses to a host and, if it names one, a valid port.
+def _address_problem(base_url: str) -> Optional[str]:
+    """What is wrong with `base_url` as an address, or None.
+
+    Parsed with requests' own rules, since requests is what will send to it; a second
+    parser disagrees with it somewhere. The few hosts urllib3 refuses only at connect time
+    are caught where the client sends (`JamfClient._send`).
 
     Answers rather than raises, so the caller's DiscoveryConfigurationError is raised
     outside this parse and does not carry the ValueError as its __context__.
     """
     try:
+        PreparedRequest().prepare_url(base_url, None)
         parts = urlsplit(base_url)
-        parts.port  # raises ValueError on a non-numeric or out-of-range port
     except ValueError:
-        return False
-    return bool(parts.hostname)
+        return "is not a valid address: its host or port cannot be parsed"
+    if parts.username is not None or parts.password is not None:
+        # requests turns URL userinfo into a Basic Authorization header that replaces the
+        # Bearer token, so every call would 401 and read as the credentials failing.
+        return "must not contain a username or password"
+    return None
 
 
 def _breakdown(by_group: Mapping[str, int]) -> str:

@@ -27,14 +27,16 @@ import logging
 import random
 import time
 from dataclasses import dataclass
-from typing import Any, Iterator, Optional
+from typing import Any, Callable, Iterator, Optional
 from urllib.parse import urljoin
 
 import requests
 from arthur_common.models.agent_governance_schemas import Platform
+from urllib3.exceptions import LocationValueError
 
 from discovery.endpoint.device import ManagedDevice
 from discovery.endpoint.scope import DeviceGroup
+from job_executors.discovery_scan import DiscoveryConfigurationError
 
 # What the collector needs and nothing else. GENERAL carries `reportDate`, which is the
 # roster and the freshness signal; EXTENSION_ATTRIBUTES carries the payload. The other two
@@ -53,6 +55,11 @@ GROUP_MEMBERSHIPS_SECTION = "GROUP_MEMBERSHIPS"
 # Jamf's own published guidance is at most five concurrent connections. One page at a time
 # is deliberate; see the module docstring.
 PAGE_SIZE = 100
+
+# What requests and urllib3 raise for an address they cannot use. Both are ValueErrors,
+# not transport errors, and urllib3 raises the second only when it opens the connection,
+# so no up-front check sees every case.
+MALFORMED_URL = (requests.exceptions.InvalidURL, LocationValueError)
 
 # Refreshed at 80% of its life rather than on expiry, so a long scan does not discover the
 # token died between two pages.
@@ -128,7 +135,8 @@ class JamfClient:
         if self._token is not None and time.monotonic() < self._token_expires_at:
             return self._token
 
-        resp = self._http.post(
+        resp = self._send(
+            self._http.post,
             self._url("/api/oauth/token"),
             # The secret is in the BODY. requests follows redirects by default and on a
             # 307/308 resends method and body to the Location host, stripping only the
@@ -166,12 +174,30 @@ class JamfClient:
 
     # --- transport ----------------------------------------------------------------
 
+    @staticmethod
+    def _send(
+        method: Callable[..., requests.Response], url: str, **kw: Any
+    ) -> requests.Response:
+        """One request, with an address requests cannot use reported as configuration.
+
+        Raised after the except block, so the error carries no __context__: the
+        InvalidURL it replaces quotes the whole URL, credentials and all.
+        """
+        try:
+            return method(url, **kw)
+        except MALFORMED_URL:
+            pass
+        raise DiscoveryConfigurationError(
+            "Jamf base_url is not a valid address: its host or port cannot be used.",
+        )
+
     def _get(self, path: str, params: dict[str, Any]) -> Any:
         last: Optional[str] = None
 
         for attempt in range(1, MAX_ATTEMPTS + 1):
             try:
-                resp = self._http.get(
+                resp = self._send(
+                    self._http.get,
                     self._url(path),
                     params=params,
                     headers={
