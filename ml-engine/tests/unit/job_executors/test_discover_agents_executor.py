@@ -1166,8 +1166,24 @@ def test_a_scan_chains_one_fetch_for_its_source() -> None:
     assert spec.reported_since is not None
     assert spec.reported_since <= before
     assert spec.reported_since >= before - CHAINED_FETCH_SKEW - timedelta(seconds=5)
+    # tagged with the manual scan, so the scan reads as complete only once it lands
+    assert str(spec.scan_id) == SCAN_ID
     # no nonce: a retried scan chains again, and the fetch is an idempotent upsert
     assert post_job.nonce is None
+
+
+def test_a_scheduled_scan_chains_an_untagged_fetch() -> None:
+    """A scheduled scan has no scan ID and nobody waiting on it, so its fetch
+    carries none either."""
+    jobs_client = MagicMock()
+
+    _executor(FakeConnector([[_record("a")]]), jobs_client=jobs_client).execute(
+        _job(),
+        _spec(_config(), scan_id=None),
+    )
+
+    [(_, batch)] = _chained_fetches(jobs_client)
+    assert batch.jobs[0].job_spec.actual_instance.scan_id is None
 
 
 def test_a_scan_that_found_nothing_still_chains_its_fetch() -> None:
@@ -1191,7 +1207,9 @@ def test_a_failed_scan_chains_a_fetch_for_what_it_published() -> None:
     with pytest.raises(RuntimeError, match="source went away"):
         _executor(connector, jobs_client=jobs_client).execute(_job(), _spec(_config()))
 
-    assert len(_chained_fetches(jobs_client)) == 1
+    [(_, batch)] = _chained_fetches(jobs_client)
+    # the scan waits for this fetch too, so it carries the scan's ID
+    assert str(batch.jobs[0].job_spec.actual_instance.scan_id) == SCAN_ID
 
 
 def test_a_failed_scan_that_published_nothing_chains_nothing() -> None:

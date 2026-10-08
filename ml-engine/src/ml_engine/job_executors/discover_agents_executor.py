@@ -238,6 +238,10 @@ class DiscoverAgentsExecutor:
             data_plane_id=job_spec.data_plane_id,
             discovery_source_id=config.discovery_source_id,
             reported_since=scan_started_at - CHAINED_FETCH_SKEW,
+            # A manual scan reads as complete only once the fetches its legs chained
+            # have landed, which the Platform can only tell if they carry its ID.
+            # Null for a scheduled scan, which no one is waiting on.
+            scan_id=job_spec.scan_id,
         )
         spawned = self.jobs_client.post_submit_jobs_batch(
             project_id=str(job.project_id),
