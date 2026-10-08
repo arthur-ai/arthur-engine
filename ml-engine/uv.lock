@@ -1484,7 +1484,7 @@ wheels = [
 
 [[package]]
 name = "ml-engine"
-version = "2.1.987"
+version = "2.1.988"
 source = { editable = "." }
 dependencies = [
     { name = "adlfs" },
