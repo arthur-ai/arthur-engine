@@ -6,13 +6,17 @@ NUMBER in it -- and GenAI Engine joins a record to such a task only when a servi
 matches that key byte for byte. A record that rebuilt the name from the configured project
 ID would look right in every other test and mint a duplicate task for every agent a
 customer already has.
+
+The failure tests guard the other half of what an admin sees: a key Google refuses and
+a project the key cannot read must arrive as `authentication_failed` and
+`permission_denied`, not as the `provider_error` that sends them to Google's status page.
 """
 
 import json
 import logging
 from datetime import datetime, timezone
 from types import SimpleNamespace
-from typing import Any, Iterable, Optional
+from typing import Any, Iterable, Iterator, Optional, Sequence
 
 import pytest
 from arthur_client.api_bindings import DiscoverySourceConfigSpec
@@ -21,6 +25,8 @@ from arthur_common.models.agent_governance_schemas import (
     RunsOn,
 )
 from google.auth.credentials import Credentials
+from google.auth.exceptions import RefreshError, TransportError
+from google.genai.errors import APIError, ClientError, ServerError
 
 import discovery  # noqa: F401  (registers the connectors)
 from discovery.cloud.gcp_vertex import connector as vertex
@@ -28,6 +34,7 @@ from discovery.cloud.gcp_vertex.connector import (
     ALLOW_ADC_ENV_VAR,
     DEFAULT_LOCATION,
     VENDOR,
+    AgentEngineLister,
     VertexAgentEngineConnector,
     VertexSettings,
     credentials_from,
@@ -35,7 +42,14 @@ from discovery.cloud.gcp_vertex.connector import (
     settings_from,
 )
 from job_executors.discovery_output_contract import check_batch
-from job_executors.discovery_scan import SOURCE_CONNECTORS
+from job_executors.discovery_scan import (
+    SOURCE_CONNECTORS,
+    DiscoveryErrorCode,
+    DiscoveryPublishResult,
+    DiscoveryScanOutcome,
+    failure_code,
+    run_source_scan,
+)
 
 LOG = logging.getLogger("discovery-test")
 
@@ -125,7 +139,7 @@ def stub_key_loader(monkeypatch: pytest.MonkeyPatch) -> list[dict[str, Any]]:
 
 
 def scan(
-    lister: FakeLister,
+    lister: AgentEngineLister,
     config: DiscoverySourceConfigSpec,
     creds: Optional[dict[str, Optional[str]]] = None,
     fields: Optional[dict[str, str]] = None,
@@ -402,6 +416,197 @@ def test_the_scan_never_logs_key_material(
     assert "NOT-A-REAL-KEY" not in caplog.text
     assert "abc123" not in caplog.text
     assert PROJECT_ID in caplog.text  # the project is not a secret, and names the scan
+
+
+# --- failures: what Google answered -------------------------------------------------
+
+
+def google_error(code: int, status: str) -> APIError:
+    """An error shaped like the SDK raises it: the status on `.code`, not `.status_code`."""
+    body = {
+        "error": {
+            "code": code,
+            "message": f"Permission denied on resource project {PROJECT_ID}.",
+            "status": status,
+        },
+    }
+    error: APIError = (ClientError if code < 500 else ServerError)(code, body, None)
+    return error
+
+
+class FailingLister:
+    """Lists `engines`, then raises -- the way a page Google refuses part-way fails."""
+
+    def __init__(self, error: BaseException, engines: Iterable[Any] = ()) -> None:
+        self.error = error
+        self.engines = list(engines)
+
+    def __call__(
+        self,
+        settings: VertexSettings,
+        credentials: Optional[Credentials],
+    ) -> Iterator[Any]:
+        yield from self.engines
+        raise self.error
+
+
+class AcceptingSink:
+    def __init__(self) -> None:
+        self.published: list[str] = []
+
+    def publish(
+        self,
+        workspace_id: str,
+        data_plane_id: str,
+        config: DiscoverySourceConfigSpec,
+        records: Sequence[Any],
+    ) -> DiscoveryPublishResult:
+        self.published.extend(r.external_id for r in records)
+        return DiscoveryPublishResult(accepted=len(records))
+
+
+@pytest.mark.parametrize(
+    ("code", "status", "expected"),
+    [
+        (401, "UNAUTHENTICATED", DiscoveryErrorCode.AUTHENTICATION_FAILED),
+        (403, "PERMISSION_DENIED", DiscoveryErrorCode.PERMISSION_DENIED),
+        (404, "NOT_FOUND", DiscoveryErrorCode.PROVIDER_ERROR),
+        (503, "UNAVAILABLE", DiscoveryErrorCode.PROVIDER_ERROR),
+    ],
+)
+def test_a_google_api_error_is_classified_by_the_status_it_carries(
+    code: int,
+    status: str,
+    expected: DiscoveryErrorCode,
+    config: DiscoverySourceConfigSpec,
+    stub_key_loader: list[dict[str, Any]],
+) -> None:
+    error = google_error(code, status)
+    raised_type = type(error)
+    message = str(error)
+
+    with pytest.raises(raised_type) as exc:
+        scan(FailingLister(error), config)
+
+    # The SDK's own exception, re-raised: same object, same type, same message. Only
+    # the attribute `failure_code` reads has been added.
+    assert exc.value is error
+    assert type(exc.value) is raised_type
+    assert str(exc.value) == message
+    assert getattr(exc.value, "status_code") == code
+    assert failure_code(exc.value) is expected
+
+
+def test_a_lister_that_fails_on_the_call_is_classified_too(
+    config: DiscoverySourceConfigSpec,
+    stub_key_loader: list[dict[str, Any]],
+) -> None:
+    error = google_error(403, "PERMISSION_DENIED")
+
+    def refuse(settings: VertexSettings, credentials: Optional[Credentials]) -> Any:
+        raise error
+
+    with pytest.raises(ClientError) as exc:
+        scan(refuse, config)
+    assert failure_code(exc.value) is DiscoveryErrorCode.PERMISSION_DENIED
+
+
+def test_a_denied_project_reaches_the_run_as_permission_denied(
+    config: DiscoverySourceConfigSpec,
+    stub_key_loader: list[dict[str, Any]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """End to end through the scan loop, which is what writes the code to the run.
+
+    The engine listed before the refusal is still published, and the exception
+    `run_source_scan` re-raises is still the SDK's ClientError.
+    """
+    monkeypatch.setattr(vertex, "BATCH_SIZE", 1)
+    outcome = DiscoveryScanOutcome(
+        discovery_source_config_id=None,
+        discovery_source_config_name="vertex",
+        discovery_source_id=None,
+        vendor=VENDOR,
+        job_id="job",
+        scan_id=None,
+        lookback_hours=24,
+    )
+    sink = AcceptingSink()
+    lister = FailingLister(
+        google_error(403, "PERMISSION_DENIED"),
+        [engine(PERSONAL_ASSISTANT, "personal-assistant")],
+    )
+
+    with pytest.raises(ClientError):
+        run_source_scan(
+            config=config,
+            lookback_hours=24,
+            workspace_id="workspace",
+            data_plane_id="data-plane",
+            outcome=outcome,
+            connector=VertexAgentEngineConnector(lister=lister),
+            sink=sink,
+            logger=LOG,
+            credentials=CREDS,
+            source_fields=FIELDS,
+        )
+
+    assert outcome.error_code is DiscoveryErrorCode.PERMISSION_DENIED
+    assert outcome.error is not None and outcome.error.startswith("ClientError: 403")
+    assert sink.published == [PERSONAL_ASSISTANT]
+    assert outcome.records_published == 1
+
+
+def test_a_key_google_refuses_is_an_authentication_failure(
+    config: DiscoverySourceConfigSpec,
+    stub_key_loader: list[dict[str, Any]],
+) -> None:
+    """A revoked key never reaches Vertex: google-auth cannot mint a token, and the
+    token endpoint's answer is a 400, which only the connector knows to read as 401."""
+    error = RefreshError(
+        "invalid_grant: Invalid JWT Signature.",
+        {"error": "invalid_grant", "error_description": "Invalid JWT Signature."},
+        retryable=False,
+    )
+    with pytest.raises(RefreshError) as exc:
+        scan(FailingLister(error), config)
+    assert exc.value is error
+    assert failure_code(exc.value) is DiscoveryErrorCode.AUTHENTICATION_FAILED
+
+
+def test_a_token_endpoint_outage_is_not_blamed_on_the_key(
+    config: DiscoverySourceConfigSpec,
+    stub_key_loader: list[dict[str, Any]],
+) -> None:
+    error = RefreshError(
+        "temporarily_unavailable",
+        {"error": "temporarily_unavailable"},
+        retryable=True,
+    )
+    with pytest.raises(RefreshError) as exc:
+        scan(FailingLister(error), config)
+    assert not hasattr(exc.value, "status_code")
+    assert failure_code(exc.value) is DiscoveryErrorCode.PROVIDER_ERROR
+
+
+def test_an_unreachable_metadata_server_is_not_blamed_on_the_key(
+    config: DiscoverySourceConfigSpec,
+    stub_key_loader: list[dict[str, Any]],
+) -> None:
+    """google-auth wraps a metadata-server transport failure in a RefreshError it does
+    not mark retryable; the cause, not the flag, says it is the network's fault."""
+    cause = TransportError("Failed to retrieve http://metadata.google.internal/...")
+    try:
+        raise RefreshError(cause) from cause
+    except RefreshError as raised:
+        error = raised
+    assert not error.retryable
+    with pytest.raises(RefreshError) as exc:
+        scan(FailingLister(error), config)
+    assert exc.value is error
+    assert exc.value.__cause__ is cause
+    assert not hasattr(exc.value, "status_code")
+    assert failure_code(exc.value) is DiscoveryErrorCode.PROVIDER_ERROR
 
 
 # --- registration -------------------------------------------------------------------
