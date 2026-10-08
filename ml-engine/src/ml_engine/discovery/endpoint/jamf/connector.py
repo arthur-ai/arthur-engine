@@ -18,9 +18,10 @@ from typing import Callable, Iterator, Mapping, Optional, Sequence
 from arthur_client.api_bindings import DiscoverySourceConfigSpec
 from arthur_common.models.agent_discovery_schemas import DiscoveredAgentRecord
 
+from discovery.address import address_problem
 from discovery.catalog import Matcher
 from discovery.endpoint.device import ManagedDevice
-from discovery.endpoint.jamf.client import JamfClient, JamfSettings, address_problem
+from discovery.endpoint.jamf.client import JamfClient, JamfSettings
 from discovery.endpoint.records import records_for
 from discovery.endpoint.scope import DeviceScope, parse_group_names
 from job_executors.discovery_scan import DeviceCoverage, DiscoveryConfigurationError
@@ -218,9 +219,7 @@ def _settings_from(
         )
     problem = address_problem(base_url)
     if problem:
-        # base_url is outside the scrub set, so the message names what is wrong with it
-        # and never repeats it: a URL with a password in it would put that password in
-        # the job log.
+        # Not repeated in the message: base_url is outside the scrub set.
         raise DiscoveryConfigurationError(f"Jamf base_url {problem}.")
     return JamfSettings(
         base_url=base_url,
