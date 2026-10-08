@@ -44,6 +44,7 @@ from arthur_common.models.agent_discovery_schemas import DiscoveryOutputRecord
 from discovery.endpoint.jamf.client import JamfError
 from discovery.endpoint.jamf.connector import JamfConnector
 from job_executors.discovery_output_contract import OutputContractError, check_columns
+from job_executors.discovery_scan import DiscoveryConfigurationError
 from job_executors.discovery_source_test_executor import (
     PREVIEW_DEADLINE_SECONDS,
     DiscoverySourceTestExecutor,
@@ -387,6 +388,115 @@ def test_a_code_that_is_not_an_http_status_is_ignored(job_log) -> None:
     assert result.error.category != DiscoverySourceTestErrorCategory.AUTHORIZATION
 
 
+class _VendorError(Exception):
+    """A connector's vendor error carrying the status on an attribute, as Splunk's,
+    Elastic's and Jamf's do."""
+
+    def __init__(self, message: str, status_code: Optional[int] = None) -> None:
+        super().__init__(message)
+        self.status_code = status_code
+
+
+def _raised_from(outer: BaseException, cause: BaseException) -> BaseException:
+    try:
+        try:
+            raise cause
+        except type(cause) as exc:
+            raise outer from exc
+    except type(outer) as wrapped:
+        return wrapped
+
+
+@pytest.mark.parametrize(
+    ("error", "batches", "reachability", "status"),
+    [
+        pytest.param(
+            _raised_from(
+                DiscoveryConfigurationError("gateway gw-1 is not in this account"),
+                _VendorError("GET /gateways/gw-1 failed with HTTP 404", 404),
+            ),
+            [],
+            DiscoverySourceReachability.REACHABLE,
+            404,
+            id="raised-from-the-vendors-404",
+        ),
+        pytest.param(
+            DiscoveryConfigurationError("the key is not an admin key"),
+            [[_record("1")]],
+            DiscoverySourceReachability.REACHABLE,
+            None,
+            id="after-a-batch",
+        ),
+        pytest.param(
+            DiscoveryConfigurationError("Splunk refused the query (HTTP 400)"),
+            [],
+            DiscoverySourceReachability.REACHABLE,
+            400,
+            id="status-in-its-own-message",
+        ),
+        pytest.param(
+            # Splunk's current form: reworded and unchained to dodge the status lookup
+            DiscoveryConfigurationError("Splunk refused the query (status 400)"),
+            [],
+            DiscoverySourceReachability.UNKNOWN,
+            None,
+            id="splunks-unchained-workaround",
+        ),
+    ],
+)
+def test_a_configuration_error_anywhere_in_the_chain_is_configuration(
+    job_log,
+    error: BaseException,
+    batches: Sequence[Sequence[object]],
+    reachability: DiscoverySourceReachability,
+    status: Optional[int],
+) -> None:
+    """The connector's own verdict wins over any status, as it does for a scan, which
+    reports the same failure NOT_CONFIGURED."""
+    logger, _ = job_log
+    client = _client()
+
+    _run(FakeConnector(batches=batches, raise_after=error), _spec(), client, logger)
+
+    result = _delivered(client)
+    assert result.error.category == DiscoverySourceTestErrorCategory.CONFIGURATION
+    assert result.reachability == reachability
+    assert result.error.vendor_status_code == status
+
+
+def test_a_status_written_into_the_outermost_message_is_still_read(job_log) -> None:
+    """Jamf's retries-exhausted error carries its last status only in its text."""
+    logger, _ = job_log
+    error = _VendorError(
+        "Jamf GET /api/v1/computers-inventory still failing after 3 attempts (HTTP 503)"
+    )
+    client = _client()
+
+    _run(FakeConnector(raise_after=error), _spec(), client, logger)
+
+    result = _delivered(client)
+    assert result.error.category == DiscoverySourceTestErrorCategory.VENDOR_ERROR
+    assert result.error.vendor_status_code == 503
+    assert result.reachability == DiscoverySourceReachability.REACHABLE
+
+
+def test_a_status_quoted_in_a_deeper_message_is_not_read(job_log) -> None:
+    """A cause's text can quote a vendor body or an earlier attempt; only the
+    outermost message is the connector's own account of the failure."""
+    logger, _ = job_log
+    error = _raised_from(
+        RuntimeError("the inventory export was abandoned"),
+        Exception("upstream proxy said: HTTP 401 Unauthorized"),
+    )
+    client = _client()
+
+    _run(FakeConnector(raise_after=error), _spec(), client, logger)
+
+    result = _delivered(client)
+    assert result.error.category == DiscoverySourceTestErrorCategory.VENDOR_ERROR
+    assert result.error.vendor_status_code is None
+
+
 def test_a_missing_field_is_configuration_with_reachability_unknown(job_log) -> None:
     logger, _ = job_log
     client = _client()
@@ -615,11 +725,15 @@ def test_the_deadline_stops_a_connector_that_never_yields(job_log) -> None:
 
     result = _delivered(client)
     assert connector.pages_read == 12
-    assert result.outcome == DiscoverySourceTestOutcome.SUCCEEDED
+    # no answer is not an empty answer: a failed TIMEOUT, not a success with no rows
+    assert result.outcome == DiscoverySourceTestOutcome.FAILED
+    assert result.error.category == DiscoverySourceTestErrorCategory.TIMEOUT
+    assert result.reachability == DiscoverySourceReachability.UNKNOWN
+    assert "No rows arrived within the 120s test deadline" in result.error.message
     assert result.rows == []
     assert result.truncated is True
-    assert result.error is None
-    assert stream.getvalue().count("deadline") == 1
+    assert result.output_column_check is None
+    assert stream.getvalue().count("Test stopped at its 120s deadline") == 1
 
 
 def test_a_connector_stopped_at_the_deadline_keeps_what_it_yielded(job_log) -> None:
@@ -647,7 +761,8 @@ def test_the_deadline_is_checked_on_an_empty_batch(job_log) -> None:
     result = _delivered(client)
     assert connector.yielded == 12
     assert connector.closed is True
-    assert result.outcome == DiscoverySourceTestOutcome.SUCCEEDED
+    assert result.outcome == DiscoverySourceTestOutcome.FAILED
+    assert result.error.category == DiscoverySourceTestErrorCategory.TIMEOUT
     assert result.truncated is True
 
 
@@ -661,6 +776,9 @@ def test_a_source_that_ends_before_the_deadline_is_not_truncated(job_log) -> Non
     result = _delivered(client)
     assert connector.pages_read == 3
     assert result.truncated is False
+    # a source that ended with no rows did answer: empty, and a success
+    assert result.outcome == DiscoverySourceTestOutcome.SUCCEEDED
+    assert result.rows == []
 
 
 def test_an_unsupported_vendor_never_reads_credentials(job_log) -> None:

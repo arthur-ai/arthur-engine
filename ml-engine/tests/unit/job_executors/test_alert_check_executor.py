@@ -169,6 +169,7 @@ def test_alert_check_executor_fault_tolerance():
     metrics_client = Mock()
     logger = Mock()
     policies_client = Mock()
+    policies_client.list_model_policy_assignments.return_value = Mock(records=[])
 
     # Setup alert rules client to return our test rules
     alert_rules_response = Mock()
@@ -262,9 +263,11 @@ def test_alert_check_executor_fault_tolerance():
     # policy on the model, and compliance reads "no alerts" as passing unless it
     # is told which rules never ran.
     jobs_client.post_submit_jobs_batch.assert_called_once()
-    submitted_spec = jobs_client.post_submit_jobs_batch.call_args.kwargs[
-        "post_job_batch"
-    ].jobs[0].job_spec.actual_instance
+    submitted_spec = (
+        jobs_client.post_submit_jobs_batch.call_args.kwargs["post_job_batch"]
+        .jobs[0]
+        .job_spec.actual_instance
+    )
     assert submitted_spec.errored_alert_rule_ids == [str(alert_rule1.id)]
 
 
@@ -320,6 +323,10 @@ def test_alert_check_executor_submits_compliance_job_on_success():
     jobs_client = Mock()
     metrics_client = Mock()
     policies_client = Mock()
+    # the assignment's chain is at this job, so the stamp belongs to it
+    policies_client.list_model_policy_assignments.return_value = Mock(
+        records=[Mock(id=assignment_id, alerts_check_job=Mock(id=job.id))]
+    )
     logger = Mock()
 
     alert_rules_response = Mock()
@@ -444,11 +451,16 @@ def test_alert_check_executor_fans_out_compliance_patch_when_assignment_id_is_no
         jobs=[spawned_compliance_job]
     )
 
-    # Two assignments on this model — both should get the compliance id stamped.
+    # Two assignments carry this chain and get the compliance id stamped; a
+    # third carries another check's chain and is left alone.
     aid_1 = str(uuid4())
     aid_2 = str(uuid4())
     assignments_page = Mock()
-    assignments_page.records = [Mock(id=aid_1), Mock(id=aid_2)]
+    assignments_page.records = [
+        Mock(id=aid_1, alerts_check_job=Mock(id=job.id)),
+        Mock(id=aid_2, alerts_check_job=Mock(id=job.id)),
+        Mock(id=str(uuid4()), alerts_check_job=Mock(id=str(uuid4()))),
+    ]
     policies_client.list_model_policy_assignments.return_value = assignments_page
 
     executor = AlertCheckExecutor(

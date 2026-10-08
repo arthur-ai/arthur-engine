@@ -43,6 +43,7 @@ from job_executors.discovery_output_contract import OutputContractError, check_b
 from job_executors.discovery_scan import (
     SOURCE_CONNECTORS,
     AcceptsStopCheck,
+    DiscoveryConfigurationError,
     DiscoveryConnectorFactory,
 )
 from log_redaction import redact_secrets, register_secrets, secret_values
@@ -64,7 +65,8 @@ MAX_PREVIEW_BYTES = 200 * 1024
 MAX_ERROR_MESSAGE_LENGTH = 2000
 
 # A vendor status that an SDK or connector wrote into its message rather than onto an
-# attribute: Jamf's "failed with HTTP 401", a retry's "(HTTP 503)".
+# attribute: Jamf's retries-exhausted "(HTTP 503)". Read from the outermost exception
+# only -- see `_status_of`.
 _HTTP_STATUS_IN_MESSAGE = re.compile(r"\bHTTP[ /]?(?:1\.[01] )?([1-5]\d\d)\b")
 
 
@@ -261,6 +263,21 @@ class _PreviewRun:
             if callable(close):
                 close()
 
+        if self.stopped_at_deadline and self.batches_read == 0:
+            # The deadline ended the scan before the source returned a single row: a
+            # search still running, a fleet walked without finding an agent. That is
+            # no answer, not an empty one -- reported as succeeded it would read as a
+            # source that connected and holds nothing, with no column check run.
+            return self._failed(
+                DiscoverySourceTestErrorCategory.TIMEOUT,
+                # Whether the vendor answered anything before the stop is not known
+                # here: a connector stopped on request ends as if its source had.
+                DiscoverySourceReachability.UNKNOWN,
+                f"No rows arrived within the {PREVIEW_DEADLINE_SECONDS:.0f}s test "
+                f"deadline; the source may still be searching. Narrow the source "
+                f"config's query or lookback window and test again.",
+            )
+
         return PutDiscoverySourceTestResult(
             outcome=DiscoverySourceTestOutcome.SUCCEEDED,
             # The connector ran to its end or to the limit without the vendor
@@ -378,7 +395,15 @@ def _exception_chain(e: BaseException) -> Iterator[BaseException]:
         current = current.__cause__ or current.__context__
 
 
-def _status_of(e: BaseException) -> Optional[int]:
+def _status_of(e: BaseException, read_message: bool) -> Optional[int]:
+    """The HTTP status `e` carries, or None.
+
+    Read from attributes first. The message is read only when `read_message` is set,
+    which `_classify` does for the outermost exception alone: that message is the
+    connector's own account of the failure, while a deeper link's text can quote a
+    vendor body or an earlier attempt, and a status found there would outrank the
+    connector's own judgement of what went wrong.
+    """
     for candidate in (
         getattr(e, "status_code", None),
         getattr(getattr(e, "response", None), "status_code", None),
@@ -390,6 +415,8 @@ def _status_of(e: BaseException) -> Optional[int]:
     ):
         if isinstance(candidate, int) and 100 <= candidate <= 599:
             return candidate
+    if not read_message:
+        return None
     match = _HTTP_STATUS_IN_MESSAGE.search(str(e))
     return int(match.group(1)) if match else None
 
@@ -405,8 +432,27 @@ def _classify(e: BaseException, contacted: bool) -> _Classified:
     says about the credentials -- authentication rejection is not unreachability.
     """
     chain = list(_exception_chain(e))
-    for link in chain:
-        status = _status_of(link)
+    statuses = [_status_of(link, read_message=link is e) for link in chain]
+    answered = next((status for status in statuses if status is not None), None)
+
+    # A connector that says the source's settings or query are wrong is believed before
+    # any status is looked at, wherever in the chain it said so. Otherwise a config
+    # error raised from the vendor's 400 or 404 -- "the query does not parse", "that
+    # gateway is not in this account" -- reads as the vendor failing, and Test
+    # Connection disagrees with the scan, which reports it NOT_CONFIGURED. A status
+    # anywhere in the chain, or a batch already read, means the vendor answered.
+    if any(isinstance(link, DiscoveryConfigurationError) for link in chain):
+        return _Classified(
+            DiscoverySourceTestErrorCategory.CONFIGURATION,
+            (
+                DiscoverySourceReachability.REACHABLE
+                if contacted or answered is not None
+                else DiscoverySourceReachability.UNKNOWN
+            ),
+            answered,
+        )
+
+    for status in statuses:
         if status is not None:
             category = {
                 401: DiscoverySourceTestErrorCategory.AUTHENTICATION,

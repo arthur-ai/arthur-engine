@@ -18,6 +18,7 @@ from typing import Callable, Iterator, Mapping, Optional, Sequence
 from arthur_client.api_bindings import DiscoverySourceConfigSpec
 from arthur_common.models.agent_discovery_schemas import DiscoveredAgentRecord
 
+from discovery.address import address_problem
 from discovery.catalog import Matcher
 from discovery.endpoint.device import ManagedDevice
 from discovery.endpoint.jamf.client import JamfClient, JamfSettings
@@ -216,6 +217,10 @@ def _settings_from(
             f"{base_url.split('://', 1)[0] or base_url!r}. "
             f"The token request carries client_secret in its body.",
         )
+    problem = address_problem(base_url)
+    if problem:
+        # Not repeated in the message: base_url is outside the scrub set.
+        raise DiscoveryConfigurationError(f"Jamf base_url {problem}.")
     return JamfSettings(
         base_url=base_url,
         client_id=str(credentials["client_id"]),
