@@ -80,6 +80,10 @@ Two ways to keep a value out of the file itself:
   directory. Secrets are trimmed of surrounding whitespace; a query is kept exactly.
   File contents are never `${...}`-substituted.
 
+Files are read as UTF-8. A destination secret that is empty after trimming is refused at
+startup — including one from a variable that is set but blank, as Docker Compose sets a
+variable an env file lists with no value.
+
 Source fields hold credentials in plain strings, so make the config file and anything it
 reads readable only by the engine. The image runs as UID `65532`.
 
@@ -180,8 +184,12 @@ Exactly one. Every destination has:
 | `timeout_seconds` | `30` | Per request |
 
 A request that fails with 429, a 5xx, or a connection error is retried up to three
-times, honouring `Retry-After` up to 30 seconds. Any other refusal fails the batch at
-once.
+times, honouring `Retry-After` up to 30 seconds. Any other answer that is not a 2xx
+fails the batch at once.
+
+Redirects are not followed: following one would re-send the events and the
+destination's headers to an address nobody configured. A 3xx fails the batch with its
+status — point `url` at the address it redirects to.
 
 #### `splunk_hec` — Splunk HTTP Event Collector
 

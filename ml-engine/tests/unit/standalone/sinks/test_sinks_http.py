@@ -149,6 +149,35 @@ def test_retry_after_is_honoured_up_to_a_cap(
     assert sleeps.calls == [expected]
 
 
+@pytest.mark.parametrize("status", [301, 302, 307, 308])
+def test_a_redirect_is_refused_not_followed(
+    mock: responses.RequestsMock,
+    status: int,
+) -> None:
+    """Following one would re-send the events and every header but Authorization --
+    the stub's X-Key included -- to a host nobody configured."""
+    elsewhere = "https://elsewhere.example.net/collect"
+    mock.add(responses.POST, URL, status=status, headers={"Location": elsewhere})
+    sleeps = Sleeps()
+
+    with pytest.raises(SinkDeliveryError) as e:
+        sink(sleeps).send([{"n": 1}])
+
+    # Nothing went to the Location: a followed redirect would show up as a second call.
+    assert [call.request.url for call in mock.calls] == [URL]
+    assert sleeps.calls == []
+    assert e.value.status_code == status
+    assert f"HTTP {status} (a redirect, which is not followed" in str(e.value)
+
+
+def test_only_a_2xx_counts_as_delivered(mock: responses.RequestsMock) -> None:
+    # 304 is under 400, so `response.ok` would have called this delivered.
+    mock.add(responses.POST, URL, status=304)
+
+    with pytest.raises(SinkDeliveryError, match="HTTP 304"):
+        sink().send([{"n": 1}])
+
+
 def test_a_refusal_is_not_retried(mock: responses.RequestsMock) -> None:
     mock.add(responses.POST, URL, status=403, json={"text": "Invalid token"})
     sleeps = Sleeps()

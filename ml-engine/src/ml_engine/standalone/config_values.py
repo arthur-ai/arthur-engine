@@ -37,19 +37,33 @@ def read_file_reference(value: Any, base_dir: Optional[Path], strip: bool) -> st
     if not path.is_absolute() and base_dir is not None:
         path = base_dir / path
     try:
-        text = path.read_text()
+        # UTF-8 whatever the locale: the engine's image runs under C/POSIX, where the
+        # default would refuse or mangle any non-ASCII byte in a key or catalog.
+        text = path.read_text(encoding="utf-8")
     except OSError as e:
         # The OS error names the path and why, and nothing that was in the file.
         raise ValueError(f"could not read {path}: {e.strerror}") from None
+    except UnicodeDecodeError:
+        raise ValueError(f"{path} is not valid UTF-8") from None
     return text.strip() if strip else text
 
 
 def _secret_value(value: Any, info: ValidationInfo) -> Any:
+    """The credential, trimmed, and never empty.
+
+    Empty is refused rather than sent. `${NAME}` substitutes whatever the environment
+    holds, and Compose sets a variable that an env file lists with no value, so a
+    template's blank `TOKEN=` would otherwise start an engine that authenticates with
+    nothing and fails every delivery -- where an unset one stops it at startup, naming
+    the variable.
+    """
     if isinstance(value, dict):
         base_dir = (info.context or {}).get(BASE_DIR_CONTEXT)
-        return read_file_reference(value, base_dir, strip=True)
+        value = read_file_reference(value, base_dir, strip=True)
     if isinstance(value, str):
-        return value.strip()
+        value = value.strip()
+        if not value:
+            raise ValueError("must not be empty")
     return value
 
 

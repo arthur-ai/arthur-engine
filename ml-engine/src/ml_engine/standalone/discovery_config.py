@@ -315,10 +315,15 @@ def load_config(path: Path) -> Optional[StandaloneDiscoveryConfig]:
     resolved: switching standalone off should not need the secrets it would have used.
     """
     try:
-        raw = yaml.safe_load(path.read_text())
+        raw = yaml.safe_load(path.read_text(encoding="utf-8"))
     except OSError as e:
         raise StandaloneConfigError(
             f"Cannot read discovery config {path}: {e.strerror}",
+        ) from None
+    except UnicodeDecodeError:
+        # Read as UTF-8 whatever the locale, as every file the config names is.
+        raise StandaloneConfigError(
+            f"Discovery config {path} is not valid UTF-8",
         ) from None
     except yaml.YAMLError as e:
         # The mark only, not str(e): that quotes the offending line, and the line may

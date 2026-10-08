@@ -7,6 +7,12 @@ how it frames a batch and which of its settings are secret.
 A DESTINATION'S SECRETS NEVER LEAVE IN AN ERROR. `HttpSink` scrubs what its subclass
 declares, plus the URL's password, path and query, which is where a webhook's own
 secret usually lives, and names the destination by host alone.
+
+NOR DO THEY FOLLOW A REDIRECT. requests follows one by default, re-sending the body
+and every header but `Authorization` to wherever the destination points -- another
+host included -- so a webhook's `X-Api-Key` and the agent inventory would go to an
+address nobody configured. A redirect is refused like any other answer that is not a
+2xx, naming the status, and the fix is to configure the address it points at.
 """
 
 import logging
@@ -146,6 +152,7 @@ class HttpSink:
                         data=body,
                         headers=headers,
                         timeout=self._timeout,
+                        allow_redirects=False,
                     )
             except (requests.ConnectionError, requests.Timeout) as e:
                 if last:
@@ -158,14 +165,22 @@ class HttpSink:
                     ) from None
                 reason, delay = type(e).__name__, self._backoff(attempt)
             else:
-                if response.ok:
-                    return
                 status = response.status_code
+                # Not `response.ok`, which is anything under 400: with redirects off, a
+                # 3xx means the events went nowhere.
+                if 200 <= status < 300:
+                    return
                 if status not in RETRY_STATUSES or last:
+                    hint = (
+                        " (a redirect, which is not followed: set url to the address it "
+                        "points at)"
+                        if 300 <= status < 400
+                        else ""
+                    )
                     raise SinkDeliveryError(
                         self._redact(
                             f"{self.kind} at {self._host} refused {len(batch)} "
-                            f"event(s) with HTTP {status}: "
+                            f"event(s) with HTTP {status}{hint}: "
                             f"{response.text[:ERROR_BODY_CHARS]}",
                         ),
                         status_code=status,

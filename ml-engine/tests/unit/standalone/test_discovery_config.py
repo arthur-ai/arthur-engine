@@ -396,6 +396,57 @@ def test_a_misspelt_schedule_key_is_refused(tmp_path: Path) -> None:
     assert "schedule.run_on_strat" in load_error(tmp_path, text)
 
 
+@pytest.mark.parametrize("token", ["${BLANK_TOKEN}", '"   "', "{file: blank-token}"])
+def test_an_empty_destination_secret_is_refused(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    token: str,
+) -> None:
+    """A variable set but blank -- as Compose sets one an env file lists with no value
+    -- must stop startup, not start an engine that authenticates with nothing."""
+    monkeypatch.setenv("BLANK_TOKEN", "")
+    write(tmp_path, "\n", "blank-token")
+    text = minimal(
+        destination=textwrap.dedent(
+            f"""\
+            destination:
+              type: splunk_hec
+              url: https://splunk.example.com/services/collector/event
+              token: {token}
+            """,
+        ),
+    )
+
+    message = load_error(tmp_path, text)
+
+    assert "destination.splunk_hec.token" in message
+    assert "must not be empty" in message
+
+
+def test_a_config_that_is_not_utf8_is_named(tmp_path: Path) -> None:
+    path = tmp_path / "discovery.yaml"
+    path.write_bytes(b"version: 1\nname: caf\xe9\n")
+
+    with pytest.raises(StandaloneConfigError, match="is not valid UTF-8"):
+        load_config(path)
+
+
+def test_a_referenced_file_is_read_as_utf8(tmp_path: Path) -> None:
+    (tmp_path / "catalog.yaml").write_bytes("agents: [café]\n".encode())
+    (tmp_path / "latin1.yaml").write_bytes(b"agents: [caf\xe9]\n")
+    good = minimal(
+        sources=VERTEX_SOURCE.replace('query: ""', "query: {file: catalog.yaml}"),
+    )
+
+    config = load_config(write(tmp_path, good))
+
+    assert config is not None
+    assert config.scans()[0].config.query == "agents: [café]\n"
+    message = load_error(tmp_path, good.replace("catalog.yaml", "latin1.yaml"))
+    assert "sources.0.configs.0.query" in message
+    assert "is not valid UTF-8" in message
+
+
 def test_a_missing_destination_secret_file_is_located(tmp_path: Path) -> None:
     text = minimal(
         destination=textwrap.dedent(
