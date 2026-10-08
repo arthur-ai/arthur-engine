@@ -25,7 +25,7 @@ from arthur_common.models.agent_governance_schemas import (
     RunsOn,
 )
 from google.auth.credentials import Credentials
-from google.auth.exceptions import RefreshError
+from google.auth.exceptions import RefreshError, TransportError
 from google.genai.errors import APIError, ClientError, ServerError
 
 import discovery  # noqa: F401  (registers the connectors)
@@ -585,6 +585,26 @@ def test_a_token_endpoint_outage_is_not_blamed_on_the_key(
     )
     with pytest.raises(RefreshError) as exc:
         scan(FailingLister(error), config)
+    assert not hasattr(exc.value, "status_code")
+    assert failure_code(exc.value) is DiscoveryErrorCode.PROVIDER_ERROR
+
+
+def test_an_unreachable_metadata_server_is_not_blamed_on_the_key(
+    config: DiscoverySourceConfigSpec,
+    stub_key_loader: list[dict[str, Any]],
+) -> None:
+    """google-auth wraps a metadata-server transport failure in a RefreshError it does
+    not mark retryable; the cause, not the flag, says it is the network's fault."""
+    cause = TransportError("Failed to retrieve http://metadata.google.internal/...")
+    try:
+        raise RefreshError(cause) from cause
+    except RefreshError as raised:
+        error = raised
+    assert not error.retryable
+    with pytest.raises(RefreshError) as exc:
+        scan(FailingLister(error), config)
+    assert exc.value is error
+    assert exc.value.__cause__ is cause
     assert not hasattr(exc.value, "status_code")
     assert failure_code(exc.value) is DiscoveryErrorCode.PROVIDER_ERROR
 

@@ -53,7 +53,7 @@ from arthur_common.models.agent_governance_schemas import (
     SourceAddress,
 )
 from google.auth.credentials import Credentials
-from google.auth.exceptions import RefreshError
+from google.auth.exceptions import RefreshError, TransportError
 from google.genai import errors as genai_errors
 from google.oauth2 import service_account
 from pydantic import BaseModel
@@ -189,7 +189,9 @@ def with_vendor_status(
     from Google's token endpoint, which `failure_code` would not know to read as an
     authentication failure. Only a non-retryable one is: google-auth marks the token
     endpoint's own 5xx and `temporarily_unavailable` answers retryable, and those are
-    Google's outage, not the source's key.
+    Google's outage, not the source's key. Nor is one raised from a `TransportError`:
+    google-auth wraps a metadata server it could not reach that way, without marking it
+    retryable, and that is the network's failure, not a refused credential.
     """
     try:
         yield from lister(settings, credentials)
@@ -197,7 +199,7 @@ def with_vendor_status(
         setattr(e, "status_code", e.code)
         raise
     except RefreshError as e:
-        if not e.retryable:
+        if not e.retryable and not isinstance(e.__cause__, TransportError):
             setattr(e, "status_code", 401)
         raise
 
