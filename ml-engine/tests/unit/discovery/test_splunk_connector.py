@@ -273,7 +273,8 @@ def test_a_search_splunk_accepts_then_fails_is_the_querys_to_fix() -> None:
     fake = FakeSplunk(failed=True)
 
     with pytest.raises(
-        DiscoveryConfigurationError, match="Unknown search command"
+        DiscoveryConfigurationError,
+        match="Unknown search command",
     ) as caught:
         run(fake)
     assert fake.deleted == ["sid-1"]
@@ -511,7 +512,7 @@ def test_an_empty_result_carries_no_columns_to_check() -> None:
                         "fields": None,
                         "results": [],
                         "messages": [
-                            {"type": "INFO", "text": "No matching fields exist."}
+                            {"type": "INFO", "text": "No matching fields exist."},
                         ],
                     },
                 )
@@ -528,11 +529,11 @@ def test_an_empty_result_carries_no_columns_to_check() -> None:
                                     {
                                         "type": "INFO",
                                         "text": "No matching fields exist.",
-                                    }
+                                    },
                                 ],
-                            }
-                        }
-                    ]
+                            },
+                        },
+                    ],
                 },
             )
 
@@ -644,10 +645,8 @@ def test_an_error_body_that_is_not_an_object_still_reports_the_status() -> None:
             "just https://host:port",
         ),
         ({"base_url": "https://splunk:8089?x=1"}, CREDS, "just https://host:port"),
-        ({"base_url": "https://[splunk:8089"}, CREDS, "not a valid address"),
-        ({"base_url": "https://splunk:abc"}, CREDS, "not a valid address"),
-        ({"base_url": "https://splunk:99999"}, CREDS, "not a valid address"),
-        ({"base_url": "https://"}, CREDS, "not a valid address"),
+        # Which addresses are refused is tested with discovery.address.
+        ({"base_url": "https://splunk..corp:8089"}, CREDS, "not a valid address"),
     ],
 )
 def test_bad_configuration_is_refused_before_anything_is_sent(
