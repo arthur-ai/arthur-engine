@@ -25,12 +25,25 @@ from discovery.siem.elastic_security.connector import VENDOR as ELASTIC_SECURITY
 from discovery.siem.elastic_security.connector import ElasticSecurityConnector
 from discovery.siem.splunk.connector import VENDOR as SPLUNK_VENDOR
 from discovery.siem.splunk.connector import SplunkConnector
+from discovery.staged.connector import (
+    StagedComputeEngineConnector,
+    StagedFalconConnector,
+    StagedSecOpsConnector,
+)
 from job_executors.discovery_scan import SOURCE_CONNECTORS
 
 SOURCE_CONNECTORS[JAMF_VENDOR] = JamfConnector
 SOURCE_CONNECTORS[GCP_VERTEX_VENDOR] = VertexAgentEngineConnector
 SOURCE_CONNECTORS[SPLUNK_VENDOR] = SplunkConnector
 SOURCE_CONNECTORS[ELASTIC_SECURITY_VENDOR] = ElasticSecurityConnector
+
+# A&G vision demo (UP-5124), demo branch only: staged records, not live connectors.
+for _staged in (
+    StagedFalconConnector,
+    StagedSecOpsConnector,
+    StagedComputeEngineConnector,
+):
+    SOURCE_CONNECTORS[_staged.vendor] = _staged
 
 __all__ = [
     "JamfConnector",

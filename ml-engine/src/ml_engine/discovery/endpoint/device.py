@@ -8,7 +8,7 @@ downstream sees Jamf's `managementId`, Intune's `azureADDeviceId` or Kandji's
 from dataclasses import dataclass, field
 from typing import Mapping, Optional
 
-from arthur_common.models.agent_governance_schemas import Platform
+from arthur_common.models.agent_governance_schemas import Platform, RunsOn
 
 
 @dataclass(frozen=True)
@@ -42,6 +42,12 @@ class ManagedDevice:
     """
 
     assigned_user: Optional[str] = None
+
+    runs_on: RunsOn = RunsOn.ENDPOINT
+    """Where the machine is. ENDPOINT for anything an MDM manages; a cloud inventory
+    carrying the same `arthur1.` payload, such as Compute Engine guest attributes
+    (D-32), says GCP instead, since a VM is not a laptop (D-33).
+    """
 
     group_ids: frozenset[str] = frozenset()
     """The MDM groups this device is in, by the MDM's own group id.

@@ -28,6 +28,8 @@ from arthur_common.models.agent_governance_schemas import (
     SourceAddress,
 )
 
+from discovery.catalog import Matcher
+from discovery.endpoint.device import ManagedDevice
 from discovery.endpoint.envelope import EnvelopeOutcome
 from discovery.endpoint.jamf.client import JamfClient, JamfError, JamfSettings
 from discovery.endpoint.jamf.connector import JamfConnector, _settings_from
@@ -835,6 +837,26 @@ def test_a_record_says_it_runs_on_a_managed_mac(
     records = scan(FakeJamf([[computer("m1", full_payload())]]), monkeypatch)
     assert {(r.runs_on, r.platform) for r in records} == {
         (RunsOn.ENDPOINT, Platform.DARWIN),
+    }
+
+
+def test_a_device_on_a_cloud_vm_says_where_it_runs() -> None:
+    """The same payload read off a Compute Engine guest attribute is a VM, not a laptop
+    (D-33), so the device rather than the record builder decides `runs_on`."""
+    vm = ManagedDevice(
+        device_key="7341905528816223401",
+        last_reported="2026-09-22T10:00:00Z",
+        name="claimsoft-worker-01",
+        platform=Platform.LINUX,
+        runs_on=RunsOn.GCP,
+        attributes={"arthur/inventory": full_payload()},
+    )
+    read = records_for(
+        vm, Matcher.from_source(catalog_yaml=CATALOG), "gcp_compute_engine"
+    )
+    assert read.records
+    assert {(r.runs_on, r.platform) for r in read.records} == {
+        (RunsOn.GCP, Platform.LINUX),
     }
 
 
