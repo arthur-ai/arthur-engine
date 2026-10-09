@@ -125,6 +125,49 @@ The lookback window is not applied: Google's list API is an inventory, so every 
 reports every engine in the region whatever `lookback_window_seconds` says, and a short
 window misses nothing.
 
+#### `vercel_ai` — Vercel
+
+Lists one team's projects and reports each project that looks like it runs an AI agent.
+
+| Field | Secret | Required | Notes |
+|---|---|---|---|
+| `team_id` | no | yes | The team's ID (`team_...`), from the team's Settings > General |
+| `access_token` | yes | yes | A Vercel access token scoped to that team |
+| `include_projects` | no | no | Comma-separated project names or IDs to limit the scan to; empty scans every project |
+
+Use `query: ""` and `query_language: none`. The lookback window is not applied: the
+project list is an inventory, so every scan reports every flagged project whatever
+`lookback_window_seconds` says.
+
+Vercel has no agent resource, so this is a heuristic. A project is reported when one of
+its environment variables is named exactly as an LLM provider key (`OPENAI_API_KEY`,
+`ANTHROPIC_API_KEY`, `AI_GATEWAY_API_KEY` and the other names in
+`LLM_PROVIDER_ENV_KEYS`), or when an AI integration from the Vercel Marketplace (tagged
+AI or Agents by Vercel, or a known AI provider such as OpenAI, xAI or Groq) is installed
+with access to it. A project that calls the AI Gateway with its deployment's OIDC token
+needs no key and is not seen unless an AI integration is also attached.
+
+What is read, all with `GET` and `teamId` on every call:
+
+- `GET /v10/projects`: project IDs, names, function region and deployment/update times.
+- `GET /v10/projects/{id}/env`: environment variable **names** (and their type and
+  target). Values are never requested decrypted and are discarded as soon as the
+  answer arrives; they are never logged, stored or sent to the destination. The
+  single-variable endpoint, which decrypts, is never called.
+- `GET /v1/integrations/configurations?view=account`: which integrations are installed
+  and which projects they can access. If the token is refused this (403), the scan
+  carries on with variable names alone and says so in its log.
+
+Each record's address is the team ID, the project's function region (`global` when it
+has none) and the project ID, which is also its `external_id`.
+
+Least privilege: Vercel tokens have no read-only scope; a token carries the permissions
+of the user who created it, within the team chosen as its scope. Create it from a
+dedicated team member with the lowest role that can view project settings and
+environment variable names, scope it to the one team, and give it an expiration.
+Production variables the token's user cannot see are counted in the scan log
+(`hiddenProductionEnvCount`) rather than silently missed.
+
 #### `jamf_pro` — Jamf Pro (managed Macs)
 
 Reads the agent inventory Arthur's endpoint collector writes to each Mac.
