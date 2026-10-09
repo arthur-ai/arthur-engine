@@ -179,14 +179,20 @@ Exactly one. Every destination has:
 | Key | Default | |
 |---|---|---|
 | `url` | | Must be `https://` unless `allow_insecure_http: true` |
-| `verify_tls` | `true` | |
+| `tls_verification` | `full` | `full`, `ca_only` or `off`, as for a Splunk source; quote `"off"` or YAML reads it as false |
+| `ca_certificate` | | PEM, inline or `{file: path}`; required by `ca_only` |
 | `allow_insecure_http` | `false` | The destination's credentials travel with every request |
 | `batch_size` | `100` | Events per request |
 | `timeout_seconds` | `30` | Per request |
 
 A request that fails with 429, a 5xx, or a connection error is retried up to three
 times, honouring `Retry-After` up to 30 seconds. Any other answer that is not a 2xx
-fails the batch at once.
+fails the batch at once, as does a certificate the engine does not trust.
+
+Splunk's default HEC certificate (`SplunkServerDefaultCert`) names no host, so `full`
+refuses it even with its CA. Use `tls_verification: ca_only` with `ca_certificate` set
+to the CA that signed it (`$SPLUNK_HOME/etc/auth/cacert.pem` for the default one) rather
+than turning verification off. `off` is logged as a warning at startup.
 
 Redirects are not followed: following one would re-send the events and the
 destination's headers to an address nobody configured. A 3xx fails the batch with its

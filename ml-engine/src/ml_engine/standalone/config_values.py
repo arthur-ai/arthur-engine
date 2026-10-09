@@ -70,3 +70,16 @@ def _secret_value(value: Any, info: ValidationInfo) -> Any:
 # A credential given inline or as `{file: path}`, held as a SecretStr so it never
 # appears in a repr.
 Secret = Annotated[SecretStr, BeforeValidator(_secret_value)]
+
+
+def _text_value(value: Any, info: ValidationInfo) -> Any:
+    """The text, from the file a `{file: path}` value names, kept exactly as written."""
+    if isinstance(value, dict):
+        base_dir = (info.context or {}).get(BASE_DIR_CONTEXT)
+        return read_file_reference(value, base_dir, strip=False)
+    return value
+
+
+# Text that is not secret but is often long -- a PEM certificate -- given inline or as
+# `{file: path}`.
+FileText = Annotated[str, BeforeValidator(_text_value)]

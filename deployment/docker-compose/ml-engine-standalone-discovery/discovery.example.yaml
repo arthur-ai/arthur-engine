@@ -52,7 +52,8 @@ destination:
   url: https://splunk.example.com:8088/services/collector/event
   token: ${SPLUNK_HEC_TOKEN}
   # index: ai_inventory          # omitted: the token's default index
-  # verify_tls: true
+  # tls_verification: ca_only    # with ca_certificate, for Splunk's default certificate
+  # ca_certificate: {file: splunk-ca.pem}
   # batch_size: 100
 
 # Or any HTTPS endpoint that takes a JSON array of events:

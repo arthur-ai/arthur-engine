@@ -13,19 +13,26 @@ and every header but `Authorization` to wherever the destination points -- anoth
 host included -- so a webhook's `X-Api-Key` and the agent inventory would go to an
 address nobody configured. A redirect is refused like any other answer that is not a
 2xx, naming the status, and the fix is to configure the address it points at.
+
+THE DESTINATION IS TRUSTED THE WAY A SIEM SOURCE IS: `tls_verification` and
+`ca_certificate` mean what they mean on a source (see `discovery.siem.tls`), so
+Splunk's default HEC certificate, which names no host, is trusted with `ca_only` and
+its CA rather than by turning verification off.
 """
 
 import logging
+import ssl
 import threading
 import time
-from typing import Callable, ClassVar, Optional, Sequence
+from typing import Any, Callable, ClassVar, Optional, Sequence
 from urllib.parse import urlsplit
 
 import requests
-from pydantic import Field, model_validator
+from pydantic import Field, field_validator, model_validator
 
+from discovery.siem.tls import TLSVerification, normalize_pem, tls_session
 from log_redaction import redact_secrets
-from standalone.config_values import StrictModel
+from standalone.config_values import FileText, StrictModel
 from standalone.sinks.common import Event, Sink, SinkDeliveryError
 
 DELIVERY_ATTEMPTS = 3
@@ -56,7 +63,11 @@ class HttpDestination(StrictModel):
     """Settings every HTTP sink target has. A target adds its `type` and credentials."""
 
     url: str
-    verify_tls: bool = True
+    # `full`: issuer and hostname, against the system CAs plus `ca_certificate`.
+    # `ca_only`: issuer only, against `ca_certificate` alone -- for a certificate that
+    # names no host the engine reaches it by, like Splunk's default. `off`: no check.
+    tls_verification: TLSVerification = TLSVerification.FULL
+    ca_certificate: Optional[FileText] = None
     # Off by default: the token or auth header travels with every request, and over
     # http it travels in cleartext.
     allow_insecure_http: bool = False
@@ -64,9 +75,29 @@ class HttpDestination(StrictModel):
     batch_size: int = Field(default=100, gt=0)
     timeout_seconds: float = Field(default=30.0, gt=0)
 
+    @field_validator("tls_verification", mode="before")
+    @classmethod
+    def _yaml_off(cls, value: Any) -> Any:
+        # YAML reads a bare `off` as false.
+        return "off" if value is False else value
+
     @model_validator(mode="after")
     def _url(self) -> "HttpDestination":
         require_url(self.url, allow_http=self.allow_insecure_http)
+        if self.tls_verification is TLSVerification.CA_ONLY and not self.ca_certificate:
+            raise ValueError(
+                "tls_verification ca_only trusts ca_certificate and nothing else, "
+                "but ca_certificate is not set",
+            )
+        # Loaded here so a bad certificate stops the engine at startup, naming the
+        # setting, rather than failing every delivery.
+        if self.ca_certificate and self.tls_verification is not TLSVerification.OFF:
+            try:
+                ssl.create_default_context().load_verify_locations(
+                    cadata=normalize_pem(self.ca_certificate),
+                )
+            except ssl.SSLError:
+                raise ValueError("ca_certificate is not a PEM certificate") from None
         return self
 
     def build_sink(self, logger: logging.Logger) -> Sink:
@@ -98,14 +129,24 @@ class HttpSink:
         self._timeout = destination.timeout_seconds
         self._log = logger
         self._sleep = sleep
-        self._session = session or requests.Session()
-        self._session.verify = destination.verify_tls
+        self._session = session or tls_session(
+            destination.ca_certificate,
+            destination.tls_verification,
+            self.kind,
+        )
         self._session_lock = threading.Lock()
         parts = urlsplit(destination.url)
         # Host and port only: the netloc can carry user:password.
         self._host = parts.hostname or "destination"
         if parts.port:
             self._host = f"{self._host}:{parts.port}"
+        if destination.tls_verification is TLSVerification.OFF:
+            logger.warning(
+                f"TLS verification is off for {self.kind} at {self._host}: its "
+                f"certificate is not checked, so the credentials and events go to "
+                f"whatever answers at that address. For a self-signed certificate, set "
+                f"ca_certificate and tls_verification: ca_only instead.",
+            )
         self._secrets = tuple(
             value
             for value in (
@@ -155,6 +196,16 @@ class HttpSink:
                         allow_redirects=False,
                     )
             except (requests.ConnectionError, requests.Timeout) as e:
+                if _untrusted_certificate(e):
+                    # Refused the same way on every attempt, so reported now.
+                    raise SinkDeliveryError(
+                        self._redact(
+                            f"{self.kind} at {self._host} presented a certificate the "
+                            f"engine does not trust: {e}. Set ca_certificate to the "
+                            f"CA that issued it, and tls_verification: ca_only if the "
+                            f"certificate does not name this host.",
+                        ),
+                    ) from None
                 if last:
                     # `from None`: the cause's own traceback quotes the full URL.
                     raise SinkDeliveryError(
@@ -209,3 +260,15 @@ class HttpSink:
         except ValueError:
             return None
         return min(max(seconds, 0.0), MAX_RETRY_DELAY_SECONDS)
+
+
+def _untrusted_certificate(error: Exception) -> bool:
+    """Whether the TLS handshake failed on the certificate itself, not the network.
+
+    requests wraps the `ssl.SSLCertVerificationError` in urllib3's errors, and keeps it
+    only as text, so the text is what is checked.
+    """
+    return isinstance(
+        error,
+        requests.exceptions.SSLError,
+    ) and "CERTIFICATE_VERIFY_FAILED" in str(error)

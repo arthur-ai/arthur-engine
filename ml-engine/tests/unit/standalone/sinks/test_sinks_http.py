@@ -5,15 +5,23 @@ error, which is logged and sent on as an outcome event, and nothing upstream of 
 sink knows the destination's secrets to take them back out.
 """
 
+import datetime as dt
 import json
 import logging
 import re
+from pathlib import Path
 from typing import Any, Iterator, Literal, Sequence
 
 import pytest
 import requests
 import responses
+from cryptography import x509
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.x509.oid import NameOID
 
+from discovery.siem.tls import TLSVerification
+from standalone.config_values import BASE_DIR_CONTEXT
 from standalone.sinks.common import Sink, SinkDeliveryError
 from standalone.sinks.http import MAX_RETRY_DELAY_SECONDS, HttpDestination, HttpSink
 
@@ -110,11 +118,112 @@ def test_tls_verification_and_timeout_come_from_the_destination(
 ) -> None:
     mock.add(responses.POST, URL)
 
-    sink(verify_tls=False, timeout_seconds=5).send([{"n": 1}])
+    sink(tls_verification="off", timeout_seconds=5).send([{"n": 1}])
 
     kwargs = mock.calls[0].request.req_kwargs
     assert kwargs["verify"] is False
     assert kwargs["timeout"] == 5
+
+
+def test_tls_verification_defaults_to_full() -> None:
+    destination = StubDestination.model_validate({"url": URL})
+
+    assert destination.tls_verification is TLSVerification.FULL
+    assert destination.ca_certificate is None
+
+
+def test_a_bare_yaml_off_turns_verification_off() -> None:
+    """YAML reads an unquoted `off` as false."""
+    destination = StubDestination.model_validate(
+        {"url": URL, "tls_verification": False},
+    )
+
+    assert destination.tls_verification is TLSVerification.OFF
+
+
+def test_ca_only_needs_a_ca_certificate() -> None:
+    with pytest.raises(ValueError, match="ca_certificate is not set"):
+        StubDestination.model_validate({"url": URL, "tls_verification": "ca_only"})
+
+
+def test_a_ca_certificate_that_is_not_pem_is_refused_at_load() -> None:
+    with pytest.raises(ValueError, match="not a PEM certificate"):
+        StubDestination.model_validate({"url": URL, "ca_certificate": "nope"})
+
+
+def test_a_ca_certificate_is_read_from_a_file(tmp_path: Path) -> None:
+    pem = _a_ca_pem()
+    (tmp_path / "ca.pem").write_text(pem)
+
+    destination = StubDestination.model_validate(
+        {
+            "url": URL,
+            "tls_verification": "ca_only",
+            "ca_certificate": {"file": "ca.pem"},
+        },
+        context={BASE_DIR_CONTEXT: tmp_path},
+    )
+
+    assert destination.ca_certificate == pem
+
+
+def test_turning_verification_off_is_logged(caplog: pytest.LogCaptureFixture) -> None:
+    with caplog.at_level(logging.WARNING):
+        sink(tls_verification="off")
+
+    assert "TLS verification is off for stub at siem.example.com" in caplog.text
+
+
+def test_an_untrusted_certificate_is_not_retried(mock: responses.RequestsMock) -> None:
+    mock.add(
+        responses.POST,
+        URL,
+        body=requests.exceptions.SSLError(
+            "[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: "
+            "self-signed certificate",
+        ),
+    )
+    sleeps = Sleeps()
+
+    with pytest.raises(SinkDeliveryError) as caught:
+        sink(sleeps).send([{"n": 1}])
+
+    assert len(mock.calls) == 1
+    assert sleeps.calls == []
+    assert "does not trust" in str(caught.value)
+    assert "ca_certificate" in str(caught.value)
+
+
+def test_another_tls_failure_is_retried(mock: responses.RequestsMock) -> None:
+    mock.add(
+        responses.POST,
+        URL,
+        body=requests.exceptions.SSLError("EOF occurred in violation of protocol"),
+    )
+    mock.add(responses.POST, URL)
+
+    sink().send([{"n": 1}])
+
+    assert len(mock.calls) == 2
+
+
+def _a_ca_pem() -> str:
+    """A throwaway self-signed CA certificate, made for the test."""
+    key = ec.generate_private_key(ec.SECP256R1())
+    name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "test ca")])
+    now = dt.datetime.now(dt.timezone.utc)
+    cert = (
+        x509.CertificateBuilder()
+        .subject_name(name)
+        .issuer_name(name)
+        .public_key(key.public_key())
+        .serial_number(1)
+        .not_valid_before(now)
+        .not_valid_after(now + dt.timedelta(days=1))
+        .add_extension(x509.BasicConstraints(ca=True, path_length=None), critical=True)
+        .sign(key, hashes.SHA256())
+    )
+    return cert.public_bytes(serialization.Encoding.PEM).decode()
 
 
 def test_a_transient_failure_is_retried_with_backoff(
