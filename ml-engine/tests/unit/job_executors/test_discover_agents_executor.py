@@ -23,12 +23,12 @@ from arthur_client.api_bindings.rest import RESTResponse
 from arthur_common.models.agent_discovery_schemas import DiscoveryOutputRecord
 from genai_client import EnrichedTaskResponse
 
+from discovery import source_connectors
 from job_executors.discover_agents_executor import (
     CHAINED_FETCH_SKEW,
     DiscoverAgentsExecutor,
 )
 from job_executors.discovery_scan import (
-    SOURCE_CONNECTORS,
     DiscoveryConfigurationError,
     DiscoveryPublishResult,
     DiscoveryScanOutcome,
@@ -637,19 +637,29 @@ def test_every_scan_gets_its_own_connector() -> None:
     assert all(len(connector.calls) == 1 for connector in built)
 
 
-def test_an_executor_does_not_alias_the_global_registry() -> None:
-    executor = DiscoverAgentsExecutor(
+def _default_executor() -> DiscoverAgentsExecutor:
+    return DiscoverAgentsExecutor(
         agents_client=MagicMock(),
         logger=logging.getLogger("test-discovery-registry"),
         genai_engine_url="http://genai",
         genai_engine_api_key="key",
     )
 
-    # A vendor no connector registers, so this asserts the copy rather than which
-    # connectors happen to ship: `jamf_pro` is a real registered vendor now.
-    executor.connectors["not_a_real_vendor"] = lambda: FakeConnector([])
 
-    assert "not_a_real_vendor" not in SOURCE_CONNECTORS
+def test_an_executor_builds_the_connectors_it_resolves_against() -> None:
+    """Nothing has to be imported first: initializing the executor is the registration."""
+    assert _default_executor().connectors == source_connectors()
+
+
+def test_executors_do_not_share_their_connectors() -> None:
+    first, second = _default_executor(), _default_executor()
+
+    # A vendor no connector registers, so this asserts the separation rather than which
+    # connectors happen to ship.
+    first.connectors["not_a_real_vendor"] = lambda: FakeConnector([])
+
+    assert "not_a_real_vendor" not in second.connectors
+    assert "not_a_real_vendor" not in source_connectors()
 
 
 def test_empty_batches_are_not_published() -> None:
@@ -1166,8 +1176,24 @@ def test_a_scan_chains_one_fetch_for_its_source() -> None:
     assert spec.reported_since is not None
     assert spec.reported_since <= before
     assert spec.reported_since >= before - CHAINED_FETCH_SKEW - timedelta(seconds=5)
+    # tagged with the manual scan, so the scan reads as complete only once it lands
+    assert str(spec.scan_id) == SCAN_ID
     # no nonce: a retried scan chains again, and the fetch is an idempotent upsert
     assert post_job.nonce is None
+
+
+def test_a_scheduled_scan_chains_an_untagged_fetch() -> None:
+    """A scheduled scan has no scan ID and nobody waiting on it, so its fetch
+    carries none either."""
+    jobs_client = MagicMock()
+
+    _executor(FakeConnector([[_record("a")]]), jobs_client=jobs_client).execute(
+        _job(),
+        _spec(_config(), scan_id=None),
+    )
+
+    [(_, batch)] = _chained_fetches(jobs_client)
+    assert batch.jobs[0].job_spec.actual_instance.scan_id is None
 
 
 def test_a_scan_that_found_nothing_still_chains_its_fetch() -> None:
@@ -1191,7 +1217,9 @@ def test_a_failed_scan_chains_a_fetch_for_what_it_published() -> None:
     with pytest.raises(RuntimeError, match="source went away"):
         _executor(connector, jobs_client=jobs_client).execute(_job(), _spec(_config()))
 
-    assert len(_chained_fetches(jobs_client)) == 1
+    [(_, batch)] = _chained_fetches(jobs_client)
+    # the scan waits for this fetch too, so it carries the scan's ID
+    assert str(batch.jobs[0].job_spec.actual_instance.scan_id) == SCAN_ID
 
 
 def test_a_failed_scan_that_published_nothing_chains_nothing() -> None:

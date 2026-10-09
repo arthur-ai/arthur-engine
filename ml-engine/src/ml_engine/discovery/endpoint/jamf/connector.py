@@ -13,11 +13,12 @@ publishes each batch as it arrives, so a scan that dies on page 40 keeps pages 1
 
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Callable, Iterator, Mapping, Optional, Sequence
+from typing import Callable, ClassVar, Iterator, Mapping, Optional, Sequence
 
 from arthur_client.api_bindings import DiscoverySourceConfigSpec
 from arthur_common.models.agent_discovery_schemas import DiscoveredAgentRecord
 
+from discovery.address import address_problem
 from discovery.catalog import Matcher
 from discovery.endpoint.device import ManagedDevice
 from discovery.endpoint.jamf.client import JamfClient, JamfSettings
@@ -27,9 +28,13 @@ from job_executors.discovery_scan import DeviceCoverage, DiscoveryConfigurationE
 
 VENDOR = "jamf_pro"
 
+BASE_URL_FIELD = "base_url"
 # Non-sensitive source fields: comma-separated Jamf computer group names.
 INCLUDE_GROUPS_FIELD = "include_groups"
 EXCLUDE_GROUPS_FIELD = "exclude_groups"
+# Sensitive source fields: the Jamf API client's credentials.
+CLIENT_ID_FIELD = "client_id"
+CLIENT_SECRET_FIELD = "client_secret"
 
 
 class JamfConnector:
@@ -39,6 +44,10 @@ class JamfConnector:
     Holds one scan's coverage and stop check, which is safe only because a connector is
     built fresh for every scan -- see `DiscoveryConnectorFactory`.
     """
+
+    SENSITIVE_FIELDS: ClassVar[frozenset[str]] = frozenset(
+        {CLIENT_ID_FIELD, CLIENT_SECRET_FIELD},
+    )
 
     def __init__(self) -> None:
         self._coverage: Optional[DeviceCoverage] = None
@@ -199,14 +208,15 @@ def _settings_from(
     non-sensitive fields is also what keeps it out of the scrub set, so a failure can say
     which host did not answer instead of which [redacted] did not.
     """
-    base_url = (source_fields.get("base_url") or "").strip()
-    missing = [k for k in ("client_id", "client_secret") if not credentials.get(k)]
+    secrets = sorted(JamfConnector.SENSITIVE_FIELDS)
+    base_url = (source_fields.get(BASE_URL_FIELD) or "").strip()
+    missing = [k for k in secrets if not credentials.get(k)]
     if not base_url:
-        missing.insert(0, "base_url")
+        missing.insert(0, BASE_URL_FIELD)
     if missing:
         raise DiscoveryConfigurationError(
             f"Jamf source is missing required field(s): {', '.join(missing)}. "
-            f"base_url is a source field; client_id and client_secret are secrets.",
+            f"{BASE_URL_FIELD} is a source field; {' and '.join(secrets)} are secrets.",
         )
     if not base_url.lower().startswith("https://"):
         # client_secret travels in the token request's BODY. Over http it is in cleartext,
@@ -216,10 +226,14 @@ def _settings_from(
             f"{base_url.split('://', 1)[0] or base_url!r}. "
             f"The token request carries client_secret in its body.",
         )
+    problem = address_problem(base_url)
+    if problem:
+        # Not repeated in the message: base_url is outside the scrub set.
+        raise DiscoveryConfigurationError(f"Jamf base_url {problem}.")
     return JamfSettings(
         base_url=base_url,
-        client_id=str(credentials["client_id"]),
-        client_secret=str(credentials["client_secret"]),
+        client_id=str(credentials[CLIENT_ID_FIELD]),
+        client_secret=str(credentials[CLIENT_SECRET_FIELD]),
         include_groups=parse_group_names(source_fields.get(INCLUDE_GROUPS_FIELD)),
         exclude_groups=parse_group_names(source_fields.get(EXCLUDE_GROUPS_FIELD)),
     )

@@ -139,6 +139,7 @@ class AggregationCalculationExecutor(ABC):
     @abstractmethod
     def _upload_metrics(
         self,
+        job: Job,
         job_spec: AggCalculationJobSpecTypes,
         metrics_upload: MetricsUpload,
     ) -> MetricsVersion:
@@ -186,7 +187,7 @@ class AggregationCalculationExecutor(ABC):
         processed_metrics = self._process_metrics(metrics)
         metrics_upload = self._convert_to_metrics_upload(processed_metrics)
         self.logger.info("Uploading metrics")
-        self._upload_metrics(job_spec, metrics_upload)
+        self._upload_metrics(job, job_spec, metrics_upload)
         self.logger.info("Finished uploading metrics")
 
         if failed_to_load_datasets:
@@ -514,6 +515,7 @@ class MetricsCalculationExecutor(AggregationCalculationExecutor):
 
     def _upload_metrics(
         self,
+        job: Job,
         job_spec: MetricsCalculationJobSpec,
         metrics_upload: MetricsUpload,
     ) -> None:
@@ -535,10 +537,10 @@ class MetricsCalculationExecutor(AggregationCalculationExecutor):
         )
         alert_check_batch = _create_alert_check_job(model, job_spec)
         spawned = self._submit_alert_check_job(model.project_id, alert_check_batch)
-        # Stamp alerts_check_job_id on the affected assignment(s) so the FE
-        # chain widget can advance from "metrics done" to "alerts running".
-        # Single assignment when the chain is bound to one; fan out to every
-        # assignment on the model when it's a model-wide chain.
+        # Stamp alerts_check_job_id on the assignment(s) whose chain this job
+        # heads, so the compliance check progress can advance from "metrics
+        # done" to "alerts running". A scheduled run heads no chain and stamps
+        # nothing.
         if spawned.jobs:
             stamp_chain_job_id(
                 policies_client=self.policies_client,
@@ -547,6 +549,8 @@ class MetricsCalculationExecutor(AggregationCalculationExecutor):
                 patch=PolicyAssignmentJobChainPatch(
                     alerts_check_job_id=spawned.jobs[0].id,
                 ),
+                current_job_id=job.id,
+                previous_stage="metrics_calc_job",
             )
 
     @staticmethod
@@ -757,6 +761,7 @@ class CustomAggregationTestExecutor(AggregationCalculationExecutor):
 
     def _upload_metrics(
         self,
+        job: Job,
         job_spec: TestCustomAggregationJobSpec,
         metrics_upload: MetricsUpload,
     ) -> None:

@@ -1,0 +1,23 @@
+name: arthur-ml-engine-standalone-discovery
+services:
+  ml-engine:
+    image: arthurplatform/ml-engine:${ML_ENGINE_VERSION-latest}
+    platform: linux/amd64
+    user: "65532:65532"
+    restart: unless-stopped
+    # Longer than the engine's own 15s wait for running scans, so a scan that finishes
+    # inside it gets to report its outcome before the container is killed.
+    stop_grace_period: "30s"
+    env_file:
+      - .env
+    environment:
+      ML_ENGINE_DISCOVERY_CONFIG: /etc/arthur/discovery.yaml
+    volumes:
+      - ./discovery.yaml:/etc/arthur/discovery.yaml:ro
+      # Files the config reads with {file: secrets/...}, resolved beside the config.
+      - ./secrets:/etc/arthur/secrets:ro
+    healthcheck:
+      test: wget -qO - http://127.0.0.1:7492/health
+      interval: 30s
+      timeout: 5s
+      retries: 5
