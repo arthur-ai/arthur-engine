@@ -699,25 +699,24 @@ def test_a_missing_source_field_is_named(missing: str) -> None:
         _settings_from(creds, fields)
 
 
-def test_importing_the_package_registers_the_connector() -> None:
-    """The executor resolves a source's vendor against SOURCE_CONNECTORS, so a connector
-    nobody imported is a connector that fails its own job as an unsupported vendor."""
-    import discovery  # noqa: F401
-    from job_executors.discovery_scan import SOURCE_CONNECTORS
+def test_the_connector_is_registered() -> None:
+    """An executor resolves a source's vendor against `source_connectors()`, so a
+    connector missing from it is one that fails its own job as an unsupported vendor."""
+    from discovery import source_connectors
 
-    assert "jamf_pro" in SOURCE_CONNECTORS
-    # The registry holds factories, so each run gets its own connector rather than sharing
+    connectors = source_connectors()
+    assert "jamf_pro" in connectors
+    # The map holds factories, so each run gets its own connector rather than sharing
     # one that carries a session and a paging cursor between them.
-    assert SOURCE_CONNECTORS["jamf_pro"] is JamfConnector
-    assert isinstance(SOURCE_CONNECTORS["jamf_pro"](), JamfConnector)
+    assert connectors["jamf_pro"] is JamfConnector
+    assert isinstance(connectors["jamf_pro"](), JamfConnector)
 
 
 def test_the_registered_connector_satisfies_the_protocol() -> None:
     """Structural, not nominal: the executor calls .scan(...) with five arguments."""
-    import discovery  # noqa: F401
-    from job_executors.discovery_scan import SOURCE_CONNECTORS
+    from discovery import source_connectors
 
-    connector = SOURCE_CONNECTORS["jamf_pro"]()
+    connector = source_connectors()["jamf_pro"]()
     assert callable(getattr(connector, "scan", None))
 
 

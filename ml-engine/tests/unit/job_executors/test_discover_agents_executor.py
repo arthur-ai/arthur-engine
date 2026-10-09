@@ -23,12 +23,12 @@ from arthur_client.api_bindings.rest import RESTResponse
 from arthur_common.models.agent_discovery_schemas import DiscoveryOutputRecord
 from genai_client import EnrichedTaskResponse
 
+from discovery import source_connectors
 from job_executors.discover_agents_executor import (
     CHAINED_FETCH_SKEW,
     DiscoverAgentsExecutor,
 )
 from job_executors.discovery_scan import (
-    SOURCE_CONNECTORS,
     DiscoveryConfigurationError,
     DiscoveryPublishResult,
     DiscoveryScanOutcome,
@@ -637,19 +637,29 @@ def test_every_scan_gets_its_own_connector() -> None:
     assert all(len(connector.calls) == 1 for connector in built)
 
 
-def test_an_executor_does_not_alias_the_global_registry() -> None:
-    executor = DiscoverAgentsExecutor(
+def _default_executor() -> DiscoverAgentsExecutor:
+    return DiscoverAgentsExecutor(
         agents_client=MagicMock(),
         logger=logging.getLogger("test-discovery-registry"),
         genai_engine_url="http://genai",
         genai_engine_api_key="key",
     )
 
-    # A vendor no connector registers, so this asserts the copy rather than which
-    # connectors happen to ship: `jamf_pro` is a real registered vendor now.
-    executor.connectors["not_a_real_vendor"] = lambda: FakeConnector([])
 
-    assert "not_a_real_vendor" not in SOURCE_CONNECTORS
+def test_an_executor_builds_the_connectors_it_resolves_against() -> None:
+    """Nothing has to be imported first: initializing the executor is the registration."""
+    assert _default_executor().connectors == source_connectors()
+
+
+def test_executors_do_not_share_their_connectors() -> None:
+    first, second = _default_executor(), _default_executor()
+
+    # A vendor no connector registers, so this asserts the separation rather than which
+    # connectors happen to ship.
+    first.connectors["not_a_real_vendor"] = lambda: FakeConnector([])
+
+    assert "not_a_real_vendor" not in second.connectors
+    assert "not_a_real_vendor" not in source_connectors()
 
 
 def test_empty_batches_are_not_published() -> None:

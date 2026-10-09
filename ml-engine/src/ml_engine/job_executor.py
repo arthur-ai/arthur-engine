@@ -43,10 +43,6 @@ from arthur_common.models.task_job_specs import (
 )
 from pydantic import StrictBytes
 
-# Imported for its side effect: registering the discovery connectors into
-# SOURCE_CONNECTORS, which DiscoverAgentsExecutor and DiscoverySourceTestExecutor
-# resolve a source's vendor against.
-import discovery  # noqa: F401
 from arthur_client_support import (
     TEST_DISCOVERY_SOURCE_JOB_KIND,
     TEST_DISCOVERY_SOURCE_SUPPORTED,

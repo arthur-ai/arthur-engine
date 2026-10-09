@@ -28,7 +28,7 @@ from google.auth.credentials import Credentials
 from google.auth.exceptions import RefreshError, TransportError
 from google.genai.errors import APIError, ClientError, ServerError
 
-import discovery  # noqa: F401  (registers the connectors)
+from discovery import source_connectors
 from discovery.cloud.gcp_vertex import connector as vertex
 from discovery.cloud.gcp_vertex.connector import (
     ALLOW_ADC_ENV_VAR,
@@ -43,7 +43,6 @@ from discovery.cloud.gcp_vertex.connector import (
 )
 from job_executors.discovery_output_contract import check_batch
 from job_executors.discovery_scan import (
-    SOURCE_CONNECTORS,
     DiscoveryErrorCode,
     DiscoveryPublishResult,
     DiscoveryScanOutcome,
@@ -612,8 +611,8 @@ def test_an_unreachable_metadata_server_is_not_blamed_on_the_key(
 # --- registration -------------------------------------------------------------------
 
 
-def test_importing_the_package_registers_the_connector() -> None:
-    assert SOURCE_CONNECTORS["gcp_vertex"] is VertexAgentEngineConnector
-    connector = SOURCE_CONNECTORS["gcp_vertex"]()
+def test_the_connector_is_registered() -> None:
+    assert source_connectors()["gcp_vertex"] is VertexAgentEngineConnector
+    connector = source_connectors()["gcp_vertex"]()
     assert isinstance(connector, VertexAgentEngineConnector)
     assert callable(getattr(connector, "scan", None))

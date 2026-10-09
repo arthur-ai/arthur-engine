@@ -20,7 +20,7 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509.oid import NameOID
 
-import discovery  # noqa: F401  (registers the connectors)
+from discovery import source_connectors
 from discovery.siem.elastic_security.client import (
     ElasticClient,
     ElasticError,
@@ -42,7 +42,6 @@ from discovery.siem.tls import (
 )
 from job_executors.discovery_output_contract import OutputContractError, check_batch
 from job_executors.discovery_scan import (
-    SOURCE_CONNECTORS,
     AcceptsStopCheck,
     DiscoveryConfigurationError,
     DiscoveryErrorCode,
@@ -162,8 +161,8 @@ def scan(
 # -- registration --------------------------------------------------------------------
 
 
-def test_importing_the_package_registers_the_connector() -> None:
-    assert SOURCE_CONNECTORS[VENDOR] is ElasticSecurityConnector
+def test_the_connector_is_registered() -> None:
+    assert source_connectors()[VENDOR] is ElasticSecurityConnector
     assert VENDOR == "elastic_security"
 
 

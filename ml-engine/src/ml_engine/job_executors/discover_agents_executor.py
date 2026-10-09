@@ -41,8 +41,8 @@ from genai_client import (
     TasksApi,
 )
 
+from discovery import source_connectors
 from job_executors.discovery_scan import (
-    SOURCE_CONNECTORS,
     DiscoveryConnectorFactory,
     DiscoveryErrorCode,
     DiscoveryRecordSink,
@@ -86,9 +86,12 @@ class DiscoverAgentsExecutor:
         # Delivers each source scan's outcome to the Platform's run store. The legacy
         # sweep has no source to report on and never uses it.
         self.run_reporter = run_reporter
-        # A copy, so registering a connector on one executor cannot change the registry
-        # every other executor in the process reads.
-        self.connectors = dict(SOURCE_CONNECTORS if connectors is None else connectors)
+        # Built here, from the one list in `discovery`, so the executor needs nothing
+        # imported for its side effect. Its own dict either way: a connector added to
+        # one executor cannot change what another resolves a vendor against.
+        self.connectors = (
+            source_connectors() if connectors is None else dict(connectors)
+        )
 
     def execute(self, job: Job, job_spec: DiscoverAgentsJobSpec) -> None:
         """Run the job, on whichever of the two shapes it carries."""

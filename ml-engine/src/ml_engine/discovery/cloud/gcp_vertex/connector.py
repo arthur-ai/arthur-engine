@@ -41,7 +41,16 @@ import json
 import logging
 import os
 from datetime import datetime
-from typing import Any, Callable, Iterable, Iterator, Mapping, Optional, Sequence
+from typing import (
+    Any,
+    Callable,
+    ClassVar,
+    Iterable,
+    Iterator,
+    Mapping,
+    Optional,
+    Sequence,
+)
 
 import agentplatform
 from arthur_client.api_bindings import DiscoverySourceConfigSpec
@@ -114,6 +123,8 @@ def list_agent_engines(
 
 class VertexAgentEngineConnector:
     """Implements `job_executors.discovery_scan.DiscoverySourceConnector`."""
+
+    SENSITIVE_FIELDS: ClassVar[frozenset[str]] = frozenset({SERVICE_ACCOUNT_KEY_FIELD})
 
     def __init__(self, lister: AgentEngineLister = list_agent_engines) -> None:
         self._lister = lister
