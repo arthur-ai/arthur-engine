@@ -68,6 +68,9 @@ DISCOVERY_CONFIG_ENV_VAR = "ML_ENGINE_DISCOVERY_CONFIG"
 # Scanning faster than this is a misconfiguration, not a use case: every scan re-reads
 # the whole lookback window from the vendor.
 MIN_INTERVAL = timedelta(minutes=1)
+# Long enough for a full enumeration of a large source, short enough that a hung one
+# gives its slot back the same day.
+DEFAULT_SCAN_TIMEOUT = timedelta(hours=6)
 
 # Namespace for the IDs minted for sources and configs, which the file does not carry.
 # Fixed so the same source has the same ID across restarts and in every event it emits.
@@ -211,10 +214,15 @@ class ScheduleConfig(StrictModel):
     # Configs scanned at once. Each (source, config) pair is one scan, as it is one job
     # on the Platform.
     max_concurrent_scans: int = Field(default=1, gt=0)
+    # The longest one run may take. A run still going past it is told to stop and no
+    # longer counts against max_concurrent_scans, so a source that hangs cannot keep
+    # the others from running. A thread cannot be killed, so the run is left to end on
+    # its own, and its pair is not started again until it does.
+    scan_timeout: Duration = DEFAULT_SCAN_TIMEOUT
 
-    @field_validator("interval")
+    @field_validator("interval", "scan_timeout")
     @classmethod
-    def _not_too_often(cls, value: timedelta) -> timedelta:
+    def _not_too_short(cls, value: timedelta) -> timedelta:
         if value < MIN_INTERVAL:
             raise ValueError(f"must be at least {MIN_INTERVAL}")
         return value

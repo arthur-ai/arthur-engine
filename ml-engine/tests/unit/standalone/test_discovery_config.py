@@ -534,6 +534,34 @@ def test_interval_formats(
         assert config.schedule.interval == expected
 
 
+def test_scan_timeout_defaults_to_six_hours(tmp_path: Path) -> None:
+    config = load_config(write(tmp_path, minimal()))
+
+    assert config is not None
+    assert config.schedule.scan_timeout == timedelta(hours=6)
+
+
+@pytest.mark.parametrize(
+    "scan_timeout, expected",
+    [("90m", timedelta(minutes=90)), ("30s", None)],  # 30s is under the minimum
+)
+def test_scan_timeout_formats(
+    tmp_path: Path,
+    scan_timeout: str,
+    expected: timedelta | None,
+) -> None:
+    text = minimal(
+        schedule=f"schedule:\n  interval: 6h\n  scan_timeout: {scan_timeout}\n",
+    )
+
+    if expected is None:
+        assert "schedule.scan_timeout" in load_error(tmp_path, text)
+    else:
+        config = load_config(write(tmp_path, text))
+        assert config is not None
+        assert config.schedule.scan_timeout == expected
+
+
 def test_a_window_shorter_than_the_interval_warns(
     tmp_path: Path,
     caplog: pytest.LogCaptureFixture,

@@ -22,6 +22,7 @@ def config(
     sources: int = 2,
     run_on_start: bool = True,
     max_concurrent_scans: int = 2,
+    scan_timeout: str = "6h",
 ) -> StandaloneDiscoveryConfig:
     return StandaloneDiscoveryConfig.model_validate(
         {
@@ -30,6 +31,7 @@ def config(
                 "interval": "1h",
                 "run_on_start": run_on_start,
                 "max_concurrent_scans": max_concurrent_scans,
+                "scan_timeout": scan_timeout,
             },
             "sources": [
                 {
@@ -195,6 +197,63 @@ def test_a_running_scan_is_not_started_again(runner: HoldingRunner) -> None:
     wait_until_idle(subject)
     subject.tick()  # overdue and finished: starts right away
     assert runner.started == ["vertex-0", "vertex-0"]
+
+
+def test_a_scan_past_its_timeout_is_told_to_stop_and_frees_its_slot(
+    runner: HoldingRunner,
+) -> None:
+    clock = Clock()
+    subject = agent(runner, clock, max_concurrent_scans=1, scan_timeout="1m")
+
+    subject.tick()
+    assert runner.started == ["vertex-0"]
+
+    clock.now += 59
+    subject.tick()
+    assert runner.started == ["vertex-0"]  # not yet past the timeout
+    assert runner.stop_checks[0]() is False
+
+    clock.now += 1  # vertex-0 hangs past scan_timeout
+    subject.tick()
+    assert runner.stop_checks[0]() is True
+    assert runner.started == ["vertex-0", "vertex-1"]
+    assert runner.stop_checks[1]() is False
+    assert subject.running_scans() == ["vertex-1/c"]
+
+
+def test_a_timed_out_scan_is_not_started_again_until_it_ends(
+    runner: HoldingRunner,
+) -> None:
+    clock = Clock()
+    subject = agent(runner, clock, sources=1, scan_timeout="1m")
+
+    subject.tick()
+    clock.now += 2 * INTERVAL  # timed out, overdue, and its thread still alive
+    subject.tick()
+    subject.tick()
+    assert runner.started == ["vertex-0"]
+
+    runner.release("vertex-0")
+    wait_until_idle(subject)
+    subject.tick()
+    assert runner.started == ["vertex-0", "vertex-0"]
+    assert runner.stop_checks[1]() is False  # the new run has a fresh stop check
+
+
+def test_shutdown_names_a_timed_out_scan_still_running(
+    runner: HoldingRunner,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    clock = Clock()
+    subject = agent(runner, clock, sources=1, scan_timeout="1m")
+    subject.tick()
+    clock.now += 61
+    subject.tick()
+
+    with caplog.at_level(logging.WARNING):
+        subject._drain(grace_seconds=0.0)
+
+    assert "still running: vertex-0/c" in caplog.text
 
 
 def test_the_next_run_is_one_interval_after_the_last_started(

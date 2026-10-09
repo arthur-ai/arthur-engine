@@ -37,6 +37,7 @@ schedule:
   interval: 6h              # 90s, 15m, 6h, 1d, or a number of seconds; at least 1m
   run_on_start: true        # scan once at startup instead of waiting one interval
   max_concurrent_scans: 2   # (source, config) pairs scanned at once
+  scan_timeout: 6h          # default 6h, at least 1m; a longer run gives up its slot
 
 sources:
   - name: vertex-prod
@@ -301,6 +302,11 @@ The health check on port `7492` (`GET /health`) works as it does in Platform mod
   as it ends.
 - At most `max_concurrent_scans` run at once; when more are due, the most overdue goes
   first.
+- A run still going after `scan_timeout` is told to stop (Jamf, Splunk and Elastic stop
+  at their next safe point and report `cancelled`) and stops counting against
+  `max_concurrent_scans`, so a source that hangs cannot keep the others from running.
+  A run that never reaches a safe point -- a vendor call that hangs -- cannot be killed;
+  it is left running, logged, and its pair is not started again until it ends.
 - A failed scan does not stop the engine. Its outcome is logged and, with
   `emit_scan_outcomes`, sent to the destination, and the pair runs again next interval.
 - Records are sent as the connector produces them, so a scan that fails part-way keeps

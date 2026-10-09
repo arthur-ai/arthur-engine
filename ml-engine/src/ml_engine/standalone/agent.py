@@ -4,6 +4,8 @@ The counterpart of `JobAgent`. Where that one polls the Platform for jobs, this 
 owns the schedule: each (source, config) pair is due once at startup -- or one interval
 in, without `run_on_start` -- and again one interval after each run starts. A run still
 going when its next one falls due is not doubled up; the next starts when it ends.
+A run past `scan_timeout` is told to stop and gives up its slot, so one source that
+hangs cannot keep the others from running.
 
 SCANS RUN AS DAEMON THREADS, as a light job does under `JobAgent`. A scan is I/O
 against a vendor and a destination, and a daemon thread is one the process can exit
@@ -45,9 +47,17 @@ class _Slot:
     logger: logging.Logger
     next_due: float
     thread: Optional[threading.Thread] = field(default=None, repr=False)
+    # When the current run passes scan_timeout, and the stop check it was handed.
+    deadline: float = 0.0
+    stop: threading.Event = field(default_factory=threading.Event, repr=False)
+    timed_out: bool = False
+
+    def alive(self) -> bool:
+        return self.thread is not None and self.thread.is_alive()
 
     def running(self) -> bool:
-        return self.thread is not None and self.thread.is_alive()
+        """Alive and still holding a slot: a run past its timeout gives its slot up."""
+        return self.alive() and not self.timed_out
 
 
 class StandaloneDiscoveryAgent:
@@ -70,6 +80,7 @@ class StandaloneDiscoveryAgent:
         self._sink = sink
         self._interval = config.schedule.interval.total_seconds()
         self._capacity = config.schedule.max_concurrent_scans
+        self._scan_timeout = config.schedule.scan_timeout.total_seconds()
         self._clock = clock
         self._stopping = threading.Event()
         self._runner = runner or self._run_scan
@@ -108,15 +119,23 @@ class StandaloneDiscoveryAgent:
         self._stopping.set()
 
     def tick(self) -> None:
-        """Start every due scan there is room for, most overdue first."""
+        """Time out overdue scans, then start every due scan there is room for, most
+        overdue first. A pair whose last run is still alive -- timed out or not -- is
+        never started again alongside it."""
         now = self._clock()
+        for slot in self._slots:
+            if slot.running() and now >= slot.deadline:
+                self._time_out(slot)
         room = self._capacity - sum(slot.running() for slot in self._slots)
         due = sorted(
-            (s for s in self._slots if not s.running() and s.next_due <= now),
+            (s for s in self._slots if not s.alive() and s.next_due <= now),
             key=lambda s: s.next_due,
         )
         for slot in due[: max(room, 0)]:
             slot.next_due = now + self._interval
+            slot.deadline = now + self._scan_timeout
+            slot.stop = threading.Event()
+            slot.timed_out = False
             slot.thread = threading.Thread(
                 target=self._run_slot,
                 args=(slot,),
@@ -132,9 +151,24 @@ class StandaloneDiscoveryAgent:
             if s.running()
         ]
 
+    def _time_out(self, slot: _Slot) -> None:
+        slot.timed_out = True
+        slot.stop.set()
+        slot.logger.error(
+            f"Scan of '{slot.scan.source_name}/{slot.scan.config.name}' has run longer "
+            f"than scan_timeout ({self._config.schedule.scan_timeout}). It has been told "
+            f"to stop and no longer holds a slot; it is not started again until it ends.",
+        )
+
     def _run_slot(self, slot: _Slot) -> None:
+        # This run's own event: the slot's is replaced when the pair next starts.
+        stop = slot.stop
+
+        def should_stop() -> bool:
+            return self._stopping.is_set() or stop.is_set()
+
         try:
-            self._runner(slot.scan, slot.logger, self._stopping.is_set)
+            self._runner(slot.scan, slot.logger, should_stop)
         except Exception:
             # run_scan never raises; this guards a runner that does, so the thread's
             # end is logged rather than printed by threading's default hook.
@@ -163,7 +197,11 @@ class StandaloneDiscoveryAgent:
         for slot in self._slots:
             if slot.thread is not None:
                 slot.thread.join(max(deadline - self._clock(), 0.0))
-        abandoned = self.running_scans()
+        abandoned = [
+            f"{s.scan.source_name}/{s.scan.config.name}"
+            for s in self._slots
+            if s.alive()
+        ]
         if abandoned:
             logger.warning(
                 f"Shutting down with scan(s) still running: {', '.join(abandoned)}. "

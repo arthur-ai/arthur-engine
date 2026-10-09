@@ -36,8 +36,8 @@ from standalone.sinks.record_sink import StandaloneRecordSink
 
 
 class ScanCancelled(Exception):
-    """The engine began shutting down, and the scan stopped at the connector's next
-    safe point rather than reading the whole source."""
+    """The engine began shutting down, or the scan passed `scan_timeout`, and it stopped
+    at the connector's next safe point rather than reading the whole source."""
 
 
 class StandaloneOutcomeReporter:
@@ -184,8 +184,8 @@ def _cancel_on(
         if outcome.error is None:
             outcome.record_failure(
                 ScanCancelled(
-                    "The engine is shutting down; the scan stopped before reading "
-                    "the whole source.",
+                    "The engine is shutting down or the scan ran past scan_timeout; "
+                    "it stopped before reading the whole source.",
                 ),
                 error_code=DiscoveryErrorCode.CANCELLED,
             )
