@@ -5626,6 +5626,122 @@ class TestSubagentLlmSpans:
         assert record["agent_id"] == "a1"
         assert "deferred_span" not in record
 
+    def test_parallel_same_tool_calls_keep_their_own_start_times(
+        self,
+        tmp_path,
+        exported,
+        monkeypatch,
+    ):
+        self._register()
+        self._subagent_transcript(
+            tmp_path,
+            self._subagent_entries(),
+            tool_use_id="toolu_agent",
+        )
+        clock = iter(range(1_000, 10_000, 1_000))
+        monkeypatch.setattr(tracer.time, "time_ns", lambda: next(clock))
+        base = {
+            "session_id": self.SESSION,
+            "agent_id": "a1",
+            "transcript_path": str(tmp_path / "proj" / f"{self.SESSION}.jsonl"),
+            "tool_name": "Read",
+        }
+        read_a = {**base, "tool_use_id": "toolu_a", "tool_input": {"file_path": "/a"}}
+        read_b = {**base, "tool_use_id": "toolu_b", "tool_input": {"file_path": "/b"}}
+
+        tracer.handle_pre_tool(read_a, self.CONFIG)
+        tracer.handle_pre_tool(read_b, self.CONFIG)
+        tracer.handle_post_tool({**read_a, "tool_response": "a"}, self.CONFIG)
+        tracer.handle_post_tool({**read_b, "tool_response": "b"}, self.CONFIG)
+
+        assert [(s["start_ns"], s["end_ns"]) for s in exported] == [
+            (1_000, 3_000),
+            (2_000, 4_000),
+        ]
+
+    def test_inline_skill_call_leaves_no_record(self, exported, monkeypatch):
+        """A skill that doesn't fork reports no subagent; its record would
+        otherwise stay matchable by name for a later fork of that skill."""
+        monkeypatch.setattr(
+            tracer,
+            "_get_cached_transcript_path",
+            lambda *a, **kw: None,
+        )
+        self._save_turn_state()
+        hook = {
+            "session_id": self.SESSION,
+            "tool_name": "Skill",
+            "tool_input": {"skill": "commit"},
+            "tool_use_id": "toolu_inline",
+        }
+        tracer.handle_pre_tool(hook, self.CONFIG)
+        assert len(tracer._load_agent_span_records(self.SESSION)) == 1
+
+        tracer.handle_post_tool(
+            {**hook, "tool_response": "Skill instructions loaded"},
+            self.CONFIG,
+        )
+
+        assert tracer._load_agent_span_records(self.SESSION) == []
+        assert [s["name"] for s in exported] == ["Skill"]
+
+    def test_failed_agent_call_leaves_no_record(self, exported, monkeypatch):
+        monkeypatch.setattr(
+            tracer,
+            "_get_cached_transcript_path",
+            lambda *a, **kw: None,
+        )
+        self._save_turn_state()
+        hook = {
+            "session_id": self.SESSION,
+            "tool_name": "Agent",
+            "tool_input": {"prompt": self.PROMPT},
+            "tool_use_id": "toolu_failed",
+        }
+        tracer.handle_pre_tool(hook, self.CONFIG)
+
+        tracer.handle_post_tool_failure({**hook, "error": "boom"}, self.CONFIG)
+
+        assert tracer._load_agent_span_records(self.SESSION) == []
+        assert exported[0]["error_msg"] == "boom"
+
+    def test_claimed_record_survives_result_without_agent_id(
+        self,
+        tmp_path,
+        exported,
+        monkeypatch,
+    ):
+        """On older Claude Code a foreground Agent's result carries no
+        agentId; by then the subagent's stop has claimed the record."""
+        monkeypatch.setattr(
+            tracer,
+            "_get_cached_transcript_path",
+            lambda *a, **kw: None,
+        )
+        self._save_turn_state()
+        hook = {
+            "session_id": self.SESSION,
+            "tool_name": "Agent",
+            "tool_input": {"prompt": self.PROMPT},
+            "tool_use_id": "toolu_agent",
+        }
+        tracer.handle_pre_tool(hook, self.CONFIG)
+        p = self._subagent_transcript(
+            tmp_path,
+            self._subagent_entries(),
+            tool_use_id="toolu_agent",
+        )
+        self._stop(p)
+
+        tracer.handle_post_tool(
+            {**hook, "tool_response": "The subagent's answer"},
+            self.CONFIG,
+        )
+
+        (record,) = tracer._load_agent_span_records(self.SESSION)
+        assert record["agent_id"] == "a1"
+        assert record["emitted_llm_span_count"] == 2
+
     def test_falls_back_to_last_turn_root_after_state_deleted(
         self,
         tmp_path,

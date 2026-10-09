@@ -448,6 +448,21 @@ def _load_agent_span_record(session_id: str, key: str) -> Optional[dict]:
         return None
 
 
+def _discard_unclaimed_agent_span(session_id: str, span_id: str) -> None:
+    """Drop the record of an Agent/Task/Skill call no subagent came of — an
+    inline skill, a failed call — so a later subagent can't match it.  A
+    record a subagent's stop already claimed is kept: on older Claude Code a
+    foreground Agent's result carries no agentId.
+    """
+    with _session_lock(session_id):
+        record = _load_agent_span_record(session_id, span_id)
+        if record and not record.get("agent_id"):
+            try:
+                _agent_span_path(session_id, span_id).unlink()
+            except OSError:
+                pass
+
+
 def _launched_subagent(tool_response: Any) -> tuple[str, bool]:
     """Return (agent_id, in_background) from an Agent/Task/Skill tool response.
 
@@ -1795,7 +1810,11 @@ def handle_pre_tool(data: dict, config: dict) -> None:
         with _session_lock(session_id):
             record = _subagent_tool_record(session_id, data)
             if record:
-                record.setdefault("pending_tools", {})[tool_name] = {
+                # Keyed by tool_use_id: a subagent runs parallel calls of
+                # the same tool too.
+                record.setdefault("pending_tools", {})[
+                    data.get("tool_use_id") or tool_name
+                ] = {
                     "tool_input": tool_input,
                     "start_ns": now_ns,
                 }
@@ -2027,7 +2046,10 @@ def _subagent_tool_end(
         record = _subagent_tool_record(session_id, data)
         if not record:
             return False
-        pending = record.get("pending_tools", {}).pop(tool_name, {})
+        pending = record.get("pending_tools", {}).pop(
+            data.get("tool_use_id") or tool_name,
+            {},
+        )
         _save_agent_span_record(record)
         username = _username(session_id)
 
@@ -2112,6 +2134,8 @@ def handle_post_tool(data: dict, config: dict) -> None:
                     record["deferred_span"] = span_record
                     deferred = True
                 _save_agent_span_record(record)
+    elif pre_allocated_span_id:
+        _discard_unclaimed_agent_span(session_id, pre_allocated_span_id)
 
     # Export the tool span before acquiring the lock — this is the slow network
     # I/O and does not mutate state, so it is safe to run outside the lock.
@@ -2170,6 +2194,9 @@ def handle_post_tool_failure(data: dict, config: dict) -> None:
     tool_response = data.get("tool_response", {})
     start_ns = current_tool.get("start_ns", end_ns - 1_000_000)
     error_msg = _tool_error_message(data, tool_response)
+    # The call failed, so no subagent came of it
+    if current_tool.get("pre_allocated_span_id"):
+        _discard_unclaimed_agent_span(session_id, current_tool["pre_allocated_span_id"])
 
     active_agent_span_id = _find_active_agent_span_id(state, pending_key)
     span_record = _build_tool_span_record(
