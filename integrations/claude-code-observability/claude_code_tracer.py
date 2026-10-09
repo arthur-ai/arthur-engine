@@ -133,7 +133,11 @@ def _delete_state(session_id: str) -> None:
 def _cleanup_stale_states() -> None:
     try:
         now = time.time()
-        for p in [*STATE_DIR.glob("*.json"), *_agent_span_dir().glob("*.json")]:
+        for p in [
+            *STATE_DIR.glob("*.json"),
+            *(STATE_DIR / _PENDING_AGENT_DIR.name).glob("*.json"),
+            *_agent_span_dir().glob("*.json"),
+        ]:
             if now - p.stat().st_mtime > STATE_MAX_AGE_S:
                 p.unlink()
     except Exception as e:
@@ -288,17 +292,24 @@ def _load_agent_span_records(session_id: str) -> list[dict]:
     return records
 
 
+# Record key of a session's last completed turn: the fallback parent for a
+# subagent whose launching tool call can't be identified.
+_TURN_ROOT_KEY = "turn-root"
+
+
 def _register_agent_span(
     session_id: str,
     trace_id: str,
     span_id: str,
     tool_use_id: str,
-    agent_prompt: str,
+    agent_prompt: str = "",
+    skill: str = "",
 ) -> None:
-    """Record the trace and pre-allocated span of an Agent/Task tool call.
+    """Record the trace and pre-allocated span of a tool call that can spawn a
+    subagent: Agent/Task, or Skill (a skill may fork into one).
 
     Called from handle_pre_tool.  handle_subagent_stop looks the record up to
-    parent the subagent's LLM spans under the Agent span.
+    parent the subagent's LLM spans under the tool's span.
     """
     _save_agent_span_record(
         {
@@ -308,6 +319,7 @@ def _register_agent_span(
             "span_id": span_id,
             "tool_use_id": tool_use_id,
             "agent_prompt": agent_prompt,
+            "skill": skill,
             "agent_id": "",
             "created_ns": time.time_ns(),
             "emitted_llm_span_count": 0,
@@ -315,17 +327,29 @@ def _register_agent_span(
     )
 
 
-def _subagent_tool_use_id(transcript_path: str) -> str:
-    """Return the id of the tool call that spawned a subagent, if recorded.
+def _save_turn_root(session_id: str, trace_id: str, root_span_id: str) -> None:
+    """Keep the turn's CHAIN root after handle_stop deletes the session state."""
+    _save_agent_span_record(
+        {
+            "session_id": session_id,
+            "key": _TURN_ROOT_KEY,
+            "trace_id": trace_id,
+            "span_id": root_span_id,
+            "created_ns": time.time_ns(),
+        },
+    )
 
-    Claude Code writes ``agent-<id>.meta.json`` next to the subagent transcript;
-    its ``toolUseId`` is the parent's Agent tool_use id.
+
+def _subagent_meta(transcript_path: str) -> dict:
+    """Return the ``agent-<id>.meta.json`` Claude Code writes next to a
+    subagent transcript.  ``toolUseId`` is the parent's Agent tool_use id; a
+    subagent forked by a skill has ``name`` (the skill) and no ``toolUseId``.
     """
     try:
         meta_path = Path(transcript_path).with_suffix(".meta.json")
-        return json.loads(meta_path.read_text()).get("toolUseId", "") or ""
+        return json.loads(meta_path.read_text())
     except Exception:
-        return ""
+        return {}
 
 
 def _resolve_subagent_parent(
@@ -338,15 +362,19 @@ def _resolve_subagent_parent(
     Tries, in order:
       1. A record this subagent already claimed — it stops again each time
          SendMessage continues it.
-      2. The Agent/Task call that spawned it, by tool_use_id, then by prompt.
-         Prompts are only compared when the tool_use_ids can't be, so parallel
-         agents given the same prompt can't claim each other's span.
-      3. The current turn's CHAIN root.  Subagents forked by other tools (e.g.
-         Skill) have no Agent span.
+      2. The tool call that spawned it: by tool_use_id for Agent/Task, by
+         skill name for Skill, then by prompt.  Prompts are only compared
+         when the tool_use_ids can't be, so parallel agents given the same
+         prompt can't claim each other's span.
+      3. The CHAIN root of the current turn, or of the last completed one.
 
-    Returns None when nothing applies, e.g. no record and the turn has ended.
+    Returns None when nothing applies.
     """
-    records = _load_agent_span_records(session_id)
+    records = [
+        r
+        for r in _load_agent_span_records(session_id)
+        if r.get("key") != _TURN_ROOT_KEY
+    ]
     for record in records:
         if record.get("agent_id") == agent_id:
             return record
@@ -356,7 +384,9 @@ def _resolve_subagent_parent(
         key=lambda r: r.get("created_ns", 0),
         reverse=True,
     )
-    tool_use_id = _subagent_tool_use_id(transcript_path)
+    meta = _subagent_meta(transcript_path)
+    tool_use_id = meta.get("toolUseId") or ""
+    skill = meta.get("name") or ""
     prompt = _get_first_human_message(transcript_path)
 
     match = None
@@ -365,6 +395,8 @@ def _resolve_subagent_parent(
             (r for r in unclaimed if r.get("tool_use_id") == tool_use_id),
             None,
         )
+    if match is None and skill:
+        match = next((r for r in unclaimed if r.get("skill") == skill), None)
     if match is None and prompt:
         match = next(
             (
@@ -378,13 +410,27 @@ def _resolve_subagent_parent(
 
     if match is None:
         current_trace = _load_state(session_id).get("current_trace")
-        if not current_trace:
+        if current_trace:
+            root = {
+                "trace_id": current_trace["trace_id"],
+                "span_id": current_trace["root_span_id"],
+            }
+        else:
+            root = next(
+                (
+                    r
+                    for r in _load_agent_span_records(session_id)
+                    if r.get("key") == _TURN_ROOT_KEY
+                ),
+                None,
+            )
+        if not root:
             return None
         match = {
             "session_id": session_id,
             "key": agent_id,
-            "trace_id": current_trace["trace_id"],
-            "span_id": current_trace["root_span_id"],
+            "trace_id": root["trace_id"],
+            "span_id": root["span_id"],
             "tool_use_id": tool_use_id,
             "agent_prompt": prompt,
             "created_ns": time.time_ns(),
@@ -423,6 +469,26 @@ def _session_lock(session_id: str):
 # ---------------------------------------------------------------------------
 
 
+def _iter_transcript_entries(transcript_path: str):
+    """Yield a transcript's entries, skipping blank and malformed lines.
+
+    Yields nothing when the file can't be read.
+    """
+    try:
+        with open(transcript_path) as fh:
+            for line in fh:
+                if not line.strip():
+                    continue
+                try:
+                    entry = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if isinstance(entry, dict):
+                    yield entry
+    except OSError:
+        return
+
+
 def _is_real_transcript(path: str) -> bool:
     """Return True if the transcript has at least one human or assistant entry.
 
@@ -431,21 +497,10 @@ def _is_real_transcript(path: str) -> bool:
     one of these as the authoritative transcript would leave the tracer with
     nothing to extract LLM spans from.
     """
-    try:
-        with open(path) as fh:
-            for line in fh:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    entry = json.loads(line)
-                except json.JSONDecodeError:
-                    continue
-                if entry.get("type") in ("user", "assistant"):
-                    return True
-        return False
-    except OSError:
-        return False
+    return any(
+        entry.get("type") in ("user", "assistant")
+        for entry in _iter_transcript_entries(path)
+    )
 
 
 def _find_transcript_path(data: dict, session_id: str) -> Optional[str]:
@@ -519,8 +574,13 @@ def _get_cached_transcript_path(
 
 
 def _is_human_message(entry: dict) -> bool:
-    """True for user-initiated messages (not tool results)."""
-    if entry.get("type") != "user":
+    """True for prompts the user submitted.
+
+    Tool results have list content.  ``isMeta`` marks text Claude Code
+    injects — slash-command output, image attachments, task notifications —
+    which doesn't start a turn.
+    """
+    if entry.get("type") != "user" or entry.get("isMeta"):
         return False
     content = entry.get("message", {}).get("content", "")
     # Tool result messages have content as a list; human messages have a string
@@ -529,83 +589,106 @@ def _is_human_message(entry: dict) -> bool:
 
 def _count_human_messages(transcript_path: str) -> int:
     """Count human (non-tool-result) user messages to detect turn boundaries."""
-    try:
-        count = 0
-        for line in Path(transcript_path).read_text().splitlines():
-            if not line.strip():
-                continue
-            try:
-                if _is_human_message(json.loads(line)):
-                    count += 1
-            except json.JSONDecodeError:
-                pass
-        return count
-    except Exception:
-        return 0
+    return sum(
+        1
+        for entry in _iter_transcript_entries(transcript_path)
+        if _is_human_message(entry)
+    )
 
 
-def _find_subagent_transcript_path(data: dict) -> Optional[str]:
-    """Locate a subagent's transcript JSONL file from a SubagentStop payload.
+def _get_first_human_message(transcript_path: str) -> str:
+    """Return the text of the first user message — a subagent's prompt, which
+    is injected (``isMeta``) when a skill forked the subagent."""
+    for entry in _iter_transcript_entries(transcript_path):
+        if entry.get("type") != "user":
+            continue
+        content = entry.get("message", {}).get("content", "")
+        if isinstance(content, str):
+            return content
+    return ""
+
+
+def _get_latest_human_message(transcript_path: str) -> str:
+    """Return the text of the most recent human message in the transcript."""
+    last = ""
+    for entry in _iter_transcript_entries(transcript_path):
+        if _is_human_message(entry):
+            last = entry.get("message", {}).get("content", "")
+    return last
+
+
+def _subagent_transcript_path(data: dict) -> Optional[str]:
+    """Return where a SubagentStop payload says the subagent's transcript is,
+    whether or not it has been written yet.
 
     Prefers ``agent_transcript_path``, falling back to the documented layout
     ``<session transcript without .jsonl>/subagents/agent-<agent_id>.jsonl``.
     """
     tp = data.get("agent_transcript_path", "")
-    if tp and Path(tp).exists():
+    if tp:
         return tp
 
     session_tp = data.get("transcript_path", "")
     agent_id = data.get("agent_id", "")
     if session_tp and agent_id:
         name = agent_id if agent_id.startswith("agent-") else f"agent-{agent_id}"
-        path = Path(session_tp).with_suffix("") / "subagents" / f"{name}.jsonl"
-        if path.exists():
-            return str(path)
+        return str(Path(session_tp).with_suffix("") / "subagents" / f"{name}.jsonl")
     return None
 
 
 def _last_assistant_text(transcript_path: str) -> str:
-    """Return the text of the transcript's last API response (by message.id)."""
+    """Return the text of the transcript's last API response.
+
+    A response's entries share a message.id; an entry without one is a
+    response of its own.
+    """
     last_id = None
     parts: list[str] = []
-    try:
-        for line in Path(transcript_path).read_text().splitlines():
-            if not line.strip():
-                continue
-            try:
-                entry = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-            if entry.get("type") != "assistant":
-                continue
-            msg = entry.get("message", {})
-            if msg.get("id") != last_id:
-                last_id = msg.get("id")
-                parts = []
-            for block in msg.get("content", []):
-                if isinstance(block, dict) and block.get("type") == "text":
-                    parts.append(block.get("text", ""))
-    except Exception:
-        return ""
+    for index, entry in enumerate(_iter_transcript_entries(transcript_path)):
+        if entry.get("type") != "assistant":
+            continue
+        msg = entry.get("message", {})
+        msg_id = msg.get("id") or f"entry-{index}"
+        if msg_id != last_id:
+            last_id = msg_id
+            parts = []
+        for block in msg.get("content", []):
+            if isinstance(block, dict) and block.get("type") == "text":
+                parts.append(block.get("text", ""))
     return "".join(parts)
 
 
-def _wait_for_subagent_transcript(transcript_path: str, last_message: str) -> None:
-    """Wait until a subagent's final response has reached its transcript.
+def _wait_for_subagent_transcript(transcript_path: str, last_message: str) -> bool:
+    """Wait for a subagent's transcript to hold its final response.
 
-    Claude Code writes transcripts asynchronously, so at SubagentStop the last
-    response may not be on disk yet.  No later hook reads this transcript, so a
-    response missing here would never be emitted.  ``last_message`` is the
-    hook's ``last_assistant_message``; whitespace is ignored when comparing.
+    Claude Code writes transcripts asynchronously, so at SubagentStop the file
+    may not exist yet or may lack the last response.  No later hook reads
+    this transcript, so whatever is missing now would never be emitted.
+    ``last_message`` is the hook's ``last_assistant_message``; whitespace is
+    ignored when comparing, and the file is only re-parsed when its size
+    changes.  Returns False if the file never appeared.
     """
     expected = "".join(last_message.split())
-    if not expected:
-        return
     deadline = time.monotonic() + _SUBAGENT_FLUSH_TIMEOUT_S
-    while expected not in "".join(_last_assistant_text(transcript_path).split()):
+    size = -1
+    while True:
+        try:
+            new_size = os.path.getsize(transcript_path)
+        except OSError:
+            new_size = -1
+        if new_size != size:
+            size = new_size
+            if size >= 0 and (
+                not expected
+                or expected in "".join(_last_assistant_text(transcript_path).split())
+            ):
+                return True
         if time.monotonic() >= deadline:
+            if size < 0:
+                log.debug("Transcript %s never appeared", transcript_path)
+                return False
             log.debug("Final response not found in %s", transcript_path)
-            return
+            return True
         time.sleep(0.1)
 
 
@@ -699,6 +782,8 @@ def _extract_llm_spans_for_turn(
         last_input_role = "user"
         last_input_content = ""
         last_input_tool_call_id = ""
+        # A tool result is queued as that input and no API call has used it yet
+        pending_tool_result = False
 
         # Accumulator for the current message.id group
         current_group_id: Optional[str] = None
@@ -831,6 +916,7 @@ def _extract_llm_spans_for_turn(
             if _is_human_message(entry):
                 _flush_group()
                 human_count += 1
+                pending_tool_result = False
                 if in_turn and not all_turns:
                     # Next user turn has started — stop here.  Its spans belong
                     # to a different trace.
@@ -846,6 +932,12 @@ def _extract_llm_spans_for_turn(
                     last_input_content = _truncate(human_text)
                     last_input_tool_call_id = ""
                 continue
+
+            # A fork's transcript opens with a copy of the parent's response at
+            # the fork point, which the parent already emitted; the subagent's
+            # own turn starts at its first user entry of any kind.
+            if all_turns and entry_type == "user":
+                in_turn = True
 
             if not in_turn:
                 continue
@@ -871,6 +963,20 @@ def _extract_llm_spans_for_turn(
                     last_input_role = "tool"
                     last_input_content = _truncate(payload)
                     last_input_tool_call_id = tool_use_id
+                    pending_tool_result = True
+                elif not pending_tool_result:
+                    # Injected (isMeta) text — a forked subagent's prompt or a
+                    # task notification — is the next call's input, unless it
+                    # follows a tool result, like the "[Image: …]" placeholder
+                    # for an image a tool returned.  Never a group boundary:
+                    # it can land between the tool_use entries of one response.
+                    last_input_value = json.dumps(
+                        {"role": "user", "content": content[:500]},
+                    )
+                    last_input_mime = "application/json"
+                    last_input_role = "user"
+                    last_input_content = _truncate(content)
+                    last_input_tool_call_id = ""
                 continue
 
             # ── Non-assistant entries (progress, system, …) ───────────────────
@@ -908,6 +1014,7 @@ def _extract_llm_spans_for_turn(
                     "mime": last_input_mime,
                     "tool_call_id": last_input_tool_call_id,
                 }
+                pending_tool_result = False
             else:
                 # Extending the group: last non-empty stop_reason wins
                 if stop_reason:
@@ -1395,6 +1502,7 @@ def _complete_turn(
             },
         ],
     )
+    _save_turn_root(state["session_id"], trace_id, root_span_id)
 
 
 # ---------------------------------------------------------------------------
@@ -1714,48 +1822,25 @@ def handle_pre_tool(data: dict, config: dict) -> None:
         # Key by span_id so parallel Agent/Task calls in the same session don't
         # overwrite each other — post_tool finds the right entry by tool_input match.
         pending_key = f"{tool_name}#{agent_span_id}"
+    elif tool_name == "Skill" and current_trace:
+        # A skill may fork into a subagent, whose meta names the skill but not
+        # the tool call; pre-allocate the span so that subagent's LLM spans
+        # can be parented under it.
+        skill_span_id = _new_span_id()
+        pending_entry["pre_allocated_span_id"] = skill_span_id
+        _register_agent_span(
+            session_id=session_id,
+            trace_id=current_trace["trace_id"],
+            span_id=skill_span_id,
+            tool_use_id=data.get("tool_use_id", ""),
+            skill=tool_input.get("skill", "") if isinstance(tool_input, dict) else "",
+        )
+        pending_key = tool_name
     else:
         pending_key = tool_name
 
     state.setdefault("pending_tools", {})[pending_key] = pending_entry
     _save_state(session_id, state)
-
-
-def _get_first_human_message(transcript_path: str) -> str:
-    """Return the text of the first human message — a subagent's prompt."""
-    try:
-        for line in Path(transcript_path).read_text().splitlines():
-            if not line.strip():
-                continue
-            try:
-                entry = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-            if _is_human_message(entry):
-                return entry.get("message", {}).get("content", "")
-        return ""
-    except Exception:
-        return ""
-
-
-def _get_latest_human_message(transcript_path: str) -> str:
-    """Return the text of the most recent human message in the transcript."""
-    try:
-        last = ""
-        for line in Path(transcript_path).read_text().splitlines():
-            if not line.strip():
-                continue
-            try:
-                entry = json.loads(line)
-                if _is_human_message(entry):
-                    content = entry.get("message", {}).get("content", "")
-                    if isinstance(content, str):
-                        last = content
-            except json.JSONDecodeError:
-                pass
-        return last
-    except Exception:
-        return ""
 
 
 def _find_pending_tool_entry(
@@ -1962,17 +2047,24 @@ def handle_subagent_stop(data: dict, config: dict) -> None:
     finishes after the turn has ended.
     """
     session_id = data.get("session_id", "unknown")
-    agent_id = data.get("agent_id", "")
-    transcript_path = _find_subagent_transcript_path(data)
-    if not agent_id or not transcript_path:
+    transcript_path = _subagent_transcript_path(data)
+    if not transcript_path:
+        log.debug("No transcript path for a subagent of session %s", session_id)
+        return
+    # Older payloads lack agent_id; the transcript is named after it.
+    agent_id = data.get("agent_id") or Path(transcript_path).stem.removeprefix(
+        "agent-",
+    )
+
+    if not _wait_for_subagent_transcript(
+        transcript_path,
+        str(data.get("last_assistant_message") or ""),
+    ):
         log.debug("No transcript for subagent %s in session %s", agent_id, session_id)
         return
 
-    _wait_for_subagent_transcript(
-        transcript_path,
-        data.get("last_assistant_message", ""),
-    )
-
+    # Claim the spans under the lock, export outside it: a long subagent would
+    # otherwise hold up the parent's own hooks.
     with _session_lock(session_id):
         record = _resolve_subagent_parent(session_id, agent_id, transcript_path)
         if not record:
@@ -1986,22 +2078,21 @@ def handle_subagent_stop(data: dict, config: dict) -> None:
             record["span_id"],
             all_turns=True,
         )
-        emitted = record.get("emitted_llm_span_count", 0)
-        new_spans = all_llm_spans[emitted:]
-        if new_spans:
-            username = _load_state(session_id).get("username") or os.environ.get(
-                "USER",
-                os.environ.get("USERNAME", "unknown"),
-            )
-            _build_and_export_spans(
-                config=config,
-                session_id=session_id,
-                username=username,
-                span_records=new_spans,
-            )
-
-        record["emitted_llm_span_count"] = emitted + len(new_spans)
+        new_spans = all_llm_spans[record.get("emitted_llm_span_count", 0) :]
+        record["emitted_llm_span_count"] = len(all_llm_spans)
         _save_agent_span_record(record)
+        username = _load_state(session_id).get("username") or os.environ.get(
+            "USER",
+            os.environ.get("USERNAME", "unknown"),
+        )
+
+    if new_spans:
+        _build_and_export_spans(
+            config=config,
+            session_id=session_id,
+            username=username,
+            span_records=new_spans,
+        )
 
 
 def handle_stop(data: dict, config: dict) -> None:

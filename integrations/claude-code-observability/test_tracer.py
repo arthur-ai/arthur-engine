@@ -52,6 +52,17 @@ def tool_result_entry(tool_use_id: str, text: str) -> dict:
     }
 
 
+def meta_entry(text: str) -> dict:
+    """Text Claude Code injects as a user entry: slash-command output, an image
+    attachment placeholder, a task notification, a forked subagent's prompt."""
+    return {
+        "type": "user",
+        "isMeta": True,
+        "message": {"role": "user", "content": text},
+        "timestamp": "2026-01-01T00:00:05.000000+00:00",
+    }
+
+
 def llm_entry(
     text: str = "",
     tool_use_blocks: list | None = None,
@@ -91,6 +102,18 @@ def tool_use_block(name: str = "Bash", cmd: str = "ls /tmp") -> dict:
         "name": name,
         "input": {"command": cmd},
     }
+
+
+@pytest.fixture(autouse=True)
+def _isolate_state_dir(tmp_path, monkeypatch):
+    """Keep every test out of the real ~/.claude/tracer: completing a turn now
+    writes a record there, and not every test redirects STATE_DIR itself."""
+    monkeypatch.setattr(tracer, "STATE_DIR", tmp_path / "tracer")
+    monkeypatch.setattr(
+        tracer,
+        "_PENDING_AGENT_DIR",
+        tmp_path / "tracer" / "pending_agent",
+    )
 
 
 @pytest.fixture
@@ -5274,12 +5297,191 @@ class TestSubagentLlmSpans:
 
         assert len(exported) == 2
 
-    def test_missing_transcript_emits_nothing(self, tmp_path, exported):
+    def test_missing_transcript_emits_nothing(self, tmp_path, exported, monkeypatch):
+        monkeypatch.setattr(tracer, "_SUBAGENT_FLUSH_TIMEOUT_S", 0)
         self._register()
 
         self._stop(tmp_path / "nope.jsonl")
 
         assert exported == []
+        assert tracer._load_agent_span_records(self.SESSION)[0]["agent_id"] == ""
+
+    def test_transcript_written_after_stop_is_read(
+        self,
+        tmp_path,
+        exported,
+        monkeypatch,
+    ):
+        """Claude Code writes transcripts asynchronously: the file may not
+        exist yet when SubagentStop fires."""
+        self._register()
+        p = tmp_path / "proj" / self.SESSION / "subagents" / "agent-a1.jsonl"
+
+        def fake_sleep(_):
+            self._subagent_transcript(
+                tmp_path,
+                self._subagent_entries(),
+                tool_use_id="toolu_agent",
+            )
+
+        monkeypatch.setattr(tracer.time, "sleep", fake_sleep)
+
+        self._stop(p)
+
+        assert len(exported) == 2
+
+    def test_null_last_assistant_message(self, tmp_path, exported):
+        """A subagent that ends on a tool call has no final text."""
+        self._register()
+        p = self._subagent_transcript(
+            tmp_path,
+            self._subagent_entries(),
+            tool_use_id="toolu_agent",
+        )
+
+        self._stop(p, last_assistant_message=None)
+
+        assert len(exported) == 2
+
+    def test_agent_id_derived_from_transcript_path(self, tmp_path, exported):
+        self._register()
+        p = self._subagent_transcript(
+            tmp_path,
+            self._subagent_entries(),
+            tool_use_id="toolu_agent",
+        )
+
+        tracer.handle_subagent_stop(
+            {"session_id": self.SESSION, "agent_transcript_path": str(p)},
+            self.CONFIG,
+        )
+
+        assert len(exported) == 2
+        assert tracer._load_agent_span_records(self.SESSION)[0]["agent_id"] == "a1"
+
+    def test_fork_skips_copied_parent_response(self, tmp_path, exported):
+        """A fork's transcript opens with a copy of the parent's response at
+        the fork point, which the parent's own hooks already emitted, and its
+        first user entry is a tool result rather than a prompt."""
+        self._register()
+        copied = llm_entry_with_id(
+            "msg_parent",
+            tool_use_blocks=[tool_use_block("Skill", "/review")],
+            output_tokens=30,
+        )
+        entries = [
+            {"type": "fork-context-ref", "agentId": "a1"},
+            copied,
+            tool_result_entry("toolu_x", "forked"),
+            llm_entry_with_id("msg_own_1", tool_use_blocks=[tool_use_block()]),
+            tool_result_entry("toolu_x", "ls output"),
+            llm_entry_with_id("msg_own_2", text="Done."),
+        ]
+        p = self._subagent_transcript(tmp_path, entries, tool_use_id="toolu_agent")
+
+        self._stop(p)
+
+        assert [s["attributes"]["output.value"] for s in exported][1:] == ["Done."]
+        assert len(exported) == 2
+        assert exported[0]["attributes"]["llm.input_messages.0.message.role"] == "tool"
+        assert exported[0]["attributes"]["llm.input_messages.0.message.content"] == (
+            "forked"
+        )
+
+    def test_skill_fork_matched_by_skill_name(self, tmp_path, exported, monkeypatch):
+        """A subagent forked by a skill has the skill's name in its meta but no
+        toolUseId, and its prompt is injected (isMeta)."""
+        monkeypatch.setattr(
+            tracer,
+            "_get_cached_transcript_path",
+            lambda *a, **kw: None,
+        )
+        self._save_turn_state()
+        tracer.handle_pre_tool(
+            {
+                "session_id": self.SESSION,
+                "tool_name": "Skill",
+                "tool_input": {"skill": "code-review", "args": "2432 high"},
+                "tool_use_id": "toolu_skill",
+            },
+            self.CONFIG,
+        )
+        skill_span_id = tracer._load_state(self.SESSION)["pending_tools"]["Skill"][
+            "pre_allocated_span_id"
+        ]
+        tracer._delete_state(self.SESSION)  # the turn ended before the fork did
+        sub_dir = tmp_path / "proj" / self.SESSION / "subagents"
+        sub_dir.mkdir(parents=True)
+        (sub_dir / "agent-a1.meta.json").write_text(
+            json.dumps({"agentType": "general-purpose", "name": "code-review"}),
+        )
+        p = _make_transcript(
+            [meta_entry("Review target: PR 2432"), llm_entry("Looks fine.")],
+            sub_dir / "agent-a1.jsonl",
+        )
+
+        self._stop(p)
+
+        assert len(exported) == 1
+        assert exported[0]["parent_span_id_hex"] == skill_span_id
+        assert exported[0]["trace_id_hex"] == self.TRACE_ID
+        assert exported[0]["attributes"]["llm.input_messages.0.message.content"] == (
+            "Review target: PR 2432"
+        )
+
+    def test_falls_back_to_last_turn_root_after_state_deleted(
+        self,
+        tmp_path,
+        exported,
+    ):
+        """handle_stop deletes the session state; a background subagent with
+        no matching record still lands in the turn that spawned it."""
+        tracer._save_turn_root(self.SESSION, self.TRACE_ID, self.ROOT_ID)
+        p = self._subagent_transcript(tmp_path, self._subagent_entries())
+
+        self._stop(p)
+
+        assert len(exported) == 2
+        assert {s["parent_span_id_hex"] for s in exported} == {self.ROOT_ID}
+        assert {s["trace_id_hex"] for s in exported} == {self.TRACE_ID}
+
+    def test_complete_turn_saves_turn_root(self, exported):
+        self._save_turn_state()
+        state = tracer._load_state(self.SESSION)
+
+        tracer._complete_turn(state, self.CONFIG, None, 2_000_000_000)
+
+        (record,) = tracer._load_agent_span_records(self.SESSION)
+        assert record["key"] == tracer._TURN_ROOT_KEY
+        assert record["trace_id"] == self.TRACE_ID
+        assert record["span_id"] == self.ROOT_ID
+
+    def test_export_happens_outside_session_lock(self, tmp_path, monkeypatch):
+        self._register()
+        p = self._subagent_transcript(
+            tmp_path,
+            self._subagent_entries(),
+            tool_use_id="toolu_agent",
+        )
+        lock_path = tmp_path / "tracer" / f"{self.SESSION}.lock"
+        held = []
+
+        def export(**kw):
+            import fcntl
+
+            with open(lock_path, "w") as fh:
+                try:
+                    fcntl.flock(fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    held.append(False)
+                    fcntl.flock(fh, fcntl.LOCK_UN)
+                except OSError:
+                    held.append(True)
+
+        monkeypatch.setattr(tracer, "_build_and_export_spans", export)
+
+        self._stop(p)
+
+        assert held == [False]
 
     def test_wait_rereads_until_final_response_lands(self, tmp_path, monkeypatch):
         entries = self._subagent_entries()
@@ -5300,7 +5502,60 @@ class TestSubagentLlmSpans:
         p = self._subagent_transcript(tmp_path, self._subagent_entries())
         monkeypatch.setattr(tracer, "_SUBAGENT_FLUSH_TIMEOUT_S", 0)
 
+        assert tracer._wait_for_subagent_transcript(str(p), "never written") is True
+
+    def test_wait_returns_false_when_transcript_never_appears(
+        self,
+        tmp_path,
+        monkeypatch,
+    ):
+        monkeypatch.setattr(tracer, "_SUBAGENT_FLUSH_TIMEOUT_S", 0)
+
+        assert tracer._wait_for_subagent_transcript(str(tmp_path / "x.jsonl"), "") is (
+            False
+        )
+
+    def test_wait_only_reparses_when_transcript_grows(self, tmp_path, monkeypatch):
+        p = self._subagent_transcript(tmp_path, self._subagent_entries())
+        parses = []
+        real = tracer._last_assistant_text
+        monkeypatch.setattr(
+            tracer,
+            "_last_assistant_text",
+            lambda path: parses.append(1) or real(path),
+        )
+        clock = [0.0]
+        sleeps = []
+
+        def fake_sleep(_):
+            sleeps.append(1)
+            if len(sleeps) == 3:
+                clock[0] = tracer._SUBAGENT_FLUSH_TIMEOUT_S + 1
+
+        monkeypatch.setattr(tracer.time, "sleep", fake_sleep)
+        monkeypatch.setattr(tracer.time, "monotonic", lambda: clock[0])
+
         tracer._wait_for_subagent_transcript(str(p), "never written")
+
+        assert len(sleeps) == 3
+        assert len(parses) == 1
+
+    def test_last_assistant_text_without_message_ids(self, tmp_transcript):
+        p = tmp_transcript(
+            [
+                human_entry("Hi"),
+                {
+                    "type": "assistant",
+                    "message": {"content": [{"type": "text", "text": "one"}]},
+                },
+                {
+                    "type": "assistant",
+                    "message": {"content": [{"type": "text", "text": "two"}]},
+                },
+            ],
+        )
+
+        assert tracer._last_assistant_text(str(p)) == "two"
 
     def test_extract_all_turns_continues_past_next_human_message(
         self,
@@ -5341,3 +5596,116 @@ class TestSubagentLlmSpans:
 
         records = tracer._load_agent_span_records(self.SESSION)
         assert [r["span_id"] for r in records] == ["2222" * 4]
+
+    def test_cleanup_removes_stale_pending_agent_context(self):
+        """Subagents share the parent's session, so the pending context an
+        Agent call writes is never claimed and would otherwise pile up."""
+        tracer._write_pending_agent_context(self.SESSION, self.TRACE_ID, "1111" * 4)
+        tracer._write_pending_agent_context(self.SESSION, self.TRACE_ID, "2222" * 4)
+        stale = tracer._PENDING_AGENT_DIR / f"{self.SESSION}_{'1111' * 4}.json"
+        old = stale.stat().st_mtime - tracer.STATE_MAX_AGE_S - 60
+        os.utime(stale, (old, old))
+
+        tracer._cleanup_stale_states()
+
+        assert [p.name for p in tracer._PENDING_AGENT_DIR.iterdir()] == [
+            f"{self.SESSION}_{'2222' * 4}.json",
+        ]
+
+
+# ---------------------------------------------------------------------------
+# isMeta entries — text Claude Code injects as user entries
+# ---------------------------------------------------------------------------
+
+
+class TestMetaEntries:
+    """Claude Code writes slash-command output, image attachment placeholders
+    and task notifications as ``isMeta`` user entries with string content.
+    They are not prompts the user submitted, and an "[Image: …]" placeholder
+    can land between the tool_use entries of one response."""
+
+    def _extract(self, p, **kw):
+        return tracer._extract_llm_spans_for_turn(str(p), 0, "e" * 32, "f" * 16, **kw)
+
+    def test_not_counted_as_human_messages(self, tmp_transcript):
+        p = tmp_transcript(
+            [
+                meta_entry("<local-command-caveat>/model</local-command-caveat>"),
+                human_entry("Hello"),
+                llm_entry("Hi"),
+                meta_entry("[Image: original 2880x1920]"),
+            ],
+        )
+
+        assert tracer._count_human_messages(str(p)) == 1
+        assert tracer._get_latest_human_message(str(p)) == "Hello"
+        assert tracer._get_first_human_message(str(p)) == (
+            "<local-command-caveat>/model</local-command-caveat>"
+        )
+
+    def test_image_placeholder_does_not_split_a_response(self, tmp_transcript):
+        """A response with parallel tool calls is written as one entry per
+        tool_use, each followed by its tool_result; an image a tool returned
+        adds an isMeta placeholder after that result."""
+        p = tmp_transcript(
+            [
+                human_entry("Look at these"),
+                llm_entry_with_id(
+                    "msg_par",
+                    tool_use_blocks=[tool_use_block("Read", "/tmp/a.png")],
+                    input_tokens=100,
+                    output_tokens=40,
+                ),
+                tool_result_entry("t1", "a.png"),
+                meta_entry("[Image: original 2880x1920, displayed at 1440x960]"),
+                llm_entry_with_id(
+                    "msg_par",
+                    tool_use_blocks=[tool_use_block("Read", "/tmp/b.png")],
+                    input_tokens=100,
+                    output_tokens=40,
+                ),
+                tool_result_entry("t2", "b.png"),
+                llm_entry_with_id("msg_next", text="Two screenshots"),
+            ],
+        )
+
+        spans = self._extract(p)
+
+        assert len(spans) == 2
+        assert spans[0]["attributes"]["llm.token_count.prompt"] == 100
+        assert spans[0]["attributes"]["llm.token_count.completion"] == 40
+        # The next call's input is the tool result, not the placeholder
+        assert spans[1]["attributes"]["llm.input_messages.0.message.role"] == "tool"
+        assert spans[1]["attributes"]["llm.input_messages.0.message.content"] == "b.png"
+
+    def test_not_a_turn_boundary(self, tmp_transcript):
+        p = tmp_transcript(
+            [
+                human_entry("Turn 1"),
+                llm_entry_with_id("msg_1", text="One"),
+                meta_entry("[SYSTEM NOTIFICATION] a task finished"),
+                llm_entry_with_id("msg_2", text="Two"),
+                human_entry("Turn 2"),
+                llm_entry_with_id("msg_3", text="Three"),
+            ],
+        )
+
+        spans = self._extract(p)
+
+        assert [s["attributes"]["output.value"] for s in spans] == ["One", "Two"]
+        # With nothing else queued the notification is what the call answered
+        assert spans[1]["attributes"]["llm.input_messages.0.message.content"] == (
+            "[SYSTEM NOTIFICATION] a task finished"
+        )
+        assert spans[1]["attributes"]["llm.input_messages.0.message.role"] == "user"
+
+    def test_injected_prompt_starts_a_subagent_turn(self, tmp_transcript):
+        """A subagent forked by a skill gets its prompt as an isMeta entry."""
+        p = tmp_transcript([meta_entry("Review target: PR 1"), llm_entry("Fine.")])
+
+        assert self._extract(p) == []
+        spans = self._extract(p, all_turns=True)
+        assert len(spans) == 1
+        assert spans[0]["attributes"]["llm.input_messages.0.message.content"] == (
+            "Review target: PR 1"
+        )
