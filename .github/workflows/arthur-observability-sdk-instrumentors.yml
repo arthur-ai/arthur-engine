@@ -117,7 +117,11 @@ jobs:
   build-wheel:
     needs: generate-client
     runs-on: ubuntu-latest
-    container: python:3.12-bullseye
+    container:
+      image: python:3.12-bullseye
+      credentials:
+        username: ${{ secrets.DOCKERHUB_ENTERPRISE_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_ENTERPRISE_TOKEN }}
     env:
       GIT_DEPTH: 100
     steps:
@@ -146,7 +150,11 @@ jobs:
     needs: [discover, build-wheel]
     if: needs.discover.outputs.count != '0'
     runs-on: ubuntu-latest
-    container: python:3.12-bullseye
+    container:
+      image: python:3.12-bullseye
+      credentials:
+        username: ${{ secrets.DOCKERHUB_ENTERPRISE_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_ENTERPRISE_TOKEN }}
     strategy:
       # Every declaration should report, not just the ones before the first
       # failure — the point is a complete picture of what is broken.
@@ -187,7 +195,11 @@ jobs:
     needs: build-wheel
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
-    container: python:3.12-bullseye
+    container:
+      image: python:3.12-bullseye
+      credentials:
+        username: ${{ secrets.DOCKERHUB_ENTERPRISE_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_ENTERPRISE_TOKEN }}
     steps:
       - uses: actions/checkout@v5
         with:
