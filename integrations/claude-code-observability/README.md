@@ -138,7 +138,7 @@ Unit tests cover config discovery, transcript parsing, turn detection, LLM span 
 
 ```bash
 cd integrations/claude-code-observability
-pip install pytest
+pip install pytest -r requirements.txt
 python3 -m pytest test_tracer.py -v
 ```
 
