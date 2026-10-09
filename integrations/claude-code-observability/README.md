@@ -4,7 +4,7 @@ Traces Claude Code sessions as OpenInference spans in Arthur Engine. Every user 
 
 ## How it works
 
-The tracer hooks into Claude Code's `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `PostToolUseFailure`, and `Stop` events. `UserPromptSubmit` fires before Claude starts processing each prompt, giving accurate turn start times and the exact prompt text. Tool failures are captured as error spans so they're visible in traces.
+The tracer hooks into Claude Code's `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `PostToolUseFailure`, `SubagentStop`, and `Stop` events. `UserPromptSubmit` fires before Claude starts processing each prompt, giving accurate turn start times and the exact prompt text. Tool failures are captured as error spans so they're visible in traces.
 
 ```
 Trace: "claude-code-turn"              ← one per user prompt
@@ -13,8 +13,13 @@ Trace: "claude-code-turn"              ← one per user prompt
 ├── TOOL Edit [ERROR]                  ← PostToolUseFailure (failure)
 ├── RETRIEVER WebSearch                ← PostToolUse, web retrieval
 ├── RETRIEVER WebFetch                 ← PostToolUse, web retrieval
-└── AGENT Task                         ← PostToolUse, sub-agent call
+└── AGENT Agent                        ← PostToolUse, sub-agent call
+    └── LLM  claude/claude-haiku-4-5  ← SubagentStop, from the subagent's transcript
 ```
+
+Subagents write their API calls to their own transcript (`<session>/subagents/agent-<id>.jsonl`), so their LLM spans are sent when `SubagentStop` fires, under the Agent span that launched them. The tool calls a subagent makes are nested under that span too. For a subagent running in the background, the Agent span itself is held back and sent at `SubagentStop`, so it covers the subagent's whole run even when that outlasts the turn.
+
+LLM span timing comes from the transcript: a span runs from the entry the call answers (the prompt or tool result, written when the request is sent) to the last response entry written before any tool ran.
 
 Traces are linked to a task in Arthur Engine via the `arthur.task` resource attribute and share a `arthur.session` attribute so you can filter by session across traces.
 
@@ -131,11 +136,11 @@ Set these under **Settings → Secrets and variables → Actions**.
 
 ## Testing
 
-Unit tests cover config discovery, transcript parsing, turn detection, LLM span extraction, all five hook handlers, RETRIEVER span kind routing, and error span emission. No credentials or running services are required — OTLP export is mocked.
+Unit tests cover config discovery, transcript parsing, turn detection, LLM span extraction, all six hook handlers, RETRIEVER span kind routing, and error span emission. No credentials or running services are required — OTLP export is mocked.
 
 ```bash
 cd integrations/claude-code-observability
-pip install pytest
+pip install pytest -r requirements.txt
 python3 -m pytest test_tracer.py -v
 ```
 
@@ -145,7 +150,7 @@ python3 -m pytest test_tracer.py -v
 
 | File | Purpose |
 |------|---------|
-| `claude_code_tracer.py` | Hook script — handles `user_prompt_submit`, `pre_tool`, `post_tool`, `post_tool_failure`, `stop` |
+| `claude_code_tracer.py` | Hook script — handles `user_prompt_submit`, `pre_tool`, `post_tool`, `post_tool_failure`, `subagent_stop`, `stop` |
 | `test_tracer.py` | Unit tests (pytest, no credentials needed) |
 | `install.sh` | Local dev installer |
 | `requirements.txt` | Python dependencies |
