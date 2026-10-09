@@ -1,8 +1,20 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Accept an optional base branch argument (default: dev)
-BASE_BRANCH="${1:-dev}"
+# Accept an optional base branch argument (default: dev) and a non-interactive
+# flag. CI=true (set by GitHub Actions) also implies non-interactive.
+BASE_BRANCH=dev
+NON_INTERACTIVE="${UPDATE_DOCS_NON_INTERACTIVE:-${CI:-false}}"
+for arg in "$@"; do
+  case "$arg" in
+    --non-interactive|--yes|-y) NON_INTERACTIVE=true ;;
+    *) BASE_BRANCH="$arg" ;;
+  esac
+done
+case "$NON_INTERACTIVE" in
+  true|1|yes) NON_INTERACTIVE=true ;;
+  *) NON_INTERACTIVE=false ;;
+esac
 
 # Check if the branch is up-to-date with its remote (only for local branches)
 if git rev-parse --verify "$BASE_BRANCH" &>/dev/null && \
@@ -16,10 +28,17 @@ elif git rev-parse --verify "$BASE_BRANCH" &>/dev/null && \
     BEHIND=$(git rev-list --count "$BASE_BRANCH..origin/$BASE_BRANCH")
     if [ "$BEHIND" -gt 0 ]; then
       echo "Warning: '$BASE_BRANCH' is $BEHIND commit(s) behind 'origin/$BASE_BRANCH'."
-      echo "  [f] Fetch origin/$BASE_BRANCH and continue"
-      echo "  [c] Continue anyway"
-      echo "  [s] Skip / cancel"
-      read -r -p "Choice [f/c/s]: " CHOICE
+      if [ "$NON_INTERACTIVE" = true ]; then
+        # Fetch: the diff has to be taken against the real base, and skipping
+        # would silently produce no doc update.
+        echo "Non-interactive: fetching origin/$BASE_BRANCH."
+        CHOICE=f
+      else
+        echo "  [f] Fetch origin/$BASE_BRANCH and continue"
+        echo "  [c] Continue anyway"
+        echo "  [s] Skip / cancel"
+        read -r -p "Choice [f/c/s]: " CHOICE
+      fi
       case "$CHOICE" in
         f|F)
           echo "Fetching origin/$BASE_BRANCH..."
