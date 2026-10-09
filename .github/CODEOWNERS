@@ -22,9 +22,12 @@
 /integrations/claude-code-observability/claude_code_tracer.py     @arthur-ai/arthur-engineers
 # CVE suppressions applied to release vulnerability reports.
 /security/vex/**                                                  @arthur-ai/arthur-engineers
-# Build/codegen for the wheel the release workflow publishes to PyPI.
+# Build/codegen for the wheel the release workflow publishes to PyPI. The
+# release job runs generate_openapi_client.sh from arthur-observability-sdk/,
+# so openapitools.json there is the one that pins the generator it downloads.
 /arthur-observability-sdk/scripts/build_sdk_wheel.sh              @arthur-ai/arthur-engineers
 /arthur-observability-sdk/scripts/generate_openapi_client.sh      @arthur-ai/arthur-engineers
+/arthur-observability-sdk/openapitools.json                       @arthur-ai/arthur-engineers
 # Generates the genai_client shipped inside the ml-engine release image.
 /ml-engine/scripts/openapitools.json                              @arthur-ai/arthur-engineers
 # Release image build: sends GITLAB_UNIFY_FRONTEND_TOKEN to the registry
@@ -38,14 +41,20 @@
 /deployment/docker-compose/**                                     @arthur-ai/arthur-engineers
 /deployment/model-upload/**                                       @arthur-ai/arthur-engineers
 /genai-engine/dockerfile                                          @arthur-ai/arthur-engineers
+# Installed into the GPU release image by the dockerfile; Renovate never edits
+# it, so gating it costs nothing.
+/genai-engine/requirements-gpu.txt                                @arthur-ai/arthur-engineers
 /genai-engine/src/docker-entrypoint.sh                            @arthur-ai/arthur-engineers
 /genai-engine/src/gunicorn.conf.py                                @arthur-ai/arthur-engineers
 /ml-engine/Dockerfile                                             @arthur-ai/arthur-engineers
-# ml-engine container ENTRYPOINT; builds the platform OAuth session.
+# ml-engine container ENTRYPOINT.
 /ml-engine/src/ml_engine/job_agent.py                             @arthur-ai/arthur-engineers
 # Customers' Claude agents fetch these skills live from the repo and run them
 # (shell commands, platform client secret / token handling).
 /integrations/claude-code-skills/**                               @arthur-ai/arthur-engineers
+# Customers paste dist/collect.sh into Jamf as a Script, or install it with the
+# LaunchDaemon in deploy/, and it runs as root on every managed Mac.
+/integrations/endpoint-ai-discovery/**                            @arthur-ai/arthur-engineers
 
 # --- auth: genai-engine ---
 /genai-engine/src/auth/**                                         @arthur-ai/arthur-engineers
@@ -74,7 +83,9 @@
 /genai-engine/tests/unit/utils/test_trace_route_permissions.py    @arthur-ai/arthur-engineers
 
 # --- auth: ml-engine ---
-# Second platform OAuth session; passes the genai-engine internal API key on.
+# Builds the platform OAuth session: client secret and the SSL-verify switch.
+/ml-engine/src/ml_engine/tools/platform_api_client.py             @arthur-ai/arthur-engineers
+# Passes the genai-engine internal API key on to job executors.
 /ml-engine/src/ml_engine/job_executor.py                          @arthur-ai/arthur-engineers
 
 # --- guardrails ---
@@ -83,6 +94,9 @@
 # benchmarking before they ship.
 /genai-engine/src/scorer/**                                       @arthur-ai/arthur-engineers
 /genai-engine/src/rules_engine.py                                 @arthur-ai/arthur-engineers
+# Chooses and loads the guardrail models; swapping a model id changes results
+# as much as a scorer edit does.
+/genai-engine/src/utils/model_load.py                             @arthur-ai/arthur-engineers
 
 # --- migrations ---
 /genai-engine/alembic/**                                          @arthur-ai/arthur-engineers
@@ -96,6 +110,9 @@
 /genai-engine/src/db_models/secret_storage_models.py              @arthur-ai/arthur-engineers
 /genai-engine/src/repositories/secrets_repository.py              @arthur-ai/arthur-engineers
 /genai-engine/src/repositories/model_provider_repository.py       @arthur-ai/arthur-engineers
+# RAG provider API keys go through the same encrypted secret storage.
+/genai-engine/src/repositories/rag_providers_repository.py        @arthur-ai/arthur-engineers
+/genai-engine/src/db_models/rag_provider_models.py                @arthur-ai/arthur-engineers
 /genai-engine/src/routers/v1/secrets_routes.py                    @arthur-ai/arthur-engineers
 /genai-engine/.env                                                @arthur-ai/arthur-engineers
 # .env.templates, Helm secret templates and CloudFormation secrets-manager
@@ -108,6 +125,9 @@
 /ml-engine/src/ml_engine/connectors/**                            @arthur-ai/arthur-engineers
 /ml-engine/src/ml_engine/tools/aws_credentials.py                 @arthur-ai/arthur-engineers
 /ml-engine/src/ml_engine/tools/connector_constructor.py           @arthur-ai/arthur-engineers
+# Scrub credentials from job logs before they are sent to the Platform.
+/ml-engine/src/ml_engine/log_redaction.py                         @arthur-ai/arthur-engineers
+/ml-engine/src/ml_engine/job_log_exporter.py                      @arthur-ai/arthur-engineers
 
 # --- un-gated overrides (must stay last) ---
 # Renovate lockfile maintenance; not deploy config.
