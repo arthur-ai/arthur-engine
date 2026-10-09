@@ -5,6 +5,7 @@ Run with:  python3 -m pytest integrations/claude-code-observability/test_tracer.
 """
 
 import json
+import os
 import sys
 from pathlib import Path
 from unittest.mock import MagicMock
@@ -2818,6 +2819,20 @@ class TestMain:
             tracer.main()
         assert called[0]["session_id"] == "main_s5"
 
+    def test_dispatches_subagent_stop(self, monkeypatch):
+        monkeypatch.setattr(sys, "argv", ["prog", "subagent_stop"])
+        monkeypatch.setattr(sys.stdin, "read", lambda: '{"session_id": "main_s6"}')
+        monkeypatch.setattr(tracer, "discover_config", lambda: self.CONFIG)
+        called = []
+        monkeypatch.setattr(
+            tracer,
+            "handle_subagent_stop",
+            lambda d, c: called.append(d),
+        )
+        with pytest.raises(SystemExit):
+            tracer.main()
+        assert called[0]["session_id"] == "main_s6"
+
     def test_unknown_event_does_not_raise(self, monkeypatch):
         monkeypatch.setattr(sys, "argv", ["prog", "bogus_event"])
         monkeypatch.setattr(sys.stdin, "read", lambda: "{}")
@@ -2915,9 +2930,23 @@ class TestExtractLlmSpansMessageIdGrouping:
         assert attrs["output.value"] == "Hi there"
         assert attrs["output.mime_type"] == "text/plain"
 
-    def test_output_tokens_summed_across_entries(self, tmp_transcript):
-        # The thinking entry contributes 5 tokens, text entry contributes 15.
-        # Total completion must be 20, not 15 (last entry only) or 5 (first only).
+    def test_output_tokens_not_summed_across_entries(self, tmp_transcript):
+        # Every entry carries the usage of the whole response: main-session
+        # entries repeat the final count, so summing counts it once per entry.
+        p = tmp_transcript(
+            [
+                human_entry("Hello"),
+                llm_entry_with_id("msg_abc", text="", output_tokens=15),
+                llm_entry_with_id("msg_abc", text="Answer", output_tokens=15),
+            ],
+        )
+        spans = self._extract(p)
+        assert len(spans) == 1
+        assert spans[0]["attributes"]["llm.token_count.completion"] == 15
+
+    def test_output_tokens_from_final_running_count(self, tmp_transcript):
+        # Subagent entries written while the response streams carry a running
+        # count; the last one is the total.
         p = tmp_transcript(
             [
                 human_entry("Hello"),
@@ -2927,7 +2956,40 @@ class TestExtractLlmSpansMessageIdGrouping:
         )
         spans = self._extract(p)
         assert len(spans) == 1
-        assert spans[0]["attributes"]["llm.token_count.completion"] == 20
+        assert spans[0]["attributes"]["llm.token_count.completion"] == 15
+
+    def test_parallel_tool_calls_interleaved_with_results_produce_one_span(
+        self,
+        tmp_transcript,
+    ):
+        # One response with two tool_use blocks is written as two entries, each
+        # followed by its tool_result.  The results must not split the response.
+        p = tmp_transcript(
+            [
+                human_entry("Hello"),
+                llm_entry_with_id(
+                    "msg_par",
+                    tool_use_blocks=[tool_use_block("Read", "/tmp/a")],
+                    input_tokens=100,
+                    output_tokens=40,
+                ),
+                tool_result_entry("t1", "a"),
+                llm_entry_with_id(
+                    "msg_par",
+                    tool_use_blocks=[tool_use_block("Read", "/tmp/b")],
+                    input_tokens=100,
+                    output_tokens=40,
+                ),
+                tool_result_entry("t2", "b"),
+                llm_entry_with_id("msg_next", text="Both read"),
+            ],
+        )
+        spans = self._extract(p)
+        assert len(spans) == 2
+        attrs = spans[0]["attributes"]
+        assert attrs["llm.token_count.completion"] == 40
+        assert len(json.loads(attrs["output.value"])) == 2
+        assert spans[1]["attributes"]["llm.input_messages.0.message.content"] == "b"
 
     def test_prompt_tokens_taken_from_first_entry_only(self, tmp_transcript):
         # input_tokens=100 appears on both entries (duplicated by Claude Code).
@@ -2981,7 +3043,7 @@ class TestExtractLlmSpansMessageIdGrouping:
         spans = self._extract(p)
         assert len(spans) == 1
         assert spans[0]["attributes"]["output.value"] == "Hello world"
-        assert spans[0]["attributes"]["llm.token_count.completion"] == 12
+        assert spans[0]["attributes"]["llm.token_count.completion"] == 5
 
     def test_tool_use_entry_followed_by_text_entry_same_id(self, tmp_transcript):
         # text entry takes precedence over tool_use when both present in group
@@ -2998,7 +3060,7 @@ class TestExtractLlmSpansMessageIdGrouping:
         attrs = spans[0]["attributes"]
         assert attrs["output.mime_type"] == "text/plain"
         assert attrs["output.value"] == "Here is the file"
-        assert attrs["llm.token_count.completion"] == 18
+        assert attrs["llm.token_count.completion"] == 10
 
 
 # ---------------------------------------------------------------------------
@@ -3764,14 +3826,14 @@ class TestOpenInferenceSpecCompliance:
         assert "llm.invocation_parameters" not in attrs
 
     def test_completion_details_reasoning_intentionally_absent(self, tmp_transcript):
-        # The Claude Code transcript provides per-entry output_tokens but does not
-        # separate thinking-block tokens from text tokens, so
+        # Every transcript entry carries the usage of the whole response, which
+        # does not separate thinking-block tokens from text tokens, so
         # llm.token_count.completion_details.reasoning cannot be populated.
         p = tmp_transcript(
             [
                 human_entry("Think hard"),
-                llm_entry_with_id("msg_et", text="", output_tokens=50),
-                llm_entry_with_id("msg_et", text="Answer", output_tokens=20),
+                llm_entry_with_id("msg_et", text="", output_tokens=70),
+                llm_entry_with_id("msg_et", text="Answer", output_tokens=70),
             ],
         )
         attrs = self._extract(p)[0]["attributes"]
@@ -4967,3 +5029,315 @@ class TestHandleStopContextContinuation:
             f"Expected LLM spans from both the stale and continuation turns, "
             f"got {len(llm_spans)}"
         )
+
+
+# ---------------------------------------------------------------------------
+# handle_subagent_stop — subagent LLM spans
+# ---------------------------------------------------------------------------
+
+
+class TestSubagentLlmSpans:
+    """Subagents write their API calls to their own transcript
+    (``<session>/subagents/agent-<id>.jsonl``), never to the session transcript.
+    handle_subagent_stop emits them under the Agent span handle_pre_tool
+    pre-allocated, in that turn's trace.
+    """
+
+    CONFIG = {"api_key": "k", "task_id": "t", "endpoint": "https://x.example.com"}
+    SESSION = "sub-sess"
+    TRACE_ID = "bbbb" * 8
+    ROOT_ID = "aaaa" * 4
+    AGENT_SPAN_ID = "cccc" * 4
+    PROMPT = "explore the repo"
+
+    @pytest.fixture(autouse=True)
+    def _state_dir(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(tracer, "STATE_DIR", tmp_path / "tracer")
+        monkeypatch.setattr(
+            tracer,
+            "_PENDING_AGENT_DIR",
+            tmp_path / "tracer" / "pending_agent",
+        )
+
+    @pytest.fixture
+    def exported(self, monkeypatch):
+        spans = []
+        monkeypatch.setattr(
+            tracer,
+            "_build_and_export_spans",
+            lambda **kw: spans.extend(kw["span_records"]),
+        )
+        return spans
+
+    def _subagent_transcript(
+        self,
+        tmp_path,
+        entries,
+        agent_id="a1",
+        tool_use_id=None,
+    ) -> Path:
+        sub_dir = tmp_path / "proj" / self.SESSION / "subagents"
+        sub_dir.mkdir(parents=True, exist_ok=True)
+        if tool_use_id:
+            (sub_dir / f"agent-{agent_id}.meta.json").write_text(
+                json.dumps({"agentType": "Explore", "toolUseId": tool_use_id}),
+            )
+        return _make_transcript(entries, sub_dir / f"agent-{agent_id}.jsonl")
+
+    def _subagent_entries(self):
+        return [
+            human_entry(self.PROMPT),
+            llm_entry(
+                tool_use_blocks=[tool_use_block("Grep", "def main")],
+                model="claude-haiku-4-5",
+                ts="2026-01-01T00:00:01.000000+00:00",
+            ),
+            tool_result_entry("toolu_x", "main.py:1"),
+            llm_entry(
+                "Found it.",
+                model="claude-haiku-4-5",
+                ts="2026-01-01T00:00:03.000000+00:00",
+            ),
+        ]
+
+    def _register(self, span_id=None, tool_use_id="toolu_agent", prompt=None):
+        tracer._register_agent_span(
+            self.SESSION,
+            self.TRACE_ID,
+            span_id or self.AGENT_SPAN_ID,
+            tool_use_id,
+            self.PROMPT if prompt is None else prompt,
+        )
+
+    def _stop(self, transcript_path, agent_id="a1", **extra):
+        tracer.handle_subagent_stop(
+            {
+                "session_id": self.SESSION,
+                "agent_id": agent_id,
+                "agent_transcript_path": str(transcript_path),
+                **extra,
+            },
+            self.CONFIG,
+        )
+
+    def _save_turn_state(self):
+        tracer._save_state(
+            self.SESSION,
+            {
+                "session_id": self.SESSION,
+                "username": "u",
+                "current_trace": {
+                    "trace_id": self.TRACE_ID,
+                    "root_span_id": self.ROOT_ID,
+                    "turn_start_ns": 1_000_000_000,
+                    "human_count_at_start": 0,
+                },
+            },
+        )
+
+    def test_pre_tool_registers_agent_span(self, monkeypatch):
+        monkeypatch.setattr(
+            tracer,
+            "_get_cached_transcript_path",
+            lambda *a, **kw: None,
+        )
+        self._save_turn_state()
+        tracer.handle_pre_tool(
+            {
+                "session_id": self.SESSION,
+                "tool_name": "Agent",
+                "tool_input": {"prompt": self.PROMPT, "subagent_type": "Explore"},
+                "tool_use_id": "toolu_agent",
+            },
+            self.CONFIG,
+        )
+
+        pending = tracer._load_state(self.SESSION)["pending_tools"]
+        (entry,) = pending.values()
+        (record,) = tracer._load_agent_span_records(self.SESSION)
+        assert record["span_id"] == entry["pre_allocated_span_id"]
+        assert record["trace_id"] == self.TRACE_ID
+        assert record["tool_use_id"] == "toolu_agent"
+        assert record["agent_prompt"] == self.PROMPT
+
+    def test_emits_llm_spans_under_agent_span(self, tmp_path, exported):
+        """No session state exists, as after handle_stop deleted it at the end
+        of the turn: a background subagent finishing later is still traced."""
+        self._register()
+        p = self._subagent_transcript(
+            tmp_path,
+            self._subagent_entries(),
+            tool_use_id="toolu_agent",
+        )
+
+        self._stop(p)
+
+        assert len(exported) == 2
+        for span in exported:
+            assert span["trace_id_hex"] == self.TRACE_ID
+            assert span["parent_span_id_hex"] == self.AGENT_SPAN_ID
+            assert span["attributes"]["openinference.span.kind"] == "LLM"
+            assert span["attributes"]["llm.model_name"] == "claude-haiku-4-5"
+        assert exported[0]["attributes"]["llm.input_messages.0.message.content"] == (
+            self.PROMPT
+        )
+        assert exported[1]["attributes"]["output.value"] == "Found it."
+
+    def test_matches_by_prompt_without_tool_use_id(self, tmp_path, exported):
+        """Older Claude Code versions send no tool_use_id and write no meta.json."""
+        self._register(tool_use_id="")
+        p = self._subagent_transcript(tmp_path, self._subagent_entries())
+
+        self._stop(p)
+
+        assert len(exported) == 2
+        assert {s["parent_span_id_hex"] for s in exported} == {self.AGENT_SPAN_ID}
+
+    def test_parallel_agents_with_same_prompt_matched_by_tool_use_id(
+        self,
+        tmp_path,
+        exported,
+    ):
+        """The newest record would win a prompt match; the tool_use_id must win."""
+        self._register(span_id="1111" * 4, tool_use_id="toolu_first")
+        self._register(span_id="2222" * 4, tool_use_id="toolu_second")
+        p = self._subagent_transcript(
+            tmp_path,
+            self._subagent_entries(),
+            tool_use_id="toolu_first",
+        )
+
+        self._stop(p)
+
+        assert {s["parent_span_id_hex"] for s in exported} == {"1111" * 4}
+
+    def test_falls_back_to_turn_root_without_agent_span(self, tmp_path, exported):
+        """Subagents forked by other tools (e.g. Skill) have no Agent span."""
+        self._save_turn_state()
+        p = self._subagent_transcript(
+            tmp_path,
+            self._subagent_entries(),
+            tool_use_id="toolu_skill",
+        )
+
+        self._stop(p)
+
+        assert len(exported) == 2
+        assert {s["parent_span_id_hex"] for s in exported} == {self.ROOT_ID}
+        assert {s["trace_id_hex"] for s in exported} == {self.TRACE_ID}
+
+    def test_no_parent_emits_nothing(self, tmp_path, exported):
+        p = self._subagent_transcript(tmp_path, self._subagent_entries())
+
+        self._stop(p)
+
+        assert exported == []
+
+    def test_continuation_emits_only_new_spans(self, tmp_path, exported):
+        """SendMessage appends a turn to the same transcript and the subagent
+        stops again; only the new LLM call is emitted, under the same span."""
+        self._register()
+        entries = self._subagent_entries()
+        p = self._subagent_transcript(tmp_path, entries, tool_use_id="toolu_agent")
+        self._stop(p)
+
+        _make_transcript(
+            entries
+            + [
+                human_entry("also check the tests"),
+                llm_entry("Tests too.", ts="2026-01-01T00:01:00.000000+00:00"),
+            ],
+            p,
+        )
+        self._stop(p)
+
+        assert len(exported) == 3
+        assert exported[2]["attributes"]["output.value"] == "Tests too."
+        assert exported[2]["parent_span_id_hex"] == self.AGENT_SPAN_ID
+
+    def test_finds_transcript_from_session_transcript_path(self, tmp_path, exported):
+        self._register()
+        self._subagent_transcript(
+            tmp_path,
+            self._subagent_entries(),
+            tool_use_id="toolu_agent",
+        )
+
+        tracer.handle_subagent_stop(
+            {
+                "session_id": self.SESSION,
+                "agent_id": "a1",
+                "transcript_path": str(tmp_path / "proj" / f"{self.SESSION}.jsonl"),
+            },
+            self.CONFIG,
+        )
+
+        assert len(exported) == 2
+
+    def test_missing_transcript_emits_nothing(self, tmp_path, exported):
+        self._register()
+
+        self._stop(tmp_path / "nope.jsonl")
+
+        assert exported == []
+
+    def test_wait_rereads_until_final_response_lands(self, tmp_path, monkeypatch):
+        entries = self._subagent_entries()
+        p = self._subagent_transcript(tmp_path, entries[:-1])
+        sleeps = []
+
+        def fake_sleep(_):
+            sleeps.append(1)
+            _make_transcript(entries, p)
+
+        monkeypatch.setattr(tracer.time, "sleep", fake_sleep)
+
+        tracer._wait_for_subagent_transcript(str(p), "Found it.\n")
+
+        assert sleeps == [1]
+
+    def test_wait_gives_up_after_timeout(self, tmp_path, monkeypatch):
+        p = self._subagent_transcript(tmp_path, self._subagent_entries())
+        monkeypatch.setattr(tracer, "_SUBAGENT_FLUSH_TIMEOUT_S", 0)
+
+        tracer._wait_for_subagent_transcript(str(p), "never written")
+
+    def test_extract_all_turns_continues_past_next_human_message(
+        self,
+        tmp_transcript,
+    ):
+        p = tmp_transcript(
+            [
+                human_entry("first"),
+                llm_entry("one"),
+                human_entry("second"),
+                llm_entry("two"),
+            ],
+        )
+
+        one_turn = tracer._extract_llm_spans_for_turn(str(p), 0, "t" * 32, "r" * 16)
+        all_turns = tracer._extract_llm_spans_for_turn(
+            str(p),
+            0,
+            "t" * 32,
+            "r" * 16,
+            all_turns=True,
+        )
+
+        assert len(one_turn) == 1
+        assert [s["attributes"]["output.value"] for s in all_turns] == ["one", "two"]
+        assert all_turns[1]["attributes"]["llm.input_messages.0.message.content"] == (
+            "second"
+        )
+
+    def test_cleanup_removes_stale_agent_span_records(self):
+        self._register(span_id="1111" * 4)
+        self._register(span_id="2222" * 4)
+        stale = tracer._agent_span_path(self.SESSION, "1111" * 4)
+        old = stale.stat().st_mtime - tracer.STATE_MAX_AGE_S - 60
+        os.utime(stale, (old, old))
+
+        tracer._cleanup_stale_states()
+
+        records = tracer._load_agent_span_records(self.SESSION)
+        assert [r["span_id"] for r in records] == ["2222" * 4]

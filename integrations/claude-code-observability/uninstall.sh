@@ -55,6 +55,7 @@ for event, arg in [
     ("PreToolUse", "pre_tool"),
     ("PostToolUse", "post_tool"),
     ("PostToolUseFailure", "post_tool_failure"),
+    ("SubagentStop", "subagent_stop"),
     ("Stop", "stop"),
 ]:
     cmd = f"{cmd_prefix} {arg}"

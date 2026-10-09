@@ -14,6 +14,7 @@ Hook events:
   pre_tool           — record current tool start (fallback trace creation if UserPromptSubmit unavailable)
   post_tool          — send a TOOL/RETRIEVER/AGENT span for the completed tool call
   post_tool_failure  — send an error TOOL/RETRIEVER/AGENT span for a failed tool call
+  subagent_stop      — send the subagent's LLM spans under its Agent span
   stop               — complete the current trace and clean up session state
 
 Config priority (highest first):
@@ -132,7 +133,7 @@ def _delete_state(session_id: str) -> None:
 def _cleanup_stale_states() -> None:
     try:
         now = time.time()
-        for p in STATE_DIR.glob("*.json"):
+        for p in [*STATE_DIR.glob("*.json"), *_agent_span_dir().glob("*.json")]:
             if now - p.stat().st_mtime > STATE_MAX_AGE_S:
                 p.unlink()
     except Exception as e:
@@ -241,6 +242,157 @@ def _claim_pending_agent_context(prompt: str = "") -> Optional[dict]:
         except FileNotFoundError:
             continue
     return None
+
+
+# ---------------------------------------------------------------------------
+# Agent span registry — links a subagent transcript back to its Agent span
+# ---------------------------------------------------------------------------
+
+# How long handle_subagent_stop waits for the subagent's final response to reach
+# its transcript, which Claude Code writes asynchronously.
+_SUBAGENT_FLUSH_TIMEOUT_S = 2.0
+
+
+def _agent_span_dir() -> Path:
+    # Kept apart from the session state file, which handle_stop deletes at the
+    # end of every turn: a background subagent can finish after its turn ended.
+    return STATE_DIR / "agent_spans"
+
+
+def _agent_span_path(session_id: str, key: str) -> Path:
+    agent_dir = _agent_span_dir()
+    agent_dir.mkdir(parents=True, exist_ok=True)
+    path = (agent_dir / f"{session_id}_{key}.json").resolve()
+    if not path.is_relative_to(agent_dir.resolve()):
+        raise ValueError(f"Invalid agent span key: {session_id!r}, {key!r}")
+    return path
+
+
+def _save_agent_span_record(record: dict) -> None:
+    try:
+        path = _agent_span_path(record["session_id"], record["key"])
+        path.write_text(json.dumps(record))
+    except Exception as e:
+        log.warning("Failed to save agent span record %s: %s", record.get("key"), e)
+
+
+def _load_agent_span_records(session_id: str) -> list[dict]:
+    records = []
+    for p in _agent_span_dir().glob(f"{session_id}_*.json"):
+        try:
+            record = json.loads(p.read_text())
+        except Exception:
+            continue
+        if record.get("session_id") == session_id:
+            records.append(record)
+    return records
+
+
+def _register_agent_span(
+    session_id: str,
+    trace_id: str,
+    span_id: str,
+    tool_use_id: str,
+    agent_prompt: str,
+) -> None:
+    """Record the trace and pre-allocated span of an Agent/Task tool call.
+
+    Called from handle_pre_tool.  handle_subagent_stop looks the record up to
+    parent the subagent's LLM spans under the Agent span.
+    """
+    _save_agent_span_record(
+        {
+            "session_id": session_id,
+            "key": span_id,
+            "trace_id": trace_id,
+            "span_id": span_id,
+            "tool_use_id": tool_use_id,
+            "agent_prompt": agent_prompt,
+            "agent_id": "",
+            "created_ns": time.time_ns(),
+            "emitted_llm_span_count": 0,
+        },
+    )
+
+
+def _subagent_tool_use_id(transcript_path: str) -> str:
+    """Return the id of the tool call that spawned a subagent, if recorded.
+
+    Claude Code writes ``agent-<id>.meta.json`` next to the subagent transcript;
+    its ``toolUseId`` is the parent's Agent tool_use id.
+    """
+    try:
+        meta_path = Path(transcript_path).with_suffix(".meta.json")
+        return json.loads(meta_path.read_text()).get("toolUseId", "") or ""
+    except Exception:
+        return ""
+
+
+def _resolve_subagent_parent(
+    session_id: str,
+    agent_id: str,
+    transcript_path: str,
+) -> Optional[dict]:
+    """Return the agent span record a subagent's LLM spans belong under.
+
+    Tries, in order:
+      1. A record this subagent already claimed — it stops again each time
+         SendMessage continues it.
+      2. The Agent/Task call that spawned it, by tool_use_id, then by prompt.
+         Prompts are only compared when the tool_use_ids can't be, so parallel
+         agents given the same prompt can't claim each other's span.
+      3. The current turn's CHAIN root.  Subagents forked by other tools (e.g.
+         Skill) have no Agent span.
+
+    Returns None when nothing applies, e.g. no record and the turn has ended.
+    """
+    records = _load_agent_span_records(session_id)
+    for record in records:
+        if record.get("agent_id") == agent_id:
+            return record
+
+    unclaimed = sorted(
+        (r for r in records if not r.get("agent_id")),
+        key=lambda r: r.get("created_ns", 0),
+        reverse=True,
+    )
+    tool_use_id = _subagent_tool_use_id(transcript_path)
+    prompt = _get_first_human_message(transcript_path)
+
+    match = None
+    if tool_use_id:
+        match = next(
+            (r for r in unclaimed if r.get("tool_use_id") == tool_use_id),
+            None,
+        )
+    if match is None and prompt:
+        match = next(
+            (
+                r
+                for r in unclaimed
+                if r.get("agent_prompt") == prompt
+                and not (tool_use_id and r.get("tool_use_id"))
+            ),
+            None,
+        )
+
+    if match is None:
+        current_trace = _load_state(session_id).get("current_trace")
+        if not current_trace:
+            return None
+        match = {
+            "session_id": session_id,
+            "key": agent_id,
+            "trace_id": current_trace["trace_id"],
+            "span_id": current_trace["root_span_id"],
+            "tool_use_id": tool_use_id,
+            "agent_prompt": prompt,
+            "created_ns": time.time_ns(),
+            "emitted_llm_span_count": 0,
+        }
+
+    match["agent_id"] = agent_id
+    return match
 
 
 @contextlib.contextmanager
@@ -392,6 +544,71 @@ def _count_human_messages(transcript_path: str) -> int:
         return 0
 
 
+def _find_subagent_transcript_path(data: dict) -> Optional[str]:
+    """Locate a subagent's transcript JSONL file from a SubagentStop payload.
+
+    Prefers ``agent_transcript_path``, falling back to the documented layout
+    ``<session transcript without .jsonl>/subagents/agent-<agent_id>.jsonl``.
+    """
+    tp = data.get("agent_transcript_path", "")
+    if tp and Path(tp).exists():
+        return tp
+
+    session_tp = data.get("transcript_path", "")
+    agent_id = data.get("agent_id", "")
+    if session_tp and agent_id:
+        name = agent_id if agent_id.startswith("agent-") else f"agent-{agent_id}"
+        path = Path(session_tp).with_suffix("") / "subagents" / f"{name}.jsonl"
+        if path.exists():
+            return str(path)
+    return None
+
+
+def _last_assistant_text(transcript_path: str) -> str:
+    """Return the text of the transcript's last API response (by message.id)."""
+    last_id = None
+    parts: list[str] = []
+    try:
+        for line in Path(transcript_path).read_text().splitlines():
+            if not line.strip():
+                continue
+            try:
+                entry = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if entry.get("type") != "assistant":
+                continue
+            msg = entry.get("message", {})
+            if msg.get("id") != last_id:
+                last_id = msg.get("id")
+                parts = []
+            for block in msg.get("content", []):
+                if isinstance(block, dict) and block.get("type") == "text":
+                    parts.append(block.get("text", ""))
+    except Exception:
+        return ""
+    return "".join(parts)
+
+
+def _wait_for_subagent_transcript(transcript_path: str, last_message: str) -> None:
+    """Wait until a subagent's final response has reached its transcript.
+
+    Claude Code writes transcripts asynchronously, so at SubagentStop the last
+    response may not be on disk yet.  No later hook reads this transcript, so a
+    response missing here would never be emitted.  ``last_message`` is the
+    hook's ``last_assistant_message``; whitespace is ignored when comparing.
+    """
+    expected = "".join(last_message.split())
+    if not expected:
+        return
+    deadline = time.monotonic() + _SUBAGENT_FLUSH_TIMEOUT_S
+    while expected not in "".join(_last_assistant_text(transcript_path).split()):
+        if time.monotonic() >= deadline:
+            log.debug("Final response not found in %s", transcript_path)
+            return
+        time.sleep(0.1)
+
+
 def _iso_to_ns(ts: str) -> int:
     """Convert ISO 8601 timestamp string to nanoseconds."""
     try:
@@ -423,6 +640,7 @@ def _extract_llm_spans_for_turn(
     human_count_at_start: int,
     trace_id_hex: str,
     root_span_id_hex: str,
+    all_turns: bool = False,
 ) -> list[dict]:
     """
     Extract LLM spans from transcript entries that belong to this turn.
@@ -430,7 +648,9 @@ def _extract_llm_spans_for_turn(
     A turn starts after the `human_count_at_start`-th human message and ends
     at the next human message (or end of transcript).  Scanning stops as soon
     as a second human message is seen while in_turn is True — those subsequent
-    turns belong to their own traces.
+    turns belong to their own traces.  With ``all_turns`` scanning continues
+    to the end instead: a subagent transcript gains a turn each time
+    SendMessage continues it, and all of them stay under the one Agent span.
     Uses actual timestamps from the transcript.
 
     For each LLM call we use the immediately-preceding message as the input:
@@ -442,11 +662,13 @@ def _extract_llm_spans_for_turn(
 
     **Grouping by message.id**
 
-    Claude Code (with extended thinking enabled) splits a single API response
-    across multiple consecutive transcript entries that share the same
-    ``message.id`` — one entry per block type (thinking / text / tool_use).
-    Each entry duplicates the input-side token counts.  We MUST group these
-    entries and emit exactly one LLM span per API response, otherwise:
+    Claude Code splits a single API response across multiple transcript
+    entries that share the same ``message.id`` — one entry per content block
+    (thinking / text / tool_use).  With parallel tool calls each tool_use entry
+    is followed by its tool_result, so the entries of one response are
+    interleaved with tool results.  Every entry carries the usage of the whole
+    response.  We MUST group these entries and emit exactly one LLM span per
+    API response, otherwise:
 
       * Prompt tokens are reported N× too high (once per entry).
       * "Thinking-only" entries produce empty, noisy spans.
@@ -456,10 +678,12 @@ def _extract_llm_spans_for_turn(
 
     Grouping strategy:
       - Input tokens  → first entry in the group (avoids duplication).
-      - Output tokens → sum across all entries (each entry captures the tokens
-                        for its own block).
+      - Output tokens → max across entries.  Main-session entries all repeat
+                        the final count; subagent entries written while the
+                        response streams carry a running count, so the last
+                        is the total.
       - Text output   → concatenate all ``text`` blocks from any entry.
-      - Tool output   → JSON of tool_use blocks from the last entry (fall-back
+      - Tool output   → JSON of the tool_use blocks from all entries (fall-back
                         when no text is present).
       - Timestamp     → first entry.
     """
@@ -593,7 +817,7 @@ def _extract_llm_spans_for_turn(
             group_stop_reason = ""
             group_input_snapshot = {}
 
-        for line in lines:
+        for line_no, line in enumerate(lines):
             if not line.strip():
                 continue
             try:
@@ -607,7 +831,7 @@ def _extract_llm_spans_for_turn(
             if _is_human_message(entry):
                 _flush_group()
                 human_count += 1
-                if in_turn:
+                if in_turn and not all_turns:
                     # Next user turn has started — stop here.  Its spans belong
                     # to a different trace.
                     break
@@ -627,8 +851,9 @@ def _extract_llm_spans_for_turn(
                 continue
 
             # ── Tool result (user message with list content) ──────────────────
+            # Doesn't end the current group: with parallel tool calls the same
+            # response's next tool_use entry follows this result.
             if entry_type == "user":
-                _flush_group()
                 content = entry.get("message", {}).get("content", "")
                 if isinstance(content, list):
                     text = _tool_result_text(content)
@@ -657,7 +882,8 @@ def _extract_llm_spans_for_turn(
             if not usage:
                 continue
 
-            msg_id = msg.get("id", "") or id(entry)  # fall back to object id
+            # Fall back to the line number: unlike id(entry), it is never reused.
+            msg_id = msg.get("id", "") or f"line-{line_no}"
             model = msg.get("model", "claude")
             content_blocks = msg.get("content", [])
             ts = entry.get("timestamp", "")
@@ -688,7 +914,10 @@ def _extract_llm_spans_for_turn(
                     group_stop_reason = stop_reason
 
             # Accumulate output tokens and content blocks for this group
-            group_total_output_tokens += usage.get("output_tokens", 0)
+            group_total_output_tokens = max(
+                group_total_output_tokens,
+                usage.get("output_tokens", 0),
+            )
             for block in content_blocks:
                 if not isinstance(block, dict):
                     continue
@@ -1067,7 +1296,7 @@ def _emit_pending_llm_spans(
     if not current_trace or not transcript_path:
         return
 
-    (_, _, _, _, _, _, SpanKind, _, _, _) = _otel_imports()
+    _, _, _, _, _, _, SpanKind, _, _, _ = _otel_imports()
 
     all_llm_spans = _extract_llm_spans_for_turn(
         transcript_path,
@@ -1121,7 +1350,7 @@ def _complete_turn(
     if not current_trace:
         return
 
-    (_, _, _, _, _, _, SpanKind, _, _, _) = _otel_imports()
+    _, _, _, _, _, _, SpanKind, _, _, _ = _otel_imports()
 
     trace_id = current_trace["trace_id"]
     root_span_id = current_trace["root_span_id"]
@@ -1475,6 +1704,13 @@ def handle_pre_tool(data: dict, config: dict) -> None:
             parent_span_id=agent_span_id,
             agent_prompt=agent_prompt,
         )
+        _register_agent_span(
+            session_id=session_id,
+            trace_id=current_trace["trace_id"],
+            span_id=agent_span_id,
+            tool_use_id=data.get("tool_use_id", ""),
+            agent_prompt=agent_prompt,
+        )
         # Key by span_id so parallel Agent/Task calls in the same session don't
         # overwrite each other — post_tool finds the right entry by tool_input match.
         pending_key = f"{tool_name}#{agent_span_id}"
@@ -1483,6 +1719,23 @@ def handle_pre_tool(data: dict, config: dict) -> None:
 
     state.setdefault("pending_tools", {})[pending_key] = pending_entry
     _save_state(session_id, state)
+
+
+def _get_first_human_message(transcript_path: str) -> str:
+    """Return the text of the first human message — a subagent's prompt."""
+    try:
+        for line in Path(transcript_path).read_text().splitlines():
+            if not line.strip():
+                continue
+            try:
+                entry = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if _is_human_message(entry):
+                return entry.get("message", {}).get("content", "")
+        return ""
+    except Exception:
+        return ""
 
 
 def _get_latest_human_message(transcript_path: str) -> str:
@@ -1699,6 +1952,58 @@ def handle_post_tool_failure(data: dict, config: dict) -> None:
         _save_state(session_id, state)
 
 
+def handle_subagent_stop(data: dict, config: dict) -> None:
+    """Handle SubagentStop: emit the subagent's LLM spans into the parent trace.
+
+    A subagent's API calls go to its own transcript, never to the session
+    transcript that _emit_pending_llm_spans reads, so this is the only place
+    they are traced.  They are parented to the Agent span handle_pre_tool
+    pre-allocated, in that turn's trace — also when a background subagent
+    finishes after the turn has ended.
+    """
+    session_id = data.get("session_id", "unknown")
+    agent_id = data.get("agent_id", "")
+    transcript_path = _find_subagent_transcript_path(data)
+    if not agent_id or not transcript_path:
+        log.debug("No transcript for subagent %s in session %s", agent_id, session_id)
+        return
+
+    _wait_for_subagent_transcript(
+        transcript_path,
+        data.get("last_assistant_message", ""),
+    )
+
+    with _session_lock(session_id):
+        record = _resolve_subagent_parent(session_id, agent_id, transcript_path)
+        if not record:
+            log.debug("No parent span for subagent %s in %s", agent_id, session_id)
+            return
+
+        all_llm_spans = _extract_llm_spans_for_turn(
+            transcript_path,
+            0,
+            record["trace_id"],
+            record["span_id"],
+            all_turns=True,
+        )
+        emitted = record.get("emitted_llm_span_count", 0)
+        new_spans = all_llm_spans[emitted:]
+        if new_spans:
+            username = _load_state(session_id).get("username") or os.environ.get(
+                "USER",
+                os.environ.get("USERNAME", "unknown"),
+            )
+            _build_and_export_spans(
+                config=config,
+                session_id=session_id,
+                username=username,
+                span_records=new_spans,
+            )
+
+        record["emitted_llm_span_count"] = emitted + len(new_spans)
+        _save_agent_span_record(record)
+
+
 def handle_stop(data: dict, config: dict) -> None:
     session_id = data.get("session_id", "unknown")
     end_ns = time.time_ns()
@@ -1761,7 +2066,7 @@ def handle_stop(data: dict, config: dict) -> None:
 def main() -> None:
     if len(sys.argv) < 2:
         print(
-            "Usage: claude_code_tracer.py <pre_tool|post_tool|post_tool_failure|user_prompt_submit|stop>",
+            "Usage: claude_code_tracer.py <pre_tool|post_tool|post_tool_failure|user_prompt_submit|subagent_stop|stop>",
             file=sys.stderr,
         )
         sys.exit(0)
@@ -1789,6 +2094,8 @@ def main() -> None:
             handle_post_tool_failure(data, config)
         elif event == "user_prompt_submit":
             handle_user_prompt_submit(data, config)
+        elif event == "subagent_stop":
+            handle_subagent_stop(data, config)
         elif event == "stop":
             handle_stop(data, config)
         else:
