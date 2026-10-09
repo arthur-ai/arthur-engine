@@ -17,7 +17,9 @@ Trace: "claude-code-turn"              ← one per user prompt
     └── LLM  claude/claude-haiku-4-5  ← SubagentStop, from the subagent's transcript
 ```
 
-Subagents write their API calls to their own transcript (`<session>/subagents/agent-<id>.jsonl`), so their LLM spans are sent when `SubagentStop` fires, under the Agent span that launched them. That includes background subagents that finish after the turn has ended.
+Subagents write their API calls to their own transcript (`<session>/subagents/agent-<id>.jsonl`), so their LLM spans are sent when `SubagentStop` fires, under the Agent span that launched them. The tool calls a subagent makes are nested under that span too. For a subagent running in the background, the Agent span itself is held back and sent at `SubagentStop`, so it covers the subagent's whole run even when that outlasts the turn.
+
+LLM span timing comes from the transcript: a span runs from the entry the call answers (the prompt or tool result, written when the request is sent) to the last response entry written before any tool ran.
 
 Traces are linked to a task in Arthur Engine via the `arthur.task` resource attribute and share a `arthur.session` attribute so you can filter by session across traces.
 

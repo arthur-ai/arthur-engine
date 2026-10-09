@@ -441,6 +441,52 @@ def _resolve_subagent_parent(
     return match
 
 
+def _load_agent_span_record(session_id: str, key: str) -> Optional[dict]:
+    try:
+        return json.loads(_agent_span_path(session_id, key).read_text())
+    except Exception:
+        return None
+
+
+def _launched_subagent(tool_response: Any) -> tuple[str, bool]:
+    """Return (agent_id, in_background) from an Agent/Task/Skill tool response.
+
+    An Agent launched in the background returns ``{"status": "async_launched",
+    "isAsync": true, "agentId": …}`` at PostToolUse and a forked Skill
+    ``{"status": "forked", "background": true, "agentId": …}``; a foreground
+    Agent returns its result, with the same ``agentId``, once it has finished.
+    """
+    if not isinstance(tool_response, dict):
+        return "", False
+    agent_id = str(tool_response.get("agentId") or "")
+    in_background = bool(
+        tool_response.get("isAsync")
+        or tool_response.get("background")
+        or tool_response.get("status") in ("async_launched", "forked"),
+    )
+    return agent_id, in_background
+
+
+def _subagent_tool_record(session_id: str, data: dict) -> Optional[dict]:
+    """Return the record of the subagent a tool hook fired inside, claiming it
+    if needed.  Tool hooks carry ``agent_id`` when a subagent made the call;
+    its meta file, written at spawn, identifies the launching tool call."""
+    agent_id = data.get("agent_id", "")
+    if not agent_id:
+        return None
+    transcript_path = _subagent_transcript_path(
+        {"transcript_path": data.get("transcript_path", ""), "agent_id": agent_id},
+    )
+    return _resolve_subagent_parent(session_id, agent_id, transcript_path or "")
+
+
+def _username(session_id: str) -> str:
+    return _load_state(session_id).get("username") or os.environ.get(
+        "USER",
+        os.environ.get("USERNAME", "unknown"),
+    )
+
+
 @contextlib.contextmanager
 def _session_lock(session_id: str):
     """Exclusive per-session file lock.
@@ -692,6 +738,19 @@ def _wait_for_subagent_transcript(transcript_path: str, last_message: str) -> bo
         time.sleep(0.1)
 
 
+def _llm_provider() -> str:
+    """Return the OpenInference provider hosting the model.
+
+    The transcript doesn't record it, but the hook runs in Claude Code's
+    environment, where the backend is chosen by environment variable.
+    """
+    if os.environ.get("CLAUDE_CODE_USE_BEDROCK"):
+        return "aws"
+    if os.environ.get("CLAUDE_CODE_USE_VERTEX"):
+        return "google"
+    return "anthropic"
+
+
 def _iso_to_ns(ts: str) -> int:
     """Convert ISO 8601 timestamp string to nanoseconds."""
     try:
@@ -768,7 +827,11 @@ def _extract_llm_spans_for_turn(
       - Text output   → concatenate all ``text`` blocks from any entry.
       - Tool output   → JSON of the tool_use blocks from all entries (fall-back
                         when no text is present).
-      - Timestamp     → first entry.
+      - Timestamps    → from the input entry (the prompt or tool result the
+                        call answers, written when the request is sent) to
+                        the last entry written before any tool ran.  The
+                        entries of a parallel-tool response that follow a
+                        tool result were written after that tool ran.
     """
     spans = []
     try:
@@ -782,6 +845,7 @@ def _extract_llm_spans_for_turn(
         last_input_role = "user"
         last_input_content = ""
         last_input_tool_call_id = ""
+        last_input_ts = ""
         # A tool result is queued as that input and no API call has used it yet
         pending_tool_result = False
 
@@ -792,14 +856,17 @@ def _extract_llm_spans_for_turn(
         group_text_parts: list = []
         group_tool_use_parts: list = []
         group_model: str = "claude"
-        group_ts: str = ""
+        group_start_ts: str = ""  # the input entry's timestamp: request sent
+        group_end_ts: str = ""  # last entry written before any tool ran
+        group_sealed: bool = False  # a tool ran; later entries don't extend the end
         group_stop_reason: str = ""
         group_input_snapshot: dict = {}  # last_input* captured at group start
 
         def _flush_group() -> None:
             """Emit one LLM span for the accumulated group, if non-empty."""
             nonlocal current_group_id, group_first_usage, group_total_output_tokens
-            nonlocal group_text_parts, group_tool_use_parts, group_model, group_ts
+            nonlocal group_text_parts, group_tool_use_parts, group_model
+            nonlocal group_start_ts, group_end_ts, group_sealed
             nonlocal group_input_snapshot, group_stop_reason
 
             if not current_group_id:
@@ -827,13 +894,14 @@ def _extract_llm_spans_for_turn(
                 _truncate("".join(group_text_parts)) if group_text_parts else ""
             )
 
-            start_ns = _iso_to_ns(group_ts)
-            end_ns = start_ns + max(output_tokens * 10_000_000, 1_000_000)
+            start_ns = _iso_to_ns(group_start_ts)
+            end_ns = max(_iso_to_ns(group_end_ts), start_ns + 1_000_000)
 
             snap = group_input_snapshot
             attrs: dict[str, Any] = {
                 "openinference.span.kind": "LLM",
                 "llm.system": "anthropic",
+                "llm.provider": _llm_provider(),
                 "llm.model_name": group_model,
                 "llm.token_count.prompt": input_tokens + cache_read + cache_create,
                 "llm.token_count.completion": output_tokens,
@@ -898,7 +966,9 @@ def _extract_llm_spans_for_turn(
             group_text_parts = []
             group_tool_use_parts = []
             group_model = "claude"
-            group_ts = ""
+            group_start_ts = ""
+            group_end_ts = ""
+            group_sealed = False
             group_stop_reason = ""
             group_input_snapshot = {}
 
@@ -931,6 +1001,7 @@ def _extract_llm_spans_for_turn(
                     last_input_role = "user"
                     last_input_content = _truncate(human_text)
                     last_input_tool_call_id = ""
+                    last_input_ts = entry.get("timestamp", "")
                 continue
 
             # A fork's transcript opens with a copy of the parent's response at
@@ -963,7 +1034,9 @@ def _extract_llm_spans_for_turn(
                     last_input_role = "tool"
                     last_input_content = _truncate(payload)
                     last_input_tool_call_id = tool_use_id
+                    last_input_ts = entry.get("timestamp", "")
                     pending_tool_result = True
+                    group_sealed = True
                 elif not pending_tool_result:
                     # Injected (isMeta) text — a forked subagent's prompt or a
                     # task notification — is the next call's input, unless it
@@ -977,6 +1050,7 @@ def _extract_llm_spans_for_turn(
                     last_input_role = "user"
                     last_input_content = _truncate(content)
                     last_input_tool_call_id = ""
+                    last_input_ts = entry.get("timestamp", "")
                 continue
 
             # ── Non-assistant entries (progress, system, …) ───────────────────
@@ -1004,7 +1078,9 @@ def _extract_llm_spans_for_turn(
                 group_text_parts = []
                 group_tool_use_parts = []
                 group_model = model
-                group_ts = ts
+                group_start_ts = last_input_ts or ts
+                group_end_ts = ts
+                group_sealed = False
                 group_stop_reason = stop_reason
                 # Snapshot the input context at the start of this API call
                 group_input_snapshot = {
@@ -1019,6 +1095,8 @@ def _extract_llm_spans_for_turn(
                 # Extending the group: last non-empty stop_reason wins
                 if stop_reason:
                     group_stop_reason = stop_reason
+                if not group_sealed:
+                    group_end_ts = ts
 
             # Accumulate output tokens and content blocks for this group
             group_total_output_tokens = max(
@@ -1710,6 +1788,20 @@ def handle_pre_tool(data: dict, config: dict) -> None:
     tool_input = data.get("tool_input", {})
     now_ns = time.time_ns()
 
+    if data.get("agent_id"):
+        # A subagent's own tool call.  Track it on the subagent's record: the
+        # session state belongs to the turn, which a background subagent can
+        # outlive, and parallel subagents would collide on tool names.
+        with _session_lock(session_id):
+            record = _subagent_tool_record(session_id, data)
+            if record:
+                record.setdefault("pending_tools", {})[tool_name] = {
+                    "tool_input": tool_input,
+                    "start_ns": now_ns,
+                }
+                _save_agent_span_record(record)
+                return
+
     state = _load_state(session_id)
 
     # Initialize session on first call
@@ -1902,9 +1994,69 @@ def _find_active_agent_span_id(
     return best_span_id
 
 
+def _tool_error_message(data: dict, tool_response: Any) -> str:
+    """Return the error a PostToolUseFailure payload carries."""
+    error_msg = ""
+    if isinstance(tool_response, dict):
+        error_msg = tool_response.get("error", tool_response.get("message", ""))
+    elif isinstance(tool_response, str):
+        error_msg = tool_response
+    if not error_msg:
+        error_msg = data.get("error", data.get("error_message", "Tool call failed"))
+    return error_msg
+
+
+def _subagent_tool_end(
+    data: dict,
+    config: dict,
+    end_ns: int,
+    is_failure: bool = False,
+) -> bool:
+    """Send the span of a tool call a subagent made, under the subagent's span.
+
+    Returns False when the hook didn't fire inside a known subagent, so the
+    caller handles the call as the session's own.
+    """
+    if not data.get("agent_id"):
+        return False
+    session_id = data.get("session_id", "unknown")
+    tool_name = data.get("tool_name", "unknown")
+    tool_response = data.get("tool_response", {})
+
+    with _session_lock(session_id):
+        record = _subagent_tool_record(session_id, data)
+        if not record:
+            return False
+        pending = record.get("pending_tools", {}).pop(tool_name, {})
+        _save_agent_span_record(record)
+        username = _username(session_id)
+
+    span_record = _build_tool_span_record(
+        tool_name=tool_name,
+        tool_input=data.get("tool_input") or pending.get("tool_input", {}),
+        tool_response=tool_response,
+        start_ns=pending.get("start_ns", end_ns - 1_000_000),
+        end_ns=end_ns,
+        trace_id=record["trace_id"],
+        root_span_id=record["span_id"],
+        is_failure=is_failure,
+        error_msg=_tool_error_message(data, tool_response) if is_failure else "",
+    )
+    _build_and_export_spans(
+        config=config,
+        session_id=session_id,
+        username=username,
+        span_records=[span_record],
+    )
+    return True
+
+
 def handle_post_tool(data: dict, config: dict) -> None:
     session_id = data.get("session_id", "unknown")
     end_ns = time.time_ns()
+
+    if _subagent_tool_end(data, config, end_ns):
+        return
 
     # Read state once to build the tool span (no mutation needed).
     state = _load_state(session_id)
@@ -1945,14 +2097,31 @@ def handle_post_tool(data: dict, config: dict) -> None:
         span_id=pre_allocated_span_id,
     )
 
+    # A launched subagent reports its id, which SubagentStop and the
+    # subagent's own tool hooks match on.  A background launch returns at
+    # once, so its span is held back and sent at SubagentStop with the real
+    # end time: the engine would store a re-sent span as a second one.
+    launched_agent_id, in_background = _launched_subagent(tool_response)
+    deferred = False
+    if pre_allocated_span_id and launched_agent_id:
+        with _session_lock(session_id):
+            record = _load_agent_span_record(session_id, pre_allocated_span_id)
+            if record:
+                record["agent_id"] = launched_agent_id
+                if in_background:
+                    record["deferred_span"] = span_record
+                    deferred = True
+                _save_agent_span_record(record)
+
     # Export the tool span before acquiring the lock — this is the slow network
     # I/O and does not mutate state, so it is safe to run outside the lock.
-    _build_and_export_spans(
-        config=config,
-        session_id=session_id,
-        username=state.get("username", "unknown"),
-        span_records=[span_record],
-    )
+    if not deferred:
+        _build_and_export_spans(
+            config=config,
+            session_id=session_id,
+            username=state.get("username", "unknown"),
+            span_records=[span_record],
+        )
 
     # Acquire an exclusive per-session lock before emitting LLM spans.
     # Parallel PostToolUse processes race on emitted_llm_span_count; the lock
@@ -1977,6 +2146,9 @@ def handle_post_tool_failure(data: dict, config: dict) -> None:
     session_id = data.get("session_id", "unknown")
     end_ns = time.time_ns()
 
+    if _subagent_tool_end(data, config, end_ns, is_failure=True):
+        return
+
     state = _load_state(session_id)
     if not state:
         log.warning("No state found for session %s in post_tool_failure", session_id)
@@ -1997,15 +2169,7 @@ def handle_post_tool_failure(data: dict, config: dict) -> None:
     tool_input = data_tool_input or current_tool.get("tool_input", {})
     tool_response = data.get("tool_response", {})
     start_ns = current_tool.get("start_ns", end_ns - 1_000_000)
-
-    # Extract error message from various possible fields
-    error_msg = ""
-    if isinstance(tool_response, dict):
-        error_msg = tool_response.get("error", tool_response.get("message", ""))
-    elif isinstance(tool_response, str):
-        error_msg = tool_response
-    if not error_msg:
-        error_msg = data.get("error", data.get("error_message", "Tool call failed"))
+    error_msg = _tool_error_message(data, tool_response)
 
     active_agent_span_id = _find_active_agent_span_id(state, pending_key)
     span_record = _build_tool_span_record(
@@ -2047,6 +2211,8 @@ def handle_subagent_stop(data: dict, config: dict) -> None:
     finishes after the turn has ended.
     """
     session_id = data.get("session_id", "unknown")
+    now_ns = time.time_ns()
+    last_message = str(data.get("last_assistant_message") or "")
     transcript_path = _subagent_transcript_path(data)
     if not transcript_path:
         log.debug("No transcript path for a subagent of session %s", session_id)
@@ -2056,10 +2222,7 @@ def handle_subagent_stop(data: dict, config: dict) -> None:
         "agent-",
     )
 
-    if not _wait_for_subagent_transcript(
-        transcript_path,
-        str(data.get("last_assistant_message") or ""),
-    ):
+    if not _wait_for_subagent_transcript(transcript_path, last_message):
         log.debug("No transcript for subagent %s in session %s", agent_id, session_id)
         return
 
@@ -2080,11 +2243,18 @@ def handle_subagent_stop(data: dict, config: dict) -> None:
         )
         new_spans = all_llm_spans[record.get("emitted_llm_span_count", 0) :]
         record["emitted_llm_span_count"] = len(all_llm_spans)
+        deferred = record.pop("deferred_span", None)
         _save_agent_span_record(record)
-        username = _load_state(session_id).get("username") or os.environ.get(
-            "USER",
-            os.environ.get("USERNAME", "unknown"),
-        )
+        username = _username(session_id)
+
+    # The Agent/Skill span of a background subagent, held back at launch: it
+    # ends now and its output is the subagent's final response.
+    if deferred:
+        deferred["end_ns"] = now_ns
+        if last_message:
+            deferred["attributes"]["output.value"] = _truncate(last_message)
+            deferred["attributes"]["output.mime_type"] = "text/plain"
+        new_spans.insert(0, deferred)
 
     if new_spans:
         _build_and_export_spans(
