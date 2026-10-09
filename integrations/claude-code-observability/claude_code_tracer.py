@@ -1835,7 +1835,7 @@ def handle_pre_tool(data: dict, config: dict) -> None:
             tool_use_id=data.get("tool_use_id", ""),
             skill=tool_input.get("skill", "") if isinstance(tool_input, dict) else "",
         )
-        pending_key = tool_name
+        pending_key = f"{tool_name}#{skill_span_id}"
     else:
         pending_key = tool_name
 
@@ -1850,7 +1850,7 @@ def _find_pending_tool_entry(
 ) -> tuple[dict, str]:
     """Return (pending_entry, pending_key) for the given tool.
 
-    For Agent/Task tools, parallel calls each get a compound key
+    For Agent/Task/Skill tools, parallel calls each get a compound key
     ``"{tool_name}#{span_id}"``.  We find the right entry by matching
     ``tool_input``; if no match, fall back to the first entry with the right
     prefix so single-agent sessions and legacy state files still work.
@@ -1860,7 +1860,7 @@ def _find_pending_tool_entry(
     pending = state.get("pending_tools", {})
     prefix = f"{tool_name}#"
 
-    if tool_name in ("Agent", "Task"):
+    if tool_name in ("Agent", "Task", "Skill"):
         # Pass 1: exact tool_input match
         if data_tool_input is not None:
             for k, v in pending.items():

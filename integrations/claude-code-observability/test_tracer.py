@@ -5406,9 +5406,8 @@ class TestSubagentLlmSpans:
             },
             self.CONFIG,
         )
-        skill_span_id = tracer._load_state(self.SESSION)["pending_tools"]["Skill"][
-            "pre_allocated_span_id"
-        ]
+        (pending,) = tracer._load_state(self.SESSION)["pending_tools"].values()
+        skill_span_id = pending["pre_allocated_span_id"]
         tracer._delete_state(self.SESSION)  # the turn ended before the fork did
         sub_dir = tmp_path / "proj" / self.SESSION / "subagents"
         sub_dir.mkdir(parents=True)
@@ -5428,6 +5427,50 @@ class TestSubagentLlmSpans:
         assert exported[0]["attributes"]["llm.input_messages.0.message.content"] == (
             "Review target: PR 2432"
         )
+
+    def test_parallel_skill_calls_keep_their_own_spans(self, exported, monkeypatch):
+        """Two Skill calls in one response must not share a pending entry, or
+        the first's TOOL span is exported with the second's span id and the
+        forked subagent's spans point at a span that was never sent."""
+        monkeypatch.setattr(
+            tracer,
+            "_get_cached_transcript_path",
+            lambda *a, **kw: None,
+        )
+        self._save_turn_state()
+        for skill in ("first", "second"):
+            tracer.handle_pre_tool(
+                {
+                    "session_id": self.SESSION,
+                    "tool_name": "Skill",
+                    "tool_input": {"skill": skill},
+                    "tool_use_id": f"toolu_{skill}",
+                },
+                self.CONFIG,
+            )
+        registered = {
+            r["skill"]: r["span_id"]
+            for r in tracer._load_agent_span_records(self.SESSION)
+        }
+        assert len(tracer._load_state(self.SESSION)["pending_tools"]) == 2
+
+        for skill in ("first", "second"):
+            tracer.handle_post_tool(
+                {
+                    "session_id": self.SESSION,
+                    "tool_name": "Skill",
+                    "tool_input": {"skill": skill},
+                    "tool_response": "done",
+                },
+                self.CONFIG,
+            )
+
+        assert [s["span_id_hex"] for s in exported] == [
+            registered["first"],
+            registered["second"],
+        ]
+        assert all(s["force_span_id"] for s in exported)
+        assert tracer._load_state(self.SESSION)["pending_tools"] == {}
 
     def test_falls_back_to_last_turn_root_after_state_deleted(
         self,
