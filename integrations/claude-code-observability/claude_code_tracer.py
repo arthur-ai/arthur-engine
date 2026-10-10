@@ -271,6 +271,46 @@ def _session_lock(session_id: str):
 # ---------------------------------------------------------------------------
 
 
+def _read_transcript_entries(path: str) -> list[dict]:
+    """Read Claude Code JSONL or Claude Agent SDK JSON-array output."""
+    try:
+        text = Path(path).read_text()
+    except OSError:
+        return []
+
+    try:
+        parsed = json.loads(text)
+    except json.JSONDecodeError:
+        parsed = None
+
+    if isinstance(parsed, list):
+        return [entry for entry in parsed if isinstance(entry, dict)]
+    if isinstance(parsed, dict):
+        return [parsed]
+
+    entries = []
+    for line in text.splitlines():
+        if not line.strip():
+            continue
+        try:
+            entry = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(entry, dict):
+            entries.append(entry)
+    return entries
+
+
+def _execution_session_id(path: str) -> str:
+    """Return the Agent SDK session ID from its system.init event."""
+    for entry in _read_transcript_entries(path):
+        if entry.get("type") == "system" and entry.get("subtype") == "init":
+            session_id = entry.get("session_id", "")
+            if isinstance(session_id, str):
+                return session_id
+    return ""
+
+
 def _is_real_transcript(path: str) -> bool:
     """Return True if the transcript has at least one human or assistant entry.
 
@@ -279,21 +319,10 @@ def _is_real_transcript(path: str) -> bool:
     one of these as the authoritative transcript would leave the tracer with
     nothing to extract LLM spans from.
     """
-    try:
-        with open(path) as fh:
-            for line in fh:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    entry = json.loads(line)
-                except json.JSONDecodeError:
-                    continue
-                if entry.get("type") in ("user", "assistant"):
-                    return True
-        return False
-    except OSError:
-        return False
+    return any(
+        entry.get("type") in ("user", "assistant")
+        for entry in _read_transcript_entries(path)
+    )
 
 
 def _find_transcript_path(data: dict, session_id: str) -> Optional[str]:
@@ -377,19 +406,11 @@ def _is_human_message(entry: dict) -> bool:
 
 def _count_human_messages(transcript_path: str) -> int:
     """Count human (non-tool-result) user messages to detect turn boundaries."""
-    try:
-        count = 0
-        for line in Path(transcript_path).read_text().splitlines():
-            if not line.strip():
-                continue
-            try:
-                if _is_human_message(json.loads(line)):
-                    count += 1
-            except json.JSONDecodeError:
-                pass
-        return count
-    except Exception:
-        return 0
+    return sum(
+        1
+        for entry in _read_transcript_entries(transcript_path)
+        if _is_human_message(entry)
+    )
 
 
 def _iso_to_ns(ts: str) -> int:
@@ -423,6 +444,7 @@ def _extract_llm_spans_for_turn(
     human_count_at_start: int,
     trace_id_hex: str,
     root_span_id_hex: str,
+    fallback_human_prompt: str = "",
 ) -> list[dict]:
     """
     Extract LLM spans from transcript entries that belong to this turn.
@@ -465,7 +487,15 @@ def _extract_llm_spans_for_turn(
     """
     spans = []
     try:
-        lines = Path(transcript_path).read_text().splitlines()
+        entries = _read_transcript_entries(transcript_path)
+        if fallback_human_prompt and not any(_is_human_message(e) for e in entries):
+            entries.insert(
+                0,
+                {
+                    "type": "user",
+                    "message": {"role": "user", "content": fallback_human_prompt},
+                },
+            )
         human_count = 0
         in_turn = False
 
@@ -593,14 +623,7 @@ def _extract_llm_spans_for_turn(
             group_stop_reason = ""
             group_input_snapshot = {}
 
-        for line in lines:
-            if not line.strip():
-                continue
-            try:
-                entry = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-
+        for entry in entries:
             entry_type = entry.get("type", "")
 
             # ── Human message: marks the start of this turn ──────────────────
@@ -1074,6 +1097,7 @@ def _emit_pending_llm_spans(
         current_trace.get("human_count_at_start", 0),
         current_trace["trace_id"],
         current_trace["root_span_id"],
+        current_trace.get("prompt_preview", ""),
     )
 
     emitted = current_trace.get("emitted_llm_span_count", 0)
@@ -1086,6 +1110,10 @@ def _emit_pending_llm_spans(
         current_trace["last_llm_output"] = all_llm_spans[-1]["attributes"].get(
             "output.value",
             "",
+        )
+        current_trace["last_llm_end_ns"] = max(
+            current_trace.get("last_llm_end_ns", 0),
+            max(span["end_ns"] for span in all_llm_spans),
         )
 
     if not new_spans:
@@ -1126,6 +1154,7 @@ def _complete_turn(
     trace_id = current_trace["trace_id"]
     root_span_id = current_trace["root_span_id"]
     turn_start_ns = current_trace["turn_start_ns"]
+    end_ns = max(end_ns, current_trace.get("last_llm_end_ns", 0))
     turn_number = current_trace.get("turn_number", 1)
     prompt_preview = current_trace.get("prompt_preview", "")
     final_output = current_trace.get("last_llm_output", "")
@@ -1487,22 +1516,13 @@ def handle_pre_tool(data: dict, config: dict) -> None:
 
 def _get_latest_human_message(transcript_path: str) -> str:
     """Return the text of the most recent human message in the transcript."""
-    try:
-        last = ""
-        for line in Path(transcript_path).read_text().splitlines():
-            if not line.strip():
-                continue
-            try:
-                entry = json.loads(line)
-                if _is_human_message(entry):
-                    content = entry.get("message", {}).get("content", "")
-                    if isinstance(content, str):
-                        last = content
-            except json.JSONDecodeError:
-                pass
-        return last
-    except Exception:
-        return ""
+    last = ""
+    for entry in _read_transcript_entries(transcript_path):
+        if _is_human_message(entry):
+            content = entry.get("message", {}).get("content", "")
+            if isinstance(content, str):
+                last = content
+    return last
 
 
 def _find_pending_tool_entry(
@@ -1700,7 +1720,11 @@ def handle_post_tool_failure(data: dict, config: dict) -> None:
 
 
 def handle_stop(data: dict, config: dict) -> None:
-    session_id = data.get("session_id", "unknown")
+    execution_file = data.get("execution_file", "")
+    session_id = data.get("session_id") or (
+        _execution_session_id(execution_file) if execution_file else ""
+    )
+    session_id = session_id or "unknown"
     end_ns = time.time_ns()
 
     with _session_lock(session_id):
@@ -1709,7 +1733,13 @@ def handle_stop(data: dict, config: dict) -> None:
             log.debug("No active trace for session %s at stop", session_id)
             return
 
-        transcript_path = _get_cached_transcript_path(data, state, session_id)
+        transcript_path = (
+            execution_file
+            if execution_file
+            and Path(execution_file).exists()
+            and _is_real_transcript(execution_file)
+            else _get_cached_transcript_path(data, state, session_id)
+        )
 
         # Detect context continuation: same check as handle_pre_tool.
         # When no tool calls happen during a continuation turn, handle_pre_tool
