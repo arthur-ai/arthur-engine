@@ -27,6 +27,12 @@ from arthur_client_support import (
 )
 from health_check import MLEngineHealthCheck as HealthCheck
 from job_runner import JobRunner, ProcessJobRunner, ThreadJobRunner
+from standalone.agent import StandaloneDiscoveryAgent
+from standalone.discovery_config import (
+    StandaloneConfigError,
+    load_config,
+    standalone_config_path,
+)
 from tools.platform_api_client import build_platform_api_client
 
 logging.basicConfig(level=logging.INFO)
@@ -315,6 +321,27 @@ class JobAgent:
             time.sleep(0.25)
 
 
+def main() -> None:
+    """Run standalone when pointed at an enabled discovery config, else poll the Platform.
+
+    A config that cannot be used stops the container with the loader's message, which
+    names what is wrong and never a value: falling back to the Platform instead would
+    hide the mistake behind an engine that has no Platform credentials to fall back on.
+    """
+    path = standalone_config_path()
+    if path is not None:
+        try:
+            config = load_config(path)
+        except StandaloneConfigError as e:
+            raise SystemExit(str(e)) from None
+        if config is not None:
+            # Built once, here, and shared by every scan the agent runs.
+            sink = config.destination.build_sink(logging.getLogger("standalone.sink"))
+            StandaloneDiscoveryAgent(config, sink).run()
+            return
+        logger.info(f"Standalone discovery is disabled in {path}; polling the Platform")
+    JobAgent().run()
+
+
 if __name__ == "__main__":
-    agent = JobAgent()
-    agent.run()
+    main()
