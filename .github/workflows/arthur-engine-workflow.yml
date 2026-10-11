@@ -32,7 +32,11 @@ jobs:
     needs: check-genai-engine-changes
     if: needs.check-genai-engine-changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
-    container: python:3.12.9-bullseye
+    container:
+      image: python:3.12.9-bullseye
+      credentials:
+        username: ${{ secrets.DOCKERHUB_ENTERPRISE_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_ENTERPRISE_TOKEN }}
     env:
       SKIP: pytest-check,changelog-check
       GIT_DEPTH: 100
@@ -77,7 +81,11 @@ jobs:
     needs: check-ml-engine-changes
     if: needs.check-ml-engine-changes.outputs.changed == 'true'
     runs-on: ubuntu-latest
-    container: python:3.13-bullseye
+    container:
+      image: python:3.13-bullseye
+      credentials:
+        username: ${{ secrets.DOCKERHUB_ENTERPRISE_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_ENTERPRISE_TOKEN }}
     env:
       SKIP: pytest-check,changelog-check
       GIT_DEPTH: 100
@@ -128,7 +136,11 @@ jobs:
     needs: check-genai-engine-changes
     if: needs.check-genai-engine-changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
-    container: python:3.12.9-bullseye
+    container:
+      image: python:3.12.9-bullseye
+      credentials:
+        username: ${{ secrets.DOCKERHUB_ENTERPRISE_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_ENTERPRISE_TOKEN }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -395,7 +407,11 @@ jobs:
       github.ref != 'refs/heads/dev' &&
       needs.check-genai-engine-changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
-    container: python:3.12.9-bullseye
+    container:
+      image: python:3.12.9-bullseye
+      credentials:
+        username: ${{ secrets.DOCKERHUB_ENTERPRISE_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_ENTERPRISE_TOKEN }}
     steps:
       - uses: actions/checkout@v5
       - uses: ./.github/workflows/composite-actions/setup-git
@@ -434,10 +450,17 @@ jobs:
     needs: check-genai-engine-changes
     if: needs.check-genai-engine-changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
-    container: python:3.12.9-bullseye
+    container:
+      image: python:3.12.9-bullseye
+      credentials:
+        username: ${{ secrets.DOCKERHUB_ENTERPRISE_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_ENTERPRISE_TOKEN }}
     services:
       postgres:
         image: postgres:15
+        credentials:
+          username: ${{ secrets.DOCKERHUB_ENTERPRISE_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_ENTERPRISE_TOKEN }}
         ports:
           - "5432:5432"
         env:
@@ -473,7 +496,11 @@ jobs:
     needs: check-ml-engine-changes
     if: needs.check-ml-engine-changes.outputs.changed == 'true'
     runs-on: ubuntu-latest
-    container: python:3.13-bullseye
+    container:
+      image: python:3.13-bullseye
+      credentials:
+        username: ${{ secrets.DOCKERHUB_ENTERPRISE_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_ENTERPRISE_TOKEN }}
     env:
       SKIP: pytest-check,changelog-check
       GIT_DEPTH: 100
@@ -1125,7 +1152,11 @@ jobs:
       contains(github.event.head_commit.message, 'Increment arthur-engine version') &&
       (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
     runs-on: ubuntu-latest
-    container: node:20-alpine
+    container:
+      image: node:20-alpine
+      credentials:
+        username: ${{ secrets.DOCKERHUB_ENTERPRISE_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_ENTERPRISE_TOKEN }}
     environment: shared-protected-branch-secrets
     steps:
       - name: Trigger GitLab Pipeline
