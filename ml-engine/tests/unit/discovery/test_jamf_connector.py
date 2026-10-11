@@ -966,6 +966,60 @@ def test_a_container_state_is_not_reported_as_a_version(
     assert records[0].creation_source.observations.version is None
 
 
+@pytest.mark.parametrize(
+    "kind,ident,loc,ver,version",
+    [
+        # queries/jetbrains.sql: `loc` is the plugin's directory or jar, `ver` its version
+        (
+            "jbplugin",
+            "example",
+            "/Users/u/Library/Application Support/JetBrains/IntelliJIdea2025.2/plugins/example",
+            "3.2.1",
+            "3.2.1",
+        ),
+        # queries/running-darwin.sql: `loc` is the running app bundle, `ver` always empty
+        ("proc", "com.example.agent", "/Applications/Example.app", "", None),
+    ],
+)
+def test_the_newer_kinds_report_their_path_and_only_a_real_version(
+    kind: str,
+    ident: str,
+    loc: str,
+    ver: str,
+    version: Optional[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`jbplugin` and `proc` both carry a filesystem path in `loc`; only `jbplugin`
+    carries a version in `ver`."""
+    catalog = yaml.safe_dump(
+        {
+            "version": 2,
+            "classifications": ["Coding agent"],
+            "agents": [
+                {
+                    "id": "example",
+                    "name": "Example",
+                    "classification": "Coding agent",
+                    "platforms": ["darwin"],
+                    "jetbrains_plugins": ["example"],
+                    "bundle_ids": ["com.example.agent"],
+                },
+            ],
+        },
+    )
+    payload = frame([row(kind, ident, loc=loc, ver=ver), scan_row("apps")])
+    fake = FakeJamf([[computer("m1", payload)]])
+    monkeypatch.setattr(
+        "discovery.endpoint.jamf.connector.JamfClient",
+        lambda s, logger=None: client_for(fake),
+    )
+    records = [r for b in JamfConnector().scan(FakeConfig(catalog), 24, CREDS, FIELDS, LOG) for r in b]  # type: ignore[arg-type]
+
+    obs = records[0].creation_source.observations
+    assert obs.install_path == loc
+    assert obs.version == version
+
+
 # --- the secret in the token request's body ----------------------------------------
 
 

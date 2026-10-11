@@ -9,10 +9,11 @@
 #
 # WHICH ROUTES ARE PLATFORM-SPECIFIC MATTERS WHEN YOU ADD AN AGENT:
 #
-#   darwin only   bundle_ids, homebrew, launchd_prefixes
+#   darwin only   bundle_ids, homebrew, launchd_prefixes, running_apps
 #   linux only    deb_packages, rpm_packages, desktop_ids, systemd_prefixes
 #   both          npm, pypi, extension_ids, native_messaging_hosts, vscode_extensions,
-#                 images, state_dirs, binaries, model_stores
+#                 jetbrains_plugins, images, state_dirs, binaries, model_stores, running_npm,
+#                 process_paths
 #
 # `platforms:` on each agent is REQUIRED and is checked against those: declaring
 # `deb_packages` without `linux` is a copy-paste error, and claiming a platform no route
@@ -71,8 +72,9 @@
 # in any run.
 #
 # What a port CAN tell you is that an agent is RUNNING rather than merely installed. That is
-# liveness, not identity, and if it is ever wanted it should be built as that and named as
-# that.
+# liveness, not identity, and it is now built as that and named as that: kind `proc`, from
+# queries/running.sql and queries/running-darwin.sql, through routes that read the
+# `bundle_ids` and `npm` values below. bin/classify marks a finding with one `running`.
 
 # AN OLD IDENTIFIER IS KEPT, AND KEEPING IT COSTS EVIDENCE. Machines on an earlier release
 # still report it, so removing one blinds the fleet to those machines -- but "an earlier
@@ -151,6 +153,27 @@ removed:
   - id: llama-cpp
     what_it_is: a model runner, and the engine several others embed
 
+# CONSIDERED AND NEVER ADDED, from agentic-detector's `ai_tools` catalog (3cbcc10, read
+# 2026-10-07), so the next diff against it does not re-litigate them. Not in `removed:`,
+# which is for entries this catalog once carried.
+#
+#   gpt4all, msty, anythingllm, lm-studio-cli
+#             model runners and local chat, on the side of the line jan is on
+#   crewai, langgraph, langchain, autogen, openai-agents, semantic-kernel
+#             libraries an agent is built with -- mcp-sdk's reason
+#   tabnine, supermaven, codeium, intellicode
+#             completion engines; they suggest and the user accepts
+#   aws-toolkit, mintlify, sourcery, phind, genieai
+#             tooling, a doc writer, a reviewer and two chat panels; phind last shipped 2024-09
+#   Copilot in VS Code, JetBrains AI Assistant, Zed's agent panel
+#             bundled with the editor, so a finding would report the editor. The first is in
+#             docs/blind-spots.yaml with the measurement
+#   mfgnpcdebmgmmbjmhmboieiipghabkjf, cifagnnjkogmgddhpamfjdpmligkmmgi
+#             Chrome ids the Web Store answers 404 for; ai_tools' fourth is 33 characters,
+#             one more than a Chrome id can be
+#   MCP configs, instruction files, sockets
+#             ai_tools' other types, which describe what an agent USES
+
 classifications:
   # --- acts on the user's behalf ---
   - Coding agent        # operates on a codebase, usually with shell access
@@ -162,7 +185,7 @@ classifications:
                         # true when these clients gained MCP and began running tools
                         # locally. Contested rather than settled, and overstating an agent
                         # is the safer error for an inventory than missing one
-  # --- does not act on anyone's behalf; listed in not_agents below ---
+  # --- does not act on anyone's behalf; listed in removed: above ---
 
 
 agents:
@@ -208,6 +231,16 @@ agents:
     binaries: ["~/.local/bin/claude"]
     npm: ["@anthropic-ai/claude-code"]
     state_dirs: ["~/.claude"]
+    # RUNNING, where the symlink above leads. Read off 83-linux-claude-running on
+    # 2026-10-07: `claude mcp serve` as an ordinary user, osquery 5.23.1 reading its path as
+    # /home/dana/.local/share/claude/versions/2.1.292. The same shape runs on macOS.
+    process_paths: ["~/.local/share/claude/versions/"]
+    # The VS Code extension, whose VSIX carries this CLI at
+    # extension/resources/native-binary/claude. Read off 85-linux-vscode-agents on
+    # 2026-10-07: v2.1.293 at ~/.vscode/extensions/anthropic.claude-code-2.1.293-linux-arm64.
+    # 78-linux-vscode forbids claude-code while installing saoudrizwan.claude-dev, which is
+    # the control that this value is matched exactly and Cline's is not mistaken for it.
+    vscode_extensions: [anthropic.claude-code]
 
   - id: openclaw
     name: OpenClaw
@@ -248,15 +281,13 @@ agents:
     # it -- so a direct download, which is how most people install this app, was invisible.
     bundle_ids: [com.openai.codex, com.openai.chat]
     homebrew: [chatgpt]
-    # com.openai.chat IS NOT SUPERSEDED YET, and the distinction is the whole point of the
-    # field being evidence-backed. It was labelled retired on the reasoning that a fresh
-    # install cannot produce it -- and 10-desktop-apps produces it on every run, because
-    # one runner image's Homebrew is still stale enough to resolve the pre-rename build.
-    # An identifier CI proves today is current, whatever era it belongs to.
+    # com.openai.chat IS PROVED, NOT SUPERSEDED. 12-chatgpt-pre-rename installs build
+    # 1.2026.160 from OpenAI's own URL on every run. Superseding needs a build nobody can
+    # install, and this one is still served.
     #
-    # The day that runner updates, the shrink guard will fire, the observation will be
-    # archived, and a `superseded:` record will land here carrying the run that last saw
-    # it. That is a fact the tooling will write, not a label someone types in advance.
+    # This used to say the shrink guard would fire once macos-14's Homebrew caught up. It
+    # did not fire. The image update changed `os` from 14.8.7 to 14.8.9, which made it a
+    # different key, so the old record stayed and kept counting as CI coverage.
 
   - id: codex-cli
     name: Codex CLI
@@ -265,6 +296,13 @@ agents:
     npm: ["@openai/codex"]
     homebrew: [codex]                  # a cask, not a formula; both land in homebrew_packages
     state_dirs: ["~/.codex"]
+    # THE EXTENSION ID SAYS CHATGPT AND THE EXTENSION IS CODEX: displayName "Codex – OpenAI's
+    # coding agent", and the VSIX carries this CLI at extension/bin/<platform>/codex. Read
+    # off 85-linux-vscode-agents on 2026-10-07: v26.1002.51308 at
+    # ~/.vscode/extensions/openai.chatgpt-26.1002.51308-linux-arm64. It installs a
+    # companion, openai.codex-audio -- "Local microphone support for Codex dictation", no
+    # commands -- which is not catalogued.
+    vscode_extensions: [openai.chatgpt]
 
   - id: cursor
     name: Cursor
@@ -274,7 +312,8 @@ agents:
     # the PACKAGER, not the vendor -- a reverse-DNS prefix cannot be trusted to name who
     # publishes a thing.
     bundle_ids: [com.todesktop.230313mzl4w4u92]
-    homebrew: [cursor]
+    # `cursor-cli` is the Cursor CLI's cask: a binary, no app. 21-cli-agents-homebrew.
+    homebrew: [cursor, cursor-cli]
     # LINUX. cursor.com/api/download offers a `debUrl` and an `rpmUrl` for both x64 and
     # arm64, so both package routes carry a real identifier rather than one of them
     # standing in for the other.
@@ -302,6 +341,11 @@ agents:
     # one install, not a second install, and matching both would double the evidence rows
     # for one finding.
     desktop_ids: [cursor.desktop]
+    # CURSOR CLI, the same agent without the editor. cursor.com/install links
+    # ~/.local/bin/cursor-agent into ~/.local/share/cursor-agent/versions/, read off
+    # 84-linux-installers on 2026-10-07 (package 2026.10.01-e373342). It also links
+    # ~/.local/bin/agent, which names nothing and is deliberately not a value.
+    binaries: ["~/.local/bin/cursor-agent"]
 
   - id: perplexity-comet
     name: Perplexity Comet
@@ -343,15 +387,10 @@ agents:
   # Kiro.app/Contents/Info.plist inside the 1.0.411 stable darwin-arm64 dmg, 2026-09-05,
   # which is the same plist the `apps` table reads.
   #
-  # KIRO CLI IS A DIFFERENT PRODUCT and is DELIBERATELY NOT HERE YET. It is worth writing
-  # down what was measured, because the next person will assume the ids rhyme and they do
-  # not: the `kiro-cli` cask carries old_tokens [amazon-q, codewhisperer], and its app ships
-  # bundle id `com.amazon.codewhisperer` -- unchanged from the CodeWhisperer era, at version
-  # 2.20.1. So the cask token was renamed twice while the bundle id never moved. Both were
-  # read for real (a machine here still carries `amazon-q` AND `kiro-cli` rows from the
-  # rename, plus a com.amazon.codewhisperer.launcher LaunchAgent). It is left out only
-  # because its dmg is 1.05GB and no scenario should pay that to prove a token; it is the
-  # strongest candidate to add next.
+  # KIRO CLI IS A DIFFERENT PRODUCT, catalogued as kiro-cli below, and the ids do not rhyme:
+  # the `kiro-cli` cask carries old_tokens [amazon-q, codewhisperer], and its app shipped
+  # bundle id `com.amazon.codewhisperer` -- unchanged from the CodeWhisperer era -- when this
+  # was first read at 2.20.1. It waited on a 1.05GB dmg; 2.28.0's measured 362MB.
   - id: kiro
     name: Kiro
     classification: Coding agent
@@ -454,6 +493,16 @@ agents:
     # vendor=Block -- the only image measured that set `vendor` correctly rather than
     # inheriting its base image's. Only `source` is matched; routes.yaml says why.
     image_labels: ["https://github.com/block/goose"]
+    # OUTSIDE A CONTAINER, which until 2026-10-07 this entry could not see at all. Block's
+    # download_cli.sh writes ~/.local/bin/goose, read off 84-linux-installers that day.
+    binaries: ["~/.local/bin/goose"]
+    # The CLI is a formula and the desktop app a cask, and neither token is `goose`.
+    # 21-cli-agents-homebrew and 13-desktop-apps-more install them.
+    homebrew: [block-goose-cli, block-goose]
+    # Read off Goose.app/Contents/Info.plist in the 1.53.0 release zip, 2026-10-07. It is
+    # Electron's default `com.electron.<name>` shape rather than a vendor-chosen id -- the
+    # todesktop lesson again: the prefix names the packager, and only the whole id is ours.
+    bundle_ids: [com.electron.goose]
 
   - id: swe-agent
     name: SWE-agent
@@ -481,12 +530,19 @@ agents:
     homebrew: [gemini-cli]
     npm: ["@google/gemini-cli"]        # a vendor scope, missed by @anthropic-ai/@openai globs
 
+  # The id says CLI because that is the Copilot this entry could prove first. The name is the
+  # product's, since it now carries the JetBrains plugin too.
   - id: copilot-cli
-    name: GitHub Copilot CLI
+    name: GitHub Copilot
     classification: Coding agent
     platforms: [darwin, linux]
     homebrew: [copilot-cli]
     npm: ["@github/copilot"]
+    # Read off 86-linux-jetbrains-agents on 2026-10-07: Marketplace plugin 17718, v1.18.0-261,
+    # vendor "GitHub", at ~/.local/share/JetBrains/IdeaIC2025.2/github-copilot-intellij.
+    # Copilot INSIDE VS CODE is still a blind spot: the editor bundles it, so a signature
+    # would report VS Code. docs/blind-spots.yaml carries the measurement.
+    jetbrains_plugins: [github-copilot-intellij]
 
   - id: cline
     name: Cline
@@ -506,6 +562,11 @@ agents:
     # (6f42e67d-d7ea-4a53-8704-2ae8bf2d86f3 here), and `publisher` is the display name
     # "Cline". routes.yaml records why that matters.
     vscode_extensions: [saoudrizwan.claude-dev]
+    # The JetBrains plugin, read off 80-linux-jetbrains on 2026-10-07: Marketplace plugin
+    # 28247 unpacked, osquery 5.23.1 rendering v2.0.6, vendor "Cline", at
+    # ~/.local/share/JetBrains/IdeaIC2025.2/cline. The value is the directory; the
+    # plugin.xml id, `bot.cline`, is not a column.
+    jetbrains_plugins: [cline]
 
   # THE ARGUMENT FOR THIS ENTRY IS THAT IT ACTS, and the artifact says so itself. Read off
   # the installed extension's own package.json, not off the vendor's page:
@@ -539,10 +600,6 @@ agents:
   # GUI session that CI has not got. Same shape as the note on ~/.hermes above: when the
   # directory appears depends on the route, and this repo does not ship the version it has
   # not seen.
-  #
-  # No JetBrains and no npm route for the same reason. Continue ships a JetBrains plugin and
-  # osquery grew a `jetbrains_plugins` table after 5.12.1, but neither the table nor the
-  # plugin id has been read off anything here.
   - id: continue
     name: Continue
     classification: Coding agent
@@ -555,6 +612,14 @@ agents:
     # here -- and `publisher` is the display name "Continue". catalog/routes.yaml records why
     # that distinction cost a wrong identifier once already.
     vscode_extensions: [continue.continue]
+    # The JetBrains plugin, read off 80-linux-jetbrains on 2026-10-07: Marketplace plugin
+    # 22707 unpacked, osquery 5.23.1 rendering v1.0.67, vendor "continue-dev", at
+    # ~/.local/share/JetBrains/IdeaIC2025.2/continue-intellij-extension. The plugin.xml id,
+    # com.github.continuedev.continueintellijextension, is not a column.
+    jetbrains_plugins: [continue-intellij-extension]
+    # The CLI, `cn`. Read off 71-linux-cli-agents on 2026-10-07: npm_packages rendering
+    # @continuedev/cli 1.5.47 under /usr/local/lib/node_modules.
+    npm: ["@continuedev/cli"]
 
   # Nous Research's terminal agent. Filed as a Personal agent rather than a Coding agent on
   # the strength of what it ships: ONE GATEWAY PROCESS fronting Telegram, Discord, Slack,
@@ -611,3 +676,218 @@ agents:
     # npm's `hermes-engine` is React Native's JavaScript engine and is not this agent at all.
     # It is in the fixture as a negative control, for the same reason `libxdmcp` is: it is
     # the row a substring match would claim.
+
+  # ---------------------------------------------------------------------------------------
+  # FROM HERE, the agents agentic-detector's `ai_tools` finds and this catalog did not, as of
+  # 2026-10-07. ai_tools' entries are substring tokens and binary names, so each was a lead
+  # rather than a value: everything below was read off a real install by the scenario named.
+  # ---------------------------------------------------------------------------------------
+
+  - id: opencode
+    name: opencode
+    classification: Coding agent
+    platforms: [darwin, linux]
+    # 71-linux-cli-agents, 2026-10-07: npm_packages rendering opencode-ai 1.18.35. npm has
+    # no unscoped `opencode` at all.
+    npm: [opencode-ai]
+    # A homebrew-core formula, installed by 21-cli-agents-homebrew.
+    homebrew: [opencode]
+    # THE CURL INSTALLER'S ROUTE, from 84-linux-installers: opencode.ai/install puts the
+    # binary at ~/.opencode/bin/opencode. bin/ is a level deeper than the enumeration reads,
+    # so the directory is the identifier -- the same shape as ~/.claude for Claude Code.
+    state_dirs: ["~/.opencode"]
+
+  # xAI's Grok Build. x.ai/cli/install.sh writes everything under ~/.grok, binary included
+  # (~/.grok/bin/grok, beside a ~/.grok/bin/agent too generic to name anything), so the
+  # directory is the one route. Read off 84-linux-installers on 2026-10-07.
+  #
+  # NOT EXCLUSIVE, and said here rather than hidden: the unofficial npm @vibe-kit/grok-cli
+  # documents ~/.grok/user-settings.json as its config, so a finding means a Grok terminal
+  # agent and not necessarily xAI's. That is from its README, not measured.
+  - id: grok
+    name: Grok Build
+    classification: Coding agent
+    platforms: [darwin, linux]
+    state_dirs: ["~/.grok"]
+
+  # Amazon Q Developer CLI, RENAMED: the kiro-cli cask carries old_tokens [amazon-q,
+  # codewhisperer]. A different product from Kiro the IDE above, and its ids do not rhyme
+  # with that one's -- test_matcher asserts this entry does not claim dev.kiro.desktop.
+  #
+  # The Linux installer (cli.kiro.dev/install) writes ~/.local/bin/kiro-cli beside
+  # kiro-cli-chat and kiro-cli-term, read off 84-linux-installers on 2026-10-07. The value
+  # is anchored at the front, so the two siblings land here too, as hermes's do.
+  - id: kiro-cli
+    name: Kiro CLI
+    classification: Coding agent
+    platforms: [darwin, linux]
+    binaries: ["~/.local/bin/kiro-cli"]
+    # On macOS a cask that installs an app. Its bundle id never left the CodeWhisperer era:
+    # Kiro CLI.app/Contents/Info.plist in the 2.28.0 dmg reads com.amazon.codewhisperer,
+    # 2026-10-07. 21-cli-agents-homebrew installs it.
+    homebrew: [kiro-cli]
+    bundle_ids: [com.amazon.codewhisperer]
+
+  # The Browser Company's AI browser, detected as a bundle, as Comet is. Read off a real
+  # install on 2026-10-07: apps rendering company.thebrowser.dia 1.51.1, homebrew_packages
+  # thebrowsercompany-dia 1.51.1,88214. 13-desktop-apps-more.
+  - id: dia
+    name: Dia
+    classification: AI browser
+    platforms: [darwin]
+    bundle_ids: [company.thebrowser.dia]
+    homebrew: [thebrowsercompany-dia]
+
+  # TRAE, ByteDance's VS Code fork -- an agent for the reason kiro is, and the artifact says
+  # so: it ships a built-in extension "iCube Agent Shell Exec", "Shell execution service for
+  # iCube Agent", contributing icube.shellExec.runCommand.
+  #
+  # TWO EDITIONS, ONE ENTRY, on antigravity's reasoning. Both ids were read off the shipped
+  # dmgs' Info.plist on 2026-10-07, as kiro's was; 13-desktop-apps-more installs the casks:
+  #
+  #   cask trae     2.3.61406   Trae.app      com.trae.app   CFBundleShortVersionString 3.5.81
+  #   cask trae-cn  2.3.62837   Trae CN.app   cn.trae.app    CFBundleShortVersionString 3.3.83
+  #
+  # The cask versions are not the app's; `ver` will read the second column.
+  - id: trae
+    name: Trae
+    classification: Coding agent
+    platforms: [darwin]
+    bundle_ids: [com.trae.app, cn.trae.app]
+    homebrew: [trae, trae-cn]
+
+  # A Cline fork, and its id is the substring trap for cline's: `roo-cline`. Read off
+  # 85-linux-vscode-agents on 2026-10-07, v3.54.0, which also forbids cline. The Marketplace
+  # shows no release since 2026-05-15; installed machines keep it either way.
+  - id: roo-code
+    name: Roo Code
+    classification: Coding agent
+    platforms: [darwin, linux]
+    vscode_extensions: [rooveterinaryinc.roo-cline]
+
+  - id: kilo-code
+    name: Kilo Code
+    classification: Coding agent
+    platforms: [darwin, linux]
+    # 85-linux-vscode-agents, 2026-10-07: v7.8.8, at the same version as the CLI below.
+    vscode_extensions: [kilocode.kilo-code]
+    # 71-linux-cli-agents, same day: @kilocode/cli 7.8.8, commands `kilo` and `kilocode`.
+    # npm's UNSCOPED `kilocode` is 1.2.0 with an empty description and is not this; the
+    # fixture carries it as a negative control.
+    npm: ["@kilocode/cli"]
+
+  - id: augment
+    name: Augment Code
+    classification: Coding agent
+    platforms: [darwin, linux]
+    # 85-linux-vscode-agents, 2026-10-07: v0.904.1.
+    vscode_extensions: [augment.vscode-augment]
+    # The CLI, `auggie`. 71-linux-cli-agents, same day: @augmentcode/auggie 0.36.0.
+    npm: ["@augmentcode/auggie"]
+
+  # Google's editor agent, by its own package.json: geminicodeassist.startagent ("Start
+  # Agent") and gemini.inlineSuggestion.acceptAll ("Accept file"). Separate from gemini-cli,
+  # which is a different install of a different product.
+  - id: gemini-code-assist
+    name: Gemini Code Assist
+    classification: Coding agent
+    platforms: [darwin, linux]
+    # 85-linux-vscode-agents, 2026-10-07: v2.100.0.
+    vscode_extensions: [google.geminicodeassist]
+    # 86-linux-jetbrains-agents, same day: Marketplace plugin 24198, v1.59.0-253, vendor
+    # "Google". THE DIRECTORY IS JUST `gemini`, which is the vendor's choice and a generic
+    # one: another plugin whose zip root were also `gemini` would be claimed by this value.
+    jetbrains_plugins: [gemini]
+
+  # Amazon Q Developer in the editor, an agent by its own package.json:
+  # aws.amazonq.runCmdExecution ("Run Amazon Q Tool") and aws.amazonq.inline.acceptEdit. AWS
+  # lists end of support for these plugins as 2027-04-30; installed machines remain after
+  # that. The CLI that used to share this name is kiro-cli above.
+  - id: amazon-q
+    name: Amazon Q Developer
+    classification: Coding agent
+    platforms: [darwin, linux]
+    # 85-linux-vscode-agents, 2026-10-07: v2.8.0.
+    vscode_extensions: [amazonwebservices.amazon-q-vscode]
+    # 86-linux-jetbrains-agents, same day: Marketplace plugin 24267, v4.9.262, vendor "AWS".
+    # It requires AWS Core (aws.toolkit.core), a separate plugin that is not this agent.
+    jetbrains_plugins: [plugin-amazonq]
+
+  # Sourcegraph's assistant. On the agent side by the test continue's entry sets, read off
+  # its own package.json: cody.command.edit-code, "Insert Code at Cursor" and "Save Code to
+  # New File..." write to your files.
+  - id: cody
+    name: Cody
+    classification: Coding agent
+    platforms: [darwin, linux]
+    # 85-linux-vscode-agents, 2026-10-07: v1.155.0.
+    vscode_extensions: [sourcegraph.cody-ai]
+    # 86-linux-jetbrains-agents, same day: Marketplace plugin 9682, v7.155.0, vendor
+    # "Sourcegraph", at ~/.local/share/JetBrains/IdeaIC2025.2/Sourcegraph. THE DIRECTORY
+    # NAMES THE VENDOR, capitalised, rather than the product -- the vendor's choice, so it is
+    # copied exactly, and the route matches exactly.
+    jetbrains_plugins: [Sourcegraph]
+
+  # On the agent side by its own commands: Smart Diff accept and reject, and "Run Code
+  # Interpreter (Python)", which executes.
+  - id: codegpt
+    name: CodeGPT
+    classification: Coding agent
+    platforms: [darwin, linux]
+    # 85-linux-vscode-agents, 2026-10-07: v3.24.77.
+    vscode_extensions: [danielsanmedium.dscodegpt]
+
+  # EVERY BLACKBOX EXTENSION IS UNPUBLISHED from the VS Code Marketplace (read 2026-10-07),
+  # so VS Code's own installer answers "not found" for both of these -- after 5.3M and 2.9M
+  # installs. Catalogued because those machines still carry them; the swe-agent entry makes
+  # the same argument for a stale image. 85-linux-vscode-agents installs the VSIX the
+  # Marketplace still serves by URL. When that stops, the run goes red and the record is
+  # superseded rather than deleted.
+  #
+  # blackboxagent describes itself as an "Autonomous coding agent ... creating/editing
+  # files, running commands"; blackbox contributes Generate Repo, Refactor and Add tests.
+  - id: blackbox
+    name: BLACKBOX AI
+    classification: Coding agent
+    platforms: [darwin, linux]
+    vscode_extensions: [blackboxapp.blackbox, blackboxapp.blackboxagent]
+
+  # Browser agents by Web Store id, each read off the signed CRX on 2026-10-07: the id is
+  # derived from the publisher key in the CRX header, which is what Chrome writes into the
+  # installed manifest. 45-claude-extension unpacks each into a real profile.
+  #
+  # HARPA acts in the page, read off its own bundle (14.4.0): nj-engine.js dispatches key
+  # events into page elements and reports `{clicked: ...}` back, under a manifest asking for
+  # tabs, scripting, cookies and every host.
+  - id: harpa
+    name: HARPA AI
+    classification: Browser agent
+    platforms: [darwin, linux]
+    extension_ids: [eanggfilgoajaocelnaflolkadkeghjp]
+
+  # MONICA IS A CHAT SIDEBAR THAT GREW AN OPERATOR, and the operator is why it is here. Read
+  # off its own bundle (9.0.22): an agent card "Browser Operator -- Automate tasks in your own
+  # browser", and a content script that types into page inputs.
+  - id: monica
+    name: Monica
+    classification: Browser agent
+    platforms: [darwin, linux]
+    extension_ids: [ofpnmcalabcbjgholdjcjblkibolbppb]
+
+  # SIDER AND MERLIN LOOK LIKE CHAT SIDEBARS FROM THEIR LISTINGS, and were nearly left out
+  # on that. Their bundles say otherwise. Sider (5.34.1) shipped a "Browser Agent (Research
+  # Preview)" in 5.20.0, and content-all.js runs `browser-agent-execute-script` in a tab.
+  - id: sider
+    name: Sider
+    classification: Browser agent
+    platforms: [darwin, linux]
+    extension_ids: [difoiogjjojoaoomphldepapgpbgkhkb]
+
+  # Merlin (8.3.0) describes itself as an "AI-powered browser agent", and gmailStrip.js
+  # bears it out: it clicks a thread's Reply and types into the compose box. twitterStrip.js
+  # does the same on X.
+  - id: merlin
+    name: Merlin
+    classification: Browser agent
+    platforms: [darwin, linux]
+    extension_ids: [camppjleccjaphfdbohjdohecfnoikec]

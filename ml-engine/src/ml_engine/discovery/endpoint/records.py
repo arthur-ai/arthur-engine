@@ -50,9 +50,13 @@ PATH_IN_LOC = frozenset(
         "port",
         "desktop",
         "unit",
+        "jbplugin",
+        "proc",
     },
 )
-VERSION_IN_VER = frozenset({"app", "brew", "ext", "npm", "vscodeext", "deb", "rpm"})
+VERSION_IN_VER = frozenset(
+    {"app", "brew", "ext", "npm", "vscodeext", "deb", "rpm", "jbplugin"},
+)
 
 
 class UnreadableReason(str, Enum):

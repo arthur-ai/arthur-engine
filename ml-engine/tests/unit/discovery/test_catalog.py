@@ -66,10 +66,10 @@ def matcher() -> Matcher:
 
 def test_floor_catalog_is_the_vendored_one() -> None:
     m = Matcher.from_source()
-    assert m.agent_count == 22
+    assert m.agent_count == 39
     # Upstream's own catalog_sha, computed over file bytes. If this changes, the vendor
     # tree moved and every record's recorded catalog version moved with it.
-    assert m.catalog_sha == "dbb22a107953"
+    assert m.catalog_sha == "b8772c7cd655"
 
 
 def test_a_catalog_built_from_a_mapping_marks_its_hash_as_not_upstreams() -> None:
@@ -364,7 +364,7 @@ class TestLoadTimeValidation:
 
     def test_the_vendored_floor_passes_its_own_validation(self) -> None:
         """The guard must not have made the shipped catalog unloadable."""
-        assert Matcher.from_source().agent_count == 22
+        assert Matcher.from_source().agent_count == 39
 
 
 class TestCatalogHashUsesFileBytes:
@@ -372,7 +372,7 @@ class TestCatalogHashUsesFileBytes:
     number -- which is sha256 over the file's BYTES."""
 
     def test_the_floor_still_matches_upstreams_value(self) -> None:
-        assert Matcher.from_source().catalog_sha == "dbb22a107953"
+        assert Matcher.from_source().catalog_sha == "b8772c7cd655"
 
     def test_crlf_does_not_change_the_hash_the_way_read_text_would(
         self,
@@ -498,7 +498,7 @@ class TestCatalogShapes:
             Matcher.from_source(catalog_yaml=bad)
 
     def test_the_shipped_floor_still_loads(self) -> None:
-        assert Matcher.from_source().agent_count == 22
+        assert Matcher.from_source().agent_count == 39
 
     def test_a_catalog_sharing_fields_through_an_anchor_still_loads(self) -> None:
         """`<<` carries a tag PyYAML has no constructor for -- construct_mapping flattens

@@ -343,6 +343,10 @@ TOOL_DIR = re.compile(
 # anything. So the row built specifically to stop a wedged daemon reading as an empty
 # machine would have been swallowed by the classifier one hop after surviving the scan.
 GAP_KIND = "scan"
+# KINDS WHOSE ROW SAYS THE AGENT IS RUNNING, not only installed: a process, and a container
+# (docker_containers lists running ones only). A finding with one of these in its evidence
+# is marked `running`. Every other route reports presence.
+LIVE_KINDS = frozenset({"proc", "container"})
 # `extra` on a scan row: "ok" means the branch ran and the rows beside it are real. `ver` is
 # when the scan ran, in unix seconds, so a cached payload dates itself and a consumer can
 # judge staleness without stat()ing anything.
@@ -848,6 +852,8 @@ def _run(state, started):
                 {"id": aid, "name": hits[0][0]["name"],
                  "classification": hits[0][0]["classification"],
                  "evidence": [r for _, r in hits],
+                 **({"running": True}
+                    if any(r.get("kind") in LIVE_KINDS for _, r in hits) else {}),
                  **({"superseded": [r.get("id") for m, r in hits if m.get("superseded")],
                      "only_superseded": all(m.get("superseded") for m, _ in hits)}
                     if any(m.get("superseded") for m, _ in hits) else {})}
@@ -951,7 +957,8 @@ def _run(state, started):
               "No AI agents found in the parts that could be read.")
     for aid, hits in sorted(findings.items()):
         meta = hits[0][0]
-        print(f"\n{meta['name']}  [{meta['classification']}]")
+        live = "  running" if any(r.get("kind") in LIVE_KINDS for _, r in hits) else ""
+        print(f"\n{meta['name']}  [{meta['classification']}]{live}")
         for hit, row in hits:
             detail = row.get("loc") or row.get("id")
             ver = f"  {row['ver']}" if row.get("ver") else ""
