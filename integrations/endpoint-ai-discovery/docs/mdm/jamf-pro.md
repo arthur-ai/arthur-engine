@@ -156,12 +156,18 @@ Cloud that is the Jamf Cloud Distribution Point and the upload happens in the br
 *Configure* step is easy to miss: until you click it the payload shows nothing to add.
 
 **5 · Scope it.** The **Scope** tab at the top of the Policy → *Targets* → **Add** → *Computer
-Groups* → `Prereq — osquery missing`. **Save**.
+Groups* → `Prereq — osquery missing` **and** `Prereq — osquery too old`. **Save**.
 
-**6 · Watch it drain.** Update Inventory, then watch the group empty as Macs check in and report
-a version. Scoping at the group the attribute feeds is what makes this self-managing: a Mac
-installs osquery, its next inventory reports a version, it leaves the group, and the Policy
-stops targeting it. Nothing to turn off afterwards.
+**Once per computer counts runs, not versions.** A Mac that already ran this Policy with an
+older package does not run it again, and stays in `Prereq — osquery too old`. When the floor
+moves past what an earlier package installed — vendored ref `v0.12.0` moved it from 5.11 to
+5.18 — attach the new package to a **new** Policy with the same settings, scoped to
+`Prereq — osquery too old`. A new Policy has run on no Mac yet.
+
+**6 · Watch it drain.** Update Inventory, then watch both groups empty as Macs check in and
+report a version. Scoping at the groups the attribute feeds is what makes this self-managing: a
+Mac installs or upgrades osquery, its next inventory reports a version at the floor, it leaves
+the group, and the Policy stops targeting it. Nothing to turn off afterwards.
 
 `no-cache` on the two AI attributes should drain behind it. A Mac still reporting `no-cache`
 with osquery green is a different fault — read its Policy log, and see section 08.
