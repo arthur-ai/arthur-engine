@@ -192,9 +192,9 @@ if os.path.exists(built):
         if banned in bc:
             print(f"FAIL: tools/build-collector.py calls {banned} -- it is building its own "
                   f"payload again. The bundler is vendored; hand it a --driver."); sys.exit(1)
-    # routes.yaml arrived with v0.3.0 as a second catalog file. The guard is a list of
-    # names, so a new one is not covered until it is named -- which is the whole failure
-    # mode: a catalog file reaching a Mac, invisible inside a base64 blob.
+    # Behind build-collector.py's ENDPOINT_FILES, which admits payload files by name: no
+    # catalog file is named anywhere in what deploys. dist/signatures.sql is catalog-derived
+    # and admitted there by name; the --names guard below is what keeps it unread.
     for forbidden in ("agents.yaml", "routes.yaml", "catalog/"):
         if forbidden in text:
             print(f"FAIL: dist/collect.sh mentions {forbidden!r} -- the endpoint holds no "
@@ -222,6 +222,15 @@ if os.path.exists(built):
         print(f"FAIL: dist/collect.sh passes {gone} to bin/discover, which no longer accepts "
               f"it. The vendored runner changed; see tools/build-collector.py."); sys.exit(1)
     print(f"collector: ok, calls discover with {sorted(called)}, all still accepted")
+
+    # MATCHING STAYS OFF THE DEVICE. The bundle carries dist/signatures.sql for
+    # `bin/discover --names`, which matches on the endpoint. The collector enumerates; matching
+    # happens off the machine, where a new signature re-matches evidence already held.
+    if re.search(r"--names\b", driver_code):
+        print("FAIL: dist/collect.sh passes --names to bin/discover, which matches on the "
+              "endpoint. The endpoint enumerates; matching happens off the machine. See "
+              "docs/architecture.md."); sys.exit(1)
+    print("collector: ok, never asks discover to match on the endpoint (no --names)")
 
     # Framing is this tree's job and this is the only implementation of it. Dropping the
     # step would leave the attribute empty, which reads as a Mac with nothing on it.

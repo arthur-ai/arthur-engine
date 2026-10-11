@@ -17,7 +17,7 @@ it writes three files; the attributes `cat` them. **Nothing is packaged, signed 
 | | |
 |---|---|
 | Target | Jamf Pro |
-| Requires | osquery 5.10+ (5.11+ for the VS Code branch). Nothing else — no interpreter, no Command Line Tools |
+| Requires | osquery 5.18+ (5.10+ runs; below 5.11 the VS Code branch and below 5.18 the JetBrains branch report `error`). Nothing else — no interpreter, no Command Line Tools |
 | Per-Mac cost | ~7s per Policy run, off the reporting path |
 | Attribute value | 21 KB of a 256 KB budget (Jamf itself stores ≥ 1 MB — measured) |
 
@@ -31,7 +31,7 @@ cut off.
 
 | Requirement | Why | Confirm with |
 |---|---|---|
-| osquery 5.10+, **5.11+ for VS Code** | Every query runs through `osqueryi`. All declare `min-osquery: 5.10.0` except `vscode.sql`, which needs **5.11.0** — the `vscode_extensions` table does not exist below it | Application inventory, or `osqueryi --version` |
+| osquery 5.10+, **5.18+ for every branch** | Every query runs through `osqueryi`. All declare `min-osquery: 5.10.0` except `vscode.sql`, which needs **5.11.0**, and `jetbrains.sql`, which needs **5.18.0** — the `vscode_extensions` and `jetbrains_plugins` tables do not exist below them | Application inventory, or `osqueryi --version` |
 | Root LaunchDaemon | Some branches read other users' home directories | Standard for a Jamf-deployed daemon |
 
 **The python3 trap is closed as of vendored ref `v0.5.0`, and it is worth knowing what it
@@ -74,7 +74,7 @@ now — see section 00. Do not deploy them for this project.)*
 ```bash
 #!/bin/bash
 FLOOR_MAJOR=5
-FLOOR_MINOR=11   # vscode_extensions arrives in 5.11; every other branch needs 5.10
+FLOOR_MINOR=18   # jetbrains_plugins arrives in 5.18, vscode_extensions in 5.11; the rest need 5.10
 
 # THE LOOKUP ORDER MIRRORS THE COLLECTOR'S. bin/container-scan resolves $OSQI, then three
 # absolute paths, then $PATH. An EA that looked anywhere else could report "installed" on a
@@ -107,7 +107,7 @@ attribute, the operator, the value — and the member count is a deployment targ
 | Group | Criteria | Operator | Value | Fix |
 |---|---|---|---|---|
 | Prereq — osquery missing | `Arthur AI Osquery Prereq` | **is** | `absent` | Install the pkg |
-| Prereq — osquery too old | `Arthur AI Osquery Prereq` | **like** | `old:` | Upgrade; these Macs report `vscode=error` |
+| Prereq — osquery too old | `Arthur AI Osquery Prereq` | **like** | `old:` | Upgrade; these Macs report `jetbrains=error`, and below 5.11 `vscode=error` too |
 
 **`is` where the whole value is the sentinel, `like` where you are matching a fragment.** Jamf's
 `like` is a substring test, so `like` `absent` would also catch a future value that merely
@@ -136,7 +136,7 @@ see the group in 06.
 
 **1 · Get the package.** Download the macOS `.pkg` from
 [osquery.io/downloads](https://osquery.io/downloads), or your internal mirror. Check the version
-against the 5.11 floor before uploading it.
+against the 5.18 floor before uploading it.
 
 **2 · Upload it.** *Settings → Computer Management → Packages → **New***. Choose the file under
 **Filename**, leave the rest at defaults, **Save**. This needs a distribution point; on Jamf
@@ -226,12 +226,12 @@ anything else.
 **Verify.** Run the Policy once against a test Mac. The Policy log should read:
 
 ```
-ok 2026-09-04T23:50:36Z rows=775 apps=ok browser=ok containers=ok filesystem=ok homebrew=ok native-messaging=ok packages=ok ports=ok runtime=ok vscode=ok
+ok 2026-10-11T22:57:49Z rows=929 apps=ok browser=ok containers=ok filesystem=ok homebrew=ok jetbrains=ok native-messaging=ok packages=ok ports=ok running=ok running-darwin=ok runtime=ok vscode=ok
 ```
 
-**Ten branches on macOS** as of v0.3.0: `apps`, `browser`, `containers`, `filesystem`,
-`homebrew`, `native-messaging`, `packages`, `ports`, `runtime`, `vscode`. A status line with
-six is from before that ref.
+**Thirteen branches on macOS** as of v0.12.0: `apps`, `browser`, `containers`, `filesystem`,
+`homebrew`, `jetbrains`, `native-messaging`, `packages`, `ports`, `running`, `running-darwin`,
+`runtime`, `vscode`. A status line with ten is from before that ref.
 
 Measured cold, from a directory containing nothing but the script, under a stripped
 environment: **~7s**, three files written, no temp directory left behind. It was 4.3s at six
@@ -377,7 +377,7 @@ First token is `ok` or `degraded`, then a UTC timestamp, a row count, and one
 All six read **Arthur AI Inventory Status**. The operator differs by row, and it is not cosmetic: `is`
 is an exact match on the whole stored value, `like` is a substring test. `no-cache` is the only
 one whose stored value is the entire string; the rest are tokens inside a status line that also
-carries a timestamp, a row count and ten branches, so **is** on any of those matches nothing.
+carries a timestamp, a row count and one token per branch, so **is** on any of those matches nothing.
 
 | Group | Operator | Value | Meaning |
 |---|---|---|---|
@@ -442,7 +442,7 @@ Every `branch=outcome` token, and what to do. This is the entire vocabulary.
 | `unhealthy:000` | Socket exists, nothing answered within the ping timeout. Docker installed and not running, or no user logged in | Expected with no user logged in. **On a Mac with Docker running it is a fault** — too short a ping cannot outlast a cold daemon, which is why the collector sets 15s |
 | `unhealthy:500` | Daemon up, engine not serving | Restart Docker |
 | `timeout:6` | Answered `/_ping`, then stalled and was killed at 6s | Restart Docker. This is the state the wall-clock bound exists for |
-| `error` | Query failed outright — usually a table this osquery build lacks | Check the version against `min-osquery`. `vscode=error` on osquery 5.10 is this and is expected: `vscode_extensions` arrived in 5.11 |
+| `error` | Query failed outright — usually a table this osquery build lacks | Check the version against `min-osquery`. `vscode=error` on osquery 5.10 is this and is expected: `vscode_extensions` arrived in 5.11. So is `jetbrains=error` below 5.18: `jetbrains_plugins` arrived in 5.18 |
 | `no-cache` | The daemon has **never** written here | Deployment problem. Check osquery is installed (section 00b), then the daemon and `/var/log/arthur-ai-discovery.log` |
 | `stale=NNh` | The value is a real scan, NNh old, kept because a later run could not collect | The evidence is still good; the collector is not. Read the Policy log — the Mac has been failing since that timestamp |
 
@@ -464,8 +464,13 @@ looking at is*. A Mac failing for weeks shows both.
 pbpaste | python3 -c 'import base64,gzip,json,sys
 v=sys.stdin.read().strip()
 json.dump(json.loads(gzip.decompress(base64.b64decode(v[8:]))),sys.stdout,indent=1)' \
-  | vendor/osquery-ai-discovery/bin/classify /dev/stdin
+  | vendor/osquery-ai-discovery/bin/classify /dev/stdin \
+      --catalog ../../ml-engine/src/ml_engine/discovery/_vendor/agents.yaml \
+      --routes  ../../ml-engine/src/ml_engine/discovery/_vendor/routes.yaml
 ```
+
+The catalog is the collector's, so it is read from ml-engine's vendored copy, which
+`ml-engine/tests/unit/discovery/test_vendor_parity.py` holds to the same upstream ref.
 
 Prints the findings, which branches ran and when, and `COULD NOT LOOK` for any that did not.
 

@@ -8,6 +8,19 @@
 #     bin/discover --write PATH --status TXT   # ...and a one-line health summary
 #     bin/discover --cache PATH        # emit that file. no queries run, nothing can block
 #     bin/discover --deep | bin/classify
+#     bin/discover --names             # ONE LINE: the agents found, then the status line
+#     bin/discover --names --cache PATH   # the same, from the cache: an Extension Attribute
+#
+# --names MATCHES ON THE ENDPOINT, which every other mode refuses to do, and it is the one
+# mode that should. The JSON is for a collector; a Jamf Extension Attribute is one printed
+# value a Smart Group matches on, and a reader with osqueryi and no collector wants a name,
+# not a payload. The signatures come from dist/signatures.sql, the catalog rendered into
+# SQL by tools/render_match.py and held row for row to bin/classify by
+# test/test_match_sql.py. The line carries the status vocabulary after a `; `, so `none`
+# and `could not look` are never the same line:
+#
+#     Claude Code 2.0.1, Cursor 1.7.44; ok 2026-10-05T13:20:11Z rows=775 apps=ok ... containers=absent
+#     none; degraded 2026-10-05T13:20:11Z rows=612 ... containers=timeout:6
 #
 # TWO ARTIFACTS, TWO PROCESSES, AND THAT IS THE POINT.
 #
@@ -110,18 +123,29 @@ PACK="${DISCOVER_PACK:-$ROOT/dist/ai-discovery.conf}"
 #              docker_healthy docker_state run_bounded marker no_docker cache_write
 #              container_scan scan_and_cache
 #
+# And what THIS script defines, so the next addition to either file can check both lists:
+#
+#   globals    PLATFORM BASE DEEP_SCAN CACHE_PATH WRITE STATUS PACK SCAN_ARGS NAMES SIGS
+#              SUMMARY_NAMES SUMMARY_STATUS
+#   functions  usage need_osqi payload_cte status_sql names_sql summary names_line
+#
 # Two globals have already bitten: DEEP was this script's --deep flag until it silently
 # became a file path, and CACHE was --cache's path until sourcing reset it to empty and every
 # --cache run quietly did a live scan instead. Hence CACHE_PATH. DOCKER_SECS is the one this
 # list was missing -- added to container-scan and never written down here, which is how the
 # next collision would have arrived.
 SCAN_ARGS=()
+# --names: print one readable line instead of the payload. An output mode, so it composes
+# with --deep, --cache and --write rather than being a fifth way to run the queries.
+NAMES=0
+SIGS="${DISCOVER_SIGS:-$ROOT/dist/signatures.sql}"
 
-usage() { sed -n '2,30p' "$0" | sed 's/^# \{0,1\}//'; }
+usage() { sed -n '2,24p' "$0" | sed 's/^# \{0,1\}//'; }
 
 while [ $# -gt 0 ]; do
   case "$1" in
     --deep)         DEEP_SCAN=1; shift ;;
+    --names)        NAMES=1; shift ;;
     # --cache implies --deep. Asking for the cached container data and then not including
     # it would be a foot-gun with no legitimate use.
     --cache)        [ -n "${2:-}" ] || { echo "discover: --cache needs a path" >&2; exit 1; }
@@ -154,6 +178,100 @@ need_osqi() {
   osqi="$(osqueryi_path)" || { echo "discover: no osqueryi found (set OSQI)" >&2; exit 1; }
 }
 
+# --- the status line and the names line, from ONE statement over ONE document -----------
+#
+# A payload file as an `ev` CTE of six-column rows -- the shape bin/classify matches and the
+# shape dist/signatures.sql is held to agree with. test/test_match_sql.py asserts these five
+# column expressions appear here verbatim, so the wrapper under test is the wrapper that runs.
+# The document arrives through sed and never through a printf format: a row holding `%s`
+# would otherwise be read as a conversion and vanish. coalesce on id, ver and loc, because
+# a missing key is NULL and `NULL = 'x'` is NULL rather than false; `extra` stays raw because
+# the status test below is `IS NOT 'ok'`, which was written for NULL.
+payload_cte() {
+  printf "WITH d(doc) AS (VALUES ('"
+  sed "s/'/''/g" "$1"
+  printf "')), ev AS (SELECT json_extract(e.value,'\$.kind') AS kind,"
+  printf " coalesce(json_extract(e.value,'\$.id'),'') AS id,"
+  printf " coalesce(json_extract(e.value,'\$.ver'),'') AS ver,"
+  printf " coalesce(json_extract(e.value,'\$.loc'),'') AS loc,"
+  printf " json_extract(e.value,'\$.extra') AS extra"
+  printf " FROM d, json_each(d.doc) e)\n"
+}
+
+# The status expression, over `ev`. COALESCE is load-bearing: group_concat over no rows
+# returns NULL, and concatenating NULL in SQLite yields NULL -- so a payload with no scan
+# rows would blank the WHOLE line rather than shortening it, and a status that says nothing
+# is a machine that looks fine. rtrim for the same case: with no markers the join leaves a
+# trailing space, which the base path (no markers) would otherwise print.
+#
+# The ORDER BY sits in a subquery because SQLite gained ORDER BY inside an aggregate only in
+# 3.44 and osquery 5.23.1 ships 3.42. Nothing consumes the token order.
+status_sql() {
+  printf "rtrim((CASE WHEN EXISTS (SELECT 1 FROM ev WHERE kind='scan'"
+  printf " AND extra IS NOT 'ok' AND extra IS NOT 'absent')"
+  printf " THEN 'degraded' ELSE 'ok' END)"
+  printf " || ' ' || strftime('%%Y-%%m-%%dT%%H:%%M:%%SZ','now')"
+  printf " || ' rows=' || (SELECT count(*) FROM ev) || ' ' ||"
+  printf " COALESCE((SELECT group_concat(id || '=' || extra, ' ')"
+  printf " FROM (SELECT id, extra FROM ev WHERE kind='scan'"
+  printf " ORDER BY id, extra)), ''))"
+}
+
+# The names expression, over `hit` -- which dist/signatures.sql defines from `ev`. One
+# entry per agent, name then a version when any evidence row carried one. `none` when the
+# join is empty, which is a value and never the absence of one.
+#
+# THE VERSION IS ONE OF THOSE SEEN, NOT THE HIGHEST. max() over strings is alphabetical, so
+# 1.9.0 beats 1.10.0; comparing versions properly is not a thing this SQL should attempt.
+# Container rows are left out of it entirely: queries/containers.sql puts the container's
+# STATE in `ver`, so without the guard a running aider container printed `aider running`.
+names_sql() {
+  printf "(SELECT coalesce(group_concat(name || CASE WHEN ver != '' THEN ' ' || ver"
+  printf " ELSE '' END, ', '), 'none') FROM (SELECT name,"
+  printf " max(CASE WHEN kind = 'container' THEN '' ELSE ver END) AS ver FROM hit"
+  printf " GROUP BY agent ORDER BY name))"
+}
+
+# One osqueryi call, both answers, into SUMMARY_STATUS and SUMMARY_NAMES -- bash 3.2 has no
+# other way to return two strings. One call rather than two is what makes the status a
+# --write writes and the status --names prints beside the names the SAME bytes, timestamp
+# included. Empty on failure, and every caller treats empty as "could not summarise" --
+# never as `none`, which would be a clean machine manufactured by a broken statement.
+#
+# --line, not --json: the names come back as a raw value after a fixed `names = ` prefix
+# and need no unescaping. Keys are right-aligned to the longest, hence the leading ` *`.
+summary() {
+  local out
+  if [ "$2" = 1 ]; then
+    [ -s "$SIGS" ] || { echo "discover: no $SIGS (run tools/render_match.py)" >&2; return 1; }
+    out="$({ payload_cte "$1"; cat "$SIGS"
+             printf "SELECT "; names_sql; printf " AS names, "; status_sql; printf " AS status;"
+           } | osq_run "$osqi" --line)"
+  else
+    out="$({ payload_cte "$1"
+             printf "SELECT '' AS names, "; status_sql; printf " AS status;"
+           } | osq_run "$osqi" --line)"
+  fi
+  [ -n "$out" ] || return 1
+  SUMMARY_NAMES="$(printf '%s\n' "$out" | sed -n 's/^ *names = //p')"
+  SUMMARY_STATUS="$(printf '%s\n' "$out" | sed -n 's/^ *status = //p')"
+  [ -n "$SUMMARY_STATUS" ]
+}
+
+# --names over a document held in a variable: materialise it, summarise, print the line.
+# Nothing on stdout when the summary fails, and exit 1 -- the one output this mode must
+# never produce is `none` for a machine it could not read.
+names_line() {
+  local tmp rc
+  tmp="$(mktemp "${TMPDIR:-/tmp}/discover.names.XXXXXX")" || return 1
+  printf '%s' "$1" > "$tmp"
+  summary "$tmp" 1; rc=$?
+  rm -f "$tmp"
+  [ "$rc" = 0 ] || { echo "discover: could not summarise the inventory; printing nothing" \
+                          "rather than 'none'" >&2; return 1; }
+  printf '%s; %s\n' "$SUMMARY_NAMES" "$SUMMARY_STATUS"
+}
+
 # --cache: emit and stop. SPLIT IN TWO, because the halves need different things.
 #
 # A MISSING CACHE MUST ANSWER ON A MACHINE WITH NOTHING INSTALLED. That is the whole reason
@@ -170,6 +288,14 @@ if [ -n "$CACHE_PATH" ]; then
     # A missing cache is a fact about the deployment, not about this machine. Saying nothing
     # would let it read as "nothing installed here".
     echo "discover: no readable cache at $CACHE_PATH -- is the scheduled writer installed?" >&2
+    if [ "$NAMES" = 1 ]; then
+      # The same fact in the one-line shape, BUILT BY THE SHELL: this arm runs before the
+      # osqueryi lookup on purpose, and a line that needed osqueryi to say "the writer never
+      # ran" could be stopped by the thing it reports. `none; degraded` is a value a Smart
+      # Group can match on; silence is not.
+      printf 'none; degraded %s rows=1 inventory=no-cache\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+      exit 1
+    fi
     printf '[%s]\n' "$(json_row scan inventory "$(date +%s)" "$CACHE_PATH" no-cache '')"
     exit 1
   fi
@@ -193,11 +319,26 @@ if [ -n "$CACHE_PATH" ]; then
                printf " THEN 'ok' ELSE 'bad' END AS v FROM d;"
              } | osq_run "$osqi" --csv --header=false)"
   case "$verdict" in
-    ok)  cat "$CACHE_PATH"; exit 0 ;;
+    ok)  if [ "$NAMES" = 1 ]; then
+           # The cache is the document; no copy, no re-encoding. A failed summary prints
+           # nothing and exits 1, for the reason names_line gives.
+           summary "$CACHE_PATH" 1 \
+             || { echo "discover: could not summarise $CACHE_PATH" >&2; exit 1; }
+           printf '%s; %s\n' "$SUMMARY_NAMES" "$SUMMARY_STATUS"
+           exit 0
+         fi
+         cat "$CACHE_PATH"; exit 0 ;;
     bad) echo "discover: $CACHE_PATH is not a JSON array. The writer may have been" \
               "interrupted; it writes by rename, so this should not happen." >&2
          # A corrupt cache said nothing at all before this, which is the same silence a
          # stubbed interpreter produced. `error` is already in the kind=scan vocabulary.
+         # With --names the same fact goes out in the one-line shape, like the
+         # missing-cache arm above: a JSON row here would be stored as the attribute's
+         # value, and a Smart Group matching `degraded` would miss exactly this machine.
+         if [ "$NAMES" = 1 ]; then
+           printf 'none; degraded %s rows=1 inventory=error\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+           exit 1
+         fi
          printf '[%s]\n' "$(json_row scan inventory "$(date +%s)" "$CACHE_PATH" error '')"
          exit 1 ;;
     # A BROKEN VALIDATOR IS NOT A BROKEN CACHE, and reporting one as the other would send
@@ -286,46 +427,36 @@ EOF
   mv -f "$tmpdir/payload" "$WRITE" || { echo "discover: could not write $WRITE" >&2; rm -rf "$tmpdir"; exit 1; }
   chmod 644 "$WRITE" 2>/dev/null
 
-  if [ -n "$STATUS" ]; then
-    stmp="$(mktemp "${STATUS}.XXXXXX")" || exit 1
-    # ONE STATEMENT, and it reads back $WRITE rather than the rows on their way there, so
-    # the line describes the file a collector will actually find.
-    #
-    # COALESCE is load-bearing. group_concat over no rows returns NULL, and concatenating
-    # NULL in SQLite yields NULL -- so a payload with no scan rows would blank the WHOLE
-    # line rather than shortening it, and a status file that says nothing is a machine that
-    # looks fine. Unreachable today, since every branch gets a marker; explicit anyway.
-    #
-    # The ORDER BY sits in a subquery because SQLite gained ORDER BY inside an aggregate
-    # only in 3.44 and osquery 5.23.1 ships 3.42. Nothing consumes the token order.
-    status_line="$({ printf "WITH d(doc) AS (VALUES ('"
-                     sed "s/'/''/g" "$WRITE"
-                     printf "')), r AS (SELECT json_extract(e.value,'\$.kind') AS kind,"
-                     printf " json_extract(e.value,'\$.id') AS id,"
-                     printf " json_extract(e.value,'\$.extra') AS extra"
-                     printf " FROM d, json_each(d.doc) e)"
-                     printf " SELECT (CASE WHEN EXISTS (SELECT 1 FROM r WHERE kind='scan'"
-                     printf " AND extra IS NOT 'ok' AND extra IS NOT 'absent')"
-                     printf " THEN 'degraded' ELSE 'ok' END)"
-                     printf " || ' ' || strftime('%%Y-%%m-%%dT%%H:%%M:%%SZ','now')"
-                     printf " || ' rows=' || (SELECT count(*) FROM r) || ' ' ||"
-                     printf " COALESCE((SELECT group_concat(id || '=' || extra, ' ')"
-                     printf " FROM (SELECT id, extra FROM r WHERE kind='scan'"
-                     printf " ORDER BY id, extra)), '') AS line;"
-                   } | osq_run "$osqi" --line | sed -n 's/^ *line = //p')"
-    if [ -n "$status_line" ]; then
-      # printf, so the file ends in exactly one newline whatever osqueryi did with it.
-      printf '%s\n' "$status_line" > "$stmp"
-      mkdir -p "$(dirname "$STATUS")" 2>/dev/null
-      mv -f "$stmp" "$STATUS" && chmod 644 "$STATUS" 2>/dev/null
+  # ONE STATEMENT for the status and, with --names, the names beside it -- and it reads
+  # back $WRITE rather than the rows on their way there, so the line describes the file a
+  # collector will actually find. The expressions live in status_sql and names_sql above.
+  if [ -n "$STATUS" ] || [ "$NAMES" = 1 ]; then
+    if summary "$WRITE" "$NAMES"; then
+      if [ -n "$STATUS" ]; then
+        stmp="$(mktemp "${STATUS}.XXXXXX")" || exit 1
+        # printf, so the file ends in exactly one newline whatever osqueryi did with it.
+        printf '%s\n' "$SUMMARY_STATUS" > "$stmp"
+        mkdir -p "$(dirname "$STATUS")" 2>/dev/null
+        mv -f "$stmp" "$STATUS" && chmod 644 "$STATUS" 2>/dev/null
+      fi
     else
-      echo "discover: could not summarise $WRITE; $STATUS left alone" >&2
-      rm -f "$stmp"
+      echo "discover: could not summarise $WRITE; ${STATUS:-the status} left alone" >&2
+      # The payload was written and is good; the LINE is what failed. Printing `none` here
+      # would report a clean machine for a broken summary, so --names prints nothing and
+      # exits 1 instead. Without --names the payload still goes to stdout as before.
+      if [ "$NAMES" = 1 ]; then
+        [ -s "$tmpdir/stderr" ] && cat "$tmpdir/stderr" >&2
+        rm -rf "$tmpdir"; exit 1
+      fi
     fi
   fi
 
   [ -s "$tmpdir/stderr" ] && cat "$tmpdir/stderr" >&2
-  cat "$WRITE"; echo
+  if [ "$NAMES" = 1 ]; then
+    printf '%s; %s\n' "$SUMMARY_NAMES" "$SUMMARY_STATUS"
+  else
+    cat "$WRITE"; echo
+  fi
   rm -rf "$tmpdir"
   exit 0
 fi
@@ -341,6 +472,13 @@ fi
 base="$("$osqi" --json < "$BASE")" || { echo "discover: the base query failed" >&2; exit 1; }
 
 if [ "$DEEP_SCAN" = 0 ]; then
+  if [ "$NAMES" = 1 ]; then
+    # No marker rows on this path -- the composed artifact carries none -- so the status
+    # half reads `ok <stamp> rows=N` and nothing more. That is honest: nothing here could
+    # fail to look except by failing outright, which exits 1 above.
+    names_line "$base" || exit 1
+    exit 0
+  fi
   printf '%s\n' "$base"
   exit 0
 fi
@@ -364,4 +502,10 @@ esac
 joined="$(json_concat "$osqi" "$base" "${deep:-[]}")" || {
   echo "discover: could not join the base and deep rows; reporting nothing rather than" \
        "an empty inventory" >&2; exit 1; }
+if [ "$NAMES" = 1 ]; then
+  # The container marker row rides in `joined`, so a daemon that would not answer shows up
+  # in the status half as containers=timeout:N rather than as a quieter list of names.
+  names_line "$joined" || exit 1
+  exit 0
+fi
 printf '%s\n' "$joined"

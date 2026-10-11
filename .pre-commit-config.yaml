@@ -7,7 +7,7 @@ repos:
       - id: end-of-file-fixer
         exclude: (^genai-engine/staging.openapi.json|(?:^ml-engine/src/ml_engine/discovery/_vendor/|^integrations/endpoint-ai-discovery/vendor/|^integrations/endpoint-ai-discovery/dist/collect\.sh$))
       - id: check-yaml
-        exclude: (^deployment/cloudformation/|^deployment/helm/|^genai-engine/helm/|^ml-engine/helm/)
+        exclude: (^deployment/cloudformation/|^deployment/helm/|^genai-engine/helm/|^ml-engine/helm/|^integrations/endpoint-ai-discovery/vendor/)
       - id: debug-statements
       - id: name-tests-test
         args: ["--pytest-test-first"]

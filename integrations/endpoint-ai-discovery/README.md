@@ -151,9 +151,11 @@ containing usernames, and the Jamf inventory record is readable by every Jamf ad
 | `docs/` | design and deployment docs |
 
 The catalog is **not vendored here**: signatures are the collector's, and it vendors them into
-`ml-engine/src/ml_engine/discovery/`. `build-collector.py` and `test/lint.sh` both assert the
-payload carries none, because a Mac holding the signatures it is meant to enumerate past would
-be invisible inside a 21 KB base64 blob.
+`ml-engine/src/ml_engine/discovery/`. `vendor/` carries upstream's `dist/` verbatim, which
+includes SQL renderings of the catalog, and exactly one of them enters the payload:
+`dist/signatures.sql`, for upstream's `bin/discover --names`, which the collector never calls.
+`build-collector.py` admits payload files by name and `test/lint.sh` fails on `--names`, because
+a Mac matching on signatures would be invisible inside a base64 blob.
 
 ## Rebuilding
 

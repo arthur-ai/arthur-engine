@@ -34,7 +34,9 @@ artifact a fleet receives, and it would pass while doing so.
 |---|---|
 | No `.sql`, no `osqueryi` call, no plaintext query outside `vendor/` | A second discovery implementation reappearing. This is the regression guard for the cleanup described above |
 | `build-collector.py --check` | `dist/collect.sh` built before the last `tools/vendor-queries.sh` |
+| Payload files admitted by name (`ENDPOINT_FILES` in `tools/build-collector.py`, run through `--check`) | A file upstream adds to its bundle reaching endpoints unvetted, catalog-derived ones above all |
 | No `agents.yaml`, no `catalog/` in the built collector | The catalog reaching a Mac. The endpoint enumerates and matches nothing |
+| No `--names` in the driver | Matching on the endpoint. The bundle carries `dist/signatures.sql` for it, unread |
 | One `ARTHUR_PAYLOAD_EOF` pair | The collector embedding a previous copy of itself |
 | Every flag `collect.sh` passes to `bin/discover` is still accepted | A vendor bump removing a flag. This has happened: upstream deleted `--framed`, correctly, and the collector called it |
 | `arthur1.` and `ERROR:oversize` present | The framing or its over-cap reason being dropped, which leaves an empty attribute — indistinguishable from a Mac with no AI tools on it |
