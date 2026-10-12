@@ -448,7 +448,11 @@ jobs:
           COVERAGE_CORE: sysmon
         run: |
           set -o pipefail
+          # -n 4 matches the runner's 4 vCPUs. "auto" counts physical cores,
+          # which a VM may report as fewer. pytest-cov combines the workers'
+          # coverage into the one report below.
           uv run --no-sync --directory genai-engine pytest --cov --cov=src \
+            -n 4 \
             --cov-report term \
             --junitxml=report.xml \
             -m "unit_tests" | tee pytest-coverage.txt
