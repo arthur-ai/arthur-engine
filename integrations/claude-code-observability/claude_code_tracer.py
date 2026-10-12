@@ -641,6 +641,16 @@ def _is_human_message(entry: dict) -> bool:
     injects — slash-command output, image attachments, task notifications —
     which doesn't start a turn.
     """
+    if entry.get("type") == "attachment":
+        # A prompt that arrives while Claude is busy — a message typed mid-turn,
+        # a background task's notification, a message from another session —
+        # is written only as a queued_command attachment, never as a user entry.
+        attachment = entry.get("attachment")
+        return (
+            isinstance(attachment, dict)
+            and attachment.get("type") == "queued_command"
+            and isinstance(attachment.get("prompt"), str)
+        )
     if entry.get("type") != "user" or entry.get("isMeta"):
         return False
     content = entry.get("message", {}).get("content", "")
@@ -670,6 +680,8 @@ _INTERRUPT_MARKERS = frozenset(
 
 def _human_text(entry: dict) -> str:
     """Prompt text of a human message, whichever shape its content has."""
+    if entry.get("type") == "attachment":
+        return (entry.get("attachment") or {}).get("prompt") or ""
     content = entry.get("message", {}).get("content", "")
     if isinstance(content, str):
         return content
@@ -681,6 +693,33 @@ def _human_text(entry: dict) -> str:
         and isinstance(b.get("text"), str)
         and b["text"]
     )
+
+
+def _human_count_before_prompt(transcript_path: str, prompt: str) -> int:
+    """Number of human messages before ``prompt``'s own entry.
+
+    UserPromptSubmit usually fires before the prompt is written, but a queued
+    prompt's attachment can already be in the transcript.  If the latest human
+    message is this prompt and nothing has answered it yet, it isn't counted.
+    """
+    count = 0
+    latest_text = None
+    answered = False
+    for entry in _iter_transcript_entries(transcript_path):
+        if _is_human_message(entry):
+            count += 1
+            latest_text = _human_text(entry)
+            answered = False
+        elif entry.get("type") == "assistant":
+            answered = True
+    if (
+        prompt
+        and latest_text is not None
+        and not answered
+        and latest_text.strip() == prompt.strip()
+    ):
+        return count - 1
+    return count
 
 
 def _count_human_messages(transcript_path: str) -> int:
@@ -1792,14 +1831,13 @@ def handle_user_prompt_submit(data: dict, config: dict) -> None:
         # Clear the cached path so the new turn resolves it fresh below
         state.pop("transcript_path", None)
 
-    # Count human messages for LLM span extraction.
-    # UserPromptSubmit fires before Claude processes the prompt, so the new
-    # message is not yet in the transcript — human_count_at_start equals the
-    # current count (the new prompt will become count+1 in the transcript).
+    # Count human messages for LLM span extraction: the new prompt becomes
+    # human message count+1 in the transcript.  It is usually not written yet,
+    # but a queued prompt can be — _human_count_before_prompt leaves it out.
     # Resolve and immediately cache the transcript path for this new turn.
     transcript_path = _get_cached_transcript_path(data, state, session_id)
     current_human_count = (
-        _count_human_messages(transcript_path) if transcript_path else 0
+        _human_count_before_prompt(transcript_path, prompt) if transcript_path else 0
     )
 
     turn_number = state.get("turn_number", 0) + 1
