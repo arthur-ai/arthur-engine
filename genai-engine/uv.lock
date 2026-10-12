@@ -8,7 +8,7 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "2026-10-09T11:25:20.395262459Z"
+exclude-newer = "2026-10-09T12:05:09.12411759Z"
 exclude-newer-span = "P3D"
 
 [options.exclude-newer-package]
@@ -186,7 +186,7 @@ wheels = [
 
 [[package]]
 name = "arthur-genai-engine"
-version = "2.1.1002"
+version = "2.1.1003"
 source = { editable = "." }
 dependencies = [
     { name = "alembic" },
