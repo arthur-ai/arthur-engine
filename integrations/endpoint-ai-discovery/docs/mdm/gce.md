@@ -251,8 +251,9 @@ run.
 
 **Judge age from the status line's timestamp, never from the read.** A stopped VM keeps serving
 its last values, and so does one whose guest attributes were turned off after it reported. The
-inventory dates itself too — every branch's `kind=scan` row carries its scan time in `ver` — so
-an inventory newer than the status beside it is one whose status write failed.
+inventory dates itself too — every branch's `kind=scan` row carries its scan time in `ver`. The
+inventory is written a moment before the status, so an inventory newer than the status beside it
+is a run caught between the two writes, or, if it stays that way, one whose status write failed.
 
 ## 06 · When a VM is not reporting — on the VM
 
