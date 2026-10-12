@@ -1034,3 +1034,28 @@ def test_hook_waiting_on_an_unlinked_lock_does_not_run_alongside_its_replacement
     newer.join(5)
     waiter.join(5)
     assert events == ["newer in", "newer out", "waiter in", "waiter out"]
+
+
+def test_cleanup_does_not_delete_a_lock_recreated_under_the_same_name(
+    isolated_state,
+):
+    """Break caught: a second cleanup holding the old, already-deleted lock file
+    deleted the new lock file a hook had since created and was holding."""
+    lock = tracer._lock_path("sess", "turn")
+    lock.write_text("")
+    stale_handle = open(lock, "a+")  # cleanup B opened the old file
+    lock.unlink()  # cleanup A deleted it
+    events = []
+    held, release = threading.Event(), threading.Event()
+    hook = threading.Thread(
+        target=_hold_turn_lock, args=(held, release, events, "hook")
+    )
+    hook.start()  # a hook creates and holds a new lock file
+    assert held.wait(5)
+
+    tracer._remove_lock_if_unused(lock, stale_handle)  # cleanup B continues
+    stale_handle.close()
+
+    assert lock.exists(), "cleanup deleted the lock a hook is holding"
+    release.set()
+    hook.join(5)

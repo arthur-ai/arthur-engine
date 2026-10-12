@@ -13,7 +13,7 @@ import secrets
 import sys
 import time
 from pathlib import Path
-from typing import Any, Callable, Iterator, Mapping, Optional
+from typing import IO, Any, Callable, Iterator, Mapping, Optional
 
 logging.basicConfig(
     level=logging.WARNING,
@@ -175,6 +175,23 @@ def _delete_agent_context(agent_id: str) -> None:
     _agent_context_path(agent_id).unlink(missing_ok=True)
 
 
+def _remove_lock_if_unused(path: Path, lock_file: IO) -> None:
+    """Delete ``path`` if no hook holds ``lock_file`` and ``path`` still names it.
+
+    Another cleanup may already have deleted this file and a hook created and
+    locked a new one under the same name; that one must not be deleted.
+    """
+    try:
+        fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        return
+    try:
+        if os.stat(path).st_ino == os.fstat(lock_file.fileno()).st_ino:
+            path.unlink(missing_ok=True)
+    except FileNotFoundError:
+        pass
+
+
 def _cleanup_stale_state() -> None:
     try:
         cutoff = time.time() - STATE_MAX_AGE_SECONDS
@@ -188,11 +205,7 @@ def _cleanup_stale_state() -> None:
             if path.stat().st_mtime >= cutoff:
                 continue
             with path.open("a+") as lock_file:
-                try:
-                    fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-                except BlockingIOError:
-                    continue
-                path.unlink(missing_ok=True)
+                _remove_lock_if_unused(path, lock_file)
     except OSError as exc:
         log.debug("Could not clean stale hook state: %s", exc)
 
