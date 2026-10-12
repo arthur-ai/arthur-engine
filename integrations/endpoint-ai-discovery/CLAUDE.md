@@ -183,8 +183,8 @@ does not need it.
 Apple Silicon. Running `dist/collect.sh` needs osquery and nothing else — no VM, and from
 vendored ref `v0.5.0` no interpreter either.
 
-**Both halves had to move, and ours was not sufficient alone.** `gzip`/`base64`/`plutil`
-replaced this tree's `python3 -c`; upstream then removed its last one, putting the JSON work
+**Both halves had to move, and ours was not sufficient alone.** `gzip`/`base64` and the vendored
+runner's `discover --cache` replaced this tree's `python3 -c`; upstream then removed its last one, putting the JSON work
 into shell helpers and osquery's own `json_valid`/`json_type`. In between, a claim that the
 deployable needed only osquery shipped and was false — the check behind it looked at
 `dist/collect.sh` and not at the vendored binaries inside it. `test/lint.sh` now derives the
