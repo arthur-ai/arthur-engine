@@ -138,9 +138,9 @@ Breaker states:
 |-------|-----------|
 | closed | Normal. The engine is queried at most once per `check_interval_seconds`; between checks the last verdict is reused, so per-tool-call hooks stay cheap. |
 | open | Prompts are blocked and the turn is stopped, without touching the engine, for `cooldown_minutes`. |
-| half-open | After the cooldown the next hook probes the engine: calm → closed, still burning → open again. |
+| half-open | After the cooldown the next hook probes the engine: calm → closed, still burning → open again, engine unreachable → stays open and probes again on the next hook. |
 
-`python3 ~/.claude/hooks/claude_code_circuit_breaker.py reset` closes it by hand. `ARTHUR_BREAKER_BYPASS=1` disables it for one process.
+`python3 ~/.claude/hooks/claude_code_circuit_breaker.py reset` closes it by hand. `ARTHUR_BREAKER_BYPASS=1` disables it for one process. State files live in `~/.claude/circuit_breaker/` and are pruned after 48 h; the directory is shared by global and per-project installs, so only a global `uninstall.sh` removes it.
 
 ### Configuration
 
@@ -169,8 +169,9 @@ Breaker states:
 | Key | Meaning |
 |-----|---------|
 | `scope` | Whose spend counts: `session` (this Claude Code session, via `arthur.session`), `user` (every session of this OS user on the task, via `user.id`) or `task` (everything on the task). The breaker state is keyed the same way, so a `task`-scope trip pauses every session. |
+| `enabled` | `false` leaves the hooks installed but inert. |
 | `budget_usd`, `budget_period_hours` | The budget the burn rate is measured against. |
-| `rules` | Multi-window burn-rate rules. `short_window_minutes: null` makes a single-window rule. The widest `window_minutes` sets how far back spans are fetched. |
+| `rules` | Multi-window burn-rate rules. `short_window_minutes: null` makes a single-window rule. The widest `window_minutes` sets how far back spans are fetched. `[]` disables burn-rate rules, leaving only `hard_cap_usd`. |
 | `hard_cap_usd` | Absolute ceiling on the scope's total: the whole session for `session`, the last `budget_period_hours` for `user`/`task`. `null` disables it (and skips the extra engine call). |
 | `warn_fraction` | Show a warning in Claude Code once a rule reaches this fraction of its threshold. |
 | `fail_mode` | `open` keeps working when the engine is unreachable (with a warning); `closed` trips instead. |
@@ -191,9 +192,9 @@ prints the current spend per window, burn rates, whether each rule would fire, a
 
 | Scope need | Endpoint |
 |------------|----------|
-| Spend per window | `GET /api/v1/traces/spans?task_ids=…&span_types=LLM&start_time=…&end_time=…` plus `session_ids` / `user_ids` for the narrower scopes; spans are bucketed locally per rule window |
+| Spend per window | `GET /api/v1/traces/spans?task_ids=…&span_types=LLM&start_time=…&end_time=…` plus `session_ids` / `user_ids` for the narrower scopes; spans are bucketed locally per rule window by their **end** time, since the cost is realised when the response completes. The engine's `user_ids` filter is a substring match, so rows are re-checked for an exact `user_id` |
 | Hard cap, `session` | `GET /api/v1/traces/sessions?task_ids=…&session_ids=…` |
-| Hard cap, `user` | `GET /api/v1/traces/users?task_ids=…&user_ids=…&start_time=…&end_time=…` |
+| Hard cap, `user` | `GET /api/v1/traces?task_ids=…&user_ids=…&start_time=…&end_time=…`, summing this user's traces (no endpoint returns one user's spend over a window) |
 | Hard cap, `task` | `POST /api/v1/traces/overview` |
 
 Caveats: spend lands in the engine when the tracer emits LLM spans, which happens at each tool call and at the end of the turn, so a single very long generation is only visible once it finishes. The engine stores span timestamps as the server's local time and returns them without an offset; the breaker assumes that is UTC, which holds for the container images.

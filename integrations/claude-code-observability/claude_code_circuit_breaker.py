@@ -112,6 +112,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
 CONFIG_ENV = "ARTHUR_BREAKER_CONFIG"
 BYPASS_ENV = "ARTHUR_BREAKER_BYPASS"
 STATE_DIR = Path.home() / ".claude" / "circuit_breaker"
+STATE_MAX_AGE_S = 48 * 3600
 SPAN_PAGE_SIZE = 5000
 SPAN_MAX_PAGES = 10
 VALID_SCOPES = ("session", "user", "task")
@@ -256,11 +257,18 @@ def parse_engine_time(value: str) -> datetime:
 
 @dataclass
 class LLMSpan:
-    start: datetime
+    # The span's end: the cost is realised when the response completes, so
+    # that is the moment it is bucketed at.
+    end: datetime
     cost: Optional[float]
     tokens: int
     prompt_tokens: int = 0
     completion_tokens: int = 0
+
+
+# The engine filters spans by start_time; a span that started before the
+# window but finished inside it still belongs to it, so fetch this much extra.
+SPAN_FETCH_SLACK = timedelta(minutes=15)
 
 
 def _scope_params(engine: dict, scope: str, session_id: str) -> dict:
@@ -272,6 +280,26 @@ def _scope_params(engine: dict, scope: str, session_id: str) -> dict:
     return params
 
 
+def _row_matches_scope(row: dict, scope: str) -> bool:
+    # The engine's user_ids filter is a case-insensitive substring match, so
+    # keep only this user's rows.
+    return scope != "user" or row.get("user_id") == _username()
+
+
+def _paged(engine: dict, path: str, params: dict, key: str, timeout: float):
+    """Yield rows of a paginated list endpoint, up to SPAN_MAX_PAGES pages."""
+    params = dict(params, page_size=SPAN_PAGE_SIZE)
+    for page in range(SPAN_MAX_PAGES):
+        params["page"] = page
+        rows = _request(engine, "GET", path, params=params, timeout=timeout).get(
+            key,
+            [],
+        )
+        yield from rows
+        if len(rows) < SPAN_PAGE_SIZE:
+            break
+
+
 def fetch_llm_spans(
     engine: dict,
     scope: str,
@@ -280,44 +308,31 @@ def fetch_llm_spans(
     now: datetime,
     timeout: float,
 ) -> list[LLMSpan]:
-    """LLM spans in [since, now] for the scope, newest first."""
+    """LLM spans that ended in [since, now] for the scope."""
     params = _scope_params(engine, scope, session_id)
     params.update(
         {
             "span_types": "LLM",
-            "start_time": _iso_utc(since),
+            "start_time": _iso_utc(since - SPAN_FETCH_SLACK),
             "end_time": _iso_utc(now),
             "sort": "desc",
             "sort_by": "start_time",
-            "page_size": SPAN_PAGE_SIZE,
         },
     )
     spans: list[LLMSpan] = []
-    for page in range(SPAN_MAX_PAGES):
-        params["page"] = page
-        payload = _request(
-            engine,
-            "GET",
-            "/traces/spans",
-            params=params,
-            timeout=timeout,
+    for row in _paged(engine, "/traces/spans", params, "spans", timeout):
+        end = row.get("end_time") or row.get("start_time")
+        if not end or not _row_matches_scope(row, scope):
+            continue
+        spans.append(
+            LLMSpan(
+                end=parse_engine_time(end),
+                cost=row.get("total_token_cost"),
+                tokens=int(row.get("total_token_count") or 0),
+                prompt_tokens=int(row.get("prompt_token_count") or 0),
+                completion_tokens=int(row.get("completion_token_count") or 0),
+            ),
         )
-        rows = payload.get("spans", [])
-        for row in rows:
-            start = row.get("start_time")
-            if not start:
-                continue
-            spans.append(
-                LLMSpan(
-                    start=parse_engine_time(start),
-                    cost=row.get("total_token_cost"),
-                    tokens=int(row.get("total_token_count") or 0),
-                    prompt_tokens=int(row.get("prompt_token_count") or 0),
-                    completion_tokens=int(row.get("completion_token_count") or 0),
-                ),
-            )
-        if len(rows) < SPAN_PAGE_SIZE:
-            break
     return spans
 
 
@@ -347,25 +362,22 @@ def fetch_scope_total(
         return float((sessions[0].get("total_token_cost") or 0.0) if sessions else 0.0)
 
     if scope == "user":
-        username = _username()
-        payload = _request(
-            engine,
-            "GET",
-            "/traces/users",
-            params={
-                "task_ids": engine["task_id"],
-                "user_ids": username,
+        # No endpoint gives one user's spend over a time window (the users
+        # list cannot filter by user and the user detail is all-time), so sum
+        # this user's traces in the period instead.
+        params = _scope_params(engine, scope, session_id)
+        params.update(
+            {
                 "start_time": _iso_utc(period_start),
                 "end_time": _iso_utc(now),
-                "page_size": 100,
+                "sort": "desc",
             },
-            timeout=timeout,
         )
-        # user_ids is a substring filter; keep the exact match only.
-        for row in payload.get("users", []):
-            if row.get("user_id") == username:
-                return float(row.get("total_token_cost") or 0.0)
-        return 0.0
+        return sum(
+            float(row.get("total_token_cost") or 0.0)
+            for row in _paged(engine, "/traces", params, "traces", timeout)
+            if _row_matches_scope(row, scope)
+        )
 
     payload = _request(
         engine,
@@ -476,16 +488,15 @@ def window_spend(
     fallback_rates: Optional[dict],
 ) -> float:
     cutoff = now - timedelta(minutes=minutes)
-    return sum(span_cost(s, fallback_rates) or 0.0 for s in spans if s.start >= cutoff)
+    return sum(span_cost(s, fallback_rates) or 0.0 for s in spans if s.end >= cutoff)
 
 
 def burn_rate(spend_usd: float, minutes: float, config: dict) -> float:
-    budget_rate_per_hour = float(config["budget_usd"]) / float(
-        config["budget_period_hours"],
-    )
-    if budget_rate_per_hour <= 0 or minutes <= 0:
+    budget = float(config["budget_usd"])
+    period_hours = float(config["budget_period_hours"])
+    if budget <= 0 or period_hours <= 0 or minutes <= 0:
         return 0.0
-    return (spend_usd / (minutes / 60.0)) / budget_rate_per_hour
+    return (spend_usd / (minutes / 60.0)) / (budget / period_hours)
 
 
 def evaluate_rules(
@@ -546,17 +557,20 @@ def evaluate(
     now = now or datetime.now(timezone.utc)
     scope = config["scope"]
     timeout = float(config.get("http_timeout_seconds", 5))
-    max_minutes = max(float(r["window_minutes"]) for r in config["rules"])
+    rules = config.get("rules") or []
+    max_minutes = max((float(r["window_minutes"]) for r in rules), default=0.0)
 
     try:
-        spans = fetch_llm_spans(
-            engine,
-            scope,
-            session_id,
-            since=now - timedelta(minutes=max_minutes),
-            now=now,
-            timeout=timeout,
-        )
+        spans: list[LLMSpan] = []
+        if rules:  # a hard-cap-only config has no windows to fill
+            spans = fetch_llm_spans(
+                engine,
+                scope,
+                session_id,
+                since=now - timedelta(minutes=max_minutes),
+                now=now,
+                timeout=timeout,
+            )
         scope_total = None
         if config.get("hard_cap_usd") is not None:
             scope_total = fetch_scope_total(
@@ -670,6 +684,22 @@ def save_state(key: str, state: dict) -> None:
         _state_path(key).write_text(json.dumps(state))
     except OSError as e:
         log.warning("Failed to save breaker state: %s", e)
+    _prune_stale_state(exclude=key)
+
+
+def _prune_stale_state(exclude: str, now_ts: Optional[float] = None) -> None:
+    """Drop state and lock files untouched for STATE_MAX_AGE_S (session-scope
+    keys are created per Claude Code session and never revisited)."""
+    now_ts = now_ts if now_ts is not None else datetime.now(timezone.utc).timestamp()
+    try:
+        for p in STATE_DIR.iterdir():
+            if p.stem == exclude or p.suffix not in (".json", ".lock"):
+                continue
+            with contextlib.suppress(OSError):
+                if now_ts - p.stat().st_mtime > STATE_MAX_AGE_S:
+                    p.unlink()
+    except OSError as e:
+        log.debug("Failed to prune breaker state: %s", e)
 
 
 def clear_state() -> int:
@@ -737,6 +767,18 @@ def decide(
                 )
             # Cooldown elapsed: half-open probe.
             evaluation = evaluate(engine, config, session_id, now)
+            if evaluation.engine_error and not evaluation.tripped:
+                # Nothing was measured, so stay open and probe again on the
+                # next hook rather than declare the spend calm.
+                state["last_check_at"] = now_ts
+                state["last_evaluation"] = evaluation.to_dict()
+                save_state(key, state)
+                return Verdict(
+                    tripped=True,
+                    message=_open_message(state, config, now_ts)
+                    + f" (re-check failed: {evaluation.engine_error})",
+                    fresh=True,
+                )
             if evaluation.tripped:
                 state.update(
                     status=STATUS_OPEN,
@@ -874,7 +916,11 @@ def cli_status(args: list[str]) -> int:
     config = load_breaker_config()
     session_id = "unknown"
     if "--session" in args:
-        session_id = args[args.index("--session") + 1]
+        idx = args.index("--session") + 1
+        if idx >= len(args):
+            print("usage: status [--session SESSION_ID]", file=sys.stderr)
+            return 2
+        session_id = args[idx]
     elif config["scope"] == "session":
         print(
             "scope is 'session' but no --session ID given; evaluating task-wide instead",

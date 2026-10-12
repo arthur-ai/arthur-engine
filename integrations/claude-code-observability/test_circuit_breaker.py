@@ -24,21 +24,34 @@ def _config(**overrides) -> dict:
     return config
 
 
+def _engine_time(dt: datetime) -> str:
+    # The engine returns naive timestamps.
+    return dt.strftime("%Y-%m-%dT%H:%M:%S.%f")
+
+
 def _span_row(
     minutes_ago: float,
     cost,
     tokens: int = 1000,
     now: datetime = NOW,
+    user_id: str = "nori",
+    duration_minutes: float = 0.0,
 ) -> dict:
+    end = now - timedelta(minutes=minutes_ago)
     return {
-        "start_time": (now - timedelta(minutes=minutes_ago)).strftime(
-            "%Y-%m-%dT%H:%M:%S.%f",
-        ),
+        "start_time": _engine_time(end - timedelta(minutes=duration_minutes)),
+        "end_time": _engine_time(end),
+        "user_id": user_id,
         "total_token_cost": cost,
         "total_token_count": tokens,
         "prompt_token_count": tokens - 100,
         "completion_token_count": 100,
     }
+
+
+def _page(rows: list, params: dict) -> list:
+    page, size = params["page"], params["page_size"]
+    return rows[page * size : (page + 1) * size]
 
 
 class FakeEngine:
@@ -48,13 +61,13 @@ class FakeEngine:
         self,
         spans=None,
         sessions=None,
-        users=None,
+        traces=None,
         overviews=None,
         error=None,
     ):
         self.spans = spans or []
         self.sessions = sessions or []
-        self.users = users or []
+        self.traces = traces or []
         self.overviews = overviews or []
         self.error = error
         self.calls = []
@@ -64,16 +77,11 @@ class FakeEngine:
         if self.error:
             raise cb.EngineError(self.error)
         if path == "/traces/spans":
-            page = params["page"]
-            size = params["page_size"]
-            return {
-                "count": len(self.spans),
-                "spans": self.spans[page * size : (page + 1) * size],
-            }
+            return {"count": len(self.spans), "spans": _page(self.spans, params)}
+        if path == "/traces":
+            return {"count": len(self.traces), "traces": _page(self.traces, params)}
         if path == "/traces/sessions":
             return {"count": len(self.sessions), "sessions": self.sessions}
-        if path == "/traces/users":
-            return {"count": len(self.users), "users": self.users}
         if path == "/traces/overview":
             return {"count": len(self.overviews), "overviews": self.overviews}
         raise AssertionError(f"unexpected path {path}")
@@ -182,13 +190,16 @@ def test_burn_rate_is_relative_to_budget_rate():
     assert cb.burn_rate(1.0, 5, config) == pytest.approx(12.0)
     assert cb.burn_rate(0.0, 5, config) == 0.0
     assert cb.burn_rate(1.0, 0, config) == 0.0
+    # Degenerate budgets never divide by zero (a bad config must not fail open).
+    assert cb.burn_rate(1.0, 5, _config(budget_period_hours=0)) == 0.0
+    assert cb.burn_rate(1.0, 5, _config(budget_usd=0)) == 0.0
 
 
 def test_window_spend_only_counts_spans_inside_window():
     spans = [
-        cb.LLMSpan(start=NOW - timedelta(minutes=1), cost=1.0, tokens=1),
-        cb.LLMSpan(start=NOW - timedelta(minutes=9), cost=2.0, tokens=1),
-        cb.LLMSpan(start=NOW - timedelta(minutes=30), cost=4.0, tokens=1),
+        cb.LLMSpan(end=NOW - timedelta(minutes=1), cost=1.0, tokens=1),
+        cb.LLMSpan(end=NOW - timedelta(minutes=9), cost=2.0, tokens=1),
+        cb.LLMSpan(end=NOW - timedelta(minutes=30), cost=4.0, tokens=1),
     ]
     assert cb.window_spend(spans, NOW, 2, None) == 1.0
     assert cb.window_spend(spans, NOW, 10, None) == 3.0
@@ -197,7 +208,7 @@ def test_window_spend_only_counts_spans_inside_window():
 
 def test_span_cost_fallback_pricing():
     unpriced = cb.LLMSpan(
-        start=NOW,
+        end=NOW,
         cost=None,
         tokens=1_000_000,
         prompt_tokens=900_000,
@@ -207,9 +218,9 @@ def test_span_cost_fallback_pricing():
     assert cb.span_cost(unpriced, {"prompt": 3.0, "completion": 15.0}) == pytest.approx(
         0.9 * 3.0 + 0.1 * 15.0,
     )
-    priced = cb.LLMSpan(start=NOW, cost=0.5, tokens=10)
+    priced = cb.LLMSpan(end=NOW, cost=0.5, tokens=10)
     assert cb.span_cost(priced, {"prompt": 3.0, "completion": 15.0}) == 0.5
-    empty = cb.LLMSpan(start=NOW, cost=None, tokens=0)
+    empty = cb.LLMSpan(end=NOW, cost=None, tokens=0)
     assert cb.span_cost(empty, None) == 0.0
 
 
@@ -227,7 +238,7 @@ def test_rule_requires_both_windows_to_exceed_threshold():
         ],
     )
     # $2 spent 8 minutes ago: 10m window burns at 12x, but the last 2m are quiet.
-    old_burst = [cb.LLMSpan(start=NOW - timedelta(minutes=8), cost=2.0, tokens=1)]
+    old_burst = [cb.LLMSpan(end=NOW - timedelta(minutes=8), cost=2.0, tokens=1)]
     (result,) = cb.evaluate_rules(old_burst, NOW, config)
     assert result.window_burn_rate == pytest.approx(12.0)
     assert result.short_burn_rate == 0.0
@@ -235,7 +246,7 @@ def test_rule_requires_both_windows_to_exceed_threshold():
 
     # Same spend, still going: $1 in the last minute too.
     ongoing = old_burst + [
-        cb.LLMSpan(start=NOW - timedelta(minutes=1), cost=1.0, tokens=1),
+        cb.LLMSpan(end=NOW - timedelta(minutes=1), cost=1.0, tokens=1),
     ]
     (result,) = cb.evaluate_rules(ongoing, NOW, config)
     assert result.window_burn_rate == pytest.approx(18.0)
@@ -256,7 +267,7 @@ def test_single_window_rule_when_short_window_is_null():
             },
         ],
     )
-    spans = [cb.LLMSpan(start=NOW - timedelta(minutes=8), cost=2.0, tokens=1)]
+    spans = [cb.LLMSpan(end=NOW - timedelta(minutes=8), cost=2.0, tokens=1)]
     (result,) = cb.evaluate_rules(spans, NOW, config)
     assert result.short_burn_rate is None
     assert result.fired
@@ -278,15 +289,43 @@ def test_evaluate_queries_llm_spans_for_session_scope(fake_engine):
     assert params["session_ids"] == "sess-1"
     assert params["span_types"] == "LLM"
     assert params["end_time"] == "2026-01-01T12:00:00.000Z"
-    assert params["start_time"] == "2026-01-01T11:00:00.000Z"  # widest rule window
+    # Widest rule window (60m) plus the slack for spans that started earlier.
+    assert params["start_time"] == "2026-01-01T10:45:00.000Z"
+
+
+def test_evaluate_buckets_spend_at_span_end(fake_engine):
+    # A 4-minute LLM call that finished 1 minute ago belongs to the last 2
+    # minutes even though it started before them.
+    fake_engine(spans=[_span_row(1, 3.0, duration_minutes=4), _span_row(5, 8.0)])
+    evaluation = cb.evaluate(ENGINE, _config(), "s", NOW)
+    fast = evaluation.rules[0]
+    assert fast.short_spend == 3.0
+    assert evaluation.tripped
 
 
 def test_evaluate_user_scope_filters_by_username(fake_engine, monkeypatch):
     monkeypatch.setenv("USER", "nori")
-    fake = fake_engine(spans=[])
-    cb.evaluate(ENGINE, _config(scope="user"), "sess-1", NOW)
+    # The engine's user_ids filter is a substring match, so it also returns
+    # "nori-bot"; only exact matches may count.
+    fake = fake_engine(
+        spans=[_span_row(1, 50.0, user_id="nori-bot"), _span_row(1, 0.01)],
+    )
+    evaluation = cb.evaluate(ENGINE, _config(scope="user"), "sess-1", NOW)
     assert fake.calls[0][2]["user_ids"] == "nori"
     assert "session_ids" not in fake.calls[0][2]
+    assert evaluation.rules[0].window_spend == 0.01
+    assert not evaluation.tripped
+
+
+def test_evaluate_hard_cap_only_config_skips_span_query(fake_engine):
+    fake = fake_engine(
+        spans=[],
+        sessions=[{"session_id": "s", "total_token_cost": 60.0}],
+    )
+    evaluation = cb.evaluate(ENGINE, _config(rules=[], hard_cap_usd=50), "s", NOW)
+    assert evaluation.tripped
+    assert "hard cap" in evaluation.reason
+    assert [c[1] for c in fake.calls] == ["/traces/sessions"]
 
 
 def test_evaluate_task_scope_has_no_session_or_user_filter(fake_engine):
@@ -383,18 +422,26 @@ def test_evaluate_hard_cap_task_scope_uses_overview(fake_engine):
     assert body["start_time"] == "2025-12-31T12:00:00.000Z"
 
 
-def test_evaluate_hard_cap_user_scope_exact_match(fake_engine, monkeypatch):
+def test_evaluate_hard_cap_user_scope_sums_own_traces_in_period(
+    fake_engine,
+    monkeypatch,
+):
     monkeypatch.setenv("USER", "nori")
-    fake_engine(
+    fake = fake_engine(
         spans=[],
-        users=[
-            {"user_id": "nori-bot", "total_token_cost": 999.0},
-            {"user_id": "nori", "total_token_cost": 1.0},
+        traces=[
+            {"trace_id": "a", "user_id": "nori-bot", "total_token_cost": 999.0},
+            {"trace_id": "b", "user_id": "nori", "total_token_cost": 1.0},
+            {"trace_id": "c", "user_id": "nori", "total_token_cost": 2.5},
         ],
     )
     evaluation = cb.evaluate(ENGINE, _config(scope="user", hard_cap_usd=50), "s", NOW)
-    assert evaluation.scope_total_usd == 1.0
+    assert evaluation.scope_total_usd == 3.5
     assert not evaluation.tripped
+    method, path, params, _ = fake.calls[-1]
+    assert (method, path) == ("GET", "/traces")
+    assert params["user_ids"] == "nori"
+    assert params["start_time"] == "2025-12-31T12:00:00.000Z"
 
 
 def test_evaluate_skips_hard_cap_query_when_unset(fake_engine):
@@ -489,16 +536,44 @@ def test_decide_half_open_reopens_when_still_burning(state_dir, fake_engine):
     config = _config(cooldown_minutes=15)
     cb.decide(ENGINE, config, "s", NOW)
     later = NOW + timedelta(minutes=16)
-    fake.spans = [_span_row(1, 3.0), _span_row(5, 8.0)]
-    # Re-anchor the canned spans to the probe time so they are inside the window.
-    for row in fake.spans:
-        row["start_time"] = (later - timedelta(minutes=2)).strftime(
-            "%Y-%m-%dT%H:%M:%S.%f",
-        )
+    # Still burning at probe time.
+    fake.spans = [_span_row(1, 3.0, now=later), _span_row(5, 8.0, now=later)]
     probe = cb.decide(ENGINE, config, "s", later)
     assert probe.tripped and probe.fresh
     state = cb.load_state(cb.state_key(ENGINE, config, "s"))
     assert state["opened_at"] == later.timestamp()
+
+
+def test_decide_half_open_stays_open_when_engine_unreachable(state_dir, fake_engine):
+    fake = fake_engine(spans=TRIP_SPANS)
+    config = _config(cooldown_minutes=15, fail_mode="open")
+    cb.decide(ENGINE, config, "s", NOW)
+    fake.error = "connection refused"
+    probe = cb.decide(ENGINE, config, "s", NOW + timedelta(minutes=16))
+    assert probe.tripped and probe.fresh
+    assert "re-check failed" in probe.message
+    state = cb.load_state(cb.state_key(ENGINE, config, "s"))
+    assert state["status"] == cb.STATUS_OPEN
+    assert state["opened_at"] == NOW.timestamp()  # cooldown not restarted
+    # Engine back and calm: the next hook probes again and closes.
+    fake.error = None
+    fake.spans = []
+    assert not cb.decide(ENGINE, config, "s", NOW + timedelta(minutes=17)).tripped
+
+
+def test_save_state_prunes_stale_files(state_dir):
+    state_dir.mkdir(parents=True)
+    import os
+
+    old_ts = NOW.timestamp() - cb.STATE_MAX_AGE_S - 60
+    for name in ("old.json", "old.lock"):
+        (state_dir / name).write_text("{}")
+        os.utime(state_dir / name, (old_ts, old_ts))
+    (state_dir / "recent.json").write_text("{}")
+    (state_dir / "notes.txt").write_text("keep")
+    cb.save_state("current", {"status": "closed"})
+    remaining = sorted(p.name for p in state_dir.iterdir())
+    assert remaining == ["current.json", "notes.txt", "recent.json"]
 
 
 def test_decide_scope_keys_are_isolated(state_dir, fake_engine):
@@ -597,6 +672,13 @@ def test_run_hook_disabled_config(monkeypatch, state_dir):
     monkeypatch.setattr(cb, "load_breaker_config", lambda: _config(enabled=False))
     monkeypatch.setattr(cb, "_request", lambda *a, **k: pytest.fail("should not query"))
     assert cb.run_hook("pre_tool", {"session_id": "s"}) is None
+
+
+def test_cli_status_rejects_missing_session_value(monkeypatch, capsys):
+    monkeypatch.setattr(cb, "discover_engine_config", lambda: ENGINE)
+    monkeypatch.setattr(cb, "load_breaker_config", lambda: _config())
+    assert cb.cli_status(["--session"]) == 2
+    assert "usage" in capsys.readouterr().err
 
 
 def test_run_hook_end_to_end_trip(monkeypatch, state_dir, fake_engine):

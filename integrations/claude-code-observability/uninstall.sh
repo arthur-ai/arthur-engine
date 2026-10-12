@@ -124,7 +124,7 @@ PYEOF
 # ---------------------------------------------------------------------------
 # Helper: remove the circuit breaker (hooks, script, config). No-op if it
 # was never installed.
-# Args: <hooks_dir> <settings_path> <command_prefix> <breaker_config_path>
+# Args: <hooks_dir> <settings_path> <command_prefix> <breaker_config_path> [--with-state]
 # ---------------------------------------------------------------------------
 remove_breaker() {
     local hooks_dir="$1"
@@ -144,7 +144,10 @@ remove_breaker() {
         rm "$breaker_config"
         echo "  Removed $breaker_config"
     fi
-    if [[ -d "$HOME/.claude/circuit_breaker" ]]; then
+    # The state dir is shared by every install (global and per-project), so
+    # only a global uninstall clears it; a project uninstall must not close
+    # breakers that are open elsewhere.
+    if [[ "${5:-}" == "--with-state" && -d "$HOME/.claude/circuit_breaker" ]]; then
         rm -rf "$HOME/.claude/circuit_breaker"
         echo "  Removed breaker state dir ~/.claude/circuit_breaker"
     fi
@@ -163,7 +166,7 @@ if [[ -z "$PROJECT_DIR" ]]; then
 
     remove_breaker "$HOME/.claude/hooks" "$SETTINGS" \
         'python3 "$HOME/.claude/hooks/claude_code_circuit_breaker.py"' \
-        "$HOME/.claude/arthur_circuit_breaker.json"
+        "$HOME/.claude/arthur_circuit_breaker.json" --with-state
 
     if [[ -f "$TRACER" ]]; then
         echo "==> Removing tracer at $TRACER..."
