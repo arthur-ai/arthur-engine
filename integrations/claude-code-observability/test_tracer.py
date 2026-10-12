@@ -304,6 +304,28 @@ class TestIsHumanMessage:
     def test_empty_list_is_not_human(self):
         assert not tracer._is_human_message(list_prompt_entry())
 
+    @pytest.mark.parametrize(
+        "blocks",
+        [
+            [None],
+            [{"type": "document"}],
+            [text_block("hi"), {"type": "tool_result", "tool_use_id": "t"}],
+            [text_block(""), text_block("[Request interrupted by user]")],
+        ],
+    )
+    def test_non_prompt_lists_are_not_human(self, blocks):
+        assert not tracer._is_human_message(list_prompt_entry(*blocks))
+
+    def test_prompt_starting_with_interrupt_words_is_human(self):
+        assert tracer._is_human_message(
+            list_prompt_entry(text_block("[Request interrupted] what happened?")),
+        )
+
+    def test_null_text_block_does_not_raise(self):
+        entry = list_prompt_entry({"type": "text", "text": None}, text_block("Hi"))
+        assert tracer._is_human_message(entry)
+        assert tracer._human_text(entry) == "Hi"
+
 
 # ---------------------------------------------------------------------------
 # _count_human_messages
@@ -1414,6 +1436,30 @@ class TestSdkListPromptLifecycle:
         assert "Fix the failed Renovate PR" in first_llm["attributes"]["input.value"]
         assert "'type'" not in first_llm["attributes"]["input.value"]
         assert '"type"' not in first_llm["attributes"]["input.value"]
+
+    def test_image_prompt_turn_has_llm_spans(self, tmp_path, monkeypatch):
+        image = {"type": "image", "source": {"type": "base64", "data": "..."}}
+        captured = self._run_turn(
+            list_prompt_entry(image, text_block("Fix the failed Renovate PR")),
+            tmp_path,
+            monkeypatch,
+        )
+        kinds = [s["attributes"]["openinference.span.kind"] for s in captured]
+        assert kinds.count("LLM") == 2
+
+    def test_consecutive_list_prompt_turns_stay_separate(self, tmp_transcript):
+        p = tmp_transcript(
+            [
+                list_prompt_entry(text_block("first")),
+                llm_entry("answer one", ts=at(1)),
+                list_prompt_entry(text_block("second"), ts=at(2)),
+                llm_entry("answer two", ts=at(3)),
+            ],
+        )
+        turn1 = tracer._extract_llm_spans_for_turn(str(p), 0, "a" * 32, "b" * 16)
+        turn2 = tracer._extract_llm_spans_for_turn(str(p), 1, "a" * 32, "b" * 16)
+        assert [s["attributes"]["output.value"] for s in turn1] == ["answer one"]
+        assert [s["attributes"]["output.value"] for s in turn2] == ["answer two"]
 
     def test_string_prompt_turn_is_unchanged(self, tmp_path, monkeypatch):
         captured = self._run_turn(

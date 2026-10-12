@@ -647,13 +647,25 @@ def _is_human_message(entry: dict) -> bool:
     if isinstance(content, str):
         return True
     # The Agent SDK sends a string prompt as [{"type": "text", ...}], and a
-    # pasted image arrives as image + text blocks.  Tool results and the
-    # "[Request interrupted by user]" marker are not prompts.
+    # pasted image arrives as image + text blocks.  Anything else in a list —
+    # tool results, the interrupt marker, blocks of unknown shape — is not a
+    # prompt and must not open or close a turn.
     if not isinstance(content, list) or not content:
         return False
-    if any(isinstance(b, dict) and b.get("type") == "tool_result" for b in content):
+    if not all(
+        isinstance(b, dict) and b.get("type") in _PROMPT_BLOCK_TYPES for b in content
+    ):
         return False
-    return not _human_text(entry).startswith("[Request interrupted")
+    return _human_text(entry).strip() not in _INTERRUPT_MARKERS
+
+
+_PROMPT_BLOCK_TYPES = frozenset({"text", "image"})
+_INTERRUPT_MARKERS = frozenset(
+    {
+        "[Request interrupted by user]",
+        "[Request interrupted by user for tool use]",
+    },
+)
 
 
 def _human_text(entry: dict) -> str:
@@ -662,9 +674,12 @@ def _human_text(entry: dict) -> str:
     if isinstance(content, str):
         return content
     return "\n".join(
-        b.get("text", "")
+        b["text"]
         for b in content
-        if isinstance(b, dict) and b.get("type") == "text"
+        if isinstance(b, dict)
+        and b.get("type") == "text"
+        and isinstance(b.get("text"), str)
+        and b["text"]
     )
 
 
