@@ -457,7 +457,8 @@ def _tool_span_record(state: dict, data: dict, start_ns: int, end_ns: int) -> di
 
 def _record_spawned_agent(state: dict, pending: dict, data: dict) -> None:
     tool_name = str(data.get("tool_name") or "").lower()
-    if tool_name not in {"agent", "spawn_agent", "task"}:
+    # Newer Codex namespaces the tool, e.g. "collaborationspawn_agent".
+    if tool_name not in {"agent", "task"} and not tool_name.endswith("spawn_agent"):
         return
     agent_id = _find_agent_id(data.get("tool_response"))
     if not agent_id:
@@ -559,6 +560,24 @@ def _root_span_record(state: dict, data: dict, end_ns: int) -> dict:
     }
 
 
+def _open_parent_turn(session_id: str) -> dict:
+    """The main thread's turn still open in ``session_id``: the one waiting on
+    a subagent.  The most recent if there are several."""
+    latest: dict = {}
+    for path in STATE_DIR.glob("*.json"):
+        try:
+            state = json.loads(path.read_text())
+        except (OSError, json.JSONDecodeError):
+            continue
+        if (
+            state.get("session_id") == session_id
+            and not state.get("agent_id")
+            and int(state.get("start_ns") or 0) >= int(latest.get("start_ns") or 0)
+        ):
+            latest = state
+    return latest
+
+
 def handle_subagent_start(
     data: dict,
     config: dict,
@@ -570,6 +589,21 @@ def handle_subagent_start(
     if not session_id or not turn_id or not agent_id:
         return
     context = _load_agent_context(agent_id)
+    if not context.get("trace_id_hex"):
+        # Current Codex spawns with an encrypted message and returns no
+        # agent_id, so the spawn call can't name the subagent.  SubagentStart
+        # carries the parent's session: nest under its open turn.
+        parent = _open_parent_turn(session_id)
+        if parent:
+            context.update(
+                {
+                    "parent_session_id": parent.get("trace_session_id")
+                    or parent["session_id"],
+                    "parent_turn_id": parent["turn_id"],
+                    "trace_id_hex": parent["trace_id_hex"],
+                    "parent_span_id_hex": parent["root_span_id_hex"],
+                }
+            )
     context.update(
         {
             "parent_session_id": context.get("parent_session_id") or session_id,
@@ -584,6 +618,26 @@ def handle_subagent_start(
         }
     )
     _save_agent_context(context)
+    # Current Codex sends no UserPromptSubmit for a subagent's turn; open it
+    # here so the subagent's tool calls and SubagentStop have a turn to join.
+    with _turn_lock(session_id, turn_id):
+        if not _load_state(session_id, turn_id):
+            _save_state(
+                {
+                    "session_id": session_id,
+                    "turn_id": turn_id,
+                    "model": data.get("model") or "unknown",
+                    "prompt": context.get("prompt") or "",
+                    "trace_id_hex": context["trace_id_hex"],
+                    "root_span_id_hex": _new_span_id(),
+                    "parent_span_id_hex": context["agent_span_id_hex"],
+                    "trace_session_id": context.get("parent_session_id") or session_id,
+                    "agent_id": agent_id,
+                    "agent_type": context["agent_type"],
+                    "start_ns": time.time_ns(),
+                    "pending_tools": {},
+                }
+            )
 
 
 def _agent_span_record(context: dict, data: dict, end_ns: int) -> dict:

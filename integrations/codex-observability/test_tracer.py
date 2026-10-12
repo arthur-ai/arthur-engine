@@ -902,3 +902,64 @@ def test_stale_lock_files_are_cleaned_up_with_stale_state(isolated_state):
     assert not stale_lock.exists()
     assert not stale_state.exists()
     assert fresh_lock.exists()
+
+
+def test_subagent_from_current_codex_nests_under_the_parent_turn(isolated_state):
+    """Break caught: current Codex spawns with an encrypted message, returns no
+    agent_id and sends no UserPromptSubmit for the subagent's turn, so the
+    agent span became its own trace and the subagent's tool calls were lost.
+    Hook sequence and fields as captured from codex-cli 0.162."""
+    exported = []
+
+    def export(_config, _session, records):
+        exported.extend(records)
+
+    parent = {"session_id": "sess", "turn_id": "parent-turn", "cwd": "/tmp"}
+    child = {"session_id": "sess", "turn_id": "child-turn", "cwd": "/tmp"}
+    agent = {"agent_id": "agent-1", "agent_type": "default"}
+    spawn = {
+        "tool_name": "collaborationspawn_agent",
+        "tool_use_id": "spawn-1",
+        "tool_input": {"message": "gAAAA-encrypted"},
+        "tool_response": {"task_name": "/root/command_check"},
+    }
+
+    tracer.handle_user_prompt_submit({**parent, "prompt": "PARENT"}, config(), export)
+    tracer.handle_pre_tool({**parent, **spawn}, config())
+    tracer.handle_post_tool({**parent, **spawn}, config(), export)
+    tracer.handle_subagent_start({**child, **agent}, config(), export)
+    bash = {
+        "tool_name": "Bash",
+        "tool_use_id": "bash-1",
+        "tool_input": {"command": "printf OK"},
+    }
+    tracer.handle_pre_tool({**child, **agent, **bash}, config())
+    tracer.handle_post_tool(
+        {**child, **agent, **bash, "tool_response": "OK"}, config(), export
+    )
+    tracer.handle_subagent_stop(
+        {**child, **agent, "last_assistant_message": "SUB_DONE"}, config(), export
+    )
+    tracer.handle_stop(
+        {**parent, "last_assistant_message": "PARENT_DONE"}, config(), export
+    )
+
+    by_kind = {}
+    for record in exported:
+        by_kind.setdefault(record["attributes"]["openinference.span.kind"], []).append(
+            record
+        )
+    parent_root = next(
+        r for r in by_kind["CHAIN"] if r["attributes"]["codex.turn.id"] == "parent-turn"
+    )
+    child_root = next(
+        r for r in by_kind["CHAIN"] if r["attributes"]["codex.turn.id"] == "child-turn"
+    )
+    (agent_span,) = by_kind["AGENT"]
+    sub_bash = next(r for r in by_kind["TOOL"] if r["name"] == "Bash")
+
+    assert {r["trace_id_hex"] for r in exported} == {parent_root["trace_id_hex"]}
+    assert agent_span["parent_span_id_hex"] == parent_root["span_id_hex"]
+    assert child_root["parent_span_id_hex"] == agent_span["span_id_hex"]
+    assert sub_bash["parent_span_id_hex"] == child_root["span_id_hex"]
+    assert child_root["attributes"]["output.value"] == "SUB_DONE"
