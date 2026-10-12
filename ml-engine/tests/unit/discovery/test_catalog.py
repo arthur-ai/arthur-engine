@@ -185,6 +185,35 @@ def test_permissions_split_into_a_tuple(matcher: Matcher) -> None:
     assert result.findings[0].permissions == ("tabs", "<all_urls>")
 
 
+@pytest.mark.parametrize(
+    "perms",
+    ["tabs,<all_urls>,unreferenced", "tabs,<all_urls>,sideloaded:9f2c4e"],
+)
+def test_extension_provenance_is_not_a_permission(perms: str) -> None:
+    """browser.sql appends `unreferenced` or `sideloaded:<sha256>` to an extension's
+    `perms`. Neither is a permission; upstream's split_perms() says which tokens they are.
+    """
+    catalog = yaml.safe_dump(
+        {
+            "version": 2,
+            "classifications": ["Browser agent"],
+            "agents": [
+                {
+                    "id": "claude-in-chrome",
+                    "name": "Claude in Chrome",
+                    "classification": "Browser agent",
+                    "platforms": ["darwin"],
+                    "extension_ids": ["fcoeoabgfenejglbffodgkkbkcdhcgfn"],
+                },
+            ],
+        },
+    )
+    result = Matcher.from_source(catalog_yaml=catalog).match(
+        [row("ext", "fcoeoabgfenejglbffodgkkbkcdhcgfn", perms=perms)],
+    )
+    assert result.findings[0].permissions == ("tabs", "<all_urls>")
+
+
 def test_findings_are_ordered_by_agent_id(matcher: Matcher) -> None:
     result = matcher.match(
         [row("app", "com.anthropic.claudefordesktop"), row("npm", "@openai/codex")],

@@ -340,7 +340,9 @@ class Matcher:
             ),
         )
 
-        perms = str(primary.get("perms") or "")
+        # Upstream's split, because `perms` can end in a provenance token that is not a
+        # permission, and a list of those tokens copied here would miss the next one.
+        permissions, _provenance = _matcher.split_perms(str(primary.get("perms") or ""))
         return Finding(
             agent_id=agent_id,
             name=str(meta.get("name") or agent_id),
@@ -352,7 +354,7 @@ class Matcher:
             install_path=(
                 str(primary.get("loc")) or None if primary.get("loc") else None
             ),
-            permissions=tuple(p for p in perms.split(",") if p),
+            permissions=permissions,
         )
 
 
