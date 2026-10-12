@@ -178,6 +178,59 @@ def test_a_running_row_speaks_when_nothing_else_proved_the_agent(
     )
 
 
+_CLAUDE_IN_CHROME = yaml.safe_dump(
+    {
+        "version": 2,
+        "classifications": ["Browser agent"],
+        "agents": [
+            {
+                "id": "claude-in-chrome",
+                "name": "Claude in Chrome",
+                "classification": "Browser agent",
+                "platforms": ["darwin"],
+                "extension_ids": ["fcoeoabgfenejglbffodgkkbkcdhcgfn"],
+            },
+        ],
+    },
+)
+
+
+def test_the_copy_the_browser_loads_speaks_before_a_leftover() -> None:
+    """A profile keeps old version directories, and browser.sql marks each one Chrome never
+    loads `unreferenced`. Read off a real profile: seven leftovers listed before the copy
+    Chrome loads, so the first row reported a version that was not running."""
+    ext = "fcoeoabgfenejglbffodgkkbkcdhcgfn"
+    result = Matcher.from_source(catalog_yaml=_CLAUDE_IN_CHROME).match(
+        [
+            row("ext", ext, ver="1.0.94", perms="tabs, storage,unreferenced"),
+            row("ext", ext, ver="1.0.97", perms="tabs, storage,unreferenced"),
+            row("ext", ext, ver="1.0.91", perms="tabs, storage, debugger"),
+        ],
+    )
+    finding = result.findings[0]
+    assert finding.version == "1.0.91"
+    assert finding.permissions == ("tabs", "storage", "debugger")
+    assert len(finding.evidence) == 3
+
+
+def test_a_leftover_still_speaks_when_no_copy_is_loaded() -> None:
+    ext = "fcoeoabgfenejglbffodgkkbkcdhcgfn"
+    result = Matcher.from_source(catalog_yaml=_CLAUDE_IN_CHROME).match(
+        [
+            row("ext", ext, ver="1.0.94", perms="tabs,unreferenced"),
+            row("ext", ext, ver="1.0.97", perms="tabs,unreferenced"),
+        ],
+    )
+    assert result.findings[0].version == "1.0.94"
+
+
+def test_unreferenced_is_still_upstreams_token() -> None:
+    """The ranking names the token; upstream owns it. A rename upstream fails here."""
+    from discovery.catalog import _UNREFERENCED, _matcher
+
+    assert _UNREFERENCED in _matcher.PERMS_PROVENANCE
+
+
 def test_permissions_split_into_a_tuple(matcher: Matcher) -> None:
     result = matcher.match(
         [row("app", "com.anthropic.claudefordesktop", perms="tabs,<all_urls>")],

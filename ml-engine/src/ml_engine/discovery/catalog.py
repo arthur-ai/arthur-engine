@@ -96,6 +96,10 @@ _matcher = _load_matcher()
 # vendored matcher rather than copied, so a live kind upstream adds is ranked as one.
 _LIVE_KINDS: frozenset[str] = frozenset(_matcher.LIVE_KINDS)
 
+# Upstream's provenance token for an extension copy on disk that the browser never loads.
+# test_catalog holds it to the vendored matcher's PERMS_PROVENANCE.
+_UNREFERENCED = "unreferenced"
+
 
 @dataclass(frozen=True)
 class Finding:
@@ -332,11 +336,14 @@ class Matcher:
         # PRESENCE SPEAKS BEFORE LIVENESS. A running row names a process, not an install, and
         # carries no version; ranked by declaration alone it would describe an installed agent
         # whenever that agent happened to be running, and its address would move between scans.
+        # Within a kind, a copy the browser loads speaks before a leftover it never loads: a
+        # profile keeps old version directories, and the first row is often one of them.
         primary = min(
             rows,
             key=lambda r: (
                 str(r.get("kind", "")) in _LIVE_KINDS,
                 self._route_rank.get(str(r.get("kind", "")), len(self._route_rank)),
+                _matcher.split_perms(str(r.get("perms") or ""))[1] == _UNREFERENCED,
             ),
         )
 
