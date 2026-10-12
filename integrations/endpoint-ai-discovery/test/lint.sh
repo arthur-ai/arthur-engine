@@ -24,8 +24,26 @@ fail=0
 # enumerates, so the two answered different questions about the same Mac and both looked
 # healthy. A second copy does not announce itself; it has to be forbidden.
 python3 - "$ROOT" <<'ONE' || fail=1
-import os, re, sys
+import json, os, re, sys
 root = sys.argv[1]
+# THE TABLES ARE READ OFF THE VENDORED PACK, not listed here: a hand list covers only the
+# tables someone remembered to name, and a vendor bump adds more. CTE names are declared
+# `name AS (` and dropped. A pack this cannot read FAILS, rather than shrinking the scan.
+pack_path = os.path.join("vendor", "osquery-ai-discovery", "dist", "ai-discovery.conf")
+tables = set()
+try:
+    for q in json.load(open(os.path.join(root, pack_path)))["queries"].values():
+        sql = q["query"]
+        ctes = set(re.findall(r"\b([A-Za-z_][A-Za-z0-9_]*)\s+AS\s*\(", sql))
+        tables |= set(re.findall(r"\b(?:FROM|JOIN)\s+([A-Za-z_][A-Za-z0-9_]*)", sql)) - ctes
+except (OSError, ValueError, KeyError, AttributeError, TypeError) as exc:
+    print(f"FAIL: cannot read table names off {pack_path} ({exc!r}), so the plaintext-query "
+          f"scan below would cover nothing. Re-vendor with tools/vendor-queries.sh.")
+    sys.exit(1)
+if not tables:
+    print(f"FAIL: {pack_path} names no tables, so the plaintext-query scan would cover nothing.")
+    sys.exit(1)
+query_re = re.compile(r"\bFROM\s+(" + "|".join(sorted(map(re.escape, tables))) + r")\b")
 # Documentation quotes SQL on purpose, and this file names osqueryi to forbid it. Neither
 # is an implementation, so both are out of scope -- the scan covers what executes.
 SKIP_DIRS = {".git", "vendor", "docs"}
@@ -60,8 +78,7 @@ for dirpath, dirnames, filenames in os.walk(root):
             bad.append(f"{rel}: invokes osqueryi directly -- use the vendored bin/discover")
         # dist/collect.sh embeds bin/ and dist/ as base64, so real SQL never appears in it
         # as text. Plaintext here means someone pasted a query in beside the payload.
-        if re.search(r"\bFROM\s+(apps|npm_packages|homebrew_packages|chrome_extensions|"
-                     r"listening_ports|launchd|docker_images)\b", code):
+        if query_re.search(code):
             bad.append(f"{rel}: contains an osquery query in plaintext")
 for b in sorted(set(bad)):
     print(f"FAIL: {b}")
@@ -192,9 +209,9 @@ if os.path.exists(built):
         if banned in bc:
             print(f"FAIL: tools/build-collector.py calls {banned} -- it is building its own "
                   f"payload again. The bundler is vendored; hand it a --driver."); sys.exit(1)
-    # routes.yaml arrived with v0.3.0 as a second catalog file. The guard is a list of
-    # names, so a new one is not covered until it is named -- which is the whole failure
-    # mode: a catalog file reaching a Mac, invisible inside a base64 blob.
+    # Behind build-collector.py's ENDPOINT_FILES, which admits payload files by name: no
+    # catalog file is named anywhere in what deploys. dist/signatures.sql is catalog-derived
+    # and admitted there by name; the --names guard below is what keeps it unread.
     for forbidden in ("agents.yaml", "routes.yaml", "catalog/"):
         if forbidden in text:
             print(f"FAIL: dist/collect.sh mentions {forbidden!r} -- the endpoint holds no "
@@ -222,6 +239,15 @@ if os.path.exists(built):
         print(f"FAIL: dist/collect.sh passes {gone} to bin/discover, which no longer accepts "
               f"it. The vendored runner changed; see tools/build-collector.py."); sys.exit(1)
     print(f"collector: ok, calls discover with {sorted(called)}, all still accepted")
+
+    # MATCHING STAYS OFF THE DEVICE. The bundle carries dist/signatures.sql for
+    # `bin/discover --names`, which matches on the endpoint. The collector enumerates; matching
+    # happens off the machine, where a new signature re-matches evidence already held.
+    if re.search(r"--names\b", driver_code):
+        print("FAIL: dist/collect.sh passes --names to bin/discover, which matches on the "
+              "endpoint. The endpoint enumerates; matching happens off the machine. See "
+              "docs/architecture.md."); sys.exit(1)
+    print("collector: ok, never asks discover to match on the endpoint (no --names)")
 
     # Framing is this tree's job and this is the only implementation of it. Dropping the
     # step would leave the attribute empty, which reads as a Mac with nothing on it.

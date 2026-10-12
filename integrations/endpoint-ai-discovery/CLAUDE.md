@@ -144,14 +144,15 @@ against a real tenant, read-only; run it before a tenant's first scan.
 ## Conventions
 
 - `test/lint.sh` enforces what comments cannot: one implementation, a collector that carries
-  the vendored tree, no catalog in the payload, every `discover` flag still accepted, the
-  framing and its over-cap reason present, and a plist that runs the built collector. Add a
-  guard there whenever a class of bug could recur.
+  the vendored tree, no payload file that is not admitted by name, no `--names`, every
+  `discover` flag still accepted, the framing and its over-cap reason present, and a plist
+  that runs the built collector. Add a guard there whenever a class of bug could recur.
 - `dist/collect.sh` is generated. Edit the `COLLECTOR` template in `tools/build-collector.py`
   and rebuild; never edit the built file.
 - The endpoint enumerates and redacts; the collector classifies (D17). Keep catalog matching
   off the device, and keep anything path-shaped out of the status line — `/Library/Managed
-  Preferences` and the Jamf inventory record are readable by every Jamf admin.
+  Preferences` and the Jamf inventory record are readable by every Jamf admin. The bundle
+  carries `dist/signatures.sql` for upstream's `discover --names`; never pass that flag.
 - A vendored ref pinned to a bare commit prints `PROVISIONAL`. That is legitimate; pin a tag
   once one carries it.
 

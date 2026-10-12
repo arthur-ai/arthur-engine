@@ -66,10 +66,10 @@ def matcher() -> Matcher:
 
 def test_floor_catalog_is_the_vendored_one() -> None:
     m = Matcher.from_source()
-    assert m.agent_count == 22
+    assert m.agent_count == 39
     # Upstream's own catalog_sha, computed over file bytes. If this changes, the vendor
     # tree moved and every record's recorded catalog version moved with it.
-    assert m.catalog_sha == "dbb22a107953"
+    assert m.catalog_sha == "b8772c7cd655"
 
 
 def test_a_catalog_built_from_a_mapping_marks_its_hash_as_not_upstreams() -> None:
@@ -132,9 +132,89 @@ def test_primary_kind_prefers_the_earlier_declared_route(matcher: Matcher) -> No
     assert finding.install_path == "/opt/homebrew/lib/node_modules"
 
 
+def test_a_running_row_does_not_speak_for_an_installed_agent(matcher: Matcher) -> None:
+    """`proc` is declared before `npm` in routes.yaml, but a process row carries no version
+    and names an executable, not an install. Presence speaks; liveness stays evidence.
+    """
+    result = matcher.match(
+        [
+            row(
+                "npm",
+                "@openai/codex",
+                ver="0.5.0",
+                loc="/opt/homebrew/lib/node_modules/@openai/codex",
+            ),
+            row(
+                "proc",
+                "@openai/codex",
+                loc="/opt/homebrew/lib/node_modules/@openai/codex/bin/codex",
+            ),
+        ],
+    )
+    finding = result.findings[0]
+    assert finding.primary_kind == "npm"
+    assert finding.version == "0.5.0"
+    assert finding.install_path == "/opt/homebrew/lib/node_modules/@openai/codex"
+    assert finding.kinds == ("npm", "proc")
+
+
+def test_a_running_row_speaks_when_nothing_else_proved_the_agent(
+    matcher: Matcher,
+) -> None:
+    result = matcher.match(
+        [
+            row(
+                "proc",
+                "@openai/codex",
+                loc="/opt/homebrew/lib/node_modules/@openai/codex/bin/codex",
+            ),
+        ],
+    )
+    finding = result.findings[0]
+    assert finding.primary_kind == "proc"
+    assert finding.version is None
+    assert (
+        finding.install_path == "/opt/homebrew/lib/node_modules/@openai/codex/bin/codex"
+    )
+
+
 def test_permissions_split_into_a_tuple(matcher: Matcher) -> None:
     result = matcher.match(
         [row("app", "com.anthropic.claudefordesktop", perms="tabs,<all_urls>")],
+    )
+    assert result.findings[0].permissions == ("tabs", "<all_urls>")
+
+
+@pytest.mark.parametrize(
+    "perms",
+    [
+        "tabs,<all_urls>,unreferenced",
+        "tabs,<all_urls>,sideloaded:9f2c4e",
+        # osquery's own spelling: permissions joined with ", ", browser.sql's tokens with ","
+        "tabs, <all_urls>,sideloaded:9f2c4e",
+    ],
+)
+def test_extension_provenance_is_not_a_permission(perms: str) -> None:
+    """browser.sql appends `unreferenced` or `sideloaded:<sha256>` to an extension's
+    `perms`. Neither is a permission; upstream's split_perms() says which tokens they are.
+    """
+    catalog = yaml.safe_dump(
+        {
+            "version": 2,
+            "classifications": ["Browser agent"],
+            "agents": [
+                {
+                    "id": "claude-in-chrome",
+                    "name": "Claude in Chrome",
+                    "classification": "Browser agent",
+                    "platforms": ["darwin"],
+                    "extension_ids": ["fcoeoabgfenejglbffodgkkbkcdhcgfn"],
+                },
+            ],
+        },
+    )
+    result = Matcher.from_source(catalog_yaml=catalog).match(
+        [row("ext", "fcoeoabgfenejglbffodgkkbkcdhcgfn", perms=perms)],
     )
     assert result.findings[0].permissions == ("tabs", "<all_urls>")
 
@@ -364,7 +444,7 @@ class TestLoadTimeValidation:
 
     def test_the_vendored_floor_passes_its_own_validation(self) -> None:
         """The guard must not have made the shipped catalog unloadable."""
-        assert Matcher.from_source().agent_count == 22
+        assert Matcher.from_source().agent_count == 39
 
 
 class TestCatalogHashUsesFileBytes:
@@ -372,7 +452,7 @@ class TestCatalogHashUsesFileBytes:
     number -- which is sha256 over the file's BYTES."""
 
     def test_the_floor_still_matches_upstreams_value(self) -> None:
-        assert Matcher.from_source().catalog_sha == "dbb22a107953"
+        assert Matcher.from_source().catalog_sha == "b8772c7cd655"
 
     def test_crlf_does_not_change_the_hash_the_way_read_text_would(
         self,
@@ -465,6 +545,28 @@ class TestCatalogShapes:
         with pytest.raises(ValueError, match="unknown route"):
             Matcher.from_source(catalog_yaml=bad)
 
+    def test_a_value_under_a_route_that_borrows_another_is_refused(self) -> None:
+        """`running_apps` matches `bundle_ids` values (`values_from` in routes.yaml) and never
+        reads its own key, so a value listed under it would match nothing, in silence.
+        """
+        bad = yaml.safe_dump(
+            {
+                "version": 2,
+                "classifications": ["Coding agent"],
+                "agents": [
+                    {
+                        "id": "x",
+                        "name": "X",
+                        "classification": "Coding agent",
+                        "platforms": ["darwin"],
+                        "running_apps": ["com.example.agent"],
+                    },
+                ],
+            },
+        )
+        with pytest.raises(ValueError, match="bundle_ids"):
+            Matcher.from_source(catalog_yaml=bad)
+
     def test_an_unhandled_match_mode_is_refused_at_load(self) -> None:
         """build_index raises KeyError on a mode it does not branch on -- once per device
         rather than once at load."""
@@ -498,7 +600,7 @@ class TestCatalogShapes:
             Matcher.from_source(catalog_yaml=bad)
 
     def test_the_shipped_floor_still_loads(self) -> None:
-        assert Matcher.from_source().agent_count == 22
+        assert Matcher.from_source().agent_count == 39
 
     def test_a_catalog_sharing_fields_through_an_anchor_still_loads(self) -> None:
         """`<<` carries a tag PyYAML has no constructor for -- construct_mapping flattens

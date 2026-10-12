@@ -19,8 +19,8 @@
   interval, so a reader never sees a missing file on a correctly configured Mac.
 
   Read it from your endpoint tool with:
-    cat /var/lib/arthur/inventory.ea      ~21 KB, against a 256 KB cap
-    cat /var/lib/arthur/inventory.json    ~127 KB, the readable form
+    cat /var/lib/arthur/inventory.ea      ~24 KB, against a 256 KB cap
+    cat /var/lib/arthur/inventory.json    ~155 KB, the readable form
     cat /var/lib/arthur/status.txt        one line, for a smart group to match on
 
   Report the .ea file: the raw JSON is roughly six times its size. This job does the framing

@@ -92,6 +92,10 @@ def _load_matcher() -> ModuleType:
 
 _matcher = _load_matcher()
 
+# Kinds whose row says the agent is RUNNING rather than installed. Upstream's set, read off the
+# vendored matcher rather than copied, so a live kind upstream adds is ranked as one.
+_LIVE_KINDS: frozenset[str] = frozenset(_matcher.LIVE_KINDS)
+
 
 @dataclass(frozen=True)
 class Finding:
@@ -325,15 +329,21 @@ class Matcher:
         rows = [dict(row) for _hit, row in evidence]
         meta = dict(evidence[0][0])
 
+        # PRESENCE SPEAKS BEFORE LIVENESS. A running row names a process, not an install, and
+        # carries no version; ranked by declaration alone it would describe an installed agent
+        # whenever that agent happened to be running, and its address would move between scans.
         primary = min(
             rows,
-            key=lambda r: self._route_rank.get(
-                str(r.get("kind", "")),
-                len(self._route_rank),
+            key=lambda r: (
+                str(r.get("kind", "")) in _LIVE_KINDS,
+                self._route_rank.get(str(r.get("kind", "")), len(self._route_rank)),
             ),
         )
 
-        perms = str(primary.get("perms") or "")
+        # Upstream's split, because `perms` can end in a provenance token that is not a
+        # permission, and a list of those tokens copied here would miss the next one. The
+        # token itself goes nowhere yet: AgentObservations has no field for provenance.
+        permissions, _provenance = _matcher.split_perms(str(primary.get("perms") or ""))
         return Finding(
             agent_id=agent_id,
             name=str(meta.get("name") or agent_id),
@@ -345,7 +355,7 @@ class Matcher:
             install_path=(
                 str(primary.get("loc")) or None if primary.get("loc") else None
             ),
-            permissions=tuple(p for p in perms.split(",") if p),
+            permissions=permissions,
         )
 
 
@@ -407,6 +417,15 @@ def _validate(catalog: Mapping[str, Any], routes: Mapping[str, Any]) -> None:
             if key not in route_names:
                 raise ValueError(
                     f"catalog agent {agent.get('id') or i} declares unknown route {key!r}",
+                )
+            # A `values_from` route indexes another route's values and never reads its own
+            # key, so a value listed under it would match nothing, in silence.
+            borrowed = (declared.get(key) or {}).get("values_from")
+            if borrowed:
+                raise ValueError(
+                    f"catalog agent {agent.get('id') or i} lists values under {key!r}, which "
+                    f"matches {borrowed!r} values and reads none of its own; list them under "
+                    f"{borrowed!r}",
                 )
             if not isinstance(value, list) or not all(
                 isinstance(v, str) for v in value
