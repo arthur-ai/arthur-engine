@@ -72,6 +72,7 @@ depends on that.
 | Framed size under the cap `collect.sh` itself declares | A Mac that would report `ERROR:oversize` instead of its inventory, and a cap that drifted from the one being enforced |
 | A failed scan: non-zero exit, **both attribute values untouched** | Either half of the trade this tree made — republishing a stale value as fresh, or deleting a good one to signal a problem |
 | A failed first-ever scan: non-zero exit, **no files at all** | A partial file left behind claiming to be a result, when `no-cache` is the true answer |
+| A scan that fails its JSON check — the shipped driver against a stub `discover` whose `--cache` cannot run — leaves both previous files untouched, passes discover's reason through, and leaves no staging directory | A failure after the scan erasing the last good inventory. Every step of a run, not only the scan, keeps the last good one |
 | No `arthur-collect.*` directory left behind | The extraction directory leaking once per run, which on an Ongoing schedule fills a volume months later |
 
 The container branch: the macOS runner has no Docker and reports `absent`; the Ubuntu runner
@@ -94,12 +95,22 @@ cap with its 400, and the 403 when guest attributes are disabled.
 | No scan ever, no osquery: `no-cache`, and `no-cache failed=<UTC> osquery=absent` | An empty key, which reads as a clean VM |
 | Guest attributes disabled: the 403 named, nothing stored | A VM that cannot report and says nothing |
 | No metadata server: named, non-zero | The same, off Compute Engine |
+| `status.txt` without `inventory.ea`: both keys `no-cache` | A status claiming a scan the inventory does not carry |
+| One 503, retried through to success | A transient failure failing the run |
+| Inventory refused, then the status request dropped: each logged with its own reason | A reason left over from the previous request |
+| `http_proxy` set to a dead proxy: published directly | A fleet-wide proxy capturing the link-local metadata request |
+| `TERM` during collection: non-zero, nothing published | A stopped run carrying on without its working directory and blaming the metadata server |
+
+`flaky` (one 503) and `drop-status` (no answer on the `status` key) are the fake's own
+behaviours, labelled as such; every other answer it gives was measured on a real VM.
 
 ## `test/run-systemd.sh`
 
 Installs the Linux collector, the reporter and the units at their real paths, runs one
-activation under systemd against the fake, then one with guest attributes disabled, and
-removes everything. It writes to the machine, so it runs only with
+activation under systemd against the fake, one with `/tmp` and `/var/tmp` remounted `noexec`
+(where the collector run by hand with no `TMPDIR` must fail and the unit must succeed), one with
+guest attributes disabled, then starts the timer and checks it has a next run, and removes
+everything. It writes to the machine, so it runs only with
 `ARTHUR_TEST_INSTALLS_UNITS=1`, as root, where systemd is PID 1 — in CI, the Ubuntu runner.
 
 ## Running the real thing

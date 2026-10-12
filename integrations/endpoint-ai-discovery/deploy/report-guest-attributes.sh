@@ -23,9 +23,15 @@ COLLECT="${ARTHUR_COLLECT:-/usr/local/arthur/collect-linux.sh}"
 OUT="${ARTHUR_OUT_DIR:-/var/lib/arthur}"
 URL="${ARTHUR_GUEST_ATTRIBUTES_URL:-http://metadata.google.internal/computeMetadata/v1/instance/guest-attributes/arthur}"
 
+# The unit sets TMPDIR under /var/lib/arthur, because a hardened image mounts /tmp and /var/tmp
+# noexec and the collector runs what it unpacks.
+[ -z "${TMPDIR:-}" ] || mkdir -p -m 700 "$TMPDIR" || { echo "arthur: cannot create $TMPDIR" >&2; exit 1; }
 work="$(mktemp -d "${TMPDIR:-/tmp}/arthur-report.XXXXXX")" || {
   echo "arthur: cannot create a working directory" >&2; exit 1; }
-trap 'rm -rf "$work"' EXIT HUP INT TERM
+# A signal ENDS the run. Trapping it only to clean up would let the script carry on with its
+# working directory gone, and every write after that would be misreported.
+trap 'rm -rf "$work"' EXIT
+trap 'exit 1' HUP INT TERM
 
 # --- collect ---------------------------------------------------------------------------------
 # Its stderr reaches the journal unchanged; a copy is kept to name why a run failed. The
@@ -35,10 +41,12 @@ ARTHUR_OUT_DIR="$OUT" "$COLLECT" 2> "$work/collect.err"
 collected=$?
 cat "$work/collect.err" >&2
 
-if [ -s "$OUT/status.txt" ]; then
-  status="$(tr -d '\n' < "$OUT/status.txt")"
+# THE TWO KEYS DESCRIBE ONE STATE. With no framed value there is no scan to describe, whatever
+# status.txt says, so the status is no-cache whenever the inventory is.
+if [ -s "$OUT/inventory.ea" ] && [ -s "$OUT/status.txt" ]; then
+  scanned=1; status="$(tr -d '\n' < "$OUT/status.txt")"
 else
-  status="no-cache"
+  scanned=0; status="no-cache"
 fi
 if [ "$collected" -ne 0 ]; then
   status="$status failed=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
@@ -50,7 +58,7 @@ fi
 
 # The value only: inventory.ea ends in one newline for a `cat`-ing reader, and a value of
 # exactly the 262,144-byte cap would be one byte over it with the newline sent.
-if [ -s "$OUT/inventory.ea" ]; then
+if [ "$scanned" = 1 ]; then
   tr -d '\n' < "$OUT/inventory.ea" > "$work/inventory"
 else
   printf 'no-cache' > "$work/inventory"
@@ -58,9 +66,16 @@ fi
 
 # --- publish ---------------------------------------------------------------------------------
 # The HTTP code decides, never curl's exit status alone: `curl -s` exits 0 on a 400.
+#   --noproxy '*'   the metadata server is link-local, and a fleet-wide proxy must not carry it
+#   --retry         a transient failure (5xx, timeout, refused) is retried; a 400 or 403 is an
+#                   answer and is not
+# The response files are cleared first: curl leaves them untouched when nothing arrives, and a
+# reason logged for this request must not be the previous one's.
 put() {
-  code="$(curl -sS --max-time 10 -o "$work/body" -w '%{http_code}' -X PUT \
-            -H 'Metadata-Flavor: Google' --data-binary @"$2" "$URL/$1" 2> "$work/curl.err")"
+  rm -f "$work/body" "$work/curl.err"
+  code="$(curl -sS --noproxy '*' --max-time 10 --retry 2 --retry-delay 1 --retry-connrefused \
+            -o "$work/body" -w '%{http_code}' -X PUT -H 'Metadata-Flavor: Google' \
+            --data-binary @"$2" "$URL/$1" 2> "$work/curl.err")"
   [ -n "$code" ] || code=000
 }
 

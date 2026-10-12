@@ -128,9 +128,61 @@ report
 grep -q "cannot reach the metadata server" "$work/stderr" || bad "an unreachable server was not named"
 ok "unreachable metadata server named, exit $rc"
 
+case_ "== a scan status without its value publishes no-cache for both keys ====="
+start_fake ok
+out="$work/out.halfway"; mkdir -p "$out"
+printf 'ok 2026-10-12T00:00:00Z rows=3 apps=ok\n' > "$out/status.txt"
+stub 0; report
+is inventory 'no-cache' || bad "arthur/inventory is not no-cache"
+is status 'no-cache' || bad "arthur/status claims a scan the inventory does not carry: $(cat "$store/arthur/status")"
+ok "status.txt without inventory.ea: both keys no-cache"
+
+case_ "== a transient failure is retried ======================================="
+start_fake flaky
+out="$work/out.clean"
+printf 'arthur1.H4sIAAAA\n' > "$out/inventory.ea"
+printf 'ok 2026-10-12T00:00:00Z rows=3 apps=ok\n' > "$out/status.txt"
+stub 0; report
+[ "$rc" -eq 0 ] || bad "one 503 failed the run: $(head -c 200 "$work/stderr")"
+is inventory 'arthur1.H4sIAAAA' || bad "the retried inventory was not published"
+ok "a 503 retried through to success, exit 0"
+
+case_ "== a reason logged is this request's, not the previous one's ============"
+start_fake drop-status
+{ cat "$work/at-cap"; printf 'A\n'; } > "$out/inventory.ea"
+report
+[ "$rc" -ne 0 ] || bad "a status that could not be written exited 0"
+grep "arthur/status\|metadata server" "$work/stderr" | grep -q "Maximum value" \
+  && bad "the status failure was logged with the inventory's 400 reason: $(cat "$work/stderr")"
+grep -q "Maximum value of 262144 bytes allowed" "$work/stderr" || bad "the inventory's own 400 was not logged"
+ok "inventory refused, status dropped: each logged with its own reason"
+
+case_ "== a fleet-wide proxy does not carry the metadata request ==============="
+start_fake ok
+printf 'arthur1.H4sIAAAA\n' > "$out/inventory.ea"
+stub 0
+http_proxy=http://127.0.0.1:9 report
+[ "$rc" -eq 0 ] || bad "with http_proxy set, the PUT went to the proxy: $(head -c 200 "$work/stderr")"
+is inventory 'arthur1.H4sIAAAA' || bad "nothing reached the metadata server with http_proxy set"
+ok "http_proxy set to a dead proxy: published directly, exit 0"
+
+case_ "== a signal ends the run instead of misreporting it ======================"
+start_fake ok
+printf '#!/bin/bash\nsleep 30\n' > "$work/collect"; chmod +x "$work/collect"
+ARTHUR_COLLECT="$work/collect" ARTHUR_OUT_DIR="$out" ARTHUR_GUEST_ATTRIBUTES_URL="$url" \
+  "$REPORT" > "$work/stdout" 2> "$work/stderr" &
+rpid=$!
+for _ in $(seq 50); do pgrep -P "$rpid" >/dev/null && break; sleep 0.1; done
+# What systemd does on stop or timeout: TERM to every process in the unit.
+pkill -TERM -P "$rpid"; kill -TERM "$rpid"; wait "$rpid"; rc=$?
+[ "$rc" -ne 0 ] || bad "a TERMed run exited 0"
+grep -q "cannot reach the metadata server" "$work/stderr" && bad "a TERMed run blamed the metadata server"
+[ -z "$(ls -A "$store")" ] || bad "a TERMed run published something"
+ok "TERM during collection: exit $rc, nothing published, nothing misreported"
+
 case_ "== the reporter leaves no working directory behind ======================="
 [ "$before" = "$(leaked)" ] || bad "the reporter leaked a working directory"
-ok "no arthur-report.* left by seven runs"
+ok "no arthur-report.* left by twelve runs"
 
 [ "$fails" -eq 0 ] && echo "guest-attributes: PASS" || echo "guest-attributes: FAIL ($fails)"
 [ "$fails" -eq 0 ]

@@ -243,6 +243,13 @@ for name in ("collect.sh", "collect-linux.sh"):
             if not line.rstrip().endswith("\\"):
                 break
     called = set(re.findall(r"--[a-z-]+", "\n".join(cmd)))
+    # A CHECK THAT FINDS NO CALL CHECKS NOTHING. The driver scans with --write and checks the
+    # result with --cache; if either is not found, the way the driver calls discover changed
+    # and the comparison below would pass with nothing in it.
+    if not {"--write", "--cache"} <= called:
+        print(f"FAIL: dist/{name}: found discover called with {sorted(called)}, expected "
+              f"--write and --cache. The driver's invocation changed; update this guard to "
+              f"find it."); sys.exit(1)
     gone = sorted(called - accepted)
     if gone:
         print(f"FAIL: dist/{name} passes {gone} to bin/discover, which no longer accepts "

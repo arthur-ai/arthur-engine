@@ -114,12 +114,38 @@ set -uo pipefail
 # and removes it on the way out. Guarded rather than assumed: run by hand without the wrapper
 # this would otherwise fail somewhere further down, as a missing path.
 [ -n "${AI_DISCOVERY_ROOT:-}" ] || {
-  echo "arthur: AI_DISCOVERY_ROOT is not set. This is the driver half of dist/collect.sh;" \
-       "run that, not this." >&2; exit 1; }
+  echo "arthur: AI_DISCOVERY_ROOT is not set. This is the driver half of a built collector" \
+       "(dist/collect.sh or dist/collect-linux.sh); run that, not this." >&2; exit 1; }
 
 OUT="${ARTHUR_OUT_DIR:-/var/lib/arthur}"
 
 mkdir -p "$OUT" 2>/dev/null || { echo "arthur: cannot create $OUT" >&2; exit 1; }
+
+# EACH RUN WRITES INTO A STAGING DIRECTORY AND PUBLISHES BY RENAME, only once the scan, its JSON
+# check and its framing have all succeeded. A failure at any of them leaves the previous three
+# files as they were, together and describing one scan. Inside $OUT, so a rename never crosses
+# a filesystem.
+stage="$(mktemp -d "$OUT/.scan.XXXXXX")" || {
+  echo "arthur: cannot create a staging directory in $OUT" >&2; exit 1; }
+trap 'rm -rf "$stage"' EXIT
+trap 'exit 1' HUP INT TERM
+
+# A RUN THAT CANNOT FINISH KEEPS THE LAST GOOD ONE, in either direction. On a schedule a
+# transient failure is ordinary, and discarding a good scan because one run could not complete
+# reports a well-equipped machine as empty -- so serve what the last successful run produced,
+# whose own timestamp says how old it is, and fail the run rather than the data. With nothing
+# good ever written there is nothing to keep: leave no partial file claiming to be a result, so
+# both attributes report `no-cache`, which is true.
+keep_last_good() {
+  if [ -s "$OUT/inventory.ea" ] && [ -s "$OUT/status.txt" ]; then
+    echo "arthur: keeping the last successful scan; the value below is that run, not this one" >&2
+    cat "$OUT/status.txt"
+    exit 1
+  fi
+  rm -f "$OUT/inventory.json" "$OUT/status.txt" "$OUT/inventory.ea"
+  echo "arthur: no previous scan to fall back on; no attribute value written" >&2
+  exit 1
+}
 
 # THE PING TIMEOUT IS 15s, ABOVE UPSTREAM'S DEFAULT OF 8. Why a cold daemon needs a longer
 # ping, and what each Docker state costs, is upstream's docs/containers.md. What is this
@@ -133,8 +159,7 @@ mkdir -p "$OUT" 2>/dev/null || { echo "arthur: cannot create $OUT" >&2; exit 1; 
 # Overridable, because a fleet that has measured its own Macs should use its own number.
 export DOCKER_PING_TIMEOUT="${DOCKER_PING_TIMEOUT:-15}"
 
-# Writes by rename, so a reader catching this mid-run sees the previous complete file rather
-# than a truncated one.
+# Into the staging directory; nothing in $OUT changes until the publish at the end.
 # A FAILED SCAN MUST NOT REPLACE A GOOD ONE, IN EITHER DIRECTION. discover's exit status used
 # to be discarded -- no `set -e`, no `||` -- and because discover writes by rename, a failed
 # run left the previous inventory.json in place and the framing step below re-framed it into a
@@ -159,22 +184,10 @@ export DOCKER_PING_TIMEOUT="${DOCKER_PING_TIMEOUT:-15}"
 # dated kind=scan row, the status line says `degraded`, exit 0. So non-zero always means
 # nothing was written, never that good rows are being kept in place of better ones.
 "$AI_DISCOVERY_ROOT/bin/discover" \
-  --write  "$OUT/inventory.json" \
-  --status "$OUT/status.txt" > /dev/null || {
+  --write  "$stage/inventory.json" \
+  --status "$stage/status.txt" > /dev/null || {
   echo "arthur: discover failed. Is osquery installed?" >&2
-  if [ -s "$OUT/inventory.ea" ] && [ -s "$OUT/status.txt" ]; then
-    # Keep and serve what the last successful run produced. Its own timestamp says how old it
-    # is; this run adds nothing and removes nothing.
-    echo "arthur: keeping the last successful scan; the value below is that run, not this one" >&2
-    cat "$OUT/status.txt"
-    exit 1
-  fi
-  # Nothing good was ever written here, so there is nothing to keep and no value to serve.
-  # Leave no partial file behind claiming to be a result: both attributes report `no-cache`,
-  # which is true and is what the "not reporting" Smart Group finds.
-  rm -f "$OUT/inventory.json" "$OUT/status.txt" "$OUT/inventory.ea"
-  echo "arthur: no previous scan to fall back on; no attribute value written" >&2
-  exit 1
+  keep_last_good
 }
 
 # THE FRAMED VALUE IS BUILT HERE, not by bin/discover: `arthur1.` is Arthur's wire format and
@@ -201,23 +214,20 @@ export DOCKER_PING_TIMEOUT="${DOCKER_PING_TIMEOUT:-15}"
 # CHECKED BY THE VENDORED RUNNER: `discover --cache` parses the file with osquery's own
 # json_valid() and json_type() and exits non-zero unless it is a JSON array -- a truncated or
 # corrupt payload is refused rather than published, with nothing the scan did not already need.
-"$AI_DISCOVERY_ROOT/bin/discover" --cache "$OUT/inventory.json" > /dev/null 2>&1 || {
-  rm -f "$OUT/inventory.ea"
-  echo "arthur: inventory.json is not a parseable JSON array; no attribute value written" >&2
-  exit 1
+# A check that could not run -- osqueryi not answering -- is a failed check like any other, and
+# discover's own stderr says which it was.
+"$AI_DISCOVERY_ROOT/bin/discover" --cache "$stage/inventory.json" > /dev/null || {
+  echo "arthur: this scan failed its JSON check (the reason is above)" >&2
+  keep_last_good
 }
 
 # ONE LINE, WHATEVER base64 DOES. Line wrapping differs between base64 implementations and
 # versions; `tr -d` makes the result one line regardless, and the attribute must be one line --
 # the EA reader wraps `cat` output in <result> and a wrapped value would carry newlines into it.
-eatmp="$OUT/inventory.ea.$$"
-{ printf 'arthur1.'; gzip -9 -c "$OUT/inventory.json" | base64 | tr -d '\n'; } > "$eatmp" || {
-  # No framed value at all is the one framing outcome that cannot report itself. Leave no
-  # stale file behind claiming to be current, and fail loudly: the attribute is the
-  # deliverable, and a reader cannot tell an old value from a new one.
-  rm -f "$eatmp" "$OUT/inventory.ea"
-  echo "arthur: could not frame the payload; no attribute value written" >&2
-  exit 1
+eatmp="$stage/inventory.ea"
+{ printf 'arthur1.'; gzip -9 -c "$stage/inventory.json" | base64 | tr -d '\n'; } > "$eatmp" || {
+  echo "arthur: could not frame the payload" >&2
+  keep_last_good
 }
 
 # 256 KB, AND ON COMPUTE ENGINE IT IS THE PLATFORM LIMIT, so it must not rise. A guest
@@ -239,22 +249,24 @@ if [ "$bytes" -gt "$CAP" ]; then
   echo "arthur: framed value is $bytes bytes, over the $CAP-byte cap by $((bytes - CAP)). Reporting the reason instead of the payload." >&2
   printf 'ERROR:oversize:%s' "$bytes" > "$eatmp"
 else
-  echo "arthur: framed $(wc -c < "$OUT/inventory.json" | tr -d ' ') bytes of JSON into $bytes bytes ($(( (bytes * 100 + CAP / 2) / CAP ))% of cap)" >&2
+  echo "arthur: framed $(wc -c < "$stage/inventory.json" | tr -d ' ') bytes of JSON into $bytes bytes ($(( (bytes * 100 + CAP / 2) / CAP ))% of cap)" >&2
 fi
 
-# BY RENAME, and 644 so the EA script can read it as any user.
+# 644 so an attribute script can read it as any user.
 printf '\n' >> "$eatmp"
 chmod 644 "$eatmp"
-mv -f "$eatmp" "$OUT/inventory.ea" || {
-  rm -f "$eatmp" "$OUT/inventory.ea"
-  echo "arthur: could not publish the attribute value" >&2
-  exit 1
-}
+[ -s "$stage/status.txt" ] || { echo "arthur: no status written" >&2; keep_last_good; }
+
+# PUBLISH: three renames on one filesystem, the framed value last, so a reader between two of
+# them finds the new readable payload beside the previous value, never a partial file.
+for f in inventory.json status.txt inventory.ea; do
+  mv -f "$stage/$f" "$OUT/$f" || { echo "arthur: could not publish $f" >&2; exit 1; }
+done
 
 # The scheduler records the exit status -- Jamf shows a non-zero one as a failed Policy, systemd
-# as a failed unit. A branch that could not look is NOT a failed collection -- the payload says so per branch, and the
-# status file is what a Smart Group reads. Only an actual inability to collect is an error.
-[ -s "$OUT/status.txt" ] || { echo "arthur: no status written" >&2; exit 1; }
+# a failed unit. A branch that could not look is NOT a failed collection: the payload says so
+# per branch, and the status line is what a Smart Group reads. Only an inability to collect is
+# an error.
 cat "$OUT/status.txt"
 exit 0
 """

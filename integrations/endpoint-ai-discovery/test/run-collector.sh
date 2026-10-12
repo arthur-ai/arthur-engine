@@ -261,6 +261,34 @@ for f in inventory.json inventory.ea status.txt; do
 done
 note "no previous scan: exit $status, no partial attribute value written"
 
+echo "== a scan that fails its JSON check keeps the last good one too =========="
+# The shipped driver, read back out of the built collector, against a stub discover whose scan
+# succeeds and whose --cache check cannot run -- osqueryi not answering, which a real machine
+# cannot be made to do on demand. Every step after the scan must leave the previous three files
+# exactly as they were, not only the scan itself.
+before_phase="$fail"
+mkdir -p "$work/stub/bin"
+cat > "$work/stub/bin/discover" <<'STUB'
+#!/bin/bash
+case "$1" in
+  --write) printf '[]' > "$2"; printf 'ok 2026-10-12T00:00:00Z rows=0\n' > "$4"; exit 0 ;;
+  --cache) echo "discover: could not validate $2 -- osqueryi did not answer." >&2; exit 1 ;;
+esac
+exit 2
+STUB
+chmod +x "$work/stub/bin/discover"
+"$ROOT/tools/build-collector.py" --driver-of "$COLLECT" > "$work/driver"
+cp "$out/inventory.ea" "$work/ea.before"; cp "$out/status.txt" "$work/status.before"
+AI_DISCOVERY_ROOT="$work/stub" ARTHUR_OUT_DIR="$out" bash "$work/driver" > /dev/null 2> "$work/stderr4"
+status=$?
+sed 's/^/    /' "$work/stderr4"
+[ "$status" -ne 0 ] || bad "a scan that failed its JSON check exited 0"
+cmp -s "$work/ea.before" "$out/inventory.ea" || bad "a failed JSON check replaced or removed the last good inventory.ea"
+cmp -s "$work/status.before" "$out/status.txt" || bad "a failed JSON check replaced the last good status.txt"
+grep -q "osqueryi did not answer" "$work/stderr4" || bad "discover's own reason for the failed check was not passed through"
+[ -z "$(ls -d "$out"/.scan.* "$fresh"/.scan.* 2>/dev/null)" ] || bad "a staging directory was left in the output directory"
+[ "$fail" -eq "$before_phase" ] && note "failed JSON check: exit $status, both attribute values untouched, no staging left"
+
 echo "== the payload directory is not left on disk ============================="
 after="$(leaked)"
 if [ "$before" = "$after" ]; then

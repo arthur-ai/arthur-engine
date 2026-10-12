@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """A stand-in for a Compute Engine VM's guest-attributes endpoint, for test/ only.
 
-    test/fake-metadata-server.py STORE_DIR PORT_FILE [ok|disabled]
+    test/fake-metadata-server.py STORE_DIR PORT_FILE [ok|disabled|flaky|drop-status]
 
 BUILT FROM MEASUREMENTS, NOT FROM DOCUMENTATION. Each answer below is what a real Debian 12
 VM's metadata server returned on 2026-10-03: a value over 262,144 bytes refused with HTTP 400
@@ -9,8 +9,10 @@ and that message, and HTTP 403 with that message once enable-guest-attributes=FA
 for the cases a real VM cannot be made to produce on demand; it is not the acceptance check --
 docs/mdm/gce.md's real-VM run is.
 
-One answer is the fake's own and says so: a PUT without `Metadata-Flavor: Google` is refused
-with 400, so a reporter that dropped the header fails here rather than passing.
+Three behaviours are the fake's own and say so. A PUT without `Metadata-Flavor: Google` is
+refused with 400, so a reporter that dropped the header fails here rather than passing.
+`flaky` answers the first PUT with 503, and `drop-status` closes the connection on a PUT to the
+`status` key without answering -- the transient failures a reporter must retry or name.
 
 A PUT stores its body under STORE_DIR/<namespace>/<key>, byte for byte. The port goes to
 PORT_FILE once the server is listening.
@@ -26,6 +28,7 @@ CAP = 262144
 store = pathlib.Path(sys.argv[1])
 port_file = pathlib.Path(sys.argv[2])
 mode = sys.argv[3] if len(sys.argv) > 3 else "ok"
+seen = []
 
 
 class Handler(http.server.BaseHTTPRequestHandler):
@@ -46,6 +49,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self.answer(404, "fake: not a guest attribute path")
         if self.headers.get("Metadata-Flavor") != "Google":
             return self.answer(400, "fake: missing Metadata-Flavor: Google")
+        seen.append(self.path)
+        if mode == "flaky" and len(seen) == 1:
+            return self.answer(503, "fake: transient")
+        if mode == "drop-status" and self.path.endswith("/status"):
+            self.close_connection = True
+            return
         if mode == "disabled":
             return self.answer(403, "Guest attributes endpoint access is disabled.")
         if len(value) > CAP:

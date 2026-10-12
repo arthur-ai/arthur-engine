@@ -250,7 +250,9 @@ is a VM the reporter never ran on, or one with guest attributes disabled since b
 run.
 
 **Judge age from the status line's timestamp, never from the read.** A stopped VM keeps serving
-its last values, and so does one whose guest attributes were turned off after it reported.
+its last values, and so does one whose guest attributes were turned off after it reported. The
+inventory dates itself too — every branch's `kind=scan` row carries its scan time in `ver` — so
+an inventory newer than the status beside it is one whose status write failed.
 
 ## 06 · When a VM is not reporting — on the VM
 
@@ -266,6 +268,7 @@ journalctl -u arthur-ai-discovery.service -n 50        # the collector's stderr,
 | `cannot reach the metadata server` | Not a Compute Engine VM, or its metadata server is unreachable |
 | `discover: no osqueryi found` | osquery is not installed; the status says `osquery=absent` |
 | `arthur/inventory refused (HTTP 400 ...)` | The value was refused; the reason follows |
+| `this scan failed its JSON check` | The scan ran but its payload did not parse; discover's reason is the line above. The last good scan is kept |
 
 ## 07 · Access for the Arthur collector
 

@@ -13,6 +13,8 @@ After=network-online.target
 Type=oneshot
 ExecStart=/usr/local/arthur/report-guest-attributes.sh
 Environment=HOME=/root
+# The collector runs what it unpacks, and a hardened image mounts /tmp and /var/tmp noexec.
+Environment=TMPDIR=/var/lib/arthur/tmp
 Nice=5
 IOSchedulingClass=idle
 # The runner bounds its expensive branch itself; this bounds the run should anything else hang.
