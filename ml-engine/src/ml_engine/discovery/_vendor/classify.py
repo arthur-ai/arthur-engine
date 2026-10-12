@@ -365,7 +365,9 @@ def _is_provenance(part):
 def split_perms(perms):
     """A row's `perms` as (permissions, provenance): a tuple of declared capabilities, and
     the provenance token browser.sql appended, or ''."""
-    parts = [p for p in (perms or "").split(",") if p]
+    # osquery joins `permissions` with ", " and browser.sql appends its tokens with ",", so
+    # each part is stripped: a leading space would make " storage" a different permission.
+    parts = [p.strip() for p in (perms or "").split(",") if p.strip()]
     if parts and _is_provenance(parts[-1]):
         return tuple(parts[:-1]), parts[-1]
     return tuple(parts), ""

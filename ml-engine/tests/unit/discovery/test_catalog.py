@@ -187,7 +187,12 @@ def test_permissions_split_into_a_tuple(matcher: Matcher) -> None:
 
 @pytest.mark.parametrize(
     "perms",
-    ["tabs,<all_urls>,unreferenced", "tabs,<all_urls>,sideloaded:9f2c4e"],
+    [
+        "tabs,<all_urls>,unreferenced",
+        "tabs,<all_urls>,sideloaded:9f2c4e",
+        # osquery's own spelling: permissions joined with ", ", browser.sql's tokens with ","
+        "tabs, <all_urls>,sideloaded:9f2c4e",
+    ],
 )
 def test_extension_provenance_is_not_a_permission(perms: str) -> None:
     """browser.sql appends `unreferenced` or `sideloaded:<sha256>` to an extension's
