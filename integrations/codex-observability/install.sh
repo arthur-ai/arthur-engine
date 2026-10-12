@@ -183,11 +183,12 @@ fi
 
 if [[ -n "$PROJECT_DIR" ]]; then
     GITIGNORE="$PROJECT_DIR/.gitignore"
-    # The config holds the API key; the venv and tracer copy are per machine.
+    # The config holds the API key; hooks.json, the venv and the tracer copy
+    # hold this machine's paths.
     if [[ -s "$GITIGNORE" && -n "$(tail -c1 "$GITIGNORE")" ]]; then
         printf '\n' >> "$GITIGNORE"
     fi
-    for entry in .codex/arthur_config.json .codex/hooks/.arthur-venv/ .codex/hooks/codex_hook_tracer.py; do
+    for entry in .codex/arthur_config.json .codex/hooks.json .codex/hooks/.arthur-venv/ .codex/hooks/codex_hook_tracer.py; do
         if [[ ! -f "$GITIGNORE" ]] || ! grep -qxF "$entry" "$GITIGNORE"; then
             printf '%s\n' "$entry" >> "$GITIGNORE"
         fi

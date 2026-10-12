@@ -963,3 +963,74 @@ def test_subagent_from_current_codex_nests_under_the_parent_turn(isolated_state)
     assert child_root["parent_span_id_hex"] == agent_span["span_id_hex"]
     assert sub_bash["parent_span_id_hex"] == child_root["span_id_hex"]
     assert child_root["attributes"]["output.value"] == "SUB_DONE"
+
+
+def _hold_turn_lock(entered, release, events, name):
+    with tracer._turn_lock("sess", "turn"):
+        events.append(f"{name} in")
+        entered.set()
+        release.wait(5)
+        events.append(f"{name} out")
+
+
+def test_cleanup_keeps_a_stale_lock_that_a_hook_holds(isolated_state):
+    """Break caught: cleanup unlinked a held lock by path, so the next hook
+    created a new lock file and ran alongside the holder."""
+    events = []
+    first_in, first_release = threading.Event(), threading.Event()
+    first = threading.Thread(
+        target=_hold_turn_lock, args=(first_in, first_release, events, "first")
+    )
+    first.start()
+    assert first_in.wait(5)
+    lock = tracer._lock_path("sess", "turn")
+    old = time.time() - tracer.STATE_MAX_AGE_SECONDS - 60
+    os.utime(lock, (old, old))
+
+    tracer._cleanup_stale_state()
+
+    second_in, second_release = threading.Event(), threading.Event()
+    second = threading.Thread(
+        target=_hold_turn_lock, args=(second_in, second_release, events, "second")
+    )
+    second.start()
+    assert not second_in.wait(0.5), "second hook entered while the first held the lock"
+    first_release.set()
+    second_release.set()
+    first.join(5)
+    second.join(5)
+    assert events == ["first in", "first out", "second in", "second out"]
+
+
+def test_hook_waiting_on_an_unlinked_lock_does_not_run_alongside_its_replacement(
+    isolated_state,
+):
+    import fcntl
+
+    lock = tracer._lock_path("sess", "turn")
+    holder = open(lock, "a+")
+    fcntl.flock(holder.fileno(), fcntl.LOCK_EX)
+    events = []
+    waiter_in, waiter_release = threading.Event(), threading.Event()
+    waiter = threading.Thread(
+        target=_hold_turn_lock, args=(waiter_in, waiter_release, events, "waiter")
+    )
+    waiter.start()
+    time.sleep(0.3)  # waiter is now blocked on the old lock file
+    lock.unlink()
+    newer_in, newer_release = threading.Event(), threading.Event()
+    newer = threading.Thread(
+        target=_hold_turn_lock, args=(newer_in, newer_release, events, "newer")
+    )
+    newer.start()
+    assert newer_in.wait(5)
+    fcntl.flock(holder.fileno(), fcntl.LOCK_UN)
+    holder.close()
+    assert not waiter_in.wait(
+        0.5
+    ), "waiter ran on the unlinked lock while newer held the new one"
+    newer_release.set()
+    waiter_release.set()
+    newer.join(5)
+    waiter.join(5)
+    assert events == ["newer in", "newer out", "waiter in", "waiter out"]

@@ -103,11 +103,9 @@ cd arthur-engine/integrations/codex-observability
 
 This installs the runtime under `<project>/.codex/hooks/`, registers it in
 `<project>/.codex/hooks.json`, and adds `<project>/.codex/arthur_config.json`,
-the venv and the tracer copy to the project's `.gitignore`. Codex loads project
-hooks only for trusted projects.
-
-`<project>/.codex/hooks.json` holds absolute paths to this machine's venv and
-tracer, so don't commit it; each developer runs the installer.
+`hooks.json`, the venv and the tracer copy to the project's `.gitignore`: they
+hold the API key or this machine's paths, so each developer runs the installer.
+Codex loads project hooks only for trusted projects.
 
 ## Configuration
 

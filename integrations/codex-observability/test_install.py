@@ -233,6 +233,7 @@ def test_project_install_ignores_config_venv_and_tracer_copy(tmp_path):
     assert lines == [
         "node_modules/",
         ".codex/arthur_config.json",
+        ".codex/hooks.json",
         ".codex/hooks/.arthur-venv/",
         ".codex/hooks/codex_hook_tracer.py",
     ]

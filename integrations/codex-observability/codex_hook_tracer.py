@@ -119,12 +119,24 @@ def _activation_path(session_id: str) -> Path:
 
 @contextlib.contextmanager
 def _turn_lock(session_id: str, turn_id: str) -> Iterator[None]:
-    with _lock_path(session_id, turn_id).open("a+") as lock_file:
+    path = _lock_path(session_id, turn_id)
+    while True:
+        lock_file = path.open("a+")
         fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)
+        # Cleanup may have removed the file while we waited on it; a lock on a
+        # removed file excludes nobody, so take the lock on the current one.
         try:
-            yield
-        finally:
-            fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+            if os.stat(path).st_ino == os.fstat(lock_file.fileno()).st_ino:
+                break
+        except FileNotFoundError:
+            pass
+        fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+        lock_file.close()
+    try:
+        yield
+    finally:
+        fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+        lock_file.close()
 
 
 def _load_state(session_id: str, turn_id: str) -> dict:
@@ -166,12 +178,21 @@ def _delete_agent_context(agent_id: str) -> None:
 def _cleanup_stale_state() -> None:
     try:
         cutoff = time.time() - STATE_MAX_AGE_SECONDS
-        # Turn locks are never removed when a turn ends (another hook may be
-        # waiting on one), so they go with the state once nothing can hold them.
-        for pattern in ("*.json", "*.lock"):
-            for path in STATE_DIR.rglob(pattern):
-                if path.stat().st_mtime < cutoff:
-                    path.unlink(missing_ok=True)
+        for path in STATE_DIR.rglob("*.json"):
+            if path.stat().st_mtime < cutoff:
+                path.unlink(missing_ok=True)
+        # Turn locks aren't removed when a turn ends (another hook may be
+        # waiting on one).  An old one is removed only while we hold it, so no
+        # hook is inside; a hook queued on it re-locks the current file.
+        for path in STATE_DIR.glob("*.lock"):
+            if path.stat().st_mtime >= cutoff:
+                continue
+            with path.open("a+") as lock_file:
+                try:
+                    fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                except BlockingIOError:
+                    continue
+                path.unlink(missing_ok=True)
     except OSError as exc:
         log.debug("Could not clean stale hook state: %s", exc)
 
