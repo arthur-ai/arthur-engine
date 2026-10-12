@@ -106,7 +106,10 @@ def test_deactivate_api_key(api_key: ApiKeyResponse):
 
 @pytest.mark.unit_tests
 @pytest.mark.api_key_tests
-def test_create_max_active_keys():
+def test_create_max_active_keys(monkeypatch: pytest.MonkeyPatch):
+    # The committed .env sets MAX_API_KEYS=1000, and every key costs a bcrypt hash.
+    # A small limit exercises the same boundary.
+    monkeypatch.setenv("MAX_API_KEYS", "5")
     client.clear_existing_user_keys()
     api_keys = []
     for _ in range(Config.max_api_key_limit()):

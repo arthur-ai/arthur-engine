@@ -247,6 +247,9 @@ jobs:
       ui: ${{ steps.decide.outputs.ui }}
     steps:
       - uses: actions/checkout@v5
+        with:
+          # The merge-queue branch below diffs the queue commit against its parent.
+          fetch-depth: 2
       - uses: dorny/paths-filter@v2
         id: changes
         if: github.event_name != 'merge_group'
@@ -277,16 +280,30 @@ jobs:
               # everyone.
               - '.github/workflows/arthur-engine-workflow.yml'
               - '.github/workflows/composite-actions/**'
-      # In the merge queue there is no PR base to diff against, and paths-filter's
-      # base detection is unreliable on merge_group. Run the full required suite as
-      # the final pre-merge gate instead of trying to narrow it by path.
+      # paths-filter@v2's base detection is unreliable on merge_group, so the queue
+      # classifies its commit itself. Each queue entry is one squashed commit on top
+      # of dev or of the entry ahead of it, so its diff against its first parent is
+      # exactly the PR being merged. The pattern below mirrors the `backend` filter
+      # above; keep the two in sync. If the parent cannot be read, run everything.
       - name: Decide affected areas
         id: decide
         shell: bash
         run: |
           if [ "${{ github.event_name }}" = "merge_group" ]; then
-            echo "backend=true" >> "$GITHUB_OUTPUT"
             echo "ui=true" >> "$GITHUB_OUTPUT"
+            if ! changed=$(git diff --name-only HEAD^ HEAD); then
+              echo "::warning::Could not diff the queue commit against its parent; running the full suite"
+              echo "backend=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            echo "Files changed by this queue entry:"
+            echo "$changed"
+            backend_pattern='^(genai-engine/(src|tests|alembic|scripts|models)/|genai-engine/[^/]+\.(toml|cfg|ini|lock|txt)$|genai-engine/version$|genai-engine/routes_security_check\.py$|genai-engine/changelog[^/]*$|genai-engine/Dockerfile[^/]*$|genai-engine/docker-compose\.yml$|arthur-observability-sdk/|\.github/workflows/arthur-engine-workflow\.yml$|\.github/workflows/composite-actions/)'
+            if grep -qE "$backend_pattern" <<< "$changed"; then
+              echo "backend=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "backend=false" >> "$GITHUB_OUTPUT"
+            fi
           else
             echo "backend=${{ steps.changes.outputs.backend }}" >> "$GITHUB_OUTPUT"
             echo "ui=${{ steps.changes.outputs.ui }}" >> "$GITHUB_OUTPUT"
@@ -424,6 +441,9 @@ jobs:
         shell: bash
         env:
           GENAI_ENGINE_SECRET_STORE_KEY: changeme_secret_store_key
+          # Trace with sys.monitoring (Python 3.12+) instead of the default tracer:
+          # same line coverage, a fraction of the overhead.
+          COVERAGE_CORE: sysmon
         run: |
           set -o pipefail
           uv run --no-sync --directory genai-engine pytest --cov --cov=src \
