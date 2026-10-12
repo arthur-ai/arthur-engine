@@ -693,3 +693,50 @@ def test_run_hook_end_to_end_trip(monkeypatch, state_dir, fake_engine):
     assert out["decision"] == "block"
     out = cb.run_hook("pre_tool", {"session_id": "s"})
     assert out["continue"] is False
+
+
+# ---------------------------------------------------------------------------
+# CodeRabbit follow-ups
+# ---------------------------------------------------------------------------
+
+
+def test_load_breaker_config_ignores_invalid_env_budget(tmp_path, monkeypatch):
+    monkeypatch.delenv(cb.CONFIG_ENV, raising=False)
+    monkeypatch.setenv("CLAUDE_PROJECT_DIR", str(tmp_path))
+    monkeypatch.setattr(cb.Path, "home", lambda: tmp_path / "nohome")
+    monkeypatch.delenv("ARTHUR_BREAKER_SCOPE", raising=False)
+    monkeypatch.setenv("ARTHUR_BREAKER_BUDGET_USD", "$50")
+    assert cb.load_breaker_config()["budget_usd"] == cb.DEFAULT_CONFIG["budget_usd"]
+
+
+def test_load_breaker_config_replaces_non_positive_budget_values(tmp_path, monkeypatch):
+    path = tmp_path / "breaker.json"
+    path.write_text(json.dumps({"budget_usd": "lots", "budget_period_hours": 0}))
+    monkeypatch.setenv(cb.CONFIG_ENV, str(path))
+    monkeypatch.delenv("ARTHUR_BREAKER_SCOPE", raising=False)
+    monkeypatch.delenv("ARTHUR_BREAKER_BUDGET_USD", raising=False)
+    config = cb.load_breaker_config()
+    assert config["budget_usd"] == cb.DEFAULT_CONFIG["budget_usd"]
+    assert config["budget_period_hours"] == cb.DEFAULT_CONFIG["budget_period_hours"]
+
+
+def test_evaluate_flags_truncated_span_query(fake_engine, monkeypatch):
+    monkeypatch.setattr(cb, "SPAN_PAGE_SIZE", 1)
+    monkeypatch.setattr(cb, "SPAN_MAX_PAGES", 1)
+    fake_engine(spans=[_span_row(1, 0.01), _span_row(2, 0.01)])
+    evaluation = cb.evaluate(ENGINE, _config(), "s", NOW)
+    assert evaluation.truncated
+    assert "lower bound" in evaluation.warning
+    assert evaluation.rules[0].window_spend == 0.01  # only the page we got
+
+
+def test_open_message_shows_remaining_minutes_and_zone():
+    config = _config(cooldown_minutes=15)
+    state = {"opened_at": NOW.timestamp(), "reason": "fast-burn"}
+    message = cb._open_message(state, config, NOW.timestamp() + 5 * 60)
+    assert "paused for another 10 min" in message
+    retry_local = datetime.fromtimestamp(
+        NOW.timestamp() + 15 * 60,
+        tz=timezone.utc,
+    ).astimezone()
+    assert f"until {retry_local.strftime('%H:%M %Z')}" in message

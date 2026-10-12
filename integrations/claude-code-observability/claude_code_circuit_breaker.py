@@ -185,11 +185,32 @@ def load_breaker_config() -> dict:
     if os.environ.get("ARTHUR_BREAKER_SCOPE"):
         config["scope"] = os.environ["ARTHUR_BREAKER_SCOPE"]
     if os.environ.get("ARTHUR_BREAKER_BUDGET_USD"):
-        config["budget_usd"] = float(os.environ["ARTHUR_BREAKER_BUDGET_USD"])
+        try:
+            config["budget_usd"] = float(os.environ["ARTHUR_BREAKER_BUDGET_USD"])
+        except ValueError:
+            log.warning(
+                "Ignoring non-numeric ARTHUR_BREAKER_BUDGET_USD=%r",
+                os.environ["ARTHUR_BREAKER_BUDGET_USD"],
+            )
 
     if config["scope"] not in VALID_SCOPES:
         log.warning("Unknown scope %r, using 'session'", config["scope"])
         config["scope"] = "session"
+    # A bad budget must not disable the breaker: fall back to the default
+    # rather than let a ValueError/ZeroDivisionError fail every hook open.
+    for key in ("budget_usd", "budget_period_hours"):
+        try:
+            value = float(config[key])
+        except (TypeError, ValueError):
+            value = 0.0
+        if value <= 0:
+            log.warning(
+                "%s must be a positive number, got %r; using %s",
+                key,
+                config[key],
+                DEFAULT_CONFIG[key],
+            )
+            config[key] = DEFAULT_CONFIG[key]
     return config
 
 
@@ -287,17 +308,20 @@ def _row_matches_scope(row: dict, scope: str) -> bool:
 
 
 def _paged(engine: dict, path: str, params: dict, key: str, timeout: float):
-    """Yield rows of a paginated list endpoint, up to SPAN_MAX_PAGES pages."""
+    """Rows of a paginated list endpoint, up to SPAN_MAX_PAGES pages, plus
+    whether the result was cut off there (a full final page may have more)."""
     params = dict(params, page_size=SPAN_PAGE_SIZE)
+    rows: list[dict] = []
     for page in range(SPAN_MAX_PAGES):
         params["page"] = page
-        rows = _request(engine, "GET", path, params=params, timeout=timeout).get(
+        page_rows = _request(engine, "GET", path, params=params, timeout=timeout).get(
             key,
             [],
         )
-        yield from rows
-        if len(rows) < SPAN_PAGE_SIZE:
-            break
+        rows.extend(page_rows)
+        if len(page_rows) < SPAN_PAGE_SIZE:
+            return rows, False
+    return rows, True
 
 
 def fetch_llm_spans(
@@ -307,8 +331,9 @@ def fetch_llm_spans(
     since: datetime,
     now: datetime,
     timeout: float,
-) -> list[LLMSpan]:
-    """LLM spans that ended in [since, now] for the scope."""
+) -> tuple[list[LLMSpan], bool]:
+    """LLM spans that ended in [since, now] for the scope, and whether the
+    engine had more than the page cap allowed."""
     params = _scope_params(engine, scope, session_id)
     params.update(
         {
@@ -319,8 +344,9 @@ def fetch_llm_spans(
             "sort_by": "start_time",
         },
     )
+    rows, truncated = _paged(engine, "/traces/spans", params, "spans", timeout)
     spans: list[LLMSpan] = []
-    for row in _paged(engine, "/traces/spans", params, "spans", timeout):
+    for row in rows:
         end = row.get("end_time") or row.get("start_time")
         if not end or not _row_matches_scope(row, scope):
             continue
@@ -333,7 +359,7 @@ def fetch_llm_spans(
                 completion_tokens=int(row.get("completion_token_count") or 0),
             ),
         )
-    return spans
+    return spans, truncated
 
 
 def fetch_scope_total(
@@ -373,9 +399,10 @@ def fetch_scope_total(
                 "sort": "desc",
             },
         )
+        rows, _truncated = _paged(engine, "/traces", params, "traces", timeout)
         return sum(
             float(row.get("total_token_cost") or 0.0)
-            for row in _paged(engine, "/traces", params, "traces", timeout)
+            for row in rows
             if _row_matches_scope(row, scope)
         )
 
@@ -449,6 +476,8 @@ class Evaluation:
     scope_total_usd: Optional[float] = None
     unpriced_spans: int = 0
     unpriced_tokens: int = 0
+    # True when the span query hit the page cap, so spend may be under-counted.
+    truncated: bool = False
     engine_error: str = ""
 
     def to_dict(self) -> dict:
@@ -460,6 +489,7 @@ class Evaluation:
             "scope_total_usd": self.scope_total_usd,
             "unpriced_spans": self.unpriced_spans,
             "unpriced_tokens": self.unpriced_tokens,
+            "truncated": self.truncated,
             "engine_error": self.engine_error,
         }
 
@@ -562,8 +592,9 @@ def evaluate(
 
     try:
         spans: list[LLMSpan] = []
+        truncated = False
         if rules:  # a hard-cap-only config has no windows to fill
-            spans = fetch_llm_spans(
+            spans, truncated = fetch_llm_spans(
                 engine,
                 scope,
                 session_id,
@@ -608,6 +639,7 @@ def evaluate(
         scope_total_usd=scope_total,
         unpriced_spans=len(unpriced),
         unpriced_tokens=sum(s.tokens for s in unpriced),
+        truncated=truncated,
     )
 
     fired = [r for r in rules if r.fired]
@@ -646,6 +678,12 @@ def evaluate(
             f"{len(unpriced)} LLM span(s) / {result.unpriced_tokens} tokens have no "
             "cost (model not priced by the engine); set fallback_usd_per_million_tokens "
             "so the breaker can see them",
+        )
+    if truncated:
+        warnings.append(
+            f"more than {SPAN_PAGE_SIZE * SPAN_MAX_PAGES} LLM spans in the window; "
+            "the oldest were not counted, so burn rates are a lower bound "
+            "(narrow the scope or the widest window)",
         )
     if warnings:
         result.warning = "Arthur circuit breaker: " + "; ".join(warnings)
@@ -837,12 +875,15 @@ def decide(
 
 def _open_message(state: dict, config: dict, now_ts: float) -> str:
     cooldown_s = float(config.get("cooldown_minutes", 15)) * 60
-    retry_at = datetime.fromtimestamp(
-        float(state.get("opened_at", now_ts)) + cooldown_s,
-    ).strftime("%H:%M")
+    retry_ts = float(state.get("opened_at", now_ts)) + cooldown_s
+    # Local wall-clock time with its zone name, plus the remaining minutes so
+    # the message reads the same on a UTC container as on a laptop.
+    retry_at = datetime.fromtimestamp(retry_ts, tz=timezone.utc).astimezone()
+    remaining_min = max(0, int((retry_ts - now_ts + 59) // 60))
     return (
         f"Arthur circuit breaker OPEN ({config['scope']} scope) — {state.get('reason', '')}. "
-        f"Claude Code is paused until {retry_at} (it re-checks the engine then), "
+        f"Claude Code is paused for another {remaining_min} min "
+        f"(until {retry_at.strftime('%H:%M %Z')}, when it re-checks the engine), "
         f"or {_reset_hint()}"
     )
 
