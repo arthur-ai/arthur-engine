@@ -341,7 +341,8 @@ class Matcher:
         )
 
         # Upstream's split, because `perms` can end in a provenance token that is not a
-        # permission, and a list of those tokens copied here would miss the next one.
+        # permission, and a list of those tokens copied here would miss the next one. The
+        # token itself goes nowhere yet: AgentObservations has no field for provenance.
         permissions, _provenance = _matcher.split_perms(str(primary.get("perms") or ""))
         return Finding(
             agent_id=agent_id,
@@ -416,6 +417,15 @@ def _validate(catalog: Mapping[str, Any], routes: Mapping[str, Any]) -> None:
             if key not in route_names:
                 raise ValueError(
                     f"catalog agent {agent.get('id') or i} declares unknown route {key!r}",
+                )
+            # A `values_from` route indexes another route's values and never reads its own
+            # key, so a value listed under it would match nothing, in silence.
+            borrowed = (declared.get(key) or {}).get("values_from")
+            if borrowed:
+                raise ValueError(
+                    f"catalog agent {agent.get('id') or i} lists values under {key!r}, which "
+                    f"matches {borrowed!r} values and reads none of its own; list them under "
+                    f"{borrowed!r}",
                 )
             if not isinstance(value, list) or not all(
                 isinstance(v, str) for v in value

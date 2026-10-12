@@ -967,7 +967,7 @@ def test_a_container_state_is_not_reported_as_a_version(
 
 
 @pytest.mark.parametrize(
-    "kind,ident,loc,ver,version",
+    "kind,ident,loc,ver,install_path,version",
     [
         # queries/jetbrains.sql: `loc` is the plugin's directory or jar, `ver` its version
         (
@@ -975,22 +975,27 @@ def test_a_container_state_is_not_reported_as_a_version(
             "example",
             "/Users/u/Library/Application Support/JetBrains/IntelliJIdea2025.2/plugins/example",
             "3.2.1",
+            "/Users/u/Library/Application Support/JetBrains/IntelliJIdea2025.2/plugins/example",
             "3.2.1",
         ),
-        # queries/running-darwin.sql: `loc` is the running app bundle, `ver` always empty
-        ("proc", "com.example.agent", "/Applications/Example.app", "", None),
+        # queries/running.sql: `loc` is the process executable, which for an npm agent
+        # run under node is the interpreter -- not where the agent is installed
+        ("proc", "com.example.agent", "/opt/homebrew/bin/node", "", None, None),
     ],
 )
-def test_the_newer_kinds_report_their_path_and_only_a_real_version(
+def test_the_newer_kinds_report_only_a_real_path_and_version(
     kind: str,
     ident: str,
     loc: str,
     ver: str,
+    install_path: Optional[str],
     version: Optional[str],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """`jbplugin` and `proc` both carry a filesystem path in `loc`; only `jbplugin`
-    carries a version in `ver`."""
+    """`jbplugin` carries its install path and version. `proc` carries neither: its `loc`
+    is an app bundle, an agent binary or the interpreter running one, depending on which
+    query emitted it.
+    """
     catalog = yaml.safe_dump(
         {
             "version": 2,
@@ -1016,7 +1021,7 @@ def test_the_newer_kinds_report_their_path_and_only_a_real_version(
     records = [r for b in JamfConnector().scan(FakeConfig(catalog), 24, CREDS, FIELDS, LOG) for r in b]  # type: ignore[arg-type]
 
     obs = records[0].creation_source.observations
-    assert obs.install_path == loc
+    assert obs.install_path == install_path
     assert obs.version == version
 
 

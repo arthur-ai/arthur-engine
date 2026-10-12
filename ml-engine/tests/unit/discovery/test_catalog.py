@@ -540,6 +540,28 @@ class TestCatalogShapes:
         with pytest.raises(ValueError, match="unknown route"):
             Matcher.from_source(catalog_yaml=bad)
 
+    def test_a_value_under_a_route_that_borrows_another_is_refused(self) -> None:
+        """`running_apps` matches `bundle_ids` values (`values_from` in routes.yaml) and never
+        reads its own key, so a value listed under it would match nothing, in silence.
+        """
+        bad = yaml.safe_dump(
+            {
+                "version": 2,
+                "classifications": ["Coding agent"],
+                "agents": [
+                    {
+                        "id": "x",
+                        "name": "X",
+                        "classification": "Coding agent",
+                        "platforms": ["darwin"],
+                        "running_apps": ["com.example.agent"],
+                    },
+                ],
+            },
+        )
+        with pytest.raises(ValueError, match="bundle_ids"):
+            Matcher.from_source(catalog_yaml=bad)
+
     def test_an_unhandled_match_mode_is_refused_at_load(self) -> None:
         """build_index raises KeyError on a mode it does not branch on -- once per device
         rather than once at load."""
