@@ -92,6 +92,10 @@ def _load_matcher() -> ModuleType:
 
 _matcher = _load_matcher()
 
+# Kinds whose row says the agent is RUNNING rather than installed. Upstream's set, read off the
+# vendored matcher rather than copied, so a live kind upstream adds is ranked as one.
+_LIVE_KINDS: frozenset[str] = frozenset(_matcher.LIVE_KINDS)
+
 
 @dataclass(frozen=True)
 class Finding:
@@ -325,11 +329,14 @@ class Matcher:
         rows = [dict(row) for _hit, row in evidence]
         meta = dict(evidence[0][0])
 
+        # PRESENCE SPEAKS BEFORE LIVENESS. A running row names a process, not an install, and
+        # carries no version; ranked by declaration alone it would describe an installed agent
+        # whenever that agent happened to be running, and its address would move between scans.
         primary = min(
             rows,
-            key=lambda r: self._route_rank.get(
-                str(r.get("kind", "")),
-                len(self._route_rank),
+            key=lambda r: (
+                str(r.get("kind", "")) in _LIVE_KINDS,
+                self._route_rank.get(str(r.get("kind", "")), len(self._route_rank)),
             ),
         )
 

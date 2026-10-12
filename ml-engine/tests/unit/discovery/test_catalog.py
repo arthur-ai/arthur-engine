@@ -132,6 +132,52 @@ def test_primary_kind_prefers_the_earlier_declared_route(matcher: Matcher) -> No
     assert finding.install_path == "/opt/homebrew/lib/node_modules"
 
 
+def test_a_running_row_does_not_speak_for_an_installed_agent(matcher: Matcher) -> None:
+    """`proc` is declared before `npm` in routes.yaml, but a process row carries no version
+    and names an executable, not an install. Presence speaks; liveness stays evidence.
+    """
+    result = matcher.match(
+        [
+            row(
+                "npm",
+                "@openai/codex",
+                ver="0.5.0",
+                loc="/opt/homebrew/lib/node_modules/@openai/codex",
+            ),
+            row(
+                "proc",
+                "@openai/codex",
+                loc="/opt/homebrew/lib/node_modules/@openai/codex/bin/codex",
+            ),
+        ],
+    )
+    finding = result.findings[0]
+    assert finding.primary_kind == "npm"
+    assert finding.version == "0.5.0"
+    assert finding.install_path == "/opt/homebrew/lib/node_modules/@openai/codex"
+    assert finding.kinds == ("npm", "proc")
+
+
+def test_a_running_row_speaks_when_nothing_else_proved_the_agent(
+    matcher: Matcher,
+) -> None:
+    result = matcher.match(
+        [
+            row(
+                "proc",
+                "@openai/codex",
+                loc="/opt/homebrew/lib/node_modules/@openai/codex/bin/codex",
+            ),
+        ],
+    )
+    finding = result.findings[0]
+    assert finding.primary_kind == "proc"
+    assert finding.version is None
+    assert (
+        finding.install_path == "/opt/homebrew/lib/node_modules/@openai/codex/bin/codex"
+    )
+
+
 def test_permissions_split_into_a_tuple(matcher: Matcher) -> None:
     result = matcher.match(
         [row("app", "com.anthropic.claudefordesktop", perms="tabs,<all_urls>")],
