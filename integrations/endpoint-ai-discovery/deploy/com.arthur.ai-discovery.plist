@@ -24,7 +24,7 @@
     cat /var/lib/arthur/status.txt        one line, for a smart group to match on
 
   Report the .ea file: the raw JSON is roughly six times its size. This job does the framing
-  with stock gzip/base64/plutil, so the reporting path stays a cat and needs nothing installed.
+  with stock gzip/base64, so the reporting path stays a cat and needs nothing installed.
 
   Uninstall:
     launchctl bootout system/com.arthur.ai-discovery

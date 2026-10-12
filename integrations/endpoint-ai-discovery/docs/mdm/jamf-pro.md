@@ -42,7 +42,7 @@ indistinguishable from a Mac with no AI tools on it. **Do not deploy Command Lin
 project.** Nothing on the endpoint has needed them since v0.5.0.
 
 Two halves closed it, and this tree's was not sufficient alone. The framing step here uses
-`gzip`/`base64`/`plutil`, all stock; upstream then removed its own last interpreter, moving the
+`gzip`/`base64`, both stock, and checks the JSON with the vendored runner's `discover --cache`; upstream then removed its own last interpreter, moving the
 JSON work into shell helpers and osquery's `json_valid`/`json_type` — a dependency the endpoint
 already has. `test/lint.sh` holds both ends: it fails if the collector reaches for an
 interpreter, and it fails if the payload's real dependencies and this table disagree in either

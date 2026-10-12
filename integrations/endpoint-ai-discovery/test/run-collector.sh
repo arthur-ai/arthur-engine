@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# Run dist/collect.sh and assert on what it produced. Needs osquery and a Mac; about 15s.
+# Run the collector built for this platform -- dist/collect.sh on macOS, dist/collect-linux.sh
+# on Linux -- and assert on what it produced. Needs osquery; about 15s.
 #
 #     test/run-collector.sh              # a scratch output directory, cleaned up
-#     sudo test/run-collector.sh         # what Jamf does -- more rows, same assertions
+#     sudo test/run-collector.sh         # what a scheduler does -- more rows, same assertions
 #
 # WHY THIS EXISTS BESIDE test/lint.sh. lint is static: it reads dist/collect.sh and proves
 # the framing step is present, that the payload carries the vendored tree and that every
@@ -22,12 +23,17 @@
 # the last good one -- hold either way.
 set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-COLLECT="$ROOT/dist/collect.sh"
+# Each build refuses the other platform, so the platform picks the build.
+case "$(uname -s)" in
+  Darwin) COLLECT="$ROOT/dist/collect.sh" ;;
+  Linux)  COLLECT="$ROOT/dist/collect-linux.sh" ;;
+  *) echo "FAIL: no collector is built for $(uname -s)"; exit 1 ;;
+esac
 fail=0
 note() { printf 'ok: %s\n' "$1"; }
 bad()  { printf 'FAIL: %s\n' "$1"; fail=1; }
 
-[ -x "$COLLECT" ] || { echo "FAIL: no dist/collect.sh -- run tools/build-collector.py"; exit 1; }
+[ -x "$COLLECT" ] || { echo "FAIL: no ${COLLECT#"$ROOT"/} -- run tools/build-collector.py"; exit 1; }
 
 # NO PREREQUISITE PROBE HERE, DELIBERATELY. The obvious opening is a loop over the four
 # absolute paths the vendored runner searches -- and that is a copy of an upstream thing,
@@ -44,8 +50,6 @@ python3 -c "import json" 2>/dev/null || {
   echo "FAIL: this test needs a working python3 (the collector does not, deliberately)."
   echo "      /usr/bin/python3 is a stub without Command Line Tools: xcode-select --install"
   exit 1; }
-
-[ "$(uname -s)" = Darwin ] || { echo "FAIL: this runs the macOS collector; $(uname -s) is not it."; exit 1; }
 
 work="$(mktemp -d "${TMPDIR:-/var/tmp}/collector-test.XXXXXX")" || exit 1
 trap 'rm -rf "$work"' EXIT HUP INT TERM
@@ -75,7 +79,7 @@ if [ "$status" -ne 0 ]; then
     echo "FAIL: osquery is not installed on this machine. That is a prerequisite, not a"
     echo "      defect in the collector -- install osquery, or set OSQI, and run again."
   else
-    bad "collect.sh exited $status on a healthy Mac"
+    bad "the collector exited $status on a healthy machine"
   fi
   sed 's/^/    /' "$work/stdout"
   echo "collector: FAIL"; exit 1
@@ -95,7 +99,11 @@ lines="$(wc -l < "$out/inventory.ea" | tr -d ' ')"
 [ "$lines" = 1 ] || bad "inventory.ea is $lines lines; the attribute must be one"
 
 # 644, or the EA script cannot read the value the Policy wrote as root.
-mode="$(stat -f '%OLp' "$out/inventory.ea")"
+# BSD and GNU stat disagree, and GNU's -f is a different command that also exits 0.
+case "$(uname -s)" in
+  Darwin) mode="$(stat -f '%OLp' "$out/inventory.ea")" ;;
+  *)      mode="$(stat -c '%a' "$out/inventory.ea")" ;;
+esac
 [ "$mode" = 644 ] || bad "inventory.ea is mode $mode, not 644 -- the EA runs as a user"
 
 case "$(head -c 8 "$out/inventory.ea")" in
@@ -170,7 +178,8 @@ tokens = {k: v for k, v in (p.split("=", 1) for p in rest.split() if "=" in p)}
 for k, v in tokens.items():
     if k == "rows":
         continue
-    if not (v in ("ok", "absent", "error") or v.startswith(("unhealthy:", "timeout:"))):
+    if not (v in ("ok", "absent", "error")
+            or v.startswith(("unhealthy:", "timeout:", "unreadable:"))):
         bad.append(f"unknown outcome {v!r} for branch {k}")
 
 # THE TWO ATTRIBUTE FILES MUST DESCRIBE THE SAME SCAN. They are written by different steps
@@ -251,6 +260,34 @@ for f in inventory.json inventory.ea status.txt; do
   [ -e "$fresh/$f" ] && bad "$f was left behind with no successful scan to back it"
 done
 note "no previous scan: exit $status, no partial attribute value written"
+
+echo "== a scan that fails its JSON check keeps the last good one too =========="
+# The shipped driver, read back out of the built collector, against a stub discover whose scan
+# succeeds and whose --cache check cannot run -- osqueryi not answering, which a real machine
+# cannot be made to do on demand. Every step after the scan must leave the previous three files
+# exactly as they were, not only the scan itself.
+before_phase="$fail"
+mkdir -p "$work/stub/bin"
+cat > "$work/stub/bin/discover" <<'STUB'
+#!/bin/bash
+case "$1" in
+  --write) printf '[]' > "$2"; printf 'ok 2026-10-12T00:00:00Z rows=0\n' > "$4"; exit 0 ;;
+  --cache) echo "discover: could not validate $2 -- osqueryi did not answer." >&2; exit 1 ;;
+esac
+exit 2
+STUB
+chmod +x "$work/stub/bin/discover"
+"$ROOT/tools/build-collector.py" --driver-of "$COLLECT" > "$work/driver"
+cp "$out/inventory.ea" "$work/ea.before"; cp "$out/status.txt" "$work/status.before"
+AI_DISCOVERY_ROOT="$work/stub" ARTHUR_OUT_DIR="$out" bash "$work/driver" > /dev/null 2> "$work/stderr4"
+status=$?
+sed 's/^/    /' "$work/stderr4"
+[ "$status" -ne 0 ] || bad "a scan that failed its JSON check exited 0"
+cmp -s "$work/ea.before" "$out/inventory.ea" || bad "a failed JSON check replaced or removed the last good inventory.ea"
+cmp -s "$work/status.before" "$out/status.txt" || bad "a failed JSON check replaced the last good status.txt"
+grep -q "osqueryi did not answer" "$work/stderr4" || bad "discover's own reason for the failed check was not passed through"
+[ -z "$(ls -d "$out"/.scan.* "$fresh"/.scan.* 2>/dev/null)" ] || bad "a staging directory was left in the output directory"
+[ "$fail" -eq "$before_phase" ] && note "failed JSON check: exit $status, both attribute values untouched, no staging left"
 
 echo "== the payload directory is not left on disk ============================="
 after="$(leaked)"
