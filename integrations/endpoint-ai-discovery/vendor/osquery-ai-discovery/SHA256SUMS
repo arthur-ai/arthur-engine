@@ -1,4 +1,4 @@
-52bac84d4b748905dad0c87bed496fd323fe8849878cb4f0347a1a821a784d18  ./bin/classify
+8171fc93df84e5320a9abee611d47b75a179727e9a5c925e420c567462ece46e  ./bin/classify
 92a34cd25ab9f02d4121fff2877ef73e88de2b395f014119f9c4ecbcb67e8acd  ./bin/container-scan
 a7124e1b4562186ae2d562d06ef11bfb42df14395cf305821cd89eeb00d3aaec  ./bin/discover
 eff68348bf27988725ad9cf17c74e79dd1180cc8ab58b82ca699f06badd1564d  ./dist/agents-darwin.sql

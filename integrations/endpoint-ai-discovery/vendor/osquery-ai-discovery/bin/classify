@@ -347,6 +347,30 @@ GAP_KIND = "scan"
 # (docker_containers lists running ones only). A finding with one of these in its evidence
 # is marked `running`. Every other route reports presence.
 LIVE_KINDS = frozenset({"proc", "container"})
+# `perms` ENDS WITH AT MOST ONE PROVENANCE TOKEN, after the permissions and the `<all_urls>`
+# flag: `unreferenced` (on disk, never loaded) or `sideloaded:<sha256>` (registered, not from
+# the Web Store). queries/browser.sql appends it; neither is a permission, so a consumer listing
+# permissions splits with split_perms() rather than naming the tokens itself. A token ending
+# in `:` carries a value and matches as a prefix; any other matches whole, so a permission
+# that merely begins with one stays a permission. test/test_matcher.py holds these to the
+# tokens browser.sql emits.
+PERMS_PROVENANCE = ("unreferenced", "sideloaded:")
+
+
+def _is_provenance(part):
+    return any(part.startswith(t) if t.endswith(":") else part == t
+               for t in PERMS_PROVENANCE)
+
+
+def split_perms(perms):
+    """A row's `perms` as (permissions, provenance): a tuple of declared capabilities, and
+    the provenance token browser.sql appended, or ''."""
+    parts = [p for p in (perms or "").split(",") if p]
+    if parts and _is_provenance(parts[-1]):
+        return tuple(parts[:-1]), parts[-1]
+    return tuple(parts), ""
+
+
 # `extra` on a scan row: "ok" means the branch ran and the rows beside it are real. `ver` is
 # when the scan ran, in unix seconds, so a cached payload dates itself and a consumer can
 # judge staleness without stat()ing anything.
@@ -965,7 +989,11 @@ def _run(state, started):
             # Marked on the row, because the row is where a reader is looking when they
             # wonder why an identifier looks unfamiliar.
             old = "   <- earlier release" if hit.get("superseded") else ""
-            print(f"    {row['kind']:7} {row.get('id','')}{ver}{old}")
+            # An unreferenced extension is on disk and never loaded, so it is said beside the
+            # row rather than left to read like an installed one.
+            prov = split_perms(row.get("perms"))[1]
+            prov = f"   <- {prov.split(':')[0]}" if prov else ""
+            print(f"    {row['kind']:7} {row.get('id','')}{ver}{old}{prov}")
             if detail and detail != row.get("id"):
                 print(f"            {detail}")
         # SAID ONCE, WHEN IT IS THE WHOLE FINDING. A machine matched only on identifiers
