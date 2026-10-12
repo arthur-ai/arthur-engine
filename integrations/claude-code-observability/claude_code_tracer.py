@@ -544,36 +544,56 @@ def _parse_entries(lines):
 
 
 def _claim_queued_prompts(entries):
-    """Yield ``entries`` with each queued prompt that starts a turn as a user entry.
+    """Yield ``entries``, with each injected prompt that starts a turn as a
+    user entry where its turn starts.
 
-    A prompt that arrives while Claude is busy (a message typed mid-turn, a
-    background task's notification, a message from another session) is written
-    only as a queued_command attachment.  Claude Code either starts a turn for
-    it, firing UserPromptSubmit, whose hook record names the attachment as its
-    parent, or folds it into the running turn with no hook.  Only the first
-    starts a turn, so the prompt is yielded as a user entry where its
-    UserPromptSubmit record appears; an attachment no hook claims stays inert.
+    Two kinds of prompt aren't written as an ordinary user entry:
+
+    - a prompt that arrives while Claude is busy (a message typed mid-turn, a
+      background task's notification) is written as a queued_command
+      attachment;
+    - a message from another session, or a scheduled prompt, is written as an
+      ``isMeta`` user entry, which otherwise marks injected text that isn't a
+      prompt.
+
+    Claude Code starts a turn for such a prompt by firing UserPromptSubmit,
+    whose hook record descends from it (directly or through attachments).  A
+    queued prompt it folds into the running turn gets no hook.  So the prompt
+    is yielded as a user entry where its UserPromptSubmit record appears, and
+    one no hook claims stays inert.  A meta entry with list content (an image
+    placeholder after a pasted image) is never claimed: the prompt it belongs
+    to is an ordinary user entry before it.
     """
-    queued: dict = {}
+    claimable: dict = {}
+    attachment_parent: dict = {}
     for entry in entries:
+        uuid = entry.get("uuid")
         if entry.get("type") == "attachment":
             attachment = entry.get("attachment")
             if not isinstance(attachment, dict):
                 attachment = {}
-            if attachment.get("type") == "queued_command" and entry.get("uuid"):
-                queued[entry["uuid"]] = entry
+            if attachment.get("type") == "queued_command" and uuid:
+                claimable[uuid] = attachment.get("prompt", "")
             elif attachment.get("hookEvent") == "UserPromptSubmit":
-                prompt_entry = queued.pop(entry.get("parentUuid"), None)
-                if prompt_entry is not None:
+                parent = entry.get("parentUuid")
+                while parent in attachment_parent:
+                    parent = attachment_parent[parent]
+                if parent in claimable:
                     yield {
                         "type": "user",
-                        "message": {
-                            "role": "user",
-                            "content": prompt_entry["attachment"].get("prompt", ""),
-                        },
-                        "timestamp": prompt_entry.get("timestamp", ""),
-                        "uuid": prompt_entry["uuid"],
+                        "message": {"role": "user", "content": claimable.pop(parent)},
+                        "timestamp": entry.get("timestamp", ""),
+                        "uuid": parent,
                     }
+            elif uuid:
+                attachment_parent[uuid] = entry.get("parentUuid")
+        elif (
+            entry.get("type") == "user"
+            and entry.get("isMeta")
+            and uuid
+            and isinstance(entry.get("message", {}).get("content"), str)
+        ):
+            claimable[uuid] = entry["message"]["content"]
         yield entry
 
 

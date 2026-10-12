@@ -1628,6 +1628,68 @@ class TestQueuedPromptTurns:
         assert {s["trace_id_hex"] for s in llm} == {chain["trace_id_hex"]}
         assert chain["attributes"]["output.value"] == "done, logs checked too"
 
+    @staticmethod
+    def _peer_message(text, uuid="m1"):
+        """A message from another session, delivered while Claude is idle."""
+        return {
+            "type": "user",
+            "isMeta": True,
+            "uuid": uuid,
+            "origin": {"kind": "peer"},
+            "message": {"role": "user", "content": text},
+            "timestamp": "2026-01-01T00:00:10.000000+00:00",
+        }
+
+    def test_peer_message_starts_a_turn(self, tmp_path, monkeypatch):
+        """Break caught: a message from another session is an isMeta user entry,
+        which never counted as a prompt, so its turn had no LLM spans."""
+        prompt = "Another Claude session sent a message: check the PR"
+        earlier = [human_entry("first"), llm_entry("first answer", ts=at(1))]
+        captured = self._run(
+            tmp_path,
+            monkeypatch,
+            prompt,
+            earlier + [self._peer_message(prompt)],
+            [prompt_hook_record("m1")],
+        )
+        assert self._llm_outputs(captured) == ["QUEUED_ANSWER"]
+
+    def test_peer_message_claimed_through_an_attachment(self, tmp_path, monkeypatch):
+        prompt = "Another Claude session sent a message: check the PR"
+        reminder = {
+            "type": "attachment",
+            "uuid": "r1",
+            "parentUuid": "m1",
+            "attachment": {"type": "total_tokens_reminder"},
+        }
+        earlier = [human_entry("first"), llm_entry("first answer", ts=at(1))]
+        captured = self._run(
+            tmp_path,
+            monkeypatch,
+            prompt,
+            earlier + [self._peer_message(prompt), reminder],
+            [prompt_hook_record("r1")],
+        )
+        assert self._llm_outputs(captured) == ["QUEUED_ANSWER"]
+
+    def test_image_placeholder_after_a_prompt_is_not_a_second_prompt(
+        self, tmp_transcript
+    ):
+        prompt = human_entry("what is in this screenshot?")
+        prompt["uuid"] = "u1"
+        placeholder = {
+            "type": "user",
+            "isMeta": True,
+            "uuid": "img1",
+            "parentUuid": "u1",
+            "message": {
+                "role": "user",
+                "content": [text_block("[Image: source: /tmp/1.png]")],
+            },
+        }
+        p = tmp_transcript([prompt, placeholder, prompt_hook_record("img1")])
+        assert tracer._count_human_messages(str(p)) == 1
+
     def test_repeated_prompt_is_not_mistaken_for_the_new_one(
         self, tmp_path, monkeypatch
     ):
