@@ -537,12 +537,22 @@ def _load_claimed_prompts(transcript_path: str) -> frozenset:
 
 
 def _save_claimed_prompt(transcript_path: str, uuid: str) -> None:
+    """Add ``uuid`` to the transcript's claims.  Hooks of one session and its
+    detached finalizer can write at once, so the read-modify-write is locked
+    and the file replaced atomically: a reader never sees it half-written."""
     path = _claimed_prompts_path(transcript_path)
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(
-            json.dumps(sorted(_load_claimed_prompts(transcript_path) | {uuid})),
-        )
+        with open(path.with_suffix(".lock"), "a") as lock:
+            fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+            try:
+                tmp = path.with_suffix(f".{_new_span_id()}.tmp")
+                tmp.write_text(
+                    json.dumps(sorted(_load_claimed_prompts(transcript_path) | {uuid})),
+                )
+                os.replace(tmp, path)
+            finally:
+                fcntl.flock(lock.fileno(), fcntl.LOCK_UN)
     except OSError as e:
         log.warning("Failed to save claimed prompt for %s: %s", transcript_path, e)
 
@@ -801,46 +811,56 @@ def _human_text(entry: dict) -> str:
     )
 
 
-def _claim_prompt_at_submit(
-    transcript_path: str,
-    prompt: str,
-    latest_only: bool = True,
-) -> bool:
+def _claim_prompt_at_submit(transcript_path: str, prompt: str) -> bool:
     """Claim this turn's prompt if it was injected and is already written.
 
     An injected prompt (queued_command attachment or ``isMeta`` user entry,
-    see _claim_queued_prompts) is in the transcript before UserPromptSubmit
-    fires; an ordinary typed prompt is written after.  The candidate is the
-    latest injected entry with nothing after it but non-prompt entries, and
-    its text must contain the hook's ``prompt`` (empty for an image-only
-    prompt).  With ``latest_only`` False (a deferred claim, see
-    _resolve_pending_prompt) responses after it are allowed.  Returns True if
-    an entry was claimed.
+    see _claim_queued_prompts) is usually in the transcript before
+    UserPromptSubmit fires; an ordinary typed prompt is written after.  The
+    candidate is the latest injected entry with nothing after it but
+    non-prompt entries, and its text must contain the hook's ``prompt``
+    (empty for an image-only prompt).  Returns True if an entry was claimed.
     """
     want = " ".join(prompt.split())
-    claimed = _load_claimed_prompts(transcript_path)
     candidate = None
     try:
         with open(transcript_path) as fh:
             for entry in _parse_entries(fh):
-                if latest_only and (
-                    entry.get("type") == "assistant" or _is_human_message(entry)
-                ):
+                if entry.get("type") == "assistant" or _is_human_message(entry):
                     candidate = None
                     continue
                 text = _injected_prompt_text(entry)
-                uuid = entry.get("uuid")
-                if text is None or not uuid or uuid in claimed:
-                    continue
-                text = " ".join(text.split())
-                if latest_only or not want or want in text:
-                    candidate = (uuid, text)
+                if text is not None and entry.get("uuid"):
+                    candidate = (entry["uuid"], " ".join(text.split()))
     except OSError:
         return False
     if candidate is None or (want and want not in candidate[1]):
         return False
     _save_claimed_prompt(transcript_path, candidate[0])
     return True
+
+
+def _claim_queued_prompt_after(transcript_path: str, prompt: str, offset: int) -> bool:
+    """Claim the first queued_command attachment written after ``offset`` whose
+    text contains ``prompt``.  Only a queued prompt is written after its
+    UserPromptSubmit, and only what was written since can be it."""
+    want = " ".join(prompt.split())
+    claimed = _load_claimed_prompts(transcript_path)
+    try:
+        with open(transcript_path) as fh:
+            fh.seek(offset)
+            for entry in _parse_entries(fh):
+                if entry.get("type") != "attachment" or entry.get("uuid") in claimed:
+                    continue
+                text = _injected_prompt_text(entry)
+                if text is None or not entry.get("uuid"):
+                    continue
+                if want in " ".join(text.split()):
+                    _save_claimed_prompt(transcript_path, entry["uuid"])
+                    return True
+    except OSError:
+        return False
+    return False
 
 
 def _resolve_pending_prompt(state: dict, transcript_path: Optional[str]) -> None:
@@ -858,12 +878,13 @@ def _resolve_pending_prompt(state: dict, transcript_path: Optional[str]) -> None
     if _count_human_messages(transcript_path) > current_trace.get(
         "human_count_at_start",
         0,
-    ) or _claim_prompt_at_submit(
+    ) or _claim_queued_prompt_after(
         transcript_path,
         current_trace["pending_prompt"],
-        latest_only=False,
+        current_trace.get("pending_offset", 0),
     ):
         current_trace.pop("pending_prompt", None)
+        current_trace.pop("pending_offset", None)
 
 
 def _human_count_before_prompt(transcript_path: str, prompt: str) -> tuple:
@@ -2027,6 +2048,10 @@ def handle_user_prompt_submit(data: dict, config: dict) -> None:
     }
     if prompt_pending and prompt:
         state["current_trace"]["pending_prompt"] = prompt
+        try:
+            state["current_trace"]["pending_offset"] = os.path.getsize(transcript_path)
+        except OSError:
+            state["current_trace"]["pending_offset"] = 0
 
     _save_state(session_id, state)
 
@@ -2662,11 +2687,11 @@ def handle_stop(data: dict, config: dict) -> None:
                                 "emitted_llm_span_count",
                                 0,
                             ),
-                            **(
-                                {"pending_prompt": ct["pending_prompt"]}
-                                if "pending_prompt" in ct
-                                else {}
-                            ),
+                            **{
+                                key: ct[key]
+                                for key in ("pending_prompt", "pending_offset")
+                                if key in ct
+                            },
                         },
                     },
                 )

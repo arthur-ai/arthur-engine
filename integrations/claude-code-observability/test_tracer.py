@@ -6801,3 +6801,70 @@ def test_final_response_written_while_stop_runs_is_emitted(tmp_path, monkeypatch
     ]
     assert outputs == ["working", "FINAL"]
     assert jobs == []
+
+
+def test_deferred_claim_ignores_older_entries_with_the_same_text(tmp_path, monkeypatch):
+    """Break caught: a short message typed mid-turn ("yes") was claimed as an
+    older folded queued prompt containing the same text, so the new turn
+    re-emitted an earlier turn's spans and its own prompt was never claimed."""
+    captured = []
+    monkeypatch.setattr(
+        tracer,
+        "_build_and_export_spans",
+        lambda **kw: captured.extend(kw["span_records"]),
+    )
+    monkeypatch.setattr(tracer, "_spawn_turn_finalizer", lambda job: None)
+    config = {"api_key": "k", "task_id": "t", "endpoint": "https://x.example.com"}
+    transcript = tmp_path / "old-yes.jsonl"
+    transcript.write_text("")
+
+    def write(*entries):
+        with transcript.open("a") as f:
+            for e in entries:
+                f.write(json.dumps(e) + "\n")
+
+    base = {"session_id": "oy1", "transcript_path": str(transcript)}
+    write(
+        human_entry("first"),
+        llm_entry("working", ts=at(1)),
+        # An earlier "yes" Claude folded into that turn: never claimed.
+        queued_prompt_entry("yes", uuid="old-yes"),
+        llm_entry("OLD_ANSWER", ts=at(2)),
+        human_entry("sleep then answer", ts=at(3)),
+        llm_entry(tool_use_blocks=[tool_use_block("Bash", "sleep 8")], ts=at(4)),
+    )
+    tracer.handle_user_prompt_submit({**base, "prompt": "yes"}, config)
+    # PostToolUse runs before the new attachment is written.
+    write(tool_result_entry("toolu_x", "", ts=at(9)))
+    tracer.handle_post_tool(
+        {**base, "tool_name": "Bash", "tool_input": {"command": "sleep 8"}},
+        config,
+    )
+    write(
+        queued_prompt_entry("yes", uuid="new-yes"), llm_entry("NEW_ANSWER", ts=at(11))
+    )
+    tracer.handle_stop({**base, "last_assistant_message": "NEW_ANSWER"}, config)
+
+    assert tracer._load_claimed_prompts(str(transcript)) == {"new-yes"}
+    outputs = [
+        s["attributes"]["output.value"]
+        for s in captured
+        if s["attributes"]["openinference.span.kind"] == "LLM"
+    ]
+    assert outputs == ["NEW_ANSWER"]
+
+
+def test_concurrent_claims_are_all_kept(tmp_path):
+    """Break caught: two writers could interleave the claims file's
+    read-modify-write, and one truncated read wiped the earlier claims."""
+    transcript = str(tmp_path / "c.jsonl")
+    uuids = [f"u{n}" for n in range(40)]
+    threads = [
+        threading.Thread(target=tracer._save_claimed_prompt, args=(transcript, u))
+        for u in uuids
+    ]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert tracer._load_claimed_prompts(transcript) == set(uuids)
