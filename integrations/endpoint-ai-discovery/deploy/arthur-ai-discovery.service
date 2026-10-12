@@ -1,0 +1,19 @@
+# Collect the AI inventory, then publish it to this VM's guest attributes. Installed by the
+# OS policy in docs/mdm/gce.md and started by arthur-ai-discovery.timer.
+#
+# Root, because some branches read other users' home directories. HOME is set because
+# bin/container-scan looks under it for a per-user Docker socket.
+[Unit]
+Description=Arthur AI inventory: collect, then publish to guest attributes
+Documentation=https://github.com/arthur-ai/arthur-engine/blob/dev/integrations/endpoint-ai-discovery/docs/mdm/gce.md
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/arthur/report-guest-attributes.sh
+Environment=HOME=/root
+Nice=5
+IOSchedulingClass=idle
+# The runner bounds its expensive branch itself; this bounds the run should anything else hang.
+TimeoutStartSec=15min

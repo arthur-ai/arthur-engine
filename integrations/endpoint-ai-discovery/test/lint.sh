@@ -93,7 +93,8 @@ ONE
 # dist/collect.sh is generated, which is exactly why it is syntax-checked: a template edit
 # in tools/build-collector.py produces it unexamined, and bash reports a syntax error only
 # when the Policy runs on a Mac.
-for f in "$ROOT"/tools/vendor-queries.sh "$ROOT"/dist/collect.sh "$ROOT"/dist/collect-linux.sh; do
+for f in "$ROOT"/tools/vendor-queries.sh "$ROOT"/dist/collect.sh "$ROOT"/dist/collect-linux.sh \
+         "$ROOT"/deploy/report-guest-attributes.sh; do
   bash -n "$f" || { echo "FAIL: bash syntax in ${f#$ROOT/}"; fail=1; }
 done
 
@@ -372,6 +373,55 @@ for f in ("deploy/com.arthur.ai-discovery.plist",):
         print(f"FAIL: {f} RunAtLoad is false; a fresh Mac reports nothing until the first "
               f"interval elapses"); sys.exit(1)
     print(f"plist: ok, {os.path.basename(f)} -> {argv[0].split('/')[-1]}")
+
+# --- the Compute Engine carrier: the units, and the reporter they run ---------------------
+import configparser
+def unit(name):
+    c = configparser.ConfigParser(strict=False, interpolation=None)
+    c.optionxform = str
+    if not c.read(os.path.join(root, "deploy", name)):
+        print(f"FAIL: deploy/{name} is missing"); sys.exit(1)
+    return c
+svc, tmr = unit("arthur-ai-discovery.service"), unit("arthur-ai-discovery.timer")
+exec_start = svc.get("Service", "ExecStart", fallback="")
+if svc.get("Service", "Type", fallback="") != "oneshot" or \
+        not exec_start.endswith("/report-guest-attributes.sh"):
+    print(f"FAIL: deploy/arthur-ai-discovery.service must be Type=oneshot running the reporter, "
+          f"got ExecStart={exec_start!r}"); sys.exit(1)
+if svc.has_option("Service", "User") or svc.has_option("Service", "Group"):
+    print("FAIL: the service must run as root -- some branches read other users' homes"); sys.exit(1)
+# OnBootSec is RunAtLoad's job here: without it a new VM reports nothing for its first hour.
+for key in ("OnBootSec", "OnUnitActiveSec"):
+    if not tmr.get("Timer", key, fallback=""):
+        print(f"FAIL: deploy/arthur-ai-discovery.timer has no {key}"); sys.exit(1)
+if tmr.get("Install", "WantedBy", fallback="") != "timers.target":
+    print("FAIL: deploy/arthur-ai-discovery.timer is not WantedBy=timers.target, so enabling "
+          "it does not start it at boot"); sys.exit(1)
+
+# ONE INSTALL LAYOUT. The unit runs the reporter from one directory and the reporter runs the
+# collector from its default path; if they disagree, every VM fails its first run.
+rep = open(os.path.join(root, "deploy", "report-guest-attributes.sh")).read()
+m = re.search(r'COLLECT="\$\{ARTHUR_COLLECT:-([^}]+)\}"', rep)
+if not m or os.path.dirname(m.group(1)) != os.path.dirname(exec_start) \
+        or os.path.basename(m.group(1)) != "collect-linux.sh":
+    print(f"FAIL: the reporter runs {m.group(1) if m else '(no default)'} but the unit runs "
+          f"{exec_start}; install both from one directory, collect-linux.sh beside the reporter")
+    sys.exit(1)
+# The reporter runs on the endpoint, so it is held to the collector's rule: no interpreter.
+rep_code = "\n".join(l for l in rep.splitlines() if not l.strip().startswith("#"))
+interp = re.search(r"(?:^|[|;&(`]|\$\(|\s)(python3?|perl|ruby|node|jq)\b", rep_code, re.M)
+if interp:
+    print(f"FAIL: deploy/report-guest-attributes.sh invokes {interp.group(1)}; it runs on the "
+          f"endpoint and may use only what the collector may."); sys.exit(1)
+# THE REPORTER NAMES `osquery=absent` FROM UPSTREAM'S OWN MESSAGE, rather than repeating its
+# search for osqueryi. If the vendored runner stops printing it, the token silently never fires.
+runner = "\n".join(l for l in open(os.path.join(v, "bin", "discover")).read().splitlines()
+                   if not l.strip().startswith("#"))
+if "no osqueryi found" in rep_code and "no osqueryi found" not in runner:
+    print("FAIL: deploy/report-guest-attributes.sh keys `osquery=absent` on \"no osqueryi "
+          "found\", which the vendored bin/discover no longer prints."); sys.exit(1)
+print(f"carrier: ok, timer -> {exec_start.split('/')[-1]} -> {m.group(1).split('/')[-1]}; "
+      f"no interpreter; upstream still prints the osquery diagnosis")
 VENDOR
 
 [ "$fail" -eq 0 ] && echo "lint: PASS" || echo "lint: FAIL"
