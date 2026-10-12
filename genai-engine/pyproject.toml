@@ -20,7 +20,10 @@ dependencies = [
   "boto3==1.43.106",
   "python-dotenv==1.2.3",
   "psycopg2-binary==2.9.13",
-  "sqlalchemy==2.1.1",
+  # Held below 2.1: opentelemetry-instrumentation-sqlalchemy (every release through 0.66b1)
+  # declares sqlalchemy<2.1.0 and skips instrumenting outside it, so DB tracing would silently
+  # stop. See the sqlalchemy rule in /renovate.json.
+  "sqlalchemy==2.0.54",
   "pgvector==0.5.0",
   "python-multipart==0.0.32",
   "pypdf==6.19.0",
@@ -35,15 +38,14 @@ dependencies = [
   "azure-storage-blob==12.31.0",
   "itsdangerous==2.2.0",
   "newrelic==13.6.1",
-  # Held below 8.8.0: opentelemetry-api 1.39.1 (via opentelemetry-semantic-conventions
-  # 0.60b1) requires importlib-metadata>=6.0,<8.8.0. See the importlib-metadata rule
-  # in /renovate.json. Raise once the pinned OpenTelemetry stack widens its ceiling.
+  # Held below 9.0: litellm 1.102.1 requires importlib-metadata>=8.0.0,<9.0. See the
+  # importlib-metadata rule in /renovate.json. Raise once litellm widens its ceiling.
   "importlib-metadata==8.7.1",
-  "opentelemetry-instrumentation-logging>=0.60b1,<0.61",
-  "opentelemetry-instrumentation>=0.60b1,<0.61",
-  "opentelemetry-instrumentation-fastapi>=0.60b1,<0.61",
+  "opentelemetry-instrumentation-logging>=0.65b0,<0.66",
+  "opentelemetry-instrumentation>=0.65b0,<0.66",
+  "opentelemetry-instrumentation-fastapi>=0.65b0,<0.66",
   "opentelemetry-exporter-otlp>=1.39.1,<2",
-  "opentelemetry-instrumentation-sqlalchemy>=0.60b1,<0.61",
+  "opentelemetry-instrumentation-sqlalchemy>=0.65b0,<0.66",
   "tiktoken==0.14.0",
   "nltk==3.10.3",
   "more-itertools==11.1.0",
@@ -81,7 +83,7 @@ dependencies = [
   "google-auth>=2.48.0,<3",
   "google-cloud-aiplatform>=1.38",
   "google-cloud-trace>=1.11.0,<2",
-  "opentelemetry-semantic-conventions>=0.60b1,<0.61",
+  "opentelemetry-semantic-conventions>=0.65b0,<0.66",
   "arthur-client==1.4.2774",
 ]
 
