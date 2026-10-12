@@ -644,8 +644,28 @@ def _is_human_message(entry: dict) -> bool:
     if entry.get("type") != "user" or entry.get("isMeta"):
         return False
     content = entry.get("message", {}).get("content", "")
-    # Tool result messages have content as a list; human messages have a string
-    return isinstance(content, str)
+    if isinstance(content, str):
+        return True
+    # The Agent SDK sends a string prompt as [{"type": "text", ...}], and a
+    # pasted image arrives as image + text blocks.  Tool results and the
+    # "[Request interrupted by user]" marker are not prompts.
+    if not isinstance(content, list) or not content:
+        return False
+    if any(isinstance(b, dict) and b.get("type") == "tool_result" for b in content):
+        return False
+    return not _human_text(entry).startswith("[Request interrupted")
+
+
+def _human_text(entry: dict) -> str:
+    """Prompt text of a human message, whichever shape its content has."""
+    content = entry.get("message", {}).get("content", "")
+    if isinstance(content, str):
+        return content
+    return "\n".join(
+        b.get("text", "")
+        for b in content
+        if isinstance(b, dict) and b.get("type") == "text"
+    )
 
 
 def _count_human_messages(transcript_path: str) -> int:
@@ -674,7 +694,7 @@ def _get_latest_human_message(transcript_path: str) -> str:
     last = ""
     for entry in _iter_transcript_entries(transcript_path):
         if _is_human_message(entry):
-            last = entry.get("message", {}).get("content", "")
+            last = _human_text(entry)
     return last
 
 
@@ -1008,7 +1028,7 @@ def _extract_llm_spans_for_turn(
                     break
                 if human_count > human_count_at_start:
                     in_turn = True
-                    human_text = entry.get("message", {}).get("content", "")
+                    human_text = _human_text(entry)
                     last_input_value = json.dumps(
                         {"role": "user", "content": human_text[:500]},
                     )

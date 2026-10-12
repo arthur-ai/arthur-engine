@@ -72,6 +72,21 @@ def meta_entry(text: str) -> dict:
     }
 
 
+def list_prompt_entry(*blocks: dict, ts: str = "2026-01-01T00:00:00.000000+00:00") -> dict:
+    """A prompt written with list content.  The Agent SDK (claude-code-action)
+    sends a string prompt as [{"type": "text", ...}], and a pasted image arrives
+    as image + text blocks."""
+    return {
+        "type": "user",
+        "message": {"role": "user", "content": list(blocks)},
+        "timestamp": ts,
+    }
+
+
+def text_block(text: str) -> dict:
+    return {"type": "text", "text": text}
+
+
 def llm_entry(
     text: str = "",
     tool_use_blocks: list | None = None,
@@ -265,6 +280,30 @@ class TestIsHumanMessage:
             {"type": "user", "message": {"role": "user", "content": ""}},
         )
 
+    def test_sdk_text_list_is_human(self):
+        assert tracer._is_human_message(
+            list_prompt_entry(text_block("Fix the failed Renovate PR")),
+        )
+
+    def test_image_and_text_list_is_human(self):
+        image = {"type": "image", "source": {"type": "base64", "data": "..."}}
+        assert tracer._is_human_message(
+            list_prompt_entry(image, text_block("What is wrong here?")),
+        )
+
+    def test_interrupt_marker_is_not_human(self):
+        assert not tracer._is_human_message(
+            list_prompt_entry(text_block("[Request interrupted by user for tool use]")),
+        )
+
+    def test_meta_list_is_not_human(self):
+        entry = list_prompt_entry(text_block("injected"))
+        entry["isMeta"] = True
+        assert not tracer._is_human_message(entry)
+
+    def test_empty_list_is_not_human(self):
+        assert not tracer._is_human_message(list_prompt_entry())
+
 
 # ---------------------------------------------------------------------------
 # _count_human_messages
@@ -444,6 +483,13 @@ class TestGetLatestHumanMessage:
 
     def test_missing_file_returns_empty(self):
         assert tracer._get_latest_human_message("/no/such/file.jsonl") == ""
+
+    def test_list_prompt_returns_its_text(self, tmp_transcript):
+        image = {"type": "image", "source": {"type": "base64", "data": "..."}}
+        p = tmp_transcript(
+            [list_prompt_entry(image, text_block("What is wrong here?"))],
+        )
+        assert tracer._get_latest_human_message(str(p)) == "What is wrong here?"
 
 
 # ---------------------------------------------------------------------------
@@ -1295,6 +1341,88 @@ class TestHandleStop:
 # ---------------------------------------------------------------------------
 # handle_user_prompt_submit — new trace creation and turn completion
 # ---------------------------------------------------------------------------
+
+
+class TestSdkListPromptLifecycle:
+    """claude-code-action runs Claude through the Agent SDK, which writes the
+    prompt to the transcript as list content.  The turn must still produce its
+    LLM spans and the CHAIN output."""
+
+    CONFIG = {"api_key": "k", "task_id": "t", "endpoint": "https://x.example.com"}
+
+    def _run_turn(self, prompt_entry, tmp_path, monkeypatch):
+        captured = []
+        monkeypatch.setattr(
+            tracer,
+            "_build_and_export_spans",
+            lambda **kw: captured.extend(kw["span_records"]),
+        )
+        transcript = tmp_path / "sdk.jsonl"
+        transcript.write_text("")
+        base = {"session_id": "sdk1", "transcript_path": str(transcript)}
+
+        def append(*entries):
+            with transcript.open("a") as f:
+                for e in entries:
+                    f.write(json.dumps(e) + "\n")
+
+        bash = {
+            "tool_name": "Bash",
+            "tool_input": {"command": "uv lock"},
+            "tool_use_id": "toolu_x",
+        }
+        # UserPromptSubmit fires before the prompt is written.
+        tracer.handle_user_prompt_submit(
+            {**base, "prompt": "Fix the failed Renovate PR"},
+            self.CONFIG,
+        )
+        append(
+            prompt_entry,
+            llm_entry(tool_use_blocks=[tool_use_block("Bash", "uv lock")], ts=at(2)),
+        )
+        tracer.handle_pre_tool({**base, **bash}, self.CONFIG)
+        append(tool_result_entry("toolu_x", "ok", ts=at(5)))
+        tracer.handle_post_tool(
+            {**base, **bash, "tool_response": {"stdout": "ok"}},
+            self.CONFIG,
+        )
+        append(llm_entry("Autofix complete", ts=at(7)))
+        tracer.handle_stop(base, self.CONFIG)
+        return captured
+
+    def test_list_prompt_turn_has_llm_spans_and_output(self, tmp_path, monkeypatch):
+        captured = self._run_turn(
+            list_prompt_entry(text_block("Fix the failed Renovate PR")),
+            tmp_path,
+            monkeypatch,
+        )
+        kinds = [s["attributes"]["openinference.span.kind"] for s in captured]
+        assert kinds.count("LLM") == 2
+        assert kinds.count("TOOL") == 1
+        (chain,) = [s for s in captured if s["attributes"]["openinference.span.kind"] == "CHAIN"]
+        assert chain["attributes"]["output.value"] == "Autofix complete"
+
+    def test_first_llm_input_is_prompt_text(self, tmp_path, monkeypatch):
+        captured = self._run_turn(
+            list_prompt_entry(text_block("Fix the failed Renovate PR")),
+            tmp_path,
+            monkeypatch,
+        )
+        first_llm = next(
+            s for s in captured if s["attributes"]["openinference.span.kind"] == "LLM"
+        )
+        assert "Fix the failed Renovate PR" in first_llm["attributes"]["input.value"]
+        assert "'type'" not in first_llm["attributes"]["input.value"]
+        assert '"type"' not in first_llm["attributes"]["input.value"]
+
+    def test_string_prompt_turn_is_unchanged(self, tmp_path, monkeypatch):
+        captured = self._run_turn(
+            human_entry("Fix the failed Renovate PR"),
+            tmp_path,
+            monkeypatch,
+        )
+        kinds = [s["attributes"]["openinference.span.kind"] for s in captured]
+        assert kinds.count("LLM") == 2
 
 
 class TestHandleUserPromptSubmit:
