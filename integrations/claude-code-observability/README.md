@@ -113,6 +113,93 @@ If none of the above are configured, the tracer silently does nothing — safe t
 
 ---
 
+## Burn-rate circuit breaker (optional)
+
+`claude_code_circuit_breaker.py` turns the spend telemetry above into a kill switch. It reads the cost of the LLM spans the tracer shipped to Arthur Engine, computes a **burn rate** against a budget, and trips when the burn rate is too high. While tripped it blocks new prompts (`UserPromptSubmit`) and ends the in-flight turn (`PreToolUse` with `continue: false`), so a runaway agent loop stops spending until the breaker cools down or you reset it.
+
+```bash
+./install.sh --with-circuit-breaker                       # global
+./install.sh --with-circuit-breaker --project-dir DIR     # per-project
+```
+
+This copies the breaker next to the tracer, registers its `UserPromptSubmit`, `PreToolUse` and `SessionStart` hooks (15 s timeout), and writes a default `arthur_circuit_breaker.json` next to `arthur_config.json` if there isn't one. It reads engine credentials from the same places the tracer does and is a silent no-op when none are configured. `uninstall.sh` removes it along with the tracer.
+
+### How burn rate works
+
+```
+burn_rate = (spend in window / window hours) / (budget_usd / budget_period_hours)
+```
+
+A burn rate of 1.0 uses the budget up exactly at the end of the period; 14.4x on a 24 h budget means 1 % of it goes every minute. Each rule pairs a long window with a short one (SRE multi-window alerting): the long window shows the burn is significant, the short window shows it is still happening, and the rule fires only when **both** exceed its threshold. That is why spend is measured on individual LLM spans rather than whole traces — a 30-minute autonomous turn lands in the right minute buckets as it runs.
+
+Breaker states:
+
+| State | Behaviour |
+|-------|-----------|
+| closed | Normal. The engine is queried at most once per `check_interval_seconds`; between checks the last verdict is reused, so per-tool-call hooks stay cheap. |
+| open | Prompts are blocked and the turn is stopped, without touching the engine, for `cooldown_minutes`. |
+| half-open | After the cooldown the next hook probes the engine: calm → closed, still burning → open again. |
+
+`python3 ~/.claude/hooks/claude_code_circuit_breaker.py reset` closes it by hand. `ARTHUR_BREAKER_BYPASS=1` disables it for one process.
+
+### Configuration
+
+`ARTHUR_BREAKER_CONFIG` (a path), then `<project>/.claude/arthur_circuit_breaker.json`, then `~/.claude/arthur_circuit_breaker.json`; keys you leave out keep their defaults. `ARTHUR_BREAKER_SCOPE` and `ARTHUR_BREAKER_BUDGET_USD` override the file.
+
+```json
+{
+  "enabled": true,
+  "scope": "session",
+  "budget_usd": 100.0,
+  "budget_period_hours": 24.0,
+  "rules": [
+    { "name": "fast-burn", "window_minutes": 10, "short_window_minutes": 2,  "burn_rate": 14.4 },
+    { "name": "slow-burn", "window_minutes": 60, "short_window_minutes": 10, "burn_rate": 6.0 }
+  ],
+  "hard_cap_usd": null,
+  "warn_fraction": 0.75,
+  "check_interval_seconds": 30,
+  "cooldown_minutes": 15,
+  "fail_mode": "open",
+  "http_timeout_seconds": 5,
+  "fallback_usd_per_million_tokens": null
+}
+```
+
+| Key | Meaning |
+|-----|---------|
+| `scope` | Whose spend counts: `session` (this Claude Code session, via `arthur.session`), `user` (every session of this OS user on the task, via `user.id`) or `task` (everything on the task). The breaker state is keyed the same way, so a `task`-scope trip pauses every session. |
+| `budget_usd`, `budget_period_hours` | The budget the burn rate is measured against. |
+| `rules` | Multi-window burn-rate rules. `short_window_minutes: null` makes a single-window rule. The widest `window_minutes` sets how far back spans are fetched. |
+| `hard_cap_usd` | Absolute ceiling on the scope's total: the whole session for `session`, the last `budget_period_hours` for `user`/`task`. `null` disables it (and skips the extra engine call). |
+| `warn_fraction` | Show a warning in Claude Code once a rule reaches this fraction of its threshold. |
+| `fail_mode` | `open` keeps working when the engine is unreachable (with a warning); `closed` trips instead. |
+| `fallback_usd_per_million_tokens` | `{"prompt": 3, "completion": 15}` prices spans whose model the engine could not price (their cost comes back empty). Leave `null` to be warned about such spans instead. |
+
+With the defaults, $100/24 h is a $4.17/h budget rate, so `fast-burn` trips at $60/h sustained over 10 minutes (and the last 2), `slow-burn` at $25/h over an hour (and the last 10 minutes).
+
+### Checking what it sees
+
+```bash
+python3 ~/.claude/hooks/claude_code_circuit_breaker.py status                      # task-wide
+python3 ~/.claude/hooks/claude_code_circuit_breaker.py status --session <id>       # one session
+```
+
+prints the current spend per window, burn rates, whether each rule would fire, and the persisted breaker state.
+
+### Engine calls
+
+| Scope need | Endpoint |
+|------------|----------|
+| Spend per window | `GET /api/v1/traces/spans?task_ids=…&span_types=LLM&start_time=…&end_time=…` plus `session_ids` / `user_ids` for the narrower scopes; spans are bucketed locally per rule window |
+| Hard cap, `session` | `GET /api/v1/traces/sessions?task_ids=…&session_ids=…` |
+| Hard cap, `user` | `GET /api/v1/traces/users?task_ids=…&user_ids=…&start_time=…&end_time=…` |
+| Hard cap, `task` | `POST /api/v1/traces/overview` |
+
+Caveats: spend lands in the engine when the tracer emits LLM spans, which happens at each tool call and at the end of the turn, so a single very long generation is only visible once it finishes. The engine stores span timestamps as the server's local time and returns them without an offset; the breaker assumes that is UTC, which holds for the container images.
+
+---
+
 ## GitHub Actions setup
 
 Copy the ready-to-use workflow files into your repo's `.github/workflows/` directory:
@@ -138,12 +225,12 @@ Set these under **Settings → Secrets and variables → Actions**.
 
 ## Testing
 
-Unit tests cover config discovery, transcript parsing, turn detection, LLM span extraction, all six hook handlers, RETRIEVER span kind routing, and error span emission. No credentials or running services are required — OTLP export is mocked.
+Unit tests cover config discovery, transcript parsing, turn detection, LLM span extraction, all six hook handlers, RETRIEVER span kind routing, and error span emission. No credentials or running services are required — OTLP export is mocked. The circuit breaker tests cover burn-rate math, multi-window rules, the open/half-open/closed state machine, fail-open/closed and the hook JSON for each event, with the engine HTTP calls mocked.
 
 ```bash
 cd integrations/claude-code-observability
 pip install pytest -r requirements.txt
-python3 -m pytest test_tracer.py -v
+python3 -m pytest test_tracer.py test_circuit_breaker.py -v
 ```
 
 ---
@@ -153,7 +240,9 @@ python3 -m pytest test_tracer.py -v
 | File | Purpose |
 |------|---------|
 | `claude_code_tracer.py` | Hook script — handles `user_prompt_submit`, `pre_tool`, `post_tool`, `post_tool_failure`, `subagent_stop`, `stop` |
+| `claude_code_circuit_breaker.py` | Optional burn-rate circuit breaker hook — handles `user_prompt_submit`, `pre_tool`, `session_start`; CLI `status` / `reset` |
 | `test_tracer.py` | Unit tests (pytest, no credentials needed) |
+| `test_circuit_breaker.py` | Unit tests for the circuit breaker (pytest, engine mocked) |
 | `install.sh` | Local dev installer |
 | `requirements.txt` | Python dependencies |
 | `workflow-claude-code.yml` | GitHub Actions workflow for interactive Claude (`@claude` mentions) |

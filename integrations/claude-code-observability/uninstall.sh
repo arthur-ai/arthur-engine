@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# uninstall.sh — Remove claude_code_tracer.py hooks installed by install.sh
+# uninstall.sh — Remove claude_code_tracer.py (and circuit breaker) hooks
+# installed by install.sh
 #
 # Usage:
 #   ./uninstall.sh                          # Global: undo global install
@@ -8,6 +9,9 @@
 set -euo pipefail
 
 PROJECT_DIR=""
+
+TRACER_EVENTS="UserPromptSubmit:user_prompt_submit,PreToolUse:pre_tool,PostToolUse:post_tool,PostToolUseFailure:post_tool_failure,SubagentStop:subagent_stop,Stop:stop"
+BREAKER_EVENTS="UserPromptSubmit:user_prompt_submit,PreToolUse:pre_tool,SessionStart:session_start"
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -24,18 +28,21 @@ done
 
 # ---------------------------------------------------------------------------
 # Helper: remove arthur hook entries from a settings JSON file.
-# Args: <settings_path> <tracer_command_prefix>
+# Args: <settings_path> <command_prefix> <events_spec>
+# events_spec is "HookEvent:script_arg,HookEvent:script_arg,...".
 # ---------------------------------------------------------------------------
 remove_hooks() {
     local settings_path="$1"
     local cmd_prefix="$2"
-    python3 - "$settings_path" "$cmd_prefix" <<'PYEOF'
+    local events_spec="$3"
+    python3 - "$settings_path" "$cmd_prefix" "$events_spec" <<'PYEOF'
 import json
 import sys
 from pathlib import Path
 
 settings_path = Path(sys.argv[1])
 cmd_prefix = sys.argv[2]
+events = [tuple(pair.split(":", 1)) for pair in sys.argv[3].split(",") if pair]
 
 if not settings_path.exists():
     print(f"  {settings_path} not found — nothing to remove")
@@ -50,14 +57,7 @@ except (json.JSONDecodeError, OSError):
 hooks = settings.get("hooks", {})
 changed = False
 
-for event, arg in [
-    ("UserPromptSubmit", "user_prompt_submit"),
-    ("PreToolUse", "pre_tool"),
-    ("PostToolUse", "post_tool"),
-    ("PostToolUseFailure", "post_tool_failure"),
-    ("SubagentStop", "subagent_stop"),
-    ("Stop", "stop"),
-]:
+for event, arg in events:
     cmd = f"{cmd_prefix} {arg}"
     existing = hooks.get(event, [])
     filtered = [
@@ -122,6 +122,35 @@ PYEOF
 }
 
 # ---------------------------------------------------------------------------
+# Helper: remove the circuit breaker (hooks, script, config). No-op if it
+# was never installed.
+# Args: <hooks_dir> <settings_path> <command_prefix> <breaker_config_path>
+# ---------------------------------------------------------------------------
+remove_breaker() {
+    local hooks_dir="$1"
+    local settings_path="$2"
+    local cmd_prefix="$3"
+    local breaker_config="$4"
+    local breaker="$hooks_dir/claude_code_circuit_breaker.py"
+
+    echo "==> Removing circuit breaker hooks from $settings_path..."
+    remove_hooks "$settings_path" "$cmd_prefix" "$BREAKER_EVENTS"
+
+    if [[ -f "$breaker" ]]; then
+        rm "$breaker"
+        echo "  Removed $breaker"
+    fi
+    if [[ -f "$breaker_config" ]]; then
+        rm "$breaker_config"
+        echo "  Removed $breaker_config"
+    fi
+    if [[ -d "$HOME/.claude/circuit_breaker" ]]; then
+        rm -rf "$HOME/.claude/circuit_breaker"
+        echo "  Removed breaker state dir ~/.claude/circuit_breaker"
+    fi
+}
+
+# ---------------------------------------------------------------------------
 # Global uninstall
 # ---------------------------------------------------------------------------
 if [[ -z "$PROJECT_DIR" ]]; then
@@ -130,7 +159,11 @@ if [[ -z "$PROJECT_DIR" ]]; then
     SETTINGS="$HOME/.claude/settings.json"
 
     echo "==> Removing hooks from $SETTINGS..."
-    remove_hooks "$SETTINGS" 'python3 "$HOME/.claude/hooks/claude_code_tracer.py"'
+    remove_hooks "$SETTINGS" 'python3 "$HOME/.claude/hooks/claude_code_tracer.py"' "$TRACER_EVENTS"
+
+    remove_breaker "$HOME/.claude/hooks" "$SETTINGS" \
+        'python3 "$HOME/.claude/hooks/claude_code_circuit_breaker.py"' \
+        "$HOME/.claude/arthur_circuit_breaker.json"
 
     if [[ -f "$TRACER" ]]; then
         echo "==> Removing tracer at $TRACER..."
@@ -163,7 +196,11 @@ CONFIG="$PROJECT_DIR/.claude/arthur_config.json"
 SETTINGS="$PROJECT_DIR/.claude/settings.local.json"
 
 echo "==> Removing hooks from $SETTINGS..."
-remove_hooks "$SETTINGS" 'python3 "$CLAUDE_PROJECT_DIR/.claude/hooks/claude_code_tracer.py"'
+remove_hooks "$SETTINGS" 'python3 "$CLAUDE_PROJECT_DIR/.claude/hooks/claude_code_tracer.py"' "$TRACER_EVENTS"
+
+remove_breaker "$PROJECT_DIR/.claude/hooks" "$SETTINGS" \
+    'python3 "$CLAUDE_PROJECT_DIR/.claude/hooks/claude_code_circuit_breaker.py"' \
+    "$PROJECT_DIR/.claude/arthur_circuit_breaker.json"
 
 if [[ -f "$TRACER" ]]; then
     echo "==> Removing tracer at $TRACER..."

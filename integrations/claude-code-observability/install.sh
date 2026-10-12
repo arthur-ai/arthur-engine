@@ -4,6 +4,7 @@
 # Usage:
 #   ./install.sh                          # Global: hooks + config for all projects
 #   ./install.sh --project-dir DIR        # Per-project: hooks + config scoped to DIR
+#   ./install.sh --with-circuit-breaker   # Also install the burn-rate circuit breaker
 #
 # Global mode (no --project-dir):
 #   1. pip install -r requirements.txt
@@ -17,11 +18,24 @@
 #   3. Merge hooks into DIR/.claude/settings.local.json (gitignored)
 #   4. Write DIR/.claude/arthur_config.json from .env (project dir or this dir)
 #   5. Add .claude/arthur_config.json to DIR/.gitignore
+#
+# --with-circuit-breaker (either mode) additionally:
+#   - Copies claude_code_circuit_breaker.py next to the tracer
+#   - Registers its UserPromptSubmit / PreToolUse / SessionStart hooks
+#   - Writes a default arthur_circuit_breaker.json next to arthur_config.json
+#     if one does not exist yet (tune budget/scope there)
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR=""
+WITH_BREAKER=0
+
+TRACER_EVENTS="UserPromptSubmit:user_prompt_submit,PreToolUse:pre_tool,PostToolUse:post_tool,PostToolUseFailure:post_tool_failure,SubagentStop:subagent_stop,Stop:stop"
+BREAKER_EVENTS="UserPromptSubmit:user_prompt_submit,PreToolUse:pre_tool,SessionStart:session_start"
+# The breaker makes one short engine call; cap it well under the hook default
+# so a hung engine cannot stall the session.
+BREAKER_TIMEOUT=15
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -29,6 +43,10 @@ while [[ $# -gt 0 ]]; do
         --project-dir)
             PROJECT_DIR="$2"
             shift 2
+            ;;
+        --with-circuit-breaker)
+            WITH_BREAKER=1
+            shift
             ;;
         *)
             echo "Unknown argument: $1" >&2
@@ -38,9 +56,14 @@ while [[ $# -gt 0 ]]; do
 done
 
 TRACER_SRC="$SCRIPT_DIR/claude_code_tracer.py"
+BREAKER_SRC="$SCRIPT_DIR/claude_code_circuit_breaker.py"
 if [[ ! -f "$TRACER_SRC" ]]; then
     echo "Error: tracer not found at $TRACER_SRC" >&2
     echo "Run this script from the repo, e.g. ./integrations/claude-code-observability/install.sh" >&2
+    exit 1
+fi
+if [[ "$WITH_BREAKER" == "1" && ! -f "$BREAKER_SRC" ]]; then
+    echo "Error: circuit breaker not found at $BREAKER_SRC" >&2
     exit 1
 fi
 
@@ -52,22 +75,27 @@ fi
 
 # ---------------------------------------------------------------------------
 # Helper: merge hook entries into a settings JSON file.
-# Args: <settings_path> <tracer_command_prefix>
-# The tracer_command_prefix is the python3 invocation up to (but not including)
+# Args: <settings_path> <command_prefix> <events_spec> [timeout_seconds]
+# The command_prefix is the python3 invocation up to (but not including)
 # the event argument, e.g.:
 #   'python3 "$HOME/.claude/hooks/claude_code_tracer.py"'
 #   'python3 "$CLAUDE_PROJECT_DIR/.claude/hooks/claude_code_tracer.py"'
+# events_spec is "HookEvent:script_arg,HookEvent:script_arg,...".
 # ---------------------------------------------------------------------------
 merge_hooks() {
     local settings_path="$1"
     local cmd_prefix="$2"
-    python3 - "$settings_path" "$cmd_prefix" <<'PYEOF'
+    local events_spec="$3"
+    local timeout="${4:-}"
+    python3 - "$settings_path" "$cmd_prefix" "$events_spec" "$timeout" <<'PYEOF'
 import json
 import sys
 from pathlib import Path
 
 settings_path = Path(sys.argv[1])
 cmd_prefix = sys.argv[2]
+events = [tuple(pair.split(":", 1)) for pair in sys.argv[3].split(",") if pair]
+timeout = int(sys.argv[4]) if len(sys.argv) > 4 and sys.argv[4] else None
 
 settings_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -82,16 +110,12 @@ else:
 if "hooks" not in settings:
     settings["hooks"] = {}
 
-for event, arg in [
-    ("UserPromptSubmit", "user_prompt_submit"),
-    ("PreToolUse", "pre_tool"),
-    ("PostToolUse", "post_tool"),
-    ("PostToolUseFailure", "post_tool_failure"),
-    ("SubagentStop", "subagent_stop"),
-    ("Stop", "stop"),
-]:
+for event, arg in events:
     cmd = f"{cmd_prefix} {arg}"
-    new_hook = {"matcher": "", "hooks": [{"type": "command", "command": cmd}]}
+    hook = {"type": "command", "command": cmd}
+    if timeout is not None:
+        hook["timeout"] = timeout
+    new_hook = {"matcher": "", "hooks": [hook]}
 
     existing = settings["hooks"].get(event, [])
     already = any(
@@ -152,6 +176,44 @@ PYEOF
 }
 
 # ---------------------------------------------------------------------------
+# Helper: install the circuit breaker next to the tracer.
+# Args: <hooks_dir> <settings_path> <command_prefix> <breaker_config_path>
+# ---------------------------------------------------------------------------
+install_breaker() {
+    local hooks_dir="$1"
+    local settings_path="$2"
+    local cmd_prefix="$3"
+    local breaker_config="$4"
+
+    echo "==> Copying circuit breaker to $hooks_dir/..."
+    cp "$BREAKER_SRC" "$hooks_dir/claude_code_circuit_breaker.py"
+    chmod +x "$hooks_dir/claude_code_circuit_breaker.py"
+
+    echo "==> Merging circuit breaker hooks into $settings_path..."
+    merge_hooks "$settings_path" "$cmd_prefix" "$BREAKER_EVENTS" "$BREAKER_TIMEOUT"
+
+    if [[ -f "$breaker_config" ]]; then
+        echo "  Keeping existing $breaker_config"
+    else
+        echo "==> Writing default $breaker_config..."
+        python3 - "$BREAKER_SRC" "$breaker_config" <<'PYEOF'
+import importlib.util
+import json
+import sys
+from pathlib import Path
+
+spec = importlib.util.spec_from_file_location("breaker", sys.argv[1])
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+out_path = Path(sys.argv[2])
+out_path.parent.mkdir(parents=True, exist_ok=True)
+out_path.write_text(json.dumps(module.DEFAULT_CONFIG, indent=2) + "\n")
+print(f"  Wrote {out_path} (edit budget_usd / scope / rules to taste)")
+PYEOF
+    fi
+}
+
+# ---------------------------------------------------------------------------
 # Global install (no --project-dir)
 # ---------------------------------------------------------------------------
 if [[ -z "$PROJECT_DIR" ]]; then
@@ -161,7 +223,13 @@ if [[ -z "$PROJECT_DIR" ]]; then
     chmod +x "$HOME/.claude/hooks/claude_code_tracer.py"
 
     echo "==> Merging hooks into ~/.claude/settings.json..."
-    merge_hooks "$HOME/.claude/settings.json" 'python3 "$HOME/.claude/hooks/claude_code_tracer.py"'
+    merge_hooks "$HOME/.claude/settings.json" 'python3 "$HOME/.claude/hooks/claude_code_tracer.py"' "$TRACER_EVENTS"
+
+    if [[ "$WITH_BREAKER" == "1" ]]; then
+        install_breaker "$HOME/.claude/hooks" "$HOME/.claude/settings.json" \
+            'python3 "$HOME/.claude/hooks/claude_code_circuit_breaker.py"' \
+            "$HOME/.claude/arthur_circuit_breaker.json"
+    fi
 
     ENV_FILE="$SCRIPT_DIR/.env"
     if [[ -f "$ENV_FILE" ]]; then
@@ -176,6 +244,9 @@ if [[ -z "$PROJECT_DIR" ]]; then
     echo "Done! Restart Claude Code for hooks to take effect."
     echo ""
     echo "Hooks registered in: ~/.claude/settings.json (all projects)"
+    if [[ "$WITH_BREAKER" == "1" ]]; then
+        echo "Circuit breaker config: ~/.claude/arthur_circuit_breaker.json"
+    fi
     echo ""
     echo "To configure credentials, populate .env in this directory and re-run:"
     echo "  GENAI_ENGINE_API_KEY=..."
@@ -194,7 +265,13 @@ cp "$TRACER_SRC" "$PROJECT_DIR/.claude/hooks/claude_code_tracer.py"
 chmod +x "$PROJECT_DIR/.claude/hooks/claude_code_tracer.py"
 
 echo "==> Merging hooks into $PROJECT_DIR/.claude/settings.local.json..."
-merge_hooks "$PROJECT_DIR/.claude/settings.local.json" 'python3 "$CLAUDE_PROJECT_DIR/.claude/hooks/claude_code_tracer.py"'
+merge_hooks "$PROJECT_DIR/.claude/settings.local.json" 'python3 "$CLAUDE_PROJECT_DIR/.claude/hooks/claude_code_tracer.py"' "$TRACER_EVENTS"
+
+if [[ "$WITH_BREAKER" == "1" ]]; then
+    install_breaker "$PROJECT_DIR/.claude/hooks" "$PROJECT_DIR/.claude/settings.local.json" \
+        'python3 "$CLAUDE_PROJECT_DIR/.claude/hooks/claude_code_circuit_breaker.py"' \
+        "$PROJECT_DIR/.claude/arthur_circuit_breaker.json"
+fi
 
 # Prefer .env in project dir, then in this integration dir
 ENV_FILE="$PROJECT_DIR/.env"
@@ -224,3 +301,6 @@ echo "Done! Restart Claude Code for hooks to take effect."
 echo ""
 echo "Hooks registered in: $PROJECT_DIR/.claude/settings.local.json (this project only)"
 echo "Config written to:   $PROJECT_DIR/.claude/arthur_config.json"
+if [[ "$WITH_BREAKER" == "1" ]]; then
+    echo "Circuit breaker config: $PROJECT_DIR/.claude/arthur_circuit_breaker.json"
+fi
