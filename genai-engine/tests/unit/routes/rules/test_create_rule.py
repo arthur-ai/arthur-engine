@@ -16,10 +16,12 @@ from arthur_common.models.enums import (
     RuleType,
 )
 from schemas.internal_schemas import Rule
+from db_models import DatabaseTaskToRules
 from tests.clients.base_test_client import (
     DEFAULT_KEYWORDS,
     DEFAULT_REGEX,
     GenaiEngineTestClientBase,
+    override_get_db_session,
 )
 
 
@@ -571,3 +573,31 @@ def test_get_default_rules(
     status_code, response = client.get_default_rules()
     assert status_code == 200
     assert response[0].name == create_default_rule.name
+
+
+@pytest.mark.unit_tests
+def test_create_default_rule_links_only_unarchived_tasks(
+    client: GenaiEngineTestClientBase,
+):
+    status_code, active_task = client.create_task()
+    assert status_code == 200
+    status_code, archived_task = client.create_task()
+    assert status_code == 200
+    assert client.delete_task(archived_task.id) == 204
+
+    status_code, rule = client.create_rule("", rule_type=RuleType.KEYWORD)
+    assert status_code == 200
+
+    db_session = override_get_db_session()
+    linked_task_ids = {
+        link.task_id
+        for link in db_session.query(DatabaseTaskToRules).filter(
+            DatabaseTaskToRules.rule_id == rule.id,
+        )
+    }
+    db_session.close()
+    assert active_task.id in linked_task_ids
+    assert archived_task.id not in linked_task_ids
+
+    assert client.delete_default_rule(rule.id) == 200
+    assert client.delete_task(active_task.id) == 204

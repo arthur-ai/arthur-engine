@@ -888,10 +888,17 @@ class TaskRepository:
         self.db_session.commit()
 
     def update_all_tasks_add_default_rule(self, default_rule: Rule) -> None:
-        tasks = self.get_all_tasks()
+        # Only the IDs are needed. get_all_tasks() builds a full Task, with its rule
+        # links and service names, for every task, which made this cost grow with
+        # tasks x default rules. Same set: every non-archived task in every org.
+        task_ids = (
+            self.db_session.query(DatabaseTask.id)
+            .where(DatabaseTask.archived == False)
+            .all()
+        )
         tasks_to_rules: list[DatabaseTaskToRules] = [
-            DatabaseTaskToRules(task_id=task.id, rule_id=default_rule.id)
-            for task in tasks
+            DatabaseTaskToRules(task_id=task_id, rule_id=default_rule.id)
+            for (task_id,) in task_ids
         ]
         self.db_session.add_all(tasks_to_rules)
         self.db_session.commit()
