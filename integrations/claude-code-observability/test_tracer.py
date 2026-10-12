@@ -7,6 +7,8 @@ Run with:  python3 -m pytest integrations/claude-code-observability/test_tracer.
 import json
 import os
 import sys
+import threading
+import time
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -6502,3 +6504,68 @@ class TestLlmSpanTiming:
         attrs = self._extract(p)[0]["attributes"]
 
         assert attrs["llm.provider"] == "anthropic"
+
+
+class TestStopWaitsForFinalResponse:
+    """Claude Code writes the transcript asynchronously: in interactive
+    sessions Stop can fire before the turn's last response is in the file."""
+
+    CONFIG = {"api_key": "k", "task_id": "t", "endpoint": "https://x.example.com"}
+
+    def _start_turn(self, tmp_path, monkeypatch):
+        captured = []
+        monkeypatch.setattr(
+            tracer,
+            "_build_and_export_spans",
+            lambda **kw: captured.extend(kw["span_records"]),
+        )
+        transcript = tmp_path / "late.jsonl"
+        transcript.write_text("")
+        base = {"session_id": "late1", "transcript_path": str(transcript)}
+        tracer.handle_user_prompt_submit({**base, "prompt": "do it"}, self.CONFIG)
+        with transcript.open("a") as f:
+            f.write(json.dumps(human_entry("do it")) + "\n")
+            f.write(json.dumps(llm_entry("working", ts=at(2))) + "\n")
+        return captured, transcript, base
+
+    def test_stop_waits_for_a_final_response_written_late(self, tmp_path, monkeypatch):
+        """Break caught: the last response was written after Stop read the
+        transcript, so the turn had no final LLM span or answer."""
+        captured, transcript, base = self._start_turn(tmp_path, monkeypatch)
+
+        def write_late():
+            time.sleep(0.3)
+            with transcript.open("a") as f:
+                f.write(json.dumps(llm_entry("FINAL_ANSWER", ts=at(5))) + "\n")
+
+        writer = threading.Thread(target=write_late)
+        writer.start()
+        tracer.handle_stop(
+            {**base, "last_assistant_message": "FINAL_ANSWER"}, self.CONFIG
+        )
+        writer.join(5)
+
+        llm = [
+            s for s in captured if s["attributes"]["openinference.span.kind"] == "LLM"
+        ]
+        (chain,) = [
+            s for s in captured if s["attributes"]["openinference.span.kind"] == "CHAIN"
+        ]
+        assert [s["attributes"]["output.value"] for s in llm] == [
+            "working",
+            "FINAL_ANSWER",
+        ]
+        assert chain["attributes"]["output.value"] == "FINAL_ANSWER"
+
+    def test_stop_uses_the_payload_answer_if_the_transcript_never_has_it(
+        self, tmp_path, monkeypatch
+    ):
+        monkeypatch.setattr(tracer, "_SUBAGENT_FLUSH_TIMEOUT_S", 0.2)
+        captured, _, base = self._start_turn(tmp_path, monkeypatch)
+        tracer.handle_stop(
+            {**base, "last_assistant_message": "FINAL_ANSWER"}, self.CONFIG
+        )
+        (chain,) = [
+            s for s in captured if s["attributes"]["openinference.span.kind"] == "CHAIN"
+        ]
+        assert chain["attributes"]["output.value"] == "FINAL_ANSWER"

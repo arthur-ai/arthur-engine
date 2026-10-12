@@ -2420,6 +2420,12 @@ def handle_stop(data: dict, config: dict) -> None:
             return
 
         transcript_path = _get_cached_transcript_path(data, state, session_id)
+        # Claude Code writes the transcript asynchronously: when Stop fires the
+        # turn's last response may not be in the file yet, and no later hook
+        # reads this turn.  Wait for it, as SubagentStop does.
+        last_message = data.get("last_assistant_message") or ""
+        if transcript_path and last_message:
+            _wait_for_subagent_transcript(transcript_path, last_message)
 
         # Detect context continuation: same check as handle_pre_tool.
         # When no tool calls happen during a continuation turn, handle_pre_tool
@@ -2455,6 +2461,10 @@ def handle_stop(data: dict, config: dict) -> None:
         # Emit the final LLM span(s) — the last response has no tool call after it,
         # so handle_post_tool never got the chance to emit it.
         _emit_pending_llm_spans(state, transcript_path, config)
+        # The hook payload has the turn's final answer even if the transcript
+        # never caught up.
+        if last_message:
+            state["current_trace"]["last_llm_output"] = last_message
 
         _complete_turn(state, config, transcript_path, end_ns)
 
