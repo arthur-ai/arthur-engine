@@ -150,7 +150,7 @@ def test_hook_lifecycle_exports_tool_then_complete_turn(isolated_state):
     assert root["trace_id_hex"] == tool["trace_id_hex"]
     assert tool["parent_span_id_hex"] == root["span_id_hex"]
     assert root["attributes"] == {
-        "openinference.span.kind": "LLM",
+        "openinference.span.kind": "CHAIN",
         "input.value": "PROMPT_MARKER",
         "input.mime_type": "text/plain",
         "output.value": "RESPONSE_MARKER",

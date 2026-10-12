@@ -541,7 +541,7 @@ def handle_subagent_stop(
             root_data = dict(data)
             if data.get("agent_transcript_path"):
                 root_data["transcript_path"] = data["agent_transcript_path"]
-            records.append(_root_span_record(state, root_data, end_ns))
+            records.extend(_completed_records(state, root_data, end_ns))
             _delete_state(session_id, turn_id)
     context = _load_agent_context(agent_id)
     if context:
@@ -550,6 +550,188 @@ def handle_subagent_stop(
     if records:
         export(config, context.get("parent_session_id") or session_id, records)
     _cleanup_stale_state()
+
+
+def _model_records(state: dict, data: dict) -> tuple[list[dict], str]:
+    """Reconstruct public model outputs, grouped by transcript usage checkpoints.
+
+    Timestamps mark observations in the transcript, not measured request latency.
+    Reasoning records and system/developer messages are deliberately not exported.
+    """
+    path = data.get("transcript_path")
+    if not path:
+        return [], ""
+    try:
+        lines = Path(path).read_text().splitlines()
+    except OSError:
+        return [], ""
+    records = []
+    active = False
+    texts, calls, next_inputs = [], [], []
+    current_input = state.get("prompt") or ""
+    input_role = "user"
+    first_ns = last_ns = None
+    final_text = ""
+    seen_usage = set()
+
+    def flush(usage=None):
+        nonlocal texts, calls, next_inputs, current_input, input_role, first_ns, last_ns
+        if texts or calls:
+            index = len(records)
+            output = "\n".join(texts)
+            attrs = {
+                "openinference.span.kind": "LLM",
+                "llm.model_name": state.get("model") or "unknown",
+                "session.id": state.get("trace_session_id") or state["session_id"],
+                "codex.turn.id": state["turn_id"],
+                "codex.emission.source": "transcript",
+                "codex.timing.source": "transcript_observation",
+                "input.value": current_input,
+                "input.mime_type": (
+                    "text/plain" if input_role == "user" else "application/json"
+                ),
+                "output.value": output or json.dumps(calls),
+                "output.mime_type": "text/plain" if output else "application/json",
+                "llm.input_messages.0.message.role": input_role,
+                "llm.input_messages.0.message.content": current_input,
+                "llm.output_messages.0.message.role": "assistant",
+                "llm.output_messages.0.message.content": output,
+            }
+            for i, call in enumerate(calls):
+                prefix = f"llm.output_messages.0.message.tool_calls.{i}.tool_call."
+                attrs[prefix + "id"] = call.get("call_id", "")
+                attrs[prefix + "function.name"] = call.get("name", "")
+                attrs[prefix + "function.arguments"] = _encoded_attribute(
+                    call.get("arguments", call.get("input", ""))
+                )
+            if usage:
+                for source, dest in (
+                    ("input_tokens", "prompt"),
+                    ("output_tokens", "completion"),
+                    ("total_tokens", "total"),
+                    ("cached_input_tokens", "prompt_details.cache_read"),
+                    ("reasoning_output_tokens", "completion_details.reasoning"),
+                ):
+                    if source in usage:
+                        attrs["llm.token_count." + dest] = int(usage[source])
+            records.append(
+                {
+                    "name": "codex/" + (state.get("model") or "unknown"),
+                    "trace_id_hex": state["trace_id_hex"],
+                    "span_id_hex": hashlib.sha256(
+                        f'{state["root_span_id_hex"]}:model:{index}'.encode()
+                    ).hexdigest()[:16],
+                    "parent_span_id_hex": state["root_span_id_hex"],
+                    "kind": "CLIENT",
+                    "start_ns": first_ns or state["start_ns"],
+                    "end_ns": max(
+                        last_ns or state["start_ns"], first_ns or state["start_ns"]
+                    ),
+                    "attributes": attrs,
+                }
+            )
+        if next_inputs:
+            current_input = json.dumps(next_inputs)
+            input_role = "tool"
+        texts, calls, next_inputs = [], [], []
+        first_ns = last_ns = None
+
+    for line in lines:
+        try:
+            entry = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(entry, dict):
+            continue
+        payload = entry.get("payload") or {}
+        if not isinstance(payload, dict):
+            continue
+        kind = payload.get("type")
+        if entry.get("type") == "event_msg" and kind == "task_started":
+            if active:
+                break
+            active = payload.get("turn_id") == state["turn_id"]
+            continue
+        if not active:
+            continue
+        if entry.get("type") == "event_msg":
+            if kind == "task_complete":
+                break
+            if kind == "token_count":
+                info = payload.get("info") or {}
+                cumulative = info.get("total_token_usage")
+                fingerprint = (
+                    json.dumps(cumulative, sort_keys=True) if cumulative else None
+                )
+                if fingerprint is None or fingerprint not in seen_usage:
+                    flush(info.get("last_token_usage"))
+                    if fingerprint:
+                        seen_usage.add(fingerprint)
+            continue
+        if entry.get("type") != "response_item":
+            continue
+        if kind in ("function_call_output", "custom_tool_call_output"):
+            next_inputs.append(
+                {
+                    "tool_call_id": payload.get("call_id", ""),
+                    "content": payload.get("output", ""),
+                }
+            )
+            continue
+        if kind == "message" and payload.get("role") == "assistant":
+            parts = [
+                c.get("text", "")
+                for c in payload.get("content", [])
+                if isinstance(c, dict) and c.get("type") in ("output_text", "text")
+            ]
+            text = "".join(parts)
+            if not text:
+                continue
+            texts.append(text)
+            final_text = text
+        elif kind in ("function_call", "custom_tool_call"):
+            calls.append(
+                {
+                    key: payload[key]
+                    for key in ("call_id", "name", "input", "arguments")
+                    if key in payload
+                }
+            )
+        else:
+            continue
+        try:
+            from datetime import datetime
+
+            ns = int(
+                datetime.fromisoformat(
+                    entry["timestamp"].replace("Z", "+00:00")
+                ).timestamp()
+                * 1_000_000_000
+            )
+        except (KeyError, ValueError, TypeError):
+            ns = state["start_ns"]
+        first_ns = ns if first_ns is None else first_ns
+        last_ns = ns
+    flush()
+    return records, final_text
+
+
+def _completed_records(state: dict, data: dict, end_ns: int) -> list[dict]:
+    models, final_text = _model_records(state, data)
+    root_data = dict(data)
+    root_data["last_assistant_message"] = (
+        data.get("last_assistant_message") or final_text
+    )
+    root = _root_span_record(state, root_data, end_ns)
+    root["attributes"]["openinference.span.kind"] = "CHAIN"
+    if models:
+        root["start_ns"] = min(root["start_ns"], *(r["start_ns"] for r in models))
+        root["end_ns"] = max(root["end_ns"], *(r["end_ns"] for r in models))
+        # Usage belongs on model spans, not both models and their parent.
+        for key in list(root["attributes"]):
+            if key.startswith("llm.token_count."):
+                del root["attributes"][key]
+    return models + [root]
 
 
 def handle_stop(
@@ -566,9 +748,9 @@ def handle_stop(
         state = _load_state(session_id, turn_id)
         if not state:
             return
-        record = _root_span_record(state, data, end_ns)
+        records = _completed_records(state, data, end_ns)
         _delete_state(session_id, turn_id)
-    export(config, session_id, [record])
+    export(config, session_id, records)
     _cleanup_stale_state()
 
 
