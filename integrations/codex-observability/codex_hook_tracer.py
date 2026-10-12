@@ -174,14 +174,87 @@ def _encoded_attribute(value: Any) -> str:
     return json.dumps(value, sort_keys=True, separators=(",", ":"), default=str)
 
 
+TAIL_CHUNK_BYTES = 1 << 20
+# Stop runs under the hook timeout.  A turn whose transcript portion is bigger
+# than this (large tool outputs) is traced from the hook payload alone.
+TURN_READ_LIMIT_BYTES = 32 << 20
+
+
+_TURN_LINES_CACHE: dict[tuple, list[str]] = {}
+
+
+def _turn_lines(transcript_path: Any, turn_id: str) -> list[str]:
+    """Cached per hook process: Stop needs the turn for usage and model spans."""
+    try:
+        size = os.path.getsize(transcript_path)
+    except OSError:
+        return []
+    key = (str(transcript_path), turn_id, size)
+    if key not in _TURN_LINES_CACHE:
+        _TURN_LINES_CACHE.clear()
+        _TURN_LINES_CACHE[key] = _read_turn_lines(transcript_path, turn_id)
+    return _TURN_LINES_CACHE[key]
+
+
+def _read_turn_lines(transcript_path: Any, turn_id: str) -> list[str]:
+    """Return the transcript lines from this turn's ``task_started`` to the end.
+
+    Long sessions grow the transcript to hundreds of MB, and Stop runs inside a
+    time-limited hook, so the turn's start is found by scanning backwards from
+    the end of the file, one chunk at a time, instead of reading it whole.
+
+    Returns nothing if the turn's start is further than ``TURN_READ_LIMIT_BYTES``
+    from the end, so Stop's cost stays bounded.
+    """
+    needle = json.dumps(turn_id).encode()
+    try:
+        with open(transcript_path, "rb") as f:
+            f.seek(0, os.SEEK_END)
+            size = pos = f.tell()
+            carry = b""  # partial first line of the chunk searched last
+            while pos > 0 and size - pos < TURN_READ_LIMIT_BYTES:
+                step = min(TAIL_CHUNK_BYTES, pos)
+                pos -= step
+                f.seek(pos)
+                block = f.read(step) + carry
+                # Unless at the start of the file, the first line is partial.
+                first = 0 if pos == 0 else block.find(b"\n") + 1
+                if pos > 0 and first == 0:
+                    carry = block
+                    continue
+                i = block.find(needle, first)
+                while i != -1:
+                    start = block.rfind(b"\n", 0, i) + 1
+                    end = block.find(b"\n", i)
+                    line = block[start : end if end != -1 else None]
+                    if b'"task_started"' in line and _starts_turn(line, turn_id):
+                        f.seek(pos + start)
+                        return f.read().decode("utf-8", "replace").splitlines()
+                    i = block.find(needle, i + 1)
+                carry = block[:first]
+    except OSError:
+        pass
+    return []
+
+
+def _starts_turn(line: bytes, turn_id: str) -> bool:
+    try:
+        record = json.loads(line)
+    except ValueError:
+        return False
+    payload = record.get("payload") if isinstance(record, dict) else None
+    return (
+        isinstance(payload, dict)
+        and payload.get("type") == "task_started"
+        and payload.get("turn_id") == turn_id
+    )
+
+
 def read_token_usage(transcript_path: Path, turn_id: str) -> dict[str, int]:
     """Sum each model call recorded between this turn's start and completion."""
     totals = {field: 0 for field in TOKEN_FIELDS}
     inside_turn = False
-    try:
-        lines = transcript_path.read_text().splitlines()
-    except OSError:
-        return totals
+    lines = _turn_lines(transcript_path, turn_id)
 
     for line in lines:
         try:
@@ -354,7 +427,8 @@ def _tool_span_record(state: dict, data: dict, start_ns: int, end_ns: int) -> di
         "span_id_hex": _new_span_id(),
         "parent_span_id_hex": state["root_span_id_hex"],
         "kind": "CLIENT",
-        "status_code": "OK",
+        # No status: Codex's tool_response is the model-facing output and
+        # carries no exit code, so success can't be known here.
         "start_ns": start_ns,
         "end_ns": end_ns,
         "attributes": attributes,
@@ -561,10 +635,7 @@ def _model_records(state: dict, data: dict) -> tuple[list[dict], str]:
     path = data.get("transcript_path")
     if not path:
         return [], ""
-    try:
-        lines = Path(path).read_text().splitlines()
-    except OSError:
-        return [], ""
+    lines = _turn_lines(path, state["turn_id"])
     records = []
     active = False
     texts, calls, next_inputs = [], [], []
@@ -731,7 +802,8 @@ def _completed_records(state: dict, data: dict, end_ns: int) -> list[dict]:
         for key in list(root["attributes"]):
             if key.startswith("llm.token_count."):
                 del root["attributes"][key]
-    return models + [root]
+    # Root first: if the hook is cut short, the turn still has its parent.
+    return [root] + models
 
 
 def handle_stop(
@@ -759,7 +831,7 @@ def _otel_imports():
     from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
     from opentelemetry.sdk.resources import Resource
     from opentelemetry.sdk.trace import SpanContext, TracerProvider
-    from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+    from opentelemetry.sdk.trace.export import BatchSpanProcessor
     from opentelemetry.sdk.trace.id_generator import IdGenerator
     from opentelemetry.trace import (
         NonRecordingSpan,
@@ -774,7 +846,7 @@ def _otel_imports():
         Resource,
         TracerProvider,
         SpanContext,
-        SimpleSpanProcessor,
+        BatchSpanProcessor,
         OTLPSpanExporter,
         IdGenerator,
         NonRecordingSpan,
@@ -786,12 +858,15 @@ def _otel_imports():
 
 
 def _build_and_export_spans(config: dict, session_id: str, records: list[dict]) -> None:
+    """Export ``records`` in one request, in list order."""
+    if not records:
+        return
     (
         trace,
         Resource,
         TracerProvider,
         SpanContext,
-        SimpleSpanProcessor,
+        BatchSpanProcessor,
         OTLPSpanExporter,
         IdGenerator,
         NonRecordingSpan,
@@ -812,31 +887,39 @@ def _build_and_export_spans(config: dict, session_id: str, records: list[dict]) 
         }
     )
 
+    class RecordIdGenerator(IdGenerator):
+        """Hands out the IDs of the record being started."""
+
+        trace_id = 0
+        span_id = 0
+
+        def generate_trace_id(self) -> int:
+            return self.trace_id
+
+        def generate_span_id(self) -> int:
+            return self.span_id
+
+    ids = RecordIdGenerator()
+    exporter = OTLPSpanExporter(
+        endpoint=config["endpoint"],
+        headers={"Authorization": f"Bearer {config['api_key']}"},
+        timeout=4,
+    )
+    provider = TracerProvider(resource=resource, id_generator=ids)
+    provider.add_span_processor(
+        BatchSpanProcessor(exporter, max_export_batch_size=max(len(records), 1))
+    )
+    tracer = provider.get_tracer("arthur-codex-hook-tracer")
+
     for record in records:
-        trace_id = int(record["trace_id_hex"], 16)
-        span_id = int(record["span_id_hex"], 16)
-
-        class FixedIdGenerator(IdGenerator):
-            def generate_trace_id(self) -> int:
-                return trace_id
-
-            def generate_span_id(self) -> int:
-                return span_id
-
-        exporter = OTLPSpanExporter(
-            endpoint=config["endpoint"],
-            headers={"Authorization": f"Bearer {config['api_key']}"},
-            timeout=4,
-        )
-        provider = TracerProvider(resource=resource, id_generator=FixedIdGenerator())
-        provider.add_span_processor(SimpleSpanProcessor(exporter))
-        tracer = provider.get_tracer("arthur-codex-hook-tracer")
+        ids.trace_id = int(record["trace_id_hex"], 16)
+        ids.span_id = int(record["span_id_hex"], 16)
 
         context = None
         parent_span_id = record.get("parent_span_id_hex")
         if parent_span_id:
             parent_context = SpanContext(
-                trace_id=trace_id,
+                trace_id=ids.trace_id,
                 span_id=int(parent_span_id, 16),
                 is_remote=True,
                 trace_flags=TraceFlags(TraceFlags.SAMPLED),
@@ -859,8 +942,7 @@ def _build_and_export_spans(config: dict, session_id: str, records: list[dict]) 
         if record.get("status_code") == "OK":
             span.set_status(Status(StatusCode.OK))
         span.end(end_time=record["end_ns"])
-        provider.shutdown()
-
+    provider.shutdown()
 
 HANDLERS = {
     "session_start": handle_session_start,

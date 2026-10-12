@@ -132,7 +132,8 @@ def test_hook_lifecycle_exports_tool_then_complete_turn(isolated_state):
         "command": "printf TOOL_MARKER"
     }
     assert tool["attributes"]["output.value"] == "TOOL_MARKER"
-    assert tool["status_code"] == "OK"
+    # tool_response carries no exit code, so the span claims no status.
+    assert "status_code" not in tool
 
     tracer.handle_stop(
         {
@@ -559,7 +560,7 @@ def test_otlp_export_timeout_finishes_inside_hook_timeout(monkeypatch):
             exporter_kwargs.append(kwargs)
 
     class FakeProcessor:
-        def __init__(self, exporter):
+        def __init__(self, exporter, **kwargs):
             self.exporter = exporter
 
     class FakeSpan:
@@ -688,3 +689,137 @@ def test_main_resolves_project_config_from_hook_payload_cwd(tmp_path, monkeypatc
 
     assert tracer.main() == 0
     assert received == [expected]
+
+
+def _event(kind: str, turn_id: str, **extra) -> str:
+    return json.dumps(
+        {"type": "event_msg", "payload": {"type": kind, "turn_id": turn_id, **extra}},
+        separators=(",", ":"),
+    )
+
+
+def test_turn_lines_reads_only_the_turn_from_the_end_of_a_large_transcript(
+    tmp_path, monkeypatch
+):
+    """Break caught: Stop read the whole transcript (hundreds of MB in long
+    sessions) and outran the hook timeout before exporting anything."""
+    monkeypatch.setattr(tracer, "TAIL_CHUNK_BYTES", 4096)  # force many chunks
+    padding = "x" * 200
+    lines = []
+    for n in range(500):
+        lines += [
+            _event("task_started", f"old-{n}"),
+            json.dumps({"type": "response_item", "payload": {"text": padding}}),
+            _event("task_complete", f"old-{n}"),
+        ]
+    lines += [
+        _event("task_started", "target"),
+        json.dumps({"type": "response_item", "payload": {"text": "TARGET_BODY"}}),
+    ]
+    transcript = tmp_path / "rollout.jsonl"
+    transcript.write_text("\n".join(lines) + "\n")
+
+    got = tracer._turn_lines(transcript, "target")
+
+    assert json.loads(got[0])["payload"] == {"type": "task_started", "turn_id": "target"}
+    assert "TARGET_BODY" in got[1]
+    assert len(got) == 2
+
+
+def test_turn_lines_missing_turn_or_file_returns_nothing(tmp_path):
+    transcript = tmp_path / "rollout.jsonl"
+    transcript.write_text(_event("task_started", "other") + "\n")
+    assert tracer._turn_lines(transcript, "absent") == []
+    assert tracer._turn_lines(tmp_path / "missing.jsonl", "absent") == []
+
+
+def test_stop_exports_the_root_span_first_in_one_request(monkeypatch):
+    """Break caught: the root went last, one request per span, so a hook cut
+    short lost the turn's parent."""
+    import opentelemetry.exporter.otlp.proto.http.trace_exporter as otlp
+    from opentelemetry.sdk.trace.export import SpanExportResult
+
+    batches = []
+
+    class CapturingExporter:
+        def __init__(self, **kwargs):
+            pass
+
+        def export(self, spans):
+            batches.append([s.name for s in spans])
+            return SpanExportResult.SUCCESS
+
+        def shutdown(self):
+            pass
+
+        def force_flush(self, timeout_millis=None):
+            return True
+
+    monkeypatch.setattr(otlp, "OTLPSpanExporter", CapturingExporter)
+    root = {
+        "name": "codex.turn",
+        "trace_id_hex": "a" * 32,
+        "span_id_hex": "b" * 16,
+        "kind": "INTERNAL",
+        "status_code": "OK",
+        "start_ns": 1,
+        "end_ns": 3,
+        "attributes": {"openinference.span.kind": "CHAIN"},
+    }
+    model = dict(
+        root,
+        name="codex/model",
+        span_id_hex="c" * 16,
+        parent_span_id_hex="b" * 16,
+        attributes={"openinference.span.kind": "LLM"},
+    )
+    monkeypatch.setattr(
+        tracer, "_model_records", lambda state, data: ([model, model], "done")
+    )
+    monkeypatch.setattr(tracer, "_root_span_record", lambda state, data, end: dict(root))
+    records = tracer._completed_records({}, {}, 3)
+    tracer._build_and_export_spans(
+        {"endpoint": "http://127.0.0.1:9", "api_key": "k", "task_id": "t"},
+        "s",
+        records,
+    )
+
+    assert batches == [["codex.turn", "codex/model", "codex/model"]]
+
+
+def test_turn_lines_gives_up_beyond_the_read_limit(tmp_path, monkeypatch):
+    """A turn with huge tool output must not hold Stop past the hook timeout."""
+    monkeypatch.setattr(tracer, "TAIL_CHUNK_BYTES", 1024)
+    monkeypatch.setattr(tracer, "TURN_READ_LIMIT_BYTES", 4096)
+    big_output = json.dumps({"type": "response_item", "payload": {"text": "y" * 200}})
+    transcript = tmp_path / "rollout.jsonl"
+    transcript.write_text(
+        "\n".join([_event("task_started", "huge")] + [big_output] * 100) + "\n"
+    )
+    assert tracer._turn_lines(transcript, "huge") == []
+
+
+def test_stop_still_exports_a_root_when_the_turn_is_too_large_to_read(
+    tmp_path, isolated_state, monkeypatch
+):
+    monkeypatch.setattr(tracer, "TURN_READ_LIMIT_BYTES", 1024)
+    big_output = json.dumps({"type": "response_item", "payload": {"text": "y" * 200}})
+    transcript = tmp_path / "rollout.jsonl"
+    transcript.write_text(
+        "\n".join([_event("task_started", common()["turn_id"])] + [big_output] * 50)
+        + "\n"
+    )
+    exported = []
+    tracer.handle_user_prompt_submit(
+        {**common(), "prompt": "P", "transcript_path": str(transcript)},
+        config(),
+        lambda *_: None,
+    )
+    tracer.handle_stop(
+        {**common(), "last_assistant_message": "DONE", "transcript_path": str(transcript)},
+        config(),
+        lambda _config, _session, records: exported.extend(records),
+    )
+    (root,) = exported
+    assert root["attributes"]["openinference.span.kind"] == "CHAIN"
+    assert root["attributes"]["output.value"] == "DONE"
