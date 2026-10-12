@@ -72,7 +72,9 @@ def meta_entry(text: str) -> dict:
     }
 
 
-def list_prompt_entry(*blocks: dict, ts: str = "2026-01-01T00:00:00.000000+00:00") -> dict:
+def list_prompt_entry(
+    *blocks: dict, ts: str = "2026-01-01T00:00:00.000000+00:00"
+) -> dict:
     """A prompt written with list content.  The Agent SDK (claude-code-action)
     sends a string prompt as [{"type": "text", ...}], and a pasted image arrives
     as image + text blocks."""
@@ -1421,7 +1423,9 @@ class TestSdkListPromptLifecycle:
         kinds = [s["attributes"]["openinference.span.kind"] for s in captured]
         assert kinds.count("LLM") == 2
         assert kinds.count("TOOL") == 1
-        (chain,) = [s for s in captured if s["attributes"]["openinference.span.kind"] == "CHAIN"]
+        (chain,) = [
+            s for s in captured if s["attributes"]["openinference.span.kind"] == "CHAIN"
+        ]
         assert chain["attributes"]["output.value"] == "Autofix complete"
 
     def test_first_llm_input_is_prompt_text(self, tmp_path, monkeypatch):
@@ -1471,28 +1475,51 @@ class TestSdkListPromptLifecycle:
         assert kinds.count("LLM") == 2
 
 
-def queued_prompt_entry(prompt: str, ts: str = "2026-01-01T00:00:10.000000+00:00") -> dict:
+def queued_prompt_entry(
+    prompt, uuid: str = "q1", ts: str = "2026-01-01T00:00:10.000000+00:00"
+) -> dict:
     """How a prompt that arrives while Claude is busy is written: a typed
     message, a background task's notification, another session's message."""
     return {
         "type": "attachment",
-        "attachment": {"type": "queued_command", "prompt": prompt, "commandMode": "prompt"},
+        "uuid": uuid,
+        "attachment": {
+            "type": "queued_command",
+            "prompt": prompt,
+            "commandMode": "prompt",
+        },
         "timestamp": ts,
+    }
+
+
+def prompt_hook_record(parent_uuid: str) -> dict:
+    """The UserPromptSubmit hook record Claude Code writes when it starts a turn
+    for a queued prompt; it names the queued attachment as its parent."""
+    return {
+        "type": "attachment",
+        "uuid": f"hook-{parent_uuid}",
+        "parentUuid": parent_uuid,
+        "attachment": {"type": "hook_success", "hookEvent": "UserPromptSubmit"},
     }
 
 
 class TestQueuedPromptTurns:
     CONFIG = {"api_key": "k", "task_id": "t", "endpoint": "https://x.example.com"}
 
-    def test_queued_command_is_human(self):
-        assert tracer._is_human_message(queued_prompt_entry("<task-notification>"))
-        assert tracer._human_text(queued_prompt_entry("hello")) == "hello"
+    def test_claimed_queued_prompt_is_yielded_as_a_user_entry(self, tmp_transcript):
+        p = tmp_transcript([queued_prompt_entry("hello"), prompt_hook_record("q1")])
+        humans = [
+            e
+            for e in tracer._iter_transcript_entries(str(p))
+            if tracer._is_human_message(e)
+        ]
+        assert [tracer._human_text(e) for e in humans] == ["hello"]
 
-    def test_other_attachments_are_not_human(self):
-        hook = {"type": "attachment", "attachment": {"type": "hook_success", "content": ""}}
-        assert not tracer._is_human_message(hook)
+    def test_unclaimed_queued_prompt_is_not_a_human_message(self, tmp_transcript):
+        p = tmp_transcript([queued_prompt_entry("hello")])
+        assert tracer._count_human_messages(str(p)) == 0
 
-    def _run(self, tmp_path, monkeypatch, prompt, before, after_ups):
+    def _run(self, tmp_path, monkeypatch, prompt, before, after_ups, answer_ts=at(12)):
         captured = []
         monkeypatch.setattr(
             tracer,
@@ -1509,38 +1536,107 @@ class TestQueuedPromptTurns:
                     f.write(json.dumps(e) + "\n")
 
         tracer.handle_user_prompt_submit({**base, "prompt": prompt}, self.CONFIG)
-        append(*after_ups, llm_entry("QUEUED_ANSWER", ts=at(12)))
+        append(*after_ups, llm_entry("QUEUED_ANSWER", ts=answer_ts))
         tracer.handle_stop(base, self.CONFIG)
+        return captured
+
+    @staticmethod
+    def _llm_outputs(captured):
         return [
-            s for s in captured if s["attributes"]["openinference.span.kind"] in ("LLM", "CHAIN")
+            s["attributes"]["output.value"]
+            for s in captured
+            if s["attributes"]["openinference.span.kind"] == "LLM"
         ]
 
-    def test_queued_prompt_written_before_prompt_submit(self, tmp_path, monkeypatch):
+    def test_queued_prompt_claimed_after_prompt_submit(self, tmp_path, monkeypatch):
         prompt = "<task-notification>done</task-notification>"
         earlier = [human_entry("first"), llm_entry("first answer", ts=at(1))]
-        spans = self._run(
-            tmp_path, monkeypatch, prompt, earlier + [queued_prompt_entry(prompt)], []
+        captured = self._run(
+            tmp_path,
+            monkeypatch,
+            prompt,
+            earlier + [queued_prompt_entry(prompt)],
+            [prompt_hook_record("q1")],
         )
-        llm = [s for s in spans if s["attributes"]["openinference.span.kind"] == "LLM"]
-        (chain,) = [s for s in spans if s["attributes"]["openinference.span.kind"] == "CHAIN"]
-        assert [s["attributes"]["output.value"] for s in llm] == ["QUEUED_ANSWER"]
+        (chain,) = [
+            s for s in captured if s["attributes"]["openinference.span.kind"] == "CHAIN"
+        ]
+        assert self._llm_outputs(captured) == ["QUEUED_ANSWER"]
         assert chain["attributes"]["output.value"] == "QUEUED_ANSWER"
 
-    def test_queued_prompt_written_after_prompt_submit(self, tmp_path, monkeypatch):
+    def test_queued_prompt_claimed_before_our_hook_counts(self, tmp_path, monkeypatch):
+        # Another UserPromptSubmit hook finished first and wrote the record.
         prompt = "a message typed mid-turn"
         earlier = [human_entry("first"), llm_entry("first answer", ts=at(1))]
-        spans = self._run(
-            tmp_path, monkeypatch, prompt, earlier, [queued_prompt_entry(prompt)]
+        captured = self._run(
+            tmp_path,
+            monkeypatch,
+            prompt,
+            earlier + [queued_prompt_entry(prompt), prompt_hook_record("q1")],
+            [],
         )
-        llm = [s for s in spans if s["attributes"]["openinference.span.kind"] == "LLM"]
-        assert [s["attributes"]["output.value"] for s in llm] == ["QUEUED_ANSWER"]
+        assert self._llm_outputs(captured) == ["QUEUED_ANSWER"]
 
-    def test_repeated_prompt_is_not_mistaken_for_the_new_one(self, tmp_path, monkeypatch):
+    def test_queued_image_and_text_prompt(self, tmp_path, monkeypatch):
+        image = {"type": "image", "source": {"type": "base64", "data": "..."}}
+        prompt = [image, text_block("what is wrong here?")]
+        earlier = [human_entry("first"), llm_entry("first answer", ts=at(1))]
+        captured = self._run(
+            tmp_path,
+            monkeypatch,
+            "what is wrong here?",
+            earlier + [queued_prompt_entry(prompt)],
+            [prompt_hook_record("q1")],
+        )
+        assert self._llm_outputs(captured) == ["QUEUED_ANSWER"]
+
+    def test_queued_prompt_folded_into_the_running_turn_does_not_end_it(
+        self, tmp_path, monkeypatch
+    ):
+        """Break caught: a queued prompt Claude folds into the running turn (no
+        UserPromptSubmit) ended that turn's extraction, dropping its later
+        responses.  Order: user, queued_command, assistant, Stop."""
+        captured = []
+        monkeypatch.setattr(
+            tracer,
+            "_build_and_export_spans",
+            lambda **kw: captured.extend(kw["span_records"]),
+        )
+        transcript = tmp_path / "fold.jsonl"
+        transcript.write_text("")
+        base = {"session_id": "f1", "transcript_path": str(transcript)}
+        tracer.handle_user_prompt_submit({**base, "prompt": "do the task"}, self.CONFIG)
+        with transcript.open("a") as f:
+            for e in (
+                human_entry("do the task"),
+                llm_entry("working", ts=at(2)),
+                queued_prompt_entry("also check the logs"),
+                llm_entry("done, logs checked too", ts=at(12)),
+            ):
+                f.write(json.dumps(e) + "\n")
+        tracer.handle_stop(base, self.CONFIG)
+        (chain,) = [
+            s for s in captured if s["attributes"]["openinference.span.kind"] == "CHAIN"
+        ]
+        llm = [
+            s for s in captured if s["attributes"]["openinference.span.kind"] == "LLM"
+        ]
+        assert [s["attributes"]["output.value"] for s in llm] == [
+            "working",
+            "done, logs checked too",
+        ]
+        assert {s["trace_id_hex"] for s in llm} == {chain["trace_id_hex"]}
+        assert chain["attributes"]["output.value"] == "done, logs checked too"
+
+    def test_repeated_prompt_is_not_mistaken_for_the_new_one(
+        self, tmp_path, monkeypatch
+    ):
         # "ok" was already sent and answered; a second "ok" is not written yet.
         earlier = [human_entry("ok"), llm_entry("first answer", ts=at(1))]
-        spans = self._run(tmp_path, monkeypatch, "ok", earlier, [human_entry("ok", ts=at(10))])
-        llm = [s for s in spans if s["attributes"]["openinference.span.kind"] == "LLM"]
-        assert [s["attributes"]["output.value"] for s in llm] == ["QUEUED_ANSWER"]
+        captured = self._run(
+            tmp_path, monkeypatch, "ok", earlier, [human_entry("ok", ts=at(10))]
+        )
+        assert self._llm_outputs(captured) == ["QUEUED_ANSWER"]
 
 
 class TestHandleUserPromptSubmit:
