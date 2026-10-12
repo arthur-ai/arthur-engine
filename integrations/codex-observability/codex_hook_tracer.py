@@ -907,7 +907,12 @@ def _build_and_export_spans(config: dict, session_id: str, records: list[dict]) 
     )
     provider = TracerProvider(resource=resource, id_generator=ids)
     provider.add_span_processor(
-        BatchSpanProcessor(exporter, max_export_batch_size=max(len(records), 1))
+        BatchSpanProcessor(
+            exporter,
+            # The queue must hold the whole batch; its default is 2048.
+            max_queue_size=max(len(records), 2048),
+            max_export_batch_size=len(records),
+        )
     )
     tracer = provider.get_tracer("arthur-codex-hook-tracer")
 

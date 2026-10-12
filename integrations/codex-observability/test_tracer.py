@@ -823,3 +823,44 @@ def test_stop_still_exports_a_root_when_the_turn_is_too_large_to_read(
     (root,) = exported
     assert root["attributes"]["openinference.span.kind"] == "CHAIN"
     assert root["attributes"]["output.value"] == "DONE"
+
+
+def test_export_handles_more_records_than_the_default_queue(monkeypatch):
+    """Break caught: a batch sized to the turn raised ValueError past 2048
+    records (the default max_queue_size), so a huge turn exported nothing."""
+    import opentelemetry.exporter.otlp.proto.http.trace_exporter as otlp
+    from opentelemetry.sdk.trace.export import SpanExportResult
+
+    exported = []
+
+    class CapturingExporter:
+        def __init__(self, **kwargs):
+            pass
+
+        def export(self, spans):
+            exported.extend(spans)
+            return SpanExportResult.SUCCESS
+
+        def shutdown(self):
+            pass
+
+        def force_flush(self, timeout_millis=None):
+            return True
+
+    monkeypatch.setattr(otlp, "OTLPSpanExporter", CapturingExporter)
+    records = [
+        {
+            "name": "codex/model",
+            "trace_id_hex": "a" * 32,
+            "span_id_hex": f"{n + 1:016x}",
+            "kind": "CLIENT",
+            "start_ns": 1,
+            "end_ns": 2,
+            "attributes": {"openinference.span.kind": "LLM"},
+        }
+        for n in range(2049)
+    ]
+    tracer._build_and_export_spans(
+        {"endpoint": "http://127.0.0.1:9", "api_key": "k", "task_id": "t"}, "s", records
+    )
+    assert len(exported) == 2049
