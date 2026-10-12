@@ -1,7 +1,8 @@
 # CLAUDE.md
 
-Endpoint AI agent discovery for Arthur. osquery finds what is installed on a Mac; a scheduled
-script writes a file; two Jamf Extension Attributes read it; a collector classifies.
+Endpoint AI agent discovery for Arthur. osquery finds what is installed on a Mac or a Linux VM;
+a scheduled script writes a file; Jamf Extension Attributes, or a Compute Engine VM's guest
+attributes, carry it; a collector classifies.
 
 ## The boundary, first
 
@@ -39,11 +40,13 @@ documented by Jamf.
 |---|---|
 | `vendor/osquery-ai-discovery/` | the queries and the runner, at a pinned ref. **The only osquery implementation. Do not edit** — run `tools/vendor-queries.sh`. |
 | `tools/vendor-queries.sh` | vendor `bin/` and `dist/` from the public repo at one ref. Not `catalog/` — that is the collector's. |
-| `tools/build-collector.py` | build `dist/collect.sh`, the single file an MDM deploys. Holds the `arthur1.` framing. |
-| `dist/collect.sh` | generated, and committed on purpose — a reviewer should see it change. |
-| `deploy/` | the LaunchDaemon, for fleets preferring a package to an MDM policy. |
+| `tools/build-collector.py` | build `dist/collect.sh` and `dist/collect-linux.sh`, one file per platform, around one driver. Holds the `arthur1.` framing. |
+| `dist/` | generated, and committed on purpose — a reviewer should see it change. |
+| `deploy/` | the LaunchDaemon for Macs; the systemd units and `report-guest-attributes.sh`, the Compute Engine carrier. |
 | `test/lint.sh` | static checks on everything this tree owns. ~1s, no VM. |
-| `test/run-collector.sh` | runs `dist/collect.sh` and asserts on it. ~15s, needs osquery. |
+| `test/run-collector.sh` | runs this platform's collector and asserts on it. ~15s, needs osquery. |
+| `test/run-guest-attributes.sh` | runs the reporter against a fake metadata server built from measured answers. ~3s, no osquery. |
+| `test/run-systemd.sh` | installs and runs the Linux collector under systemd. CI only — it writes to the machine. |
 
 ## Commands
 
@@ -53,17 +56,19 @@ vendor/osquery-ai-discovery/bin/discover          # raw rows, no framing, no fil
 vendor/osquery-ai-discovery/bin/discover --deep   # ...plus a live container scan
 
 tools/vendor-queries.sh <ref>         # vendor the public queries + catalog at a ref
-tools/build-collector.py              # build dist/collect.sh around them
+tools/build-collector.py              # build both collectors around them
 tools/build-collector.py --check      # ...and confirm it carries the vendored tree
 
 test/lint.sh                          # static checks, ~1s, no VM
-test/run-collector.sh                 # run the deployable and assert on it, ~15s
+test/run-collector.sh                 # run this platform's collector and assert on it, ~15s
+test/run-guest-attributes.sh          # what the Compute Engine reporter publishes, ~3s
 ```
 
 Run both after any vendor bump or template edit. `lint.sh` **reads** the deployable and
 `run-collector.sh` **runs** it, which is the difference that matters: every static guard here
 passed for as long as the collector's extraction preamble went unexecuted by anything but a
-human. Both run in CI, on Ubuntu and on a macOS runner respectively.
+human. CI runs lint and the reporter test on Ubuntu, the Mac collector on a macOS runner, and
+the Linux collector plus `run-systemd.sh` on an Ubuntu runner, where systemd is PID 1.
 
 **The VM scenario suite is upstream's.** At the vendored ref that is `test/lint.sh`,
 `test/docker_states.sh` (all six Docker daemon states, including `wedge`) and thirteen VM

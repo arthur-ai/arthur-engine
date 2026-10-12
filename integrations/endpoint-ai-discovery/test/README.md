@@ -38,9 +38,14 @@ artifact a fleet receives, and it would pass while doing so.
 | No `agents.yaml`, no `catalog/` in the built collector | The catalog reaching a Mac. The endpoint enumerates and matches nothing |
 | No `--names` in the driver | Matching on the endpoint. The bundle carries `dist/signatures.sql` for it, unread |
 | One `ARTHUR_PAYLOAD_EOF` pair | The collector embedding a previous copy of itself |
-| Every flag `collect.sh` passes to `bin/discover` is still accepted | A vendor bump removing a flag. This has happened: upstream deleted `--framed`, correctly, and the collector called it |
+| Every flag either collector passes to `bin/discover`, in every call, is still accepted | A vendor bump removing a flag. This has happened: upstream deleted `--framed`, correctly, and the collector called it |
+| Both builds checked by every collector guard | A guard proving one build and saying nothing about the other's bytes |
+| `CAP` at most 262,144 | The budget rising past what a Compute Engine guest attribute accepts, so GCE's 400 would fire before our `ERROR:oversize` |
+| The units: a oneshot running the reporter as root; a timer with `OnBootSec` and `OnUnitActiveSec`, wanted by `timers.target` | A VM that never runs the scan, or reports nothing for its first hour |
+| The unit, the reporter and the collector agree on one install directory | Every VM failing its first run on a missing path |
+| No interpreter in the reporter; upstream still prints `no osqueryi found` | The reporter needing more than the collector does; `osquery=absent` silently never firing after a vendor bump |
 | `arthur1.` and `ERROR:oversize` present | The framing or its over-cap reason being dropped, which leaves an empty attribute — indistinguishable from a Mac with no AI tools on it |
-| `bash -n` on `collect.sh` and `vendor-queries.sh` | A template edit in `build-collector.py` producing a syntax error nobody runs until a Policy does |
+| `bash -n` on both collectors, the reporter and `vendor-queries.sh` | A template edit in `build-collector.py` producing a syntax error nobody runs until a Policy does |
 | Vendored `VERSION` exists; `PROVISIONAL` is announced | A commit pin becoming permanent by inattention |
 | The plist runs `collect.sh` with `RunAtLoad` | A fresh Mac reporting nothing until the first interval elapses |
 | `DOCKER_PING_TIMEOUT` ≥ 10 **and** ≥ the vendored default | A cold Docker reported as `unhealthy:000`. The second half catches an upstream bump crossing our value, after which the export would lower the bound instead of raising it |
@@ -53,8 +58,8 @@ file anywhere outside `vendor/`, add a script that shells out to `osqueryi`, or 
 
 ## `test/run-collector.sh`
 
-Runs the deployable three times into a scratch directory and asserts on what it wrote. Root
-is not required — a Policy runs it as root and sees more rows, but nothing asserted here
+Runs this platform's build — `dist/collect.sh` on macOS, `dist/collect-linux.sh` on Linux —
+three times into a scratch directory and asserts on what it wrote. Root is not required — a Policy runs it as root and sees more rows, but nothing asserted here
 depends on that.
 
 | Guard | What it catches |
@@ -69,9 +74,33 @@ depends on that.
 | A failed first-ever scan: non-zero exit, **no files at all** | A partial file left behind claiming to be a result, when `no-cache` is the true answer |
 | No `arthur-collect.*` directory left behind | The extraction directory leaking once per run, which on an Ongoing schedule fills a volume months later |
 
-Not proved here: the container branch. A hosted runner has no Docker, so it reports `absent`
-and the 15s cold-ping bound is never reached. The daemon states are upstream's
-`test/docker_states.sh`, against the vendored runner.
+The container branch: the macOS runner has no Docker and reports `absent`; the Ubuntu runner
+has one and reports `ok`. The 15s cold-ping bound is reached by neither. The daemon states are
+upstream's `test/docker_states.sh`, against the vendored runner.
+
+## `test/run-guest-attributes.sh`
+
+Runs `deploy/report-guest-attributes.sh` against `test/fake-metadata-server.py`, with a stub
+for the collector, because the question is what the reporter publishes from each thing a
+collector can leave behind. The fake answers only as a real VM measurably did: the 262,144-byte
+cap with its 400, and the 403 when guest attributes are disabled.
+
+| Case | What it catches |
+|---|---|
+| A clean scan is published byte for byte, without the file's newline | A value one byte too long, or not this scan |
+| A value of exactly 262,144 bytes is accepted | The newline pushing a value at the cap over it |
+| A refused inventory keeps the previous value; the status says `inventory=refused:400` | A VM serving an old inventory with nothing saying why |
+| A failed run publishes the kept scan with `failed=<UTC>` | A failure that looks like a fresh scan |
+| No scan ever, no osquery: `no-cache`, and `no-cache failed=<UTC> osquery=absent` | An empty key, which reads as a clean VM |
+| Guest attributes disabled: the 403 named, nothing stored | A VM that cannot report and says nothing |
+| No metadata server: named, non-zero | The same, off Compute Engine |
+
+## `test/run-systemd.sh`
+
+Installs the Linux collector, the reporter and the units at their real paths, runs one
+activation under systemd against the fake, then one with guest attributes disabled, and
+removes everything. It writes to the machine, so it runs only with
+`ARTHUR_TEST_INSTALLS_UNITS=1`, as root, where systemd is PID 1 — in CI, the Ubuntu runner.
 
 ## Running the real thing
 

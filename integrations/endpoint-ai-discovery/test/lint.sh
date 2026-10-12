@@ -325,18 +325,20 @@ for name in ("collect.sh", "collect-linux.sh"):
         return hits
     needs = [h for f in ("bin/discover", "bin/container-scan")
              for h in _interp(os.path.join(v, f))]
-    runbook = open(os.path.join(root, "docs", "mdm", "jamf-pro.md")).read()
-    claims_none = "Nothing else — no interpreter" in runbook
-    lists_python = "| python3 3.7+ |" in runbook
-    if needs and (claims_none or not lists_python):
-        print("FAIL: the vendored payload invokes python3, but docs/mdm/jamf-pro.md does "
-              "not list it as a prerequisite. The endpoint needs what the payload needs, not "
-              "what the wrapper needs."); sys.exit(1)
-    if not needs and lists_python:
-        print("FAIL: docs/mdm/jamf-pro.md lists python3 as a prerequisite, but nothing in "
-              "the payload invokes it any more. Drop the row."); sys.exit(1)
-    print(f"prereqs: ok, payload {'needs' if needs else 'does not need'} python3 and the "
-          f"runbook agrees")
+    # EVERY RUNBOOK THAT STATES A PREREQUISITE, held to the payload it deploys.
+    for doc in ("jamf-pro.md", "gce.md"):
+        runbook = open(os.path.join(root, "docs", "mdm", doc)).read()
+        claims_none = re.search(r"no interpreter", runbook, re.I) is not None
+        lists_python = "| python3 3.7+ |" in runbook
+        if needs and (claims_none or not lists_python):
+            print(f"FAIL: the vendored payload invokes python3, but docs/mdm/{doc} does "
+                  f"not list it as a prerequisite. The endpoint needs what the payload needs, "
+                  f"not what the wrapper needs."); sys.exit(1)
+        if not needs and lists_python:
+            print(f"FAIL: docs/mdm/{doc} lists python3 as a prerequisite, but nothing in "
+                  f"the payload invokes it any more. Drop the row."); sys.exit(1)
+    print(f"prereqs: ok, payload {'needs' if needs else 'does not need'} python3 and both "
+          f"runbooks agree")
 
     # An oversize payload must write a REASON, not nothing and not a truncated value. The
     # cap is a property of the reporting channel, so it is this repo's to enforce.
