@@ -71,9 +71,9 @@ python3 -m json.tool /tmp/arthur/inventory.json     # the readable payload
 head -c 40 /tmp/arthur/inventory.ea                 # arthur1.H4sIAGs1l2oC/…
 ```
 
-Measured on one reference Mac at vendored ref `v0.4.0`, 2026-09-18, osquery 5.23.1: **804
-rows** across ten branches, 126,741 bytes of JSON framed to **20,808 — 8% of the 256 KB
-budget.** The vendored runner is ~6.4s of that, timed on its own.
+Measured on one reference Mac at vendored ref `v0.12.0`, 2026-10-11, osquery 5.23.1,
+unprivileged: **929 rows** across thirteen branches, 155,562 bytes of JSON framed to
+**24,668 — 9% of the 256 KB budget.**
 
 For raw rows with no framing and no output files, the vendored runner is right there:
 
@@ -95,11 +95,11 @@ on the inventory path can block.
 
 | EA | Reads | Carries | Size |
 |---|---|---|---|
-| `AI Inventory` | `inventory.ea` | the evidence — `arthur1.<base64(gzip(json))>`, or `ERROR:oversize:<bytes>` | ~21 KB, measured |
+| `AI Inventory` | `inventory.ea` | the evidence — `arthur1.<base64(gzip(json))>`, or `ERROR:oversize:<bytes>` | ~24 KB, measured |
 | `AI Inventory Status` | `status.txt` | collection health, plain text and greppable | 154 bytes, measured |
 
-The evidence EA is gzipped, and that is not premature: the raw JSON measured **~127 KB** on the
-reference Mac. Framed as `arthur1.<base64(gzip(json))>` the same payload is ~21 KB.
+The evidence EA is gzipped, and that is not premature: the raw JSON measured **~155 KB** on the
+reference Mac. Framed as `arthur1.<base64(gzip(json))>` the same payload is ~24 KB.
 
 But **Jamf Smart Groups cannot match inside a compressed blob**, so the second EA carries the
 writer's own status line:
@@ -126,7 +126,7 @@ Criteria use *AI Inventory Status* → **like**:
 
 **Smart Groups answer "is collection healthy", not "which Macs run OpenClaw".** That is a
 deliberate consequence of enumeration, and the trade is worth naming: the status line carries no
-bundle identifiers because computing them on the device would need a catalog on the device,
+bundle identifiers because computing them on the device would mean matching on the device,
 which is the one thing the design forbids. Under enumeration the counts would also stop meaning
 "AI things" — `app=4` becomes `app=398` on this Mac. **Agent identity is a collector question**,
 and the collector re-matches every new signature against evidence it already holds, without a

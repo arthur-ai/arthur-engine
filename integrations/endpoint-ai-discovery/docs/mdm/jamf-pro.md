@@ -18,8 +18,8 @@ it writes three files; the attributes `cat` them. **Nothing is packaged, signed 
 |---|---|
 | Target | Jamf Pro |
 | Requires | osquery 5.18+ (5.10+ runs; below 5.11 the VS Code branch and below 5.18 the JetBrains branch report `error`). Nothing else — no interpreter, no Command Line Tools |
-| Per-Mac cost | ~7s per Policy run, off the reporting path |
-| Attribute value | 21 KB of a 256 KB budget (Jamf itself stores ≥ 1 MB — measured) |
+| Per-Mac cost | ~8s per Policy run, off the reporting path |
+| Attribute value | ~24 KB of a 256 KB budget (Jamf itself stores ≥ 1 MB — measured) |
 
 **Do not put `osqueryi`, `bin/discover` or `bin/container-scan` directly in an Extension
 Attribute.** Measured against a Docker daemon that answers `/_ping` and then stops serving,
@@ -31,7 +31,7 @@ cut off.
 
 | Requirement | Why | Confirm with |
 |---|---|---|
-| osquery 5.10+, **5.18+ for every branch** | Every query runs through `osqueryi`. All declare `min-osquery: 5.10.0` except `vscode.sql`, which needs **5.11.0**, and `jetbrains.sql`, which needs **5.18.0** — the `vscode_extensions` and `jetbrains_plugins` tables do not exist below them | Application inventory, or `osqueryi --version` |
+| osquery 5.10+, **5.18+ for every branch** | Every query runs through `osqueryi`. Below 5.18 a branch whose table does not exist yet reports `error`; which tables need which version is upstream's [`docs/limits.md`](https://github.com/arthur-ai/osquery-ai-discovery/blob/main/docs/limits.md) | Application inventory, or `osqueryi --version` |
 | Root LaunchDaemon | Some branches read other users' home directories | Standard for a Jamf-deployed daemon |
 
 **The python3 trap is closed as of vendored ref `v0.5.0`, and it is worth knowing what it
@@ -74,7 +74,7 @@ now — see section 00. Do not deploy them for this project.)*
 ```bash
 #!/bin/bash
 FLOOR_MAJOR=5
-FLOOR_MINOR=18   # jetbrains_plugins arrives in 5.18, vscode_extensions in 5.11; the rest need 5.10
+FLOOR_MINOR=18   # the newest table a branch needs; which is upstream's docs/limits.md
 
 # THE LOOKUP ORDER MIRRORS THE COLLECTOR'S. bin/container-scan resolves $OSQI, then three
 # absolute paths, then $PATH. An EA that looked anywhere else could report "installed" on a
@@ -107,7 +107,7 @@ attribute, the operator, the value — and the member count is a deployment targ
 | Group | Criteria | Operator | Value | Fix |
 |---|---|---|---|---|
 | Prereq — osquery missing | `Arthur AI Osquery Prereq` | **is** | `absent` | Install the pkg |
-| Prereq — osquery too old | `Arthur AI Osquery Prereq` | **like** | `old:` | Upgrade; these Macs report `jetbrains=error`, and below 5.11 `vscode=error` too |
+| Prereq — osquery too old | `Arthur AI Osquery Prereq` | **like** | `old:` | Upgrade; these Macs report `error` for each branch whose table their osquery lacks |
 
 **`is` where the whole value is the sentinel, `like` where you are matching a fragment.** Jamf's
 `like` is a substring test, so `like` `absent` would also catch a future value that merely
@@ -164,6 +164,10 @@ moves past what an earlier package installed — vendored ref `v0.12.0` moved it
 5.18 — attach the new package to a **new** Policy with the same settings, scoped to
 `Prereq — osquery too old`. A new Policy has run on no Mac yet.
 
+**Upgrade before you deploy the collector that needs it.** On older osquery the new branch
+reports `error`, so every such Mac reads `degraded` and floods the groups in section 06 —
+masking the faults they exist to find. Let `Prereq — osquery too old` drain first.
+
 **6 · Watch it drain.** Update Inventory, then watch both groups empty as Macs check in and
 report a version. Scoping at the groups the attribute feeds is what makes this self-managing: a
 Mac installs or upgrades osquery, its next inventory reports a version at the floor, it leaves
@@ -175,9 +179,10 @@ with osquery green is a different fault — read its Policy log, and see section
 ## 01 · Build the payload — terminal
 
 **Build it here, not from the public repo.** The plist and the collector live in this tree,
-and `catalog/` must never reach a Mac at all — matching happens
-in the collector, and shipping the signatures to the endpoint is the one thing the design
-forbids. See [`architecture.md`](../architecture.md).
+and matching must never happen on a Mac — it happens in the collector. The bundle does carry
+`dist/signatures.sql`, the catalog rendered into SQL, for upstream's `bin/discover --names`;
+this collector never passes that flag, and `test/lint.sh` fails if it does. See
+[`architecture.md`](../architecture.md).
 
 There is also nothing left to lay out side by side. `dist/collect.sh` carries `bin/` and `dist/`
 inside it as an embedded payload and extracts them to a private temp directory at run time, so
@@ -235,13 +240,11 @@ anything else.
 ok 2026-10-11T22:57:49Z rows=929 apps=ok browser=ok containers=ok filesystem=ok homebrew=ok jetbrains=ok native-messaging=ok packages=ok ports=ok running=ok running-darwin=ok runtime=ok vscode=ok
 ```
 
-**Thirteen branches on macOS** as of v0.12.0: `apps`, `browser`, `containers`, `filesystem`,
-`homebrew`, `jetbrains`, `native-messaging`, `packages`, `ports`, `running`, `running-darwin`,
-`runtime`, `vscode`. A status line with ten is from before that ref.
+One `branch=outcome` token per query branch: thirteen on macOS at vendored ref `v0.12.1`. The
+branches are upstream's, so the count moves with a vendor bump.
 
-Measured cold, from a directory containing nothing but the script, under a stripped
-environment: **~7s**, three files written, no temp directory left behind. It was 4.3s at six
-branches; ten branches and a container scan are the difference.
+Measured cold at `v0.12.1`, unprivileged, from a directory containing nothing but the script,
+under a stripped environment: **~8s**, three files written, no temp directory left behind.
 
 ### If you would rather deploy a package
 
@@ -263,8 +266,8 @@ ls -l /var/lib/arthur/
 **Verify — three files.**
 
 ```
-inventory.json   ~127 KB   the readable payload
-inventory.ea      ~21 KB    the framed attribute value, one line
+inventory.json   ~155 KB   the readable payload
+inventory.ea      ~24 KB    the framed attribute value, one line
 status.txt        ~155 B    one line, for Smart Groups
 ```
 
@@ -425,7 +428,7 @@ attributes.
    least one heavy Docker user.
 2. **Update Inventory**, then read the status attribute across the pilot. Anything reporting
    `no-cache` did not deploy.
-3. **Check the value length** on your most loaded pilot Mac. 21 KB is typical; the budget binds
+3. **Check the value length** on your most loaded pilot Mac. ~24 KB is typical; the budget binds
    near 10,300 rows.
 4. **Widen in stages.** The payload rides in every inventory submission: roughly 180 MB per
    full sync at 10,000 Macs.
@@ -448,7 +451,7 @@ Every `branch=outcome` token, and what to do. This is the entire vocabulary.
 | `unhealthy:000` | Socket exists, nothing answered within the ping timeout. Docker installed and not running, or no user logged in | Expected with no user logged in. **On a Mac with Docker running it is a fault** — too short a ping cannot outlast a cold daemon, which is why the collector sets 15s |
 | `unhealthy:500` | Daemon up, engine not serving | Restart Docker |
 | `timeout:6` | Answered `/_ping`, then stalled and was killed at 6s | Restart Docker. This is the state the wall-clock bound exists for |
-| `error` | Query failed outright — usually a table this osquery build lacks | Check the version against `min-osquery`. `vscode=error` on osquery 5.10 is this and is expected: `vscode_extensions` arrived in 5.11. So is `jetbrains=error` below 5.18: `jetbrains_plugins` arrived in 5.18 |
+| `error` | Query failed outright — usually a table this osquery build lacks | Check the version against the floor in section 00. Below it, `error` on a branch whose table does not exist yet is expected — upstream's [`docs/limits.md`](https://github.com/arthur-ai/osquery-ai-discovery/blob/main/docs/limits.md) says which |
 | `no-cache` | The daemon has **never** written here | Deployment problem. Check osquery is installed (section 00b), then the daemon and `/var/log/arthur-ai-discovery.log` |
 | `stale=NNh` | The value is a real scan, NNh old, kept because a later run could not collect | The evidence is still good; the collector is not. Read the Policy log — the Mac has been failing since that timestamp |
 
@@ -470,13 +473,15 @@ looking at is*. A Mac failing for weeks shows both.
 pbpaste | python3 -c 'import base64,gzip,json,sys
 v=sys.stdin.read().strip()
 json.dump(json.loads(gzip.decompress(base64.b64decode(v[8:]))),sys.stdout,indent=1)' \
-  | vendor/osquery-ai-discovery/bin/classify /dev/stdin \
+  | AI_DISCOVERY_TELEMETRY=0 vendor/osquery-ai-discovery/bin/classify /dev/stdin \
       --catalog ../../ml-engine/src/ml_engine/discovery/_vendor/agents.yaml \
       --routes  ../../ml-engine/src/ml_engine/discovery/_vendor/routes.yaml
 ```
 
 The catalog is the collector's, so it is read from ml-engine's vendored copy, which
 `ml-engine/tests/unit/discovery/test_vendor_parity.py` holds to the same upstream ref.
+`AI_DISCOVERY_TELEMETRY=0` because `classify` otherwise sends a usage event about the payload
+it read, and this one is a customer's Mac (upstream's `docs/telemetry.md`).
 
 Prints the findings, which branches ran and when, and `COULD NOT LOOK` for any that did not.
 

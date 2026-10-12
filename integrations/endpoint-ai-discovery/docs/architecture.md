@@ -83,8 +83,8 @@ ever talks to the collector.**
   │                        │ scheduled run: one process per branch,        │
   │                        │ guarded and wall-clock bounded                │
   │                        ▼                                               │
-  │  /var/lib/arthur/   inventory.ea   evidence, ~21 KB framed here        │
-  │                     status.txt     collection health, 154 bytes        │
+  │  /var/lib/arthur/   inventory.ea   evidence, ~24 KB framed here        │
+  │                     status.txt     collection health, 195 bytes        │
   └────────────────────────────────┬───────────────────────────────────────┘
                                    │ two Extension Attributes,
                                    │ collected by `jamf recon`
@@ -267,7 +267,7 @@ The names below are the reference deployment's; the collector finds the evidence
 
 | EA | Carries | Size |
 |---|---|---|
-| `Arthur AI Inventory` | the evidence — `arthur1.<base64(gzip(json))>`, or `ERROR:oversize:<bytes>` | ~21 KB, measured |
+| `Arthur AI Inventory` | the evidence — `arthur1.<base64(gzip(json))>`, or `ERROR:oversize:<bytes>` | ~24 KB, measured |
 | `Arthur AI Inventory Status` | collection health, plain text and greppable | 154 bytes, measured |
 
 The health line is the writer's own status output, unchanged:
