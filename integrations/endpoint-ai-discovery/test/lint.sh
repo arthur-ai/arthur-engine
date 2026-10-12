@@ -28,18 +28,21 @@ import json, os, re, sys
 root = sys.argv[1]
 # THE TABLES ARE READ OFF THE VENDORED PACK, not listed here: a hand list covers only the
 # tables someone remembered to name, and a vendor bump adds more. CTE names are declared
-# `name AS (` and dropped. The fixed names stay as a floor should the pack be unreadable.
-tables = {"apps", "npm_packages", "homebrew_packages", "chrome_extensions",
-          "listening_ports", "launchd", "docker_images"}
+# `name AS (` and dropped. A pack this cannot read FAILS, rather than shrinking the scan.
+pack_path = os.path.join("vendor", "osquery-ai-discovery", "dist", "ai-discovery.conf")
+tables = set()
 try:
-    pack = json.load(open(os.path.join(root, "vendor", "osquery-ai-discovery", "dist",
-                                       "ai-discovery.conf")))
-    for q in pack.get("queries", {}).values():
-        sql = q.get("query", "")
+    for q in json.load(open(os.path.join(root, pack_path)))["queries"].values():
+        sql = q["query"]
         ctes = set(re.findall(r"\b([A-Za-z_][A-Za-z0-9_]*)\s+AS\s*\(", sql))
         tables |= set(re.findall(r"\b(?:FROM|JOIN)\s+([A-Za-z_][A-Za-z0-9_]*)", sql)) - ctes
-except (OSError, ValueError):
-    pass
+except (OSError, ValueError, KeyError, AttributeError, TypeError) as exc:
+    print(f"FAIL: cannot read table names off {pack_path} ({exc!r}), so the plaintext-query "
+          f"scan below would cover nothing. Re-vendor with tools/vendor-queries.sh.")
+    sys.exit(1)
+if not tables:
+    print(f"FAIL: {pack_path} names no tables, so the plaintext-query scan would cover nothing.")
+    sys.exit(1)
 query_re = re.compile(r"\bFROM\s+(" + "|".join(sorted(map(re.escape, tables))) + r")\b")
 # Documentation quotes SQL on purpose, and this file names osqueryi to forbid it. Neither
 # is an implementation, so both are out of scope -- the scan covers what executes.
