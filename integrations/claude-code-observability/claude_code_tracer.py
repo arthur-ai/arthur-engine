@@ -205,12 +205,13 @@ def _claim_pending_agent_context(prompt: str = "") -> Optional[dict]:
     Returns the context dict (with ``parent_trace_id`` and ``parent_span_id``)
     or None.  Claiming removes the file so no other session can use it.
 
-    When ``prompt`` is provided (the subagent's own prompt text) we first try
-    to find an exact match against ``agent_prompt`` stored in each context
-    file.  This prevents parallel agent invocations from claiming each other's
-    contexts.  If no exact match is found we fall back to newest-first so that
-    contexts written by older tracer versions (which lack ``agent_prompt``) are
-    still claimed.
+    With a ``prompt`` (from UserPromptSubmit), only a context whose
+    ``agent_prompt`` is exactly that prompt is claimed.  Every session's
+    tracer shares this directory, so falling back to the newest context let
+    an unrelated session that started within the timeout of another
+    session's Agent call be filed as its subagent.  Without one (handle_pre_tool,
+    for a subagent session that gets no UserPromptSubmit), the newest context
+    is claimed.
     """
     if not _PENDING_AGENT_DIR.exists():
         return None
@@ -228,27 +229,15 @@ def _claim_pending_agent_context(prompt: str = "") -> Optional[dict]:
     if not candidates:
         return None
 
-    # Sort newest-first once; used by both the prompt-match pass and fallback.
     candidates.sort(key=lambda x: x[0], reverse=True)
-
-    # Pass 1: exact prompt match — eliminates parallel-agent races.
-    if prompt:
-        for _, path, ctx in candidates:
-            if ctx.get("agent_prompt", "") == prompt:
-                try:
-                    path.unlink()
-                    return ctx
-                except FileNotFoundError:
-                    # Another process claimed it first; keep scanning.
-                    continue
-
-    # Pass 2: fallback — newest unclaimed (handles legacy files without agent_prompt).
     for _, path, ctx in candidates:
-        try:
-            path.unlink()
-            return ctx
-        except FileNotFoundError:
-            continue
+        if not prompt or ctx.get("agent_prompt", "") == prompt:
+            try:
+                path.unlink()
+                return ctx
+            except FileNotFoundError:
+                # Another process claimed it first; keep scanning.
+                continue
     return None
 
 

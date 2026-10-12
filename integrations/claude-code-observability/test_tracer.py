@@ -2509,20 +2509,30 @@ class TestSubagentContextPropagation:
         assert ctx2 is not None and ctx2["parent_span_id"] == "span-2"
         assert not any((tmp_path / "pending_agent").iterdir())
 
-    def test_claim_falls_back_to_newest_when_no_prompt_match(
+    def test_unrelated_prompt_does_not_claim_another_sessions_context(
         self,
         tmp_path,
         monkeypatch,
     ):
-        """With no prompt match, fall back to newest-first (legacy behaviour)."""
+        """Break caught: a session started within the timeout of another
+        session's Agent call claimed its context by falling back to the
+        newest one, and was filed as that session's subagent."""
         monkeypatch.setattr(tracer, "_PENDING_AGENT_DIR", tmp_path / "pending_agent")
-        # Write two contexts without prompts (simulates older tracer versions)
+        tracer._write_pending_agent_context(
+            "other-sess", "trace-other", "span-other", agent_prompt="research X"
+        )
+        assert tracer._claim_pending_agent_context(prompt="unrelated prompt") is None
+        # The other session's subagent can still claim it.
+        ctx = tracer._claim_pending_agent_context(prompt="research X")
+        assert ctx is not None and ctx["parent_span_id"] == "span-other"
+
+    def test_claim_without_a_prompt_takes_the_newest(self, tmp_path, monkeypatch):
+        """handle_pre_tool claims without a prompt (no UserPromptSubmit)."""
+        monkeypatch.setattr(tracer, "_PENDING_AGENT_DIR", tmp_path / "pending_agent")
         tracer._write_pending_agent_context("s", "trace-old", "span-old")
         tracer._write_pending_agent_context("s", "trace-new", "span-new")
-        ctx = tracer._claim_pending_agent_context(prompt="unrelated prompt")
-        assert ctx is not None
-        # newest-first fallback means span-new is claimed
-        assert ctx["parent_span_id"] == "span-new"
+        ctx = tracer._claim_pending_agent_context()
+        assert ctx is not None and ctx["parent_span_id"] == "span-new"
 
     def test_subagent_inherits_trace_id(self, tmp_path, monkeypatch):
         """UserPromptSubmit for a new session should inherit the parent trace ID."""
