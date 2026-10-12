@@ -4,6 +4,7 @@ import importlib.util
 import json
 import os
 import threading
+import time
 from pathlib import Path
 
 import pytest
@@ -637,7 +638,7 @@ def test_otlp_export_timeout_finishes_inside_hook_timeout(monkeypatch):
         {
             "endpoint": "https://engine.example.com/api/v1/traces",
             "headers": {"Authorization": "Bearer example-test-key"},
-            "timeout": 4,
+            "timeout": tracer.EXPORT_TIMEOUT_SECONDS,
         }
     ]
 
@@ -721,7 +722,10 @@ def test_turn_lines_reads_only_the_turn_from_the_end_of_a_large_transcript(
 
     got = tracer._turn_lines(transcript, "target")
 
-    assert json.loads(got[0])["payload"] == {"type": "task_started", "turn_id": "target"}
+    assert json.loads(got[0])["payload"] == {
+        "type": "task_started",
+        "turn_id": "target",
+    }
     assert "TARGET_BODY" in got[1]
     assert len(got) == 2
 
@@ -776,7 +780,9 @@ def test_stop_exports_the_root_span_first_in_one_request(monkeypatch):
     monkeypatch.setattr(
         tracer, "_model_records", lambda state, data: ([model, model], "done")
     )
-    monkeypatch.setattr(tracer, "_root_span_record", lambda state, data, end: dict(root))
+    monkeypatch.setattr(
+        tracer, "_root_span_record", lambda state, data, end: dict(root)
+    )
     records = tracer._completed_records({}, {}, 3)
     tracer._build_and_export_spans(
         {"endpoint": "http://127.0.0.1:9", "api_key": "k", "task_id": "t"},
@@ -816,7 +822,11 @@ def test_stop_still_exports_a_root_when_the_turn_is_too_large_to_read(
         lambda *_: None,
     )
     tracer.handle_stop(
-        {**common(), "last_assistant_message": "DONE", "transcript_path": str(transcript)},
+        {
+            **common(),
+            "last_assistant_message": "DONE",
+            "transcript_path": str(transcript),
+        },
         config(),
         lambda _config, _session, records: exported.extend(records),
     )
@@ -864,3 +874,31 @@ def test_export_handles_more_records_than_the_default_queue(monkeypatch):
         {"endpoint": "http://127.0.0.1:9", "api_key": "k", "task_id": "t"}, "s", records
     )
     assert len(exported) == 2049
+
+
+def test_state_files_are_private_from_creation(isolated_state):
+    tracer.handle_user_prompt_submit(
+        {**common(), "prompt": "P"}, config(), lambda *_: None
+    )
+    (state_file,) = tracer.STATE_DIR.glob("*.json")
+    assert state_file.stat().st_mode & 0o777 == 0o600
+    assert tracer.STATE_DIR.stat().st_mode & 0o777 == 0o700
+
+
+def test_stale_lock_files_are_cleaned_up_with_stale_state(isolated_state):
+    """Break caught: one .lock per turn was left behind forever."""
+    tracer.STATE_DIR.mkdir(parents=True, exist_ok=True)
+    old = time.time() - tracer.STATE_MAX_AGE_SECONDS - 60
+    stale_lock = tracer.STATE_DIR / "old.lock"
+    stale_state = tracer.STATE_DIR / "old.json"
+    fresh_lock = tracer.STATE_DIR / "new.lock"
+    for path in (stale_lock, stale_state, fresh_lock):
+        path.write_text("")
+    for path in (stale_lock, stale_state):
+        os.utime(path, (old, old))
+
+    tracer._cleanup_stale_state()
+
+    assert not stale_lock.exists()
+    assert not stale_state.exists()
+    assert fresh_lock.exists()

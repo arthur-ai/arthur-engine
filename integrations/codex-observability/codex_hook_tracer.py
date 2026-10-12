@@ -80,25 +80,40 @@ def _agent_key(agent_id: str) -> str:
     return hashlib.sha256(agent_id.encode()).hexdigest()
 
 
+def _private_dir(directory: Path) -> Path:
+    directory.mkdir(mode=0o700, parents=True, exist_ok=True)
+    return directory
+
+
+def _write_private(path: Path, text: str) -> None:
+    """Write ``text`` to a file only its owner can read, from the moment it exists.
+
+    State and markers hold prompts and tool input; a write followed by chmod
+    would leave them world-readable in between.
+    """
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    os.fchmod(fd, 0o600)
+    with os.fdopen(fd, "w") as f:
+        f.write(text)
+
+
 def _state_path(session_id: str, turn_id: str) -> Path:
-    STATE_DIR.mkdir(parents=True, exist_ok=True)
+    _private_dir(STATE_DIR)
     return STATE_DIR / f"{_state_key(session_id, turn_id)}.json"
 
 
 def _lock_path(session_id: str, turn_id: str) -> Path:
-    STATE_DIR.mkdir(parents=True, exist_ok=True)
+    _private_dir(STATE_DIR)
     return STATE_DIR / f"{_state_key(session_id, turn_id)}.lock"
 
 
 def _agent_context_path(agent_id: str) -> Path:
-    directory = STATE_DIR / "agents"
-    directory.mkdir(parents=True, exist_ok=True)
+    directory = _private_dir(STATE_DIR / "agents")
     return directory / f"{_agent_key(agent_id)}.json"
 
 
 def _activation_path(session_id: str) -> Path:
-    directory = STATE_DIR / "activation"
-    directory.mkdir(parents=True, exist_ok=True)
+    directory = _private_dir(STATE_DIR / "activation")
     return directory / f"{hashlib.sha256(session_id.encode()).hexdigest()}.json"
 
 
@@ -123,8 +138,7 @@ def _load_state(session_id: str, turn_id: str) -> dict:
 
 def _save_state(state: dict) -> None:
     path = _state_path(state["session_id"], state["turn_id"])
-    path.write_text(json.dumps(state, sort_keys=True))
-    path.chmod(0o600)
+    _write_private(path, json.dumps(state, sort_keys=True))
 
 
 def _delete_state(session_id: str, turn_id: str) -> None:
@@ -142,8 +156,7 @@ def _load_agent_context(agent_id: str) -> dict:
 
 def _save_agent_context(context: dict) -> None:
     path = _agent_context_path(context["agent_id"])
-    path.write_text(json.dumps(context, sort_keys=True))
-    path.chmod(0o600)
+    _write_private(path, json.dumps(context, sort_keys=True))
 
 
 def _delete_agent_context(agent_id: str) -> None:
@@ -153,9 +166,12 @@ def _delete_agent_context(agent_id: str) -> None:
 def _cleanup_stale_state() -> None:
     try:
         cutoff = time.time() - STATE_MAX_AGE_SECONDS
-        for path in STATE_DIR.rglob("*.json"):
-            if path.stat().st_mtime < cutoff:
-                path.unlink(missing_ok=True)
+        # Turn locks are never removed when a turn ends (another hook may be
+        # waiting on one), so they go with the state once nothing can hold them.
+        for pattern in ("*.json", "*.lock"):
+            for path in STATE_DIR.rglob(pattern):
+                if path.stat().st_mtime < cutoff:
+                    path.unlink(missing_ok=True)
     except OSError as exc:
         log.debug("Could not clean stale hook state: %s", exc)
 
@@ -174,6 +190,10 @@ def _encoded_attribute(value: Any) -> str:
     return json.dumps(value, sort_keys=True, separators=(",", ":"), default=str)
 
 
+# Codex runs these hooks with a 5 s timeout.  The OTLP exporter retries a
+# failed connection within this budget, so an unreachable Engine costs about
+# twice this; 2 s keeps the hook inside the limit.
+EXPORT_TIMEOUT_SECONDS = 2
 TAIL_CHUNK_BYTES = 1 << 20
 # Stop runs under the hook timeout.  A turn whose transcript portion is bigger
 # than this (large tool outputs) is traced from the hook payload alone.
@@ -330,7 +350,8 @@ def handle_session_start(
     if not session_id:
         return
     path = _activation_path(session_id)
-    path.write_text(
+    _write_private(
+        path,
         json.dumps(
             {
                 "session_id": session_id,
@@ -339,9 +360,8 @@ def handle_session_start(
                 "observed_at_ns": time.time_ns(),
             },
             sort_keys=True,
-        )
+        ),
     )
-    path.chmod(0o600)
 
 
 def handle_user_prompt_submit(
@@ -903,7 +923,7 @@ def _build_and_export_spans(config: dict, session_id: str, records: list[dict]) 
     exporter = OTLPSpanExporter(
         endpoint=config["endpoint"],
         headers={"Authorization": f"Bearer {config['api_key']}"},
-        timeout=4,
+        timeout=EXPORT_TIMEOUT_SECONDS,
     )
     provider = TracerProvider(resource=resource, id_generator=ids)
     provider.add_span_processor(
@@ -948,6 +968,7 @@ def _build_and_export_spans(config: dict, session_id: str, records: list[dict]) 
             span.set_status(Status(StatusCode.OK))
         span.end(end_time=record["end_ns"])
     provider.shutdown()
+
 
 HANDLERS = {
     "session_start": handle_session_start,

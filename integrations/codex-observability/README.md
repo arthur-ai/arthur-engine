@@ -2,22 +2,28 @@
 
 Exports local Codex turns as OpenInference traces in Arthur Engine. Each user
 prompt becomes one `codex.turn` trace containing the final assistant response,
-tool spans, model metadata, token usage, and Codex session and turn IDs.
+the model's responses and tool-call requests, tool spans, model metadata, token
+usage, and Codex session and turn IDs.
 
 ## How it works
 
 Codex starts command hooks at defined points in its lifecycle. The integration
-registers `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, and `Stop` in Codex's
-`hooks.json`. Each hook starts
+registers seven of them in Codex's `hooks.json`: `SessionStart`,
+`UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `SubagentStart`,
+`SubagentStop`, and `Stop`. Each hook starts
 `arthur-engine/integrations/codex-observability/codex_hook_tracer.py`, which
 updates short-lived per-turn state or exports spans directly to Arthur Engine.
 There is no background daemon or local OTLP listener.
 
-Each handler has a five-second Codex timeout, while the outgoing OTLP request
-has a shorter four-second timeout. The generated command always exits
-successfully, including when the Python runtime, tracer, configuration, or
-Engine is unavailable. Observability therefore cannot block a Codex prompt or
-tool call.
+Each handler has a five-second Codex timeout. The OTLP export has a two-second
+timeout that bounds the whole export, retries included (this needs
+`opentelemetry-exporter-otlp-proto-http` 1.35 or later), so an unreachable
+Engine costs a hook about four seconds. `Stop` reads only the current turn from
+the end of the transcript and stops after 32 MB, so a long session can't push it
+past the timeout either. The generated command always exits successfully,
+including when the Python runtime, tracer, configuration, or Engine is
+unavailable. Observability therefore cannot fail a Codex prompt or tool call; an
+unreachable Engine slows each hook by up to the export timeout.
 
 ```text
 Codex lifecycle hook
@@ -67,7 +73,8 @@ The installer:
 3. Copies the tracer to `~/.codex/hooks/codex_hook_tracer.py`.
 4. Merges seven Arthur handlers into `~/.codex/hooks.json` without replacing
    other hook definitions. Reinstalling replaces older definitions of these
-   Arthur handlers instead of accumulating duplicates.
+   Arthur handlers instead of accumulating duplicates. If `hooks.json` can't be
+   parsed, the installer stops and leaves it unchanged.
 5. Writes `~/.codex/arthur_config.json` with mode `0600` when a complete `.env`
    or complete `GENAI_ENGINE_*` environment configuration is present.
 
@@ -95,8 +102,12 @@ cd arthur-engine/integrations/codex-observability
 ```
 
 This installs the runtime under `<project>/.codex/hooks/`, registers it in
-`<project>/.codex/hooks.json`, and keeps `<project>/.codex/arthur_config.json`
-out of version control. Codex loads project hooks only for trusted projects.
+`<project>/.codex/hooks.json`, and adds `<project>/.codex/arthur_config.json`,
+the venv and the tracer copy to the project's `.gitignore`. Codex loads project
+hooks only for trusted projects.
+
+`<project>/.codex/hooks.json` holds absolute paths to this machine's venv and
+tracer, so don't commit it; each developer runs the installer.
 
 ## Configuration
 
@@ -138,20 +149,29 @@ fails; Codex continues normally.
 ## Trace shape
 
 ```text
-codex.turn                         OpenInference LLM root
+codex.turn                         OpenInference CHAIN root
+├── codex/<model>                  OpenInference LLM (response, tool-call request)
 ├── Bash                           OpenInference TOOL
+├── codex/<model>                  OpenInference LLM
 ├── apply_patch                    OpenInference TOOL
-└── mcp__server__tool              OpenInference TOOL
+└── codex/<model>                  OpenInference LLM (final answer)
 ```
 
 The root includes:
 
-- `input.value` and `output.value`
+- `input.value` (the prompt) and `output.value` (the final answer)
 - `session.id`, `codex.thread.id`, and `codex.turn.id`
 - `llm.model_name`
-- prompt, completion, cached-input, reasoning, and total token counts when the
-  current transcript provides them
 - start and end timestamps from the hook lifecycle
+
+The LLM spans are read from the turn's part of the rollout transcript and carry
+the prompt, completion, cached-input, reasoning, and total token counts. If the
+transcript has usage for the turn but no model output, the counts go on the root.
+If the turn can't be read (no transcript, or the turn is larger than 32 MB), the
+trace has the root and tool spans only, with the answer from the `Stop` payload.
+
+Tool spans carry no status: `PostToolUse` gives the tool's model-facing output
+but no exit code, so a failed command can't be told apart.
 
 Codex currently exposes tool completion through `PostToolUse`; it does not
 provide the separate `PostToolUseFailure` lifecycle event used by the Claude
@@ -164,9 +184,12 @@ credentials or a running Engine.
 
 ```bash
 cd arthur-engine
-uv run --with pytest python -m pytest \
+uv run --no-project --with pytest \
+  --with-requirements integrations/codex-observability/requirements.txt \
+  python -m pytest \
   integrations/codex-observability/test_tracer.py \
-  integrations/codex-observability/test_install.py -v
+  integrations/codex-observability/test_install.py \
+  integrations/codex-observability/test_model_extraction.py -v
 ```
 
 For a live test, configure a disposable Arthur task, submit a harmless marked

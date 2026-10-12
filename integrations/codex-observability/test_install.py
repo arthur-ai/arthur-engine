@@ -197,3 +197,50 @@ def test_install_writes_mode_0600_config_from_environment_without_echoing_key(tm
         "task_id": "00000000-0000-0000-0000-000000000123",
         "endpoint": EXAMPLE_ENDPOINT,
     }
+
+
+def test_install_stops_without_touching_an_unreadable_hooks_file(tmp_path):
+    """Break caught: a hooks.json with a typo was replaced, deleting the
+    user's own hooks."""
+    codex_dir = tmp_path / ".codex"
+    codex_dir.mkdir()
+    hooks_path = codex_dir / "hooks.json"
+    broken = '{"hooks": {"Stop": [{"hooks": [{"command": "my-own-hook"}]}]},}\n'
+    hooks_path.write_text(broken)
+
+    result = _run("install.sh", tmp_path)
+
+    assert result.returncode != 0
+    assert "was not changed" in result.stderr
+    assert hooks_path.read_text() == broken
+
+
+def test_project_install_ignores_config_venv_and_tracer_copy(tmp_path):
+    project = tmp_path / "project"
+    project.mkdir()
+    (project / ".gitignore").write_text("node_modules/")  # no trailing newline
+
+    env = {"HOME": str(tmp_path)}
+    result = subprocess.run(
+        ["bash", str(INTEGRATION_DIR / "install.sh"), "--project-dir", str(project)],
+        env={**os.environ, **env, "CODEX_OBSERVABILITY_SKIP_DEPENDENCIES": "1"},
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    lines = (project / ".gitignore").read_text().splitlines()
+    assert lines == [
+        "node_modules/",
+        ".codex/arthur_config.json",
+        ".codex/hooks/.arthur-venv/",
+        ".codex/hooks/codex_hook_tracer.py",
+    ]
+
+    subprocess.run(
+        ["bash", str(INTEGRATION_DIR / "install.sh"), "--project-dir", str(project)],
+        env={**os.environ, **env, "CODEX_OBSERVABILITY_SKIP_DEPENDENCIES": "1"},
+        check=True,
+        capture_output=True,
+    )
+    assert (project / ".gitignore").read_text().splitlines() == lines

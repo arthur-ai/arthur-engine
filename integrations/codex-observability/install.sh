@@ -60,8 +60,10 @@ python_path = sys.argv[2]
 tracer_path = sys.argv[3]
 try:
     settings = json.loads(hooks_path.read_text()) if hooks_path.exists() else {}
-except (json.JSONDecodeError, OSError):
-    settings = {}
+except (json.JSONDecodeError, OSError) as exc:
+    sys.exit(f"Could not read {hooks_path}: {exc}. Fix it and rerun; it was not changed.")
+if not isinstance(settings, dict) or not isinstance(settings.get("hooks", {}), dict):
+    sys.exit(f"{hooks_path} does not hold a hooks object. Fix it and rerun; it was not changed.")
 
 hooks = settings.setdefault("hooks", {})
 for event, argument, matcher in (
@@ -140,12 +142,16 @@ config = {
     "task_id": os.environ["GENAI_ENGINE_TASK_ID"],
     "endpoint": os.environ["GENAI_ENGINE_TRACE_ENDPOINT"],
 }
-output_path.write_text(json.dumps(config, indent=2) + "\n")
-output_path.chmod(0o600)
+# Owner-only from creation: the file holds the API key.
+fd = os.open(output_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+os.fchmod(fd, 0o600)
+with os.fdopen(fd, "w") as f:
+    f.write(json.dumps(config, indent=2) + "\n")
 PY
 elif [[ -f "$ENV_FILE" ]]; then
     "$VENV_DIR/bin/python" - "$CODEX_ROOT/arthur_config.json" "$ENV_FILE" <<'PY'
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -165,8 +171,11 @@ config = {
     "endpoint": values.get("GENAI_ENGINE_TRACE_ENDPOINT", ""),
 }
 if all(config.values()):
-    output_path.write_text(json.dumps(config, indent=2) + "\n")
-    output_path.chmod(0o600)
+    # Owner-only from creation: the file holds the API key.
+    fd = os.open(output_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    os.fchmod(fd, 0o600)
+    with os.fdopen(fd, "w") as f:
+        f.write(json.dumps(config, indent=2) + "\n")
 else:
     print("Arthur .env is incomplete; config was not written", file=sys.stderr)
 PY
@@ -174,9 +183,15 @@ fi
 
 if [[ -n "$PROJECT_DIR" ]]; then
     GITIGNORE="$PROJECT_DIR/.gitignore"
-    if [[ ! -f "$GITIGNORE" ]] || ! grep -qF '.codex/arthur_config.json' "$GITIGNORE"; then
-        printf '\n.codex/arthur_config.json\n' >> "$GITIGNORE"
+    # The config holds the API key; the venv and tracer copy are per machine.
+    if [[ -s "$GITIGNORE" && -n "$(tail -c1 "$GITIGNORE")" ]]; then
+        printf '\n' >> "$GITIGNORE"
     fi
+    for entry in .codex/arthur_config.json .codex/hooks/.arthur-venv/ .codex/hooks/codex_hook_tracer.py; do
+        if [[ ! -f "$GITIGNORE" ]] || ! grep -qxF "$entry" "$GITIGNORE"; then
+            printf '%s\n' "$entry" >> "$GITIGNORE"
+        fi
+    done
 fi
 
 echo "Installed Codex tracer: $TRACER_DEST"
