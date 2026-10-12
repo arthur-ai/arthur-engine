@@ -16,9 +16,7 @@ import logging
 from typing import Any, List, Optional
 
 from arthur_client.api_bindings import Agent as ScopeAgent
-from arthur_client.api_bindings import (
-    AgentsV1Api,
-)
+from arthur_client.api_bindings import AgentsV1Api
 from arthur_client.api_bindings import Config as ScopeRuleConfig
 from arthur_client.api_bindings import (
     ExamplesConfig,

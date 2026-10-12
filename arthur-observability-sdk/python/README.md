@@ -102,6 +102,7 @@ Pass `--extras` to install any of these alongside the SDK.
 | `together` | Together AI | `instrument_together()` |
 | `vertexai` | Vertex AI | `instrument_vertexai()` |
 | `claude-agent-sdk` | Claude Agent SDK | `instrument_claude_agent_sdk()` |
+| `typesafe` | TypeSafe AI | `instrument_typesafe()` |
 
 Install all at once: `pip install "arthur-observability-sdk[all]"`
 

@@ -118,10 +118,16 @@
       "allowedVersions": "<5.14.0"
     },
     {
-      "description": "opentelemetry-api 1.39.1 (via opentelemetry-semantic-conventions 0.60b1) requires importlib-metadata>=6.0,<8.8.0, so importlib-metadata 8.8.x+ makes genai-engine unresolvable. Raise or drop this cap once the pinned OpenTelemetry stack widens its importlib-metadata ceiling.",
+      "description": "Cap importlib-metadata < 9.0.0: litellm 1.102.1 (the pinned version) requires importlib-metadata>=8.0.0,<9.0, so 9.x makes genai-engine unresolvable. This was <8.8.0 while opentelemetry-api 1.39.1 also capped it; opentelemetry-api 1.44.0 (PR #2410) dropped that dependency, so 8.8+ is now allowed. Raise or drop this cap once litellm widens its importlib-metadata ceiling.",
       "matchManagers": ["pep621"],
       "matchPackageNames": ["importlib-metadata"],
-      "allowedVersions": "<8.8.0"
+      "allowedVersions": "<9.0.0"
+    },
+    {
+      "description": "Cap sqlalchemy < 2.1.0: snowflake-sqlalchemy (ml-engine's Snowflake connector) subclasses sqlalchemy.orm.context.ORMSelectCompileState, which SQLAlchemy 2.1 made private, so it raises AttributeError at import. 1.11.1, the latest stable release, declares no upper bound and so still resolves, which is how PR #2410 reached CI; its 2.0.0 pre-releases declare sqlalchemy<2.1. In genai-engine, opentelemetry-instrumentation-sqlalchemy (every release through 0.66b1) declares sqlalchemy<2.1.0 and skips instrumenting outside that range, so DB tracing would stop without any test failing. Lift once a snowflake-sqlalchemy release supports SQLAlchemy 2.1 (snowflakedb/snowflake-sqlalchemy#652) and opentelemetry-instrumentation-sqlalchemy widens its range.",
+      "matchManagers": ["pep621"],
+      "matchPackageNames": ["sqlalchemy"],
+      "allowedVersions": "<2.1.0"
     },
     {
       "description": "Cap typescript < 6.1.0: typescript-eslint (a direct devDependency of genai-engine/ui) declares peer typescript '>=4.8.4 <6.1.0' and hard-throws at ESLint config load on any TS >= 7 ('typescript-eslint does not support TS 7.0'), so yarn lint cannot run at all. typescript 7.x is the native port and no longer exports the JS compiler API that @typescript-eslint/typescript-estree is built on, so this is not a version range a patch release widens: no published typescript-eslint (latest 8.68.0 or canary) admits TS 7.x, and upstream typescript-eslint#10940 targets TS >= 7.1, skipping 7.0 entirely. <6.1.0 mirrors the upstream peer ceiling exactly and still allows the typescript 6.0.x major, which typescript-eslint does support. Lift this cap once a typescript-eslint release widens its typescript peer range past 7.0.",

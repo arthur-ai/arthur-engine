@@ -13,6 +13,7 @@ import io
 import json
 import logging
 import re
+import socket
 from datetime import datetime, timezone
 from typing import Any, Optional
 
@@ -32,6 +33,11 @@ from discovery.endpoint.jamf.client import JamfClient, JamfError, JamfSettings
 from discovery.endpoint.jamf.connector import JamfConnector, _settings_from
 from discovery.endpoint.records import records_for
 from discovery.endpoint.scope import DeviceGroupError
+from job_executors.discovery_scan import (
+    DiscoveryConfigurationError,
+    DiscoveryErrorCode,
+    failure_code,
+)
 
 SCAN_AT = 1790100381
 LOG = logging.getLogger("discovery-test")
@@ -693,25 +699,24 @@ def test_a_missing_source_field_is_named(missing: str) -> None:
         _settings_from(creds, fields)
 
 
-def test_importing_the_package_registers_the_connector() -> None:
-    """The executor resolves a source's vendor against SOURCE_CONNECTORS, so a connector
-    nobody imported is a connector that fails its own job as an unsupported vendor."""
-    import discovery  # noqa: F401
-    from job_executors.discovery_scan import SOURCE_CONNECTORS
+def test_the_connector_is_registered() -> None:
+    """An executor resolves a source's vendor against `source_connectors()`, so a
+    connector missing from it is one that fails its own job as an unsupported vendor."""
+    from discovery import source_connectors
 
-    assert "jamf_pro" in SOURCE_CONNECTORS
-    # The registry holds factories, so each run gets its own connector rather than sharing
+    connectors = source_connectors()
+    assert "jamf_pro" in connectors
+    # The map holds factories, so each run gets its own connector rather than sharing
     # one that carries a session and a paging cursor between them.
-    assert SOURCE_CONNECTORS["jamf_pro"] is JamfConnector
-    assert isinstance(SOURCE_CONNECTORS["jamf_pro"](), JamfConnector)
+    assert connectors["jamf_pro"] is JamfConnector
+    assert isinstance(connectors["jamf_pro"](), JamfConnector)
 
 
 def test_the_registered_connector_satisfies_the_protocol() -> None:
     """Structural, not nominal: the executor calls .scan(...) with five arguments."""
-    import discovery  # noqa: F401
-    from job_executors.discovery_scan import SOURCE_CONNECTORS
+    from discovery import source_connectors
 
-    connector = SOURCE_CONNECTORS["jamf_pro"]()
+    connector = source_connectors()["jamf_pro"]()
     assert callable(getattr(connector, "scan", None))
 
 
@@ -959,6 +964,65 @@ def test_a_container_state_is_not_reported_as_a_version(
     records = [r for b in JamfConnector().scan(FakeConfig(catalog), 24, CREDS, FIELDS, LOG) for r in b]  # type: ignore[arg-type]
 
     assert records[0].creation_source.observations.version is None
+
+
+@pytest.mark.parametrize(
+    "kind,ident,loc,ver,install_path,version",
+    [
+        # queries/jetbrains.sql: `loc` is the plugin's directory or jar, `ver` its version
+        (
+            "jbplugin",
+            "example",
+            "/Users/u/Library/Application Support/JetBrains/IntelliJIdea2025.2/plugins/example",
+            "3.2.1",
+            "/Users/u/Library/Application Support/JetBrains/IntelliJIdea2025.2/plugins/example",
+            "3.2.1",
+        ),
+        # queries/running.sql: `loc` is the process executable, which for an npm agent
+        # run under node is the interpreter -- not where the agent is installed
+        ("proc", "com.example.agent", "/opt/homebrew/bin/node", "", None, None),
+    ],
+)
+def test_the_newer_kinds_report_only_a_real_path_and_version(
+    kind: str,
+    ident: str,
+    loc: str,
+    ver: str,
+    install_path: Optional[str],
+    version: Optional[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`jbplugin` carries its install path and version. `proc` carries neither: its `loc`
+    is an app bundle, an agent binary or the interpreter running one, depending on which
+    query emitted it.
+    """
+    catalog = yaml.safe_dump(
+        {
+            "version": 2,
+            "classifications": ["Coding agent"],
+            "agents": [
+                {
+                    "id": "example",
+                    "name": "Example",
+                    "classification": "Coding agent",
+                    "platforms": ["darwin"],
+                    "jetbrains_plugins": ["example"],
+                    "bundle_ids": ["com.example.agent"],
+                },
+            ],
+        },
+    )
+    payload = frame([row(kind, ident, loc=loc, ver=ver), scan_row("apps")])
+    fake = FakeJamf([[computer("m1", payload)]])
+    monkeypatch.setattr(
+        "discovery.endpoint.jamf.connector.JamfClient",
+        lambda s, logger=None: client_for(fake),
+    )
+    records = [r for b in JamfConnector().scan(FakeConfig(catalog), 24, CREDS, FIELDS, LOG) for r in b]  # type: ignore[arg-type]
+
+    obs = records[0].creation_source.observations
+    assert obs.install_path == install_path
+    assert obs.version == version
 
 
 # --- the secret in the token request's body ----------------------------------------
@@ -1553,3 +1617,90 @@ def test_the_record_schema_has_no_field_for_what_is_never_collected() -> None:
         "service_names",
         "classification",
     }
+
+
+# --- a base_url that is https but not a usable address ------------------------------
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://acme.jamfcloud.com:abc",
+        "https://user:hunter2@acme.jamfcloud.com",
+    ],
+)
+def test_a_base_url_that_is_not_a_usable_address_is_not_configured(url: str) -> None:
+    """https passes the scheme check, but requests cannot send to it, so a scheduled scan
+    read the ValueError it raised as the vendor failing. Which addresses are refused is
+    tested with discovery.address; this is that the connector asks it."""
+    with pytest.raises(DiscoveryConfigurationError) as caught:
+        _settings_from(CREDS, {"base_url": url})
+
+    assert failure_code(caught.value) == DiscoveryErrorCode.NOT_CONFIGURED
+    assert "base_url" in str(caught.value)
+    assert "hunter2" not in str(caught.value)
+    # Test Connection walks __cause__/__context__; the parse error must not ride along.
+    assert caught.value.__cause__ is None and caught.value.__context__ is None
+
+
+@pytest.fixture
+def lookups(monkeypatch: pytest.MonkeyPatch) -> list[str]:
+    """Hosts the real requests/urllib3 stack tried to resolve, i.e. tried to reach.
+
+    Each lookup is refused, so nothing leaves the machine either way."""
+    seen: list[str] = []
+
+    def refuse(host: str, *a: Any, **kw: Any) -> Any:
+        seen.append(host)
+        raise OSError("this test resolves nothing")
+
+    monkeypatch.setattr(socket, "getaddrinfo", refuse)
+    return seen
+
+
+def _scan_through_requests(url: str, monkeypatch: pytest.MonkeyPatch) -> BaseException:
+    """Run a scan with the real JamfClient and a real requests.Session, without the
+    environment, so an HTTPS_PROXY on the machine running the tests does not decide
+    which host gets looked up."""
+    http = requests.Session()
+    http.trust_env = False
+    monkeypatch.setattr(
+        "discovery.endpoint.jamf.connector.JamfClient",
+        lambda s, logger=None: JamfClient(
+            s,
+            logger=logger,
+            session=http,
+            sleep=lambda _s: None,
+        ),
+    )
+    with pytest.raises(Exception) as caught:
+        list(JamfConnector().scan(FakeConfig(CATALOG), 24, CREDS, {"base_url": url}, LOG))  # type: ignore[arg-type]
+    return caught.value
+
+
+def test_a_host_urllib3_refuses_at_connect_is_not_configured_and_never_reached(
+    lookups: list[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An empty label passes requests' URL preparation; urllib3 refuses it only when it
+    opens the connection, with LocationParseError. The up-front check applies the same
+    IDNA encoding, so the scan stops before any lookup of the host."""
+    exc = _scan_through_requests("https://acme..jamfcloud.com", monkeypatch)
+
+    assert failure_code(exc) == DiscoveryErrorCode.NOT_CONFIGURED
+    assert exc.__cause__ is None and exc.__context__ is None
+    assert "acme" not in str(exc)
+    assert lookups == []
+
+
+def test_a_well_formed_base_url_does_reach_the_network(
+    lookups: list[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The control for the test above: the same path with a valid host does try to
+    resolve it, so an empty `lookups` there means the request was stopped, not that
+    lookups go unrecorded."""
+    exc = _scan_through_requests("https://acme.jamfcloud.com", monkeypatch)
+
+    assert "acme.jamfcloud.com" in lookups
+    assert failure_code(exc) != DiscoveryErrorCode.NOT_CONFIGURED

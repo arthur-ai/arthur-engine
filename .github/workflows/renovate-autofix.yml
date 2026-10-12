@@ -200,6 +200,7 @@ jobs:
                 "PreToolUse": [{"matcher": "", "hooks": [{"type": "command", "command": "T=\"${{ runner.temp }}/claude_code_tracer.py\"; [ -f \"$T\" ] && python3 \"$T\" pre_tool; true"}]}],
                 "PostToolUse": [{"matcher": "", "hooks": [{"type": "command", "command": "T=\"${{ runner.temp }}/claude_code_tracer.py\"; [ -f \"$T\" ] && python3 \"$T\" post_tool; true"}]}],
                 "PostToolUseFailure": [{"matcher": "", "hooks": [{"type": "command", "command": "T=\"${{ runner.temp }}/claude_code_tracer.py\"; [ -f \"$T\" ] && python3 \"$T\" post_tool_failure; true"}]}],
+                "SubagentStop": [{"matcher": "", "hooks": [{"type": "command", "command": "T=\"${{ runner.temp }}/claude_code_tracer.py\"; [ -f \"$T\" ] && python3 \"$T\" subagent_stop; true"}]}],
                 "Stop": [{"matcher": "", "hooks": [{"type": "command", "command": "T=\"${{ runner.temp }}/claude_code_tracer.py\"; [ -f \"$T\" ] && python3 \"$T\" stop; true"}]}]
               }
             }

@@ -1,7 +1,8 @@
 # CLAUDE.md
 
-Endpoint AI agent discovery for Arthur. osquery finds what is installed on a Mac; a scheduled
-script writes a file; two Jamf Extension Attributes read it; a collector classifies.
+Endpoint AI agent discovery for Arthur. osquery finds what is installed on a Mac or a Linux VM;
+a scheduled script writes a file; Jamf Extension Attributes, or a Compute Engine VM's guest
+attributes, carry it; a collector classifies.
 
 ## The boundary, first
 
@@ -39,11 +40,13 @@ documented by Jamf.
 |---|---|
 | `vendor/osquery-ai-discovery/` | the queries and the runner, at a pinned ref. **The only osquery implementation. Do not edit** — run `tools/vendor-queries.sh`. |
 | `tools/vendor-queries.sh` | vendor `bin/` and `dist/` from the public repo at one ref. Not `catalog/` — that is the collector's. |
-| `tools/build-collector.py` | build `dist/collect.sh`, the single file an MDM deploys. Holds the `arthur1.` framing. |
-| `dist/collect.sh` | generated, and committed on purpose — a reviewer should see it change. |
-| `deploy/` | the LaunchDaemon, for fleets preferring a package to an MDM policy. |
+| `tools/build-collector.py` | build `dist/collect.sh` and `dist/collect-linux.sh`, one file per platform, around one driver. Holds the `arthur1.` framing. |
+| `dist/` | generated, and committed on purpose — a reviewer should see it change. |
+| `deploy/` | the LaunchDaemon for Macs; the systemd units and `report-guest-attributes.sh`, the Compute Engine carrier. |
 | `test/lint.sh` | static checks on everything this tree owns. ~1s, no VM. |
-| `test/run-collector.sh` | runs `dist/collect.sh` and asserts on it. ~15s, needs osquery. |
+| `test/run-collector.sh` | runs this platform's collector and asserts on it. ~15s, needs osquery. |
+| `test/run-guest-attributes.sh` | runs the reporter against a fake metadata server built from measured answers. ~3s, no osquery. |
+| `test/run-systemd.sh` | installs and runs the Linux collector under systemd. CI only — it writes to the machine. |
 
 ## Commands
 
@@ -53,17 +56,19 @@ vendor/osquery-ai-discovery/bin/discover          # raw rows, no framing, no fil
 vendor/osquery-ai-discovery/bin/discover --deep   # ...plus a live container scan
 
 tools/vendor-queries.sh <ref>         # vendor the public queries + catalog at a ref
-tools/build-collector.py              # build dist/collect.sh around them
+tools/build-collector.py              # build both collectors around them
 tools/build-collector.py --check      # ...and confirm it carries the vendored tree
 
 test/lint.sh                          # static checks, ~1s, no VM
-test/run-collector.sh                 # run the deployable and assert on it, ~15s
+test/run-collector.sh                 # run this platform's collector and assert on it, ~15s
+test/run-guest-attributes.sh          # what the Compute Engine reporter publishes, ~3s
 ```
 
 Run both after any vendor bump or template edit. `lint.sh` **reads** the deployable and
 `run-collector.sh` **runs** it, which is the difference that matters: every static guard here
 passed for as long as the collector's extraction preamble went unexecuted by anything but a
-human. Both run in CI, on Ubuntu and on a macOS runner respectively.
+human. CI runs lint and the reporter test on Ubuntu, the Mac collector on a macOS runner, and
+the Linux collector plus `run-systemd.sh` on an Ubuntu runner, where systemd is PID 1.
 
 **The VM scenario suite is upstream's.** At the vendored ref that is `test/lint.sh`,
 `test/docker_states.sh` (all six Docker daemon states, including `wedge`) and thirteen VM
@@ -144,14 +149,15 @@ against a real tenant, read-only; run it before a tenant's first scan.
 ## Conventions
 
 - `test/lint.sh` enforces what comments cannot: one implementation, a collector that carries
-  the vendored tree, no catalog in the payload, every `discover` flag still accepted, the
-  framing and its over-cap reason present, and a plist that runs the built collector. Add a
-  guard there whenever a class of bug could recur.
+  the vendored tree, no payload file that is not admitted by name, no `--names`, every
+  `discover` flag still accepted, the framing and its over-cap reason present, and a plist
+  that runs the built collector. Add a guard there whenever a class of bug could recur.
 - `dist/collect.sh` is generated. Edit the `COLLECTOR` template in `tools/build-collector.py`
   and rebuild; never edit the built file.
 - The endpoint enumerates and redacts; the collector classifies (D17). Keep catalog matching
   off the device, and keep anything path-shaped out of the status line — `/Library/Managed
-  Preferences` and the Jamf inventory record are readable by every Jamf admin.
+  Preferences` and the Jamf inventory record are readable by every Jamf admin. The bundle
+  carries `dist/signatures.sql` for upstream's `discover --names`; never pass that flag.
 - A vendored ref pinned to a bare commit prints `PROVISIONAL`. That is legitimate; pin a tag
   once one carries it.
 
@@ -182,8 +188,8 @@ does not need it.
 Apple Silicon. Running `dist/collect.sh` needs osquery and nothing else — no VM, and from
 vendored ref `v0.5.0` no interpreter either.
 
-**Both halves had to move, and ours was not sufficient alone.** `gzip`/`base64`/`plutil`
-replaced this tree's `python3 -c`; upstream then removed its last one, putting the JSON work
+**Both halves had to move, and ours was not sufficient alone.** `gzip`/`base64` and the vendored
+runner's `discover --cache` replaced this tree's `python3 -c`; upstream then removed its last one, putting the JSON work
 into shell helpers and osquery's own `json_valid`/`json_type`. In between, a claim that the
 deployable needed only osquery shipped and was false — the check behind it looked at
 `dist/collect.sh` and not at the vendored binaries inside it. `test/lint.sh` now derives the
