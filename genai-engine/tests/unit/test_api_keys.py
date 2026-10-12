@@ -135,13 +135,12 @@ def test_get_all_active_keys(api_key: ApiKeyResponse):
     status_code, api_keys = client.get_api_keys()
     assert status_code == 200
 
-    assert api_key.id in (key.id for key in api_keys)
-    assert api_key_2.id in (key.id for key in api_keys)
-    for key in api_keys:
-        if api_key.id == key.id:
-            assert_get_key(api_key, key)
-        else:
-            assert_get_key(api_key_2, key)
+    # other tests may leave keys active, so check only the two created here
+    keys_by_id = {key.id: key for key in api_keys}
+    assert api_key.id in keys_by_id
+    assert api_key_2.id in keys_by_id
+    assert_get_key(api_key, keys_by_id[api_key.id])
+    assert_get_key(api_key_2, keys_by_id[api_key_2.id])
     status_code = client.deactivate_api_key(api_key)
     assert status_code == 204
     status_code = client.deactivate_api_key(api_key_2)

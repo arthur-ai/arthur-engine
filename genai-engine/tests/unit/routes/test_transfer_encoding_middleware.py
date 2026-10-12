@@ -4,6 +4,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from monitoring.audit_log_middleware import AUDIT_LOGGER
 from server import TransferEncodingMiddleware, get_test_app
 from tests.clients.base_test_client import app
 
@@ -14,6 +15,18 @@ _minimal_app.add_middleware(TransferEncodingMiddleware)
 @_minimal_app.delete("/resource", status_code=204)
 async def delete_resource() -> None:
     return None
+
+
+@pytest.fixture(autouse=True)
+def remove_added_audit_handlers():
+    # get_test_app() attaches another audit file handler every time it runs, so
+    # without this every later request in the process is logged more than once.
+    handlers = list(AUDIT_LOGGER.handlers)
+    yield
+    for handler in AUDIT_LOGGER.handlers[:]:
+        if handler not in handlers:
+            AUDIT_LOGGER.removeHandler(handler)
+            handler.close()
 
 
 @pytest.fixture(scope="module")

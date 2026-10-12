@@ -350,7 +350,16 @@ def test_create_too_many_llm_rules(count, client: GenaiEngineTestClientBase):
         assert update_resp.status_code == 200
         print(client.get_configs().json())
 
-    for i in range(count):
+    try:
+        for i in range(count):
+            status_code, _ = client.create_rule(
+                "",
+                RuleType.MODEL_HALLUCINATION_V2,
+                examples=[],
+                prompt_enabled=False,
+                task_id=task_response.id,
+            )
+            assert status_code == 200
         status_code, _ = client.create_rule(
             "",
             RuleType.MODEL_HALLUCINATION_V2,
@@ -358,19 +367,22 @@ def test_create_too_many_llm_rules(count, client: GenaiEngineTestClientBase):
             prompt_enabled=False,
             task_id=task_response.id,
         )
-        assert status_code == 200
-    status_code, _ = client.create_rule(
-        "",
-        RuleType.MODEL_HALLUCINATION_V2,
-        examples=[],
-        prompt_enabled=False,
-        task_id=task_response.id,
-    )
-    assert status_code == 400
+        assert status_code == 400
 
-    # Non-LLM rules should be allowed
-    status_code, _ = client.create_rule("", RuleType.REGEX, task_id=task_response.id)
-    assert status_code == 200
+        # Non-LLM rules should be allowed
+        status_code, _ = client.create_rule(
+            "",
+            RuleType.REGEX,
+            task_id=task_response.id,
+        )
+        assert status_code == 200
+    finally:
+        # The limit is global config: put the default back for later tests.
+        if count != 3:
+            client.update_configs(
+                {"max_llm_rules_per_task_count": 3},
+                headers=client.authorized_org_admin_api_key_headers,
+            )
 
 
 @pytest.mark.unit_tests

@@ -1331,6 +1331,14 @@ def test_run_saved_llm_eval_strict_mode(
     status_code, task = client.create_task(task_name, is_agentic=True)
     assert status_code == 200
 
+    # configure a provider
+    response = client.base_client.put(
+        f"/api/v1/model_providers/openai",
+        json={"api_key": "test-key"},
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 201
+
     mock_response = MagicMock(spec=ModelResponse)
     mock_response.choices = [MagicMock()]
     mock_response.choices[0].message = {
