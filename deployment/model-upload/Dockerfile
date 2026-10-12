@@ -68,8 +68,8 @@ RUN python generate_aibom.py \
 # runtime images at 2.5.0-1+deb12u2 while bookworm-security ships u3.
 #
 # Debian fixes only reach these images on a rebuild; an unchanged image is
-# re-tagged on release (see security/README.md). Last rebuilt for libexpat1
-# 2.5.0-1+deb12u4 (CVE-2024-28757, CVE-2026-93990).
+# re-tagged on release (see security/README.md). Last rebuilt for perl-base
+# 5.36.0-7+deb12u4 and libpcre2-8-0 10.42-1+deb12u2 (models-gcs).
 # =============================================================================
 FROM python:3.12-slim-bookworm AS builder
 ARG BACKEND

@@ -17,9 +17,15 @@ property of the reporting channel, and neither is a fact about osquery. `tools/b
 `lint.sh` fails if `dist/collect.sh` passes `bin/discover` a flag the vendored runner no longer
 accepts, which is how that removal was caught rather than shipped.
 
-**Matching happens in exactly one place: the collector. The endpoint holds no catalog at all.**
+**Matching happens in exactly one place: the collector. The endpoint matches nothing.**
 Everything below follows from that. It is why the endpoint enumerates, why there is no summary
 Extension Attribute, and why a new signature can be added without re-scanning a single Mac.
+
+**One catalog-derived file rides in the payload, unread.** Upstream's bundler packs
+`dist/signatures.sql`, the catalog rendered into SQL, into every bundle for
+`bin/discover --names`. `dist/collect.sh` never passes `--names`, and `test/lint.sh` fails if it
+starts to. `tools/build-collector.py` admits payload files by name, so nothing else
+catalog-derived reaches an endpoint unvetted.
 
 The catalog the collector matches against is **authoritative in the public repo** and vendored
 here alongside the queries. One file, one place to add a signature, and a public one — a
@@ -77,8 +83,8 @@ ever talks to the collector.**
   │                        │ scheduled run: one process per branch,        │
   │                        │ guarded and wall-clock bounded                │
   │                        ▼                                               │
-  │  /var/lib/arthur/   inventory.ea   evidence, ~21 KB framed here        │
-  │                     status.txt     collection health, 154 bytes        │
+  │  /var/lib/arthur/   inventory.ea   evidence, ~24 KB framed here        │
+  │                     status.txt     collection health, 195 bytes        │
   └────────────────────────────────┬───────────────────────────────────────┘
                                    │ two Extension Attributes,
                                    │ collected by `jamf recon`
@@ -261,7 +267,7 @@ The names below are the reference deployment's; the collector finds the evidence
 
 | EA | Carries | Size |
 |---|---|---|
-| `Arthur AI Inventory` | the evidence — `arthur1.<base64(gzip(json))>`, or `ERROR:oversize:<bytes>` | ~21 KB, measured |
+| `Arthur AI Inventory` | the evidence — `arthur1.<base64(gzip(json))>`, or `ERROR:oversize:<bytes>` | ~24 KB, measured |
 | `Arthur AI Inventory Status` | collection health, plain text and greppable | 154 bytes, measured |
 
 The health line is the writer's own status output, unchanged:
@@ -403,9 +409,9 @@ are not.
 | EA value cap | **≥ 1 MB** | **Measured** 2026-09-05, and it is not the budget below. A 1,048,576-byte value round-tripped script → `jamf recon` → Jamf Pro → API read with an identical sha256 — not truncated, not rejected. Jamf documents no cap and the column is `LONGTEXT`. The ceiling above 1 MB is still unmeasured, and nothing here needs it |
 | Our time budget | 10s composed | **Self-imposed**, to keep recon brisk. Enforced by `tools/measure.py --check` |
 | Our size budget | 256 KB framed | **Self-imposed**, and **not** a bandwidth decision — fleet cost is payload × fleet (200 MB per sync at 10,000 Macs) whatever this says. It buys margin: `ERROR:oversize:<bytes>` is loud and known, what Jamf does past its own limit is unobserved, and margin keeps the known failure in front of the unknown one. Was 30 KB, which an ordinary Mac reached 68% of. At the measured 25.4 framed bytes/row it fires near 10,300 rows against the ~840 a loaded Mac carries — 13× a real machine, 4× under the measured floor, and a tripwire for a runaway branch |
-| Enumerated payload | 804 rows, 126,741 B raw, 20,808 B framed (8% of budget) | **Measured** at vendored ref `v0.4.0`, Apple Silicon, macOS 26.6.2, osquery 5.23.1, Docker up with 20 images. Was 778 rows / 19,288 B framed at `98eaeca`; v0.4.0's `ilabel` arm is the growth |
+| Enumerated payload | 929 rows, 155,562 B raw, 24,668 B framed (9% of budget) | **Measured** 2026-10-11 at vendored ref `v0.12.0`, Apple Silicon, macOS 26.6.2, osquery 5.23.1, Docker up, run unprivileged. 68 of the rows are `proc`, from the `running` branches v0.12.0 added. Was 804 rows / 20,808 B framed at `v0.4.0` |
 | Fleet cost through Jamf | 179 MB per full sync at 10,000 Macs | **Measured** (27 MB filtered). Now a cost accepted rather than avoided: it buys 10,000 fewer network paths. The same bytes leave the Mac either way |
-| Health line | 154 bytes | **Measured** at ten branches, all `ok`; a degraded line runs longer |
+| Health line | 195 bytes | **Measured** at thirteen branches (v0.12.0), all `ok`; a degraded line runs longer |
 | Jamf inventory cadence | at most once per day per device | **Documented by Jamf.** Caps end-to-end discovery latency at ~24h |
 | Jamf API concurrency | 5 concurrent connections | **Documented by Jamf.** No hard rate limit; exceeding it degrades Jamf Pro |
 | Incremental pulls | `general.reportDate` filter | **Documented by Jamf** — "devices that have submitted inventory within the last day" |
@@ -428,7 +434,8 @@ incremental server-to-server read, against push's `Mac → Jamf 154 B` plus `Mac
 | Decision | Why |
 |---|---|
 | The endpoint enumerates | A filtered endpoint never sends the evidence, so a new signature cannot re-match against what is already held — which is the property this tree's README already claims |
-| Matching happens only in the collector; the endpoint holds no catalog | One place to change, and changing it costs no fleet re-scan |
+| Matching happens only in the collector; the endpoint matches nothing | One place to change, and changing it costs no fleet re-scan |
+| `dist/signatures.sql` rides in the payload, unread | Upstream packs it into every bundle from v0.11.0. Leaving it out would mean patching the vendored bundler, and the catalog is public anyway. What the design forbids is matching on the endpoint, and that stays guarded: the collector never passes `--names` |
 | The catalog is authoritative in the public repo and vendored into the collector | A catalog of published identifiers is osquery material, and keeping it public means a signature is added once, in the open, next to the queries and the reference matcher. A second private catalog would drift, which is the failure enumeration exists to prevent |
 | No summary EA | Computing counts on the endpoint needs a catalog there. Under enumeration the retired summary query goes from 238 chars to **13,522**, with `ids=` naming **564** ids — Adobe, Citrix, stock Apple apps. And the counts stop meaning "AI things": `app=4` becomes `app=398` on the reference Mac. The status line carries collection health instead |
 | Jamf carries health only | Policies are managed in arthur-platform, so Jamf needs no findings targeting |

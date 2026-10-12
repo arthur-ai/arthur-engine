@@ -33,7 +33,11 @@ jobs:
   run-linter:
     needs: generate-client
     runs-on: ubuntu-latest
-    container: python:3.12-bullseye
+    container:
+      image: python:3.12-bullseye
+      credentials:
+        username: ${{ secrets.DOCKERHUB_ENTERPRISE_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_ENTERPRISE_TOKEN }}
     env:
       GIT_DEPTH: 100
     steps:
@@ -84,7 +88,11 @@ jobs:
   run-unit-tests:
     needs: generate-client
     runs-on: ubuntu-latest
-    container: python:3.12-bullseye
+    container:
+      image: python:3.12-bullseye
+      credentials:
+        username: ${{ secrets.DOCKERHUB_ENTERPRISE_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_ENTERPRISE_TOKEN }}
     env:
       GIT_DEPTH: 100
     steps:
@@ -109,7 +117,11 @@ jobs:
   run-integration-tests:
     needs: generate-client
     runs-on: ubuntu-latest
-    container: python:3.12-bullseye
+    container:
+      image: python:3.12-bullseye
+      credentials:
+        username: ${{ secrets.DOCKERHUB_ENTERPRISE_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_ENTERPRISE_TOKEN }}
     env:
       GIT_DEPTH: 100
     steps:

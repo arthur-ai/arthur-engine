@@ -3,12 +3,15 @@ from datetime import datetime
 from typing import Optional
 
 import pytest
-from arthur_common.models.enums import AgenticAnnotationType, ContinuousEvalRunStatus
+from arthur_common.models.enums import (
+    AgenticAnnotationType,
+    ContinuousEvalRunStatus,
+    EvalType,
+)
 from arthur_common.models.response_schemas import TraceResponse
 
 from db_models.agentic_annotation_models import DatabaseAgenticAnnotation
 from db_models.llm_eval_models import DatabaseContinuousEval
-from utils.constants import DEFAULT_ORG_ID
 from schemas.internal_schemas import AgenticAnnotation
 from schemas.request_schemas import AgenticAnnotationRequest
 from schemas.response_schemas import SessionTracesResponse
@@ -16,6 +19,7 @@ from tests.clients.base_test_client import (
     GenaiEngineTestClientBase,
     override_get_db_session,
 )
+from utils.constants import DEFAULT_ORG_ID
 
 
 def create_mock_continuous_eval(
@@ -25,12 +29,14 @@ def create_mock_continuous_eval(
     llm_eval_name: str,
     llm_eval_version: int,
     transform_id: uuid.UUID,
+    eval_type: EvalType = EvalType.LLM_EVAL,
 ) -> DatabaseContinuousEval:
     db_session = override_get_db_session()
     db_continuous_eval = DatabaseContinuousEval(
         id=continuous_eval_id,
         task_id=task_id,
         name=name,
+        eval_type=eval_type.value,
         llm_eval_name=llm_eval_name,
         llm_eval_version=llm_eval_version,
         transform_id=transform_id,
@@ -415,7 +421,32 @@ def test_get_annotation_by_id(
     assert status_code == 404
     assert f"annotation {fake_annotation_id} not found" in error.lower()
 
+    # ML continuous eval annotations report their eval type and no cost
+    continuous_eval_id = uuid.uuid4()
+    create_mock_continuous_eval(
+        continuous_eval_id=continuous_eval_id,
+        task_id="api_task1",
+        name="Test PII Continuous Eval",
+        llm_eval_name="test_pii_eval",
+        llm_eval_version=1,
+        transform_id=uuid.uuid4(),
+        eval_type=EvalType.ML_EVAL,
+    )
+    ml_annotation = create_mock_annotation(
+        trace_id=trace_id,
+        annotation_type=AgenticAnnotationType.CONTINUOUS_EVAL,
+        annotation_score=1,
+        continuous_eval_id=continuous_eval_id,
+        run_status=ContinuousEvalRunStatus.PASSED,
+    )
+    status_code, response = client.get_annotation_by_id(ml_annotation.id)
+    assert status_code == 200
+    assert response.eval_type == EvalType.ML_EVAL
+    assert response.cost is None
+
     # Cleanup
+    delete_mock_annotation(ml_annotation.id)
+    delete_mock_continuous_eval(continuous_eval_id)
     status_code, _ = client.trace_api_delete_annotation_from_trace(trace_id)
     assert status_code == 204
 
@@ -497,11 +528,13 @@ def test_list_trace_annotations_pagination(
         # Check new continuous eval fields
         if annotations[i].annotation_type == AgenticAnnotationType.CONTINUOUS_EVAL:
             assert data.annotations[i].continuous_eval_name == "Test Continuous Eval"
+            assert data.annotations[i].eval_type == EvalType.LLM_EVAL
             assert data.annotations[i].eval_name == "test_hallucination_eval"
             assert data.annotations[i].eval_version == 1
         else:
             # Human annotations should have None for these fields
             assert data.annotations[i].continuous_eval_name is None
+            assert data.annotations[i].eval_type is None
             assert data.annotations[i].eval_name is None
             assert data.annotations[i].eval_version is None
 
@@ -536,11 +569,13 @@ def test_list_trace_annotations_pagination(
         # Check new continuous eval fields
         if annotations[i].annotation_type == AgenticAnnotationType.CONTINUOUS_EVAL:
             assert data.annotations[i].continuous_eval_name == "Test Continuous Eval"
+            assert data.annotations[i].eval_type == EvalType.LLM_EVAL
             assert data.annotations[i].eval_name == "test_hallucination_eval"
             assert data.annotations[i].eval_version == 1
         else:
             # Human annotations should have None for these fields
             assert data.annotations[i].continuous_eval_name is None
+            assert data.annotations[i].eval_type is None
             assert data.annotations[i].eval_name is None
             assert data.annotations[i].eval_version is None
 

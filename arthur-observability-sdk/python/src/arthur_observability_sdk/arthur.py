@@ -670,3 +670,11 @@ class Arthur:
             "openinference.instrumentation.claude_agent_sdk",
             "ClaudeAgentSDKInstrumentor",
         )
+
+    def instrument_typesafe(self) -> Any:
+        return self._instrument(
+            "openinference-instrumentation-typesafe",
+            "typesafe",
+            "openinference.instrumentation.typesafe",
+            "TypeSafeAIInstrumentor",
+        )

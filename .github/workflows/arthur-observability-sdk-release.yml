@@ -56,7 +56,11 @@ jobs:
   build-wheel:
     needs: generate-client
     runs-on: ubuntu-latest
-    container: python:3.12-bullseye
+    container:
+      image: python:3.12-bullseye
+      credentials:
+        username: ${{ secrets.DOCKERHUB_ENTERPRISE_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_ENTERPRISE_TOKEN }}
     env:
       GIT_DEPTH: 100
     steps:
@@ -182,7 +186,11 @@ jobs:
     needs: generate-client-lts
     if: github.ref_type == 'tag'
     runs-on: ubuntu-latest
-    container: python:3.12-bullseye
+    container:
+      image: python:3.12-bullseye
+      credentials:
+        username: ${{ secrets.DOCKERHUB_ENTERPRISE_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_ENTERPRISE_TOKEN }}
     steps:
       - uses: actions/checkout@v4
         with:

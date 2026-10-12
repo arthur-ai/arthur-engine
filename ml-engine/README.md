@@ -18,6 +18,7 @@ This is the repository for the Arthur ML Engine, which computes evals over user-
     - [Run Integration Tests](#run-integration-tests)
     - [Running the ML Engine with a Local Version of the Arthur-Client (Optional, Dev only)](#running-the-ml-engine-with-a-local-version-of-the-arthur-client-optional-dev-only)
     - [Running the ML Engine with a Local Version of Arthur-Common (Optional, Dev only)](#running-the-ml-engine-with-a-local-version-of-arthur-common-optional-dev-only)
+  - [Standalone Agent Discovery](#standalone-agent-discovery)
 
 
 ## Developer Setup (for Mac)
@@ -225,3 +226,12 @@ version of the arthur-client into the Docker image.
    step 2 or the local arthur-common package you install will get overwritten by the one in the ml-engine pyproject.toml.
 2. In the same environment you just configured, go to arthur-common and run `pip install .`
 3. Complete steps 4-6 [above](#running-the-ml-engine-with-a-local-version-of-arthur-common-optional-dev-only).
+
+## Standalone Agent Discovery
+The ML Engine can also run without the Arthur Platform: pointed at a config file with
+`ML_ENGINE_DISCOVERY_CONFIG`, it scans the discovery sources the file names on an interval
+and sends the agents it finds to a SIEM (Splunk HEC) or webhook. See
+[docs/standalone-discovery.md](docs/standalone-discovery.md) for the config file and what the
+destination receives, and
+[deployment/docker-compose/ml-engine-standalone-discovery](../deployment/docker-compose/ml-engine-standalone-discovery/README.md)
+to run it with Docker Compose.

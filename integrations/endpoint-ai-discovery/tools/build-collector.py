@@ -24,9 +24,10 @@ Jamf admin does not have. It still names the real cause (this bundle carries the
 artifact), it fires before anything is unpacked, and the alternative is a second platform
 guard here, which is the duplication this change exists to remove.
 
-NO CATALOG IN THE PAYLOAD. Upstream refuses it too, but only in its own main(); this builds
-through bundle.build() and so asserts it here. The endpoint enumerates and matches nothing --
-see docs/architecture.md.
+NO CATALOG IN THE PAYLOAD, AND ONE CATALOG-DERIVED FILE CARRIED UNREAD. Upstream refuses the
+catalog too, but only in its own main(); this builds through bundle.build() and so asserts what
+may reach an endpoint itself, by name -- see ENDPOINT_FILES. The endpoint enumerates and
+matches nothing -- see docs/architecture.md.
 """
 
 import importlib.util
@@ -39,6 +40,23 @@ VENDOR = ROOT / "vendor" / "osquery-ai-discovery"
 DIST = ROOT / "dist"
 OUT = DIST / "collect.sh"
 PLATFORM = "darwin"
+
+# WHAT MAY REACH AN ENDPOINT, BY NAME. Upstream decides what its bundle packs; this decides what
+# Arthur deploys, so a file upstream adds is refused until it is named here. A pattern over
+# catalog-shaped names is not enough: the catalog rendered into SQL is named like a query.
+#
+# dist/signatures.sql IS CARRIED AND NEVER READ. It is the catalog rendered into SQL for
+# `bin/discover --names`, and upstream packs it into every bundle. The driver does not pass
+# --names and test/lint.sh fails if it starts to, so matching stays off the device. Leaving the
+# file out would mean patching the vendored bundler, and the catalog is public anyway.
+ENDPOINT_FILES = (
+    "bin/discover",
+    "bin/container-scan",
+    "dist/discovery-{platform}.sql",
+    "dist/discovery-deep.sql",
+    "dist/ai-discovery.conf",
+    "dist/signatures.sql",
+)
 
 
 def vendored_bundler():
@@ -331,12 +349,15 @@ def main():
             f"release notes. Re-vendoring will not fix a rename.",
         )
 
-    # The catalog must NOT be in the payload. Upstream asserts this in its own main(), which
-    # this does not go through, and the failure -- a Mac carrying the signatures it is
-    # supposed to enumerate past -- would be invisible in a 25KB base64 blob.
-    if any("catalog" in f or f.endswith(("agents.yaml", "routes.yaml")) for f in files):
+    # Only vetted files reach an endpoint. The failure this prevents -- a Mac carrying the
+    # catalog, or matching on it -- would be invisible in a base64 blob.
+    allowed = {f.format(platform=PLATFORM) for f in ENDPOINT_FILES}
+    unvetted = [f for f in files if f not in allowed]
+    if unvetted:
         sys.exit(
-            "the vendored bundler would pack the catalog. The endpoint holds no catalog.",
+            f"the vendored bundler would pack {unvetted}, which this tree has not vetted for "
+            f"endpoints. Anything catalog-derived must not ship; otherwise add it to "
+            f"ENDPOINT_FILES. The endpoint holds no catalog -- see docs/architecture.md.",
         )
 
     label = vendored_ref()

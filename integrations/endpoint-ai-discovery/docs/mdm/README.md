@@ -13,7 +13,7 @@ record shape are the same whoever carried the string, so none of them changes.
 | | What it means | Jamf Pro |
 |---|---|---|
 | **Run a script on a schedule** | Install and invoke `collect.sh` as root, hourly or thereabouts | Package policy + LaunchDaemon |
-| **A per-device string attribute** | Two of them, populated by a script that `cat`s a file. The evidence one reaches ~21 KB on a loaded Mac and must not be truncated | Extension Attribute (measured ≥ 1 MB) |
+| **A per-device string attribute** | Two of them, populated by a script that `cat`s a file. The evidence one reaches ~24 KB on a loaded Mac and must not be truncated | Extension Attribute (measured ≥ 1 MB) |
 | **An inventory API** | List devices with their attribute values, filtered and sorted on a per-device report date so a scan can page without losing records that shift mid-pagination | `/api/v1/computers-inventory` |
 | **A stable device id** | Assigned by the MDM, not the hardware serial — VMs and refurbished units produce empty or duplicate serials | `general.managementId` |
 

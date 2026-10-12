@@ -24,7 +24,6 @@ round for a tool nobody asked to have installed. A hundred sequential pages for 
 """
 
 import logging
-import random
 import time
 from dataclasses import dataclass
 from typing import Any, Iterator, Optional
@@ -35,6 +34,7 @@ from arthur_common.models.agent_governance_schemas import Platform
 
 from discovery.endpoint.device import ManagedDevice
 from discovery.endpoint.scope import DeviceGroup
+from discovery.retry import MAX_ATTEMPTS, RETRY_STATUSES, backoff_seconds
 
 # What the collector needs and nothing else. GENERAL carries `reportDate`, which is the
 # roster and the freshness signal; EXTENSION_ATTRIBUTES carries the payload. The other two
@@ -61,11 +61,6 @@ TOKEN_REFRESH_RATIO = 0.8
 # Jamf's `operatingSystem.name`, lowercased. Jamf Pro inventories Macs, and has called
 # their OS each of these over the years.
 _DARWIN_OS_NAMES = frozenset({"macos", "mac os x", "os x"})
-
-RETRY_STATUSES = frozenset({429, 500, 502, 503, 504})
-MAX_ATTEMPTS = 5
-BACKOFF_BASE_SECONDS = 1.0
-BACKOFF_CAP_SECONDS = 30.0
 
 
 class JamfError(RuntimeError):
@@ -216,18 +211,7 @@ class JamfClient:
 
     @staticmethod
     def _backoff(attempt: int, retry_after: Optional[str]) -> float:
-        """Honour Retry-After when Jamf sends one, else exponential with jitter.
-
-        Jittered because a fleet-wide job retrying on a fixed schedule is a thundering
-        herd against the customer's own Jamf Pro.
-        """
-        if retry_after:
-            try:
-                return min(float(retry_after), BACKOFF_CAP_SECONDS)
-            except ValueError:
-                pass
-        window = min(BACKOFF_BASE_SECONDS * (2 ** (attempt - 1)), BACKOFF_CAP_SECONDS)
-        return random.uniform(0, window)
+        return backoff_seconds(attempt, retry_after)
 
     # --- groups -------------------------------------------------------------------
 
