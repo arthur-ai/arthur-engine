@@ -168,8 +168,10 @@ the report: the reasoning is what stops the same idea coming back next audit.
 
 1. `gh api "repos/arthur-ai/arthur-engine/codeowners/errors?ref=<branch>"`
    returns `[]`.
-2. The step-2 script prints nothing.
-3. After merge, with the ruleset on: a throwaway PR touching a newly gated
-   file gets a code-owner review request; a Renovate PR touching
-   `genai-engine/ui/package.json` or `deployment/model-upload/uv.lock` does
-   not.
+2. The step-2 script prints no `NO MATCH`, and every `UNSUPPORTED` pattern
+   it prints has been checked by hand.
+3. After merge: a throwaway PR touching a newly gated file gets a code-owner
+   review request; a Renovate PR touching `genai-engine/ui/package.json` or
+   `deployment/model-upload/uv.lock` does not. This holds whether or not the
+   ruleset is on. Once it is on, also confirm the throwaway PR cannot merge
+   without that approval.
