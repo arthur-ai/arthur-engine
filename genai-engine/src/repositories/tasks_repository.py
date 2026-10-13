@@ -144,6 +144,9 @@ class TaskRepository:
             stmt = stmt.where(
                 DatabaseTask.id.not_in(TaskProvenanceRepository.reported_task_ids()),
             )
+            # The engine's own system tasks are never reported either, and are not
+            # agents: a caller uploading unreported tasks as agents must not see them.
+            stmt = stmt.where(DatabaseTask.is_system_task == False)
 
         # last_active is NOT a column on tasks: it is the most recent trace
         # end-time per task, derived from trace_metadata. We only join the

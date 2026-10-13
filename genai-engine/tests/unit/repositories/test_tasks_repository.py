@@ -434,6 +434,38 @@ def test_unreported_excludes_every_task_a_source_reported(repo_env):
 
 
 @pytest.mark.unit_tests
+def test_unreported_leaves_out_system_tasks(repo_env):
+    """System tasks are never reported by a source either, but they are the engine's
+    own bookkeeping, not agents, and must not be uploaded as if they were."""
+    repo, db_session, created, client = repo_env
+    now = datetime.now()
+
+    traced_task = _add_task(client, db_session, "traced-only", created_at=now)
+    system_task = _add_task(client, db_session, "__system__", created_at=now)
+    created["task_ids"] += [traced_task, system_task]
+    db_session.query(DatabaseTask).filter(DatabaseTask.id == system_task).update(
+        {"is_system_task": True},
+    )
+    db_session.commit()
+
+    try:
+        tasks, count = repo.query_tasks(
+            ids=[traced_task, system_task],
+            unreported=True,
+            page_size=None,
+        )
+
+        assert count == 1
+        assert [t.id for t in tasks] == [traced_task]
+    finally:
+        # Cleared so the fixture's API delete, which refuses system tasks, can run.
+        db_session.query(DatabaseTask).filter(DatabaseTask.id == system_task).update(
+            {"is_system_task": False},
+        )
+        db_session.commit()
+
+
+@pytest.mark.unit_tests
 def test_unreported_pages_by_cursor(repo_env):
     repo, db_session, created, client = repo_env
     now = datetime.now()
