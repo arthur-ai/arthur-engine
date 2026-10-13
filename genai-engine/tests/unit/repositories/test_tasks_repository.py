@@ -11,11 +11,12 @@ from arthur_common.models.agent_governance_schemas import (
     OTELAgentCreationSource,
     SIEMAgentCreationSource,
     SourceAddress,
+    SourceClass,
     TaskMetadata,
 )
 from arthur_common.models.enums import PaginationSortMethod
 
-from db_models import DatabaseTask
+from db_models import DatabaseTask, DatabaseTaskProvenanceSource
 from db_models.telemetry_models import DatabaseTraceMetadata
 from dependencies import get_application_config
 from repositories.metrics_repository import MetricRepository
@@ -386,6 +387,90 @@ def test_last_active_filter_respects_org_scope(repo_env):
     )
     assert count == 0
     assert tasks == []
+
+
+def _report(db_session, task_id, source_id):
+    """Record that a discovery source reported a task, as a scan's resolution does."""
+    reported_at = datetime.now()
+    db_session.add(
+        DatabaseTaskProvenanceSource(
+            source_id=source_id,
+            external_id=f"splunk-{task_id}",
+            task_id=task_id,
+            source_class=SourceClass.SIEM,
+            vendor="splunk_enterprise",
+            first_reported_at=reported_at,
+            last_reported_at=reported_at,
+        ),
+    )
+    db_session.commit()
+
+
+@pytest.mark.unit_tests
+def test_unreported_excludes_every_task_a_source_reported(repo_env):
+    repo, db_session, created, client = repo_env
+    now = datetime.now()
+    source_id = uuid.uuid4()
+
+    unreported_task = _add_task(client, db_session, "traced-only", created_at=now)
+    reported_task = _add_task(client, db_session, "discovered", created_at=now)
+    created["task_ids"] += [unreported_task, reported_task]
+    _report(db_session, reported_task, source_id)
+
+    try:
+        tasks, count = repo.query_tasks(
+            ids=[unreported_task, reported_task],
+            unreported=True,
+            page_size=None,
+        )
+
+        assert count == 1
+        assert [t.id for t in tasks] == [unreported_task]
+    finally:
+        db_session.query(DatabaseTaskProvenanceSource).filter(
+            DatabaseTaskProvenanceSource.source_id == source_id,
+        ).delete(synchronize_session=False)
+        db_session.commit()
+
+
+@pytest.mark.unit_tests
+def test_unreported_pages_by_cursor(repo_env):
+    repo, db_session, created, client = repo_env
+    now = datetime.now()
+
+    task_ids = [
+        _add_task(client, db_session, f"traced-{i}", created_at=now - timedelta(days=i))
+        for i in range(3)
+    ]
+    created["task_ids"] += task_ids
+
+    first, _ = repo.query_tasks(ids=task_ids, unreported=True, page_size=2)
+    rest, _ = repo.query_tasks(
+        ids=task_ids,
+        unreported=True,
+        page_size=2,
+        after_task_id=first[-1].id,
+    )
+
+    # Newest first, as with every other filter.
+    assert [t.id for t in first] == task_ids[:2]
+    assert [t.id for t in rest] == task_ids[2:]
+
+
+@pytest.mark.unit_tests
+@pytest.mark.parametrize(
+    "source_filter",
+    [
+        {"reported_by_source_id": uuid.uuid4()},
+        {"reported_since": datetime(2026, 9, 1)},
+    ],
+    ids=["reported_by_source_id", "reported_since"],
+)
+def test_unreported_with_a_source_filter_is_refused(repo_env, source_filter):
+    repo, _, _, _ = repo_env
+
+    with pytest.raises(ValueError):
+        repo.query_tasks(unreported=True, **source_filter)
 
 
 # --- _get_task_creation_source: service names reach every category (UP-4974) -------
