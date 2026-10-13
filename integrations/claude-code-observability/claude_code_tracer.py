@@ -26,9 +26,11 @@ Config priority (highest first):
 
 import contextlib
 import fcntl
+import hashlib
 import json
 import logging
 import os
+import subprocess
 import sys
 import time
 from datetime import datetime
@@ -121,6 +123,29 @@ def _save_state(session_id: str, state: dict) -> None:
         log.warning("Failed to save state for %s: %s", session_id, e)
 
 
+def _done_path(session_id: str, prompt_id: str) -> Path:
+    key = hashlib.sha256(f"{session_id}\0{prompt_id}".encode()).hexdigest()
+    return STATE_DIR / "done" / key
+
+
+def _mark_prompt_done(session_id: str, prompt_id: str) -> None:
+    """Remember that the turn of ``prompt_id`` finished, so a hook for it that
+    arrives after Stop (a message submitted just as the turn ended, a
+    repeated Stop) can't start it again."""
+    if not prompt_id:
+        return
+    try:
+        path = _done_path(session_id, prompt_id)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.touch()
+    except OSError as e:
+        log.debug("Failed to mark prompt %s done: %s", prompt_id, e)
+
+
+def _prompt_done(session_id: str, prompt_id: str) -> bool:
+    return bool(prompt_id) and _done_path(session_id, prompt_id).exists()
+
+
 def _delete_state(session_id: str) -> None:
     try:
         p = _state_path(session_id)
@@ -137,6 +162,8 @@ def _cleanup_stale_states() -> None:
             *STATE_DIR.glob("*.json"),
             *(STATE_DIR / _PENDING_AGENT_DIR.name).glob("*.json"),
             *_agent_span_dir().glob("*.json"),
+            *(STATE_DIR / "finalize").glob("*.json"),
+            *(STATE_DIR / "done").glob("*"),
         ]:
             if now - p.stat().st_mtime > STATE_MAX_AGE_S:
                 p.unlink()
@@ -201,12 +228,13 @@ def _claim_pending_agent_context(prompt: str = "") -> Optional[dict]:
     Returns the context dict (with ``parent_trace_id`` and ``parent_span_id``)
     or None.  Claiming removes the file so no other session can use it.
 
-    When ``prompt`` is provided (the subagent's own prompt text) we first try
-    to find an exact match against ``agent_prompt`` stored in each context
-    file.  This prevents parallel agent invocations from claiming each other's
-    contexts.  If no exact match is found we fall back to newest-first so that
-    contexts written by older tracer versions (which lack ``agent_prompt``) are
-    still claimed.
+    With a ``prompt`` (from UserPromptSubmit), only a context whose
+    ``agent_prompt`` is exactly that prompt is claimed.  Every session's
+    tracer shares this directory, so falling back to the newest context let
+    an unrelated session that started within the timeout of another
+    session's Agent call be filed as its subagent.  Without one (handle_pre_tool,
+    for a subagent session that gets no UserPromptSubmit), the newest context
+    is claimed.
     """
     if not _PENDING_AGENT_DIR.exists():
         return None
@@ -224,27 +252,15 @@ def _claim_pending_agent_context(prompt: str = "") -> Optional[dict]:
     if not candidates:
         return None
 
-    # Sort newest-first once; used by both the prompt-match pass and fallback.
     candidates.sort(key=lambda x: x[0], reverse=True)
-
-    # Pass 1: exact prompt match — eliminates parallel-agent races.
-    if prompt:
-        for _, path, ctx in candidates:
-            if ctx.get("agent_prompt", "") == prompt:
-                try:
-                    path.unlink()
-                    return ctx
-                except FileNotFoundError:
-                    # Another process claimed it first; keep scanning.
-                    continue
-
-    # Pass 2: fallback — newest unclaimed (handles legacy files without agent_prompt).
     for _, path, ctx in candidates:
-        try:
-            path.unlink()
-            return ctx
-        except FileNotFoundError:
-            continue
+        if not prompt or ctx.get("agent_prompt", "") == prompt:
+            try:
+                path.unlink()
+                return ctx
+            except FileNotFoundError:
+                # Another process claimed it first; keep scanning.
+                continue
     return None
 
 
@@ -530,22 +546,88 @@ def _session_lock(session_id: str):
 # ---------------------------------------------------------------------------
 
 
-def _iter_transcript_entries(transcript_path: str):
-    """Yield a transcript's entries, skipping blank and malformed lines.
+def _injected_prompt_text(entry: dict) -> Optional[str]:
+    """The prompt text of a queued_command attachment or an ``isMeta`` string
+    user entry, the two shapes an injected prompt is written as; else None."""
+    if entry.get("type") == "attachment":
+        attachment = entry.get("attachment")
+        if isinstance(attachment, dict) and attachment.get("type") == "queued_command":
+            prompt = attachment.get("prompt", "")
+            if isinstance(prompt, list):
+                return "\n".join(
+                    b.get("text", "")
+                    for b in prompt
+                    if isinstance(b, dict) and isinstance(b.get("text"), str)
+                )
+            return prompt if isinstance(prompt, str) else ""
+        return None
+    if entry.get("type") == "user" and entry.get("isMeta"):
+        content = entry.get("message", {}).get("content")
+        return content if isinstance(content, str) else None
+    return None
 
-    Yields nothing when the file can't be read.
+
+def _parse_entries(lines):
+    """Parse transcript lines, skipping blank and malformed ones."""
+    for line in lines:
+        if not line.strip():
+            continue
+        try:
+            entry = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(entry, dict):
+            yield entry
+
+
+def _turn_entries(entries):
+    """Yield ``entries`` with each turn starting at exactly one human message.
+
+    Claude Code labels the entries of each prompt with its id (``promptId``),
+    the same id it gives every hook as ``prompt_id``.  A turn starts where a
+    new id first appears, whatever shape its prompt has: typed text, an Agent
+    SDK block list, a background task's notification, a message from another
+    session.  A prompt that has no human-message shape of its own is yielded
+    as one there.  Nothing else starts a turn: not a message Claude Code
+    folds into the running turn (it carries no id of its own), not an
+    interrupt marker or a repeated prompt within the same id.
+
+    A transcript without ids (an older Claude Code) is yielded unchanged.
+    """
+    turn_prompt_id = None
+    for entry in entries:
+        prompt_id = entry.get("promptId")
+        if not (prompt_id or turn_prompt_id):
+            yield entry
+            continue
+        if prompt_id and prompt_id != turn_prompt_id and entry.get("type") == "user":
+            turn_prompt_id = prompt_id
+            if not _is_human_message(entry):
+                yield {
+                    "type": "user",
+                    "message": {
+                        "role": "user",
+                        "content": _injected_prompt_text(entry) or _human_text(entry),
+                    },
+                    "timestamp": entry.get("timestamp", ""),
+                    "uuid": entry.get("uuid"),
+                    "promptId": prompt_id,
+                }
+            yield entry
+        elif _is_human_message(entry):
+            yield {**entry, "isMeta": True}
+        else:
+            yield entry
+
+
+def _iter_transcript_entries(transcript_path: str):
+    """Yield a transcript's entries, skipping blank and malformed lines, with
+    turns marked as in _turn_entries.  Yields nothing when the file can't be
+    read.
     """
     try:
         with open(transcript_path) as fh:
-            for line in fh:
-                if not line.strip():
-                    continue
-                try:
-                    entry = json.loads(line)
-                except json.JSONDecodeError:
-                    continue
-                if isinstance(entry, dict):
-                    yield entry
+            yield from _turn_entries(_parse_entries(fh))
     except OSError:
         return
 
@@ -644,8 +726,56 @@ def _is_human_message(entry: dict) -> bool:
     if entry.get("type") != "user" or entry.get("isMeta"):
         return False
     content = entry.get("message", {}).get("content", "")
-    # Tool result messages have content as a list; human messages have a string
-    return isinstance(content, str)
+    if isinstance(content, str):
+        return True
+    # The Agent SDK sends a string prompt as [{"type": "text", ...}], and a
+    # pasted image arrives as image + text blocks.  Anything else in a list —
+    # tool results, the interrupt marker, blocks of unknown shape — is not a
+    # prompt and must not open or close a turn.
+    if not isinstance(content, list) or not content:
+        return False
+    if not all(
+        isinstance(b, dict) and b.get("type") in _PROMPT_BLOCK_TYPES for b in content
+    ):
+        return False
+    return _human_text(entry).strip() not in _INTERRUPT_MARKERS
+
+
+_PROMPT_BLOCK_TYPES = frozenset({"text", "image"})
+_INTERRUPT_MARKERS = frozenset(
+    {
+        "[Request interrupted by user]",
+        "[Request interrupted by user for tool use]",
+    },
+)
+
+
+def _human_text(entry: dict) -> str:
+    """Prompt text of a human message, whichever shape its content has."""
+    content = entry.get("message", {}).get("content", "")
+    if isinstance(content, str):
+        return content
+    return "\n".join(
+        b["text"]
+        for b in content
+        if isinstance(b, dict)
+        and b.get("type") == "text"
+        and isinstance(b.get("text"), str)
+        and b["text"]
+    )
+
+
+def _human_count_before_prompt(transcript_path: str, prompt_id: str) -> int:
+    """Number of human messages before the turn of ``prompt_id`` starts.  The
+    prompt is usually written just after UserPromptSubmit fires, so it's often
+    all of them so far."""
+    count = 0
+    for entry in _iter_transcript_entries(transcript_path):
+        if _is_human_message(entry):
+            if prompt_id and entry.get("promptId") == prompt_id:
+                return count
+            count += 1
+    return count
 
 
 def _count_human_messages(transcript_path: str) -> int:
@@ -674,7 +804,7 @@ def _get_latest_human_message(transcript_path: str) -> str:
     last = ""
     for entry in _iter_transcript_entries(transcript_path):
         if _is_human_message(entry):
-            last = entry.get("message", {}).get("content", "")
+            last = _human_text(entry)
     return last
 
 
@@ -987,14 +1117,9 @@ def _extract_llm_spans_for_turn(
             group_stop_reason = ""
             group_input_snapshot = {}
 
-        for line_no, line in enumerate(lines):
-            if not line.strip():
-                continue
-            try:
-                entry = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-
+        for line_no, entry in enumerate(
+            _turn_entries(_parse_entries(lines)),
+        ):
             entry_type = entry.get("type", "")
 
             # ── Human message: marks the start of this turn ──────────────────
@@ -1008,7 +1133,7 @@ def _extract_llm_spans_for_turn(
                     break
                 if human_count > human_count_at_start:
                     in_turn = True
-                    human_text = entry.get("message", {}).get("content", "")
+                    human_text = _human_text(entry)
                     last_input_value = json.dumps(
                         {"role": "user", "content": human_text[:500]},
                     )
@@ -1735,6 +1860,16 @@ def handle_user_prompt_submit(data: dict, config: dict) -> None:
             state["inherited_trace_id"] = parent_ctx["parent_trace_id"]
             state["parent_agent_span_id"] = parent_ctx["parent_span_id"]
 
+    # Claude Code gives every hook the id of the prompt being processed.  A
+    # message submitted while the turn runs carries the running turn's id
+    # (Claude Code folds it in), so it isn't a new turn.
+    prompt_id = data.get("prompt_id") or ""
+    ct = state.get("current_trace")
+    if prompt_id and (
+        (ct and ct.get("prompt_id") == prompt_id) or _prompt_done(session_id, prompt_id)
+    ):
+        return
+
     # Complete the previous turn's trace if one is in progress.
     # Use the cached transcript path from state so that any mid-session
     # project-dir changes (e.g. gh pr create writing to a worktree dir) do
@@ -1757,14 +1892,12 @@ def handle_user_prompt_submit(data: dict, config: dict) -> None:
         # Clear the cached path so the new turn resolves it fresh below
         state.pop("transcript_path", None)
 
-    # Count human messages for LLM span extraction.
-    # UserPromptSubmit fires before Claude processes the prompt, so the new
-    # message is not yet in the transcript — human_count_at_start equals the
-    # current count (the new prompt will become count+1 in the transcript).
-    # Resolve and immediately cache the transcript path for this new turn.
+    # Count human messages for LLM span extraction: the turn starts after
+    # this many.  Resolve and immediately cache the transcript path for this
+    # new turn.
     transcript_path = _get_cached_transcript_path(data, state, session_id)
     current_human_count = (
-        _count_human_messages(transcript_path) if transcript_path else 0
+        _human_count_before_prompt(transcript_path, prompt_id) if transcript_path else 0
     )
 
     turn_number = state.get("turn_number", 0) + 1
@@ -1790,11 +1923,49 @@ def handle_user_prompt_submit(data: dict, config: dict) -> None:
         "turn_number": turn_number,
         "human_count_at_start": current_human_count,
         "prompt_preview": _truncate(prompt) if prompt else "",
+        "prompt_id": prompt_id,
         # Non-None only for the first turn of a subagent; cleared after _complete_turn
         "parent_agent_span_id": parent_agent_span_id,
     }
 
     _save_state(session_id, state)
+
+
+def _prompt_text(transcript_path: Optional[str], prompt_id: str) -> str:
+    for entry in _iter_transcript_entries(transcript_path) if transcript_path else ():
+        if _is_human_message(entry) and entry.get("promptId") == prompt_id:
+            return _human_text(entry)
+    return ""
+
+
+def _start_turn_for_new_prompt(data: dict, config: dict, at_stop: bool) -> None:
+    """Start the turn a hook's prompt id names when no hook started it.
+
+    Claude Code runs a message queued during a turn as its own turn after
+    Stop without firing UserPromptSubmit, so the first hook with the new id
+    (a tool hook, or Stop for a turn without tools) is where it starts.
+    """
+    prompt_id = data.get("prompt_id") or ""
+    if not prompt_id or data.get("agent_id"):
+        return
+    session_id = data.get("session_id", "unknown")
+    if _prompt_done(session_id, prompt_id):
+        return
+    ct = _load_state(session_id).get("current_trace")
+    if ct:
+        if not ct.get("prompt_id") or ct["prompt_id"] == prompt_id:
+            return
+    elif not at_stop:
+        return  # handle_pre_tool's own fallback starts it
+    handle_user_prompt_submit(
+        {
+            "session_id": session_id,
+            "transcript_path": data.get("transcript_path"),
+            "prompt": _prompt_text(data.get("transcript_path"), prompt_id),
+            "prompt_id": prompt_id,
+        },
+        config,
+    )
 
 
 def handle_pre_tool(data: dict, config: dict) -> None:
@@ -1821,6 +1992,7 @@ def handle_pre_tool(data: dict, config: dict) -> None:
                 _save_agent_span_record(record)
                 return
 
+    _start_turn_for_new_prompt(data, config, at_stop=False)
     state = _load_state(session_id)
 
     # Initialize session on first call
@@ -1861,6 +2033,12 @@ def handle_pre_tool(data: dict, config: dict) -> None:
                 state.pop("current_trace", None)
                 state.pop("pending_tools", None)
 
+    if not state.get("current_trace") and _prompt_done(
+        session_id,
+        data.get("prompt_id") or "",
+    ):
+        return
+
     # Fallback: create a trace if UserPromptSubmit has not set one yet.
     # This handles cases where the hook isn't registered or fires before the
     # UserPromptSubmit event is available.
@@ -1898,6 +2076,7 @@ def handle_pre_tool(data: dict, config: dict) -> None:
             # was created by the pre_tool fallback path (before UPS fired) and
             # carry the inherited context forward to the real first turn.
             "_pretool_created": True,
+            "prompt_id": data.get("prompt_id") or "",
         }
 
     pending_entry: dict[str, Any] = {
@@ -2081,6 +2260,7 @@ def handle_post_tool(data: dict, config: dict) -> None:
         return
 
     # Read state once to build the tool span (no mutation needed).
+    _start_turn_for_new_prompt(data, config, at_stop=False)
     state = _load_state(session_id)
     if not state:
         log.warning("No state found for session %s in post_tool", session_id)
@@ -2292,9 +2472,71 @@ def handle_subagent_stop(data: dict, config: dict) -> None:
         )
 
 
+# How long the detached finalizer waits for the turn's last response.
+_FINAL_RESPONSE_WAIT_S = 15.0
+
+
+def _final_response_written(transcript_path: str, last_message: str) -> bool:
+    """Whether the transcript's latest response is the turn's final one."""
+    expected = "".join(last_message.split())
+    return "".join(_last_assistant_text(transcript_path).split()) == expected
+
+
+def _spawn_turn_finalizer(job: dict) -> None:
+    """Run ``finalize_turn`` for ``job`` in a detached process, so it outlives
+    the Stop hook and can read the transcript after Claude Code writes the
+    turn's last response."""
+    try:
+        directory = STATE_DIR / "finalize"
+        directory.mkdir(parents=True, exist_ok=True)
+        job_path = directory / f"{_new_span_id()}.json"
+        job_path.write_text(json.dumps(job))
+        subprocess.Popen(
+            [sys.executable, os.path.abspath(__file__), "finalize_turn", str(job_path)],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,
+            close_fds=True,
+        )
+    except Exception as e:
+        log.warning("Could not start the turn finalizer: %s", e)
+
+
+def _finalize_turn(job: dict, config: dict) -> None:
+    """Emit a finished turn's LLM spans written after its Stop hook returned."""
+    transcript_path = job["transcript_path"]
+    deadline = time.monotonic() + _FINAL_RESPONSE_WAIT_S
+    size = -1
+    while True:
+        try:
+            new_size = os.path.getsize(transcript_path)
+        except OSError:
+            new_size = -1
+        if new_size != size:
+            size = new_size
+            if size >= 0 and _final_response_written(
+                transcript_path,
+                job["last_message"],
+            ):
+                break
+        if time.monotonic() >= deadline:
+            log.debug("Final response never written to %s", transcript_path)
+            break
+        time.sleep(0.2)
+    state = {
+        "session_id": job["session_id"],
+        "username": job.get("username", "unknown"),
+        "current_trace": dict(job["current_trace"]),
+    }
+    _emit_pending_llm_spans(state, transcript_path, config)
+
+
 def handle_stop(data: dict, config: dict) -> None:
     session_id = data.get("session_id", "unknown")
     end_ns = time.time_ns()
+
+    _start_turn_for_new_prompt(data, config, at_stop=True)
 
     with _session_lock(session_id):
         state = _load_state(session_id)
@@ -2303,6 +2545,7 @@ def handle_stop(data: dict, config: dict) -> None:
             return
 
         transcript_path = _get_cached_transcript_path(data, state, session_id)
+        last_message = data.get("last_assistant_message") or ""
 
         # Detect context continuation: same check as handle_pre_tool.
         # When no tool calls happen during a continuation turn, handle_pre_tool
@@ -2338,9 +2581,44 @@ def handle_stop(data: dict, config: dict) -> None:
         # Emit the final LLM span(s) — the last response has no tool call after it,
         # so handle_post_tool never got the chance to emit it.
         _emit_pending_llm_spans(state, transcript_path, config)
+        # Claude Code can hold the turn's last transcript write until the Stop
+        # hooks have returned, so the final response may not be readable yet.
+        # The payload has it: it is the root's output, and a detached process
+        # emits the final LLM span once the write lands.
+        if last_message:
+            state["current_trace"]["last_llm_output"] = _truncate(last_message)
+            if transcript_path and _final_response_written(
+                transcript_path,
+                last_message,
+            ):
+                # Written while this hook ran: emit what the read above missed.
+                _emit_pending_llm_spans(state, transcript_path, config)
+                state["current_trace"]["last_llm_output"] = _truncate(last_message)
+            elif transcript_path:
+                ct = state["current_trace"]
+                _spawn_turn_finalizer(
+                    {
+                        "session_id": session_id,
+                        "username": state.get("username", "unknown"),
+                        "transcript_path": transcript_path,
+                        "last_message": last_message,
+                        "current_trace": {
+                            "trace_id": ct["trace_id"],
+                            "root_span_id": ct["root_span_id"],
+                            "human_count_at_start": ct.get("human_count_at_start", 0),
+                            "emitted_llm_span_count": ct.get(
+                                "emitted_llm_span_count",
+                                0,
+                            ),
+                        },
+                    },
+                )
 
         _complete_turn(state, config, transcript_path, end_ns)
 
+        _mark_prompt_done(
+            session_id, (state.get("current_trace") or {}).get("prompt_id", "")
+        )
         _delete_state(session_id)
 
     _cleanup_stale_states()
@@ -2349,6 +2627,25 @@ def handle_stop(data: dict, config: dict) -> None:
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+
+
+def _main_finalize_turn(args: list) -> None:
+    if not args:
+        return
+    job_path = Path(args[0])
+    try:
+        job = json.loads(job_path.read_text())
+    except (OSError, ValueError) as e:
+        log.warning("Could not read finalize job %s: %s", job_path, e)
+        return
+    try:
+        config = discover_config()
+        if config is not None:
+            _finalize_turn(job, config)
+    except Exception as e:
+        log.warning("Turn finalizer failed: %s", e, exc_info=True)
+    finally:
+        job_path.unlink(missing_ok=True)
 
 
 def main() -> None:
@@ -2360,6 +2657,9 @@ def main() -> None:
         sys.exit(0)
 
     event = sys.argv[1]
+    if event == "finalize_turn":
+        _main_finalize_turn(sys.argv[2:])
+        sys.exit(0)
 
     try:
         raw = sys.stdin.read()

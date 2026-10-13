@@ -6,6 +6,8 @@ Traces Claude Code sessions as OpenInference spans in Arthur Engine. Every user 
 
 The tracer hooks into Claude Code's `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `PostToolUseFailure`, `SubagentStop`, and `Stop` events. `UserPromptSubmit` fires before Claude starts processing each prompt, giving accurate turn start times and the exact prompt text. Tool failures are captured as error spans so they're visible in traces.
 
+A turn is identified by the `prompt_id` Claude Code passes to every hook, and the transcript entries labelled with the same `promptId`. That covers typed prompts, Agent SDK prompts, background-task notifications, messages from other sessions, and messages typed while Claude is working (which Claude Code folds into the running turn or runs as their own). Use a Claude Code version that sends `prompt_id` (2.1.241 and later are verified); with an older one, each `UserPromptSubmit` starts a turn.
+
 ```
 Trace: "claude-code-turn"              ← one per user prompt
 ├── LLM  claude/claude-sonnet-4-6     ← from transcript (actual timestamps)
