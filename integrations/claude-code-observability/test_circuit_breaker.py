@@ -510,6 +510,7 @@ def test_decide_trips_and_stays_open_through_cooldown(state_dir, fake_engine):
 
     state = cb.load_state(cb.state_key(ENGINE, config, "s"))
     assert state["status"] == cb.STATUS_OPEN
+    assert state["cooldown_until"] == (NOW + timedelta(minutes=15)).timestamp()
 
     # Within cooldown: blocked without touching the engine.
     fake.spans = []
@@ -542,6 +543,7 @@ def test_decide_half_open_reopens_when_still_burning(state_dir, fake_engine):
     assert probe.tripped and probe.fresh
     state = cb.load_state(cb.state_key(ENGINE, config, "s"))
     assert state["opened_at"] == later.timestamp()
+    assert state["cooldown_until"] == (later + timedelta(minutes=15)).timestamp()
 
 
 def test_decide_half_open_stays_open_when_engine_unreachable(state_dir, fake_engine):
@@ -574,6 +576,31 @@ def test_save_state_prunes_stale_files(state_dir):
     cb.save_state("current", {"status": "closed"})
     remaining = sorted(p.name for p in state_dir.iterdir())
     assert remaining == ["current.json", "notes.txt", "recent.json"]
+
+
+def test_prune_keeps_open_state_until_its_cooldown_ends(state_dir):
+    state_dir.mkdir(parents=True)
+    import os
+
+    old_ts = NOW.timestamp() - cb.STATE_MAX_AGE_S - 60
+    files = {
+        "open.json": {"status": cb.STATUS_OPEN, "cooldown_until": NOW.timestamp() + 1},
+        "lapsed.json": {
+            "status": cb.STATUS_OPEN,
+            "cooldown_until": NOW.timestamp() - 1,
+        },
+        "legacy.json": {"status": cb.STATUS_OPEN},  # written before cooldown_until
+        "bad.json": {"status": cb.STATUS_OPEN, "cooldown_until": "soon"},
+        "closed.json": {
+            "status": cb.STATUS_CLOSED,
+            "cooldown_until": NOW.timestamp() + 1,
+        },
+    }
+    for name, state in files.items():
+        (state_dir / name).write_text(json.dumps(state))
+        os.utime(state_dir / name, (old_ts, old_ts))
+    cb._prune_stale_state(exclude="current", now_ts=NOW.timestamp())
+    assert [p.name for p in state_dir.iterdir()] == ["open.json"]
 
 
 def test_decide_scope_keys_are_isolated(state_dir, fake_engine):

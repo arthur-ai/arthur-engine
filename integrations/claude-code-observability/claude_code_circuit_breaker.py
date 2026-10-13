@@ -762,17 +762,31 @@ def save_state(key: str, state: dict) -> None:
     _prune_stale_state(exclude=key)
 
 
+def _cooldown_active(state: dict, now_ts: float) -> bool:
+    if state.get("status") != STATUS_OPEN:
+        return False
+    try:
+        return float(state.get("cooldown_until", 0)) > now_ts
+    except (TypeError, ValueError):
+        return False
+
+
 def _prune_stale_state(exclude: str, now_ts: Optional[float] = None) -> None:
     """Drop state and lock files untouched for STATE_MAX_AGE_S (session-scope
-    keys are created per Claude Code session and never revisited)."""
+    keys are created per Claude Code session and never revisited), except an
+    open breaker still inside its cooldown: that file is not rewritten while
+    it waits, so a cooldown longer than STATE_MAX_AGE_S would look stale."""
     now_ts = now_ts if now_ts is not None else datetime.now(timezone.utc).timestamp()
     try:
         for p in STATE_DIR.iterdir():
             if p.stem == exclude or p.suffix not in (".json", ".lock"):
                 continue
             with contextlib.suppress(OSError):
-                if now_ts - p.stat().st_mtime > STATE_MAX_AGE_S:
-                    p.unlink()
+                if now_ts - p.stat().st_mtime <= STATE_MAX_AGE_S:
+                    continue
+                if p.suffix == ".json" and _cooldown_active(_load_json_file(p), now_ts):
+                    continue
+                p.unlink()
     except OSError as e:
         log.debug("Failed to prune breaker state: %s", e)
 
@@ -868,6 +882,7 @@ def decide(
                 state.update(
                     status=STATUS_OPEN,
                     opened_at=now_ts,
+                    cooldown_until=now_ts + cooldown_s,
                     reason=evaluation.reason,
                     last_check_at=now_ts,
                     last_evaluation=evaluation.to_dict(),
@@ -900,6 +915,7 @@ def decide(
             state = {
                 "status": STATUS_OPEN,
                 "opened_at": now_ts,
+                "cooldown_until": now_ts + cooldown_s,
                 "reason": evaluation.reason,
                 "last_check_at": now_ts,
                 "last_evaluation": evaluation.to_dict(),
