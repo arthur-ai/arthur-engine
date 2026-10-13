@@ -6658,6 +6658,41 @@ class TestReviewFollowUps:
             s["attributes"]["output.value"] for s in self._kind(captured, "LLM")
         ] == ["PEER_ANSWER"]
 
+    def test_peer_message_written_after_its_user_prompt_submit(
+        self, tmp_path, monkeypatch
+    ):
+        """Break caught: on the CLI an idle session's peer message is written
+        after UserPromptSubmit fires, and the deferred claim accepted only
+        queued_command attachments, so the turn got no LLM spans."""
+        captured = self._capture(monkeypatch)
+        monkeypatch.setattr(tracer, "_spawn_turn_finalizer", lambda job: None)
+        transcript = tmp_path / "pa.jsonl"
+        transcript.write_text("")
+        text = "Another Claude session sent a message:\n<cross-session-message>check</cross-session-message>"
+        peer = {
+            "type": "user",
+            "isMeta": True,
+            "uuid": "m2",
+            "origin": {"kind": "peer"},
+            "message": {"role": "user", "content": text},
+        }
+        self._write(
+            transcript, human_entry("first"), llm_entry("first answer", ts=at(1))
+        )
+        base = {"session_id": "pa1", "transcript_path": str(transcript)}
+        tracer.handle_user_prompt_submit(
+            {**base, "prompt": "<cross-session-message>check</cross-session-message>"},
+            self.CONFIG,
+        )
+        self._write(transcript, peer, llm_entry("PEER_ANSWER", ts=at(12)))
+        tracer.handle_stop(
+            {**base, "last_assistant_message": "PEER_ANSWER"}, self.CONFIG
+        )
+        assert tracer._load_claimed_prompts(str(transcript)) == {"m2"}
+        assert [
+            s["attributes"]["output.value"] for s in self._kind(captured, "LLM")
+        ] == ["PEER_ANSWER"]
+
     def test_final_response_written_after_stop_returns(self, tmp_path, monkeypatch):
         """Break caught: Claude Code can hold the turn's last transcript write
         until the Stop hooks finish, so no wait inside Stop sees it."""

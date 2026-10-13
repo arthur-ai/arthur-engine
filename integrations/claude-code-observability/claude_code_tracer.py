@@ -841,16 +841,18 @@ def _claim_prompt_at_submit(transcript_path: str, prompt: str) -> bool:
 
 
 def _claim_queued_prompt_after(transcript_path: str, prompt: str, offset: int) -> bool:
-    """Claim the first queued_command attachment written after ``offset`` whose
-    text contains ``prompt``.  Only a queued prompt is written after its
-    UserPromptSubmit, and only what was written since can be it."""
+    """Claim the first injected prompt (see _injected_prompt_text) written
+    after ``offset`` whose text contains ``prompt``.  A queued prompt or a
+    peer message can be written after its UserPromptSubmit fires, and only
+    what was written since can be it: an older entry with the same text is
+    never considered."""
     want = " ".join(prompt.split())
     claimed = _load_claimed_prompts(transcript_path)
     try:
         with open(transcript_path) as fh:
             fh.seek(offset)
             for entry in _parse_entries(fh):
-                if entry.get("type") != "attachment" or entry.get("uuid") in claimed:
+                if entry.get("uuid") in claimed:
                     continue
                 text = _injected_prompt_text(entry)
                 if text is None or not entry.get("uuid"):
