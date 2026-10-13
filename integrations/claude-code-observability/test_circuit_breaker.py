@@ -578,29 +578,31 @@ def test_save_state_prunes_stale_files(state_dir):
     assert remaining == ["current.json", "notes.txt", "recent.json"]
 
 
-def test_prune_keeps_open_state_until_its_cooldown_ends(state_dir):
+def test_prune_ages_open_state_from_its_cooldown_end(state_dir):
     state_dir.mkdir(parents=True)
     import os
 
-    old_ts = NOW.timestamp() - cb.STATE_MAX_AGE_S - 60
+    now = NOW.timestamp()
+    old_ts = now - cb.STATE_MAX_AGE_S - 60
     files = {
-        "open.json": {"status": cb.STATUS_OPEN, "cooldown_until": NOW.timestamp() + 1},
+        # Still cooling down: kept however old the file is.
+        "open.json": {"status": cb.STATUS_OPEN, "cooldown_until": now + 1},
+        # Cooldown ended recently: kept so the half-open probe can run.
+        "waiting.json": {"status": cb.STATUS_OPEN, "cooldown_until": now - 60},
+        # Cooldown ended longer ago than the prune age: nobody is coming back.
         "lapsed.json": {
             "status": cb.STATUS_OPEN,
-            "cooldown_until": NOW.timestamp() - 1,
+            "cooldown_until": now - cb.STATE_MAX_AGE_S - 1,
         },
         "legacy.json": {"status": cb.STATUS_OPEN},  # written before cooldown_until
         "bad.json": {"status": cb.STATUS_OPEN, "cooldown_until": "soon"},
-        "closed.json": {
-            "status": cb.STATUS_CLOSED,
-            "cooldown_until": NOW.timestamp() + 1,
-        },
+        "closed.json": {"status": cb.STATUS_CLOSED, "cooldown_until": now + 1},
     }
     for name, state in files.items():
         (state_dir / name).write_text(json.dumps(state))
         os.utime(state_dir / name, (old_ts, old_ts))
-    cb._prune_stale_state(exclude="current", now_ts=NOW.timestamp())
-    assert [p.name for p in state_dir.iterdir()] == ["open.json"]
+    cb._prune_stale_state(exclude="current", now_ts=now)
+    assert sorted(p.name for p in state_dir.iterdir()) == ["open.json", "waiting.json"]
 
 
 def test_decide_scope_keys_are_isolated(state_dir, fake_engine):

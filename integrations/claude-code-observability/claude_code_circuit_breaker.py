@@ -762,31 +762,32 @@ def save_state(key: str, state: dict) -> None:
     _prune_stale_state(exclude=key)
 
 
-def _cooldown_active(state: dict, now_ts: float) -> bool:
-    if state.get("status") != STATUS_OPEN:
-        return False
-    try:
-        return float(state.get("cooldown_until", 0)) > now_ts
-    except (TypeError, ValueError):
-        return False
+def _state_age_s(p: Path, now_ts: float) -> float:
+    """Seconds since the file last mattered: its mtime, or for an open breaker
+    the end of its cooldown if that is later. An open breaker is not rewritten
+    while it waits, and after the cooldown it still holds the half-open probe
+    that decides whether to close, so its age runs from the cooldown end."""
+    last = p.stat().st_mtime
+    if p.suffix == ".json":
+        state = _load_json_file(p)
+        if state.get("status") == STATUS_OPEN:
+            with contextlib.suppress(TypeError, ValueError):
+                last = max(last, float(state.get("cooldown_until", 0)))
+    return now_ts - last
 
 
 def _prune_stale_state(exclude: str, now_ts: Optional[float] = None) -> None:
-    """Drop state and lock files untouched for STATE_MAX_AGE_S (session-scope
-    keys are created per Claude Code session and never revisited), except an
-    open breaker still inside its cooldown: that file is not rewritten while
-    it waits, so a cooldown longer than STATE_MAX_AGE_S would look stale."""
+    """Drop state and lock files that have not mattered for STATE_MAX_AGE_S
+    (session-scope keys are created per Claude Code session and never
+    revisited, so they can only be cleaned up by age)."""
     now_ts = now_ts if now_ts is not None else datetime.now(timezone.utc).timestamp()
     try:
         for p in STATE_DIR.iterdir():
             if p.stem == exclude or p.suffix not in (".json", ".lock"):
                 continue
             with contextlib.suppress(OSError):
-                if now_ts - p.stat().st_mtime <= STATE_MAX_AGE_S:
-                    continue
-                if p.suffix == ".json" and _cooldown_active(_load_json_file(p), now_ts):
-                    continue
-                p.unlink()
+                if _state_age_s(p, now_ts) > STATE_MAX_AGE_S:
+                    p.unlink()
     except OSError as e:
         log.debug("Failed to prune breaker state: %s", e)
 
