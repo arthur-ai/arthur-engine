@@ -4,6 +4,7 @@ Unit tests for claude_code_tracer.py
 Run with:  python3 -m pytest integrations/claude-code-observability/test_tracer.py -v
 """
 
+import contextlib
 import json
 import os
 import sys
@@ -7023,3 +7024,78 @@ class TestPromptSubmittedMidTurn:
         chains = kind("CHAIN")
         assert len(chains) == 2
         assert chains[1]["attributes"]["output.value"] == "NEXT"
+
+
+def _meta_entry(text):
+    return {
+        "type": "user",
+        "isMeta": True,
+        "uuid": "meta",
+        "message": {"role": "user", "content": text},
+    }
+
+
+@pytest.mark.parametrize(
+    "prompt,entry,expected",
+    [
+        ("yes", _meta_entry("A caveat: yesterday was different"), False),
+        ("", _meta_entry("Unrelated skill instructions"), False),
+        ("yes", queued_prompt_entry("yesterday check"), False),
+        ("", queued_prompt_entry("an unrelated request"), False),
+        ("yes", queued_prompt_entry(" yes \n"), True),
+        ("", queued_prompt_entry([{"type": "image", "source": {}}]), True),
+    ],
+    ids=[
+        "meta-substring",
+        "meta-empty",
+        "queued-substring",
+        "queued-empty-unrelated",
+        "queued-exact",
+        "queued-image-only",
+    ],
+)
+def test_folded_prompt_matches_only_its_own_queued_entry(
+    tmp_path, prompt, entry, expected
+):
+    """Break caught: a substring or empty match counted a prompt as folded,
+    so a message run after Stop never got its own trace."""
+    path = tmp_path / "f.jsonl"
+    path.write_text(json.dumps(entry) + "\n")
+    assert tracer._folded_into_turn(str(path), prompt, 0) is expected
+
+
+def test_prompt_submitted_while_stop_ends_the_turn_starts_a_fresh_one(
+    tmp_path, monkeypatch
+):
+    """Break caught: Stop deleted the state while a mid-turn prompt waited for
+    the lock, and the prompt saved a turn without the session's fields."""
+    sid = "race1"
+    path = tmp_path / "r.jsonl"
+    path.write_text(json.dumps(human_entry("first")) + "\n")
+    tracer._save_state(
+        sid,
+        {
+            "session_id": sid,
+            "turn_number": 1,
+            "human_msg_count": 1,
+            "current_trace": {"trace_id": "a" * 32, "root_span_id": "b" * 16},
+        },
+    )
+    monkeypatch.setattr(tracer, "_turn_still_running", lambda p: True)
+    real_lock = tracer._session_lock
+
+    @contextlib.contextmanager
+    def stop_finishes_first(session_id):
+        tracer._delete_state(session_id)
+        with real_lock(session_id):
+            yield
+
+    monkeypatch.setattr(tracer, "_session_lock", stop_finishes_first)
+    tracer.handle_user_prompt_submit(
+        {"session_id": sid, "transcript_path": str(path), "prompt": "second"},
+        {"api_key": "k", "task_id": "t", "endpoint": "https://x.example.com"},
+    )
+    state = tracer._load_state(sid)
+    assert state["session_id"] == sid
+    assert {"username", "session_start_ns", "turn_number"} <= state.keys()
+    assert state["current_trace"]["prompt_preview"] == "second"

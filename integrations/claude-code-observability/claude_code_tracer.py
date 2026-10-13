@@ -1956,15 +1956,21 @@ def _turn_still_running(transcript_path: str) -> bool:
 
 
 def _folded_into_turn(transcript_path: str, prompt: str, offset: int) -> bool:
-    """Whether ``prompt`` was written into the turn as an injected entry after
-    ``offset`` (the turn's start): Claude Code folded it into the turn."""
+    """Whether ``prompt`` was folded into the turn: a queued_command
+    attachment with exactly its text was written after ``offset`` (the turn's
+    start).  A queued prompt is written so when Claude Code folds it in; an
+    ``isMeta`` entry (skill text, a caveat) is never one, and matching only
+    whole text keeps "yes" from matching "yesterday" or an image-only prompt
+    ("") from matching any entry."""
     want = " ".join(prompt.split())
     try:
         with open(transcript_path) as fh:
             fh.seek(offset)
             for entry in _parse_entries(fh):
+                if (entry.get("attachment") or {}).get("type") != "queued_command":
+                    continue
                 text = _injected_prompt_text(entry)
-                if text is not None and want in " ".join(text.split()):
+                if text is not None and " ".join(text.split()) == want:
                     return True
     except OSError:
         return False
@@ -2019,6 +2025,10 @@ def handle_user_prompt_submit(data: dict, config: dict) -> None:
                     )
                     _save_state(session_id, state)
                     return
+            # Stop finished the turn while this hook waited for the lock, so
+            # the prompt starts the next turn from fresh state.
+            handle_user_prompt_submit(data, config)
+            return
 
     # Complete the previous turn's trace if one is in progress.
     # Use the cached transcript path from state so that any mid-session
