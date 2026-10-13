@@ -3,8 +3,9 @@
 # Any PR touching a path below needs approval from one member of
 # @arthur-ai/arthur-engineers before it can merge. This only takes effect once
 # "Require review from Code Owners" is enabled on the `dev` ruleset (feature
-# PRs merge into `dev`; `main` only receives automated release PRs). GitHub
-# reads this file from the PR's base branch.
+# PRs merge into `dev`; `main` only receives automated release PRs). Until
+# then, GitHub requests the team's review but does not block the merge.
+# GitHub reads this file from the PR's base branch.
 #
 # There is intentionally no "*" default owner: paths not listed here are NOT
 # gated, so ordinary PRs are left to the automated reviewer.

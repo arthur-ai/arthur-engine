@@ -12,9 +12,11 @@ reviewer. The file only works if every line is still true and the list stays
 short enough that ordinary PRs are not slowed down. This skill keeps it that
 way.
 
-The gate only takes effect when "Require review from Code Owners" is on for the
-`dev` ruleset. Check it first and say so in the report if it is off; the rest of
-the audit is moot until it is on:
+Approval is only required when "Require review from Code Owners" is on for the
+`dev` ruleset. While it is off, GitHub still requests the owner's review on
+every matching PR but does not block the merge, so wrong or stale lines still
+send requests to the wrong places. Check the setting first. If it is off, say
+in the report that enforcement is inactive, then do the full audit anyway:
 
 ```bash
 gh api repos/arthur-ai/arthur-engine/rules/branches/dev \
@@ -81,14 +83,22 @@ GitHub ignores secret teams.
 A pattern that matches nothing is a path that moved. Find where it went and
 re-point the line.
 
+The script matches with git's glob pathspecs, which use the same `*` and `**`
+rules as CODEOWNERS. It handles the two forms this file uses, `/`-anchored and
+`**/`-prefixed. Anything else prints `UNSUPPORTED`, and you check it by hand.
+That includes `!` and `[ ]`, which CODEOWNERS does not support at all.
+
 ```bash
-git ls-files > /tmp/tracked.txt
-grep -E '^/' .github/CODEOWNERS | awk '{print $1}' | sed 's#^/##' | while read -r p; do
+grep -vE '^[[:space:]]*(#|$)' .github/CODEOWNERS | awk '{print $1}' | while read -r p; do
   case "$p" in
-    */\*\*) n=$(grep -c "^${p%/**}/" /tmp/tracked.txt) ;;
-    *)      n=$(grep -cx "$p" /tmp/tracked.txt) ;;
+    *\[*)   echo "UNSUPPORTED: $p"; continue ;;
+    /*)     spec="${p#/}" ;;   # anchored to the repo root
+    \*\*/*) spec="$p" ;;       # any depth, root included
+    *)      echo "UNSUPPORTED: $p"; continue ;;
   esac
-  [ "$n" = "0" ] && echo "NO MATCH: /$p"
+  spec="${spec%/}"
+  # A directory pattern owns everything under it.
+  [ -n "$(git ls-files -- ":(glob)$spec" ":(glob)$spec/**" | head -n 1)" ] || echo "NO MATCH: $p"
 done
 ```
 
@@ -158,7 +168,7 @@ the report: the reasoning is what stops the same idea coming back next audit.
 
 1. `gh api "repos/arthur-ai/arthur-engine/codeowners/errors?ref=<branch>"`
    returns `[]`.
-2. The step-2 script prints no `NO MATCH`.
+2. The step-2 script prints nothing.
 3. After merge, with the ruleset on: a throwaway PR touching a newly gated
    file gets a code-owner review request; a Renovate PR touching
    `genai-engine/ui/package.json` or `deployment/model-upload/uv.lock` does
