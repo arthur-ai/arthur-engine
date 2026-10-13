@@ -1059,3 +1059,119 @@ def test_cleanup_does_not_delete_a_lock_recreated_under_the_same_name(
     assert lock.exists(), "cleanup deleted the lock a hook is holding"
     release.set()
     hook.join(5)
+
+
+class TestTurnWithoutPromptSubmit:
+    """Codex fires no UserPromptSubmit for a turn another tool or agent sends
+    (turn_trigger app_tool_send_message), so the turn's first tool or Stop
+    hook has to start it, and a finished turn must never start again."""
+
+    @pytest.fixture
+    def records(self, isolated_state):
+        return []
+
+    @staticmethod
+    def _event(turn="T1"):
+        return {"session_id": "S1", "turn_id": turn, "model": "test-model"}
+
+    def _tool(self, turn="T1"):
+        return {
+            **self._event(turn),
+            "tool_use_id": "call-1",
+            "tool_name": "Bash",
+            "tool_input": {"command": "printf TEST_TOOL"},
+            "tool_response": "TEST_TOOL",
+        }
+
+    def _stop(self, records, turn="T1"):
+        tracer.handle_stop(
+            {**self._event(turn), "last_assistant_message": "FINAL_" + turn},
+            config(),
+            lambda cfg, session, batch: records.extend(batch),
+        )
+
+    def _post_tool(self, records, turn="T1"):
+        tracer.handle_post_tool(
+            self._tool(turn),
+            config(),
+            lambda cfg, session, batch: records.extend(batch),
+        )
+
+    @staticmethod
+    def _kind(records, kind):
+        return [
+            r for r in records if r["attributes"].get("openinference.span.kind") == kind
+        ]
+
+    def test_tool_and_stop_without_prompt_submit_share_one_root(self, records):
+        """Break caught: with no UserPromptSubmit the tool and Stop hooks found
+        no state and the whole turn, tools included, was dropped."""
+        tracer.handle_pre_tool(self._tool(), config())
+        self._post_tool(records)
+        self._stop(records)
+        (root,) = self._kind(records, "CHAIN")
+        (tool,) = self._kind(records, "TOOL")
+        assert tool["parent_span_id_hex"] == root["span_id_hex"]
+        assert tool["trace_id_hex"] == root["trace_id_hex"]
+        assert root["attributes"]["output.value"] == "FINAL_T1"
+        assert root["attributes"]["codex.turn.id"] == "T1"
+
+    def test_stop_only_turn_keeps_its_answer(self, records):
+        self._stop(records)
+        (root,) = self._kind(records, "CHAIN")
+        assert root["attributes"]["output.value"] == "FINAL_T1"
+        assert root["attributes"]["session.id"] == "S1"
+
+    def test_repeated_stop_does_not_restart_a_finished_turn(self, records):
+        tracer.handle_user_prompt_submit(
+            {**self._event(), "prompt": "ORIGINAL"}, config()
+        )
+        self._stop(records)
+        self._stop(records)
+        (root,) = self._kind(records, "CHAIN")
+        assert root["attributes"]["input.value"] == "ORIGINAL"
+
+    def test_late_tool_after_stop_does_not_restart_a_finished_turn(self, records):
+        tracer.handle_user_prompt_submit(
+            {**self._event(), "prompt": "ORIGINAL"}, config()
+        )
+        self._stop(records)
+        before = len(records)
+        tracer.handle_pre_tool(self._tool(), config())
+        self._post_tool(records)
+        self._stop(records)
+        assert len(records) == before
+        assert not tracer._load_state("S1", "T1")
+
+    def test_concurrent_stops_emit_one_root(self, records):
+        tracer.handle_user_prompt_submit(
+            {**self._event(), "prompt": "ORIGINAL"}, config()
+        )
+        barrier = threading.Barrier(8)
+
+        def run():
+            barrier.wait()
+            self._stop(records)
+
+        threads = [threading.Thread(target=run) for _ in range(8)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        assert len(self._kind(records, "CHAIN")) == 1
+
+    def test_turn_without_prompt_submit_does_not_borrow_the_previous_turn(
+        self, records
+    ):
+        tracer.handle_user_prompt_submit(
+            {**self._event("T1"), "prompt": "OLD_PROMPT"}, config()
+        )
+        self._stop(records, "T1")
+        tracer.handle_pre_tool(self._tool("T2"), config())
+        self._post_tool(records, "T2")
+        self._stop(records, "T2")
+        first, second = self._kind(records, "CHAIN")
+        assert first["trace_id_hex"] != second["trace_id_hex"]
+        assert second["attributes"]["codex.turn.id"] == "T2"
+        assert second["attributes"]["input.value"] != "OLD_PROMPT"
+        assert second["attributes"]["output.value"] == "FINAL_T2"
