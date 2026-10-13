@@ -123,6 +123,29 @@ def _save_state(session_id: str, state: dict) -> None:
         log.warning("Failed to save state for %s: %s", session_id, e)
 
 
+def _done_path(session_id: str, prompt_id: str) -> Path:
+    key = hashlib.sha256(f"{session_id}\0{prompt_id}".encode()).hexdigest()
+    return STATE_DIR / "done" / key
+
+
+def _mark_prompt_done(session_id: str, prompt_id: str) -> None:
+    """Remember that the turn of ``prompt_id`` finished, so a hook for it that
+    arrives after Stop (a message submitted just as the turn ended, a
+    repeated Stop) can't start it again."""
+    if not prompt_id:
+        return
+    try:
+        path = _done_path(session_id, prompt_id)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.touch()
+    except OSError as e:
+        log.debug("Failed to mark prompt %s done: %s", prompt_id, e)
+
+
+def _prompt_done(session_id: str, prompt_id: str) -> bool:
+    return bool(prompt_id) and _done_path(session_id, prompt_id).exists()
+
+
 def _delete_state(session_id: str) -> None:
     try:
         p = _state_path(session_id)
@@ -139,8 +162,8 @@ def _cleanup_stale_states() -> None:
             *STATE_DIR.glob("*.json"),
             *(STATE_DIR / _PENDING_AGENT_DIR.name).glob("*.json"),
             *_agent_span_dir().glob("*.json"),
-            *(STATE_DIR / "claimed").glob("*.json"),
             *(STATE_DIR / "finalize").glob("*.json"),
+            *(STATE_DIR / "done").glob("*"),
         ]:
             if now - p.stat().st_mtime > STATE_MAX_AGE_S:
                 p.unlink()
@@ -523,40 +546,6 @@ def _session_lock(session_id: str):
 # ---------------------------------------------------------------------------
 
 
-def _claimed_prompts_path(transcript_path: str) -> Path:
-    key = hashlib.sha256(str(transcript_path).encode()).hexdigest()
-    return STATE_DIR / "claimed" / f"{key}.json"
-
-
-def _load_claimed_prompts(transcript_path: str) -> frozenset:
-    """Entries the UserPromptSubmit hook identified as a turn's prompt."""
-    try:
-        return frozenset(json.loads(_claimed_prompts_path(transcript_path).read_text()))
-    except (OSError, ValueError, TypeError):
-        return frozenset()
-
-
-def _save_claimed_prompt(transcript_path: str, uuid: str) -> None:
-    """Add ``uuid`` to the transcript's claims.  Hooks of one session and its
-    detached finalizer can write at once, so the read-modify-write is locked
-    and the file replaced atomically: a reader never sees it half-written."""
-    path = _claimed_prompts_path(transcript_path)
-    try:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        with open(path.with_suffix(".lock"), "a") as lock:
-            fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
-            try:
-                tmp = path.with_suffix(f".{_new_span_id()}.tmp")
-                tmp.write_text(
-                    json.dumps(sorted(_load_claimed_prompts(transcript_path) | {uuid})),
-                )
-                os.replace(tmp, path)
-            finally:
-                fcntl.flock(lock.fileno(), fcntl.LOCK_UN)
-    except OSError as e:
-        log.warning("Failed to save claimed prompt for %s: %s", transcript_path, e)
-
-
 def _injected_prompt_text(entry: dict) -> Optional[str]:
     """The prompt text of a queued_command attachment or an ``isMeta`` string
     user entry, the two shapes an injected prompt is written as; else None."""
@@ -591,87 +580,54 @@ def _parse_entries(lines):
             yield entry
 
 
-def _claim_queued_prompts(entries, claimed: frozenset = frozenset()):
-    """Yield ``entries``, with each injected prompt that starts a turn as a
-    user entry where its turn starts.
+def _turn_entries(entries):
+    """Yield ``entries`` with each turn starting at exactly one human message.
 
-    Two kinds of prompt aren't written as an ordinary user entry:
+    Claude Code labels the entries of each prompt with its id (``promptId``),
+    the same id it gives every hook as ``prompt_id``.  A turn starts where a
+    new id first appears, whatever shape its prompt has: typed text, an Agent
+    SDK block list, a background task's notification, a message from another
+    session.  A prompt that has no human-message shape of its own is yielded
+    as one there.  Nothing else starts a turn: not a message Claude Code
+    folds into the running turn (it carries no id of its own), not an
+    interrupt marker or a repeated prompt within the same id.
 
-    - a prompt that arrives while Claude is busy (a message typed mid-turn, a
-      background task's notification) is written as a queued_command
-      attachment;
-    - a message from another session, or a scheduled prompt, is written as an
-      ``isMeta`` user entry, which otherwise marks injected text that isn't a
-      prompt.
-
-    The tracer's UserPromptSubmit hook records the entry a turn started at
-    (``claimed``), and that entry is yielded as a user entry in its place.
-    Any other injected entry stays inert: a queued prompt Claude Code folds
-    into the running turn is part of that turn.  Claude Code's own hook
-    records can't tell the two apart: it writes one for a folded prompt too
-    when a UserPromptSubmit hook prints to stdout.
+    A transcript without ids (an older Claude Code) is yielded unchanged.
     """
     turn_prompt_id = None
     for entry in entries:
         prompt_id = entry.get("promptId")
-        if prompt_id or turn_prompt_id:
-            # Claude Code labels each entry with the id of the prompt it
-            # belongs to (promptId).  Where it does, a turn starts exactly
-            # where a new id first appears, whatever the prompt's shape, and
-            # nothing else starts one: not a prompt folded into the turn, not
-            # an entry without an id.
-            if (
-                prompt_id
-                and prompt_id != turn_prompt_id
-                and (entry.get("type") == "user")
-            ):
-                turn_prompt_id = prompt_id
-                if not _is_human_message(entry):
-                    yield {
-                        "type": "user",
-                        "message": {
-                            "role": "user",
-                            "content": _injected_prompt_text(entry)
-                            or _human_text(entry),
-                        },
-                        "timestamp": entry.get("timestamp", ""),
-                        "uuid": entry.get("uuid"),
-                        "promptId": prompt_id,
-                    }
-                yield entry
-            elif _is_human_message(entry):
-                yield {**entry, "isMeta": True}
-            else:
-                yield entry
+        if not (prompt_id or turn_prompt_id):
+            yield entry
             continue
-        uuid = entry.get("uuid")
-        if uuid and uuid in claimed:
-            text = _injected_prompt_text(entry)
-            if text is not None:
-                content = (
-                    (entry.get("attachment") or {}).get("prompt", text)
-                    if entry.get("type") == "attachment"
-                    else text
-                )
+        if prompt_id and prompt_id != turn_prompt_id and entry.get("type") == "user":
+            turn_prompt_id = prompt_id
+            if not _is_human_message(entry):
                 yield {
                     "type": "user",
-                    "message": {"role": "user", "content": content},
+                    "message": {
+                        "role": "user",
+                        "content": _injected_prompt_text(entry) or _human_text(entry),
+                    },
                     "timestamp": entry.get("timestamp", ""),
-                    "uuid": uuid,
+                    "uuid": entry.get("uuid"),
+                    "promptId": prompt_id,
                 }
-        yield entry
+            yield entry
+        elif _is_human_message(entry):
+            yield {**entry, "isMeta": True}
+        else:
+            yield entry
 
 
 def _iter_transcript_entries(transcript_path: str):
     """Yield a transcript's entries, skipping blank and malformed lines, with
-    queued prompts that start a turn as user entries (see _claim_queued_prompts).
-
-    Yields nothing when the file can't be read.
+    turns marked as in _turn_entries.  Yields nothing when the file can't be
+    read.
     """
     try:
-        claimed = _load_claimed_prompts(transcript_path)
         with open(transcript_path) as fh:
-            yield from _claim_queued_prompts(_parse_entries(fh), claimed)
+            yield from _turn_entries(_parse_entries(fh))
     except OSError:
         return
 
@@ -809,111 +765,17 @@ def _human_text(entry: dict) -> str:
     )
 
 
-def _claim_prompt_at_submit(transcript_path: str, prompt: str) -> bool:
-    """Claim this turn's prompt if it was injected and is already written.
-
-    An injected prompt (queued_command attachment or ``isMeta`` user entry,
-    see _claim_queued_prompts) is usually in the transcript before
-    UserPromptSubmit fires; an ordinary typed prompt is written after.  The
-    candidate is the latest injected entry with nothing after it but
-    non-prompt entries, and its text must contain the hook's ``prompt``
-    (empty for an image-only prompt).  Returns True if an entry was claimed.
-    """
-    want = " ".join(prompt.split())
-    candidate = None
-    try:
-        with open(transcript_path) as fh:
-            for entry in _parse_entries(fh):
-                if entry.get("type") == "assistant" or _is_human_message(entry):
-                    candidate = None
-                    continue
-                text = _injected_prompt_text(entry)
-                if text is not None and entry.get("uuid"):
-                    candidate = (entry["uuid"], " ".join(text.split()))
-    except OSError:
-        return False
-    if candidate is None or (want and want not in candidate[1]):
-        return False
-    _save_claimed_prompt(transcript_path, candidate[0])
-    return True
-
-
-def _claim_queued_prompt_after(transcript_path: str, prompt: str, offset: int) -> bool:
-    """Claim the first injected prompt (see _injected_prompt_text) written
-    after ``offset`` whose text contains ``prompt``.  A queued prompt or a
-    peer message can be written after its UserPromptSubmit fires, and only
-    what was written since can be it: an older entry with the same text is
-    never considered."""
-    want = " ".join(prompt.split())
-    claimed = _load_claimed_prompts(transcript_path)
-    try:
-        with open(transcript_path) as fh:
-            fh.seek(offset)
-            for entry in _parse_entries(fh):
-                if entry.get("uuid") in claimed:
-                    continue
-                text = _injected_prompt_text(entry)
-                if text is None or not entry.get("uuid"):
-                    continue
-                if want in " ".join(text.split()):
-                    _save_claimed_prompt(transcript_path, entry["uuid"])
-                    return True
-    except OSError:
-        return False
-    return False
-
-
-def _resolve_pending_prompt(state: dict, transcript_path: Optional[str]) -> None:
-    """Claim a turn's injected prompt that wasn't written yet at
-    UserPromptSubmit.
-
-    A message typed while Claude is busy fires UserPromptSubmit when it is
-    queued, before its queued_command attachment is written.  Until the
-    prompt appears, either as an ordinary user entry or as an injected entry
-    that can be claimed, the turn has no start in the transcript.
-    """
-    current_trace = state.get("current_trace") or {}
-    if "pending_prompt" not in current_trace or not transcript_path:
-        return
-    if _count_human_messages(transcript_path) > current_trace.get(
-        "human_count_at_start",
-        0,
-    ) or _claim_queued_prompt_after(
-        transcript_path,
-        current_trace["pending_prompt"],
-        current_trace.get("pending_offset", 0),
-    ):
-        current_trace.pop("pending_prompt", None)
-        current_trace.pop("pending_offset", None)
-
-
-def _human_count_before_prompt_id(transcript_path: str, prompt_id: str):
-    """Number of human messages before the turn ``prompt_id`` starts, or
-    None if the transcript doesn't label prompts with their ids.  A turn
-    whose prompt isn't written yet starts after all of them."""
+def _human_count_before_prompt(transcript_path: str, prompt_id: str) -> int:
+    """Number of human messages before the turn of ``prompt_id`` starts.  The
+    prompt is usually written just after UserPromptSubmit fires, so it's often
+    all of them so far."""
     count = 0
-    labelled = False
     for entry in _iter_transcript_entries(transcript_path):
-        labelled = labelled or bool(entry.get("promptId"))
         if _is_human_message(entry):
-            if entry.get("promptId") == prompt_id:
+            if prompt_id and entry.get("promptId") == prompt_id:
                 return count
             count += 1
-    return count if labelled else None
-
-
-def _human_count_before_prompt(transcript_path: str, prompt: str) -> tuple:
-    """Number of human messages before the prompt UserPromptSubmit fired
-    for, and whether the prompt is still to be claimed.
-
-    An ordinary prompt isn't written yet, so that's all human messages so
-    far.  An injected prompt usually already is, and once claimed it counts,
-    so it is left out.  If it wasn't written yet either, it is claimed later
-    (see _resolve_pending_prompt).
-    """
-    claimed_now = _claim_prompt_at_submit(transcript_path, prompt)
-    count = _count_human_messages(transcript_path)
-    return (count - 1, False) if claimed_now else (count, True)
+    return count
 
 
 def _count_human_messages(transcript_path: str) -> int:
@@ -1256,10 +1118,7 @@ def _extract_llm_spans_for_turn(
             group_input_snapshot = {}
 
         for line_no, entry in enumerate(
-            _claim_queued_prompts(
-                _parse_entries(lines),
-                _load_claimed_prompts(transcript_path),
-            ),
+            _turn_entries(_parse_entries(lines)),
         ):
             entry_type = entry.get("type", "")
 
@@ -1761,7 +1620,6 @@ def _emit_pending_llm_spans(
     current_trace = state.get("current_trace")
     if not current_trace or not transcript_path:
         return
-    _resolve_pending_prompt(state, transcript_path)
 
     _, _, _, _, _, _, SpanKind, _, _, _ = _otel_imports()
 
@@ -1971,59 +1829,6 @@ def _build_tool_span_record(
 # ---------------------------------------------------------------------------
 
 
-def _file_size(path: Optional[str]) -> int:
-    try:
-        return os.path.getsize(path) if path else 0
-    except OSError:
-        return 0
-
-
-def _turn_still_running(transcript_path: str) -> bool:
-    """Whether the turn the transcript last started is still running: its
-    prompt or a response came after the last Stop record and interrupt
-    marker.  Pressing Esc fires no Stop but writes the marker."""
-    running = False
-    try:
-        with open(transcript_path) as fh:
-            for entry in _parse_entries(fh):
-                if entry.get("type") == "system" and (
-                    entry.get("subtype") == "stop_hook_summary"
-                ):
-                    running = False
-                elif entry.get("type") == "assistant" or _is_human_message(entry):
-                    running = True
-                elif (
-                    entry.get("type") == "user"
-                    and _human_text(entry).strip() in _INTERRUPT_MARKERS
-                ):
-                    running = False
-    except OSError:
-        return False
-    return running
-
-
-def _folded_into_turn(transcript_path: str, prompt: str, offset: int) -> bool:
-    """Whether ``prompt`` was folded into the turn: a queued_command
-    attachment with exactly its text was written after ``offset`` (the turn's
-    start).  A queued prompt is written so when Claude Code folds it in; an
-    ``isMeta`` entry (skill text, a caveat) is never one, and matching only
-    whole text keeps "yes" from matching "yesterday" or an image-only prompt
-    ("") from matching any entry."""
-    want = " ".join(prompt.split())
-    try:
-        with open(transcript_path) as fh:
-            fh.seek(offset)
-            for entry in _parse_entries(fh):
-                if (entry.get("attachment") or {}).get("type") != "queued_command":
-                    continue
-                text = _injected_prompt_text(entry)
-                if text is not None and " ".join(text.split()) == want:
-                    return True
-    except OSError:
-        return False
-    return False
-
-
 def handle_user_prompt_submit(data: dict, config: dict) -> None:
     """Handle UserPromptSubmit hook: complete previous trace and start a new one.
 
@@ -2060,30 +1865,10 @@ def handle_user_prompt_submit(data: dict, config: dict) -> None:
     # (Claude Code folds it in), so it isn't a new turn.
     prompt_id = data.get("prompt_id") or ""
     ct = state.get("current_trace")
-    if prompt_id and ct and ct.get("prompt_id") == prompt_id:
+    if prompt_id and (
+        (ct and ct.get("prompt_id") == prompt_id) or _prompt_done(session_id, prompt_id)
+    ):
         return
-
-    # Without prompt ids: a prompt submitted while the turn is still running
-    # is a queued message
-    # (CLI 2.1.296 and the desktop app fire UserPromptSubmit when it is typed
-    # or delivered).  Claude Code folds it into the turn or runs it after
-    # Stop, so it doesn't end the turn; handle_stop starts its turn if it
-    # wasn't folded in.
-    if not prompt_id and ct and not ct.get("_pretool_created"):
-        running_path = _get_cached_transcript_path(data, state, session_id)
-        if running_path and _turn_still_running(running_path):
-            with _session_lock(session_id):
-                state = _load_state(session_id)
-                if state.get("current_trace"):
-                    state["current_trace"].setdefault("queued_prompts", []).append(
-                        prompt,
-                    )
-                    _save_state(session_id, state)
-                    return
-            # Stop finished the turn while this hook waited for the lock, so
-            # the prompt starts the next turn from fresh state.
-            handle_user_prompt_submit(data, config)
-            return
 
     # Complete the previous turn's trace if one is in progress.
     # Use the cached transcript path from state so that any mid-session
@@ -2107,24 +1892,13 @@ def handle_user_prompt_submit(data: dict, config: dict) -> None:
         # Clear the cached path so the new turn resolves it fresh below
         state.pop("transcript_path", None)
 
-    # Count human messages for LLM span extraction: the new prompt becomes
-    # human message count+1 in the transcript.  It is usually not written yet,
-    # but a queued prompt can be — _human_count_before_prompt leaves it out.
-    # Resolve and immediately cache the transcript path for this new turn.
+    # Count human messages for LLM span extraction: the turn starts after
+    # this many.  Resolve and immediately cache the transcript path for this
+    # new turn.
     transcript_path = _get_cached_transcript_path(data, state, session_id)
-    by_id = (
-        _human_count_before_prompt_id(transcript_path, prompt_id)
-        if transcript_path and prompt_id
-        else None
+    current_human_count = (
+        _human_count_before_prompt(transcript_path, prompt_id) if transcript_path else 0
     )
-    if by_id is not None:
-        current_human_count, prompt_pending = by_id, False
-    else:
-        current_human_count, prompt_pending = (
-            _human_count_before_prompt(transcript_path, prompt)
-            if transcript_path
-            else (0, False)
-        )
 
     turn_number = state.get("turn_number", 0) + 1
     state["turn_number"] = turn_number
@@ -2149,14 +1923,10 @@ def handle_user_prompt_submit(data: dict, config: dict) -> None:
         "turn_number": turn_number,
         "human_count_at_start": current_human_count,
         "prompt_preview": _truncate(prompt) if prompt else "",
-        "turn_offset": _file_size(transcript_path),
         "prompt_id": prompt_id,
         # Non-None only for the first turn of a subagent; cleared after _complete_turn
         "parent_agent_span_id": parent_agent_span_id,
     }
-    if prompt_pending and prompt:
-        state["current_trace"]["pending_prompt"] = prompt
-        state["current_trace"]["pending_offset"] = _file_size(transcript_path)
 
     _save_state(session_id, state)
 
@@ -2179,6 +1949,8 @@ def _start_turn_for_new_prompt(data: dict, config: dict, at_stop: bool) -> None:
     if not prompt_id or data.get("agent_id"):
         return
     session_id = data.get("session_id", "unknown")
+    if _prompt_done(session_id, prompt_id):
+        return
     ct = _load_state(session_id).get("current_trace")
     if ct:
         if not ct.get("prompt_id") or ct["prompt_id"] == prompt_id:
@@ -2260,6 +2032,12 @@ def handle_pre_tool(data: dict, config: dict) -> None:
                 _complete_turn(state, config, _tp, now_ns)
                 state.pop("current_trace", None)
                 state.pop("pending_tools", None)
+
+    if not state.get("current_trace") and _prompt_done(
+        session_id,
+        data.get("prompt_id") or "",
+    ):
+        return
 
     # Fallback: create a trace if UserPromptSubmit has not set one yet.
     # This handles cases where the hook isn't registered or fires before the
@@ -2832,43 +2610,16 @@ def handle_stop(data: dict, config: dict) -> None:
                                 "emitted_llm_span_count",
                                 0,
                             ),
-                            **{
-                                key: ct[key]
-                                for key in ("pending_prompt", "pending_offset")
-                                if key in ct
-                            },
                         },
                     },
                 )
 
-        ct = state["current_trace"]
-        next_prompt = next(
-            (
-                p
-                for p in ct.get("queued_prompts", [])
-                if not (
-                    transcript_path
-                    and _folded_into_turn(transcript_path, p, ct.get("turn_offset", 0))
-                )
-            ),
-            None,
-        )
-
         _complete_turn(state, config, transcript_path, end_ns)
 
-        _delete_state(session_id)
-
-    # A message queued during the turn and not folded into it runs next as its
-    # own turn, and Claude Code fires no UserPromptSubmit for it then.
-    if next_prompt is not None:
-        handle_user_prompt_submit(
-            {
-                "session_id": session_id,
-                "transcript_path": transcript_path,
-                "prompt": next_prompt,
-            },
-            config,
+        _mark_prompt_done(
+            session_id, (state.get("current_trace") or {}).get("prompt_id", "")
         )
+        _delete_state(session_id)
 
     _cleanup_stale_states()
 
