@@ -611,7 +611,39 @@ def _claim_queued_prompts(entries, claimed: frozenset = frozenset()):
     records can't tell the two apart: it writes one for a folded prompt too
     when a UserPromptSubmit hook prints to stdout.
     """
+    turn_prompt_id = None
     for entry in entries:
+        prompt_id = entry.get("promptId")
+        if prompt_id or turn_prompt_id:
+            # Claude Code labels each entry with the id of the prompt it
+            # belongs to (promptId).  Where it does, a turn starts exactly
+            # where a new id first appears, whatever the prompt's shape, and
+            # nothing else starts one: not a prompt folded into the turn, not
+            # an entry without an id.
+            if (
+                prompt_id
+                and prompt_id != turn_prompt_id
+                and (entry.get("type") == "user")
+            ):
+                turn_prompt_id = prompt_id
+                if not _is_human_message(entry):
+                    yield {
+                        "type": "user",
+                        "message": {
+                            "role": "user",
+                            "content": _injected_prompt_text(entry)
+                            or _human_text(entry),
+                        },
+                        "timestamp": entry.get("timestamp", ""),
+                        "uuid": entry.get("uuid"),
+                        "promptId": prompt_id,
+                    }
+                yield entry
+            elif _is_human_message(entry):
+                yield {**entry, "isMeta": True}
+            else:
+                yield entry
+            continue
         uuid = entry.get("uuid")
         if uuid and uuid in claimed:
             text = _injected_prompt_text(entry)
@@ -853,6 +885,21 @@ def _resolve_pending_prompt(state: dict, transcript_path: Optional[str]) -> None
     ):
         current_trace.pop("pending_prompt", None)
         current_trace.pop("pending_offset", None)
+
+
+def _human_count_before_prompt_id(transcript_path: str, prompt_id: str):
+    """Number of human messages before the turn ``prompt_id`` starts, or
+    None if the transcript doesn't label prompts with their ids.  A turn
+    whose prompt isn't written yet starts after all of them."""
+    count = 0
+    labelled = False
+    for entry in _iter_transcript_entries(transcript_path):
+        labelled = labelled or bool(entry.get("promptId"))
+        if _is_human_message(entry):
+            if entry.get("promptId") == prompt_id:
+                return count
+            count += 1
+    return count if labelled else None
 
 
 def _human_count_before_prompt(transcript_path: str, prompt: str) -> tuple:
@@ -2008,13 +2055,21 @@ def handle_user_prompt_submit(data: dict, config: dict) -> None:
             state["inherited_trace_id"] = parent_ctx["parent_trace_id"]
             state["parent_agent_span_id"] = parent_ctx["parent_span_id"]
 
-    # A prompt submitted while the turn is still running is a queued message
+    # Claude Code gives every hook the id of the prompt being processed.  A
+    # message submitted while the turn runs carries the running turn's id
+    # (Claude Code folds it in), so it isn't a new turn.
+    prompt_id = data.get("prompt_id") or ""
+    ct = state.get("current_trace")
+    if prompt_id and ct and ct.get("prompt_id") == prompt_id:
+        return
+
+    # Without prompt ids: a prompt submitted while the turn is still running
+    # is a queued message
     # (CLI 2.1.296 and the desktop app fire UserPromptSubmit when it is typed
     # or delivered).  Claude Code folds it into the turn or runs it after
     # Stop, so it doesn't end the turn; handle_stop starts its turn if it
     # wasn't folded in.
-    ct = state.get("current_trace")
-    if ct and not ct.get("_pretool_created"):
+    if not prompt_id and ct and not ct.get("_pretool_created"):
         running_path = _get_cached_transcript_path(data, state, session_id)
         if running_path and _turn_still_running(running_path):
             with _session_lock(session_id):
@@ -2057,11 +2112,19 @@ def handle_user_prompt_submit(data: dict, config: dict) -> None:
     # but a queued prompt can be — _human_count_before_prompt leaves it out.
     # Resolve and immediately cache the transcript path for this new turn.
     transcript_path = _get_cached_transcript_path(data, state, session_id)
-    current_human_count, prompt_pending = (
-        _human_count_before_prompt(transcript_path, prompt)
-        if transcript_path
-        else (0, False)
+    by_id = (
+        _human_count_before_prompt_id(transcript_path, prompt_id)
+        if transcript_path and prompt_id
+        else None
     )
+    if by_id is not None:
+        current_human_count, prompt_pending = by_id, False
+    else:
+        current_human_count, prompt_pending = (
+            _human_count_before_prompt(transcript_path, prompt)
+            if transcript_path
+            else (0, False)
+        )
 
     turn_number = state.get("turn_number", 0) + 1
     state["turn_number"] = turn_number
@@ -2087,6 +2150,7 @@ def handle_user_prompt_submit(data: dict, config: dict) -> None:
         "human_count_at_start": current_human_count,
         "prompt_preview": _truncate(prompt) if prompt else "",
         "turn_offset": _file_size(transcript_path),
+        "prompt_id": prompt_id,
         # Non-None only for the first turn of a subagent; cleared after _complete_turn
         "parent_agent_span_id": parent_agent_span_id,
     }
@@ -2095,6 +2159,41 @@ def handle_user_prompt_submit(data: dict, config: dict) -> None:
         state["current_trace"]["pending_offset"] = _file_size(transcript_path)
 
     _save_state(session_id, state)
+
+
+def _prompt_text(transcript_path: Optional[str], prompt_id: str) -> str:
+    for entry in _iter_transcript_entries(transcript_path) if transcript_path else ():
+        if _is_human_message(entry) and entry.get("promptId") == prompt_id:
+            return _human_text(entry)
+    return ""
+
+
+def _start_turn_for_new_prompt(data: dict, config: dict, at_stop: bool) -> None:
+    """Start the turn a hook's prompt id names when no hook started it.
+
+    Claude Code runs a message queued during a turn as its own turn after
+    Stop without firing UserPromptSubmit, so the first hook with the new id
+    (a tool hook, or Stop for a turn without tools) is where it starts.
+    """
+    prompt_id = data.get("prompt_id") or ""
+    if not prompt_id or data.get("agent_id"):
+        return
+    session_id = data.get("session_id", "unknown")
+    ct = _load_state(session_id).get("current_trace")
+    if ct:
+        if not ct.get("prompt_id") or ct["prompt_id"] == prompt_id:
+            return
+    elif not at_stop:
+        return  # handle_pre_tool's own fallback starts it
+    handle_user_prompt_submit(
+        {
+            "session_id": session_id,
+            "transcript_path": data.get("transcript_path"),
+            "prompt": _prompt_text(data.get("transcript_path"), prompt_id),
+            "prompt_id": prompt_id,
+        },
+        config,
+    )
 
 
 def handle_pre_tool(data: dict, config: dict) -> None:
@@ -2121,6 +2220,7 @@ def handle_pre_tool(data: dict, config: dict) -> None:
                 _save_agent_span_record(record)
                 return
 
+    _start_turn_for_new_prompt(data, config, at_stop=False)
     state = _load_state(session_id)
 
     # Initialize session on first call
@@ -2198,6 +2298,7 @@ def handle_pre_tool(data: dict, config: dict) -> None:
             # was created by the pre_tool fallback path (before UPS fired) and
             # carry the inherited context forward to the real first turn.
             "_pretool_created": True,
+            "prompt_id": data.get("prompt_id") or "",
         }
 
     pending_entry: dict[str, Any] = {
@@ -2381,6 +2482,7 @@ def handle_post_tool(data: dict, config: dict) -> None:
         return
 
     # Read state once to build the tool span (no mutation needed).
+    _start_turn_for_new_prompt(data, config, at_stop=False)
     state = _load_state(session_id)
     if not state:
         log.warning("No state found for session %s in post_tool", session_id)
@@ -2655,6 +2757,8 @@ def _finalize_turn(job: dict, config: dict) -> None:
 def handle_stop(data: dict, config: dict) -> None:
     session_id = data.get("session_id", "unknown")
     end_ns = time.time_ns()
+
+    _start_turn_for_new_prompt(data, config, at_stop=True)
 
     with _session_lock(session_id):
         state = _load_state(session_id)

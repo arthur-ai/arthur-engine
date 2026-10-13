@@ -7099,3 +7099,188 @@ def test_prompt_submitted_while_stop_ends_the_turn_starts_a_fresh_one(
     assert state["session_id"] == sid
     assert {"username", "session_start_ns", "turn_number"} <= state.keys()
     assert state["current_trace"]["prompt_preview"] == "second"
+
+
+class TestTurnsByPromptId:
+    """Current Claude Code gives every hook the id of the prompt being
+    processed (prompt_id) and labels transcript entries with it (promptId).
+    The same edge cases as above, with the ids Claude Code writes."""
+
+    CONFIG = {"api_key": "k", "task_id": "t", "endpoint": "https://x.example.com"}
+
+    @pytest.fixture
+    def run(self, tmp_path, monkeypatch):
+        captured = []
+        monkeypatch.setattr(
+            tracer,
+            "_build_and_export_spans",
+            lambda **kw: captured.extend(kw["span_records"]),
+        )
+        monkeypatch.setattr(tracer, "_spawn_turn_finalizer", lambda job: None)
+        transcript = tmp_path / "pid.jsonl"
+        transcript.write_text("")
+
+        def write(*entries):
+            with transcript.open("a") as f:
+                for e in entries:
+                    f.write(json.dumps(e) + "\n")
+
+        def hook(name, pid, **extra):
+            data = {
+                "session_id": "pid1",
+                "transcript_path": str(transcript),
+                "prompt_id": pid,
+                **extra,
+            }
+            getattr(tracer, name)(data, self.CONFIG)
+
+        def chains():
+            return [
+                s
+                for s in captured
+                if s["attributes"]["openinference.span.kind"] == "CHAIN"
+            ]
+
+        def llm():
+            return [
+                s
+                for s in captured
+                if s["attributes"]["openinference.span.kind"] == "LLM"
+            ]
+
+        return write, hook, chains, llm
+
+    @staticmethod
+    def _p(entry, pid):
+        return {**entry, "promptId": pid}
+
+    def test_sdk_list_prompt(self, run):
+        write, hook, chains, llm = run
+        hook("handle_user_prompt_submit", "p1", prompt="fix the test")
+        write(
+            self._p(
+                {
+                    "type": "user",
+                    "message": {
+                        "role": "user",
+                        "content": [text_block("fix the test")],
+                    },
+                },
+                "p1",
+            ),
+            llm_entry("FIXED", ts=at(2)),
+        )
+        hook("handle_stop", "p1", last_assistant_message="FIXED")
+        assert [s["attributes"]["output.value"] for s in llm()] == ["FIXED"]
+        assert [c["attributes"]["output.value"] for c in chains()] == ["FIXED"]
+
+    def test_message_from_another_session_written_after_its_hook(self, run):
+        write, hook, chains, llm = run
+        write(self._p(human_entry("first"), "p0"), llm_entry("first answer", ts=at(1)))
+        hook("handle_user_prompt_submit", "p0", prompt="first")
+        hook("handle_stop", "p0", last_assistant_message="first answer")
+        hook("handle_user_prompt_submit", "p1", prompt="check the PR")
+        write(
+            self._p(
+                {
+                    "type": "user",
+                    "isMeta": True,
+                    "origin": {"kind": "peer"},
+                    "message": {"role": "user", "content": "check the PR"},
+                },
+                "p1",
+            ),
+            llm_entry("PEER_ANSWER", ts=at(12)),
+        )
+        hook("handle_stop", "p1", last_assistant_message="PEER_ANSWER")
+        assert [s["attributes"]["output.value"] for s in llm()][-1] == "PEER_ANSWER"
+        assert len(chains()) == 2
+
+    @pytest.mark.parametrize("hook_record", [False, True])
+    def test_message_folded_into_the_running_turn(self, run, hook_record):
+        write, hook, chains, llm = run
+        hook("handle_user_prompt_submit", "p1", prompt="do the task")
+        write(self._p(human_entry("do the task"), "p1"), llm_entry("working", ts=at(2)))
+        # Claude Code gives the mid-turn hook the running turn's id.
+        hook("handle_user_prompt_submit", "p1", prompt="also QA")
+        write(queued_prompt_entry("also QA", uuid="qa"))
+        if hook_record:
+            write(prompt_hook_record("qa"))
+        write(llm_entry("FINAL_A QA", ts=at(12)))
+        hook("handle_stop", "p1", last_assistant_message="FINAL_A QA")
+        (chain,) = chains()
+        assert [s["attributes"]["output.value"] for s in llm()] == [
+            "working",
+            "FINAL_A QA",
+        ]
+        assert chain["attributes"]["output.value"] == "FINAL_A QA"
+
+    def test_message_run_after_stop_without_its_own_hook(self, run):
+        write, hook, chains, llm = run
+        hook("handle_user_prompt_submit", "p1", prompt="count")
+        write(self._p(human_entry("count"), "p1"))
+        hook("handle_user_prompt_submit", "p1", prompt="also QB")
+        write(llm_entry("1 2 3 FINAL_B", ts=at(5)))
+        hook("handle_stop", "p1", last_assistant_message="1 2 3 FINAL_B")
+        write(
+            self._p(human_entry("also QB", ts=at(7)), "p2"), llm_entry("QB", ts=at(8))
+        )
+        hook("handle_stop", "p2", last_assistant_message="QB")
+        assert [c["attributes"]["output.value"] for c in chains()] == [
+            "1 2 3 FINAL_B",
+            "QB",
+        ]
+        assert [s["attributes"]["output.value"] for s in llm()] == [
+            "1 2 3 FINAL_B",
+            "QB",
+        ]
+
+    def test_same_prompt_resent_after_an_interrupt(self, run):
+        """Nori's case: identical text after an interrupt is a new turn."""
+        write, hook, chains, llm = run
+        hook("handle_user_prompt_submit", "p1", prompt="run the tests")
+        write(
+            self._p(human_entry("run the tests"), "p1"),
+            self._p(
+                {
+                    "type": "user",
+                    "message": {
+                        "role": "user",
+                        "content": [text_block("[Request interrupted by user]")],
+                    },
+                },
+                "p1",
+            ),
+        )
+        hook("handle_user_prompt_submit", "p2", prompt="run the tests")
+        write(
+            self._p(human_entry("run the tests", ts=at(6)), "p2"),
+            llm_entry("PASSED", ts=at(7)),
+        )
+        hook("handle_stop", "p2", last_assistant_message="PASSED")
+        assert len(chains()) == 2
+        assert chains()[1]["attributes"]["output.value"] == "PASSED"
+        assert [s["attributes"]["output.value"] for s in llm()] == ["PASSED"]
+
+    def test_tool_hook_with_a_new_id_starts_that_turn(self, run):
+        """A turn whose Stop never came: the next prompt's first hook is a tool."""
+        write, hook, chains, llm = run
+        hook("handle_user_prompt_submit", "p1", prompt="first")
+        write(self._p(human_entry("first"), "p1"), llm_entry("half", ts=at(1)))
+        write(
+            self._p(human_entry("second", ts=at(3)), "p2"),
+            llm_entry(tool_use_blocks=[tool_use_block("Bash", "ls")], ts=at(4)),
+        )
+        hook("handle_pre_tool", "p2", tool_name="Bash", tool_input={"command": "ls"})
+        write(self._p(tool_result_entry("toolu_x", "ok", ts=at(5)), "p2"))
+        hook(
+            "handle_post_tool",
+            "p2",
+            tool_name="Bash",
+            tool_input={"command": "ls"},
+            tool_response="ok",
+        )
+        write(llm_entry("SECOND_DONE", ts=at(6)))
+        hook("handle_stop", "p2", last_assistant_message="SECOND_DONE")
+        assert len(chains()) == 2
+        assert chains()[1]["attributes"]["output.value"] == "SECOND_DONE"
