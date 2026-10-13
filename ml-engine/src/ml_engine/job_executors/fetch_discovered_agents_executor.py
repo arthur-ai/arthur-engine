@@ -6,6 +6,10 @@ Engine; this reads those tasks back for one source, converts each to an agent, a
 upserts them through `PUT /workspaces/{id}/agents`, where the Platform decides whether
 each one is a registered application or an unregistered agent.
 
+Given no source, the job is engine-scoped instead: it uploads every task on the engine
+that no discovery source has reported, such as an agent GenAI Engine only knows from
+its traces. Those are the agents no source's fetch will ever carry.
+
 Tasks are the seam between the two jobs, so everything this uploads carries a
 `task_id` by construction. Running it twice over the same window uploads the same
 agents twice: task identity is stable across scans (D-08) and the Platform upserts on
@@ -89,26 +93,47 @@ class FetchDiscoveredAgentsExecutor:
     def execute(self, job_spec: FetchDiscoveredAgentsJobSpec) -> None:
         """Upload every task the source reported in the window, a page at a time.
 
+        Without a source, upload every task no source has reported, engine-scoped.
+
         Each page is uploaded as it arrives rather than after the last one, so memory
         is bounded by a page whatever the source reported, and a failure part-way
         leaves the pages before it upserted -- which a retry then updates in place.
         """
         workspace_id = str(job_spec.workspace_id)
         data_plane_id = str(job_spec.data_plane_id)
-        source_id = str(job_spec.discovery_source_id)
-        window = (
-            f"reported since {job_spec.reported_since.isoformat()}"
-            if job_spec.reported_since is not None
-            else "ever reported"
+        # No source means the engine's own agents: the tasks outside every source's
+        # fetch. They are read by the same cursor walk, and uploaded with no source's
+        # evidence because none reported them. The Platform sends no window with this,
+        # and GenAI Engine refuses one alongside `unreported`, so a spec that had one
+        # fails the job rather than quietly fetching something else.
+        source_id: Optional[str] = (
+            str(job_spec.discovery_source_id)
+            if job_spec.discovery_source_id is not None
+            else None
         )
-        self.logger.info(
-            f"Fetching the tasks discovery source {source_id} {window}",
-            extra={
-                "workspace_id": workspace_id,
-                "data_plane_id": data_plane_id,
-                "discovery_source_id": source_id,
-            },
-        )
+        if source_id is None:
+            self.logger.info(
+                "Fetching the engine-scoped tasks: every task no discovery source "
+                "has reported",
+                extra={
+                    "workspace_id": workspace_id,
+                    "data_plane_id": data_plane_id,
+                },
+            )
+        else:
+            window = (
+                f"reported since {job_spec.reported_since.isoformat()}"
+                if job_spec.reported_since is not None
+                else "ever reported"
+            )
+            self.logger.info(
+                f"Fetching the tasks discovery source {source_id} {window}",
+                extra={
+                    "workspace_id": workspace_id,
+                    "data_plane_id": data_plane_id,
+                    "discovery_source_id": source_id,
+                },
+            )
 
         uploaded = 0
         with ApiClient(
@@ -124,6 +149,8 @@ class FetchDiscoveredAgentsExecutor:
                     tasks_api.get_agent_tasks_api_v2_agent_tasks_get(
                         discovery_source_id=source_id,
                         reported_since=job_spec.reported_since,
+                        # Left out of a source's request, which reads as before.
+                        unreported=True if source_id is None else None,
                         after_task_id=after_task_id,
                         page_size=self.page_size,
                         _request_timeout=AGENT_TASKS_TIMEOUT_SECONDS,
@@ -144,14 +171,20 @@ class FetchDiscoveredAgentsExecutor:
                 # Paged by cursor: the next page starts after this one's last task.
                 after_task_id = tasks[-1].id
 
-        self.logger.info(
-            f"Uploaded {uploaded} agent(s) from discovery source {source_id}",
-            extra={
-                "workspace_id": workspace_id,
-                "discovery_source_id": source_id,
-                "num_upserted": uploaded,
-            },
-        )
+        if source_id is None:
+            self.logger.info(
+                f"Uploaded {uploaded} engine-scoped agent(s)",
+                extra={"workspace_id": workspace_id, "num_upserted": uploaded},
+            )
+        else:
+            self.logger.info(
+                f"Uploaded {uploaded} agent(s) from discovery source {source_id}",
+                extra={
+                    "workspace_id": workspace_id,
+                    "discovery_source_id": source_id,
+                    "num_upserted": uploaded,
+                },
+            )
 
 
 def publish_enriched_tasks(

@@ -83,6 +83,47 @@ def _spec(
     )
 
 
+def _engine_scoped_spec() -> FetchDiscoveredAgentsJobSpec:
+    """The engine-scoped job: no source, so every task no source has reported.
+
+    Built without validation: the installed client still requires a source, and only
+    a later release of it lets the Platform send none.
+    """
+    return FetchDiscoveredAgentsJobSpec.model_construct(
+        job_type="fetch_discovered_agents",
+        workspace_id=WORKSPACE_ID,
+        data_plane_id=DATA_PLANE_ID,
+        discovery_source_id=None,
+        reported_since=None,
+        scan_id=None,
+    )
+
+
+def _traced_task(task_id: str) -> EnrichedTaskResponse:
+    """A task no discovery source reported: GenAI Engine minted it from its traces."""
+    return EnrichedTaskResponse.from_dict(
+        {
+            "id": task_id,
+            "name": f"agent-{task_id}",
+            "created_at": "2026-09-17T09:00:00Z",
+            "updated_at": "2026-09-17T09:00:00Z",
+            "is_autocreated": True,
+            "num_spans": 3,
+            "creation_source": {
+                "type": "OTEL",
+                "service_names": [f"svc-{task_id}"],
+                "vendor": None,
+                "address": None,
+                "observations": {},
+            },
+            "provenance": {
+                "sources": [{"source_class": "otel"}],
+                "source_classes": ["otel"],
+            },
+        },
+    )
+
+
 @pytest.fixture
 def tasks_api(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     """GenAI Engine's agent-tasks endpoint, answering with whatever pages a test sets."""
@@ -177,6 +218,7 @@ def test_fetches_the_one_source_in_its_window_and_uploads_every_page(
     for c in requests:
         assert c.kwargs["discovery_source_id"] == SOURCE_ID
         assert c.kwargs["reported_since"] == REPORTED_SINCE
+        assert c.kwargs["unreported"] is None
         assert c.kwargs["page_size"] == 2
     assert _uploaded_task_ids(agents_client) == [["t1", "t2"], ["t3", "t4"], ["t5"]]
     for c in agents_client.put_agents.call_args_list:
@@ -245,6 +287,47 @@ def test_an_upload_failure_fails_the_job_after_the_pages_before_it_landed(
         _executor(agents_client).execute(_spec())
 
     assert agents_client.put_agents.call_count == 2
+
+
+def test_the_engine_scoped_fetch_pages_through_every_unreported_task(
+    tasks_api: MagicMock,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """With no source, the same cursor walk reads the tasks no source reported, and
+    each page goes up with no source named, so carries no source's evidence."""
+    tasks_api.get_agent_tasks_api_v2_agent_tasks_get.side_effect = [
+        [_traced_task("t1"), _traced_task("t2")],
+        [_traced_task("t3"), _traced_task("t4")],
+        [_traced_task("t5")],
+    ]
+    publish = MagicMock(wraps=fetch_discovered_agents_executor.publish_enriched_tasks)
+    monkeypatch.setattr(
+        fetch_discovered_agents_executor,
+        "publish_enriched_tasks",
+        publish,
+    )
+    agents_client = _agents_client()
+
+    _executor(agents_client).execute(_engine_scoped_spec())
+
+    requests = tasks_api.get_agent_tasks_api_v2_agent_tasks_get.call_args_list
+    assert [c.kwargs["after_task_id"] for c in requests] == [None, "t2", "t4"]
+    for c in requests:
+        assert c.kwargs["unreported"] is True
+        assert c.kwargs["discovery_source_id"] is None
+        assert c.kwargs["reported_since"] is None
+        assert c.kwargs["page_size"] == 2
+    assert _uploaded_task_ids(agents_client) == [["t1", "t2"], ["t3", "t4"], ["t5"]]
+    assert [c.kwargs["discovery_source_id"] for c in publish.call_args_list] == [
+        None,
+        None,
+        None,
+    ]
+    for c in agents_client.put_agents.call_args_list:
+        assert c.kwargs["workspace_id"] == WORKSPACE_ID
+        for agent in c.kwargs["put_agents"].agents:
+            assert not agent.evidence
+            assert agent.creation_source.actual_instance.type == "OTEL"
 
 
 def test_an_agent_carries_its_task_and_its_provenance() -> None:
