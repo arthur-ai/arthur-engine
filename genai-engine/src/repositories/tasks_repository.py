@@ -50,6 +50,7 @@ from repositories.service_name_mapping_repository import (
 from repositories.task_provenance_repository import TaskProvenanceRepository
 from schemas.enums import TaskSortField
 from schemas.internal_schemas import (
+    GCP_VERTEX_VENDOR,
     ApplicationConfiguration,
     Rule,
     Task,
@@ -762,24 +763,42 @@ class TaskRepository:
         return self.create_task(task, with_default_rules=False)
 
     def find_by_gcp_engine_id(self, engine_id: str) -> Optional[DatabaseTask]:
-        """Find a task by its GCP reasoning engine ID in task_metadata JSON.
+        """Find the task for a Vertex AI Agent Engine, in either shape its row holds.
+
+        A task the legacy poller created stores the deprecated GCP creation source,
+        whose engine ID is `gcp_reasoning_engine_id`; rows written before `address`
+        existed carry nothing else. A task a `gcp_vertex` discovery source created
+        stores a CLOUD creation source, whose engine ID is `address.resource_id` and
+        which has no `gcp_reasoning_engine_id` at all. Reading only the first would
+        leave every connector-found agent unmatched, and its traces would mint a
+        second task beside it.
+
+        `address.resource_id` is only an engine ID under vendor `gcp_vertex`: another
+        vendor's resource ID could be the same string, and must not match.
 
         Args:
-            engine_id: The GCP reasoning engine ID to search for
+            engine_id: The Vertex AI Agent Engine (reasoning engine) ID
 
         Returns:
             The matching DatabaseTask, or None if not found
         """
+        creation_source = DatabaseTask.task_metadata["creation_source"]
         return (
             self.db_session.query(DatabaseTask)
             .filter(
-                func.json_extract_path_text(
-                    DatabaseTask.task_metadata,
-                    "creation_source",
-                    "gcp_reasoning_engine_id",
-                )
-                == engine_id,
+                or_(
+                    creation_source["gcp_reasoning_engine_id"].as_string() == engine_id,
+                    and_(
+                        creation_source["vendor"].as_string() == GCP_VERTEX_VENDOR,
+                        creation_source["address"]["resource_id"].as_string()
+                        == engine_id,
+                    ),
+                ),
             )
+            # Oldest first: while legacy and connector discovery both run, one engine
+            # can briefly hold two tasks, and the older one is where its traces have
+            # been going.
+            .order_by(DatabaseTask.created_at, DatabaseTask.id)
             .first()
         )
 
