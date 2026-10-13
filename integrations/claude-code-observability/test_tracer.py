@@ -1509,13 +1509,20 @@ class TestQueuedPromptTurns:
     CONFIG = {"api_key": "k", "task_id": "t", "endpoint": "https://x.example.com"}
 
     def test_claimed_queued_prompt_is_yielded_as_a_user_entry(self, tmp_transcript):
-        p = tmp_transcript([queued_prompt_entry("hello"), prompt_hook_record("q1")])
+        p = tmp_transcript([queued_prompt_entry("hello")])
+        tracer._save_claimed_prompt(str(p), "q1")
         humans = [
             e
             for e in tracer._iter_transcript_entries(str(p))
             if tracer._is_human_message(e)
         ]
         assert [tracer._human_text(e) for e in humans] == ["hello"]
+
+    def test_hook_record_alone_does_not_claim_a_queued_prompt(self, tmp_transcript):
+        """Claude Code writes the record for a folded prompt too, when another
+        UserPromptSubmit hook prints to stdout."""
+        p = tmp_transcript([queued_prompt_entry("hello"), prompt_hook_record("q1")])
+        assert tracer._count_human_messages(str(p)) == 0
 
     def test_unclaimed_queued_prompt_is_not_a_human_message(self, tmp_transcript):
         p = tmp_transcript([queued_prompt_entry("hello")])
@@ -6903,3 +6910,116 @@ def test_concurrent_claims_are_all_kept(tmp_path):
     for t in threads:
         t.join()
     assert tracer._load_claimed_prompts(transcript) == set(uuids)
+
+
+class TestPromptSubmittedMidTurn:
+    """On CLI 2.1.296 (and the desktop app) UserPromptSubmit fires as soon as a
+    message is typed or delivered while Claude is busy.  Claude Code then
+    either folds it into the running turn (one Stop) or runs it after Stop as
+    its own turn, without firing UserPromptSubmit again."""
+
+    CONFIG = {"api_key": "k", "task_id": "t", "endpoint": "https://x.example.com"}
+
+    @pytest.fixture
+    def run(self, tmp_path, monkeypatch):
+        captured = []
+        monkeypatch.setattr(
+            tracer,
+            "_build_and_export_spans",
+            lambda **kw: captured.extend(kw["span_records"]),
+        )
+        monkeypatch.setattr(tracer, "_spawn_turn_finalizer", lambda job: None)
+        transcript = tmp_path / "mid.jsonl"
+        transcript.write_text("")
+        base = {"session_id": "mid1", "transcript_path": str(transcript)}
+
+        def write(*entries):
+            with transcript.open("a") as f:
+                for e in entries:
+                    f.write(json.dumps(e) + "\n")
+
+        def kind(k):
+            return [
+                s for s in captured if s["attributes"]["openinference.span.kind"] == k
+            ]
+
+        return base, write, kind, transcript
+
+    def _fold(self, run, hook_record: bool):
+        base, write, kind, transcript = run
+        tracer.handle_user_prompt_submit({**base, "prompt": "do the task"}, self.CONFIG)
+        write(human_entry("do the task"), llm_entry("working", ts=at(2)))
+        tracer.handle_user_prompt_submit({**base, "prompt": "also QA"}, self.CONFIG)
+        write(queued_prompt_entry("also QA", uuid="qa"))
+        if hook_record:
+            write(prompt_hook_record("qa"))
+        write(llm_entry("FINAL_A QA", ts=at(12)))
+        tracer.handle_stop(
+            {**base, "last_assistant_message": "FINAL_A QA"}, self.CONFIG
+        )
+        (chain,) = kind("CHAIN")
+        assert [s["attributes"]["output.value"] for s in kind("LLM")] == [
+            "working",
+            "FINAL_A QA",
+        ]
+        assert {s["trace_id_hex"] for s in kind("LLM")} == {chain["trace_id_hex"]}
+        assert chain["attributes"]["output.value"] == "FINAL_A QA"
+        assert tracer._load_claimed_prompts(str(transcript)) == frozenset()
+
+    def test_message_folded_into_the_running_turn_keeps_one_trace(self, run):
+        """Break caught: the mid-turn UserPromptSubmit closed the running turn,
+        so one turn became two traces and the first ended on a tool call."""
+        self._fold(run, hook_record=False)
+
+    def test_folded_message_with_a_hook_record_keeps_one_trace(self, run):
+        """Same, where another UserPromptSubmit hook prints to stdout and Claude
+        Code writes a hook record under the folded message (the desktop app)."""
+        self._fold(run, hook_record=True)
+
+    def test_message_typed_mid_turn_but_run_after_stop_gets_its_own_trace(self, run):
+        """Break caught: Claude Code ran the message as its own turn after Stop
+        without a second UserPromptSubmit, so that turn had no trace."""
+        base, write, kind, _ = run
+        tracer.handle_user_prompt_submit({**base, "prompt": "count"}, self.CONFIG)
+        write(human_entry("count"))
+        tracer.handle_user_prompt_submit({**base, "prompt": "also QB"}, self.CONFIG)
+        write(llm_entry("1 2 3 FINAL_B", ts=at(5)))
+        tracer.handle_stop(
+            {**base, "last_assistant_message": "1 2 3 FINAL_B"}, self.CONFIG
+        )
+        write(human_entry("also QB", ts=at(7)), llm_entry("QB", ts=at(8)))
+        tracer.handle_stop({**base, "last_assistant_message": "QB"}, self.CONFIG)
+        chains = kind("CHAIN")
+        assert [c["attributes"]["output.value"] for c in chains] == [
+            "1 2 3 FINAL_B",
+            "QB",
+        ]
+        llm = kind("LLM")
+        assert [s["attributes"]["output.value"] for s in llm] == ["1 2 3 FINAL_B", "QB"]
+        assert [s["trace_id_hex"] for s in llm] == [c["trace_id_hex"] for c in chains]
+
+    def test_prompt_after_an_interrupt_still_starts_a_new_trace(self, run):
+        """Esc never fires Stop; Claude Code writes the interrupt marker before
+        the next prompt, so that prompt is a new turn."""
+        base, write, kind, _ = run
+        tracer.handle_user_prompt_submit({**base, "prompt": "long job"}, self.CONFIG)
+        write(
+            human_entry("long job"),
+            llm_entry(tool_use_blocks=[tool_use_block("Bash", "sleep 20")], ts=at(2)),
+            tool_result_entry("toolu_x", "The user doesn't want to proceed", ts=at(4)),
+            {
+                "type": "user",
+                "message": {
+                    "role": "user",
+                    "content": [
+                        text_block("[Request interrupted by user for tool use]")
+                    ],
+                },
+            },
+        )
+        tracer.handle_user_prompt_submit({**base, "prompt": "next"}, self.CONFIG)
+        write(human_entry("next", ts=at(6)), llm_entry("NEXT", ts=at(7)))
+        tracer.handle_stop({**base, "last_assistant_message": "NEXT"}, self.CONFIG)
+        chains = kind("CHAIN")
+        assert len(chains) == 2
+        assert chains[1]["attributes"]["output.value"] == "NEXT"
