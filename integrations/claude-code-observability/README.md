@@ -140,6 +140,8 @@ Breaker states:
 | open | Prompts are blocked and the turn is stopped, without touching the engine, for `cooldown_minutes`. |
 | half-open | After the cooldown the next hook probes the engine: calm → closed, still burning → open again, engine unreachable → stays open and probes again on the next hook. |
 
+An open breaker blocks every prompt, so you cannot simply ask Claude to carry on. To lift it from inside Claude Code, send a prompt that **starts with** `breaker override` (also `circuit breaker override`, `override the breaker`, or `bypass` instead of `override`). That prompt is let through instead of blocked, the breaker closes for `override_minutes` (default 30), and Claude is told about the override. Add a duration to change it: `breaker override for 45m`, `breaker override for 2h`. The phrase must open the prompt, so a prompt that merely mentions the breaker is not an override. When the override lapses, burn-rate checks resume and the breaker can trip again.
+
 `python3 ~/.claude/hooks/claude_code_circuit_breaker.py reset` closes it by hand. `ARTHUR_BREAKER_BYPASS=1` disables it for one process. State files live in `~/.claude/circuit_breaker/` and are pruned after 48 h; the directory is shared by global and per-project installs, so only a global `uninstall.sh` removes it.
 
 ### Configuration
@@ -162,7 +164,8 @@ Breaker states:
   "cooldown_minutes": 15,
   "fail_mode": "open",
   "http_timeout_seconds": 5,
-  "fallback_usd_per_million_tokens": null
+  "fallback_usd_per_million_tokens": null,
+  "override_minutes": 30
 }
 ```
 
@@ -176,6 +179,7 @@ Breaker states:
 | `warn_fraction` | Show a warning in Claude Code once a rule reaches this fraction of its threshold. |
 | `fail_mode` | `open` keeps working when the engine is unreachable (with a warning); `closed` trips instead. |
 | `fallback_usd_per_million_tokens` | `{"prompt": 3, "completion": 15}` prices spans whose model the engine could not price (their cost comes back empty). Leave `null` to be warned about such spans instead. |
+| `override_minutes` | How long a `breaker override` prompt keeps the breaker lifted when the prompt names no duration. |
 
 With the defaults, $100/24 h is a $4.17/h budget rate, so `fast-burn` trips at $60/h sustained over 10 minutes (and the last 2), `slow-burn` at $25/h over an hour (and the last 10 minutes).
 

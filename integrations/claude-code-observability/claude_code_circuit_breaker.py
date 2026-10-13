@@ -25,6 +25,12 @@ CLI:
   status [--session ID]  — print the current spend/burn-rate evaluation as JSON
   reset                  — close the breaker (clears persisted state)
 
+Override from inside Claude Code: an open breaker blocks every prompt, so a
+prompt that *starts with* "breaker override" (or "override the breaker",
+optionally "for 45m" / "for 2h") is let through instead of blocked and lifts
+the breaker for override_minutes. That is the way out when you cannot reach a
+shell; otherwise use the reset CLI or wait for the cooldown.
+
 Engine credentials come from the same place the tracer reads them (env vars,
 then <project>/.claude/arthur_config.json, then ~/.claude/arthur_config.json).
 Breaker settings come from ARTHUR_BREAKER_CONFIG, then
@@ -39,6 +45,7 @@ import hashlib
 import json
 import logging
 import os
+import re
 import sys
 import urllib.error
 import urllib.parse
@@ -107,6 +114,9 @@ DEFAULT_CONFIG: dict[str, Any] = {
     # per-million-token rates fill the gap so the breaker is not blind to
     # them; null leaves such spans at $0 and warns instead.
     "fallback_usd_per_million_tokens": None,
+    # How long a "breaker override" prompt keeps the breaker lifted when it
+    # does not name a duration itself.
+    "override_minutes": 30,
 }
 
 CONFIG_ENV = "ARTHUR_BREAKER_CONFIG"
@@ -697,6 +707,33 @@ def evaluate(
 STATUS_CLOSED = "closed"
 STATUS_OPEN = "open"
 
+# A prompt that starts with "breaker override", "circuit breaker bypass",
+# "override the arthur breaker" ... with an optional "for 45m" / "2h" tail.
+# Anchored to the start so a prompt that merely talks about the breaker (e.g.
+# while editing this file) is not mistaken for an override.
+_BREAKER_WORDS = r"(?:arthur\s+)?(?:circuit[\s-]?)?breaker"
+OVERRIDE_PATTERN = re.compile(
+    rf"^\s*(?:{_BREAKER_WORDS}\s*[:,]?\s*(?:override|bypass)"
+    rf"|(?:override|bypass)\s+(?:the\s+)?{_BREAKER_WORDS})\b"
+    r"(?:\s+(?:for\s+)?(?P<n>\d+(?:\.\d+)?)\s*"
+    r"(?P<unit>m|min|mins|minutes?|h|hr|hrs|hours?)\b)?",
+    re.IGNORECASE,
+)
+
+
+def parse_override(prompt: str, config: dict) -> Optional[float]:
+    """Minutes the prompt asks the breaker to be lifted for, or None if the
+    prompt is not an override command."""
+    m = OVERRIDE_PATTERN.match(prompt or "")
+    if not m:
+        return None
+    if m.group("n"):
+        minutes = float(m.group("n"))
+        if m.group("unit").lower().startswith("h"):
+            minutes *= 60
+        return minutes
+    return float(config.get("override_minutes", DEFAULT_CONFIG["override_minutes"]))
+
 
 def state_key(engine: dict, config: dict, session_id: str) -> str:
     scope = config["scope"]
@@ -770,8 +807,13 @@ class Verdict:
     fresh: bool = False  # True when the engine was queried this invocation
 
 
-def _reset_hint() -> str:
-    return f'reset with: python3 "{Path(__file__).resolve()}" reset'
+def _reset_hint(config: dict) -> str:
+    minutes = float(config.get("override_minutes", DEFAULT_CONFIG["override_minutes"]))
+    return (
+        f'send "breaker override" as your next prompt to lift it for {minutes:g} min '
+        f'("breaker override for 2h" for longer), '
+        f'or reset with: python3 "{Path(__file__).resolve()}" reset'
+    )
 
 
 def decide(
@@ -795,6 +837,11 @@ def decide(
     with _state_lock(key):
         state = load_state(key)
         status = state.get("status", STATUS_CLOSED)
+
+        # A "breaker override" prompt lifts the breaker for a while; once it
+        # lapses the normal closed-state check resumes and may trip again.
+        if now_ts < float(state.get("override_until", 0)):
+            return Verdict(tripped=False)
 
         if status == STATUS_OPEN:
             opened_at = float(state.get("opened_at", 0))
@@ -873,6 +920,39 @@ def decide(
         return Verdict(tripped=False, warning=evaluation.warning, fresh=True)
 
 
+def override(
+    engine: dict,
+    config: dict,
+    session_id: str,
+    minutes: float,
+    now: Optional[datetime] = None,
+) -> str:
+    """Close the breaker for this scope and keep it lifted for `minutes`."""
+    now = now or datetime.now(timezone.utc)
+    now_ts = now.timestamp()
+    key = state_key(engine, config, session_id)
+    with _state_lock(key):
+        state = load_state(key)
+        was_open = state.get("status") == STATUS_OPEN
+        state = {
+            "status": STATUS_CLOSED,
+            "override_until": now_ts + minutes * 60,
+            "overridden_at": now_ts,
+            "last_check_at": 0,
+            "last_evaluation": state.get("last_evaluation"),
+        }
+        save_state(key, state)
+    until = datetime.fromtimestamp(
+        state["override_until"],
+        tz=timezone.utc,
+    ).astimezone()
+    return (
+        f"Arthur circuit breaker overridden ({config['scope']} scope"
+        f"{', was open' if was_open else ''}): lifted for {minutes:g} min, "
+        f"until {until.strftime('%H:%M %Z')}; burn-rate checks resume after that."
+    )
+
+
 def _open_message(state: dict, config: dict, now_ts: float) -> str:
     cooldown_s = float(config.get("cooldown_minutes", 15)) * 60
     retry_ts = float(state.get("opened_at", now_ts)) + cooldown_s
@@ -884,7 +964,7 @@ def _open_message(state: dict, config: dict, now_ts: float) -> str:
         f"Arthur circuit breaker OPEN ({config['scope']} scope) — {state.get('reason', '')}. "
         f"Claude Code is paused for another {remaining_min} min "
         f"(until {retry_at.strftime('%H:%M %Z')}, when it re-checks the engine), "
-        f"or {_reset_hint()}"
+        f"or {_reset_hint(config)}"
     )
 
 
@@ -937,6 +1017,19 @@ def run_hook(event: str, data: dict) -> Optional[dict]:
     if not config.get("enabled", True):
         return None
     session_id = data.get("session_id", "unknown")
+    if event == "user_prompt_submit":
+        minutes = parse_override(data.get("prompt", ""), config)
+        if minutes:
+            message = override(engine, config, session_id, minutes)
+            # Let the prompt through (no decision) and tell both the user and
+            # Claude what just happened.
+            return {
+                "systemMessage": message,
+                "hookSpecificOutput": {
+                    "hookEventName": "UserPromptSubmit",
+                    "additionalContext": message,
+                },
+            }
     verdict = decide(engine, config, session_id)
     return hook_output(event, verdict)
 

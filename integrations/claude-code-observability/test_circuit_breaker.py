@@ -696,6 +696,141 @@ def test_run_hook_end_to_end_trip(monkeypatch, state_dir, fake_engine):
 
 
 # ---------------------------------------------------------------------------
+# Override from inside Claude Code
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "prompt, minutes",
+    [
+        ("breaker override", 30.0),
+        ("  Circuit breaker override", 30.0),
+        ("circuit-breaker bypass", 30.0),
+        ("arthur breaker: override", 30.0),
+        ("override the breaker", 30.0),
+        ("override the arthur circuit breaker and carry on", 30.0),
+        ("breaker override for 45m", 45.0),
+        ("breaker override 10 minutes", 10.0),
+        ("override the breaker for 2h", 120.0),
+        ("breaker override for 1.5 hours", 90.0),
+    ],
+)
+def test_parse_override_matches_override_prompts(prompt, minutes):
+    assert cb.parse_override(prompt, _config(override_minutes=30)) == minutes
+
+
+@pytest.mark.parametrize(
+    "prompt",
+    [
+        "",
+        "fix the circuit breaker override test",
+        "the breaker tripped, why?",
+        "override this function",
+        "breaker status",
+        "please breaker override",
+    ],
+)
+def test_parse_override_ignores_ordinary_prompts(prompt):
+    assert cb.parse_override(prompt, _config()) is None
+
+
+def test_parse_override_uses_configured_default_minutes():
+    assert cb.parse_override("breaker override", _config(override_minutes=5)) == 5.0
+
+
+def test_decide_honours_override_until_it_lapses(state_dir, fake_engine):
+    fake = fake_engine(spans=TRIP_SPANS)
+    config = _config(override_minutes=30)
+    tripped = cb.decide(ENGINE, config, "s", NOW)
+    assert tripped.tripped
+
+    message = cb.override(ENGINE, config, "s", 30, NOW + timedelta(minutes=1))
+    assert "overridden" in message and "was open" in message
+    state = cb.load_state(cb.state_key(ENGINE, config, "s"))
+    assert state["status"] == cb.STATUS_CLOSED
+    assert state["override_until"] == (NOW + timedelta(minutes=31)).timestamp()
+
+    # Lifted: no engine query, nothing blocked, even though spend is still high.
+    calls = len(fake.calls)
+    lifted = cb.decide(ENGINE, config, "s", NOW + timedelta(minutes=20))
+    assert not lifted.tripped and not lifted.fresh
+    assert len(fake.calls) == calls
+
+    # Lapsed: the regular check runs again and trips on the same spend.
+    later = NOW + timedelta(minutes=32)
+    fake.spans = [_span_row(1, 3.0, now=later), _span_row(5, 8.0, now=later)]
+    again = cb.decide(ENGINE, config, "s", later)
+    assert again.tripped and again.fresh
+
+
+def test_override_is_scoped_like_the_state_key(state_dir, fake_engine):
+    fake_engine(spans=TRIP_SPANS)
+    config = _config()
+    cb.decide(ENGINE, config, "s1", NOW)
+    cb.decide(ENGINE, config, "s2", NOW)
+    cb.override(ENGINE, config, "s1", 30, NOW)
+    assert not cb.decide(ENGINE, config, "s1", NOW + timedelta(minutes=1)).tripped
+    assert cb.decide(ENGINE, config, "s2", NOW + timedelta(minutes=1)).tripped
+
+
+def test_run_hook_override_prompt_lifts_open_breaker(
+    monkeypatch,
+    state_dir,
+    fake_engine,
+):
+    monkeypatch.delenv(cb.BYPASS_ENV, raising=False)
+    monkeypatch.setattr(cb, "discover_engine_config", lambda: ENGINE)
+    monkeypatch.setattr(cb, "load_breaker_config", lambda: _config())
+    real_now = datetime.now(timezone.utc)
+    fake_engine(
+        spans=[_span_row(0.5, 3.0, now=real_now), _span_row(0.6, 8.0, now=real_now)],
+    )
+    blocked = cb.run_hook("user_prompt_submit", {"session_id": "s", "prompt": "go on"})
+    assert blocked["decision"] == "block"
+    assert "breaker override" in blocked["reason"]
+
+    out = cb.run_hook(
+        "user_prompt_submit",
+        {"session_id": "s", "prompt": "breaker override for 10m"},
+    )
+    assert "decision" not in out  # the prompt goes through
+    assert "lifted for 10 min" in out["systemMessage"]
+    assert out["hookSpecificOutput"]["hookEventName"] == "UserPromptSubmit"
+    assert out["hookSpecificOutput"]["additionalContext"] == out["systemMessage"]
+
+    # The in-flight turn's tool calls are no longer stopped.
+    assert cb.run_hook("pre_tool", {"session_id": "s"}) is None
+    assert (
+        cb.run_hook("user_prompt_submit", {"session_id": "s", "prompt": "continue"})
+        is None
+    )
+
+
+def test_run_hook_override_prompt_ignored_when_disabled(monkeypatch, state_dir):
+    monkeypatch.delenv(cb.BYPASS_ENV, raising=False)
+    monkeypatch.setattr(cb, "discover_engine_config", lambda: ENGINE)
+    monkeypatch.setattr(cb, "load_breaker_config", lambda: _config(enabled=False))
+    assert (
+        cb.run_hook(
+            "user_prompt_submit",
+            {"session_id": "s", "prompt": "breaker override"},
+        )
+        is None
+    )
+    assert not state_dir.exists() or not list(state_dir.glob("*.json"))
+
+
+def test_open_message_mentions_override_prompt():
+    config = _config(override_minutes=30, cooldown_minutes=15)
+    msg = cb._open_message(
+        {"opened_at": NOW.timestamp(), "reason": "fast-burn"},
+        config,
+        NOW.timestamp(),
+    )
+    assert '"breaker override"' in msg and "30 min" in msg
+
+
+# ---------------------------------------------------------------------------
 # CodeRabbit follow-ups
 # ---------------------------------------------------------------------------
 
