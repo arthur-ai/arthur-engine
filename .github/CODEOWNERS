@@ -13,6 +13,11 @@
 # needs a team approval on every path, enforced by
 # .github/workflows/team-approval-gate.yml.
 #
+# In an emergency, the ruleset's bypass list can merge without this review. Put
+# an `Emergency:` line in the PR body saying why: every bypass by a person gets
+# a `bypass-audit` issue (.github/workflows/bypass-audit.yml) that stays open
+# until another engineer has reviewed what shipped.
+#
 # Patterns starting with "/" are anchored to the repo root. Later lines win,
 # so a path with no owner at the bottom un-gates a file inside a gated dir.
 

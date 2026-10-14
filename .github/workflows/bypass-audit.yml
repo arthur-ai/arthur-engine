@@ -1,0 +1,80 @@
+name: Bypass Audit
+
+# The bypass list on the `dev` and `main` rulesets is the break-glass path for a merge
+# that cannot wait: it skips the CODEOWNERS review, required checks and the merge queue
+# all at once. GitHub records each bypass in rule insights but tells nobody and keeps no
+# reason. This workflow opens a `bypass-audit` issue for every bypass made by a person,
+# naming the rules skipped and the reason from an `Emergency:` line in the PR body. The
+# issue stays open until someone other than the bypasser has reviewed what shipped. The
+# rules for what gets logged live in .github/scripts/bypass_audit.sh.
+#
+# Triggers:
+#   - push to dev/main: logs a bypass minutes after it lands. The Automator App's own
+#     pushes (version bumps, the dev/main sync) are skipped; they are not human bypasses
+#     and would double the runs.
+#   - schedule: a daily sweep over the last week, for anything a push run missed (a
+#     cancelled run, a bypass on a branch or tag outside dev/main). Issues are keyed by
+#     rule suite id, so the overlap never files a duplicate.
+#   - workflow_dispatch: backfill over a chosen window.
+#
+# Reading rule suites needs "Administration: read", which GITHUB_TOKEN cannot be given,
+# so that one call uses the Automator App's token. The App has no Issues permission, so
+# issues are opened with GITHUB_TOKEN.
+
+on:
+  push:
+    branches:
+      - dev
+      - main
+  schedule:
+    - cron: '17 7 * * *'
+  workflow_dispatch:
+    inputs:
+      time_period:
+        description: "How far back to look for bypasses"
+        required: true
+        default: "week"
+        type: choice
+        options:
+          - hour
+          - day
+          - week
+          - month
+
+permissions: {}
+
+# One run at a time, so two runs cannot both see a bypass as unlogged and both file it.
+concurrency:
+  group: bypass-audit
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    if: github.event_name != 'push' || github.actor != 'arthur-github-automator-app[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Needed to read the Arthur GitHub Automator App credentials.
+    environment: shared-protected-branch-secrets
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: read
+    steps:
+      - name: Generate Automator App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.ARTHUR_GH_AUTOMATOR_APP_ID }}
+          private-key: ${{ secrets.ARTHUR_GH_AUTOMATOR_APP_PRIVATE_KEY }}
+
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          sparse-checkout: .github/scripts
+
+      - name: Open an issue for each bypass
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RULES_TOKEN: ${{ steps.app-token.outputs.token }}
+          TIME_PERIOD: ${{ github.event_name == 'push' && 'day' || inputs.time_period || 'week' }}
+        run: .github/scripts/bypass_audit.sh "$TIME_PERIOD"
