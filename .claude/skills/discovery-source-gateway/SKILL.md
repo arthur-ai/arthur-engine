@@ -1,6 +1,6 @@
 ---
 name: discovery-source-gateway
-description: States the Network & Gateway source-class contract for Shadow Agent Discovery, where an LLM gateway or proxy that callers route model traffic through reports which agents used which models (for example LiteLLM proxy, Kong Konnect, Cloudflare AI Gateway). Use when a vendor is classified `network_gateway`, when building or reviewing a gateway connector under ml-engine/src/ml_engine/discovery/network_gateway/, or when adding the class itself. Covers identity and record rules, connection and least privilege, lookback, errors, Test Connection and the tests that prove them.
+description: States the Network & Gateway source-class contract for Shadow Agent Discovery, where an LLM gateway or proxy that callers route model traffic through reports which agents used which models (for example LiteLLM proxy, Kong Konnect, Cloudflare AI Gateway; self-hosted Kong Gateway is a SIEM query, see the Kong vendor file). Use when a vendor is classified `network_gateway`, when building or reviewing a gateway connector under ml-engine/src/ml_engine/discovery/network_gateway/, or when adding the class itself. Covers identity and record rules, connection and least privilege, lookback, errors, Test Connection and the tests that prove them.
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep
 ---
 
@@ -48,7 +48,7 @@ No hit: read [references/new-class.md](references/new-class.md) first. The contr
 
 ## 2. Is it a gateway
 
-A vendor whose admin or usage API lists callers and their requests is `network_gateway`, with or without an agent registry (the registry is enrichment, never the identity grade). A gateway with no usage API, whose per-caller traffic exists only in logs or in the customer's SIEM, is `discovery-source-siem`; one that lists deployed agents but sees no traffic is `discovery-source-cloud`.
+A vendor whose admin or usage API lists callers and their requests is `network_gateway`, with or without an agent registry (the registry is enrichment, never the identity grade). A gateway with no usage API, whose per-caller traffic exists only in logs or in the customer's SIEM, is `discovery-source-siem`: no new vendor or connector, just a documented query on an existing SIEM source, which must still follow §3's identity rules (namespaced external id, credential grouping, refused-request fold, provider-qualified models); one that lists deployed agents but sees no traffic is `discovery-source-cloud`.
 
 ## 3. Identity and the record
 

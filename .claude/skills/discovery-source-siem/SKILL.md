@@ -41,13 +41,15 @@ The process skill's client, connector and test templates are rendered from the E
 
 ## 1. Is it siem
 
-A SIEM source runs **the customer's query** over logs they already ship, inside a lookback window, and turns each row into a record. The query decides what an agent is, so detection is inferred, and the connector's job is to run it faithfully and refuse anything that would change its meaning. Pick `siem` when the vendor's API executes a query over stored events; gateway logs that land in a SIEM are SIEM sources too.
+A SIEM source runs **the customer's query** over logs they already ship, inside a lookback window, and turns each row into a record. The query decides what an agent is, so detection is inferred, and the connector's job is to run it faithfully and refuse anything that would change its meaning. Pick `siem` when the vendor's API executes a query over stored events; gateway logs that land in a SIEM are SIEM sources too. A new log shape on an existing SIEM vendor needs no new vendor, catalog entry or connector: ship a sample query, a test that runs it against a captured result, and a docs section.
 
 ## 2. Rows and records
 
 - The query projects exactly the `DiscoveryOutputRecord` columns. Any other column fails the contract, including `host_name`, `os_version` and `service_names`, so the class's `OBSERVABLE_FIELDS` ceiling is unreachable today: never promise those fields to a customer.
 - Call `require_contract_columns` **before** building any record; build records only with `records_from_rows`. Bad rows are counted and skipped; values are never logged.
-- `address.instance`: the SIEM host from the **parsed** URL: lowercase host, port only if not 443, path kept; never the netloc (it would carry `user:pass@`). `address.scope`: `None` unless the customer chose a workspace or index the vendor scopes by. `address.query`: the text exactly as run.
+- `address.instance`: the SIEM host from the **parsed** URL: lowercase host, port only if not 443, path kept; never the netloc (it would carry `user:pass@`). `address.scope`: `None` unless the customer chose a workspace or index the vendor scopes by. `address.query`: the query text as the connector runs it (after its whitespace trimming, e.g. Elastic's `esql_text`).
+- List columns (`llm_models`, `tools`, `sub_agents`, `data_sources`) are lists of objects in the contract, which no text query language returns. `records_from_rows` wraps a string or a multivalue of strings into `{"name": ...}` (`{"url": ...}` for `data_sources`); always test a sample query that returns `llm_models`, or a whole result can silently become zero records.
+- When the logs are a gateway's, the query follows the gateway skill's identity rules: an external id namespaced by a fixed gateway label the customer never changes, one record per credential (or agent id), provider-qualified models, and never a request header or key column (gateway logs can carry API keys in clear).
 
 **Trace-identity invariant (every class).** A record becomes a GenAI Engine task; the customer's traces land on it only if the record's join keys (`observations.service_names` against the span's `service.name`, `address.resource_id` against `cloud.resource_id` where set) equal what the vendor's own telemetry puts on a real span. SIEM records carry no service names; keep it so unless a captured span proves a key. A wrong key permanently splits one agent into two tasks.
 
@@ -77,7 +79,7 @@ A SIEM source runs **the customer's query** over logs they already ship, inside 
 
 ## 6. Files
 
-`discovery/siem/<vendor>/{__init__,client,connector}.py`, registered in `source_connectors()`; `tests/unit/discovery/test_<vendor>_connector.py`; a section in `ml-engine/docs/standalone-discovery.md` (`query_language: <lang>`, the field table, and a **sample query** projecting exactly the contract columns, which the tests use as the right-columns case). A new query language also needs a value in the Platform catalog, the engine's language guard and an `arthur-client` bump (standalone mode validates the language against it). Platform catalog entry: class siem, the vendor's language, availability preview.
+`discovery/siem/<vendor>/{__init__,client,connector}.py`, registered in `source_connectors()`; `tests/unit/discovery/test_<vendor>_connector.py`; a section in `ml-engine/docs/standalone-discovery.md` (`query_language: <lang>`, the field table, and a **sample query** projecting exactly the contract columns, which the tests use as the right-columns case). A SIEM vendor is not done until its docs section has a working sample query. A new query language also needs a value in the Platform catalog, the engine's language guard and an `arthur-client` bump (standalone mode validates the language against it). Platform catalog entry: class siem, the vendor's language, availability preview.
 
 ## 7. Tests
 
