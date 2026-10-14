@@ -121,3 +121,17 @@ Registration; request shape (date window from lookback, auth header, `allow_redi
 ## 9. Proving it end to end
 
 Follow the process skill's local end-to-end recipe, LiteLLM section: run the gateway, send traffic with two keys (plus requests carrying `X-LiteLLM-Agent-Id`, one registered via `/v1/agents` and one not, an MCP tool call, and one key used from two client containers), configure the source in the UI with the viewer key, Test Connection, scan, and check the Agents tab and the coverage grid (Network & Gateway is no longer a "No sensor" blind spot).
+
+## 10. Future, not in scope: enforcement through the gateway
+
+A gateway sits in the request path, so beyond discovery it could *enforce* policy for every agent behind it (a kill switch, guardrails, budgets) without instrumenting each agent. This is a product decision that has not been made. Until it is, a discovery connector stays read-only. It never calls a write endpoint, even when the credential allows it, and the least-privilege viewer credential should make writes fail (LiteLLM answers 403 to `POST /key/generate` with a viewer key).
+
+| Gateway | What it can enforce | Source |
+|---|---|---|
+| LiteLLM proxy | Block or unblock a key or team (`/key/block`, `/key/unblock`, `/team/block`, `/team/unblock`); guardrail hooks (`/guardrails/list`); budgets and model allow-lists per key | read in the LiteLLM 1.104 proxy code; not run |
+| OpenShell (agent runtime: gateway → sandboxes) | The gateway is the control plane for its sandboxes: it delivers network and filesystem policy, can delete sandboxes, and a global policy (`openshell policy set --global`) replaces every sandbox's policy until removed | read in OpenShell's docs (`how-it-works/gateways`, `policies/manage-policies`); not run |
+| Kong (Konnect / Gateway) | Consumer-level controls and AI plugins (prompt guards, rate limits) | vendor docs; not verified here |
+| Cloudflare AI Gateway | Guardrails and rate limits on the gateway | vendor docs; not verified here |
+
+If enforcement is ever built, it needs its own credential, explicit customer opt-in, and an audit trail. It is not a discovery scan.
+
