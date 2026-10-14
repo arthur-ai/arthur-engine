@@ -12,20 +12,58 @@ const WINDOW_MS = 5 * 60 * 1000
 const OVERRIDE_MS = 10 * 60 * 1000
 const COMMAND = /^\s*breaker\s+(status|override|reset)\s*$/i
 
+const DEFAULT_CAP_USD = 0.1
+const SPEND_PREFIX = 'spend:'
+
 type Entry = [number, number] // [epoch ms, USD] per model request
+
+// Prompt size in tokens (input + cache write + cache read) of the last finished
+// request, per conversation (main, or a subagent's id). A request cut mid-stream
+// returns no usage, so its input side is estimated from that: the next request
+// resends the same conversation, mostly as cache reads.
+const lastPromptTokens = new Map<string, number>()
+let capWarned = false
 
 function rateFor(model: string) {
   const key = Object.keys(RATES).find(prefix => model.startsWith(prefix))
   return key ? RATES[key] : RATES['claude-opus'] // unknown model: price high, not at zero
 }
 
-// Spend and the override live in $.store, so they outlast the session.
+// Spend lives in $.store, so it outlasts the session. Every session shares the
+// store and a get-then-set is not atomic, so each request is its own key,
+// `spend:<epoch ms>:<request>`: concurrent writers never overwrite each other.
 async function load($: EngineInterface): Promise<Entry[]> {
-  return ((await $.store.get('spend')) as Entry[] | undefined) ?? []
+  const now = Date.now()
+  const entries: Entry[] = []
+  for (const key of await $.store.keys()) {
+    if (!key.startsWith(SPEND_PREFIX)) continue
+    const at = Number(key.split(':')[1])
+    if (!(now - at <= WINDOW_MS)) {
+      await $.store.delete(key) // out of the window: it can't count again
+      continue
+    }
+    entries.push([at, Number((await $.store.get(key)) ?? 0)])
+  }
+  return entries
 }
 
+async function clearSpend($: EngineInterface): Promise<void> {
+  for (const key of await $.store.keys()) {
+    if (key.startsWith(SPEND_PREFIX)) await $.store.delete(key)
+  }
+}
+
+// A cap that is not a positive number would disable the breaker (NaN compares
+// false) or pause everything (zero), so it falls back to the default instead.
 async function cap($: EngineInterface): Promise<number> {
-  return Number((await $.env.get('ARTHUR_BREAKER_CAP_USD')) ?? '0.10')
+  const raw = await $.env.get('ARTHUR_BREAKER_CAP_USD')
+  const value = raw === undefined ? DEFAULT_CAP_USD : Number(raw)
+  if (Number.isFinite(value) && value > 0) return value
+  if (!capWarned) {
+    capWarned = true
+    $.ui.log(`arthur-spend-breaker: ARTHUR_BREAKER_CAP_USD=${JSON.stringify(raw)} is not a positive number; using $${DEFAULT_CAP_USD}`)
+  }
+  return DEFAULT_CAP_USD
 }
 
 function windowSpend(spend: Entry[], now: number): number {
@@ -36,13 +74,12 @@ async function overridden($: EngineInterface, now: number): Promise<boolean> {
   return Number((await $.store.get('overrideUntil')) ?? 0) > now
 }
 
-async function record($: EngineInterface, usd: number): Promise<number> {
+async function record($: EngineInterface, usd: number, request: string): Promise<number> {
   const now = Date.now()
-  const spend = (await load($)).filter(([t]) => now - t <= WINDOW_MS)
-  spend.push([now, usd])
-  await $.store.set('spend', spend)
-  $.ui.status(`spend breaker: $${windowSpend(spend, now).toFixed(4)} / $${await cap($)} in 5 min`)
-  return windowSpend(spend, now)
+  await $.store.set(`${SPEND_PREFIX}${now}:${request}`, usd)
+  const total = windowSpend(await load($), now)
+  $.ui.status(`spend breaker: $${total.toFixed(4)} / $${await cap($)} in 5 min`)
+  return total
 }
 
 async function tripped($: EngineInterface): Promise<string | undefined> {
@@ -66,12 +103,15 @@ export const register: Register = on => {
       return { turnId: e.turnId, index: e.index, answer: stop, toolUses: [], stopReason: 'end_turn', usage: null }
     }
 
-    // Watch the answer as it streams: if its output alone would cross the cap,
-    // stop reading, which ends the request mid-answer.
+    // Watch the answer as it streams: if this request's cost would cross the
+    // cap, stop reading, which ends the request mid-answer.
     const c = await cap($)
     const before = windowSpend(await load($), Date.now())
     const override = await overridden($, Date.now())
     const out = rateFor(e.model ?? '').output
+    const conversation = e.agentId ?? 'main'
+    const request = `${conversation}:${e.turnId}:${e.index}`
+    const inputGuess = ((lastPromptTokens.get(conversation) ?? 0) * rateFor(e.model ?? '').cacheRead) / 1_000_000
     const stream = next(e)
     let text = ''
     let lastIndex = 0
@@ -87,7 +127,8 @@ export const register: Register = on => {
               u.cache_creation_input_tokens * rate.cacheWrite +
               u.cache_read_input_tokens * rate.cacheRead) /
             1_000_000
-          const total = await record($, usd)
+          lastPromptTokens.set(conversation, u.input_tokens + u.cache_creation_input_tokens + u.cache_read_input_tokens)
+          const total = await record($, usd, request)
           $.ui.log(`arthur-breaker: step ${e.index} ${u.model} $${usd.toFixed(4)}; window $${total.toFixed(4)}`)
         }
         return result
@@ -98,10 +139,12 @@ export const register: Register = on => {
         lastIndex = chunk.index
       }
       yield chunk
-      const estimate = ((text.length / 4) * out) / 1_000_000
+      // This request's cost so far: its input side (the previous prompt's size,
+      // at the cache-read price) plus the answer so far (about four characters a token).
+      const estimate = inputGuess + ((text.length / 4) * out) / 1_000_000
       if (!override && before + estimate >= c) {
         await stream.return?.(undefined as any)
-        await record($, estimate)
+        await record($, estimate, request)
         const note = `\n\n[Arthur spend breaker: stopped this answer mid-stream at ~$${(before + estimate).toFixed(4)} (cap $${c}).]`
         $.ui.log(`arthur-breaker: cut step ${e.index} mid-stream after ${text.length} chars`)
         yield { kind: 'text', index: lastIndex, text: note }
@@ -118,7 +161,7 @@ export const register: Register = on => {
       const verb = m[1].toLowerCase()
       if (verb === 'override') await $.store.set('overrideUntil', now + OVERRIDE_MS)
       if (verb === 'reset') {
-        await $.store.set('spend', [])
+        await clearSpend($)
         await $.store.set('overrideUntil', 0)
       }
       const spent = windowSpend(await load($), now)
