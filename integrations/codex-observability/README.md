@@ -187,12 +187,55 @@ uv run --no-project --with pytest \
   python -m pytest \
   integrations/codex-observability/test_tracer.py \
   integrations/codex-observability/test_install.py \
-  integrations/codex-observability/test_model_extraction.py -v
+  integrations/codex-observability/test_model_extraction.py \
+  integrations/codex-observability/test_spend_breaker.py -v
 ```
 
 For a live test, configure a disposable Arthur task, submit a harmless marked
 prompt in a new Codex session, and verify the actual content through
 `GET /api/v1/traces?task_ids=<task-id>&include_spans=true`.
+
+## Spend circuit breaker (optional)
+
+`codex_spend_breaker.py` pauses Codex once model spend in the last five minutes
+reaches a cap. It is the Codex counterpart of the Claude Code circuit breaker in
+`../claude-code-observability`, and uses the same `breaker override` / `breaker
+reset` / `breaker status` prompts. It needs nothing from Arthur Engine: it
+prices each model response from the session's rollout file, where Codex writes a
+`token_usage_record` as soon as the response finishes and before any tool it
+asked for runs.
+
+Codex hooks cannot end a turn, so the breaker does what Codex honours:
+
+| Hook | While over the cap |
+|---|---|
+| `UserPromptSubmit` | `{"decision": "block"}`: the prompt never reaches the model |
+| `PreToolUse` | `permissionDecision: "deny"` with a reason telling the model to stop |
+
+Two limits follow from that. After a deny the model makes one more call to say
+it stopped. Hosted tools such as web search never reach `PreToolUse`. The reply
+never carries `continue`: Codex treats a `PreToolUse` reply that contains it as
+invalid and runs the tool.
+
+To enable it, add the script to both events in Codex's `hooks.json`, beside the
+tracer's entries:
+
+```json
+{"hooks": {
+  "UserPromptSubmit": [{"hooks": [{"type": "command", "command": "python3 /path/to/codex_spend_breaker.py", "timeout": 10}]}],
+  "PreToolUse": [{"hooks": [{"type": "command", "command": "python3 /path/to/codex_spend_breaker.py", "timeout": 10}]}]
+}}
+```
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `ARTHUR_BREAKER_CAP_USD` | `0.10` | USD allowed per five-minute window |
+| `ARTHUR_BREAKER_STATE` | `$CODEX_HOME/spend_breaker_state.json` | Spend ledger and override, shared by all sessions |
+| `ARTHUR_BREAKER_RATES_JSON` | built-in rows | Extra or replacement prices, `{"model": {"input": 2.0, "cached": 0.2, "output": 8.0}}` in USD per million tokens |
+| `ARTHUR_BREAKER_LOG` | unset | Append one line per hook call |
+
+A model without a price row is priced at the most expensive row, not at zero.
+Any error in the hook lets Codex carry on.
 
 ## Uninstall
 
