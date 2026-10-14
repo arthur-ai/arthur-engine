@@ -16,14 +16,15 @@ as npm globals, Homebrew casks, browser extensions and JSON config files.
 
 ## Approach
 
-Detection runs **on the endpoint**; transport goes through the management plane.
+Detection runs **on the endpoint**; transport goes through the management plane — Jamf on
+Macs, and the VM's own guest attributes on Compute Engine.
 
 [osquery](https://osquery.io) is the inventory substrate — it has already solved structured OS
 enumeration across macOS versions. Arthur owns the semantic layer on top: what a tool can *reach*,
 and whether it is something we have never seen before.
 
 The endpoint collects and redacts; **the collector classifies**, and it is the only place matching
-happens — no Mac holds a catalog. Keeping matching server-side means a new signature re-matches
+happens — no endpoint matches anything. Keeping matching server-side means a new signature re-matches
 against evidence already held, so the day a new agent is catalogued you learn which Macs already
 had it, without waiting for a fleet re-scan. That is why the deployed query **enumerates** rather
 than filtering to a list of known identifiers.
@@ -144,10 +145,10 @@ containing usernames, and the Jamf inventory record is readable by every Jamf ad
 |---|---|
 | `vendor/osquery-ai-discovery/` | the queries, the runner and the catalog, vendored at a pinned ref. **The only osquery implementation. Do not edit** |
 | `tools/vendor-queries.sh` | vendor `bin/`, `dist/` and `catalog/` from the public repo at one ref |
-| `tools/build-collector.py` | build `dist/collect.sh`, the single file an MDM deploys |
-| `dist/collect.sh` | the deployable: the vendored runner and queries, embedded. Generated, and committed on purpose |
-| `deploy/` | the LaunchDaemon, for fleets preferring a package to an MDM policy |
-| `test/lint.sh` | everything this tree owns. ~1s, no VM — see [test/README.md](test/README.md) |
+| `tools/build-collector.py` | build both collectors, one file per platform, around one driver |
+| `dist/collect.sh`, `dist/collect-linux.sh` | the deployables: the vendored runner and queries, embedded. Generated, and committed on purpose |
+| `deploy/` | the LaunchDaemon for Macs; the systemd units and the guest-attribute reporter for Compute Engine |
+| `test/` | lint, the collector run, the reporter against a fake metadata server, the units under systemd — see [test/README.md](test/README.md) |
 | `docs/` | design and deployment docs |
 
 The catalog is **not vendored here**: signatures are the collector's, and it vendors them into
@@ -161,7 +162,7 @@ a Mac matching on signatures would be invisible inside a base64 blob.
 
 ```bash
 tools/vendor-queries.sh <ref>     # verifies upstream's own build gate before copying
-tools/build-collector.py          # rebuild dist/collect.sh around the new tree
+tools/build-collector.py          # rebuild both collectors around the new tree
 test/lint.sh                      # gates the vendored tree and the built collector
 ```
 
@@ -180,3 +181,6 @@ vendored runner does not accept.
 - [**AI Inventory on Jamf Pro**](docs/mdm/jamf-pro.md) — deployment runbook for the
   scheduled-writer pattern: two Extension Attributes, one LaunchDaemon, one script, with a
   verification step and expected output for each.
+- [**AI Inventory on Compute Engine VMs**](docs/mdm/gce.md) — the same collector built for
+  Linux: an OS policy installs it with a systemd timer, and a reporter publishes to the VM's
+  guest attributes.
