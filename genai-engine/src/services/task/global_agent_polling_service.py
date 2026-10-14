@@ -21,7 +21,6 @@ from repositories.task_polling_state_repository import TaskPollingStateRepositor
 from repositories.tasks_metrics_repository import TasksMetricsRepository
 from repositories.tasks_repository import TaskRepository
 from schemas.agent_discovery_schemas import DiscoverAndPollResponse
-from schemas.internal_schemas import Task
 from services.base_queue_service import BaseQueueJob, BaseQueueService
 from services.trace.external_trace_retrieval_service import (
     ExternalTraceRetrievalService,
