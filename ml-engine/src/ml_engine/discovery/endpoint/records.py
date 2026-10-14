@@ -15,7 +15,6 @@ from arthur_common.models.agent_discovery_schemas import DiscoveredAgentRecord
 from arthur_common.models.agent_governance_schemas import (
     AgentObservations,
     EndpointAgentCreationSource,
-    RunsOn,
     SourceAddress,
 )
 
@@ -222,10 +221,11 @@ def records_for(
             external_id=f"{device.device_key}:{finding.agent_id}",
             name=finding.name,
             last_seen=last_seen,
-            # An MDM only manages endpoints, so this source always knows where the
-            # machine is. Declared here because nothing downstream can infer it: a SIEM
-            # row can name a laptop too, so the source class does not imply it.
-            runs_on=RunsOn.ENDPOINT,
+            # The carrier always knows where the machine is: a laptop for an MDM, GCP
+            # for a Compute Engine VM. Declared here because nothing downstream can
+            # infer it: a SIEM row can name a laptop too, so the source class does not
+            # imply it.
+            runs_on=device.runs_on,
             platform=device.platform,
             creation_source=_source_for(finding, device, vendor),
         )
@@ -252,6 +252,7 @@ def _source_for(
         vendor=vendor,
         address=SourceAddress(
             instance=device.device_key,
+            scope=device.address_scope,
             resource_kind=finding.primary_kind,
             resource_id=finding.primary_id,
         ),
