@@ -12,6 +12,11 @@ reviewer. The file only works if every line is still true and the list stays
 short enough that ordinary PRs are not slowed down. This skill keeps it that
 way.
 
+A PR authored outside the team (a fork, or a bot other than Renovate) needs a
+team approval on every path, whatever CODEOWNERS says. That is enforced by
+`.github/workflows/team-approval-gate.yml`, not by this file, so do not add
+paths here to cover outside contributors.
+
 Approval is only required when "Require review from Code Owners" is on for the
 `dev` ruleset. While it is off, GitHub still requests the owner's review on
 every matching PR but does not block the merge, so wrong or stale lines still
