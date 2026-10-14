@@ -1,137 +1,117 @@
 ---
 name: discovery-source-gateway
-description: The Network & Gateway source-class contract for Shadow Agent Discovery (an LLM gateway or proxy that callers route model traffic through reports which callers used which models; e.g. LiteLLM proxy, Kong AI Gateway, Cloudflare AI Gateway, Zscaler, Portkey). Use once a vendor is classified `network_gateway`, or when reviewing a gateway connector. The class does not exist in arthur-common yet; the first gateway vendor must add it (references/new-class.md). It says what a gateway record carries, how to connect, how lookback and Test Connection behave, and which tests prove it.
+description: States the Network & Gateway source-class contract for Shadow Agent Discovery, where an LLM gateway or proxy that callers route model traffic through reports which agents used which models (for example LiteLLM proxy, Kong Konnect, Cloudflare AI Gateway). Use when a vendor is classified `network_gateway`, when building or reviewing a gateway connector under ml-engine/src/ml_engine/discovery/network_gateway/, or when adding the class itself. Covers identity and record rules, connection and least privilege, lookback, errors, Test Connection and the tests that prove them.
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep
 ---
 
 # Network & Gateway source class
 
-This skill owns what is true of every **gateway** source in the engine (`ml-engine/`). Platform and UI steps are covered by Arthur's internal discovery integration process skill.
+The gates already refuse the mechanical mistakes: a connector missing from the registry or without `SENSITIVE_FIELDS` (`ml-engine/tests/unit/standalone/test_discovery_config.py`), an executor registry that disagrees with it (`ml-engine/tests/unit/job_executors/test_discover_agents_executor.py`), a record outside the output contract (`ml-engine/src/ml_engine/job_executors/discovery_output_contract.py`), and engine and Platform halves that disagree (the process skill's cross-repo invariant check). This skill is for what they cannot see: which identity a request proves, which rows are agents at all, whether the credential is least-privilege, and whether a record's keys still join next scan.
 
-## 0. First check whether the class exists
+Read the source of truth rather than a restatement here:
+
+- arthur-common `src/arthur_common/models/agent_governance_schemas.py`: the creation-source classes (class facts, validators, docstrings) and `SourceAddress`.
+- `ml-engine/src/ml_engine/discovery/__init__.py:source_connectors()`: the registry.
+- `ml-engine/src/ml_engine/job_executors/discovery_scan.py`: the scan Protocol, `AcceptsStopCheck`, `DiscoveryConfigurationError` and `failure_code`.
+- `ml-engine/src/ml_engine/job_executors/discovery_source_test_executor.py`: how Test Connection classifies an exception, and its `PREVIEW_DEADLINE_SECONDS`.
+
+Platform and UI steps belong to Arthur's internal discovery integration process skill.
+
+## Vendors
+
+- LiteLLM proxy: read [references/vendors/litellm.md](references/vendors/litellm.md) when building LiteLLM.
+- Kong: read [references/vendors/kong.md](references/vendors/kong.md) when building Kong.
+- Cloudflare AI Gateway: read [references/vendors/cloudflare.md](references/vendors/cloudflare.md) when building Cloudflare.
+- OpenShell: read [references/vendors/openshell.md](references/vendors/openshell.md) when building OpenShell.
+
+## Workflow
+
+```
+- [ ] 1. The class exists, or references/new-class.md is done first
+- [ ] 2. The vendor is a gateway
+- [ ] 3. Identity basis, external_id and fold rules decided for every row shape
+- [ ] 4. Connection, least privilege, admin-only probe
+- [ ] 5. Lookback, paging, completeness log
+- [ ] 6. Errors and Test Connection
+- [ ] 7. Tests: run, fix, repeat until green
+- [ ] 8. A scan end to end
+```
+
+## 1. The class exists
 
 ```bash
 grep -n 'NETWORK_GATEWAY' <arthur-common>/src/arthur_common/models/agent_governance_schemas.py
-grep -rn 'network_gateway' ml-engine/src/ml_engine/discovery ml-engine/src/ml_engine/job_executors/fetch_discovered_agents_executor.py
+grep -n 'network_gateway' ml-engine/src/ml_engine/job_executors/fetch_discovered_agents_executor.py
 ```
 
-**Decided (2026-10-13):** the wire value is `network_gateway`, because the Platform coverage summary and the UI's coverage card already use it. The contract (inferred detection, a required `identity_basis`, `client_addresses`) comes from an earlier, unmerged `network` class design, with one change: `REGISTERED_AGENT` means "bound to the request's credential", not "listed in the registry".
+No hit: read [references/new-class.md](references/new-class.md) first. The contract below is then a proposal the discovery owners approve before the arthur-common PR merges. The wire value is `network_gateway`: the Platform's coverage summary and the UI's coverage card already use it.
 
-No hit: this vendor is the **new source class** case. Do `references/new-class.md` first (arthur-common PR, release, pins), and say in the request thread that the class contract below is a proposal the discovery owners must approve before the arthur-common PR merges. The wire value is fixed already: the Platform's coverage class and the UI's coverage card use `network_gateway`, so arthur-common `SourceClass` and the Platform catalog's class list must use the same string.
+## 2. Is it a gateway
 
-## 1. What a gateway source is
+A vendor whose admin or usage API lists callers and their requests is `network_gateway`, with or without an agent registry (the registry is enrichment, never the identity grade). A gateway with no usage API, whose per-caller traffic exists only in logs or in the customer's SIEM, is `discovery-source-siem`; one that lists deployed agents but sees no traffic is `discovery-source-cloud`.
 
-Applications and agents send their LLM calls through a gateway (a proxy holding provider keys, budgets and routing). The gateway authenticates each **caller** (virtual key, consumer, team, app token) and logs every request with the caller, the model and the time. A gateway source asks the gateway's admin/usage API "which callers sent model traffic in the lookback window?" and turns each caller into a record.
+## 3. Identity and the record
 
-| If the vendor... | Class |
+A gateway logs requests; grouping them into an agent is inferred. One record per **agent seen in the window** (a credential that sent nothing is not a record), graded by the strongest signal each request carries (`identity_basis`):
+
+1. `registered_agent`: the request's agent id equals the agent its own credential is bound to. Grade by the credential's binding, never by the agent registry: a least-privilege key may not see the registry, and an empty registry answer does not mean there are no agents.
+2. `claimed_agent`: any other agent id (from an unbound credential, a real agent's id sent from the wrong credential, an id the registry never issued).
+3. `credential`: no agent id; grouped by credential.
+4. `client_address`: no credential either.
+
+| Part | Rule |
 |---|---|
-| exposes an admin or usage API listing callers and their requests (LiteLLM proxy, Kong **Konnect** `/v2/api-requests`, Cloudflare AI Gateway) | **network_gateway** |
-| has an agent registry too | **network_gateway**, and emit registered agents as well as callers |
-| is self-hosted with no usage API, so per-consumer AI traffic exists only in log-plugin output (self-hosted Kong Gateway's `ai` log object) | `discovery-source-siem`, a query over those logs |
-| only ships its request logs to the customer's SIEM | `discovery-source-siem` (a query over those logs) |
-| lists deployed agent resources but sees no traffic | `discovery-source-cloud` |
+| `external_id` | The id for the record's basis (agent id, the gateway's credential id, client address), namespaced by gateway instance, e.g. `<vendor>:<instance>:<id>`, so records from two gateways or two sources never collide. External ids are permanent join keys in the GenAI Engine. Never the raw credential, never an alias (optional and reusable) |
+| `name` | The agent's or credential's alias, else team alias + short id, else the id |
+| `last_seen` | Newest request time in the window, refused requests included |
+| `llm_models` | Distinct provider-qualified models actually served, sorted |
+| `address.instance` | Gateway host from the parsed URL: lowercase host, port unless 443, path kept, never the netloc. One shared helper in the new `discovery/network_gateway/records.py` |
+| `address.scope` | The team / workspace id when the gateway has one, else `None` |
+| `address.resource_id` | The un-namespaced id the `external_id` is built from; `address.query` is absent |
+| `observations` | `client_addresses`, `host_group` (team alias), `assigned_user` (only what the gateway attributes, never inferred). Check they survive the fetch: references/new-class.md §Fetch |
+| `runs_on` / `platform` / `service_names` | Unset. A gateway does not know where the caller runs, and an alias is not a span's `service.name` |
 
-## 2. The record contract (`NetworkGatewayAgentCreationSource`)
+Fold rules:
 
-| Part | Rule | Why |
-|---|---|---|
-| Creation source | `NetworkGatewayAgentCreationSource(type="NETWORK_GATEWAY", identity_basis=...)`, `SOURCE_CLASS=NETWORK_GATEWAY`, `DETECTION=INFERRED`, `VISIBILITY_CEILING=LIMITED`, `OBSERVABLE_FIELDS={"client_addresses", "host_group", "assigned_user"}` | The gateway logs *requests*; grouping requests into an *agent* (by binding, claimed id, key or address) is inferred, as a SIEM infers from log fields. `identity_basis` is per record: one scan yields every strength |
-| One record per | **agent seen in the window**, identified by the strongest signal the gateway gives, in this order: (1) **registered agent**: the request's agent id equals the agent the request's own credential is **bound** to. LiteLLM: row `agent_id` == the `agent_id` that `/key/list?return_full_object=true` reports for that key. A bound key stamps the id with no header. Do **not** grade against the agent registry (`/v1/agents`): a least-privilege viewer key gets 200 with an empty list even when agents exist (run on LiteLLM 1.104, 2026-10-13); (2) **claimed agent**: any other agent id on the request (`X-LiteLLM-Agent-Id` on an unbound key, a real agent's id sent from the wrong key, or an id the registry never issued); (3) the **credential** (LiteLLM virtual key, Konnect consumer); (4) the **client address**, only when nothing else exists. Record which one you used. A key that sent nothing in the window is not a record (configured is not seen) | Discovery reports agents that are running; a shared key hides several agents |
-| `external_id` | The gateway's id for the caller (LiteLLM hashed key `token`, Kong consumer id). Never the raw key, never an alias (aliases are optional and reusable) | stability, secrecy |
-| `name` | The caller's alias, else team alias + short id, else the id | non-blank |
-| `last_seen` | The newest request time for that caller in the window | traffic-based |
-| `llm_models` | Distinct provider-qualified models the caller actually **used** (`openai/gpt-4o`), sorted. A model the gateway refused (403, not in the key's allow-list) is left out, but the refused request still counts toward `last_seen` | the gateway knows this exactly |
-| `address.instance` | The gateway host from the parsed URL (lowercase host, port unless 443, path kept; never the netloc). Put the helper in `discovery/network_gateway/records.py` (`gateway_instance`) so every gateway vendor shares it | same rule as SIEM `_instance`, which is private to each SIEM connector |
-| `address.scope` | The caller's team / workspace / gateway id when the gateway has one, else `None` | groups callers |
-| `address.resource_id` | the caller id (= `external_id`) | |
-| `address.query` | Absent (no customer query) | |
-| `observations` | `client_addresses` = the source addresses the record's requests came from (one key used from several hosts shows here); `host_group` = team/project/workspace alias; `assigned_user` = the key owner or end user the gateway attributes the call to (personal data: only what the gateway reports, never inferred) | within `OBSERVABLE_FIELDS` |
-| `identity_basis` | `registered_agent`: request agent id == the agent the request's own credential is bound to. `claimed_agent`: any other agent id. `credential`: no agent id, grouped by key. `client_address`: no credential either (unauthenticated gateway or logs) | required, per record |
-| `runs_on` / `platform` / `service_names` | Unset. A gateway does not know where the caller runs; a key alias is not a globally unique service name | see `discovery-source-cloud` §2 on `service_names` |
+- A refused request (model not allowed, scope 403) joins its credential's record if one exists, never creates an agent of its own, and contributes `last_seen` but not models. Gateways may log such a request without its agent id.
+- A request rejected because the caller's credential was invalid is not a caller: skip and count it.
+- Rows that are calls to the gateway's own admin API are not agent traffic: skip and count them.
 
+**Trace-identity invariant (every class).** A record becomes a GenAI Engine task; the customer's traces land on it only if the record's join keys (`observations.service_names` against the span's `service.name`, `address.resource_id` against `cloud.resource_id` where set) equal what the vendor's own telemetry puts on a real span. Check against a captured span, not the docs. A wrong key permanently splits one agent into two tasks. Without a captured span, leave `service_names` unset.
 
-**Trace-identity invariant (every class).** Discovery's job is to find every agent. Each record becomes a GenAI Engine task with provenance, and traces are the customer's to send. They only land on the discovered task if the keys the record stores for joining equal what that vendor's own telemetry puts on a real span. Those keys are `observations.service_names`, matched against the span's `service.name`, and the address `resource_id`, matched against `cloud.resource_id` where the vendor sets it.
-- **Check it against a captured real span**, not the docs. Pin the span's resource attributes in a test.
-- **Mappings are immutable.** A wrong key permanently splits one agent into a discovered task and a second, traced task.
-- **If the key must also match what an older integration stored**, carry both forms.
-- **If you cannot capture a real span**, leave `service_names` unset and say so in the docstring and the PR.
+## 4. Connection and credentials
 
-## 3. Connection and credentials
+- Fields: `base_url` (must be https); one admin credential (sensitive); `ca_certificate` + `tls_verification` (`full|ca_only|off`), since gateways are often self-hosted behind private CAs, with the vendor marked as one where `ca_only` requires a CA certificate. A SaaS gateway on a fixed host takes an account id instead of `base_url` and TLS fields. `SENSITIVE_FIELDS` equals the catalog entry's secret fields.
+- `https://` only, `discovery/address.py:address_problem`, `discovery/siem/tls.py:tls_session` (import it), `allow_redirects=False`, `(connect, read)` timeouts summing under 120 s.
+- Least privilege: a read-only admin role, never the master key. Name it in the field `description` and the docs, and test that it can scan.
+- **Probe an admin-only list first**, in the scan and in Test Connection, so a wrong role reads as `permission_denied` rather than `authentication_failed`: some gateways answer 401 to a valid non-admin credential on usage routes. A route that answers 200 for any valid credential cannot check the role.
+- Read caller, team, model, time and status only; never request/response bodies or prompts. Never call a write route, even when the credential allows it. Enforcement through the gateway (blocking, guardrails, budgets) would be a separate feature with its own credential, customer opt-in and audit trail; each vendor reference lists that surface.
 
-- Fields (the Platform catalog entry): `base_url` (non-sensitive, must be https); one admin credential (sensitive); `ca_certificate` + `tls_verification` (`full|ca_only|off`) because gateways are usually self-hosted behind private CAs (mark the vendor as one where `ca_only` requires a CA certificate). SaaS gateways with a fixed host (Cloudflare) drop `base_url` and TLS fields and take an account id instead.
-- `SENSITIVE_FIELDS: ClassVar[frozenset[str]]` on the connector names the credential keys. Standalone mode refuses a connector without it (`tests/unit/standalone/test_discovery_config.py:test_every_registered_connector_declares_its_secrets`), and its contents must equal the catalog entry's secret fields. Nothing in this repo checks that equality; the process skill's cross-repo invariant check does.
-- Engine: `https://` only, `discovery/address.py:address_problem`, `discovery/siem/tls.py:tls_session` (import it; do not copy), `allow_redirects=False`, `(connect, read)` timeouts summing under 120 s.
-- **Least privilege:** a read-only admin role, never the master key, when the gateway has one (LiteLLM: a user with role `proxy_admin_viewer` and a key for it; Kong: an RBAC role with read on consumers and analytics). Name the role in the field `description` and the docs.
-- Never read or log request/response bodies or prompts the gateway stored. Read only caller, team, model, time, status.
+## 5. Lookback, paging, completeness
 
-## 4. Lookback, paging, batching
+- Lookback is a window over traffic: `start = now - lookback_hours`, `end = now`, as the API's date filter. `lookback_hours <= 0` is everything retained: send the earliest date the API accepts and log that the window is the gateway's retention. Date formats, page sizes and caps come from the vendor's docs and are pinned in the connector's tests.
+- Follow pages to the end, cap them, ask the stop check before each page (`AcceptsStopCheck` is structural; do not import it) and `return` cleanly. Retry idempotent GETs via `discovery/retry.py`.
+- Records aggregate over all pages: collect, then yield `BATCH_SIZE` slices. Before the first batch, log requests read, records found, rows skipped by reason, and the capped total when the page cap was hit. A stop between pages yields the partial aggregate with a warning.
+- Inventory enrichment (credential list, consumers) is optional; its 403 is a warning. Usage rows can land well after the request, so a Test Connection right after traffic may see none.
 
-- **Lookback is a real window over traffic**: `start = now - lookback_hours`, `end = now`, sent as the API's date filter. `lookback_hours <= 0` means "everything the gateway retains" (send the earliest date the API accepts, and log that the window is the gateway's retention).
-- Usage APIs page (LiteLLM `/spend/logs/ui` `page`/`page_size`); follow pages until `total_pages`, cap pages, stop check between pages, retry idempotent GETs via `discovery/retry.py`. A stop between pages yields the partial aggregate with a warning.
-- The stop check is `AcceptsStopCheck.stop_when(should_stop)`, implemented structurally (`job_executors/discovery_scan.py`; do not import the Protocol): handed in before `scan`, asked before each page, and when it answers True you `return` cleanly. Test Connection's 120 s deadline (`PREVIEW_DEADLINE_SECONDS` in `job_executors/discovery_source_test_executor.py`) relies on it.
-- LiteLLM facts (1.104): dates are UTC `YYYY-MM-DD HH:MM:SS` (ISO gives 400); `page_size` max 1000 (5000 gives 422); `start_date=1970-01-01 00:00:00` is accepted for "all retained"; LiteLLM logs refused requests too, so probing with a wrong key adds rows.
-- Records are aggregates over all pages (one per caller), so collect then yield in `BATCH_SIZE` slices; log completeness (requests read, callers found, pages capped) before the first yield.
-- An admin inventory call (LiteLLM `/key/list`, Konnect consumers) is optional enrichment for names and owners; its failure (403 on a narrower role) is a warning, not a scan failure.
+## 6. Errors and Test Connection
 
-## 5. Errors and Test Connection
+- Config faults (missing field, `http://`, bad TLS mode, a CA that will not load): `DiscoveryConfigurationError`; a CA-load failure is raised `from None`.
+- Non-2xx, or a 200 that is not the usage shape: `<Vendor>Error(msg, status_code=n)` with a hint naming the least-privilege role.
+- TLS handshake refused: `DiscoveryConfigurationError(...) from exc`. Unreachable or timed out: `raise type(exc)(msg) from exc`. Zero requests in the window is a success with a job-log line.
+- Never put the vendor's auth error text in an exception or log: gateways echo masked credential fragments. Keep the type or code and add your own hint. Elastic's `_error_of` / `_reason_suffix` copy the vendor's reason into the exception; do not copy that part.
 
-The shared error model, which both the scan and Test Connection read:
+## 7. Files
 
-| Situation | Raise | Scan `failure_code` / Test Connection category |
-|---|---|---|
-| Missing field, `http://` URL, bad URL, bad TLS mode, CA that won't load | `DiscoveryConfigurationError` (a `ValueError`; a CA-load failure is raised `from None`, never chained to `ssl.SSLError`) | `not_configured` / `configuration` |
-| Gateway answered non-2xx | `<Vendor>Error(msg, status_code=n)` with a hint naming the least-privilege role | 401 `authentication_failed` / `authentication`; 403 `permission_denied` / `authorization`; else `provider_error` / `vendor_error` |
-| 200 whose body is not the usage shape (a login page, a proxy) | `<Vendor>Error(..., status_code=200)` | `provider_error` / `vendor_error` |
-| TLS handshake refused | `DiscoveryConfigurationError(...) from exc` | `not_configured` / `configuration` |
-| Host unreachable or timed out | the same type: `raise type(exc)(msg) from exc` | `provider_error` / `network` or `timeout` |
+Create `ml-engine/src/ml_engine/discovery/network_gateway/` with `__init__.py` (class docstring), `records.py` (shared row-to-record builder and instance helper) and `<vendor>/{__init__,client,connector}.py`. Add `network_gateway` to `_CREATION_SOURCE_TYPES` in `job_executors/fetch_discovered_agents_executor.py`, register in `source_connectors()`, write `tests/unit/discovery/test_<vendor>_connector.py` and a section in `ml-engine/docs/standalone-discovery.md`. Platform catalog entry: class `network_gateway`, query language none, availability preview.
 
-Error text names the field and the fix, never the value. Gateway-specific:
+## 8. Tests
 
-- Zero requests in the window is success with a job-log line ("no traffic in the last N hours"), not an error.
-- Never put the vendor's auth error text in an exception or log: gateways echo masked key fragments (LiteLLM: `Received=wron****0000`). Keep only the error type/code and add your own hint. (The Elastic client's `_error_of` / `_reason_suffix`, which put the vendor's error reason into the exception text, would leak it; do not copy that part.)
-- Some gateways answer **401, not 403**, to a valid key without the admin role. On LiteLLM 1.104 a non-admin key gets 401 on `/spend/logs/ui` but a clean **403 on `/user/list`**. So **call an admin-only list first** (LiteLLM `GET /user/list?page_size=1`) in both scan and Test Connection: the wrong role then reads as `permission_denied`, not `authentication_failed`. `/key/info` answers 200 for any key and cannot check the role.
-- Requests the gateway refused because the *caller's* credential was bad (LiteLLM rows with `metadata.error_information.error_code == "401"`) are not callers: skip and count them.
-- Failed requests (`status: failure`, e.g. a key calling a model it is not allowed) still prove the caller exists; count them toward `last_seen`.
-- A request the gateway refused for the key's scope (403, model not allowed) is logged **without** the agent id, so it falls back to credential identity; do not let it create a separate agent.
-- Usage rows are written in batches (LiteLLM: 20–60 s after the request). A Test Connection right after sending traffic can legitimately see none of it.
+Run `uv run pytest tests/unit/discovery/test_<vendor>_connector.py` from `ml-engine/`, fix, repeat. Cover: registration; request shape (date window, auth header, `allow_redirects=False`, timeout sum); paging to the end and the cap; aggregation (two requests by one credential: one record, both models, newest time); each identity basis, including a bound credential with no agent header; the fold rules; `external_id` namespacing; address; `check_batch` passes; zero traffic logs success; enrichment 403 warns; probe order turns a wrong role into 403; 401/403 carry `status_code`; malformed 200; http, userinfo and bad TLS mode refused; stop check before each page; credentials, masked fragments and bodies never in `caplog`. Pin captured live bodies inline.
 
-## 6. Files (arthur-engine `ml-engine/`; arthur-common and release steps in references/new-class.md)
+- Build fixtures in the generated clients' shapes: enum members, not plain strings. `str()` and f-strings of a `(str, Enum)` member give its qualified name on Python 3.11+, so convert with `.value`.
+- A test CA must carry keyUsage, or Python 3.13's strict X.509 check rejects it under `full`; use `ca_only` for a self-signed test CA.
 
-Verified on 2026-10-12 against arthur-engine `dev` `4de52ab4` and arthur-common `main` `600a527f`. Paths drift: if a file named here is missing, find the symbol, then update this line. The process skill's cross-repo invariant check is the guard that the engine and Platform halves agree. The first gateway vendor (LiteLLM) was proven on a local stack on that date; it is not merged, so there is no gateway connector to copy yet.
+## 9. End to end
 
-- arthur-engine: `discovery/network_gateway/__init__.py` (class docstring), `discovery/network_gateway/records.py` (shared caller → record builder; the second gateway vendor reuses it), `discovery/network_gateway/<vendor>/{__init__,client,connector}.py`, `_CREATION_SOURCE_TYPES["network_gateway"] = "NETWORK_GATEWAY"` in `job_executors/fetch_discovered_agents_executor.py`, tests, standalone docs section.
-- Registry: in `discovery/__init__.py:source_connectors()` import `VENDOR as <X>_VENDOR` and the connector class, add the dict entry, add both names to `__all__`.
-- arthur-common and the engine repins: `references/new-class.md` (first vendor). Platform and UI: the internal process skill.
-
-## 7. Checklist
-
-- [ ] Class exists (or `new-class.md` done and approved); wire value `network_gateway` everywhere.
-- [ ] One record per caller seen in the window; `external_id` is the gateway's caller id, never a secret.
-- [ ] `llm_models` from actual traffic; no `service_names`, `runs_on`.
-- [ ] Lookback is the request window; `<= 0` is full retention and logged.
-- [ ] https, TLS fields, `allow_redirects=False`; least-privilege role documented and tested (the viewer role can scan).
-- [ ] No prompt/response bodies read or logged.
-- [ ] `SENSITIVE_FIELDS` == the catalog's secret fields.
-- [ ] Platform catalog entry: class network_gateway, query language none, availability preview.
-
-## 8. Tests that prove it
-
-Registration; request shape (date window from lookback, auth header, `allow_redirects=False`, timeout sum < 120); paging to `total_pages` and the page cap; aggregation (two requests by one key → one record, both models, newest time); failed requests count; caller without alias named by team + id; `NetworkGatewayAgentCreationSource` address (instance normalisation, scope = team, resource_id = caller id); `check_batch` passes; zero traffic is a logged success; enrichment 403 is a warning; 401/403 carry `status_code`; malformed 200; http/userinfo/bad TLS mode refused; stop check before each page; key material and bodies never in `caplog`. Capture live bodies from a running gateway (the process skill's local end-to-end recipe shows how to run LiteLLM locally) and pin them inline. Trace identity: if the connector sets `service_names` or a trace-joining `resource_id`, a test pins a captured real span's resource attributes and asserts the record's keys equal them (`test_service_names_match_a_captured_<vendor>_span`). Gateway records leave `service_names` unset; a key alias is not what spans carry.
-
-## 9. Proving it end to end
-
-Follow the process skill's local end-to-end recipe, LiteLLM section: run the gateway, send traffic with two keys (plus requests carrying `X-LiteLLM-Agent-Id`, one registered via `/v1/agents` and one not, an MCP tool call, and one key used from two client containers), configure the source in the UI with the viewer key, Test Connection, scan, and check the Agents tab and the coverage grid (Network & Gateway is no longer a "No sensor" blind spot).
-
-## 10. Future, not in scope: enforcement through the gateway
-
-A gateway sits in the request path, so beyond discovery it could *enforce* policy for every agent behind it (a kill switch, guardrails, budgets) without instrumenting each agent. This is a product decision that has not been made. Until it is, a discovery connector stays read-only. It never calls a write endpoint, even when the credential allows it, and the least-privilege viewer credential should make writes fail (LiteLLM answers 403 to `POST /key/generate` with a viewer key).
-
-| Gateway | What it can enforce | Source |
-|---|---|---|
-| LiteLLM proxy | Block or unblock a key or team (`/key/block`, `/key/unblock`, `/team/block`, `/team/unblock`); guardrail hooks (`/guardrails/list`); budgets and model allow-lists per key | read in the LiteLLM 1.104 proxy code; not run |
-| OpenShell (agent runtime: gateway → sandboxes) | The gateway is the control plane for its sandboxes: it delivers network and filesystem policy, can delete sandboxes, and a global policy (`openshell policy set --global`) replaces every sandbox's policy until removed | read in OpenShell's docs (`how-it-works/gateways`, `policies/manage-policies`); not run |
-| Kong (Konnect / Gateway) | Consumer-level controls and AI plugins (prompt guards, rate limits) | vendor docs; not verified here |
-| Cloudflare AI Gateway | Guardrails and rate limits on the gateway | vendor docs; not verified here |
-
-If enforcement is ever built, it needs its own credential, explicit customer opt-in, and an audit trail. It is not a discovery scan.
-
+Follow the process skill's local end-to-end recipe for the vendor: send traffic covering every identity basis (a bound credential, a claimed id from an unbound credential, a plain credential, one credential from two clients) plus a refused request; configure the source with the viewer credential; Test Connection; scan; check the Agents tab and that Network & Gateway is no longer a "No sensor" blind spot on the coverage grid.
