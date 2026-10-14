@@ -51,7 +51,11 @@ def get_english_dictionary():
         return set([word.lower() for word in english_dictionary])
 
 
-ENGLISH_DICTIONARY = get_english_dictionary()
+@pytest.fixture(scope="module")
+def english_dictionary():
+    # At import, every xdist worker would run nltk.download("words") into the
+    # same directory at once; the downloader takes no lock.
+    return get_english_dictionary()
 
 
 @pytest.mark.unit_tests
@@ -389,8 +393,8 @@ def test_profanity_detection_with_character_replacement(
 
 
 @pytest.mark.unit_tests
-def test_profanity_regex_against_dictionary():
-    for word in ENGLISH_DICTIONARY:
+def test_profanity_regex_against_dictionary(english_dictionary):
+    for word in english_dictionary:
         if word in FULLY_BAD_WORDS:
             assert detect_profanity(word) == True
         else:
