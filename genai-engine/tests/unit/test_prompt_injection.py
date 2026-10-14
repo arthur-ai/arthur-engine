@@ -9,6 +9,11 @@ from scorer.checks.prompt_injection.classifier import (
     get_prompt_injection_tokenizer,
 )
 
+# Loads real ML models: one xdist worker runs every module in this group, so
+# parallel CI holds one copy of them rather than one per worker.
+pytestmark = pytest.mark.xdist_group("ml_models")
+
+
 PROMPT_INJECTION_MODEL = get_prompt_injection_model()
 PROMPT_INJECTION_TOKENIZER = get_prompt_injection_tokenizer()
 

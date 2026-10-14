@@ -453,9 +453,12 @@ jobs:
           set -o pipefail
           # -n 4 matches the runner's 4 vCPUs. "auto" counts physical cores,
           # which a VM may report as fewer. pytest-cov combines the workers'
-          # coverage into the one report below.
+          # coverage into the one report below. loadgroup keeps the modules
+          # marked xdist_group("ml_models") on one worker: each worker that
+          # loads the PII, toxicity and prompt-injection models adds its own
+          # copy, and several copies at once ran the runner out of memory.
           uv run --no-sync --directory genai-engine pytest --cov --cov=src \
-            -n 4 \
+            -n 4 --dist loadgroup \
             --cov-report term \
             --junitxml=report.xml \
             -m "unit_tests" | tee pytest-coverage.txt

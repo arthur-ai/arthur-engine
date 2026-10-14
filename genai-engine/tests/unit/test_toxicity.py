@@ -16,6 +16,11 @@ from scorer.checks.toxicity.toxicity_profanity.profanity import (
     detect_profanity,
 )
 
+# Loads real ML models: one xdist worker runs every module in this group, so
+# parallel CI holds one copy of them rather than one per worker.
+pytestmark = pytest.mark.xdist_group("ml_models")
+
+
 __location__ = os.path.dirname(os.path.abspath(__file__))
 
 TOXICITY_MODEL = get_toxicity_model()
