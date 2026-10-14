@@ -8,11 +8,17 @@ left here is the vendor tag, reading this source's fields, scoping by label, and
 things only Compute Engine has to say about a VM: where it is, and whether it can report
 at all.
 
-EVERY SCAN IS A FULL ENUMERATION. Nothing records when a guest attribute was written, so
-there is no report date to page a lookback window on, and `lookback_hours` is not
-applied. A VM's records are dated by the scan inside its payload, never by this read: a
-stopped VM, or one whose guest attributes were turned off after it reported, keeps
-serving its last values, and those must read as old.
+EVERY VM IS LISTED; THE LOOKBACK IS APPLIED TO ITS STATUS LINE. Nothing records when a
+guest attribute was written, so there is no report date to page on, and a stopped VM, or
+one whose collector's timer is gone, keeps serving its last values. The status line is
+the report date instead: it dates the last scan that succeeded, and the reporter appends
+`failed=<UTC>` to a run that did not, so the newer of the two is when the VM last
+reported. A VM that has not reported within `lookback_hours` is counted as
+`not-reported-in-window` and not published -- what Jamf's report-date filter does by
+leaving the Mac out. Publishing it again would keep its agents fresh on the Platform,
+which dates evidence by when a scan last handed it over, not by `last_seen`. A VM still
+reporting but failing keeps publishing its last good scan, as a Jamf Mac does. Records
+are dated by the scan inside the payload, never by this read.
 
 GUEST ATTRIBUTES OFF IS NAMED, NOT READ. A VM whose `enable-guest-attributes` is not true
 -- on the VM, or on its project when the VM does not say -- cannot have reported since it
@@ -34,6 +40,7 @@ import logging
 import re
 from collections import Counter
 from dataclasses import dataclass, replace
+from datetime import datetime, timedelta, timezone
 from typing import Callable, ClassVar, Iterator, Mapping, Optional, Sequence
 
 import google.auth
@@ -74,9 +81,13 @@ ALLOW_ADC_ENV_VAR = "ARTHUR_ENGINE_GCP_COMPUTE_ENGINE_ALLOW_ADC"
 # Device coverage reasons only Compute Engine produces, beside the payload's own.
 GUEST_ATTRIBUTES_DISABLED = "guest-attributes-disabled"
 READ_FAILED = "read-failed"
+NOT_REPORTED_IN_WINDOW = "not-reported-in-window"
 
 # The collector's reporter writes the status line here (gce.md, section 05).
 STATUS_ATTRIBUTE = "arthur/status"
+
+# A timestamp on the status line: its own, and the reporter's `failed=<UTC>`.
+_STATUS_TIMESTAMP = re.compile(r"\b(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z)")
 
 # A project id, optionally domain-scoped (`example.com:my-project`). Checked because it
 # is a path segment in every call.
@@ -126,8 +137,10 @@ class ComputeEngineConnector:
             [Optional[Credentials]],
             requests.Session,
         ] = authorized_session,
+        clock: Callable[[], datetime] = lambda: datetime.now(timezone.utc),
     ) -> None:
         self._session_for = session_for
+        self._clock = clock
         self._coverage: Optional[DeviceCoverage] = None
         self._should_stop: Callable[[], bool] = lambda: False
         self._stopped_early = False
@@ -172,11 +185,16 @@ class ComputeEngineConnector:
             exclude={pair: pair for pair in settings.exclude_labels},
         )
         coverage = self._coverage = scope.new_coverage()
+        # A lookback of zero or less is the whole roster, as on Jamf.
+        since = (
+            self._clock() - timedelta(hours=lookback_hours)
+            if lookback_hours > 0
+            else None
+        )
 
         logger.info(
             "Compute Engine scan starting against project(s) %s, catalog %s, %s "
-            "agent(s), scope: %s, using %s. Every VM is read: guest attributes carry "
-            "no report date, so the %sh lookback is not applied.",
+            "agent(s), scope: %s, using %s. Every VM is listed; %s.",
             ", ".join(settings.project_ids),
             matcher.catalog_sha,
             matcher.agent_count,
@@ -186,7 +204,12 @@ class ComputeEngineConnector:
                 if google_credentials is not None
                 else "Application Default Credentials"
             ),
-            lookback_hours,
+            (
+                f"one whose status line shows no report in the last {lookback_hours}h "
+                f"is counted and not published"
+                if since is not None
+                else "the lookback is 0, so every VM's last report is published"
+            ),
         )
 
         carried: set[str] = set()
@@ -230,13 +253,29 @@ class ComputeEngineConnector:
                 coverage.count_unreadable(READ_FAILED)
                 continue
 
-            # Counted only once read: the summary says a stopped VM's values are old,
-            # which says nothing about one whose values were never read.
+            device = replace(device, attributes=attributes or {})
+            status = device.attribute(STATUS_ATTRIBUTE)
+            reported = _last_reported(status)
+            if reported is not None:
+                device = replace(device, last_reported=reported.isoformat())
+            if _before(reported, since):
+                coverage.count_unreadable(NOT_REPORTED_IN_WINDOW)
+                continue
+            read = records_for(device, matcher, VENDOR, logger)
+            if (
+                reported is None
+                and read.records
+                and _before(read.records[0].last_seen, since)
+            ):
+                # No status line to date the VM by, so its payload's own scan does.
+                coverage.count_unreadable(NOT_REPORTED_IN_WINDOW)
+                continue
+
+            # Counted only for a VM that reported in the window: the summaries speak
+            # for its values, and say nothing true about one left out.
             if instance.status != "RUNNING":
                 not_running[instance.status or "UNKNOWN"] += 1
-            device = replace(device, attributes=attributes or {})
-            failed_runs.update(_failed_run(device.attribute(STATUS_ATTRIBUTE)))
-            read = records_for(device, matcher, VENDOR, logger)
+            failed_runs.update(_failed_run(status))
             if read.unreadable is not None:
                 coverage.count_unreadable(read.unreadable.value)
                 continue
@@ -285,8 +324,10 @@ class ComputeEngineConnector:
                 "Compute Engine scan decoded 0 of %s VM(s). This reads as a clean fleet "
                 "and is almost never one: the collector may not be deployed (the "
                 "runbook's OS policy targets VMs labelled arthur-ai-discovery=enabled), "
-                "guest attributes may be off on the VMs or their project, or no VM has "
-                "finished its first run, up to 15 minutes after boot.",
+                "guest attributes may be off on the VMs or their project, the VMs may "
+                "not have reported within the lookback window (stopped, or the "
+                "collector's timer removed), or no VM has finished its first run, up to "
+                "15 minutes after boot.",
                 seen,
             )
 
@@ -376,6 +417,32 @@ def _device_for(instance: Instance) -> ManagedDevice:
 def _guest_attributes_on(flag: Optional[str]) -> bool:
     """The VM's own setting, or its project's when it has none. Unset is off."""
     return (flag or "").strip().lower() == "true"
+
+
+def _last_reported(status: Optional[str]) -> Optional[datetime]:
+    """When the VM last reported: the newest timestamp on its status line.
+
+    The line's own timestamp dates the last scan that succeeded; `failed=<UTC>` dates a
+    later run that did not. None for a line with neither, such as a bare `no-cache`.
+
+    A stamp that is not a real time is skipped: the line is the VM's to write, and one
+    VM's bad value must not end the scan.
+    """
+    newest: Optional[datetime] = None
+    for stamp in _STATUS_TIMESTAMP.findall(status or ""):
+        try:
+            when = datetime.strptime(stamp, "%Y-%m-%dT%H:%M:%SZ")
+        except ValueError:
+            continue
+        when = when.replace(tzinfo=timezone.utc)
+        if newest is None or when > newest:
+            newest = when
+    return newest
+
+
+def _before(when: Optional[datetime], since: Optional[datetime]) -> bool:
+    """Whether `when` falls before the window. Nothing to compare is never before it."""
+    return when is not None and since is not None and when < since
 
 
 def _failed_run(status: Optional[str]) -> list[str]:

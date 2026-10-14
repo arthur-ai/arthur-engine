@@ -391,6 +391,8 @@ def test_a_key_that_is_not_json_is_reported_without_its_content() -> None:
         credentials_from({"service_account_key": secret}, LOG)
     assert "SUPER-SECRET" not in str(exc.value)
     assert exc.value.__cause__ is None
+    # The source's to fix, not Google's error.
+    assert failure_code(exc.value) is DiscoveryErrorCode.NOT_CONFIGURED
 
 
 @pytest.mark.parametrize(

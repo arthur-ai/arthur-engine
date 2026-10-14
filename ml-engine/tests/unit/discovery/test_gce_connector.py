@@ -31,6 +31,7 @@ from discovery.endpoint.gce.client import ComputeEngineError
 from discovery.endpoint.gce.connector import (
     ALLOW_ADC_ENV_VAR,
     GUEST_ATTRIBUTES_DISABLED,
+    NOT_REPORTED_IN_WINDOW,
     READ_FAILED,
     VENDOR,
     ComputeEngineConnector,
@@ -88,6 +89,8 @@ CODEX = frame(
     ],
 )
 OK_STATUS = "ok 2026-10-12T12:58:28Z rows=2 packages-linux=ok"
+# The scan's clock: half an hour after OK_STATUS, inside the default 24h lookback.
+NOW = datetime(2026, 10, 12, 13, 30, tzinfo=timezone.utc)
 
 
 def vm(
@@ -241,16 +244,24 @@ def adc(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def connector_for(fake: FakeCompute) -> ComputeEngineConnector:
-    return ComputeEngineConnector(session_for=lambda creds: fake)  # type: ignore[arg-type,return-value]
+    return ComputeEngineConnector(session_for=lambda creds: fake, clock=lambda: NOW)  # type: ignore[arg-type,return-value]
 
 
 def scan(
     fake: FakeCompute,
     fields: Optional[dict[str, str]] = None,
     connector: Optional[ComputeEngineConnector] = None,
+    lookback_hours: int = 24,
+    credentials: Optional[dict[str, str]] = None,
 ) -> list[Any]:
     connector = connector or connector_for(fake)
-    batches = connector.scan(FakeConfig(), 24, {}, fields or FIELDS, LOG)  # type: ignore[arg-type]
+    batches = connector.scan(
+        FakeConfig(),  # type: ignore[arg-type]
+        lookback_hours,
+        credentials or {},
+        fields or FIELDS,
+        LOG,
+    )
     return [record for batch in batches for record in batch]
 
 
@@ -287,17 +298,20 @@ def test_a_reporting_vm_is_a_linux_machine_on_gcp_addressed_by_project_zone_and_
 
 def test_a_vm_recreated_under_the_same_name_is_a_new_machine() -> None:
     """The name is reused on delete-and-recreate; the instance id is not."""
-    fake = FakeCompute(
-        {
-            PROJECT: [[vm("111", name="build-1")]],
-            "acme-dev-456": [[vm("222", name="build-1", project="acme-dev-456")]],
-        },
-        project_flag={PROJECT: "TRUE", "acme-dev-456": "TRUE"},
+    before = FakeCompute(
+        {PROJECT: [[vm("111", name="build-1")]]},
         guest={(ZONE, "build-1"): attributes(CODEX)},
     )
-    records = scan(fake, {"project_ids": f"{PROJECT}, acme-dev-456"})
+    # Deleted and recreated in the same project and zone, under the same name.
+    after = FakeCompute(
+        {PROJECT: [[vm("222", name="build-1")]]},
+        guest={(ZONE, "build-1"): attributes(CODEX)},
+    )
+    [first], [second] = scan(before), scan(after)
 
-    assert sorted(r.external_id for r in records) == ["111:codex-cli", "222:codex-cli"]
+    assert (first.external_id, second.external_id) == ("111:codex-cli", "222:codex-cli")
+    assert first.creation_source.address.instance == "111"
+    assert second.creation_source.address.instance == "222"
 
 
 def test_every_page_of_every_project_is_read_and_an_unreachable_zone_is_named(
@@ -345,6 +359,61 @@ def test_a_stopped_vm_is_still_read_and_its_records_are_dated_by_its_scan(
 
     assert records[0].last_seen == datetime.fromtimestamp(SCAN_AT, tz=timezone.utc)
     assert "1 in-scope VM(s) were not running (TERMINATED: 1)" in caplog.text
+
+
+def test_a_vm_that_has_not_reported_in_the_lookback_is_counted_and_not_published(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Its last values are still served, and publishing them again would keep its agents
+    fresh on the Platform, which dates evidence by when a scan last handed it over."""
+    days_ago = "ok 2026-10-09T08:00:00Z rows=2 packages-linux=ok"
+    no_status = {
+        "queryPath": "arthur/",
+        "queryValue": {
+            "items": [{"namespace": "arthur", "key": "inventory", "value": CODEX}],
+        },
+    }
+    fake = FakeCompute(
+        {
+            PROJECT: [
+                [
+                    # Stopped three days ago.
+                    vm("1", status="TERMINATED"),
+                    # Running, its collector failing: the last good scan still counts,
+                    # as a Jamf Mac's does while it checks in.
+                    vm("2"),
+                    # No status line, so its payload's own scan dates it.
+                    vm("3"),
+                    # A stamp that is not a time is skipped, not fatal.
+                    vm("4"),
+                    vm("5"),
+                ],
+            ],
+        },
+        guest={
+            (ZONE, "vm-1"): attributes(CODEX, days_ago),
+            (ZONE, "vm-2"): attributes(
+                CODEX,
+                f"{days_ago} failed=2026-10-12T13:05:00Z osquery=absent",
+            ),
+            (ZONE, "vm-3"): no_status,
+            (ZONE, "vm-4"): attributes(CODEX, "ok 2026-13-45T08:00:00Z rows=2"),
+            (ZONE, "vm-5"): attributes(CODEX),
+        },
+    )
+    connector = connector_for(fake)
+    with caplog.at_level(logging.INFO):
+        records = scan(fake, connector=connector)
+
+    assert sorted(r.external_id for r in records) == ["2:codex-cli", "5:codex-cli"]
+    coverage = connector.device_coverage()
+    assert coverage is not None
+    assert coverage.unreadable_by_reason == {NOT_REPORTED_IN_WINDOW: 3}
+    assert "not running" not in caplog.text, "the stopped VM was left out"
+    assert "1 VM(s) report that their collector's latest run failed" in caplog.text
+
+    # A lookback of zero asks for every VM's last report, as on Jamf.
+    assert len(scan(fake, lookback_hours=0)) == 5
 
 
 # --- VMs that cannot report -------------------------------------------------------------
@@ -641,6 +710,14 @@ def test_a_keyless_source_needs_the_engine_to_opt_in(
     fake = FakeCompute({PROJECT: [[vm("1")]]})
     with pytest.raises(DiscoveryConfigurationError, match=ALLOW_ADC_ENV_VAR):
         scan(fake)
+    assert fake.calls == []
+
+
+def test_a_key_that_cannot_be_loaded_fails_as_not_configured() -> None:
+    fake = FakeCompute({PROJECT: [[vm("1")]]})
+    with pytest.raises(DiscoveryConfigurationError, match="not valid JSON") as exc:
+        scan(fake, credentials={"service_account_key": '{"type": "service_acc'})
+    assert failure_code(exc.value) is DiscoveryErrorCode.NOT_CONFIGURED
     assert fake.calls == []
 
 
