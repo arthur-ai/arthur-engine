@@ -48,6 +48,7 @@ from discovery.network.cloudwatch_logs.connector import (
     extra_destinations_from,
     settings_from,
 )
+from discovery.network.records import MAX_DESTINATIONS
 from job_executors.discovery_output_contract import check_batch
 from job_executors.discovery_scan import (
     AcceptsStopCheck,
@@ -268,10 +269,24 @@ def test_an_instance_is_one_record_whatever_hosts_it_called() -> None:
     unrelated = RESOLVER_LINE.replace(
         "bedrock-runtime.us-west-2.amazonaws.com.", "s3.us-west-2.amazonaws.com."
     )
-    (record,) = scan(FakeLogs([page(RESOLVER_LINE, second, unrelated)]))
+    later = RESOLVER_LINE.replace("05:59:58Z", "07:00:00Z")
+    (record,) = scan(FakeLogs([page(RESOLVER_LINE, second, unrelated, later)]))
     assert record.external_id == "111122223333/i-0f1e2d3c4b5a69788"
     assert record.name == "i-0f1e2d3c4b5a69788 calling Amazon Bedrock, OpenAI"
     assert record.runs_on is RunsOn.AWS
+    bedrock, openai = record.creation_source.destinations
+    assert (bedrock.host, bedrock.provider, bedrock.count) == (
+        "bedrock-runtime.us-west-2.amazonaws.com",
+        "Amazon Bedrock",
+        2,
+    )
+    assert bedrock.first_seen == datetime(2026, 10, 14, 5, 59, 58, tzinfo=timezone.utc)
+    assert bedrock.last_seen == datetime(2026, 10, 14, 7, 0, tzinfo=timezone.utc)
+    assert (openai.host, openai.provider, openai.count) == (
+        "api.openai.com",
+        "OpenAI",
+        1,
+    )
 
 
 def test_a_record_is_a_network_finding_addressed_by_account_vpc_and_host() -> None:
@@ -348,6 +363,29 @@ def test_a_custom_regex_reads_a_custom_log() -> None:
     )
     assert record.external_id == "us-west-2/10.9.8.7"
     assert record.name == "10.9.8.7 calling Groq"
+
+
+def test_a_records_destinations_are_capped_busiest_first() -> None:
+    lines = [
+        RESOLVER_LINE.replace("bedrock-runtime.us-west-2", f"bedrock-runtime.r{i}")
+        for i in range(MAX_DESTINATIONS + 5)
+    ]
+    lines += [RESOLVER_LINE.replace("bedrock-runtime.us-west-2", "bedrock-runtime.r9")]
+    (record,) = scan(FakeLogs([page(*lines)]))
+    destinations = record.creation_source.destinations
+    assert len(destinations) == MAX_DESTINATIONS
+    assert destinations[0].host == "bedrock-runtime.r9.amazonaws.com"
+    assert destinations[0].count == 2
+
+
+def test_flow_log_destinations_are_the_addresses_called() -> None:
+    (record,) = scan(FakeLogs([page(FLOW_LINE, FLOW_LINE)]), fields=FLOW_FIELDS)
+    (destination,) = record.creation_source.destinations
+    assert (destination.host, destination.provider, destination.count) == (
+        "104.18.33.45",
+        "104.18.32.0/23",
+        2,
+    )
 
 
 def test_many_providers_are_counted_in_the_name() -> None:

@@ -8,8 +8,8 @@ weaker identity -- Lambda functions, containers and pods share and reuse VPC add
 
 Addressed by account (`instance`; the source's region when the line names no account),
 network (`scope`, the VPC when the line names one) and the instance or address
-(`resource_id`). Which hosts were called, how often and when go into the name and the
-job log: the record shape has no field for them.
+(`resource_id`). What it called -- each destination with its provider, call count and
+first and last call -- goes into the creation source's `destinations`, busiest first.
 """
 
 import re
@@ -21,6 +21,7 @@ from arthur_common.models.agent_discovery_schemas import DiscoveredAgentRecord
 from arthur_common.models.agent_governance_schemas import (
     AgentObservations,
     NetworkAgentCreationSource,
+    NetworkDestination,
     RunsOn,
     SourceAddress,
 )
@@ -31,7 +32,21 @@ from discovery.network.hosts import InferenceDestination
 # Providers named in a record's name before the rest are counted instead.
 NAMED_PROVIDERS = 3
 
+# Destinations carried per record, busiest first, so one source calling a wildcard
+# host under many names cannot grow its record without bound.
+MAX_DESTINATIONS = 50
+
 _EC2_INSTANCE_ID = re.compile(r"^i-[0-9a-f]{8,17}$")
+
+
+@dataclass
+class Calls:
+    """Every call one source made to one destination."""
+
+    provider: str
+    count: int = 0
+    first_seen: Optional[datetime] = None
+    last_seen: Optional[datetime] = None
 
 
 @dataclass
@@ -42,8 +57,7 @@ class TrafficSource:
     vpc_id: str
     instance_id: str
     addresses: set[str] = field(default_factory=set)
-    destinations: dict[str, str] = field(default_factory=dict)
-    calls: int = 0
+    destinations: dict[str, Calls] = field(default_factory=dict)
     first_seen: Optional[datetime] = None
     last_seen: Optional[datetime] = None
 
@@ -67,7 +81,7 @@ class TrafficSource:
 
     @property
     def providers(self) -> list[str]:
-        return sorted(set(self.destinations.values()))
+        return sorted({calls.provider for calls in self.destinations.values()})
 
 
 class TrafficSources:
@@ -98,11 +112,13 @@ class TrafficSources:
             self._sources[key] = source
         source.addresses.add(line.src)
         source.vpc_id = source.vpc_id or line.vpc_id
-        source.destinations[line.dest.lower().rstrip(".")] = destination.provider
-        source.calls += 1
+        host = line.dest.strip().lower().rstrip(".")
+        calls = source.destinations.setdefault(host, Calls(destination.provider))
+        calls.count += 1
         when = line.timestamp or seen_at
-        source.first_seen = min(filter(None, (source.first_seen, when)))
-        source.last_seen = max(filter(None, (source.last_seen, when)))
+        for tally in (source, calls):
+            tally.first_seen = min(filter(None, (tally.first_seen, when)))
+            tally.last_seen = max(filter(None, (tally.last_seen, when)))
 
     def sources(self) -> list[TrafficSource]:
         return list(self._sources.values())
@@ -140,8 +156,24 @@ def record_for(source: TrafficSource, vendor: str) -> DiscoveredAgentRecord:
                 host_name=source.resource_id,
                 host_group=source.vpc_id or None,
             ),
+            destinations=destinations_of(source),
         ),
     )
+
+
+def destinations_of(source: TrafficSource) -> list[NetworkDestination]:
+    """The source's destinations, busiest first, then by host."""
+    ranked = sorted(source.destinations.items(), key=lambda kv: (-kv[1].count, kv[0]))
+    return [
+        NetworkDestination(
+            host=host,
+            provider=calls.provider,
+            count=calls.count,
+            first_seen=calls.first_seen,
+            last_seen=calls.last_seen,
+        )
+        for host, calls in ranked[:MAX_DESTINATIONS]
+    ]
 
 
 def _named(providers: Iterable[str]) -> str:
