@@ -7,10 +7,10 @@ name: Bypass Audit
 # is never routine; it is logged the same way.
 #
 # GitHub records each bypass in rule insights but tells nobody and keeps no reason. This
-# workflow opens a `bypass-audit` issue for every bypass made by a person,
-# naming the rules skipped and the reason from an `Emergency:` line in the PR body. The
-# issue stays open until someone other than the bypasser has reviewed what shipped. The
-# rules for what gets logged live in .github/scripts/bypass_audit.sh.
+# workflow opens a `bypass-audit` issue for every bypass made by a person, naming the
+# rules skipped and the reason from an `Emergency:` line in the PR body. The issue stays
+# open until someone other than the bypasser has reviewed what shipped. The rules for
+# what gets logged live in .github/scripts/bypass_audit.sh.
 #
 # Triggers:
 #   - push to dev/main: logs a bypass minutes after it lands. The Automator App's own
