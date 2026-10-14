@@ -63,7 +63,7 @@ A SIEM source runs **the customer's query** over logs they already ship, inside 
 ## 4. Lookback, paging, caps
 
 - **Lookback goes beside the query, never into it**: the vendor's time parameter or a request filter. `lookback_hours <= 0` means all time. Never rewrite the customer's query, except a prefix the vendor documents as required.
-- Report completeness (row cap hit, partial results, zero rows) on the job logger **before the first yield**; a capped result logs a warning.
+- Report completeness (row cap hit, partial results, zero rows) on the job logger: **before the first yield** for a one-shot result, after the last page for a paged one (Splunk). A capped result logs a warning. A page that raises needs no report: the scan records the failure and what was published before it.
 - Implement `AcceptsStopCheck.stop_when` when you poll or page (structural; do not import it): ask between vendor calls and `return` cleanly.
 
 ## 5. Errors and Test Connection
@@ -83,7 +83,7 @@ A SIEM source runs **the customer's query** over logs they already ship, inside 
 
 ## 7. Tests
 
-Run `uv run pytest tests/unit/discovery/test_<vendor>_connector.py` from `ml-engine/`, fix, repeat. `tests/unit/discovery/test_elastic_security_connector.py` is the canon: registration; request shape (query untouched, lookback beside it, auth header, `allow_redirects=False`, timeout sum); rows to records by column name; address; instance normalisation (443, case, path, IPv6); `check_batch` passes; unmapped and missing columns fail `NOT_CONFIGURED`; zero rows with right and wrong columns; batching; completeness warnings before the first batch; stop-before-call sends nothing; config refusals; TLS modes, including through a proxy; 401/403 status and hint; the 400 query-error shape; unreachable keeps its type; secrets never logged; malformed 200; captured live bodies inline.
+Run `uv run pytest tests/unit/discovery/test_<vendor>_connector.py` from `ml-engine/`, fix, repeat. `tests/unit/discovery/test_elastic_security_connector.py` is the canon: registration; request shape (query untouched, lookback beside it, auth header, `allow_redirects=False`, timeout sum); rows to records by column name; address; instance normalisation (443, case, path, IPv6); `check_batch` passes; unmapped and missing columns fail `NOT_CONFIGURED`; zero rows with right and wrong columns; batching; completeness warnings before the first batch; stop-before-call sends nothing; config refusals; TLS modes, including through a proxy; 401/403 status and hint; the 400 query-error shape; unreachable keeps its type; secrets never logged; malformed 200; captured live bodies inline, with hosts, ids, names and key fragments replaced by fakes of the same shape.
 
 - Build fixtures in the generated clients' shapes: enum members, not plain strings. `str()` and f-strings of a `(str, Enum)` member give its qualified name on Python 3.11+, so convert with `.value`.
 - A test CA must carry keyUsage, or Python 3.13's strict X.509 check rejects it under `full`; use `ca_only` for a self-signed test CA.

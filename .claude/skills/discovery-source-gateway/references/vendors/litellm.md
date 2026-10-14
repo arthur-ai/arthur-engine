@@ -23,7 +23,7 @@ Facts a LiteLLM connector depends on. Pin each one in the connector's tests with
 
 ## Usage API
 
-- `/spend/logs/v2` and `/spend/logs/ui` are one handler in the proxy; `/ui` is left out of the OpenAPI schema. Page with `page` / `page_size` until `total_pages`.
+- `/spend/logs/v2` and `/spend/logs/ui` are one handler in the proxy; `/ui` is left out of the OpenAPI schema. Page with `page` / `page_size` until `total_pages`, unless `total_is_capped` is true: `total` stops at 10,000 rows and `total_pages` with it, so page on until `data` is empty.
 - `start_date` / `end_date` are UTC `YYYY-MM-DD HH:MM:SS`; ISO 8601 gets 400.
 - `page_size` maximum is 1000; larger gets 422.
 - `start_date=1970-01-01 00:00:00` is accepted for "everything retained".

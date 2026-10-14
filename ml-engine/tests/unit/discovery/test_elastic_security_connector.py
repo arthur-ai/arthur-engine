@@ -802,6 +802,7 @@ KONG_QUERY = """FROM kong-ai-logs
        llm_models = MV_SORT(llm_models)
 | KEEP external_id, name, last_seen, llm_models
 | SORT external_id
+| LIMIT 10000
 """
 CAPTURED_KONG = {
     "took": 161,

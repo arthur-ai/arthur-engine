@@ -68,8 +68,8 @@ A cloud source asks a provider's inventory API which agents are deployed in an a
 ## 4. Lookback, paging, batching
 
 - **Lookback is ignored**: the list API is an inventory, not a log. Say so in a docstring and the docs section, and pin it with a test (`test_the_lookback_is_not_applied`).
-- Page with the SDK pager or the vendor cursor; stop on a repeated cursor; cap pages. Retry only idempotent GETs through `discovery/retry.py`.
-- Yield `BATCH_SIZE = 100` records per batch. When a record needs a per-resource call, you may collect first so completeness is logged before the first yield; say the trade-off in the docstring.
+- Page with the SDK pager or the vendor cursor; stop on a repeated cursor; cap pages; when either ends the walk, log a warning that the list is incomplete. Retry only idempotent GETs through `discovery/retry.py`.
+- Yield `BATCH_SIZE = 100` records per batch. When a record needs a per-resource call, you may collect first so completeness is logged before the first yield; say the trade-off in the docstring. If a later call raises, yield what you collected, then re-raise.
 - Implement `AcceptsStopCheck.stop_when` when you page or make per-resource calls (structural; do not import it): ask before every call and before each backoff sleep, then `return` cleanly.
 
 ## 5. Errors and Test Connection
@@ -89,7 +89,7 @@ Then register in `source_connectors()`, add `tests/unit/discovery/test_<vendor>_
 
 ## 7. Tests
 
-Run `uv run pytest tests/unit/discovery/test_<vendor>_connector.py` from `ml-engine/`, fix, repeat. Cover: registration; `record_for` builds the address; a resource without region gets the documented default; a resource without timestamps is skipped and warned; `check_batch` passes; lookback is not applied (the fake receives no time filter); paging follows the cursor and stops on a repeat; stop-before-call sends nothing; 401/403 carry `status_code`; a missing locator is `NOT_CONFIGURED`; malformed 200 is the vendor's error; only list/describe paths are called; the credential never appears in `caplog`. If the connector sets `service_names` or a joining `resource_id`, pin a captured span's resource attributes (`test_service_names_match_a_captured_<vendor>_span`). Pin captured live bodies inline; without sandbox access, build bodies from the vendor's published SDK models, say so in the PR, and keep availability preview.
+Run `uv run pytest tests/unit/discovery/test_<vendor>_connector.py` from `ml-engine/`, fix, repeat. Cover: registration; `record_for` builds the address; a resource without region gets the documented default; a resource without timestamps is skipped and warned; `check_batch` passes; lookback is not applied (the fake receives no time filter); paging follows the cursor and stops on a repeat; stop-before-call sends nothing; 401/403 carry `status_code`; a missing locator is `NOT_CONFIGURED`; malformed 200 is the vendor's error; only list/describe paths are called; the credential never appears in `caplog`. If the connector sets `service_names` or a joining `resource_id`, pin a captured span's resource attributes (`test_service_names_match_a_captured_<vendor>_span`). Pin captured live bodies inline, with account ids, names and resource ids replaced by fakes of the same shape; without sandbox access, build bodies from the vendor's published SDK models, say so in the PR, and keep availability preview.
 
 - Build fixtures in the generated clients' shapes: enum members, not plain strings. `str()` and f-strings of a `(str, Enum)` member give its qualified name on Python 3.11+, so convert with `.value`.
 

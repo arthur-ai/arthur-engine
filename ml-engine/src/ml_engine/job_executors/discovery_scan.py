@@ -220,7 +220,7 @@ class FailedDiscoveryRecord:
     """A record GenAI Engine could not resolve onto a task, as the run reports it.
 
     Mirrors GenAI Engine's `FailedDiscoveredRecord` but is declared here rather than
-    taken from the generated client, so the outcome the run store persists does not change shape
+    taken from the generated client, so the job-log payload does not change shape
     whenever that client is regenerated.
     """
 

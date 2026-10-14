@@ -197,6 +197,7 @@ FROM kong-ai-logs
        llm_models = MV_SORT(llm_models)
 | KEEP external_id, name, last_seen, llm_models
 | SORT external_id
+| LIMIT 10000
 ```
 
 - Replace `kong-ai-logs` with your index, and `kong:8000` with your Kong proxy's host
@@ -205,6 +206,8 @@ FROM kong-ai-logs
 - Rows without a consumer (a refused or missing key) are not agents and are dropped, as is
   traffic on routes without `ai-proxy`. An `ai-proxy` request answered 400 or above
   counts toward `last_seen` but adds no model.
+- `LIMIT 10000` is Elasticsearch's default maximum for one query; without it the cluster
+  stops at 1,000 rows. More consumers than that need a narrower query.
 - The key needs `read` on that index only. The query reads no request headers or bodies.
 
 ### Destination

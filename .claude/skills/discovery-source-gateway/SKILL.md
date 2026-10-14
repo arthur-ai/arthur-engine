@@ -48,7 +48,7 @@ No hit: read [references/new-class.md](references/new-class.md) first. The contr
 
 ## 2. Is it a gateway
 
-A vendor whose admin or usage API lists callers and their requests is `network_gateway`, with or without an agent registry (the registry is enrichment, never the identity grade). A gateway with no usage API, whose per-caller traffic exists only in logs or in the customer's SIEM, is `discovery-source-siem`: no new vendor or connector, just a documented query on an existing SIEM source, which must still follow §3's identity rules (namespaced external id, credential grouping, refused-request fold, provider-qualified models); one that lists deployed agents but sees no traffic is `discovery-source-cloud`.
+A vendor whose admin or usage API lists callers and their requests is `network_gateway`, with or without an agent registry (the registry is enrichment, never the identity grade). A gateway with no usage API, whose per-caller traffic exists only in logs the customer ships to a SIEM, is `discovery-source-siem`: no new vendor or connector, just a documented query on an existing SIEM source, which must still follow §3's identity rules (namespaced external id, credential grouping, refused-request fold, provider-qualified models); if those logs reach no SIEM, there is no source for it yet. One that lists deployed agents but sees no traffic is `discovery-source-cloud`.
 
 ## 3. Identity and the record
 
@@ -69,7 +69,7 @@ A gateway logs requests; grouping them into an agent is inferred. One record per
 | `address.scope` | The team / workspace id when the gateway has one, else `None` |
 | `address.resource_id` | The un-namespaced id the `external_id` is built from; `address.query` is absent |
 | `observations` | `client_addresses`, `host_group` (team alias), `assigned_user` (only what the gateway attributes, never inferred). Check they survive the fetch: references/new-class.md §Fetch |
-| `runs_on` / `platform` / `service_names` | Unset. A gateway does not know where the caller runs, and an alias is not a span's `service.name` |
+| `runs_on` / `platform` / `service_names` | Unset. A gateway does not know where the caller runs, and an alias is not a span's `service.name`; set `service_names` only if a captured span proves it |
 
 Fold rules:
 
@@ -84,7 +84,7 @@ Fold rules:
 - Fields: `base_url` (must be https); one admin credential (sensitive); `ca_certificate` + `tls_verification` (`full|ca_only|off`), since gateways are often self-hosted behind private CAs, with the vendor marked as one where `ca_only` requires a CA certificate. A SaaS gateway on a fixed host takes an account id instead of `base_url` and TLS fields. `SENSITIVE_FIELDS` equals the catalog entry's secret fields.
 - `https://` only, `discovery/address.py:address_problem`, `discovery/siem/tls.py:tls_session` (import it), `allow_redirects=False`, `(connect, read)` timeouts summing under 120 s.
 - Least privilege: a read-only admin role, never the master key. Name it in the field `description` and the docs, and test that it can scan.
-- **Probe an admin-only list first**, in the scan and in Test Connection, so a wrong role reads as `permission_denied` rather than `authentication_failed`: some gateways answer 401 to a valid non-admin credential on usage routes. A route that answers 200 for any valid credential cannot check the role.
+- **Probe an admin-only list first**, in the scan and in Test Connection, so a wrong role gets a 403 and reads as `permission_denied` (Test Connection: `AUTHORIZATION`) rather than `authentication_failed`: some gateways answer 401 to a valid non-admin credential on usage routes. A route that answers 200 for any valid credential cannot check the role.
 - Read caller, team, model, time and status only; never request/response bodies or prompts. Never call a write route, even when the credential allows it. Enforcement through the gateway (blocking, guardrails, budgets) would be a separate feature with its own credential, customer opt-in and audit trail; each vendor reference lists that surface.
 
 ## 5. Lookback, paging, completeness
@@ -107,7 +107,7 @@ Create `ml-engine/src/ml_engine/discovery/network_gateway/` with `__init__.py` (
 
 ## 8. Tests
 
-Run `uv run pytest tests/unit/discovery/test_<vendor>_connector.py` from `ml-engine/`, fix, repeat. Cover: registration; request shape (date window, auth header, `allow_redirects=False`, timeout sum); paging to the end and the cap; aggregation (two requests by one credential: one record, both models, newest time); each identity basis, including a bound credential with no agent header; the fold rules; `external_id` namespacing; address; `check_batch` passes; zero traffic logs success; enrichment 403 warns; probe order turns a wrong role into 403; 401/403 carry `status_code`; malformed 200; http, userinfo and bad TLS mode refused; stop check before each page; credentials, masked fragments and bodies never in `caplog`. Pin captured live bodies inline.
+Run `uv run pytest tests/unit/discovery/test_<vendor>_connector.py` from `ml-engine/`, fix, repeat. Cover: registration; request shape (date window, auth header, `allow_redirects=False`, timeout sum); paging to the end and the cap; aggregation (two requests by one credential: one record, both models, newest time); each identity basis, including a bound credential with no agent header; the fold rules; `external_id` namespacing; address; `check_batch` passes; zero traffic logs success; enrichment 403 warns; probe order turns a wrong role into 403; 401/403 carry `status_code`; malformed 200; http, userinfo and bad TLS mode refused; stop check before each page; credentials, masked fragments and bodies never in `caplog`. Pin captured live bodies inline, with ids, aliases, emails, addresses and key fragments replaced by fakes of the same shape.
 
 - Build fixtures in the generated clients' shapes: enum members, not plain strings. `str()` and f-strings of a `(str, Enum)` member give its qualified name on Python 3.11+, so convert with `.value`.
 - A test CA must carry keyUsage, or Python 3.13's strict X.509 check rejects it under `full`; use `ca_only` for a self-signed test CA.

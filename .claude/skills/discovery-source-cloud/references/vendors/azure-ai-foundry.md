@@ -13,4 +13,4 @@
 
 ## Partial results
 
-A project with `publicNetworkAccess=Disabled` is listed by ARM, and its agents call times out. Log it as unreachable before the first yield and keep the other projects' records.
+A project with `publicNetworkAccess=Disabled` is listed by ARM, and from outside its private network its agents call is refused or times out. Log it as unreachable before the first yield and keep the other projects' records.
