@@ -273,9 +273,16 @@ journalctl -u arthur-ai-discovery.service -n 50        # the collector's stderr,
 
 ## 07 · Access for the Arthur collector
 
-The collector lists instances and reads each one's `arthur/` namespace:
-`compute.instances.list` and `compute.instances.getGuestAttributes`. `roles/compute.viewer`
-includes both (checked 2026-10-03); a custom role holding only those two is the least privilege.
+The collector is a `gcp_compute_engine` discovery source. It lists instances, reads each
+in-scope VM's `arthur/` namespace, and reads a project's `enable-guest-attributes` default
+when a VM does not set its own: `compute.instances.list`,
+`compute.instances.getGuestAttributes` and `compute.projects.get`. `roles/compute.viewer`
+includes all three; a custom role holding only those three is the least privilege, and one
+without `compute.projects.get` works only if every VM sets the flag itself.
+
+A VM whose `enable-guest-attributes` is not `TRUE`, on the VM or on its project when the VM
+does not set it, is counted as `guest-attributes-disabled` and its values are not read:
+the API keeps serving them after the setting is turned off, so they cannot be current.
 
 ## 08 · Rollback — terminal
 

@@ -28,7 +28,7 @@ from google.auth.credentials import Credentials
 from google.auth.exceptions import RefreshError, TransportError
 from google.genai.errors import APIError, ClientError, ServerError
 
-from discovery import source_connectors
+from discovery import gcp_credentials, source_connectors
 from discovery.cloud.gcp_vertex import connector as vertex
 from discovery.cloud.gcp_vertex.connector import (
     ALLOW_ADC_ENV_VAR,
@@ -130,7 +130,7 @@ def stub_key_loader(monkeypatch: pytest.MonkeyPatch) -> list[dict[str, Any]]:
         return SimpleNamespace(service_account_email=info["client_email"])
 
     monkeypatch.setattr(
-        vertex.service_account.Credentials,
+        gcp_credentials.service_account.Credentials,
         "from_service_account_info",
         staticmethod(from_service_account_info),
     )
@@ -184,7 +184,8 @@ def test_a_record_carries_cloud_provenance_with_project_region_and_engine_id(
     stub_key_loader: list[dict[str, Any]],
 ) -> None:
     [[record]] = scan(
-        FakeLister([engine(PERSONAL_ASSISTANT, "personal-assistant")]), config
+        FakeLister([engine(PERSONAL_ASSISTANT, "personal-assistant")]),
+        config,
     )
 
     assert record.name == "personal-assistant"
@@ -213,7 +214,8 @@ def test_output_satisfies_the_discovery_output_contract(
     stub_key_loader: list[dict[str, Any]],
 ) -> None:
     [batch] = scan(
-        FakeLister([engine(PERSONAL_ASSISTANT, "personal-assistant")]), config
+        FakeLister([engine(PERSONAL_ASSISTANT, "personal-assistant")]),
+        config,
     )
     check_batch(batch, "Source config 'vertex' (gcp_vertex)")
 
@@ -226,7 +228,8 @@ def test_display_name_falls_back_to_the_engine_id(
     stub_key_loader: list[dict[str, Any]],
 ) -> None:
     [[record]] = scan(
-        FakeLister([engine(PERSONAL_ASSISTANT, display_name=None)]), config
+        FakeLister([engine(PERSONAL_ASSISTANT, display_name=None)]),
+        config,
     )
     assert record.name == "1111111111111111111"
 
