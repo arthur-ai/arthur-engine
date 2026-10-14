@@ -552,9 +552,10 @@ def fetch_scope_total(
     period_start: datetime,
     now: datetime,
     deadline: Deadline,
-) -> float:
+) -> tuple[float, bool]:
     """Total spend the hard cap applies to: the whole session, or the budget
-    period for user/task scope."""
+    period for user/task scope. Plus whether it was cut off (only the user
+    scope pages), which makes the total a lower bound."""
     scope = config["scope"]
     per_request = float(config.get("http_timeout_seconds", 5))
     if scope == "session":
@@ -570,7 +571,8 @@ def fetch_scope_total(
             timeout=deadline.timeout(per_request),
         )
         sessions = payload.get("sessions", [])
-        return float((sessions[0].get("total_token_cost") or 0.0) if sessions else 0.0)
+        total = (sessions[0].get("total_token_cost") or 0.0) if sessions else 0.0
+        return float(total), False
 
     if scope == "user":
         # No endpoint gives one user's spend over a time window (the users
@@ -584,7 +586,7 @@ def fetch_scope_total(
                 "sort": "desc",
             },
         )
-        rows, _truncated = _paged(
+        rows, truncated = _paged(
             engine,
             "/traces",
             params,
@@ -593,11 +595,12 @@ def fetch_scope_total(
             deadline,
             id_field="trace_id",
         )
-        return sum(
+        total = sum(
             float(row.get("total_token_cost") or 0.0)
             for row in rows
             if _row_matches_scope(row, scope)
         )
+        return total, truncated
 
     payload = _request(
         engine,
@@ -611,7 +614,8 @@ def fetch_scope_total(
         timeout=deadline.timeout(per_request),
     )
     overviews = payload.get("overviews", [])
-    return float(overviews[0].get("trace_token_cost") or 0.0) if overviews else 0.0
+    total = (overviews[0].get("trace_token_cost") or 0.0) if overviews else 0.0
+    return float(total), False
 
 
 # ---------------------------------------------------------------------------
@@ -825,7 +829,7 @@ def evaluate_rules(
 ) -> list[RuleResult]:
     fallback = config.get("fallback_usd_per_million_tokens")
     results = []
-    for rule in config["rules"]:
+    for rule in config.get("rules") or []:
         minutes = float(rule["window_minutes"])
         spend = window_spend(spans, now, minutes, fallback)
         short_minutes = rule.get("short_window_minutes")
@@ -895,8 +899,9 @@ def evaluate(
                 deadline=deadline,
             )
         scope_total = None
+        cap_truncated = False
         if config.get("hard_cap_usd") is not None:
-            scope_total = fetch_scope_total(
+            scope_total, cap_truncated = fetch_scope_total(
                 engine,
                 config,
                 session_id,
@@ -931,7 +936,7 @@ def evaluate(
         scope_total_usd=scope_total,
         unpriced_spans=len(unpriced),
         unpriced_tokens=sum(s.tokens for s in unpriced),
-        truncated=truncated,
+        truncated=truncated or cap_truncated,
     )
 
     fired = [r for r in rules if r.fired]
@@ -977,6 +982,12 @@ def evaluate(
             f"or past the {QUERY_BUDGET_S:g}s query budget); the oldest were "
             "not counted, so burn rates are a lower bound (narrow the scope or "
             "the widest window)",
+        )
+    if cap_truncated:
+        warnings.append(
+            f"could not read every trace in the budget period (over {SPAN_MAX_ROWS} "
+            f"or past the {QUERY_BUDGET_S:g}s query budget), so the "
+            f"${scope_total:.2f} {scope} hard-cap total is a lower bound",
         )
     if warnings:
         result.warning = "Arthur circuit breaker: " + "; ".join(warnings)

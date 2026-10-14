@@ -261,7 +261,7 @@ python3 -m pytest test_tracer.py test_circuit_breaker.py -v
 | File | Purpose |
 |------|---------|
 | `claude_code_tracer.py` | Hook script — handles `user_prompt_submit`, `pre_tool`, `post_tool`, `post_tool_failure`, `subagent_stop`, `stop` |
-| `claude_code_circuit_breaker.py` | Optional burn-rate circuit breaker hook — handles `user_prompt_submit`, `pre_tool`, `session_start`; CLI `status` / `reset` |
+| `claude_code_circuit_breaker.py` | Optional burn-rate circuit breaker hook — handles `user_prompt_submit`, `pre_tool`, `session_start`; CLI `status` / `check` / `reset` |
 | `test_tracer.py` | Unit tests (pytest, no credentials needed) |
 | `test_circuit_breaker.py` | Unit tests for the circuit breaker (pytest, engine mocked) |
 | `install.sh` | Local dev installer |

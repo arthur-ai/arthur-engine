@@ -945,6 +945,36 @@ def _refuse_key(*args, **kwargs):
     raise cb.EngineAuthError("HTTP 403 from GET /traces/spans (using api_key)")
 
 
+def test_user_hard_cap_reports_a_cut_off_total(fake_engine, monkeypatch):
+    monkeypatch.setenv("USER", "nori")
+    monkeypatch.setattr(cb, "SPAN_FIRST_PAGE_SIZE", 2)
+    fake_engine(
+        spans=[],
+        traces=[
+            {"trace_id": f"t{i}", "user_id": "nori", "total_token_cost": 1.0}
+            for i in range(6)
+        ],
+    )
+    # One read for the (empty) span query, one trace page, then out of time.
+    config = _config(scope="user", hard_cap_usd=50)
+    evaluation = cb.evaluate(ENGINE, config, "s", NOW, _ExpiringDeadline(2))
+    assert evaluation.scope_total_usd == 2.0
+    assert evaluation.truncated
+    assert "hard-cap total is a lower bound" in evaluation.warning
+    # A complete read is not flagged.
+    complete = cb.evaluate(ENGINE, config, "s", NOW)
+    assert complete.scope_total_usd == 6.0
+    assert not complete.truncated and complete.warning == ""
+
+
+def test_evaluate_null_rules_keeps_the_hard_cap(fake_engine):
+    fake = fake_engine(sessions=[{"session_id": "s", "total_token_cost": 60.0}])
+    evaluation = cb.evaluate(ENGINE, _config(rules=None, hard_cap_usd=50), "s", NOW)
+    assert evaluation.tripped and "hard cap" in evaluation.reason
+    assert evaluation.rules == []
+    assert [c[1] for c in fake.calls] == ["/traces/sessions"]
+
+
 def test_budget_defaults_by_scope():
     unset = dict(cb.DEFAULT_CONFIG)
     assert unset["budget_usd"] is None
