@@ -175,15 +175,22 @@ class ComputeEngineClient:
                 continue
 
             if resp.status_code == 200:
-                body: dict[str, Any] = resp.json()
+                try:
+                    body: dict[str, Any] = resp.json()
+                except ValueError as exc:
+                    # A proxy's page or a cut-off answer. Raised as this type so one
+                    # VM's read is skipped like any other, rather than ending the scan.
+                    raise ComputeEngineError(
+                        f"Compute Engine GET {path} answered HTTP 200 with a body "
+                        f"that is not JSON",
+                    ) from exc
                 return body
 
             if resp.status_code == 404 and missing_ok:
                 return None
 
-            retryable = resp.status_code in RETRY_STATUSES or (
-                resp.status_code == 403 and _is_rate_limit(resp)
-            )
+            rate_limited = resp.status_code == 403 and _is_rate_limit(resp)
+            retryable = resp.status_code in RETRY_STATUSES or rate_limited
             if retryable and attempt < MAX_ATTEMPTS:
                 self._sleep(backoff_seconds(attempt, resp.headers.get("Retry-After")))
                 last = f"HTTP {resp.status_code}"
@@ -192,7 +199,10 @@ class ComputeEngineClient:
             raise ComputeEngineError(
                 f"Compute Engine GET {path} failed with HTTP {resp.status_code}"
                 f"{_google_message(resp)}",
-                status_code=resp.status_code,
+                # A rate limit Google sent as 403 still says 429 once retries run out:
+                # read as a 403, it would end the scan as permission denied, and Test
+                # Connection would call it the same.
+                status_code=429 if rate_limited else resp.status_code,
             )
 
         raise ComputeEngineError(

@@ -201,8 +201,6 @@ class ComputeEngineConnector:
             carried.update(device.group_ids)
             if not scope.admit(device, coverage):
                 continue
-            if instance.status != "RUNNING":
-                not_running[instance.status or "UNKNOWN"] += 1
 
             flag = instance.guest_attributes_flag
             if flag is None:
@@ -232,6 +230,10 @@ class ComputeEngineConnector:
                 coverage.count_unreadable(READ_FAILED)
                 continue
 
+            # Counted only once read: the summary says a stopped VM's values are old,
+            # which says nothing about one whose values were never read.
+            if instance.status != "RUNNING":
+                not_running[instance.status or "UNKNOWN"] += 1
             device = replace(device, attributes=attributes or {})
             failed_runs.update(_failed_run(device.attribute(STATUS_ATTRIBUTE)))
             read = records_for(device, matcher, VENDOR, logger)

@@ -329,14 +329,22 @@ def test_a_stopped_vm_is_still_read_and_its_records_are_dated_by_its_scan(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     fake = FakeCompute(
-        {PROJECT: [[vm("1", status="TERMINATED")]]},
-        guest={(ZONE, "vm-1"): attributes(CODEX)},
+        {
+            PROJECT: [
+                [
+                    vm("1", status="TERMINATED"),
+                    # Not read, so not among the VMs whose values are called old.
+                    vm("2", status="TERMINATED", flag="FALSE"),
+                ],
+            ],
+        },
+        guest={(ZONE, "vm-1"): attributes(CODEX), (ZONE, "vm-2"): attributes(CODEX)},
     )
     with caplog.at_level(logging.INFO):
         records = scan(fake)
 
     assert records[0].last_seen == datetime.fromtimestamp(SCAN_AT, tz=timezone.utc)
-    assert "not running (TERMINATED: 1)" in caplog.text
+    assert "1 in-scope VM(s) were not running (TERMINATED: 1)" in caplog.text
 
 
 # --- VMs that cannot report -------------------------------------------------------------
@@ -430,10 +438,12 @@ def test_one_unreadable_vm_is_reported_and_skipped(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     fake = FakeCompute(
-        {PROJECT: [[vm("1"), vm("2")]]},
+        {PROJECT: [[vm("1"), vm("2"), vm("3")]]},
         guest={
             (ZONE, "vm-1"): FakeResponse(500, {"error": {"message": "backend"}}),
             (ZONE, "vm-2"): attributes(CODEX),
+            # A 200 whose body is not JSON: a proxy's page, or a cut-off answer.
+            (ZONE, "vm-3"): FakeResponse(200),
         },
     )
     connector = connector_for(fake)
@@ -443,21 +453,49 @@ def test_one_unreadable_vm_is_reported_and_skipped(
     assert [r.external_id for r in records] == ["2:codex-cli"]
     coverage = connector.device_coverage()
     assert coverage is not None
-    assert coverage.unreadable_by_reason == {READ_FAILED: 1}
+    assert coverage.unreadable_by_reason == {READ_FAILED: 2}
     assert "1: guest attributes not read" in caplog.text
+    assert "3: guest attributes not read" in caplog.text
+    assert "not JSON" in caplog.text
     assert fake.reads().count("vm-1") == 5, "retried before giving up"
 
 
+RATE_LIMITED = FakeResponse(
+    403,
+    {"error": {"code": 403, "errors": [{"reason": "rateLimitExceeded"}]}},
+)
+
+
 def test_a_rate_limit_sent_as_403_is_retried() -> None:
-    limited = FakeResponse(
-        403,
-        {"error": {"code": 403, "errors": [{"reason": "rateLimitExceeded"}]}},
-    )
     fake = FakeCompute(
         {PROJECT: [[vm("1")]]},
-        guest={(ZONE, "vm-1"): [limited, FakeResponse(200, attributes(CODEX))]},
+        guest={(ZONE, "vm-1"): [RATE_LIMITED, FakeResponse(200, attributes(CODEX))]},
     )
     assert len(scan(fake)) == 1
+
+
+def test_a_rate_limit_that_outlasts_its_retries_is_not_a_denied_permission() -> None:
+    """Read as the 403 it was sent as, it would end the scan as permission denied."""
+    fake = FakeCompute(
+        {PROJECT: [[vm("1"), vm("2")]]},
+        guest={(ZONE, "vm-1"): [RATE_LIMITED] * 5, (ZONE, "vm-2"): attributes(CODEX)},
+    )
+    connector = connector_for(fake)
+    records = scan(fake, connector=connector)
+
+    assert [r.external_id for r in records] == ["2:codex-cli"]
+    coverage = connector.device_coverage()
+    assert coverage is not None
+    assert coverage.unreadable_by_reason == {READ_FAILED: 1}
+
+    class Limited(FakeCompute):
+        def get(self, url: str, params: dict[str, Any], timeout: float) -> Any:
+            return RATE_LIMITED
+
+    with pytest.raises(ComputeEngineError) as exc:
+        scan(Limited({}))
+
+    assert failure_code(exc.value) is DiscoveryErrorCode.PROVIDER_ERROR
 
 
 def test_a_denied_permission_ends_the_scan_as_permission_denied() -> None:
