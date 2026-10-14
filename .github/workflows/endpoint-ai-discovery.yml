@@ -1,7 +1,7 @@
 name: Endpoint AI Discovery CI
 
-# lint.sh READS dist/collect.sh; the macOS job RUNS it. Both are needed: a static check
-# cannot catch a shell bug that only fires on a real Mac, and the deployable is bash 3.2
+# lint.sh READS both collectors; the macOS and Linux jobs RUN them. Both are needed: a static
+# check cannot catch a shell bug that only fires on a real machine, and the deployable is bash
 # against a stock system.
 #
 # The queries, the runner and the Docker guard are vendored at a pinned ref and tested by
@@ -45,6 +45,11 @@ jobs:
       - name: test/lint.sh
         run: test/lint.sh
 
+      # The Compute Engine reporter against a fake metadata server built from measured
+      # answers. No osquery: the collector is a stub, and the question is what is published.
+      - name: test/run-guest-attributes.sh
+        run: test/run-guest-attributes.sh
+
       # The collector embeds the darwin artifact alone, so it must refuse elsewhere by
       # name rather than by failing on a missing file. Asserts on the artifact the message
       # names, not on its wording -- the wording is upstream's to change.
@@ -85,6 +90,18 @@ jobs:
       - name: test/run-collector.sh
         run: sudo -n test/run-collector.sh
 
+      - name: The Linux collector refuses to run on macOS, and says why
+        run: |
+          set +e
+          out="$(dist/collect-linux.sh 2>&1)"; status=$?
+          set -e
+          echo "$out"
+          [ "$status" -eq 1 ] || { echo "::error::expected exit 1 on macOS, got $status"; exit 1; }
+          case "$out" in
+            *discovery-linux.sql*) echo "ok: refused, naming the artifact it carries" ;;
+            *) echo "::error::the refusal does not name the cause"; exit 1 ;;
+          esac
+
       # A hosted runner has no Docker, so the container branch reports `absent` and the
       # 15s cold-ping bound is never reached. Daemon states are upstream's
       # test/docker_states.sh.
@@ -92,3 +109,30 @@ jobs:
         run: |
           echo "no Docker on a hosted runner, so the container branch reported absent"
           echo "rather than ok, and the 15s cold-ping bound was never reached"
+
+  collector-linux:
+    name: The Linux deployable, run under systemd
+    # A hosted runner has systemd as PID 1, which a container does not -- the units are what
+    # this job is for. The Debian 12 VM in docs/mdm/gce.md is the acceptance check.
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Install osquery
+        run: |
+          curl --retry 3 -fsSL -o /tmp/osquery.deb \
+            "https://pkg.osquery.io/deb/osquery_${OSQUERY_VERSION}-1.linux_amd64.deb"
+          sudo dpkg -i /tmp/osquery.deb
+          osqueryi --version
+        env:
+          OSQUERY_VERSION: 5.23.1
+
+      - name: test/run-collector.sh
+        run: sudo -n test/run-collector.sh
+
+      # Installs the collector, the reporter and the units at their real paths, runs them
+      # under systemd against the fake metadata server, and removes them again.
+      - name: test/run-systemd.sh
+        run: sudo -n env ARTHUR_TEST_INSTALLS_UNITS=1 test/run-systemd.sh

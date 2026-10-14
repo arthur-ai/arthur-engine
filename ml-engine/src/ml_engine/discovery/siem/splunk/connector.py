@@ -11,7 +11,7 @@ its third page has already published the first two.
 
 import logging
 import time
-from typing import Callable, Iterator, Mapping, Optional, Sequence
+from typing import Callable, ClassVar, Iterator, Mapping, Optional, Sequence
 from urllib.parse import urlsplit
 
 from arthur_client.api_bindings import DiscoverySourceConfigSpec
@@ -48,6 +48,8 @@ class SplunkConnector:
     Holds one scan's stop check, which is safe only because a connector is built fresh
     for every scan -- see `DiscoveryConnectorFactory`.
     """
+
+    SENSITIVE_FIELDS: ClassVar[frozenset[str]] = frozenset({AUTH_TOKEN_FIELD})
 
     def __init__(
         self,
@@ -204,7 +206,9 @@ def settings_from(
     """The search head's address and trust from the source's fields, the token from
     its secrets. `base_url` is not a secret, so a failure can name the host."""
     base_url = (source_fields.get(BASE_URL_FIELD) or "").strip()
-    missing = [k for k in (AUTH_TOKEN_FIELD,) if not credentials.get(k)]
+    missing = [
+        k for k in sorted(SplunkConnector.SENSITIVE_FIELDS) if not credentials.get(k)
+    ]
     if not base_url:
         missing.insert(0, BASE_URL_FIELD)
     if missing:

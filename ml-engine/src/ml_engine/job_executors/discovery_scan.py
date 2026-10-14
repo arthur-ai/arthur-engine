@@ -292,11 +292,6 @@ class OutcomeReporter(Protocol):
 # holds -- session, paging cursor, the credentials it was just handed -- between them.
 DiscoveryConnectorFactory = Callable[[], DiscoverySourceConnector]
 
-# Vendor -> connector factory, populated by D-13 as connectors land. Keyed on
-# DiscoverySourceVendor values, e.g. "splunk_enterprise". A connector class is itself a
-# factory, so registering one is `SOURCE_CONNECTORS["splunk_enterprise"] = SplunkConnector`.
-SOURCE_CONNECTORS: dict[str, DiscoveryConnectorFactory] = {}
-
 
 @dataclass
 class DiscoveryScanOutcome:

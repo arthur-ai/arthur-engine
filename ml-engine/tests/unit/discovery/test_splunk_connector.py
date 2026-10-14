@@ -838,7 +838,6 @@ def test_a_search_head_without_the_v2_api_names_the_version() -> None:
 
 
 def test_splunk_is_registered_for_its_vendor() -> None:
-    import discovery  # noqa: F401 -- registration is the import's effect
-    from job_executors.discovery_scan import SOURCE_CONNECTORS
+    from discovery import source_connectors
 
-    assert SOURCE_CONNECTORS[VENDOR] is SplunkConnector
+    assert source_connectors()[VENDOR] is SplunkConnector

@@ -1,16 +1,21 @@
-"""Discovery connectors, and the registry entry that makes them reachable.
+"""Discovery connectors, and the one list of them.
 
-Importing this package registers every connector it ships into `SOURCE_CONNECTORS`, the
-registry `DiscoverAgentsExecutor` resolves a source's vendor against. A connector class is
-itself the zero-argument factory that registry holds, so each run gets its own instance. Registration
-lives here rather than in `job_executors/discovery_scan.py` so that adding a connector
-touches only this package: that module owns the seam, not the list of things plugged into
-it.
+`source_connectors()` is the vendor -> connector map that `DiscoverAgentsExecutor` and
+`DiscoverySourceTestExecutor` build when they are initialized, and that a standalone
+engine checks its config file's sources against. A connector class is itself the
+zero-argument factory that map holds, so each run gets its own instance. The list lives
+here rather than in `job_executors/discovery_scan.py` so that adding a connector touches
+only this package: that module owns the seam, not the list of things plugged into it.
+
+A connector class also declares `SENSITIVE_FIELDS`, the keys among its source's fields
+that are credentials. A Platform job never needs it -- the Platform splits a source's
+fields before they arrive -- but a standalone engine reads them as one list from its
+config file, and a connector that does not say which are secret cannot be run there.
 
 A vendor with no entry fails its own job with that reason, which is the right answer for
 an unsupported source and is reported per job rather than per engine.
 
-Adding an MDM is one more line here and one more package under `discovery.endpoint`;
+Adding an MDM is one more entry here and one more package under `discovery.endpoint`;
 adding a SIEM is the same under `discovery.siem`, and a cloud provider product under
 `discovery.cloud`.
 Everything the new MDM shares with Jamf -- the `arthur1.` frame, the six-column rows,
@@ -25,14 +30,25 @@ from discovery.siem.elastic_security.connector import VENDOR as ELASTIC_SECURITY
 from discovery.siem.elastic_security.connector import ElasticSecurityConnector
 from discovery.siem.splunk.connector import VENDOR as SPLUNK_VENDOR
 from discovery.siem.splunk.connector import SplunkConnector
-from job_executors.discovery_scan import SOURCE_CONNECTORS
+from job_executors.discovery_scan import DiscoveryConnectorFactory
 
-SOURCE_CONNECTORS[JAMF_VENDOR] = JamfConnector
-SOURCE_CONNECTORS[GCP_VERTEX_VENDOR] = VertexAgentEngineConnector
-SOURCE_CONNECTORS[SPLUNK_VENDOR] = SplunkConnector
-SOURCE_CONNECTORS[ELASTIC_SECURITY_VENDOR] = ElasticSecurityConnector
+
+def source_connectors() -> dict[str, DiscoveryConnectorFactory]:
+    """Vendor -> connector factory, keyed on DiscoverySourceVendor values.
+
+    A new dict on every call, so a caller that changes its own -- a test swapping in a
+    fake -- cannot change what any other executor resolves a vendor against.
+    """
+    return {
+        JAMF_VENDOR: JamfConnector,
+        GCP_VERTEX_VENDOR: VertexAgentEngineConnector,
+        SPLUNK_VENDOR: SplunkConnector,
+        ELASTIC_SECURITY_VENDOR: ElasticSecurityConnector,
+    }
+
 
 __all__ = [
+    "source_connectors",
     "JamfConnector",
     "JAMF_VENDOR",
     "VertexAgentEngineConnector",

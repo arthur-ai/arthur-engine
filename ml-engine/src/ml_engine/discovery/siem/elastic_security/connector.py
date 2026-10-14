@@ -18,7 +18,7 @@ log, never published as though it were complete.
 import base64
 import logging
 import re
-from typing import Callable, Iterator, Mapping, Optional, Sequence
+from typing import Callable, ClassVar, Iterator, Mapping, Optional, Sequence
 from urllib.parse import urlsplit
 
 from arthur_client.api_bindings import DiscoverySourceConfigSpec
@@ -78,6 +78,8 @@ class ElasticSecurityConnector:
     Holds one scan's stop check, which is safe only because a connector is built fresh
     for every scan -- see `DiscoveryConnectorFactory`.
     """
+
+    SENSITIVE_FIELDS: ClassVar[frozenset[str]] = frozenset({API_KEY_FIELD})
 
     def __init__(self, client_factory: ClientFactory = _default_client) -> None:
         self._client_factory = client_factory

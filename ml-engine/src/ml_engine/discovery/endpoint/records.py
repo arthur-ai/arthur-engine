@@ -36,7 +36,9 @@ from discovery.endpoint.envelope import (
 # STATE ("running"), so a version field would read "running" as though it were one.
 #
 # Listed as what DOES carry each meaning rather than what does not, so a kind added
-# upstream is absent until someone says otherwise rather than silently mis-mapped.
+# upstream is absent until someone says otherwise rather than silently mis-mapped. `proc` is
+# absent on purpose: its `loc` is an app bundle, an agent binary or the node interpreter
+# running one, depending on which query emitted it.
 PATH_IN_LOC = frozenset(
     {
         "app",
@@ -50,9 +52,12 @@ PATH_IN_LOC = frozenset(
         "port",
         "desktop",
         "unit",
+        "jbplugin",
     },
 )
-VERSION_IN_VER = frozenset({"app", "brew", "ext", "npm", "vscodeext", "deb", "rpm"})
+VERSION_IN_VER = frozenset(
+    {"app", "brew", "ext", "npm", "vscodeext", "deb", "rpm", "jbplugin"},
+)
 
 
 class UnreadableReason(str, Enum):

@@ -343,6 +343,36 @@ TOOL_DIR = re.compile(
 # anything. So the row built specifically to stop a wedged daemon reading as an empty
 # machine would have been swallowed by the classifier one hop after surviving the scan.
 GAP_KIND = "scan"
+# KINDS WHOSE ROW SAYS THE AGENT IS RUNNING, not only installed: a process, and a container
+# (docker_containers lists running ones only). A finding with one of these in its evidence
+# is marked `running`. Every other route reports presence.
+LIVE_KINDS = frozenset({"proc", "container"})
+# `perms` ENDS WITH AT MOST ONE PROVENANCE TOKEN, after the permissions and the `<all_urls>`
+# flag: `unreferenced` (on disk, never loaded) or `sideloaded:<sha256>` (registered, not from
+# the Web Store). queries/browser.sql appends it; neither is a permission, so a consumer listing
+# permissions splits with split_perms() rather than naming the tokens itself. A token ending
+# in `:` carries a value and matches as a prefix; any other matches whole, so a permission
+# that merely begins with one stays a permission. test/test_matcher.py holds these to the
+# tokens browser.sql emits.
+PERMS_PROVENANCE = ("unreferenced", "sideloaded:")
+
+
+def _is_provenance(part):
+    return any(part.startswith(t) if t.endswith(":") else part == t
+               for t in PERMS_PROVENANCE)
+
+
+def split_perms(perms):
+    """A row's `perms` as (permissions, provenance): a tuple of declared capabilities, and
+    the provenance token browser.sql appended, or ''."""
+    # osquery joins `permissions` with ", " and browser.sql appends its tokens with ",", so
+    # each part is stripped: a leading space would make " storage" a different permission.
+    parts = [p.strip() for p in (perms or "").split(",") if p.strip()]
+    if parts and _is_provenance(parts[-1]):
+        return tuple(parts[:-1]), parts[-1]
+    return tuple(parts), ""
+
+
 # `extra` on a scan row: "ok" means the branch ran and the rows beside it are real. `ver` is
 # when the scan ran, in unix seconds, so a cached payload dates itself and a consumer can
 # judge staleness without stat()ing anything.
@@ -848,6 +878,8 @@ def _run(state, started):
                 {"id": aid, "name": hits[0][0]["name"],
                  "classification": hits[0][0]["classification"],
                  "evidence": [r for _, r in hits],
+                 **({"running": True}
+                    if any(r.get("kind") in LIVE_KINDS for _, r in hits) else {}),
                  **({"superseded": [r.get("id") for m, r in hits if m.get("superseded")],
                      "only_superseded": all(m.get("superseded") for m, _ in hits)}
                     if any(m.get("superseded") for m, _ in hits) else {})}
@@ -951,14 +983,19 @@ def _run(state, started):
               "No AI agents found in the parts that could be read.")
     for aid, hits in sorted(findings.items()):
         meta = hits[0][0]
-        print(f"\n{meta['name']}  [{meta['classification']}]")
+        live = "  running" if any(r.get("kind") in LIVE_KINDS for _, r in hits) else ""
+        print(f"\n{meta['name']}  [{meta['classification']}]{live}")
         for hit, row in hits:
             detail = row.get("loc") or row.get("id")
             ver = f"  {row['ver']}" if row.get("ver") else ""
             # Marked on the row, because the row is where a reader is looking when they
             # wonder why an identifier looks unfamiliar.
             old = "   <- earlier release" if hit.get("superseded") else ""
-            print(f"    {row['kind']:7} {row.get('id','')}{ver}{old}")
+            # An unreferenced extension is on disk and never loaded, so it is said beside the
+            # row rather than left to read like an installed one.
+            prov = split_perms(row.get("perms"))[1]
+            prov = f"   <- {prov.split(':')[0]}" if prov else ""
+            print(f"    {row['kind']:7} {row.get('id','')}{ver}{old}{prov}")
             if detail and detail != row.get("id"):
                 print(f"            {detail}")
         # SAID ONCE, WHEN IT IS THE WHOLE FINDING. A machine matched only on identifiers
