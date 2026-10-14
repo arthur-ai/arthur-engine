@@ -1,13 +1,10 @@
 import logging
 import os
-import uuid
 from concurrent.futures import wait
 from datetime import datetime, timedelta
 from typing import Hashable, Optional
 
-import vertexai
 from arthur_common.models.agent_governance_schemas import (
-    AgentCreationSource,
     GCPAgentCreationSource,
     TaskMetadata,
 )
@@ -19,21 +16,17 @@ from dependencies import get_db_session
 from repositories.configuration_repository import ConfigurationRepository
 from repositories.metrics_repository import MetricRepository
 from repositories.rules_repository import RuleRepository
-from repositories.service_name_mapping_repository import ServiceNameMappingRepository
 from repositories.span_repository import SpanRepository
 from repositories.task_polling_state_repository import TaskPollingStateRepository
 from repositories.tasks_metrics_repository import TasksMetricsRepository
 from repositories.tasks_repository import TaskRepository
 from schemas.agent_discovery_schemas import DiscoverAndPollResponse
-from schemas.enums import MappingKeyKind
 from schemas.internal_schemas import Task
 from services.base_queue_service import BaseQueueJob, BaseQueueService
 from services.trace.external_trace_retrieval_service import (
     ExternalTraceRetrievalService,
 )
 from utils import constants
-from utils.constants import DEFAULT_ORG_ID
-from utils.gcp import parse_gcp_resource_path
 from utils.utils import get_env_var
 
 logger = logging.getLogger(__name__)
@@ -52,15 +45,6 @@ AGENTIC_POLLING_INTERVAL_SECONDS: int = int(
 )
 
 
-def legacy_gcp_discovery_enabled() -> bool:
-    """Whether the startup-variable Vertex discovery phase runs. On unless disabled."""
-    value = get_env_var(
-        constants.GENAI_ENGINE_LEGACY_GCP_DISCOVERY_ENABLED_ENV_VAR,
-        True,
-    )
-    return (value or "true").strip().lower() not in {"false", "0", "no"}
-
-
 class AgentPollingJob(BaseQueueJob):
     """Represents a polling job for a single task."""
 
@@ -70,11 +54,13 @@ class AgentPollingJob(BaseQueueJob):
 
 
 class GlobalAgentPollingService(BaseQueueService[AgentPollingJob]):
-    """Global polling service that discovers agents and fetches traces in a single loop.
+    """Global polling service that fetches Vertex AI traces for GCP tasks in a loop.
 
-    Replaces the old per-task RegisteredAgentPollingService with a unified loop:
-    1. Discovery phase: List Vertex AI agents, create tasks for new ones
-    2. Fetch phase: Enqueue trace-fetch jobs for all eligible GCP tasks
+    Replaces the old per-task RegisteredAgentPollingService. Vertex AI agents are
+    discovered by a gcp_vertex discovery source, not here: this service used to list
+    the agents in GOOGLE_CLOUD_PROJECT and create tasks for them too, and that phase
+    has been removed. It now only enqueues trace-fetch jobs for the GCP tasks that
+    phase created.
 
     Eligibility: A GCP task is only polled if its gcp_project_id and gcp_region
     match the current GOOGLE_CLOUD_PROJECT and GOOGLE_CLOUD_LOCATION environment
@@ -144,7 +130,10 @@ class GlobalAgentPollingService(BaseQueueService[AgentPollingJob]):
     def _discover_and_poll_agents(
         self, wait_for_completion: bool = False, timeout: Optional[float] = None
     ) -> DiscoverAndPollResponse:
-        """Run a full discovery + polling cycle.
+        """Run a polling cycle.
+
+        `discovered` is always 0: discovery moved to gcp_vertex discovery sources, and
+        the field stays so the response shape does not change.
 
         Args:
             wait_for_completion: If True, block until all polling jobs complete.
@@ -153,180 +142,11 @@ class GlobalAgentPollingService(BaseQueueService[AgentPollingJob]):
         Returns:
             DiscoverAndPollResponse with discovered and traces_fetched counts.
         """
-        discovered = self._discover_gcp_agents()
         traces_fetched = self._poll_all_gcp_tasks(wait_for_completion, timeout)
         return DiscoverAndPollResponse(
             status="completed",
-            discovered=discovered,
+            discovered=0,
             traces_fetched=traces_fetched,
-        )
-
-    def _discover_gcp_agents(self) -> int:
-        """List Vertex AI agents and create tasks for newly discovered ones.
-
-        Skips discovery if GOOGLE_CLOUD_PROJECT is not configured, or if it has been
-        switched off with GENAI_ENGINE_LEGACY_GCP_DISCOVERY_ENABLED=false.
-
-        DEPRECATED (UP-4986): a gcp_vertex discovery source now discovers the same
-        agents through ML Engine's DISCOVER_AGENTS job. This phase stays until that
-        source has been verified against every customer's data, and is then removed.
-        Its trace-fetch sibling, `_poll_all_gcp_tasks`, is not deprecated by this.
-
-        Returns:
-            Number of newly created tasks.
-        """
-        if not legacy_gcp_discovery_enabled():
-            logger.debug(
-                "Legacy GCP agent discovery is disabled; a gcp_vertex Discovery "
-                "Source is expected to discover Vertex AI agents"
-            )
-            return 0
-
-        project_id = os.getenv("GOOGLE_CLOUD_PROJECT")
-        location = os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
-
-        if not project_id:
-            logger.debug("GOOGLE_CLOUD_PROJECT not set, skipping GCP agent discovery")
-            return 0
-
-        created_count = 0
-        db_session = next(get_db_session())
-        try:
-            vertexai.init(project=project_id, location=location)
-            agents = list(
-                vertexai.Client(
-                    project=project_id, location=location
-                ).agent_engines.list()
-            )
-
-            if not agents:
-                logger.info("No Vertex AI agents found during discovery")
-                return 0
-
-            logger.info(f"Discovered {len(agents)} Vertex AI agent(s)")
-
-            rule_repository = RuleRepository(db_session)
-            metric_repository = MetricRepository(db_session)
-            configuration_repository = ConfigurationRepository(db_session)
-            application_config = configuration_repository.get_configurations()
-            task_repository = TaskRepository(
-                db_session,
-                rule_repository,
-                metric_repository,
-                application_config,
-            )
-            mapping_repo = ServiceNameMappingRepository(db_session)
-            polling_state_repo = TaskPollingStateRepository(db_session)
-
-            for agent in agents:
-                try:
-                    api_resource = agent.api_resource
-                    resource_name = getattr(api_resource, "name", "")
-                    if not resource_name:
-                        continue
-
-                    _, region, engine_id = parse_gcp_resource_path(resource_name)
-                    if not engine_id:
-                        logger.warning(
-                            f"Could not parse engine ID from resource: {resource_name}"
-                        )
-                        continue
-
-                    # Check if a task already exists for this engine ID
-                    logger.info(
-                        f"Checking for existing task with engine_id={engine_id}"
-                    )
-                    existing_task = task_repository.find_by_gcp_engine_id(engine_id)
-                    if existing_task:
-                        continue
-
-                    # A gcp_vertex discovery source maps the same resource name, as
-                    # both a service name and its external_id, to a task whose
-                    # creation source is CLOUD rather than GCP -- which the lookup
-                    # above cannot see. Without this check, running both paths
-                    # during the migration would give every newly deployed agent two
-                    # tasks.
-                    if self._resource_already_mapped(mapping_repo, resource_name):
-                        continue
-
-                    # Create task with GCP creation_source
-                    display_name = (
-                        getattr(api_resource, "display_name", None) or engine_id
-                    )
-                    task_metadata = TaskMetadata(
-                        creation_source=AgentCreationSource(
-                            root=GCPAgentCreationSource(
-                                gcp_project_id=project_id,
-                                gcp_region=region or location,
-                                gcp_reasoning_engine_id=engine_id,
-                            )
-                        ),
-                    )
-
-                    task = Task(
-                        id=str(uuid.uuid4()),
-                        name=f"Vertex AI Agent: {display_name}",
-                        created_at=datetime.now(),
-                        updated_at=datetime.now(),
-                        is_agentic=True,
-                        is_autocreated=True,
-                        org_id=DEFAULT_ORG_ID,
-                        task_metadata=task_metadata,
-                    )
-                    # The task is only flushed, so it commits together with its
-                    # mapping. A gcp_vertex discovery source can claim the resource
-                    # name between the check above and this write; create_mapping
-                    # then rolls back -- taking the flushed task with it -- and
-                    # returns the winner's mapping, so no unreferenced task is left.
-                    created_task = task_repository.create_task(
-                        task, with_default_rules=False, commit=False
-                    )
-
-                    # Create service_name mapping using the resource path
-                    mapping = mapping_repo.create_mapping(
-                        resource_name, created_task.id
-                    )
-                    if mapping.task_id != created_task.id:
-                        logger.info(
-                            f"Resource {resource_name} was claimed by task "
-                            f"{mapping.task_id} during discovery; skipping"
-                        )
-                        continue
-
-                    # Initialize polling state
-                    polling_state_repo.get_or_create(created_task.id)
-
-                    created_count += 1
-                    logger.info(
-                        f"Created task '{created_task.name}' (id={created_task.id}) "
-                        f"for GCP engine {engine_id}"
-                    )
-
-                except Exception as e:
-                    logger.error(
-                        f"Error processing discovered agent: {e}",
-                        exc_info=True,
-                    )
-                    db_session.rollback()
-                    continue
-
-        except Exception as e:
-            logger.error(f"Error during GCP agent discovery: {e}", exc_info=True)
-        finally:
-            db_session.close()
-
-        return created_count
-
-    @staticmethod
-    def _resource_already_mapped(
-        mapping_repo: ServiceNameMappingRepository,
-        resource_name: str,
-    ) -> bool:
-        """Whether any task already owns this Vertex resource name."""
-        return any(
-            mapping_repo.get_task_id_by_service_name(resource_name, key_kind)
-            is not None
-            for key_kind in (MappingKeyKind.SERVICE_NAME, MappingKeyKind.EXTERNAL_ID)
         )
 
     def _is_task_eligible_for_polling(
