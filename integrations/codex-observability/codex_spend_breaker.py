@@ -22,15 +22,19 @@ Config (env): ARTHUR_BREAKER_CAP_USD    USD per 5-minute window (default 0.10)
 Any error lets Codex carry on: the hook prints nothing and exits 0.
 """
 
+import fcntl
 import json
 import os
 import re
 import sys
+import tempfile
 import time
+from contextlib import contextmanager
 from datetime import datetime
 
 WINDOW_S = 5 * 60
 OVERRIDE_S = 10 * 60
+SESSION_TTL_S = 24 * 3600  # forget a session's read position after a day idle
 COMMAND = re.compile(r"^\s*breaker\s+(status|override|reset)\s*$", re.I)
 
 # USD per million tokens. Unknown models are priced at the most expensive row
@@ -54,16 +58,34 @@ def state_path():
 def load_state():
     try:
         with open(state_path()) as f:
-            return json.load(f)
+            state = json.load(f)
     except (OSError, ValueError):
-        return {"spend": {}, "override_until": 0}
+        state = {}
+    state.setdefault("spend", {})
+    state.setdefault("override_until", 0)
+    state.setdefault("reset_at", 0)
+    state.setdefault("sessions", {})
+    return state
 
 
 def save_state(state):
-    tmp = state_path() + ".tmp"
-    with open(tmp, "w") as f:
+    # A temporary file of its own per write, then an atomic replace.
+    fd, tmp = tempfile.mkstemp(dir=os.path.dirname(state_path()) or ".", prefix=".spend_breaker.")
+    with os.fdopen(fd, "w") as f:
         json.dump(state, f)
     os.replace(tmp, state_path())
+
+
+@contextmanager
+def locked():
+    """Every Codex session's hooks share one state file: hold an exclusive lock
+    from load to save so concurrent hooks can't overwrite each other's spend."""
+    with open(state_path() + ".lock", "a") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(lock, fcntl.LOCK_UN)
 
 
 def rates():
@@ -77,7 +99,8 @@ def rates():
 
 def price(model, usage):
     table = rates()
-    r = table.get(model) or max(table.values(), key=lambda row: row["output"])
+    # An unknown model gets the highest rate of each kind, not one row's rates.
+    r = table.get(model) or {k: max(row[k] for row in table.values()) for k in ("input", "cached", "output")}
     cached = usage.get("cached_input_tokens", 0)
     uncached = max(usage.get("input_tokens", 0) - cached, 0)
     out = usage.get("output_tokens", 0)  # includes reasoning tokens
@@ -85,36 +108,53 @@ def price(model, usage):
 
 
 def ingest(state, transcript_path, session_id):
-    """Add every model response in the rollout to the spend ledger (idempotent).
+    """Add the rollout's new model responses to the spend ledger.
 
-    `token_usage_record` lands as each response finishes, before its tool runs,
-    keyed by response id; older rollouts only have `token_count`, which lands
-    after the tool, so it is the fallback.
+    Each session's rollout is read from where the last hook stopped, so a hook
+    costs the same however long the session is. `token_usage_record` lands as
+    each response finishes, before its tool runs, keyed by response id. Older
+    rollouts only have `token_count`, which lands after the tool and can repeat
+    the last response's usage (for a rate-limit update), so one counts only when
+    the cumulative total moves. Responses from before a `breaker reset` are
+    skipped.
     """
     if not transcript_path or not os.path.exists(transcript_path):
         return
-    model = os.environ.get("ARTHUR_BREAKER_MODEL", FALLBACK)
-    records, counts = {}, {}
-    with open(transcript_path, errors="replace") as f:
-        for n, line in enumerate(f):
+    sess = state["sessions"].get(session_id) or {}
+    if sess.get("path") != transcript_path or sess.get("pos", 0) > os.path.getsize(transcript_path):
+        sess = {"path": transcript_path, "pos": 0}
+    model = sess.get("model") or os.environ.get("ARTHUR_BREAKER_MODEL", FALLBACK)
+    last_total = sess.get("last_total", 0)
+    with open(transcript_path, "rb") as f:
+        f.seek(sess.get("pos", 0))
+        for raw in f:
+            if not raw.endswith(b"\n"):
+                break  # a line Codex is still writing: read it next time
+            sess["pos"] = sess.get("pos", 0) + len(raw)
             try:
-                e = json.loads(line)
+                e = json.loads(raw)
             except ValueError:
                 continue
             p = e.get("payload") or {}
             if e.get("type") == "turn_context" and p.get("model"):
                 model = p["model"]
-            ts = e.get("timestamp")
+            usage, key = None, None
             if e.get("type") == "token_usage_record" and p.get("usage"):
-                records[f"{session_id}:{p.get('response_id') or n}"] = (ts, p["usage"], model)
-            elif p.get("type") == "token_count" and p.get("info"):
-                last = p["info"].get("last_token_usage") or {}
-                if last.get("total_tokens"):
-                    counts[f"{session_id}:line{n}"] = (ts, last, model)
-    for key, (ts, usage, m) in (records or counts).items():
-        if key not in state["spend"]:
-            t = datetime.fromisoformat(ts.replace("Z", "+00:00")).timestamp()
-            state["spend"][key] = [t, price(m, usage), m]
+                usage, key = p["usage"], f"{session_id}:{p.get('response_id') or sess['pos']}"
+                sess["has_records"] = True
+            elif p.get("type") == "token_count" and p.get("info") and not sess.get("has_records"):
+                total = (p["info"].get("total_token_usage") or {}).get("total_tokens", 0)
+                if total > last_total:
+                    last_total = total
+                    usage, key = p["info"].get("last_token_usage") or {}, f"{session_id}:pos{sess['pos']}"
+            if not usage or key in state["spend"]:
+                continue
+            ts = datetime.fromisoformat(e["timestamp"].replace("Z", "+00:00")).timestamp()
+            if ts <= state.get("reset_at", 0):
+                continue
+            state["spend"][key] = [ts, price(model, usage), model]
+    sess.update(model=model, last_total=last_total, seen=time.time())
+    state["sessions"][session_id] = sess
 
 
 def window_spend(state, now):
@@ -123,12 +163,18 @@ def window_spend(state, now):
 
 def main():
     event = json.load(sys.stdin)
+    with locked():
+        return decide(event)
+
+
+def decide(event):
     name = event.get("hook_event_name")
     now = time.time()
     state = load_state()
     ingest(state, event.get("transcript_path"), event.get("session_id", "?"))
-    # Keep the ledger small: entries outside the window can't matter again.
+    # Keep the state small: spend outside the window can't matter again.
     state["spend"] = {k: v for k, v in state["spend"].items() if now - v[0] <= WINDOW_S}
+    state["sessions"] = {k: v for k, v in state["sessions"].items() if now - v.get("seen", now) <= SESSION_TTL_S}
     spent = window_spend(state, now)
     overridden = state.get("override_until", 0) > now
     tripped = spent >= cap() and not overridden
@@ -141,7 +187,8 @@ def main():
             if verb == "override":
                 state["override_until"] = now + OVERRIDE_S
             if verb == "reset":
-                state["spend"], state["override_until"] = {}, 0
+                # Responses already in the rollouts must not come back on the next hook.
+                state["spend"], state["override_until"], state["reset_at"] = {}, 0, now
                 spent = 0.0
             until = state.get("override_until", 0)
             lifted = f"; lifted until {time.strftime('%H:%M:%S', time.localtime(until))}" if until > now else ""

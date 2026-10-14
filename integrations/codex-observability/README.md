@@ -230,12 +230,14 @@ tracer's entries:
 | Variable | Default | Meaning |
 |---|---|---|
 | `ARTHUR_BREAKER_CAP_USD` | `0.10` | USD allowed per five-minute window |
-| `ARTHUR_BREAKER_STATE` | `$CODEX_HOME/spend_breaker_state.json` | Spend ledger and override, shared by all sessions |
+| `ARTHUR_BREAKER_STATE` | `$CODEX_HOME/spend_breaker_state.json` | Spend ledger, override and each session's read position, shared by all sessions under a file lock |
 | `ARTHUR_BREAKER_RATES_JSON` | built-in rows | Extra or replacement prices, `{"model": {"input": 2.0, "cached": 0.2, "output": 8.0}}` in USD per million tokens |
 | `ARTHUR_BREAKER_LOG` | unset | Append one line per hook call |
 
-A model without a price row is priced at the most expensive row, not at zero.
-Any error in the hook lets Codex carry on.
+Each hook reads only the part of the rollout written since the last one, so a
+long session doesn't make hooks slower. A model without a price row is priced
+at the highest rate of each kind, not at zero. `breaker reset` ignores every
+response written before it. Any error in the hook lets Codex carry on.
 
 ## Uninstall
 
