@@ -273,6 +273,8 @@ jobs:
               - 'genai-engine/changelog*'
               - 'genai-engine/Dockerfile*'
               - 'genai-engine/docker-compose.yml'
+              # Loaded by load_dotenv() when the app is imported, so it reaches the tests.
+              - 'genai-engine/.env'
               - 'arthur-observability-sdk/**'
               # Changes to the CI plumbing itself must exercise the jobs they
               # affect, otherwise a broken workflow edit passes as an all-skipped
@@ -298,7 +300,7 @@ jobs:
             fi
             echo "Files changed by this queue entry:"
             echo "$changed"
-            backend_pattern='^(genai-engine/(src|tests|alembic|scripts|models)/|genai-engine/[^/]+\.(toml|cfg|ini|lock|txt)$|genai-engine/version$|genai-engine/routes_security_check\.py$|genai-engine/changelog[^/]*$|genai-engine/Dockerfile[^/]*$|genai-engine/docker-compose\.yml$|arthur-observability-sdk/|\.github/workflows/arthur-engine-workflow\.yml$|\.github/workflows/composite-actions/)'
+            backend_pattern='^(genai-engine/(src|tests|alembic|scripts|models)/|genai-engine/[^/]+\.(toml|cfg|ini|lock|txt)$|genai-engine/version$|genai-engine/routes_security_check\.py$|genai-engine/changelog[^/]*$|genai-engine/Dockerfile[^/]*$|genai-engine/docker-compose\.yml$|genai-engine/\.env$|arthur-observability-sdk/|\.github/workflows/arthur-engine-workflow\.yml$|\.github/workflows/composite-actions/)'
             if grep -qE "$backend_pattern" <<< "$changed"; then
               echo "backend=true" >> "$GITHUB_OUTPUT"
             else
