@@ -1,12 +1,13 @@
 """Compute Engine's side of a DISCOVER_AGENTS scan.
 
-Compute Engine plays the MDM's role for Linux VMs: it lists the machines, and each VM's
-guest attributes carry the same `arthur1.` payload a Jamf Extension Attribute does (D-32,
-`integrations/endpoint-ai-discovery/docs/mdm/gce.md`). Everything that is not Compute
-Engine's -- decoding, matching, the record -- is `discovery.endpoint.records`. What is
-left here is the vendor tag, reading this source's fields, scoping by label, and the two
-things only Compute Engine has to say about a VM: where it is, and whether it can report
-at all.
+A CLOUD SOURCE THAT READS A MACHINE'S INVENTORY. Compute Engine lists the VMs, and each
+VM's guest attributes carry the same `arthur1.` payload a Jamf Extension Attribute does
+(D-32, `integrations/endpoint-ai-discovery/docs/mdm/gce.md`). So the decoding, matching
+and record shape are the endpoint pipeline's, `discovery.endpoint.records`, but the
+records are `CloudAgentCreationSource`: the source class is the vendor's, and Compute
+Engine is a cloud. What is left here is the vendor tag, reading this source's fields,
+scoping by label, and the two things only Compute Engine has to say about a VM: where it
+is, and whether it can report at all.
 
 EVERY VM IS LISTED; THE LOOKBACK IS APPLIED TO ITS STATUS LINE. Nothing records when a
 guest attribute was written, so there is no report date to page on, and a stopped VM, or
@@ -47,19 +48,23 @@ import google.auth
 import requests
 from arthur_client.api_bindings import DiscoverySourceConfigSpec
 from arthur_common.models.agent_discovery_schemas import DiscoveredAgentRecord
-from arthur_common.models.agent_governance_schemas import Platform, RunsOn
+from arthur_common.models.agent_governance_schemas import (
+    CloudAgentCreationSource,
+    Platform,
+    RunsOn,
+)
 from google.auth.credentials import Credentials
 from google.auth.exceptions import DefaultCredentialsError
 from google.auth.transport.requests import AuthorizedSession
 
 from discovery.catalog import Matcher
-from discovery.endpoint.device import ManagedDevice
-from discovery.endpoint.gce.client import (
+from discovery.cloud.gcp_compute_engine.client import (
     COMPUTE_READONLY_SCOPE,
     ComputeEngineClient,
     ComputeEngineError,
     Instance,
 )
+from discovery.endpoint.device import ManagedDevice
 from discovery.endpoint.records import records_for
 from discovery.endpoint.scope import DeviceScope, parse_group_names
 from discovery.gcp_credentials import (
@@ -261,7 +266,13 @@ class ComputeEngineConnector:
             if _before(reported, since):
                 coverage.count_unreadable(NOT_REPORTED_IN_WINDOW)
                 continue
-            read = records_for(device, matcher, VENDOR, logger)
+            read = records_for(
+                device,
+                matcher,
+                VENDOR,
+                logger,
+                source_type=CloudAgentCreationSource,
+            )
             if (
                 reported is None
                 and read.records

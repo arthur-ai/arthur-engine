@@ -18,7 +18,7 @@ import pytest
 import requests
 import yaml
 from arthur_common.models.agent_governance_schemas import (
-    EndpointAgentCreationSource,
+    CloudAgentCreationSource,
     Platform,
     RunsOn,
     SourceAddress,
@@ -26,9 +26,9 @@ from arthur_common.models.agent_governance_schemas import (
 from google.auth.exceptions import RefreshError
 
 from discovery import source_connectors
-from discovery.endpoint.gce import client as gce_client
-from discovery.endpoint.gce.client import ComputeEngineError
-from discovery.endpoint.gce.connector import (
+from discovery.cloud.gcp_compute_engine import client as gce_client
+from discovery.cloud.gcp_compute_engine.client import ComputeEngineError
+from discovery.cloud.gcp_compute_engine.connector import (
     ALLOW_ADC_ENV_VAR,
     GUEST_ATTRIBUTES_DISABLED,
     NOT_REPORTED_IN_WINDOW,
@@ -38,6 +38,7 @@ from discovery.endpoint.gce.connector import (
     parse_label_selectors,
     settings_from,
 )
+from job_executors.discovery_output_contract import check_batch
 from job_executors.discovery_scan import (
     AcceptsStopCheck,
     DiscoveryConfigurationError,
@@ -268,9 +269,11 @@ def scan(
 # --- records --------------------------------------------------------------------------
 
 
-def test_a_reporting_vm_is_a_linux_machine_on_gcp_addressed_by_project_zone_and_id() -> (
+def test_a_reporting_vm_is_a_cloud_record_on_gcp_addressed_by_vm_project_and_zone() -> (
     None
 ):
+    """A cloud record, as the catalog classes the vendor, addressed per (software, VM):
+    the VM is the instance, so no two VMs in a project are one agent."""
     fake = FakeCompute(
         {PROJECT: [[vm("4823710983451", name="build-1")]]},
         guest={(ZONE, "build-1"): attributes(CODEX)},
@@ -283,8 +286,10 @@ def test_a_reporting_vm_is_a_linux_machine_on_gcp_addressed_by_project_zone_and_
     assert record.runs_on is RunsOn.GCP
     assert record.platform is Platform.LINUX
     assert record.last_seen == datetime.fromtimestamp(SCAN_AT, tz=timezone.utc)
+    check_batch(records, "Source config 'acme gce' (gcp_compute_engine)")
     source = record.creation_source
-    assert isinstance(source, EndpointAgentCreationSource)
+    assert isinstance(source, CloudAgentCreationSource)
+    assert source.type == "CLOUD"
     assert source.vendor == "gcp_compute_engine"
     assert source.address == SourceAddress(
         instance="4823710983451",
