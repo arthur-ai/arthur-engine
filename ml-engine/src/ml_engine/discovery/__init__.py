@@ -16,8 +16,8 @@ A vendor with no entry fails its own job with that reason, which is the right an
 an unsupported source and is reported per job rather than per engine.
 
 Adding an MDM is one more entry here and one more package under `discovery.endpoint`;
-adding a SIEM is the same under `discovery.siem`, and a cloud provider product under
-`discovery.cloud`.
+adding a SIEM is the same under `discovery.siem`, a cloud provider product under
+`discovery.cloud`, and a network log source under `discovery.network`.
 Everything the new MDM shares with Jamf -- the `arthur1.` frame, the six-column rows,
 matching, the record shape -- is already neutral and is not touched.
 """
@@ -28,6 +28,8 @@ from discovery.endpoint.gce.connector import VENDOR as GCP_COMPUTE_ENGINE_VENDOR
 from discovery.endpoint.gce.connector import ComputeEngineConnector
 from discovery.endpoint.jamf.connector import VENDOR as JAMF_VENDOR
 from discovery.endpoint.jamf.connector import JamfConnector
+from discovery.network.cloudwatch_logs.connector import VENDOR as CLOUDWATCH_LOGS_VENDOR
+from discovery.network.cloudwatch_logs.connector import CloudWatchLogsConnector
 from discovery.siem.elastic_security.connector import VENDOR as ELASTIC_SECURITY_VENDOR
 from discovery.siem.elastic_security.connector import ElasticSecurityConnector
 from discovery.siem.splunk.connector import VENDOR as SPLUNK_VENDOR
@@ -47,6 +49,7 @@ def source_connectors() -> dict[str, DiscoveryConnectorFactory]:
         GCP_VERTEX_VENDOR: VertexAgentEngineConnector,
         SPLUNK_VENDOR: SplunkConnector,
         ELASTIC_SECURITY_VENDOR: ElasticSecurityConnector,
+        CLOUDWATCH_LOGS_VENDOR: CloudWatchLogsConnector,
     }
 
 
@@ -62,4 +65,6 @@ __all__ = [
     "SPLUNK_VENDOR",
     "ElasticSecurityConnector",
     "ELASTIC_SECURITY_VENDOR",
+    "CloudWatchLogsConnector",
+    "CLOUDWATCH_LOGS_VENDOR",
 ]
