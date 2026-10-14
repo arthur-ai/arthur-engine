@@ -131,7 +131,13 @@ ok "Result=$result; the journal names the disabled endpoint"
 case_ "== started, the timer schedules the next run ============================"
 systemctl start "$UNIT.timer" || bad "the timer would not start"
 [ "$(systemctl is-active "$UNIT.timer")" = active ] || bad "the timer is not active"
-next="$(systemctl show -p NextElapseUSecMonotonic --value "$UNIT.timer")"
+# A runner up for longer than OnBootSec plus its random delay fires the timer the moment it
+# starts, and while the run it triggered is under way systemd reports no next elapse at all.
+# Wait that run out: when it ends, OnUnitActiveSec schedules the next one from it.
+for _ in $(seq 60); do
+  next="$(systemctl show -p NextElapseUSecMonotonic --value "$UNIT.timer")"
+  case "$next" in ""|infinity|0|n/a) sleep 0.5 ;; *) break ;; esac
+done
 case "$next" in ""|infinity|0|n/a) bad "the timer has nothing scheduled (NextElapseUSecMonotonic=$next)" ;; esac
 ok "timer active; next run at monotonic $next"
 
