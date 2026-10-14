@@ -165,7 +165,8 @@ def records_for(
     """One device's records, or why its payload could not be read.
 
     No records is a device that scanned and matched nothing; a reason is a device we
-    cannot speak for.
+    cannot speak for. `source_type` is the record type, which must be the vendor's
+    catalog class (`InventorySource`).
     """
     log = logger or logging.getLogger(__name__)
     carrier, value, conflict = _inventory_value(device)
