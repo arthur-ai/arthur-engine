@@ -58,7 +58,7 @@ from google.auth.exceptions import DefaultCredentialsError
 from google.auth.transport.requests import AuthorizedSession
 
 from discovery.catalog import Matcher
-from discovery.cloud.gcp_compute_engine.client import (
+from discovery.cloud.gce.client import (
     COMPUTE_READONLY_SCOPE,
     ComputeEngineClient,
     ComputeEngineError,

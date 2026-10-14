@@ -24,12 +24,8 @@ matching, the record shape -- is already neutral and is not touched. A cloud pro
 whose VMs carry that payload (Compute Engine) reuses it too, from `discovery.cloud`.
 """
 
-from discovery.cloud.gcp_compute_engine.connector import (
-    VENDOR as GCP_COMPUTE_ENGINE_VENDOR,
-)
-from discovery.cloud.gcp_compute_engine.connector import (
-    ComputeEngineConnector,
-)
+from discovery.cloud.gce.connector import VENDOR as GCP_COMPUTE_ENGINE_VENDOR
+from discovery.cloud.gce.connector import ComputeEngineConnector
 from discovery.cloud.gcp_vertex.connector import VENDOR as GCP_VERTEX_VENDOR
 from discovery.cloud.gcp_vertex.connector import VertexAgentEngineConnector
 from discovery.endpoint.jamf.connector import VENDOR as JAMF_VENDOR

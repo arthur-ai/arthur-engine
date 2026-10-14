@@ -26,9 +26,9 @@ from arthur_common.models.agent_governance_schemas import (
 from google.auth.exceptions import RefreshError
 
 from discovery import source_connectors
-from discovery.cloud.gcp_compute_engine import client as gce_client
-from discovery.cloud.gcp_compute_engine.client import ComputeEngineError
-from discovery.cloud.gcp_compute_engine.connector import (
+from discovery.cloud.gce import client as gce_client
+from discovery.cloud.gce.client import ComputeEngineError
+from discovery.cloud.gce.connector import (
     ALLOW_ADC_ENV_VAR,
     GUEST_ATTRIBUTES_DISABLED,
     NOT_REPORTED_IN_WINDOW,
