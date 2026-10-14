@@ -1,9 +1,13 @@
 name: Bypass Audit
 
-# The bypass list on the `dev` and `main` rulesets is the break-glass path for a merge
-# that cannot wait: it skips the CODEOWNERS review, required checks and the merge queue
-# all at once. GitHub records each bypass in rule insights but tells nobody and keeps no
-# reason. This workflow opens a `bypass-audit` issue for every bypass made by a person,
+# The bypass list on the `dev` ruleset is the break-glass path for a merge that cannot
+# wait: it skips the CODEOWNERS review, required checks and the merge queue all at once.
+# `main` needs no break-glass. Its PRs are release PRs opened by the Automator App
+# (create-release-pr.yml), so any engineer can approve one, and a person bypassing there
+# is never routine; it is logged the same way.
+#
+# GitHub records each bypass in rule insights but tells nobody and keeps no reason. This
+# workflow opens a `bypass-audit` issue for every bypass made by a person,
 # naming the rules skipped and the reason from an `Emergency:` line in the PR body. The
 # issue stays open until someone other than the bypasser has reviewed what shipped. The
 # rules for what gets logged live in .github/scripts/bypass_audit.sh.

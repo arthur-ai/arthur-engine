@@ -2,9 +2,11 @@
 # Open a tracking issue for every ruleset bypass made by a person, for
 # .github/workflows/bypass-audit.yml.
 #
-# The bypass list on the `dev` and `main` rulesets is the break-glass path: it is the only
-# way a PR touching a CODEOWNERS path merges without a second engineer, and it also lets a
-# merge skip required checks and the merge queue. GitHub records every bypass in rule
+# The bypass list on the `dev` ruleset is the break-glass path: it is the only way a PR
+# touching a CODEOWNERS path merges without a second engineer, and it also lets a merge
+# skip required checks and the merge queue. (`main` needs none: its release PRs are
+# opened by the Automator App, so any engineer can approve them. A bypass there, or on
+# any other ref, is logged all the same.) GitHub records every bypass in rule
 # insights, but nobody is told and no reason is kept. This turns each one into an issue
 # that stays open until someone other than the bypasser has looked at what shipped.
 #
