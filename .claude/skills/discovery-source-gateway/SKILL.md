@@ -31,7 +31,7 @@ Applications and agents send their LLM calls through a gateway (a proxy holding 
 | only ships its request logs to the customer's SIEM | `discovery-source-siem` (a query over those logs) |
 | lists deployed agent resources but sees no traffic | `discovery-source-cloud` |
 
-## 2. The record contract (proposed `NetworkGatewayAgentCreationSource`)
+## 2. The record contract (`NetworkGatewayAgentCreationSource`)
 
 | Part | Rule | Why |
 |---|---|---|
@@ -48,6 +48,13 @@ Applications and agents send their LLM calls through a gateway (a proxy holding 
 | `observations` | `client_addresses` = the source addresses the record's requests came from (one key used from several hosts shows here); `host_group` = team/project/workspace alias; `assigned_user` = the key owner or end user the gateway attributes the call to (personal data: only what the gateway reports, never inferred) | within `OBSERVABLE_FIELDS` |
 | `identity_basis` | `registered_agent`: request agent id == the agent the request's own credential is bound to. `claimed_agent`: any other agent id. `credential`: no agent id, grouped by key. `client_address`: no credential either (unauthenticated gateway or logs) | required, per record |
 | `runs_on` / `platform` / `service_names` | Unset. A gateway does not know where the caller runs; a key alias is not a globally unique service name | see `discovery-source-cloud` §2 on `service_names` |
+
+
+**Trace-identity invariant (every class).** Discovery's job is to find every agent. Each record becomes a GenAI Engine task with provenance, and traces are the customer's to send. They only land on the discovered task if the keys the record stores for joining equal what that vendor's own telemetry puts on a real span. Those keys are `observations.service_names`, matched against the span's `service.name`, and the address `resource_id`, matched against `cloud.resource_id` where the vendor sets it.
+- **Check it against a captured real span**, not the docs. Pin the span's resource attributes in a test.
+- **Mappings are immutable.** A wrong key permanently splits one agent into a discovered task and a second, traced task.
+- **If the key must also match what an older integration stored**, carry both forms.
+- **If you cannot capture a real span**, leave `service_names` unset and say so in the docstring and the PR.
 
 ## 3. Connection and credentials
 
@@ -109,7 +116,7 @@ Verified on 2026-10-12 against arthur-engine `dev` `4de52ab4` and arthur-common 
 
 ## 8. Tests that prove it
 
-Registration; request shape (date window from lookback, auth header, `allow_redirects=False`, timeout sum < 120); paging to `total_pages` and the page cap; aggregation (two requests by one key → one record, both models, newest time); failed requests count; caller without alias named by team + id; `NetworkGatewayAgentCreationSource` address (instance normalisation, scope = team, resource_id = caller id); `check_batch` passes; zero traffic is a logged success; enrichment 403 is a warning; 401/403 carry `status_code`; malformed 200; http/userinfo/bad TLS mode refused; stop check before each page; key material and bodies never in `caplog`. Capture live bodies from a running gateway (the process skill's local end-to-end recipe shows how to run LiteLLM locally) and pin them inline.
+Registration; request shape (date window from lookback, auth header, `allow_redirects=False`, timeout sum < 120); paging to `total_pages` and the page cap; aggregation (two requests by one key → one record, both models, newest time); failed requests count; caller without alias named by team + id; `NetworkGatewayAgentCreationSource` address (instance normalisation, scope = team, resource_id = caller id); `check_batch` passes; zero traffic is a logged success; enrichment 403 is a warning; 401/403 carry `status_code`; malformed 200; http/userinfo/bad TLS mode refused; stop check before each page; key material and bodies never in `caplog`. Capture live bodies from a running gateway (the process skill's local end-to-end recipe shows how to run LiteLLM locally) and pin them inline. Trace identity: if the connector sets `service_names` or a trace-joining `resource_id`, a test pins a captured real span's resource attributes and asserts the record's keys equal them (`test_service_names_match_a_captured_<vendor>_span`). Gateway records leave `service_names` unset; a key alias is not what spans carry.
 
 ## 9. Proving it end to end
 

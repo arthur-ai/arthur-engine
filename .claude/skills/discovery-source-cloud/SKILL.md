@@ -32,8 +32,15 @@ A cloud source asks a provider's **inventory** API "which agents are deployed in
 | `name` | Display name, else the id | non-blank |
 | `last_seen` | The resource's `update_time`, else `create_time`. A resource with neither is **skipped with a warning**, never stamped with `now()` (that would fake freshness) | Vertex `record_for` |
 | `runs_on` | Set only when `RunsOn` has the provider (`aws`, `azure`, `gcp`). Otherwise leave it `None`; do not add an enum member for one vendor (arthur-common contract change) | `RunsOn` enum |
-| `observations.service_names` | Only a value that is **unique across the customer's services** (Vertex's full resource name, which is the join key to existing tasks). Never a short project/app name: GenAI Engine's resolver claims every service name a record carries, so a project called `web` would capture unrelated traces | Vertex sets it; Vercel #2433 omits it on purpose |
+| `observations.service_names` | Only a value that is **unique across the customer's services** and equal to the `service.name` the vendor's own spans carry (see the trace-identity invariant below). Vertex stores its full resource path `projects/<n>/locations/<r>/reasoningEngines/<id>` to match the keys the older Vertex poller wrote. Real Vertex spans carry the bare engine id, so on `dev` `fa026cfe` an agent instrumented after discovery gets a second task. That was tested on a copy of a local GenAI Engine database on 2026-10-13; do not copy it. Never a short project/app name: GenAI Engine's resolver claims every service name a record carries, so a project called `web` would capture unrelated traces | Vertex sets it; Vercel #2433 omits it on purpose |
 | `llm_models` | Only if the API states the model; never guess from names | optional column |
+
+
+**Trace-identity invariant (every class).** Discovery's job is to find every agent. Each record becomes a GenAI Engine task with provenance, and traces are the customer's to send. They only land on the discovered task if the keys the record stores for joining equal what that vendor's own telemetry puts on a real span. Those keys are `observations.service_names`, matched against the span's `service.name`, and the address `resource_id`, matched against `cloud.resource_id` where the vendor sets it.
+- **Check it against a captured real span**, not the docs. Pin the span's resource attributes in a test.
+- **Mappings are immutable.** A wrong key permanently splits one agent into a discovered task and a second, traced task.
+- **If the key must also match what an older integration stored**, carry both forms.
+- **If you cannot capture a real span**, leave `service_names` unset and say so in the docstring and the PR.
 
 ## 3. Connection and credentials
 
@@ -90,7 +97,7 @@ Then:
 ## 7. Checklist
 
 - [ ] `external_id` is the vendor's globally unique name; `scope` always set; `runs_on` only from the existing enum.
-- [ ] `service_names` set only if globally unique, with a comment saying why (or why not).
+- [ ] `service_names` set only if globally unique and equal to a captured span's `service.name` (or to both forms when an older integration's keys must also match), with a comment saying why (or why not).
 - [ ] Records without a timestamp are skipped with a warning naming the resource id, not its contents.
 - [ ] `SENSITIVE_FIELDS` == the catalog's secret fields; credential never logged; ambient credentials opt-in.
 - [ ] Config faults are `DiscoveryConfigurationError`; vendor faults carry `status_code`.
@@ -99,7 +106,7 @@ Then:
 
 ## 8. Tests that prove it (`tests/unit/discovery/test_<vendor>_connector.py`)
 
-Registration in `source_connectors()`; `record_for` builds `CloudAgentCreationSource` with instance/scope/resource_id; a resource without region yields `scope` from the documented default; a resource without timestamps is skipped and warned; `check_batch` passes on a yielded batch; lookback is not applied (the fake lister/session receives no time filter); paging follows the cursor and stops on a repeat; stop-before-call sends nothing; 401/403 carry `status_code`; a missing locator is `NOT_CONFIGURED`; malformed 200 is the vendor's error; the credential never appears in `caplog`. Pin captured live bodies inline when sandbox access exists; otherwise build bodies from the vendor's published SDK models and say so in the PR (Vercel did this), and keep availability preview.
+Registration in `source_connectors()`; `record_for` builds `CloudAgentCreationSource` with instance/scope/resource_id; a resource without region yields `scope` from the documented default; a resource without timestamps is skipped and warned; `check_batch` passes on a yielded batch; lookback is not applied (the fake lister/session receives no time filter); paging follows the cursor and stops on a repeat; stop-before-call sends nothing; 401/403 carry `status_code`; a missing locator is `NOT_CONFIGURED`; malformed 200 is the vendor's error; the credential never appears in `caplog`. Pin captured live bodies inline when sandbox access exists; otherwise build bodies from the vendor's published SDK models and say so in the PR (Vercel did this), and keep availability preview. Trace identity: if the connector sets `service_names` or a trace-joining `resource_id`, a test pins a captured real span's resource attributes and asserts the record's keys equal them (`test_service_names_match_a_captured_<vendor>_span`).
 
 ## 9. Proving it end to end
 

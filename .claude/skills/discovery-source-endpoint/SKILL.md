@@ -39,6 +39,13 @@ Build nothing by hand: `discovery/endpoint/records.py:records_for(device, findin
 
 The connector's own job is to produce `ManagedDevice` values: carrier id, `last_reported`, name, group, OS, assigned user, group ids, and the attribute string.
 
+
+**Trace-identity invariant (every class).** Discovery's job is to find every agent. Each record becomes a GenAI Engine task with provenance, and traces are the customer's to send. They only land on the discovered task if the keys the record stores for joining equal what that vendor's own telemetry puts on a real span. Those keys are `observations.service_names`, matched against the span's `service.name`, and the address `resource_id`, matched against `cloud.resource_id` where the vendor sets it.
+- **Check it against a captured real span**, not the docs. Pin the span's resource attributes in a test.
+- **Mappings are immutable.** A wrong key permanently splits one agent into a discovered task and a second, traced task.
+- **If the key must also match what an older integration stored**, carry both forms.
+- **If you cannot capture a real span**, leave `service_names` unset and say so in the docstring and the PR.
+
 ## 3. Connection and credentials
 
 - Fields (the Platform catalog entry; model it on Jamf Pro's): `base_url` non-sensitive and must be https; client credentials sensitive; optional `include_groups` / `exclude_groups` parsed by `endpoint/scope.py` (`DeviceScope`, `parse_group_names`). Cloud-hosted carriers (GCE, EC2) swap `base_url` for the account locator and a service credential, like a cloud source.
@@ -94,7 +101,7 @@ Copy `ml-engine/src/ml_engine/discovery/endpoint/jamf/` (client + connector). Fi
 
 ## 8. Tests that prove it
 
-Copy the Jamf themes: registration; token flow and refresh; keyset paging with a device that reports mid-scan; report-date window from lookback and full roster at `<= 0`; group scope resolution and unknown group refusal; `arthur1.` decode to records with the expected `external_id` and address; malformed attribute counted in coverage and not fatal; `device_coverage()` totals; stop check after each device; 401/403 status; http URL refused; credentials and attribute contents never logged.
+Copy the Jamf themes: registration; token flow and refresh; keyset paging with a device that reports mid-scan; report-date window from lookback and full roster at `<= 0`; group scope resolution and unknown group refusal; `arthur1.` decode to records with the expected `external_id` and address; malformed attribute counted in coverage and not fatal; `device_coverage()` totals; stop check after each device; 401/403 status; http URL refused; credentials and attribute contents never logged. Trace identity: if the connector sets `service_names` or a trace-joining `resource_id`, a test pins a captured real span's resource attributes and asserts the record's keys equal them (`test_service_names_match_a_captured_<vendor>_span`). Endpoint records leave `service_names` empty; keep it that way unless a captured span proves a key.
 
 ## 9. Proving it end to end
 

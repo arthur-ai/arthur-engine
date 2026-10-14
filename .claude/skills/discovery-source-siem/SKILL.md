@@ -29,6 +29,13 @@ The query must project exactly the `DiscoveryOutputRecord` columns: required `ex
 | `address.query` | The query text exactly as run | `records_from_rows` |
 | `runs_on` / `platform` | Only if the query projects them | contract |
 
+
+**Trace-identity invariant (every class).** Discovery's job is to find every agent. Each record becomes a GenAI Engine task with provenance, and traces are the customer's to send. They only land on the discovered task if the keys the record stores for joining equal what that vendor's own telemetry puts on a real span. Those keys are `observations.service_names`, matched against the span's `service.name`, and the address `resource_id`, matched against `cloud.resource_id` where the vendor sets it.
+- **Check it against a captured real span**, not the docs. Pin the span's resource attributes in a test.
+- **Mappings are immutable.** A wrong key permanently splits one agent into a discovered task and a second, traced task.
+- **If the key must also match what an older integration stored**, carry both forms.
+- **If you cannot capture a real span**, leave `service_names` unset and say so in the docstring and the PR.
+
 ## 3. Connection and credentials
 
 - Fields (the Platform catalog entry; model it on Elastic Security's): `<url_field>` non-sensitive https URL; one secret (`api_key` / `auth_token`) sensitive; optional `ca_certificate` (string) and `tls_verification` (enum `full|ca_only|off`, default `full`).
@@ -93,7 +100,7 @@ Ship a **sample query** with the docs section that projects exactly the contract
 
 ## 8. Tests that prove it
 
-The Elastic test file is the canon (`tests/unit/discovery/test_elastic_security_connector.py`): registration; request shape (query untouched, lookback beside it, auth header, `allow_redirects=False`, timeout sum < 120); rows to records by column name; provenance address; instance normalisation (443, case, path, IPv6); `check_batch` passes; unmapped and missing columns fail `NOT_CONFIGURED`; zero rows with right/wrong columns; batching; cap/partial/zero warnings before the first batch; stop-before-call sends nothing; config refusals (missing, http, malformed URL, userinfo, wrong language, bad TLS mode, bad CA); TLS modes incl. through a proxy; 401/403 status and hint; 400 query error shape; unreachable keeps its type; secrets never logged; malformed 200; captured live bodies inline.
+The Elastic test file is the canon (`tests/unit/discovery/test_elastic_security_connector.py`): registration; request shape (query untouched, lookback beside it, auth header, `allow_redirects=False`, timeout sum < 120); rows to records by column name; provenance address; instance normalisation (443, case, path, IPv6); `check_batch` passes; unmapped and missing columns fail `NOT_CONFIGURED`; zero rows with right/wrong columns; batching; cap/partial/zero warnings before the first batch; stop-before-call sends nothing; config refusals (missing, http, malformed URL, userinfo, wrong language, bad TLS mode, bad CA); TLS modes incl. through a proxy; 401/403 status and hint; 400 query error shape; unreachable keeps its type; secrets never logged; malformed 200; captured live bodies inline. Trace identity: if the connector sets `service_names` or a trace-joining `resource_id`, a test pins a captured real span's resource attributes and asserts the record's keys equal them (`test_service_names_match_a_captured_<vendor>_span`). Today SIEM records carry no service names, so the check is that none appear.
 
 ## 9. Proving it end to end
 
