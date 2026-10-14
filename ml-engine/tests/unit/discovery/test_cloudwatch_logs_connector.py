@@ -338,7 +338,8 @@ def test_flow_logs_without_ranges_find_nothing(
 
 def test_a_custom_regex_reads_a_custom_log() -> None:
     fields = {
-        **{k: v for k, v in FIELDS.items() if k != "log_format"},
+        **FIELDS,
+        "log_format": "custom",
         "extraction_regex": r"src=(?<src>\S+) host=(?<dest>\S+)",
     }
     (record,) = scan(
@@ -426,18 +427,12 @@ def test_missing_fields_are_named() -> None:
         ({**FIELDS, "external_id": "e"}, "without role_arn"),
         ({**FIELDS, "log_format": "syslog"}, "must be one of"),
         (
-            {**FIELDS, "extraction_regex": r"(?P<src>\S+) (?P<dest>\S+)"},
-            "both log_format and extraction_regex",
-        ),
-        (
             {k: v for k, v in FIELDS.items() if k != "log_format"},
-            "needs log_format or extraction_regex",
+            "missing required field.*log_format",
         ),
+        ({**FIELDS, "log_format": "custom"}, "custom needs extraction_regex"),
         (
-            {
-                **{k: v for k, v in FIELDS.items() if k != "log_format"},
-                "extraction_regex": r"(?P<src>\S+)",
-            },
+            {**FIELDS, "log_format": "custom", "extraction_regex": r"(?P<src>\S+)"},
             "extraction_regex has no named group",
         ),
         ({**FIELDS, "extra_inference_hosts": "localhost"}, "entry 1 needs"),
@@ -451,6 +446,11 @@ def test_bad_configuration_is_refused_before_anything_is_sent(
         scan(logs, fields=fields)
     assert failure_code(exc.value) is DiscoveryErrorCode.NOT_CONFIGURED
     assert logs.calls == []
+
+
+def test_a_preset_ignores_a_regex_left_from_custom() -> None:
+    fields = {**FIELDS, "extraction_regex": r"(?P<src>x)"}
+    assert len(scan(FakeLogs(), fields=fields)) == 1
 
 
 def test_a_log_group_arn_from_another_account_is_accepted() -> None:

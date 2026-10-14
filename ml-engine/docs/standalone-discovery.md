@@ -184,8 +184,8 @@ record per EC2 instance, or per address (in its VPC) when the line names no inst
 |---|---|---|---|
 | `region` | no | yes | Region of the log groups, e.g. `us-east-1` |
 | `log_group_names` | no | yes | Comma-separated log groups, up to 20; a log group shared into a monitoring account by its ARN |
-| `log_format` | no | no | A preset: `route53_resolver_query_log` (Route 53 Resolver query logs, JSON) or `vpc_flow_log_v2` (VPC Flow Logs, default version 2 format). Set this or `extraction_regex` |
-| `extraction_regex` | no | no | Your own regex with named groups: `src` and `dest` (a hostname or IP) required; `instance_id`, `vpc_id`, `account_id`, `timestamp` (ISO 8601 or epoch) optional. `(?P<name>…)` or `(?<name>…)`; at most 2048 characters |
+| `log_format` | no | yes | How lines are read: `route53_resolver_query_log` (Route 53 Resolver query logs, JSON), `vpc_flow_log_v2` (VPC Flow Logs, default version 2 format), or `custom` to use `extraction_regex` |
+| `extraction_regex` | no | no | Required for `log_format: custom` and read only then. A regex with named groups: `src` and `dest` (a hostname or IP) required; `instance_id`, `vpc_id`, `account_id`, `timestamp` (ISO 8601 or epoch) optional. `(?P<name>…)` or `(?<name>…)`; at most 2048 characters |
 | `access_key_id` | no | no | IAM access key ID; set with `secret_access_key`, or leave both empty to use the engine's own AWS credentials, which needs `ARTHUR_ENGINE_AWS_CLOUDWATCH_LOGS_ALLOW_DEFAULT_CREDENTIALS=true` on the engine |
 | `secret_access_key` | yes | no | The key's secret |
 | `role_arn` | no | no | An IAM role to assume with that credential before reading |

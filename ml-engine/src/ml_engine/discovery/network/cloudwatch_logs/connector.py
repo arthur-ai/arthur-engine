@@ -2,9 +2,10 @@
 
 Reads every event of the source's log groups in the scan's lookback with
 `FilterLogEvents`, pulls a source and a destination out of each line with the source's
-extractor (a preset format or its own regex), keeps the lines whose destination serves
-model inference (`discovery.network.hosts` plus the source's own hosts and CIDRs), and
-reports one record per internal source (`discovery.network.records`).
+extractor (a preset `log_format`, or `custom` and its own regex), keeps the lines whose
+destination serves model inference (`discovery.network.hosts` plus the source's own
+hosts and CIDRs), and reports one record per internal source
+(`discovery.network.records`).
 
 THERE IS NO QUERY. The catalog's query language is `none`: the extractor is a field of
 the source, because it describes the log group, which every config of the source reads.
@@ -51,6 +52,8 @@ SECRET_ACCESS_KEY_FIELD = "secret_access_key"
 ROLE_ARN_FIELD = "role_arn"
 EXTERNAL_ID_FIELD = "external_id"
 EXTRA_INFERENCE_HOSTS_FIELD = "extra_inference_hosts"
+
+CUSTOM_LOG_FORMAT = "custom"
 
 # Opt-in for the engine's own AWS credentials (instance profile, IRSA, environment)
 # when a source has no access key. Off unless set to a true value, so a keyless source
@@ -115,7 +118,7 @@ class CloudWatchLogsConnector:
         if (config.query or "").strip():
             logger.warning(
                 "CloudWatch Logs sources have no query; the source config's query is "
-                "ignored. The source's log_format or extraction_regex reads the lines.",
+                "ignored. The source's log_format reads the lines.",
             )
 
         end_ms = int(self._now() * 1000)
@@ -299,30 +302,31 @@ def settings_from(
 
 
 def extraction_pattern_from(source_fields: Mapping[str, str]) -> str:
-    """The regex the source's lines are read with: its preset's, or its own.
+    """The regex the source's lines are read with: its preset's, or its own for
+    `custom`.
 
-    Exactly one of the two, so a source never silently runs a pattern other than the
-    one its admin last looked at.
+    One required mode rather than two optional alternatives, because the Platform's
+    source form cannot clear a saved field: switching between a preset and a regex
+    has to be a change of `log_format`. `extraction_regex` is read only for `custom`.
     """
     log_format = (source_fields.get(LOG_FORMAT_FIELD) or "").strip()
-    pattern = source_fields.get(EXTRACTION_REGEX_FIELD) or ""
-    if log_format and pattern.strip():
+    if not log_format:
         raise DiscoveryConfigurationError(
-            f"CloudWatch Logs source sets both {LOG_FORMAT_FIELD} and "
-            f"{EXTRACTION_REGEX_FIELD}. Set one: a preset format, or your own regex.",
+            f"CloudWatch Logs source is missing required field(s): {LOG_FORMAT_FIELD}.",
         )
-    if log_format:
+    if log_format != CUSTOM_LOG_FORMAT:
         preset = PRESETS.get(log_format)
         if preset is None:
             raise DiscoveryConfigurationError(
                 f"CloudWatch Logs {LOG_FORMAT_FIELD} must be one of "
-                f"{', '.join(sorted(PRESETS))}.",
+                f"{', '.join(sorted(PRESETS) + [CUSTOM_LOG_FORMAT])}.",
             )
         return preset
+    pattern = source_fields.get(EXTRACTION_REGEX_FIELD) or ""
     if not pattern.strip():
         raise DiscoveryConfigurationError(
-            f"CloudWatch Logs source needs {LOG_FORMAT_FIELD} or "
-            f"{EXTRACTION_REGEX_FIELD} to read its log lines.",
+            f"CloudWatch Logs {LOG_FORMAT_FIELD} {CUSTOM_LOG_FORMAT} needs "
+            f"{EXTRACTION_REGEX_FIELD}: a regex with named groups src and dest.",
         )
     problem = pattern_problem(pattern)
     if problem is not None:
