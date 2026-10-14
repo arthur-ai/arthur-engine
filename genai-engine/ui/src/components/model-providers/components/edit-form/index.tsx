@@ -165,7 +165,7 @@ export const EditForm = ({
         }}
       >
         <DialogContent dividers>
-          {["anthropic", "openai", "gemini"].includes(provider) && (
+          {["anthropic", "openai", "gemini", "scaledown"].includes(provider) && (
             <APIKeyFields
               form={form}
               fields={{
