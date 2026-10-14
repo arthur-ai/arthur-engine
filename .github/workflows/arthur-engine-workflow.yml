@@ -287,13 +287,16 @@ jobs:
       # of dev or of the entry ahead of it, so its diff against its first parent is
       # exactly the PR being merged. The pattern below mirrors the `backend` filter
       # above; keep the two in sync. If the parent cannot be read, run everything.
+      # --no-renames lists a moved file under both its old and new path, as
+      # paths-filter does for PRs, so moving a file out of a backend folder still
+      # counts as a backend change.
       - name: Decide affected areas
         id: decide
         shell: bash
         run: |
           if [ "${{ github.event_name }}" = "merge_group" ]; then
             echo "ui=true" >> "$GITHUB_OUTPUT"
-            if ! changed=$(git diff --name-only HEAD^ HEAD); then
+            if ! changed=$(git diff --no-renames --name-only HEAD^ HEAD); then
               echo "::warning::Could not diff the queue commit against its parent; running the full suite"
               echo "backend=true" >> "$GITHUB_OUTPUT"
               exit 0
