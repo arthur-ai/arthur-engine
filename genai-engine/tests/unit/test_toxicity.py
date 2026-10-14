@@ -23,8 +23,22 @@ pytestmark = pytest.mark.xdist_group("ml_models")
 
 __location__ = os.path.dirname(os.path.abspath(__file__))
 
-TOXICITY_MODEL = get_toxicity_model()
-TOXICITY_TOKENIZER = get_toxicity_tokenizer()
+
+@pytest.fixture(scope="module")
+def toxicity_model():
+    # Loaded when a test asks for it, not at import: every xdist worker imports
+    # this module during collection, but only the ml_models worker runs it.
+    return get_toxicity_model()
+
+
+@pytest.fixture(scope="module")
+def toxicity_tokenizer():
+    return get_toxicity_tokenizer()
+
+
+@pytest.fixture(scope="module")
+def classifier(toxicity_model, toxicity_tokenizer):
+    return ToxicityScorer(toxicity_model, toxicity_tokenizer, None, None)
 
 
 def get_english_dictionary():
@@ -37,47 +51,46 @@ def get_english_dictionary():
         return set([word.lower() for word in english_dictionary])
 
 
-CLASSIFIER = ToxicityScorer(TOXICITY_MODEL, TOXICITY_TOKENIZER, None, None)
 ENGLISH_DICTIONARY = get_english_dictionary()
 
 
 @pytest.mark.unit_tests
-def test_detect_profanity():
-    assert CLASSIFIER.detect_profanity(["shit"], 0.5)
-    assert CLASSIFIER.detect_profanity(["fuck"], 0.6)
-    assert CLASSIFIER.detect_profanity(["f*ck"], 0.7)
-    assert CLASSIFIER.detect_profanity(["f**ck"], 0.8)
-    assert CLASSIFIER.detect_profanity(["fxck"], 0.9)
-    assert CLASSIFIER.detect_profanity(["fxxck"], 0.99)
-    assert CLASSIFIER.detect_profanity(["ignorant"], 0.5)
-    assert not CLASSIFIER.detect_profanity(["s h i t"], 0.5)
-    assert not CLASSIFIER.detect_profanity(["s h ! t"], 0.5)
-    assert not CLASSIFIER.detect_profanity(["s       H     , ! t"], 0.5)
-    assert not CLASSIFIER.detect_profanity(["distinguish it"], 0.5)
-    assert not CLASSIFIER.detect_profanity(["get it"], 0.5)
+def test_detect_profanity(classifier):
+    assert classifier.detect_profanity(["shit"], 0.5)
+    assert classifier.detect_profanity(["fuck"], 0.6)
+    assert classifier.detect_profanity(["f*ck"], 0.7)
+    assert classifier.detect_profanity(["f**ck"], 0.8)
+    assert classifier.detect_profanity(["fxck"], 0.9)
+    assert classifier.detect_profanity(["fxxck"], 0.99)
+    assert classifier.detect_profanity(["ignorant"], 0.5)
+    assert not classifier.detect_profanity(["s h i t"], 0.5)
+    assert not classifier.detect_profanity(["s h ! t"], 0.5)
+    assert not classifier.detect_profanity(["s       H     , ! t"], 0.5)
+    assert not classifier.detect_profanity(["distinguish it"], 0.5)
+    assert not classifier.detect_profanity(["get it"], 0.5)
 
 
 @pytest.mark.unit_tests
-def test_non_programming_text():
+def test_non_programming_text(classifier):
     score_request = ScoreRequest(
         scoring_text="This is a normal sentence without any code.",
         rule_type=RuleType.TOXICITY,
         toxicity_threshold=0.5,
     )
 
-    result = CLASSIFIER.score(score_request)
+    result = classifier.score(score_request)
 
     assert result.result != RuleResultEnum.SKIPPED
     assert result.details.toxicity_score is not None
 
 
 @pytest.mark.unit_tests
-def test_classifier_not_toxic_text():
+def test_classifier_not_toxic_text(toxicity_model, toxicity_tokenizer):
     """Tests toxicity classifier on unit tests of non-toxic text
     We use a threshold of 0.65 to allow for some edge-case text to get flagged
     """
 
-    mocked_classifier = ToxicityScorer(TOXICITY_MODEL, TOXICITY_TOKENIZER, None, None)
+    mocked_classifier = ToxicityScorer(toxicity_model, toxicity_tokenizer, None, None)
     with open(
         os.path.join(__location__, "../fixtures/toxicity/sampled_nottoxic.txt"),
         "r",
@@ -145,12 +158,12 @@ def test_classifier_not_toxic_text():
         "All girls like you should have a pimp to guide them to successful prostitution",
     ],
 )
-def test_classifier_toxic_text(text):
+def test_classifier_toxic_text(text, toxicity_model, toxicity_tokenizer):
     """Tests toxicity classifier on unit tests of toxic text
     We use the standard threshold of 0.5
     """
 
-    mocked_classifier = ToxicityScorer(TOXICITY_MODEL, TOXICITY_TOKENIZER, None, None)
+    mocked_classifier = ToxicityScorer(toxicity_model, toxicity_tokenizer, None, None)
     score_request = ScoreRequest(
         scoring_text=text,
         rule_type=RuleType.TOXICITY,
@@ -167,75 +180,75 @@ def test_classifier_toxic_text(text):
 
 
 @pytest.mark.unit_tests
-def test_classifier_happy_path():
+def test_classifier_happy_path(classifier):
     score_request = ScoreRequest(
         scoring_text="The teletubbies are awesome!",
         rule_type=RuleType.TOXICITY,
         toxicity_threshold=0.5,
     )
 
-    result = CLASSIFIER.score(score_request)
+    result = classifier.score(score_request)
 
     assert result.result == RuleResultEnum.PASS
     assert result.details.toxicity_score is not None
 
 
 @pytest.mark.unit_tests
-def test_classifier_unhappy_path():
+def test_classifier_unhappy_path(classifier):
     score_request = ScoreRequest(
         scoring_text="Hiring someone from this website should ensure we don't hire undesirables",
         rule_type=RuleType.TOXICITY,
         toxicity_threshold=0.01,
     )
 
-    result = CLASSIFIER.score(score_request)
+    result = classifier.score(score_request)
     print(result)
     assert result.result == RuleResultEnum.FAIL
     assert result.details.toxicity_score is not None
 
 
 @pytest.mark.unit_tests
-def test_classifier_high_threshold():
+def test_classifier_high_threshold(classifier):
     score_request = ScoreRequest(
         scoring_text="Hiring someone from this website should ensure we don't hire undesirables",
         rule_type=RuleType.TOXICITY,
         toxicity_threshold=0.9999999,
     )
 
-    result = CLASSIFIER.score(score_request)
+    result = classifier.score(score_request)
 
     assert result.result == RuleResultEnum.PASS
     assert result.details.toxicity_score is not None
 
 
 @pytest.mark.unit_tests
-def test_classifier_low_threshold():
+def test_classifier_low_threshold(classifier):
     score_request = ScoreRequest(
         scoring_text="The teletubbies are awesome!",
         rule_type=RuleType.TOXICITY,
         toxicity_threshold=0.000001,
     )
 
-    result = CLASSIFIER.score(score_request)
+    result = classifier.score(score_request)
 
     assert result.result == RuleResultEnum.FAIL
     assert result.details.toxicity_score is not None
 
 
 @pytest.mark.unit_tests
-def test_text_splitter():
-    assert CLASSIFIER.split_text_into_sections("This is a test.") == ["This is a test."]
+def test_text_splitter(classifier):
+    assert classifier.split_text_into_sections("This is a test.") == ["This is a test."]
 
-    assert CLASSIFIER.split_text_into_sections("This is a test. The test is fun.") == [
+    assert classifier.split_text_into_sections("This is a test. The test is fun.") == [
         "This is a test",
         "The test is fun.",
     ]
 
-    assert CLASSIFIER.split_text_into_sections(
+    assert classifier.split_text_into_sections(
         "Here's my advice\n\n1. do this thing\n\nThat's it!",
     ) == ["Here's my advice", "1. do this thing", "That's it!"]
 
-    chunked_texts = CLASSIFIER.split_text_into_sections(
+    chunked_texts = classifier.split_text_into_sections(
         "The following are the list of websites to monitor.\n1. LeadingConsciously.com \n2. ConsciousLeadership.net \n3. ExecutiveCoaching.solar \n4. ConsciousLeadershipForum.net \n5. ConsciousLeadershipAcademy.org \n6. ConsciousLeadershipWorkshop.com \n7. LeadershipForANewEra.net \n8. ConsciousLeadershipDevelopment.com \n9. EmpoweringLeaders.org \n10. ConsciousLeaders.io \n11. ConsciousLeadershipStyle.info \n12. ConsciousLeadershipTraining.net \n13. LeadingWithAwareness.com \n14. ConsciousLeadershipResources.com \n15. LeadingInANewWay.net \n16. ConsciousLeadershipTransformation.org \n17. ConsciousLeadershipForTheFuture.com \n18. ConsciousLeadershipForToday.net \n19. LeadingForTomorrow.com\n\nIt is recommended to check that `/index.html` returns 200 HTTP response code from all these websites.",
     )
     assert chunked_texts == [
@@ -262,7 +275,7 @@ def test_text_splitter():
         "It is recommended to check that `/index.html` returns 200 HTTP response code from all these websites.",
     ]
 
-    chunked_texts = CLASSIFIER.split_text_into_sections(
+    chunked_texts = classifier.split_text_into_sections(
         """
          Dear soldier of the Wikipedia dictatorship
         What the hell are you tlaking about. I did not re-creat any article about the formal Australian Worker's Party formaly known as the New Communist Party of Australia. I think you are high on the lies told by storm front. You the hell listens to storm front.
@@ -288,7 +301,7 @@ def test_text_splitter():
         'So I can only say on thing ""go get a life man"".',
     ]
 
-    chunked_texts = CLASSIFIER.split_text_into_sections(
+    chunked_texts = classifier.split_text_into_sections(
         """
 To implement a simple Moving Average (SMA) crossover strategy for the Apple (AAPL) stock and include risk management and buy/sell quantity, you can use the following code:
 
@@ -324,14 +337,14 @@ if fast_ema[0] > slow_ema[0]:
         "buy_quantity = int(fast_length * data['Volume'] / 2)",
     ]
 
-    chunked_texts = CLASSIFIER.split_text_into_sections(
+    chunked_texts = classifier.split_text_into_sections(
         """
         *This is a test*
         **This is a test**
         """,
     )
 
-    chunked_texts = CLASSIFIER.split_text_into_sections(
+    chunked_texts = classifier.split_text_into_sections(
         """
         **** Replace this with a single asterisk ****
         Th**s will not be re****placed
@@ -366,10 +379,11 @@ if fast_ema[0] > slow_ema[0]:
 def test_profanity_detection_with_character_replacement(
     text: str,
     expected_result: list[bool],
+    classifier,
 ):
     profanity_result = [
         detect_profanity(section)
-        for section in CLASSIFIER.split_text_into_sections(text)
+        for section in classifier.split_text_into_sections(text)
     ]
     assert profanity_result == expected_result
 
