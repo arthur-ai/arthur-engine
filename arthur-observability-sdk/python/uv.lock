@@ -7,7 +7,7 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "2026-10-11T16:30:36.352792378Z"
+exclude-newer = "2026-10-11T17:27:36.335526156Z"
 exclude-newer-span = "P3D"
 
 [manifest]
@@ -164,7 +164,7 @@ wheels = [
 
 [[package]]
 name = "arthur-observability-sdk"
-version = "2.1.1009"
+version = "2.1.1010"
 source = { editable = "." }
 dependencies = [
     { name = "httpx" },
