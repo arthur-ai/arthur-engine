@@ -93,7 +93,10 @@ class FetchDiscoveredAgentsExecutor:
     def execute(self, job_spec: FetchDiscoveredAgentsJobSpec) -> None:
         """Upload every task the source reported in the window, a page at a time.
 
-        Without a source, upload every task no source has reported, engine-scoped.
+        Then upload every task no source has reported, so the agents the engine knows
+        only from their own traces or a manual create surface on the same scan as
+        the source's. Without a source, that second walk is the whole job:
+        engine-scoped.
 
         Each page is uploaded as it arrives rather than after the last one, so memory
         is bounded by a page whatever the source reported, and a failure part-way
@@ -135,7 +138,6 @@ class FetchDiscoveredAgentsExecutor:
                 },
             )
 
-        uploaded = 0
         with ApiClient(
             Configuration(
                 host=self.genai_engine_url,
@@ -143,48 +145,94 @@ class FetchDiscoveredAgentsExecutor:
             ),
         ) as api_client:
             tasks_api = TasksApi(api_client)
-            after_task_id: str | None = None
-            while True:
-                tasks: List[EnrichedTaskResponse] = (
-                    tasks_api.get_agent_tasks_api_v2_agent_tasks_get(
-                        discovery_source_id=source_id,
-                        reported_since=job_spec.reported_since,
-                        # Left out of a source's request, which reads as before.
-                        unreported=True if source_id is None else None,
-                        after_task_id=after_task_id,
-                        page_size=self.page_size,
-                        _request_timeout=AGENT_TASKS_TIMEOUT_SECONDS,
-                    )
+            if source_id is None:
+                uploaded = self._upload_walk(
+                    tasks_api,
+                    workspace_id,
+                    data_plane_id,
+                    source_id=None,
+                    reported_since=job_spec.reported_since,
+                    unreported=True,
                 )
-                if tasks:
-                    uploaded += publish_enriched_tasks(
-                        self.agents_client,
-                        self.logger,
-                        workspace_id,
-                        data_plane_id,
-                        tasks,
-                        discovery_source_id=source_id,
-                    )
-                # A short page is the last one, which is how the endpoint says so.
-                if len(tasks) < self.page_size:
-                    break
-                # Paged by cursor: the next page starts after this one's last task.
-                after_task_id = tasks[-1].id
+                self.logger.info(
+                    f"Uploaded {uploaded} engine-scoped agent(s)",
+                    extra={"workspace_id": workspace_id, "num_upserted": uploaded},
+                )
+                return
 
-        if source_id is None:
-            self.logger.info(
-                f"Uploaded {uploaded} engine-scoped agent(s)",
-                extra={"workspace_id": workspace_id, "num_upserted": uploaded},
+            uploaded = self._upload_walk(
+                tasks_api,
+                workspace_id,
+                data_plane_id,
+                source_id=source_id,
+                reported_since=job_spec.reported_since,
+                # Left out of a source's request, which reads as before.
+                unreported=None,
             )
-        else:
-            self.logger.info(
-                f"Uploaded {uploaded} agent(s) from discovery source {source_id}",
-                extra={
-                    "workspace_id": workspace_id,
-                    "discovery_source_id": source_id,
-                    "num_upserted": uploaded,
-                },
+            # No window: these tasks have no report times to measure one against,
+            # and every one of them is uploaded again, which the Platform's upsert on
+            # task_id makes an update in place.
+            unreported_uploaded = self._upload_walk(
+                tasks_api,
+                workspace_id,
+                data_plane_id,
+                source_id=None,
+                reported_since=None,
+                unreported=True,
             )
+
+        self.logger.info(
+            f"Uploaded {uploaded} agent(s) from discovery source {source_id}, and "
+            f"{unreported_uploaded} engine-scoped agent(s) no source reported",
+            extra={
+                "workspace_id": workspace_id,
+                "discovery_source_id": source_id,
+                "num_upserted": uploaded,
+                "num_engine_scoped_upserted": unreported_uploaded,
+            },
+        )
+
+    def _upload_walk(
+        self,
+        tasks_api: TasksApi,
+        workspace_id: str,
+        data_plane_id: str,
+        source_id: Optional[str],
+        reported_since: Any,
+        unreported: Optional[bool],
+    ) -> int:
+        """Walk one agent-tasks query by cursor, uploading each page as it arrives.
+
+        Uploads carry `source_id`'s evidence, or none when it is None: the unreported
+        tasks were reported by no source, so they must not be dressed as this one's.
+        """
+        uploaded = 0
+        after_task_id: str | None = None
+        while True:
+            tasks: List[EnrichedTaskResponse] = (
+                tasks_api.get_agent_tasks_api_v2_agent_tasks_get(
+                    discovery_source_id=source_id,
+                    reported_since=reported_since,
+                    unreported=unreported,
+                    after_task_id=after_task_id,
+                    page_size=self.page_size,
+                    _request_timeout=AGENT_TASKS_TIMEOUT_SECONDS,
+                )
+            )
+            if tasks:
+                uploaded += publish_enriched_tasks(
+                    self.agents_client,
+                    self.logger,
+                    workspace_id,
+                    data_plane_id,
+                    tasks,
+                    discovery_source_id=source_id,
+                )
+            # A short page is the last one, which is how the endpoint says so.
+            if len(tasks) < self.page_size:
+                return uploaded
+            # Paged by cursor: the next page starts after this one's last task.
+            after_task_id = tasks[-1].id
 
 
 def publish_enriched_tasks(

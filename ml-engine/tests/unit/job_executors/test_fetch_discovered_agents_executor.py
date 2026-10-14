@@ -1,6 +1,7 @@
 import logging
 from datetime import datetime, timezone
 from types import SimpleNamespace
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
@@ -192,6 +193,15 @@ def _executor(
     )
 
 
+def _source_walk(tasks_api: MagicMock) -> list[Any]:
+    """The requests of a source fetch's own walk, without the unreported one after it."""
+    return [
+        c
+        for c in tasks_api.get_agent_tasks_api_v2_agent_tasks_get.call_args_list
+        if c.kwargs["unreported"] is None
+    ]
+
+
 def _uploaded_task_ids(agents_client: MagicMock) -> list[list[str]]:
     return [
         [agent.task_id for agent in c.kwargs["put_agents"].agents]
@@ -208,12 +218,13 @@ def test_fetches_the_one_source_in_its_window_and_uploads_every_page(
         [_task("t1"), _task("t2")],
         [_task("t3"), _task("t4")],
         [_task("t5")],
+        [],  # the unreported walk that follows
     ]
     agents_client = _agents_client()
 
     _executor(agents_client).execute(_spec())
 
-    requests = tasks_api.get_agent_tasks_api_v2_agent_tasks_get.call_args_list
+    requests = _source_walk(tasks_api)
     assert [c.kwargs["after_task_id"] for c in requests] == [None, "t2", "t4"]
     for c in requests:
         assert c.kwargs["discovery_source_id"] == SOURCE_ID
@@ -231,12 +242,13 @@ def test_a_full_last_page_is_followed_by_an_empty_one_and_nothing_more(
     tasks_api.get_agent_tasks_api_v2_agent_tasks_get.side_effect = [
         [_task("t1"), _task("t2")],
         [],
+        [],  # the unreported walk that follows
     ]
     agents_client = _agents_client()
 
     _executor(agents_client).execute(_spec())
 
-    assert tasks_api.get_agent_tasks_api_v2_agent_tasks_get.call_count == 2
+    assert len(_source_walk(tasks_api)) == 2
     # an empty page is not uploaded: PUT would be a no-op request
     assert _uploaded_task_ids(agents_client) == [["t1", "t2"]]
 
@@ -244,11 +256,11 @@ def test_a_full_last_page_is_followed_by_an_empty_one_and_nothing_more(
 def test_the_standalone_fetch_reads_everything_the_source_ever_reported(
     tasks_api: MagicMock,
 ) -> None:
-    tasks_api.get_agent_tasks_api_v2_agent_tasks_get.side_effect = [[]]
+    tasks_api.get_agent_tasks_api_v2_agent_tasks_get.side_effect = [[], []]
 
     _executor(_agents_client()).execute(_spec(reported_since=None))
 
-    [request] = tasks_api.get_agent_tasks_api_v2_agent_tasks_get.call_args_list
+    [request] = _source_walk(tasks_api)
     assert request.kwargs["reported_since"] is None
 
 
@@ -259,7 +271,9 @@ def test_fetching_twice_uploads_the_same_agents_under_the_same_task_ids(
     handing over the same task_id for the same task on every run."""
     tasks_api.get_agent_tasks_api_v2_agent_tasks_get.side_effect = [
         [_task("t1")],
+        [],
         [_task("t1")],
+        [],
     ]
     agents_client = _agents_client()
     executor = _executor(agents_client)
@@ -342,7 +356,7 @@ def test_an_agent_carries_its_task_and_its_provenance() -> None:
 
 
 def test_the_fetch_job_uploads_provenance(tasks_api: MagicMock) -> None:
-    tasks_api.get_agent_tasks_api_v2_agent_tasks_get.side_effect = [[_task("t1")]]
+    tasks_api.get_agent_tasks_api_v2_agent_tasks_get.side_effect = [[_task("t1")], []]
     agents_client = _agents_client()
 
     _executor(agents_client).execute(_spec())
@@ -528,6 +542,7 @@ def test_an_agent_the_platform_rejects_is_a_job_error_and_the_rest_still_count(
     looks, or its task simply never appears."""
     tasks_api.get_agent_tasks_api_v2_agent_tasks_get.side_effect = [
         [_task("a"), _task("b"), _task("c")],
+        [],
     ]
     agents_client = _rejecting_agents_client({"b"})
 
@@ -550,6 +565,7 @@ def test_a_batch_refused_wholesale_is_summarized_rather_than_listed_in_full(
     task_ids = [f"t{i}" for i in range(MAX_REPORTED_REJECTIONS + 5)]
     tasks_api.get_agent_tasks_api_v2_agent_tasks_get.side_effect = [
         [_task(task_id) for task_id in task_ids],
+        [],
     ]
 
     with caplog.at_level(logging.ERROR):
@@ -571,7 +587,7 @@ def test_a_platform_that_predates_rejected_reports_nothing_extra(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     """An older Platform omits `rejected`, which the client reads back as None."""
-    tasks_api.get_agent_tasks_api_v2_agent_tasks_get.side_effect = [[_task("a")]]
+    tasks_api.get_agent_tasks_api_v2_agent_tasks_get.side_effect = [[_task("a")], []]
     agents_client = MagicMock()
     agents_client.put_agents.side_effect = lambda workspace_id, put_agents: (
         SimpleNamespace(agents=put_agents.agents, rejected=None)
@@ -581,3 +597,44 @@ def test_a_platform_that_predates_rejected_reports_nothing_extra(
         _executor(agents_client, page_size=5).execute(_spec())
 
     assert _job_errors(caplog) == []
+
+
+def test_a_source_fetch_also_uploads_the_tasks_no_source_reported(
+    tasks_api: MagicMock,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A scan's fetch surfaces the engine's own agents too, so one known only from
+    its traces appears on the next scan rather than waiting for an engine-wide
+    fetch. They go up without this source's evidence: it did not report them."""
+    tasks_api.get_agent_tasks_api_v2_agent_tasks_get.side_effect = [
+        [_task("s1")],
+        [_traced_task("u1"), _traced_task("u2")],
+        [_traced_task("u3")],
+    ]
+    publish = MagicMock(wraps=fetch_discovered_agents_executor.publish_enriched_tasks)
+    monkeypatch.setattr(
+        fetch_discovered_agents_executor,
+        "publish_enriched_tasks",
+        publish,
+    )
+    agents_client = _agents_client()
+
+    _executor(agents_client).execute(_spec())
+
+    requests = tasks_api.get_agent_tasks_api_v2_agent_tasks_get.call_args_list
+    assert [
+        (c.kwargs["discovery_source_id"], c.kwargs["unreported"]) for c in requests
+    ] == [(SOURCE_ID, None), (None, True), (None, True)]
+    assert [c.kwargs["after_task_id"] for c in requests[1:]] == [None, "u2"]
+    # The window is the source's; the unreported tasks have no report time.
+    assert requests[0].kwargs["reported_since"] == REPORTED_SINCE
+    assert [c.kwargs["reported_since"] for c in requests[1:]] == [None, None]
+    assert _uploaded_task_ids(agents_client) == [["s1"], ["u1", "u2"], ["u3"]]
+    assert [c.kwargs["discovery_source_id"] for c in publish.call_args_list] == [
+        SOURCE_ID,
+        None,
+        None,
+    ]
+    for c in agents_client.put_agents.call_args_list[1:]:
+        for agent in c.kwargs["put_agents"].agents:
+            assert not agent.evidence
