@@ -12,9 +12,13 @@ from tests.clients.base_test_client import (
 )
 from validation.response import validate_response
 
+
 # Every test here creates a task and counts or caps its rules, so default rules
-# that other tests left active must not be linked to it.
-pytestmark = pytest.mark.usefixtures("without_leftover_default_rules")
+# that other tests left active must not be linked to it. Autouse fixtures set up
+# before the other fixtures in their scope, so this runs before create_task.
+@pytest.fixture(autouse=True)
+def _without_leftover_default_rules(without_leftover_default_rules: None) -> None:
+    pass
 
 
 @pytest.mark.unit_tests
