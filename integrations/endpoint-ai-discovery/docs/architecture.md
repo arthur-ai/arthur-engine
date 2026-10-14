@@ -8,7 +8,7 @@ one rule that decides most of the design: **the endpoint enumerates, the collect
 | | Repo | Holds | Must not hold |
 |---|---|---|---|
 | Queries and signatures | [`osquery-ai-discovery`](https://github.com/arthur-ai/osquery-ai-discovery) (public, MIT) | the SQL, the runner, the guard, the wall-clock bound, **and the catalog** | any Jamf or Arthur specific deployment glue |
-| Deployable | `integrations/endpoint-ai-discovery/` (this tree) | the `arthur1.` wire format, the size budget, the deployable artifact, the Jamf transport | a copy of the queries, **the catalog**, or the matching |
+| Deployable | `integrations/endpoint-ai-discovery/` (this tree) | the `arthur1.` wire format, the size budget, the deployable artifacts, the Jamf and Compute Engine transports | a copy of the queries, **the catalog**, or the matching |
 | Collector | `ml-engine/src/ml_engine/discovery/` | **matching**, summaries, the record sink, **and the catalog it matches against** | a copy of the queries |
 | Policies | arthur-platform | what to do about a finding | collection concerns |
 
@@ -17,9 +17,15 @@ property of the reporting channel, and neither is a fact about osquery. `tools/b
 `lint.sh` fails if `dist/collect.sh` passes `bin/discover` a flag the vendored runner no longer
 accepts, which is how that removal was caught rather than shipped.
 
-**Matching happens in exactly one place: the collector. The endpoint holds no catalog at all.**
+**Matching happens in exactly one place: the collector. The endpoint matches nothing.**
 Everything below follows from that. It is why the endpoint enumerates, why there is no summary
 Extension Attribute, and why a new signature can be added without re-scanning a single Mac.
+
+**One catalog-derived file rides in the payload, unread.** Upstream's bundler packs
+`dist/signatures.sql`, the catalog rendered into SQL, into every bundle for
+`bin/discover --names`. `dist/collect.sh` never passes `--names`, and `test/lint.sh` fails if it
+starts to. `tools/build-collector.py` admits payload files by name, so nothing else
+catalog-derived reaches an endpoint unvetted.
 
 The catalog the collector matches against is **authoritative in the public repo** and vendored
 here alongside the queries. One file, one place to add a signature, and a public one — a
@@ -37,15 +43,12 @@ repo: the `model` query branch went with them, and whether Docker is present is 
 the `scan` row's `ok` / `absent` / `unhealthy:<code>` / `timeout:<n>`, which a bundle id could
 never distinguish. `catalog/agents.yaml` carries the removals as data, with the reason for each.
 
-**Upstream ships Linux; this deployable does not.** From v0.3.0 there is no single composed
-artifact — `dist/discovery-darwin.sql` and `dist/discovery-linux.sql` name disjoint sets of
-tables, and `bin/discover` chooses by `uname -s`. What this tree builds is a macOS collector: a
-LaunchDaemon, Jamf Extension Attributes, `/var/lib/arthur`. So `dist/collect.sh` embeds the
-darwin artifact alone and refuses to run anywhere else, by name rather than by failing on a
-missing path. Embedding the Linux half as well would cost little and claim a platform nothing
-here schedules, deploys or tests. If Arthur ever inventories Linux endpoints, the artifact
-already exists upstream and the work is here: a second payload, a second plist, a transport
-that is not Jamf.
+**One driver, two builds.** From v0.3.0 there is no single composed artifact —
+`dist/discovery-darwin.sql` and `dist/discovery-linux.sql` name disjoint sets of tables, and
+`bin/discover` chooses by `uname -s`. So this tree builds one collector per platform around the
+same driver: `dist/collect.sh` for Macs (a Jamf Policy or the LaunchDaemon) and
+`dist/collect-linux.sh` for Compute Engine VMs (a systemd timer). Each embeds its own artifact
+and refuses the other platform by name rather than by failing on a missing path.
 
 The `ports` route is retired too, and the reasoning is worth keeping: `bin/classify` refuses a
 port unless the process holding it already names the agent, so the port never fires until
@@ -77,8 +80,8 @@ ever talks to the collector.**
   │                        │ scheduled run: one process per branch,        │
   │                        │ guarded and wall-clock bounded                │
   │                        ▼                                               │
-  │  /var/lib/arthur/   inventory.ea   evidence, ~21 KB framed here        │
-  │                     status.txt     collection health, 154 bytes        │
+  │  /var/lib/arthur/   inventory.ea   evidence, ~24 KB framed here        │
+  │                     status.txt     collection health, 195 bytes        │
   └────────────────────────────────┬───────────────────────────────────────┘
                                    │ two Extension Attributes,
                                    │ collected by `jamf recon`
@@ -243,12 +246,12 @@ the platform has recorded, and the platform computes it.
 
 ## Transport
 
-**Jamf is the first MDM to carry this, not the only one it can.** `dist/collect.sh`
-names no vendor: it runs on a schedule, writes three files, and stops. What an MDM has
-to provide — a scheduled script, a per-device string attribute large enough for the
-payload, an inventory API filterable on a per-device report date, and a stable device id
-— is written down in [`mdm/README.md`](mdm/README.md), and the sections below describe
-how Jamf satisfies each.
+**Jamf and Compute Engine carry this; neither is special.** The collector names no vendor:
+it runs on a schedule, writes three files, and stops. What a carrier has to provide — a
+scheduled script, a per-device string attribute large enough for the payload, an inventory API
+filterable on a per-device report date, and a stable device id — is written down in
+[`mdm/README.md`](mdm/README.md). The sections below describe how Jamf satisfies each, then
+how Compute Engine does.
 
 
 **The collector polls Jamf. Nothing connects to the collector.** Jamf's own documented pattern
@@ -261,7 +264,7 @@ The names below are the reference deployment's; the collector finds the evidence
 
 | EA | Carries | Size |
 |---|---|---|
-| `Arthur AI Inventory` | the evidence — `arthur1.<base64(gzip(json))>`, or `ERROR:oversize:<bytes>` | ~21 KB, measured |
+| `Arthur AI Inventory` | the evidence — `arthur1.<base64(gzip(json))>`, or `ERROR:oversize:<bytes>` | ~24 KB, measured |
 | `Arthur AI Inventory Status` | collection health, plain text and greppable | 154 bytes, measured |
 
 The health line is the writer's own status output, unchanged:
@@ -352,6 +355,25 @@ Rejected deliberately:
   scan id, with a partial-scan failure mode a single payload does not have. Under the pull
   model the collector would have to reassemble them per computer, for nothing.
 
+### Compute Engine: guest attributes
+
+A VM writes its own guest attributes through its metadata server and the Compute Engine API
+serves them — Jamf's shape again: the machine writes where it already can, the collector reads
+with an API call, nothing connects to the machine and no credential lives on it.
+`deploy/report-guest-attributes.sh` runs the collector and publishes `arthur/inventory` and
+`arthur/status`. It is the Compute Engine half of the carrier, as the Extension Attribute is on
+Jamf, so the collector stays vendor-neutral. [`mdm/gce.md`](mdm/gce.md) has the deployment.
+
+**One key carries the inventory.** A guest attribute holds exactly 262,144 bytes — measured, and
+refused with a 400 above it — which is this tree's budget to the byte, so splitting the payload
+across keys buys nothing a real one needs. A GCS object write was the other option and is
+strictly worse: a credential and an egress path on every VM.
+
+**What it lacks is a report date.** Nothing records when a guest attribute was written, and a
+stopped VM, or one whose guest attributes were turned off, keeps serving its last values.
+Freshness is the status line's timestamp, and the reporter adds `failed=<UTC>` when the latest
+run did not succeed. The Compute Engine collector reads every instance on every scan.
+
 ## Failure semantics
 
 This is the part the project is actually built on. Every defect found in it so far has been
@@ -401,11 +423,15 @@ are not.
 |---|---|---|
 | EA script timeout | — | **No documented Jamf timeout.** Community evidence runs the other way: EAs measured at 21s, and `jamf recon` *stalling* rather than being cut off. An unbounded EA does not fail fast; it hangs that Mac's inventory |
 | EA value cap | **≥ 1 MB** | **Measured** 2026-09-05, and it is not the budget below. A 1,048,576-byte value round-tripped script → `jamf recon` → Jamf Pro → API read with an identical sha256 — not truncated, not rejected. Jamf documents no cap and the column is `LONGTEXT`. The ceiling above 1 MB is still unmeasured, and nothing here needs it |
+| Guest attribute value cap | **exactly 262,144 bytes** | **Measured** 2026-10-03 on a Debian 12 VM: 262,144 accepted, 262,145 refused with HTTP 400 — never truncated. Equal to our budget, so `test/lint.sh` fails if the budget rises, and the reporter sends the value without the file's trailing newline |
+| Guest attributes over a VM's life | survive reboot and stop/start; served while stopped | **Measured** 2026-10-03, identical sha256. With `enable-guest-attributes=FALSE` the VM gets HTTP 403 and the API still serves the old values. Suspend and resume **not measured** |
 | Our time budget | 10s composed | **Self-imposed**, to keep recon brisk. Enforced by `tools/measure.py --check` |
-| Our size budget | 256 KB framed | **Self-imposed**, and **not** a bandwidth decision — fleet cost is payload × fleet (200 MB per sync at 10,000 Macs) whatever this says. It buys margin: `ERROR:oversize:<bytes>` is loud and known, what Jamf does past its own limit is unobserved, and margin keeps the known failure in front of the unknown one. Was 30 KB, which an ordinary Mac reached 68% of. At the measured 25.4 framed bytes/row it fires near 10,300 rows against the ~840 a loaded Mac carries — 13× a real machine, 4× under the measured floor, and a tripwire for a runaway branch |
-| Enumerated payload | 804 rows, 126,741 B raw, 20,808 B framed (8% of budget) | **Measured** at vendored ref `v0.4.0`, Apple Silicon, macOS 26.6.2, osquery 5.23.1, Docker up with 20 images. Was 778 rows / 19,288 B framed at `98eaeca`; v0.4.0's `ilabel` arm is the growth |
+| Our size budget | 256 KB framed | **Self-imposed** on Jamf, and on Compute Engine **the platform's own cap** (the row below), so it must not rise. **Not** a bandwidth decision — fleet cost is payload × fleet (200 MB per sync at 10,000 Macs) whatever this says. It buys margin: `ERROR:oversize:<bytes>` is loud and known, what Jamf does past its own limit is unobserved, and margin keeps the known failure in front of the unknown one. Was 30 KB, which an ordinary Mac reached 68% of. At the measured 25.4 framed bytes/row it fires near 10,300 rows against the ~840 a loaded Mac carries — 13× a real machine, 4× under the measured floor, and a tripwire for a runaway branch |
+| Enumerated payload | 929 rows, 155,562 B raw, 24,668 B framed (9% of budget) | **Measured** 2026-10-11 at vendored ref `v0.12.0`, Apple Silicon, macOS 26.6.2, osquery 5.23.1, Docker up, run unprivileged. 68 of the rows are `proc`, from the `running` branches v0.12.0 added. Was 804 rows / 20,808 B framed at `v0.4.0` |
+| Enumerated payload, Linux VM | 623 rows, 66,737 B raw, 9,816 B framed (3.7% of budget) | **Measured** 2026-10-12 on an `e2-small` Debian 12 VM installed by the OS policy in `mdm/gce.md`, as root under systemd, vendored ref `v0.12.2`, osquery 5.23.1. ~8s and 1.3s of CPU per run, cold |
+| Enumerated payload, Linux runner | 1,782 rows, 193,075 B raw, 27,400 B framed (10% of budget) | **Measured** the same day on GitHub's `ubuntu-24.04` runner as root, Docker up. A runner carries far more tooling than a server VM |
 | Fleet cost through Jamf | 179 MB per full sync at 10,000 Macs | **Measured** (27 MB filtered). Now a cost accepted rather than avoided: it buys 10,000 fewer network paths. The same bytes leave the Mac either way |
-| Health line | 154 bytes | **Measured** at ten branches, all `ok`; a degraded line runs longer |
+| Health line | 195 bytes | **Measured** at thirteen branches (v0.12.0), all `ok`; a degraded line runs longer |
 | Jamf inventory cadence | at most once per day per device | **Documented by Jamf.** Caps end-to-end discovery latency at ~24h |
 | Jamf API concurrency | 5 concurrent connections | **Documented by Jamf.** No hard rate limit; exceeding it degrades Jamf Pro |
 | Incremental pulls | `general.reportDate` filter | **Documented by Jamf** — "devices that have submitted inventory within the last day" |
@@ -428,7 +454,8 @@ incremental server-to-server read, against push's `Mac → Jamf 154 B` plus `Mac
 | Decision | Why |
 |---|---|
 | The endpoint enumerates | A filtered endpoint never sends the evidence, so a new signature cannot re-match against what is already held — which is the property this tree's README already claims |
-| Matching happens only in the collector; the endpoint holds no catalog | One place to change, and changing it costs no fleet re-scan |
+| Matching happens only in the collector; the endpoint matches nothing | One place to change, and changing it costs no fleet re-scan |
+| `dist/signatures.sql` rides in the payload, unread | Upstream packs it into every bundle from v0.11.0. Leaving it out would mean patching the vendored bundler, and the catalog is public anyway. What the design forbids is matching on the endpoint, and that stays guarded: the collector never passes `--names` |
 | The catalog is authoritative in the public repo and vendored into the collector | A catalog of published identifiers is osquery material, and keeping it public means a signature is added once, in the open, next to the queries and the reference matcher. A second private catalog would drift, which is the failure enumeration exists to prevent |
 | No summary EA | Computing counts on the endpoint needs a catalog there. Under enumeration the retired summary query goes from 238 chars to **13,522**, with `ids=` naming **564** ids — Adobe, Citrix, stock Apple apps. And the counts stop meaning "AI things": `app=4` becomes `app=398` on the reference Mac. The status line carries collection health instead |
 | Jamf carries health only | Policies are managed in arthur-platform, so Jamf needs no findings targeting |
@@ -438,6 +465,9 @@ incremental server-to-server read, against push's `Mac → Jamf 154 B` plus `Mac
 | ~24h discovery latency accepted | Jamf collects inventory at most once per day per device, so this follows from the decision above rather than being chosen separately. AI-tool inventory is not threat detection |
 | Identity read from Jamf's record, not the payload | `serial`, `host` and `os` are already in the record the collector fetches. Duplicating them spends payload and invents a second source of truth |
 | One EA, not one per query | See Transport. The size argument rests on a cap we invented; attribution already exists in the payload |
+| Guest attributes carry Compute Engine, one key for the inventory | The VM writes through its own metadata server — no credential, no route, nothing connecting in — and the measured cap equals the budget. A GCS object write needs a credential and egress on every VM |
+| A reporter wraps the collector on Compute Engine | The collector names no vendor; the reporter is the carrier half, as the Extension Attribute is on Jamf, and it can name a failed run because it saw one |
+| One driver for both platforms | The JSON check is the vendored runner's `--cache`, so nothing in the driver is one platform's |
 | Queries vendored at a pinned tag | Reviewable diffs, works offline, and the version is visible in the tree. A submodule adds clone and CI friction; fetch-at-build needs network in CI |
 | The bound lives in the runner, not the SQL | osquery has no per-query timeout, so the only bound is a kill on a process — and a kill is per process, which is why the expensive branch runs in its own |
 

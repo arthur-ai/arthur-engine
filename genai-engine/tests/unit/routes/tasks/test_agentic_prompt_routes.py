@@ -799,6 +799,7 @@ def test_get_all_prompts_includes_deleted_prompts(client: GenaiEngineTestClientB
     assert response.json()["name"] == prompt_name
     assert response.json()["version"] == 1
     assert response.json()["messages"] == prompt_data["messages"]
+    first_version_created_at = datetime.fromisoformat(response.json()["created_at"])
 
     # save 2 versions to have a deleted and non-deleted version
     response = client.base_client.post(
@@ -810,6 +811,7 @@ def test_get_all_prompts_includes_deleted_prompts(client: GenaiEngineTestClientB
     assert response.json()["name"] == prompt_name
     assert response.json()["version"] == 2
     assert response.json()["messages"] == prompt_data["messages"]
+    second_version_created_at = datetime.fromisoformat(response.json()["created_at"])
 
     response = client.base_client.get(
         f"/api/v1/tasks/{task.id}/prompts",
@@ -824,9 +826,8 @@ def test_get_all_prompts_includes_deleted_prompts(client: GenaiEngineTestClientB
     assert len(metadata) == 1
     assert metadata[0]["name"] == prompt_name
     assert metadata[0]["versions"] == 2
-    assert metadata[0]["created_at"] is not None
-    assert metadata[0]["latest_version_created_at"] is not None
-    assert abs((created - latest).total_seconds()) < 1
+    assert created == first_version_created_at
+    assert latest == second_version_created_at
     assert metadata[0]["deleted_versions"] == []
 
     # delete version 2 of the prompt

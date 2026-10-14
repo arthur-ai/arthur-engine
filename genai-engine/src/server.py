@@ -429,6 +429,9 @@ def get_base_app(
         title="Arthur GenAI Engine",
         version=version,
         openapi_tags=tags_metadata,
+        # setup_newrelic and metric_counters own OTLP export. FastAPI's automatic setup would
+        # attach a second OTLP/HTTP exporter to those providers and export everything twice.
+        telemetry={"auto_configure": False},
         **kwargs,  # type: ignore[arg-type]
     )
     origins = [
