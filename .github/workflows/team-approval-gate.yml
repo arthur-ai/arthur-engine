@@ -72,10 +72,20 @@ jobs:
           fi
 
           # Write access as GitHub reports it: admin, maintain and write all carry push.
-          # Anything else, including an API error, counts as no.
+          # Bots and outside users come back as false. A 404 (an account that no longer
+          # exists) also counts as no. Any other API error stops the check with that
+          # error instead of blaming the author; re-run the job once GitHub recovers.
           has_write() {
-            [ "$(gh api "repos/$REPO/collaborators/$1/permission" \
-                   --jq '.user.permissions.push' 2>/dev/null)" = "true" ]
+            local out
+            if out=$(gh api "repos/$REPO/collaborators/$1/permission" \
+                       --jq '.user.permissions.push' 2>&1); then
+              [ "$out" = "true" ]
+            elif grep -q 'HTTP 404' <<<"$out"; then
+              return 1
+            else
+              echo "::error::Could not read $1's permission on $REPO, so this check cannot decide. Re-run the job. GitHub said: $out"
+              exit 1
+            fi
           }
 
           if [ "$AUTHOR" = "renovate[bot]" ]; then
