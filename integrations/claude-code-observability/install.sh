@@ -24,6 +24,9 @@
 #   - Registers its UserPromptSubmit / PreToolUse / SessionStart hooks
 #   - Writes a default arthur_circuit_breaker.json next to arthur_config.json
 #     if one does not exist yet (tune budget/scope there)
+#   - Checks the engine key can read spend (GENAI_ENGINE_READ_API_KEY in .env
+#     becomes read_api_key for a tracing key that can only write) and exits
+#     non-zero if the engine refuses it
 
 set -euo pipefail
 
@@ -168,6 +171,10 @@ if not all(config.values()):
     missing = [k for k, v in {"GENAI_ENGINE_API_KEY": config["api_key"], "GENAI_ENGINE_TASK_ID": config["task_id"], "GENAI_ENGINE_TRACE_ENDPOINT": config["endpoint"]}.items() if not v]
     print(f"  Warning: .env missing keys: {', '.join(missing)} — skipping config write", file=sys.stderr)
 else:
+    # Optional: the circuit breaker reads spend with this key when the
+    # tracer's key can only write traces.
+    if env_vars.get("GENAI_ENGINE_READ_API_KEY"):
+        config["read_api_key"] = env_vars["GENAI_ENGINE_READ_API_KEY"]
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(config, indent=2))
     out_path.chmod(0o600)
@@ -214,6 +221,32 @@ PYEOF
 }
 
 # ---------------------------------------------------------------------------
+# Helper: check the installed breaker can read spend from the engine.
+# Args: <breaker_path> <project_dir_for_config_lookup>
+# A key that cannot read traces would leave the breaker failing open on every
+# hook, so that stops the install; an unreachable engine only warns.
+# ---------------------------------------------------------------------------
+check_breaker() {
+    local breaker="$1"
+    local project_dir="$2"
+    echo "==> Checking the circuit breaker can read spend from Arthur Engine..."
+    local rc=0
+    CLAUDE_PROJECT_DIR="$project_dir" python3 "$breaker" check || rc=$?
+    case "$rc" in
+        0) ;;
+        1) echo "  Skipped: no engine credentials yet; the breaker stays inactive until they are configured." ;;
+        2)
+            echo "" >&2
+            echo "ERROR: the circuit breaker is installed but cannot read spend, so it would never trip." >&2
+            echo "       Add a read key (GENAI_ENGINE_READ_API_KEY in .env, or read_api_key in" >&2
+            echo "       arthur_config.json), then re-run this installer or: python3 \"$breaker\" check" >&2
+            exit 1
+            ;;
+        *) echo "  Warning: could not reach Arthur Engine; check later with: python3 \"$breaker\" check" >&2 ;;
+    esac
+}
+
+# ---------------------------------------------------------------------------
 # Global install (no --project-dir)
 # ---------------------------------------------------------------------------
 if [[ -z "$PROJECT_DIR" ]]; then
@@ -238,6 +271,11 @@ if [[ -z "$PROJECT_DIR" ]]; then
     else
         echo "Note: No .env found in $SCRIPT_DIR — skipping ~/.claude/arthur_config.json."
         echo "      Populate .env or write the config manually (see README)."
+    fi
+
+    if [[ "$WITH_BREAKER" == "1" ]]; then
+        # $HOME as the project dir: only the global config applies.
+        check_breaker "$HOME/.claude/hooks/claude_code_circuit_breaker.py" "$HOME"
     fi
 
     echo ""
@@ -294,6 +332,10 @@ else
         echo "$GITIGNORE_ENTRY" >> "$GITIGNORE"
         echo "  Added $GITIGNORE_ENTRY to $GITIGNORE"
     fi
+fi
+
+if [[ "$WITH_BREAKER" == "1" ]]; then
+    check_breaker "$PROJECT_DIR/.claude/hooks/claude_code_circuit_breaker.py" "$PROJECT_DIR"
 fi
 
 echo ""

@@ -73,7 +73,8 @@ def meta_entry(text: str) -> dict:
 
 
 def list_prompt_entry(
-    *blocks: dict, ts: str = "2026-01-01T00:00:00.000000+00:00"
+    *blocks: dict,
+    ts: str = "2026-01-01T00:00:00.000000+00:00",
 ) -> dict:
     """A prompt written with list content.  The Agent SDK (claude-code-action)
     sends a string prompt as [{"type": "text", ...}], and a pasted image arrives
@@ -1476,7 +1477,9 @@ class TestSdkListPromptLifecycle:
 
 
 def queued_prompt_entry(
-    prompt, uuid: str = "q1", ts: str = "2026-01-01T00:00:10.000000+00:00"
+    prompt,
+    uuid: str = "q1",
+    ts: str = "2026-01-01T00:00:10.000000+00:00",
 ) -> dict:
     """How a prompt that arrives while Claude is busy is written: a typed
     message, a background task's notification, another session's message."""
@@ -1546,7 +1549,9 @@ class TestQueuedPromptTurns:
         ]
 
     def test_queued_prompt_folded_into_the_running_turn_does_not_end_it(
-        self, tmp_path, monkeypatch
+        self,
+        tmp_path,
+        monkeypatch,
     ):
         """Break caught: a queued prompt Claude folds into the running turn (no
         UserPromptSubmit) ended that turn's extraction, dropping its later
@@ -1596,7 +1601,8 @@ class TestQueuedPromptTurns:
         }
 
     def test_image_placeholder_after_a_prompt_is_not_a_second_prompt(
-        self, tmp_transcript
+        self,
+        tmp_transcript,
     ):
         prompt = human_entry("what is in this screenshot?")
         prompt["uuid"] = "u1"
@@ -1614,12 +1620,18 @@ class TestQueuedPromptTurns:
         assert tracer._count_human_messages(str(p)) == 1
 
     def test_repeated_prompt_is_not_mistaken_for_the_new_one(
-        self, tmp_path, monkeypatch
+        self,
+        tmp_path,
+        monkeypatch,
     ):
         # "ok" was already sent and answered; a second "ok" is not written yet.
         earlier = [human_entry("ok"), llm_entry("first answer", ts=at(1))]
         captured = self._run(
-            tmp_path, monkeypatch, "ok", earlier, [human_entry("ok", ts=at(10))]
+            tmp_path,
+            monkeypatch,
+            "ok",
+            earlier,
+            [human_entry("ok", ts=at(10))],
         )
         assert self._llm_outputs(captured) == ["QUEUED_ANSWER"]
 
@@ -2440,7 +2452,10 @@ class TestSubagentContextPropagation:
         newest one, and was filed as that session's subagent."""
         monkeypatch.setattr(tracer, "_PENDING_AGENT_DIR", tmp_path / "pending_agent")
         tracer._write_pending_agent_context(
-            "other-sess", "trace-other", "span-other", agent_prompt="research X"
+            "other-sess",
+            "trace-other",
+            "span-other",
+            agent_prompt="research X",
         )
         assert tracer._claim_pending_agent_context(prompt="unrelated prompt") is None
         # The other session's subagent can still claim it.
@@ -6460,12 +6475,15 @@ class TestStopWaitsForFinalResponse:
         return captured, transcript, base
 
     def test_stop_uses_the_payload_answer_if_the_transcript_never_has_it(
-        self, tmp_path, monkeypatch
+        self,
+        tmp_path,
+        monkeypatch,
     ):
         monkeypatch.setattr(tracer, "_spawn_turn_finalizer", lambda job: None)
         captured, _, base = self._start_turn(tmp_path, monkeypatch)
         tracer.handle_stop(
-            {**base, "last_assistant_message": "FINAL_ANSWER"}, self.CONFIG
+            {**base, "last_assistant_message": "FINAL_ANSWER"},
+            self.CONFIG,
         )
         (chain,) = [
             s for s in captured if s["attributes"]["openinference.span.kind"] == "CHAIN"
@@ -6503,7 +6521,9 @@ class TestReviewFollowUps:
         ]
 
     def test_resubmitted_prompt_after_interrupt_starts_after_both(
-        self, tmp_path, monkeypatch
+        self,
+        tmp_path,
+        monkeypatch,
     ):
         """Break caught: a prompt re-sent after interrupting it before any
         response matched the earlier prompt's text, so the count was one low."""
@@ -6519,7 +6539,8 @@ class TestReviewFollowUps:
         )
         base = {"session_id": "r1", "transcript_path": str(transcript)}
         tracer.handle_user_prompt_submit(
-            {**base, "prompt": "run the tests"}, self.CONFIG
+            {**base, "prompt": "run the tests"},
+            self.CONFIG,
         )
         assert tracer._load_state("r1")["current_trace"]["human_count_at_start"] == 2
 
@@ -6549,7 +6570,9 @@ class TestReviewFollowUps:
         assert {s["trace_id_hex"] for s in captured} == {chain["trace_id_hex"]}
 
     def test_short_final_answer_in_an_earlier_response_is_not_mistaken_for_it(
-        self, tmp_path, monkeypatch
+        self,
+        tmp_path,
+        monkeypatch,
     ):
         self._capture(monkeypatch)
         jobs = []
@@ -6569,7 +6592,10 @@ class TestReviewFollowUps:
     def test_root_output_from_the_payload_is_truncated(self, tmp_path, monkeypatch):
         captured = self._capture(monkeypatch)
         monkeypatch.setattr(
-            tracer, "_spawn_turn_finalizer", lambda job: None, raising=False
+            tracer,
+            "_spawn_turn_finalizer",
+            lambda job: None,
+            raising=False,
         )
         monkeypatch.setattr(tracer, "_SUBAGENT_FLUSH_TIMEOUT_S", 0.1)
         transcript = tmp_path / "t.jsonl"
@@ -6578,7 +6604,8 @@ class TestReviewFollowUps:
         tracer.handle_user_prompt_submit({**base, "prompt": "do it"}, self.CONFIG)
         self._write(transcript, human_entry("do it"))
         tracer.handle_stop(
-            {**base, "last_assistant_message": "x" * 50_000}, self.CONFIG
+            {**base, "last_assistant_message": "x" * 50_000},
+            self.CONFIG,
         )
         (chain,) = self._kind(captured, "CHAIN")
         assert len(chain["attributes"]["output.value"].encode()) < 50_000
@@ -6746,7 +6773,8 @@ class TestTurnsByPromptId:
         write(llm_entry("1 2 3 FINAL_B", ts=at(5)))
         hook("handle_stop", "p1", last_assistant_message="1 2 3 FINAL_B")
         write(
-            self._p(human_entry("also QB", ts=at(7)), "p2"), llm_entry("QB", ts=at(8))
+            self._p(human_entry("also QB", ts=at(7)), "p2"),
+            llm_entry("QB", ts=at(8)),
         )
         hook("handle_stop", "p2", last_assistant_message="QB")
         assert [c["attributes"]["output.value"] for c in chains()] == [
@@ -6807,6 +6835,52 @@ class TestTurnsByPromptId:
         hook("handle_stop", "p2", last_assistant_message="SECOND_DONE")
         assert len(chains()) == 2
         assert chains()[1]["attributes"]["output.value"] == "SECOND_DONE"
+
+    def test_prompt_blocked_by_a_hook_sends_no_trace(self, run):
+        """A UserPromptSubmit hook (the circuit breaker) blocked p1: Claude
+        Code wrote no entry with its id and fired no Stop.  Only a system
+        notice reaches the transcript."""
+        write, hook, chains, llm = run
+        hook("handle_user_prompt_submit", "p1", prompt="carry on")
+        write(
+            {
+                "type": "system",
+                "subtype": "informational",
+                "content": "UserPromptSubmit operation blocked by hook:\nOPEN",
+            },
+        )
+        hook("handle_user_prompt_submit", "p2", prompt="what now?")
+        write(self._p(human_entry("what now?", ts=at(3)), "p2"))
+        write(llm_entry("ANSWER", ts=at(4)))
+        hook("handle_stop", "p2", last_assistant_message="ANSWER")
+        (chain,) = chains()
+        assert chain["attributes"]["input.value"] == "what now?"
+        assert chain["attributes"]["arthur.turn_number"] == 1
+
+    def test_prompt_blocked_mid_session_sends_no_trace(self, run):
+        write, hook, chains, llm = run
+        write(self._p(human_entry("first"), "p0"), llm_entry("FIRST", ts=at(1)))
+        hook("handle_user_prompt_submit", "p0", prompt="first")
+        hook("handle_stop", "p0", last_assistant_message="FIRST")
+        for blocked in ("p1", "p2"):  # the breaker stays open for a while
+            hook("handle_user_prompt_submit", blocked, prompt="carry on")
+        hook("handle_user_prompt_submit", "p3", prompt="breaker override")
+        write(self._p(human_entry("status?", ts=at(9)), "p4"))
+        hook("handle_user_prompt_submit", "p4", prompt="status?")
+        write(llm_entry("ALL GOOD", ts=at(10)))
+        hook("handle_stop", "p4", last_assistant_message="ALL GOOD")
+        assert [c["attributes"]["input.value"] for c in chains()] == [
+            "first",
+            "status?",
+        ]
+
+    def test_interrupted_prompt_still_sends_its_trace(self, run):
+        """Unlike a blocked prompt, an interrupted one is in the transcript."""
+        write, hook, chains, llm = run
+        hook("handle_user_prompt_submit", "p1", prompt="long job")
+        write(self._p(human_entry("long job"), "p1"))
+        hook("handle_user_prompt_submit", "p2", prompt="never mind")
+        assert [c["attributes"]["input.value"] for c in chains()] == ["long job"]
 
     def test_background_task_notice_starts_its_own_turn(self, run):
         write, hook, chains, llm = run

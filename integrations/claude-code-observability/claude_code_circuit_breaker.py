@@ -23,17 +23,23 @@ Hook events:
 
 CLI:
   status [--session ID]  — print the current spend/burn-rate evaluation as JSON
+  check                  — verify the key can read spend and the engine's clock
+                           reads right (install.sh runs it)
   reset                  — close the breaker (clears persisted state)
 
 Override from inside Claude Code: an open breaker blocks every prompt, so a
 prompt that *starts with* "breaker override" (or "override the breaker",
-optionally "for 45m" / "for 2h") is let through instead of blocked and lifts
-the breaker for override_minutes. That is the way out when you cannot reach a
-shell; otherwise use the reset CLI or wait for the cooldown.
+optionally "for 45m" / "for 2h") lifts the breaker for override_minutes. The
+override prompt itself is consumed, not sent to Claude, so Claude does not take
+it as a cue to resume the work the breaker just stopped. That is the way out
+when you cannot reach a shell; otherwise use the reset CLI or wait for the
+cooldown.
 
 Engine credentials come from the same place the tracer reads them (env vars,
 then <project>/.claude/arthur_config.json, then ~/.claude/arthur_config.json).
-Breaker settings come from ARTHUR_BREAKER_CONFIG, then
+Reading spend needs a key with read access to traces, which a tracing key often
+lacks, so GENAI_ENGINE_READ_API_KEY / read_api_key take precedence over the
+tracer's api_key. Breaker settings come from ARTHUR_BREAKER_CONFIG, then
 <project>/.claude/arthur_circuit_breaker.json, then
 ~/.claude/arthur_circuit_breaker.json, falling back to DEFAULT_CONFIG. With no
 engine credentials configured the hook is a silent no-op, like the tracer.
@@ -47,13 +53,15 @@ import logging
 import os
 import re
 import sys
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, tzinfo
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Callable, Optional
+from zoneinfo import ZoneInfo
 
 # ---------------------------------------------------------------------------
 # Logging — stderr only so stdout stays clean for Claude hooks
@@ -76,8 +84,9 @@ DEFAULT_CONFIG: dict[str, Any] = {
     # Whose spend to measure: "session" (this Claude Code session), "user"
     # (every session of this OS user on the task) or "task" (every session).
     "scope": "session",
-    # The spend budget and the period it is meant to last.
-    "budget_usd": 100.0,
+    # The spend budget and the period it is meant to last. A null budget_usd
+    # takes the scope's default from SCOPE_BUDGET_USD; task scope has none.
+    "budget_usd": None,
     "budget_period_hours": 24.0,
     # Multi-window burn-rate rules. A rule fires when spend over both
     # window_minutes and short_window_minutes exceeds burn_rate times the
@@ -110,6 +119,10 @@ DEFAULT_CONFIG: dict[str, Any] = {
     # "closed" trips the breaker.
     "fail_mode": "open",
     "http_timeout_seconds": 5,
+    # Arthur Engine stamps spans in its server's local time with no offset:
+    # "UTC" for the container images, "local" for an engine running on this
+    # machine outside a container, or an IANA name like "America/Los_Angeles".
+    "engine_timezone": "UTC",
     # Spans whose model Arthur Engine could not price carry no cost. These
     # per-million-token rates fill the gap so the breaker is not blind to
     # them; null leaves such spans at $0 and warns instead.
@@ -119,13 +132,33 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "override_minutes": 30,
 }
 
+# The budget for a null budget_usd. These are generous on purpose: by default
+# the breaker is there to stop a runaway, not to enforce a budget, and a trip
+# on ordinary work is what gets it switched off. A user's parallel sessions
+# share theirs, so it is three sessions' worth. A task's depends on the size of
+# the team sharing it, so task scope has no default and its burn-rate rules
+# stay off until it is set.
+SCOPE_BUDGET_USD = {"session": 200.0, "user": 600.0}
+
 CONFIG_ENV = "ARTHUR_BREAKER_CONFIG"
 BYPASS_ENV = "ARTHUR_BREAKER_BYPASS"
 STATE_DIR = Path.home() / ".claude" / "circuit_breaker"
 STATE_MAX_AGE_S = 48 * 3600
-SPAN_PAGE_SIZE = 5000
-SPAN_MAX_PAGES = 10
+# Every engine call one hook makes shares this budget, kept under the 15 s
+# hook timeout install.sh registers so paging cannot get the hook killed.
+QUERY_BUDGET_S = 10.0
+# List rows carry span content, so pages start small and double (50, 50, 100,
+# 200 ...) up to SPAN_MAX_PAGE_SIZE: a quiet window costs one small request.
+SPAN_FIRST_PAGE_SIZE = 50
+SPAN_MAX_PAGE_SIZE = 800
+SPAN_MAX_ROWS = 20_000
 VALID_SCOPES = ("session", "user", "task")
+READ_KEY_HINT = (
+    "Reading spend needs an API key with read access to traces (role "
+    "ORG-AUDITOR, TASK-ADMIN, TENANT-USER or ORG-ADMIN); a tracing key often "
+    "only has write access. Set read_api_key in arthur_config.json or "
+    "GENAI_ENGINE_READ_API_KEY."
+)
 
 
 def _load_json_file(path: Path) -> dict:
@@ -143,12 +176,16 @@ def _project_dir() -> Path:
 
 
 def discover_engine_config() -> Optional[dict]:
-    """Returns {api_key, task_id, base_url} or None if the tracer is not configured.
+    """Returns {api_key, key_name, task_id, base_url} or None if the tracer is
+    not configured.
 
     Mirrors claude_code_tracer.discover_config so both hooks read the same
     credentials; base_url is the /api/v1 root derived from the trace endpoint.
+    The tracer's key only needs to write traces, so a read_api_key, wherever
+    it is set, is used in its place; key_name says which one is in use.
     """
     api_key = os.environ.get("GENAI_ENGINE_API_KEY", "")
+    read_key = os.environ.get("GENAI_ENGINE_READ_API_KEY", "")
     task_id = os.environ.get("GENAI_ENGINE_TASK_ID", "")
     endpoint = os.environ.get("GENAI_ENGINE_TRACE_ENDPOINT", "")
 
@@ -156,17 +193,23 @@ def discover_engine_config() -> Optional[dict]:
         _project_dir() / ".claude" / "arthur_config.json",
         Path.home() / ".claude" / "arthur_config.json",
     ):
-        if api_key and task_id and endpoint:
+        if read_key and task_id and endpoint:
             break
         cfg = _load_json_file(cfg_path)
         api_key = api_key or cfg.get("api_key", "")
+        read_key = read_key or cfg.get("read_api_key", "")
         task_id = task_id or cfg.get("task_id", "")
         endpoint = endpoint or cfg.get("endpoint", "")
 
-    if not (api_key and task_id and endpoint):
+    if not ((read_key or api_key) and task_id and endpoint):
         return None
 
-    return {"api_key": api_key, "task_id": task_id, "base_url": api_base_url(endpoint)}
+    return {
+        "api_key": read_key or api_key,
+        "key_name": "read_api_key" if read_key else "api_key",
+        "task_id": task_id,
+        "base_url": api_base_url(endpoint),
+    }
 
 
 def api_base_url(trace_endpoint: str) -> str:
@@ -209,6 +252,8 @@ def load_breaker_config() -> dict:
     # A bad budget must not disable the breaker: fall back to the default
     # rather than let a ValueError/ZeroDivisionError fail every hook open.
     for key in ("budget_usd", "budget_period_hours"):
+        if key == "budget_usd" and config[key] is None:
+            continue  # the scope's default
         try:
             value = float(config[key])
         except (TypeError, ValueError):
@@ -218,10 +263,43 @@ def load_breaker_config() -> dict:
                 "%s must be a positive number, got %r; using %s",
                 key,
                 config[key],
-                DEFAULT_CONFIG[key],
+                (
+                    "the scope's default"
+                    if DEFAULT_CONFIG[key] is None
+                    else DEFAULT_CONFIG[key]
+                ),
             )
             config[key] = DEFAULT_CONFIG[key]
+    try:
+        _engine_zone(config)
+    except (KeyError, ValueError, TypeError):
+        log.warning(
+            "Unknown engine_timezone %r, using 'UTC'",
+            config.get("engine_timezone"),
+        )
+        config["engine_timezone"] = "UTC"
     return config
+
+
+def budget_usd(config: dict) -> Optional[float]:
+    """The budget the burn rate is measured against: budget_usd, or the
+    scope's default when it is null. None for task scope with none set."""
+    value = config.get("budget_usd")
+    if value is None:
+        return SCOPE_BUDGET_USD.get(config.get("scope", "session"))
+    return float(value)
+
+
+def config_problem(config: dict) -> str:
+    """A setting that keeps the breaker from working, as a message, or ""."""
+    if budget_usd(config) is None and config.get("rules"):
+        return (
+            f"scope is {config.get('scope')} but budget_usd is not set, so the "
+            "burn-rate rules are off (hard_cap_usd still applies); set budget_usd "
+            "in arthur_circuit_breaker.json to what the whole task may spend per "
+            "budget_period_hours"
+        )
+    return ""
 
 
 def _username() -> str:
@@ -236,6 +314,28 @@ def _username() -> str:
 
 class EngineError(Exception):
     """The engine could not be queried; the caller decides fail-open/closed."""
+
+
+class EngineAuthError(EngineError):
+    """The engine refused the key (HTTP 401/403): a configuration problem, not
+    an outage, so it is reported with what to fix."""
+
+
+class Deadline:
+    """Time left for the engine calls of one hook, so paging cannot outlast
+    the hook timeout. Each request gets at most http_timeout_seconds of it."""
+
+    def __init__(self, seconds: Optional[float] = None):
+        self.end = time.monotonic() + (QUERY_BUDGET_S if seconds is None else seconds)
+
+    def remaining(self) -> float:
+        return self.end - time.monotonic()
+
+    def timeout(self, per_request: float) -> float:
+        left = self.remaining()
+        if left <= 0:
+            raise EngineError(f"no reply within the {QUERY_BUDGET_S:g}s query budget")
+        return min(per_request, left)
 
 
 def _request(
@@ -267,23 +367,50 @@ def _request(
         detail = ""
         with contextlib.suppress(Exception):
             detail = e.read().decode()[:200]
-        raise EngineError(f"HTTP {e.code} from {method} {path}: {detail}") from e
+        message = f"HTTP {e.code} from {method} {path}: {detail}"
+        if e.code in (401, 403):
+            raise EngineAuthError(
+                f"{message} (using {engine.get('key_name', 'api_key')})",
+            ) from e
+        raise EngineError(message) from e
     except (urllib.error.URLError, TimeoutError, OSError, ValueError) as e:
         raise EngineError(f"{method} {path} failed: {e}") from e
 
 
-def _iso_utc(dt: datetime) -> str:
-    # Same shape the engine UI sends (JavaScript toISOString()).
-    return dt.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+# ---------------------------------------------------------------------------
+# Engine timestamps
+#
+# The engine converts span times to its server's local time and stores and
+# returns them without an offset, and it compares time filters against those
+# naive values. engine_timezone names that zone, so times are read and sent
+# in it.
+# ---------------------------------------------------------------------------
 
 
-def parse_engine_time(value: str) -> datetime:
-    """Engine timestamps come back naive; they are stored as the server's local
-    time, which is UTC on every supported deployment."""
+def _engine_zone(config: Optional[dict]) -> Optional[tzinfo]:
+    """The zone engine timestamps are in; None means this machine's zone."""
+    name = str((config or {}).get("engine_timezone") or "UTC")
+    if name.lower() == "local":
+        return None
+    if name.upper() == "UTC":
+        return timezone.utc
+    return ZoneInfo(name)
+
+
+def parse_engine_time(value: str, config: Optional[dict] = None) -> datetime:
+    """An engine timestamp as an aware UTC datetime."""
     dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
-    return dt
+        zone = _engine_zone(config)
+        # astimezone() on a naive datetime reads it as this machine's time.
+        dt = dt.replace(tzinfo=zone) if zone else dt.astimezone()
+    return dt.astimezone(timezone.utc)
+
+
+def _engine_time_param(dt: datetime, config: dict) -> str:
+    """A time filter value in the engine's zone, without an offset, so the
+    database compares it with the stored values as they are."""
+    return dt.astimezone(_engine_zone(config)).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3]
 
 
 @dataclass
@@ -297,8 +424,8 @@ class LLMSpan:
     completion_tokens: int = 0
 
 
-# The engine filters spans by start_time; a span that started before the
-# window but finished inside it still belongs to it, so fetch this much extra.
+# Spans are fetched by start time; one that started before the window but
+# finished inside it still belongs to it, so read this much further back.
 SPAN_FETCH_SLACK = timedelta(minutes=15)
 
 
@@ -317,52 +444,98 @@ def _row_matches_scope(row: dict, scope: str) -> bool:
     return scope != "user" or row.get("user_id") == _username()
 
 
-def _paged(engine: dict, path: str, params: dict, key: str, timeout: float):
-    """Rows of a paginated list endpoint, up to SPAN_MAX_PAGES pages, plus
-    whether the result was cut off there (a full final page may have more)."""
-    params = dict(params, page_size=SPAN_PAGE_SIZE)
+def _paged(
+    engine: dict,
+    path: str,
+    params: dict,
+    key: str,
+    config: dict,
+    deadline: Deadline,
+    id_field: str,
+    stop: Optional[Callable[[dict], bool]] = None,
+) -> tuple[list[dict], bool]:
+    """Rows of a paginated list endpoint, plus whether they were cut off
+    (SPAN_MAX_ROWS or the query budget reached with more to read).
+
+    Pages run 50, 50, 100, 200 ... rows, so each offset is a multiple of the
+    next page size and the pages tile the list. Paging ends early once
+    stop(last row of a page) is true. Rows that a concurrent insert pushed
+    onto the next page are dropped by id_field.
+    """
+    per_request = float(config.get("http_timeout_seconds", 5))
     rows: list[dict] = []
-    for page in range(SPAN_MAX_PAGES):
-        params["page"] = page
-        page_rows = _request(engine, "GET", path, params=params, timeout=timeout).get(
-            key,
-            [],
-        )
-        rows.extend(page_rows)
-        if len(page_rows) < SPAN_PAGE_SIZE:
+    seen: set = set()
+    offset, size = 0, SPAN_FIRST_PAGE_SIZE
+    while len(rows) < SPAN_MAX_ROWS:
+        if offset and deadline.remaining() <= 0:
+            return rows, True
+        page_rows = _request(
+            engine,
+            "GET",
+            path,
+            params=dict(params, page=offset // size, page_size=size),
+            timeout=deadline.timeout(per_request),
+        ).get(key, [])
+        for row in page_rows:
+            row_id = row.get(id_field)
+            if row_id is not None:
+                if row_id in seen:
+                    continue
+                seen.add(row_id)
+            rows.append(row)
+        if len(page_rows) < size or (stop and page_rows and stop(page_rows[-1])):
             return rows, False
+        offset += size
+        size = min(offset, SPAN_MAX_PAGE_SIZE)
     return rows, True
 
 
 def fetch_llm_spans(
     engine: dict,
-    scope: str,
+    config: dict,
     session_id: str,
     since: datetime,
-    now: datetime,
-    timeout: float,
+    deadline: Deadline,
 ) -> tuple[list[LLMSpan], bool]:
-    """LLM spans that ended in [since, now] for the scope, and whether the
-    engine had more than the page cap allowed."""
+    """LLM spans that ended at or after `since` for the scope, and whether the
+    engine had more than could be read.
+
+    The engine's start_time/end_time filters apply to the *trace*, and a trace
+    is a whole turn: one that started before the window (a long autonomous
+    turn, the runaway case) would drop out entirely. So spans are read newest
+    first by their own start time, unfiltered, until a page reaches spans that
+    started before the window, and are bucketed here.
+    """
+    scope = config["scope"]
     params = _scope_params(engine, scope, session_id)
-    params.update(
-        {
-            "span_types": "LLM",
-            "start_time": _iso_utc(since - SPAN_FETCH_SLACK),
-            "end_time": _iso_utc(now),
-            "sort": "desc",
-            "sort_by": "start_time",
-        },
+    params.update({"span_types": "LLM", "sort": "desc", "sort_by": "start_time"})
+    cutoff = since - SPAN_FETCH_SLACK
+
+    def before_window(row: dict) -> bool:
+        start = row.get("start_time")
+        return bool(start) and parse_engine_time(start, config) < cutoff
+
+    rows, truncated = _paged(
+        engine,
+        "/traces/spans",
+        params,
+        "spans",
+        config,
+        deadline,
+        id_field="id",
+        stop=before_window,
     )
-    rows, truncated = _paged(engine, "/traces/spans", params, "spans", timeout)
     spans: list[LLMSpan] = []
     for row in rows:
         end = row.get("end_time") or row.get("start_time")
         if not end or not _row_matches_scope(row, scope):
             continue
+        end_at = parse_engine_time(end, config)
+        if end_at < since:
+            continue
         spans.append(
             LLMSpan(
-                end=parse_engine_time(end),
+                end=end_at,
                 cost=row.get("total_token_cost"),
                 tokens=int(row.get("total_token_count") or 0),
                 prompt_tokens=int(row.get("prompt_token_count") or 0),
@@ -374,14 +547,16 @@ def fetch_llm_spans(
 
 def fetch_scope_total(
     engine: dict,
-    scope: str,
+    config: dict,
     session_id: str,
     period_start: datetime,
     now: datetime,
-    timeout: float,
+    deadline: Deadline,
 ) -> float:
     """Total spend the hard cap applies to: the whole session, or the budget
     period for user/task scope."""
+    scope = config["scope"]
+    per_request = float(config.get("http_timeout_seconds", 5))
     if scope == "session":
         payload = _request(
             engine,
@@ -392,7 +567,7 @@ def fetch_scope_total(
                 "session_ids": session_id,
                 "page_size": 1,
             },
-            timeout=timeout,
+            timeout=deadline.timeout(per_request),
         )
         sessions = payload.get("sessions", [])
         return float((sessions[0].get("total_token_cost") or 0.0) if sessions else 0.0)
@@ -404,12 +579,20 @@ def fetch_scope_total(
         params = _scope_params(engine, scope, session_id)
         params.update(
             {
-                "start_time": _iso_utc(period_start),
-                "end_time": _iso_utc(now),
+                "start_time": _engine_time_param(period_start, config),
+                "end_time": _engine_time_param(now, config),
                 "sort": "desc",
             },
         )
-        rows, _truncated = _paged(engine, "/traces", params, "traces", timeout)
+        rows, _truncated = _paged(
+            engine,
+            "/traces",
+            params,
+            "traces",
+            config,
+            deadline,
+            id_field="trace_id",
+        )
         return sum(
             float(row.get("total_token_cost") or 0.0)
             for row in rows
@@ -422,13 +605,108 @@ def fetch_scope_total(
         "/traces/overview",
         body={
             "task_ids": [engine["task_id"]],
-            "start_time": _iso_utc(period_start),
-            "end_time": _iso_utc(now),
+            "start_time": _engine_time_param(period_start, config),
+            "end_time": _engine_time_param(now, config),
         },
-        timeout=timeout,
+        timeout=deadline.timeout(per_request),
     )
     overviews = payload.get("overviews", [])
     return float(overviews[0].get("trace_token_cost") or 0.0) if overviews else 0.0
+
+
+# ---------------------------------------------------------------------------
+# Startup check: can the key read spend, and do the engine's timestamps read
+# right? Run by SessionStart and the check CLI, where a wrong answer would
+# otherwise only show up as a breaker that never trips.
+# ---------------------------------------------------------------------------
+
+# A UTC offset is a whole number of quarter hours; ingest lag is far smaller.
+_QUARTER_HOUR = timedelta(minutes=15)
+_CLOCK_TOLERANCE = timedelta(minutes=10)
+
+
+def _format_offset(offset: timedelta) -> str:
+    minutes = round(offset.total_seconds() / 60)
+    sign = "+" if minutes >= 0 else "-"
+    return f"UTC{sign}{abs(minutes) // 60:02d}:{abs(minutes) % 60:02d}"
+
+
+def _format_hours(delta: timedelta) -> str:
+    return f"{abs(delta.total_seconds()) / 3600:.1f}h"
+
+
+def _wall_clock(value: str) -> datetime:
+    """An engine timestamp as the naive wall-clock time it was stored as."""
+    return datetime.fromisoformat(value.replace("Z", "+00:00")).replace(tzinfo=None)
+
+
+def check_engine_clock(
+    engine: dict,
+    config: dict,
+    deadline: Deadline,
+    now: Optional[datetime] = None,
+) -> str:
+    """A warning when the engine's span times do not look like they are in
+    engine_timezone, or "" when they look right or there is nothing to judge.
+
+    Two signs, from the newest LLM span on the task:
+      - it ends in the future: the engine is east of engine_timezone;
+      - with engine_timezone UTC, its end_time (stamped by the engine) and
+        created_at (stamped by the database) differ by a whole number of
+        quarter hours: the engine runs on local time, as it does under
+        `uv run serve` beside a containerised (UTC) Postgres.
+    An engine and database that both run on local time leave no trace in
+    the data; set engine_timezone to "local" for those.
+    """
+    now = now or datetime.now(timezone.utc)
+    rows = _request(
+        engine,
+        "GET",
+        "/traces/spans",
+        params={
+            "task_ids": engine["task_id"],
+            "span_types": "LLM",
+            "sort": "desc",
+            "sort_by": "start_time",
+            "page": 0,
+            "page_size": 1,
+        },
+        timeout=deadline.timeout(float(config.get("http_timeout_seconds", 5))),
+    ).get("spans", [])
+    if not rows or not rows[0].get("end_time"):
+        return ""
+    row = rows[0]
+    zone_name = config.get("engine_timezone") or "UTC"
+    ahead = parse_engine_time(row["end_time"], config) - now
+    if ahead > _CLOCK_TOLERANCE:
+        return (
+            f"the newest span on the task ends {_format_hours(ahead)} in the future "
+            f'when read as engine_timezone "{zone_name}", so the engine is not on '
+            "that zone and its spend would be misplaced; set engine_timezone in "
+            "arthur_circuit_breaker.json to the engine server's zone"
+        )
+    if str(zone_name).upper() != "UTC" or not row.get("created_at"):
+        return ""
+    drift = _wall_clock(row["created_at"]) - _wall_clock(row["end_time"])
+    quarters = round(drift / _QUARTER_HOUR)
+    if abs(quarters) < 3 or abs(drift - quarters * _QUARTER_HOUR) > timedelta(
+        minutes=5,
+    ):
+        return ""
+    engine_offset = -quarters * _QUARTER_HOUR
+    here = now.astimezone().utcoffset()
+    fix = (
+        '"local" (it matches this machine)'
+        if engine_offset == here
+        else f"the engine server's zone (it looks like {_format_offset(engine_offset)})"
+    )
+    return (
+        f"Arthur Engine stamps span times {_format_hours(drift)} "
+        f"{'behind' if drift > timedelta(0) else 'ahead of'} its database clock, "
+        "so the engine server is probably not on UTC and the breaker would "
+        f"read recent spend as hours old; set engine_timezone to {fix} in "
+        "arthur_circuit_breaker.json"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -486,7 +764,8 @@ class Evaluation:
     scope_total_usd: Optional[float] = None
     unpriced_spans: int = 0
     unpriced_tokens: int = 0
-    # True when the span query hit the page cap, so spend may be under-counted.
+    # True when the span query hit the row cap or the query budget, so spend
+    # may be under-counted.
     truncated: bool = False
     engine_error: str = ""
 
@@ -532,7 +811,7 @@ def window_spend(
 
 
 def burn_rate(spend_usd: float, minutes: float, config: dict) -> float:
-    budget = float(config["budget_usd"])
+    budget = budget_usd(config) or 0.0
     period_hours = float(config["budget_period_hours"])
     if budget <= 0 or period_hours <= 0 or minutes <= 0:
         return 0.0
@@ -572,7 +851,7 @@ def evaluate_rules(
 
 def _describe_rule(r: RuleResult, config: dict) -> str:
     budget = (
-        f"${float(config['budget_usd']):.2f}/{float(config['budget_period_hours']):g}h"
+        f"${budget_usd(config) or 0.0:.2f}/{float(config['budget_period_hours']):g}h"
     )
     per_hour = r.window_spend / (r.window_minutes / 60.0) if r.window_minutes else 0.0
     text = (
@@ -592,11 +871,15 @@ def evaluate(
     config: dict,
     session_id: str,
     now: Optional[datetime] = None,
+    deadline: Optional[Deadline] = None,
 ) -> Evaluation:
     """Query the engine and decide whether the breaker should be open."""
     now = now or datetime.now(timezone.utc)
+    deadline = deadline or Deadline()
     scope = config["scope"]
-    timeout = float(config.get("http_timeout_seconds", 5))
+    if budget_usd(config) is None:
+        # No budget to measure a burn rate against (see config_problem).
+        config = dict(config, rules=[])
     rules = config.get("rules") or []
     max_minutes = max((float(r["window_minutes"]) for r in rules), default=0.0)
 
@@ -606,36 +889,35 @@ def evaluate(
         if rules:  # a hard-cap-only config has no windows to fill
             spans, truncated = fetch_llm_spans(
                 engine,
-                scope,
+                config,
                 session_id,
                 since=now - timedelta(minutes=max_minutes),
-                now=now,
-                timeout=timeout,
+                deadline=deadline,
             )
         scope_total = None
         if config.get("hard_cap_usd") is not None:
             scope_total = fetch_scope_total(
                 engine,
-                scope,
+                config,
                 session_id,
                 period_start=now
                 - timedelta(hours=float(config["budget_period_hours"])),
                 now=now,
-                timeout=timeout,
+                deadline=deadline,
             )
     except EngineError as e:
         fail_closed = config.get("fail_mode") == "closed"
+        if isinstance(e, EngineAuthError):
+            problem = f"Arthur Engine refused the breaker's key ({e}). {READ_KEY_HINT}"
+        else:
+            problem = f"Arthur Engine unreachable: {e}"
         return Evaluation(
             tripped=fail_closed,
-            reason=(
-                f"Arthur Engine unreachable and fail_mode is closed: {e}"
-                if fail_closed
-                else ""
-            ),
+            reason=f"{problem} (fail_mode is closed)" if fail_closed else "",
             warning=(
                 ""
                 if fail_closed
-                else f"Arthur circuit breaker could not reach the engine (failing open): {e}"
+                else f"Arthur circuit breaker cannot read spend, failing open: {problem}"
             ),
             engine_error=str(e),
         )
@@ -691,9 +973,10 @@ def evaluate(
         )
     if truncated:
         warnings.append(
-            f"more than {SPAN_PAGE_SIZE * SPAN_MAX_PAGES} LLM spans in the window; "
-            "the oldest were not counted, so burn rates are a lower bound "
-            "(narrow the scope or the widest window)",
+            f"could not read every LLM span in the window (over {SPAN_MAX_ROWS} "
+            f"or past the {QUERY_BUDGET_S:g}s query budget); the oldest were "
+            "not counted, so burn rates are a lower bound (narrow the scope or "
+            "the widest window)",
         )
     if warnings:
         result.warning = "Arthur circuit breaker: " + "; ".join(warnings)
@@ -836,6 +1119,7 @@ def decide(
     config: dict,
     session_id: str,
     now: Optional[datetime] = None,
+    deadline: Optional[Deadline] = None,
 ) -> Verdict:
     """Run the breaker state machine for one hook invocation.
 
@@ -866,7 +1150,7 @@ def decide(
                     message=_open_message(state, config, now_ts),
                 )
             # Cooldown elapsed: half-open probe.
-            evaluation = evaluate(engine, config, session_id, now)
+            evaluation = evaluate(engine, config, session_id, now, deadline)
             if evaluation.engine_error and not evaluation.tripped:
                 # Nothing was measured, so stay open and probe again on the
                 # next hook rather than declare the spend calm.
@@ -911,7 +1195,7 @@ def decide(
         if now_ts - last_check < interval_s and state.get("last_evaluation"):
             return Verdict(tripped=False)
 
-        evaluation = evaluate(engine, config, session_id, now)
+        evaluation = evaluate(engine, config, session_id, now, deadline)
         if evaluation.tripped:
             state = {
                 "status": STATUS_OPEN,
@@ -1038,17 +1322,33 @@ def run_hook(event: str, data: dict) -> Optional[dict]:
         minutes = parse_override(data.get("prompt", ""), config)
         if minutes:
             message = override(engine, config, session_id, minutes)
-            # Let the prompt through (no decision) and tell both the user and
-            # Claude what just happened.
+            # The override is a command to the breaker, not a prompt: blocking
+            # it keeps Claude from reading it as "carry on" and resuming the
+            # work the breaker just stopped.
             return {
-                "systemMessage": message,
+                "decision": "block",
+                "reason": f"{message} The override prompt was not sent to Claude; "
+                "send your next prompt to continue.",
                 "hookSpecificOutput": {
                     "hookEventName": "UserPromptSubmit",
-                    "additionalContext": message,
+                    "suppressOriginalPrompt": True,
                 },
             }
-    verdict = decide(engine, config, session_id)
-    return hook_output(event, verdict)
+    deadline = Deadline()
+    verdict = decide(engine, config, session_id, deadline=deadline)
+    output = hook_output(event, verdict)
+    if event == "session_start":
+        notices = [config_problem(config)]
+        if not verdict.tripped:
+            # A key or engine problem was reported by decide() as fail_mode says.
+            with contextlib.suppress(EngineError):
+                notices.append(check_engine_clock(engine, config, deadline))
+        messages = [(output or {}).get("systemMessage")] + [
+            f"Arthur circuit breaker: {n}" for n in notices if n
+        ]
+        if any(messages):
+            output = {"systemMessage": "\n".join(m for m in messages if m)}
+    return output
 
 
 # ---------------------------------------------------------------------------
@@ -1079,14 +1379,22 @@ def cli_status(args: list[str]) -> int:
         )
         config["scope"] = "task"
     evaluation = evaluate(engine, config, session_id)
+    clock = ""
+    if not evaluation.engine_error:
+        with contextlib.suppress(EngineError):
+            clock = check_engine_clock(engine, config, Deadline())
     state = load_state(state_key(engine, config, session_id))
     print(
         json.dumps(
             {
                 "scope": config["scope"],
-                "budget_usd": config["budget_usd"],
+                "budget_usd": budget_usd(config),
                 "budget_period_hours": config["budget_period_hours"],
+                "api_key": engine["key_name"],
+                "engine_timezone": config.get("engine_timezone", "UTC"),
                 "breaker_status": state.get("status", STATUS_CLOSED),
+                "config_warning": config_problem(config),
+                "clock_warning": clock,
                 "evaluation": evaluation.to_dict(),
             },
             indent=2,
@@ -1095,10 +1403,48 @@ def cli_status(args: list[str]) -> int:
     return 0
 
 
+# cli_check exit codes, which install.sh acts on.
+CHECK_OK = 0
+CHECK_NOT_CONFIGURED = 1
+CHECK_AUTH_FAILED = 2
+CHECK_UNREACHABLE = 3
+
+
+def cli_check() -> int:
+    """Verify the breaker can read spend: the key has read access and the
+    engine's timestamps read right. Prints what it finds."""
+    engine = discover_engine_config()
+    if engine is None:
+        print(
+            "Arthur Engine not configured (no api_key/task_id/endpoint); "
+            "the circuit breaker is inactive until it is.",
+        )
+        return CHECK_NOT_CONFIGURED
+    config = load_breaker_config()
+    try:
+        clock = check_engine_clock(engine, config, Deadline())
+    except EngineAuthError as e:
+        print(f"Arthur Engine refused the breaker's key: {e}", file=sys.stderr)
+        print(READ_KEY_HINT, file=sys.stderr)
+        return CHECK_AUTH_FAILED
+    except EngineError as e:
+        print(f"Could not reach Arthur Engine: {e}", file=sys.stderr)
+        return CHECK_UNREACHABLE
+    print(
+        f"OK: {engine['key_name']} can read task {engine['task_id']}'s spans "
+        f"at {engine['base_url']}.",
+    )
+    for warning in (config_problem(config), clock):
+        if warning:
+            print(f"WARNING: {warning}", file=sys.stderr)
+    return CHECK_OK
+
+
 def main() -> None:
     if len(sys.argv) < 2:
         print(
-            "Usage: claude_code_circuit_breaker.py <user_prompt_submit|pre_tool|session_start|status|reset>",
+            "Usage: claude_code_circuit_breaker.py "
+            "<user_prompt_submit|pre_tool|session_start|status|check|reset>",
             file=sys.stderr,
         )
         sys.exit(0)
@@ -1109,6 +1455,8 @@ def main() -> None:
         sys.exit(0)
     if command == "status":
         sys.exit(cli_status(sys.argv[2:]))
+    if command == "check":
+        sys.exit(cli_check())
 
     try:
         raw = sys.stdin.read()

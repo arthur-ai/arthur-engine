@@ -124,13 +124,15 @@ If none of the above are configured, the tracer silently does nothing — safe t
 
 This copies the breaker next to the tracer, registers its `UserPromptSubmit`, `PreToolUse` and `SessionStart` hooks (15 s timeout), and writes a default `arthur_circuit_breaker.json` next to `arthur_config.json` if there isn't one. It reads engine credentials from the same places the tracer does and is a silent no-op when none are configured. `uninstall.sh` removes it along with the tracer.
 
+**It needs a key that can read traces.** The tracer only writes, so its key is often a `VALIDATION-USER` or `CHAT-USER` key, which the engine refuses for reads (HTTP 403). Give the breaker a key with the `ORG-AUDITOR` (read-only), `TASK-ADMIN`, `TENANT-USER` or `ORG-ADMIN` role as `GENAI_ENGINE_READ_API_KEY` in `.env` (written to `arthur_config.json` as `read_api_key`), or set either one yourself; it takes precedence over the tracer's `api_key` wherever it is set. The installer finishes with `claude_code_circuit_breaker.py check` and exits non-zero if the engine refuses the key, since such a breaker would never trip. Run the check again after changing credentials.
+
 ### How burn rate works
 
 ```
 burn_rate = (spend in window / window hours) / (budget_usd / budget_period_hours)
 ```
 
-A burn rate of 1.0 uses the budget up exactly at the end of the period; 14.4x on a 24 h budget means 1 % of it goes every minute. Each rule pairs a long window with a short one (SRE multi-window alerting): the long window shows the burn is significant, the short window shows it is still happening, and the rule fires only when **both** exceed its threshold. That is why spend is measured on individual LLM spans rather than whole traces — a 30-minute autonomous turn lands in the right minute buckets as it runs.
+A burn rate of 1.0 uses the budget up exactly at the end of the period; 14.4x on a 24 h budget means 1 % of it goes every minute. Each rule pairs a long window with a short one (SRE multi-window alerting): the long window shows the burn is significant, the short window shows it is still happening, and the rule fires only when **both** exceed its threshold. That is why spend is measured on individual LLM spans rather than whole traces — a turn that runs for hours lands in the right minute buckets as it runs.
 
 Breaker states:
 
@@ -140,7 +142,9 @@ Breaker states:
 | open | Prompts are blocked and the turn is stopped, without touching the engine, for `cooldown_minutes`. |
 | half-open | After the cooldown the next hook probes the engine: calm → closed, still burning → open again, engine unreachable → stays open and probes again on the next hook. |
 
-An open breaker blocks every prompt, so you cannot simply ask Claude to carry on. To lift it from inside Claude Code, send a prompt that **starts with** `breaker override` (also `circuit breaker override`, `override the breaker`, or `bypass` instead of `override`). That prompt is let through instead of blocked, the breaker closes for `override_minutes` (default 30), and Claude is told about the override. Add a duration to change it: `breaker override for 45m`, `breaker override for 2h`. The phrase must open the prompt, so a prompt that merely mentions the breaker is not an override. When the override lapses, burn-rate checks resume and the breaker can trip again.
+An open breaker blocks every prompt, so you cannot simply ask Claude to carry on. To lift it from inside Claude Code, send a prompt that **starts with** `breaker override` (also `circuit breaker override`, `override the breaker`, or `bypass` instead of `override`). The breaker closes for `override_minutes` (default 30) and says so. The override prompt itself is not sent to Claude, so Claude does not take it as a cue to resume the work the breaker just stopped. Your next prompt says what happens next. Add a duration to change it: `breaker override for 45m`, `breaker override for 2h`. The phrase must open the prompt, so a prompt that merely mentions the breaker is not an override. When the override lapses, burn-rate checks resume and the breaker can trip again.
+
+Blocked prompts never run, so the tracer sends no trace for them. This applies to both the prompts the breaker stops and the override prompt.
 
 `python3 ~/.claude/hooks/claude_code_circuit_breaker.py reset` closes it by hand. `ARTHUR_BREAKER_BYPASS=1` disables it for one process. State files live in `~/.claude/circuit_breaker/` and are pruned after 48 h; the directory is shared by global and per-project installs, so only a global `uninstall.sh` removes it.
 
@@ -152,7 +156,7 @@ An open breaker blocks every prompt, so you cannot simply ask Claude to carry on
 {
   "enabled": true,
   "scope": "session",
-  "budget_usd": 100.0,
+  "budget_usd": null,
   "budget_period_hours": 24.0,
   "rules": [
     { "name": "fast-burn", "window_minutes": 10, "short_window_minutes": 2,  "burn_rate": 14.4 },
@@ -164,6 +168,7 @@ An open breaker blocks every prompt, so you cannot simply ask Claude to carry on
   "cooldown_minutes": 15,
   "fail_mode": "open",
   "http_timeout_seconds": 5,
+  "engine_timezone": "UTC",
   "fallback_usd_per_million_tokens": null,
   "override_minutes": 30
 }
@@ -173,15 +178,17 @@ An open breaker blocks every prompt, so you cannot simply ask Claude to carry on
 |-----|---------|
 | `scope` | Whose spend counts: `session` (this Claude Code session, via `arthur.session`), `user` (every session of this OS user on the task, via `user.id`) or `task` (everything on the task). The breaker state is keyed the same way, so a `task`-scope trip pauses every session. |
 | `enabled` | `false` leaves the hooks installed but inert. |
-| `budget_usd`, `budget_period_hours` | The budget the burn rate is measured against. |
+| `budget_usd`, `budget_period_hours` | The budget the burn rate is measured against, for the whole scope. `null` takes the scope's default: $200 for `session`, and $600 for `user`, whose parallel sessions all share it. `task` has no default, since it depends on the team, and its burn-rate rules stay off until you set one; `SessionStart`, `check` and `status` say so. |
 | `rules` | Multi-window burn-rate rules. `short_window_minutes: null` makes a single-window rule. The widest `window_minutes` sets how far back spans are fetched. `[]` disables burn-rate rules, leaving only `hard_cap_usd`. |
 | `hard_cap_usd` | Absolute ceiling on the scope's total: the whole session for `session`, the last `budget_period_hours` for `user`/`task`. `null` disables it (and skips the extra engine call). |
 | `warn_fraction` | Show a warning in Claude Code once a rule reaches this fraction of its threshold. |
-| `fail_mode` | `open` keeps working when the engine is unreachable (with a warning); `closed` trips instead. |
+| `fail_mode` | `open` keeps working when the engine is unreachable or refuses the key (with a warning); `closed` trips instead. |
+| `http_timeout_seconds` | Cap on one engine request. All the requests of one hook share a 10 s budget, under the 15 s hook timeout; spans that budget cannot page through are left out and reported as a lower bound. |
+| `engine_timezone` | The zone the engine stamps span times in. It stores them as its server's local time with no offset, and compares time filters against them as is. `UTC` for the container images and hosted engines; `local` for an engine running on this machine outside a container (`uv run serve`); otherwise an IANA name such as `America/Los_Angeles`. A wrong value makes recent spend look hours old, so the breaker sees $0. |
 | `fallback_usd_per_million_tokens` | `{"prompt": 3, "completion": 15}` prices spans whose model the engine could not price (their cost comes back empty). Leave `null` to be warned about such spans instead. |
 | `override_minutes` | How long a `breaker override` prompt keeps the breaker lifted when the prompt names no duration. |
 
-With the defaults, $100/24 h is a $4.17/h budget rate, so `fast-burn` trips at $60/h sustained over 10 minutes (and the last 2), `slow-burn` at $25/h over an hour (and the last 10 minutes).
+The defaults are generous on purpose. Out of the box the breaker is there to stop a runaway, not to enforce a budget, and a trip on ordinary work is what gets a breaker switched off. Set `budget_usd` when you want it to hold a real budget. At `session` scope, $200/24 h is an $8.33/h budget rate, so `fast-burn` trips at $120/h sustained over 10 minutes ($20, with $4 of it in the last 2), and `slow-burn` at $50/h over an hour ($50, with $8.33 of it in the last 10 minutes). At `user` scope the same thresholds are three times higher.
 
 ### Checking what it sees
 
@@ -190,18 +197,27 @@ python3 ~/.claude/hooks/claude_code_circuit_breaker.py status                   
 python3 ~/.claude/hooks/claude_code_circuit_breaker.py status --session <id>       # one session
 ```
 
-prints the current spend per window, burn rates, whether each rule would fire, and the persisted breaker state.
+prints the current spend per window, burn rates, whether each rule would fire, which key is in use, any clock warning, and the persisted breaker state.
+
+```bash
+python3 ~/.claude/hooks/claude_code_circuit_breaker.py check
+```
+
+checks that the key can read spans and that the engine's span times read right in `engine_timezone`. It exits 0 when they do (printing any clock warning), 1 when no credentials are configured, 2 when the engine refuses the key, and 3 when the engine cannot be reached. `SessionStart` runs the same clock check and shows a warning in Claude Code. It catches an engine whose spans end in the future, and, with `engine_timezone` at `UTC`, an engine on local time beside a database on UTC (`uv run serve` with Postgres in Docker). An engine and database that both run on local time leave nothing to detect, so set `local` yourself.
 
 ### Engine calls
 
 | Scope need | Endpoint |
 |------------|----------|
-| Spend per window | `GET /api/v1/traces/spans?task_ids=…&span_types=LLM&start_time=…&end_time=…` plus `session_ids` / `user_ids` for the narrower scopes; spans are bucketed locally per rule window by their **end** time, since the cost is realised when the response completes. The engine's `user_ids` filter is a substring match, so rows are re-checked for an exact `user_id` |
+| Spend per window | `GET /api/v1/traces/spans?task_ids=…&span_types=LLM&sort=desc&sort_by=start_time` plus `session_ids` / `user_ids` for the narrower scopes. The endpoint's `start_time`/`end_time` filters apply to the *trace*, which is a whole turn, so they would drop a long-running turn's recent spans. The breaker sends none. It pages newest first (50, 50, 100, 200 … up to 800 rows a page) and stops at the first page that reaches spans which started before the widest window (less 15 min of slack). Spans are bucketed locally per rule window by their **end** time, since the cost is realised when the response completes. The engine's `user_ids` filter is a substring match, so rows are re-checked for an exact `user_id` |
 | Hard cap, `session` | `GET /api/v1/traces/sessions?task_ids=…&session_ids=…` |
 | Hard cap, `user` | `GET /api/v1/traces?task_ids=…&user_ids=…&start_time=…&end_time=…`, summing this user's traces (no endpoint returns one user's spend over a window) |
 | Hard cap, `task` | `POST /api/v1/traces/overview` |
+| Startup clock check | `GET /api/v1/traces/spans?task_ids=…&span_types=LLM&page_size=1`, the newest span's `end_time` (engine clock) against now and its `created_at` (database clock) |
 
-Caveats: spend lands in the engine when the tracer emits LLM spans, which happens at each tool call and at the end of the turn, so a single very long generation is only visible once it finishes. The engine stores span timestamps as the server's local time and returns them without an offset; the breaker assumes that is UTC, which holds for the container images.
+Time filters go out in `engine_timezone` without an offset, the form the engine compares against its stored values.
+
+Caveat: spend lands in the engine when the tracer emits LLM spans, which happens at each tool call and at the end of the turn, so a single very long generation is only visible once it finishes.
 
 ---
 

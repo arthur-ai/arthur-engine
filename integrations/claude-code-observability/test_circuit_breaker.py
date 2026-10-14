@@ -4,8 +4,12 @@ Unit tests for claude_code_circuit_breaker.py
 Run with:  python3 -m pytest integrations/claude-code-observability/test_circuit_breaker.py -v
 """
 
+import io
 import json
+import os
 import sys
+import time
+import urllib.error
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -20,6 +24,9 @@ ENGINE = {"api_key": "k", "task_id": "task-1", "base_url": "http://engine/api/v1
 
 def _config(**overrides) -> dict:
     config = json.loads(json.dumps(cb.DEFAULT_CONFIG))
+    # The burn-rate arithmetic in these tests is worked out on $100/24h
+    # ($4.17/h), whatever the scope's default budget is.
+    config["budget_usd"] = 100.0
     config.update(overrides)
     return config
 
@@ -36,11 +43,21 @@ def _span_row(
     now: datetime = NOW,
     user_id: str = "nori",
     duration_minutes: float = 0.0,
+    turn_started_minutes_ago: float = None,
 ) -> dict:
     end = now - timedelta(minutes=minutes_ago)
+    start = end - timedelta(minutes=duration_minutes)
+    turn_start = (
+        start
+        if turn_started_minutes_ago is None
+        else now - timedelta(minutes=turn_started_minutes_ago)
+    )
     return {
-        "start_time": _engine_time(end - timedelta(minutes=duration_minutes)),
+        "start_time": _engine_time(start),
         "end_time": _engine_time(end),
+        # Not in the API response: the start of the span's trace (its turn),
+        # which the fake engine's time filters apply to, as the real one's do.
+        "trace_start_time": _engine_time(turn_start),
         "user_id": user_id,
         "total_token_cost": cost,
         "total_token_count": tokens,
@@ -77,7 +94,14 @@ class FakeEngine:
         if self.error:
             raise cb.EngineError(self.error)
         if path == "/traces/spans":
-            return {"count": len(self.spans), "spans": _page(self.spans, params)}
+            # Like the engine, start_time filters on the trace, not the span.
+            rows = [
+                r
+                for r in self.spans
+                if "start_time" not in params
+                or r["trace_start_time"] >= params["start_time"]
+            ]
+            return {"count": len(rows), "spans": _page(rows, params)}
         if path == "/traces":
             return {"count": len(self.traces), "traces": _page(self.traces, params)}
         if path == "/traces/sessions":
@@ -118,8 +142,11 @@ def test_discover_engine_config_from_env(monkeypatch):
     monkeypatch.setenv("GENAI_ENGINE_API_KEY", "key")
     monkeypatch.setenv("GENAI_ENGINE_TASK_ID", "task")
     monkeypatch.setenv("GENAI_ENGINE_TRACE_ENDPOINT", "http://e/api/v1/traces")
+    monkeypatch.delenv("GENAI_ENGINE_READ_API_KEY", raising=False)
+    monkeypatch.setattr(cb.Path, "home", lambda: Path("/nonexistent"))
     assert cb.discover_engine_config() == {
         "api_key": "key",
+        "key_name": "api_key",
         "task_id": "task",
         "base_url": "http://e/api/v1",
     }
@@ -288,9 +315,10 @@ def test_evaluate_queries_llm_spans_for_session_scope(fake_engine):
     assert params["task_ids"] == "task-1"
     assert params["session_ids"] == "sess-1"
     assert params["span_types"] == "LLM"
-    assert params["end_time"] == "2026-01-01T12:00:00.000Z"
-    # Widest rule window (60m) plus the slack for spans that started earlier.
-    assert params["start_time"] == "2026-01-01T10:45:00.000Z"
+    assert (params["sort"], params["sort_by"]) == ("desc", "start_time")
+    # The engine's time filters apply to the trace, so none are sent.
+    assert "start_time" not in params and "end_time" not in params
+    assert (params["page"], params["page_size"]) == (0, cb.SPAN_FIRST_PAGE_SIZE)
 
 
 def test_evaluate_buckets_spend_at_span_end(fake_engine):
@@ -346,10 +374,10 @@ def test_evaluate_trips_on_fast_burn(fake_engine):
 
 
 def test_evaluate_paginates_spans(fake_engine, monkeypatch):
-    monkeypatch.setattr(cb, "SPAN_PAGE_SIZE", 2)
+    monkeypatch.setattr(cb, "SPAN_FIRST_PAGE_SIZE", 2)
     fake = fake_engine(spans=[_span_row(1, 1.0), _span_row(1, 1.0), _span_row(1, 1.0)])
     evaluation = cb.evaluate(ENGINE, _config(), "s", NOW)
-    assert [c[2]["page"] for c in fake.calls] == [0, 1]
+    assert [(c[2]["page"], c[2]["page_size"]) for c in fake.calls] == [(0, 2), (1, 2)]
     assert evaluation.rules[0].window_spend == 3.0
 
 
@@ -419,7 +447,8 @@ def test_evaluate_hard_cap_task_scope_uses_overview(fake_engine):
     method, path, _, body = fake.calls[-1]
     assert (method, path) == ("POST", "/traces/overview")
     assert body["task_ids"] == ["task-1"]
-    assert body["start_time"] == "2025-12-31T12:00:00.000Z"
+    # Time filters go out in the engine's zone without an offset.
+    assert body["start_time"] == "2025-12-31T12:00:00.000"
 
 
 def test_evaluate_hard_cap_user_scope_sums_own_traces_in_period(
@@ -441,7 +470,7 @@ def test_evaluate_hard_cap_user_scope_sums_own_traces_in_period(
     method, path, params, _ = fake.calls[-1]
     assert (method, path) == ("GET", "/traces")
     assert params["user_ids"] == "nori"
-    assert params["start_time"] == "2025-12-31T12:00:00.000Z"
+    assert params["start_time"] == "2025-12-31T12:00:00.000"
 
 
 def test_evaluate_skips_hard_cap_query_when_unset(fake_engine):
@@ -822,10 +851,11 @@ def test_run_hook_override_prompt_lifts_open_breaker(
         "user_prompt_submit",
         {"session_id": "s", "prompt": "breaker override for 10m"},
     )
-    assert "decision" not in out  # the prompt goes through
-    assert "lifted for 10 min" in out["systemMessage"]
+    # The override prompt is consumed so Claude does not take it as "carry on".
+    assert out["decision"] == "block"
+    assert "lifted for 10 min" in out["reason"]
+    assert "not sent to Claude" in out["reason"]
     assert out["hookSpecificOutput"]["hookEventName"] == "UserPromptSubmit"
-    assert out["hookSpecificOutput"]["additionalContext"] == out["systemMessage"]
 
     # The in-flight turn's tool calls are no longer stopped.
     assert cb.run_hook("pre_tool", {"session_id": "s"}) is None
@@ -870,7 +900,7 @@ def test_load_breaker_config_ignores_invalid_env_budget(tmp_path, monkeypatch):
     monkeypatch.setattr(cb.Path, "home", lambda: tmp_path / "nohome")
     monkeypatch.delenv("ARTHUR_BREAKER_SCOPE", raising=False)
     monkeypatch.setenv("ARTHUR_BREAKER_BUDGET_USD", "$50")
-    assert cb.load_breaker_config()["budget_usd"] == cb.DEFAULT_CONFIG["budget_usd"]
+    assert cb.budget_usd(cb.load_breaker_config()) == cb.SCOPE_BUDGET_USD["session"]
 
 
 def test_load_breaker_config_replaces_non_positive_budget_values(tmp_path, monkeypatch):
@@ -880,13 +910,13 @@ def test_load_breaker_config_replaces_non_positive_budget_values(tmp_path, monke
     monkeypatch.delenv("ARTHUR_BREAKER_SCOPE", raising=False)
     monkeypatch.delenv("ARTHUR_BREAKER_BUDGET_USD", raising=False)
     config = cb.load_breaker_config()
-    assert config["budget_usd"] == cb.DEFAULT_CONFIG["budget_usd"]
+    assert cb.budget_usd(config) == cb.SCOPE_BUDGET_USD["session"]
     assert config["budget_period_hours"] == cb.DEFAULT_CONFIG["budget_period_hours"]
 
 
 def test_evaluate_flags_truncated_span_query(fake_engine, monkeypatch):
-    monkeypatch.setattr(cb, "SPAN_PAGE_SIZE", 1)
-    monkeypatch.setattr(cb, "SPAN_MAX_PAGES", 1)
+    monkeypatch.setattr(cb, "SPAN_FIRST_PAGE_SIZE", 1)
+    monkeypatch.setattr(cb, "SPAN_MAX_ROWS", 1)
     fake_engine(spans=[_span_row(1, 0.01), _span_row(2, 0.01)])
     evaluation = cb.evaluate(ENGINE, _config(), "s", NOW)
     assert evaluation.truncated
@@ -904,3 +934,345 @@ def test_open_message_shows_remaining_minutes_and_zone():
         tz=timezone.utc,
     ).astimezone()
     assert f"until {retry_local.strftime('%H:%M %Z')}" in message
+
+
+# ---------------------------------------------------------------------------
+# End-to-end review follow-ups
+# ---------------------------------------------------------------------------
+
+
+def _refuse_key(*args, **kwargs):
+    raise cb.EngineAuthError("HTTP 403 from GET /traces/spans (using api_key)")
+
+
+def test_budget_defaults_by_scope():
+    unset = dict(cb.DEFAULT_CONFIG)
+    assert unset["budget_usd"] is None
+    assert cb.budget_usd(dict(unset, scope="session")) == 200.0
+    # A user's parallel sessions share one budget.
+    assert cb.budget_usd(dict(unset, scope="user")) == 600.0
+    assert cb.budget_usd(dict(unset, scope="task")) is None
+    assert cb.budget_usd(dict(unset, scope="task", budget_usd=1000)) == 1000.0
+
+
+def test_task_scope_without_a_budget_runs_no_rules(fake_engine):
+    fake = fake_engine(spans=[_span_row(1, 500.0)])
+    config = _config(scope="task", budget_usd=None)
+    assert "budget_usd is not set" in cb.config_problem(config)
+    evaluation = cb.evaluate(ENGINE, config, "s", NOW)
+    assert not evaluation.tripped and evaluation.rules == []
+    assert fake.calls == []
+    # The hard cap still applies.
+    fake.overviews = [{"task_id": "task-1", "trace_token_cost": 900.0}]
+    capped = cb.evaluate(ENGINE, dict(config, hard_cap_usd=800), "s", NOW)
+    assert capped.tripped and "hard cap" in capped.reason
+    assert cb.config_problem(_config(scope="task", budget_usd=1000)) == ""
+
+
+def test_session_start_reports_a_missing_task_budget(
+    monkeypatch,
+    state_dir,
+    fake_engine,
+):
+    monkeypatch.delenv(cb.BYPASS_ENV, raising=False)
+    monkeypatch.setattr(cb, "discover_engine_config", lambda: ENGINE)
+    monkeypatch.setattr(
+        cb,
+        "load_breaker_config",
+        lambda: _config(scope="task", budget_usd=None),
+    )
+    fake_engine(spans=[])
+    out = cb.run_hook("session_start", {"session_id": "s"})
+    assert "budget_usd is not set" in out["systemMessage"]
+
+
+def test_discover_engine_config_prefers_read_key(tmp_path, monkeypatch):
+    monkeypatch.setenv("GENAI_ENGINE_API_KEY", "write-key")
+    monkeypatch.delenv("GENAI_ENGINE_READ_API_KEY", raising=False)
+    monkeypatch.setenv("GENAI_ENGINE_TASK_ID", "task")
+    monkeypatch.setenv("GENAI_ENGINE_TRACE_ENDPOINT", "http://e/api/v1/traces")
+    monkeypatch.setenv("CLAUDE_PROJECT_DIR", str(tmp_path))
+    monkeypatch.setattr(cb.Path, "home", lambda: tmp_path / "home")
+    (tmp_path / "home" / ".claude").mkdir(parents=True)
+    # A read key in a config file beats the tracer's key from the environment.
+    (tmp_path / "home" / ".claude" / "arthur_config.json").write_text(
+        json.dumps({"read_api_key": "file-read-key"}),
+    )
+    engine = cb.discover_engine_config()
+    assert (engine["api_key"], engine["key_name"]) == ("file-read-key", "read_api_key")
+    monkeypatch.setenv("GENAI_ENGINE_READ_API_KEY", "env-read-key")
+    assert cb.discover_engine_config()["api_key"] == "env-read-key"
+
+
+def test_request_reports_401_and_403_as_auth_errors(monkeypatch):
+    def refuse(code):
+        def urlopen(req, timeout):
+            raise urllib.error.HTTPError(
+                req.full_url,
+                code,
+                "Forbidden",
+                {},
+                io.BytesIO(b'{"detail":"Permission denied"}'),
+            )
+
+        return urlopen
+
+    engine = dict(ENGINE, key_name="api_key")
+    for code in (401, 403):
+        monkeypatch.setattr(cb.urllib.request, "urlopen", refuse(code))
+        with pytest.raises(cb.EngineAuthError, match=f"HTTP {code}.*using api_key"):
+            cb._request(engine, "GET", "/traces/spans")
+    monkeypatch.setattr(cb.urllib.request, "urlopen", refuse(500))
+    with pytest.raises(cb.EngineError) as excinfo:
+        cb._request(engine, "GET", "/traces/spans")
+    assert not isinstance(excinfo.value, cb.EngineAuthError)
+
+
+def test_evaluate_names_the_read_key_on_auth_failure(monkeypatch):
+    monkeypatch.setattr(cb, "_request", _refuse_key)
+    evaluation = cb.evaluate(ENGINE, _config(fail_mode="open"), "s", NOW)
+    assert not evaluation.tripped
+    assert "refused the breaker's key" in evaluation.warning
+    assert "read_api_key" in evaluation.warning
+    closed = cb.evaluate(ENGINE, _config(fail_mode="closed"), "s", NOW)
+    assert closed.tripped and "read_api_key" in closed.reason
+
+
+def test_evaluate_counts_a_turn_that_started_before_the_window(fake_engine):
+    # A 3-hour autonomous turn is one trace that started long before the
+    # widest window; its recent LLM spans must still count.
+    fake_engine(
+        spans=[
+            _span_row(1, 3.0, turn_started_minutes_ago=180),
+            _span_row(5, 8.0, turn_started_minutes_ago=180),
+        ],
+    )
+    evaluation = cb.evaluate(ENGINE, _config(), "s", NOW)
+    assert evaluation.rules[0].window_spend == 11.0
+    assert evaluation.tripped
+
+
+def test_span_pages_grow_and_tile_the_list(fake_engine, monkeypatch):
+    monkeypatch.setattr(cb, "SPAN_FIRST_PAGE_SIZE", 2)
+    monkeypatch.setattr(cb, "SPAN_MAX_PAGE_SIZE", 4)
+    rows = [dict(_span_row(1, 1.0), id=f"span-{i}") for i in range(13)]
+    fake = fake_engine(spans=rows)
+    evaluation = cb.evaluate(ENGINE, _config(), "s", NOW)
+    pages = [(c[2]["page"], c[2]["page_size"]) for c in fake.calls]
+    # Rows 0-1, 2-3, 4-7, 8-11, 12.
+    assert pages == [(0, 2), (1, 2), (1, 4), (2, 4), (3, 4)]
+    assert evaluation.rules[0].window_spend == 13.0
+
+
+def test_span_paging_stops_once_spans_predate_the_window(fake_engine, monkeypatch):
+    monkeypatch.setattr(cb, "SPAN_FIRST_PAGE_SIZE", 2)
+    recent = [_span_row(1, 1.0), _span_row(2, 1.0)]
+    # The widest window is 60m, plus 15m of slack: these started 2h ago.
+    old = [_span_row(120, 50.0) for _ in range(6)]
+    fake = fake_engine(spans=recent + old)
+    evaluation = cb.evaluate(ENGINE, _config(), "s", NOW)
+    assert len(fake.calls) == 2  # the second page reached the old spans
+    assert evaluation.rules[1].window_spend == 2.0
+    assert not evaluation.truncated
+
+
+def test_span_paging_drops_rows_repeated_across_pages(monkeypatch):
+    # A span inserted between two page reads pushes the last row of the first
+    # page onto the second; it must be counted once.
+    rows = [dict(_span_row(1, 1.0), id=f"span-{i}") for i in range(3)]
+    pages = {0: rows[:2], 1: rows[1:3]}
+
+    def engine(engine, method, path, params=None, body=None, timeout=5.0):
+        return {"spans": pages.get(params["page"], [])}
+
+    monkeypatch.setattr(cb, "_request", engine)
+    monkeypatch.setattr(cb, "SPAN_FIRST_PAGE_SIZE", 2)
+    evaluation = cb.evaluate(ENGINE, _config(), "s", NOW)
+    assert evaluation.rules[0].window_spend == 3.0
+
+
+class _ExpiringDeadline(cb.Deadline):
+    """Has time for the first `requests` reads, then none."""
+
+    def __init__(self, requests: int):
+        super().__init__(60)
+        self.left = requests
+
+    def remaining(self) -> float:
+        return 60.0 if self.left > 0 else 0.0
+
+    def timeout(self, per_request: float) -> float:
+        if self.left <= 0:
+            raise cb.EngineError("no reply within the query budget")
+        self.left -= 1
+        return per_request
+
+
+def test_span_paging_stops_at_the_query_budget(fake_engine, monkeypatch):
+    monkeypatch.setattr(cb, "SPAN_FIRST_PAGE_SIZE", 2)
+    fake = fake_engine(spans=[_span_row(1, 1.0) for _ in range(6)])
+    evaluation = cb.evaluate(ENGINE, _config(), "s", NOW, _ExpiringDeadline(1))
+    assert len(fake.calls) == 1
+    assert evaluation.truncated
+    assert "query budget" in evaluation.warning
+    assert evaluation.rules[0].window_spend == 2.0  # the page it did read
+
+
+def test_evaluate_fails_as_configured_when_the_budget_is_spent(fake_engine):
+    fake_engine(spans=[_span_row(1, 1.0)])
+    evaluation = cb.evaluate(ENGINE, _config(), "s", NOW, _ExpiringDeadline(0))
+    assert not evaluation.tripped
+    assert "query budget" in evaluation.engine_error
+
+
+def test_deadline_caps_each_request_at_the_time_left():
+    deadline = cb.Deadline(2.0)
+    assert deadline.timeout(5.0) <= 2.0
+    assert deadline.timeout(0.5) == 0.5
+    with pytest.raises(cb.EngineError):
+        cb.Deadline(0).timeout(5.0)
+
+
+@pytest.fixture
+def pacific_machine():
+    """Run the test with this machine's zone set to US Pacific."""
+    saved = os.environ.get("TZ")
+    os.environ["TZ"] = "America/Los_Angeles"
+    time.tzset()
+    yield
+    if saved is None:
+        os.environ.pop("TZ", None)
+    else:
+        os.environ["TZ"] = saved
+    time.tzset()
+
+
+def test_parse_engine_time_reads_naive_times_in_engine_timezone(pacific_machine):
+    noon_utc = datetime(2026, 1, 1, 12, 0, tzinfo=timezone.utc)
+    # 04:00 Pacific (UTC-8 in January) is 12:00 UTC.
+    la = _config(engine_timezone="America/Los_Angeles")
+    local = _config(engine_timezone="local")
+    assert cb.parse_engine_time("2026-01-01T04:00:00", la) == noon_utc
+    assert cb.parse_engine_time("2026-01-01T04:00:00", local) == noon_utc
+    assert cb.parse_engine_time("2026-01-01T12:00:00", _config()) == noon_utc
+    # An explicit offset wins over the setting.
+    assert cb.parse_engine_time("2026-01-01T12:00:00Z", la) == noon_utc
+    assert cb._engine_time_param(noon_utc, la) == "2026-01-01T04:00:00.000"
+    assert cb._engine_time_param(noon_utc, local) == "2026-01-01T04:00:00.000"
+
+
+def test_load_breaker_config_rejects_unknown_engine_timezone(tmp_path, monkeypatch):
+    path = tmp_path / "breaker.json"
+    path.write_text(json.dumps({"engine_timezone": "Mars/Olympus_Mons"}))
+    monkeypatch.setenv(cb.CONFIG_ENV, str(path))
+    monkeypatch.delenv("ARTHUR_BREAKER_SCOPE", raising=False)
+    monkeypatch.delenv("ARTHUR_BREAKER_BUDGET_USD", raising=False)
+    assert cb.load_breaker_config()["engine_timezone"] == "UTC"
+
+
+def test_evaluate_counts_spend_from_a_pacific_engine(fake_engine):
+    # The engine stamps spans in Pacific time; read as UTC they would look
+    # 8 hours old and the breaker would see $0.
+    pacific_now = NOW.astimezone(timezone(timedelta(hours=-8))).replace(tzinfo=None)
+    fake_engine(
+        spans=[
+            _span_row(1, 3.0, now=pacific_now),
+            _span_row(5, 8.0, now=pacific_now),
+        ],
+    )
+    assert not cb.evaluate(ENGINE, _config(), "s", NOW).tripped
+    la = _config(engine_timezone="America/Los_Angeles")
+    assert cb.evaluate(ENGINE, la, "s", NOW).tripped
+
+
+def _newest_span(end: datetime, created: datetime) -> dict:
+    return {
+        "start_time": _engine_time(end - timedelta(seconds=5)),
+        "end_time": _engine_time(end),
+        "created_at": _engine_time(created),
+    }
+
+
+def test_clock_check_is_quiet_when_times_agree(fake_engine):
+    fake_engine(spans=[])
+    assert cb.check_engine_clock(ENGINE, _config(), cb.Deadline(), NOW) == ""
+    end = NOW - timedelta(minutes=3)
+    # A couple of minutes of ingest lag is not a zone offset.
+    fake_engine(spans=[_newest_span(end, end + timedelta(minutes=2))])
+    assert cb.check_engine_clock(ENGINE, _config(), cb.Deadline(), NOW) == ""
+
+
+def test_clock_check_flags_spans_in_the_future(fake_engine):
+    # A UTC+9 engine read as UTC: its newest span ends 9 hours from now.
+    tokyo_wall = NOW + timedelta(hours=9)
+    fake_engine(spans=[_newest_span(tokyo_wall, tokyo_wall)])
+    warning = cb.check_engine_clock(ENGINE, _config(), cb.Deadline(), NOW)
+    assert "9.0h in the future" in warning
+    assert "engine_timezone" in warning
+
+
+def test_clock_check_flags_a_local_time_engine_beside_a_utc_database(
+    fake_engine,
+    pacific_machine,
+):
+    # `uv run serve` on a Pacific laptop with Postgres in a container: the
+    # engine stamps spans in Pacific time, the database stamps created_at in UTC.
+    end_utc = NOW - timedelta(minutes=2)
+    end_pacific = end_utc - timedelta(hours=8)
+    fake_engine(spans=[_newest_span(end_pacific, end_utc + timedelta(seconds=3))])
+    warning = cb.check_engine_clock(ENGINE, _config(), cb.Deadline(), NOW)
+    assert "8.0h behind its database clock" in warning
+    assert '"local"' in warning
+    # Configured for it: nothing to report.
+    local = _config(engine_timezone="local")
+    assert cb.check_engine_clock(ENGINE, local, cb.Deadline(), NOW) == ""
+
+
+def test_clock_check_names_the_engine_offset_when_not_this_machines(
+    fake_engine,
+    pacific_machine,
+):
+    end_utc = NOW - timedelta(minutes=2)
+    fake_engine(spans=[_newest_span(end_utc - timedelta(hours=5), end_utc)])
+    warning = cb.check_engine_clock(ENGINE, _config(), cb.Deadline(), NOW)
+    assert "UTC-05:00" in warning
+
+
+def test_session_start_reports_a_clock_problem(monkeypatch, state_dir, fake_engine):
+    monkeypatch.delenv(cb.BYPASS_ENV, raising=False)
+    monkeypatch.setattr(cb, "discover_engine_config", lambda: ENGINE)
+    monkeypatch.setattr(cb, "load_breaker_config", lambda: _config())
+    future = datetime.now(timezone.utc) + timedelta(hours=9)
+    fake_engine(spans=[_newest_span(future, future)])
+    out = cb.run_hook("session_start", {"session_id": "s"})
+    assert "in the future" in out["systemMessage"]
+    # Other events do not repeat the check.
+    assert cb.run_hook("pre_tool", {"session_id": "s"}) is None
+
+
+def test_cli_check_exit_codes(monkeypatch, capsys):
+    engine = dict(ENGINE, key_name="api_key")
+    monkeypatch.setattr(cb, "load_breaker_config", lambda: _config())
+
+    def check(discovered, request=None):
+        monkeypatch.setattr(cb, "discover_engine_config", lambda: discovered)
+        if request:
+            monkeypatch.setattr(cb, "_request", request)
+        return cb.cli_check()
+
+    assert check(None) == cb.CHECK_NOT_CONFIGURED
+    assert check(engine, _refuse_key) == cb.CHECK_AUTH_FAILED
+    assert "read_api_key" in capsys.readouterr().err
+
+    def down(*args, **kwargs):
+        raise cb.EngineError("GET /traces/spans failed: connection refused")
+
+    assert check(engine, down) == cb.CHECK_UNREACHABLE
+
+    future = NOW + timedelta(days=365)
+    assert check(engine, FakeEngine(spans=[_newest_span(future, future)])) == (
+        cb.CHECK_OK
+    )
+    out = capsys.readouterr()
+    assert "OK: api_key can read" in out.out
+    assert "WARNING" in out.err and "in the future" in out.err
