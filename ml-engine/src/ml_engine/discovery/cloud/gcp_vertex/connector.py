@@ -16,15 +16,11 @@ here. GenAI Engine's resolver joins a record to an existing task by matching its
 `projects/my-project/...`, match nothing, and mint a duplicate task for every agent a
 customer already has.
 
-CREDENTIALS. A source's `service_account_key` is a service account JSON key, read with
-`service_account.Credentials.from_service_account_info` -- deliberately not
-`google.auth.load_credentials_from_dict`, which also accepts external-account configs
-that can name an executable or a file on this engine's disk. A source without a key uses
+CREDENTIALS. A source's `service_account_key` is a service account JSON key, loaded by
+`discovery.gcp_credentials`, which Compute Engine shares. A source without a key uses
 Application Default Credentials only when the engine opts in with
 `ALLOW_ADC_ENV_VAR`; that is how a developer scans with their own `gcloud auth
-application-default login`, and how an engine on GKE would use Workload Identity. With
-the flag unset a keyless source fails with a reason naming the field, rather than quietly
-scanning as whatever identity the engine pod happens to run under.
+application-default login`, and how an engine on GKE would use Workload Identity.
 
 WHAT GOOGLE ANSWERED. `discovery_scan.failure_code` tells a refused credential from a
 denied project by a `status_code` attribute on the exception, and leaves it to the
@@ -37,9 +33,7 @@ re-raises what it catches unchanged in type, and a wrapper would trade the type 
 log names for one that says less.
 """
 
-import json
 import logging
-import os
 from datetime import datetime
 from typing import (
     Any,
@@ -62,16 +56,20 @@ from arthur_common.models.agent_governance_schemas import (
     SourceAddress,
 )
 from google.auth.credentials import Credentials
-from google.auth.exceptions import RefreshError, TransportError
+from google.auth.exceptions import RefreshError
 from google.genai import errors as genai_errors
-from google.oauth2 import service_account
 from pydantic import BaseModel
+
+from discovery.gcp_credentials import (
+    SERVICE_ACCOUNT_KEY_FIELD,
+    mark_refused_credential,
+    service_account_credentials,
+)
 
 VENDOR = "gcp_vertex"
 
 PROJECT_ID_FIELD = "project_id"
 LOCATION_FIELD = "location"
-SERVICE_ACCOUNT_KEY_FIELD = "service_account_key"
 
 # The legacy Vertex poller's default, kept so a source that leaves the region blank
 # scans what that poller scanned.
@@ -194,15 +192,8 @@ def with_vendor_status(
     eagerly would otherwise fail outside the translation. See the module docstring for
     why the exception is annotated rather than replaced.
 
-    A REFUSED CREDENTIAL IS 401, WHATEVER THE WIRE SAID. A revoked or deleted key, or
-    ADC whose user login has lapsed, fails before Vertex is ever asked: google-auth
-    cannot mint a token, and raises `RefreshError` -- usually off a 400 `invalid_grant`
-    from Google's token endpoint, which `failure_code` would not know to read as an
-    authentication failure. Only a non-retryable one is: google-auth marks the token
-    endpoint's own 5xx and `temporarily_unavailable` answers retryable, and those are
-    Google's outage, not the source's key. Nor is one raised from a `TransportError`:
-    google-auth wraps a metadata server it could not reach that way, without marking it
-    retryable, and that is the network's failure, not a refused credential.
+    A refused credential is 401 whatever the wire said; `discovery.gcp_credentials`
+    says which `RefreshError`s count.
     """
     try:
         yield from lister(settings, credentials)
@@ -210,8 +201,7 @@ def with_vendor_status(
         setattr(e, "status_code", e.code)
         raise
     except RefreshError as e:
-        if not e.retryable and not isinstance(e.__cause__, TransportError):
-            setattr(e, "status_code", 401)
+        mark_refused_credential(e)
         raise
 
 
@@ -227,10 +217,6 @@ def settings_from(source_fields: Mapping[str, str]) -> VertexSettings:
     return VertexSettings(project_id=project_id, location=location)
 
 
-def adc_allowed() -> bool:
-    return os.getenv(ALLOW_ADC_ENV_VAR, "").strip().lower() in {"1", "true", "yes"}
-
-
 def credentials_from(
     credentials: Mapping[str, Optional[str]],
     logger: logging.Logger,
@@ -239,46 +225,13 @@ def credentials_from(
 
     None is returned only when the engine has opted in to ADC; a keyless source on an
     engine that has not raises instead.
-
-    A key that does not parse is reported without its content. The job logger scrubs the
-    whole key string by exact match, but a JSON error quotes a fragment of the document,
-    and a fragment is not what the scrub set holds.
     """
-    raw = (credentials.get(SERVICE_ACCOUNT_KEY_FIELD) or "").strip()
-    if not raw:
-        if adc_allowed():
-            return None
-        raise ValueError(
-            f"Vertex AI source has no '{SERVICE_ACCOUNT_KEY_FIELD}'. Paste a service "
-            f"account JSON key into the source, or set {ALLOW_ADC_ENV_VAR}=true on this "
-            f"engine to use its Application Default Credentials.",
-        )
-
-    try:
-        info = json.loads(raw)
-    except json.JSONDecodeError as e:
-        raise ValueError(
-            f"Vertex AI source's '{SERVICE_ACCOUNT_KEY_FIELD}' is not valid JSON "
-            f"(line {e.lineno}, column {e.colno}). Paste the whole key file.",
-        ) from None
-    if not isinstance(info, dict) or info.get("type") != "service_account":
-        raise ValueError(
-            f"Vertex AI source's '{SERVICE_ACCOUNT_KEY_FIELD}' is not a service account "
-            f'key: expected a JSON object with "type": "service_account".',
-        )
-    try:
-        loaded: Credentials = service_account.Credentials.from_service_account_info(  # type: ignore[no-untyped-call]
-            info,
-            scopes=[CLOUD_PLATFORM_SCOPE],
-        )
-        return loaded
-    except ValueError as e:
-        # google-auth names the missing field, never the key material, so its message
-        # is safe to carry; the chained exception is dropped in case a later version
-        # is less careful.
-        raise ValueError(
-            f"Vertex AI source's '{SERVICE_ACCOUNT_KEY_FIELD}' could not be loaded: {e}",
-        ) from None
+    return service_account_credentials(
+        credentials,
+        source="Vertex AI source",
+        allow_adc_env_var=ALLOW_ADC_ENV_VAR,
+        scopes=[CLOUD_PLATFORM_SCOPE],
+    )
 
 
 def parse_resource_name(name: str) -> Optional[tuple[str, str, str]]:

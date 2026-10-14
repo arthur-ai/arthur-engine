@@ -24,6 +24,8 @@ matching, the record shape -- is already neutral and is not touched.
 
 from discovery.cloud.gcp_vertex.connector import VENDOR as GCP_VERTEX_VENDOR
 from discovery.cloud.gcp_vertex.connector import VertexAgentEngineConnector
+from discovery.endpoint.gce.connector import VENDOR as GCP_COMPUTE_ENGINE_VENDOR
+from discovery.endpoint.gce.connector import ComputeEngineConnector
 from discovery.endpoint.jamf.connector import VENDOR as JAMF_VENDOR
 from discovery.endpoint.jamf.connector import JamfConnector
 from discovery.siem.elastic_security.connector import VENDOR as ELASTIC_SECURITY_VENDOR
@@ -41,6 +43,7 @@ def source_connectors() -> dict[str, DiscoveryConnectorFactory]:
     """
     return {
         JAMF_VENDOR: JamfConnector,
+        GCP_COMPUTE_ENGINE_VENDOR: ComputeEngineConnector,
         GCP_VERTEX_VENDOR: VertexAgentEngineConnector,
         SPLUNK_VENDOR: SplunkConnector,
         ELASTIC_SECURITY_VENDOR: ElasticSecurityConnector,
@@ -51,6 +54,8 @@ __all__ = [
     "source_connectors",
     "JamfConnector",
     "JAMF_VENDOR",
+    "ComputeEngineConnector",
+    "GCP_COMPUTE_ENGINE_VENDOR",
     "VertexAgentEngineConnector",
     "GCP_VERTEX_VENDOR",
     "SplunkConnector",
