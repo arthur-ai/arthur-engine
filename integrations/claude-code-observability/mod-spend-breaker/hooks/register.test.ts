@@ -120,3 +120,50 @@ test('a cut request also counts its input side, estimated from the request befor
   const status = await $.prompt.submit({ text: 'breaker status', wait: false })
   expect(status.drop).toMatch(/\$0\.100/)
 })
+
+test('an answer the user interrupts still counts toward the cap', async ($, on) => {
+  mock.store(on)
+  mock.env(on, { ARTHUR_BREAKER_CAP_USD: '0.10' })
+  on('turn.step', async function* ($, e) {
+    for (let i = 0; i < 100; i++) yield { kind: 'text', index: 0, text: 'x'.repeat(4000) } // $0.005 each
+    return { turnId: e.turnId, index: e.index, answer: '', toolUses: [], stopReason: 'end_turn', usage: null }
+  })
+  on('prompt.submit', ($, e) => ({ text: e.text }))
+  // Read three pieces, then stop reading, as Esc does.
+  const stream = $.turn.step({ turnId: 't1', index: 0, model: 'claude-haiku-4-5', messageCount: 1 })
+  for (let i = 0; i < 3; i++) await stream.next()
+  await stream.return(undefined as any)
+  const status = await $.prompt.submit({ text: 'breaker status', wait: false })
+  expect(status.drop).toContain('$0.0150')
+})
+
+// One finished request with the given usage, then the window total breaker status reports.
+async function priced($: any, on: any, model: string, usage: Partial<typeof USAGE>) {
+  mock.store(on)
+  mock.env(on, { ARTHUR_BREAKER_CAP_USD: '100' })
+  on('turn.step', async function* ($: any, e: any) {
+    return { turnId: e.turnId, index: e.index, answer: '', toolUses: [], stopReason: 'end_turn', usage: { ...USAGE, ...usage, model } }
+  })
+  on('prompt.submit', ($: any, e: any) => ({ text: e.text }))
+  await step($, 0)
+  return (await $.prompt.submit({ text: 'breaker status', wait: false })).drop
+}
+
+test('Opus 4 and 4.1 are priced at their own rates, not Opus 4.5+', async ($, on) => {
+  // 10,000 output tokens at $75/M.
+  expect(await priced($, on, 'claude-opus-4-1-20250805', { output_tokens: 10000 })).toContain('$0.7500')
+})
+
+test('Opus 4 by its dated id is priced at the Opus 4 rate', async ($, on) => {
+  expect(await priced($, on, 'claude-opus-4-20250514', { output_tokens: 10000 })).toContain('$0.7500')
+})
+
+test('Fable is priced at its own rate, not the Opus fallback', async ($, on) => {
+  // 10,000 output tokens at $50/M.
+  expect(await priced($, on, 'claude-fable-5-1', { output_tokens: 10000 })).toContain('$0.5000')
+})
+
+test('Haiku 5.5 uses the long-prompt rate past 100,000 prompt tokens', async ($, on) => {
+  // 200,000 input tokens at $0.50/M.
+  expect(await priced($, on, 'claude-haiku-5-5', { input_tokens: 200000 })).toContain('$0.1000')
+})

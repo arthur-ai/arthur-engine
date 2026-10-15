@@ -43,9 +43,12 @@ and the usage it reports as it finishes, so it:
 
 The cap is `ARTHUR_BREAKER_CAP_USD` (default `0.10` USD per five minutes); a
 value that isn't a positive number falls back to the default.
-Prices are list prices per model family in `hooks/register.ts`. Cache writes
-are priced at the 1-hour rate, because the usage a mod sees does not say which
-cache was written, so the estimate errs high.
+Prices are Anthropic's list prices per model in `hooks/register.ts` (Opus 4 and
+4.1, Fable and Haiku 5.5's long-prompt rate included); a model with no row is
+priced at the highest rate of each kind. Cache writes are priced at the 1-hour
+rate, because the usage a mod sees does not say which cache was written, so the
+estimate errs high. An answer that is interrupted or fails partway is counted
+from its running estimate.
 
 ## Try it
 

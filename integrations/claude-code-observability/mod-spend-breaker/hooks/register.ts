@@ -1,12 +1,34 @@
 import type { EngineInterface, Register } from 'claude-code'
 
-// USD per million tokens by model id prefix (list prices; edit for your contract). Cache
-// writes are priced at the 1-hour rate (2x input): the usage a mod sees does
-// not say which cache was written, so this errs high rather than low.
-const RATES: Record<string, { input: number; output: number; cacheWrite: number; cacheRead: number }> = {
-  'claude-haiku-4-5': { input: 1, output: 5, cacheWrite: 2, cacheRead: 0.1 },
-  'claude-sonnet': { input: 3, output: 15, cacheWrite: 6, cacheRead: 0.3 },
-  'claude-opus': { input: 5, output: 25, cacheWrite: 10, cacheRead: 0.5 },
+// USD per million tokens by model id prefix, from Anthropic's list prices; edit
+// for your contract. The first matching prefix wins, so specific ids come before
+// their family. Cache writes are priced at the 1-hour rate: the usage a mod sees
+// does not say which cache was written, so this errs high rather than low.
+type Rate = { input: number; output: number; cacheWrite: number; cacheRead: number }
+const RATES: [string, Rate][] = [
+  ['claude-fable-5-1', { input: 10, output: 50, cacheWrite: 20, cacheRead: 0.25 }],
+  ['claude-mythos-5-1', { input: 10, output: 50, cacheWrite: 20, cacheRead: 0.25 }],
+  ['claude-fable', { input: 10, output: 50, cacheWrite: 20, cacheRead: 1 }],
+  ['claude-mythos', { input: 10, output: 50, cacheWrite: 20, cacheRead: 1 }],
+  ['claude-opus-5-5', { input: 4, output: 20, cacheWrite: 8, cacheRead: 0.2 }],
+  ['claude-opus-4-1', { input: 15, output: 75, cacheWrite: 30, cacheRead: 1.5 }],
+  ['claude-opus-4-0', { input: 15, output: 75, cacheWrite: 30, cacheRead: 1.5 }],
+  ['claude-opus-4-2025', { input: 15, output: 75, cacheWrite: 30, cacheRead: 1.5 }], // Opus 4 by date
+  ['claude-opus', { input: 5, output: 25, cacheWrite: 10, cacheRead: 0.5 }], // Opus 4.5 to 5
+  ['claude-sonnet-5-5', { input: 2, output: 10, cacheWrite: 4, cacheRead: 0.1 }],
+  ['claude-sonnet-5', { input: 2, output: 10, cacheWrite: 4, cacheRead: 0.2 }],
+  ['claude-sonnet', { input: 3, output: 15, cacheWrite: 6, cacheRead: 0.3 }], // Sonnet 4 to 4.6
+  ['claude-haiku-5-5', { input: 0.1, output: 0.5, cacheWrite: 0.2, cacheRead: 0.01 }], // prompts up to 100K
+  ['claude-haiku-4-5', { input: 1, output: 5, cacheWrite: 2, cacheRead: 0.1 }],
+]
+// Claude Haiku 5.5 costs five times as much once a prompt passes 100,000 tokens.
+const HAIKU_5_5_LONG: Rate = { input: 0.5, output: 2.5, cacheWrite: 1, cacheRead: 0.05 }
+// A model with no row is priced at the highest rate of each kind, never at zero.
+const UNKNOWN: Rate = {
+  input: Math.max(...RATES.map(([, r]) => r.input)),
+  output: Math.max(...RATES.map(([, r]) => r.output)),
+  cacheWrite: Math.max(...RATES.map(([, r]) => r.cacheWrite)),
+  cacheRead: Math.max(...RATES.map(([, r]) => r.cacheRead)),
 }
 const WINDOW_MS = 5 * 60 * 1000
 const OVERRIDE_MS = 10 * 60 * 1000
@@ -24,9 +46,10 @@ type Entry = [number, number] // [epoch ms, USD] per model request
 const lastPromptTokens = new Map<string, number>()
 let capWarned = false
 
-function rateFor(model: string) {
-  const key = Object.keys(RATES).find(prefix => model.startsWith(prefix))
-  return key ? RATES[key] : RATES['claude-opus'] // unknown model: price high, not at zero
+function rateFor(model: string, promptTokens = 0): Rate {
+  const row = RATES.find(([prefix]) => model.startsWith(prefix))
+  if (!row) return UNKNOWN
+  return row[0] === 'claude-haiku-5-5' && promptTokens > 100_000 ? HAIKU_5_5_LONG : row[1]
 }
 
 // Spend lives in $.store, so it outlasts the session. Every session shares the
@@ -108,48 +131,61 @@ export const register: Register = on => {
     const c = await cap($)
     const before = windowSpend(await load($), Date.now())
     const override = await overridden($, Date.now())
-    const out = rateFor(e.model ?? '').output
     const conversation = e.agentId ?? 'main'
     const request = `${conversation}:${e.turnId}:${e.index}`
-    const inputGuess = ((lastPromptTokens.get(conversation) ?? 0) * rateFor(e.model ?? '').cacheRead) / 1_000_000
+    const promptGuess = lastPromptTokens.get(conversation) ?? 0
+    const out = rateFor(e.model ?? '', promptGuess).output
+    const inputGuess = (promptGuess * rateFor(e.model ?? '', promptGuess).cacheRead) / 1_000_000
     const stream = next(e)
     let text = ''
     let lastIndex = 0
-    for (let r = await stream.next(); ; r = await stream.next()) {
-      if (r.done) {
-        const result = r.value
-        if (result?.usage) {
-          const u = result.usage
-          const rate = rateFor(u.model)
-          const usd =
-            (u.input_tokens * rate.input +
-              u.output_tokens * rate.output +
-              u.cache_creation_input_tokens * rate.cacheWrite +
-              u.cache_read_input_tokens * rate.cacheRead) /
-            1_000_000
-          lastPromptTokens.set(conversation, u.input_tokens + u.cache_creation_input_tokens + u.cache_read_input_tokens)
-          const total = await record($, usd, request)
-          $.ui.log(`arthur-breaker: step ${e.index} ${u.model} $${usd.toFixed(4)}; window $${total.toFixed(4)}`)
+    // Spend is written once per request, however it ends: finished, cut here,
+    // interrupted by the user (Esc returns this generator at a yield), or failed
+    // partway. The last two have no usage, so they record the running estimate.
+    let recorded = false
+    try {
+      for (let r = await stream.next(); ; r = await stream.next()) {
+        if (r.done) {
+          const result = r.value
+          if (result?.usage) {
+            const u = result.usage
+            const promptTokens = u.input_tokens + u.cache_creation_input_tokens + u.cache_read_input_tokens
+            const rate = rateFor(u.model, promptTokens)
+            const usd =
+              (u.input_tokens * rate.input +
+                u.output_tokens * rate.output +
+                u.cache_creation_input_tokens * rate.cacheWrite +
+                u.cache_read_input_tokens * rate.cacheRead) /
+              1_000_000
+            lastPromptTokens.set(conversation, promptTokens)
+            recorded = true
+            const total = await record($, usd, request)
+            $.ui.log(`arthur-breaker: step ${e.index} ${u.model} $${usd.toFixed(4)}; window $${total.toFixed(4)}`)
+          }
+          return result
         }
-        return result
+        const chunk = r.value
+        if (chunk.kind === 'text') {
+          text += chunk.text
+          lastIndex = chunk.index
+        }
+        yield chunk
+        // This request's cost so far: its input side (the previous prompt's size,
+        // at the cache-read price) plus the answer so far (about four characters a token).
+        const estimate = inputGuess + ((text.length / 4) * out) / 1_000_000
+        if (!override && before + estimate >= c) {
+          await stream.return?.(undefined as any)
+          recorded = true
+          await record($, estimate, request)
+          const note = `\n\n[Arthur spend breaker: stopped this answer mid-stream at ~$${(before + estimate).toFixed(4)} (cap $${c}).]`
+          $.ui.log(`arthur-breaker: cut step ${e.index} mid-stream after ${text.length} chars`)
+          yield { kind: 'text', index: lastIndex, text: note }
+          return { turnId: e.turnId, index: e.index, answer: text + note, toolUses: [], stopReason: 'end_turn', usage: null }
+        }
       }
-      const chunk = r.value
-      if (chunk.kind === 'text') {
-        text += chunk.text
-        lastIndex = chunk.index
-      }
-      yield chunk
-      // This request's cost so far: its input side (the previous prompt's size,
-      // at the cache-read price) plus the answer so far (about four characters a token).
+    } finally {
       const estimate = inputGuess + ((text.length / 4) * out) / 1_000_000
-      if (!override && before + estimate >= c) {
-        await stream.return?.(undefined as any)
-        await record($, estimate, request)
-        const note = `\n\n[Arthur spend breaker: stopped this answer mid-stream at ~$${(before + estimate).toFixed(4)} (cap $${c}).]`
-        $.ui.log(`arthur-breaker: cut step ${e.index} mid-stream after ${text.length} chars`)
-        yield { kind: 'text', index: lastIndex, text: note }
-        return { turnId: e.turnId, index: e.index, answer: text + note, toolUses: [], stopReason: 'end_turn', usage: null }
-      }
+      if (!recorded && estimate > 0) await record($, estimate, request)
     }
   })
 
