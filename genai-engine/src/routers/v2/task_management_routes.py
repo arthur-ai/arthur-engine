@@ -221,7 +221,8 @@ def get_task(
     "/agent-tasks",
     description="Get agentic tasks with enriched agent metadata (tools, sub-agents, models) "
     "and provenance. Returns only agentic tasks. Filter by `discovery_source_id` and "
-    "`reported_since` to get the tasks one discovery source reported in a window. "
+    "`reported_since` to get the tasks one discovery source reported in a window, or "
+    "set `unreported` to get the tasks no discovery source has reported. "
     "Paged by cursor: a caller that needs every matching task passes the last task's ID "
     "as `after_task_id` until a page comes back with fewer than `page_size` tasks. A "
     "task created or archived mid-walk never repeats or skips another.",
@@ -241,6 +242,12 @@ def get_agent_tasks(
         description="Only return tasks a discovery scan reported on or after this "
         "time; UTC if no offset is given. Tasks no discovery source has reported are "
         "excluded when this filter is set.",
+    ),
+    unreported: bool = Query(
+        False,
+        description="Only return tasks no discovery source has reported, such as "
+        "agents known only from their traces. Cannot be combined with "
+        "`discovery_source_id` or `reported_since`.",
     ),
     after_task_id: UUID | None = Query(
         None,
@@ -272,6 +279,7 @@ def get_agent_tasks(
     Args:
         discovery_source_id: Only tasks this discovery source reported
         reported_since: Only tasks a discovery scan reported since this time
+        unreported: Only tasks no discovery source has reported
         after_task_id: The last task of the previous page, if any
         page_size: Tasks per page
         db_session: Database session
@@ -281,6 +289,16 @@ def get_agent_tasks(
     Returns:
         List of EnrichedTaskResponse objects (agentic tasks only)
     """
+    # The source filters select from reported tasks and `unreported` from the rest, so
+    # together they would match nothing. Say so rather than answer with an empty page
+    # a caller could mistake for "no such agents".
+    if unreported and (discovery_source_id is not None or reported_since is not None):
+        raise HTTPException(
+            status_code=400,
+            detail="unreported cannot be combined with discovery_source_id or "
+            "reported_since.",
+        )
+
     rules_repo = RuleRepository(db_session)
     metrics_repo = MetricRepository(db_session)
     tasks_repo = TaskRepository(
@@ -304,6 +322,7 @@ def get_agent_tasks(
         org_scope=org_scope,
         reported_by_source_id=discovery_source_id,
         reported_since=reported_since,
+        unreported=unreported,
     )
 
     # Convert to Task objects and enrich with service names

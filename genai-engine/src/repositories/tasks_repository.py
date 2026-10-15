@@ -102,6 +102,7 @@ class TaskRepository:
         org_scope: Optional[UUID] = None,
         reported_by_source_id: Optional[UUID] = None,
         reported_since: Optional[datetime] = None,
+        unreported: bool = False,
         after_task_id: Optional[str] = None,
     ) -> tuple[list[DatabaseTask], int]:
         stmt = self.db_session.query(DatabaseTask)
@@ -130,6 +131,22 @@ class TaskRepository:
                     ),
                 ),
             )
+        # The complement: tasks no discovery source has ever reported, such as agents
+        # only seen through their traces. Nothing in the provenance table can narrow
+        # that further, so asking for both at once is a contradiction, not a filter.
+        if unreported:
+            if reported_by_source_id is not None or reported_since is not None:
+                raise ValueError(
+                    "unreported excludes reported_by_source_id and reported_since.",
+                )
+            # NOT IN is safe here: provenance rows always name a task, so the subquery
+            # never yields the NULL that would make it match nothing.
+            stmt = stmt.where(
+                DatabaseTask.id.not_in(TaskProvenanceRepository.reported_task_ids()),
+            )
+            # The engine's own system tasks are never reported either, and are not
+            # agents: a caller uploading unreported tasks as agents must not see them.
+            stmt = stmt.where(DatabaseTask.is_system_task == False)
 
         # last_active is NOT a column on tasks: it is the most recent trace
         # end-time per task, derived from trace_metadata. We only join the

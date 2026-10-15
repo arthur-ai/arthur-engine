@@ -1340,7 +1340,7 @@
                     "Tasks"
                 ],
                 "summary": "Get Agent Tasks",
-                "description": "Get agentic tasks with enriched agent metadata (tools, sub-agents, models) and provenance. Returns only agentic tasks. Filter by `discovery_source_id` and `reported_since` to get the tasks one discovery source reported in a window. Paged by cursor: a caller that needs every matching task passes the last task's ID as `after_task_id` until a page comes back with fewer than `page_size` tasks. A task created or archived mid-walk never repeats or skips another.",
+                "description": "Get agentic tasks with enriched agent metadata (tools, sub-agents, models) and provenance. Returns only agentic tasks. Filter by `discovery_source_id` and `reported_since` to get the tasks one discovery source reported in a window, or set `unreported` to get the tasks no discovery source has reported. Paged by cursor: a caller that needs every matching task passes the last task's ID as `after_task_id` until a page comes back with fewer than `page_size` tasks. A task created or archived mid-walk never repeats or skips another.",
                 "operationId": "get_agent_tasks_api_v2_agent_tasks_get",
                 "security": [
                     {
@@ -1385,6 +1385,18 @@
                             "title": "Reported Since"
                         },
                         "description": "Only return tasks a discovery scan reported on or after this time; UTC if no offset is given. Tasks no discovery source has reported are excluded when this filter is set."
+                    },
+                    {
+                        "name": "unreported",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean",
+                            "description": "Only return tasks no discovery source has reported, such as agents known only from their traces. Cannot be combined with `discovery_source_id` or `reported_since`.",
+                            "default": false,
+                            "title": "Unreported"
+                        },
+                        "description": "Only return tasks no discovery source has reported, such as agents known only from their traces. Cannot be combined with `discovery_source_id` or `reported_since`."
                     },
                     {
                         "name": "after_task_id",
@@ -2866,10 +2878,10 @@
                             "items": {
                                 "type": "string"
                             },
-                            "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN",
+                            "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, DECISION, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN",
                             "title": "Span Types"
                         },
-                        "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN"
+                        "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, DECISION, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN"
                     },
                     {
                         "name": "annotation_score",
@@ -3632,10 +3644,10 @@
                             "items": {
                                 "type": "string"
                             },
-                            "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN",
+                            "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, DECISION, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN",
                             "title": "Span Types"
                         },
-                        "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN"
+                        "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, DECISION, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN"
                     },
                     {
                         "name": "annotation_score",
@@ -4303,10 +4315,10 @@
                             "items": {
                                 "type": "string"
                             },
-                            "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN",
+                            "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, DECISION, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN",
                             "title": "Span Types"
                         },
-                        "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN"
+                        "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, DECISION, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN"
                     },
                     {
                         "name": "start_time",
@@ -4637,10 +4649,10 @@
                             "items": {
                                 "type": "string"
                             },
-                            "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN",
+                            "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, DECISION, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN",
                             "title": "Span Types"
                         },
-                        "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN"
+                        "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, DECISION, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN"
                     },
                     {
                         "name": "annotation_score",
@@ -5496,10 +5508,10 @@
                             "items": {
                                 "type": "string"
                             },
-                            "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN",
+                            "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, DECISION, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN",
                             "title": "Span Types"
                         },
-                        "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN"
+                        "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, DECISION, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN"
                     },
                     {
                         "name": "annotation_score",
