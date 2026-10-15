@@ -14,6 +14,14 @@ from tests.clients.base_test_client import (
 from validation.prompt import validate_prompt
 
 
+# Every test here creates a task and counts or caps its rules, so default rules
+# that other tests left active must not be linked to it. Autouse fixtures set up
+# before the other fixtures in their scope, so this runs before create_task.
+@pytest.fixture(autouse=True)
+def _without_leftover_default_rules(without_leftover_default_rules: None) -> None:
+    pass
+
+
 @pytest.mark.unit_tests
 def test_validate_prompt(
     create_task: Task,
