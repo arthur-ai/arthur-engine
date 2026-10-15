@@ -103,12 +103,30 @@ def rates():
     if not isinstance(extra, dict):
         return table
     for model, row in extra.items():
-        if isinstance(row, dict) and all(
-            isinstance(row.get(k), (int, float)) and not isinstance(row.get(k), bool) and math.isfinite(row[k]) and row[k] >= 0
-            for k in ("input", "cached", "output")
-        ):
-            table[model] = {k: float(row[k]) for k in ("input", "cached", "output")}
+        rate = _rate_row(row)
+        if rate:
+            table[model] = rate
     return table
+
+
+def _rate_row(row):
+    """{input, cached, output} as floats, or None unless each is a finite,
+    non-negative number (an integer too large for a float counts as invalid)."""
+    if not isinstance(row, dict):
+        return None
+    rate = {}
+    for k in ("input", "cached", "output"):
+        v = row.get(k)
+        if isinstance(v, bool) or not isinstance(v, (int, float)):
+            return None
+        try:
+            v = float(v)
+        except OverflowError:
+            return None
+        if not math.isfinite(v) or v < 0:
+            return None
+        rate[k] = v
+    return rate
 
 
 def price(model, usage):
