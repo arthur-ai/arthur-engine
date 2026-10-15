@@ -1,0 +1,117 @@
+name: Team Approval Gate
+
+# A PR authored by someone outside @arthur-ai/arthur-engineers needs an approving review
+# from a team member before it can merge, whatever files it touches. A PR authored by a
+# team member is left to .github/CODEOWNERS: only gated paths need a second engineer.
+# Rulesets cannot condition on the PR author, so this job is a required status check on
+# the `dev` ruleset instead.
+#
+# "Team member" is tested as "has write access to this repo". Today these are the same
+# set: arthur-engineers is the only team with access, there are no direct collaborators,
+# and GitHub itself only counts approvals from users with write access. If write access
+# is ever granted outside the team, revisit this.
+#
+# Who this holds:
+#   - Fork contributors. They never have write access.
+#   - Bot authors such as app/claude and app/arthur-blazity-ai-workflow. The engineer
+#     who asked for the PR is not its author, so they can approve it.
+# Exempt: renovate[bot]. Its minor/patch updates keep automerging, and CODEOWNERS still
+# holds any update that touches a gated path. The Automator App only opens release PRs
+# into `main` and bypasses the rulesets anyway.
+#
+# An approval counts only on the PR's current head commit, and a later "request changes"
+# or dismissal from the same reviewer cancels it.
+#
+# Triggers:
+#   - pull_request_target: the copy of this file on the base branch runs, so a PR cannot
+#     change the check that judges it. Nothing is checked out; the job only reads the API.
+#   - pull_request_review: re-runs the check when a review lands. This event runs the
+#     PR's own copy of the workflow, which a fork could edit, but every path under
+#     .github/ is in CODEOWNERS, so that edit already needs a team approval. Keep
+#     /.github/** gated.
+#   - merge_group: a PR can only join the `dev` queue with this check green, so it passes
+#     here. Without this trigger the queue would wait on the check forever.
+
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize, ready_for_review, edited]
+  pull_request_review:
+    types: [submitted, edited, dismissed]
+  merge_group:
+    branches:
+      - dev
+
+permissions: {}
+
+concurrency:
+  group: team-approval-gate-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  require-team-approval:
+    name: require-team-approval
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pull-requests: read
+    steps:
+      - name: Check the author or a team approval
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+
+          if [ "$EVENT" = "merge_group" ]; then
+            echo "Merge queue run: the PR needed this check green to join the queue."
+            exit 0
+          fi
+
+          # Write access as GitHub reports it: admin, maintain and write all carry push.
+          # Bots and outside users come back as false. A 404 (an account that no longer
+          # exists) also counts as no. Any other API error stops the check with that
+          # error instead of blaming the author; re-run the job once GitHub recovers.
+          has_write() {
+            local out
+            if out=$(gh api "repos/$REPO/collaborators/$1/permission" \
+                       --jq '.user.permissions.push' 2>&1); then
+              [ "$out" = "true" ]
+            elif grep -q 'HTTP 404' <<<"$out"; then
+              return 1
+            else
+              echo "::error::Could not read $1's permission on $REPO, so this check cannot decide. Re-run the job. GitHub said: $out"
+              exit 1
+            fi
+          }
+
+          if [ "$AUTHOR" = "renovate[bot]" ]; then
+            echo "Renovate PR: exempt. CODEOWNERS still applies to gated paths."
+            exit 0
+          fi
+          if has_write "$AUTHOR"; then
+            echo "$AUTHOR is on the team: CODEOWNERS decides whether this PR needs a review."
+            exit 0
+          fi
+
+          # Each reviewer's latest approve / request-changes / dismissed review (comments
+          # do not change it), kept only if it approves the current head commit.
+          APPROVERS=$(gh api "repos/$REPO/pulls/$PR/reviews" --paginate \
+            | jq -rs --arg sha "$HEAD_SHA" '
+                add
+                | map(select(.state == "APPROVED" or .state == "CHANGES_REQUESTED" or .state == "DISMISSED"))
+                | group_by(.user.login) | map(last)
+                | map(select(.state == "APPROVED" and .commit_id == $sha) | .user.login)
+                | .[]')
+          for u in $APPROVERS; do
+            if has_write "$u"; then
+              echo "Approved by $u on $HEAD_SHA."
+              exit 0
+            fi
+          done
+
+          echo "::error::$AUTHOR is not in @arthur-ai/arthur-engineers, so a team member must approve $HEAD_SHA before this PR can merge."
+          exit 1

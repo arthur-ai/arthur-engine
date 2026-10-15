@@ -333,8 +333,9 @@ class DiscoveryScanOutcome:
     # ever produced, which is not the same answer as a source that produced one and
     # failed the contract.
     output_column_check: Optional[OutputColumnCheckResult] = None
-    # Endpoint sources only: the devices behind the records, and the ones policy kept
-    # out. Null for a source that does not read devices.
+    # Sources that read machines -- an MDM's endpoints, a cloud's VMs: the devices
+    # behind the records, and the ones policy kept out. Null for a source that does not
+    # read devices.
     device_coverage: Optional[DeviceCoverage] = None
 
     def record_failure(
