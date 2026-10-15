@@ -167,3 +167,22 @@ test('Haiku 5.5 uses the long-prompt rate past 100,000 prompt tokens', async ($,
   // 200,000 input tokens at $0.50/M.
   expect(await priced($, on, 'claude-haiku-5-5', { input_tokens: 200000 })).toContain('$0.1000')
 })
+
+test('an interrupted answer also closes the request beneath, so it stops streaming', async ($, on) => {
+  mock.store(on)
+  mock.env(on, { ARTHUR_BREAKER_CAP_USD: '0.10' })
+  let closed = false
+  on('turn.step', async function* ($, e) {
+    try {
+      for (let i = 0; i < 100; i++) yield { kind: 'text', index: 0, text: 'x'.repeat(400) }
+      return { turnId: e.turnId, index: e.index, answer: '', toolUses: [], stopReason: 'end_turn', usage: null }
+    } finally {
+      closed = true
+    }
+  })
+  const stream = $.turn.step({ turnId: 't1', index: 0, model: 'claude-haiku-4-5', messageCount: 1 })
+  await stream.next()
+  await stream.next()
+  await stream.return(undefined as any)
+  expect(closed).toBe(true)
+})

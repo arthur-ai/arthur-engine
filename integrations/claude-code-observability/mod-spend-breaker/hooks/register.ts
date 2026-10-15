@@ -184,8 +184,17 @@ export const register: Register = on => {
         }
       }
     } finally {
-      const estimate = inputGuess + ((text.length / 4) * out) / 1_000_000
-      if (!recorded && estimate > 0) await record($, estimate, request)
+      if (!recorded) {
+        // Interrupted or failed: also close the request beneath (Claude Code does
+        // too; this doesn't rely on it), without masking the original error.
+        try {
+          await stream.return?.(undefined as any)
+        } catch {
+          // already closed or failed
+        }
+        const estimate = inputGuess + ((text.length / 4) * out) / 1_000_000
+        if (estimate > 0) await record($, estimate, request)
+      }
     }
   })
 
