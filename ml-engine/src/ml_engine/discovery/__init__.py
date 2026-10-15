@@ -17,15 +17,17 @@ an unsupported source and is reported per job rather than per engine.
 
 Adding an MDM is one more entry here and one more package under `discovery.endpoint`;
 adding a SIEM is the same under `discovery.siem`, a cloud provider product under
-`discovery.cloud`, and a network log source under `discovery.network`.
+`discovery.cloud`, and a network log source under `discovery.network`. A package goes
+where its vendor's source class is, which is also the record type it emits.
 Everything the new MDM shares with Jamf -- the `arthur1.` frame, the six-column rows,
-matching, the record shape -- is already neutral and is not touched.
+matching, the record shape -- is already neutral and is not touched. A cloud product
+whose VMs carry that payload (Compute Engine) reuses it too, from `discovery.cloud`.
 """
 
+from discovery.cloud.gce.connector import VENDOR as GCP_COMPUTE_ENGINE_VENDOR
+from discovery.cloud.gce.connector import ComputeEngineConnector
 from discovery.cloud.gcp_vertex.connector import VENDOR as GCP_VERTEX_VENDOR
 from discovery.cloud.gcp_vertex.connector import VertexAgentEngineConnector
-from discovery.endpoint.gce.connector import VENDOR as GCP_COMPUTE_ENGINE_VENDOR
-from discovery.endpoint.gce.connector import ComputeEngineConnector
 from discovery.endpoint.jamf.connector import VENDOR as JAMF_VENDOR
 from discovery.endpoint.jamf.connector import JamfConnector
 from discovery.network.cloudwatch_logs.connector import VENDOR as CLOUDWATCH_LOGS_VENDOR
