@@ -46,6 +46,12 @@ from job_log_exporter import REPORT_AS_JOB_ERROR
 # agent at a time inside a single request, so a smaller page bounds both calls.
 FETCH_PAGE_SIZE = 200
 
+# GenAI Engine's own bookkeeping tasks (genai-engine `utils/constants.py`). They are not
+# agents, and the agent-tasks response does not say a task is a system task.
+GENAI_ENGINE_SYSTEM_TASK_NAMES = frozenset(
+    {"__unmapped__", "__arthur_system_task__", "__synthetic_dataset_generation__"},
+)
+
 # Rejected agents reported one by one before the rest are summarized: each is a log line
 # and a job error, so a batch the Platform refused wholesale does not become thousands.
 MAX_REPORTED_REJECTIONS = 20
@@ -219,20 +225,40 @@ class FetchDiscoveredAgentsExecutor:
                     _request_timeout=AGENT_TASKS_TIMEOUT_SECONDS,
                 )
             )
-            if tasks:
+            # A GenAI Engine that predates the `unreported` filter ignores it and
+            # answers with every task, so the walk drops what the filter would have.
+            to_upload = (
+                [t for t in tasks if _is_unreported_agent(t)] if unreported else tasks
+            )
+            if to_upload:
                 uploaded += publish_enriched_tasks(
                     self.agents_client,
                     self.logger,
                     workspace_id,
                     data_plane_id,
-                    tasks,
+                    to_upload,
                     discovery_source_id=source_id,
                 )
-            # A short page is the last one, which is how the endpoint says so.
+            # A short page is the last one, which is how the endpoint says so. Judged
+            # on the page as served, so the cursor walks on past a filtered page.
             if len(tasks) < self.page_size:
                 return uploaded
             # Paged by cursor: the next page starts after this one's last task.
             after_task_id = tasks[-1].id
+
+
+def _is_unreported_agent(task: EnrichedTaskResponse) -> bool:
+    """Whether a task belongs in an unreported walk: no source reported it, and it is
+    not one of GenAI Engine's system tasks.
+
+    Every task carries provenance; a task no source reported has only its creation
+    source's entry, which names no source. Any entry that names one means a source
+    reported the task, and that source's own fetch uploads it with its evidence.
+    """
+    if task.name in GENAI_ENGINE_SYSTEM_TASK_NAMES:
+        return False
+    provenance = task.to_dict().get("provenance") or {}
+    return not any(entry.get("source_id") for entry in provenance.get("sources") or [])
 
 
 def publish_enriched_tasks(

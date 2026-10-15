@@ -638,3 +638,46 @@ def test_a_source_fetch_also_uploads_the_tasks_no_source_reported(
     for c in agents_client.put_agents.call_args_list[1:]:
         for agent in c.kwargs["put_agents"].agents:
             assert not agent.evidence
+
+
+def _system_task(name: str, task_id: str) -> EnrichedTaskResponse:
+    """One of GenAI Engine's own bookkeeping tasks, as an engine that ignores the
+    `unreported` filter would still serve it: no source reported it either, so only
+    its name tells it apart."""
+    task = _traced_task(task_id)
+    task.name = name
+    return task
+
+
+def test_an_engine_that_ignores_unreported_cannot_leak_reported_or_system_tasks(
+    tasks_api: MagicMock,
+) -> None:
+    """A GenAI Engine older than the `unreported` filter ignores it and serves every
+    task. The walk keeps only what the filter would have returned: a task a source
+    reported goes up through that source's fetch, with its evidence, and a system task
+    is not an agent at all."""
+    tasks_api.get_agent_tasks_api_v2_agent_tasks_get.side_effect = [
+        [_task("s1")],
+        [_task("s1"), _system_task("__unmapped__", "sys1"), _traced_task("u1")],
+    ]
+    agents_client = _agents_client()
+
+    _executor(agents_client, page_size=5).execute(_spec())
+
+    assert _uploaded_task_ids(agents_client) == [["s1"], ["u1"]]
+
+
+def test_a_page_the_guard_empties_does_not_end_the_walk(tasks_api: MagicMock) -> None:
+    """The cursor follows the page as served: a full page of tasks the guard drops is
+    still a full page, so the walk goes on and finds the agent after it."""
+    tasks_api.get_agent_tasks_api_v2_agent_tasks_get.side_effect = [
+        [_system_task("__arthur_system_task__", "sys1"), _task("s2")],
+        [_traced_task("u1")],
+    ]
+    agents_client = _agents_client()
+
+    _executor(agents_client).execute(_engine_scoped_spec())
+
+    requests = tasks_api.get_agent_tasks_api_v2_agent_tasks_get.call_args_list
+    assert [c.kwargs["after_task_id"] for c in requests] == [None, "s2"]
+    assert _uploaded_task_ids(agents_client) == [["u1"]]
