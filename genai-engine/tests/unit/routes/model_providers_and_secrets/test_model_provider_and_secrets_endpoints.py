@@ -21,6 +21,14 @@ def test_model_provider_lifecycle(
 ):
     mock_completion_cost.return_value = 0.001234
 
+    # other tests configure providers without removing them; start from none
+    for provider in ModelProvider:
+        response = client.base_client.delete(
+            f"/api/v1/model_providers/{provider.value}",
+            headers=client.authorized_user_api_key_headers,
+        )
+        assert response.status_code == 204
+
     # first validate listing providers shows all disabled
     response = client.base_client.get(
         f"/api/v1/model_providers",
