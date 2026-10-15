@@ -1,24 +1,20 @@
 """
 Executor for the DISCOVER_AGENTS job.
 
-Two shapes of job arrive here. A job carrying a materialized discovery source config
-(D-06) is a scan of that one source: it runs through the connector seams in
-`discovery_scan`, publishing each batch as it arrives so a mid-scan failure keeps what
-it already collected, and then chains a FETCH_DISCOVERED_AGENTS job (D-10) that surfaces
-what it found to the Platform. A job carrying no config is the older GCP data-plane
-sweep, which triggers synchronous polling in GenAI Engine and syncs the enriched agent
-tasks to the Agents API.
+A DISCOVER_AGENTS job carries a materialized discovery source config and scans that
+one source: it runs through the connector seams in `discovery_scan`, publishing
+each batch as it arrives so a mid-scan failure keeps what it already collected, and
+then chains a FETCH_DISCOVERED_AGENTS job that surfaces what it found -- and
+every task no source reported -- to the Platform.
 
-Vertex AI agents are discovered by a `gcp_vertex` source config
-(`discovery.cloud.gcp_vertex`); GenAI Engine no longer discovers them itself. The
-no-config sweep stays for now: the polling it triggers still fetches traces for GCP
-tasks, and it is the only job that uploads agents no discovery source reported, such
-as ones known only from their traces. It goes once an engine-scoped fetch replaces it.
+A job with no source config used to run a GCP data-plane sweep: it triggered GenAI
+Engine's Vertex AI trace polling and uploaded every enriched agent task. Both are gone,
+so such a job is refused.
 """
 
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import List, NoReturn, Optional
+from typing import NoReturn, Optional
 
 from arthur_client.api_bindings import (
     AgentsV1Api,
@@ -33,13 +29,6 @@ from arthur_client.api_bindings import (
     PostJobKind,
     PostJobSpec,
 )
-from genai_client import (
-    AgentDiscoveryApi,
-    ApiClient,
-    Configuration,
-    EnrichedTaskResponse,
-    TasksApi,
-)
 
 from discovery import source_connectors
 from job_executors.discovery_scan import (
@@ -52,7 +41,6 @@ from job_executors.discovery_scan import (
     finalize_outcome,
     run_source_scan,
 )
-from job_executors.fetch_discovered_agents_executor import publish_enriched_tasks
 from log_redaction import register_secrets, secret_values
 
 # How far before the scan started its chained fetch reads from. GenAI Engine stamps a
@@ -102,7 +90,10 @@ class DiscoverAgentsExecutor:
             self._execute_source_scan(job, job_spec)
             return
 
-        self._execute_gcp_sweep(job_spec)
+        raise ValueError(
+            "DISCOVER_AGENTS job carries no discovery source config. Scans run one "
+            "source config; the source-less sweep this used to run was removed.",
+        )
 
     def _execute_source_scan(
         self,
@@ -456,104 +447,3 @@ class DiscoverAgentsExecutor:
         if job_spec.lookback_hours is None:
             raise ValueError("Discovery scan job carries no lookback_hours.")
         return int(job_spec.lookback_hours)
-
-    def _execute_gcp_sweep(self, job_spec: DiscoverAgentsJobSpec) -> None:
-        """Trigger synchronous polling then sync enriched agent-tasks to the Agents API."""
-        workspace_id = str(job_spec.workspace_id)
-        data_plane_id = str(job_spec.data_plane_id)
-
-        self.logger.info(
-            f"Starting agent discovery for workspace {workspace_id}, "
-            f"data plane {data_plane_id}",
-            extra={
-                "workspace_id": workspace_id,
-                "data_plane_id": data_plane_id,
-            },
-        )
-
-        try:
-            self._trigger_synchronous_polling()
-            enriched_tasks = self._fetch_enriched_agent_tasks()
-            self._publish_to_agents_api(workspace_id, data_plane_id, enriched_tasks)
-        except Exception as e:
-            self.logger.error(
-                f"Agents API sync failed for data plane {data_plane_id}: {e}",
-                extra={"data_plane_id": data_plane_id, "error": str(e)},
-                exc_info=True,
-            )
-            raise
-
-        self.logger.info(
-            f"Agent discovery completed for data plane {data_plane_id}",
-            extra={"workspace_id": workspace_id, "data_plane_id": data_plane_id},
-        )
-
-    def _trigger_synchronous_polling(self) -> None:
-        """Trigger synchronous polling to ensure trace data is fetched before querying agent-tasks."""
-        self.logger.info("Triggering synchronous agent polling")
-
-        config = Configuration(
-            host=self.genai_engine_url,
-            access_token=self.genai_engine_api_key,
-        )
-
-        with ApiClient(config) as api_client:
-            api = AgentDiscoveryApi(api_client)
-            response = (
-                api.execute_all_agent_polling_api_v1_agent_polling_execute_all_post(
-                    wait_for_completion=True,
-                    timeout=120,  # 2 minute timeout
-                )
-            )
-
-        self.logger.info(
-            f"Synchronous polling completed: discovered={response.discovered}, "
-            f"traces_fetched={response.traces_fetched}",
-            extra={
-                "discovered": response.discovered,
-                "traces_fetched": response.traces_fetched,
-            },
-        )
-
-    def _fetch_enriched_agent_tasks(self) -> List[EnrichedTaskResponse]:
-        """Fetch enriched agent tasks from the GenAI Engine agent-tasks endpoint."""
-        config = Configuration(
-            host=self.genai_engine_url,
-            access_token=self.genai_engine_api_key,
-        )
-
-        with ApiClient(config) as api_client:
-            api = TasksApi(api_client)
-            enriched_tasks: List[EnrichedTaskResponse] = (
-                api.get_agent_tasks_api_v2_agent_tasks_get()
-            )
-
-        self.logger.info(
-            f"Fetched {len(enriched_tasks)} enriched agent task(s) from GenAI Engine",
-            extra={"num_tasks": len(enriched_tasks)},
-        )
-        return enriched_tasks
-
-    def _publish_to_agents_api(
-        self,
-        workspace_id: str,
-        data_plane_id: str,
-        enriched_tasks: List[EnrichedTaskResponse],
-    ) -> None:
-        """Convert enriched tasks to Agent objects and upsert via the Agents API."""
-        if not enriched_tasks:
-            self.logger.info("No enriched tasks to publish to Agents API")
-            return
-
-        num_upserted = publish_enriched_tasks(
-            self.agents_client,
-            self.logger,
-            workspace_id,
-            data_plane_id,
-            enriched_tasks,
-        )
-
-        self.logger.info(
-            f"Published {num_upserted} agent(s) to Agents API",
-            extra={"workspace_id": workspace_id, "num_upserted": num_upserted},
-        )
