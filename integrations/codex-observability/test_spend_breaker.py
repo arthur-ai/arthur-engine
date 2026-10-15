@@ -216,6 +216,15 @@ def test_a_bad_rates_override_cannot_turn_the_breaker_off(tmp_path, env, bad):
     assert hook(env, "PreToolUse", tool_name="shell", transcript_path=str(rollout))["hookSpecificOutput"]["permissionDecision"] == "deny"
 
 
+@pytest.mark.parametrize("bad", ['Infinity', '1e999', 'NaN', '-1'])
+def test_a_rate_that_is_not_a_finite_non_negative_number_is_ignored(tmp_path, env, bad):
+    rollout = tmp_path / "r.jsonl"
+    write_rollout(rollout, [(1000, 0, 0)], model="gpt-6-astra")  # $0.01 at the built-in rate, under the cap
+    env["ARTHUR_BREAKER_RATES_JSON"] = '{"gpt-6-astra": {"input": %s, "cached": 0, "output": 1}}' % bad
+    assert hook(env, "PreToolUse", tool_name="shell", transcript_path=str(rollout)) == {}
+    assert spent(env) == 0.01
+
+
 def test_valid_rows_beside_a_bad_one_still_apply(tmp_path, env):
     rollout = tmp_path / "r.jsonl"
     write_rollout(rollout, [(0, 0, 2100)], model="cheap-model")
