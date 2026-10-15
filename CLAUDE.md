@@ -13,6 +13,7 @@ Arthur Engine is an AI/ML monitoring and governance platform. Each component has
 - Pre-commit hooks format code and run the unit test suites — a slow or failing commit is usually them, not git.
 - GenAI Engine API changes require a changelog entry: `uv run generate_changelog` from `genai-engine/`.
 - Repo skills cover environment setup and running the stack: `setup-genai-dev`, `start-genai-backend`, `start-genai-frontend`.
+- `.github/CODEOWNERS` is the human-review gate for sensitive paths. `maintain-codeowners` has the bar for gating a path and the audit procedure; use it before adding a line or when a comment there goes stale.
 - Full-stack local deployment: [deployment/docker-compose/genai-engine/](deployment/docker-compose/genai-engine/) (`cp .env.template .env`, then `docker compose up`).
 
 ## Dependencies
