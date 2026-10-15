@@ -273,9 +273,9 @@ journalctl -u arthur-ai-discovery.service -n 50        # the collector's stderr,
 
 ## 07 · Access for the Arthur collector
 
-The collector is a `gcp_compute_engine` discovery source. It lists instances, reads each
-in-scope VM's `arthur/` namespace, and reads a project's `enable-guest-attributes` default
-when a VM does not set its own: `compute.instances.list`,
+The collector is a `gcp_compute_engine` discovery source, in the Platform's Cloud class. It
+lists instances, reads each in-scope VM's `arthur/` namespace, and reads a project's
+`enable-guest-attributes` default when a VM does not set its own: `compute.instances.list`,
 `compute.instances.getGuestAttributes` and `compute.projects.get`. `roles/compute.viewer`
 includes all three; a custom role holding only those three is the least privilege, and one
 without `compute.projects.get` works only if every VM sets the flag itself.

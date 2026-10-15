@@ -22,6 +22,11 @@ from scorer.checks.prompt_injection.classifier import BinaryPromptInjectionClass
 from scorer.score import ScorerClient
 from tests.clients.base_test_client import TEST_AUDIT_LOG_DIR, app
 
+# Loads real ML models: one xdist worker runs every module in this group, so
+# parallel CI holds one copy of them rather than one per worker.
+pytestmark = pytest.mark.xdist_group("ml_models")
+
+
 AUDIT_LOG_FILE = os.path.join(TEST_AUDIT_LOG_DIR, "audit.log")
 
 

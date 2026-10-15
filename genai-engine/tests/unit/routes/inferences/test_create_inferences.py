@@ -351,7 +351,10 @@ def test_user_story_create_task_validate_large_prompt_no_error(
 
 
 @pytest.mark.unit_tests
-def test_validations_dont_fail_on_error(client: GenaiEngineTestClientBase):
+def test_validations_dont_fail_on_error(
+    without_leftover_default_rules: None,
+    client: GenaiEngineTestClientBase,
+):
     status_code, task_response = client.create_task("test_task")
     assert status_code == 200
 
