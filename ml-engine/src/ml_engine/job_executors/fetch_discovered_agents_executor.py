@@ -6,9 +6,9 @@ Engine; this reads those tasks back for one source, converts each to an agent, a
 upserts them through `PUT /workspaces/{id}/agents`, where the Platform decides whether
 each one is a registered application or an unregistered agent.
 
-Given no source, the job is engine-scoped instead: it uploads every task on the engine
-that no discovery source has reported, such as an agent GenAI Engine only knows from
-its traces. Those are the agents no source's fetch will ever carry.
+Each fetch then also uploads every task on the engine that no discovery source has
+reported, such as an agent GenAI Engine only knows from its traces or one created by
+hand: no source's own walk will ever carry those, so they ride along with every scan.
 
 Tasks are the seam between the two jobs, so everything this uploads carries a
 `task_id` by construction. Running it twice over the same window uploads the same
@@ -101,8 +101,7 @@ class FetchDiscoveredAgentsExecutor:
 
         Then upload every task no source has reported, so the agents the engine knows
         only from their own traces or a manual create surface on the same scan as
-        the source's. Without a source, that second walk is the whole job:
-        engine-scoped.
+        the source's.
 
         Each page is uploaded as it arrives rather than after the last one, so memory
         is bounded by a page whatever the source reported, and a failure part-way
@@ -110,39 +109,20 @@ class FetchDiscoveredAgentsExecutor:
         """
         workspace_id = str(job_spec.workspace_id)
         data_plane_id = str(job_spec.data_plane_id)
-        # No source means the engine's own agents: the tasks outside every source's
-        # fetch. They are read by the same cursor walk, and uploaded with no source's
-        # evidence because none reported them. The Platform sends no window with this,
-        # and GenAI Engine refuses one alongside `unreported`, so a spec that had one
-        # fails the job rather than quietly fetching something else.
-        source_id: Optional[str] = (
-            str(job_spec.discovery_source_id)
-            if job_spec.discovery_source_id is not None
-            else None
+        source_id = str(job_spec.discovery_source_id)
+        window = (
+            f"reported since {job_spec.reported_since.isoformat()}"
+            if job_spec.reported_since is not None
+            else "ever reported"
         )
-        if source_id is None:
-            self.logger.info(
-                "Fetching the engine-scoped tasks: every task no discovery source "
-                "has reported",
-                extra={
-                    "workspace_id": workspace_id,
-                    "data_plane_id": data_plane_id,
-                },
-            )
-        else:
-            window = (
-                f"reported since {job_spec.reported_since.isoformat()}"
-                if job_spec.reported_since is not None
-                else "ever reported"
-            )
-            self.logger.info(
-                f"Fetching the tasks discovery source {source_id} {window}",
-                extra={
-                    "workspace_id": workspace_id,
-                    "data_plane_id": data_plane_id,
-                    "discovery_source_id": source_id,
-                },
-            )
+        self.logger.info(
+            f"Fetching the tasks discovery source {source_id} {window}",
+            extra={
+                "workspace_id": workspace_id,
+                "data_plane_id": data_plane_id,
+                "discovery_source_id": source_id,
+            },
+        )
 
         with ApiClient(
             Configuration(
@@ -151,21 +131,6 @@ class FetchDiscoveredAgentsExecutor:
             ),
         ) as api_client:
             tasks_api = TasksApi(api_client)
-            if source_id is None:
-                uploaded = self._upload_walk(
-                    tasks_api,
-                    workspace_id,
-                    data_plane_id,
-                    source_id=None,
-                    reported_since=job_spec.reported_since,
-                    unreported=True,
-                )
-                self.logger.info(
-                    f"Uploaded {uploaded} engine-scoped agent(s)",
-                    extra={"workspace_id": workspace_id, "num_upserted": uploaded},
-                )
-                return
-
             uploaded = self._upload_walk(
                 tasks_api,
                 workspace_id,
@@ -177,7 +142,8 @@ class FetchDiscoveredAgentsExecutor:
             )
             # No window: these tasks have no report times to measure one against,
             # and every one of them is uploaded again, which the Platform's upsert on
-            # task_id makes an update in place.
+            # task_id makes an update in place. No source's evidence goes with them:
+            # none reported them.
             unreported_uploaded = self._upload_walk(
                 tasks_api,
                 workspace_id,
@@ -189,12 +155,12 @@ class FetchDiscoveredAgentsExecutor:
 
         self.logger.info(
             f"Uploaded {uploaded} agent(s) from discovery source {source_id}, and "
-            f"{unreported_uploaded} engine-scoped agent(s) no source reported",
+            f"{unreported_uploaded} agent(s) no discovery source reported",
             extra={
                 "workspace_id": workspace_id,
                 "discovery_source_id": source_id,
                 "num_upserted": uploaded,
-                "num_engine_scoped_upserted": unreported_uploaded,
+                "num_unreported_upserted": unreported_uploaded,
             },
         )
 
