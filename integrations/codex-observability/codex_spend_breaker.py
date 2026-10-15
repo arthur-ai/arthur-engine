@@ -89,11 +89,23 @@ def locked():
 
 
 def rates():
+    """The built-in price rows plus ARTHUR_BREAKER_RATES_JSON. A row is used only
+    when it is an object with a number for each of input, cached and output; any
+    other value is ignored, so a bad row can't make every hook fail (and the
+    breaker silently stop)."""
     table = dict(RATES)
     try:
-        table.update(json.loads(os.environ.get("ARTHUR_BREAKER_RATES_JSON") or "{}"))
+        extra = json.loads(os.environ.get("ARTHUR_BREAKER_RATES_JSON") or "{}")
     except ValueError:
-        pass
+        return table
+    if not isinstance(extra, dict):
+        return table
+    for model, row in extra.items():
+        if isinstance(row, dict) and all(
+            isinstance(row.get(k), (int, float)) and not isinstance(row.get(k), bool) and row[k] >= 0
+            for k in ("input", "cached", "output")
+        ):
+            table[model] = {k: float(row[k]) for k in ("input", "cached", "output")}
     return table
 
 

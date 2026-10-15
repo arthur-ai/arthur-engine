@@ -206,3 +206,18 @@ def test_concurrent_hooks_lose_no_spend(tmp_path, env):
     for p in procs:
         p.wait(timeout=10)
     assert spent(env) == 0.4
+
+
+@pytest.mark.parametrize("bad", ['[1, 2]', '{"x": "cheap"}', '{"x": {"input": 1}}', '{"x": {"input": "1", "cached": 0, "output": 1}}', 'not json'])
+def test_a_bad_rates_override_cannot_turn_the_breaker_off(tmp_path, env, bad):
+    rollout = tmp_path / "r.jsonl"
+    write_rollout(rollout, [(10000, 0, 100)], model="some-new-model")  # over the cap at any built-in rate
+    env["ARTHUR_BREAKER_RATES_JSON"] = bad
+    assert hook(env, "PreToolUse", tool_name="shell", transcript_path=str(rollout))["hookSpecificOutput"]["permissionDecision"] == "deny"
+
+
+def test_valid_rows_beside_a_bad_one_still_apply(tmp_path, env):
+    rollout = tmp_path / "r.jsonl"
+    write_rollout(rollout, [(0, 0, 2100)], model="cheap-model")
+    env["ARTHUR_BREAKER_RATES_JSON"] = json.dumps({"broken": "x", "cheap-model": {"input": 0.1, "cached": 0.01, "output": 0.4}})
+    assert hook(env, "PreToolUse", tool_name="shell", transcript_path=str(rollout)) == {}
