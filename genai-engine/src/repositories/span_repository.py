@@ -41,7 +41,6 @@ from schemas.response_schemas import (
     TraceTimeSeriesPoint,
     TraceTimeSeriesResponse,
 )
-from services.trace.gcp_conversion_service import GcpConversionService
 from services.trace.metrics_integration_service import MetricsIntegrationService
 from services.trace.otel_conversion_service import OtelConversionService
 from services.trace.span_query_service import SpanQueryService
@@ -86,7 +85,6 @@ class SpanRepository:
         )
         self.tree_building_service = TreeBuildingService()
         self.otel_conversion_service = OtelConversionService()
-        self.gcp_conversion_service = GcpConversionService()
 
     # ============================================================================
     # Public API Methods - Used by Optimized Trace Endpoints
