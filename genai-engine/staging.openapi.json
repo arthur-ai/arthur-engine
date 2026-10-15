@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.1011"
+        "version": "2.1.1014"
     },
     "paths": {
         "/api/v2/engine-config": {
@@ -17039,7 +17039,7 @@
                     "Agent Discovery"
                 ],
                 "summary": "Execute All Agent Polling",
-                "description": "Manually trigger a full agent discovery and polling cycle. Discovers new GCP agents and enqueues trace-fetch jobs for all eligible tasks. Use wait_for_completion=true to block until all polling jobs finish.",
+                "description": "Manually trigger a polling cycle: enqueues trace-fetch jobs for all eligible GCP tasks. `discovered` is always 0, because Vertex AI agents are discovered by gcp_vertex discovery sources, not by this cycle. Use wait_for_completion=true to block until all polling jobs finish.",
                 "operationId": "execute_all_agent_polling_api_v1_agent_polling_execute_all_post",
                 "security": [
                     {

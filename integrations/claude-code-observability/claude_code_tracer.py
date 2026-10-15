@@ -1887,8 +1887,15 @@ def handle_user_prompt_submit(data: dict, config: dict) -> None:
             _carry_trace_id = _old_ct["trace_id"]
             _carry_parent_span = _old_ct["parent_agent_span_id"]
         transcript_path = _get_cached_transcript_path(data, state, session_id)
-        _emit_pending_llm_spans(state, transcript_path, config)
-        _complete_turn(state, config, transcript_path, now_ns)
+        # A session whose only prompt was blocked has no conversation in its
+        # transcript yet, so nothing resolves; the hook's own path still names it.
+        if _prompt_was_blocked(_old_ct, transcript_path or data.get("transcript_path")):
+            # Nothing ran, so there is no turn to send: just an empty trace.
+            # Give its turn number to the prompt that does run.
+            state["turn_number"] = _old_ct.get("turn_number", 1) - 1
+        else:
+            _emit_pending_llm_spans(state, transcript_path, config)
+            _complete_turn(state, config, transcript_path, now_ns)
         # Clear the cached path so the new turn resolves it fresh below
         state.pop("transcript_path", None)
 
@@ -1929,6 +1936,27 @@ def handle_user_prompt_submit(data: dict, config: dict) -> None:
     }
 
     _save_state(session_id, state)
+
+
+def _prompt_was_blocked(current_trace: dict, transcript_path: Optional[str]) -> bool:
+    """True when the turn's prompt never ran because a UserPromptSubmit hook
+    (the circuit breaker, say) blocked it.  Claude Code then writes no entry
+    carrying the prompt's id, and fires no Stop, so the turn is still open
+    when the next prompt arrives.  An interrupted turn has its prompt entry.
+    """
+    prompt_id = current_trace.get("prompt_id")
+    if (
+        not prompt_id
+        or not transcript_path
+        or not os.path.exists(transcript_path)
+        or current_trace.get("_pretool_created")
+        or current_trace.get("emitted_llm_span_count")
+    ):
+        return False
+    return not any(
+        entry.get("promptId") == prompt_id
+        for entry in _iter_transcript_entries(transcript_path)
+    )
 
 
 def _prompt_text(transcript_path: Optional[str], prompt_id: str) -> str:
@@ -2617,7 +2645,8 @@ def handle_stop(data: dict, config: dict) -> None:
         _complete_turn(state, config, transcript_path, end_ns)
 
         _mark_prompt_done(
-            session_id, (state.get("current_trace") or {}).get("prompt_id", "")
+            session_id,
+            (state.get("current_trace") or {}).get("prompt_id", ""),
         )
         _delete_state(session_id)
 

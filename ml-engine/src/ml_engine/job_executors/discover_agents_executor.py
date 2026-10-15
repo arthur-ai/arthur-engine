@@ -9,11 +9,11 @@ what it found to the Platform. A job carrying no config is the older GCP data-pl
 sweep, which triggers synchronous polling in GenAI Engine and syncs the enriched agent
 tasks to the Agents API.
 
-D-14 moved Vertex AI discovery onto a `gcp_vertex` source config
-(`discovery.cloud.gcp_vertex`). The no-config sweep stays for now: the polling it
-triggers still fetches traces for GCP tasks, and still runs GenAI Engine's
-startup-variable discovery for engines that have not switched it off
-(GENAI_ENGINE_LEGACY_GCP_DISCOVERY_ENABLED). It goes when that discovery phase does.
+Vertex AI agents are discovered by a `gcp_vertex` source config
+(`discovery.cloud.gcp_vertex`); GenAI Engine no longer discovers them itself. The
+no-config sweep stays for now: the polling it triggers still fetches traces for GCP
+tasks, and it is the only job that uploads agents no discovery source reported, such
+as ones known only from their traces. It goes once an engine-scoped fetch replaces it.
 """
 
 import logging

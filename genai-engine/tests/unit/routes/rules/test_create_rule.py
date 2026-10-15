@@ -16,10 +16,12 @@ from arthur_common.models.enums import (
     RuleType,
 )
 from schemas.internal_schemas import Rule
+from db_models import DatabaseTaskToRules
 from tests.clients.base_test_client import (
     DEFAULT_KEYWORDS,
     DEFAULT_REGEX,
     GenaiEngineTestClientBase,
+    override_get_db_session,
 )
 
 
@@ -350,7 +352,16 @@ def test_create_too_many_llm_rules(count, client: GenaiEngineTestClientBase):
         assert update_resp.status_code == 200
         print(client.get_configs().json())
 
-    for i in range(count):
+    try:
+        for i in range(count):
+            status_code, _ = client.create_rule(
+                "",
+                RuleType.MODEL_HALLUCINATION_V2,
+                examples=[],
+                prompt_enabled=False,
+                task_id=task_response.id,
+            )
+            assert status_code == 200
         status_code, _ = client.create_rule(
             "",
             RuleType.MODEL_HALLUCINATION_V2,
@@ -358,19 +369,22 @@ def test_create_too_many_llm_rules(count, client: GenaiEngineTestClientBase):
             prompt_enabled=False,
             task_id=task_response.id,
         )
-        assert status_code == 200
-    status_code, _ = client.create_rule(
-        "",
-        RuleType.MODEL_HALLUCINATION_V2,
-        examples=[],
-        prompt_enabled=False,
-        task_id=task_response.id,
-    )
-    assert status_code == 400
+        assert status_code == 400
 
-    # Non-LLM rules should be allowed
-    status_code, _ = client.create_rule("", RuleType.REGEX, task_id=task_response.id)
-    assert status_code == 200
+        # Non-LLM rules should be allowed
+        status_code, _ = client.create_rule(
+            "",
+            RuleType.REGEX,
+            task_id=task_response.id,
+        )
+        assert status_code == 200
+    finally:
+        # The limit is global config: put the default back for later tests.
+        if count != 3:
+            client.update_configs(
+                {"max_llm_rules_per_task_count": 3},
+                headers=client.authorized_org_admin_api_key_headers,
+            )
 
 
 @pytest.mark.unit_tests
@@ -559,3 +573,31 @@ def test_get_default_rules(
     status_code, response = client.get_default_rules()
     assert status_code == 200
     assert response[0].name == create_default_rule.name
+
+
+@pytest.mark.unit_tests
+def test_create_default_rule_links_only_unarchived_tasks(
+    client: GenaiEngineTestClientBase,
+):
+    status_code, active_task = client.create_task()
+    assert status_code == 200
+    status_code, archived_task = client.create_task()
+    assert status_code == 200
+    assert client.delete_task(archived_task.id) == 204
+
+    status_code, rule = client.create_rule("", rule_type=RuleType.KEYWORD)
+    assert status_code == 200
+
+    db_session = override_get_db_session()
+    linked_task_ids = {
+        link.task_id
+        for link in db_session.query(DatabaseTaskToRules).filter(
+            DatabaseTaskToRules.rule_id == rule.id,
+        )
+    }
+    db_session.close()
+    assert active_task.id in linked_task_ids
+    assert archived_task.id not in linked_task_ids
+
+    assert client.delete_default_rule(rule.id) == 200
+    assert client.delete_task(active_task.id) == 204

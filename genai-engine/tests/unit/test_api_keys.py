@@ -106,7 +106,10 @@ def test_deactivate_api_key(api_key: ApiKeyResponse):
 
 @pytest.mark.unit_tests
 @pytest.mark.api_key_tests
-def test_create_max_active_keys():
+def test_create_max_active_keys(monkeypatch: pytest.MonkeyPatch):
+    # The committed .env sets MAX_API_KEYS=1000, and every key costs a bcrypt hash.
+    # A small limit exercises the same boundary.
+    monkeypatch.setenv("MAX_API_KEYS", "5")
     client.clear_existing_user_keys()
     api_keys = []
     for _ in range(Config.max_api_key_limit()):
@@ -132,13 +135,12 @@ def test_get_all_active_keys(api_key: ApiKeyResponse):
     status_code, api_keys = client.get_api_keys()
     assert status_code == 200
 
-    assert api_key.id in (key.id for key in api_keys)
-    assert api_key_2.id in (key.id for key in api_keys)
-    for key in api_keys:
-        if api_key.id == key.id:
-            assert_get_key(api_key, key)
-        else:
-            assert_get_key(api_key_2, key)
+    # other tests may leave keys active, so check only the two created here
+    keys_by_id = {key.id: key for key in api_keys}
+    assert api_key.id in keys_by_id
+    assert api_key_2.id in keys_by_id
+    assert_get_key(api_key, keys_by_id[api_key.id])
+    assert_get_key(api_key_2, keys_by_id[api_key_2.id])
     status_code = client.deactivate_api_key(api_key)
     assert status_code == 204
     status_code = client.deactivate_api_key(api_key_2)

@@ -54,8 +54,9 @@ def execute_agent_polling(
 
 @agent_polling_routes.post(
     "/agent-polling/execute-all",
-    description="Manually trigger a full agent discovery and polling cycle. "
-    "Discovers new GCP agents and enqueues trace-fetch jobs for all eligible tasks. "
+    description="Manually trigger a polling cycle: enqueues trace-fetch jobs for all "
+    "eligible GCP tasks. `discovered` is always 0, because Vertex AI agents are "
+    "discovered by gcp_vertex discovery sources, not by this cycle. "
     "Use wait_for_completion=true to block until all polling jobs finish.",
     response_model=DiscoverAndPollResponse,
     tags=["Agent Discovery"],
@@ -67,7 +68,7 @@ def execute_all_agent_polling(
     timeout: Annotated[int | None, Query(ge=1)] = None,
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ) -> DiscoverAndPollResponse:
-    """Manually trigger a full discovery + polling cycle.
+    """Manually trigger a polling cycle (trace fetch only; `discovered` is always 0).
 
     Args:
         wait_for_completion: If true, block until all polling jobs complete.
