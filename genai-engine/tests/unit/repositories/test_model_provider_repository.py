@@ -21,6 +21,10 @@ def db_session():
 @pytest.fixture(scope="function")
 def openai_provider(db_session):
     """An enabled openai provider row, removed after the test."""
+    # Route tests leave openai configured, sometimes with a whitelist; start clean.
+    ModelProviderRepository(db_session).delete_model_provider_credentials(
+        ModelProvider.OPENAI,
+    )
     row = DatabaseSecretStorage(
         id=str(uuid.uuid4()),
         name=ModelProvider.OPENAI,

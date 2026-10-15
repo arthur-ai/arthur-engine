@@ -220,7 +220,9 @@ TEST_AUDIT_LOG_DIR = os.path.join(
     os.path.dirname(__file__),
     "..",
     "..",
-    "test_audit_logs",
+    # One directory per pytest-xdist worker (gw0, gw1, ...): each worker's
+    # session teardown deletes its directory, which must not be another's.
+    "test_audit_logs" + os.environ.get("PYTEST_XDIST_WORKER", ""),
 )
 os.environ["AUDIT_LOG_OVERRIDE_PATH"] = TEST_AUDIT_LOG_DIR
 

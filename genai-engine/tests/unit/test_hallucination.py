@@ -15,6 +15,11 @@ from scorer.checks.hallucination.v2 import (
 )
 from utils import constants
 
+# Loads real ML models: one xdist worker runs every module in this group, so
+# parallel CI holds one copy of them rather than one per worker.
+pytestmark = pytest.mark.xdist_group("ml_models")
+
+
 os.environ[constants.GENAI_ENGINE_OPENAI_EMBEDDINGS_ENDPOINTS_KEYS_ENV_VAR] = "1::2/::3"
 os.environ[constants.GENAI_ENGINE_OPENAI_GPT_ENDPOINTS_KEYS_ENV_VAR] = "1::2/::3"
 os.environ[constants.GENAI_ENGINE_OPENAI_PROVIDER_ENV_VAR] = "Azure"
