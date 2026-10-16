@@ -172,6 +172,44 @@ Use `query_language: esql`, and name the output columns with `STATS ... BY`, `EV
 a result that hits the cluster's row cap is reported in the log rather than published as
 complete.
 
+`llm_models`, `tools` and `sub_agents` may be a string or a multivalue of strings (what
+`VALUES()` returns), `data_sources` likewise for URLs; each value becomes one entry.
+
+##### Sample: Kong Gateway logs
+
+Self-hosted Kong Gateway has no usage API. When its `http-log` plugin ships to
+Elasticsearch and the `ai-proxy` plugin logs statistics (`logging.log_statistics: true`),
+this query lists one agent per Kong consumer and the models it was served:
+
+```esql
+FROM kong-ai-logs
+| WHERE consumer.id.keyword IS NOT NULL AND ai.proxy.meta.plugin_id.keyword IS NOT NULL
+| EVAL model = CASE(
+    response.status < 400 AND ai.proxy.meta.response_model.keyword IS NOT NULL,
+    CONCAT(ai.proxy.meta.provider_name.keyword, "/", ai.proxy.meta.response_model.keyword),
+    NULL)
+| STATS last_seen = MAX(@timestamp),
+        name = MAX(consumer.username.keyword),
+        llm_models = VALUES(model)
+    BY consumer_id = consumer.id.keyword
+| EVAL external_id = CONCAT("kong:kong:8000:", consumer_id),
+       name = COALESCE(name, consumer_id),
+       llm_models = MV_SORT(llm_models)
+| KEEP external_id, name, last_seen, llm_models
+| SORT external_id
+| LIMIT 10000
+```
+
+- Replace `kong-ai-logs` with your index, and `kong:8000` with your Kong proxy's host
+  (port omitted when 443). It namespaces the consumer id, so two gateways never share an
+  agent. Never change it once scanned: the `external_id` is the agent's permanent key.
+- Rows without a consumer (a refused or missing key) are not agents and are dropped, as is
+  traffic on routes without `ai-proxy`. An `ai-proxy` request answered 400 or above
+  counts toward `last_seen` but adds no model.
+- `LIMIT 10000` is Elasticsearch's default maximum for one query; without it the cluster
+  stops at 1,000 rows. More consumers than that need a narrower query.
+- The key needs `read` on that index only. The query reads no request headers or bodies.
+
 ### Destination
 
 Exactly one. Every destination has:
