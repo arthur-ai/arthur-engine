@@ -120,23 +120,34 @@ everything. It writes to the machine, so it runs only with
 `terraform test` from `deploy/terraform/`, against mocked providers: no credentials, nothing
 created. It asserts on what the module decides, in the plan.
 
+**Each rendering is compared whole with the policy file.** The suite reads the file, puts each
+file's URL at the test ref and the sha256 of the copy beside the module into it, and compares
+each rendered resource with that, mapped back to the file's shape. That covers every
+assignment, the folder orchestrator and the organization orchestrator. A field cannot drift in
+one rendering without a run failing: a repository, a package, a script, an inventory filter,
+the label, the rollout, a file mode or a URL. Replaying eight such mutations, one per field and
+rendering, fails the suite eight times.
+
 | Case | What it catches |
 |---|---|
-| An assignment per project and zone, carrying the policy's resources in its order, its label, and no wait for the rollout | A zone with no assignment, which leaves its VMs unmanaged with nothing saying so; a resource dropped or reordered |
-| Each file pinned to its URL at `arthur_engine_ref` and the sha256 of the copy beside the module, read off the rendered resource | A VM refusing every file, or receiving another ref's |
-| `file_base_url` replaces the URL path for path; `label` and `reader` reach the assignment, `arthur_source` and IAM | A mirror serving the wrong path; an Arthur source whose labels match no VM the policy reached |
-| A folder and an organization orchestrator: one each, no assignments, projects by number and zones as separate selectors, the file modes, a named resource, no payload under `DELETE` | An orchestrator scoped wider than asked, or one whose `DELETE` cannot find its assignments |
+| An assignment per project and zone, each rendering the whole policy without file modes, and none waiting for the rollout | A zone with no assignment, which leaves its VMs unmanaged with nothing saying so; any field of the policy lost or changed on the way to a VM |
+| `pinned_files`, and the URLs a VM downloads under `file_base_url` | A VM refusing every file, or a mirror serving the wrong path |
+| `label` and `reader` reach every assignment, `arthur_source` and IAM | An Arthur source whose labels match no VM the policy reached |
+| `project_metadata` limited to one key, and empty | A project that already holds `enable-osconfig` failing the apply with no way around it |
+| Folder and organization orchestrators, each rendering the whole policy with its file modes; projects by number and zones as separate selectors; a named resource, and no payload under `DELETE`; folders alone, with no project selector and a null `arthur_source.project_ids` | An orchestrator scoped wider than asked, one whose `DELETE` cannot find its assignments, or an empty project list the source refuses |
 | Downloaded files matching the module's copy pass; one that does not fails the plan | A `?ref=` bumped without `arthur_engine_ref` reaching every VM as a checksum mismatch |
-| No ref and no mirror; no projects and no folders; folder and organization both; prefixed numbers; project numbers for IDs | A plan that would reach no VM, or the wrong scope, without saying so |
+| No ref and no mirror; no projects and no folders; folder and organization both; prefixed or empty numbers; project numbers for IDs; a project or zone twice; a label value no VM can hold; a metadata key this module does not set | A plan that would reach no VM, or the wrong scope, without saying so; Terraform's own error in place of one that names the input |
 
 Beside the module tests, `terraform_data.policy` rebuilds the policy from the keys the module
-renders and compares it whole with the file, so a key nothing renders fails every plan.
-Add `allowNoResourceGroupMatch` to the policy, or a yum repository, and the first plan fails
+renders and compares it whole with the file, and the renderings read only that rebuild. So a
+key added, removed or reshaped in the file fails every plan with that precondition's message,
+never with an attribute error from a rendering. Add `allowNoResourceGroupMatch` or a yum
+repository, or swap the percentage disruption budget for a fixed one, and the first plan fails
 naming the file.
 
-CI also validates a caller at the lowest Google provider `versions.tf` admits, in all three
-modes. Every other check runs the latest provider, where an attribute added since the floor
-passes.
+CI also validates a caller at the lowest Terraform and Google provider `versions.tf` admits, in
+all three modes. Every other check runs a recent Terraform and the latest provider, where
+anything added since a floor passes.
 
 ## Running the real thing
 

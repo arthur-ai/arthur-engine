@@ -75,8 +75,9 @@ Run both after any vendor bump or template edit. `lint.sh` **reads** the deploya
 passed for as long as the collector's extraction preamble went unexecuted by anything but a
 human. CI runs lint and the reporter test on Ubuntu, the Mac collector on a macOS runner, and
 the Linux collector plus `run-systemd.sh` on an Ubuntu runner, where systemd is PID 1. It runs
-the Terraform module's tests too, and validates a caller at the module's lowest admitted
-Google provider: a newer attribute passes every other check and breaks a caller pinned there.
+the Terraform module's tests too, and validates a caller at the lowest Terraform and Google
+provider the module admits: anything newer passes every other check and breaks a caller pinned
+there.
 
 **The VM scenario suite is upstream's.** At the vendored ref that is `test/lint.sh`,
 `test/docker_states.sh` (all six Docker daemon states, including `wedge`) and thirteen VM

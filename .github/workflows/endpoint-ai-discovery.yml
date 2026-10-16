@@ -87,10 +87,34 @@ jobs:
       - run: terraform validate
       - run: terraform test
 
-      # versions.tf admits the Google provider from 6.33, and every step above ran the latest.
-      # An attribute added since passes them all and breaks a caller pinned at the floor, so
-      # validate a caller there too, in all three modes. By relative path: an absolute one
-      # copies the module's directory without the policy file beside it.
+  terraform-floor:
+    name: The Compute Engine Terraform module, at its lowest admitted versions
+    # versions.tf admits Terraform from 1.5 and the Google provider from 6.33, and the job above
+    # runs a recent Terraform and the latest provider. An attribute or a function added since
+    # passes there and breaks a caller pinned at a floor, so validate a caller at both, in all
+    # three modes. Validate only: terraform test needs 1.7.
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: integrations/endpoint-ai-discovery/deploy/terraform
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: 1.5.7
+          terraform_wrapper: false
+
+      - name: versions.tf still names this Terraform as its floor
+        run: |
+          floor="$(sed -n 's/.*required_version *= *">= *\([0-9.]*\)".*/\1/p' versions.tf)"
+          running="$(terraform version -json | jq -r .terraform_version)"
+          case "$running" in "$floor" | "$floor".*) echo "Terraform $running is the floor $floor" ;;
+            *) echo "::error::versions.tf admits Terraform from '$floor', but this job runs $running"; exit 1 ;; esac
+
+      # By relative path: an absolute path to the module's own directory leaves the policy file
+      # beside it out of reach.
       - name: terraform validate at the Google provider floor
         run: |
           floor="$(awk '/google *= *\{/ { g = 1 } g && /version/ { sub(/.*">= */, ""); sub(/,.*/, ""); print; exit }' versions.tf)"

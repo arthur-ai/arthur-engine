@@ -483,11 +483,17 @@ else:
         print(f"FAIL: the rendered policy pins {sorted(uri for uri, _ in pinned)}, not the four "
               f"files {POLICY} names at {at_head}"); sys.exit(1)
     pinned = [(uri.removeprefix(at_head), sha) for uri, sha in pinned]
+    compared = 0
     for src, sha in pinned:
-        clean = subprocess.run(["git", "-C", root, "diff", "--quiet", "HEAD", "--", src]).returncode == 0
-        if clean and hashlib.sha256(open(os.path.join(root, src), "rb").read()).hexdigest() != sha:
+        if subprocess.run(["git", "-C", root, "diff", "--quiet", "HEAD", "--", src]).returncode != 0:
+            continue
+        compared += 1
+        if hashlib.sha256(open(os.path.join(root, src), "rb").read()).hexdigest() != sha:
             print(f"FAIL: the rendered policy pins {src} to {sha}, which is not its sha256"); sys.exit(1)
-    print(f"render: ok, HEAD's policy pins each of {len(pinned)} files to its own sha256")
+    print(f"render: ok, HEAD's policy pins each file to its own sha256 "
+          f"({compared} of {len(pinned)} compared; the rest differ from HEAD in this tree)"
+          if compared < len(pinned) else
+          f"render: ok, HEAD's policy pins each of {len(pinned)} files to its own sha256")
 VENDOR
 
 [ "$fail" -eq 0 ] && echo "lint: PASS" || echo "lint: FAIL"

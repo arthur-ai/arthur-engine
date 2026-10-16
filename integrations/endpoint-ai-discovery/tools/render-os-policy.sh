@@ -27,6 +27,9 @@ if git -C "$ROOT" show-ref --verify --quiet "refs/tags/$ref"; then pin="$ref"; e
 policy="$(git -C "$ROOT" cat-file blob "$commit:$TREE/$POLICY" 2>/dev/null)" \
   || die "$ref has no $TREE/$POLICY; render a ref that carries it"
 
+# Held until the whole policy has rendered: a failure part-way would otherwise leave a shorter
+# policy in the redirect target, which still parses and installs less than it should.
+out=""
 src=""
 while IFS= read -r line; do
   case "$line" in
@@ -34,7 +37,7 @@ while IFS= read -r line; do
       # Rebuilt from its indent, not substituted: bash versions disagree on escapes in the
       # replacement half of ${var/pattern/string}.
       src="${line##*"$PREFIX"}"
-      printf '%s\n' "${line%%uri:*}uri: https://raw.githubusercontent.com/arthur-ai/arthur-engine/$pin/$TREE/$src"
+      line="${line%%uri:*}uri: https://raw.githubusercontent.com/arthur-ai/arthur-engine/$pin/$TREE/$src"
       ;;
     *"uri: "*"/COMMIT/"*)
       die "a file URL is not under $PREFIX, so its checksum cannot be read from this tree: $line"
@@ -43,10 +46,11 @@ while IFS= read -r line; do
       [ -n "$src" ] || die "a sha256Checksum with no file URL before it: $line"
       git -C "$ROOT" cat-file -e "$commit:$TREE/$src" 2>/dev/null || die "$ref has no $TREE/$src"
       sum="$(git -C "$ROOT" cat-file blob "$commit:$TREE/$src" | shasum -a 256 | cut -d' ' -f1)"
-      printf '%s\n' "${line%%sha256Checksum:*}sha256Checksum: $sum"
+      line="${line%%sha256Checksum:*}sha256Checksum: $sum"
       src=""
       ;;
-    *) printf '%s\n' "$line" ;;
   esac
+  out="$out$line"$'\n'
 done <<<"$policy"
 [ -z "$src" ] || die "the file URL for $src has no sha256Checksum after it"
+printf '%s' "$out"

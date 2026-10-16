@@ -12,8 +12,8 @@
 __pycache__/
 *.pyc
 
-# `terraform init` in deploy/terraform/. The lock file is the caller's to commit: a module that
-# carried one would pin every caller's providers to the versions it happened to be tested on.
+# `terraform init` in deploy/terraform/. Terraform reads only the root module's lock file, so
+# one committed here would pin nothing for a caller and would only record what one run picked.
 deploy/terraform/.terraform/
 deploy/terraform/.terraform.lock.hcl
 

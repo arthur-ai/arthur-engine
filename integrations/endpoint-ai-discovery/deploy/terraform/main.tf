@@ -14,7 +14,7 @@ locals {
 
   description = "Arthur endpoint AI discovery: osquery and a collector timer reporting to guest attributes"
 
-  labels = var.label == null ? tomap(local.policy.instanceFilter.inclusionLabels[0].labels) : tomap({ (var.label.key) = var.label.value })
+  labels = var.label == null ? try(tomap(local.policy.instanceFilter.inclusionLabels[0].labels), null) : tomap({ (var.label.key) = var.label.value })
 
   # The policy names each file by its URL in this tree at COMMIT, so the path after the prefix
   # is the path beside this module.
@@ -36,13 +36,15 @@ locals {
 
   # THE POLICY AS THIS MODULE RENDERS IT, rebuilt key by key and compared whole with the file. A
   # key the resources below do not carry -- a yum repository, a second resource group, a fixed
-  # disruption budget -- fails the plan instead of going missing from every VM.
+  # disruption budget -- fails the plan instead of going missing from every VM. The resources
+  # render from this rather than from the file, and every value here is read with try(), so the
+  # comparison is the one place a changed policy fails, and it fails with its own message.
   carried = {
     osPolicies = [{
-      id   = local.os_policy.id
-      mode = local.os_policy.mode
+      id   = try(local.os_policy.id, null)
+      mode = try(local.os_policy.mode, null)
       resourceGroups = [{
-        inventoryFilters = [for f in local.group.inventoryFilters : { osShortName = f.osShortName }]
+        inventoryFilters = [for f in try(local.group.inventoryFilters, []) : { osShortName = try(f.osShortName, null) }]
         resources = [for r in local.group.resources : merge(
           { id = r.id },
           { for k in ["repository"] : k => { apt = {
@@ -78,13 +80,16 @@ locals {
       minWaitDuration  = try(local.policy.rollout.minWaitDuration, null)
     }
   }
+  rendered       = local.carried.osPolicies[0]
+  rendered_group = local.rendered.resourceGroups[0]
+  rollout        = local.carried.rollout
 }
 
 resource "terraform_data" "policy" {
   lifecycle {
     precondition {
       condition     = jsonencode(local.carried) == jsonencode(local.policy)
-      error_message = "deploy/arthur-ai-discovery.os-policy.yaml has a key this module does not render, so it would not reach the VMs. Render it in assignments.tf and orchestrator.tf, and carry it in local.carried."
+      error_message = "deploy/arthur-ai-discovery.os-policy.yaml differs from the policy this module renders, so the VMs would not get the file as written. A key was added, removed or reshaped: change local.carried and the renderings in assignments.tf and orchestrator.tf with it."
     }
     precondition {
       condition     = length(local.unpinnable) == 0
@@ -110,7 +115,7 @@ data "http" "file" {
   lifecycle {
     postcondition {
       condition     = self.status_code == 200 && sha256(self.response_body) == each.value.sha256
-      error_message = "${each.value.uri} answers HTTP ${self.status_code} with bytes that are not this module's ${each.value.src}, so every VM would refuse it. arthur_engine_ref must be the ?ref= in this module's source."
+      error_message = "${each.value.uri} answers HTTP ${self.status_code} with bytes that are not this module's ${each.value.src}, so every VM would refuse it. Either the URL serves another version -- arthur_engine_ref must be the ?ref= in this module's source, and file_base_url a mirror of that ref -- or this module's copy is not the committed file."
     }
   }
 }
@@ -127,11 +132,16 @@ resource "google_project_service" "osconfig" {
 # Project-wide, so every VM's OS Config agent turns on; the policy still reaches only the label.
 # The agent acts on policies only with enable-osconfig, and the reporter's guest-attribute
 # writes are refused with 403 without enable-guest-attributes. The OS policy cannot set either:
-# it runs inside the VM. Destroying this module removes both keys.
+# it runs inside the VM.
+#
+# CREATING A KEY THE PROJECT ALREADY HOLDS FAILS THE APPLY, `key ... already present`, and
+# Google's VM Manager setup puts enable-osconfig in project metadata. Leave such a key out of
+# project_metadata, or import it; destroying this module deletes every key it manages, imported
+# ones included.
 resource "google_compute_project_metadata_item" "discovery" {
-  for_each = var.project_metadata ? {
-    for pk in setproduct(var.projects, ["enable-osconfig", "enable-guest-attributes"]) : "${pk[0]}/${pk[1]}" => { project = pk[0], key = pk[1] }
-  } : {}
+  for_each = {
+    for pk in setproduct(var.projects, sort(var.project_metadata)) : "${pk[0]}/${pk[1]}" => { project = pk[0], key = pk[1] }
+  }
   project = each.value.project
   key     = each.value.key
   value   = "TRUE"

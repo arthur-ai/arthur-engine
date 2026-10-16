@@ -44,24 +44,24 @@ resource "google_os_config_v2_policy_orchestrator_for_folder" "discovery" {
         description = local.description
 
         os_policies {
-          id   = local.os_policy.id
-          mode = local.os_policy.mode
+          id   = local.rendered.id
+          mode = local.rendered.mode
 
           resource_groups {
             dynamic "inventory_filters" {
-              for_each = local.group.inventoryFilters
+              for_each = local.rendered_group.inventoryFilters
               content {
                 os_short_name = inventory_filters.value.osShortName
               }
             }
 
             dynamic "resources" {
-              for_each = local.group.resources
+              for_each = local.rendered_group.resources
               content {
                 id = resources.value.id
 
                 dynamic "repository" {
-                  for_each = can(resources.value.repository.apt) ? [resources.value.repository.apt] : []
+                  for_each = can(resources.value.repository) ? [resources.value.repository.apt] : []
                   content {
                     apt {
                       archive_type = repository.value.archiveType
@@ -74,7 +74,7 @@ resource "google_os_config_v2_policy_orchestrator_for_folder" "discovery" {
                 }
 
                 dynamic "pkg" {
-                  for_each = can(resources.value.pkg.apt) ? [resources.value.pkg] : []
+                  for_each = can(resources.value.pkg) ? [resources.value.pkg] : []
                   content {
                     desired_state = pkg.value.desiredState
                     apt {
@@ -125,9 +125,9 @@ resource "google_os_config_v2_policy_orchestrator_for_folder" "discovery" {
 
         rollout {
           disruption_budget {
-            percent = local.policy.rollout.disruptionBudget.percent
+            percent = local.rollout.disruptionBudget.percent
           }
-          min_wait_duration = local.policy.rollout.minWaitDuration
+          min_wait_duration = local.rollout.minWaitDuration
         }
       }
     }
@@ -173,24 +173,24 @@ resource "google_os_config_v2_policy_orchestrator_for_organization" "discovery" 
         description = local.description
 
         os_policies {
-          id   = local.os_policy.id
-          mode = local.os_policy.mode
+          id   = local.rendered.id
+          mode = local.rendered.mode
 
           resource_groups {
             dynamic "inventory_filters" {
-              for_each = local.group.inventoryFilters
+              for_each = local.rendered_group.inventoryFilters
               content {
                 os_short_name = inventory_filters.value.osShortName
               }
             }
 
             dynamic "resources" {
-              for_each = local.group.resources
+              for_each = local.rendered_group.resources
               content {
                 id = resources.value.id
 
                 dynamic "repository" {
-                  for_each = can(resources.value.repository.apt) ? [resources.value.repository.apt] : []
+                  for_each = can(resources.value.repository) ? [resources.value.repository.apt] : []
                   content {
                     apt {
                       archive_type = repository.value.archiveType
@@ -203,7 +203,7 @@ resource "google_os_config_v2_policy_orchestrator_for_organization" "discovery" 
                 }
 
                 dynamic "pkg" {
-                  for_each = can(resources.value.pkg.apt) ? [resources.value.pkg] : []
+                  for_each = can(resources.value.pkg) ? [resources.value.pkg] : []
                   content {
                     desired_state = pkg.value.desiredState
                     apt {
@@ -254,9 +254,9 @@ resource "google_os_config_v2_policy_orchestrator_for_organization" "discovery" 
 
         rollout {
           disruption_budget {
-            percent = local.policy.rollout.disruptionBudget.percent
+            percent = local.rollout.disruptionBudget.percent
           }
-          min_wait_duration = local.policy.rollout.minWaitDuration
+          min_wait_duration = local.rollout.minWaitDuration
         }
       }
     }

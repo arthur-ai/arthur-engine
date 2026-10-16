@@ -55,8 +55,7 @@ The OS Config agent is preinstalled on the Debian, Ubuntu and Rocky public image
 
 The OS policy downloads each file by URL and refuses it unless its sha256 matches, so a policy
 names exact bytes. `tools/render-os-policy.sh` pins the policy to one ref of this repository:
-each file's URL at that ref, and the sha256 of the bytes the ref holds. Pin a release tag, which
-CI has passed:
+each file's URL at that ref, and the sha256 of the bytes the ref holds. Pin a release tag:
 
 ```bash
 git clone https://github.com/arthur-ai/arthur-engine && cd arthur-engine/integrations/endpoint-ai-discovery
@@ -246,23 +245,41 @@ output "arthur_source" {
 |---|---|---|
 | The OS policy assignment | Every project × zone | — |
 | `osconfig.googleapis.com` | Every project; left enabled on destroy | `enable_apis = false` |
-| `enable-osconfig=TRUE`, `enable-guest-attributes=TRUE` | Every project's metadata, so every VM's OS Config agent turns on; the policy still reaches only the label | `project_metadata = false`, then set them per VM |
+| `enable-osconfig=TRUE`, `enable-guest-attributes=TRUE` | Every project's metadata, so every VM's OS Config agent turns on; the policy still reaches only the label | Leaving a key out of `project_metadata`; `[]` for both, then set them per VM |
 | `roles/compute.viewer` for Arthur's credential | Every project | Leaving `reader` unset |
 
 Then label the VMs, wherever they are defined. It takes Terraform 1.5 and the Google provider
 6.33 or later.
 
-**The ref is pinned twice, and the plan checks they agree.** It downloads each file at
-`arthur_engine_ref` and fails unless the bytes match the module's own copy. So a `?ref=` bumped
-without `arthur_engine_ref`, or the reverse, fails the plan rather than every VM's checksum.
-`file_base_url` points the VMs at a mirror instead. `verify_file_urls = false` skips the
-download, for a machine running Terraform that cannot reach the URLs the VMs use.
+**A project that already holds either metadata key fails the apply**, `key "enable-osconfig"
+already present in metadata for project …` — measured, against a project set up for VM Manager
+the way Google's guide does it. The keys that do not exist yet are created before the failure,
+and no assignment is. Leave such a key out, `project_metadata = ["enable-guest-attributes"]`,
+when every project already sets it `TRUE`. Otherwise import it, and the plan adopts the key
+instead of failing (measured):
 
-**Source it from git**, as above, or by a relative path into a checkout of this repository. The
-module reads files beside it in this tree. An absolute local path copies only the module's own
-directory, and the plan fails naming the missing policy file. `depth=1` makes the download a
-shallow clone, measured at 39 MB in 6s. It takes a tag or a branch: with a bare commit `init`
-fails, `Remote branch … not found`, so drop `depth=1` to pin one.
+```hcl
+import {
+  to = module.arthur_ai_discovery.google_compute_project_metadata_item.discovery["my-project/enable-osconfig"]
+  id = "projects/my-project/meta-data/enable-osconfig"
+}
+```
+
+**The ref is named twice, and the plan checks the files there are this module's.** It downloads
+each file at `arthur_engine_ref` and fails unless the bytes match the module's own copy. So a
+`?ref=` bumped without `arthur_engine_ref`, or the reverse, fails the plan rather than every
+VM's checksum, as long as the files changed between the two. **Pin a tag, or a commit, never a
+branch**: the VMs download at the ref whenever the policy is enforced, and a branch that moves
+on stops matching the checksums. `file_base_url` points the VMs at a mirror instead.
+`verify_file_urls = false` skips the download, for a machine running Terraform that cannot reach
+the URLs the VMs use.
+
+**Source it from git**, as above, or by a path into a checkout of this repository. The module
+reads files beside it in this tree, so a local path either is relative or names the tree before
+a `//`, as in `/src/arthur-engine/integrations/endpoint-ai-discovery//deploy/terraform`. An
+absolute path to the module's own directory fails the plan, naming the missing policy file.
+`depth=1` makes the download a shallow clone, measured at 39 MB in 6s. It takes a tag: with a
+commit `init` fails, `Remote branch … not found`, so drop `depth=1` to pin one.
 
 What differs from the gcloud path:
 
@@ -272,11 +289,15 @@ What differs from the gcloud path:
 - **The apply does not wait for the rollout.** A pin bump re-rolls every labelled VM at the
   policy's pace, which on a fleet outlasts the provider's timeout. Follow it in VM Manager's
   compliance view, then section 04.
-- **Destroying the module deletes the assignments and both metadata keys**, project-wide. It
-  leaves what the policy installed; section 08's commands remove that from each VM.
+- **Destroying the module deletes the assignments and every metadata key it manages**,
+  project-wide, imported ones included (measured). Without `enable-osconfig`, every other OS
+  policy and patch job in the project stops on each VM that does not set the key itself. The
+  module leaves what the policy installed; section 08's commands remove that from each VM.
 - **Project metadata Terraform already manages** with `google_compute_project_metadata`, which
-  owns every key, takes the two keys there instead. Set `project_metadata = false`, or the two
+  owns every key, takes the two keys there instead. Set `project_metadata = []`, or the two
   resources undo each other on every apply.
+- **An assignment gcloud already created** under the same name and zone fails the apply,
+  `Error 409: Requested entity already exists` (measured). Delete it first, or import it.
 
 ### Across a folder or an organization
 
@@ -313,13 +334,18 @@ For an organization, the same with `--organization=ORG_NUMBER`,
 
 - **A quota project.** Calls at a folder or an organization bill one: in the `provider "google"`
   block, `billing_project = "QUOTA_PROJECT"` and `user_project_override = true`, with the OS
-  Config API enabled in that project.
+  Config API enabled in that project. The override applies to every call that provider makes, so
+  the quota project also needs the other APIs this module calls: Compute Engine, Service Usage
+  and Resource Manager.
 - **VPC Service Controls.** Inside a perimeter, the rollout service agent needs an ingress rule
   for `osconfig.googleapis.com`, or the orchestrator fails to create assignments in those
   projects.
 - **Projects reached through `include_folders`** get neither the API nor the metadata from this
   module, and Arthur's source reads only the projects it lists. `arthur_source` lists `projects`
   alone.
+- **Switching an existing deployment to an orchestrator** deletes its assignments in the same
+  apply. The orchestrator then creates its own on its own schedule, so the VMs go unmanaged in
+  between. They keep running what was installed, and nothing new is enforced on them.
 
 Google documents that the orchestrator runs an iteration every six hours, finds projects added
 to its scope, and replaces an orchestrated assignment that someone edits by hand.

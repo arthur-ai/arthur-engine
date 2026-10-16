@@ -1,5 +1,5 @@
 variable "arthur_engine_ref" {
-  description = "The arthur-engine tag or commit in this module's source, after ?ref=. VMs download the collector, the reporter and the units at this ref, and the plan fails unless each matches this module's copy."
+  description = "The arthur-engine tag or commit in this module's source, after ?ref=. Never a branch: VMs download the collector, the reporter and the units at this ref whenever the policy is enforced, so a ref that moves breaks them. The plan fails unless each file there matches this module's copy."
   type        = string
   default     = null
 }
@@ -11,12 +11,17 @@ variable "file_base_url" {
 }
 
 variable "projects" {
-  description = "Project IDs of the fleet. Each gets the OS Config API and the two metadata keys, and without an orchestrator an OS policy assignment in every zone."
+  description = "Project IDs of the fleet. Each gets the OS Config API and the metadata keys in project_metadata, and without an orchestrator an OS policy assignment in every zone."
   type        = list(string)
 
   validation {
     condition     = alltrue([for p in var.projects : can(regex("^(?:[a-z0-9.-]+:)?[a-z][a-z0-9-]{4,28}[a-z0-9]$", p))])
     error_message = "projects takes project IDs, such as my-project-123, not names or numbers."
+  }
+
+  validation {
+    condition     = length(distinct(var.projects)) == length(var.projects)
+    error_message = "projects names a project twice."
   }
 }
 
@@ -27,6 +32,11 @@ variable "zones" {
   validation {
     condition     = length(var.zones) > 0
     error_message = "zones is empty, so no VM would be in scope."
+  }
+
+  validation {
+    condition     = length(distinct(var.zones)) == length(var.zones)
+    error_message = "zones names a zone twice."
   }
 }
 
@@ -49,12 +59,24 @@ variable "label" {
     condition     = var.label == null || can(regex("^[a-z][a-z0-9_-]{0,62}$", try(var.label.key, "")))
     error_message = "label.key starts with a lowercase letter and holds lowercase letters, digits, '_' and '-'."
   }
+
+  # Compute Engine's value rule. A value it could not hold matches no VM, and a comma would split
+  # the source's include_labels.
+  validation {
+    condition     = var.label == null || can(regex("^[\\p{Ll}\\p{Lo}\\p{N}_-]{0,63}$", try(var.label.value, "")))
+    error_message = "label.value holds up to 63 lowercase letters, digits, '_' and '-'."
+  }
 }
 
 variable "project_metadata" {
-  description = "Set enable-osconfig and enable-guest-attributes to TRUE in each project's metadata. Without both, nothing on a VM reports; set them per VM instead if this is false."
-  type        = bool
-  default     = true
+  description = "The metadata keys this module sets to TRUE in each project: enable-osconfig and enable-guest-attributes, without both of which nothing on a VM reports. Creating a key a project already holds fails the apply, so leave out one every project already sets TRUE. [] leaves project metadata alone, for keys set per VM."
+  type        = set(string)
+  default     = ["enable-osconfig", "enable-guest-attributes"]
+
+  validation {
+    condition     = length(setsubtract(var.project_metadata, ["enable-osconfig", "enable-guest-attributes"])) == 0
+    error_message = "project_metadata takes enable-osconfig and enable-guest-attributes only."
+  }
 }
 
 variable "enable_apis" {
@@ -101,10 +123,13 @@ variable "orchestrator" {
     error_message = "orchestrator.action is UPSERT or DELETE."
   }
 
+  # Every value that is set, the empty string included: "" would reach the API as a parent.
   validation {
     condition = var.orchestrator == null || alltrue([
-      for n in concat(compact([try(var.orchestrator.folder, null), try(var.orchestrator.organization, null)]), try(var.orchestrator.include_folders, [])) :
-      can(regex("^[0-9]+$", n))
+      for n in concat(
+        [for v in [try(var.orchestrator.folder, null), try(var.orchestrator.organization, null)] : v if v != null],
+        try(var.orchestrator.include_folders, []),
+      ) : can(regex("^[0-9]+$", n))
     ])
     error_message = "orchestrator takes folder and organization numbers, without a folders/ or organizations/ prefix."
   }
