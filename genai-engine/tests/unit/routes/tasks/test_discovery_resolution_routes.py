@@ -501,7 +501,7 @@ def _add_trace_only_agents(run: str, count: int) -> list[str]:
 def test_agent_tasks_unreported_return_only_tasks_no_source_reported(
     client: GenaiEngineTestClientBase,
 ):
-    """What the engine-wide fetch reads: the agents no discovery source has claimed.
+    """What every scan's fetch also reads: the agents no discovery source has claimed.
 
     A source's fetch already carries the tasks that source reported; this is the rest,
     so an agent seen only through its traces still reaches the Platform.

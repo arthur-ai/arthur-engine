@@ -12,8 +12,8 @@ tasks to the Agents API.
 Vertex AI agents are discovered by a `gcp_vertex` source config
 (`discovery.cloud.gcp_vertex`); GenAI Engine no longer discovers them itself. The
 no-config sweep stays for now: the polling it triggers still fetches traces for GCP
-tasks, and it is the only job that uploads agents no discovery source reported, such
-as ones known only from their traces. It goes once an engine-scoped fetch replaces it.
+tasks, and until every scan's fetch also uploads the agents no discovery source
+reported, such as ones known only from their traces, it is the only job that does.
 """
 
 import logging
