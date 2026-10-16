@@ -598,16 +598,22 @@ def test_an_engine_that_ignores_unreported_cannot_leak_reported_or_system_tasks(
     """A GenAI Engine older than the `unreported` filter ignores it and serves every
     task. The walk keeps only what the filter would have returned: a task a source
     reported goes up through that source's fetch, with its evidence, and a system task
-    is not an agent at all."""
+    is not an agent at all. The unmapped task is the exception: it goes up like an
+    agent, as the filter returns it."""
     tasks_api.get_agent_tasks_api_v2_agent_tasks_get.side_effect = [
         [_task("s1")],
-        [_task("s1"), _system_task("__unmapped__", "sys1"), _traced_task("u1")],
+        [
+            _task("s1"),
+            _system_task("__unmapped__", "unmapped"),
+            _system_task("__arthur_system_task__", "sys1"),
+            _traced_task("u1"),
+        ],
     ]
     agents_client = _agents_client()
 
     _executor(agents_client, page_size=5).execute(_spec())
 
-    assert _uploaded_task_ids(agents_client) == [["s1"], ["u1"]]
+    assert _uploaded_task_ids(agents_client) == [["s1"], ["unmapped", "u1"]]
 
 
 def test_a_page_the_guard_empties_does_not_end_the_walk(tasks_api: MagicMock) -> None:
