@@ -333,6 +333,9 @@ def get_agent_tasks(
     task_ids = [task.id for task in tasks]
     provenance_rows = TaskProvenanceRepository(db_session).get_by_task_ids(task_ids)
     agent_metadata_by_task = tasks_repo._extract_agent_metadata_for_tasks(task_ids)
+    # last_fetched carries when each task last sent a trace. The Platform shows it as when
+    # an agent no discovery source reported was last seen.
+    last_trace_by_task = tasks_repo.get_last_trace_end_times(task_ids)
     enriched_responses = []
     for task in tasks:
         creation_source = tasks_repo._get_task_creation_source(task)
@@ -357,6 +360,7 @@ def get_agent_tasks(
             updated_at=task.updated_at,
             is_autocreated=task.is_autocreated,
             creation_source=creation_source,
+            last_fetched=last_trace_by_task.get(task.id),
             tools=agent_metadata["tools"],
             sub_agents=agent_metadata["sub_agents"],
             models=agent_metadata["models"],

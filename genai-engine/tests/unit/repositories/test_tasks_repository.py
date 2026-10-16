@@ -626,3 +626,23 @@ def test_a_manual_source_gains_nothing():
     resolved = _resolve(source, ["svc-a"])
 
     assert resolved.root == source
+
+
+@pytest.mark.unit_tests
+def test_get_last_trace_end_times_reads_each_tasks_newest_trace(repo_env):
+    repo, db_session, created, client = repo_env
+    now = datetime.now()
+
+    traced_task = _add_task(client, db_session, "traced", created_at=now)
+    untraced_task = _add_task(client, db_session, "untraced", created_at=now)
+    created["task_ids"] += [traced_task, untraced_task]
+    older, newer = now - timedelta(hours=3), now - timedelta(minutes=5)
+    created["trace_ids"] += [
+        _add_trace(db_session, traced_task, end_time=older),
+        _add_trace(db_session, traced_task, end_time=newer),
+    ]
+
+    last_traces = repo.get_last_trace_end_times([traced_task, untraced_task])
+
+    assert last_traces == {traced_task: newer}
+    assert repo.get_last_trace_end_times([]) == {}

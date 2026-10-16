@@ -301,6 +301,25 @@ class TaskRepository:
         """
         return self._extract_agent_metadata_for_tasks([task_id])[task_id]
 
+    def get_last_trace_end_times(self, task_ids: list[str]) -> dict[str, datetime]:
+        """The end time of each task's most recent trace, for the tasks that have one.
+
+        One grouped query for a page of tasks rather than one per task. A task with no
+        traces has no entry, so looking it up reads as None.
+        """
+        if not task_ids:
+            return {}
+        rows = (
+            self.db_session.query(
+                DatabaseTraceMetadata.task_id,
+                func.max(DatabaseTraceMetadata.end_time),
+            )
+            .filter(DatabaseTraceMetadata.task_id.in_(task_ids))
+            .group_by(DatabaseTraceMetadata.task_id)
+            .all()
+        )
+        return {task_id: end_time for task_id, end_time in rows}
+
     def _extract_agent_metadata_for_tasks(
         self,
         task_ids: list[str],
