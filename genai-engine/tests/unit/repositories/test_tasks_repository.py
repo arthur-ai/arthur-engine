@@ -25,7 +25,7 @@ from repositories.tasks_repository import TaskRepository
 from schemas.enums import TaskSortField
 from schemas.internal_schemas import Task
 from tests.clients.base_test_client import override_get_db_session
-from utils.constants import DEFAULT_ORG_ID
+from utils.constants import DEFAULT_ORG_ID, UNMAPPED_TASK_ID
 
 
 def _build_repo(db_session):
@@ -462,6 +462,59 @@ def test_unreported_leaves_out_system_tasks(repo_env):
         db_session.query(DatabaseTask).filter(DatabaseTask.id == system_task).update(
             {"is_system_task": False},
         )
+        db_session.commit()
+
+
+@pytest.mark.unit_tests
+def test_unreported_includes_the_unmapped_task(repo_env):
+    """The unmapped task is a system task, but it holds the traces of agents that sent
+    no service name, so it is reported like an agent where the other system tasks are not.
+    """
+    repo, db_session, created, client = repo_env
+    now = datetime.now()
+
+    traced_task = _add_task(client, db_session, "traced-only", created_at=now)
+    system_task = _add_task(client, db_session, "__system__", created_at=now)
+    created["task_ids"] += [traced_task, system_task]
+    db_session.query(DatabaseTask).filter(DatabaseTask.id == system_task).update(
+        {"is_system_task": True},
+    )
+    # A migration seeds the unmapped task in a real database; the test database is
+    # not built by migrations, so it is added here when no other test has added it.
+    added_unmapped = db_session.get(DatabaseTask, UNMAPPED_TASK_ID) is None
+    if added_unmapped:
+        db_session.add(
+            DatabaseTask(
+                id=UNMAPPED_TASK_ID,
+                name="__unmapped__",
+                created_at=now,
+                updated_at=now,
+                is_agentic=True,
+                is_system_task=True,
+                archived=False,
+                org_id=DEFAULT_ORG_ID,
+            ),
+        )
+    db_session.commit()
+
+    try:
+        tasks, count = repo.query_tasks(
+            ids=[traced_task, system_task, UNMAPPED_TASK_ID],
+            unreported=True,
+            page_size=None,
+        )
+
+        assert count == 2
+        assert {t.id for t in tasks} == {traced_task, UNMAPPED_TASK_ID}
+    finally:
+        # Cleared so the fixture's API delete, which refuses system tasks, can run.
+        db_session.query(DatabaseTask).filter(DatabaseTask.id == system_task).update(
+            {"is_system_task": False},
+        )
+        if added_unmapped:
+            db_session.query(DatabaseTask).filter(
+                DatabaseTask.id == UNMAPPED_TASK_ID,
+            ).delete(synchronize_session=False)
         db_session.commit()
 
 
