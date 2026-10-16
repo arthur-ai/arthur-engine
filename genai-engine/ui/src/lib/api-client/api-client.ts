@@ -2592,28 +2592,6 @@ export interface DemoTaskSignupResponse {
 }
 
 /**
- * DiscoverAndPollResponse
- * Response model for the execute-all agent polling endpoint.
- */
-export interface DiscoverAndPollResponse {
-  /**
-   * Discovered
-   * Number of new agent tasks created
-   */
-  discovered: number;
-  /**
-   * Status
-   * Status of the operation
-   */
-  status: string;
-  /**
-   * Traces Fetched
-   * Total number of traces fetched across all tasks (0 in async mode)
-   */
-  traces_fetched: number;
-}
-
-/**
  * DisplaySettingsResponse
  * Public display settings (e.g. default currency for cost formatting).
  */
@@ -3025,24 +3003,6 @@ export interface ExamplesConfig {
   hint?: string | null;
 }
 
-export type ExecuteAgentPollingApiV1TasksTaskIdAgentPollingExecutePostData = ExecutePollingResponse;
-
-export type ExecuteAgentPollingApiV1TasksTaskIdAgentPollingExecutePostError = HTTPValidationError;
-
-export type ExecuteAllAgentPollingApiV1AgentPollingExecuteAllPostData = DiscoverAndPollResponse;
-
-export type ExecuteAllAgentPollingApiV1AgentPollingExecuteAllPostError = HTTPValidationError;
-
-export interface ExecuteAllAgentPollingApiV1AgentPollingExecuteAllPostParams {
-  /** Timeout */
-  timeout?: number | null;
-  /**
-   * Wait For Completion
-   * @default false
-   */
-  wait_for_completion?: boolean;
-}
-
 export type ExecuteHybridSearchApiV1RagProvidersProviderIdHybridSearchPostData = RagProviderQueryResponse;
 
 export type ExecuteHybridSearchApiV1RagProvidersProviderIdHybridSearchPostError = HTTPValidationError;
@@ -3050,23 +3010,6 @@ export type ExecuteHybridSearchApiV1RagProvidersProviderIdHybridSearchPostError 
 export type ExecuteKeywordSearchApiV1RagProvidersProviderIdKeywordSearchPostData = RagProviderQueryResponse;
 
 export type ExecuteKeywordSearchApiV1RagProvidersProviderIdKeywordSearchPostError = HTTPValidationError;
-
-/**
- * ExecutePollingResponse
- * Response model for the single-task agent polling endpoint.
- */
-export interface ExecutePollingResponse {
-  /**
-   * Status
-   * Status of the operation
-   */
-  status: string;
-  /**
-   * Task Id
-   * Task ID that was enqueued
-   */
-  task_id: string;
-}
 
 export type ExecuteSimilarityTextSearchApiV1RagProvidersProviderIdSimilarityTextSearchPostData = RagProviderQueryResponse;
 
@@ -14901,46 +14844,6 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         path: `/api/v1/traces/transforms/${transformId}/versions/${versionId}`,
         method: "DELETE",
         secure: true,
-        ...params,
-      }),
-
-    /**
-     * @description Manually trigger a polling job for a task. Does not require any particular state — admins can use this to force an immediate poll outside the normal loop cadence.
-     *
-     * @tags Agent Discovery
-     * @name ExecuteAgentPollingApiV1TasksTaskIdAgentPollingExecutePost
-     * @summary Execute Agent Polling
-     * @request POST:/api/v1/tasks/{task_id}/agent-polling/execute
-     * @secure
-     */
-    executeAgentPollingApiV1TasksTaskIdAgentPollingExecutePost: (taskId: string, params: RequestParams = {}) =>
-      this.request<ExecuteAgentPollingApiV1TasksTaskIdAgentPollingExecutePostData, ExecuteAgentPollingApiV1TasksTaskIdAgentPollingExecutePostError>({
-        path: `/api/v1/tasks/${taskId}/agent-polling/execute`,
-        method: "POST",
-        secure: true,
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * @description Manually trigger a full agent discovery and polling cycle. Discovers new GCP agents and enqueues trace-fetch jobs for all eligible tasks. Use wait_for_completion=true to block until all polling jobs finish.
-     *
-     * @tags Agent Discovery
-     * @name ExecuteAllAgentPollingApiV1AgentPollingExecuteAllPost
-     * @summary Execute All Agent Polling
-     * @request POST:/api/v1/agent-polling/execute-all
-     * @secure
-     */
-    executeAllAgentPollingApiV1AgentPollingExecuteAllPost: (
-      query: ExecuteAllAgentPollingApiV1AgentPollingExecuteAllPostParams,
-      params: RequestParams = {}
-    ) =>
-      this.request<ExecuteAllAgentPollingApiV1AgentPollingExecuteAllPostData, ExecuteAllAgentPollingApiV1AgentPollingExecuteAllPostError>({
-        path: `/api/v1/agent-polling/execute-all`,
-        method: "POST",
-        query: query,
-        secure: true,
-        format: "json",
         ...params,
       }),
 
