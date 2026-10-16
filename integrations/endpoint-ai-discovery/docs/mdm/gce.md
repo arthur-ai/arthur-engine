@@ -228,7 +228,7 @@ the copy in its own package, so the module at a ref deploys that ref's collector
 
 ```hcl
 module "arthur_ai_discovery" {
-  source = "git::https://github.com/arthur-ai/arthur-engine.git//integrations/endpoint-ai-discovery/deploy/terraform?ref=REF"
+  source = "git::https://github.com/arthur-ai/arthur-engine.git//integrations/endpoint-ai-discovery/deploy/terraform?ref=REF&depth=1"
 
   arthur_engine_ref = "REF" # the same ref: the VMs download the files at it
   projects          = ["my-project"]
@@ -260,7 +260,9 @@ download, for a machine running Terraform that cannot reach the URLs the VMs use
 
 **Source it from git**, as above, or by a relative path into a checkout of this repository. The
 module reads files beside it in this tree. An absolute local path copies only the module's own
-directory, and the plan fails naming the missing policy file.
+directory, and the plan fails naming the missing policy file. `depth=1` makes the download a
+shallow clone, measured at 39 MB in 6s. It takes a tag or a branch: with a bare commit `init`
+fails, `Remote branch … not found`, so drop `depth=1` to pin one.
 
 What differs from the gcloud path:
 
