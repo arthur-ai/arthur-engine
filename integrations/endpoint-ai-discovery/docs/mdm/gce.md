@@ -245,7 +245,7 @@ output "arthur_source" {
 |---|---|---|
 | The OS policy assignment | Every project × zone | — |
 | `osconfig.googleapis.com` | Every project; left enabled on destroy | `enable_apis = false` |
-| `enable-osconfig=TRUE`, `enable-guest-attributes=TRUE` | Every project's metadata, so every VM's OS Config agent turns on; the policy still reaches only the label | Leaving a key out of `project_metadata`; `[]` for both, then set them per VM |
+| `enable-osconfig=TRUE`, `enable-guest-attributes=TRUE` | Every project's metadata, as the default for each VM that does not set its own: a VM's own `FALSE` wins, and that VM neither applies the policy nor reports. The OS Config agent turns on across the rest; the policy still reaches only the label | Leaving a key out of `project_metadata`; `[]` for both, then set them per VM |
 | `roles/compute.viewer` for Arthur's credential | Every project | Leaving `reader` unset |
 
 Then label the VMs, wherever they are defined. It takes Terraform 1.5 and the Google provider
