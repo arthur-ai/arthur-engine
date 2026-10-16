@@ -31,6 +31,7 @@ from tests.clients.base_test_client import (
     GenaiEngineTestClientBase,
     override_get_db_session,
 )
+from utils.constants import DEFAULT_ORG_ID
 
 # Every record carries the time its source last saw the agent. Resolution does not read
 # it, only provenance carries it through, so one fixed instant keeps it out of the way
@@ -318,9 +319,10 @@ def test_agent_tasks_since_include_rescanned_tasks_and_exclude_stale_ones(
 
 def _walk_agent_tasks(
     client: GenaiEngineTestClientBase,
-    source_id: uuid.UUID,
+    source_id: uuid.UUID | None,
     page_size: int,
     between_pages: Callable[[list[list[str]]], None] = lambda pages: None,
+    unreported: bool | None = None,
 ) -> list[list[str]]:
     """Page through a source's tasks the way the fetch job does, until a short page."""
     pages: list[list[str]] = []
@@ -328,6 +330,7 @@ def _walk_agent_tasks(
     while True:
         status_code, agent_tasks = client.get_agent_tasks(
             discovery_source_id=source_id,
+            unreported=unreported,
             after_task_id=after_task_id,
             page_size=page_size,
         )
@@ -465,3 +468,109 @@ def test_agent_tasks_for_a_source_with_no_reports_is_empty(
 
     assert status_code == 200
     assert agent_tasks == []
+
+
+def _add_trace_only_agents(run: str, count: int) -> list[str]:
+    """Agents the engine only knows from their traces: auto-created, no provenance.
+
+    Written directly, as trace ingestion would, since no endpoint mints one.
+    """
+    db_session = override_get_db_session()
+    try:
+        tasks = [
+            DatabaseTask(
+                id=str(uuid.uuid4()),
+                name=f"{run}-traced-{i}",
+                created_at=datetime.now(),
+                updated_at=datetime.now(),
+                is_agentic=True,
+                is_autocreated=True,
+                archived=False,
+                org_id=DEFAULT_ORG_ID,
+            )
+            for i in range(count)
+        ]
+        db_session.add_all(tasks)
+        db_session.commit()
+        return [task.id for task in tasks]
+    finally:
+        db_session.close()
+
+
+@pytest.mark.unit_tests
+def test_agent_tasks_unreported_return_only_tasks_no_source_reported(
+    client: GenaiEngineTestClientBase,
+):
+    """What every scan's fetch also reads: the agents no discovery source has claimed.
+
+    A source's fetch already carries the tasks that source reported; this is the rest,
+    so an agent seen only through its traces still reaches the Platform.
+    """
+    run = uuid.uuid4().hex[:8]
+    [traced_task_id] = _add_trace_only_agents(run, 1)
+    _, batch = client.resolve_discovered_agents(
+        [_record(f"{run}-reported", name="Reported")],
+        source_id=uuid.uuid4(),
+    )
+    reported_task_id = batch.resolved[0].task_id
+
+    try:
+        status_code, agent_tasks = client.get_agent_tasks(unreported=True)
+        assert status_code == 200
+
+        seen = {task.id for task in agent_tasks}
+        assert traced_task_id in seen
+        assert reported_task_id not in seen
+    finally:
+        _cleanup([traced_task_id, reported_task_id])
+
+
+@pytest.mark.unit_tests
+def test_agent_tasks_unreported_page_through_every_task_once(
+    client: GenaiEngineTestClientBase,
+):
+    """The same cursor walk works without a source: every unreported task, once.
+
+    Other tests leave unreported tasks behind, so the page size is set from how many
+    there are now, to make the walk take more than one page whatever that number is.
+    """
+    run = uuid.uuid4().hex[:8]
+    traced_task_ids = _add_trace_only_agents(run, 3)
+
+    try:
+        _, everything = client.get_agent_tasks(unreported=True)
+        page_size = len(everything) // 2 + 1
+
+        pages = _walk_agent_tasks(
+            client,
+            source_id=None,
+            page_size=page_size,
+            unreported=True,
+        )
+
+        assert len(pages) >= 2
+        seen = [task_id for ids in pages for task_id in ids]
+        assert len(seen) == len(set(seen))
+        assert set(traced_task_ids) <= set(seen)
+    finally:
+        _cleanup(traced_task_ids)
+
+
+@pytest.mark.unit_tests
+@pytest.mark.parametrize(
+    "source_filter",
+    [
+        {"discovery_source_id": uuid.uuid4()},
+        {"reported_since": datetime(2026, 9, 1, tzinfo=timezone.utc)},
+    ],
+    ids=["discovery_source_id", "reported_since"],
+)
+def test_agent_tasks_unreported_with_a_source_filter_is_rejected(
+    client: GenaiEngineTestClientBase,
+    source_filter: dict,
+):
+    """Reported and unreported together match nothing; that is a caller error, and
+    answering it with an empty page would read as "no such agents"."""
+    status_code, _ = client.get_agent_tasks(unreported=True, **source_filter)
+
+    assert status_code == 400

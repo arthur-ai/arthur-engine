@@ -8,7 +8,7 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "2026-10-12T00:20:40.795729056Z"
+exclude-newer = "2026-10-13T04:58:43.376168332Z"
 exclude-newer-span = "P3D"
 
 [options.exclude-newer-package]
@@ -1524,7 +1524,7 @@ wheels = [
 
 [[package]]
 name = "ml-engine"
-version = "2.1.1011"
+version = "2.1.1017"
 source = { editable = "." }
 dependencies = [
     { name = "adlfs" },

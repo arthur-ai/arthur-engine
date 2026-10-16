@@ -32,7 +32,7 @@ def clean_inference_tables(user_id="00000000-1111-2222-3333-44444444"):
 
 
 @pytest.fixture
-def create_conversation(request):
+def create_conversation(request, clean_inference_tables):
     number_of_messages = request.param.get("number_of_messages", 1)
     number_of_conversations = request.param.get("number_of_conversations", 1)
     db_session = override_get_db_session()

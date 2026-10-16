@@ -941,8 +941,9 @@ def test_a_source_a_scan_cannot_be_is_rejected():
 
 
 def _legacy_vertex_task(db_session, resource_name: str, engine_id: str) -> str:
-    """A task exactly as `global_agent_polling_service._discover_gcp_agents` leaves it:
-    a GCP creation source, and Google's resource name mapped as a SERVICE_NAME key."""
+    """A task exactly as the legacy Vertex discovery phase left it, before it was removed:
+    a GCP creation source, and Google's resource name mapped as a SERVICE_NAME key.
+    Deployed engines still hold these rows."""
     task_repo = TaskRepository(
         db_session,
         RuleRepository(db_session),

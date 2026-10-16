@@ -523,7 +523,10 @@ def test_query_inference_hidden_components_not_present(
     status_code, query_resp = client.query_inferences(sort="desc", page_size=k)
 
     assert status_code == 200
-    assert query_resp.count > 2
+    # Other tests may or may not have left inferences, so check only ours: the
+    # newest inference is the one created above.
+    assert query_resp.count >= k
+    assert query_resp.inferences[0].id == inference_ids[-1]
 
 
 @pytest.mark.unit_tests
