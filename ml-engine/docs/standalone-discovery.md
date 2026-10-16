@@ -149,7 +149,7 @@ needs no key and is not seen unless an AI integration is also attached.
 
 What is read, all with `GET` and `teamId` on every call:
 
-- `GET /v10/projects`: project IDs, names, function region and deployment/update times.
+- `GET /v10/projects`: project IDs, names and deployment/update times.
 - `GET /v10/projects/{id}/env`: environment variable **names** (and their type and
   target). Values are never requested decrypted and are discarded as soon as the
   answer arrives; they are never logged, stored or sent to the destination. The
@@ -158,15 +158,22 @@ What is read, all with `GET` and `teamId` on every call:
   and which projects they can access. If the token is refused this (403), the scan
   carries on with variable names alone and says so in its log.
 
-Each record's address is the team ID, the project's function region (`global` when it
-has none) and the project ID, which is also its `external_id`.
+Each record's address is the team ID, the scope `global` (Vercel has no region) and the
+project ID, which is also its `external_id`. `last_seen` is the latest of the project's
+update time and its deployments' times, so a project redeployed without a settings
+change still reads as active.
+
+If one project's variables answer 403, 404 or 5xx (after retries), that project is
+skipped with a warning naming its ID and the status, the count is in the scan's summary
+line, and the scan carries on. A 401 fails the scan. If a call fails part way, the
+records found before it are published and the scan then fails with Vercel's error.
 
 Least privilege: Vercel tokens have no read-only scope; a token carries the permissions
 of the user who created it, within the team chosen as its scope. Create it from a
-dedicated team member with the lowest role that can view project settings and
-environment variable names, scope it to the one team, and give it an expiration.
-Production variables the token's user cannot see are counted in the scan log
-(`hiddenProductionEnvCount`) rather than silently missed.
+dedicated team member with the Viewer role, scope it to the one team, and give it an
+expiration. Viewer has not yet been verified against a live team. Production variables
+the token's user cannot see are counted in the scan log (`hiddenProductionEnvCount`)
+rather than silently missed.
 
 #### `jamf_pro` — Jamf Pro (managed Macs)
 

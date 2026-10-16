@@ -24,9 +24,11 @@ so it has nothing for this scan to see unless an AI integration is also attached
 a project is not reported. The docs section says so.
 
 ONE PROJECT, ONE RECORD. `external_id` is the project ID (`prj_...`), stable across
-renames; the team ID is the address's instance and the project's function region its
-scope ("global" when Vercel reports none -- a project is not regional the way a Vertex
-engine is, but a CLOUD address must carry a scope).
+renames; the team ID is the address's instance and its scope is always "global": Vercel
+has no region (a function region is where code runs, not where the project lives), but
+a CLOUD address must carry a scope. `last_seen` is the latest of the project's
+`updatedAt` and its deployments' `readyAt`/`createdAt`, not `updatedAt` alone, because
+a project redeployed without a settings change is still active.
 
 NO SERVICE NAMES. Vertex puts the engine's resource name in `service_names` because
 existing tasks are already keyed by exactly that string. Nothing is keyed by a Vercel
@@ -37,10 +39,14 @@ project's task. A project's telemetry service name is whatever its code passes t
 `registerOTel`, which this scan cannot see, so none is claimed.
 
 COMPLETENESS BEFORE RECORDS. Every call is made before the first batch is handed over,
-so the job log says how much of the team was read -- pages, filtered, flagged, a page
-cap, a stop -- before anything is published. The cost is that a failure on project 40
-publishes nothing, rather than 39 projects' records; a team's projects are few enough
-that the rescan is cheap.
+so the job log says how much of the team was read -- pages, filtered, flagged,
+unreadable, a page cap, a stop -- before anything is published. A call that fails part
+way still publishes the records collected before it, after that report, and then
+re-raises the failure unchanged, so the scan still fails with Vercel's status.
+
+ONE PROJECT'S FAILURE IS PARTIAL. A 403, 404 or 5xx (after retries) on one project's
+variables skips that project with a warning naming its id and status, and the scan
+goes on. A 401 means the token is invalid for every project, so it fails the scan.
 """
 
 import logging
@@ -62,6 +68,7 @@ from discovery.cloud.vercel_ai.client import (
     Project,
     ScanStopped,
     VercelClient,
+    VercelError,
     VercelSettings,
 )
 from discovery.endpoint.scope import parse_group_names
@@ -75,7 +82,7 @@ TEAM_ID_FIELD = "team_id"
 ACCESS_TOKEN_FIELD = "access_token"
 INCLUDE_PROJECTS_FIELD = "include_projects"
 
-# What the address's scope says for a project Vercel reports no function region for.
+# Every record's address scope: Vercel has no region.
 GLOBAL_SCOPE = "global"
 
 # Environment variable names that mean a project calls an LLM provider: the names the
@@ -151,10 +158,11 @@ class _Tally:
     filtered_out: int = 0
     in_scope: int = 0
     scanned: int = 0
-    gone: int = 0
     flagged_by_env: int = 0
     flagged_by_integration: int = 0
     skipped_undated: int = 0
+    unreadable: int = 0
+    failed: bool = False
     integrations_read: bool = False
     integrations_denied: bool = False
     listing_complete: bool = False
@@ -214,12 +222,17 @@ class VercelConnector:
             self._collect(client, settings, include, logger, tally, records)
         except ScanStopped:
             tally.stopped = True
+        except Exception:
+            if records:
+                tally.failed = True
+                _report(logger, tally, len(records))
+                yield from _batches(records)
+            raise
 
         # Reported before the first batch is handed over, so a publish that fails part
         # way cannot leave a capped or partial answer unannounced.
         _report(logger, tally, len(records))
-        for start in range(0, len(records), BATCH_SIZE):
-            yield records[start : start + BATCH_SIZE]
+        yield from _batches(records)
 
     def _checkpoint(self) -> None:
         """Asked before every vendor call."""
@@ -269,14 +282,19 @@ class VercelConnector:
                 continue
 
             self._checkpoint()
-            env = client.project_env(project.id)
-            if env is None:
-                tally.gone += 1
+            try:
+                env = client.project_env(project.id)
+            except VercelError as exc:
+                if not env_failure_is_partial(exc.status_code):
+                    raise
+                tally.unreadable += 1
+                # The id and status only: the exception's text is not logged.
                 logger.warning(
-                    "Vercel project %s was listed but its environment variables "
-                    "answered 404; it was probably deleted during the scan, and is "
-                    "skipped.",
+                    "Vercel project %s: its environment variables answered HTTP %s, so "
+                    "it was not checked and is skipped%s.",
                     project.id,
+                    exc.status_code,
+                    _PARTIAL_HINTS.get(exc.status_code or 0, ""),
                 )
                 continue
             tally.scanned += 1
@@ -348,6 +366,25 @@ class VercelConnector:
             records.append(record)
 
 
+def _batches(
+    records: list[DiscoveredAgentRecord],
+) -> Iterator[list[DiscoveredAgentRecord]]:
+    for start in range(0, len(records), BATCH_SIZE):
+        yield records[start : start + BATCH_SIZE]
+
+
+def env_failure_is_partial(status: Optional[int]) -> bool:
+    """Whether a failed read of one project's variables skips that project rather than
+    failing the scan."""
+    return status is not None and (status in (403, 404) or status >= 500)
+
+
+_PARTIAL_HINTS = {
+    403: " (its user needs the Viewer role on the team)",
+    404: " (probably deleted during the scan)",
+}
+
+
 def _in_scope(
     projects: list[Project],
     include: tuple[str, ...],
@@ -401,7 +438,7 @@ def record_for(
             vendor=VENDOR,
             address=SourceAddress(
                 instance=settings.team_id,
-                scope=project.region or GLOBAL_SCOPE,
+                scope=GLOBAL_SCOPE,
                 resource_id=project.id,
             ),
         ),
@@ -411,20 +448,35 @@ def record_for(
 def _report(logger: logging.Logger, tally: _Tally, records: int) -> None:
     """Say how complete the answer is. A partial answer must not read as a full one."""
     logger.info(
-        "Vercel scan listed %s project(s) over %s page(s); %s outside %s; %s scanned; "
-        "%s flagged (%s by environment variable name, %s by AI integration); "
-        "%s record(s), %s skipped",
+        "Vercel scan listed %s project(s) over %s page(s); %s outside %s; %s scanned, "
+        "%s unreadable; %s flagged (%s by environment variable name, %s by AI "
+        "integration); %s record(s), %s skipped",
         tally.listed,
         tally.pages,
         tally.filtered_out,
         INCLUDE_PROJECTS_FIELD,
         tally.scanned,
+        tally.unreadable,
         tally.flagged_by_env + tally.flagged_by_integration,
         tally.flagged_by_env,
         tally.flagged_by_integration,
         records,
-        tally.skipped_undated + tally.gone,
+        tally.skipped_undated + tally.unreadable,
     )
+    if tally.failed:
+        logger.warning(
+            "Vercel scan failed part-way after scanning %s of %s project(s); the %s "
+            "record(s) found before the failure are published, then the scan fails.",
+            tally.scanned,
+            tally.in_scope or tally.listed,
+            records,
+        )
+    if tally.unreadable:
+        logger.warning(
+            "Vercel scan could not read the environment variables of %s project(s), "
+            "named above; they were skipped, so the answer is partial.",
+            tally.unreadable,
+        )
     if tally.stopped:
         logger.warning(
             "Vercel scan stopped early on request after scanning %s of %s project(s)%s; "

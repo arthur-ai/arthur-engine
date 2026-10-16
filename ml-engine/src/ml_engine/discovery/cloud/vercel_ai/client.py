@@ -22,8 +22,9 @@ method.
 
 Authenticated with a Vercel access token, `Authorization: Bearer <token>`. Vercel
 tokens carry the permissions of the user who created them within the team chosen at
-creation; there is no read-only token scope, so least privilege is a matter of whose
-token it is and how long it lives (see docs/standalone-discovery.md).
+creation; there is no read-only token scope, so least privilege is a token created by a
+member with the Viewer role on the team. Viewer is not yet verified against a live team
+(see docs/standalone-discovery.md).
 """
 
 import logging
@@ -97,7 +98,6 @@ class Project:
 
     id: str
     name: str
-    region: Optional[str]
     # Epoch milliseconds of everything that says the project was alive: its production
     # deployment's readyAt/createdAt, its latest deployments' createdAt/readyAt, and
     # its own updatedAt. Empty when Vercel returned none.
@@ -195,27 +195,24 @@ class VercelClient:
                 PROJECTS_PATH,
                 forbidden=(
                     ". The token cannot list projects in this team: it was created for "
-                    "a different team, or its user is not a member of team_id"
+                    "a different team, or its user is not a member of team_id (the "
+                    "Viewer role is enough)"
                 ),
             )
         return _projects_page_from(resp)
 
-    def project_env(self, project_id: str) -> Optional[ProjectEnv]:
-        """The names of one project's environment variables, or None if the project no
-        longer exists (deleted between the listing and this call)."""
+    def project_env(self, project_id: str) -> ProjectEnv:
+        """The names of one project's environment variables."""
         path = project_env_path(project_id)
         # No `decrypt`: see the module docstring.
         resp = self._get(path, {})
-        if resp.status_code == 404:
-            return None
         if resp.status_code != 200:
             raise _error(
                 resp,
                 path,
                 forbidden=(
                     ". The token can list this project but not read its environment "
-                    "variables: its user needs a team role that can view project "
-                    "settings"
+                    "variables: its user needs the Viewer role on the team"
                 ),
             )
         return _env_from(resp, path)
@@ -363,7 +360,6 @@ def _project_from(raw: Any) -> Optional[Project]:
     if not isinstance(project_id, str) or not project_id.strip():
         return None
     name = raw.get("name")
-    region = raw.get("serverlessFunctionRegion")
 
     activity: list[Optional[int]] = [_ms(raw.get("updatedAt"))]
     targets = raw.get("targets")
@@ -382,7 +378,6 @@ def _project_from(raw: Any) -> Optional[Project]:
     return Project(
         id=project_id,
         name=name if isinstance(name, str) and name.strip() else project_id,
-        region=region if isinstance(region, str) and region.strip() else None,
         activity_ms=tuple(ms for ms in activity if ms is not None),
     )
 

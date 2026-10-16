@@ -740,7 +740,7 @@ def test_a_project_deleted_mid_scan_is_skipped_with_a_warning(
     )
     with caplog.at_level(logging.WARNING, logger=LOG.name):
         assert ids(scan(session)) == ["prj_chat"]
-    assert "prj_gone" in caplog.text
+    assert "prj_gone" in caplog.text and "HTTP 404" in caplog.text
 
 
 # -- include_projects ------------------------------------------------------------------------
@@ -783,21 +783,24 @@ def test_an_empty_include_projects_scans_every_project(value: str) -> None:
 # -- records -------------------------------------------------------------------------------
 
 
-def test_a_record_carries_cloud_provenance_with_team_region_and_project_id() -> None:
+def test_a_record_carries_cloud_provenance_with_team_scope_and_project_id() -> None:
     [record] = [r for r in scan(FakeSession()) if r.external_id == "prj_chat"]
     assert record.name == "support-chat"
     source = record.creation_source
     assert isinstance(source, CloudAgentCreationSource)
     assert source.vendor == "vercel_ai"
     assert source.address.instance == TEAM_ID
-    assert source.address.scope == "iad1"
+    assert source.address.scope == GLOBAL_SCOPE
     assert source.address.resource_id == "prj_chat"
     assert source.address.query is None
 
 
-def test_a_project_without_a_function_region_is_scoped_global() -> None:
-    [record] = [r for r in scan(FakeSession()) if r.external_id == "prj_img"]
-    assert record.creation_source.address.scope == GLOBAL_SCOPE == "global"
+def test_every_record_is_scoped_global_whatever_its_function_region() -> None:
+    # prj_chat reports serverlessFunctionRegion iad1, prj_img none.
+    records = scan(FakeSession())
+    assert sorted(ids(records)) == ["prj_chat", "prj_img"]
+    for record in records:
+        assert record.creation_source.address.scope == GLOBAL_SCOPE == "global"
 
 
 def test_a_record_leaves_runs_on_platform_models_and_service_names_unset() -> None:
@@ -1075,9 +1078,7 @@ def test_an_unknown_team_is_the_sources_to_fix() -> None:
     "status, code",
     [
         (401, DiscoveryErrorCode.AUTHENTICATION_FAILED),
-        (403, DiscoveryErrorCode.PERMISSION_DENIED),
         (400, DiscoveryErrorCode.PROVIDER_ERROR),
-        (500, DiscoveryErrorCode.PROVIDER_ERROR),
     ],
 )
 def test_a_vendor_error_on_a_projects_variables_carries_its_status(
@@ -1089,6 +1090,55 @@ def test_a_vendor_error_on_a_projects_variables_carries_its_status(
     assert exc.value.status_code == status
     assert failure_code(exc.value) is code
     assert "prj_chat" in str(exc.value)
+
+
+def test_a_failure_part_way_hands_over_what_was_found_then_raises_unchanged(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    session = with_projects(
+        chat("prj_1", "one"),
+        chat("prj_2", "two"),
+        **{
+            env_path("prj_1"): ok(envs(env_var("OPENAI_API_KEY"))),
+            env_path("prj_2"): error(401),
+        },
+    )
+    batches = connector_with(session).scan(config(), 24, CREDS, FIELDS, LOG)
+    found: list[Any] = []
+    with caplog.at_level(logging.INFO, logger=LOG.name):
+        with pytest.raises(VercelError) as exc:
+            for batch in batches:
+                assert "failed part-way" in caplog.text
+                found.extend(batch)
+    assert ids(found) == ["prj_1"]
+    assert exc.value.status_code == 401
+    assert failure_code(exc.value) is DiscoveryErrorCode.AUTHENTICATION_FAILED
+    assert env_path("prj_2") in str(exc.value)
+
+
+@pytest.mark.parametrize("status", [403, 404, 500, 501, 503])
+def test_a_403_404_or_5xx_on_one_projects_variables_skips_only_that_project(
+    status: int,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    vendor_message = "Project restricted-config-name is not visible to you"
+    session = with_projects(
+        chat("prj_1", "one"),
+        chat("prj_2", "two"),
+        **{
+            env_path("prj_1"): error(status, "some_code", vendor_message),
+            env_path("prj_2"): ok(envs(env_var("OPENAI_API_KEY"))),
+        },
+    )
+    batches = connector_with(session).scan(config(), 24, CREDS, FIELDS, LOG)
+    with caplog.at_level(logging.INFO, logger=LOG.name):
+        first = next(batches)
+    assert ids(list(first)) == ["prj_2"]
+    assert list(batches) == []
+    warnings = [r.getMessage() for r in caplog.records if r.levelno == logging.WARNING]
+    assert any("prj_1" in w and f"HTTP {status}" in w for w in warnings)
+    assert "1 unreadable" in caplog.text and "answer is partial" in caplog.text
+    assert vendor_message not in caplog.text and "some_code" not in caplog.text
 
 
 def test_an_integrations_failure_other_than_403_fails_the_scan() -> None:
@@ -1224,7 +1274,7 @@ def test_no_value_and_no_token_reach_logs_records_or_errors(
         records = scan(FakeSession())
         for routes in (
             {PROJECTS_PATH: error(401)},
-            {env_path("prj_chat"): error(500)},
+            {env_path("prj_chat"): error(400)},
             {env_path("prj_chat"): ok({"variables": [env_var("X", "plain")]})},
             {PROJECTS_PATH: requests.ConnectionError(f"Bearer {TOKEN}")},
         ):
@@ -1252,7 +1302,7 @@ def test_responses_shaped_like_vercel_sdk_1_28_43_parse() -> None:
     by_id = {r.external_id: r for r in records}
     assert sorted(by_id) == ["prj_chat", "prj_img"]
     assert by_id["prj_chat"].last_seen == utc(T_READY)
-    assert by_id["prj_chat"].creation_source.address.scope == "iad1"
+    assert by_id["prj_chat"].creation_source.address.scope == "global"
     assert by_id["prj_img"].last_seen == utc(T_UPDATED)
     assert by_id["prj_img"].creation_source.address.scope == "global"
 
@@ -1323,3 +1373,19 @@ def test_a_refused_token_reaches_the_run_as_authentication_failed() -> None:
     assert result.error is not None and result.error.startswith("VercelError: ")
     assert TOKEN not in result.error
     assert sink.published == []
+
+
+def test_a_failure_part_way_reaches_the_run_after_publishing_what_was_found() -> None:
+    session = with_projects(
+        chat("prj_1", "one"),
+        chat("prj_2", "two"),
+        **{
+            env_path("prj_1"): ok(envs(env_var("OPENAI_API_KEY"))),
+            env_path("prj_2"): error(401),
+        },
+    )
+    result, sink = outcome(), AcceptingSink()
+    with pytest.raises(VercelError):
+        run(session, result, sink)
+    assert sink.published == ["prj_1"]
+    assert result.error_code is DiscoveryErrorCode.AUTHENTICATION_FAILED
