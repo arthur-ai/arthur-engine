@@ -43,6 +43,9 @@ documented by Jamf.
 | `tools/build-collector.py` | build `dist/collect.sh` and `dist/collect-linux.sh`, one file per platform, around one driver. Holds the `arthur1.` framing. |
 | `dist/` | generated, and committed on purpose — a reviewer should see it change. |
 | `deploy/` | the LaunchDaemon for Macs; the systemd units and `report-guest-attributes.sh`, the Compute Engine carrier. |
+| `deploy/arthur-ai-discovery.os-policy.yaml` | the Compute Engine OS policy, and its only copy: `tools/render-os-policy.sh` renders it for gcloud and `deploy/terraform/` reads it. |
+| `deploy/terraform/` | a Terraform module that deploys that policy to a fleet's projects and zones, or through one policy orchestrator. Its tests are `terraform test`, against mocked providers. |
+| `tools/render-os-policy.sh` | pin the OS policy to one ref: each file's URL there, and the sha256 of the bytes the ref holds. |
 | `test/lint.sh` | static checks on everything this tree owns. ~1s, no VM. |
 | `test/run-collector.sh` | runs this platform's collector and asserts on it. ~15s, needs osquery. |
 | `test/run-guest-attributes.sh` | runs the reporter against a fake metadata server built from measured answers. ~3s, no osquery. |
@@ -62,13 +65,18 @@ tools/build-collector.py --check      # ...and confirm it carries the vendored t
 test/lint.sh                          # static checks, ~1s, no VM
 test/run-collector.sh                 # run this platform's collector and assert on it, ~15s
 test/run-guest-attributes.sh          # what the Compute Engine reporter publishes, ~3s
+
+tools/render-os-policy.sh <ref>       # the Compute Engine OS policy, pinned to a ref
+cd deploy/terraform && terraform init -backend=false && terraform test   # the module, mocked
 ```
 
 Run both after any vendor bump or template edit. `lint.sh` **reads** the deployable and
 `run-collector.sh` **runs** it, which is the difference that matters: every static guard here
 passed for as long as the collector's extraction preamble went unexecuted by anything but a
 human. CI runs lint and the reporter test on Ubuntu, the Mac collector on a macOS runner, and
-the Linux collector plus `run-systemd.sh` on an Ubuntu runner, where systemd is PID 1.
+the Linux collector plus `run-systemd.sh` on an Ubuntu runner, where systemd is PID 1. It runs
+the Terraform module's tests too, and validates a caller at the module's lowest admitted
+Google provider: a newer attribute passes every other check and breaks a caller pinned there.
 
 **The VM scenario suite is upstream's.** At the vendored ref that is `test/lint.sh`,
 `test/docker_states.sh` (all six Docker daemon states, including `wedge`) and thirteen VM

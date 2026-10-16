@@ -44,6 +44,8 @@ artifact a fleet receives, and it would pass while doing so.
 | The units: a oneshot running the reporter as root; a timer with `OnBootSec` and `OnUnitActiveSec`, wanted by `timers.target` | A VM that never runs the scan, or reports nothing for its first hour |
 | The unit, the reporter and the collector agree on one install directory | Every VM failing its first run on a missing path |
 | No interpreter in the reporter; upstream still prints `no osqueryi found` | The reporter needing more than the collector does; `osquery=absent` silently never firing after a vendor bump |
+| The OS policy installs each of the four files where the unit, the reporter or systemd runs it, from its URL in this tree | A VM whose policy reads compliant and whose first run fails on a missing path; a file with no copy here to pin a checksum to |
+| `tools/render-os-policy.sh HEAD` leaves no placeholder and pins each file to its own sha256 | A rendered policy every VM refuses. Skipped, and says so, until the policy is committed: the renderer reads git |
 | `arthur1.` and `ERROR:oversize` present | The framing or its over-cap reason being dropped, which leaves an empty attribute — indistinguishable from a Mac with no AI tools on it |
 | `bash -n` on both collectors, the reporter and `vendor-queries.sh` | A template edit in `build-collector.py` producing a syntax error nobody runs until a Policy does |
 | Vendored `VERSION` exists; `PROVISIONAL` is announced | A commit pin becoming permanent by inattention |
@@ -112,6 +114,29 @@ activation under systemd against the fake, one with `/tmp` and `/var/tmp` remoun
 guest attributes disabled, then starts the timer and checks it has a next run, and removes
 everything. It writes to the machine, so it runs only with
 `ARTHUR_TEST_INSTALLS_UNITS=1`, as root, where systemd is PID 1 — in CI, the Ubuntu runner.
+
+## `deploy/terraform/tests/`
+
+`terraform test` from `deploy/terraform/`, against mocked providers: no credentials, nothing
+created. It asserts on what the module decides, in the plan.
+
+| Case | What it catches |
+|---|---|
+| An assignment per project and zone, carrying the policy's resources in its order, its label, and no wait for the rollout | A zone with no assignment, which leaves its VMs unmanaged with nothing saying so; a resource dropped or reordered |
+| Each file pinned to its URL at `arthur_engine_ref` and the sha256 of the copy beside the module, read off the rendered resource | A VM refusing every file, or receiving another ref's |
+| `file_base_url` replaces the URL path for path; `label` and `reader` reach the assignment, `arthur_source` and IAM | A mirror serving the wrong path; an Arthur source whose labels match no VM the policy reached |
+| A folder and an organization orchestrator: one each, no assignments, projects by number and zones as separate selectors, the file modes, a named resource, no payload under `DELETE` | An orchestrator scoped wider than asked, or one whose `DELETE` cannot find its assignments |
+| Downloaded files matching the module's copy pass; one that does not fails the plan | A `?ref=` bumped without `arthur_engine_ref` reaching every VM as a checksum mismatch |
+| No ref and no mirror; no projects and no folders; folder and organization both; prefixed numbers; project numbers for IDs | A plan that would reach no VM, or the wrong scope, without saying so |
+
+Beside the module tests, `terraform_data.policy` rebuilds the policy from the keys the module
+renders and compares it whole with the file, so a key nothing renders fails every plan.
+Add `allowNoResourceGroupMatch` to the policy, or a yum repository, and the first plan fails
+naming the file.
+
+CI also validates a caller at the lowest Google provider `versions.tf` admits, in all three
+modes. Every other check runs the latest provider, where an attribute added since the floor
+passes.
 
 ## Running the real thing
 

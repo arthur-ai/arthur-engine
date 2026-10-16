@@ -12,6 +12,11 @@
 __pycache__/
 *.pyc
 
+# `terraform init` in deploy/terraform/. The lock file is the caller's to commit: a module that
+# carried one would pin every caller's providers to the versions it happened to be tested on.
+deploy/terraform/.terraform/
+deploy/terraform/.terraform.lock.hcl
+
 # The repository root ignores `dist`, which is right for build output and wrong for both
 # of these: dist/collect.sh is generated but committed on purpose, and
 # vendor/.../dist/ holds the composed artifacts the collector embeds. Directory-first,

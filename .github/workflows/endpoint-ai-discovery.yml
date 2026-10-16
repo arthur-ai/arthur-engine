@@ -65,6 +65,73 @@ jobs:
             *) echo "::error::the refusal does not name the cause"; exit 1 ;;
           esac
 
+  terraform:
+    name: The Compute Engine Terraform module
+    # Against mocked providers: no credentials, nothing created. It checks what the module
+    # renders -- the policy file, pinned to the bytes beside it, in the right scope. Whether VM
+    # Manager applies it is the runbook's check, on a real VM.
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: integrations/endpoint-ai-discovery/deploy/terraform
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: 1.15.8
+          terraform_wrapper: false
+      - run: terraform fmt -check -recursive -diff
+      - run: terraform init -backend=false -input=false
+      - run: terraform validate
+      - run: terraform test
+
+      # versions.tf admits the Google provider from 6.33, and every step above ran the latest.
+      # An attribute added since passes them all and breaks a caller pinned at the floor, so
+      # validate a caller there too, in all three modes. By relative path: an absolute one
+      # copies the module's directory without the policy file beside it.
+      - name: terraform validate at the Google provider floor
+        run: |
+          floor="$(awk '/google *= *\{/ { g = 1 } g && /version/ { sub(/.*">= */, ""); sub(/,.*/, ""); print; exit }' versions.tf)"
+          case "$floor" in [0-9]*.[0-9]*) ;; *) echo "::error::cannot read the google floor from versions.tf"; exit 1 ;; esac
+          caller="$RUNNER_TEMP/floor"
+          mkdir -p "$caller"
+          module="$(realpath --relative-to="$caller" .)"
+          cat > "$caller/main.tf" <<EOF
+          terraform {
+            required_providers {
+              google = { source = "hashicorp/google", version = "= $floor" }
+            }
+          }
+          module "zones" {
+            source            = "$module"
+            arthur_engine_ref = "x"
+            projects          = ["fleet-one"]
+            zones             = ["us-central1-a"]
+          }
+          module "folder" {
+            source            = "$module"
+            arthur_engine_ref = "x"
+            projects          = ["fleet-one"]
+            zones             = ["us-central1-a"]
+            orchestrator      = { folder = "1" }
+          }
+          module "organization" {
+            source            = "$module"
+            arthur_engine_ref = "x"
+            projects          = ["fleet-one"]
+            zones             = ["us-central1-a"]
+            orchestrator      = { organization = "2", action = "DELETE" }
+          }
+          EOF
+          cd "$caller"
+          terraform init -backend=false -input=false
+          terraform validate
+          selected="$(terraform version -json | jq -r '.provider_selections["registry.terraform.io/hashicorp/google"]')"
+          echo "validated with google $selected"
+          case "$selected" in "$floor" | "$floor".0) ;; *) echo "::error::validated $selected, not the floor $floor"; exit 1 ;; esac
+
   collector:
     name: The deployable, run on a Mac
     # Pinned rather than macos-latest: the prerequisite claim -- osquery and nothing else
