@@ -14,7 +14,7 @@ from arthur_common.models.agent_governance_schemas import (
 )
 from openinference.semconv.trace import OpenInferenceSpanKindValues
 
-from db_models import DatabaseSpan, DatabaseTask
+from db_models import DatabaseSpan, DatabaseTask, DatabaseTraceMetadata
 from tests.clients.base_test_client import (
     GenaiEngineTestClientBase,
     override_get_db_session,
@@ -425,3 +425,48 @@ def test_get_agent_tasks_performance_no_n_plus_1(client: GenaiEngineTestClientBa
 
     # This test primarily validates that the endpoint completes without error
     # In a real scenario, you'd use SQL query logging to verify query count
+
+
+@pytest.mark.unit_tests
+def test_get_agent_tasks_last_fetched_is_the_newest_trace_end(
+    client: GenaiEngineTestClientBase,
+):
+    """last_fetched carries when the task last sent a trace: its newest trace's end."""
+    status_code, task = client.create_task(f"traced_{random.random()}", is_agentic=True)
+    assert status_code == 200
+    newest_end = datetime.now() - timedelta(minutes=5)
+
+    db_session = override_get_db_session()
+    trace_ids = []
+    try:
+        for end_time in (newest_end - timedelta(hours=2), newest_end):
+            trace = DatabaseTraceMetadata(
+                trace_id=str(uuid4()),
+                task_id=task.id,
+                org_id=DEFAULT_ORG_ID,
+                session_id=None,
+                user_id=None,
+                span_count=1,
+                start_time=end_time,
+                end_time=end_time,
+                created_at=end_time,
+                updated_at=end_time,
+                input_content="in",
+                output_content="out",
+            )
+            db_session.add(trace)
+            trace_ids.append(trace.trace_id)
+        db_session.commit()
+
+        status_code, enriched_tasks = client.get_agent_tasks()
+        assert status_code == 200
+        enriched = next(t for t in enriched_tasks if t.id == task.id)
+        assert enriched.last_fetched is not None
+        assert abs((enriched.last_fetched - newest_end).total_seconds()) < 1
+    finally:
+        db_session.query(DatabaseTraceMetadata).filter(
+            DatabaseTraceMetadata.trace_id.in_(trace_ids),
+        ).delete(synchronize_session=False)
+        db_session.commit()
+        db_session.close()
+        client.delete_task(task.id)
