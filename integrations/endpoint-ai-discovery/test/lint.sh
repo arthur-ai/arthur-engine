@@ -431,6 +431,69 @@ if "no osqueryi found" in rep_code and "no osqueryi found" not in runner:
           "found\", which the vendored bin/discover no longer prints."); sys.exit(1)
 print(f"carrier: ok, timer -> {exec_start.split('/')[-1]} -> {m.group(1).split('/')[-1]}; "
       f"no interpreter; upstream still prints the osquery diagnosis")
+
+# --- the OS policy that installs the carrier ------------------------------------------------
+# THE POLICY INSTALLS EACH FILE WHERE IT IS RUN. The unit runs the reporter from ExecStart, the
+# reporter runs the collector from its default, and systemd loads the units by name; a policy
+# that drops one elsewhere is a VM that fails its first run while the policy reads compliant.
+# AND IT NAMES EACH FILE BY ITS URL IN THIS TREE AT COMMIT, which is how render-os-policy.sh and
+# deploy/terraform/ find the bytes to pin. A URL outside the tree has no checksum to pin it to.
+import hashlib, subprocess
+POLICY = os.path.join("deploy", "arthur-ai-discovery.os-policy.yaml")
+pol = open(os.path.join(root, POLICY)).read()
+PREFIX = "https://raw.githubusercontent.com/arthur-ai/arthur-engine/COMMIT/integrations/endpoint-ai-discovery/"
+installs = dict((uri.removeprefix(PREFIX), path) for path, uri in
+                re.findall(r"^\s+path: (\S+)\n(?:[^\n]*\n){1,6}?\s+uri: (\S+)$", pol, re.M))
+want = {
+    "dist/collect-linux.sh": m.group(1),
+    "deploy/report-guest-attributes.sh": exec_start,
+    "deploy/arthur-ai-discovery.service": "/etc/systemd/system/arthur-ai-discovery.service",
+    "deploy/arthur-ai-discovery.timer": "/etc/systemd/system/arthur-ai-discovery.timer",
+}
+if installs != want:
+    for src in sorted(set(installs) | set(want)):
+        if installs.get(src) != want.get(src):
+            print(f"FAIL: {POLICY} installs {src} at {installs.get(src)}, but it is run from "
+                  f"{want.get(src)}")
+    print(f"      Each file comes from {PREFIX}<its path here> and lands where the unit, the "
+          f"reporter or systemd looks for it.")
+    sys.exit(1)
+print(f"os policy: ok, {len(installs)} files from this tree, each installed where it is run")
+
+# THE RENDERED POLICY PINS EACH FILE TO ITS OWN BYTES. Rendered at HEAD, every checksum must be
+# the sha256 of the file its URL names: a script that paired a URL with the wrong file's checksum
+# ships a policy every VM refuses. Compared with the working tree only where it matches HEAD.
+committed = subprocess.run(["git", "-C", root, "cat-file", "-e", f"HEAD:./{POLICY}"],
+                           capture_output=True).returncode == 0
+if not committed:
+    print(f"render: skipped, {POLICY} is not committed yet and the renderer reads HEAD")
+else:
+    r = subprocess.run([os.path.join(root, "tools", "render-os-policy.sh"), "HEAD"],
+                       capture_output=True, text=True)
+    if r.returncode != 0:
+        print(f"FAIL: tools/render-os-policy.sh HEAD exited {r.returncode}: {r.stderr.strip()}"); sys.exit(1)
+    if re.search(r"/COMMIT/|SHA256_[A-Z]", r.stdout):
+        print("FAIL: tools/render-os-policy.sh left a placeholder in the policy"); sys.exit(1)
+    # The whole URL, not its tail: a URL that is wrong before the path still ends in it.
+    head = subprocess.run(["git", "-C", root, "rev-parse", "HEAD"], capture_output=True,
+                          text=True).stdout.strip()
+    at_head = PREFIX.replace("/COMMIT/", f"/{head}/")
+    pinned = re.findall(r"uri: (\S+)\n\s+sha256Checksum: ([0-9a-f]{64})$", r.stdout, re.M)
+    if sorted(uri for uri, _ in pinned) != sorted(at_head + src for src in want):
+        print(f"FAIL: the rendered policy pins {sorted(uri for uri, _ in pinned)}, not the four "
+              f"files {POLICY} names at {at_head}"); sys.exit(1)
+    pinned = [(uri.removeprefix(at_head), sha) for uri, sha in pinned]
+    compared = 0
+    for src, sha in pinned:
+        if subprocess.run(["git", "-C", root, "diff", "--quiet", "HEAD", "--", src]).returncode != 0:
+            continue
+        compared += 1
+        if hashlib.sha256(open(os.path.join(root, src), "rb").read()).hexdigest() != sha:
+            print(f"FAIL: the rendered policy pins {src} to {sha}, which is not its sha256"); sys.exit(1)
+    print(f"render: ok, HEAD's policy pins each file to its own sha256 "
+          f"({compared} of {len(pinned)} compared; the rest differ from HEAD in this tree)"
+          if compared < len(pinned) else
+          f"render: ok, HEAD's policy pins each of {len(pinned)} files to its own sha256")
 VENDOR
 
 [ "$fail" -eq 0 ] && echo "lint: PASS" || echo "lint: FAIL"
