@@ -129,11 +129,11 @@ resource "google_project_service" "osconfig" {
   disable_on_destroy = false
 }
 
-# Project-wide, as the default for each VM that does not set its own: a VM's own FALSE wins, and
-# that VM neither applies the policy nor reports. The agent turns on across the rest; the policy
-# still reaches only the label. The agent acts on policies only with enable-osconfig, and the
-# reporter's guest-attribute writes are refused with 403 without enable-guest-attributes. The OS
-# policy cannot set either: it runs inside the VM.
+# Project-wide, as the default for each VM that does not set its own; a VM's own value wins, key
+# by key. The agent acts on policies only with enable-osconfig, so a VM's own FALSE there gets
+# nothing installed. Without enable-guest-attributes the policy installs and the timer runs, but
+# the reporter's writes are refused with 403. The policy still reaches only the label, and it
+# cannot set either key: it runs inside the VM.
 #
 # CREATING A KEY THE PROJECT ALREADY HOLDS FAILS THE APPLY, `key ... already present`, and
 # Google's VM Manager setup puts enable-osconfig in project metadata. Leave such a key out of
