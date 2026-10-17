@@ -147,7 +147,9 @@ containing usernames, and the Jamf inventory record is readable by every Jamf ad
 | `tools/vendor-queries.sh` | vendor `bin/`, `dist/` and `catalog/` from the public repo at one ref |
 | `tools/build-collector.py` | build both collectors, one file per platform, around one driver |
 | `dist/collect.sh`, `dist/collect-linux.sh` | the deployables: the vendored runner and queries, embedded. Generated, and committed on purpose |
-| `deploy/` | the LaunchDaemon for Macs; the systemd units and the guest-attribute reporter for Compute Engine |
+| `deploy/` | the LaunchDaemon for Macs; the systemd units, the guest-attribute reporter and the OS policy that installs them for Compute Engine |
+| `deploy/terraform/` | a Terraform module that deploys that OS policy across a fleet's projects and zones, or through a policy orchestrator |
+| `tools/render-os-policy.sh` | pin the OS policy to one ref of this repository, for gcloud |
 | `test/` | lint, the collector run, the reporter against a fake metadata server, the units under systemd — see [test/README.md](test/README.md) |
 | `docs/` | design and deployment docs |
 
@@ -183,4 +185,4 @@ vendored runner does not accept.
   verification step and expected output for each.
 - [**AI Inventory on Compute Engine VMs**](docs/mdm/gce.md) — the same collector built for
   Linux: an OS policy installs it with a systemd timer, and a reporter publishes to the VM's
-  guest attributes.
+  guest attributes. Deployed with gcloud, or across a fleet with the Terraform module.
