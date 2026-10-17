@@ -8,7 +8,7 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "2026-10-14T05:47:35.466152142Z"
+exclude-newer = "2026-10-14T05:48:59.547733054Z"
 exclude-newer-span = "P3D"
 
 [options.exclude-newer-package]
@@ -1530,6 +1530,7 @@ dependencies = [
     { name = "adlfs" },
     { name = "arthur-client" },
     { name = "arthur-common" },
+    { name = "boto3" },
     { name = "croniter" },
     { name = "databricks-sdk" },
     { name = "databricks-sqlalchemy" },
@@ -1552,6 +1553,7 @@ dependencies = [
     { name = "pymysql" },
     { name = "pyodbc" },
     { name = "pyyaml" },
+    { name = "regex" },
     { name = "requests" },
     { name = "s3fs" },
     { name = "simple-settings" },
@@ -1585,6 +1587,7 @@ requires-dist = [
     { name = "adlfs", specifier = "==2026.8.0" },
     { name = "arthur-client", specifier = "==1.4.2795" },
     { name = "arthur-common", specifier = "==2.4.89" },
+    { name = "boto3", specifier = "==1.43.106" },
     { name = "croniter", specifier = "==6.2.4" },
     { name = "databricks-sdk", specifier = ">=0.84.0,<1" },
     { name = "databricks-sqlalchemy", specifier = ">=2.0,<3" },
@@ -1607,6 +1610,7 @@ requires-dist = [
     { name = "pymysql", specifier = "==1.2.3" },
     { name = "pyodbc", specifier = "==5.3.0" },
     { name = "pyyaml", specifier = "==6.0.3" },
+    { name = "regex", specifier = "==2026.9.29" },
     { name = "requests", specifier = "==2.34.2" },
     { name = "s3fs", specifier = "==2026.9.0" },
     { name = "simple-settings", specifier = "==1.2.0" },

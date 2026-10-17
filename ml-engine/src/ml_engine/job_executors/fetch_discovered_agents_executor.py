@@ -447,6 +447,7 @@ def source_evidence(
 _CREATION_SOURCE_TYPES: dict[str, str] = {
     "cloud": "CLOUD",
     "endpoint": "ENDPOINT",
+    "network": "NETWORK",
     "siem": "SIEM",
 }
 
