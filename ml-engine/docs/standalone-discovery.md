@@ -140,6 +140,29 @@ Reads the agent inventory Arthur's endpoint collector writes to each Mac.
 `query` is the agent catalog YAML; leave it `""` to use the one the engine ships with.
 Use `query_language: none`. Jamf scans stop early on shutdown and report as cancelled.
 
+#### `gcp_compute_engine` — Compute Engine VMs
+
+Reads the agent inventory Arthur's endpoint collector writes to each VM's guest
+attributes. Deploying the collector is
+[the Compute Engine runbook](../../integrations/endpoint-ai-discovery/docs/mdm/gce.md).
+
+| Field | Secret | Required | Notes |
+|---|---|---|---|
+| `project_ids` | no | yes | Comma-separated project **IDs**, not numbers |
+| `include_labels` | no | no | Comma-separated `key=value` labels to limit the scan to |
+| `exclude_labels` | no | no | Comma-separated `key=value` labels to leave out; exclude wins |
+| `service_account_key` | yes | no | A service account JSON key. Without one, the engine uses Application Default Credentials only if `ARTHUR_ENGINE_GCP_COMPUTE_ENGINE_ALLOW_ADC=true` is set |
+
+The service account needs `compute.instances.list`, `compute.instances.getGuestAttributes`
+and `compute.projects.get`, all in `roles/compute.viewer`. `query` and `query_language`
+are as for Jamf, and so is stopping on shutdown.
+
+Compute Engine records no time a guest attribute was written, so every scan lists every
+VM in the projects. The lookback is applied to the time on the collector's status line: a
+VM with no report inside it is counted, not published, and a window of `0` publishes
+every VM's last report. A VM whose `enable-guest-attributes` is off, on the VM or on its
+project, is counted as `guest-attributes-disabled` and not read.
+
 #### `splunk_enterprise` — Splunk Enterprise
 
 Runs the config's SPL as a search job over the lookback window.
