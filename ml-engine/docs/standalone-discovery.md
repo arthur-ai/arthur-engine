@@ -140,32 +140,6 @@ Reads the agent inventory Arthur's endpoint collector writes to each Mac.
 `query` is the agent catalog YAML; leave it `""` to use the one the engine ships with.
 Use `query_language: none`. Jamf scans stop early on shutdown and report as cancelled.
 
-#### `aws_ec2` — EC2 instances
-
-Reads the agent inventory Arthur's endpoint collector writes to each instance's SSM custom
-inventory. Deploying the collector is
-[the EC2 runbook](../../integrations/endpoint-ai-discovery/docs/mdm/ec2.md).
-
-| Field | Secret | Required | Notes |
-|---|---|---|---|
-| `regions` | no | yes | Comma-separated regions, such as `us-east-1,eu-west-1` |
-| `access_key_id` | yes | no | An access key, with `secret_access_key`. Without one, the engine uses its own AWS credentials only if `ARTHUR_ENGINE_AWS_EC2_ALLOW_DEFAULT_CREDENTIALS=true` is set |
-| `secret_access_key` | yes | no | Set with `access_key_id`, or neither |
-| `role_arn` | no | no | A role those credentials assume, as session `arthur-ai-discovery` |
-| `external_id` | no | no | The external ID the role's trust policy requires; only with `role_arn` |
-| `include_tags` | no | no | Comma-separated `key=value` tags to limit the scan to |
-| `exclude_tags` | no | no | Comma-separated `key=value` tags to leave out; exclude wins |
-
-The credential needs `ec2:DescribeInstances`, `ssm:DescribeInstanceInformation` and
-`ssm:ListInventoryEntries`. `query` and `query_language` are as for Jamf, and so is
-stopping on shutdown.
-
-EC2 has no per-instance report date to filter on, so every scan lists every instance in
-the regions. The lookback is applied to the time on the collector's status line: an
-instance with no report inside it is counted, not published, and a window of `0`
-publishes every instance's last report. A running instance SSM does not manage is
-counted as `not-ssm-managed`, and a Windows instance as `unsupported-platform`.
-
 #### `splunk_enterprise` — Splunk Enterprise
 
 Runs the config's SPL as a search job over the lookback window.
