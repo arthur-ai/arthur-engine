@@ -34,6 +34,7 @@ from botocore.validate import ParamValidator
 
 from discovery import source_connectors
 from discovery.cloud.ec2.client import (
+    MAX_PARTS,
     MAX_VALUE_LENGTH,
     TYPE_NAME,
     Ec2Error,
@@ -574,11 +575,38 @@ def test_parts_assemble_in_order_whatever_order_they_arrive_in() -> None:
 
 
 def test_a_value_over_the_budget_is_refused_even_when_its_parts_agree() -> None:
-    values, problem = assemble(
-        entries(inventory="A" * (MAX_VALUE_LENGTH + 1), status=OK_STATUS),
-    )
+    """In no more parts than the budget allows, the last one a character over SSM's
+    cap, which only the agent enforces."""
+    value = "A" * (MAX_VALUE_LENGTH + 1)
+    digest = hashlib.sha256(value.encode()).hexdigest()
+    parts = [
+        {**e, "Sha256": digest} if e["Key"] == "inventory" else e
+        for e in entries(inventory=value[:-1], status=OK_STATUS)
+    ]
+    last = max(i for i, e in enumerate(parts) if e["Key"] == "inventory")
+    parts[last] = {**parts[last], "Value": parts[last]["Value"] + "A"}
+    values, problem = assemble(parts)
     assert values == {}
-    assert problem is not None and "budget" in problem
+    assert problem is not None and "over the collector's" in problem
+
+
+def test_a_part_count_no_value_within_the_budget_needs_is_refused_unbuilt() -> None:
+    """The count is the instance's to write. One part claiming a trillion would have
+    the missing-part report build a range that size."""
+    whole = entries(inventory="arthur1.x", status=OK_STATUS)
+    claimed = [{**whole[0], "Parts": "1000000000000"}, *whole[1:]]
+    values, problem = assemble(claimed)
+    assert values == {}
+    assert problem is not None and f"more than the {MAX_PARTS}" in problem
+
+
+def test_the_most_parts_the_budget_needs_still_assemble() -> None:
+    value = "A" * MAX_VALUE_LENGTH
+    whole = entries(inventory=value, status=OK_STATUS)
+    assert max(int(e["Parts"]) for e in whole) == MAX_PARTS
+    values, problem = assemble(whole)
+    assert problem is None
+    assert values["arthur/inventory"] == value
 
 
 # --- failures -------------------------------------------------------------------------

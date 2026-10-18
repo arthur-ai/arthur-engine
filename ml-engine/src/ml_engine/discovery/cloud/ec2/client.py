@@ -10,9 +10,9 @@ THE VALUES ARRIVE IN PARTS. A custom inventory value holds at most 4,096 charact
 the reporter splits each of its values -- `inventory`, `status` -- into entries that
 carry the value's key, the part's number, the part count and the sha256 of the whole
 value. `assemble` puts them back together. Parts that do not make exactly one whole --
-one missing, one twice, counts that disagree, a hash that does not match -- are no value
-at all rather than a shorter one: a truncated frame would decode to fewer rows, and
-fewer rows read as fewer agents.
+one missing, one twice, counts that disagree, more of them than the budget needs, a hash
+that does not match -- are no value at all rather than a shorter one: a truncated frame
+would decode to fewer rows, and fewer rows read as fewer agents.
 
 TWO LISTINGS PER REGION, THEN A READ PER INSTANCE. boto3's standard retry mode backs off
 on SSM's and EC2's throttling answers, so a large fleet slows the scan rather than
@@ -56,6 +56,14 @@ REQUIRED_KEYS = ("inventory", "status")
 # The collector's budget for the framed value. A reassembled value longer than this was
 # not written by a collector that respects it.
 MAX_VALUE_LENGTH = 262144
+
+# SSM's cap on one custom inventory value, in characters, and so the size of the
+# reporter's parts.
+PART_LENGTH = 4096
+
+# The most parts a value within the budget is cut into. The count is the instance's to
+# write, so a larger one is refused before anything is built from it.
+MAX_PARTS = -(-MAX_VALUE_LENGTH // PART_LENGTH)
 
 # ListInventoryEntries' own maximum page size.
 PAGE_SIZE = 50
@@ -277,6 +285,11 @@ def assemble(
         except ValueError:
             return {}, f"{key}: an entry's part number or count is not a number"
         digest = str(entry.get(SHA256) or "").lower()
+        if count > MAX_PARTS:
+            return {}, (
+                f"{key}: {count} parts, more than the {MAX_PARTS} a value within the "
+                f"collector's budget is cut into"
+            )
         if not 1 <= part <= count:
             return {}, f"{key}: part {part} of {count} is out of range"
         if declared.setdefault(key, (count, digest)) != (count, digest):
