@@ -23,6 +23,9 @@ dependencies = [
   "requests==2.34.2",
   "adlfs==2026.8.0",
   "s3fs==2026.9.0",
+  # Ranged, not pinned: boto3 releases in lockstep with botocore, which aiobotocore (under
+  # s3fs) caps, so the resolver picks the boto3 that matches it.
+  "boto3>=1.43,<2",
   "simple-settings==1.2.0",
   "httpx==0.28.1",
   "duckdb==1.5.6",
