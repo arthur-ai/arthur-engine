@@ -486,7 +486,13 @@ if os.path.exists(client):
         print(f"FAIL: the ML Engine refuses values over {const('MAX_VALUE_LENGTH')} "
               f"characters, but the Linux collector's budget is "
               f"{budgets['collect-linux.sh']}"); sys.exit(1)
-    wire = "the ML Engine reads the same type, attributes and budget"
+    # The reader refuses more parts than its own part size cuts the budget into, so a
+    # smaller PART here would make values it refuses.
+    if const("PART_LENGTH") != part.group(1):
+        print(f"FAIL: the reporter cuts parts of {part.group(1)} characters, but the ML "
+              f"Engine expects parts of {const('PART_LENGTH')} and refuses more of them "
+              f"than that size makes"); sys.exit(1)
+    wire = "the ML Engine reads the same type, attributes, part size and budget"
 else:
     wire = "the ML Engine's reader is not in this checkout"
 print(f"carrier: ok, ec2.conf -> {starts[1].split('/')[-1]}; no interpreter; parts of "
