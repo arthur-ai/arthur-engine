@@ -42,9 +42,11 @@ RUN uv run --no-sync --directory genai-engine python -c \
       "import tiktoken; [tiktoken.get_encoding(e) for e in ('cl100k_base', 'o200k_base')]"
 
 # Offline from here on. The guardrail scorers download Hugging Face models on first use; tests that
-# need them fail without a network, and the threat model says so.
+# need them fail without a network, and the threat model says so. LiteLLM uses the model price list
+# bundled with it instead of retrying a download on every start.
 ENV UV_OFFLINE=1 \
     HF_HUB_OFFLINE=1 \
+    LITELLM_LOCAL_MODEL_COST_MAP=True \
     GENAI_ENGINE_SECRET_STORE_KEY=changeme_secret_store_key
 
 # Cheap check that the image works; a failure here does not fail the build.

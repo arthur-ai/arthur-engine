@@ -43,9 +43,13 @@ Least:
 
 - Python environments are already installed: `uv run --no-sync --directory genai-engine ...`,
   `uv run --no-sync --directory ml-engine ...`.
-- Unit tests: `uv run --no-sync --directory genai-engine pytest -m unit_tests` and
-  `uv run --no-sync --directory ml-engine pytest tests/unit`. Tests that load Hugging Face guardrail
-  models need a network and fail in the scan image; that is expected.
+- Unit tests: `uv run --no-sync --directory genai-engine pytest -m unit_tests -n 2 --dist loadgroup`
+  and `uv run --no-sync --directory ml-engine pytest tests/unit`. The genai-engine tests in the
+  `ml_models` xdist group load Hugging Face guardrail models, so they need a network and fail in the
+  scan image; that is expected. They are `tests/unit/test_pii.py`, `test_pii_v1.py`,
+  `test_hallucination.py`, `test_prompt_injection.py`, `test_toxicity.py` and
+  `monitoring/test_ai_activity_e2e.py`, plus `tests/unit/utils/test_text_chunking.py`, which loads
+  the prompt-injection tokenizer. Everything else passes offline.
 - `genai-engine/routes_security_check.py` reports API routes that have neither `@permission_checker`
   nor `@public_endpoint`.
 
