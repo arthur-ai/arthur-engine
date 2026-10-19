@@ -22,12 +22,24 @@ RUN uv sync --frozen --directory genai-engine \
     && uv sync --frozen --directory ml-engine \
     && uv sync --frozen --directory arthur-observability-sdk/python
 
-# ml-engine imports a client generated from the GenAI Engine OpenAPI spec, as its CI job does.
+# ml-engine and the SDK import clients generated from the GenAI Engine OpenAPI spec, as their CI
+# jobs and arthur-observability-sdk/scripts/generate_openapi_client.sh do.
 RUN pip install --no-cache-dir 'openapi-generator-cli[jdk4py]==7.12' \
     && openapi-generator-cli generate -g python \
       -i genai-engine/staging.openapi.json \
       -o ml-engine/src/genai_client \
-      --skip-validate-spec --package-name genai_client
+      --skip-validate-spec --package-name genai_client \
+    && openapi-generator-cli generate -g python \
+      -i genai-engine/staging.openapi.json \
+      -o /tmp/arthur_genai_client_build \
+      --skip-validate-spec --package-name arthur_genai_client \
+    && cp -r /tmp/arthur_genai_client_build/arthur_genai_client arthur-observability-sdk/python/src/ \
+    && rm -rf /tmp/arthur_genai_client_build
+
+# genai-engine counts tokens with tiktoken, which downloads its encodings on first use.
+ENV TIKTOKEN_CACHE_DIR=/opt/tiktoken
+RUN uv run --no-sync --directory genai-engine python -c \
+      "import tiktoken; [tiktoken.get_encoding(e) for e in ('cl100k_base', 'o200k_base')]"
 
 # Offline from here on. The guardrail scorers download Hugging Face models on first use; tests that
 # need them fail without a network, and the threat model says so.
