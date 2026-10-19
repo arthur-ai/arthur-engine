@@ -735,9 +735,15 @@ class SpanRepository:
         self,
         trace_data: bytes,
     ) -> Tuple[list[DatabaseSpan], tuple[int, int, int, list[str]]]:
-        """Process trace data from protobuf format and store in database."""
+        """Process trace data received on a trace ingestion endpoint and store it.
+
+        Counts the request body as customer ingest volume (ingest_bytes).
+        """
         try:
-            return self.trace_ingestion_service.process_trace_data(trace_data)
+            return self.trace_ingestion_service.process_trace_data(
+                trace_data,
+                count_ingest_bytes=True,
+            )
         except DecodeError as e:
             raise DecodeError("Failed to parse protobuf message.") from e
 
