@@ -21,9 +21,12 @@ adding a SIEM is the same under `discovery.siem`, and a cloud provider product u
 record type it emits.
 Everything the new MDM shares with Jamf -- the `arthur1.` frame, the six-column rows,
 matching, the record shape -- is already neutral and is not touched. A cloud product
-whose VMs carry that payload (Compute Engine) reuses it too, from `discovery.cloud`.
+whose VMs carry that payload (Compute Engine, EC2) reuses it too, from `discovery.cloud`,
+with what such clouds share among themselves in `discovery.cloud.vm_inventory`.
 """
 
+from discovery.cloud.ec2.connector import VENDOR as AWS_EC2_VENDOR
+from discovery.cloud.ec2.connector import Ec2Connector
 from discovery.cloud.gce.connector import VENDOR as GCP_COMPUTE_ENGINE_VENDOR
 from discovery.cloud.gce.connector import ComputeEngineConnector
 from discovery.cloud.gcp_vertex.connector import VENDOR as GCP_VERTEX_VENDOR
@@ -46,6 +49,7 @@ def source_connectors() -> dict[str, DiscoveryConnectorFactory]:
     return {
         JAMF_VENDOR: JamfConnector,
         GCP_COMPUTE_ENGINE_VENDOR: ComputeEngineConnector,
+        AWS_EC2_VENDOR: Ec2Connector,
         GCP_VERTEX_VENDOR: VertexAgentEngineConnector,
         SPLUNK_VENDOR: SplunkConnector,
         ELASTIC_SECURITY_VENDOR: ElasticSecurityConnector,
@@ -58,6 +62,8 @@ __all__ = [
     "JAMF_VENDOR",
     "ComputeEngineConnector",
     "GCP_COMPUTE_ENGINE_VENDOR",
+    "Ec2Connector",
+    "AWS_EC2_VENDOR",
     "VertexAgentEngineConnector",
     "GCP_VERTEX_VENDOR",
     "SplunkConnector",

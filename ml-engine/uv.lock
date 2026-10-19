@@ -8,7 +8,7 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "2026-10-16T13:42:02.038505786Z"
+exclude-newer = "2026-10-16T19:36:15.819765Z"
 exclude-newer-span = "P3D"
 
 [options.exclude-newer-package]
@@ -1530,6 +1530,7 @@ dependencies = [
     { name = "adlfs" },
     { name = "arthur-client" },
     { name = "arthur-common" },
+    { name = "boto3" },
     { name = "croniter" },
     { name = "databricks-sdk" },
     { name = "databricks-sqlalchemy" },
@@ -1585,6 +1586,7 @@ requires-dist = [
     { name = "adlfs", specifier = "==2026.8.0" },
     { name = "arthur-client", specifier = "==1.4.2859" },
     { name = "arthur-common", specifier = "==2.4.89" },
+    { name = "boto3", specifier = ">=1.43,<2" },
     { name = "croniter", specifier = "==6.2.4" },
     { name = "databricks-sdk", specifier = ">=0.84.0,<1" },
     { name = "databricks-sqlalchemy", specifier = ">=2.0,<3" },

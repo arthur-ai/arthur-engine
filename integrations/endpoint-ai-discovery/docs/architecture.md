@@ -8,7 +8,7 @@ one rule that decides most of the design: **the endpoint enumerates, the collect
 | | Repo | Holds | Must not hold |
 |---|---|---|---|
 | Queries and signatures | [`osquery-ai-discovery`](https://github.com/arthur-ai/osquery-ai-discovery) (public, MIT) | the SQL, the runner, the guard, the wall-clock bound, **and the catalog** | any Jamf or Arthur specific deployment glue |
-| Deployable | `integrations/endpoint-ai-discovery/` (this tree) | the `arthur1.` wire format, the size budget, the deployable artifacts, the Jamf and Compute Engine transports | a copy of the queries, **the catalog**, or the matching |
+| Deployable | `integrations/endpoint-ai-discovery/` (this tree) | the `arthur1.` wire format, the size budget, the deployable artifacts, the Jamf, Compute Engine and EC2 transports | a copy of the queries, **the catalog**, or the matching |
 | Collector | `ml-engine/src/ml_engine/discovery/` | **matching**, summaries, the record sink, **and the catalog it matches against** | a copy of the queries |
 | Policies | arthur-platform | what to do about a finding | collection concerns |
 
@@ -47,7 +47,7 @@ never distinguish. `catalog/agents.yaml` carries the removals as data, with the 
 `dist/discovery-darwin.sql` and `dist/discovery-linux.sql` name disjoint sets of tables, and
 `bin/discover` chooses by `uname -s`. So this tree builds one collector per platform around the
 same driver: `dist/collect.sh` for Macs (a Jamf Policy or the LaunchDaemon) and
-`dist/collect-linux.sh` for Compute Engine VMs (a systemd timer). Each embeds its own artifact
+`dist/collect-linux.sh` for Compute Engine VMs and EC2 instances (a systemd timer). Each embeds its own artifact
 and refuses the other platform by name rather than by failing on a missing path.
 
 The `ports` route is retired too, and the reasoning is worth keeping: `bin/classify` refuses a
@@ -246,12 +246,12 @@ the platform has recorded, and the platform computes it.
 
 ## Transport
 
-**Jamf and Compute Engine carry this; neither is special.** The collector names no vendor:
+**Jamf, Compute Engine and EC2 carry this; none is special.** The collector names no vendor:
 it runs on a schedule, writes three files, and stops. What a carrier has to provide — a
 scheduled script, a per-device string attribute large enough for the payload, an inventory API
 filterable on a per-device report date, and a stable device id — is written down in
 [`mdm/README.md`](mdm/README.md). The sections below describe how Jamf satisfies each, then
-how Compute Engine does.
+how Compute Engine and EC2 do.
 
 
 **The collector polls Jamf. Nothing connects to the collector.** Jamf's own documented pattern
@@ -374,6 +374,29 @@ stopped VM, or one whose guest attributes were turned off, keeps serving its las
 Freshness is the status line's timestamp, and the reporter adds `failed=<UTC>` when the latest
 run did not succeed. The Compute Engine collector reads every instance on every scan.
 
+### EC2: SSM custom inventory
+
+An instance's SSM Agent uploads custom inventory from a file the instance writes, and the SSM
+API serves it — the same shape again, with the agent where the metadata server was.
+`deploy/report-ssm-inventory.sh` runs the collector and writes `Custom:ArthurAIDiscovery`; a
+drop-in on the same unit runs it in place of the guest-attribute reporter. The agent uploads
+with the instance's own SSM permissions, so no credential is added to the instance, and the
+SSM endpoints are a route a managed instance already has. [`mdm/ec2.md`](mdm/ec2.md) has the
+deployment.
+
+**The payload travels in parts.** A custom inventory value holds at most 4,096 characters, so
+each value — `inventory`, `status` — is cut into numbered parts, and every part carries the
+whole value's sha256. The reader reassembles them and refuses a set that does not make exactly
+one whole, so a lost part reads as an instance that cannot be read, never as a shorter payload
+with fewer agents in it.
+
+**The reporter cannot see the upload.** It writes a file; the agent uploads it on the
+inventory association's schedule. A refused or capped upload shows in the agent's log, not in
+the values, so the only sign Arthur gets is a status line that stops advancing — freshness is
+the status line's timestamp, as on Compute Engine, and never the inventory's `CaptureTime`.
+Measured, `CaptureTime` advances on every association run whether or not the values changed,
+so it says the agent is alive and nothing about the collector.
+
 ## Failure semantics
 
 This is the part the project is actually built on. Every defect found in it so far has been
@@ -425,9 +448,13 @@ are not.
 | EA value cap | **≥ 1 MB** | **Measured** 2026-09-05, and it is not the budget below. A 1,048,576-byte value round-tripped script → `jamf recon` → Jamf Pro → API read with an identical sha256 — not truncated, not rejected. Jamf documents no cap and the column is `LONGTEXT`. The ceiling above 1 MB is still unmeasured, and nothing here needs it |
 | Guest attribute value cap | **exactly 262,144 bytes** | **Measured** 2026-10-03 on a Debian 12 VM: 262,144 accepted, 262,145 refused with HTTP 400 — never truncated. Equal to our budget, so `test/lint.sh` fails if the budget rises, and the reporter sends the value without the file's trailing newline |
 | Guest attributes over a VM's life | survive reboot and stop/start; served while stopped | **Measured** 2026-10-03, identical sha256. With `enable-guest-attributes=FALSE` the VM gets HTTP 403 and the API still serves the old values. Suspend and resume **not measured** |
+| SSM custom inventory value cap | **exactly 4,096 characters** | **Measured** 2026-10-16 on an Amazon Linux 2023 instance. 4,097 is refused by the agent, which logs it to `/var/log/amazon/ssm/errors.log`, skips the file and reports the association `Success` — silent everywhere Arthur can see. A part may not exceed it, and `test/lint.sh` fails if the reporter's does |
+| SSM custom inventory per type | no cap at the budget | **Measured** the same day: AWS's quotas page says "200 KB" per type, yet 262,144 and 614,400 characters in one type each uploaded and read back with an identical sha256. So the 256 KB budget stands on EC2 |
+| SSM inventory per node per day | **5,000 KB, enforced** | **Measured** the same day: the crossing upload fails with `TotalSizeLimitExceededException`, the association reports `Failed`, and the previous values are still served. A budget-sized payload changing hourly would cross it in its nineteenth hour; a measured one is 11 KB |
 | Our time budget | 10s composed | **Self-imposed**, to keep recon brisk. Enforced by `tools/measure.py --check` |
 | Our size budget | 256 KB framed | **Self-imposed** on Jamf, and on Compute Engine **the platform's own cap** (the row below), so it must not rise. **Not** a bandwidth decision — fleet cost is payload × fleet (200 MB per sync at 10,000 Macs) whatever this says. It buys margin: `ERROR:oversize:<bytes>` is loud and known, what Jamf does past its own limit is unobserved, and margin keeps the known failure in front of the unknown one. Was 30 KB, which an ordinary Mac reached 68% of. At the measured 25.4 framed bytes/row it fires near 10,300 rows against the ~840 a loaded Mac carries — 13× a real machine, 4× under the measured floor, and a tripwire for a runaway branch |
 | Enumerated payload | 929 rows, 155,562 B raw, 24,668 B framed (9% of budget) | **Measured** 2026-10-11 at vendored ref `v0.12.0`, Apple Silicon, macOS 26.6.2, osquery 5.23.1, Docker up, run unprivileged. 68 of the rows are `proc`, from the `running` branches v0.12.0 added. Was 804 rows / 20,808 B framed at `v0.4.0` |
+| Enumerated payload, EC2 instance | 809 rows, 88,050 B raw, 11,376 B framed (4.3% of budget) | **Measured** 2026-10-16 on a `t3.small` Amazon Linux 2023 instance, as root under systemd through the `ec2.conf` drop-in, vendored ref `v0.12.2`, osquery 5.23.1. 6s and 1.4s of CPU per run, cold |
 | Enumerated payload, Linux VM | 623 rows, 66,737 B raw, 9,816 B framed (3.7% of budget) | **Measured** 2026-10-12 on an `e2-small` Debian 12 VM installed by the OS policy in `mdm/gce.md`, as root under systemd, vendored ref `v0.12.2`, osquery 5.23.1. ~8s and 1.3s of CPU per run, cold |
 | Enumerated payload, Linux runner | 1,782 rows, 193,075 B raw, 27,400 B framed (10% of budget) | **Measured** the same day on GitHub's `ubuntu-24.04` runner as root, Docker up. A runner carries far more tooling than a server VM |
 | Fleet cost through Jamf | 179 MB per full sync at 10,000 Macs | **Measured** (27 MB filtered). Now a cost accepted rather than avoided: it buys 10,000 fewer network paths. The same bytes leave the Mac either way |
@@ -467,6 +494,8 @@ incremental server-to-server read, against push's `Mac → Jamf 154 B` plus `Mac
 | One EA, not one per query | See Transport. The size argument rests on a cap we invented; attribution already exists in the payload |
 | Guest attributes carry Compute Engine, one key for the inventory | The VM writes through its own metadata server — no credential, no route, nothing connecting in — and the measured cap equals the budget. A GCS object write needs a credential and egress on every VM |
 | A reporter wraps the collector on Compute Engine | The collector names no vendor; the reporter is the carrier half, as the Extension Attribute is on Jamf, and it can name a failed run because it saw one |
+| SSM custom inventory carries EC2, in parts that carry the whole value's sha256 | The instance's agent uploads with its own SSM permissions — no credential added, no new route, nothing connecting in. Instance tags hold 256 characters and need a credential to write; Parameter Store holds 4–8 KB and needs one too; Run Command output stops at 24,000 characters and the reader would need `ssm:SendCommand`, which runs commands on the customer's machines |
+| One unit file for both clouds; a drop-in picks EC2's reporter | The collector, the schedule and the hardening are the same on both clouds, so a second unit would be a copy of the first that drifts. The drop-in clears `ExecStart` before setting it, which `test/lint.sh` checks |
 | One driver for both platforms | The JSON check is the vendored runner's `--cache`, so nothing in the driver is one platform's |
 | Queries vendored at a pinned tag | Reviewable diffs, works offline, and the version is visible in the tree. A submodule adds clone and CI friction; fetch-at-build needs network in CI |
 | The bound lives in the runner, not the SQL | osquery has no per-query timeout, so the only bound is a kill on a process — and a kill is per process, which is why the expensive branch runs in its own |
@@ -476,6 +505,9 @@ incremental server-to-server read, against push's `Mac → Jamf 154 B` plus `Mac
 - ~~**What to pin.**~~ — closed. Upstream cuts releases and this tree pins a tag;
   `vendor/osquery-ai-discovery/VERSION` records which. A bare commit still prints
   `PROVISIONAL`, which is legitimate until a tag carries what you need.
+- **Quick Setup and custom inventory.** Whether Quick Setup's host-management inventory
+  association, which takes priority over any other, gathers custom inventory is undocumented
+  and unmeasured. A fleet whose inventory comes from it may need a change before it reports.
 - **Jamf API credential scope and rotation.** One credential with `Read Computers` (plus
   `Read Smart Computer Groups` and `Read Static Computer Groups` for a group-scoped source),
   held by the collector. Where it lives and how it rotates is undecided, and it is now the only

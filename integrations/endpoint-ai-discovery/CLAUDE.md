@@ -1,8 +1,8 @@
 # CLAUDE.md
 
 Endpoint AI agent discovery for Arthur. osquery finds what is installed on a Mac or a Linux VM;
-a scheduled script writes a file; Jamf Extension Attributes, or a Compute Engine VM's guest
-attributes, carry it; a collector classifies.
+a scheduled script writes a file; Jamf Extension Attributes, a Compute Engine VM's guest
+attributes, or an EC2 instance's SSM custom inventory, carry it; a collector classifies.
 
 ## The boundary, first
 
@@ -42,13 +42,14 @@ documented by Jamf.
 | `tools/vendor-queries.sh` | vendor `bin/` and `dist/` from the public repo at one ref. Not `catalog/` — that is the collector's. |
 | `tools/build-collector.py` | build `dist/collect.sh` and `dist/collect-linux.sh`, one file per platform, around one driver. Holds the `arthur1.` framing. |
 | `dist/` | generated, and committed on purpose — a reviewer should see it change. |
-| `deploy/` | the LaunchDaemon for Macs; the systemd units and `report-guest-attributes.sh`, the Compute Engine carrier. |
+| `deploy/` | the LaunchDaemon for Macs; the systemd units and `report-guest-attributes.sh`, the Compute Engine carrier; `report-ssm-inventory.sh` and the `ec2.conf` drop-in that runs it, the EC2 carrier. |
 | `deploy/arthur-ai-discovery.os-policy.yaml` | the Compute Engine OS policy, and its only copy: `tools/render-os-policy.sh` renders it for gcloud and `deploy/terraform/` reads it. |
 | `deploy/terraform/` | a Terraform module that deploys that policy to a fleet's projects and zones, or through one policy orchestrator. Its tests are `terraform test`, against mocked providers. |
 | `tools/render-os-policy.sh` | pin the OS policy to one ref: each file's URL there, and the sha256 of the bytes the ref holds. |
 | `test/lint.sh` | static checks on everything this tree owns. ~1s, no VM. |
 | `test/run-collector.sh` | runs this platform's collector and asserts on it. ~15s, needs osquery. |
 | `test/run-guest-attributes.sh` | runs the reporter against a fake metadata server built from measured answers. ~3s, no osquery. |
+| `test/run-ssm-inventory.sh` | runs the EC2 reporter against a fake IMDS built from AWS's documentation, and reassembles the file it writes. ~6s, no osquery. |
 | `test/run-systemd.sh` | installs and runs the Linux collector under systemd. CI only — it writes to the machine. |
 
 ## Commands
@@ -65,6 +66,7 @@ tools/build-collector.py --check      # ...and confirm it carries the vendored t
 test/lint.sh                          # static checks, ~1s, no VM
 test/run-collector.sh                 # run this platform's collector and assert on it, ~15s
 test/run-guest-attributes.sh          # what the Compute Engine reporter publishes, ~3s
+test/run-ssm-inventory.sh             # what the EC2 reporter writes, ~6s
 
 tools/render-os-policy.sh <ref>       # the Compute Engine OS policy, pinned to a ref
 cd deploy/terraform && terraform init -backend=false && terraform test   # the module, mocked
