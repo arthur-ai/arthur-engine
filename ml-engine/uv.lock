@@ -8,7 +8,7 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "2026-10-16T13:43:14.274157393Z"
+exclude-newer = "2026-10-16T19:51:43.736237842Z"
 exclude-newer-span = "P3D"
 
 [options.exclude-newer-package]
@@ -1524,7 +1524,7 @@ wheels = [
 
 [[package]]
 name = "ml-engine"
-version = "2.1.1024"
+version = "2.1.1025"
 source = { editable = "." }
 dependencies = [
     { name = "adlfs" },
@@ -1587,7 +1587,7 @@ requires-dist = [
     { name = "adlfs", specifier = "==2026.8.0" },
     { name = "arthur-client", specifier = "==1.4.2859" },
     { name = "arthur-common", specifier = "==2.4.89" },
-    { name = "boto3", specifier = "==1.43.106" },
+    { name = "boto3", specifier = ">=1.43,<2" },
     { name = "croniter", specifier = "==6.2.4" },
     { name = "databricks-sdk", specifier = ">=0.84.0,<1" },
     { name = "databricks-sqlalchemy", specifier = ">=2.0,<3" },

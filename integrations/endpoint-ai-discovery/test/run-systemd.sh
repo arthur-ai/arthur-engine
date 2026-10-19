@@ -128,6 +128,38 @@ activate
 journal_has "guest attributes are disabled on this VM" || bad "the journal does not name the 403: $(tail -3 "$work/journal")"
 ok "Result=$result; the journal names the disabled endpoint"
 
+case_ "== EC2: the drop-in runs the SSM reporter in place of this one ==========="
+install -m 755 "$ROOT/deploy/report-ssm-inventory.sh" /usr/local/arthur/report-ssm-inventory.sh
+install -m 644 "$ROOT/deploy/$UNIT.service.d/ec2.conf" "/etc/systemd/system/$UNIT.service.d/ec2.conf"
+rm -f "$work/imds-port"
+python3 "$ROOT/test/fake-imds.py" "$work/imds-port" ok &
+servers="$servers $!"
+for _ in $(seq 50); do [ -s "$work/imds-port" ] && break; sleep 0.1; done
+ssm="$work/ssm"; mkdir -p "$ssm"
+printf '[Service]\nEnvironment=ARTHUR_IMDS_URL=http://127.0.0.1:%s\nEnvironment=ARTHUR_SSM_DATA_DIR=%s\n' \
+  "$(cat "$work/imds-port")" "$ssm" > "/etc/systemd/system/$UNIT.service.d/test.conf"
+systemctl daemon-reload
+exec_start="$(systemctl show -p ExecStart --value "$UNIT.service")"
+case "$exec_start" in
+  *report-guest-attributes.sh*) bad "with the drop-in the unit still runs the guest-attribute reporter: $exec_start" ;;
+  *report-ssm-inventory.sh*) ;;
+  *) bad "with the drop-in the unit does not run the SSM reporter: $exec_start" ;;
+esac
+activate
+[ "$started" -eq 0 ] && [ "$result" = success ] || bad "the EC2 unit ended '$result' (start exited $started)"
+inv="$ssm/i-0123456789abcdef0/inventory/custom/ArthurAIDiscovery.json"
+python3 - "$inv" /var/lib/arthur/inventory.ea <<'PY' || bad "the custom inventory does not carry the collector's value"
+import json, sys
+parts = [e for e in json.load(open(sys.argv[1]))["Content"] if e["Key"] == "inventory"]
+value = "".join(e["Value"] for e in sorted(parts, key=lambda e: int(e["Part"])))
+assert value == open(sys.argv[2]).read().replace("\n", ""), "not the framed value"
+PY
+journal_has "wrote Custom:ArthurAIDiscovery" || bad "the journal does not say what was written: $(tail -3 "$work/journal")"
+# Back to the Compute Engine unit, pointed at a fake, before the timer is started below.
+rm -f "/etc/systemd/system/$UNIT.service.d/ec2.conf"
+start_fake disabled
+ok "Result=$result; the custom inventory carries the value the collector framed"
+
 case_ "== started, the timer schedules the next run ============================"
 systemctl start "$UNIT.timer" || bad "the timer would not start"
 [ "$(systemctl is-active "$UNIT.timer")" = active ] || bad "the timer is not active"
