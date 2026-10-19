@@ -238,7 +238,9 @@ scoped to a resource:
 }
 ```
 
-`AmazonEC2ReadOnlyAccess` plus `AmazonSSMReadOnlyAccess` covers them, and much more.
+Grant these three, not `AmazonEC2ReadOnlyAccess` and `AmazonSSMReadOnlyAccess`. Those cover
+them, but `ssm:Get*` also reads Parameter Store and `ec2:Describe*` instance user data, where
+secrets are often kept.
 
 The source takes an access key (`access_key_id`, `secret_access_key`), and a `role_arn` with an
 optional `external_id` to assume with it. A source without a key uses the engine's own AWS
