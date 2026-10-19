@@ -19,9 +19,9 @@ reporter writes. The collector is the one a Compute Engine VM runs; only the rep
 
 | | |
 |---|---|
-| Target | EC2 instances on Amazon Linux 2023 or Ubuntu 24.04, x86_64 or arm64. Upstream proving the Linux artifact on them is UP-5190 (D-34) |
+| Target | EC2 instances on Amazon Linux 2023 or Ubuntu 24.04, x86_64 or arm64. Run on an instance: Amazon Linux 2023 on x86_64. **Ubuntu and arm64: not yet run** on an instance; upstream's CI runs the Linux scenarios in an Amazon Linux 2023 container and on an arm64 Ubuntu runner |
 | Requires | osquery 5.18+, an SSM-managed instance, an inventory association that gathers custom inventory, IMDS enabled. No interpreter |
-| Per-instance cost | as on Compute Engine (`gce.md`), off the reporting path; `t3.small` and `t4g.small` figures are D-34's |
+| Per-instance cost | as on Compute Engine (`gce.md`), off the reporting path: 6s and 1.4s of CPU per run on a `t3.small` (below). `t4g.small` is not yet measured |
 | Payload | ~11 KB on a headless Amazon Linux 2023 instance, of the 256 KB budget, cut into parts of 4,096 characters |
 
 ## What SSM custom inventory gives, measured

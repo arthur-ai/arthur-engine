@@ -2,7 +2,7 @@
 
 A CLOUD SOURCE THAT READS A MACHINE'S INVENTORY, as Compute Engine is. EC2 lists the
 instances, and each instance's SSM custom inventory carries the same `arthur1.` payload a
-Jamf Extension Attribute does (D-35, `integrations/endpoint-ai-discovery/docs/mdm/ec2.md`).
+Jamf Extension Attribute does (`integrations/endpoint-ai-discovery/docs/mdm/ec2.md`).
 Decoding, matching and dating are the endpoint pipeline's and `discovery.cloud.
 vm_inventory`'s; the records are `CloudAgentCreationSource`. What is left here is the
 vendor tag, reading this source's fields, scoping by tag, and what only EC2 has to say
