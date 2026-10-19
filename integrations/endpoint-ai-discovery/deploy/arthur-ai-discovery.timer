@@ -1,0 +1,13 @@
+# Hourly, like the Jamf cadence, and once soon after boot so a new VM reports within minutes
+# rather than after its first hour. The delay spreads a fleet booted together across ten
+# minutes instead of starting every scan at once.
+[Unit]
+Description=Arthur AI inventory, hourly and after boot
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=1h
+RandomizedDelaySec=10min
+
+[Install]
+WantedBy=timers.target

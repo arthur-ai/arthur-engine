@@ -28,11 +28,17 @@ and `tar` to that list. Both ship with macOS and with every Linux base image thi
 run on, and the cost is opt-in -- a consumer who unpacks bin/ and dist/ themselves pays
 neither -- but it is a real widening and it is not hidden in a comment.
 
-NOT IN THE PAYLOAD: catalog/ AND bin/classify. The endpoint enumerates and matches nothing;
-matching happens off the machine, which is what lets a new signature re-match evidence
-already collected. Shipping the catalog to an endpoint would put the signatures on the very
-machine that is supposed to enumerate past them. Asserted below rather than remembered,
-because inside a base64 blob it would be invisible.
+NOT IN THE PAYLOAD: catalog/ AND bin/classify. The endpoint enumerates; matching happens off
+the machine, which is what lets a new signature re-match evidence already collected, and
+nothing here can read a catalog file anyway. Asserted below rather than remembered, because
+inside a base64 blob it would be invisible.
+
+IN THE PAYLOAD, AND A DELIBERATE EXCEPTION: dist/signatures.sql, the catalog RENDERED into
+SQL by tools/render_match.py. It is what `bin/discover --names` matches with, and --names
+exists because an Extension Attribute is one printed value a Smart Group matches on -- a
+machine that can only host this script and read one line back needs the names on the
+machine. The rendered file reaches an endpoint only by redeploying the bundle, which is the
+trade the JSON payload avoids and the one line cannot.
 
 --driver IS THE HOOK FOR A WRAPPER, and it exists because the alternative is worse. A
 consumer whose reporting channel needs its own framing, its own size budget or its own
@@ -67,7 +73,7 @@ UNAME = {"darwin": "Darwin", "linux": "Linux"}
 def payload_files(platform):
     return ("bin/discover", "bin/container-scan",
             f"dist/discovery-{platform}.sql", "dist/discovery-deep.sql",
-            "dist/ai-discovery.conf")
+            "dist/ai-discovery.conf", "dist/signatures.sql")
 
 FORBIDDEN = ("catalog/", "agents.yaml", "routes.yaml", "bin/classify")
 

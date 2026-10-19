@@ -1,7 +1,7 @@
 name: Endpoint AI Discovery CI
 
-# lint.sh READS dist/collect.sh; the macOS job RUNS it. Both are needed: a static check
-# cannot catch a shell bug that only fires on a real Mac, and the deployable is bash 3.2
+# lint.sh READS both collectors; the macOS and Linux jobs RUN them. Both are needed: a static
+# check cannot catch a shell bug that only fires on a real machine, and the deployable is bash
 # against a stock system.
 #
 # The queries, the runner and the Docker guard are vendored at a pinned ref and tested by
@@ -45,6 +45,11 @@ jobs:
       - name: test/lint.sh
         run: test/lint.sh
 
+      # The Compute Engine reporter against a fake metadata server built from measured
+      # answers. No osquery: the collector is a stub, and the question is what is published.
+      - name: test/run-guest-attributes.sh
+        run: test/run-guest-attributes.sh
+
       # The collector embeds the darwin artifact alone, so it must refuse elsewhere by
       # name rather than by failing on a missing file. Asserts on the artifact the message
       # names, not on its wording -- the wording is upstream's to change.
@@ -59,6 +64,97 @@ jobs:
             *discovery-darwin.sql*) echo "ok: refused, naming the artifact it carries" ;;
             *) echo "::error::the refusal does not name the cause"; exit 1 ;;
           esac
+
+  terraform:
+    name: The Compute Engine Terraform module
+    # Against mocked providers: no credentials, nothing created. It checks what the module
+    # renders -- the policy file, pinned to the bytes beside it, in the right scope. Whether VM
+    # Manager applies it is the runbook's check, on a real VM.
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: integrations/endpoint-ai-discovery/deploy/terraform
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: 1.15.8
+          terraform_wrapper: false
+      - run: terraform fmt -check -recursive -diff
+      - run: terraform init -backend=false -input=false
+      - run: terraform validate
+      - run: terraform test
+
+  terraform-floor:
+    name: The Compute Engine Terraform module, at its lowest admitted versions
+    # versions.tf admits Terraform from 1.5 and the Google provider from 6.33, and the job above
+    # runs a recent Terraform and the latest provider. An attribute or a function added since
+    # passes there and breaks a caller pinned at a floor, so validate a caller at both, in all
+    # three modes. Validate only: terraform test needs 1.7.
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: integrations/endpoint-ai-discovery/deploy/terraform
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: 1.5.7
+          terraform_wrapper: false
+
+      - name: versions.tf still names this Terraform as its floor
+        run: |
+          floor="$(sed -n 's/.*required_version *= *">= *\([0-9.]*\)".*/\1/p' versions.tf)"
+          running="$(terraform version -json | jq -r .terraform_version)"
+          case "$running" in "$floor" | "$floor".*) echo "Terraform $running is the floor $floor" ;;
+            *) echo "::error::versions.tf admits Terraform from '$floor', but this job runs $running"; exit 1 ;; esac
+
+      # By relative path: an absolute path to the module's own directory leaves the policy file
+      # beside it out of reach.
+      - name: terraform validate at the Google provider floor
+        run: |
+          floor="$(awk '/google *= *\{/ { g = 1 } g && /version/ { sub(/.*">= */, ""); sub(/,.*/, ""); print; exit }' versions.tf)"
+          case "$floor" in [0-9]*.[0-9]*) ;; *) echo "::error::cannot read the google floor from versions.tf"; exit 1 ;; esac
+          caller="$RUNNER_TEMP/floor"
+          mkdir -p "$caller"
+          module="$(realpath --relative-to="$caller" .)"
+          cat > "$caller/main.tf" <<EOF
+          terraform {
+            required_providers {
+              google = { source = "hashicorp/google", version = "= $floor" }
+            }
+          }
+          module "zones" {
+            source            = "$module"
+            arthur_engine_ref = "x"
+            projects          = ["fleet-one"]
+            zones             = ["us-central1-a"]
+          }
+          module "folder" {
+            source            = "$module"
+            arthur_engine_ref = "x"
+            projects          = ["fleet-one"]
+            zones             = ["us-central1-a"]
+            orchestrator      = { folder = "1" }
+          }
+          module "organization" {
+            source            = "$module"
+            arthur_engine_ref = "x"
+            projects          = ["fleet-one"]
+            zones             = ["us-central1-a"]
+            orchestrator      = { organization = "2", action = "DELETE" }
+          }
+          EOF
+          cd "$caller"
+          terraform init -backend=false -input=false
+          terraform validate
+          selected="$(terraform version -json | jq -r '.provider_selections["registry.terraform.io/hashicorp/google"]')"
+          echo "validated with google $selected"
+          case "$selected" in "$floor" | "$floor".0) ;; *) echo "::error::validated $selected, not the floor $floor"; exit 1 ;; esac
 
   collector:
     name: The deployable, run on a Mac
@@ -85,6 +181,18 @@ jobs:
       - name: test/run-collector.sh
         run: sudo -n test/run-collector.sh
 
+      - name: The Linux collector refuses to run on macOS, and says why
+        run: |
+          set +e
+          out="$(dist/collect-linux.sh 2>&1)"; status=$?
+          set -e
+          echo "$out"
+          [ "$status" -eq 1 ] || { echo "::error::expected exit 1 on macOS, got $status"; exit 1; }
+          case "$out" in
+            *discovery-linux.sql*) echo "ok: refused, naming the artifact it carries" ;;
+            *) echo "::error::the refusal does not name the cause"; exit 1 ;;
+          esac
+
       # A hosted runner has no Docker, so the container branch reports `absent` and the
       # 15s cold-ping bound is never reached. Daemon states are upstream's
       # test/docker_states.sh.
@@ -92,3 +200,30 @@ jobs:
         run: |
           echo "no Docker on a hosted runner, so the container branch reported absent"
           echo "rather than ok, and the 15s cold-ping bound was never reached"
+
+  collector-linux:
+    name: The Linux deployable, run under systemd
+    # A hosted runner has systemd as PID 1, which a container does not -- the units are what
+    # this job is for. The Debian 12 VM in docs/mdm/gce.md is the acceptance check.
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Install osquery
+        run: |
+          curl --retry 3 -fsSL -o /tmp/osquery.deb \
+            "https://pkg.osquery.io/deb/osquery_${OSQUERY_VERSION}-1.linux_amd64.deb"
+          sudo dpkg -i /tmp/osquery.deb
+          osqueryi --version
+        env:
+          OSQUERY_VERSION: 5.23.1
+
+      - name: test/run-collector.sh
+        run: sudo -n test/run-collector.sh
+
+      # Installs the collector, the reporter and the units at their real paths, runs them
+      # under systemd against the fake metadata server, and removes them again.
+      - name: test/run-systemd.sh
+        run: sudo -n env ARTHUR_TEST_INSTALLS_UNITS=1 test/run-systemd.sh

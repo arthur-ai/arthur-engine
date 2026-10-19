@@ -318,7 +318,7 @@ Resources:
         - Name: 'audit-logs'
       ContainerDefinitions:
         - Name: 'init-audit-logs'
-          Image: 'public.ecr.aws/docker/library/busybox:latest'
+          Image: 'public.ecr.aws/docker/library/busybox:1.37.0@sha256:bdf57e528e45e4433820e045b29b4597825a1c9e38353532d90a01445013f82e'
           Command: [ "sh", "-c", "chmod 777 /audit_logs" ]
           Essential: false
           MountPoints:
@@ -516,7 +516,7 @@ Resources:
         - !If
           - IsAuditLogEnabled
           - Name: 'audit-log-forwarder'
-            Image: 'public.ecr.aws/docker/library/busybox:latest'
+            Image: 'public.ecr.aws/docker/library/busybox:1.37.0@sha256:bdf57e528e45e4433820e045b29b4597825a1c9e38353532d90a01445013f82e'
             Command: [ "sh", "-c", "tail -F /audit_logs/audit.log" ]
             Essential: false
             DependsOn:

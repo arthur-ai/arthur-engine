@@ -34,11 +34,20 @@ artifact a fleet receives, and it would pass while doing so.
 |---|---|
 | No `.sql`, no `osqueryi` call, no plaintext query outside `vendor/` | A second discovery implementation reappearing. This is the regression guard for the cleanup described above |
 | `build-collector.py --check` | `dist/collect.sh` built before the last `tools/vendor-queries.sh` |
+| Payload files admitted by name (`ENDPOINT_FILES` in `tools/build-collector.py`, run through `--check`) | A file upstream adds to its bundle reaching endpoints unvetted, catalog-derived ones above all |
 | No `agents.yaml`, no `catalog/` in the built collector | The catalog reaching a Mac. The endpoint enumerates and matches nothing |
+| No `--names` in the driver | Matching on the endpoint. The bundle carries `dist/signatures.sql` for it, unread |
 | One `ARTHUR_PAYLOAD_EOF` pair | The collector embedding a previous copy of itself |
-| Every flag `collect.sh` passes to `bin/discover` is still accepted | A vendor bump removing a flag. This has happened: upstream deleted `--framed`, correctly, and the collector called it |
+| Every flag either collector passes to `bin/discover`, in every call, is still accepted | A vendor bump removing a flag. This has happened: upstream deleted `--framed`, correctly, and the collector called it |
+| Both builds checked by every collector guard | A guard proving one build and saying nothing about the other's bytes |
+| `CAP` at most 262,144 | The budget rising past what a Compute Engine guest attribute accepts, so GCE's 400 would fire before our `ERROR:oversize` |
+| The units: a oneshot running the reporter as root; a timer with `OnBootSec` and `OnUnitActiveSec`, wanted by `timers.target` | A VM that never runs the scan, or reports nothing for its first hour |
+| The unit, the reporter and the collector agree on one install directory | Every VM failing its first run on a missing path |
+| No interpreter in the reporter; upstream still prints `no osqueryi found` | The reporter needing more than the collector does; `osquery=absent` silently never firing after a vendor bump |
+| The OS policy installs each of the four files where the unit, the reporter or systemd runs it, from its URL in this tree | A VM whose policy reads compliant and whose first run fails on a missing path; a file with no copy here to pin a checksum to |
+| `tools/render-os-policy.sh HEAD` leaves no placeholder and pins each file to its own sha256 | A rendered policy every VM refuses. Skipped, and says so, until the policy is committed: the renderer reads git |
 | `arthur1.` and `ERROR:oversize` present | The framing or its over-cap reason being dropped, which leaves an empty attribute — indistinguishable from a Mac with no AI tools on it |
-| `bash -n` on `collect.sh` and `vendor-queries.sh` | A template edit in `build-collector.py` producing a syntax error nobody runs until a Policy does |
+| `bash -n` on both collectors, the reporter and `vendor-queries.sh` | A template edit in `build-collector.py` producing a syntax error nobody runs until a Policy does |
 | Vendored `VERSION` exists; `PROVISIONAL` is announced | A commit pin becoming permanent by inattention |
 | The plist runs `collect.sh` with `RunAtLoad` | A fresh Mac reporting nothing until the first interval elapses |
 | `DOCKER_PING_TIMEOUT` ≥ 10 **and** ≥ the vendored default | A cold Docker reported as `unhealthy:000`. The second half catches an upstream bump crossing our value, after which the export would lower the bound instead of raising it |
@@ -51,8 +60,8 @@ file anywhere outside `vendor/`, add a script that shells out to `osqueryi`, or 
 
 ## `test/run-collector.sh`
 
-Runs the deployable three times into a scratch directory and asserts on what it wrote. Root
-is not required — a Policy runs it as root and sees more rows, but nothing asserted here
+Runs this platform's build — `dist/collect.sh` on macOS, `dist/collect-linux.sh` on Linux —
+three times into a scratch directory and asserts on what it wrote. Root is not required — a Policy runs it as root and sees more rows, but nothing asserted here
 depends on that.
 
 | Guard | What it catches |
@@ -65,11 +74,80 @@ depends on that.
 | Framed size under the cap `collect.sh` itself declares | A Mac that would report `ERROR:oversize` instead of its inventory, and a cap that drifted from the one being enforced |
 | A failed scan: non-zero exit, **both attribute values untouched** | Either half of the trade this tree made — republishing a stale value as fresh, or deleting a good one to signal a problem |
 | A failed first-ever scan: non-zero exit, **no files at all** | A partial file left behind claiming to be a result, when `no-cache` is the true answer |
+| A scan that fails its JSON check — the shipped driver against a stub `discover` whose `--cache` cannot run — leaves both previous files untouched, passes discover's reason through, and leaves no staging directory | A failure after the scan erasing the last good inventory. Every step of a run, not only the scan, keeps the last good one |
 | No `arthur-collect.*` directory left behind | The extraction directory leaking once per run, which on an Ongoing schedule fills a volume months later |
 
-Not proved here: the container branch. A hosted runner has no Docker, so it reports `absent`
-and the 15s cold-ping bound is never reached. The daemon states are upstream's
-`test/docker_states.sh`, against the vendored runner.
+The container branch: the macOS runner has no Docker and reports `absent`; the Ubuntu runner
+has one and reports `ok`. The 15s cold-ping bound is reached by neither. The daemon states are
+upstream's `test/docker_states.sh`, against the vendored runner.
+
+## `test/run-guest-attributes.sh`
+
+Runs `deploy/report-guest-attributes.sh` against `test/fake-metadata-server.py`, with a stub
+for the collector, because the question is what the reporter publishes from each thing a
+collector can leave behind. The fake answers only as a real VM measurably did: the 262,144-byte
+cap with its 400, and the 403 when guest attributes are disabled.
+
+| Case | What it catches |
+|---|---|
+| A clean scan is published byte for byte, without the file's newline | A value one byte too long, or not this scan |
+| A value of exactly 262,144 bytes is accepted | The newline pushing a value at the cap over it |
+| A refused inventory keeps the previous value; the status says `inventory=refused:400` | A VM serving an old inventory with nothing saying why |
+| A failed run publishes the kept scan with `failed=<UTC>` | A failure that looks like a fresh scan |
+| No scan ever, no osquery: `no-cache`, and `no-cache failed=<UTC> osquery=absent` | An empty key, which reads as a clean VM |
+| Guest attributes disabled: the 403 named, nothing stored | A VM that cannot report and says nothing |
+| No metadata server: named, non-zero | The same, off Compute Engine |
+| `status.txt` without `inventory.ea`: both keys `no-cache` | A status claiming a scan the inventory does not carry |
+| One 503, retried through to success | A transient failure failing the run |
+| Inventory refused, then the status request dropped: each logged with its own reason | A reason left over from the previous request |
+| `http_proxy` set to a dead proxy: published directly | A fleet-wide proxy capturing the link-local metadata request |
+| `TERM` during collection: non-zero, nothing published | A stopped run carrying on without its working directory and blaming the metadata server |
+
+`flaky` (one 503) and `drop-status` (no answer on the `status` key) are the fake's own
+behaviours, labelled as such; every other answer it gives was measured on a real VM.
+
+## `test/run-systemd.sh`
+
+Installs the Linux collector, the reporter and the units at their real paths, runs one
+activation under systemd against the fake, one with `/tmp` and `/var/tmp` remounted `noexec`
+(where the collector run by hand with no `TMPDIR` must fail and the unit must succeed), one with
+guest attributes disabled, then starts the timer and checks it has a next run, and removes
+everything. It writes to the machine, so it runs only with
+`ARTHUR_TEST_INSTALLS_UNITS=1`, as root, where systemd is PID 1 — in CI, the Ubuntu runner.
+
+## `deploy/terraform/tests/`
+
+`terraform test` from `deploy/terraform/`, against mocked providers: no credentials, nothing
+created. It asserts on what the module decides, in the plan.
+
+**Each rendering is compared whole with the policy file.** The suite reads the file, puts each
+file's URL at the test ref and the sha256 of the copy beside the module into it, and compares
+each rendered resource with that, mapped back to the file's shape. That covers every
+assignment, the folder orchestrator and the organization orchestrator. A field cannot drift in
+one rendering without a run failing: a repository, a package, a script, an inventory filter,
+the label, the rollout, a file mode or a URL. Replaying eight such mutations, one per field and
+rendering, fails the suite eight times.
+
+| Case | What it catches |
+|---|---|
+| An assignment per project and zone, each rendering the whole policy without file modes, and none waiting for the rollout | A zone with no assignment, which leaves its VMs unmanaged with nothing saying so; any field of the policy lost or changed on the way to a VM |
+| `pinned_files`, and the URLs a VM downloads under `file_base_url` | A VM refusing every file, or a mirror serving the wrong path |
+| `label` and `reader` reach every assignment, `arthur_source` and IAM | An Arthur source whose labels match no VM the policy reached |
+| `project_metadata` limited to one key, and empty | A project that already holds `enable-osconfig` failing the apply with no way around it |
+| Folder and organization orchestrators, each rendering the whole policy with its file modes; projects by number and zones as separate selectors; a named resource, and no payload under `DELETE`; folders alone, with no project selector and a null `arthur_source.project_ids` | An orchestrator scoped wider than asked, one whose `DELETE` cannot find its assignments, or an empty project list the source refuses |
+| Downloaded files matching the module's copy pass; one that does not fails the plan | A `?ref=` bumped without `arthur_engine_ref` reaching every VM as a checksum mismatch |
+| No ref and no mirror; no projects and no folders; folder and organization both; prefixed or empty numbers; project numbers for IDs; a project or zone twice; a label value no VM can hold; a metadata key this module does not set | A plan that would reach no VM, or the wrong scope, without saying so; Terraform's own error in place of one that names the input |
+
+Beside the module tests, `terraform_data.policy` rebuilds the policy from the keys the module
+renders and compares it whole with the file, and the renderings read only that rebuild. So a
+key added, removed or reshaped in the file fails every plan with that precondition's message,
+never with an attribute error from a rendering. Add `allowNoResourceGroupMatch` or a yum
+repository, or swap the percentage disruption budget for a fixed one, and the first plan fails
+naming the file.
+
+CI also validates a caller at the lowest Terraform and Google provider `versions.tf` admits, in
+all three modes. Every other check runs a recent Terraform and the latest provider, where
+anything added since a floor passes.
 
 ## Running the real thing
 

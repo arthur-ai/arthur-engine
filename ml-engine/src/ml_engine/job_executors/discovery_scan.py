@@ -65,7 +65,7 @@ class DiscoveryConfigurationError(ValueError):
 
 
 class DiscoveryErrorCode(str, Enum):
-    """Why a run failed, as the Platform's run store accepts it (D-11).
+    """Why a run failed, as the Platform's run store accepts it.
 
     The Platform writes what an admin reads from the code alone, so no vendor text
     has to travel for a source to say why it is failing.
@@ -220,7 +220,7 @@ class FailedDiscoveryRecord:
     """A record GenAI Engine could not resolve onto a task, as the run reports it.
 
     Mirrors GenAI Engine's `FailedDiscoveredRecord` but is declared here rather than
-    taken from the generated client, so the outcome D-11 persists does not change shape
+    taken from the generated client, so the job-log payload does not change shape
     whenever that client is regenerated.
     """
 
@@ -274,7 +274,7 @@ class DiscoveryRecordSink(Protocol):
 
 
 class OutcomeReporter(Protocol):
-    """Where a finished run's outcome goes: D-11's run store, which also writes the
+    """Where a finished run's outcome goes: the Platform's run store, which also writes the
     source's health from it. `discovery_run_reporter.PlatformRunReporter` implements
     it against the Platform.
 
@@ -297,7 +297,7 @@ DiscoveryConnectorFactory = Callable[[], DiscoverySourceConnector]
 class DiscoveryScanOutcome:
     """What one source contributed to one run, and how it ended.
 
-    Delivered to D-11's run store by an `OutcomeReporter`, which is also what writes
+    Delivered to the Platform's run store by an `OutcomeReporter`, which is also what writes
     the source's health there. It is emitted as JSON in the job log as well, for
     what the run store does not keep (failed records, the column check, the redacted
     error) -- the log exporter drops `extra`, so a structured record has to be *in*
@@ -306,7 +306,7 @@ class DiscoveryScanOutcome:
 
     # Everything naming the source is optional: a job whose spec is too malformed to
     # say what it would have scanned still owes the Platform a record that it ran and
-    # failed, and a guessed-at vendor would be aggregated as a real source by D-11.
+    # failed, and a guessed-at vendor would be aggregated as a real source by the run store.
     discovery_source_config_id: Optional[str]
     discovery_source_config_name: Optional[str]
     discovery_source_id: Optional[str]
@@ -333,8 +333,9 @@ class DiscoveryScanOutcome:
     # ever produced, which is not the same answer as a source that produced one and
     # failed the contract.
     output_column_check: Optional[OutputColumnCheckResult] = None
-    # Endpoint sources only: the devices behind the records, and the ones policy kept
-    # out. Null for a source that does not read devices.
+    # Sources that read machines -- an MDM's endpoints, a cloud's VMs: the devices
+    # behind the records, and the ones policy kept out. Null for a source that does not
+    # read devices.
     device_coverage: Optional[DeviceCoverage] = None
 
     def record_failure(

@@ -7,6 +7,10 @@ from schemas.scorer_schemas import ScoreRequest
 from scorer.checks.pii.classifier_v1 import BinaryPIIDataClassifierV1
 from scorer.checks.pii.presidio_gliner_map import PresidioGlinerMapper
 
+# Loads real ML models: one xdist worker runs every module in this group, so
+# parallel CI holds one copy of them rather than one per worker.
+pytestmark = pytest.mark.xdist_group("ml_models")
+
 
 @pytest.mark.unit_tests
 def test_pii_classifier_v1_happy_path():

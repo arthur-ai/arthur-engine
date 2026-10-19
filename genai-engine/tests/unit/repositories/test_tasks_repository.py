@@ -11,11 +11,12 @@ from arthur_common.models.agent_governance_schemas import (
     OTELAgentCreationSource,
     SIEMAgentCreationSource,
     SourceAddress,
+    SourceClass,
     TaskMetadata,
 )
 from arthur_common.models.enums import PaginationSortMethod
 
-from db_models import DatabaseTask
+from db_models import DatabaseTask, DatabaseTaskProvenanceSource
 from db_models.telemetry_models import DatabaseTraceMetadata
 from dependencies import get_application_config
 from repositories.metrics_repository import MetricRepository
@@ -24,7 +25,7 @@ from repositories.tasks_repository import TaskRepository
 from schemas.enums import TaskSortField
 from schemas.internal_schemas import Task
 from tests.clients.base_test_client import override_get_db_session
-from utils.constants import DEFAULT_ORG_ID
+from utils.constants import DEFAULT_ORG_ID, UNMAPPED_TASK_ID
 
 
 def _build_repo(db_session):
@@ -388,6 +389,175 @@ def test_last_active_filter_respects_org_scope(repo_env):
     assert tasks == []
 
 
+def _report(db_session, task_id, source_id):
+    """Record that a discovery source reported a task, as a scan's resolution does."""
+    reported_at = datetime.now()
+    db_session.add(
+        DatabaseTaskProvenanceSource(
+            source_id=source_id,
+            external_id=f"splunk-{task_id}",
+            task_id=task_id,
+            source_class=SourceClass.SIEM,
+            vendor="splunk_enterprise",
+            first_reported_at=reported_at,
+            last_reported_at=reported_at,
+        ),
+    )
+    db_session.commit()
+
+
+@pytest.mark.unit_tests
+def test_unreported_excludes_every_task_a_source_reported(repo_env):
+    repo, db_session, created, client = repo_env
+    now = datetime.now()
+    source_id = uuid.uuid4()
+
+    unreported_task = _add_task(client, db_session, "traced-only", created_at=now)
+    reported_task = _add_task(client, db_session, "discovered", created_at=now)
+    created["task_ids"] += [unreported_task, reported_task]
+    _report(db_session, reported_task, source_id)
+
+    try:
+        tasks, count = repo.query_tasks(
+            ids=[unreported_task, reported_task],
+            unreported=True,
+            page_size=None,
+        )
+
+        assert count == 1
+        assert [t.id for t in tasks] == [unreported_task]
+    finally:
+        db_session.query(DatabaseTaskProvenanceSource).filter(
+            DatabaseTaskProvenanceSource.source_id == source_id,
+        ).delete(synchronize_session=False)
+        db_session.commit()
+
+
+@pytest.mark.unit_tests
+def test_unreported_leaves_out_system_tasks(repo_env):
+    """System tasks are never reported by a source either, but they are the engine's
+    own bookkeeping, not agents, and must not be uploaded as if they were."""
+    repo, db_session, created, client = repo_env
+    now = datetime.now()
+
+    traced_task = _add_task(client, db_session, "traced-only", created_at=now)
+    system_task = _add_task(client, db_session, "__system__", created_at=now)
+    created["task_ids"] += [traced_task, system_task]
+    db_session.query(DatabaseTask).filter(DatabaseTask.id == system_task).update(
+        {"is_system_task": True},
+    )
+    db_session.commit()
+
+    try:
+        tasks, count = repo.query_tasks(
+            ids=[traced_task, system_task],
+            unreported=True,
+            page_size=None,
+        )
+
+        assert count == 1
+        assert [t.id for t in tasks] == [traced_task]
+    finally:
+        # Cleared so the fixture's API delete, which refuses system tasks, can run.
+        db_session.query(DatabaseTask).filter(DatabaseTask.id == system_task).update(
+            {"is_system_task": False},
+        )
+        db_session.commit()
+
+
+@pytest.mark.unit_tests
+def test_unreported_includes_the_unmapped_task(repo_env):
+    """The unmapped task is a system task, but it holds the traces of agents that sent
+    no service name, so it is reported like an agent where the other system tasks are not.
+    """
+    repo, db_session, created, client = repo_env
+    now = datetime.now()
+
+    traced_task = _add_task(client, db_session, "traced-only", created_at=now)
+    system_task = _add_task(client, db_session, "__system__", created_at=now)
+    created["task_ids"] += [traced_task, system_task]
+    db_session.query(DatabaseTask).filter(DatabaseTask.id == system_task).update(
+        {"is_system_task": True},
+    )
+    # A migration seeds the unmapped task in a real database; the test database is
+    # not built by migrations, so it is added here when no other test has added it.
+    added_unmapped = db_session.get(DatabaseTask, UNMAPPED_TASK_ID) is None
+    if added_unmapped:
+        db_session.add(
+            DatabaseTask(
+                id=UNMAPPED_TASK_ID,
+                name="__unmapped__",
+                created_at=now,
+                updated_at=now,
+                is_agentic=True,
+                is_system_task=True,
+                archived=False,
+                org_id=DEFAULT_ORG_ID,
+            ),
+        )
+    db_session.commit()
+
+    try:
+        tasks, count = repo.query_tasks(
+            ids=[traced_task, system_task, UNMAPPED_TASK_ID],
+            unreported=True,
+            page_size=None,
+        )
+
+        assert count == 2
+        assert {t.id for t in tasks} == {traced_task, UNMAPPED_TASK_ID}
+    finally:
+        # Cleared so the fixture's API delete, which refuses system tasks, can run.
+        db_session.query(DatabaseTask).filter(DatabaseTask.id == system_task).update(
+            {"is_system_task": False},
+        )
+        if added_unmapped:
+            db_session.query(DatabaseTask).filter(
+                DatabaseTask.id == UNMAPPED_TASK_ID,
+            ).delete(synchronize_session=False)
+        db_session.commit()
+
+
+@pytest.mark.unit_tests
+def test_unreported_pages_by_cursor(repo_env):
+    repo, db_session, created, client = repo_env
+    now = datetime.now()
+
+    task_ids = [
+        _add_task(client, db_session, f"traced-{i}", created_at=now - timedelta(days=i))
+        for i in range(3)
+    ]
+    created["task_ids"] += task_ids
+
+    first, _ = repo.query_tasks(ids=task_ids, unreported=True, page_size=2)
+    rest, _ = repo.query_tasks(
+        ids=task_ids,
+        unreported=True,
+        page_size=2,
+        after_task_id=first[-1].id,
+    )
+
+    # Newest first, as with every other filter.
+    assert [t.id for t in first] == task_ids[:2]
+    assert [t.id for t in rest] == task_ids[2:]
+
+
+@pytest.mark.unit_tests
+@pytest.mark.parametrize(
+    "source_filter",
+    [
+        {"reported_by_source_id": uuid.uuid4()},
+        {"reported_since": datetime(2026, 9, 1)},
+    ],
+    ids=["reported_by_source_id", "reported_since"],
+)
+def test_unreported_with_a_source_filter_is_refused(repo_env, source_filter):
+    repo, _, _, _ = repo_env
+
+    with pytest.raises(ValueError):
+        repo.query_tasks(unreported=True, **source_filter)
+
+
 # --- _get_task_creation_source: service names reach every category (UP-4974) -------
 #
 # These call the method off an uninitialised instance. It touches no `self`, so a
@@ -509,3 +679,23 @@ def test_a_manual_source_gains_nothing():
     resolved = _resolve(source, ["svc-a"])
 
     assert resolved.root == source
+
+
+@pytest.mark.unit_tests
+def test_get_last_trace_end_times_reads_each_tasks_newest_trace(repo_env):
+    repo, db_session, created, client = repo_env
+    now = datetime.now()
+
+    traced_task = _add_task(client, db_session, "traced", created_at=now)
+    untraced_task = _add_task(client, db_session, "untraced", created_at=now)
+    created["task_ids"] += [traced_task, untraced_task]
+    older, newer = now - timedelta(hours=3), now - timedelta(minutes=5)
+    created["trace_ids"] += [
+        _add_trace(db_session, traced_task, end_time=older),
+        _add_trace(db_session, traced_task, end_time=newer),
+    ]
+
+    last_traces = repo.get_last_trace_end_times([traced_task, untraced_task])
+
+    assert last_traces == {traced_task: newer}
+    assert repo.get_last_trace_end_times([]) == {}

@@ -51,6 +51,7 @@ jobs:
                 "PreToolUse": [{"matcher": "", "hooks": [{"type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/claude_code_tracer.py\" pre_tool"}]}],
                 "PostToolUse": [{"matcher": "", "hooks": [{"type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/claude_code_tracer.py\" post_tool"}]}],
                 "PostToolUseFailure": [{"matcher": "", "hooks": [{"type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/claude_code_tracer.py\" post_tool_failure"}]}],
+                "SubagentStop": [{"matcher": "", "hooks": [{"type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/claude_code_tracer.py\" subagent_stop"}]}],
                 "Stop": [{"matcher": "", "hooks": [{"type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/claude_code_tracer.py\" stop"}]}]
               }
             }

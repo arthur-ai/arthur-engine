@@ -140,6 +140,29 @@ Reads the agent inventory Arthur's endpoint collector writes to each Mac.
 `query` is the agent catalog YAML; leave it `""` to use the one the engine ships with.
 Use `query_language: none`. Jamf scans stop early on shutdown and report as cancelled.
 
+#### `gcp_compute_engine` — Compute Engine VMs
+
+Reads the agent inventory Arthur's endpoint collector writes to each VM's guest
+attributes. Deploying the collector is
+[the Compute Engine runbook](../../integrations/endpoint-ai-discovery/docs/mdm/gce.md).
+
+| Field | Secret | Required | Notes |
+|---|---|---|---|
+| `project_ids` | no | yes | Comma-separated project **IDs**, not numbers |
+| `include_labels` | no | no | Comma-separated `key=value` labels to limit the scan to |
+| `exclude_labels` | no | no | Comma-separated `key=value` labels to leave out; exclude wins |
+| `service_account_key` | yes | no | A service account JSON key. Without one, the engine uses Application Default Credentials only if `ARTHUR_ENGINE_GCP_COMPUTE_ENGINE_ALLOW_ADC=true` is set |
+
+The service account needs `compute.instances.list`, `compute.instances.getGuestAttributes`
+and `compute.projects.get`, all in `roles/compute.viewer`. `query` and `query_language`
+are as for Jamf, and so is stopping on shutdown.
+
+Compute Engine records no time a guest attribute was written, so every scan lists every
+VM in the projects. The lookback is applied to the time on the collector's status line: a
+VM with no report inside it is counted, not published, and a window of `0` publishes
+every VM's last report. A VM whose `enable-guest-attributes` is off, on the VM or on its
+project, is counted as `guest-attributes-disabled` and not read.
+
 #### `splunk_enterprise` — Splunk Enterprise
 
 Runs the config's SPL as a search job over the lookback window.
@@ -171,6 +194,44 @@ Use `query_language: esql`, and name the output columns with `STATS ... BY`, `EV
 `RENAME` and `KEEP`, to the same contract as Splunk. `_query` returns one capped answer;
 a result that hits the cluster's row cap is reported in the log rather than published as
 complete.
+
+`llm_models`, `tools` and `sub_agents` may be a string or a multivalue of strings (what
+`VALUES()` returns), `data_sources` likewise for URLs; each value becomes one entry.
+
+##### Sample: Kong Gateway logs
+
+Self-hosted Kong Gateway has no usage API. When its `http-log` plugin ships to
+Elasticsearch and the `ai-proxy` plugin logs statistics (`logging.log_statistics: true`),
+this query lists one agent per Kong consumer and the models it was served:
+
+```esql
+FROM kong-ai-logs
+| WHERE consumer.id.keyword IS NOT NULL AND ai.proxy.meta.plugin_id.keyword IS NOT NULL
+| EVAL model = CASE(
+    response.status < 400 AND ai.proxy.meta.response_model.keyword IS NOT NULL,
+    CONCAT(ai.proxy.meta.provider_name.keyword, "/", ai.proxy.meta.response_model.keyword),
+    NULL)
+| STATS last_seen = MAX(@timestamp),
+        name = MAX(consumer.username.keyword),
+        llm_models = VALUES(model)
+    BY consumer_id = consumer.id.keyword
+| EVAL external_id = CONCAT("kong:kong:8000:", consumer_id),
+       name = COALESCE(name, consumer_id),
+       llm_models = MV_SORT(llm_models)
+| KEEP external_id, name, last_seen, llm_models
+| SORT external_id
+| LIMIT 10000
+```
+
+- Replace `kong-ai-logs` with your index, and `kong:8000` with your Kong proxy's host
+  (port omitted when 443). It namespaces the consumer id, so two gateways never share an
+  agent. Never change it once scanned: the `external_id` is the agent's permanent key.
+- Rows without a consumer (a refused or missing key) are not agents and are dropped, as is
+  traffic on routes without `ai-proxy`. An `ai-proxy` request answered 400 or above
+  counts toward `last_seen` but adds no model.
+- `LIMIT 10000` is Elasticsearch's default maximum for one query; without it the cluster
+  stops at 1,000 rows. More consumers than that need a narrower query.
+- The key needs `read` on that index only. The query reads no request headers or bodies.
 
 ### Destination
 

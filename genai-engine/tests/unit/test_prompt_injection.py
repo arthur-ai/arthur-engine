@@ -9,18 +9,33 @@ from scorer.checks.prompt_injection.classifier import (
     get_prompt_injection_tokenizer,
 )
 
-PROMPT_INJECTION_MODEL = get_prompt_injection_model()
-PROMPT_INJECTION_TOKENIZER = get_prompt_injection_tokenizer()
+# Loads real ML models: one xdist worker runs every module in this group, so
+# parallel CI holds one copy of them rather than one per worker.
+pytestmark = pytest.mark.xdist_group("ml_models")
+
+
+@pytest.fixture(scope="module")
+def prompt_injection_model():
+    # Loaded when a test asks for it, not at import: every xdist worker imports
+    # this module during collection, but only the ml_models worker runs it.
+    return get_prompt_injection_model()
+
+
+@pytest.fixture(scope="module")
+def prompt_injection_tokenizer():
+    return get_prompt_injection_tokenizer()
 
 
 @patch("scorer.checks.prompt_injection.classifier.get_prompt_injection_classifier")
 @pytest.mark.unit_tests
 def test_binary_prompt_injection_classifier_init(
     mock_pi_classifier,
+    prompt_injection_model,
+    prompt_injection_tokenizer,
 ):
     classifier = BinaryPromptInjectionClassifier(
-        model=PROMPT_INJECTION_MODEL,
-        tokenizer=PROMPT_INJECTION_TOKENIZER,
+        model=prompt_injection_model,
+        tokenizer=prompt_injection_tokenizer,
     )
     assert mock_pi_classifier.call_count == 1
     assert classifier.model is mock_pi_classifier.return_value
@@ -28,10 +43,14 @@ def test_binary_prompt_injection_classifier_init(
 
 @patch("scorer.checks.prompt_injection.classifier.get_prompt_injection_classifier")
 @pytest.mark.unit_tests
-def test_score_above_threshold(mock_classifier):
+def test_score_above_threshold(
+    mock_classifier,
+    prompt_injection_model,
+    prompt_injection_tokenizer,
+):
     classifier = BinaryPromptInjectionClassifier(
-        model=PROMPT_INJECTION_MODEL,
-        tokenizer=PROMPT_INJECTION_TOKENIZER,
+        model=prompt_injection_model,
+        tokenizer=prompt_injection_tokenizer,
     )
 
     # Create a mock ScoreRequest object
@@ -50,10 +69,14 @@ def test_score_above_threshold(mock_classifier):
 
 @patch("scorer.checks.prompt_injection.classifier.get_prompt_injection_classifier")
 @pytest.mark.unit_tests
-def test_score_below_threshold(mock_classifier):
+def test_score_below_threshold(
+    mock_classifier,
+    prompt_injection_model,
+    prompt_injection_tokenizer,
+):
     classifier = BinaryPromptInjectionClassifier(
-        model=PROMPT_INJECTION_MODEL,
-        tokenizer=PROMPT_INJECTION_TOKENIZER,
+        model=prompt_injection_model,
+        tokenizer=prompt_injection_tokenizer,
     )
 
     # Create a mock ScoreRequest object

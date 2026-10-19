@@ -50,12 +50,13 @@ from repositories.service_name_mapping_repository import (
 from repositories.task_provenance_repository import TaskProvenanceRepository
 from schemas.enums import TaskSortField
 from schemas.internal_schemas import (
+    GCP_VERTEX_VENDOR,
     ApplicationConfiguration,
     Rule,
     Task,
 )
 from utils import constants
-from utils.constants import DEFAULT_ORG_ID
+from utils.constants import DEFAULT_ORG_ID, UNMAPPED_TASK_ID
 from utils.trace import get_nested_value
 
 tracer = trace.get_tracer(__name__)
@@ -102,6 +103,7 @@ class TaskRepository:
         org_scope: Optional[UUID] = None,
         reported_by_source_id: Optional[UUID] = None,
         reported_since: Optional[datetime] = None,
+        unreported: bool = False,
         after_task_id: Optional[str] = None,
     ) -> tuple[list[DatabaseTask], int]:
         stmt = self.db_session.query(DatabaseTask)
@@ -128,6 +130,30 @@ class TaskRepository:
                         source_id=reported_by_source_id,
                         reported_since=reported_since,
                     ),
+                ),
+            )
+        # The complement: tasks no discovery source has ever reported, such as agents
+        # only seen through their traces. Nothing in the provenance table can narrow
+        # that further, so asking for both at once is a contradiction, not a filter.
+        if unreported:
+            if reported_by_source_id is not None or reported_since is not None:
+                raise ValueError(
+                    "unreported excludes reported_by_source_id and reported_since.",
+                )
+            # NOT IN is safe here: provenance rows always name a task, so the subquery
+            # never yields the NULL that would make it match nothing.
+            stmt = stmt.where(
+                DatabaseTask.id.not_in(TaskProvenanceRepository.reported_task_ids()),
+            )
+            # The engine's own system tasks are never reported either. The chatbot and
+            # synthetic-data tasks are the engine's own work, not agents, so a caller
+            # uploading unreported tasks as agents must not see them. The unmapped task
+            # is different: it holds the traces of agents that sent no service name,
+            # which is the only sign those agents exist, so it is reported like an agent.
+            stmt = stmt.where(
+                or_(
+                    DatabaseTask.is_system_task == False,
+                    DatabaseTask.id == UNMAPPED_TASK_ID,
                 ),
             )
 
@@ -282,6 +308,25 @@ class TaskRepository:
             EnrichedAgentMetadata TypedDict with keys: tools, sub_agents, models, num_spans
         """
         return self._extract_agent_metadata_for_tasks([task_id])[task_id]
+
+    def get_last_trace_end_times(self, task_ids: list[str]) -> dict[str, datetime]:
+        """The end time of each task's most recent trace, for the tasks that have one.
+
+        One grouped query for a page of tasks rather than one per task. A task with no
+        traces has no entry, so looking it up reads as None.
+        """
+        if not task_ids:
+            return {}
+        rows = (
+            self.db_session.query(
+                DatabaseTraceMetadata.task_id,
+                func.max(DatabaseTraceMetadata.end_time),
+            )
+            .filter(DatabaseTraceMetadata.task_id.in_(task_ids))
+            .group_by(DatabaseTraceMetadata.task_id)
+            .all()
+        )
+        return {task_id: end_time for task_id, end_time in rows}
 
     def _extract_agent_metadata_for_tasks(
         self,
@@ -762,24 +807,42 @@ class TaskRepository:
         return self.create_task(task, with_default_rules=False)
 
     def find_by_gcp_engine_id(self, engine_id: str) -> Optional[DatabaseTask]:
-        """Find a task by its GCP reasoning engine ID in task_metadata JSON.
+        """Find the task for a Vertex AI Agent Engine, in either shape its row holds.
+
+        A task the legacy poller created stores the deprecated GCP creation source,
+        whose engine ID is `gcp_reasoning_engine_id`; rows written before `address`
+        existed carry nothing else. A task a `gcp_vertex` discovery source created
+        stores a CLOUD creation source, whose engine ID is `address.resource_id` and
+        which has no `gcp_reasoning_engine_id` at all. Reading only the first would
+        leave every connector-found agent unmatched, and its traces would mint a
+        second task beside it.
+
+        `address.resource_id` is only an engine ID under vendor `gcp_vertex`: another
+        vendor's resource ID could be the same string, and must not match.
 
         Args:
-            engine_id: The GCP reasoning engine ID to search for
+            engine_id: The Vertex AI Agent Engine (reasoning engine) ID
 
         Returns:
             The matching DatabaseTask, or None if not found
         """
+        creation_source = DatabaseTask.task_metadata["creation_source"]
         return (
             self.db_session.query(DatabaseTask)
             .filter(
-                func.json_extract_path_text(
-                    DatabaseTask.task_metadata,
-                    "creation_source",
-                    "gcp_reasoning_engine_id",
-                )
-                == engine_id,
+                or_(
+                    creation_source["gcp_reasoning_engine_id"].as_string() == engine_id,
+                    and_(
+                        creation_source["vendor"].as_string() == GCP_VERTEX_VENDOR,
+                        creation_source["address"]["resource_id"].as_string()
+                        == engine_id,
+                    ),
+                ),
             )
+            # Oldest first: while legacy and connector discovery both run, one engine
+            # can briefly hold two tasks, and the older one is where its traces have
+            # been going.
+            .order_by(DatabaseTask.created_at, DatabaseTask.id)
             .first()
         )
 
@@ -888,10 +951,17 @@ class TaskRepository:
         self.db_session.commit()
 
     def update_all_tasks_add_default_rule(self, default_rule: Rule) -> None:
-        tasks = self.get_all_tasks()
+        # Only the IDs are needed. get_all_tasks() builds a full Task, with its rule
+        # links and service names, for every task, which made this cost grow with
+        # tasks x default rules. Same set: every non-archived task in every org.
+        task_ids = (
+            self.db_session.query(DatabaseTask.id)
+            .where(DatabaseTask.archived == False)
+            .all()
+        )
         tasks_to_rules: list[DatabaseTaskToRules] = [
-            DatabaseTaskToRules(task_id=task.id, rule_id=default_rule.id)
-            for task in tasks
+            DatabaseTaskToRules(task_id=task_id, rule_id=default_rule.id)
+            for (task_id,) in task_ids
         ]
         self.db_session.add_all(tasks_to_rules)
         self.db_session.commit()

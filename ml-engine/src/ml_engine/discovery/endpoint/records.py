@@ -1,21 +1,21 @@
-"""Turning one device's payload into records. Nothing here knows which MDM.
+"""Turning one machine's payload into records. Nothing here knows which carrier.
 
 Finds the `arthur1.` payload among a device's attributes, matches the rows against the
-catalog, and emits one record per (device, agent). An MDM package supplies the device and
-the vendor tag.
+catalog, and emits one record per (device, agent). The carrier's package -- an MDM, or a
+cloud that lists its VMs -- supplies the device, the vendor tag and the record type.
 """
 
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Optional
+from typing import Optional, Union
 
 from arthur_common.models.agent_discovery_schemas import DiscoveredAgentRecord
 from arthur_common.models.agent_governance_schemas import (
     AgentObservations,
+    CloudAgentCreationSource,
     EndpointAgentCreationSource,
-    RunsOn,
     SourceAddress,
 )
 
@@ -36,7 +36,9 @@ from discovery.endpoint.envelope import (
 # STATE ("running"), so a version field would read "running" as though it were one.
 #
 # Listed as what DOES carry each meaning rather than what does not, so a kind added
-# upstream is absent until someone says otherwise rather than silently mis-mapped.
+# upstream is absent until someone says otherwise rather than silently mis-mapped. `proc` is
+# absent on purpose: its `loc` is an app bundle, an agent binary or the node interpreter
+# running one, depending on which query emitted it.
 PATH_IN_LOC = frozenset(
     {
         "app",
@@ -50,9 +52,12 @@ PATH_IN_LOC = frozenset(
         "port",
         "desktop",
         "unit",
+        "jbplugin",
     },
 )
-VERSION_IN_VER = frozenset({"app", "brew", "ext", "npm", "vscodeext", "deb", "rpm"})
+VERSION_IN_VER = frozenset(
+    {"app", "brew", "ext", "npm", "vscodeext", "deb", "rpm", "jbplugin"},
+)
 
 
 class UnreadableReason(str, Enum):
@@ -138,16 +143,30 @@ def _inventory_value(
     return None, None, None
 
 
+InventorySource = Union[
+    type[EndpointAgentCreationSource],
+    type[CloudAgentCreationSource],
+]
+"""The record types a machine's inventory feeds: an MDM's endpoint, or a cloud's VM.
+
+The payload, the matching and the address are the same either way. The type is the
+source class, which says what kind of source read the machine, so it must match the
+vendor's catalog entry: Endpoint for Jamf, Cloud for Compute Engine.
+"""
+
+
 def records_for(
     device: ManagedDevice,
     matcher: Matcher,
     vendor: str,
     logger: Optional[logging.Logger] = None,
+    source_type: InventorySource = EndpointAgentCreationSource,
 ) -> DeviceRead:
     """One device's records, or why its payload could not be read.
 
     No records is a device that scanned and matched nothing; a reason is a device we
-    cannot speak for.
+    cannot speak for. `source_type` is the record type, which must be the vendor's
+    catalog class (`InventorySource`).
     """
     log = logger or logging.getLogger(__name__)
     carrier, value, conflict = _inventory_value(device)
@@ -217,12 +236,13 @@ def records_for(
             external_id=f"{device.device_key}:{finding.agent_id}",
             name=finding.name,
             last_seen=last_seen,
-            # An MDM only manages endpoints, so this source always knows where the
-            # machine is. Declared here because nothing downstream can infer it: a SIEM
-            # row can name a laptop too, so the source class does not imply it.
-            runs_on=RunsOn.ENDPOINT,
+            # The carrier always knows where the machine is: a laptop for an MDM, GCP
+            # for a Compute Engine VM. Declared here because nothing downstream can
+            # infer it: a SIEM row can name a laptop too, so the source class does not
+            # imply it.
+            runs_on=device.runs_on,
             platform=device.platform,
-            creation_source=_source_for(finding, device, vendor),
+            creation_source=_source_for(finding, device, vendor, source_type),
         )
         for finding in result.findings
     ]
@@ -233,7 +253,8 @@ def _source_for(
     finding: Finding,
     device: ManagedDevice,
     vendor: str,
-) -> EndpointAgentCreationSource:
+    source_type: InventorySource,
+) -> Union[EndpointAgentCreationSource, CloudAgentCreationSource]:
     """What this source saw, in the shape every discovery category reports.
 
     The address names the EVIDENCE; `external_id` names the AGENT. `external_id` is
@@ -243,10 +264,11 @@ def _source_for(
 
     `service_names` stays empty: a one-shot scan sees installation, not behaviour.
     """
-    return EndpointAgentCreationSource(
+    return source_type(
         vendor=vendor,
         address=SourceAddress(
             instance=device.device_key,
+            scope=device.address_scope,
             resource_kind=finding.primary_kind,
             resource_id=finding.primary_id,
         ),

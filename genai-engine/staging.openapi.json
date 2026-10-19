@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.995"
+        "version": "2.1.1023"
     },
     "paths": {
         "/api/v2/engine-config": {
@@ -1340,7 +1340,7 @@
                     "Tasks"
                 ],
                 "summary": "Get Agent Tasks",
-                "description": "Get agentic tasks with enriched agent metadata (tools, sub-agents, models) and provenance. Returns only agentic tasks. Filter by `discovery_source_id` and `reported_since` to get the tasks one discovery source reported in a window. Paged by cursor: a caller that needs every matching task passes the last task's ID as `after_task_id` until a page comes back with fewer than `page_size` tasks. A task created or archived mid-walk never repeats or skips another.",
+                "description": "Get agentic tasks with enriched agent metadata (tools, sub-agents, models) and provenance. Returns only agentic tasks. Filter by `discovery_source_id` and `reported_since` to get the tasks one discovery source reported in a window, or set `unreported` to get the tasks no discovery source has reported. Paged by cursor: a caller that needs every matching task passes the last task's ID as `after_task_id` until a page comes back with fewer than `page_size` tasks. A task created or archived mid-walk never repeats or skips another.",
                 "operationId": "get_agent_tasks_api_v2_agent_tasks_get",
                 "security": [
                     {
@@ -1385,6 +1385,18 @@
                             "title": "Reported Since"
                         },
                         "description": "Only return tasks a discovery scan reported on or after this time; UTC if no offset is given. Tasks no discovery source has reported are excluded when this filter is set."
+                    },
+                    {
+                        "name": "unreported",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean",
+                            "description": "Only return tasks no discovery source has reported, such as agents known only from their traces. Cannot be combined with `discovery_source_id` or `reported_since`.",
+                            "default": false,
+                            "title": "Unreported"
+                        },
+                        "description": "Only return tasks no discovery source has reported, such as agents known only from their traces. Cannot be combined with `discovery_source_id` or `reported_since`."
                     },
                     {
                         "name": "after_task_id",
@@ -2866,10 +2878,10 @@
                             "items": {
                                 "type": "string"
                             },
-                            "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN",
+                            "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, DECISION, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN",
                             "title": "Span Types"
                         },
-                        "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN"
+                        "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, DECISION, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN"
                     },
                     {
                         "name": "annotation_score",
@@ -3632,10 +3644,10 @@
                             "items": {
                                 "type": "string"
                             },
-                            "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN",
+                            "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, DECISION, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN",
                             "title": "Span Types"
                         },
-                        "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN"
+                        "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, DECISION, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN"
                     },
                     {
                         "name": "annotation_score",
@@ -4303,10 +4315,10 @@
                             "items": {
                                 "type": "string"
                             },
-                            "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN",
+                            "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, DECISION, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN",
                             "title": "Span Types"
                         },
-                        "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN"
+                        "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, DECISION, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN"
                     },
                     {
                         "name": "start_time",
@@ -4637,10 +4649,10 @@
                             "items": {
                                 "type": "string"
                             },
-                            "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN",
+                            "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, DECISION, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN",
                             "title": "Span Types"
                         },
-                        "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN"
+                        "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, DECISION, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN"
                     },
                     {
                         "name": "annotation_score",
@@ -5496,10 +5508,10 @@
                             "items": {
                                 "type": "string"
                             },
-                            "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN",
+                            "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, DECISION, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN",
                             "title": "Span Types"
                         },
-                        "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN"
+                        "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, DECISION, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN"
                     },
                     {
                         "name": "annotation_score",
@@ -16973,120 +16985,6 @@
                 }
             }
         },
-        "/api/v1/tasks/{task_id}/agent-polling/execute": {
-            "post": {
-                "tags": [
-                    "Agent Discovery"
-                ],
-                "summary": "Execute Agent Polling",
-                "description": "Manually trigger a polling job for a task. Does not require any particular state \u2014 admins can use this to force an immediate poll outside the normal loop cadence.",
-                "operationId": "execute_agent_polling_api_v1_tasks__task_id__agent_polling_execute_post",
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "task_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "title": "Task Id"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ExecutePollingResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/agent-polling/execute-all": {
-            "post": {
-                "tags": [
-                    "Agent Discovery"
-                ],
-                "summary": "Execute All Agent Polling",
-                "description": "Manually trigger a full agent discovery and polling cycle. Discovers new GCP agents and enqueues trace-fetch jobs for all eligible tasks. Use wait_for_completion=true to block until all polling jobs finish.",
-                "operationId": "execute_all_agent_polling_api_v1_agent_polling_execute_all_post",
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "wait_for_completion",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "boolean",
-                            "default": false,
-                            "title": "Wait For Completion"
-                        }
-                    },
-                    {
-                        "name": "timeout",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "anyOf": [
-                                {
-                                    "type": "integer",
-                                    "minimum": 1
-                                },
-                                {
-                                    "type": "null"
-                                }
-                            ],
-                            "title": "Timeout"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/DiscoverAndPollResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/api/v1/tasks/{task_id}/demos/chatbot/stream": {
             "post": {
                 "tags": [
@@ -22318,33 +22216,6 @@
                 ],
                 "title": "DemoTaskSignupResponse"
             },
-            "DiscoverAndPollResponse": {
-                "properties": {
-                    "status": {
-                        "type": "string",
-                        "title": "Status",
-                        "description": "Status of the operation"
-                    },
-                    "discovered": {
-                        "type": "integer",
-                        "title": "Discovered",
-                        "description": "Number of new agent tasks created"
-                    },
-                    "traces_fetched": {
-                        "type": "integer",
-                        "title": "Traces Fetched",
-                        "description": "Total number of traces fetched across all tasks (0 in async mode)"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "status",
-                    "discovered",
-                    "traces_fetched"
-                ],
-                "title": "DiscoverAndPollResponse",
-                "description": "Response model for the execute-all agent polling endpoint."
-            },
             "DiscoveredAgentRecord": {
                 "properties": {
                     "external_id": {
@@ -23229,27 +23100,6 @@
                     ],
                     "hint": "specific individual's blood type"
                 }
-            },
-            "ExecutePollingResponse": {
-                "properties": {
-                    "status": {
-                        "type": "string",
-                        "title": "Status",
-                        "description": "Status of the operation"
-                    },
-                    "task_id": {
-                        "type": "string",
-                        "title": "Task Id",
-                        "description": "Task ID that was enqueued"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "status",
-                    "task_id"
-                ],
-                "title": "ExecutePollingResponse",
-                "description": "Response model for the single-task agent polling endpoint."
             },
             "ExperimentOutputSource": {
                 "properties": {

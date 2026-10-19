@@ -2,6 +2,13 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 10/15/2026
+- **BREAKING CHANGE** for **URL**: /api/v1/agent-polling/execute-all  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/agent-polling/execute  api path removed without deprecation
+
+# 10/12/2026
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added the new optional `query` request parameter `unreported`
+
 # 09/30/2026
 - **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property '/items/provenance/anyOf[subschema #1: Provenance]/sources/items/external_id' to the response with the '200' status
 - **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property '/items/provenance/anyOf[subschema #1: Provenance]/sources/items/last_scanned' to the response with the '200' status

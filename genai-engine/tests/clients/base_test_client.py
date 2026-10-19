@@ -220,7 +220,9 @@ TEST_AUDIT_LOG_DIR = os.path.join(
     os.path.dirname(__file__),
     "..",
     "..",
-    "test_audit_logs",
+    # One directory per pytest-xdist worker (gw0, gw1, ...): each worker's
+    # session teardown deletes its directory, which must not be another's.
+    "test_audit_logs" + os.environ.get("PYTEST_XDIST_WORKER", ""),
 )
 os.environ["AUDIT_LOG_OVERRIDE_PATH"] = TEST_AUDIT_LOG_DIR
 
@@ -386,6 +388,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         self,
         discovery_source_id: uuid.UUID | None = None,
         reported_since: datetime | None = None,
+        unreported: bool | None = None,
         after_task_id: str | None = None,
         page_size: int | None = None,
     ) -> tuple[int, list[EnrichedTaskResponse]]:
@@ -396,6 +399,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         Args:
             discovery_source_id: Only tasks this discovery source reported
             reported_since: Only tasks a discovery scan reported since this time
+            unreported: Only tasks no discovery source has reported
             after_task_id: The last task of the previous page, if any
             page_size: Tasks per page
 
@@ -408,6 +412,8 @@ class GenaiEngineTestClientBase(httpx.Client):
             params["discovery_source_id"] = str(discovery_source_id)
         if reported_since is not None:
             params["reported_since"] = reported_since.isoformat()
+        if unreported is not None:
+            params["unreported"] = str(unreported).lower()
         if after_task_id is not None:
             params["after_task_id"] = after_task_id
         if page_size is not None:
@@ -5243,49 +5249,6 @@ class GenaiEngineTestClientBase(httpx.Client):
         return (
             resp.status_code,
             resp.json() if resp.status_code == 200 else None,
-        )
-
-    def execute_agent_polling(
-        self,
-        task_id: str,
-    ) -> tuple[int, dict]:
-        """Manually trigger a polling job for a task."""
-        url = f"/api/v1/tasks/{task_id}/agent-polling/execute"
-
-        resp = self.base_client.post(
-            url,
-            headers=self.authorized_user_api_key_headers,
-        )
-
-        log_response(resp)
-
-        return (
-            resp.status_code,
-            resp.json(),
-        )
-
-    def execute_all_agent_polling(
-        self,
-        wait_for_completion: bool = False,
-        timeout: int | None = None,
-    ) -> tuple[int, dict]:
-        """Manually trigger a full discovery + polling cycle."""
-        params: dict = {}
-        if wait_for_completion:
-            params["wait_for_completion"] = wait_for_completion
-        if timeout is not None:
-            params["timeout"] = timeout
-        resp = self.base_client.post(
-            "/api/v1/agent-polling/execute-all",
-            headers=self.authorized_user_api_key_headers,
-            params=params,
-        )
-
-        log_response(resp)
-
-        return (
-            resp.status_code,
-            resp.json(),
         )
 
 

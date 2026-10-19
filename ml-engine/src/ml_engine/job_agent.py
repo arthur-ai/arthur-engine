@@ -6,7 +6,6 @@ from datetime import datetime, timedelta
 from types import FrameType
 from typing import Any, Dict
 
-import psutil
 from arthur_client.api_bindings import (
     Job,
     JobDequeueParameters,
@@ -27,6 +26,7 @@ from arthur_client_support import (
 )
 from health_check import MLEngineHealthCheck as HealthCheck
 from job_runner import JobRunner, ProcessJobRunner, ThreadJobRunner
+from memory_limits import ContainerMemory
 from standalone.agent import StandaloneDiscoveryAgent
 from standalone.discovery_config import (
     StandaloneConfigError,
@@ -56,8 +56,20 @@ class JobAgent:
         if not dpid:
             raise Exception("Data plane ID cannot be None when dequeueing jobs.")
         self.data_plane_id = dpid
+        # Read through the container's limit: psutil alone reports the host's memory,
+        # which can be far more than the container is allowed to use.
+        self.memory = ContainerMemory.detect()
+        limit_mb = (
+            "none"
+            if self.memory.limit_bytes is None
+            else self.memory.limit_bytes // (1024 * 1024)
+        )
+        logger.info(f"Memory limit MB: {limit_mb}, source: {self.memory.source}")
         # Subtract 400 MB to account for this agent process + some buffer, etc
-        self.total_memory_mb = psutil.virtual_memory().available // (1024 * 1024) - 400
+        self.total_memory_mb = self.memory.available_mb() - 400
+        # What the budget was before the container limit was read, used only while no
+        # job is running so that no job admitted before becomes impossible to admit.
+        self.host_total_memory_mb = self.memory.host_available_mb() - 400
         logger.info(f"Total memory MB: {self.total_memory_mb}")
         self.running_jobs: Dict[str, RunningJob] = {}
         self.shutting_down = False
@@ -71,11 +83,25 @@ class JobAgent:
     def available_memory_mb(self) -> int:
         calculated_available = self.total_memory_mb - self.allocated_memory_mb()
 
-        real_time_free = psutil.virtual_memory().available // (1024 * 1024)
+        real_time_free = self.memory.available_mb()
 
         # Return the lower value as a safeguard
         # This accounts for cases where jobs may have exceeded their memory requests
-        return min(calculated_available, real_time_free)
+        return max(min(calculated_available, real_time_free), 0)
+
+    def _dequeue_memory_limit_mb(self) -> int:
+        """Memory to offer the platform when asking for the next job.
+
+        While no job is running, it is never less than the budget read from the host
+        alone (the behaviour before the container limit was read). A job larger than
+        the container's budget, e.g. a 1,500 MB job on a 2 GB container, is then still
+        admitted, alone, as it was before, rather than left queued for good.
+        """
+        available = self.available_memory_mb()
+        if self.running_jobs:
+            return available
+        host_only = min(self.host_total_memory_mb, self.memory.host_available_mb())
+        return max(available, host_only)
 
     def _log_job_exit_code(self, job_id: str, runner: JobRunner) -> None:
         exit_code = runner.exitcode()
@@ -133,7 +159,7 @@ class JobAgent:
         the field existed. Built from a dict because the pinned client's model does
         not declare the field, and a keyword it does not know would not type-check.
         """
-        params: dict[str, Any] = {"memory_limit_mb": self.available_memory_mb()}
+        params: dict[str, Any] = {"memory_limit_mb": self._dequeue_memory_limit_mb()}
         if TEST_DISCOVERY_SOURCE_SUPPORTED and DEQUEUE_DECLARES_DISCOVERY_SOURCE_TEST:
             params["discovery_source_test"] = True
         return JobDequeueParameters(**params)
@@ -188,6 +214,12 @@ class JobAgent:
             )
 
     def _start_job(self, job: Job, job_run: JobRun) -> None:
+        if job.memory_requirements_mb > self.total_memory_mb:
+            logger.warning(
+                f"Job {job.id} requires {job.memory_requirements_mb} MB, more than this "
+                f"engine's budget of {self.total_memory_mb} MB; running it alone. "
+                f"Raise the container's memory limit to run it alongside other jobs.",
+            )
         runner: JobRunner | None = None
         if job.memory_requirements_mb <= 50:
             runner = ThreadJobRunner(job, job_run)

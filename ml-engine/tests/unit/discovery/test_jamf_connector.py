@@ -966,6 +966,65 @@ def test_a_container_state_is_not_reported_as_a_version(
     assert records[0].creation_source.observations.version is None
 
 
+@pytest.mark.parametrize(
+    "kind,ident,loc,ver,install_path,version",
+    [
+        # queries/jetbrains.sql: `loc` is the plugin's directory or jar, `ver` its version
+        (
+            "jbplugin",
+            "example",
+            "/Users/u/Library/Application Support/JetBrains/IntelliJIdea2025.2/plugins/example",
+            "3.2.1",
+            "/Users/u/Library/Application Support/JetBrains/IntelliJIdea2025.2/plugins/example",
+            "3.2.1",
+        ),
+        # queries/running.sql: `loc` is the process executable, which for an npm agent
+        # run under node is the interpreter -- not where the agent is installed
+        ("proc", "com.example.agent", "/opt/homebrew/bin/node", "", None, None),
+    ],
+)
+def test_the_newer_kinds_report_only_a_real_path_and_version(
+    kind: str,
+    ident: str,
+    loc: str,
+    ver: str,
+    install_path: Optional[str],
+    version: Optional[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`jbplugin` carries its install path and version. `proc` carries neither: its `loc`
+    is an app bundle, an agent binary or the interpreter running one, depending on which
+    query emitted it.
+    """
+    catalog = yaml.safe_dump(
+        {
+            "version": 2,
+            "classifications": ["Coding agent"],
+            "agents": [
+                {
+                    "id": "example",
+                    "name": "Example",
+                    "classification": "Coding agent",
+                    "platforms": ["darwin"],
+                    "jetbrains_plugins": ["example"],
+                    "bundle_ids": ["com.example.agent"],
+                },
+            ],
+        },
+    )
+    payload = frame([row(kind, ident, loc=loc, ver=ver), scan_row("apps")])
+    fake = FakeJamf([[computer("m1", payload)]])
+    monkeypatch.setattr(
+        "discovery.endpoint.jamf.connector.JamfClient",
+        lambda s, logger=None: client_for(fake),
+    )
+    records = [r for b in JamfConnector().scan(FakeConfig(catalog), 24, CREDS, FIELDS, LOG) for r in b]  # type: ignore[arg-type]
+
+    obs = records[0].creation_source.observations
+    assert obs.install_path == install_path
+    assert obs.version == version
+
+
 # --- the secret in the token request's body ----------------------------------------
 
 

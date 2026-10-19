@@ -17,9 +17,18 @@ UNION ALL
 -- from browser.sql
 SELECT 'ext' AS kind, identifier AS id, version AS ver, profile_path AS loc,
        browser_type AS extra,
-       permissions || CASE WHEN manifest_json LIKE '%<all_urls>%' THEN ',<all_urls>' ELSE '' END
+       permissions
+         || CASE WHEN manifest_json LIKE '%<all_urls>%' THEN ',<all_urls>' ELSE '' END
+         || CASE WHEN referenced = 0 THEN ',unreferenced'
+                 WHEN from_webstore != 'true'
+                   THEN ',sideloaded:' || IFNULL(manifest_hash, '')
+                 ELSE '' END
          AS perms
-  FROM users CROSS JOIN chrome_extensions USING (uid)
+  FROM (SELECT uid FROM users
+        UNION
+        SELECT uid FROM file
+         WHERE path LIKE '/home/%/' OR path = '/root/' OR path LIKE '/Users/%/') u
+       CROSS JOIN chrome_extensions USING (uid)
 
 UNION ALL
 
@@ -90,6 +99,17 @@ SELECT 'brew' AS kind, name AS id, version AS ver, path AS loc,
 
 UNION ALL
 
+-- from jetbrains.sql
+SELECT 'jbplugin' AS kind, regex_match(path, '([^/]+)/?$', 1) AS id, version AS ver,
+       path AS loc, vendor AS extra, '' AS perms
+  FROM (SELECT uid FROM users
+        UNION
+        SELECT uid FROM file
+         WHERE path LIKE '/home/%/' OR path = '/root/' OR path LIKE '/Users/%/') u
+       CROSS JOIN jetbrains_plugins USING (uid)
+
+UNION ALL
+
 -- from native-messaging.sql
 SELECT 'nmh' AS kind, filename AS id, '' AS ver, path AS loc,
        '' AS extra, '' AS perms
@@ -111,6 +131,26 @@ UNION ALL
 SELECT 'npm' AS kind, name AS id, version AS ver, path AS loc, '' AS extra, '' AS perms
   FROM npm_packages
   WHERE path NOT LIKE '%/node_modules/%/node_modules/%'
+UNION ALL
+-- BUN GLOBALS. npm_packages searches a fixed list of prefixes -- npm, nvm, asdf, fnm,
+-- mise, volta -- and never ~/.bun, so `bun add -g` was invisible (npm_packages.cpp at
+-- 5.23.1). Its `directory` constraint replaces that list and means "the directory that
+-- holds node_modules", and the join pushes it down once per home. The homes come from the
+-- two places queries/vscode.sql takes its uids from, for the reason given there, and a
+-- directory row from `file` ends in '/', so it is trimmed before the suffix goes on.
+--
+-- `extra` IS 'bun' because bun HOISTS: a global's dependencies sit flat beside it in the
+-- one node_modules, so the structural predicate cannot drop them, and every one is a row.
+-- A reader of unmatched rows needs to know why several packages arrived with one global.
+--
+-- Not covered: a global directory moved by BUN_INSTALL_GLOBAL_DIR or bunfig's globalDir.
+SELECT 'npm', np.name, np.version, np.path, 'bun', ''
+  FROM (SELECT directory AS home FROM users
+        UNION
+        SELECT rtrim(path, '/') FROM file
+         WHERE path LIKE '/home/%/' OR path = '/root/' OR path LIKE '/Users/%/') h
+       CROSS JOIN npm_packages np ON np.directory = h.home || '/.bun/install/global'
+  WHERE np.path NOT LIKE '%/node_modules/%/node_modules/%'
 
 UNION ALL
 
@@ -119,6 +159,49 @@ SELECT 'port' AS kind, CAST(lp.port AS TEXT) AS id, '' AS ver, p.path AS loc,
        lp.address AS extra, '' AS perms
   FROM listening_ports lp JOIN processes p USING (pid)
   WHERE lp.port > 0
+
+UNION ALL
+
+-- from running-darwin.sql
+SELECT 'proc' AS kind, pl.value AS id, '' AS ver, x.app AS loc, '' AS extra, '' AS perms
+  FROM (SELECT DISTINCT substr(path, 1, instr(path, '.app/') + 3) AS app
+          FROM processes WHERE path LIKE '%.app/Contents/MacOS/%') x
+       CROSS JOIN plist pl ON pl.path = x.app || '/Contents/Info.plist'
+  WHERE pl.key = 'CFBundleIdentifier'
+
+UNION ALL
+
+-- from running.sql
+SELECT 'proc' AS kind,
+       regex_match(exe || ' ' || cmdline,
+                   'node_modules/((?:@[A-Za-z0-9][A-Za-z0-9._-]*/)?[A-Za-z0-9][A-Za-z0-9._-]*)', 1) AS id,
+       '' AS ver, exe AS loc, '' AS extra, '' AS perms
+  FROM (SELECT cmdline,
+               CASE WHEN path != '' THEN path
+                    ELSE substr(cmdline, 1, instr(cmdline || ' ', ' ') - 1) END AS exe
+          FROM processes) p
+  WHERE (exe LIKE '%/node_modules/%'
+         OR ((exe LIKE '%/node' OR exe LIKE '%/nodejs' OR exe LIKE '%/bun' OR exe LIKE '%/deno'
+              OR exe IN ('node', 'nodejs', 'bun', 'deno'))
+             AND cmdline LIKE '%node_modules/%'))
+    AND regex_match(exe || ' ' || cmdline,
+                    'node_modules/((?:@[A-Za-z0-9][A-Za-z0-9._-]*/)?[A-Za-z0-9][A-Za-z0-9._-]*)', 1) IS NOT NULL
+  -- One row per package and executable, however many workers it runs. GROUP BY rather than
+  -- DISTINCT, because lint and tools/build.py find a branch's kind as `SELECT '<kind>'`.
+  GROUP BY id, loc
+UNION ALL
+-- RUNNING FROM A HOME DIRECTORY, by executable path. Claude Code's native install runs from
+-- ~/.local/share/claude/versions/<version>, not from the ~/.local/bin/claude link the
+-- `binaries` route names, so the process_paths route carries its own value. Read off a
+-- running `claude mcp serve` on 2026-10-07.
+--
+-- `path` ONLY, with no argv[0] stand-in: where the path is unreadable, argv[0] is the
+-- launcher a user typed, which no process_paths value names. GROUP BY folds the sessions
+-- of one binary into one row.
+SELECT 'proc', path, '', path, '', ''
+  FROM processes
+  WHERE path LIKE '/Users/%/%' OR path LIKE '/home/%/%' OR path LIKE '/root/%'
+  GROUP BY path
 
 UNION ALL
 
@@ -132,4 +215,8 @@ UNION ALL
 -- from vscode.sql
 SELECT 'vscodeext' AS kind, name AS id, version AS ver, path AS loc,
        vscode_edition AS extra, '' AS perms
-  FROM users CROSS JOIN vscode_extensions USING (uid);
+  FROM (SELECT uid FROM users
+        UNION
+        SELECT uid FROM file
+         WHERE path LIKE '/home/%/' OR path = '/root/' OR path LIKE '/Users/%/') u
+       CROSS JOIN vscode_extensions USING (uid);

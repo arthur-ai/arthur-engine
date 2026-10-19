@@ -16,14 +16,15 @@ as npm globals, Homebrew casks, browser extensions and JSON config files.
 
 ## Approach
 
-Detection runs **on the endpoint**; transport goes through the management plane.
+Detection runs **on the endpoint**; transport goes through the management plane — Jamf on
+Macs, and the VM's own guest attributes on Compute Engine.
 
 [osquery](https://osquery.io) is the inventory substrate — it has already solved structured OS
 enumeration across macOS versions. Arthur owns the semantic layer on top: what a tool can *reach*,
 and whether it is something we have never seen before.
 
 The endpoint collects and redacts; **the collector classifies**, and it is the only place matching
-happens — no Mac holds a catalog. Keeping matching server-side means a new signature re-matches
+happens — no endpoint matches anything. Keeping matching server-side means a new signature re-matches
 against evidence already held, so the day a new agent is catalogued you learn which Macs already
 had it, without waiting for a fleet re-scan. That is why the deployed query **enumerates** rather
 than filtering to a list of known identifiers.
@@ -71,9 +72,9 @@ python3 -m json.tool /tmp/arthur/inventory.json     # the readable payload
 head -c 40 /tmp/arthur/inventory.ea                 # arthur1.H4sIAGs1l2oC/…
 ```
 
-Measured on one reference Mac at vendored ref `v0.4.0`, 2026-09-18, osquery 5.23.1: **804
-rows** across ten branches, 126,741 bytes of JSON framed to **20,808 — 8% of the 256 KB
-budget.** The vendored runner is ~6.4s of that, timed on its own.
+Measured on one reference Mac at vendored ref `v0.12.0`, 2026-10-11, osquery 5.23.1,
+unprivileged: **929 rows** across thirteen branches, 155,562 bytes of JSON framed to
+**24,668 — 9% of the 256 KB budget.**
 
 For raw rows with no framing and no output files, the vendored runner is right there:
 
@@ -95,11 +96,11 @@ on the inventory path can block.
 
 | EA | Reads | Carries | Size |
 |---|---|---|---|
-| `AI Inventory` | `inventory.ea` | the evidence — `arthur1.<base64(gzip(json))>`, or `ERROR:oversize:<bytes>` | ~21 KB, measured |
+| `AI Inventory` | `inventory.ea` | the evidence — `arthur1.<base64(gzip(json))>`, or `ERROR:oversize:<bytes>` | ~24 KB, measured |
 | `AI Inventory Status` | `status.txt` | collection health, plain text and greppable | 154 bytes, measured |
 
-The evidence EA is gzipped, and that is not premature: the raw JSON measured **~127 KB** on the
-reference Mac. Framed as `arthur1.<base64(gzip(json))>` the same payload is ~21 KB.
+The evidence EA is gzipped, and that is not premature: the raw JSON measured **~155 KB** on the
+reference Mac. Framed as `arthur1.<base64(gzip(json))>` the same payload is ~24 KB.
 
 But **Jamf Smart Groups cannot match inside a compressed blob**, so the second EA carries the
 writer's own status line:
@@ -126,7 +127,7 @@ Criteria use *AI Inventory Status* → **like**:
 
 **Smart Groups answer "is collection healthy", not "which Macs run OpenClaw".** That is a
 deliberate consequence of enumeration, and the trade is worth naming: the status line carries no
-bundle identifiers because computing them on the device would need a catalog on the device,
+bundle identifiers because computing them on the device would mean matching on the device,
 which is the one thing the design forbids. Under enumeration the counts would also stop meaning
 "AI things" — `app=4` becomes `app=398` on this Mac. **Agent identity is a collector question**,
 and the collector re-matches every new signature against evidence it already holds, without a
@@ -144,22 +145,26 @@ containing usernames, and the Jamf inventory record is readable by every Jamf ad
 |---|---|
 | `vendor/osquery-ai-discovery/` | the queries, the runner and the catalog, vendored at a pinned ref. **The only osquery implementation. Do not edit** |
 | `tools/vendor-queries.sh` | vendor `bin/`, `dist/` and `catalog/` from the public repo at one ref |
-| `tools/build-collector.py` | build `dist/collect.sh`, the single file an MDM deploys |
-| `dist/collect.sh` | the deployable: the vendored runner and queries, embedded. Generated, and committed on purpose |
-| `deploy/` | the LaunchDaemon, for fleets preferring a package to an MDM policy |
-| `test/lint.sh` | everything this tree owns. ~1s, no VM — see [test/README.md](test/README.md) |
+| `tools/build-collector.py` | build both collectors, one file per platform, around one driver |
+| `dist/collect.sh`, `dist/collect-linux.sh` | the deployables: the vendored runner and queries, embedded. Generated, and committed on purpose |
+| `deploy/` | the LaunchDaemon for Macs; the systemd units, the guest-attribute reporter and the OS policy that installs them for Compute Engine |
+| `deploy/terraform/` | a Terraform module that deploys that OS policy across a fleet's projects and zones, or through a policy orchestrator |
+| `tools/render-os-policy.sh` | pin the OS policy to one ref of this repository, for gcloud |
+| `test/` | lint, the collector run, the reporter against a fake metadata server, the units under systemd — see [test/README.md](test/README.md) |
 | `docs/` | design and deployment docs |
 
 The catalog is **not vendored here**: signatures are the collector's, and it vendors them into
-`ml-engine/src/ml_engine/discovery/`. `build-collector.py` and `test/lint.sh` both assert the
-payload carries none, because a Mac holding the signatures it is meant to enumerate past would
-be invisible inside a 21 KB base64 blob.
+`ml-engine/src/ml_engine/discovery/`. `vendor/` carries upstream's `dist/` verbatim, which
+includes SQL renderings of the catalog, and exactly one of them enters the payload:
+`dist/signatures.sql`, for upstream's `bin/discover --names`, which the collector never calls.
+`build-collector.py` admits payload files by name and `test/lint.sh` fails on `--names`, because
+a Mac matching on signatures would be invisible inside a base64 blob.
 
 ## Rebuilding
 
 ```bash
 tools/vendor-queries.sh <ref>     # verifies upstream's own build gate before copying
-tools/build-collector.py          # rebuild dist/collect.sh around the new tree
+tools/build-collector.py          # rebuild both collectors around the new tree
 test/lint.sh                      # gates the vendored tree and the built collector
 ```
 
@@ -178,3 +183,6 @@ vendored runner does not accept.
 - [**AI Inventory on Jamf Pro**](docs/mdm/jamf-pro.md) — deployment runbook for the
   scheduled-writer pattern: two Extension Attributes, one LaunchDaemon, one script, with a
   verification step and expected output for each.
+- [**AI Inventory on Compute Engine VMs**](docs/mdm/gce.md) — the same collector built for
+  Linux: an OS policy installs it with a systemd timer, and a reporter publishes to the VM's
+  guest attributes. Deployed with gcloud, or across a fleet with the Terraform module.

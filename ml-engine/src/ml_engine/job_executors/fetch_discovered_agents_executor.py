@@ -6,6 +6,10 @@ Engine; this reads those tasks back for one source, converts each to an agent, a
 upserts them through `PUT /workspaces/{id}/agents`, where the Platform decides whether
 each one is a registered application or an unregistered agent.
 
+Each fetch then also uploads every task on the engine that no discovery source has
+reported, such as an agent GenAI Engine only knows from its traces or one created by
+hand: no source's own walk will ever carry those, so they ride along with every scan.
+
 Tasks are the seam between the two jobs, so everything this uploads carries a
 `task_id` by construction. Running it twice over the same window uploads the same
 agents twice: task identity is stable across scans (D-08) and the Platform upserts on
@@ -41,6 +45,14 @@ from job_log_exporter import REPORT_AS_JOB_ERROR
 # every task on a page is enriched from its spans, and the Platform upserts a PUT one
 # agent at a time inside a single request, so a smaller page bounds both calls.
 FETCH_PAGE_SIZE = 200
+
+# GenAI Engine's own bookkeeping tasks (genai-engine `utils/constants.py`). They are not
+# agents, and the agent-tasks response does not say a task is a system task. The
+# unmapped task (`__unmapped__`) is a system task too, but is left out of this set: it
+# holds the traces of agents that sent no service name, and is uploaded like an agent.
+GENAI_ENGINE_SYSTEM_TASK_NAMES = frozenset(
+    {"__arthur_system_task__", "__synthetic_dataset_generation__"},
+)
 
 # Rejected agents reported one by one before the rest are summarized: each is a log line
 # and a job error, so a batch the Platform refused wholesale does not become thousands.
@@ -89,6 +101,10 @@ class FetchDiscoveredAgentsExecutor:
     def execute(self, job_spec: FetchDiscoveredAgentsJobSpec) -> None:
         """Upload every task the source reported in the window, a page at a time.
 
+        Then upload every task no source has reported, so the agents the engine knows
+        only from their own traces or a manual create surface on the same scan as
+        the source's.
+
         Each page is uploaded as it arrives rather than after the last one, so memory
         is bounded by a page whatever the source reported, and a failure part-way
         leaves the pages before it upserted -- which a retry then updates in place.
@@ -110,7 +126,6 @@ class FetchDiscoveredAgentsExecutor:
             },
         )
 
-        uploaded = 0
         with ApiClient(
             Configuration(
                 host=self.genai_engine_url,
@@ -118,40 +133,100 @@ class FetchDiscoveredAgentsExecutor:
             ),
         ) as api_client:
             tasks_api = TasksApi(api_client)
-            after_task_id: str | None = None
-            while True:
-                tasks: List[EnrichedTaskResponse] = (
-                    tasks_api.get_agent_tasks_api_v2_agent_tasks_get(
-                        discovery_source_id=source_id,
-                        reported_since=job_spec.reported_since,
-                        after_task_id=after_task_id,
-                        page_size=self.page_size,
-                        _request_timeout=AGENT_TASKS_TIMEOUT_SECONDS,
-                    )
-                )
-                if tasks:
-                    uploaded += publish_enriched_tasks(
-                        self.agents_client,
-                        self.logger,
-                        workspace_id,
-                        data_plane_id,
-                        tasks,
-                        discovery_source_id=source_id,
-                    )
-                # A short page is the last one, which is how the endpoint says so.
-                if len(tasks) < self.page_size:
-                    break
-                # Paged by cursor: the next page starts after this one's last task.
-                after_task_id = tasks[-1].id
+            uploaded = self._upload_walk(
+                tasks_api,
+                workspace_id,
+                data_plane_id,
+                source_id=source_id,
+                reported_since=job_spec.reported_since,
+                # Left out of a source's request, which reads as before.
+                unreported=None,
+            )
+            # No window: these tasks have no report times to measure one against,
+            # and every one of them is uploaded again, which the Platform's upsert on
+            # task_id makes an update in place. No source's evidence goes with them:
+            # none reported them.
+            unreported_uploaded = self._upload_walk(
+                tasks_api,
+                workspace_id,
+                data_plane_id,
+                source_id=None,
+                reported_since=None,
+                unreported=True,
+            )
 
         self.logger.info(
-            f"Uploaded {uploaded} agent(s) from discovery source {source_id}",
+            f"Uploaded {uploaded} agent(s) from discovery source {source_id}, and "
+            f"{unreported_uploaded} agent(s) no discovery source reported",
             extra={
                 "workspace_id": workspace_id,
                 "discovery_source_id": source_id,
                 "num_upserted": uploaded,
+                "num_unreported_upserted": unreported_uploaded,
             },
         )
+
+    def _upload_walk(
+        self,
+        tasks_api: TasksApi,
+        workspace_id: str,
+        data_plane_id: str,
+        source_id: Optional[str],
+        reported_since: Any,
+        unreported: Optional[bool],
+    ) -> int:
+        """Walk one agent-tasks query by cursor, uploading each page as it arrives.
+
+        Uploads carry `source_id`'s evidence, or none when it is None: the unreported
+        tasks were reported by no source, so they must not be dressed as this one's.
+        """
+        uploaded = 0
+        after_task_id: str | None = None
+        while True:
+            tasks: List[EnrichedTaskResponse] = (
+                tasks_api.get_agent_tasks_api_v2_agent_tasks_get(
+                    discovery_source_id=source_id,
+                    reported_since=reported_since,
+                    unreported=unreported,
+                    after_task_id=after_task_id,
+                    page_size=self.page_size,
+                    _request_timeout=AGENT_TASKS_TIMEOUT_SECONDS,
+                )
+            )
+            # A GenAI Engine that predates the `unreported` filter ignores it and
+            # answers with every task, so the walk drops what the filter would have.
+            to_upload = (
+                [t for t in tasks if _is_unreported_agent(t)] if unreported else tasks
+            )
+            if to_upload:
+                uploaded += publish_enriched_tasks(
+                    self.agents_client,
+                    self.logger,
+                    workspace_id,
+                    data_plane_id,
+                    to_upload,
+                    discovery_source_id=source_id,
+                )
+            # A short page is the last one, which is how the endpoint says so. Judged
+            # on the page as served, so the cursor walks on past a filtered page.
+            if len(tasks) < self.page_size:
+                return uploaded
+            # Paged by cursor: the next page starts after this one's last task.
+            after_task_id = tasks[-1].id
+
+
+def _is_unreported_agent(task: EnrichedTaskResponse) -> bool:
+    """Whether a task belongs in an unreported walk: no source reported it, and it is
+    not one of GenAI Engine's bookkeeping tasks (the unmapped task is not one).
+
+    Every task carries provenance; a task no source reported has only its creation
+    source's entry, which names no source. Any entry that names one means a source
+    reported the task, and that source's own fetch uploads it with its evidence.
+    """
+    if task.name in GENAI_ENGINE_SYSTEM_TASK_NAMES:
+        return False
+    provenance = task.to_dict().get("provenance") or {}
+    return not any(entry.get("source_id") for entry in provenance.get("sources") or [])
 
 
 def publish_enriched_tasks(
