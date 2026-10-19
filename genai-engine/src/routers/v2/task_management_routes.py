@@ -32,7 +32,6 @@ from config.cache_config import cache_config
 from dependencies import get_application_config, get_db_session, get_org_scope
 from repositories.metrics_repository import MetricRepository
 from repositories.rules_repository import RuleRepository
-from repositories.task_polling_state_repository import TaskPollingStateRepository
 from repositories.task_provenance_repository import TaskProvenanceRepository
 from repositories.tasks_metrics_repository import TasksMetricsRepository
 from repositories.tasks_repository import TaskRepository
@@ -332,9 +331,11 @@ def get_agent_tasks(
     # Build enriched responses, reading what each task needs in bulk rather than a
     # query or more per task.
     task_ids = [task.id for task in tasks]
-    polling_states = TaskPollingStateRepository(db_session).get_by_task_ids(task_ids)
     provenance_rows = TaskProvenanceRepository(db_session).get_by_task_ids(task_ids)
     agent_metadata_by_task = tasks_repo._extract_agent_metadata_for_tasks(task_ids)
+    # last_fetched carries when each task last sent a trace. The Platform shows it as when
+    # an agent no discovery source reported was last seen.
+    last_trace_by_task = tasks_repo.get_last_trace_end_times(task_ids)
     enriched_responses = []
     for task in tasks:
         creation_source = tasks_repo._get_task_creation_source(task)
@@ -342,10 +343,6 @@ def get_agent_tasks(
             creation_source,
             provenance_rows.get(task.id, []),
         )
-
-        # Get last_fetched from task_polling_state
-        polling_state = polling_states.get(task.id)
-        last_fetched = polling_state.last_fetched if polling_state else None
 
         agent_metadata = agent_metadata_by_task[task.id]
 
@@ -363,7 +360,7 @@ def get_agent_tasks(
             updated_at=task.updated_at,
             is_autocreated=task.is_autocreated,
             creation_source=creation_source,
-            last_fetched=last_fetched,
+            last_fetched=last_trace_by_task.get(task.id),
             tools=agent_metadata["tools"],
             sub_agents=agent_metadata["sub_agents"],
             models=agent_metadata["models"],
