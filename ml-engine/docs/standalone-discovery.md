@@ -125,6 +125,43 @@ The lookback window is not applied: Google's list API is an inventory, so every 
 reports every engine in the region whatever `lookback_window_seconds` says, and a short
 window misses nothing.
 
+#### `wiz_ai_spm` — Wiz AI-SPM
+
+Lists the cloud resources of the configured Wiz Security Graph entity types in one Wiz
+tenant, across every cloud account the tenant has connected.
+
+| Field | Secret | Required | Notes |
+|---|---|---|---|
+| `api_endpoint_url` | no | yes | The tenant's GraphQL endpoint from Wiz's User Settings > Tenant: `https://api.<data center>.app.wiz.io/graphql`, or `.app.wiz.us/graphql` for FedRAMP. Any other host is refused |
+| `auth_environment` | no | no | `commercial` (default, `auth.app.wiz.io`), `gov` (`auth.gov.wiz.io`) or `fedramp` (`auth.app.wiz.us`): which token endpoint issues the token |
+| `client_id` | no | yes | A Wiz service account's client ID |
+| `client_secret` | yes | yes | That service account's client secret |
+| `entity_types` | no | no | Comma-separated Wiz Security Graph entity types to list instead of the default `AI_AGENT,AI_SERVICE` |
+
+Use `query: ""` and `query_language: none`. Give the service account only the
+`read:resources` scope; the scan sends nothing but the token request and one read-only
+`cloudResources` query, paged 500 at a time. A tenant that restricts API access to an IP
+allowlist must allow the engine's egress address, or every query fails with
+`FORBIDDEN_IP`.
+
+**The default entity types are not verified.** Wiz documents its entity types only
+behind a tenant login, and no public source lists the AI ones, so `AI_AGENT,AI_SERVICE`
+is the engine's best guess. If the tenant does not know a name, Wiz rejects the query and
+the scan fails as `not_configured` saying to set `entity_types`; set it to the types
+Wiz's inventory shows for the tenant's AI agents.
+
+Each resource is one record. `external_id` is the resource's provider id as Wiz reports
+it (`providerUniqueId`: an ARN, an Azure resource path, a GCP resource name), so it
+matches what a native cloud source reports for the same agent; a resource without one is
+`wiz:<Wiz's id>`. The address's instance is the cloud account (`subscriptionExternalId`,
+lower-cased for Azure), its scope the resource's region (`global` when it has none), and
+`last_seen` is Wiz's `lastSeen`, else the resource's update or creation time. No service
+names are claimed.
+
+The lookback window is not applied: `cloudResources` is an inventory, so every scan
+reports every matching resource whatever `lookback_window_seconds` says. A scan reads at
+most 100 pages and says so in the job log when it stops there.
+
 #### `jamf_pro` — Jamf Pro (managed Macs)
 
 Reads the agent inventory Arthur's endpoint collector writes to each Mac.
