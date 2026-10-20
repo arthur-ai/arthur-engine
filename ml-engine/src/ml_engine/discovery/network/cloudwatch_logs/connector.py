@@ -41,7 +41,7 @@ from discovery.network.hosts import (
 from discovery.network.records import TrafficSources
 from job_executors.discovery_scan import DiscoveryConfigurationError
 
-VENDOR = "aws_cloudwatch_logs"
+VENDOR = "aws_network"
 
 REGION_FIELD = "region"
 LOG_GROUP_NAMES_FIELD = "log_group_names"
@@ -59,7 +59,7 @@ CUSTOM_LOG_FORMAT = "custom"
 # when a source has no access key. Off unless set to a true value, so a keyless source
 # fails naming its fields rather than scanning as whatever the engine runs as.
 ALLOW_DEFAULT_CREDENTIALS_ENV_VAR = (
-    "ARTHUR_ENGINE_AWS_CLOUDWATCH_LOGS_ALLOW_DEFAULT_CREDENTIALS"
+    "ARTHUR_ENGINE_AWS_NETWORK_ALLOW_DEFAULT_CREDENTIALS"
 )
 
 MAX_LOG_GROUPS = 20

@@ -175,7 +175,7 @@ def connection_test_category(exc: BaseException) -> str:
 
 def test_the_connector_is_registered_for_its_vendor() -> None:
     assert source_connectors()[VENDOR] is CloudWatchLogsConnector
-    assert VENDOR == "aws_cloudwatch_logs"
+    assert VENDOR == "aws_network"
 
 
 def test_the_connector_declares_exactly_its_secrets() -> None:
