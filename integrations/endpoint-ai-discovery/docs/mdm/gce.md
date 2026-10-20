@@ -194,14 +194,23 @@ engine's own Application Default Credentials (Workload Identity on GKE, say) onl
 engine sets `ARTHUR_ENGINE_GCP_COMPUTE_ENGINE_ALLOW_ADC=true`; otherwise the scan fails and
 names the field.
 
-A VM whose `enable-guest-attributes` is not `TRUE`, on the VM or on its project when the VM
-does not set it, is counted as `guest-attributes-disabled` and its values are not read:
-the API keeps serving them after the setting is turned off, so they cannot be current.
+How the collector counts a VM that cannot report:
 
-A VM whose status line (section 05) shows no report within the scan's lookback window,
-stopped or with its timer removed, is counted as `not-reported-in-window` and not published,
-so its agents go stale on the Platform as a Mac's do when it stops checking in. A VM still
-reporting but failing keeps publishing its last good scan.
+| VM | Counted as |
+|---|---|
+| `enable-guest-attributes` not `TRUE`, on the VM or on its project when the VM does not set it | `guest-attributes-disabled`, and not read: the API keeps serving its values after the setting is turned off, so they cannot be current |
+| No `arthur/` namespace, and `enable-osconfig` not `TRUE` on the VM or on its project when the VM does not set it | `osconfig-disabled`: the OS Config agent acts on no policy there, so the rollout can never install the collector. A VM that has reported keeps its own reasons, whatever the key says now |
+| No `arthur/` namespace, and the agent on | `never-reported`: the rollout has not reached it yet, or its first run has not finished |
+| A status line (section 05) with no report inside the scan's lookback window, stopped or with its timer removed | `not-reported-in-window`, and not published, so its agents go stale on the Platform as a Mac's do when it stops checking in |
+
+A VM still reporting but failing keeps publishing its last good scan.
+
+**Every VM counted is also listed**, by instance id, name, `project/zone` and reason, with
+the time on its status line when it has one, under `device_coverage.unreadable_devices` on
+the run's outcome, up to 1,000 per run with the rest counted in
+`unreadable_devices_truncated`. The VMs a scan cannot see are where unmanaged AI sits, so
+that list is the finding to work through, and a VM whose owner turned the agent or guest
+attributes off is in it by name. Identifiers only: no attribute value travels.
 
 ## 08 · Rollback — terminal
 
