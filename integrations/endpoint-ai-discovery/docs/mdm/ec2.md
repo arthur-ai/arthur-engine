@@ -17,6 +17,8 @@ reporter writes. The collector is the one a Compute Engine VM runs; only the rep
 >   timer was not restarted and every file kept its sha256.
 > - Each instance collected, uploaded through section 03's association, and was decoded by the
 >   Arthur collector.
+> - A Session Manager login's `ssm-user` is an ordinary `/etc/passwd` account. osquery's `users`
+>   table lists it, and a `~/.claude` in its home was published as a `claude-code` record.
 >
 > The same day's first run found that the script failed on Ubuntu under `sh` (section 02).
 
@@ -254,6 +256,14 @@ optional `external_id` to assume with it. A source without a key uses the engine
 credentials — IRSA on EKS, say — only when the engine sets
 `ARTHUR_ENGINE_AWS_EC2_ALLOW_DEFAULT_CREDENTIALS=true`; otherwise the scan fails and names the
 fields.
+
+**Measured 2026-10-20 in the sandbox account**, with a role holding exactly the policy above,
+trusted only with an external ID:
+- Through `role_arn` and `external_id`, a scan read and decoded the region's tagged instance and
+  published its record, as an administrator's scan did.
+- CloudTrail records the `AssumeRole` under the session name `arthur-ai-discovery`.
+- With a wrong external ID, STS refuses (`AccessDenied`) and the scan fails as
+  `permission_denied`.
 
 How the collector counts an instance that cannot report:
 
