@@ -148,14 +148,20 @@ attributes. Deploying the collector is
 
 | Field | Secret | Required | Notes |
 |---|---|---|---|
-| `project_ids` | no | yes | Comma-separated project **IDs**, not numbers |
+| `project_ids` | no | one of three | Comma-separated project **IDs**, not numbers |
+| `organization_id` | no | one of three | The organization's number: every active project under it, folders walked |
+| `folder_ids` | no | one of three | Comma-separated folder numbers: every active project under each |
 | `include_labels` | no | no | Comma-separated `key=value` labels to limit the scan to |
 | `exclude_labels` | no | no | Comma-separated `key=value` labels to leave out; exclude wins |
 | `service_account_key` | yes | no | A service account JSON key. Without one, the engine uses Application Default Credentials only if `ARTHUR_ENGINE_GCP_COMPUTE_ENGINE_ALLOW_ADC=true` is set |
 
 The service account needs `compute.instances.list`, `compute.instances.getGuestAttributes`
-and `compute.projects.get`, all in `roles/compute.viewer`. `query` and `query_language`
-are as for Jamf, and so is stopping on shutdown.
+and `compute.projects.get`, all in `roles/compute.viewer`. Under an organization or a
+folder it also needs `resourcemanager.projects.list` and `resourcemanager.folders.list`
+there (`roles/browser`), with `roles/compute.viewer` granted there rather than per project.
+A project it is refused is a denied scope in the scan's outcome and the scan reads the rest;
+refused every project, the scan fails. `query` and `query_language` are as for Jamf, and so
+is stopping on shutdown.
 
 Compute Engine records no time a guest attribute was written, so every scan lists every
 VM in the projects. The lookback is applied to the time on the collector's status line: a
@@ -173,18 +179,24 @@ inventory. Deploying the collector is
 
 | Field | Secret | Required | Notes |
 |---|---|---|---|
-| `regions` | no | yes | Comma-separated regions, such as `us-east-1,eu-west-1` |
+| `regions` | no | yes | Comma-separated regions, such as `us-east-1,eu-west-1`, or `all` for every region each account has enabled (asked in `us-east-1`; another partition names its regions) |
 | `access_key_id` | yes | no | An access key, with `secret_access_key`. Without one, the engine uses its own AWS credentials only if `ARTHUR_ENGINE_AWS_EC2_ALLOW_DEFAULT_CREDENTIALS=true` is set |
 | `secret_access_key` | yes | no | Set with `access_key_id`, or neither |
 | `role_arn` | no | no | A role those credentials assume, as session `arthur-ai-discovery` |
-| `external_id` | no | no | The external ID the role's trust policy requires; only with `role_arn` |
+| `external_id` | no | no | The external ID the role's trust policy requires; only with `role_arn`. Also sent when assuming the member role in each account |
+| `accounts` | no | no | `all` for every active account in the organization, or comma-separated 12-digit account IDs. Each is read through its member role; unset, the credential's own account is read directly |
+| `member_role_name` | no | no | The role assumed in each account, by name; defaults to `arthur-ai-discovery` |
 | `include_tags` | no | no | Comma-separated `key=value` tags to limit the scan to |
 | `exclude_tags` | no | no | Comma-separated `key=value` tags to leave out; exclude wins |
 
 The credential needs `ec2:DescribeInstances`, `ssm:DescribeInstanceInformation` and
 `ssm:ListInventoryEntries`, and nothing more: AWS's read-only managed policies cover them
-but also read Parameter Store and instance user data. `query` and `query_language` are as
-for Jamf, and so is stopping on shutdown.
+but also read Parameter Store and instance user data. With `accounts` set it needs
+`organizations:ListAccounts` (for `all`) and `sts:AssumeRole` on the member role instead,
+and the member role in each account holds the three actions plus `ec2:DescribeRegions`.
+An account whose role cannot be assumed, or a region it is refused, is a denied scope in
+the scan's outcome and the scan reads the rest; refused everywhere, the scan fails.
+`query` and `query_language` are as for Jamf, and so is stopping on shutdown.
 
 EC2 has no per-instance report date to filter on, so every scan lists every instance in
 the regions. The lookback is applied to the time on the collector's status line: an
@@ -361,6 +373,15 @@ working is visible where its agents are:
 `credentials_unavailable`, `authentication_failed`, `permission_denied`,
 `provider_error`, `publication_failed`, `cancelled` or `internal_error`. Errors never
 carry the source's credentials or the destination's secrets.
+
+`denied_scopes` lists the parts of an organization-wide scope the scan was refused and
+read past, each as `{"scope": "projects/acme-dev-456", "reason": "permission_denied"}`:
+a project under a Compute Engine source's organization or folder, an AWS account
+(`123456789012`) whose member role could not be assumed, or an account and region
+(`123456789012/eu-west-1`). `reason` is `permission_denied` or `unreachable`. A scan
+succeeded with denied scopes is a scan that did not see all of its scope, which a
+destination should alert on. The list is empty for a source whose scope is one thing,
+which fails the scan instead.
 
 A source that reads machines (`jamf_pro`, `gcp_compute_engine`, `aws_ec2`) adds
 `device_coverage` to the outcome: how many machines it read, decoded and could not read,

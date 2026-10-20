@@ -257,6 +257,20 @@ credentials — IRSA on EKS, say — only when the engine sets
 `ARTHUR_ENGINE_AWS_EC2_ALLOW_DEFAULT_CREDENTIALS=true`; otherwise the scan fails and names the
 fields.
 
+**Every account in the organization.** Set `accounts` to `all`, or to a comma-separated list
+of account IDs, and `regions` to `all` or a list. The source lists the organization's active
+accounts (`organizations:ListAccounts`, from the management account or a delegated
+administrator), assumes `arn:aws:iam::ACCOUNT:role/MEMBER_ROLE_NAME` in each with the source's
+`external_id`, as session `arthur-ai-discovery`, and asks each account for its enabled regions.
+`member_role_name` defaults to `arthur-ai-discovery`. The management account is treated like
+any other. The credential the source holds needs `organizations:ListAccounts` and
+`sts:AssumeRole` on the member role; the member role holds the three actions above plus
+`ec2:DescribeRegions`, and trusts that credential. Deploy it to every account with a
+CloudFormation StackSet. `regions: all` is asked in `us-east-1`; a fleet in another partition
+names its regions. An account whose role cannot be assumed, or a region the role is refused,
+is a denied scope on the run, which Arthur shows as a degraded source, and the scan reads the
+rest; refused everywhere, the run fails.
+
 **Measured 2026-10-20 in the sandbox account**, with a role holding exactly the policy above,
 trusted only with an external ID:
 - Through `role_arn` and `external_id`, a scan read and decoded the region's tagged instance and

@@ -118,7 +118,8 @@ Full runbook: [gce.md](mdm/gce.md). The OS policy targets Debian 12 and Ubuntu 2
    [section 06](mdm/gce.md#06--when-a-vm-is-not-reporting--on-the-vm).
 5. **Connect Arthur.** Add a Compute Engine discovery source. Set its `project_ids` and
    `include_labels` from the `arthur_source` output, and give it the service account's JSON
-   key ([section 07](mdm/gce.md#07--access-for-the-arthur-collector)).
+   key ([section 07](mdm/gce.md#07--access-for-the-arthur-collector)). To scan every project
+   under an organization or a folder instead, set `organization_id` or `folder_ids`.
 
 ## EC2 instances
 
@@ -149,7 +150,8 @@ or Ubuntu 24.04.
 
 6. **Connect Arthur.** Grant a credential the three read-only actions listed in
    [section 07](mdm/ec2.md#07--access-for-the-arthur-collector). Then add an EC2 discovery
-   source with that credential and your regions.
+   source with that credential and your regions. To scan every account in the organization,
+   deploy the member role to each account and set `accounts` to `all`.
 
 ## Next
 
