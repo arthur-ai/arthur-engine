@@ -17,7 +17,7 @@ import logging
 import time
 from dataclasses import asdict
 from datetime import datetime, timezone
-from typing import Callable
+from typing import Callable, Optional
 
 from arthur_client.api_bindings import (
     DiscoveryDeviceCoverage,
@@ -84,12 +84,31 @@ def platform_coverage(coverage: DeviceCoverage) -> DiscoveryDeviceCoverage:
     Every count travels. The per-device list travels when the client's model declares
     `PER_DEVICE_FIELDS`, and is left out otherwise, rather than refused by the model
     and the whole outcome with it.
+
+    A device's `last_reported` is the carrier's string -- a status line's stamp, or
+    whatever the MDM put in its report date -- and the run store takes a time with a
+    zone or nothing. One it cannot take is sent as nothing rather than failing the
+    whole outcome; the job log keeps the string as the carrier gave it.
     """
     fields = asdict(coverage)
     if PER_DEVICE_FIELDS[0] not in DiscoveryDeviceCoverage.model_fields:
         for name in PER_DEVICE_FIELDS:
             fields.pop(name)
+    else:
+        for device in fields["unreadable_devices"]:
+            device["last_reported"] = _aware_time(device["last_reported"])
     return DiscoveryDeviceCoverage(**fields)
+
+
+def _aware_time(value: Optional[str]) -> Optional[str]:
+    """`value` as an ISO 8601 time with a zone, or None when it is not one."""
+    if not value:
+        return None
+    try:
+        when = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return when.isoformat() if when.tzinfo is not None else None
 
 
 class PlatformRunReporter:

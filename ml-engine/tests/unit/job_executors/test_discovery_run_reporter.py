@@ -120,6 +120,41 @@ def test_the_per_device_list_travels_once_the_run_store_declares_it(
     assert body.device_coverage.to_dict()["unreadable_devices"] == [asdict(UNREADABLE)]
 
 
+@pytest.mark.parametrize(
+    "carried, sent",
+    [
+        ("2026-10-12T12:58:28+00:00", "2026-10-12T12:58:28+00:00"),
+        ("2026-09-22T10:00:00Z", "2026-09-22T10:00:00+00:00"),
+        ("2026-09-22T10:00:00", None),
+        ("last Tuesday", None),
+        (None, None),
+    ],
+)
+def test_a_last_report_the_run_store_cannot_take_is_sent_as_nothing(
+    carried: Optional[str],
+    sent: Optional[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The store takes a time with a zone or null; a carrier's string it would refuse
+    must not cost the whole outcome."""
+
+    class WithDevices(DiscoveryDeviceCoverage):
+        unreadable_devices: Optional[list[dict[str, Any]]] = None
+        unreadable_devices_truncated: Optional[int] = 0
+
+    monkeypatch.setattr(discovery_run_reporter, "DiscoveryDeviceCoverage", WithDevices)
+    coverage = DeviceCoverage()
+    coverage.count_unreadable(
+        "never-reported",
+        UnreadableDevice("m1", "mac-m1", None, "never-reported", carried),
+    )
+    body = platform_outcome(_outcome(device_coverage=coverage))
+
+    assert body.device_coverage is not None
+    ((device),) = body.device_coverage.to_dict()["unreadable_devices"]
+    assert device["last_reported"] == sent
+
+
 def test_a_failed_scan_is_a_failed_run_with_its_code_and_none_of_its_text() -> None:
     outcome = _outcome(records_published=20)
     outcome.record_failure(VendorHTTPError(401))
