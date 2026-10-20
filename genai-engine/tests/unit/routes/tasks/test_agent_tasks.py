@@ -14,7 +14,7 @@ from arthur_common.models.agent_governance_schemas import (
 )
 from openinference.semconv.trace import OpenInferenceSpanKindValues
 
-from db_models import DatabaseSpan, DatabaseTask, DatabaseTaskPollingState
+from db_models import DatabaseSpan, DatabaseTask, DatabaseTraceMetadata
 from tests.clients.base_test_client import (
     GenaiEngineTestClientBase,
     override_get_db_session,
@@ -286,11 +286,13 @@ def test_get_agent_tasks_30_day_lookback(client: GenaiEngineTestClientBase):
 
 
 @pytest.mark.unit_tests
-def test_get_agent_tasks_with_last_fetched(client: GenaiEngineTestClientBase):
-    """Test that last_fetched is included for GCP tasks from polling data."""
-    task_name = f"gcp_polled_{random.random()}"
+def test_get_agent_tasks_serves_a_legacy_gcp_task_without_last_fetched(
+    client: GenaiEngineTestClientBase,
+):
+    """A task the old GCP discovery created is still served, with its creation source,
+    and no last_fetched: nothing records a trace fetch since the trace poller went."""
+    task_name = f"gcp_legacy_{random.random()}"
     task_id = str(uuid4())
-    last_fetched_time = datetime.now() - timedelta(hours=1)
 
     # Directly insert GCP task into database (bypassing API to avoid polling service)
     db_session = override_get_db_session()
@@ -316,18 +318,8 @@ def test_get_agent_tasks_with_last_fetched(client: GenaiEngineTestClientBase):
             org_id=DEFAULT_ORG_ID,
         )
         db_session.add(db_task)
-
-        # Add polling state with last_fetched (new table)
-        polling_state = DatabaseTaskPollingState(
-            task_id=task_id,
-            last_fetched=last_fetched_time,
-            created_at=datetime.now(),
-            updated_at=datetime.now(),
-        )
-        db_session.add(polling_state)
         db_session.commit()
 
-        # Get agent tasks - should include last_fetched from polling state
         status_code, enriched_tasks = client.get_agent_tasks()
         assert status_code == 200
 
@@ -341,10 +333,7 @@ def test_get_agent_tasks_with_last_fetched(client: GenaiEngineTestClientBase):
         assert gcp_task.creation_source.root.gcp_region == "us-central1"
         assert gcp_task.creation_source.root.gcp_reasoning_engine_id == "67890"
 
-        # Verify last_fetched is on the enriched response (from task_polling_state)
-        assert gcp_task.last_fetched is not None
-        # Allow for some time delta in comparison
-        assert abs((gcp_task.last_fetched - last_fetched_time).total_seconds()) < 2
+        assert gcp_task.last_fetched is None
 
     finally:
         db_session.close()
@@ -436,3 +425,48 @@ def test_get_agent_tasks_performance_no_n_plus_1(client: GenaiEngineTestClientBa
 
     # This test primarily validates that the endpoint completes without error
     # In a real scenario, you'd use SQL query logging to verify query count
+
+
+@pytest.mark.unit_tests
+def test_get_agent_tasks_last_fetched_is_the_newest_trace_end(
+    client: GenaiEngineTestClientBase,
+):
+    """last_fetched carries when the task last sent a trace: its newest trace's end."""
+    status_code, task = client.create_task(f"traced_{random.random()}", is_agentic=True)
+    assert status_code == 200
+    newest_end = datetime.now() - timedelta(minutes=5)
+
+    db_session = override_get_db_session()
+    trace_ids = []
+    try:
+        for end_time in (newest_end - timedelta(hours=2), newest_end):
+            trace = DatabaseTraceMetadata(
+                trace_id=str(uuid4()),
+                task_id=task.id,
+                org_id=DEFAULT_ORG_ID,
+                session_id=None,
+                user_id=None,
+                span_count=1,
+                start_time=end_time,
+                end_time=end_time,
+                created_at=end_time,
+                updated_at=end_time,
+                input_content="in",
+                output_content="out",
+            )
+            db_session.add(trace)
+            trace_ids.append(trace.trace_id)
+        db_session.commit()
+
+        status_code, enriched_tasks = client.get_agent_tasks()
+        assert status_code == 200
+        enriched = next(t for t in enriched_tasks if t.id == task.id)
+        assert enriched.last_fetched is not None
+        assert abs((enriched.last_fetched - newest_end).total_seconds()) < 1
+    finally:
+        db_session.query(DatabaseTraceMetadata).filter(
+            DatabaseTraceMetadata.trace_id.in_(trace_ids),
+        ).delete(synchronize_session=False)
+        db_session.commit()
+        db_session.close()
+        client.delete_task(task.id)

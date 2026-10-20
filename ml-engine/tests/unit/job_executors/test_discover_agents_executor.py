@@ -35,6 +35,7 @@ from job_executors.discovery_scan import (
     FailedDiscoveryRecord,
     UnsupportedDiscoveryVendorError,
 )
+from job_executors.fetch_discovered_agents_executor import publish_enriched_tasks
 from job_log_exporter import ExportContextedLogger, ScopeJobLogExporter
 from log_redaction import redact_secrets, secret_values
 
@@ -1028,15 +1029,16 @@ def _enriched_task(
 
 
 def _published_agents(tasks: list[EnrichedTaskResponse]) -> list[dict[str, object]]:
-    """The agents the sweep PUTs, as the request body carries them."""
+    """The agents a fetch with no source evidence PUTs, as the request body carries them."""
     agents_client = MagicMock()
     agents_client.put_agents.return_value.agents = []
-    DiscoverAgentsExecutor(
-        agents_client=agents_client,
-        logger=logging.getLogger("test-agents-sync"),
-        genai_engine_url="http://genai",
-        genai_engine_api_key="key",
-    )._publish_to_agents_api(WORKSPACE_ID, DATA_PLANE_ID, tasks)
+    publish_enriched_tasks(
+        agents_client,
+        logging.getLogger("test-agents-sync"),
+        WORKSPACE_ID,
+        DATA_PLANE_ID,
+        tasks,
+    )
     if not agents_client.put_agents.called:
         return []
     body = agents_client.put_agents.call_args.kwargs["put_agents"].to_dict()
@@ -1126,20 +1128,21 @@ def test_the_agents_sync_forwards_each_tasks_provenance() -> None:
     assert by_task["otel"].get("provenance") is None
 
 
-def test_job_without_a_source_config_runs_the_gcp_sweep() -> None:
+def test_job_without_a_source_config_is_refused() -> None:
+    """The source-less sweep is gone, so a job naming no source config fails loudly
+    rather than doing nothing."""
     reporter = RecordingReporter()
     executor = _executor(run_reporter=reporter)
-    executor._execute_gcp_sweep = MagicMock()  # type: ignore[method-assign]
 
-    executor.execute(
-        _job(),
-        DiscoverAgentsJobSpec(
-            workspace_id=WORKSPACE_ID,
-            data_plane_id=DATA_PLANE_ID,
-        ),
-    )
+    with pytest.raises(ValueError, match="no discovery source config"):
+        executor.execute(
+            _job(),
+            DiscoverAgentsJobSpec(
+                workspace_id=WORKSPACE_ID,
+                data_plane_id=DATA_PLANE_ID,
+            ),
+        )
 
-    executor._execute_gcp_sweep.assert_called_once()
     # No source, so nothing for the run store to hold.
     assert reporter.outcomes == []
 

@@ -11,15 +11,9 @@ is, and whether it can report at all.
 
 EVERY VM IS LISTED; THE LOOKBACK IS APPLIED TO ITS STATUS LINE. Nothing records when a
 guest attribute was written, so there is no report date to page on, and a stopped VM, or
-one whose collector's timer is gone, keeps serving its last values. The status line is
-the report date instead: it dates the last scan that succeeded, and the reporter appends
-`failed=<UTC>` to a run that did not, so the newer of the two is when the VM last
-reported. A VM that has not reported within `lookback_hours` is counted as
-`not-reported-in-window` and not published -- what Jamf's report-date filter does by
-leaving the Mac out. Publishing it again would keep its agents fresh on the Platform,
-which dates evidence by when a scan last handed it over, not by `last_seen`. A VM still
-reporting but failing keeps publishing its last good scan, as a Jamf Mac does. Records
-are dated by the scan inside the payload, never by this read.
+one whose collector's timer is gone, keeps serving its last values.
+`discovery.cloud.vm_inventory` dates each VM by its status line instead, as on every
+cloud whose VMs carry the payload.
 
 GUEST ATTRIBUTES OFF IS NAMED, NOT READ. A VM whose `enable-guest-attributes` is not true
 -- on the VM, or on its project when the VM does not say -- cannot have reported since it
@@ -39,7 +33,6 @@ ends the scan.
 
 import logging
 import re
-from collections import Counter
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta, timezone
 from typing import Callable, ClassVar, Iterator, Mapping, Optional, Sequence
@@ -48,11 +41,7 @@ import google.auth
 import requests
 from arthur_client.api_bindings import DiscoverySourceConfigSpec
 from arthur_common.models.agent_discovery_schemas import DiscoveredAgentRecord
-from arthur_common.models.agent_governance_schemas import (
-    CloudAgentCreationSource,
-    Platform,
-    RunsOn,
-)
+from arthur_common.models.agent_governance_schemas import Platform, RunsOn
 from google.auth.credentials import Credentials
 from google.auth.exceptions import DefaultCredentialsError
 from google.auth.transport.requests import AuthorizedSession
@@ -64,8 +53,14 @@ from discovery.cloud.gce.client import (
     ComputeEngineError,
     Instance,
 )
+from discovery.cloud.vm_inventory import (
+    NOT_REPORTED_IN_WINDOW,
+    READ_FAILED,
+    VmInventoryReader,
+    parse_selectors,
+    report_scope,
+)
 from discovery.endpoint.device import ManagedDevice
-from discovery.endpoint.records import records_for
 from discovery.endpoint.scope import DeviceScope, parse_group_names
 from discovery.gcp_credentials import (
     SERVICE_ACCOUNT_KEY_FIELD,
@@ -83,16 +78,16 @@ EXCLUDE_LABELS_FIELD = "exclude_labels"
 # Opt-in for Application Default Credentials when a source has no key, as Vertex has.
 ALLOW_ADC_ENV_VAR = "ARTHUR_ENGINE_GCP_COMPUTE_ENGINE_ALLOW_ADC"
 
-# Device coverage reasons only Compute Engine produces, beside the payload's own.
+# The device coverage reason only Compute Engine produces, beside the payload's own and
+# the ones every VM-carrying cloud shares (READ_FAILED, NOT_REPORTED_IN_WINDOW).
 GUEST_ATTRIBUTES_DISABLED = "guest-attributes-disabled"
-READ_FAILED = "read-failed"
-NOT_REPORTED_IN_WINDOW = "not-reported-in-window"
 
-# The collector's reporter writes the status line here (gce.md, section 05).
-STATUS_ATTRIBUTE = "arthur/status"
-
-# A timestamp on the status line: its own, and the reporter's `failed=<UTC>`.
-_STATUS_TIMESTAMP = re.compile(r"\b(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z)")
+__all__ = [
+    "GUEST_ATTRIBUTES_DISABLED",
+    "NOT_REPORTED_IN_WINDOW",
+    "READ_FAILED",
+    "ComputeEngineConnector",
+]
 
 # A project id, optionally domain-scoped (`example.com:my-project`). Checked because it
 # is a path segment in every call.
@@ -218,8 +213,7 @@ class ComputeEngineConnector:
         )
 
         carried: set[str] = set()
-        not_running: Counter[str] = Counter()
-        failed_runs: Counter[str] = Counter()
+        reader = VmInventoryReader(coverage, matcher, VENDOR, since, logger)
         project_flags: dict[str, Optional[str]] = {}
 
         for instance in self._until_stopped(
@@ -258,41 +252,12 @@ class ComputeEngineConnector:
                 coverage.count_unreadable(READ_FAILED)
                 continue
 
-            device = replace(device, attributes=attributes or {})
-            status = device.attribute(STATUS_ATTRIBUTE)
-            reported = _last_reported(status)
-            if reported is not None:
-                device = replace(device, last_reported=reported.isoformat())
-            if _before(reported, since):
-                coverage.count_unreadable(NOT_REPORTED_IN_WINDOW)
-                continue
-            read = records_for(
-                device,
-                matcher,
-                VENDOR,
-                logger,
-                source_type=CloudAgentCreationSource,
+            records = reader.read(
+                replace(device, attributes=attributes or {}),
+                state=None if instance.status == "RUNNING" else instance.status,
             )
-            if (
-                reported is None
-                and read.records
-                and _before(read.records[0].last_seen, since)
-            ):
-                # No status line to date the VM by, so its payload's own scan does.
-                coverage.count_unreadable(NOT_REPORTED_IN_WINDOW)
-                continue
-
-            # Counted only for a VM that reported in the window: the summaries speak
-            # for its values, and say nothing true about one left out.
-            if instance.status != "RUNNING":
-                not_running[instance.status or "UNKNOWN"] += 1
-            failed_runs.update(_failed_run(status))
-            if read.unreadable is not None:
-                coverage.count_unreadable(read.unreadable.value)
-                continue
-            coverage.devices_decoded += 1
-            if read.records:
-                yield read.records
+            if records:
+                yield records
 
         if self._stopped_early:
             logger.info(
@@ -300,31 +265,18 @@ class ComputeEngineConnector:
                 coverage.devices_read,
             )
 
-        logger.info(
-            "Compute Engine scan read %s VM(s): %s decoded, %s unreadable%s",
-            coverage.devices_read,
-            coverage.devices_decoded,
-            coverage.devices_unreadable,
-            _breakdown(coverage.unreadable_by_reason),
+        reader.log_summary("Compute Engine", "VM", journal="gce.md, section 06")
+        report_scope(
+            scope,
+            coverage,
+            carried,
+            self._stopped_early,
+            logger,
+            provider="Compute Engine",
+            noun="VM",
+            selector="label",
+            fields="include_labels and exclude_labels",
         )
-        _report_scope(scope, coverage, carried, self._stopped_early, logger)
-
-        if not_running:
-            logger.info(
-                "Compute Engine scan: %s in-scope VM(s) were not running%s. Their values "
-                "are from before they stopped, and their records are dated by the scan "
-                "inside them, not by this read.",
-                sum(not_running.values()),
-                _breakdown(not_running),
-            )
-        if failed_runs:
-            logger.warning(
-                "Compute Engine scan: %s VM(s) report that their collector's latest run "
-                "failed%s; their inventory is the last scan that succeeded. The journal "
-                "on each VM says why (gce.md, section 06).",
-                failed_runs["failed"],
-                _breakdown({k: v for k, v in failed_runs.items() if k != "failed"}),
-            )
 
         seen, reporting = coverage.devices_in_scope, coverage.devices_decoded
         if seen and not reporting:
@@ -373,28 +325,20 @@ def settings_from(source_fields: Mapping[str, str]) -> ComputeEngineSettings:
 
 
 def parse_label_selectors(value: Optional[str], field: str) -> tuple[str, ...]:
-    """`key=value` pairs from a comma-separated source field, as `key=value` strings.
+    """`key=value` label pairs from a comma-separated source field.
 
-    Spaces around the key and the value are dropped. A pair without `=`, or with a key
-    Compute Engine could not have, fails the scan: unlike a pair no VM carries, it can
-    never match anything, and only a person can say what was meant.
+    A pair without `=`, or with a key Compute Engine could not have, fails the scan
+    (`parse_selectors`).
     """
-    selectors: list[str] = []
-    bad: list[str] = []
-    for part in parse_group_names(value):
-        key, sep, label_value = part.partition("=")
-        key, label_value = key.strip(), label_value.strip()
-        if not sep or not _LABEL_KEY.match(key):
-            bad.append(part)
-            continue
-        selectors.append(f"{key}={label_value}")
-    if bad:
-        raise DiscoveryConfigurationError(
-            f"Compute Engine source's '{field}' has selector(s) that are not "
-            f"key=value labels: {', '.join(repr(b) for b in bad)}. A label key starts "
-            f"with a lowercase letter and holds lowercase letters, digits, '_' and '-'.",
-        )
-    return tuple(dict.fromkeys(selectors))
+    return parse_selectors(
+        value,
+        field,
+        source="Compute Engine source",
+        selector="label",
+        key_ok=lambda key: bool(_LABEL_KEY.match(key)),
+        key_rule="A label key starts with a lowercase letter and holds lowercase "
+        "letters, digits, '_' and '-'.",
+    )
 
 
 def _all_instances(
@@ -428,97 +372,3 @@ def _device_for(instance: Instance) -> ManagedDevice:
 def _guest_attributes_on(flag: Optional[str]) -> bool:
     """The VM's own setting, or its project's when it has none. Unset is off."""
     return (flag or "").strip().lower() == "true"
-
-
-def _last_reported(status: Optional[str]) -> Optional[datetime]:
-    """When the VM last reported: the newest timestamp on its status line.
-
-    The line's own timestamp dates the last scan that succeeded; `failed=<UTC>` dates a
-    later run that did not. None for a line with neither, such as a bare `no-cache`.
-
-    A stamp that is not a real time is skipped: the line is the VM's to write, and one
-    VM's bad value must not end the scan.
-    """
-    newest: Optional[datetime] = None
-    for stamp in _STATUS_TIMESTAMP.findall(status or ""):
-        try:
-            when = datetime.strptime(stamp, "%Y-%m-%dT%H:%M:%SZ")
-        except ValueError:
-            continue
-        when = when.replace(tzinfo=timezone.utc)
-        if newest is None or when > newest:
-            newest = when
-    return newest
-
-
-def _before(when: Optional[datetime], since: Optional[datetime]) -> bool:
-    """Whether `when` falls before the window. Nothing to compare is never before it."""
-    return when is not None and since is not None and when < since
-
-
-def _failed_run(status: Optional[str]) -> list[str]:
-    """What a status line says about its collector's latest run, when that run failed.
-
-    `ok 2026-10-12T12:58:28Z … failed=<UTC> osquery=absent` is a VM whose last good scan
-    is still the inventory while its latest run failed. Returned as "failed" plus the
-    named cause, for counting across the fleet.
-    """
-    tokens = (status or "").split()
-    if not any(t.startswith("failed=") for t in tokens):
-        return []
-    causes = [
-        t for t in tokens if t == "osquery=absent" or t.startswith("inventory=refused:")
-    ]
-    return ["failed", *causes]
-
-
-def _report_scope(
-    scope: DeviceScope,
-    coverage: DeviceCoverage,
-    carried: set[str],
-    stopped_early: bool,
-    logger: logging.Logger,
-) -> None:
-    """The scope's counts, and any selector no VM read carries."""
-    if not scope.is_restricted:
-        return
-    logger.info(
-        "Compute Engine scan scope kept %s of %s VM(s); excluded %s%s",
-        coverage.devices_in_scope,
-        coverage.devices_read,
-        coverage.devices_excluded,
-        _breakdown(coverage.excluded_by_group),
-    )
-    if scope.include:
-        logger.info(
-            "Compute Engine scan scope: %s VM(s) carry none of the included labels; "
-            "in scope%s",
-            coverage.devices_outside_included_groups,
-            _breakdown(coverage.included_by_group),
-        )
-    unmatched = [
-        pair
-        for pair in (*scope.include.values(), *scope.exclude.values())
-        if pair not in carried
-    ]
-    if unmatched and not stopped_early:
-        logger.warning(
-            "Compute Engine scan: no VM read carries label selector(s) %s, so they "
-            "matched nothing. If that is not intended, check the source's "
-            "include_labels and exclude_labels; labels are matched exactly.",
-            ", ".join(unmatched),
-        )
-    if coverage.devices_read and not coverage.devices_in_scope:
-        logger.warning(
-            "Compute Engine scan left all %s VM(s) it read out of scope (%s). If that "
-            "is not intended, check the source's include_labels and exclude_labels.",
-            coverage.devices_read,
-            scope.describe(),
-        )
-
-
-def _breakdown(counts: Mapping[str, int]) -> str:
-    """` (TERMINATED: 2, SUSPENDED: 1)`, or nothing when there is nothing to break down."""
-    if not counts:
-        return ""
-    return " (" + ", ".join(f"{name}: {count}" for name, count in counts.items()) + ")"

@@ -56,7 +56,7 @@ from schemas.internal_schemas import (
     Task,
 )
 from utils import constants
-from utils.constants import DEFAULT_ORG_ID
+from utils.constants import DEFAULT_ORG_ID, UNMAPPED_TASK_ID
 from utils.trace import get_nested_value
 
 tracer = trace.get_tracer(__name__)
@@ -145,9 +145,17 @@ class TaskRepository:
             stmt = stmt.where(
                 DatabaseTask.id.not_in(TaskProvenanceRepository.reported_task_ids()),
             )
-            # The engine's own system tasks are never reported either, and are not
-            # agents: a caller uploading unreported tasks as agents must not see them.
-            stmt = stmt.where(DatabaseTask.is_system_task == False)
+            # The engine's own system tasks are never reported either. The chatbot and
+            # synthetic-data tasks are the engine's own work, not agents, so a caller
+            # uploading unreported tasks as agents must not see them. The unmapped task
+            # is different: it holds the traces of agents that sent no service name,
+            # which is the only sign those agents exist, so it is reported like an agent.
+            stmt = stmt.where(
+                or_(
+                    DatabaseTask.is_system_task == False,
+                    DatabaseTask.id == UNMAPPED_TASK_ID,
+                ),
+            )
 
         # last_active is NOT a column on tasks: it is the most recent trace
         # end-time per task, derived from trace_metadata. We only join the
@@ -300,6 +308,25 @@ class TaskRepository:
             EnrichedAgentMetadata TypedDict with keys: tools, sub_agents, models, num_spans
         """
         return self._extract_agent_metadata_for_tasks([task_id])[task_id]
+
+    def get_last_trace_end_times(self, task_ids: list[str]) -> dict[str, datetime]:
+        """The end time of each task's most recent trace, for the tasks that have one.
+
+        One grouped query for a page of tasks rather than one per task. A task with no
+        traces has no entry, so looking it up reads as None.
+        """
+        if not task_ids:
+            return {}
+        rows = (
+            self.db_session.query(
+                DatabaseTraceMetadata.task_id,
+                func.max(DatabaseTraceMetadata.end_time),
+            )
+            .filter(DatabaseTraceMetadata.task_id.in_(task_ids))
+            .group_by(DatabaseTraceMetadata.task_id)
+            .all()
+        )
+        return {task_id: end_time for task_id, end_time in rows}
 
     def _extract_agent_metadata_for_tasks(
         self,

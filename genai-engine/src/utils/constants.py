@@ -238,9 +238,6 @@ TELEMETRY_ENABLED_ENV_VAR = "TELEMETRY_ENABLED"
 
 ##################################################################
 # Agentic Platform
-GENAI_ENGINE_AGENTIC_POLLING_INTERVAL_SECONDS_ENV_VAR = (
-    "GENAI_ENGINE_AGENTIC_POLLING_INTERVAL_SECONDS"
-)
 GENAI_ENGINE_CHATBOT_MAX_ITERATIONS_ENV_VAR = "GENAI_ENGINE_CHATBOT_MAX_ITERATIONS"
 
 ##################################################################

@@ -94,7 +94,7 @@ ONE
 # in tools/build-collector.py produces it unexamined, and bash reports a syntax error only
 # when the Policy runs on a Mac.
 for f in "$ROOT"/tools/vendor-queries.sh "$ROOT"/dist/collect.sh "$ROOT"/dist/collect-linux.sh \
-         "$ROOT"/deploy/report-guest-attributes.sh; do
+         "$ROOT"/deploy/report-guest-attributes.sh "$ROOT"/deploy/report-ssm-inventory.sh; do
   bash -n "$f" || { echo "FAIL: bash syntax in ${f#$ROOT/}"; fail=1; }
 done
 
@@ -168,6 +168,7 @@ v = os.path.join(root, "vendor", "osquery-ai-discovery")
 # checked by build-collector.py; this checks the built artifact, which is what deploys.
 # BOTH BUILDS, EVERY CHECK. They share a driver, but each is its own artifact on its own fleet,
 # and a check run on one says nothing about the bytes in the other.
+budgets = {}
 for name in ("collect.sh", "collect-linux.sh"):
     built = os.path.join(root, "dist", name)
     if not os.path.exists(built):
@@ -333,7 +334,7 @@ for name in ("collect.sh", "collect-linux.sh"):
     needs = [h for f in ("bin/discover", "bin/container-scan")
              for h in _interp(os.path.join(v, f))]
     # EVERY RUNBOOK THAT STATES A PREREQUISITE, held to the payload it deploys.
-    for doc in ("jamf-pro.md", "gce.md"):
+    for doc in ("jamf-pro.md", "gce.md", "ec2.md"):
         runbook = open(os.path.join(root, "docs", "mdm", doc)).read()
         claims_none = re.search(r"no interpreter", runbook, re.I) is not None
         lists_python = "| python3 3.7+ |" in runbook
@@ -344,8 +345,8 @@ for name in ("collect.sh", "collect-linux.sh"):
         if not needs and lists_python:
             print(f"FAIL: docs/mdm/{doc} lists python3 as a prerequisite, but nothing in "
                   f"the payload invokes it any more. Drop the row."); sys.exit(1)
-    print(f"prereqs: ok, payload {'needs' if needs else 'does not need'} python3 and both "
-          f"runbooks agree")
+    print(f"prereqs: ok, payload {'needs' if needs else 'does not need'} python3 and every "
+          f"runbook agrees")
 
     # An oversize payload must write a REASON, not nothing and not a truncated value. The
     # cap is a property of the reporting channel, so it is this repo's to enforce.
@@ -356,6 +357,7 @@ for name in ("collect.sh", "collect-linux.sh"):
         print(f"FAIL: dist/{name} sets CAP={capm.group(1) if capm else '(none)'}; a Compute "
               f"Engine guest attribute refuses a value over 262,144 bytes, so ERROR:oversize "
               f"must fire at or below that."); sys.exit(1)
+    budgets[name] = capm.group(1)
     if "ERROR:oversize" not in driver_code:
         print(f"FAIL: dist/{name} does not report ERROR:oversize -- an attribute that is "
               "absent, empty or stale reads as a Mac with no AI tools on it."); sys.exit(1)
@@ -431,6 +433,157 @@ if "no osqueryi found" in rep_code and "no osqueryi found" not in runner:
           "found\", which the vendored bin/discover no longer prints."); sys.exit(1)
 print(f"carrier: ok, timer -> {exec_start.split('/')[-1]} -> {m.group(1).split('/')[-1]}; "
       f"no interpreter; upstream still prints the osquery diagnosis")
+
+# --- the EC2 carrier: a drop-in on the same unit, and the reporter it runs ----------------
+# THE DROP-IN REPLACES ExecStart, NEVER ADDS ONE. A oneshot runs every ExecStart in turn, so
+# without the empty assignment an EC2 instance would also run the guest-attribute reporter,
+# fail it on every run, and fail the unit.
+drop = os.path.join(root, "deploy", "arthur-ai-discovery.service.d", "ec2.conf")
+starts = [l.split("=", 1)[1].strip() for l in open(drop).read().splitlines()
+          if l.strip().startswith("ExecStart=")]
+if len(starts) != 2 or starts[0] != "" or not starts[1].endswith("/report-ssm-inventory.sh") \
+        or os.path.dirname(starts[1]) != os.path.dirname(exec_start):
+    print(f"FAIL: deploy/arthur-ai-discovery.service.d/ec2.conf must clear ExecStart and then "
+          f"run report-ssm-inventory.sh from {os.path.dirname(exec_start)}, got {starts}")
+    sys.exit(1)
+ssm = open(os.path.join(root, "deploy", "report-ssm-inventory.sh")).read()
+ssm_code = "\n".join(l for l in ssm.splitlines() if not l.strip().startswith("#"))
+m2 = re.search(r'COLLECT="\$\{ARTHUR_COLLECT:-([^}]+)\}"', ssm)
+if not m2 or m2.group(1) != m.group(1):
+    print(f"FAIL: deploy/report-ssm-inventory.sh runs {m2.group(1) if m2 else '(no default)'}, "
+          f"not {m.group(1)} beside it"); sys.exit(1)
+interp = re.search(r"(?:^|[|;&(`]|\$\(|\s)(python3?|perl|ruby|node|jq)\b", ssm_code, re.M)
+if interp:
+    print(f"FAIL: deploy/report-ssm-inventory.sh invokes {interp.group(1)}; it runs on the "
+          f"endpoint and may use only what the collector may."); sys.exit(1)
+if "no osqueryi found" in ssm_code and "no osqueryi found" not in runner:
+    print("FAIL: deploy/report-ssm-inventory.sh keys `osquery=absent` on \"no osqueryi "
+          "found\", which the vendored bin/discover no longer prints."); sys.exit(1)
+
+# A PART MAY NOT EXCEED SSM'S CAP ON ONE VALUE. SSM's API refuses a custom inventory value
+# over 4,096 characters, and the refusal reaches only the agent's log, never the reporter.
+part = re.search(r"^PART=([0-9]+)$", ssm, re.M)
+if not part or not 0 < int(part.group(1)) <= 4096:
+    print(f"FAIL: deploy/report-ssm-inventory.sh sets PART={part.group(1) if part else '(none)'}; "
+          f"an SSM custom inventory value holds at most 4,096 characters."); sys.exit(1)
+
+# THE WIRE FORMAT IS WRITTEN HERE AND READ IN THE ML ENGINE. A type name or attribute renamed
+# on one side only leaves every instance reading as never-reported.
+client = os.path.join(root, "..", "..", "ml-engine", "src", "ml_engine", "discovery",
+                      "cloud", "ec2", "client.py")
+if os.path.exists(client):
+    reader = open(client).read()
+    const = lambda name: (re.search(rf'^{name} = "?([^"\n]+)"?$', reader, re.M) or [None, None])[1]
+    written_type = (re.search(r'^TYPE_NAME="([^"]+)"$', ssm, re.M) or [None, None])[1]
+    if const("TYPE_NAME") != written_type:
+        print(f"FAIL: the reporter writes {written_type} but the ML Engine reads "
+              f"{const('TYPE_NAME')}"); sys.exit(1)
+    for attr in ("KEY", "PART", "PARTS", "SHA256", "VALUE"):
+        if f'"{const(attr)}":' not in ssm_code:
+            print(f"FAIL: the ML Engine reads attribute {const(attr)!r}, which the reporter "
+                  f"does not write"); sys.exit(1)
+    if const("MAX_VALUE_LENGTH") != budgets["collect-linux.sh"]:
+        print(f"FAIL: the ML Engine refuses values over {const('MAX_VALUE_LENGTH')} "
+              f"characters, but the Linux collector's budget is "
+              f"{budgets['collect-linux.sh']}"); sys.exit(1)
+    # The reader refuses more parts than its own part size cuts the budget into, so a
+    # smaller PART here would make values it refuses.
+    if const("PART_LENGTH") != part.group(1):
+        print(f"FAIL: the reporter cuts parts of {part.group(1)} characters, but the ML "
+              f"Engine expects parts of {const('PART_LENGTH')} and refuses more of them "
+              f"than that size makes"); sys.exit(1)
+    wire = "the ML Engine reads the same type, attributes, part size and budget"
+else:
+    wire = "the ML Engine's reader is not in this checkout"
+print(f"carrier: ok, ec2.conf -> {starts[1].split('/')[-1]}; no interpreter; parts of "
+      f"{part.group(1)}; {wire}")
+
+# --- the OS policy that installs the carrier ------------------------------------------------
+# THE POLICY INSTALLS EACH FILE WHERE IT IS RUN. The unit runs the reporter from ExecStart, the
+# reporter runs the collector from its default, and systemd loads the units by name; a policy
+# that drops one elsewhere is a VM that fails its first run while the policy reads compliant.
+# AND IT NAMES EACH FILE BY ITS URL IN THIS TREE AT COMMIT, which is how render-os-policy.sh and
+# deploy/terraform/ find the bytes to pin. A URL outside the tree has no checksum to pin it to.
+import hashlib, subprocess
+POLICY = os.path.join("deploy", "arthur-ai-discovery.os-policy.yaml")
+pol = open(os.path.join(root, POLICY)).read()
+PREFIX = "https://raw.githubusercontent.com/arthur-ai/arthur-engine/COMMIT/integrations/endpoint-ai-discovery/"
+installs = dict((uri.removeprefix(PREFIX), path) for path, uri in
+                re.findall(r"^\s+path: (\S+)\n(?:[^\n]*\n){1,6}?\s+uri: (\S+)$", pol, re.M))
+want = {
+    "dist/collect-linux.sh": m.group(1),
+    "deploy/report-guest-attributes.sh": exec_start,
+    "deploy/arthur-ai-discovery.service": "/etc/systemd/system/arthur-ai-discovery.service",
+    "deploy/arthur-ai-discovery.timer": "/etc/systemd/system/arthur-ai-discovery.timer",
+}
+if installs != want:
+    for src in sorted(set(installs) | set(want)):
+        if installs.get(src) != want.get(src):
+            print(f"FAIL: {POLICY} installs {src} at {installs.get(src)}, but it is run from "
+                  f"{want.get(src)}")
+    print(f"      Each file comes from {PREFIX}<its path here> and lands where the unit, the "
+          f"reporter or systemd looks for it.")
+    sys.exit(1)
+print(f"os policy: ok, {len(installs)} files from this tree, each installed where it is run")
+
+# THE RENDERED POLICY PINS EACH FILE TO ITS OWN BYTES. Rendered at HEAD, every checksum must be
+# the sha256 of the file its URL names: a script that paired a URL with the wrong file's checksum
+# ships a policy every VM refuses. Compared with the working tree only where it matches HEAD.
+committed = subprocess.run(["git", "-C", root, "cat-file", "-e", f"HEAD:./{POLICY}"],
+                           capture_output=True).returncode == 0
+if not committed:
+    print(f"render: skipped, {POLICY} is not committed yet and the renderer reads HEAD")
+else:
+    r = subprocess.run([os.path.join(root, "tools", "render-os-policy.sh"), "HEAD"],
+                       capture_output=True, text=True)
+    if r.returncode != 0:
+        print(f"FAIL: tools/render-os-policy.sh HEAD exited {r.returncode}: {r.stderr.strip()}"); sys.exit(1)
+    if re.search(r"/COMMIT/|SHA256_[A-Z]", r.stdout):
+        print("FAIL: tools/render-os-policy.sh left a placeholder in the policy"); sys.exit(1)
+    # The whole URL, not its tail: a URL that is wrong before the path still ends in it.
+    head = subprocess.run(["git", "-C", root, "rev-parse", "HEAD"], capture_output=True,
+                          text=True).stdout.strip()
+    at_head = PREFIX.replace("/COMMIT/", f"/{head}/")
+    pinned = re.findall(r"uri: (\S+)\n\s+sha256Checksum: ([0-9a-f]{64})$", r.stdout, re.M)
+    if sorted(uri for uri, _ in pinned) != sorted(at_head + src for src in want):
+        print(f"FAIL: the rendered policy pins {sorted(uri for uri, _ in pinned)}, not the four "
+              f"files {POLICY} names at {at_head}"); sys.exit(1)
+    pinned = [(uri.removeprefix(at_head), sha) for uri, sha in pinned]
+    compared = 0
+    for src, sha in pinned:
+        if subprocess.run(["git", "-C", root, "diff", "--quiet", "HEAD", "--", src]).returncode != 0:
+            continue
+        compared += 1
+        if hashlib.sha256(open(os.path.join(root, src), "rb").read()).hexdigest() != sha:
+            print(f"FAIL: the rendered policy pins {src} to {sha}, which is not its sha256"); sys.exit(1)
+    print(f"render: ok, HEAD's policy pins each file to its own sha256 "
+          f"({compared} of {len(pinned)} compared; the rest differ from HEAD in this tree)"
+          if compared < len(pinned) else
+          f"render: ok, HEAD's policy pins each of {len(pinned)} files to its own sha256")
+
+# --- the EC2 install script -----------------------------------------------------------------
+# IT IS POSIX sh. AWS-RunShellScript runs it with sh, which is dash on Ubuntu, and a bashism
+# there fails every run on those instances while Amazon Linux, where sh is bash, passes:
+# `set -o pipefail` did exactly that (ec2.md, section 02). Read from the runbook, since the
+# runbook is where it ships.
+import shutil
+book = open(os.path.join(root, "docs", "mdm", "ec2.md")).read()
+block = re.search(r"^```sh\n(# arthur-ai-discovery-install\.sh\n.*?)^```$", book, re.M | re.S)
+if not block:
+    print("FAIL: docs/mdm/ec2.md has no ```sh block starting `# arthur-ai-discovery-install.sh`"); sys.exit(1)
+script = block.group(1)
+bashism = re.search(r"pipefail|\[\[|\bfunction\b|<<<|\$\{[^}]*//|^\s*source\b", script, re.M)
+if bashism:
+    print(f"FAIL: ec2.md's install script uses {bashism.group(0)!r}, which dash refuses; "
+          f"AWS-RunShellScript runs it with sh, which is dash on Ubuntu"); sys.exit(1)
+if shutil.which("dash"):
+    r = subprocess.run(["dash", "-n"], input=script, text=True, capture_output=True)
+    if r.returncode != 0:
+        print(f"FAIL: dash -n refuses ec2.md's install script: {r.stderr.strip()}"); sys.exit(1)
+    checked = "and dash -n accepts it"
+else:
+    checked = "dash -n skipped, no dash here"
+print(f"ec2 install script: ok, no bashism {checked}")
 VENDOR
 
 [ "$fail" -eq 0 ] && echo "lint: PASS" || echo "lint: FAIL"

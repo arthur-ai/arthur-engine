@@ -32,6 +32,7 @@ from arthur_client.api_bindings import (
     RejectedAgent,
     ToxicityConfig,
 )
+from arthur_common.models.agent_governance_schemas import CREATION_SOURCE_TYPE_BY_CLASS
 from genai_client import (
     ApiClient,
     Configuration,
@@ -47,9 +48,11 @@ from job_log_exporter import REPORT_AS_JOB_ERROR
 FETCH_PAGE_SIZE = 200
 
 # GenAI Engine's own bookkeeping tasks (genai-engine `utils/constants.py`). They are not
-# agents, and the agent-tasks response does not say a task is a system task.
+# agents, and the agent-tasks response does not say a task is a system task. The
+# unmapped task (`__unmapped__`) is a system task too, but is left out of this set: it
+# holds the traces of agents that sent no service name, and is uploaded like an agent.
 GENAI_ENGINE_SYSTEM_TASK_NAMES = frozenset(
-    {"__unmapped__", "__arthur_system_task__", "__synthetic_dataset_generation__"},
+    {"__arthur_system_task__", "__synthetic_dataset_generation__"},
 )
 
 # Rejected agents reported one by one before the rest are summarized: each is a log line
@@ -215,7 +218,7 @@ class FetchDiscoveredAgentsExecutor:
 
 def _is_unreported_agent(task: EnrichedTaskResponse) -> bool:
     """Whether a task belongs in an unreported walk: no source reported it, and it is
-    not one of GenAI Engine's system tasks.
+    not one of GenAI Engine's bookkeeping tasks (the unmapped task is not one).
 
     Every task carries provenance; a task no source reported has only its creation
     source's entry, which names no source. Any entry that names one means a source
@@ -440,12 +443,12 @@ def source_evidence(
     return evidence
 
 
-# The creation source a discovery record of each class is reported as. OTEL and manual
+# The creation source a discovery record of each class is reported as, from
+# arthur-common so a class added there is not silently dropped here. OTEL and manual
 # entries have no configured source, so never belong to a fetched one.
 _CREATION_SOURCE_TYPES: dict[str, str] = {
-    "cloud": "CLOUD",
-    "endpoint": "ENDPOINT",
-    "siem": "SIEM",
+    source_class.value: type_tag
+    for source_class, type_tag in CREATION_SOURCE_TYPE_BY_CLASS.items()
 }
 
 # Address fields that say which record an entry is, most specific last. Never the

@@ -1,0 +1,98 @@
+# The VM Manager OS policy assignment for Compute Engine: osquery, the collector, the reporter
+# and the two units, and the timer enabled. docs/mdm/gce.md is the runbook.
+#
+# ONE POLICY, TWO WAYS TO DEPLOY IT. `tools/render-os-policy.sh REF` fills in COMMIT and the
+# four checksums for gcloud; deploy/terraform/ reads this file and fills them in itself. Edit
+# this file, not a copy of it: the module fails the plan on a key it does not render, rather
+# than leaving it off every VM.
+osPolicies:
+  - id: arthur-ai-discovery
+    mode: ENFORCEMENT
+    resourceGroups:
+      - inventoryFilters:
+          - osShortName: debian
+          - osShortName: ubuntu
+        resources:
+          - id: osquery-repo
+            repository:
+              apt:
+                archiveType: DEB
+                uri: https://pkg.osquery.io/deb
+                distribution: deb
+                components:
+                  - main
+                gpgKey: https://pkg.osquery.io/deb/pubkey.gpg
+          - id: osquery
+            pkg:
+              desiredState: INSTALLED
+              apt:
+                name: osquery
+          # A file resource writes into its directory and does not create it.
+          - id: install-dir
+            exec:
+              validate:
+                interpreter: SHELL
+                script: if [ -d /usr/local/arthur ]; then exit 100; else exit 101; fi
+              enforce:
+                interpreter: SHELL
+                script: mkdir -p -m 755 /usr/local/arthur && exit 100
+          - id: collector
+            file:
+              path: /usr/local/arthur/collect-linux.sh
+              state: CONTENTS_MATCH
+              permissions: '755'
+              file:
+                remote:
+                  uri: https://raw.githubusercontent.com/arthur-ai/arthur-engine/COMMIT/integrations/endpoint-ai-discovery/dist/collect-linux.sh
+                  sha256Checksum: SHA256_COLLECTOR
+          - id: reporter
+            file:
+              path: /usr/local/arthur/report-guest-attributes.sh
+              state: CONTENTS_MATCH
+              permissions: '755'
+              file:
+                remote:
+                  uri: https://raw.githubusercontent.com/arthur-ai/arthur-engine/COMMIT/integrations/endpoint-ai-discovery/deploy/report-guest-attributes.sh
+                  sha256Checksum: SHA256_REPORTER
+          - id: service
+            file:
+              path: /etc/systemd/system/arthur-ai-discovery.service
+              state: CONTENTS_MATCH
+              permissions: '644'
+              file:
+                remote:
+                  uri: https://raw.githubusercontent.com/arthur-ai/arthur-engine/COMMIT/integrations/endpoint-ai-discovery/deploy/arthur-ai-discovery.service
+                  sha256Checksum: SHA256_SERVICE
+          - id: timer
+            file:
+              path: /etc/systemd/system/arthur-ai-discovery.timer
+              state: CONTENTS_MATCH
+              permissions: '644'
+              file:
+                remote:
+                  uri: https://raw.githubusercontent.com/arthur-ai/arthur-engine/COMMIT/integrations/endpoint-ai-discovery/deploy/arthur-ai-discovery.timer
+                  sha256Checksum: SHA256_TIMER
+          # NeedDaemonReload too, not only is-active: after a unit file changes the timer is
+          # still active, and without a reload systemd keeps running the old definition.
+          - id: timer-enabled
+            exec:
+              validate:
+                interpreter: SHELL
+                script: |
+                  for u in arthur-ai-discovery.service arthur-ai-discovery.timer; do
+                    [ "$(systemctl show -p NeedDaemonReload --value "$u")" = no ] || exit 101
+                  done
+                  systemctl is-enabled --quiet arthur-ai-discovery.timer \
+                    && systemctl is-active --quiet arthur-ai-discovery.timer && exit 100
+                  exit 101
+              enforce:
+                interpreter: SHELL
+                script: systemctl daemon-reload && systemctl enable --now arthur-ai-discovery.timer && exit 100
+instanceFilter:
+  inclusionLabels:
+    - labels:
+        arthur-ai-discovery: enabled
+rollout:
+  disruptionBudget:
+    percent: 10
+  minWaitDuration: 300s
