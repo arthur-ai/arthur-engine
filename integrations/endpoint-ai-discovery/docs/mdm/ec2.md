@@ -10,19 +10,24 @@ and the instance connects to nothing it does not already reach.
 the reporter, and enables the timer. The instance's inventory association uploads what the
 reporter writes. The collector is the one a Compute Engine VM runs; only the reporter differs.
 
-> **Run once, on one instance.** On 2026-10-16 a `t3.small` Amazon Linux 2023 instance ran the
-> collector, the reporter, the units and the drop-in installed as section 02 installs them,
-> uploaded through section 03's association, and was scanned by the Arthur collector. The
-> files were carried to it over SSM rather than fetched from a pinned commit, so section 02's
-> download step is the one part not yet run as written. Ubuntu and arm64 instances have not
-> been run through it.
+> **Run as written on four instances.** On 2026-10-20 sections 01 to 03 ran as written, from a
+> pinned commit, on fresh Amazon Linux 2023 and Ubuntu 24.04 instances, each on x86_64
+> (`t3.small`) and arm64 (`t4g.small`):
+> - Section 02's association ran twice in a row on each. The second run changed nothing: the
+>   timer was not restarted and every file kept its sha256.
+> - Each instance collected, uploaded through section 03's association, and was decoded by the
+>   Arthur collector.
+> - A Session Manager login's `ssm-user` is an ordinary `/etc/passwd` account. osquery's `users`
+>   table lists it, and a `~/.claude` in its home was published as a `claude-code` record.
+>
+> The same day's first run found that the script failed on Ubuntu under `sh` (section 02).
 
 | | |
 |---|---|
-| Target | EC2 instances on Amazon Linux 2023 or Ubuntu 24.04, x86_64 or arm64. Run on an instance: Amazon Linux 2023 on x86_64. **Ubuntu and arm64: not yet run** on an instance; upstream's CI runs the Linux scenarios in an Amazon Linux 2023 container and on an arm64 Ubuntu runner |
+| Target | EC2 instances on Amazon Linux 2023 or Ubuntu 24.04, x86_64 or arm64. Each of the four has run on an instance |
 | Requires | osquery 5.18+, an SSM-managed instance, an inventory association that gathers custom inventory, IMDS enabled. No interpreter |
-| Per-instance cost | as on Compute Engine (`gce.md`), off the reporting path: 6s and 1.4s of CPU per run on a `t3.small` (below). `t4g.small` is not yet measured |
-| Payload | ~11 KB on a headless Amazon Linux 2023 instance, of the 256 KB budget, cut into parts of 4,096 characters |
+| Per-instance cost | as on Compute Engine (`gce.md`), off the reporting path. 6s and 1.4s of CPU per run on a `t3.small`; 2.0s to 2.1s of CPU on a `t4g.small`. Burstable instances in standard credit mode are not yet measured |
+| Payload | of the 256 KB budget, cut into parts of 4,096 characters. On fresh headless instances: ~11 KB on Amazon Linux 2023 (809 rows on x86_64, 796 on arm64) and ~17 KB on Ubuntu 24.04 (1,075 rows on x86_64, 1,106 on arm64) |
 
 ## What SSM custom inventory gives, measured
 
@@ -77,9 +82,13 @@ Replace `COMMIT` and the five `SHA256_*` values with section 01's output. The sc
 idempotent: State Manager re-applies it on its schedule, and a run that changes nothing leaves
 the timer as it was.
 
-```bash
+**It is POSIX `sh`, not bash.** `AWS-RunShellScript` runs it with `sh`, which on Ubuntu is
+dash: a `set -o pipefail` there fails every run with `Illegal option -o pipefail` (measured
+2026-10-20 on Ubuntu 24.04). Keep it free of bashisms when editing it.
+
+```sh
 # arthur-ai-discovery-install.sh
-set -euo pipefail
+set -eu
 BASE=https://raw.githubusercontent.com/arthur-ai/arthur-engine/COMMIT/integrations/endpoint-ai-discovery
 fetch() {  # path destination mode sha256
   curl -fsSL --retry 3 -o "$2.new" "$BASE/$1"
@@ -93,8 +102,8 @@ if ! command -v osqueryi >/dev/null 2>&1; then
     dnf install -y osquery
   else
     install -d -m 755 /etc/apt/keyrings
-    curl -fsSL https://pkg.osquery.io/deb/pubkey.gpg | gpg --dearmor --yes -o /etc/apt/keyrings/osquery.gpg
-    echo "deb [signed-by=/etc/apt/keyrings/osquery.gpg] https://pkg.osquery.io/deb deb main" \
+    curl -fsSL -o /etc/apt/keyrings/osquery.asc https://pkg.osquery.io/deb/pubkey.gpg
+    echo "deb [signed-by=/etc/apt/keyrings/osquery.asc] https://pkg.osquery.io/deb deb main" \
       > /etc/apt/sources.list.d/osquery.list
     apt-get update -q && apt-get install -y -q osquery
   fi
@@ -247,6 +256,14 @@ optional `external_id` to assume with it. A source without a key uses the engine
 credentials — IRSA on EKS, say — only when the engine sets
 `ARTHUR_ENGINE_AWS_EC2_ALLOW_DEFAULT_CREDENTIALS=true`; otherwise the scan fails and names the
 fields.
+
+**Measured 2026-10-20 in the sandbox account**, with a role holding exactly the policy above,
+trusted only with an external ID:
+- Through `role_arn` and `external_id`, a scan read and decoded the region's tagged instance and
+  published its record, as an administrator's scan did.
+- CloudTrail records the `AssumeRole` under the session name `arthur-ai-discovery`.
+- With a wrong external ID, STS refuses (`AccessDenied`) and the scan fails as
+  `permission_denied`.
 
 How the collector counts an instance that cannot report:
 
