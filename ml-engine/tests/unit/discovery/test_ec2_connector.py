@@ -18,6 +18,7 @@ import json
 import logging
 from dataclasses import asdict
 from datetime import datetime, timezone
+from types import SimpleNamespace
 from typing import Any, Iterator, Optional
 
 import boto3
@@ -43,6 +44,8 @@ from discovery.cloud.ec2.client import (
 )
 from discovery.cloud.ec2.connector import (
     ALLOW_DEFAULT_CREDENTIALS_ENV_VAR,
+    BOOTSTRAP_REGION,
+    DEFAULT_MEMBER_ROLE_NAME,
     INVENTORY_INCOMPLETE,
     NOT_REPORTED_IN_WINDOW,
     NOT_SSM_MANAGED,
@@ -50,15 +53,20 @@ from discovery.cloud.ec2.connector import (
     UNSUPPORTED_PLATFORM,
     VENDOR,
     Ec2Connector,
+    member_session,
     parse_tag_selectors,
     settings_from,
     source_session,
 )
 from job_executors.discovery_output_contract import check_batch
 from job_executors.discovery_scan import (
+    DENIED_PERMISSION,
+    DENIED_UNREACHABLE,
     AcceptsStopCheck,
+    DeniedScope,
     DiscoveryConfigurationError,
     DiscoveryErrorCode,
+    ReportsDeniedScopes,
     ReportsDeviceCoverage,
     failure_code,
 )
@@ -84,7 +92,10 @@ ACCOUNT = "123456789012"
 REGION = "us-east-1"
 FIELDS = {"regions": REGION}
 CHUNK = 4096
-MODELS = {svc: BotocoreSession().get_service_model(svc) for svc in ("ec2", "ssm")}
+MODELS = {
+    svc: BotocoreSession().get_service_model(svc)
+    for svc in ("ec2", "ssm", "organizations")
+}
 
 
 def frame(rows: list[dict[str, str]]) -> str:
@@ -173,12 +184,15 @@ def validate(service: str, operation: str, params: dict[str, Any]) -> None:
 
 
 class FakeAws:
-    """EC2's and SSM's three read calls, and a log of what was asked.
+    """One account's EC2, SSM and Organizations, and a log of what was asked.
 
     `pages[region]` is DescribeInstances' pages for the region; `managed[region]` the
     instance ids DescribeInstanceInformation lists; `inventory[instance_id]` an
     instance's entries, an exception to raise, or missing for no entries. `errors`
-    raises on the first call of `(service, operation)`.
+    raises on the first call of `(service, operation)`. `regions` is what
+    DescribeRegions answers, `accounts_listed` what ListAccounts does, and
+    `assume_error` what every call raises when the account's member role cannot be
+    assumed: the role is fetched lazily, by the first call that needs it.
     """
 
     def __init__(
@@ -187,8 +201,16 @@ class FakeAws:
         managed: Optional[dict[str, set[str]]] = None,
         inventory: Optional[dict[str, Any]] = None,
         errors: Optional[dict[tuple[str, str], Exception]] = None,
+        account: str = ACCOUNT,
+        regions: Optional[list[str]] = None,
+        accounts_listed: Optional[list[tuple[str, str]]] = None,
+        assume_error: Optional[Exception] = None,
     ) -> None:
         self.pages = pages
+        self.account = account
+        self.regions = regions if regions is not None else sorted(pages)
+        self.accounts_listed = accounts_listed or []
+        self.assume_error = assume_error
         if managed is None:
             managed = {
                 region: {
@@ -239,6 +261,8 @@ class FakeClient:
     def _record(self, operation: str, params: dict[str, Any]) -> None:
         validate(self._service, operation, params)
         self._aws.calls.append((self._service, self._region, operation, dict(params)))
+        if self._aws.assume_error is not None:
+            raise self._aws.assume_error
         error = self._aws.errors.pop((self._service, operation), None)
         if error is not None:
             raise error
@@ -247,18 +271,28 @@ class FakeClient:
         operation = {
             "describe_instances": "DescribeInstances",
             "describe_instance_information": "DescribeInstanceInformation",
+            "list_accounts": "ListAccounts",
         }[name]
         return FakePaginator(self, operation)
 
+    def describe_regions(self, **params: Any) -> dict[str, Any]:
+        self._record("DescribeRegions", params)
+        assert params == {"AllRegions": False}, "only the regions the account enabled"
+        return {"Regions": [{"RegionName": r} for r in self._aws.regions]}
+
     def pages(self, operation: str, params: dict[str, Any]) -> Iterator[dict[str, Any]]:
         self._record(operation, params)
-        if operation == "DescribeInstances":
+        if operation == "ListAccounts":
+            # One account per page, so paging is exercised.
+            for ident, status in self._aws.accounts_listed:
+                yield {"Accounts": [{"Id": ident, "Status": status}]}
+        elif operation == "DescribeInstances":
             states = set(params["Filters"][0]["Values"])
             for page in self._aws.pages.get(self._region, [[]]):
                 yield {
                     "Reservations": [
                         {
-                            "OwnerId": ACCOUNT,
+                            "OwnerId": self._aws.account,
                             "Instances": [
                                 raw for raw in page if raw["State"]["Name"] in states
                             ],
@@ -321,6 +355,56 @@ def scan(
         LOG,
     )
     return [record for batch in batches for record in batch]
+
+
+class FakeOrg:
+    """An organization: the source's own account, and each member account's EC2 and
+    SSM, reached through the member role the connector asks for."""
+
+    def __init__(self, own: FakeAws, members: dict[str, FakeAws]) -> None:
+        self.own = own
+        self.members = members
+        self.sessions: list[Any] = []
+
+    def clients(self, session: Any) -> Any:
+        account = getattr(session, "account", None)
+        return (self.members[account] if account else self.own).client_for
+
+    def account_session(
+        self,
+        base: boto3.Session,
+        account: str,
+        role_name: str,
+        external_id: Optional[str],
+    ) -> Any:
+        session = SimpleNamespace(
+            account=account,
+            role_name=role_name,
+            external_id=external_id,
+            region_name=base.region_name,
+        )
+        self.sessions.append(session)
+        return session
+
+
+def connector_for_org(org: FakeOrg) -> Ec2Connector:
+    return Ec2Connector(
+        session_for=lambda creds, fields: boto3.Session(region_name=REGION),
+        clients_for=org.clients,
+        clock=lambda: NOW,
+        account_session_for=org.account_session,
+    )
+
+
+def member(ident: str, *regions: str, **over: Any) -> FakeAws:
+    """A member account with one reporting instance per region."""
+    args: dict[str, Any] = dict(
+        pages={region: [[instance(f"{ident}{i}")]] for i, region in enumerate(regions)},
+        inventory={iid(f"{ident}{i}"): reported() for i in range(len(regions))},
+        account=f"{ident * 12}",
+    )
+    args.update(over)
+    return FakeAws(**args)
 
 
 def coverage_of(connector: Ec2Connector) -> dict[str, int]:
@@ -776,6 +860,235 @@ def test_a_region_that_cannot_be_reached_is_named() -> None:
     assert "enabled for the account" in str(exc.value)
 
 
+# --- an organization as the roster ----------------------------------------------------
+
+
+ASSUME_DENIED = client_error(
+    "AccessDenied",
+    "User is not authorized to perform: sts:AssumeRole on resource: "
+    "arn:aws:iam::222222222222:role/arthur-ai-discovery",
+    "AssumeRole",
+)
+ORG_FIELDS = {"regions": "all", "accounts": "all", "external_id": "abc"}
+
+
+def org(members: dict[str, FakeAws], own: Optional[FakeAws] = None) -> FakeOrg:
+    """Organizations lists every member given, plus one suspended account."""
+    listed = [(aws.account, "ACTIVE") for aws in members.values()]
+    listed.append(("333333333333", "SUSPENDED"))
+    return FakeOrg(
+        own or FakeAws({}, accounts_listed=listed),
+        {aws.account: aws for aws in members.values()},
+    )
+
+
+def test_every_active_account_is_read_through_the_member_role_in_each_of_its_regions(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Organizations gives the roster; each account's own enabled regions are asked;
+    the member role is assumed per account with the source's external ID; a suspended
+    account is left out."""
+    fleet = org(
+        {"1": member("1", "eu-west-1", "us-east-1"), "2": member("2", "us-east-1")},
+    )
+    connector = connector_for_org(fleet)
+    with caplog.at_level(logging.INFO):
+        records = scan(fleet.own, ORG_FIELDS, connector)
+
+    assert sorted(r.external_id for r in records) == sorted(
+        f"{iid(i)}:codex-cli" for i in ("10", "11", "20")
+    )
+    assert [(s.account, s.role_name, s.external_id) for s in fleet.sessions] == [
+        ("111111111111", DEFAULT_MEMBER_ROLE_NAME, "abc"),
+        ("222222222222", DEFAULT_MEMBER_ROLE_NAME, "abc"),
+    ]
+    assert [c[2] for c in fleet.own.calls] == ["ListAccounts"]
+    assert fleet.own.calls[0][1] == BOOTSTRAP_REGION
+    assert [
+        c[1] for c in fleet.members["111111111111"].calls if c[2] == "DescribeRegions"
+    ] == [BOOTSTRAP_REGION]
+    assert connector.denied_scopes() == ()
+    assert (
+        "every enabled region of 2 account(s) through role arthur-ai-discovery"
+        in caplog.text
+    )
+    assert "EC2 scope: 2 account(s); 3 account-region(s) read; 0 refused" in caplog.text
+
+
+def test_named_accounts_and_regions_are_read_without_asking_organizations() -> None:
+    fleet = org({"1": member("1", REGION), "2": member("2", REGION)})
+    connector = connector_for_org(fleet)
+    records = scan(
+        fleet.own,
+        {"regions": REGION, "accounts": "222222222222", "member_role_name": "Reader"},
+        connector,
+    )
+
+    assert [r.external_id for r in records] == [f"{iid('20')}:codex-cli"]
+    assert fleet.own.calls == [], "no listing was asked for"
+    assert [(s.account, s.role_name, s.external_id) for s in fleet.sessions] == [
+        ("222222222222", "Reader", None),
+    ]
+    assert not any(
+        c[2] == "DescribeRegions" for c in fleet.members["222222222222"].calls
+    )
+
+
+def test_an_account_whose_role_cannot_be_assumed_is_a_denied_scope_and_the_rest_are_read(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    fleet = org(
+        {
+            "1": member("1", REGION),
+            "2": member("2", REGION, assume_error=ASSUME_DENIED),
+        },
+    )
+    connector = connector_for_org(fleet)
+    with caplog.at_level(logging.WARNING):
+        records = scan(fleet.own, ORG_FIELDS, connector)
+
+    assert [r.external_id for r in records] == [f"{iid('10')}:codex-cli"]
+    assert connector.denied_scopes() == (
+        DeniedScope("222222222222", DENIED_PERMISSION),
+    )
+    assert "222222222222: not read (permission_denied): STS AssumeRole" in caplog.text
+
+
+def test_a_region_the_member_role_is_refused_or_cannot_reach_is_a_denied_scope() -> (
+    None
+):
+    """One region's refusal names the account and region; the account's other
+    regions are still read."""
+    fleet = org(
+        {
+            "1": member(
+                "1",
+                "eu-west-1",
+                "us-east-1",
+                errors={
+                    ("ec2", "DescribeInstances"): client_error(
+                        "UnauthorizedOperation",
+                        "You are not authorized to perform this operation.",
+                        "DescribeInstances",
+                    ),
+                },
+            ),
+            "2": member(
+                "2",
+                "eu-west-1",
+                "us-east-1",
+                errors={
+                    ("ssm", "DescribeInstanceInformation"): EndpointConnectionError(
+                        endpoint_url="https://ssm.eu-west-1.amazonaws.com/",
+                    ),
+                },
+            ),
+        },
+    )
+    connector = connector_for_org(fleet)
+    records = scan(fleet.own, ORG_FIELDS, connector)
+
+    # The first region of each, alphabetically, took the error.
+    assert sorted(r.external_id for r in records) == sorted(
+        f"{iid(i)}:codex-cli" for i in ("11", "21")
+    )
+    assert connector.denied_scopes() == (
+        DeniedScope("111111111111/eu-west-1", DENIED_PERMISSION),
+        DeniedScope("222222222222/eu-west-1", DENIED_UNREACHABLE),
+    )
+
+
+def test_refused_every_account_and_region_fails_the_run() -> None:
+    """A scan allowed to read nothing is not a clean organization."""
+    fleet = org(
+        {
+            "1": member("1", REGION, assume_error=ASSUME_DENIED),
+            "2": member("2", REGION, assume_error=ASSUME_DENIED),
+        },
+    )
+    connector = connector_for_org(fleet)
+    with pytest.raises(Ec2Error, match="refused every account") as exc:
+        scan(fleet.own, ORG_FIELDS, connector)
+
+    assert failure_code(exc.value) is DiscoveryErrorCode.PERMISSION_DENIED
+    assert "arthur-ai-discovery exists in each account" in str(exc.value)
+    assert len(connector.denied_scopes()) == 2
+
+
+def test_a_refused_credential_under_an_organization_still_ends_the_scan() -> None:
+    fleet = org(
+        {
+            "1": member(
+                "1",
+                REGION,
+                errors={
+                    ("ec2", "DescribeRegions"): client_error(
+                        "UnrecognizedClientException",
+                        "The security token included in the request is invalid.",
+                        "DescribeRegions",
+                    ),
+                },
+            ),
+        },
+    )
+    with pytest.raises(Ec2Error) as exc:
+        scan(fleet.own, ORG_FIELDS, connector_for_org(fleet))
+    assert failure_code(exc.value) is DiscoveryErrorCode.AUTHENTICATION_FAILED
+
+
+def test_a_refused_organizations_listing_ends_the_scan() -> None:
+    """The roster itself, not one account of it."""
+    own = FakeAws(
+        {},
+        errors={
+            ("organizations", "ListAccounts"): client_error(
+                "AccessDeniedException",
+                "User is not authorized to perform: organizations:ListAccounts",
+                "ListAccounts",
+            ),
+        },
+    )
+    fleet = org({"1": member("1", REGION)}, own=own)
+    with pytest.raises(Ec2Error, match="ListAccounts") as exc:
+        scan(own, ORG_FIELDS, connector_for_org(fleet))
+    assert failure_code(exc.value) is DiscoveryErrorCode.PERMISSION_DENIED
+    assert fleet.sessions == []
+
+
+def test_every_enabled_region_of_the_source_s_own_account_is_read_and_a_refusal_still_ends_the_scan() -> (
+    None
+):
+    """`regions: all` without accounts asks the account itself; its scope is still
+    one thing, refused whole."""
+    aws = FakeAws(
+        {"eu-west-1": [[instance("1")]], "us-east-1": [[instance("2")]]},
+        inventory={iid("1"): reported(), iid("2"): reported()},
+    )
+    connector = connector_for(aws)
+    records = scan(aws, {"regions": "all"}, connector)
+
+    assert sorted(r.external_id for r in records) == [
+        f"{iid(i)}:codex-cli" for i in "12"
+    ]
+    asked = [c for c in aws.calls if c[2] == "DescribeRegions"]
+    assert [(c[1], c[3]) for c in asked] == [(BOOTSTRAP_REGION, {"AllRegions": False})]
+    assert connector.denied_scopes() == ()
+
+    refused = FakeAws(
+        {"eu-west-1": [[instance("1")]]},
+        errors={
+            ("ec2", "DescribeInstances"): client_error(
+                "UnauthorizedOperation",
+                "You are not authorized to perform this operation.",
+                "DescribeInstances",
+            ),
+        },
+    )
+    with pytest.raises(Ec2Error) as exc:
+        scan(refused, {"regions": "all"})
+    assert failure_code(exc.value) is DiscoveryErrorCode.PERMISSION_DENIED
+
+
 # --- tag scope ------------------------------------------------------------------------
 
 
@@ -834,8 +1147,15 @@ def test_a_scope_that_keeps_nothing_says_so(caplog: pytest.LogCaptureFixture) ->
     [
         ({}, "missing required field 'regions'"),
         ({"regions": "US East (N. Virginia)"}, "not AWS region names"),
+        ({"regions": "all, us-east-1"}, "'all' alone scans every region"),
         ({"regions": "us-east-1", "include_tags": "env"}, "not key=value tags"),
         ({"regions": "us-east-1", "exclude_tags": f"{'k' * 129}=v"}, "1 to 128"),
+        ({"regions": "us-east-1", "accounts": "12345"}, "12 digits"),
+        ({"regions": "us-east-1", "accounts": "all, 111111111111"}, "12 digits"),
+        (
+            {"regions": "us-east-1", "accounts": "all", "member_role_name": "arn:x"},
+            "not an IAM role name",
+        ),
     ],
 )
 def test_settings_that_cannot_be_scanned_fail_as_not_configured(
@@ -845,6 +1165,26 @@ def test_settings_that_cannot_be_scanned_fail_as_not_configured(
     with pytest.raises(DiscoveryConfigurationError, match=named) as exc:
         settings_from(fields)
     assert failure_code(exc.value) is DiscoveryErrorCode.NOT_CONFIGURED
+
+
+def test_settings_take_every_region_and_the_organization_s_accounts() -> None:
+    settings = settings_from({"regions": " ALL ", "accounts": "all"})
+    assert (settings.regions, settings.all_regions) == ((), True)
+    assert (settings.accounts, settings.all_accounts) == (None, True)
+    assert settings.member_role_name == DEFAULT_MEMBER_ROLE_NAME
+    assert settings.spans_accounts
+
+    named = settings_from(
+        {
+            "regions": REGION,
+            "accounts": "111111111111, 222222222222, 111111111111",
+            "member_role_name": " Reader ",
+        },
+    )
+    assert named.accounts == ("111111111111", "222222222222")
+    assert named.member_role_name == "Reader"
+    assert named.spans_accounts
+    assert not settings_from({"regions": REGION}).spans_accounts
 
 
 def test_settings_accept_several_regions_and_tidy_selectors() -> None:
@@ -913,6 +1253,27 @@ def test_a_role_is_assumed_lazily_and_refreshably() -> None:
     assert hasattr(credentials, "refresh_needed")
 
 
+def test_every_region_asks_sts_in_the_bootstrap_region() -> None:
+    session = source_session(
+        {"access_key_id": "AKIAEXAMPLE", "secret_access_key": "secret"},
+        {"regions": "all"},
+    )
+    assert session.region_name == BOOTSTRAP_REGION
+
+
+def test_a_member_role_is_assumed_lazily_from_the_source_s_session() -> None:
+    base = source_session(
+        {"access_key_id": "AKIAEXAMPLE", "secret_access_key": "secret"},
+        {"regions": REGION},
+    )
+    session = member_session(base, "111111111111", "arthur-ai-discovery", "abc")
+    credentials = session.get_credentials()
+    assert credentials is not None
+    assert credentials.method == "assume-role"
+    assert session.region_name == REGION
+    assert hasattr(credentials, "refresh_needed")
+
+
 def test_the_engine_s_own_credentials_need_the_engine_to_opt_in(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -930,8 +1291,10 @@ def test_registered_with_its_secrets_declared_and_the_optional_protocols() -> No
         {"access_key_id", "secret_access_key"},
     )
     assert isinstance(connector, ReportsDeviceCoverage)
+    assert isinstance(connector, ReportsDeniedScopes)
     assert isinstance(connector, AcceptsStopCheck)
     assert connector.device_coverage() is None, "nothing read yet"
+    assert connector.denied_scopes() == ()
 
 
 def test_a_stop_check_ends_the_scan_after_the_instance_in_hand() -> None:

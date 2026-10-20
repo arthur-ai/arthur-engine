@@ -26,6 +26,8 @@ from job_executors.discovery_run_reporter import (
     platform_outcome,
 )
 from job_executors.discovery_scan import (
+    MAX_DENIED_SCOPES,
+    DeniedScope,
     DeviceCoverage,
     DiscoveryScanOutcome,
     UnreadableDevice,
@@ -153,6 +155,28 @@ def test_a_last_report_the_run_store_cannot_take_is_sent_as_nothing(
     assert body.device_coverage is not None
     ((device),) = body.device_coverage.to_dict()["unreadable_devices"]
     assert device["last_reported"] == sent
+
+
+def test_denied_scopes_travel_as_the_store_s_own_shape_up_to_its_cap() -> None:
+    denied = [
+        DeniedScope(f"projects/acme-{i}", "permission_denied") for i in range(1001)
+    ]
+    denied[0] = DeniedScope("123456789012/eu-west-1", "unreachable")
+
+    body = platform_outcome(_outcome(denied_scopes=denied))
+
+    assert body.status == DiscoveryRunStatus.DONE
+    assert body.denied_scopes is not None
+    assert len(body.denied_scopes) == MAX_DENIED_SCOPES
+    assert (body.denied_scopes[0].scope, body.denied_scopes[0].reason) == (
+        "123456789012/eu-west-1",
+        "unreachable",
+    )
+    assert body.denied_scopes[1].to_dict() == {
+        "scope": "projects/acme-1",
+        "reason": "permission_denied",
+    }
+    assert platform_outcome(_outcome()).denied_scopes == []
 
 
 def test_a_failed_scan_is_a_failed_run_with_its_code_and_none_of_its_text() -> None:

@@ -244,6 +244,41 @@ class ReportsDeviceCoverage(Protocol):
     def device_coverage(self) -> Optional[DeviceCoverage]: ...
 
 
+# The Platform's `DiscoveryDeniedScope` reasons, and the only two it takes.
+DENIED_PERMISSION = "permission_denied"
+DENIED_UNREACHABLE = "unreachable"
+
+# The most denied scopes one run reports: the Platform's cap on the field.
+MAX_DENIED_SCOPES = 1000
+
+
+@dataclass(frozen=True)
+class DeniedScope:
+    """A part of the source's scope the scan could not read, as the run reports it.
+
+    IDENTIFIERS ONLY: a project, an account, an account and region. Never a credential
+    or an answer's body. `reason` is `DENIED_PERMISSION` or `DENIED_UNREACHABLE`.
+    """
+
+    scope: str
+    reason: str
+
+
+@runtime_checkable
+class ReportsDeniedScopes(Protocol):
+    """A connector whose scope has parts it can be refused one at a time -- the projects
+    under an organization, an organization's accounts and their regions -- and can say
+    which it was.
+
+    Optional, like `ReportsDeviceCoverage`, and asked once the scan ends however it
+    ended. A run that read some of its scope and was refused the rest is `done` with
+    denied scopes, which the Platform reads as a degraded source: the scan completed,
+    and its coverage did not.
+    """
+
+    def denied_scopes(self) -> Sequence[DeniedScope]: ...
+
+
 @runtime_checkable
 class AcceptsStopCheck(Protocol):
     """A connector that can be told to end its scan early, between vendor calls.
@@ -390,6 +425,10 @@ class DiscoveryScanOutcome:
     # behind the records, and the ones policy kept out. Null for a source that does not
     # read devices.
     device_coverage: Optional[DeviceCoverage] = None
+    # The parts of the source's scope the scan was refused -- a project under the
+    # organization, an account, a region -- and continued past. Empty for a source
+    # whose scope is one thing, which is refused whole and fails the run instead.
+    denied_scopes: list[DeniedScope] = field(default_factory=list)
 
     def record_failure(
         self,
@@ -433,6 +472,7 @@ class DiscoveryScanOutcome:
             "device_coverage": (
                 asdict(self.device_coverage) if self.device_coverage else None
             ),
+            "denied_scopes": [asdict(scope) for scope in self.denied_scopes],
             "succeeded": self.error is None,
         }
 
@@ -548,6 +588,8 @@ def run_source_scan(
     finally:
         if isinstance(connector, ReportsDeviceCoverage):
             outcome.device_coverage = connector.device_coverage()
+        if isinstance(connector, ReportsDeniedScopes):
+            outcome.denied_scopes = list(connector.denied_scopes())
         finalize_outcome(outcome, logger, reporter)
 
     return outcome

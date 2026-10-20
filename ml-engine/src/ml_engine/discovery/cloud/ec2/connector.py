@@ -29,6 +29,15 @@ ONE INSTANCE IS THE UNIT THAT CAN FAIL. An instance whose inventory cannot be re
 reported and skipped; a refused credential or a denied action is not one instance's
 problem, and ends the scan.
 
+AN ORGANIZATION IS A ROSTER, NOT A LIST SOMEONE KEEPS. `accounts` names accounts, or
+`all` for every active one Organizations lists, each read through a role of one name
+assumed from the source's own session; `regions` may be `all`, each account's enabled
+regions. An account nobody told the governance team about is in scope the day it is
+created. One account or region the scan is refused is a denied scope the run reports
+and the scan continues past; refused everywhere, it fails, because a scan allowed to
+read nothing is not a clean organization. Without `accounts`, the source's own account
+fails the scan on a refusal, as it did.
+
 EVERY UNREADABLE INSTANCE IS LISTED, NOT ONLY COUNTED. The instances this scan cannot see
 are where unmanaged AI sits, so each goes on the run's coverage by instance id, Name tag,
 account and region, and reason, up to the run store's cap.
@@ -47,8 +56,10 @@ from arthur_common.models.agent_governance_schemas import Platform, RunsOn
 
 from discovery.aws_credentials import (
     ACCESS_KEY_ID_FIELD,
+    EXTERNAL_ID_FIELD,
     ROLE_ARN_FIELD,
     SENSITIVE_FIELDS,
+    assumed_role_session,
     aws_session,
 )
 from discovery.catalog import Matcher
@@ -69,7 +80,13 @@ from discovery.cloud.vm_inventory import (
 )
 from discovery.endpoint.device import ManagedDevice
 from discovery.endpoint.scope import DeviceScope, parse_group_names
-from job_executors.discovery_scan import DeviceCoverage, DiscoveryConfigurationError
+from job_executors.discovery_scan import (
+    DENIED_PERMISSION,
+    DENIED_UNREACHABLE,
+    DeniedScope,
+    DeviceCoverage,
+    DiscoveryConfigurationError,
+)
 
 VENDOR = "aws_ec2"
 
@@ -77,6 +94,17 @@ VENDOR = "aws_ec2"
 REGIONS_FIELD = "regions"
 INCLUDE_TAGS_FIELD = "include_tags"
 EXCLUDE_TAGS_FIELD = "exclude_tags"
+ACCOUNTS_FIELD = "accounts"
+MEMBER_ROLE_NAME_FIELD = "member_role_name"
+DEFAULT_MEMBER_ROLE_NAME = "arthur-ai-discovery"
+
+# What `regions` or `accounts` says to mean every one: each region an account has
+# enabled, every active account in the organization.
+ALL = "all"
+
+# Where Organizations and DescribeRegions are asked. Either answers from any region;
+# this one exists in the aws partition, and a fleet in another names its regions.
+BOOTSTRAP_REGION = "us-east-1"
 
 # Opt-in for the engine's own AWS credentials, as Compute Engine's for ADC.
 ALLOW_DEFAULT_CREDENTIALS_ENV_VAR = "ARTHUR_ENGINE_AWS_EC2_ALLOW_DEFAULT_CREDENTIALS"
@@ -106,16 +134,36 @@ _REGION = re.compile(r"^[a-z]{2}(-[a-z]+)+-\d{1,2}$")
 # An EC2 tag key's length limit. Any character is allowed in one.
 _TAG_KEY_MAX = 128
 
+_ACCOUNT_ID = re.compile(r"^[0-9]{12}$")
+# IAM's own rule for a role name.
+_ROLE_NAME = re.compile(r"^[\w+=,.@-]{1,64}$")
+
 
 @dataclass(frozen=True)
 class Ec2Settings:
     regions: tuple[str, ...]
     include_tags: tuple[str, ...] = ()
     exclude_tags: tuple[str, ...] = ()
+    # `regions: all`: every region each account has enabled, asked per account.
+    all_regions: bool = False
+    # The accounts named, None for the credential's own.
+    accounts: Optional[tuple[str, ...]] = None
+    # `accounts: all`: every active account Organizations lists.
+    all_accounts: bool = False
+    member_role_name: str = DEFAULT_MEMBER_ROLE_NAME
+
+    @property
+    def spans_accounts(self) -> bool:
+        """Whether the scan reads accounts through the member role, one at a time."""
+        return self.all_accounts or self.accounts is not None
 
 
 SessionFactory = Callable[
     [Mapping[str, Optional[str]], Mapping[str, str]],
+    boto3.Session,
+]
+AccountSessionFactory = Callable[
+    [boto3.Session, str, str, Optional[str]],
     boto3.Session,
 ]
 
@@ -126,7 +174,8 @@ def source_session(
 ) -> boto3.Session:
     """The source's AWS session, under EC2's opt-in for the engine's own credentials.
 
-    STS is asked in the first region the source scans.
+    STS is asked in the first region the source scans, or `BOOTSTRAP_REGION` for a
+    source scanning every region.
     """
     regions = parse_group_names(source_fields.get(REGIONS_FIELD))
     return aws_session(
@@ -135,13 +184,32 @@ def source_session(
         source="EC2 source",
         allow_default_env_var=ALLOW_DEFAULT_CREDENTIALS_ENV_VAR,
         session_name=SESSION_NAME,
-        region_name=regions[0] if regions else None,
+        region_name=(
+            BOOTSTRAP_REGION if _is_all(regions) else regions[0] if regions else None
+        ),
+    )
+
+
+def member_session(
+    base: boto3.Session,
+    account: str,
+    role_name: str,
+    external_id: Optional[str],
+) -> boto3.Session:
+    """The session for one account of the organization: its member role, assumed from
+    the source's own session with the source's external ID, as `SESSION_NAME`."""
+    return assumed_role_session(
+        base,
+        f"arn:aws:iam::{account}:role/{role_name}",
+        external_id,
+        SESSION_NAME,
+        region_name=base.region_name,
     )
 
 
 class Ec2Connector:
     """Implements `job_executors.discovery_scan.DiscoverySourceConnector`,
-    `ReportsDeviceCoverage` and `AcceptsStopCheck`.
+    `ReportsDeviceCoverage`, `ReportsDeniedScopes` and `AcceptsStopCheck`.
 
     Holds one scan's coverage and stop check, which is safe only because a connector is
     built fresh for every scan -- see `DiscoveryConnectorFactory`.
@@ -154,11 +222,14 @@ class Ec2Connector:
         session_for: SessionFactory = source_session,
         clients_for: Callable[[boto3.Session], ClientFactory] = default_client_factory,
         clock: Callable[[], datetime] = lambda: datetime.now(timezone.utc),
+        account_session_for: AccountSessionFactory = member_session,
     ) -> None:
         self._session_for = session_for
         self._clients_for = clients_for
         self._clock = clock
+        self._account_session_for = account_session_for
         self._coverage: Optional[DeviceCoverage] = None
+        self._denied: list[DeniedScope] = []
         self._should_stop: Callable[[], bool] = lambda: False
         self._stopped_early = False
 
@@ -178,6 +249,10 @@ class Ec2Connector:
                 self._stopped_early = True
                 return
 
+    def denied_scopes(self) -> Sequence[DeniedScope]:
+        """The accounts and regions the scan was refused, and continued past."""
+        return tuple(self._denied)
+
     def scan(
         self,
         config: DiscoverySourceConfigSpec,
@@ -190,7 +265,7 @@ class Ec2Connector:
         settings = settings_from(source_fields)
         session = self._session_for(credentials, source_fields)
         matcher = Matcher.from_source(catalog_yaml=config.query or None, logger=logger)
-        client = Ec2Client(self._clients_for(session), logger)
+        own = Ec2Client(self._clients_for(session), logger)
 
         # Tag pairs are their own ids: nothing renames a tag out from under a scan.
         scope = DeviceScope(
@@ -205,10 +280,43 @@ class Ec2Connector:
             else None
         )
 
+        # The roster: the source's own account, or every account named or listed,
+        # each read through the member role. The management account is one of them.
+        targets: list[tuple[Optional[str], Ec2Client]] = [(None, own)]
+        if settings.spans_accounts:
+            accounts = settings.accounts or own.organization_accounts(BOOTSTRAP_REGION)
+            external_id = (source_fields.get(EXTERNAL_ID_FIELD) or "").strip() or None
+            targets = [
+                (
+                    account,
+                    Ec2Client(
+                        self._clients_for(
+                            self._account_session_for(
+                                session,
+                                account,
+                                settings.member_role_name,
+                                external_id,
+                            ),
+                        ),
+                        logger,
+                    ),
+                )
+                for account in accounts
+            ]
+
         logger.info(
-            "EC2 scan starting in region(s) %s, catalog %s, %s agent(s), scope: %s, "
-            "using %s. Every instance is listed; %s.",
-            ", ".join(settings.regions),
+            "EC2 scan starting in %s%s, catalog %s, %s agent(s), scope: %s, using %s. "
+            "Every instance is listed; %s.",
+            (
+                "every enabled region"
+                if settings.all_regions
+                else f"region(s) {', '.join(settings.regions)}"
+            ),
+            (
+                f" of {len(targets)} account(s) through role {settings.member_role_name}"
+                if settings.spans_accounts
+                else ""
+            ),
             matcher.catalog_sha,
             matcher.agent_count,
             scope.describe(),
@@ -220,70 +328,44 @@ class Ec2Connector:
                 else "the lookback is 0, so every instance's last report is published"
             ),
         )
+        if settings.spans_accounts and not targets:
+            logger.warning(
+                "EC2 scan found no active account in the organization. Nothing can be "
+                "read, so this is the credential's view of Organizations, not a fleet "
+                "without instances.",
+            )
 
         carried: set[str] = set()
         reader = VmInventoryReader(coverage, matcher, VENDOR, since, logger)
+        scanned = 0
 
-        for region in settings.regions:
-            managed = client.managed_instance_ids(region)
-            for instance in self._until_stopped(client.instances(region)):
-                device = _device_for(instance)
-                carried.update(device.group_ids)
-                if not scope.admit(device, coverage):
-                    continue
-                if instance.windows:
-                    coverage.count_unreadable(
-                        UNSUPPORTED_PLATFORM,
-                        device.unreadable(UNSUPPORTED_PLATFORM),
-                    )
-                    continue
-                running = instance.state == "running"
-                if running and instance.id not in managed:
-                    coverage.count_unreadable(
-                        NOT_SSM_MANAGED,
-                        device.unreadable(NOT_SSM_MANAGED),
-                    )
-                    continue
-
+        for account, client in targets:
+            regions: Sequence[str] = settings.regions
+            if settings.all_regions:
                 try:
-                    inventory = client.inventory(region, instance.id)
+                    regions = client.enabled_regions(BOOTSTRAP_REGION)
                 except Ec2Error as e:
-                    if e.status_code in (401, 403):
-                        # The credential or its permission, not this instance: every
-                        # instance behind it would fail the same way.
+                    if not self._refused(settings, account, None, e, logger):
                         raise
-                    if e.code == "InvalidInstanceId":
-                        coverage.count_unreadable(
-                            NOT_SSM_MANAGED,
-                            device.unreadable(NOT_SSM_MANAGED),
-                        )
-                        continue
-                    logger.warning("%s: inventory not read (%s)", instance.id, e)
-                    coverage.count_unreadable(
-                        READ_FAILED,
-                        device.unreadable(READ_FAILED),
-                    )
                     continue
-
-                attributes, problem = assemble(inventory.entries if inventory else [])
-                if problem is not None:
-                    logger.warning(
-                        "%s: inventory not usable (%s)",
-                        instance.id,
-                        problem,
+            for region in regions:
+                try:
+                    yield from self._scan_region(
+                        client,
+                        region,
+                        scope,
+                        coverage,
+                        reader,
+                        carried,
+                        logger,
                     )
-                    coverage.count_unreadable(
-                        INVENTORY_INCOMPLETE,
-                        device.unreadable(INVENTORY_INCOMPLETE),
-                    )
+                except Ec2Error as e:
+                    if not self._refused(settings, account, region, e, logger):
+                        raise
                     continue
-
-                records = reader.read(
-                    replace(device, attributes=attributes),
-                    state=None if running else instance.state,
-                )
-                if records:
-                    yield records
+                scanned += 1
+                if self._stopped_early:
+                    break
             if self._stopped_early:
                 break
 
@@ -291,6 +373,29 @@ class Ec2Connector:
             logger.info(
                 "EC2 scan stopped early on request after %s instance(s)",
                 coverage.devices_read,
+            )
+
+        if settings.spans_accounts:
+            logger.info(
+                "EC2 scope: %s account(s); %s account-region(s) read; %s refused%s",
+                len(targets),
+                scanned,
+                len(self._denied),
+                _named([denied.scope for denied in self._denied]),
+            )
+        if self._denied and not scanned:
+            # Refused everywhere it could have read. Not a fleet without instances:
+            # the credential has no view of the scope it was given.
+            raise Ec2Error(
+                f"EC2 scan was refused every account and region it could read "
+                f"({len(self._denied)}{_named([d.scope for d in self._denied])}). "
+                f"Check that role {settings.member_role_name} exists in each account "
+                f"and trusts this credential.",
+                status_code=(
+                    403
+                    if all(d.reason == DENIED_PERMISSION for d in self._denied)
+                    else None
+                ),
             )
 
         reader.log_summary("EC2", "instance", journal="ec2.md, section 06")
@@ -322,24 +427,142 @@ class Ec2Connector:
                 seen,
             )
 
+    def _refused(
+        self,
+        settings: Ec2Settings,
+        account: Optional[str],
+        region: Optional[str],
+        error: Ec2Error,
+        logger: logging.Logger,
+    ) -> bool:
+        """Whether a failure is one account's or region's, recorded as a denied scope.
+
+        Only a scope that spans accounts has parts to be refused one at a time; the
+        source's own account fails the scan as it always did. A refused credential --
+        401, from any call -- is never one part's problem.
+        """
+        if not settings.spans_accounts or account is None:
+            return False
+        if error.status_code == 401:
+            return False
+        if error.operation == "AssumeRole":
+            # The member role, so the whole account.
+            scope = account
+        else:
+            scope = f"{account}/{region}" if region else account
+        reason = DENIED_PERMISSION if error.status_code == 403 else DENIED_UNREACHABLE
+        self._denied.append(DeniedScope(scope, reason))
+        logger.warning("%s: not read (%s): %s", scope, reason, error)
+        return True
+
+    def _scan_region(
+        self,
+        client: Ec2Client,
+        region: str,
+        scope: DeviceScope,
+        coverage: DeviceCoverage,
+        reader: VmInventoryReader,
+        carried: set[str],
+        logger: logging.Logger,
+    ) -> Iterator[Sequence[DiscoveredAgentRecord]]:
+        """One region's instances. A refusal ends it with the error, for the caller."""
+        managed = client.managed_instance_ids(region)
+        for instance in self._until_stopped(client.instances(region)):
+            device = _device_for(instance)
+            carried.update(device.group_ids)
+            if not scope.admit(device, coverage):
+                continue
+            if instance.windows:
+                coverage.count_unreadable(
+                    UNSUPPORTED_PLATFORM,
+                    device.unreadable(UNSUPPORTED_PLATFORM),
+                )
+                continue
+            running = instance.state == "running"
+            if running and instance.id not in managed:
+                coverage.count_unreadable(
+                    NOT_SSM_MANAGED,
+                    device.unreadable(NOT_SSM_MANAGED),
+                )
+                continue
+
+            try:
+                inventory = client.inventory(region, instance.id)
+            except Ec2Error as e:
+                if e.status_code in (401, 403):
+                    # The credential or its permission, not this instance: every
+                    # instance behind it would fail the same way.
+                    raise
+                if e.code == "InvalidInstanceId":
+                    coverage.count_unreadable(
+                        NOT_SSM_MANAGED,
+                        device.unreadable(NOT_SSM_MANAGED),
+                    )
+                    continue
+                logger.warning("%s: inventory not read (%s)", instance.id, e)
+                coverage.count_unreadable(
+                    READ_FAILED,
+                    device.unreadable(READ_FAILED),
+                )
+                continue
+
+            attributes, problem = assemble(inventory.entries if inventory else [])
+            if problem is not None:
+                logger.warning(
+                    "%s: inventory not usable (%s)",
+                    instance.id,
+                    problem,
+                )
+                coverage.count_unreadable(
+                    INVENTORY_INCOMPLETE,
+                    device.unreadable(INVENTORY_INCOMPLETE),
+                )
+                continue
+
+            records = reader.read(
+                replace(device, attributes=attributes),
+                state=None if running else instance.state,
+            )
+            if records:
+                yield records
+
 
 def settings_from(source_fields: Mapping[str, str]) -> Ec2Settings:
-    """The regions and tag scope from the source's non-sensitive fields."""
+    """The regions, accounts and tag scope from the source's non-sensitive fields."""
     regions = parse_group_names(source_fields.get(REGIONS_FIELD))
     if not regions:
         raise DiscoveryConfigurationError(
             f"EC2 source is missing required field '{REGIONS_FIELD}'. It is a source "
             f"field, not a secret.",
         )
-    bad = [r for r in regions if not _REGION.match(r)]
+    all_regions = _is_all(regions)
+    bad = [] if all_regions else [r for r in regions if not _REGION.match(r)]
     if bad:
         raise DiscoveryConfigurationError(
             f"EC2 source's '{REGIONS_FIELD}' has value(s) that are not AWS region "
             f"names: {', '.join(repr(r) for r in bad)}. A region name looks like "
-            f"us-east-1.",
+            f"us-east-1; '{ALL}' alone scans every region each account has enabled.",
+        )
+
+    accounts = parse_group_names(source_fields.get(ACCOUNTS_FIELD))
+    all_accounts = _is_all(accounts)
+    bad = [] if all_accounts else [a for a in accounts if not _ACCOUNT_ID.match(a)]
+    if bad:
+        raise DiscoveryConfigurationError(
+            f"EC2 source's '{ACCOUNTS_FIELD}' has value(s) that are not AWS account "
+            f"IDs: {', '.join(repr(a) for a in bad)}. An account ID is 12 digits; "
+            f"'{ALL}' alone scans every active account in the organization.",
+        )
+    role_name = (
+        source_fields.get(MEMBER_ROLE_NAME_FIELD) or ""
+    ).strip() or DEFAULT_MEMBER_ROLE_NAME
+    if not _ROLE_NAME.match(role_name):
+        raise DiscoveryConfigurationError(
+            f"EC2 source's '{MEMBER_ROLE_NAME_FIELD}' is not an IAM role name: "
+            f"{role_name!r}. It is the name alone, not an ARN.",
         )
     return Ec2Settings(
-        regions=regions,
+        regions=() if all_regions else regions,
         include_tags=parse_tag_selectors(
             source_fields.get(INCLUDE_TAGS_FIELD),
             INCLUDE_TAGS_FIELD,
@@ -348,7 +571,16 @@ def settings_from(source_fields: Mapping[str, str]) -> Ec2Settings:
             source_fields.get(EXCLUDE_TAGS_FIELD),
             EXCLUDE_TAGS_FIELD,
         ),
+        all_regions=all_regions,
+        accounts=None if all_accounts or not accounts else accounts,
+        all_accounts=all_accounts,
+        member_role_name=role_name,
     )
+
+
+def _is_all(values: Sequence[str]) -> bool:
+    """Whether a list field says `all`, which it can only say alone."""
+    return len(values) == 1 and values[0].lower() == ALL
 
 
 def parse_tag_selectors(value: Optional[str], field: str) -> tuple[str, ...]:
@@ -366,6 +598,14 @@ def parse_tag_selectors(value: Optional[str], field: str) -> tuple[str, ...]:
         key_rule=f"A tag key is 1 to {_TAG_KEY_MAX} characters, and is matched "
         f"exactly, case included.",
     )
+
+
+def _named(items: Sequence[str]) -> str:
+    """` (a, b, c, ...)` naming the first few, or nothing for none."""
+    if not items:
+        return ""
+    shown = ", ".join(items[:10])
+    return f" ({shown}{', ...' if len(items) > 10 else ''})"
 
 
 def _device_for(instance: Instance) -> ManagedDevice:
