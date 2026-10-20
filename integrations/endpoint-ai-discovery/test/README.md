@@ -1,38 +1,26 @@
 # Tests
 
 ```bash
-test/lint.sh            # static checks. ~1s, no VM, no network, no osquery.
-test/run-collector.sh   # run dist/collect.sh and assert on it. ~15s, needs osquery.
+test/lint.sh                   # static checks, ~1s; no VM, no network, no osquery
+test/run-collector.sh          # run this platform's collector and assert on it, ~15s; needs osquery
+test/run-guest-attributes.sh   # the Compute Engine reporter against a fake metadata server, ~3s
+test/run-ssm-inventory.sh      # the EC2 reporter against a fake IMDS, ~6s
 ```
 
-Two gates, and they check different kinds of thing. `lint.sh` **reads** the deployable;
-`run-collector.sh` **runs** it. Until the second existed, the only executable code this tree
-owns — the extraction preamble inside `dist/collect.sh` — was exercised only when somebody
-ran the collector by hand on their own Mac, which is the shape of the `set -u` empty-array
-defect in [CLAUDE.md](../CLAUDE.md): bash 3.2 only, fine locally, dead on every Mac.
+`lint.sh` **reads** the deployable and `run-collector.sh` **runs** it. Both are needed, because
+no static check exercises the extraction code inside `dist/collect.sh`.
 
-## What is tested here, and what is not
-
-This tree owns the **deployable**: `tools/vendor-queries.sh` brings the queries and the
-runner across at a pinned ref, `tools/build-collector.py` wraps them in `dist/collect.sh`,
-and this tree adds the `arthur1.` framing and the size budget — Arthur's wire format and
-Arthur's reporting channel, neither of them a fact about osquery.
-
-It does **not** own the queries, the runner, `bin/container-scan`, the Docker health guard
-or the wall-clock bound. Those live in
-[`osquery-ai-discovery`](https://github.com/arthur-ai/osquery-ai-discovery) and are
-vendored here at the ref in `vendor/osquery-ai-discovery/VERSION`. Their tests live there
-too, and at the vendored ref that is `test/lint.sh`, `test/docker_states.sh` and thirteen
-VM scenarios, run by upstream CI.
-
-**Do not re-create that suite here.** A local copy would test a local query rather than the
-artifact a fleet receives, and it would pass while doing so.
+These tests cover what this tree owns: the build, the `arthur1.` framing, the size budget and
+the carriers. The queries, the runner, the Docker health guard and the wall-clock bound belong
+to [`osquery-ai-discovery`](https://github.com/arthur-ai/osquery-ai-discovery), and so do their
+tests. **Do not re-create that suite here.** A local copy would test a local query rather than
+what a fleet receives.
 
 ## `test/lint.sh`
 
 | Guard | What it catches |
 |---|---|
-| No `.sql`, no `osqueryi` call, no plaintext query outside `vendor/` | A second discovery implementation reappearing. This is the regression guard for the cleanup described above |
+| No `.sql`, no `osqueryi` call, no plaintext query outside `vendor/` | A second discovery implementation reappearing |
 | `build-collector.py --check` | `dist/collect.sh` built before the last `tools/vendor-queries.sh` |
 | Payload files admitted by name (`ENDPOINT_FILES` in `tools/build-collector.py`, run through `--check`) | A file upstream adds to its bundle reaching endpoints unvetted, catalog-derived ones above all |
 | No `agents.yaml`, no `catalog/` in the built collector | The catalog reaching a Mac. The endpoint enumerates and matches nothing |
@@ -171,18 +159,3 @@ naming the file.
 CI also validates a caller at the lowest Terraform and Google provider `versions.tf` admits, in
 all three modes. Every other check runs a recent Terraform and the latest provider, where
 anything added since a floor passes.
-
-## Running the real thing
-
-There is no test-only path — `run-collector.sh` runs `dist/collect.sh`, and so should you:
-
-```bash
-sudo ARTHUR_OUT_DIR=/tmp/arthur dist/collect.sh
-cat /tmp/arthur/status.txt
-python3 -m json.tool /tmp/arthur/inventory.json | less
-```
-
-With Docker down the run says so (`containers=unhealthy:000`) rather than reporting zero
-images. Needs osquery and nothing else; it writes three files and installs nothing. For what a
-reference Mac reports, see the [README](../README.md#try-it). The numbers live in one place
-so they cannot disagree.
