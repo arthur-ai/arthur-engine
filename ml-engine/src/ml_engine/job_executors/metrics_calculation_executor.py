@@ -16,6 +16,7 @@ from arthur_client.api_bindings import (
     Job,
     JobsBatch,
     JobsV1Api,
+    MetricsArgSpec,
     MetricsCalculationJobSpec,
     MetricsUpload,
     MetricsUploadMetricsInner,
@@ -33,6 +34,13 @@ from arthur_client.api_bindings import (
     TestCustomAggregationJobSpec,
 )
 from arthur_client.api_bindings.exceptions import NotFoundException
+from arthur_common.aggregations.functions.agentic_aggregations import (
+    AgenticIngestBytesAggregation,
+)
+from arthur_common.aggregations.functions.ingest_bytes import (
+    DatasetIngestBytesAggregationFunction,
+)
+from arthur_common.models.enums import ModelProblemType
 from arthur_common.models.metrics import (
     DatasetReference,
     Dimension,
@@ -52,6 +60,7 @@ from metric_calculators.custom_metric_sql_calculator import CustomMetricSQLCalcu
 from metric_calculators.default_metric_calculator import DefaultMetricCalculator
 from metric_calculators.metric_calculator import MetricCalculator
 from tools.connector_constructor import ConnectorConstructor
+from tools.schema_interpreters import primary_timestamp_col_id
 from tools.validators import validate_schedule
 
 ML_ENGINE_AGGREGATION_TIMEOUT = Config.aggregation_timeout()
@@ -72,6 +81,77 @@ class InternalAggregationSpec(AggregationSpec):  # type: ignore[misc]
     internal_aggregation_kind: InternalAggregationKind = Field(
         description="Internal aggregation kind for the spec.",
     )
+
+
+# Consumption (ingest volume) aggregations, reported to the Arthur Platform for its
+# organization Consumption dashboard. Scheduled metrics runs always compute them, one
+# per dataset whatever the model's metric config says, so editing the config can't
+# turn consumption reporting off. They are best-effort: a failure is logged and never
+# fails the job, so they can't break a customer's metrics.
+CONSUMPTION_AGGREGATION_IDS = frozenset(
+    {
+        str(AgenticIngestBytesAggregation.id()),
+        str(DatasetIngestBytesAggregationFunction.id()),
+    },
+)
+
+
+def consumption_aggregation_spec(dataset: Dataset) -> InternalAggregationSpec | None:
+    """The consumption aggregation for a dataset, or None if it has no ingest volume.
+
+    Agentic trace datasets report the bytes the GenAI Engine received; traditional ML
+    datasets report the size of their rows. Guardrail (Shield) datasets and static
+    datasets report nothing.
+    """
+    if dataset.model_problem_type == ModelProblemType.AGENTIC_TRACE:
+        return InternalAggregationSpec(
+            internal_aggregation_kind=InternalAggregationKind.DEFAULT,
+            aggregation_id=str(AgenticIngestBytesAggregation.id()),
+            aggregation_init_args=[],
+            aggregation_args=[MetricsArgSpec(arg_key="dataset", arg_value=dataset.id)],
+            aggregation_kind=AggregationKind.DEFAULT,
+        )
+    if dataset.model_problem_type == ModelProblemType.ARTHUR_SHIELD or dataset.is_static:
+        return None
+
+    timestamp_col_id = primary_timestamp_col_id(dataset)
+    if timestamp_col_id is None:
+        return None
+    return InternalAggregationSpec(
+        internal_aggregation_kind=InternalAggregationKind.DEFAULT,
+        aggregation_id=str(DatasetIngestBytesAggregationFunction.id()),
+        aggregation_init_args=[],
+        aggregation_args=[
+            MetricsArgSpec(arg_key="dataset", arg_value=dataset.id),
+            MetricsArgSpec(arg_key="timestamp_col", arg_value=timestamp_col_id),
+        ],
+        aggregation_kind=AggregationKind.DEFAULT,
+    )
+
+
+def with_consumption_aggregation_specs(
+    agg_specs: List[InternalAggregationSpec],
+    datasets: List[Dataset],
+) -> List[InternalAggregationSpec]:
+    """Replace any configured consumption aggregations with one per dataset.
+
+    The metric config may hold them already (the Platform's matcher suggests them for
+    new models), possibly on a dataset they don't apply to, so configured ones are
+    dropped rather than deduplicated.
+    """
+    specs = [
+        agg_spec
+        for agg_spec in agg_specs
+        if not (
+            agg_spec.internal_aggregation_kind == InternalAggregationKind.DEFAULT
+            and str(agg_spec.aggregation_id) in CONSUMPTION_AGGREGATION_IDS
+        )
+    ]
+    for dataset in datasets:
+        consumption_spec = consumption_aggregation_spec(dataset)
+        if consumption_spec is not None:
+            specs.append(consumption_spec)
+    return specs
 
 
 MAX_POINTS_PER_METRIC_NAME = 25
@@ -127,6 +207,14 @@ class AggregationCalculationExecutor(ABC):
         """
         raise NotImplementedError
 
+    def _built_in_aggregation_specs(
+        self,
+        agg_specs: List[InternalAggregationSpec],
+        datasets: List[Dataset],
+    ) -> List[InternalAggregationSpec]:
+        """Hook for aggregations a job always computes, on top of its configured ones."""
+        return agg_specs
+
     @abstractmethod
     def _validate_job(self, job: Job, job_spec: AggCalculationJobSpecTypes) -> None:
         """Validates a job against a job spec before execution.
@@ -177,7 +265,10 @@ class AggregationCalculationExecutor(ABC):
         loaded_datasets = [
             dataset for dataset in datasets if dataset.id not in failed_to_load_datasets
         ]
-        agg_specs = self._aggregation_specs_for_calculation(job_spec)
+        agg_specs = self._built_in_aggregation_specs(
+            self._aggregation_specs_for_calculation(job_spec),
+            loaded_datasets,
+        )
         metrics, failed_agg_ids = self._calculate_metrics(
             agg_specs,
             loaded_datasets,
@@ -355,6 +446,10 @@ class AggregationCalculationExecutor(ABC):
 
                 if calculator and calculator.agg_name:
                     error_msg += f" - {calculator.agg_name}"
+                if str(agg_spec.aggregation_id) in CONSUMPTION_AGGREGATION_IDS:
+                    # best-effort: consumption reporting never fails the job
+                    self.logger.warning(error_msg, exc_info=exc)
+                    continue
                 self.logger.error(
                     error_msg,
                     exc_info=exc,
@@ -507,6 +602,13 @@ class MetricsCalculationExecutor(AggregationCalculationExecutor):
                 ),
             )
         return agg_specs
+
+    def _built_in_aggregation_specs(
+        self,
+        agg_specs: List[InternalAggregationSpec],
+        datasets: List[Dataset],
+    ) -> List[InternalAggregationSpec]:
+        return with_consumption_aggregation_specs(agg_specs, datasets)
 
     def _validate_job(self, job: Job, job_spec: MetricsCalculationJobSpec) -> None:
         model = self.models_client.get_model(job_spec.scope_model_id)

@@ -2,6 +2,9 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 10/19/2026
+- **CHANGE** for **URL**: /api/v1/traces  added the optional property `traces/items/ingest_bytes` to the response with the `200` status
+
 # 10/15/2026
 - **BREAKING CHANGE** for **URL**: /api/v1/agent-polling/execute-all  api path removed without deprecation
 - **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/agent-polling/execute  api path removed without deprecation

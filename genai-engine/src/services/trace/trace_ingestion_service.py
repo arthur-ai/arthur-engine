@@ -64,6 +64,7 @@ class TraceUpdateDBBase(TypedDict):
     prompt_token_cost: float | None
     completion_token_cost: float | None
     total_token_cost: float | None
+    ingest_bytes: int | None
     input_content: str | None
     output_content: str | None
 
@@ -89,11 +90,26 @@ class TraceIngestionService:
         self,
         trace_data: bytes,
         commit: bool = True,
+        count_ingest_bytes: bool = False,
     ) -> tuple[list[DatabaseSpan], tuple[int, int, int, list[str]]]:
-        """Process trace data from protobuf format and return statistics."""
-        json_traces = self._grpc_trace_to_dict(trace_data)
+        """Process trace data from protobuf format and return statistics.
 
-        spans_data, stats = self._extract_and_process_spans(json_traces)
+        With count_ingest_bytes, each span records its share of len(trace_data), the
+        request body as received, and the shares add up to it exactly. Only the trace
+        ingestion endpoints set it: the bytes are customer ingest volume.
+        """
+        trace_request = self._parse_trace_request(trace_data)
+        json_traces = cast(dict[str, Any], MessageToDict(trace_request))
+        span_ingest_bytes = (
+            self._span_ingest_bytes(trace_request, len(trace_data))
+            if count_ingest_bytes
+            else None
+        )
+
+        spans_data, stats = self._extract_and_process_spans(
+            json_traces,
+            span_ingest_bytes,
+        )
 
         if spans_data:
             self._store_spans(spans_data, commit=commit)
@@ -101,20 +117,67 @@ class TraceIngestionService:
 
         return spans_data, stats
 
-    def _grpc_trace_to_dict(self, trace_data: bytes) -> dict[str, Any]:
-        """Convert gRPC trace data to dictionary format."""
+    @staticmethod
+    def _parse_trace_request(trace_data: bytes) -> ExportTraceServiceRequest:
         try:
             trace_request = ExportTraceServiceRequest()
             trace_request.ParseFromString(trace_data)
-            return cast(dict[str, Any], MessageToDict(trace_request))
+            return trace_request
         except DecodeError as e:
             raise DecodeError("Failed to decode protobuf message.") from e
+
+    @staticmethod
+    def _span_ingest_bytes(
+        trace_request: ExportTraceServiceRequest,
+        body_size: int,
+    ) -> list[int]:
+        """Split the request body's size across its spans, in span order.
+
+        Each span is weighted by its own encoded size plus an even share of its
+        resource's overhead (resource attributes, scopes), so the bytes for one
+        request can be attributed to the traces and tasks it carried. Largest
+        remainder rounding makes the shares sum to body_size exactly.
+        """
+        weights: list[float] = []
+        for resource_span in trace_request.resource_spans:
+            span_sizes = [
+                span.ByteSize()
+                for scope_span in resource_span.scope_spans
+                for span in scope_span.spans
+            ]
+            if not span_sizes:
+                continue
+            overhead = max(resource_span.ByteSize() - sum(span_sizes), 0)
+            weights.extend(size + overhead / len(span_sizes) for size in span_sizes)
+
+        if not weights:
+            return []
+        total_weight = sum(weights)
+        if total_weight <= 0:
+            weights = [1.0] * len(weights)
+            total_weight = float(len(weights))
+
+        exact = [body_size * weight / total_weight for weight in weights]
+        shares = [int(value) for value in exact]
+        by_remainder = sorted(
+            range(len(exact)),
+            key=lambda i: exact[i] - shares[i],
+            reverse=True,
+        )
+        for i in by_remainder[: body_size - sum(shares)]:
+            shares[i] += 1
+        return shares
 
     def _extract_and_process_spans(
         self,
         json_traces: dict[str, Any],
+        span_ingest_bytes: list[int] | None = None,
     ) -> tuple[list[DatabaseSpan], tuple[int, int, int, list[str]]]:
-        """Extract and process spans from JSON trace data."""
+        """Extract and process spans from JSON trace data.
+
+        span_ingest_bytes, when given, holds each span's ingest bytes in the order
+        the spans appear in the request (MessageToDict keeps that order).
+        """
         total_spans = 0
         accepted_spans = 0
         rejected_spans = 0
@@ -169,6 +232,7 @@ class TraceIngestionService:
 
             for scope_span in resource_span.get("scopeSpans", []):
                 for span_data in scope_span.get("spans", []):
+                    span_index = total_spans
                     total_spans += 1
 
                     try:
@@ -178,6 +242,11 @@ class TraceIngestionService:
                             resolved_task_id,
                             resource_id,
                             resolved_org_id,
+                            ingest_bytes=(
+                                span_ingest_bytes[span_index]
+                                if span_ingest_bytes is not None
+                                else None
+                            ),
                         )
                         spans_data.append(processed_span)
                         accepted_spans += 1
@@ -381,6 +450,7 @@ class TraceIngestionService:
         resource_task_id: str,
         resource_id: str | None = None,
         resource_org_id: uuid.UUID = DEFAULT_ORG_ID,
+        ingest_bytes: int | None = None,
     ) -> DatabaseSpan:
         """Process and clean span data, returning None if the span data is invalid."""
         span_data = self._normalize_span_attributes(span_data)
@@ -436,6 +506,7 @@ class TraceIngestionService:
             prompt_token_cost=token_data.prompt_token_cost,
             completion_token_cost=token_data.completion_token_cost,
             total_token_cost=token_data.total_token_cost,
+            ingest_bytes=ingest_bytes,
         )
 
     def _extract_value_from_otel_format(
@@ -592,6 +663,7 @@ class TraceIngestionService:
                     prompt_token_cost=None,
                     completion_token_cost=None,
                     total_token_cost=None,
+                    ingest_bytes=None,
                 )
 
             # Aggregate within this batch (handles multiple spans per trace in one ingestion)
@@ -652,7 +724,7 @@ class TraceIngestionService:
                         trace_utils.value_to_string(output_value)
                     )
 
-            for field in TOKEN_FIELDS:
+            for field in [*TOKEN_FIELDS, "ingest_bytes"]:
                 span_value = getattr(span, field)
                 trace_updates[trace_id][field] = safe_add(  # type: ignore[literal-required]
                     trace_updates[trace_id][field],  # type: ignore[literal-required]
@@ -774,6 +846,11 @@ class TraceIngestionService:
                 DatabaseTraceMetadata.total_token_cost + stmt.excluded.total_token_cost,
                 DatabaseTraceMetadata.total_token_cost,
                 stmt.excluded.total_token_cost,
+            ),
+            ingest_bytes=func.coalesce(
+                DatabaseTraceMetadata.ingest_bytes + stmt.excluded.ingest_bytes,
+                DatabaseTraceMetadata.ingest_bytes,
+                stmt.excluded.ingest_bytes,
             ),
             # Prefer new non-null values for input/output content
             # This allows updates if a new batch provides a better root span
