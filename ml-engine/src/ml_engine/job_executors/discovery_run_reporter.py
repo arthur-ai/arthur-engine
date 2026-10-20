@@ -27,7 +27,17 @@ from arthur_client.api_bindings import (
 )
 from arthur_client.api_bindings.exceptions import ApiException
 
-from job_executors.discovery_scan import DiscoveryErrorCode, DiscoveryScanOutcome
+from job_executors.discovery_scan import (
+    DeviceCoverage,
+    DiscoveryErrorCode,
+    DiscoveryScanOutcome,
+)
+
+# The coverage fields the run store takes only once its schema declares them. The
+# Platform's schema is arthur-scope's, and the generated client says what it holds, so
+# the engine sends the per-device list where the client has a field for it and keeps it
+# in the job log either way.
+PER_DEVICE_FIELDS = ("unreadable_devices", "unreadable_devices_truncated")
 
 DELIVERY_ATTEMPTS = 3
 # Seconds per attempt, so a Platform that accepts the connection and never answers
@@ -61,11 +71,25 @@ def platform_outcome(outcome: DiscoveryScanOutcome) -> PutDiscoveryRunOutcome:
         ),
         denied_scopes=[],
         device_coverage=(
-            DiscoveryDeviceCoverage(**asdict(outcome.device_coverage))
+            platform_coverage(outcome.device_coverage)
             if outcome.device_coverage is not None
             else None
         ),
     )
+
+
+def platform_coverage(coverage: DeviceCoverage) -> DiscoveryDeviceCoverage:
+    """The run store's shape for a scan's device coverage.
+
+    Every count travels. The per-device list travels when the client's model declares
+    `PER_DEVICE_FIELDS`, and is left out otherwise, rather than refused by the model
+    and the whole outcome with it.
+    """
+    fields = asdict(coverage)
+    if PER_DEVICE_FIELDS[0] not in DiscoveryDeviceCoverage.model_fields:
+        for name in PER_DEVICE_FIELDS:
+            fields.pop(name)
+    return DiscoveryDeviceCoverage(**fields)
 
 
 class PlatformRunReporter:

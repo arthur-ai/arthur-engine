@@ -130,7 +130,10 @@ class JamfConnector:
                 continue
             read = records_for(device, matcher, VENDOR, logger)
             if read.unreadable is not None:
-                coverage.count_unreadable(read.unreadable.value)
+                coverage.count_unreadable(
+                    read.unreadable.value,
+                    device.unreadable(read.unreadable.value),
+                )
                 continue
             coverage.devices_decoded += 1
             if read.records:

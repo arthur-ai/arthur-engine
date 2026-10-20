@@ -28,6 +28,10 @@ holding `=` or `,` cannot be written as a selector.
 ONE INSTANCE IS THE UNIT THAT CAN FAIL. An instance whose inventory cannot be read is
 reported and skipped; a refused credential or a denied action is not one instance's
 problem, and ends the scan.
+
+EVERY UNREADABLE INSTANCE IS LISTED, NOT ONLY COUNTED. The instances this scan cannot see
+are where unmanaged AI sits, so each goes on the run's coverage by instance id, Name tag,
+account and region, and reason, up to the run store's cap.
 """
 
 import logging
@@ -228,11 +232,17 @@ class Ec2Connector:
                 if not scope.admit(device, coverage):
                     continue
                 if instance.windows:
-                    coverage.count_unreadable(UNSUPPORTED_PLATFORM)
+                    coverage.count_unreadable(
+                        UNSUPPORTED_PLATFORM,
+                        device.unreadable(UNSUPPORTED_PLATFORM),
+                    )
                     continue
                 running = instance.state == "running"
                 if running and instance.id not in managed:
-                    coverage.count_unreadable(NOT_SSM_MANAGED)
+                    coverage.count_unreadable(
+                        NOT_SSM_MANAGED,
+                        device.unreadable(NOT_SSM_MANAGED),
+                    )
                     continue
 
                 try:
@@ -243,10 +253,16 @@ class Ec2Connector:
                         # instance behind it would fail the same way.
                         raise
                     if e.code == "InvalidInstanceId":
-                        coverage.count_unreadable(NOT_SSM_MANAGED)
+                        coverage.count_unreadable(
+                            NOT_SSM_MANAGED,
+                            device.unreadable(NOT_SSM_MANAGED),
+                        )
                         continue
                     logger.warning("%s: inventory not read (%s)", instance.id, e)
-                    coverage.count_unreadable(READ_FAILED)
+                    coverage.count_unreadable(
+                        READ_FAILED,
+                        device.unreadable(READ_FAILED),
+                    )
                     continue
 
                 attributes, problem = assemble(inventory.entries if inventory else [])
@@ -256,7 +272,10 @@ class Ec2Connector:
                         instance.id,
                         problem,
                     )
-                    coverage.count_unreadable(INVENTORY_INCOMPLETE)
+                    coverage.count_unreadable(
+                        INVENTORY_INCOMPLETE,
+                        device.unreadable(INVENTORY_INCOMPLETE),
+                    )
                     continue
 
                 records = reader.read(
@@ -294,11 +313,12 @@ class Ec2Connector:
             # this state legitimately.
             logger.warning(
                 "EC2 scan decoded 0 of %s instance(s). This reads as a clean fleet and "
-                "is almost never one: the collector may not be deployed (the runbook's "
-                "association targets instances tagged arthur-ai-discovery=enabled), SSM "
-                "may not manage the instances, their inventory association may not "
-                "gather custom inventory, they may not have reported within the "
-                "lookback window, or no instance has finished its first run and upload.",
+                "is almost never one: the install association may not have run on "
+                "these instances yet, SSM may not manage them, their inventory "
+                "association may not gather custom inventory, they may not have "
+                "reported within the lookback window, or no instance has finished its "
+                "first run and upload. Each instance is listed with its reason under "
+                "device_coverage.unreadable_devices on this run's outcome.",
                 seen,
             )
 

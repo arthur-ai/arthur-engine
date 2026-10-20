@@ -11,6 +11,7 @@ import gzip
 import io
 import json
 import logging
+from dataclasses import asdict
 from datetime import datetime, timezone
 from typing import Any, Optional
 
@@ -32,6 +33,7 @@ from discovery.cloud.gce.connector import (
     ALLOW_ADC_ENV_VAR,
     GUEST_ATTRIBUTES_DISABLED,
     NOT_REPORTED_IN_WINDOW,
+    OSCONFIG_DISABLED,
     READ_FAILED,
     VENDOR,
     ComputeEngineConnector,
@@ -40,6 +42,7 @@ from discovery.cloud.gce.connector import (
 )
 from job_executors.discovery_output_contract import check_batch
 from job_executors.discovery_scan import (
+    MAX_UNREADABLE_DEVICES,
     AcceptsStopCheck,
     DiscoveryConfigurationError,
     DiscoveryErrorCode,
@@ -102,6 +105,7 @@ def vm(
     labels: Optional[dict[str, str]] = None,
     flag: Optional[str] = None,
     project: str = PROJECT,
+    osconfig: Optional[str] = None,
 ) -> dict[str, Any]:
     """A VM as `aggregated/instances` returns it."""
     record: dict[str, Any] = {
@@ -120,6 +124,10 @@ def vm(
     if flag is not None:
         record["metadata"]["items"].append(
             {"key": "enable-guest-attributes", "value": flag},
+        )
+    if osconfig is not None:
+        record["metadata"]["items"].append(
+            {"key": "enable-osconfig", "value": osconfig},
         )
     return record
 
@@ -158,8 +166,9 @@ class FakeCompute:
     """Compute Engine's three read calls, and a log of what was asked.
 
     `pages[project]` is the listing's pages; `project_flag[project]` the project's
-    `enable-guest-attributes`, absent when unset; `guest[(zone, name)]` a VM's answer,
-    missing for 404, or a list of responses to hand out in turn.
+    `enable-guest-attributes` and `project_osconfig[project]` its `enable-osconfig`,
+    each absent when unset; `guest[(zone, name)]` a VM's answer, missing for 404, or a
+    list of responses to hand out in turn.
     """
 
     def __init__(
@@ -168,9 +177,13 @@ class FakeCompute:
         project_flag: Optional[dict[str, str]] = None,
         guest: Optional[dict[tuple[str, str], Any]] = None,
         unreachables: Optional[list[str]] = None,
+        project_osconfig: Optional[dict[str, str]] = None,
     ) -> None:
         self.pages = pages
         self.project_flag = {PROJECT: "TRUE"} if project_flag is None else project_flag
+        self.project_osconfig = (
+            {PROJECT: "TRUE"} if project_osconfig is None else project_osconfig
+        )
         self.guest = guest or {}
         self.unreachables = unreachables or []
         self.calls: list[tuple[str, dict[str, Any]]] = []
@@ -198,8 +211,14 @@ class FakeCompute:
             return FakeResponse(200, body)
 
         if len(parts) == 2:
-            flag = self.project_flag.get(parts[1])
-            items = [{"key": "enable-guest-attributes", "value": flag}] if flag else []
+            items = [
+                {"key": key, "value": value}
+                for key, value in (
+                    ("enable-guest-attributes", self.project_flag.get(parts[1])),
+                    ("enable-osconfig", self.project_osconfig.get(parts[1])),
+                )
+                if value
+            ]
             return FakeResponse(200, {"commonInstanceMetadata": {"items": items}})
 
         if parts[-1] == "getGuestAttributes":
@@ -264,6 +283,13 @@ def scan(
         LOG,
     )
     return [record for batch in batches for record in batch]
+
+
+def listed(connector: ComputeEngineConnector) -> list[dict[str, Any]]:
+    """The unreadable VMs the scan listed, as the run's coverage carries them."""
+    coverage = connector.device_coverage()
+    assert coverage is not None
+    return [asdict(device) for device in coverage.unreadable_devices]
 
 
 # --- records --------------------------------------------------------------------------
@@ -478,8 +504,152 @@ def test_a_vm_the_collector_never_reached_is_counted_and_the_fleet_is_not_called
     coverage = connector.device_coverage()
     assert coverage is not None
     assert coverage.unreadable_by_reason == {"never-reported": 1}
+    assert listed(connector) == [
+        {
+            "device_key": "1",
+            "name": "vm-1",
+            "location": f"{PROJECT}/{ZONE}",
+            "reason": "never-reported",
+            "last_reported": None,
+        },
+    ]
     assert "decoded 0 of 1 VM(s)" in caplog.text
-    assert "arthur-ai-discovery=enabled" in caplog.text
+    assert "device_coverage.unreadable_devices" in caplog.text
+
+
+@pytest.mark.parametrize(
+    "instance_osconfig,project_osconfig,reason",
+    [
+        (None, "TRUE", "never-reported"),
+        ("TRUE", "FALSE", "never-reported"),
+        ("FALSE", "TRUE", OSCONFIG_DISABLED),
+        (None, "FALSE", OSCONFIG_DISABLED),
+        (None, None, OSCONFIG_DISABLED),
+    ],
+)
+def test_a_vm_nothing_was_written_for_with_osconfig_off_can_never_be_reached(
+    instance_osconfig: Optional[str],
+    project_osconfig: Optional[str],
+    reason: str,
+) -> None:
+    """The OS policy installs the collector through the OS Config agent, which acts only
+    where enable-osconfig is true. Off, the rollout cannot reach the VM, which is not
+    the same fact as a rollout that has not reached it yet."""
+    # The VM sets guest attributes itself, so the only project read is for osconfig.
+    fake = FakeCompute(
+        {PROJECT: [[vm("1", flag="TRUE", osconfig=instance_osconfig)]]},
+        guest={},
+        project_osconfig={PROJECT: project_osconfig} if project_osconfig else {},
+    )
+    connector = connector_for(fake)
+    assert scan(fake, connector=connector) == []
+
+    coverage = connector.device_coverage()
+    assert coverage is not None
+    assert coverage.unreadable_by_reason == {reason: 1}
+    assert [d["reason"] for d in listed(connector)] == [reason]
+    # The project is read once, for both keys, and only when the VM does not say.
+    project_reads = [url for url, _ in fake.calls if url == f"{API}/projects/{PROJECT}"]
+    assert len(project_reads) == (1 if instance_osconfig is None else 0)
+
+
+def test_a_vm_that_has_reported_keeps_its_own_reasons_whatever_osconfig_says() -> None:
+    """What it wrote is evidence; the key says only what the agent will do next."""
+    fake = FakeCompute(
+        {PROJECT: [[vm("1", osconfig="FALSE"), vm("2", osconfig="FALSE")]]},
+        guest={
+            (ZONE, "vm-1"): attributes(CODEX),
+            (ZONE, "vm-2"): attributes("no-cache", "no-cache"),
+        },
+        project_osconfig={},
+    )
+    connector = connector_for(fake)
+    records = scan(fake, connector=connector)
+
+    assert [r.external_id for r in records] == ["1:codex-cli"]
+    coverage = connector.device_coverage()
+    assert coverage is not None
+    assert coverage.unreadable_by_reason == {"no-cache": 1}
+
+
+def test_every_unreadable_vm_is_listed_by_id_location_and_reason() -> None:
+    """The machines a scan cannot see are where unmanaged AI sits, so each is a
+    finding by identity, not a number."""
+    days_ago = "ok 2026-10-09T08:00:00Z rows=2 packages-linux=ok"
+    fake = FakeCompute(
+        {
+            PROJECT: [
+                [
+                    vm("1", name="stale", status="TERMINATED"),
+                    vm("2", name="no-attrs", flag="FALSE"),
+                    vm("3", name="broken"),
+                    vm("4", name="no-cache"),
+                    vm("5", name="fine"),
+                ],
+            ],
+        },
+        guest={
+            (ZONE, "stale"): attributes(CODEX, days_ago),
+            (ZONE, "broken"): [FakeResponse(500, {"error": {"message": "x"}})] * 5,
+            (ZONE, "no-cache"): attributes("no-cache", "no-cache"),
+            (ZONE, "fine"): attributes(CODEX),
+        },
+    )
+    connector = connector_for(fake)
+    records = scan(fake, connector=connector)
+
+    assert [r.external_id for r in records] == ["5:codex-cli"]
+    assert listed(connector) == [
+        {
+            "device_key": "1",
+            "name": "stale",
+            "location": f"{PROJECT}/{ZONE}",
+            "reason": NOT_REPORTED_IN_WINDOW,
+            "last_reported": "2026-10-09T08:00:00+00:00",
+        },
+        {
+            "device_key": "2",
+            "name": "no-attrs",
+            "location": f"{PROJECT}/{ZONE}",
+            "reason": GUEST_ATTRIBUTES_DISABLED,
+            "last_reported": None,
+        },
+        {
+            "device_key": "3",
+            "name": "broken",
+            "location": f"{PROJECT}/{ZONE}",
+            "reason": READ_FAILED,
+            "last_reported": None,
+        },
+        {
+            "device_key": "4",
+            "name": "no-cache",
+            "location": f"{PROJECT}/{ZONE}",
+            "reason": "no-cache",
+            "last_reported": None,
+        },
+    ]
+    coverage = connector.device_coverage()
+    assert coverage is not None
+    assert coverage.devices_unreadable == 4
+    assert coverage.unreadable_devices_truncated == 0
+
+
+def test_the_list_stops_at_the_cap_and_the_counts_do_not() -> None:
+    fleet = [vm(str(i)) for i in range(MAX_UNREADABLE_DEVICES + 1)]
+    fake = FakeCompute({PROJECT: [fleet]}, guest={})
+    connector = connector_for(fake)
+    assert scan(fake, connector=connector) == []
+
+    coverage = connector.device_coverage()
+    assert coverage is not None
+    assert coverage.devices_unreadable == MAX_UNREADABLE_DEVICES + 1
+    assert coverage.unreadable_by_reason == {
+        "never-reported": MAX_UNREADABLE_DEVICES + 1,
+    }
+    assert len(coverage.unreadable_devices) == MAX_UNREADABLE_DEVICES
+    assert coverage.unreadable_devices_truncated == 1
+    assert [d.device_key for d in coverage.unreadable_devices[:2]] == ["0", "1"]
 
 
 def test_a_failed_run_keeps_the_last_good_scan_and_is_named(

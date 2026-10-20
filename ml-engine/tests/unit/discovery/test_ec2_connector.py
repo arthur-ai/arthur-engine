@@ -16,6 +16,7 @@ import hashlib
 import io
 import json
 import logging
+from dataclasses import asdict
 from datetime import datetime, timezone
 from typing import Any, Iterator, Optional
 
@@ -328,6 +329,20 @@ def coverage_of(connector: Ec2Connector) -> dict[str, int]:
     return dict(coverage.unreadable_by_reason)
 
 
+def listed(
+    connector: Ec2Connector,
+) -> list[tuple[str, Optional[str], str, Optional[str]]]:
+    """The unreadable instances the scan listed: id, Name tag, reason, last report."""
+    coverage = connector.device_coverage()
+    assert coverage is not None
+    for device in coverage.unreadable_devices:
+        assert device.location == f"{ACCOUNT}/{REGION}"
+    return [
+        (d.device_key, d.name, d.reason, d.last_reported)
+        for d in coverage.unreadable_devices
+    ]
+
+
 # --- records --------------------------------------------------------------------------
 
 
@@ -504,8 +519,51 @@ def test_an_instance_the_collector_never_reached_is_counted_and_the_fleet_is_not
         assert scan(aws, connector=connector) == []
 
     assert coverage_of(connector) == {"never-reported": 1}
+    assert listed(connector) == [(iid("1"), "vm-1", "never-reported", None)]
     assert "decoded 0 of 1 instance(s)" in caplog.text
-    assert "arthur-ai-discovery=enabled" in caplog.text
+    assert "device_coverage.unreadable_devices" in caplog.text
+
+
+def test_every_unreadable_instance_is_listed_by_id_location_and_reason() -> None:
+    """The machines a scan cannot see are where unmanaged AI sits, so each is a
+    finding by identity, not a number."""
+    stale = "ok 2026-10-01T00:00:00Z rows=2 packages-linux=ok"
+    aws = FakeAws(
+        {
+            REGION: [
+                [
+                    instance("1", name="stale", state="stopped"),
+                    instance("2", name="win", windows=True),
+                    instance("3", name="unmanaged"),
+                    instance("4", name="broken"),
+                    instance("5", name="torn"),
+                    instance("6", name="fine"),
+                ],
+            ],
+        },
+        managed={REGION: {iid("4"), iid("5"), iid("6")}},
+        inventory={
+            iid("1"): reported(status=stale),
+            iid("4"): client_error("InternalServerError", "x", "ListInventoryEntries"),
+            iid("5"): reported()[1:],
+            iid("6"): reported(),
+        },
+    )
+    connector = connector_for(aws)
+    records = scan(aws, connector=connector)
+
+    assert [r.external_id for r in records] == [f"{iid('6')}:codex-cli"]
+    assert listed(connector) == [
+        (iid("1"), "stale", NOT_REPORTED_IN_WINDOW, "2026-10-01T00:00:00+00:00"),
+        (iid("2"), "win", UNSUPPORTED_PLATFORM, None),
+        (iid("3"), "unmanaged", NOT_SSM_MANAGED, None),
+        (iid("4"), "broken", READ_FAILED, None),
+        (iid("5"), "torn", INVENTORY_INCOMPLETE, None),
+    ]
+    coverage = connector.device_coverage()
+    assert coverage is not None
+    assert coverage.devices_unreadable == 5
+    assert asdict(coverage.unreadable_devices[0])["location"] == f"{ACCOUNT}/{REGION}"
 
 
 def test_a_failed_run_keeps_the_last_good_scan_and_is_named(

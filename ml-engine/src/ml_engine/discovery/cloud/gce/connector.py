@@ -21,6 +21,18 @@ was turned off, and what the API still serves for it is stale by construction. I
 counted as `guest-attributes-disabled` rather than decoded, so a fleet with the setting
 off reads as a deployment fault and not as machines that stopped reporting.
 
+OS CONFIG OFF IS NAMED TOO, ON A VM NOTHING WAS EVER WRITTEN FOR. The OS policy that
+installs the collector is applied by the OS Config agent, which acts only where
+`enable-osconfig` is true, on the VM or on its project. A VM with no `arthur/` namespace
+and that key off can never be reached by the rollout, which is a different fact from a
+rollout that has not reached it yet; it is counted as `osconfig-disabled`, so a VM whose
+agent was turned off is visible by name. A VM that has reported keeps its own reasons:
+what it wrote is evidence, whatever its key says now.
+
+EVERY UNREADABLE VM IS LISTED, NOT ONLY COUNTED. The VMs this scan cannot see are where
+unmanaged AI sits, so each goes on the run's coverage by instance id, name, project and
+zone, and reason, up to the run store's cap.
+
 LABELS STAND WHERE GROUPS DO. A selector is a `key=value` pair and is matched exactly;
 `discovery.endpoint.scope` applies them with Jamf's rules, exclude winning. Unlike a
 group name a label has no registry to resolve against, so a selector no VM carries is
@@ -49,6 +61,8 @@ from google.auth.transport.requests import AuthorizedSession
 from discovery.catalog import Matcher
 from discovery.cloud.gce.client import (
     COMPUTE_READONLY_SCOPE,
+    GUEST_ATTRIBUTES_FLAG,
+    OSCONFIG_FLAG,
     ComputeEngineClient,
     ComputeEngineError,
     Instance,
@@ -78,13 +92,15 @@ EXCLUDE_LABELS_FIELD = "exclude_labels"
 # Opt-in for Application Default Credentials when a source has no key, as Vertex has.
 ALLOW_ADC_ENV_VAR = "ARTHUR_ENGINE_GCP_COMPUTE_ENGINE_ALLOW_ADC"
 
-# The device coverage reason only Compute Engine produces, beside the payload's own and
+# The device coverage reasons only Compute Engine produces, beside the payload's own and
 # the ones every VM-carrying cloud shares (READ_FAILED, NOT_REPORTED_IN_WINDOW).
 GUEST_ATTRIBUTES_DISABLED = "guest-attributes-disabled"
+OSCONFIG_DISABLED = "osconfig-disabled"
 
 __all__ = [
     "GUEST_ATTRIBUTES_DISABLED",
     "NOT_REPORTED_IN_WINDOW",
+    "OSCONFIG_DISABLED",
     "READ_FAILED",
     "ComputeEngineConnector",
 ]
@@ -214,7 +230,19 @@ class ComputeEngineConnector:
 
         carried: set[str] = set()
         reader = VmInventoryReader(coverage, matcher, VENDOR, since, logger)
-        project_flags: dict[str, Optional[str]] = {}
+        project_flags: dict[str, Mapping[str, Optional[str]]] = {}
+
+        def flag(instance: Instance, key: str, own: Optional[str]) -> Optional[str]:
+            """The VM's own value for the key, else its project's.
+
+            The project is read only when a VM does not say, so a role without
+            compute.projects.get still scans a fleet that sets its keys per VM.
+            """
+            if own is not None:
+                return own
+            if instance.project not in project_flags:
+                project_flags[instance.project] = client.project_flags(instance.project)
+            return project_flags[instance.project][key]
 
         for instance in self._until_stopped(
             _all_instances(client, settings.project_ids),
@@ -224,17 +252,13 @@ class ComputeEngineConnector:
             if not scope.admit(device, coverage):
                 continue
 
-            flag = instance.guest_attributes_flag
-            if flag is None:
-                # Read only when a VM does not say, so a role without
-                # compute.projects.get still scans a fleet that sets it per VM.
-                if instance.project not in project_flags:
-                    project_flags[instance.project] = (
-                        client.project_guest_attributes_flag(instance.project)
-                    )
-                flag = project_flags[instance.project]
-            if not _guest_attributes_on(flag):
-                coverage.count_unreadable(GUEST_ATTRIBUTES_DISABLED)
+            if not _flag_on(
+                flag(instance, GUEST_ATTRIBUTES_FLAG, instance.guest_attributes_flag),
+            ):
+                coverage.count_unreadable(
+                    GUEST_ATTRIBUTES_DISABLED,
+                    device.unreadable(GUEST_ATTRIBUTES_DISABLED),
+                )
                 continue
 
             try:
@@ -249,7 +273,18 @@ class ComputeEngineConnector:
                     device.device_key,
                     e,
                 )
-                coverage.count_unreadable(READ_FAILED)
+                coverage.count_unreadable(READ_FAILED, device.unreadable(READ_FAILED))
+                continue
+
+            if attributes is None and not _flag_on(
+                flag(instance, OSCONFIG_FLAG, instance.osconfig_flag),
+            ):
+                # Nothing written, and the agent that would install the collector is
+                # off: the rollout cannot reach this VM, as opposed to not yet.
+                coverage.count_unreadable(
+                    OSCONFIG_DISABLED,
+                    device.unreadable(OSCONFIG_DISABLED),
+                )
                 continue
 
             records = reader.read(
@@ -285,12 +320,14 @@ class ComputeEngineConnector:
             # is in this state legitimately.
             logger.warning(
                 "Compute Engine scan decoded 0 of %s VM(s). This reads as a clean fleet "
-                "and is almost never one: the collector may not be deployed (the "
-                "runbook's OS policy targets VMs labelled arthur-ai-discovery=enabled), "
-                "guest attributes may be off on the VMs or their project, the VMs may "
-                "not have reported within the lookback window (stopped, or the "
-                "collector's timer removed), or no VM has finished its first run, up to "
-                "15 minutes after boot.",
+                "and is almost never one: the OS policy may not have rolled out to "
+                "these VMs yet, the OS Config agent may not act on them "
+                "(enable-osconfig off, or no service account on the VM), guest "
+                "attributes may be off on the VMs or their project, the VMs may not "
+                "have reported within the lookback window (stopped, or the collector's "
+                "timer removed), or no VM has finished its first run, up to 15 minutes "
+                "after boot. Each VM is listed with its reason under "
+                "device_coverage.unreadable_devices on this run's outcome.",
                 seen,
             )
 
@@ -369,6 +406,6 @@ def _device_for(instance: Instance) -> ManagedDevice:
     )
 
 
-def _guest_attributes_on(flag: Optional[str]) -> bool:
-    """The VM's own setting, or its project's when it has none. Unset is off."""
+def _flag_on(flag: Optional[str]) -> bool:
+    """A metadata key that turns something on: `TRUE`, however cased. Unset is off."""
     return (flag or "").strip().lower() == "true"
