@@ -1,6 +1,6 @@
 [project]
 name = "ml-engine"
-version = "2.1.1027"
+version = "2.1.1029"
 description = ""
 authors = [{ name = "Arthur", email = "engineering@arthur.ai" }]
 license = "MIT"
@@ -38,7 +38,7 @@ dependencies = [
   "types-requests==2.33.0.20260906",
   "psutil==7.2.2",
   "pyarrow==25.0.1",
-  "arthur-common==2.4.96",
+  "arthur-common==2.4.97",
   "gunicorn>=26,<27",
   # Held below 2.1: snowflake-sqlalchemy subclasses sqlalchemy.orm.context.ORMSelectCompileState,
   # which SQLAlchemy 2.1 made private, so it fails at import. See the sqlalchemy rule in /renovate.json.

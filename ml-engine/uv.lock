@@ -8,7 +8,7 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "2026-10-17T20:18:18.7441Z"
+exclude-newer = "2026-10-17T22:38:51.610543Z"
 exclude-newer-span = "P3D"
 
 [options.exclude-newer-package]
@@ -170,7 +170,7 @@ wheels = [
 
 [[package]]
 name = "arthur-common"
-version = "2.4.96"
+version = "2.4.97"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "datasketches" },
@@ -186,9 +186,9 @@ dependencies = [
     { name = "types-requests" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c8/c7/8dd1e612f6e1af5d2fe59d6159a43093e9868e361710558057e21c5a772f/arthur_common-2.4.96.tar.gz", hash = "sha256:d152efdcf8beb08de0513e1f7f243d71aae98aebe2f6639928d8480cb74bfd13", size = 14757511, upload-time = "2026-10-20T20:12:45.928Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/6f/27/daf73b61791739a0b450df7415355180090851618402a68ec058d0182f67/arthur_common-2.4.97.tar.gz", hash = "sha256:6351ca4a91852f94943fbc6caa8d0af2dc1af4aee249a1d670acea05696951e7", size = 14761604, upload-time = "2026-10-20T21:42:10.032Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ec/19/4595040de85ed2b07f70cd8a5c6a1251955894b22d18154dd6520312b605/arthur_common-2.4.96-py3-none-any.whl", hash = "sha256:88f82dd45203cf276303d0882f7c49867d6541c976c129445dd59e24a51fedd3", size = 106432, upload-time = "2026-10-20T20:12:44.305Z" },
+    { url = "https://files.pythonhosted.org/packages/7f/e8/8c7d740e12964164bc04a9f66d4b428b5ec34834944d0091752708a72008/arthur_common-2.4.97-py3-none-any.whl", hash = "sha256:0034b37a1c6967786f5b45c14a903b62290b816597c88107eab9da0c5e63340f", size = 108775, upload-time = "2026-10-20T21:42:07.597Z" },
 ]
 
 [[package]]
@@ -1524,7 +1524,7 @@ wheels = [
 
 [[package]]
 name = "ml-engine"
-version = "2.1.1027"
+version = "2.1.1029"
 source = { editable = "." }
 dependencies = [
     { name = "adlfs" },
@@ -1586,7 +1586,7 @@ linters = [
 requires-dist = [
     { name = "adlfs", specifier = "==2026.8.0" },
     { name = "arthur-client", specifier = "==1.4.2868" },
-    { name = "arthur-common", specifier = "==2.4.96" },
+    { name = "arthur-common", specifier = "==2.4.97" },
     { name = "boto3", specifier = ">=1.43,<2" },
     { name = "croniter", specifier = "==6.2.4" },
     { name = "databricks-sdk", specifier = ">=0.84.0,<1" },
