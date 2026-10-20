@@ -47,7 +47,7 @@ variable "name" {
 }
 
 variable "label" {
-  description = "The VM label that switches discovery on. Defaults to the policy's own, arthur-ai-discovery=enabled."
+  description = "A pilot: target only the VMs carrying this label, instead of every VM in the zones. Leave unset for the fleet. There is no exclusion label on purpose: a label a VM's owner can set would be an opt-out from discovery."
   type = object({
     key   = string
     value = string

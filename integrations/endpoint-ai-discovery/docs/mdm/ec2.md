@@ -10,9 +10,11 @@ and the instance connects to nothing it does not already reach.
 the reporter, and enables the timer. The instance's inventory association uploads what the
 reporter writes. The collector is the one a Compute Engine VM runs; only the reporter differs.
 
-> **Run as written on four instances.** On 2026-10-20 sections 01 to 03 ran as written, from a
-> pinned commit, on fresh Amazon Linux 2023 and Ubuntu 24.04 instances, each on x86_64
-> (`t3.small`) and arm64 (`t4g.small`):
+> **Run on four instances.** On 2026-10-20 sections 01 to 03 ran, from a pinned commit, on fresh
+> Amazon Linux 2023 and Ubuntu 24.04 instances, each on x86_64 (`t3.small`) and arm64
+> (`t4g.small`), with the install script in an `AWS-RunShellScript` association targeted by a
+> tag. Section 02 now carries the same script in a document that skips Windows, and both
+> associations target every managed instance; **that shape is not yet run**. Measured then:
 > - Section 02's association ran twice in a row on each. The second run changed nothing: the
 >   timer was not restarted and every file kept its sha256.
 > - Each instance collected, uploaded through section 03's association, and was decoded by the
@@ -82,9 +84,9 @@ Replace `COMMIT` and the five `SHA256_*` values with section 01's output. The sc
 idempotent: State Manager re-applies it on its schedule, and a run that changes nothing leaves
 the timer as it was.
 
-**It is POSIX `sh`, not bash.** `AWS-RunShellScript` runs it with `sh`, which on Ubuntu is
-dash: a `set -o pipefail` there fails every run with `Illegal option -o pipefail` (measured
-2026-10-20 on Ubuntu 24.04). Keep it free of bashisms when editing it.
+**It is POSIX `sh`, not bash.** The `aws:runShellScript` step runs it with `sh`, which on
+Ubuntu is dash: a `set -o pipefail` there fails every run with `Illegal option -o pipefail`
+(measured 2026-10-20 on Ubuntu 24.04). Keep it free of bashisms when editing it.
 
 ```sh
 # arthur-ai-discovery-install.sh
@@ -119,16 +121,37 @@ systemctl daemon-reload
 systemctl enable --now arthur-ai-discovery.timer
 ```
 
+**The script travels in a document of its own, not `AWS-RunShellScript`**, so that an
+association targeting every instance can skip Windows: a step whose `platformType`
+precondition does not hold is skipped and the association reports `Success` there, where
+`AWS-RunShellScript` would report `Failed` on every Windows instance and count each toward
+`--max-errors`.
+
 ```bash
+jq -n --rawfile script arthur-ai-discovery-install.sh '{
+  schemaVersion: "2.2",
+  description: "Arthur endpoint AI discovery: osquery, the collector and its timer, on Linux",
+  mainSteps: [{
+    action: "aws:runShellScript", name: "install",
+    precondition: { StringEquals: ["platformType", "Linux"] },
+    inputs: { runCommand: [$script] }
+  }]
+}' > arthur-ai-discovery-install.json
+aws ssm create-document --name arthur-ai-discovery-install --document-type Command \
+  --document-format JSON --content file://arthur-ai-discovery-install.json
 aws ssm create-association --association-name arthur-ai-discovery \
-  --name AWS-RunShellScript \
-  --targets Key=tag:arthur-ai-discovery,Values=enabled \
+  --name arthur-ai-discovery-install \
+  --targets 'Key=InstanceIds,Values=*' \
   --schedule-expression 'rate(1 day)' \
-  --parameters "$(jq -Rs '{commands: [.]}' arthur-ai-discovery-install.sh)"
+  --max-concurrency 10% --max-errors 10%
 ```
 
-An association is per region; create one in each region the fleet runs in. A tag added to an
-instance later is picked up by the association, which runs on it at once.
+The document and the association are per region; create both in each region the fleet runs
+in. An instance SSM starts managing later is picked up by the association, which runs on it at
+once. `--max-concurrency` paces the rollout, and `--max-errors` stops it once a tenth of the
+instances have failed the install, so a bad pin stops at a tenth of the fleet. To change the
+script, `aws ssm update-document --document-version '$LATEST'`, then
+`update-document-default-version`.
 
 ## 03 · The inventory association — terminal
 
@@ -146,12 +169,12 @@ aws ssm describe-instance-associations-status --instance-id INSTANCE \
   parameters — with `aws ssm update-association`, keeping every other parameter as it is.
   Quick Setup's host-management association takes priority over any other; whether it gathers
   custom inventory is not documented and **not yet measured**.
-- **None exists:** create one, on the same tag.
+- **None exists:** create one, on every instance.
 
 ```bash
 aws ssm create-association --association-name arthur-ai-discovery-inventory \
   --name AWS-GatherSoftwareInventory \
-  --targets Key=tag:arthur-ai-discovery,Values=enabled \
+  --targets 'Key=InstanceIds,Values=*' \
   --schedule-expression 'rate(1 hour)' \
   --parameters customInventory=Enabled
 ```
@@ -168,16 +191,25 @@ looking for beginning of value`.
 
 ## 04 · Scope and roll out — terminal
 
-Both associations target instances tagged `arthur-ai-discovery=enabled`, so the tag is the
-switch:
+Both associations target every instance SSM manages in the region, so being SSM-managed
+(section 00) is the only switch, and Default Host Management Configuration makes that an
+account setting rather than a per-instance one.
 
-```bash
-aws ec2 create-tags --resources INSTANCE --tags Key=arthur-ai-discovery,Value=enabled
-```
+**No tag narrows the fleet, and no tag excludes an instance.** Discovery is for what nobody
+opted in. An instance's owner can set its tags, so an opt-out tag would be a way to hide from
+it; the only exclusions are on Arthur's source (section 07), set by whoever owns governance,
+and counted. What an owner *can* do is stop the SSM Agent or detach its instance profile.
+Arthur's source counts such an instance as `not-ssm-managed`, so it shows as a gap and never
+as a clean machine, and a service control policy can deny `ssm:DeregisterManagedInstance` and
+instance profile changes, which Compute Engine has no equivalent of.
 
-Start with a handful, then widen. **When the first report arrives:** the timer's first run is
-5 minutes after boot plus up to 10 of random delay, and the upload follows on the inventory
-association's next run, up to its interval later.
+**To pilot on a handful first**, create both associations with
+`--targets Key=InstanceIds,Values=i-…,i-…`, then widen each with
+`aws ssm update-association --association-id ID --targets 'Key=InstanceIds,Values=*'`.
+
+**When the first report arrives:** the timer's first run is 5 minutes after boot plus up to 10
+of random delay, and the upload follows on the inventory association's next run, up to its
+interval later.
 
 ## 05 · Prove it on one instance — terminal
 
@@ -249,7 +281,9 @@ scoped to a resource:
 
 Grant these three, not `AmazonEC2ReadOnlyAccess` and `AmazonSSMReadOnlyAccess`. Those cover
 them, but `ssm:Get*` also reads Parameter Store and `ec2:Describe*` instance user data, where
-secrets are often kept.
+secrets are often kept. The source's `include_tags` and `exclude_tags` are the only scope there
+is, set by whoever owns governance, and an instance they leave out is still counted as excluded
+on every scan.
 
 The source takes an access key (`access_key_id`, `secret_access_key`), and a `role_arn` with an
 optional `external_id` to assume with it. A source without a key uses the engine's own AWS
@@ -283,7 +317,7 @@ failing keeps publishing its last good scan.
 ```bash
 aws ssm delete-association --association-id INSTALL_ASSOCIATION_ID
 aws ssm delete-association --association-id INVENTORY_ASSOCIATION_ID   # only if you created it
-aws ec2 delete-tags --resources INSTANCE --tags Key=arthur-ai-discovery
+aws ssm delete-document --name arthur-ai-discovery-install
 # on each instance:
 sudo systemctl disable --now arthur-ai-discovery.timer
 sudo rm -rf /etc/systemd/system/arthur-ai-discovery.service.d

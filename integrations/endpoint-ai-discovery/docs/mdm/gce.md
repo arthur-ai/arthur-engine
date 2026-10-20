@@ -71,8 +71,8 @@ can reach, keep the same checksums, and change the four URLs.
 
 [`deploy/arthur-ai-discovery.os-policy.yaml`](../../deploy/arthur-ai-discovery.os-policy.yaml)
 installs osquery from its apt repository, drops the collector, the reporter and the two units,
-and enables the timer, on VMs labelled `arthur-ai-discovery=enabled`, 10% of them every five
-minutes. Section 01 rendered it:
+and enables the timer, on every Debian and Ubuntu VM in the zone whose OS Config agent is on,
+10% of them every five minutes. Section 01 rendered it:
 
 ```bash
 gcloud compute os-config os-policy-assignments create arthur-ai-discovery \
@@ -85,23 +85,35 @@ artifact there, and this runbook has not yet been run on it.
 
 ## 03 · Scope and roll out — terminal
 
-The assignment targets VMs labelled `arthur-ai-discovery=enabled`, so the label is the switch:
+The assignment targets every VM in its zone (`instanceFilter: all`), so the two metadata keys
+of section 00 are the only switch. Set them on the project, where each VM takes them as its
+default, and nothing per VM remains:
 
 ```bash
-gcloud compute instances add-metadata VM --zone=ZONE \
+gcloud compute project-info add-metadata --project=PROJECT \
   --metadata=enable-osconfig=TRUE,enable-guest-attributes=TRUE
-gcloud compute instances add-labels VM --zone=ZONE --labels=arthur-ai-discovery=enabled
 ```
 
-Start with a handful, then widen: the policy's `rollout` changes at most 10% of the targeted VMs
-every five minutes.
+**No label narrows the fleet, and no label excludes a VM.** Discovery is for what nobody opted
+in. A VM's owner can set its labels, so an opt-out label would be a way to hide from it; the
+only exclusions are on Arthur's source (section 07), set by whoever owns governance, and
+counted. What an owner *can* do is set `enable-osconfig=FALSE` or
+`enable-guest-attributes=FALSE` on the VM itself, which wins over the project's default.
+Arthur's source counts such a VM by name, so it shows as a gap and never as a clean machine.
 
-**When the first report arrives**, measured 2026-10-12 on Debian 12:
+**To pilot on a handful first**, put an `inclusionLabels` block in place of `all: true` in the
+rendered policy and label those VMs, then put `all: true` back. With Terraform that is the
+module's `label`. The policy's `rollout` paces the fleet either way: at most 10% of the
+targeted VMs change every five minutes.
 
-| Labelled | Policy applied | First report |
+**When the first report arrives**, measured 2026-10-12 on Debian 12 while the policy was still
+targeted by a label. The trigger is now the VM existing with the agent on; what follows it is
+unchanged:
+
+| Targeted | Policy applied | First report |
 |---|---|---|
 | At creation | 43s after the VM was created | 14.5 min after boot: `OnBootSec` (5 min) plus the random delay (up to 10) |
-| An already-running VM (up 7 min) | 14s after the label | 1 min 24s after the label: `OnBootSec` had passed, so only the random delay |
+| An already-running VM (up 7 min) | 14s after it was targeted | 1 min 24s after: `OnBootSec` had passed, so only the random delay |
 
 ## 04 · Prove it on one VM — terminal
 
@@ -187,7 +199,9 @@ lists instances, reads each in-scope VM's `arthur/` namespace, and reads a proje
 `enable-guest-attributes` default when a VM does not set its own: `compute.instances.list`,
 `compute.instances.getGuestAttributes` and `compute.projects.get`. `roles/compute.viewer`
 includes all three; a custom role holding only those three is the least privilege, and one
-without `compute.projects.get` works only if every VM sets the flag itself.
+without `compute.projects.get` works only if every VM sets the flag itself. The source's
+`include_labels` and `exclude_labels` are the only scope there is, set by whoever owns
+governance, and a VM they leave out is still counted as excluded on every scan.
 
 The source's `service_account_key` is that account's JSON key. A source without one uses the
 engine's own Application Default Credentials (Workload Identity on GKE, say) only when the
@@ -207,7 +221,6 @@ reporting but failing keeps publishing its last good scan.
 
 ```bash
 gcloud compute os-config os-policy-assignments delete arthur-ai-discovery --location=ZONE
-gcloud compute instances remove-labels VM --zone=ZONE --labels=arthur-ai-discovery
 # on each VM:
 sudo systemctl disable --now arthur-ai-discovery.timer
 sudo rm -f /etc/systemd/system/arthur-ai-discovery.service /etc/systemd/system/arthur-ai-discovery.timer
@@ -235,7 +248,7 @@ module "arthur_ai_discovery" {
   reader            = "serviceAccount:arthur-discovery@my-project.iam.gserviceaccount.com"
 }
 
-# project_ids and include_labels for the source in section 07
+# project_ids for the source in section 07; include_labels is null unless a pilot label narrows it
 output "arthur_source" {
   value = module.arthur_ai_discovery.arthur_source
 }
@@ -245,8 +258,11 @@ output "arthur_source" {
 |---|---|---|
 | The OS policy assignment | Every project × zone | — |
 | `osconfig.googleapis.com` | Every project; left enabled on destroy | `enable_apis = false` |
-| `enable-osconfig=TRUE`, `enable-guest-attributes=TRUE` | Every project's metadata, as the default for each VM that does not set its own (below). The OS Config agent turns on wherever the default applies; the policy still reaches only the label | Leaving a key out of `project_metadata`; `[]` for both, then set them per VM |
+| `enable-osconfig=TRUE`, `enable-guest-attributes=TRUE` | Every project's metadata, as the default for each VM that does not set its own (below). The OS Config agent turns on wherever the default applies, and the policy reaches every VM it is on for | Leaving a key out of `project_metadata`; `[]` for both, then set them per VM |
 | `roles/compute.viewer` for Arthur's credential | Every project | Leaving `reader` unset |
+
+`label` narrows the assignments to a pilot label; leave it unset for the fleet. There is no
+exclusion label, for section 03's reason.
 
 **A VM's own metadata wins over the project's, key by key.** With its own
 `enable-osconfig=FALSE`, the OS Config agent does not act on the policy, so nothing is
@@ -254,8 +270,7 @@ installed. With its own `enable-guest-attributes=FALSE`, the policy installs and
 but every report is refused with 403. Arthur's source counts that VM as
 `guest-attributes-disabled` (section 07).
 
-Then label the VMs, wherever they are defined. It takes Terraform 1.5 and the Google provider
-6.33 or later.
+Nothing per VM remains. It takes Terraform 1.5 and the Google provider 6.33 or later.
 
 **A project that already holds either metadata key fails the apply**, `key "enable-osconfig"
 already present in metadata for project …` — measured, against a project set up for VM Manager
@@ -292,7 +307,7 @@ What differs from the gcloud path:
 - **Every file lands at 755.** The Google provider makes an assignment's file permissions
   output-only, so the API's default applies. The scripts need it. systemd warns that the units
   are marked executable and loads them.
-- **The apply does not wait for the rollout.** A pin bump re-rolls every labelled VM at the
+- **The apply does not wait for the rollout.** A pin bump re-rolls every VM at the
   policy's pace, which on a fleet outlasts the provider's timeout. Follow it in VM Manager's
   compliance view, then section 04.
 - **Destroying the module deletes the assignments and every metadata key it manages**,
