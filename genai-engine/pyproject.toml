@@ -1,13 +1,13 @@
 [project]
 name = "arthur-genai-engine"
-version = "2.1.1026"
+version = "2.1.1029"
 description = ""
 authors = [{ name = "Arthur", email = "engineering@arthur.ai" }]
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
 
 dependencies = [
-  # Held at 2.x: litellm 1.104.0 requires openai<3.0.0. Renovate's openai v3 bump (#2134)
+  # Held at 2.x: litellm 1.105.1 requires openai<3.0.0. Renovate's openai v3 bump (#2134)
   # edited this pin without relocking, so uv.lock kept 2.54.0 and `uv lock` could not
   # re-resolve at all. Raise this only once litellm supports openai v3.
   "openai==2.54.0",
@@ -38,7 +38,7 @@ dependencies = [
   "azure-storage-blob==12.31.0",
   "itsdangerous==2.2.0",
   "newrelic==13.6.1",
-  # Held below 9.0: litellm 1.104.0 requires importlib-metadata>=8.0.0,<9.0. See the
+  # Held below 9.0: litellm 1.105.1 requires importlib-metadata>=8.0.0,<9.0. See the
   # importlib-metadata rule in /renovate.json. Raise once litellm widens its ceiling.
   "importlib-metadata==8.7.1",
   "opentelemetry-instrumentation-logging>=0.65b0,<0.66",
@@ -75,11 +75,11 @@ dependencies = [
   "sentencepiece==0.2.2",
   "gliner==0.2.29",
   "openinference-semantic-conventions>=0.1.12,<0.2",
-  "litellm==1.104.0",
+  "litellm==1.105.1",
   "jinja2>=3.1.6,<4",
   "python-benedict>=0.39,<0.40",
   "weaviate-client>=4.17.0,<5",
-  "arthur-common==2.4.89",
+  "arthur-common==2.4.97",
   "google-auth>=2.48.0,<3",
   "google-cloud-aiplatform>=1.38",
   "google-cloud-trace>=1.11.0,<2",
