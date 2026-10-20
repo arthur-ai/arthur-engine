@@ -5,6 +5,33 @@ The intention of this changelog is to document API changes as they happen to eff
 # 10/19/2026
 - **CHANGE** for **URL**: /api/v1/traces  added the new optional `header` request parameter `content-encoding`
 - **CHANGE** for **URL**: /api/v1/traces  added the new optional `header` request parameter `x-arthur-task`
+# 10/20/2026
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  added the new `updates` enum value to the `config/anyOf[subschema #1: LLMBaseConfigSettings]/thinking/anyOf[subschema #1: AnthropicThinkingParam]/display` response property for the response status `200`
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/tags/{tag}
+- **CHANGE**error [response-property-enum-value-added] at genai-engine/new.openapi.json
+- **CHANGE**  The server may now return a value the previous contract excluded, so a client written against it may not handle the response. If the value set is meant to grow, declare it with x-extensible-enum.
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags  added the new `updates` enum value to the `config/anyOf[subschema #1: LLMBaseConfigSettings]/thinking/anyOf[subschema #1: AnthropicThinkingParam]/display` response property for the response status `200`
+- **CHANGE** in API POST /api/v1/tasks/{task_id}/prompts/{prompt_name}
+- **CHANGE**error [response-property-enum-value-added] at genai-engine/new.openapi.json
+- **CHANGE**  The server may now return a value the previous contract excluded, so a client written against it may not handle the response. If the value set is meant to grow, declare it with x-extensible-enum.
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  added the new `updates` enum value to the `config/anyOf[subschema #1: LLMConfigSettings]/thinking/anyOf[subschema #1: AnthropicThinkingParam]/display` response property for the response status `200`
+- **CHANGE** in API POST /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders
+- **CHANGE**error [response-property-enum-value-added] at genai-engine/new.openapi.json
+- **CHANGE**  The server may now return a value the previous contract excluded, so a client written against it may not handle the response. If the value set is meant to grow, declare it with x-extensible-enum.
+- **BREAKING CHANGE** for **URL**: /api/v2/agent-tasks  added the new `network` enum value to the `items/provenance/anyOf[subschema #1: Provenance]/source_classes/items/` response property for the response status `200`
+- **CHANGE** in API GET /api/v2/agent-tasks
+- **CHANGE**error [response-property-one-of-added] at genai-engine/new.openapi.json
+- **CHANGE**error [response-property-enum-value-added] at genai-engine/new.openapi.json
+- **CHANGE**  The server may now return a value the previous contract excluded, so a client written against it may not handle the response. If the value set is meant to grow, declare it with x-extensible-enum.
+- **CHANGE**  a breaking change was detected but the version is still `2.1.1028`
+- **CHANGE** for **URL**: /api/v1/completions  added the new `updates` enum value to the request property `config/anyOf[subschema #1: LLMPromptRequestConfigSettings]/thinking/anyOf[subschema #1: AnthropicThinkingParam]/display`
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  added the new `updates` enum value to the request property `config/anyOf[subschema #1: LLMRequestConfigSettings]/thinking/anyOf[subschema #1: AnthropicThinkingParam]/display`
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  added the new `updates` enum value to the request property `config/anyOf[subschema #1: LLMPromptRequestConfigSettings]/thinking/anyOf[subschema #1: AnthropicThinkingParam]/display`
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added `NETWORK` discriminator mapping keys to the `items/creation_source/anyOf[subschema #1: AgentCreationSource]/` response property for the response status `200`
+- **CHANGE** for **URL**: /api/v2/agent-tasks/resolve  added `NETWORK` discriminator mapping keys to the `records/items/creation_source` request property
+- **CHANGE** for **URL**: /api/v2/agent-tasks/resolve  added `#/components/schemas/NetworkAgentCreationSource` to the `records/items/creation_source` request property `oneOf` list
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions/{version_number}/generate-synthetic  added the new `updates` enum value to the request property `config/anyOf[subschema #1: LLMRequestConfigSettings]/thinking/anyOf[subschema #1: AnthropicThinkingParam]/display`
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions/{version_number}/generate-synthetic/message  added the new `updates` enum value to the request property `config/anyOf[subschema #1: LLMRequestConfigSettings]/thinking/anyOf[subschema #1: AnthropicThinkingParam]/display`
 
 # 10/15/2026
 - **BREAKING CHANGE** for **URL**: /api/v1/agent-polling/execute-all  api path removed without deprecation
