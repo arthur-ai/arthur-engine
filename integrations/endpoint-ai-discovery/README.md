@@ -186,3 +186,7 @@ vendored runner does not accept.
 - [**AI Inventory on Compute Engine VMs**](docs/mdm/gce.md) — the same collector built for
   Linux: an OS policy installs it with a systemd timer, and a reporter publishes to the VM's
   guest attributes. Deployed with gcloud, or across a fleet with the Terraform module.
+- [**AI discovery on Cloud Run and ECS: the image is the disk**](docs/image-discovery.md) — a
+  design, not yet built: the control plane's image digest, read from the registry and unpacked,
+  never run, enumerated into the same rows. What each platform and registry gives, measured
+  against their documentation, and what to measure before building.
