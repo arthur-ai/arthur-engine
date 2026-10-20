@@ -2,7 +2,8 @@
 
 A REGEX WITH NAMED CAPTURE GROUPS, the idiom Splunk `rex`, Fluent Bit's regex parser and
 Vector's `parse_regex` share: whatever a group is named is the field it extracts. `src`
-and `dest` are required; `instance_id`, `vpc_id`, `account_id` and `timestamp` are read
+and `dest` are required; `instance_id`, `interface_id`, `vpc_id`, `account_id` and
+`timestamp` are read
 when present; no other name is accepted, so a typo such as `dst` is refused rather than
 silently extracting nothing. Both `(?P<name>...)` (Python) and `(?<name>...)` (PCRE,
 Onigmo, Rust) spell a named group. The regex is searched, not anchored, as `rex` is.
@@ -26,7 +27,7 @@ from typing import Any, Optional
 import regex
 
 REQUIRED_GROUPS = ("src", "dest")
-OPTIONAL_GROUPS = ("instance_id", "vpc_id", "account_id", "timestamp")
+OPTIONAL_GROUPS = ("instance_id", "interface_id", "vpc_id", "account_id", "timestamp")
 MAX_PATTERN_LENGTH = 2048
 MAX_LINE_LENGTH = 16_384
 MATCH_TIMEOUT_SECONDS = 0.05
@@ -49,7 +50,7 @@ _ROUTE53_RESOLVER = (
 # dstaddr srcport dstport protocol packets bytes start end action log-status. NODATA and
 # SKIPDATA lines carry `-` for the addresses and do not match.
 _VPC_FLOW_LOG_V2 = (
-    r"^2 (?P<account_id>\d{12}) \S+ (?P<src>[0-9A-Fa-f.:]+) (?P<dest>[0-9A-Fa-f.:]+) "
+    r"^2 (?P<account_id>\d{12}) (?P<interface_id>\S+) (?P<src>[0-9A-Fa-f.:]+) (?P<dest>[0-9A-Fa-f.:]+) "
     r"\d+ \d+ \d+ \d+ \d+ (?P<timestamp>\d+) \d+ (?:ACCEPT|REJECT) OK$"
 )
 
@@ -93,6 +94,7 @@ class Extracted:
     src: str
     dest: str
     instance_id: str = ""
+    interface_id: str = ""
     vpc_id: str = ""
     account_id: str = ""
     timestamp: Optional[datetime] = None
@@ -145,6 +147,7 @@ class Extractor:
             src=src,
             dest=dest,
             instance_id=_value(groups.get("instance_id")),
+            interface_id=_value(groups.get("interface_id")),
             vpc_id=_value(groups.get("vpc_id")),
             account_id=_value(groups.get("account_id")),
             timestamp=parse_timestamp(groups.get("timestamp")),

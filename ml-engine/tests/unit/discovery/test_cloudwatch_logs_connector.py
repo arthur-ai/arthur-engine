@@ -256,7 +256,9 @@ def test_a_stop_between_pages_reports_what_was_read() -> None:
     connector.stop_when(lambda: len(logs.calls) >= 1)
     records = scan(logs, connector=connector)
     assert len(logs.calls) == 1
-    assert [r.external_id for r in records] == ["111122223333/i-0f1e2d3c4b5a69788"]
+    assert [r.external_id for r in records] == [
+        "111122223333/us-west-2/instance/i-0f1e2d3c4b5a69788"
+    ]
 
 
 # -- records -------------------------------------------------------------------------
@@ -271,31 +273,28 @@ def test_an_instance_is_one_record_whatever_hosts_it_called() -> None:
     )
     later = RESOLVER_LINE.replace("05:59:58Z", "07:00:00Z")
     (record,) = scan(FakeLogs([page(RESOLVER_LINE, second, unrelated, later)]))
-    assert record.external_id == "111122223333/i-0f1e2d3c4b5a69788"
+    assert record.external_id == "111122223333/us-west-2/instance/i-0f1e2d3c4b5a69788"
     assert record.name == "i-0f1e2d3c4b5a69788 calling Amazon Bedrock, OpenAI"
     assert record.runs_on is RunsOn.AWS
+    assert record.last_seen == datetime(2026, 10, 14, 7, 0, tzinfo=timezone.utc)
     bedrock, openai = record.creation_source.destinations
-    assert (bedrock.host, bedrock.provider, bedrock.count) == (
+    assert (bedrock.host, bedrock.provider) == (
         "bedrock-runtime.us-west-2.amazonaws.com",
         "Amazon Bedrock",
-        2,
     )
-    assert bedrock.first_seen == datetime(2026, 10, 14, 5, 59, 58, tzinfo=timezone.utc)
-    assert bedrock.last_seen == datetime(2026, 10, 14, 7, 0, tzinfo=timezone.utc)
-    assert (openai.host, openai.provider, openai.count) == (
-        "api.openai.com",
-        "OpenAI",
-        1,
-    )
+    assert (openai.host, openai.provider) == ("api.openai.com", "OpenAI")
 
 
-def test_a_record_is_a_network_finding_addressed_by_account_vpc_and_host() -> None:
+def test_a_record_is_a_network_finding_addressed_by_the_host_where_it_is() -> None:
+    """The host in instance and resource_id, its account and region in scope, never
+    the VPC, which only some logs carry; the VPC is observed instead."""
     (record,) = scan(FakeLogs())
     source = record.creation_source
     assert isinstance(source, NetworkAgentCreationSource)
     assert source.vendor == VENDOR
-    assert source.address.instance == "111122223333"
-    assert source.address.scope == "vpc-7f3a91c2"
+    assert source.address.resource_kind == "instance"
+    assert source.address.instance == "i-0f1e2d3c4b5a69788"
+    assert source.address.scope == "111122223333/us-west-2"
     assert source.address.resource_id == "i-0f1e2d3c4b5a69788"
     assert source.address.query is None
     assert source.observations.host_name == "i-0f1e2d3c4b5a69788"
@@ -326,9 +325,15 @@ def test_a_line_without_a_time_falls_back_to_the_events() -> None:
 
 def test_a_source_without_an_instance_is_its_address_in_its_vpc() -> None:
     (record,) = scan(FakeLogs([page(RESOLVER_ENDPOINT_LINE)]))
-    assert record.external_id == "111122223333/vpc-7f3a91c2/10.20.0.15"
+    assert record.external_id == "111122223333/us-west-2/ip/vpc-7f3a91c2/10.20.0.15"
     assert record.name == "10.20.0.15 in vpc-7f3a91c2 calling OpenAI"
     assert record.runs_on is RunsOn.UNKNOWN
+    address = record.creation_source.address
+    assert (address.resource_kind, address.instance, address.scope) == (
+        "ip",
+        "vpc-7f3a91c2",
+        "111122223333/us-west-2",
+    )
 
 
 def test_flow_logs_match_only_the_sources_own_ranges() -> None:
@@ -336,9 +341,14 @@ def test_flow_logs_match_only_the_sources_own_ranges() -> None:
     (record,) = scan(
         FakeLogs([page(FLOW_LINE, elsewhere, FLOW_NODATA_LINE)]), fields=FLOW_FIELDS
     )
-    assert record.external_id == "111122223333/10.0.1.23"
-    assert record.name == "10.0.1.23 calling 104.18.32.0/23"
-    assert record.creation_source.address.scope is None
+    assert record.external_id == "111122223333/us-west-2/eni/eni-0a1b2c3d4e5f67890"
+    assert record.name == "eni-0a1b2c3d4e5f67890 calling 104.18.32.0/23"
+    address = record.creation_source.address
+    assert (address.resource_kind, address.instance, address.scope) == (
+        "eni",
+        "eni-0a1b2c3d4e5f67890",
+        "111122223333/us-west-2",
+    )
     assert record.last_seen == datetime.fromtimestamp(1792000000, tz=timezone.utc)
 
 
@@ -355,14 +365,34 @@ def test_a_custom_regex_reads_a_custom_log() -> None:
     fields = {
         **FIELDS,
         "log_format": "custom",
-        "extraction_regex": r"src=(?<src>\S+) host=(?<dest>\S+)",
+        "extraction_regex": r"src=(?<src>\S+) vpc=(?<vpc_id>\S+) host=(?<dest>\S+)",
     }
     (record,) = scan(
-        FakeLogs([page("ts=1 src=10.9.8.7 host=api.groq.com action=allow")]),
+        FakeLogs([page("ts=1 src=10.9.8.7 vpc=vpc-1 host=api.groq.com action=allow")]),
         fields=fields,
     )
-    assert record.external_id == "us-west-2/10.9.8.7"
-    assert record.name == "10.9.8.7 calling Groq"
+    assert record.external_id == "us-west-2/ip/vpc-1/10.9.8.7"
+    assert record.name == "10.9.8.7 in vpc-1 calling Groq"
+
+
+def test_an_address_with_no_network_is_counted_not_guessed(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """One address in two VPCs is two hosts, so a line naming neither an instance, an
+    interface nor a VPC cannot be placed."""
+    fields = {
+        **FIELDS,
+        "log_format": "custom",
+        "extraction_regex": r"src=(?<src>\S+) host=(?<dest>\S+)",
+    }
+    with caplog.at_level(logging.INFO):
+        records = scan(
+            FakeLogs([page("ts=1 src=10.9.8.7 host=api.groq.com action=allow")]),
+            fields=fields,
+        )
+    assert records == []
+    assert "1 call(s) to inference hosts skipped" in caplog.text
+    assert "10.9.8.7" not in caplog.text
 
 
 def test_a_records_destinations_are_capped_busiest_first() -> None:
@@ -375,16 +405,14 @@ def test_a_records_destinations_are_capped_busiest_first() -> None:
     destinations = record.creation_source.destinations
     assert len(destinations) == MAX_DESTINATIONS
     assert destinations[0].host == "bedrock-runtime.r9.amazonaws.com"
-    assert destinations[0].count == 2
 
 
 def test_flow_log_destinations_are_the_addresses_called() -> None:
     (record,) = scan(FakeLogs([page(FLOW_LINE, FLOW_LINE)]), fields=FLOW_FIELDS)
     (destination,) = record.creation_source.destinations
-    assert (destination.host, destination.provider, destination.count) == (
+    assert (destination.host, destination.provider) == (
         "104.18.33.45",
         "104.18.32.0/23",
-        2,
     )
 
 
@@ -730,7 +758,7 @@ def test_responses_in_the_shape_aws_documents_parse() -> None:
         scan(FakeLogs([DOCUMENTED_FILTER_LOG_EVENTS])), key=lambda r: r.external_id
     )
     assert [r.external_id for r in records] == [
-        "111122223333/i-0f1e2d3c4b5a69788",
-        "111122223333/vpc-7f3a91c2/10.20.0.15",
+        "111122223333/us-west-2/instance/i-0f1e2d3c4b5a69788",
+        "111122223333/us-west-2/ip/vpc-7f3a91c2/10.20.0.15",
     ]
     assert records[0].name == "i-0f1e2d3c4b5a69788 calling Amazon Bedrock"

@@ -103,6 +103,8 @@ def test_the_flow_log_preset_reads_a_v2_line() -> None:
         "111122223333",
     )
     assert line.timestamp == datetime.fromtimestamp(1792000000, tz=timezone.utc)
+    assert line.interface_id == "eni-0a1b2c3d4e5f67890"
+    assert line.instance_id == line.vpc_id == ""
 
 
 def test_a_flow_log_line_with_no_data_is_not_traffic() -> None:

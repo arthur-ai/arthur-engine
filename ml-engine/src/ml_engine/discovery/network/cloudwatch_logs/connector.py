@@ -137,7 +137,7 @@ class CloudWatchLogsConnector:
             return
 
         client = self._client_factory(settings, logger)
-        sources = TrafficSources(default_instance=settings.region)
+        sources = TrafficSources(region=settings.region)
         read = matched = 0
         capped = False
         for group in settings.log_groups:
@@ -191,6 +191,13 @@ class CloudWatchLogsConnector:
         )
         for provider, count in sorted(sources.calls_by_provider().items()):
             logger.info("CloudWatch Logs: %s source(s) called %s", count, provider)
+        if sources.unplaced:
+            logger.warning(
+                "CloudWatch Logs: %s call(s) to inference hosts skipped because the "
+                "line named an address but no VPC, so the host could not be placed. "
+                "Add vpc_id to the extractor, or log the instance id.",
+                sources.unplaced,
+            )
         if counts.timed_out or counts.too_long:
             logger.warning(
                 "CloudWatch Logs: %s line(s) skipped because the extractor ran past "
