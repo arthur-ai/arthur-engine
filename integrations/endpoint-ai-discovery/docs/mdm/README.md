@@ -13,7 +13,7 @@ whoever carried the string, so none of them changes.
 
 | | What it means | Jamf Pro | Compute Engine | EC2 |
 |---|---|---|---|---|
-| **Run a script on a schedule** | Install and invoke `collect.sh` as root, hourly or thereabouts | Package policy + LaunchDaemon | OS policy + systemd timer | State Manager association + the same systemd timer |
+| **Run a script on a schedule** | Run `collect.sh` as root, hourly to daily | A Policy running the script, or a package with a LaunchDaemon | OS policy + systemd timer | State Manager association + the same systemd timer |
 | **A per-device string attribute** | Two of them, populated from the files. The evidence one reaches ~24 KB on a loaded Mac and must not be truncated | Extension Attribute (measured ≥ 1 MB) | Guest attribute, written by `deploy/report-guest-attributes.sh` (measured cap: exactly 262,144 bytes) | SSM custom inventory, written by `deploy/report-ssm-inventory.sh` and uploaded by the SSM Agent. **4,096 characters per value** (measured), so each value travels in parts |
 | **An inventory API** | List devices with their attribute values, filtered and sorted on a per-device report date so a scan can page without losing records that shift mid-pagination | `/api/v1/computers-inventory` | `instances.aggregatedList` + `instances.getGuestAttributes`. **No report date** | `DescribeInstances` + `DescribeInstanceInformation` + `ListInventoryEntries`. **No report date**: `CaptureTime` dates the upload |
 | **A stable device id** | Assigned by the MDM, not the hardware serial — VMs and refurbished units produce empty or duplicate serials | `general.managementId` | The instance's numeric `id` — never its name, which is reused on recreate | The instance id, `i-…` — never its `Name` tag |
