@@ -46,6 +46,9 @@ artifact a fleet receives, and it would pass while doing so.
 | No interpreter in the reporter; upstream still prints `no osqueryi found` | The reporter needing more than the collector does; `osquery=absent` silently never firing after a vendor bump |
 | The OS policy installs each of the four files where the unit, the reporter or systemd runs it, from its URL in this tree | A VM whose policy reads compliant and whose first run fails on a missing path; a file with no copy here to pin a checksum to |
 | `tools/render-os-policy.sh HEAD` leaves no placeholder and pins each file to its own sha256 | A rendered policy every VM refuses. Skipped, and says so, until the policy is committed: the renderer reads git |
+| The EC2 drop-in clears `ExecStart` before setting it, and runs `report-ssm-inventory.sh` from the reporter's directory; that reporter runs the same collector and calls no interpreter | An instance that also runs the guest-attribute reporter, and fails every run |
+| The EC2 reporter's `PART` is at most 4,096 and equals the reader's part size, and its type name, attribute names and budget match ml-engine's `cloud/ec2/client.py` | A part the SSM Agent skips without saying so; values the reader refuses; every instance reading as never reported after a rename on one side |
+| The EC2 install script in `docs/mdm/ec2.md` is POSIX `sh`: no bashism, and `dash -n` accepts it where dash is installed | Every Ubuntu instance failing section 02 with `Illegal option -o pipefail`, while Amazon Linux, where `sh` is bash, passes. Measured |
 | `arthur1.` and `ERROR:oversize` present | The framing or its over-cap reason being dropped, which leaves an empty attribute — indistinguishable from a Mac with no AI tools on it |
 | `bash -n` on both collectors, the reporter and `vendor-queries.sh` | A template edit in `build-collector.py` producing a syntax error nobody runs until a Policy does |
 | Vendored `VERSION` exists; `PROVISIONAL` is announced | A commit pin becoming permanent by inattention |
@@ -105,6 +108,26 @@ cap with its 400, and the 403 when guest attributes are disabled.
 
 `flaky` (one 503) and `drop-status` (no answer on the `status` key) are the fake's own
 behaviours, labelled as such; every other answer it gives was measured on a real VM.
+
+## `test/run-ssm-inventory.sh`
+
+Runs `deploy/report-ssm-inventory.sh` against `test/fake-imds.py`, with a stub for the
+collector, and asserts on the values the custom inventory file's parts make again, not on the
+file's shape alone: a part dropped, cut short or hashed before cleaning still leaves valid
+JSON.
+
+| Case | What it catches |
+|---|---|
+| A clean scan is written as the instance's custom inventory, under the directory IMDS names | A value that is not this scan, or a file the agent never finds |
+| A value at the budget is cut into 64 parts that make it again | A last part cut short, or more parts than the reader accepts |
+| The file is replaced, and nothing half-written is left beside it | The agent reading half a file |
+| A failed run keeps the last good scan, with `failed=<UTC>` | A failure that looks like a fresh scan |
+| Never collected, osquery absent: both values name the state | An empty value, which reads as a clean instance |
+| A status without its inventory: both `no-cache` | A status claiming a scan the inventory does not carry |
+| A quote, a backslash or a control character in a value | A file the agent cannot parse, or parts that hash to something else |
+| No IMDS, a refused token, no instance id, no SSM Agent: each named, nothing written | An instance that cannot report and says nothing |
+| A fleet-wide proxy | The link-local IMDS request going through the proxy |
+| `TERM` during collection; the working directory afterwards | A stopped run carrying on; temporary files left behind |
 
 ## `test/run-systemd.sh`
 

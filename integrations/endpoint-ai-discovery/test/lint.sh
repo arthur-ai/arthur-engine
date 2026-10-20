@@ -560,6 +560,30 @@ else:
           f"({compared} of {len(pinned)} compared; the rest differ from HEAD in this tree)"
           if compared < len(pinned) else
           f"render: ok, HEAD's policy pins each of {len(pinned)} files to its own sha256")
+
+# --- the EC2 install script -----------------------------------------------------------------
+# IT IS POSIX sh. AWS-RunShellScript runs it with sh, which is dash on Ubuntu, and a bashism
+# there fails every run on those instances while Amazon Linux, where sh is bash, passes:
+# `set -o pipefail` did exactly that (ec2.md, section 02). Read from the runbook, since the
+# runbook is where it ships.
+import shutil
+book = open(os.path.join(root, "docs", "mdm", "ec2.md")).read()
+block = re.search(r"^```sh\n(# arthur-ai-discovery-install\.sh\n.*?)^```$", book, re.M | re.S)
+if not block:
+    print("FAIL: docs/mdm/ec2.md has no ```sh block starting `# arthur-ai-discovery-install.sh`"); sys.exit(1)
+script = block.group(1)
+bashism = re.search(r"pipefail|\[\[|\bfunction\b|<<<|\$\{[^}]*//|^\s*source\b", script, re.M)
+if bashism:
+    print(f"FAIL: ec2.md's install script uses {bashism.group(0)!r}, which dash refuses; "
+          f"AWS-RunShellScript runs it with sh, which is dash on Ubuntu"); sys.exit(1)
+if shutil.which("dash"):
+    r = subprocess.run(["dash", "-n"], input=script, text=True, capture_output=True)
+    if r.returncode != 0:
+        print(f"FAIL: dash -n refuses ec2.md's install script: {r.stderr.strip()}"); sys.exit(1)
+    checked = "and dash -n accepts it"
+else:
+    checked = "dash -n skipped, no dash here"
+print(f"ec2 install script: ok, no bashism {checked}")
 VENDOR
 
 [ "$fail" -eq 0 ] && echo "lint: PASS" || echo "lint: FAIL"
