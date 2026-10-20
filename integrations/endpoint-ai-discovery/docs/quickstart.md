@@ -25,23 +25,17 @@ cd arthur-engine/integrations/endpoint-ai-discovery
 sudo ARTHUR_OUT_DIR=/tmp/arthur dist/collect.sh
 ```
 
-This is the same script that runs across a fleet. It installs nothing and takes about 8 seconds.
-It prints a status line and writes three files to `/tmp/arthur`. A deployed collector writes
-them to `/var/lib/arthur` instead.
+This is the same script that runs across a fleet, and it installs nothing. To check it:
 
+```bash
+cat /tmp/arthur/status.txt                        # starts with ok or degraded
+python3 -m json.tool /tmp/arthur/inventory.json   # what it found
 ```
-ok 2026-10-11T22:57:49Z rows=929 apps=ok browser=ok containers=ok filesystem=ok homebrew=ok jetbrains=ok native-messaging=ok packages=ok ports=ok running=ok running-darwin=ok runtime=ok vscode=ok
-```
 
-| File | Holds |
-|---|---|
-| `status.txt` | the line above: `ok` or `degraded`, the scan time, a row count, and one outcome per query branch |
-| `inventory.json` | everything the scan found. Read it with `python3 -m json.tool /tmp/arthur/inventory.json` |
-| `inventory.ea` | the same data packed for transport: `arthur1.` followed by base64(gzip(json)) |
-
-`degraded` means at least one branch could not look. The Jamf runbook's
-[outcome table](mdm/jamf-pro.md#08--reading-the-status--jamf-pro) explains each outcome. On
-Linux, run `dist/collect-linux.sh`.
+On Linux, run `dist/collect-linux.sh`. The Jamf runbook's
+[section 05](mdm/jamf-pro.md#05--prove-it-on-one-mac--the-mac) explains the three files, and
+its [section 08](mdm/jamf-pro.md#08--reading-the-status--jamf-pro) explains each status
+outcome.
 
 ## Macs managed by Jamf Pro
 
@@ -120,7 +114,8 @@ Full runbook: [gce.md](mdm/gce.md). The OS policy targets Debian 12 and Ubuntu 2
    ```
 
    You should see two keys: `inventory`, starting with `arthur1.`, and `status`, starting with
-   `ok`. If not, follow [section 06](mdm/gce.md#06--when-a-vm-is-not-reporting--on-the-vm).
+   `ok` or `degraded`. If a key is missing or reads `no-cache`, follow
+   [section 06](mdm/gce.md#06--when-a-vm-is-not-reporting--on-the-vm).
 5. **Connect Arthur.** Add a Compute Engine discovery source. Set its `project_ids` and
    `include_labels` from the `arthur_source` output, and give it the service account's JSON
    key ([section 07](mdm/gce.md#07--access-for-the-arthur-collector)).

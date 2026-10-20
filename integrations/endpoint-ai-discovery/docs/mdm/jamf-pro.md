@@ -262,7 +262,7 @@ your recon interval that a laptop on holiday does not land in it.
 2. **Run Update Inventory,** then read the status attribute across the pilot. `no-cache` means
    the collector did not run.
 3. **Expand in stages.** Every inventory submission carries the ~24 KB value. That is about
-   180 MB per full sync at 10,000 Macs.
+   250 MB per full sync at 10,000 Macs.
 
 If a Mac's payload is over the 256 KB budget, the Mac reports `ERROR:oversize:<bytes>` in place
 of its inventory. That happens at about 10,000 rows, roughly ten times a heavily loaded Mac.

@@ -43,7 +43,7 @@ One fact, one place. Before adding a sentence, find the doc that owns it:
 | `README.md` | what this is, how it works in three steps, the layout, the dev commands |
 | `docs/quickstart.md` | the shortest path per carrier. Steps and a verify command only; it links to a runbook section for anything more |
 | `docs/mdm/<carrier>.md` | operating one carrier: prerequisites, deploy, verify, read the status, troubleshoot, Arthur's access, rollback |
-| `docs/architecture.md` | contracts, transport, failure semantics, **every measured number** (Constraints), and every *why* (Decisions) |
+| `docs/architecture.md` | contracts, transport, failure semantics, **every measurement of the payload and the carriers** (Constraints), and every *why* (Decisions). A test's rough runtime beside its command is a hint, not a measurement |
 | `test/README.md` | what each guard catches |
 
 Runbooks state what to do, not the history of how a step came to be; a measurement a runbook

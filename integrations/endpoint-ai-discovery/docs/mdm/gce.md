@@ -14,7 +14,7 @@ through a VM Manager policy orchestrator.
 
 | | |
 |---|---|
-| Target | Debian 12 or Ubuntu 24.04. Rocky Linux 9 needs the policy's apt repository replaced with yum (section 02) |
+| Target | Debian 12 or Ubuntu 24.04, the families the OS policy selects |
 | Requires | osquery 5.18 or later, VM Manager, and guest attributes enabled. No interpreter |
 | Per-VM cost | ~8s and 1.3s of CPU per run on an `e2-small` |
 | Attribute size | ~10 KB on a headless Debian 12 VM. The budget is 256 KB, **which is also Compute Engine's own cap** (exactly 262,144 bytes, measured) |
@@ -31,7 +31,7 @@ through a VM Manager policy orchestrator.
 | A route to wherever the four files are hosted | The OS policy downloads them by URL (section 01) | As above, or host them in your own bucket |
 | Private Google Access, on a VM with no external IP | The OS Config agent calls Google APIs | Subnet setting |
 
-The OS Config agent comes preinstalled on the Debian, Ubuntu and Rocky public images.
+The OS Config agent comes preinstalled on the Debian and Ubuntu public images.
 
 ## 01 · Pin the files — terminal
 
@@ -58,8 +58,8 @@ gcloud compute os-config os-policy-assignments create arthur-ai-discovery \
 
 The policy targets VMs labelled `arthur-ai-discovery=enabled`, and updates 10% of them every
 five minutes. An assignment covers one zone, so create one in each zone the fleet runs in.
-**Rocky Linux** uses the same resources with osquery's yum repository in place of the apt one.
-This runbook has not yet been run on Rocky.
+The policy installs osquery from its apt repository, so it selects Debian and Ubuntu VMs
+only; any other image is left alone.
 
 ## 03 · Scope and roll out — terminal
 

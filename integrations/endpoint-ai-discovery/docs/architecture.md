@@ -90,7 +90,7 @@ a second copy would be a second source of truth for a device's identity.
 Every payload carries one dated scan row per branch:
 
 ```json
-{"kind":"scan","id":"containers","ver":"1788199567","loc":"/var/run/docker.sock","extra":"ok"}
+{"kind":"scan","id":"containers","ver":"1788199567","loc":"/var/run/docker.sock","extra":"ok","perms":""}
 ```
 
 `ver` is the scan time in unix seconds, so the payload dates itself. A carrier that can only
@@ -134,12 +134,13 @@ state in `ver`.
 
 | | Source | Freezes when |
 |---|---|---|
-| `last_seen` | the scan row's `ver` | the agent is uninstalled and stops appearing in rows |
-| `last_scanned` | the carrier's per-device report date | the machine stops checking in |
-| *(derived)* | report date recent, but `ver` old | the scheduled scan died on a machine that is still reporting |
+| `last_seen` | the scan row's `ver`, or the report time when the payload carries none | the agent is uninstalled and stops appearing in rows |
+| report time | Jamf: `general.reportDate`. Compute Engine and EC2: the newest timestamp on the status line, so a later `failed=<UTC>` counts | the machine stops reporting |
+| *(derived)* | report time recent, but `ver` old | the scheduled scan keeps failing on a machine that still reports |
 
-Only the collector can see the third case; no Smart Group can. First-sighting is not reported
-by any source: the platform computes it as the earliest `last_seen` it has recorded.
+The carriers surface the third case on the status line: `stale=NNh` on Jamf, and `failed=<UTC>`
+on Compute Engine and EC2. First-sighting is not reported by any source: the platform computes
+it as the earliest `last_seen` it has recorded.
 
 ## Transport
 
@@ -215,11 +216,10 @@ Compute Engine, freshness is the status line's timestamp. It is never the invent
 **An empty value looks exactly like a clean machine.** Most of the design defends against that.
 Every failure reports a reason, and no path may report "nothing" without saying why:
 
-- **A branch that cannot look** writes a dated scan row that says so: `unhealthy:000`,
-  `timeout:6`, `error`. It does not drop its rows silently. Upstream runs each branch in its
-  own process with a time limit and a Docker health guard, so one failure costs one branch.
-  [`containers.md`](https://github.com/arthur-ai/osquery-ai-discovery/blob/main/docs/containers.md)
-  covers why the health check alone is not enough.
+- **A branch that cannot look** writes a dated scan row that says so, such as `unhealthy:000`,
+  `timeout:6` or `error`, rather than dropping its rows silently. How upstream bounds and
+  guards each branch is its
+  [`containers.md`](https://github.com/arthur-ai/osquery-ai-discovery/blob/main/docs/containers.md).
 - **An oversize payload** writes `ERROR:oversize:<bytes>`, never a truncated value or nothing.
 - **A scan that cannot run** keeps the last good payload and fails the run, so the Jamf Policy
   or the systemd unit reads as failed. Erasing good evidence to signal a fault would report a
@@ -245,18 +245,18 @@ Every failure reports a reason, and no path may report "nothing" without saying 
 | Webhook delivery | **undocumented** | Neither Jamf's admin docs nor its developer docs give a retry policy, delivery guarantee, timeout or dead-letter queue |
 | Collector ingress | none | Nothing listens. Built on the vendored `bin/classify`, the collector also sends usage telemetry by default (upstream's `docs/telemetry.md`). The endpoint sends nothing |
 
-Measured payloads at vendored ref `v0.12.x` with osquery 5.23.1, run cold:
+Measured payloads with osquery 5.23.1, run cold:
 
-| Machine | Rows | Raw | Framed | Run |
-|---|---|---|---|---|
-| Apple Silicon Mac, macOS 26.6.2, Docker up, unprivileged (2026-10-11) | 929 | 155,562 B | 24,668 B (9%) | ~8s |
-| `e2-small` Debian 12 VM, root under systemd (2026-10-12) | 623 | 66,737 B | 9,816 B (3.7%) | ~8s, 1.3s CPU |
-| `t3.small` Amazon Linux 2023, root under systemd (2026-10-16) | 809 | 88,050 B | 11,376 B (4.3%) | 6s, 1.4s CPU |
-| GitHub `ubuntu-24.04` runner, root, Docker up (2026-10-12) | 1,782 | 193,075 B | 27,400 B (10%) | — |
+| Machine | Vendored ref | Rows | Raw | Framed | Run |
+|---|---|---|---|---|---|
+| Apple Silicon Mac, macOS 26.6.2, Docker up, unprivileged (2026-10-11) | `v0.12.0` | 929 | 155,562 B | 24,668 B (9%) | ~8s |
+| `e2-small` Debian 12 VM, root under systemd (2026-10-12) | `v0.12.2` | 623 | 66,737 B | 9,816 B (3.7%) | ~8s, 1.3s CPU |
+| `t3.small` Amazon Linux 2023, root under systemd (2026-10-16) | `v0.12.2` | 809 | 88,050 B | 11,376 B (4.3%) | 6s, 1.4s CPU |
+| GitHub `ubuntu-24.04` runner, root, Docker up (2026-10-12) | `v0.12.2` | 1,782 | 193,075 B | 27,400 B (10%) | — |
 
-Through Jamf, a full sync at 10,000 Macs moves about 179 MB (27 MB filtered). That cost is
-accepted: it saves 10,000 network paths, and the same bytes leave each Mac whichever way they
-travel.
+Through Jamf, a full sync at 10,000 Macs moves about 250 MB: the Mac above's 24,668 bytes
+each. That cost is accepted: it saves 10,000 network paths, and the same bytes leave each Mac
+whichever way they travel.
 
 ## Decisions
 
