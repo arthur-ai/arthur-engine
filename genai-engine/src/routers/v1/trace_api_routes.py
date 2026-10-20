@@ -100,18 +100,29 @@ def _decode_body(body: bytes, content_encoding: str | None) -> bytes:
             status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
             detail=f"Unsupported Content-Encoding: {content_encoding}",
         )
-    decompressor = zlib.decompressobj(wbits=16 + zlib.MAX_WBITS)
+    # A gzip body can hold several members back to back; each must end cleanly,
+    # and the output is checked against the cap before it is kept.
+    data = bytearray()
+    remaining = body
     try:
-        data = decompressor.decompress(body, MAX_DECOMPRESSED_TRACE_BYTES)
-        if decompressor.unconsumed_tail:
-            raise HTTPException(
-                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                detail="Decompressed trace data is too large",
-            )
-        data += decompressor.flush()
+        while remaining:
+            decompressor = zlib.decompressobj(wbits=16 + zlib.MAX_WBITS)
+            chunk = remaining
+            while chunk and not decompressor.eof:
+                budget = MAX_DECOMPRESSED_TRACE_BYTES - len(data)
+                data += decompressor.decompress(chunk, budget + 1)
+                if len(data) > MAX_DECOMPRESSED_TRACE_BYTES:
+                    raise HTTPException(
+                        status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                        detail="Decompressed trace data is too large",
+                    )
+                chunk = decompressor.unconsumed_tail
+            if not decompressor.eof:
+                raise HTTPException(status_code=400, detail="Invalid gzip body")
+            remaining = decompressor.unused_data
     except zlib.error:
         raise HTTPException(status_code=400, detail="Invalid gzip body")
-    return data
+    return bytes(data)
 
 
 # TRACE ENDPOINTS

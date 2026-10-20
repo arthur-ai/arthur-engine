@@ -5,6 +5,7 @@ bodies and the x-arthur-task header."""
 import gzip
 import os
 from datetime import datetime, timedelta
+from unittest.mock import patch
 
 import pytest
 from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import (
@@ -229,3 +230,45 @@ def test_openinference_span_with_genai_keys_is_unchanged(
     assert stored.span_kind == "LLM"
     assert stored.prompt_token_count == 10
     assert stored.raw_data["attributes"]["gen_ai"]["usage"]["input_tokens"] == 999
+
+
+@pytest.mark.unit_tests
+def test_truncated_gzip_is_400(client: GenaiEngineTestClientBase):
+    body = gzip.compress(
+        _request(_claude_platform_request(), {"service.name": "claude-platform"}),
+    )
+
+    resp = _post(client, body[:-8], **{"Content-Encoding": "gzip"})
+
+    assert resp.status_code == 400
+
+
+@pytest.mark.unit_tests
+def test_concatenated_gzip_members_are_read(client: GenaiEngineTestClientBase):
+    """Two gzip members back to back unpack to one protobuf message, as two
+    serialized ExportTraceServiceRequests concatenate into one."""
+    task_id = f"claude_members_{os.urandom(4).hex()}"
+    first = _request(_claude_platform_request(), {"service.name": "claude-platform"})
+    second = _request(_claude_platform_request(), {"service.name": "claude-platform"})
+
+    resp = _post(
+        client,
+        gzip.compress(first) + gzip.compress(second),
+        **{"Content-Encoding": "gzip", "x-arthur-task": task_id},
+    )
+
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["accepted_spans"] == 6
+
+
+@pytest.mark.unit_tests
+def test_gzip_over_the_cap_is_413(client: GenaiEngineTestClientBase):
+    body = _request(_claude_platform_request(), {"service.name": "claude-platform"})
+
+    with patch(
+        "routers.v1.trace_api_routes.MAX_DECOMPRESSED_TRACE_BYTES",
+        len(body) - 1,
+    ):
+        resp = _post(client, gzip.compress(body), **{"Content-Encoding": "gzip"})
+
+    assert resp.status_code == 413
