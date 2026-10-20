@@ -362,6 +362,10 @@ class Ec2Connector:
                 except Ec2Error as e:
                     if not self._refused(settings, account, region, e, logger):
                         raise
+                    if e.operation == "AssumeRole":
+                        # The member role, not the region: every region of the account
+                        # would be refused the same way, so the account is one scope.
+                        break
                     continue
                 scanned += 1
                 if self._stopped_early:

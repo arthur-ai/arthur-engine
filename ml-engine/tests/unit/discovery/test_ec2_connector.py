@@ -954,6 +954,33 @@ def test_an_account_whose_role_cannot_be_assumed_is_a_denied_scope_and_the_rest_
     assert "222222222222: not read (permission_denied): STS AssumeRole" in caplog.text
 
 
+def test_a_refused_member_role_is_one_denied_scope_however_many_regions_are_named() -> (
+    None
+):
+    """With named regions there is no region listing to fail first, so the role is
+    refused in the first region; the account's other regions are not tried."""
+    fleet = org(
+        {
+            "1": member("1", "eu-west-1", "us-east-1"),
+            "2": member("2", "eu-west-1", "us-east-1", assume_error=ASSUME_DENIED),
+        },
+    )
+    connector = connector_for_org(fleet)
+    records = scan(
+        fleet.own,
+        {"regions": "eu-west-1,us-east-1", "accounts": "all", "external_id": "abc"},
+        connector,
+    )
+
+    assert sorted(r.external_id for r in records) == sorted(
+        f"{iid(i)}:codex-cli" for i in ("10", "11")
+    )
+    assert connector.denied_scopes() == (
+        DeniedScope("222222222222", DENIED_PERMISSION),
+    )
+    assert len(fleet.members["222222222222"].calls) == 1, "one attempt, in one region"
+
+
 def test_a_region_the_member_role_is_refused_or_cannot_reach_is_a_denied_scope() -> (
     None
 ):
