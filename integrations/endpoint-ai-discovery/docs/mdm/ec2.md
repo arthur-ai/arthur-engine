@@ -10,23 +10,22 @@ and the instance connects to nothing it does not already reach.
 the reporter, and enables the timer. The instance's inventory association uploads what the
 reporter writes. The collector is the one a Compute Engine VM runs; only the reporter differs.
 
-> **Run as written on three instances.** On 2026-10-20 sections 01 to 03 ran as written, from a
-> pinned commit, on fresh Amazon Linux 2023 (`t3.small`), Ubuntu 24.04 (`t3.small`) and
-> Amazon Linux 2023 arm64 (`t4g.small`) instances:
+> **Run as written on four instances.** On 2026-10-20 sections 01 to 03 ran as written, from a
+> pinned commit, on fresh Amazon Linux 2023 and Ubuntu 24.04 instances, each on x86_64
+> (`t3.small`) and arm64 (`t4g.small`):
 > - Section 02's association ran twice in a row on each. The second run changed nothing: the
 >   timer was not restarted and every file kept its sha256.
 > - Each instance collected, uploaded through section 03's association, and was decoded by the
 >   Arthur collector.
 >
 > The same day's first run found that the script failed on Ubuntu under `sh` (section 02).
-> Ubuntu on arm64 has not been run.
 
 | | |
 |---|---|
-| Target | EC2 instances on Amazon Linux 2023 or Ubuntu 24.04, x86_64 or arm64. Run on an instance: Amazon Linux 2023 on x86_64 and arm64, Ubuntu 24.04 on x86_64. **Ubuntu on arm64: not yet run**; upstream's CI runs the Linux scenarios on an arm64 Ubuntu runner |
+| Target | EC2 instances on Amazon Linux 2023 or Ubuntu 24.04, x86_64 or arm64. Each of the four has run on an instance |
 | Requires | osquery 5.18+, an SSM-managed instance, an inventory association that gathers custom inventory, IMDS enabled. No interpreter |
-| Per-instance cost | as on Compute Engine (`gce.md`), off the reporting path. 6s and 1.4s of CPU per run on a `t3.small`; 2.0s of CPU on a `t4g.small`. Burstable instances in standard credit mode are not yet measured |
-| Payload | of the 256 KB budget, cut into parts of 4,096 characters. On fresh headless instances: ~11 KB on Amazon Linux 2023 (809 rows on x86_64, 796 on arm64) and ~17 KB on Ubuntu 24.04 (1,075 rows) |
+| Per-instance cost | as on Compute Engine (`gce.md`), off the reporting path. 6s and 1.4s of CPU per run on a `t3.small`; 2.0s to 2.1s of CPU on a `t4g.small`. Burstable instances in standard credit mode are not yet measured |
+| Payload | of the 256 KB budget, cut into parts of 4,096 characters. On fresh headless instances: ~11 KB on Amazon Linux 2023 (809 rows on x86_64, 796 on arm64) and ~17 KB on Ubuntu 24.04 (1,075 rows on x86_64, 1,106 on arm64) |
 
 ## What SSM custom inventory gives, measured
 
