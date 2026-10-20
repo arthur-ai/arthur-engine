@@ -100,11 +100,12 @@ Full runbook: [gce.md](mdm/gce.md). The OS policy targets Debian 12 and Ubuntu 2
 2. **Check the VMs can install it.** Each VM needs a service account attached (it needs no
    roles). It also needs a route to the osquery package repository and to GitHub
    ([section 00](mdm/gce.md#00--prerequisites--project)).
-3. **Every VM is covered.** The module's project metadata turns the OS Config agent and guest
-   attributes on for every VM, and the policy targets every Debian and Ubuntu VM in the zones.
-   No label is needed, and there is no exclusion label: discovery is for what nobody opted in.
-   To pilot on a few VMs first, set the module's `label` and label those VMs
-   ([section 03](mdm/gce.md#03--scope-and-roll-out--terminal)).
+3. **Every Debian and Ubuntu VM is targeted.** The policy targets each one in the zones. The
+   module's project metadata turns the OS Config agent and guest attributes on for each VM
+   that does not set its own; a VM's own `FALSE` for either key wins, and Arthur counts that
+   VM instead of reading it as clean. No label is needed, and there is no exclusion label:
+   discovery is for what nobody opted in. To pilot on a few VMs first, set the module's
+   `label` and label those VMs ([section 03](mdm/gce.md#03--scope-and-roll-out--terminal)).
 4. **Check one VM.** A new VM reports within about 15 minutes of boot. A VM that was already
    running reports a few minutes after the policy reaches it.
 
@@ -132,10 +133,10 @@ or Ubuntu 24.04.
 3. **Make sure custom inventory is gathered.** An instance runs only one inventory
    association. If one already exists, update it rather than adding a second
    ([section 03](mdm/ec2.md#03--the-inventory-association--terminal)).
-4. **Every managed instance is covered.** Both associations target every instance SSM manages
-   in the region. No tag is needed, and there is no exclusion tag: discovery is for what nobody
-   opted in. To pilot on a few instances first, target their instance ids
-   ([section 04](mdm/ec2.md#04--scope-and-roll-out--terminal)).
+4. **Every managed Linux instance is targeted.** Both associations target every instance SSM
+   manages in the region, and the install skips Windows. No tag is needed, and there is no
+   exclusion tag: discovery is for what nobody opted in. To pilot on a few instances first,
+   target their instance ids ([section 04](mdm/ec2.md#04--scope-and-roll-out--terminal)).
 5. **Check one instance.** Wait for the timer's first run and the next inventory upload
    ([section 05](mdm/ec2.md#05--prove-it-on-one-instance--terminal)):
 

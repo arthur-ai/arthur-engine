@@ -122,10 +122,9 @@ systemctl enable --now arthur-ai-discovery.timer
 ```
 
 **The script travels in a document of its own, not `AWS-RunShellScript`**, so that an
-association targeting every instance can skip Windows: a step whose `platformType`
-precondition does not hold is skipped and the association reports `Success` there, where
-`AWS-RunShellScript` would report `Failed` on every Windows instance and count each toward
-`--max-errors`.
+association targeting every instance can skip Windows. In a schema 2.2 document, a step whose
+`platformType` precondition does not hold is skipped rather than failed. `AWS-RunShellScript`
+would fail on every Windows instance, and each failure would count toward `--max-errors`.
 
 ```bash
 jq -n --rawfile script arthur-ai-discovery-install.sh '{
@@ -148,10 +147,26 @@ aws ssm create-association --association-name arthur-ai-discovery \
 
 The document and the association are per region; create both in each region the fleet runs
 in. An instance SSM starts managing later is picked up by the association, which runs on it at
-once. `--max-concurrency` paces the rollout, and `--max-errors` stops it once a tenth of the
-instances have failed the install, so a bad pin stops at a tenth of the fleet. To change the
-script, `aws ssm update-document --document-version '$LATEST'`, then
-`update-document-default-version`.
+once.
+
+`--max-concurrency 10%` runs the install on a tenth of the instances at a time. `--max-errors
+10%` stops State Manager sending it to further instances once more than a tenth of them have
+failed. Runs already under way at that point still finish, and some of them may fail too, so a
+bad pin can fail on more than a tenth of the fleet before the rollout stops. With
+`--max-concurrency 1` the count is exact, at the cost of one instance at a time.
+
+**To change the script**, update the document, then make the new version its default. The
+association runs the document's default version, so each instance gets the change on the
+association's next run; `start-associations-once` runs it now:
+
+```bash
+version=$(aws ssm update-document --name arthur-ai-discovery-install \
+  --content file://arthur-ai-discovery-install.json --document-format JSON \
+  --document-version '$LATEST' --query DocumentDescription.DocumentVersion --output text)
+aws ssm update-document-default-version --name arthur-ai-discovery-install \
+  --document-version "$version"
+aws ssm start-associations-once --association-ids INSTALL_ASSOCIATION_ID
+```
 
 ## 03 · The inventory association — terminal
 
@@ -165,10 +180,13 @@ aws ssm describe-instance-associations-status --instance-id INSTANCE \
   --query 'InstanceAssociationStatusInfos[?Name==`AWS-GatherSoftwareInventory`]'
 ```
 
-- **One exists:** make sure it gathers custom inventory — `customInventory=Enabled` in its
-  parameters — with `aws ssm update-association`, keeping every other parameter as it is.
-  Quick Setup's host-management association takes priority over any other; whether it gathers
-  custom inventory is not documented and **not yet measured**.
+- **One exists:** it has to gather custom inventory and target every instance, since an
+  instance outside its targets never uploads a report. Update it as shown after the next
+  block. Quick Setup's host-management association takes priority over any other; whether it
+  gathers custom inventory is not documented and **not yet measured**.
+- **Several exist, each on part of the fleet:** turn custom inventory on in each, and leave
+  their targets alone. Widening one over another's instances gives those instances two, and
+  then neither runs.
 - **None exists:** create one, on every instance.
 
 ```bash
@@ -178,6 +196,27 @@ aws ssm create-association --association-name arthur-ai-discovery-inventory \
   --schedule-expression 'rate(1 hour)' \
   --parameters customInventory=Enabled
 ```
+
+**An update replaces the whole association.** `update-association` sets every field it is not
+given to null, the document name, its parameters, the schedule and the rate controls included.
+So read the association, change what is needed, and send all of it back. This sets the targets
+to every instance and, on an inventory association, turns custom inventory on. For one of
+several inventory associations, drop the `.Targets` line:
+
+```bash
+ID=ASSOCIATION_ID
+aws ssm describe-association --association-id "$ID" --query AssociationDescription --output json \
+  | jq 'del(.Date, .InstanceId, .LastExecutionDate, .LastSuccessfulExecutionDate,
+            .LastUpdateAssociationDate, .Overview, .Status, .TriggeredAlarms)
+        | .Targets = [{Key: "InstanceIds", Values: ["*"]}]
+        | if .Name == "AWS-GatherSoftwareInventory"
+          then .Parameters.customInventory = ["Enabled"] else . end' > association.json
+aws ssm update-association --cli-input-json file://association.json
+```
+
+The fields deleted are the ones `describe-association` reports and `update-association` does
+not accept, so everything else goes back as it was. The update runs the association at once,
+within its own `MaxConcurrency`.
 
 **Hourly, and not faster, because of the daily cap.** Each run that finds new values uploads
 them, and the 5,000 KB a day per instance is enforced (section above): a payload near the
@@ -199,13 +238,16 @@ account setting rather than a per-instance one.
 opted in. An instance's owner can set its tags, so an opt-out tag would be a way to hide from
 it; the only exclusions are on Arthur's source (section 07), set by whoever owns governance,
 and counted. What an owner *can* do is stop the SSM Agent or detach its instance profile.
-Arthur's source counts such an instance as `not-ssm-managed`, so it shows as a gap and never
-as a clean machine, and a service control policy can deny `ssm:DeregisterManagedInstance` and
-instance profile changes, which Compute Engine has no equivalent of.
+Arthur's source then counts the instance instead of publishing it as a clean machine:
+`not-ssm-managed` once SSM no longer lists it as managed, and otherwise `never-reported`, or
+`not-reported-in-window` once its last report is older than the lookback. A service control
+policy can deny `ssm:DeregisterManagedInstance` and instance profile changes, which Compute
+Engine has no equivalent of.
 
 **To pilot on a handful first**, create both associations with
-`--targets Key=InstanceIds,Values=i-…,i-…`, then widen each with
-`aws ssm update-association --association-id ID --targets 'Key=InstanceIds,Values=*'`.
+`--targets Key=InstanceIds,Values=i-…,i-…`, then widen each with section 03's update, which
+changes only the targets. Never widen with `update-association --targets` alone: it sets the
+association's parameters, schedule and rate controls to null.
 
 **When the first report arrives:** the timer's first run is 5 minutes after boot plus up to 10
 of random delay, and the upload follows on the inventory association's next run, up to its

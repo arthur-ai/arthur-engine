@@ -74,8 +74,10 @@ gcloud compute project-info add-metadata --project=PROJECT \
 **No label narrows the fleet, and no label excludes a VM.** Discovery is for what nobody opted
 in, and a VM's owner can set its labels, so an opt-out label would be a way to hide from it.
 The only exclusions are on Arthur's source (section 07), set by whoever owns governance, and
-counted. A VM whose owner sets `enable-osconfig=FALSE` or `enable-guest-attributes=FALSE` on
-the VM itself is counted by name, so it shows as a gap and never as a clean machine.
+counted. An owner can still set `enable-osconfig=FALSE` or `enable-guest-attributes=FALSE` on
+the VM itself, which overrides the project's default. Arthur's source then counts the VM
+instead of publishing it as a clean machine: `guest-attributes-disabled` for the second key,
+and `never-reported` for a VM the first kept from ever being installed.
 
 **To pilot on a few VMs first**, replace `all: true` in the rendered policy with an
 `inclusionLabels` block and label those VMs; with Terraform, set the module's `label`. Then put
