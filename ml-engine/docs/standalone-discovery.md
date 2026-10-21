@@ -182,23 +182,25 @@ inventory. Deploying the collector is
 
 | Field | Secret | Required | Notes |
 |---|---|---|---|
-| `regions` | no | yes | Comma-separated regions, such as `us-east-1,eu-west-1`, or `all` for every region each account has enabled (asked in `us-east-1`; another partition names its regions) |
+| `regions` | no | yes | Comma-separated regions, such as `us-east-1,eu-west-1`, or `all` for every region each account has enabled. The named regions choose the partition, and must share one; `all` is the `aws` partition's, so another partition names its regions |
 | `access_key_id` | yes | no | An access key, with `secret_access_key`. Without one, the engine uses its own AWS credentials only if `ARTHUR_ENGINE_AWS_EC2_ALLOW_DEFAULT_CREDENTIALS=true` is set |
 | `secret_access_key` | yes | no | Set with `access_key_id`, or neither |
 | `role_arn` | no | no | A role those credentials assume, as session `arthur-ai-discovery` |
-| `external_id` | no | no | The external ID the role's trust policy requires; only with `role_arn`. Also sent when assuming the member role in each account |
+| `external_id` | no | no | The external ID the role's trust policy requires; with `role_arn`, or with `accounts`, where it is sent when assuming the member role in each account and needs no `role_arn` |
 | `accounts` | no | no | `all` for every active account in the organization, or comma-separated 12-digit account IDs. Each is read through its member role; unset, the credential's own account is read directly |
 | `member_role_name` | no | no | The role assumed in each account, by name; defaults to `arthur-ai-discovery` |
 | `include_tags` | no | no | Comma-separated `key=value` tags to limit the scan to |
 | `exclude_tags` | no | no | Comma-separated `key=value` tags to leave out; exclude wins |
 
 The credential needs `ec2:DescribeInstances`, `ssm:DescribeInstanceInformation` and
-`ssm:ListInventoryEntries`, and nothing more: AWS's read-only managed policies cover them
-but also read Parameter Store and instance user data. With `accounts` set it needs
+`ssm:ListInventoryEntries`, plus `ec2:DescribeRegions` with `regions: all`, and nothing
+more: AWS's read-only managed policies cover them but also read Parameter Store and
+instance user data. With `accounts` set it needs
 `organizations:ListAccounts` (for `all`) and `sts:AssumeRole` on the member role instead,
 and the member role in each account holds the three actions plus `ec2:DescribeRegions`.
-An account whose role cannot be assumed, or a region it is refused, is a denied scope in
-the scan's outcome and the scan reads the rest; refused everywhere, the scan fails.
+An account whose role cannot be assumed, a named region the account has not enabled, or a
+region it is refused, is a denied scope in the scan's outcome and the scan reads the rest;
+refused everywhere, the scan fails.
 `query` and `query_language` are as for Jamf, and so is stopping on shutdown.
 
 EC2 has no per-instance report date to filter on, so every scan lists every instance in

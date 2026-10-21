@@ -148,8 +148,9 @@ or Ubuntu 24.04.
 
 6. **Connect Arthur.** Grant a credential the three read-only actions listed in
    [section 07](mdm/ec2.md#07--access-for-the-arthur-collector). Then add an EC2 discovery
-   source with that credential and your regions. To scan every account in the organization,
-   deploy the member role to each account and set `accounts` to `all`.
+   source with that credential and your regions. To scan every account in the organization
+   instead, deploy the member role to each account, give the credential the permissions in
+   section 07's *Every account in the organization*, and set `accounts` to `all`.
 
 ## Next
 

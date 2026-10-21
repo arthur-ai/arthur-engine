@@ -185,7 +185,10 @@ sets `ARTHUR_ENGINE_GCP_COMPUTE_ENGINE_ALLOW_ADC=true`.
 scan, so a project created tomorrow is in scope tomorrow. The account needs
 `resourcemanager.projects.list` and `resourcemanager.folders.list` on the organization or
 folder (`roles/browser`), and `roles/compute.viewer` granted there rather than per project;
-the Terraform module's `reader` grants per project only. A project the account is refused is
+the Terraform module's `reader` grants per project only. Resource Manager bills the listing to
+the credential's own project, so that project needs `cloudresourcemanager.googleapis.com`
+enabled; without it every listing answers 403 `accessNotConfigured` and the run fails. A
+project the account is refused is
 a denied scope on the run, which Arthur shows as a degraded source, and the scan reads the
 rest; refused every project, the run fails. A project without the Compute Engine API is
 counted and skipped, since no VM can exist in it.
