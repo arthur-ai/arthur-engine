@@ -179,9 +179,11 @@ class FakeCompute:
         unreachables: Optional[list[str]] = None,
         project_osconfig: Optional[dict[str, str]] = None,
         project_refused: frozenset[str] = frozenset(),
+        project_unavailable: frozenset[str] = frozenset(),
     ) -> None:
         self.pages = pages
         self.project_refused = project_refused
+        self.project_unavailable = project_unavailable
         self.project_flag = {PROJECT: "TRUE"} if project_flag is None else project_flag
         self.project_osconfig = (
             {PROJECT: "TRUE"} if project_osconfig is None else project_osconfig
@@ -211,6 +213,12 @@ class FakeCompute:
             if self.unreachables and index == 0:
                 body["unreachables"] = self.unreachables
             return FakeResponse(200, body)
+
+        if len(parts) == 2 and parts[1] in self.project_unavailable:
+            return FakeResponse(
+                503,
+                {"error": {"code": 503, "message": "Backend Error"}},
+            )
 
         if len(parts) == 2 and parts[1] in self.project_refused:
             return FakeResponse(
@@ -588,7 +596,7 @@ def test_a_credential_without_compute_projects_get_still_scans_vms_that_set_thei
         project_refused=frozenset({PROJECT}),
     )
     connector = connector_for(fake)
-    with caplog.at_level(logging.INFO):
+    with caplog.at_level(logging.WARNING):
         assert scan(fake, connector=connector) == []
 
     coverage = connector.device_coverage()
@@ -601,7 +609,37 @@ def test_a_credential_without_compute_projects_get_still_scans_vms_that_set_thei
     ]
     project_reads = [url for url, _ in fake.calls if url == f"{API}/projects/{PROJECT}"]
     assert len(project_reads) == 1, "refused once, then not asked again"
-    assert "counted as never-reported rather than osconfig-disabled" in caplog.text
+    assert (
+        caplog.text.count("counted as never-reported rather than osconfig-disabled")
+        == 1
+    )
+
+
+def test_project_metadata_that_stays_unavailable_never_fails_the_scan_either(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A 503 that outlasts the retries is no more the VM's fault than a 403: the VM keeps
+    never-reported, the scan goes on, and the project's retries are spent once."""
+    fake = FakeCompute(
+        {PROJECT: [[vm("1", flag="TRUE"), vm("2", flag="TRUE")]]},
+        guest={},
+        project_unavailable=frozenset({PROJECT}),
+    )
+    connector = connector_for(fake)
+    with caplog.at_level(logging.WARNING):
+        assert scan(fake, connector=connector) == []
+
+    coverage = connector.device_coverage()
+    assert coverage is not None
+    assert coverage.unreadable_by_reason == {"never-reported": 2}
+    project_reads = [url for url, _ in fake.calls if url == f"{API}/projects/{PROJECT}"]
+    assert (
+        len(project_reads) == gce_client.MAX_ATTEMPTS
+    ), "retried once, for the project"
+    assert (
+        caplog.text.count("counted as never-reported rather than osconfig-disabled")
+        == 1
+    )
 
 
 def test_a_vm_that_has_reported_keeps_its_own_reasons_whatever_osconfig_says() -> None:
