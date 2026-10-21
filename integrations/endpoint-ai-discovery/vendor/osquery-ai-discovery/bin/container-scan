@@ -485,8 +485,9 @@ docker_state() {
 
 # Run a command with a hard wall-clock bound, reading stdin from a file. Portable to bash
 # 3.2, which is the only bash a managed Mac has: no `wait -n`, no timeout(1), no coreutils.
-# Output lands in BOUNDED_OUT on success and is DISCARDED on a timeout. Returns 124 when
-# the bound fired, following timeout(1)'s convention, otherwise the command's own status.
+# Output lands in BOUNDED_OUT on success and is DISCARDED on a timeout; the child's stderr
+# lands in BOUNDED_ERR either way, so a non-zero exit can say why. Returns 124 when the
+# bound fired, following timeout(1)'s convention, otherwise the command's own status.
 #
 # THE KILL DECIDES, NOT THE CHILD, and that is the whole reason this is not a one-liner.
 # Measured against a hung daemon on osquery 5.23.1: SIGTERM stops osqueryi in 0.35s and it
@@ -497,10 +498,13 @@ docker_state() {
 # of us having fired the kill and on nothing else.
 run_bounded() {
   local secs="$1" input="$2"; shift 2
-  local tmp rc pid waited grace
-  BOUNDED_OUT=""
+  local tmp err rc pid waited grace
+  BOUNDED_OUT=""; BOUNDED_ERR=""
   tmp="$(mktemp "${TMPDIR:-/tmp}/container-scan.XXXXXX")" || return 1
-  "$@" <"$input" >"$tmp" 2>/dev/null &
+  # stderr to a file of its own, not /dev/null: test/docker_states.sh saw this child exit
+  # 1 against a healthy fake (2026-10-20) and the log could say only "exit 1".
+  err="$(mktemp "${TMPDIR:-/tmp}/container-scan.XXXXXX")" || { rm -f "$tmp"; return 1; }
+  "$@" <"$input" >"$tmp" 2>"$err" &
   pid=$!
 
   # Tenths, because whole-second polling would add up to a second of slop to a bound
@@ -535,13 +539,15 @@ run_bounded() {
     # Reaped inside a redirect, or the shell announces "Terminated"/"Killed: 9" on stderr
     # and a caller reading stderr for the reason sees noise instead.
     { wait "$pid"; BOUNDED_SIGNAL=$?; } 2>/dev/null
-    rm -f "$tmp"
+    BOUNDED_ERR="$(cat "$err")"
+    rm -f "$tmp" "$err"
     return 124
   fi
 
   { wait "$pid"; rc=$?; } 2>/dev/null
   BOUNDED_OUT="$(cat "$tmp")"
-  rm -f "$tmp"
+  BOUNDED_ERR="$(cat "$err")"
+  rm -f "$tmp" "$err"
   return "$rc"
 }
 
@@ -663,7 +669,9 @@ container_scan() {
     return 3
   fi
   [ "$rc" = 0 ] && [ -n "$BOUNDED_OUT" ] || {
-    echo "container-scan: osqueryi failed (exit $rc)" >&2; return 1; }
+    echo "container-scan: osqueryi failed (exit $rc)" >&2
+    [ -z "$BOUNDED_ERR" ] || printf '%s\n' "$BOUNDED_ERR" | sed 's/^/  osqueryi: /' >&2
+    return 1; }
 
   # Cheap, and it costs nothing to be sure: a truncated array parses as a collector error,
   # and a collector error reads as "this machine reported nothing". The bound discards its own
