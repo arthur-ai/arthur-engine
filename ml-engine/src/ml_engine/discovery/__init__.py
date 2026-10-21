@@ -25,6 +25,8 @@ whose VMs carry that payload (Compute Engine, EC2) reuses it too, from `discover
 with what such clouds share among themselves in `discovery.cloud.vm_inventory`.
 """
 
+from discovery.cloud.aws_bedrock.connector import VENDOR as AWS_BEDROCK_VENDOR
+from discovery.cloud.aws_bedrock.connector import BedrockConnector
 from discovery.cloud.ec2.connector import VENDOR as AWS_EC2_VENDOR
 from discovery.cloud.ec2.connector import Ec2Connector
 from discovery.cloud.gce.connector import VENDOR as GCP_COMPUTE_ENGINE_VENDOR
@@ -54,6 +56,7 @@ def source_connectors() -> dict[str, DiscoveryConnectorFactory]:
         JAMF_VENDOR: JamfConnector,
         GCP_COMPUTE_ENGINE_VENDOR: ComputeEngineConnector,
         AWS_EC2_VENDOR: Ec2Connector,
+        AWS_BEDROCK_VENDOR: BedrockConnector,
         GCP_VERTEX_VENDOR: VertexAgentEngineConnector,
         SPLUNK_VENDOR: SplunkConnector,
         ELASTIC_SECURITY_VENDOR: ElasticSecurityConnector,
@@ -70,6 +73,8 @@ __all__ = [
     "GCP_COMPUTE_ENGINE_VENDOR",
     "Ec2Connector",
     "AWS_EC2_VENDOR",
+    "BedrockConnector",
+    "AWS_BEDROCK_VENDOR",
     "VertexAgentEngineConnector",
     "GCP_VERTEX_VENDOR",
     "SplunkConnector",
