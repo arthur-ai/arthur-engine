@@ -188,7 +188,7 @@ mkdir -p "$work/shared/osquery-33333"
 printf 'arthur1.H4sIAAAA\n' > "$out/inventory.ea"
 printf 'ok 2026-10-12T00:00:00Z rows=3 apps=ok\n' > "$out/status.txt"
 stub 0
-for t in "$out/tmp" "$work/shared"; do
+for t in "$out/tmp" "$work/shared" "$out/osquery-own"; do
   TMPDIR="$t" ARTHUR_COLLECT="$work/collect" ARTHUR_OUT_DIR="$out" ARTHUR_GUEST_ATTRIBUTES_URL="$url" \
     "$REPORT" > "$work/stdout" 2> "$work/stderr" || bad "a clean run with TMPDIR=$t exited $?"
 done
@@ -197,7 +197,8 @@ done
   || bad "the cleanup removed more than empty osquery-<n> directories"
 [ -d "$work/shared/osquery-33333" ] \
   || bad "the cleanup reached a TMPDIR outside ARTHUR_OUT_DIR, where an osqueryi may be running"
-ok "cleared under ARTHUR_OUT_DIR; a non-empty one, another name and a shared TMPDIR kept"
+[ -d "$out/osquery-own" ] || bad "a TMPDIR named osquery-<n> was deleted as its own leftover"
+ok "cleared under ARTHUR_OUT_DIR; a non-empty one, another name, a shared TMPDIR and TMPDIR itself kept"
 
 case_ "== the reporter leaves no working directory behind ======================="
 [ "$before" = "$(leaked)" ] || bad "the reporter leaked a working directory"
