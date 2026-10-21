@@ -92,14 +92,6 @@ def _load_matcher() -> ModuleType:
 
 _matcher = _load_matcher()
 
-# Kinds whose row says the agent is RUNNING rather than installed. Upstream's set, read off the
-# vendored matcher rather than copied, so a live kind upstream adds is ranked as one.
-_LIVE_KINDS: frozenset[str] = frozenset(_matcher.LIVE_KINDS)
-
-# Upstream's provenance token for an extension copy on disk that the browser never loads.
-# test_catalog holds it to the vendored matcher's PERMS_PROVENANCE.
-_UNREFERENCED = "unreferenced"
-
 
 @dataclass(frozen=True)
 class Finding:
@@ -194,7 +186,7 @@ class Matcher:
         self._routes = dict(routes)
         self._catalog_source = catalog_source
         self._log = logger or logging.getLogger(__name__)
-        self._route_rank = self._rank_routes(self._routes)
+        self._kind_rank = _matcher.kind_rank(self._routes)
 
         version = self._catalog.get("version")
         if isinstance(version, int) and version > _matcher.CATALOG_VERSION:
@@ -205,22 +197,6 @@ class Matcher:
                 version,
                 _matcher.CATALOG_VERSION,
             )
-
-    @staticmethod
-    def _rank_routes(routes: Mapping[str, Any]) -> dict[str, int]:
-        """Rank each row kind by where its route is declared in routes.yaml.
-
-        Picks which row speaks for a finding when several proved it. Upstream's order,
-        which puts vendor-controlled identifiers first -- a bundle id before a path glob,
-        an OCI label before a tag anyone can set. A tie-break, not a claim about truth.
-        """
-        rank: dict[str, int] = {}
-        declared = routes.get("routes") or {}
-        for i, (_name, spec) in enumerate(declared.items()):
-            kind = (spec or {}).get("kind")
-            if isinstance(kind, str) and kind not in rank:
-                rank[kind] = i
-        return rank
 
     @classmethod
     def from_source(
@@ -333,19 +309,19 @@ class Matcher:
         rows = [dict(row) for _hit, row in evidence]
         meta = dict(evidence[0][0])
 
-        # PRESENCE SPEAKS BEFORE LIVENESS. A running row names a process, not an install, and
-        # carries no version; ranked by declaration alone it would describe an installed agent
-        # whenever that agent happened to be running, and its address would move between scans.
-        # Within a kind, a copy the browser loads speaks before a leftover it never loads: a
-        # profile keeps old version directories, and the first row is often one of them.
-        primary = min(
+        # Upstream names the row that speaks for a finding, and gives its version and path
+        # only where that row's kind carries one -- the rule every consumer of the matcher
+        # shares, rather than one this collector keeps beside it. The flags say which rows
+        # matched an identifier the vendor has replaced.
+        described = _matcher.describe(
             rows,
-            key=lambda r: (
-                str(r.get("kind", "")) in _LIVE_KINDS,
-                self._route_rank.get(str(r.get("kind", "")), len(self._route_rank)),
-                _matcher.split_perms(str(r.get("perms") or ""))[1] == _UNREFERENCED,
-            ),
+            self._kind_rank,
+            [bool(hit.get("superseded")) for hit, _row in evidence],
         )
+        primary = rows[described["primary"]]
+        # As text whatever the row held: the record's fields are strict strings, and match()
+        # takes rows that never passed the envelope's checks.
+        version, path = described.get("version"), described.get("path")
 
         # Upstream's split, because `perms` can end in a provenance token that is not a
         # permission, and a list of those tokens copied here would miss the next one. The
@@ -358,10 +334,8 @@ class Matcher:
             evidence=tuple(rows),
             primary_kind=str(primary.get("kind") or ""),
             primary_id=str(primary.get("id") or ""),
-            version=str(primary.get("ver")) or None if primary.get("ver") else None,
-            install_path=(
-                str(primary.get("loc")) or None if primary.get("loc") else None
-            ),
+            version=None if version is None else str(version),
+            install_path=None if path is None else str(path),
             permissions=permissions,
         )
 

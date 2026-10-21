@@ -151,15 +151,19 @@ def home_pattern(value, mode):
                    `.../.claudefoo`. The glob was front-anchored only, so `.claudefoo`
                    DID match -- confirmed on a real Linux box, where `/home/%/.%/`
                    returns both directories side by side.
-      home-prefix  `~/.local/bin/hermes` -> still matches hermes-acp and hermes-agent,
-                   which is DELIBERATE: one `uv tool install` writes all three commands
-                   and they are the same install. Anchoring this mode would lose two of
-                   the three, which is why the missing `$` is not a blanket fix.
+      home-prefix  `~/.local/bin/claude` -> that path, or anything under it, and nothing
+                   that merely starts with its name: `claude-monitor`, a third-party
+                   usage tool, is not Claude Code. A value ending in `/` claims everything
+                   under it, which is how a version directory is reached. A command's
+                   siblings (hermes-acp, muse-bin-<version>) are not claimed: the command
+                   itself is always written with them, so the agent is found anyway.
     """
     body = re.escape(value[2:])                      # strip the leading '~/'
     if mode == "home-dir":
         return re.compile("^" + HOME_ROOTS + body + "/?$")
-    return re.compile("^" + HOME_ROOTS + body)
+    # A group rather than a lookahead: dist/signatures.sql hands this pattern to osquery's
+    # regex_match, and a pattern it cannot compile aborts the whole statement.
+    return re.compile("^" + HOME_ROOTS + body + ("" if value.endswith("/") else "(?:/|$)"))
 
 
 def build_index(catalog, registry):
@@ -371,6 +375,86 @@ def split_perms(perms):
     if parts and _is_provenance(parts[-1]):
         return tuple(parts[:-1]), parts[-1]
     return tuple(parts), ""
+
+
+# WHAT `ver` AND `loc` HOLD, PER KIND, read off the SELECT that emits each one. Declared here
+# rather than in catalog/routes.yaml because the query fixes them and a catalog cannot. Listed
+# as the kinds that DO carry each meaning, so a kind added later carries neither until
+# someone reads its query.
+#
+#   ver  a version on these. `container` holds the container's STATE there ("running"),
+#        and every other kind leaves it empty.
+#   loc  a path on this machine on these. `image` holds a digest, `container` an id, `deb`
+#        and `rpm` nothing, and `proc` the app, the agent binary or the node interpreter
+#        running it, depending on which query emitted the row.
+VERSION_KINDS = frozenset({"app", "brew", "deb", "ext", "jbplugin", "npm", "rpm", "vscodeext"})
+PATH_KINDS = frozenset({"app", "brew", "daemon", "desktop", "ext", "file", "jbplugin", "nmh",
+                        "npm", "port", "unit", "vscodeext"})
+
+
+def kind_rank(routes):
+    """Each row kind's place in catalog/routes.yaml, by the first route that carries it.
+
+    The registry declares vendor-controlled identifiers first -- a bundle id before a path
+    glob -- so this breaks ties between rows that are otherwise equally good evidence.
+    """
+    rank = {}
+    for spec in (routes.get("routes") or {}).values():
+        kind = (spec or {}).get("kind")
+        if isinstance(kind, str):
+            rank.setdefault(kind, len(rank))
+    return rank
+
+
+def primary(rows, rank, superseded=None):
+    """The index of the row that speaks for a finding: its version, its path, its address.
+
+    ONE ANSWER FOR EVERY CONSUMER. A finding is one agent proved by several rows, and a
+    consumer that records one version and one location has to pick a row. Each picking its
+    own way is how two dashboards disagree about the same machine, so the rule is here:
+
+      presence before liveness    a running process names a process, not an install, and
+                                  an address taken from one moves whenever it stops
+      loaded before unreferenced  a browser profile keeps old version directories, and the
+                                  first row is often one of them
+      an install record next      a row of a kind read from a package database, a bundle
+                                  or a manifest (VERSION_KINDS), whether or not this one's
+                                  version could be read. `deb claude-code` speaks before
+                                  `~/.claude/`, which appears on first run; and a bundle id
+                                  stays ahead of its Homebrew cask when the bundle declares
+                                  no version, because the KIND decides, not the string
+      current before superseded   `superseded`, when given, is one flag per row: the
+                                  identifier that matched it belongs to a release the
+                                  vendor has replaced (see build_index)
+      then kind_rank
+
+    Ties keep evidence order, so one payload always gives one answer.
+    """
+    flags = list(superseded) if superseded is not None else [False] * len(rows)
+
+    def key(i):
+        row = rows[i]
+        kind = row.get("kind")
+        return (kind in LIVE_KINDS,
+                split_perms(row.get("perms"))[1] == "unreferenced",
+                kind not in VERSION_KINDS,
+                bool(flags[i]),
+                rank.get(kind, len(rank)),
+                i)
+    return min(range(len(rows)), key=key)
+
+
+def describe(rows, rank, superseded=None):
+    """`primary`, plus that row's `version` and `path` where its kind carries one. Omitted
+    rather than emitted empty: an empty version reads as a known blank, not as none."""
+    i = primary(rows, rank, superseded)
+    row = rows[i]
+    out = {"primary": i}
+    if row.get("kind") in VERSION_KINDS and row.get("ver"):
+        out["version"] = row["ver"]
+    if row.get("kind") in PATH_KINDS and row.get("loc"):
+        out["path"] = row["loc"]
+    return out
 
 
 # `extra` on a scan row: "ok" means the branch ran and the rows beside it are real. `ver` is
@@ -847,6 +931,7 @@ def _run(state, started):
     state["phase"] = "classify"
     catalog = load_catalog(args.catalog)
     routes = load_routes(args.routes)
+    rank = kind_rank(routes)
     findings, unmatched, gaps, scans, absences = classify(rows, catalog, routes)
     # ONE clock reading for the whole report. time.time() used to be called three times
     # per scan row inside a comprehension, so two rows in one payload could straddle a
@@ -874,10 +959,15 @@ def _run(state, started):
             # belongs to a release the vendor has moved past, which says this machine has
             # not updated. A finding with a mix is an ordinary current install that also
             # still carries an old artefact.
+            #
+            # `primary` is an index into `evidence`, and `version` and `path` are that row's
+            # -- see primary(). An index rather than a copy, for the same reason.
             "findings": [
                 {"id": aid, "name": hits[0][0]["name"],
                  "classification": hits[0][0]["classification"],
                  "evidence": [r for _, r in hits],
+                 **describe([r for _, r in hits], rank,
+                            [bool(m.get("superseded")) for m, _ in hits]),
                  **({"running": True}
                     if any(r.get("kind") in LIVE_KINDS for _, r in hits) else {}),
                  **({"superseded": [r.get("id") for m, r in hits if m.get("superseded")],
