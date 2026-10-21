@@ -126,6 +126,15 @@ have empty or duplicate serials, and an id that changes creates a duplicate reco
 `external_id` stays stable when one of an agent's routes is uninstalled. The address is
 (device, primary route), because its job is to find the thing on the machine again.
 
+**It also reports the machines it could not read.** Each scan's outcome carries device
+coverage: how many machines it read and decoded, the unreadable ones counted by reason, and
+each of those listed, up to 1,000 per scan. An entry says which machine it is (device key and
+name), where it is, why it could not be read and when it last reported, and nothing else:
+never an attribute value, a payload or a credential. The list reaches the job log's
+`discovery_scan_outcome` line and a standalone engine's outcome event on every scan. The
+Platform's run gets the counts, and gets the list once the engine's `arthur-client` declares
+the field; the engine needs no change for that.
+
 `loc` and `ver` mean different things for different kinds, and the collector maps them per
 kind. For example, an `image` row carries a digest in `loc`, and a `container` row carries its
 state in `ver`.

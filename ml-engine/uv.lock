@@ -8,7 +8,7 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "2026-10-18T02:57:19.240688654Z"
+exclude-newer = "2026-10-18T09:10:05.238979294Z"
 exclude-newer-span = "P3D"
 
 [options.exclude-newer-package]
@@ -151,7 +151,7 @@ wheels = [
 
 [[package]]
 name = "arthur-client"
-version = "1.4.2868"
+version = "1.4.2874"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "authlib" },
@@ -163,9 +163,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d5/23/fa35422a92d2f69bca6491ddcaebb0df9efcd70cbbde87d6d7926adb0b2a/arthur_client-1.4.2868.tar.gz", hash = "sha256:bfd6ad4682c97f748790e126dc98d94597ea6b6c35063323a0583a9035319fbb", size = 567864, upload-time = "2026-10-20T00:11:23.313Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/8a/90/31e76f746183a701578ee15855cbc2276c1c283bcc4a7e03701cdce2c508/arthur_client-1.4.2874.tar.gz", hash = "sha256:65712ca915d397a3ae57dd52050e4a9b16560e2be7a232c846e3cf487cf4f615", size = 576154, upload-time = "2026-10-21T00:11:12.026Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c0/23/5ad155dc64ee00a58bf3ca2f38e3f32d714ff8bccb5bb45d4c9b62e7ccd4/arthur_client-1.4.2868-py3-none-any.whl", hash = "sha256:6e8e3e51e9c40784359a3679c88eef9b093c95684bdef6914ef915cd2864fc3e", size = 1933917, upload-time = "2026-10-20T00:11:25.669Z" },
+    { url = "https://files.pythonhosted.org/packages/f7/c8/d58204472ba08c50bed3ee78319ca630e349d2f65d6dca18ff7bfa6369d7/arthur_client-1.4.2874-py3-none-any.whl", hash = "sha256:36f0f860a5c5bf6301b6cbb0ab065375b7a76736bafcc066474f4808a8154fdb", size = 1948499, upload-time = "2026-10-21T00:11:09.421Z" },
 ]
 
 [[package]]
@@ -1524,7 +1524,7 @@ wheels = [
 
 [[package]]
 name = "ml-engine"
-version = "2.1.1033"
+version = "2.1.1037"
 source = { editable = "." }
 dependencies = [
     { name = "adlfs" },
@@ -1585,7 +1585,7 @@ linters = [
 [package.metadata]
 requires-dist = [
     { name = "adlfs", specifier = "==2026.8.0" },
-    { name = "arthur-client", specifier = "==1.4.2868" },
+    { name = "arthur-client", specifier = "==1.4.2874" },
     { name = "arthur-common", specifier = "==2.4.97" },
     { name = "boto3", specifier = ">=1.43,<2" },
     { name = "croniter", specifier = "==6.2.4" },

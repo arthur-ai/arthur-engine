@@ -187,20 +187,31 @@ attributes. Deploying the collector is
 
 | Field | Secret | Required | Notes |
 |---|---|---|---|
-| `project_ids` | no | yes | Comma-separated project **IDs**, not numbers |
+| `project_ids` | no | one of three | Comma-separated project **IDs**, not numbers |
+| `organization_id` | no | one of three | The organization's number: every active project under it, folders walked |
+| `folder_ids` | no | one of three | Comma-separated folder numbers: every active project under each |
 | `include_labels` | no | no | Comma-separated `key=value` labels to limit the scan to |
 | `exclude_labels` | no | no | Comma-separated `key=value` labels to leave out; exclude wins |
 | `service_account_key` | yes | no | A service account JSON key. Without one, the engine uses Application Default Credentials only if `ARTHUR_ENGINE_GCP_COMPUTE_ENGINE_ALLOW_ADC=true` is set |
 
 The service account needs `compute.instances.list`, `compute.instances.getGuestAttributes`
-and `compute.projects.get`, all in `roles/compute.viewer`. `query` and `query_language`
-are as for Jamf, and so is stopping on shutdown.
+and `compute.projects.get`, all in `roles/compute.viewer`. Under an organization or a
+folder it also needs `resourcemanager.projects.list` and `resourcemanager.folders.list`
+there (`roles/browser`), with `roles/compute.viewer` granted there rather than per project.
+A project it is refused is a denied scope in the scan's outcome and the scan reads the rest;
+refused every project, the scan fails. `query` and `query_language` are as for Jamf, and so
+is stopping on shutdown.
 
 Compute Engine records no time a guest attribute was written, so every scan lists every
 VM in the projects. The lookback is applied to the time on the collector's status line: a
 VM with no report inside it is counted, not published, and a window of `0` publishes
-every VM's last report. A VM whose `enable-guest-attributes` is off, on the VM or on its
-project, is counted as `guest-attributes-disabled` and not read.
+every VM's last report. A VM's own metadata wins over its project's, key by key. A VM
+whose `enable-guest-attributes` is off, on the VM, or on its project when the VM does not
+set it, is counted as `guest-attributes-disabled` and not read. A VM nothing was ever
+written for whose `enable-osconfig` is off in the same way is counted as
+`osconfig-disabled`: the OS policy that installs the collector can never reach it. Without
+`compute.projects.get`, a VM that does not set `enable-osconfig` itself is counted as
+`never-reported` instead.
 
 #### `aws_ec2` — EC2 instances
 
@@ -210,18 +221,26 @@ inventory. Deploying the collector is
 
 | Field | Secret | Required | Notes |
 |---|---|---|---|
-| `regions` | no | yes | Comma-separated regions, such as `us-east-1,eu-west-1` |
+| `regions` | no | yes | Comma-separated regions, such as `us-east-1,eu-west-1`, or `all` for every region each account has enabled. The named regions choose the partition, and must share one; `all` is the `aws` partition's, so another partition names its regions |
 | `access_key_id` | yes | no | An access key, with `secret_access_key`. Without one, the engine uses its own AWS credentials only if `ARTHUR_ENGINE_AWS_EC2_ALLOW_DEFAULT_CREDENTIALS=true` is set |
 | `secret_access_key` | yes | no | Set with `access_key_id`, or neither |
 | `role_arn` | no | no | A role those credentials assume, as session `arthur-ai-discovery` |
-| `external_id` | no | no | The external ID the role's trust policy requires; only with `role_arn` |
+| `external_id` | no | no | The external ID the role's trust policy requires; with `role_arn`, or with `accounts`, where it is sent when assuming the member role in each account and needs no `role_arn` |
+| `accounts` | no | no | `all` for every active account in the organization, or comma-separated 12-digit account IDs. Each is read through its member role; unset, the credential's own account is read directly |
+| `member_role_name` | no | no | The role assumed in each account, by name; defaults to `arthur-ai-discovery` |
 | `include_tags` | no | no | Comma-separated `key=value` tags to limit the scan to |
 | `exclude_tags` | no | no | Comma-separated `key=value` tags to leave out; exclude wins |
 
 The credential needs `ec2:DescribeInstances`, `ssm:DescribeInstanceInformation` and
-`ssm:ListInventoryEntries`, and nothing more: AWS's read-only managed policies cover them
-but also read Parameter Store and instance user data. `query` and `query_language` are as
-for Jamf, and so is stopping on shutdown.
+`ssm:ListInventoryEntries`, plus `ec2:DescribeRegions` with `regions: all`, and nothing
+more: AWS's read-only managed policies cover them but also read Parameter Store and
+instance user data. With `accounts` set it needs
+`organizations:ListAccounts` (for `all`) and `sts:AssumeRole` on the member role instead,
+and the member role in each account holds the three actions plus `ec2:DescribeRegions`.
+An account whose role cannot be assumed, a named region the account has not enabled, or a
+region it is refused, is a denied scope in the scan's outcome and the scan reads the rest;
+refused everywhere, the scan fails.
+`query` and `query_language` are as for Jamf, and so is stopping on shutdown.
 
 EC2 has no per-instance report date to filter on, so every scan lists every instance in
 the regions. The lookback is applied to the time on the collector's status line: an
@@ -465,6 +484,53 @@ working is visible where its agents are:
 `credentials_unavailable`, `authentication_failed`, `permission_denied`,
 `provider_error`, `publication_failed`, `cancelled` or `internal_error`. Errors never
 carry the source's credentials or the destination's secrets.
+
+`denied_scopes` lists the parts of an organization-wide scope the scan was refused and
+read past, each as `{"scope": "projects/acme-dev-456", "reason": "permission_denied"}`:
+a project under a Compute Engine source's organization or folder, an AWS account
+(`123456789012`) whose member role could not be assumed, or an account and region
+(`123456789012/eu-west-1`). `reason` is `permission_denied` or `unreachable`. A scan
+succeeded with denied scopes is a scan that did not see all of its scope, which a
+destination should alert on. The list is empty for a source whose scope is one thing,
+which fails the scan instead.
+
+A source that reads machines (`jamf_pro`, `gcp_compute_engine`, `aws_ec2`) adds
+`device_coverage` to the outcome: how many machines it read, decoded and could not read,
+the unreadable ones by reason, and **each unreadable machine by identity**, which is the
+finding a destination should alert on, since a machine the scan cannot see is where
+unmanaged AI sits:
+
+```json
+"device_coverage": {
+  "devices_read": 412,
+  "devices_decoded": 380,
+  "devices_unreadable": 32,
+  "unreadable_by_reason": {"never-reported": 30, "osconfig-disabled": 2},
+  "unreadable_devices": [
+    {
+      "device_key": "4823710983451",
+      "name": "build-1",
+      "location": "acme-prod-123/us-central1-a",
+      "reason": "osconfig-disabled",
+      "last_reported": null
+    }
+  ],
+  "unreadable_devices_truncated": 0,
+  "...": "the scope counts"
+}
+```
+
+| Field | Meaning |
+|---|---|
+| `device_key` | The carrier's own stable id: a Jamf management id, a Compute Engine instance id, an EC2 instance id |
+| `name` | What the carrier shows for it: the computer name, the VM name, the `Name` tag |
+| `location` | Where the carrier addresses it: `project/zone` on Compute Engine, `account/region` on EC2, absent for an MDM |
+| `reason` | The reason it was counted under in `unreadable_by_reason` |
+| `last_reported` | When the machine last reported, from its status line or the MDM's report date; absent when neither says |
+
+The list holds at most 1,000 machines per scan; `unreadable_devices_truncated` is how
+many more were counted and not listed. No attribute value, payload or
+credential is ever in it.
 
 The same agents arrive on every scan: each scan sends what the source reports now, and
 the destination dedupes on `agent.external_id` and `source.id` if it needs to.

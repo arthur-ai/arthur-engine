@@ -298,6 +298,27 @@ def test_an_agent_carries_its_task_and_its_provenance() -> None:
     assert source.vendor == "splunk_enterprise"
 
 
+def test_a_network_source_entry_crosses_to_the_platform() -> None:
+    """A network source (aws_network, gcp_network) reports with source class
+    `network`; the Platform client must accept it, or the fetch job fails."""
+    network = {
+        **_entry("i-0abc"),
+        "source_class": "network",
+        "vendor": "aws_network",
+        "address": {
+            "instance": "i-0abc",
+            "scope": "111122223333/us-east-1",
+            "resource_kind": "instance",
+            "resource_id": "i-0abc",
+        },
+    }
+    agent = enriched_task_to_agent(_task("t1", sources=[network]), DATA_PLANE_ID)
+
+    assert agent.provenance is not None
+    [source] = agent.provenance.sources
+    assert source.source_class.value == "network"
+
+
 def test_the_fetch_job_uploads_provenance(tasks_api: MagicMock) -> None:
     tasks_api.get_agent_tasks_api_v2_agent_tasks_get.side_effect = [[_task("t1")], []]
     agents_client = _agents_client()

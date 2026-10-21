@@ -86,7 +86,7 @@ variable "enable_apis" {
 }
 
 variable "reader" {
-  description = "IAM member for the credential of Arthur's gcp_compute_engine discovery source, such as serviceAccount:arthur-discovery@my-project.iam.gserviceaccount.com. Granted reader_role in each project."
+  description = "IAM member for the credential of Arthur's gcp_compute_engine discovery source, such as serviceAccount:arthur-discovery@my-project.iam.gserviceaccount.com. Granted reader_role in each project. A source scoped to an organization or a folder is granted there instead, outside this module."
   type        = string
   default     = null
 }

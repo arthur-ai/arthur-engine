@@ -18,6 +18,11 @@ TWO LISTINGS PER REGION, THEN A READ PER INSTANCE. boto3's standard retry mode b
 on SSM's and EC2's throttling answers, so a large fleet slows the scan rather than
 failing it. A refused credential or a denied action is the source's problem, not one
 instance's, and is raised with the `status_code` `failure_code` reads.
+
+A SCOPE THAT SPANS ACCOUNTS OR EVERY REGION ASKS TWO MORE THINGS, each answered from
+any region: Organizations for the accounts (`organizations:ListAccounts`, from the
+management account or a delegated administrator) and EC2 for the regions an account has
+enabled (`ec2:DescribeRegions`).
 """
 
 import hashlib
@@ -104,10 +109,14 @@ class Ec2Error(RuntimeError):
         message: str,
         status_code: Optional[int] = None,
         code: Optional[str] = None,
+        operation: Optional[str] = None,
     ) -> None:
         super().__init__(message)
         self.status_code = status_code
         self.code = code
+        # The API operation that failed, where one did: `AssumeRole` is the role, not
+        # the call that needed it.
+        self.operation = operation
 
 
 @dataclass(frozen=True)
@@ -185,6 +194,39 @@ class Ec2Client:
                 account = str(reservation.get("OwnerId") or "")
                 for raw in reservation.get("Instances") or []:
                     yield _instance(region, account, raw)
+
+    def enabled_regions(self, ask_in: str) -> tuple[str, ...]:
+        """The regions this account can use, asked in `ask_in`. Opt-in regions the
+        account has not enabled are left out, so nothing answers OptInRequired."""
+        body = self._call(
+            "ec2",
+            ask_in,
+            lambda ec2: ec2.describe_regions(AllRegions=False),
+        )
+        return tuple(
+            sorted(
+                str(region.get("RegionName") or "")
+                for region in body.get("Regions") or []
+                if region.get("RegionName")
+            ),
+        )
+
+    def organization_accounts(self, ask_in: str) -> tuple[str, ...]:
+        """Every ACTIVE account in the organization, asked in `ask_in`.
+
+        An account being closed or suspended is left out: nothing in it can be read.
+        """
+        pages = self._call(
+            "organizations",
+            ask_in,
+            lambda org: org.get_paginator("list_accounts").paginate(),
+        )
+        return tuple(
+            str(account.get("Id") or "")
+            for page in self._pages("organizations", ask_in, pages)
+            for account in page.get("Accounts") or []
+            if account.get("Status") == "ACTIVE" and account.get("Id")
+        )
 
     def managed_instance_ids(self, region: str) -> frozenset[str]:
         """The region's instances SSM manages. Stopped ones are never among them."""
@@ -364,6 +406,7 @@ def _error(service: str, region: str, e: Exception) -> Exception:
             f"{': ' + message if message else ''}",
             status_code=status,
             code=code or None,
+            operation=operation,
         )
     return Ec2Error(
         f"{service.upper()} in {region} could not be reached: {e}. Check that the region "

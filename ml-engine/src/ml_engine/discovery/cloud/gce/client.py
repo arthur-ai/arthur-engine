@@ -10,7 +10,10 @@ The privileges are `compute.instances.list`, `compute.instances.getGuestAttribut
 THREE CALLS, NO SDK. One `aggregated/instances` listing per project, paged; one project
 read for its metadata; one `getGuestAttributes` per in-scope VM. That is small enough to
 make over REST with google-auth's `AuthorizedSession`, which is already a dependency,
-rather than adding google-cloud-compute for it.
+rather than adding google-cloud-compute for it. A source scoped to an organization or a
+folder adds Resource Manager's two listings, `projects` and `folders`, under the same
+session: `resourcemanager.projects.list` and `resourcemanager.folders.list` on the parent,
+both in `roles/browser`, and a token carrying `CLOUD_PLATFORM_READONLY_SCOPE`.
 
 ONE CALL AT A TIME. A guest-attribute read is a call per VM, and Compute Engine's read
 quota is per project per minute. Sequential calls pace themselves well inside it, and a
@@ -32,15 +35,32 @@ from discovery.retry import MAX_ATTEMPTS, RETRY_STATUSES, backoff_seconds
 
 COMPUTE_API = "https://compute.googleapis.com/compute/v1"
 COMPUTE_READONLY_SCOPE = "https://www.googleapis.com/auth/compute.readonly"
+RESOURCE_MANAGER_API = "https://cloudresourcemanager.googleapis.com/v3"
+# Resource Manager is outside the compute scope. Still read-only: a scope narrows what a
+# token may do, and IAM says what the account may do at all.
+CLOUD_PLATFORM_READONLY_SCOPE = (
+    "https://www.googleapis.com/auth/cloud-platform.read-only"
+)
+
+# Google's reason on the 403 for a project where the Compute Engine API is not enabled.
+# No VM can exist in such a project, so it is not a refusal.
+API_NOT_ENABLED_REASON = "accessNotConfigured"
 
 # The collector's reporter writes every key under this one namespace.
 NAMESPACE = "arthur/"
 
 # Instance or project metadata that turns guest attributes on. Off unless set.
 GUEST_ATTRIBUTES_FLAG = "enable-guest-attributes"
+# Instance or project metadata without which the OS Config agent acts on no policy, so
+# nothing installs the collector. Off unless set.
+OSCONFIG_FLAG = "enable-osconfig"
+# The two keys a scan reads, and the only ones: metadata also carries startup scripts.
+METADATA_FLAGS = (GUEST_ATTRIBUTES_FLAG, OSCONFIG_FLAG)
 
 # The listing's own maximum.
 PAGE_SIZE = 500
+# Resource Manager's.
+RESOURCE_MANAGER_PAGE_SIZE = 100
 
 # Google's reasons for a 403 that is a rate limit, not a refusal.
 _RATE_LIMIT_REASONS = frozenset(
@@ -49,11 +69,21 @@ _RATE_LIMIT_REASONS = frozenset(
 
 
 class ComputeEngineError(RuntimeError):
-    """A Compute Engine call failed in a way retrying will not fix."""
+    """A Compute Engine or Resource Manager call failed in a way retrying will not fix.
 
-    def __init__(self, message: str, status_code: Optional[int] = None) -> None:
+    `reason` is Google's own reason on the error, where there is one, such as
+    `API_NOT_ENABLED_REASON`.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        status_code: Optional[int] = None,
+        reason: Optional[str] = None,
+    ) -> None:
         super().__init__(message)
         self.status_code = status_code
+        self.reason = reason
 
 
 @dataclass(frozen=True)
@@ -69,6 +99,8 @@ class Instance:
     guest_attributes_flag: Optional[str] = None
     """The VM's own `enable-guest-attributes` metadata, or None when it has none and
     the project's applies."""
+    osconfig_flag: Optional[str] = None
+    """The VM's own `enable-osconfig` metadata, or None when the project's applies."""
 
 
 class ComputeEngineClient:
@@ -117,13 +149,47 @@ class ComputeEngineClient:
                 return
             params["pageToken"] = token
 
-    def project_guest_attributes_flag(self, project: str) -> Optional[str]:
-        """The project's `enable-guest-attributes` metadata, or None when unset."""
+    def projects_under(self, parent: str) -> Iterator[str]:
+        """The ID of every active project under `parent`, folders walked depth first.
+
+        `parent` is `organizations/N` or `folders/N`. Resource Manager lists a parent's
+        direct children only, so each folder found is walked in turn. A project being
+        deleted is left out: nothing in it can be read.
+        """
+        for project in self._listed(
+            f"{RESOURCE_MANAGER_API}/projects",
+            parent,
+            "projects",
+        ):
+            if project.get("state") == "ACTIVE" and project.get("projectId"):
+                yield str(project["projectId"])
+        for folder in self._listed(
+            f"{RESOURCE_MANAGER_API}/folders",
+            parent,
+            "folders",
+        ):
+            if folder.get("state", "ACTIVE") == "ACTIVE" and folder.get("name"):
+                yield from self.projects_under(str(folder["name"]))
+
+    def _listed(self, url: str, parent: str, key: str) -> Iterator[Mapping[str, Any]]:
+        """One Resource Manager listing under `parent`, every page."""
+        params: dict[str, Any] = {
+            "parent": parent,
+            "pageSize": RESOURCE_MANAGER_PAGE_SIZE,
+        }
+        while True:
+            page = self._get(url, params) or {}
+            yield from page.get(key) or []
+            token = page.get("nextPageToken")
+            if not token:
+                return
+            params["pageToken"] = token
+
+    def project_flags(self, project: str) -> Mapping[str, Optional[str]]:
+        """The project's `METADATA_FLAGS`, each None when unset. One read for both."""
         body = self._get(f"{COMPUTE_API}/projects/{_segment(project)}", {}) or {}
-        return _metadata_value(
-            body.get("commonInstanceMetadata"),
-            GUEST_ATTRIBUTES_FLAG,
-        )
+        metadata = body.get("commonInstanceMetadata")
+        return {key: _metadata_value(metadata, key) for key in METADATA_FLAGS}
 
     def guest_attributes(self, instance: Instance) -> Optional[dict[str, str]]:
         """The VM's `arthur/` values as `namespace/key` -> value, or None when it has none.
@@ -156,7 +222,7 @@ class ComputeEngineClient:
         missing_ok: bool = False,
     ) -> Optional[dict[str, Any]]:
         last: Optional[str] = None
-        path = url.removeprefix(COMPUTE_API)
+        api, path = _api_and_path(url)
 
         for attempt in range(1, MAX_ATTEMPTS + 1):
             try:
@@ -168,7 +234,7 @@ class ComputeEngineClient:
             except (requests.ConnectionError, requests.Timeout) as exc:
                 if attempt == MAX_ATTEMPTS:
                     raise ComputeEngineError(
-                        f"Compute Engine GET {path} unreachable: {exc}",
+                        f"{api} GET {path} unreachable: {exc}",
                     ) from exc
                 last = type(exc).__name__
                 self._sleep(backoff_seconds(attempt, None))
@@ -181,7 +247,7 @@ class ComputeEngineClient:
                     # A proxy's page or a cut-off answer. Raised as this type so one
                     # VM's read is skipped like any other, rather than ending the scan.
                     raise ComputeEngineError(
-                        f"Compute Engine GET {path} answered HTTP 200 with a body "
+                        f"{api} GET {path} answered HTTP 200 with a body "
                         f"that is not JSON",
                     ) from exc
                 return body
@@ -197,18 +263,26 @@ class ComputeEngineClient:
                 continue
 
             raise ComputeEngineError(
-                f"Compute Engine GET {path} failed with HTTP {resp.status_code}"
+                f"{api} GET {path} failed with HTTP {resp.status_code}"
                 f"{_google_message(resp)}",
                 # A rate limit Google sent as 403 still says 429 once retries run out:
                 # read as a 403, it would end the scan as permission denied, and Test
                 # Connection would call it the same.
                 status_code=429 if rate_limited else resp.status_code,
+                reason=_google_reason(resp),
             )
 
         raise ComputeEngineError(
-            f"Compute Engine GET {path} still failing after {MAX_ATTEMPTS} attempts "
+            f"{api} GET {path} still failing after {MAX_ATTEMPTS} attempts "
             f"({last})",
         )
+
+
+def _api_and_path(url: str) -> tuple[str, str]:
+    """Which API a URL calls, and its path there, for what an error says."""
+    if url.startswith(RESOURCE_MANAGER_API):
+        return "Resource Manager", url.removeprefix(RESOURCE_MANAGER_API)
+    return "Compute Engine", url.removeprefix(COMPUTE_API)
 
 
 def _segment(value: str) -> str:
@@ -229,13 +303,14 @@ def _instance(project: str, raw: Mapping[str, Any]) -> Instance:
             raw.get("metadata"),
             GUEST_ATTRIBUTES_FLAG,
         ),
+        osconfig_flag=_metadata_value(raw.get("metadata"), OSCONFIG_FLAG),
     )
 
 
 def _metadata_value(metadata: Optional[Mapping[str, Any]], key: str) -> Optional[str]:
     """One key's value from Compute Engine's `{"items": [{"key", "value"}]}` metadata.
 
-    Only the one key is looked at. Metadata also carries startup scripts and whatever
+    Only the named key is looked at. Metadata also carries startup scripts and whatever
     else a project keeps there, and none of it is read, kept or logged.
     """
     for item in (metadata or {}).get("items") or []:
@@ -253,11 +328,23 @@ def _error(resp: requests.Response) -> Mapping[str, Any]:
     return error if isinstance(error, dict) else {}
 
 
-def _is_rate_limit(resp: requests.Response) -> bool:
+def _reasons(resp: requests.Response) -> list[str]:
+    """Google's reasons on an error, in the order it gave them."""
     error = _error(resp)
-    reasons = {str(e.get("reason")) for e in error.get("errors") or []}
-    reasons |= {str(d.get("reason")) for d in error.get("details") or []}
-    return bool(reasons & _RATE_LIMIT_REASONS)
+    found = [str(e.get("reason")) for e in error.get("errors") or [] if e.get("reason")]
+    found += [
+        str(d.get("reason")) for d in error.get("details") or [] if d.get("reason")
+    ]
+    return found
+
+
+def _is_rate_limit(resp: requests.Response) -> bool:
+    return bool(set(_reasons(resp)) & _RATE_LIMIT_REASONS)
+
+
+def _google_reason(resp: requests.Response) -> Optional[str]:
+    reasons = _reasons(resp)
+    return reasons[0] if reasons else None
 
 
 def _google_message(resp: requests.Response) -> str:

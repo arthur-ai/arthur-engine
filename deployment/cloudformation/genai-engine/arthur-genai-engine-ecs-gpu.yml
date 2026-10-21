@@ -202,6 +202,10 @@ Resources:
         InstanceType: !Ref GenaiEngineECSClusterGPUInstanceType
         IamInstanceProfile:
           Arn: !Ref GenaiEngineEC2InstanceProfileIAMArn
+        MetadataOptions:
+          HttpTokens: required
+          HttpEndpoint: enabled
+          HttpPutResponseHopLimit: 2
         BlockDeviceMappings:
           - DeviceName: "/dev/xvda"
             Ebs:
@@ -224,6 +228,9 @@ Resources:
             # Install CloudWatch Agent
             yum install -y amazon-cloudwatch-agent
 
+            # IMDSv2 session token for instance metadata lookups
+            IMDS_TOKEN=$(curl -fsS --retry 5 --retry-connrefused -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 300")
+
             # Create CloudWatch Agent configuration file
             # https://aws.amazon.com/blogs/compute/capturing-gpu-telemetry-on-the-amazon-ec2-accelerated-computing-instances/
             cat <<EOF > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
@@ -237,9 +244,9 @@ Resources:
                   "nvidia_gpu": {
                     "append_dimensions": {
                       "ArthurNamespace": "${ArthurResourceNamespace}",
-                      "ImageId": "$(curl -s http://169.254.169.254/latest/meta-data/ami-id)",
-                      "InstanceId": "$(curl -s http://169.254.169.254/latest/meta-data/instance-id)",
-                      "InstanceType": "$(curl -s http://169.254.169.254/latest/meta-data/instance-type)"
+                      "ImageId": "$(curl -fsS --retry 5 -H "X-aws-ec2-metadata-token: $IMDS_TOKEN" http://169.254.169.254/latest/meta-data/ami-id)",
+                      "InstanceId": "$(curl -fsS --retry 5 -H "X-aws-ec2-metadata-token: $IMDS_TOKEN" http://169.254.169.254/latest/meta-data/instance-id)",
+                      "InstanceType": "$(curl -fsS --retry 5 -H "X-aws-ec2-metadata-token: $IMDS_TOKEN" http://169.254.169.254/latest/meta-data/instance-type)"
                     },
                     "measurement": [
                       "utilization_gpu",

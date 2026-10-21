@@ -163,9 +163,11 @@ journalctl -u arthur-ai-discovery.service -n 50        # the collector's stderr,
 ## 07 · Access for the Arthur collector
 
 In Arthur, add a **Compute Engine** discovery source (`gcp_compute_engine`). Set
-`project_ids`, optionally `include_labels` or `exclude_labels`, and `service_account_key`:
-a JSON key for an account with these permissions. The two label fields are the only scope there
-is, set by whoever owns governance, and a VM they leave out is still counted as excluded.
+`project_ids`, or `organization_id` or `folder_ids` to scan every active project under them
+(below), optionally `include_labels` or `exclude_labels`, and `service_account_key`. The two
+label fields are the only scope there is, set by whoever owns governance, and a VM they leave
+out is still counted as excluded. The key is a JSON key for an account with these
+permissions:
 
 - `compute.instances.list`
 - `compute.instances.getGuestAttributes`
@@ -177,16 +179,43 @@ privilege. Without `compute.projects.get`, the source works only if every VM set
 source without a key uses the engine's own Application Default Credentials only when the engine
 sets `ARTHUR_ENGINE_GCP_COMPUTE_ENGINE_ALLOW_ADC=true`.
 
-The source does not publish two kinds of VM:
+**An organization or a folder as the scope.** `organization_id` is the organization's number,
+`folder_ids` a comma-separated list of folder numbers; either may stand alone or beside
+`project_ids`. The source lists every active project under them, folders walked, on every
+scan, so a project created tomorrow is in scope tomorrow. The account needs
+`resourcemanager.projects.list` and `resourcemanager.folders.list` on the organization or
+folder (`roles/browser`), and `roles/compute.viewer` granted there rather than per project;
+the Terraform module's `reader` grants per project only. Resource Manager bills the listing to
+the credential's own project, so that project needs `cloudresourcemanager.googleapis.com`
+enabled; without it every listing answers 403 `accessNotConfigured` and the run fails. A
+project the account is refused is
+a denied scope on the run, which Arthur shows as a degraded source, and the scan reads the
+rest; refused every project, the run fails. A project without the Compute Engine API is
+counted and skipped, since no VM can exist in it.
+
+The source does not publish three kinds of VM:
 
 - **`guest-attributes-disabled`**: `enable-guest-attributes` is not `TRUE` on the VM, or on its
   project when the VM does not set it. The API keeps serving old values after the setting is
   turned off, so they cannot be current.
+- **`osconfig-disabled`**: nothing was ever written for the VM, and `enable-osconfig` is not
+  `TRUE` on the VM, or on its project when the VM does not set it. The OS Config agent acts on
+  no policy there, so the rollout can never install the collector. A VM that has reported
+  keeps its own reasons, whatever the key says now. Without `compute.projects.get`, a VM that
+  does not set the key itself is counted as `never-reported` instead.
 - **`not-reported-in-window`**: the status line shows no report within the scan's lookback,
   for example because the VM is stopped or its timer was removed. Its agents go stale in
   Arthur.
 
 A VM that still reports but is failing keeps publishing its last good scan.
+
+Every VM the source could not read is also listed, as
+`device_coverage.unreadable_devices`: instance id, name, `project/zone`, the reason, and the
+time on its status line when it has one. The list holds 1,000 VMs per run; the rest are counted
+in `unreadable_devices_truncated`. The VMs a scan cannot see are where unmanaged AI sits, so
+that list is the finding to work through, and a VM whose owner turned the agent or guest
+attributes off is in it by name. No attribute value travels. Where the list can be read is in
+[architecture.md](../architecture.md#what-the-collector-emits).
 
 ## 08 · Rollback — terminal
 
