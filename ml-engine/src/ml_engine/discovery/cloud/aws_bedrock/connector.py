@@ -115,6 +115,11 @@ SSO_ROLE_PATH = "/aws-reserved/sso.amazonaws.com/"
 _TRUE = frozenset({"true", "yes", "1"})
 _FALSE = frozenset({"false", "no", "0"})
 _REFUSED_STATUSES = (401,)
+# What a region the account has not enabled answers with, as a refused credential
+# would. Raised only from the region the credential was proven in.
+_REGION_NOT_ENABLED_CODES = frozenset(
+    {"InvalidClientTokenId", "UnrecognizedClientException"}
+)
 
 _T = TypeVar("_T")
 
@@ -229,7 +234,7 @@ class BedrockConnector:
             ),
         )
 
-        scan = _Scan(client, identity, logger)
+        scan = _Scan(client, identity, settings.regions[0], logger)
         batch: list[DiscoveredAgentRecord] = []
         for region in settings.regions:
             parts: list[Iterator[DiscoveredAgentRecord]] = []
@@ -265,10 +270,12 @@ class _Scan:
         self,
         client: BedrockClient,
         identity: Identity,
+        identity_region: str,
         logger: logging.Logger,
     ) -> None:
         self._client = client
         self._identity = identity
+        self._identity_region = identity_region
         self._log = logger
         self.counts: Counter[str] = Counter()
         self.people: Counter[str] = Counter()
@@ -338,7 +345,13 @@ class _Scan:
         try:
             yield from items
         except BedrockError as e:
-            if e.status_code in _REFUSED_STATUSES:
+            # A credential refused in the region it was proven in is the credential.
+            # Elsewhere, these codes are what an opt-in region not enabled for the
+            # account answers with; an expired token is still the credential.
+            if e.status_code in _REFUSED_STATUSES and (
+                region == self._identity_region
+                or e.code not in _REGION_NOT_ENABLED_CODES
+            ):
                 raise
             self.refused.append(e)
             self._log.warning(

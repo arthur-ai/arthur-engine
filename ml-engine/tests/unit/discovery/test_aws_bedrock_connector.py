@@ -157,7 +157,7 @@ class FakeAws:
 
     `agents[region]`, `runtimes[region]` and `events[region]` are each a list of pages.
     `errors[(service, operation)]` is a list of exceptions raised, one per call, before
-    any answer is given.
+    any answer is given; None lets that call through.
     """
 
     def __init__(
@@ -165,7 +165,7 @@ class FakeAws:
         agents: Optional[dict[str, list[list[dict[str, Any]]]]] = None,
         runtimes: Optional[dict[str, list[list[dict[str, Any]]]]] = None,
         events: Optional[dict[str, list[list[dict[str, Any]]]]] = None,
-        errors: Optional[dict[tuple[str, str], list[Exception]]] = None,
+        errors: Optional[dict[tuple[str, str], list[Optional[Exception]]]] = None,
     ) -> None:
         self.agents = agents or {}
         self.runtimes = runtimes or {}
@@ -191,7 +191,9 @@ class FakeClient:
         self._aws.calls.append((self._service, self._region, operation, dict(params)))
         pending = self._aws.errors.get((self._service, operation))
         if pending:
-            raise pending.pop(0)
+            error = pending.pop(0)
+            if error is not None:
+                raise error
 
     def _page(
         self,
@@ -606,6 +608,42 @@ def test_a_refused_credential_ends_the_scan_as_authentication_failed() -> None:
         scan(aws)
     assert failure_code(raised.value) is DiscoveryErrorCode.AUTHENTICATION_FAILED
     assert aws.operations() == {"GetCallerIdentity"}
+
+
+def test_a_region_not_enabled_for_the_account_is_a_warning_not_the_credential(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """An opt-in region the account has not enabled refuses the token as a bad
+    credential would; the credential was already proven in the first region."""
+    aws = FakeAws(
+        agents={REGION: [[agent("A1")]]},
+        errors={
+            ("bedrock-agent", "ListAgents"): [
+                None,
+                client_error("UnrecognizedClientException", "ListAgents"),
+            ],
+        },
+    )
+    fields = {"regions": f"{REGION},me-south-1", "read_cloudtrail": "false"}
+    with caplog.at_level(logging.WARNING):
+        records = scan(aws, fields=fields)
+    assert [r.creation_source.address.resource_id for r in records] == ["A1"]
+    assert "Bedrock ListAgents in me-south-1 not read" in caplog.text
+
+
+def test_an_expired_token_in_a_later_region_still_ends_the_scan() -> None:
+    aws = FakeAws(
+        errors={
+            ("bedrock-agent", "ListAgents"): [
+                None,
+                client_error("ExpiredTokenException", "ListAgents"),
+            ],
+        },
+    )
+    fields = {"regions": f"{REGION},me-south-1", "read_cloudtrail": "false"}
+    with pytest.raises(BedrockError) as raised:
+        scan(aws, fields=fields)
+    assert failure_code(raised.value) is DiscoveryErrorCode.AUTHENTICATION_FAILED
 
 
 def test_a_stop_before_the_first_list_sends_nothing_more() -> None:
