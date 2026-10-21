@@ -204,6 +204,36 @@ instance with no report inside it is counted, not published, and a window of `0`
 publishes every instance's last report. A running instance SSM does not manage is
 counted as `not-ssm-managed`, and a Windows instance as `unsupported-platform`.
 
+#### `aws_bedrock` — AWS Bedrock
+
+Lists the account's Bedrock agents and AgentCore agent runtimes, and reads CloudTrail
+for the IAM roles that call Bedrock's models.
+
+| Field | Secret | Required | Notes |
+|---|---|---|---|
+| `regions` | no | yes | Comma-separated regions, such as `us-east-1,us-west-2` |
+| `list_agents` | no | no | `true` (default) or `false`: list agents and agent runtimes |
+| `read_cloudtrail` | no | no | `true` (default) or `false`: read model callers from CloudTrail |
+| `access_key_id` | yes | no | As for `aws_ec2`; without one, the engine uses its own AWS credentials only if `ARTHUR_ENGINE_AWS_BEDROCK_ALLOW_DEFAULT_CREDENTIALS=true` is set |
+| `secret_access_key` | yes | no | Set with `access_key_id`, or neither |
+| `role_arn` | no | no | A role those credentials assume, as session `arthur-ai-discovery` |
+| `external_id` | no | no | The external ID the role's trust policy requires; only with `role_arn` |
+
+The credential needs `bedrock:ListAgents`, `bedrock-agentcore:ListAgentRuntimes` and
+`cloudtrail:LookupEvents`. The connector never calls `GetAgentRuntime`, which returns a
+runtime's environment variables, or `GetAgent`, which returns its prompt. Use
+`query_language: none` and leave `query` empty.
+
+Agents and runtimes are an inventory: the lookback is not applied to them. CloudTrail is
+read over the lookback, or the last seven days when it is `0`, for `Converse`,
+`ConverseStream`, `InvokeModel` and `InvokeModelWithResponseStream`. Each IAM role (or
+IAM user) that called one becomes a record per region, named for the models it called,
+with external id `{account}/{region}/iam_role/{role ARN}`. IAM Identity Center (SSO)
+roles and the root user are people: their calls are counted in the job log, not
+reported. A part AWS refuses in a region, or a region AgentCore does not run in, is a
+warning and the rest of the scan goes on; a refused credential, or every part refused,
+fails the scan.
+
 #### `splunk_enterprise` — Splunk Enterprise
 
 Runs the config's SPL as a search job over the lookback window.
@@ -273,6 +303,43 @@ FROM kong-ai-logs
 - `LIMIT 10000` is Elasticsearch's default maximum for one query; without it the cluster
   stops at 1,000 rows. More consumers than that need a narrower query.
 - The key needs `read` on that index only. The query reads no request headers or bodies.
+
+#### `aws_network` — AWS network logs (read from Amazon CloudWatch Logs)
+
+Reads network logs from CloudWatch Logs log groups and reports each internal source seen
+calling a host known to serve model inference (OpenAI, Anthropic, Amazon Bedrock, Azure
+OpenAI and AI Foundry, Gemini and Vertex AI, Mistral, Cohere, Groq, OpenRouter, Together,
+DeepSeek, xAI, Perplexity, Fireworks), or one of the source's own hosts or ranges. One
+record per EC2 instance; else per network interface (default VPC flow logs name one);
+else per address in its VPC. A line naming only an address and no VPC is counted in the
+log and skipped, since the same address in two VPCs is two hosts.
+
+| Field | Secret | Required | Notes |
+|---|---|---|---|
+| `region` | no | yes | Region of the log groups, e.g. `us-east-1` |
+| `log_group_names` | no | yes | Comma-separated log groups, up to 20; a log group shared into a monitoring account by its ARN |
+| `log_format` | no | yes | How lines are read: `route53_resolver_query_log` (Route 53 Resolver query logs, JSON), `vpc_flow_log_v2` (VPC Flow Logs, default version 2 format), or `custom` to use `extraction_regex` |
+| `extraction_regex` | no | no | Required for `log_format: custom` and read only then. A regex with named groups: `src` and `dest` (a hostname or IP) required; `instance_id`, `interface_id`, `vpc_id`, `account_id`, `timestamp` (ISO 8601 or epoch) optional. `(?P<name>…)` or `(?<name>…)`; at most 2048 characters |
+| `access_key_id` | no | no | IAM access key ID; set with `secret_access_key`, or leave both empty to use the engine's own AWS credentials, which needs `ARTHUR_ENGINE_AWS_NETWORK_ALLOW_DEFAULT_CREDENTIALS=true` on the engine |
+| `secret_access_key` | yes | no | The key's secret |
+| `role_arn` | no | no | An IAM role to assume with that credential before reading |
+| `external_id` | no | no | Sent when assuming `role_arn` |
+| `extra_inference_hosts` | no | no | Comma-separated, up to 100: hosts (`*` stands for part of one label; a host also matches its subdomains) or IP addresses and CIDRs, such as an internal LLM gateway |
+
+The credential (or `role_arn`) needs only `logs:FilterLogEvents` on the log groups;
+assuming `role_arn` also needs `sts:AssumeRole` on it.
+
+Use `query: ""` and `query_language: none`: the extractor is a field of the source, and a
+config's query is ignored. The lookback window is the time range read; `0` reads
+everything the log groups retain. A scan reads at most 1,000,000 events; one at that cap
+is reported in the log rather than published as complete. Lines are matched in the
+engine, each with a 50 ms limit and a 16 KiB length cap, so a regex that backtracks
+badly skips lines (counted in the job log) instead of holding the scan.
+
+VPC Flow Logs carry only addresses, and the large providers serve from shared CDN
+addresses, so with `vpc_flow_log_v2` only `extra_inference_hosts` ranges match. A source
+identified by address is weaker evidence than an instance: Lambda functions, containers
+and pods share and reuse VPC addresses.
 
 ### Destination
 

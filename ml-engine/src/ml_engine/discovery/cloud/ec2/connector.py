@@ -55,12 +55,12 @@ from arthur_common.models.agent_discovery_schemas import DiscoveredAgentRecord
 from arthur_common.models.agent_governance_schemas import Platform, RunsOn
 
 from discovery.aws_credentials import (
-    ACCESS_KEY_ID_FIELD,
     EXTERNAL_ID_FIELD,
-    ROLE_ARN_FIELD,
+    REGION_NAME,
     SENSITIVE_FIELDS,
     assumed_role_session,
     aws_session,
+    describe_credentials,
 )
 from discovery.catalog import Matcher
 from discovery.cloud.ec2.client import (
@@ -126,10 +126,6 @@ __all__ = [
     "UNSUPPORTED_PLATFORM",
     "Ec2Connector",
 ]
-
-# An AWS region name: us-east-1, ap-southeast-2, us-gov-west-1. Checked because it is
-# part of every endpoint's host name.
-_REGION = re.compile(r"^[a-z]{2}(-[a-z]+)+-\d{1,2}$")
 
 # An EC2 tag key's length limit. Any character is allowed in one.
 _TAG_KEY_MAX = 128
@@ -320,7 +316,7 @@ class Ec2Connector:
             matcher.catalog_sha,
             matcher.agent_count,
             scope.describe(),
-            _identity(credentials, source_fields),
+            describe_credentials(credentials, source_fields),
             (
                 f"one whose status line shows no report in the last {lookback_hours}h "
                 f"is counted and not published"
@@ -541,7 +537,7 @@ def settings_from(source_fields: Mapping[str, str]) -> Ec2Settings:
             f"field, not a secret.",
         )
     all_regions = _is_all(regions)
-    bad = [] if all_regions else [r for r in regions if not _REGION.match(r)]
+    bad = [] if all_regions else [r for r in regions if not REGION_NAME.match(r)]
     if bad:
         raise DiscoveryConfigurationError(
             f"EC2 source's '{REGIONS_FIELD}' has value(s) that are not AWS region "
@@ -630,17 +626,3 @@ def _device_for(instance: Instance) -> ManagedDevice:
         runs_on=RunsOn.AWS,
         address_scope=f"{instance.account}/{instance.region}",
     )
-
-
-def _identity(
-    credentials: Mapping[str, Optional[str]],
-    source_fields: Mapping[str, str],
-) -> str:
-    """Whose credentials the scan runs with, for the line that opens it."""
-    role = (source_fields.get(ROLE_ARN_FIELD) or "").strip()
-    keyed = bool((credentials.get(ACCESS_KEY_ID_FIELD) or "").strip())
-    if role:
-        return f"role {role}, assumed with " + (
-            "the source's access key" if keyed else "this engine's own credentials"
-        )
-    return "the source's access key" if keyed else "this engine's own credentials"

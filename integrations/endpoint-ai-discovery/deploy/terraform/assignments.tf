@@ -12,7 +12,7 @@ resource "google_os_config_os_policy_assignment" "discovery" {
   name        = var.name
   description = local.description
 
-  # A pin bump re-rolls every labelled VM at the policy's own pace, which on a fleet outlasts the
+  # A pin bump re-rolls every VM at the policy's own pace, which on a fleet outlasts the
   # provider's timeout. VM Manager's compliance view shows the rollout instead.
   skip_await_rollout = true
 
@@ -91,9 +91,15 @@ resource "google_os_config_os_policy_assignment" "discovery" {
     }
   }
 
+  # Every VM in the zone, unless a pilot narrows it to a label. Never an exclusion label: a
+  # label a VM's owner can set would be an opt-out from discovery.
   instance_filter {
-    inclusion_labels {
-      labels = local.labels
+    all = local.labels == null ? true : null
+    dynamic "inclusion_labels" {
+      for_each = local.labels == null ? [] : [local.labels]
+      content {
+        labels = inclusion_labels.value
+      }
     }
   }
 

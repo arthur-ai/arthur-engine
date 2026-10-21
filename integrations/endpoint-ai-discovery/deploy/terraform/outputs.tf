@@ -1,8 +1,8 @@
 output "arthur_source" {
-  description = "Fields for Arthur's gcp_compute_engine discovery source. project_ids lists var.projects only, and is null without them: add any project an orchestrator reaches through include_folders."
+  description = "Fields for Arthur's gcp_compute_engine discovery source. project_ids lists var.projects only, and is null without them: add any project an orchestrator reaches through include_folders. include_labels is null unless a pilot label narrows the assignments."
   value = {
     project_ids    = length(var.projects) > 0 ? join(",", var.projects) : null
-    include_labels = join(",", [for k, v in local.labels : "${k}=${v}"])
+    include_labels = local.labels == null ? null : join(",", [for k, v in local.labels : "${k}=${v}"])
   }
 }
 
