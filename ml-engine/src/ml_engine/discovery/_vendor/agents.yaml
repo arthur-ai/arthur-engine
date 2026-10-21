@@ -241,6 +241,20 @@ agents:
     # 78-linux-vscode forbids claude-code while installing saoudrizwan.claude-dev, which is
     # the control that this value is matched exactly and Cline's is not mistaken for it.
     vscode_extensions: [anthropic.claude-code]
+    # Anthropic's apt repository, read off a real install on 2026-10-19 (Ubuntu 22.04, a GCE
+    # VM): dpkg's row is `claude-code 2.1.292-1 amd64 install ok installed`, from
+    # https://downloads.claude.ai/claude-code/apt/stable, suite `stable`, amd64 and arm64,
+    # signed with the release key 31DDDE24DDFAB679F42D7BD2BAA929FF1A7ECACE. The package puts
+    # an ELF at /usr/bin/claude and nothing under any home, so every route above misses it:
+    # a fleet installed through apt reported this row while the classifier called each
+    # machine clean. 89-linux-claude-deb installs it.
+    deb_packages: [claude-code]
+    # The dnf repository, https://downloads.claude.ai/claude-code/rpm/stable, same key, same
+    # package name, x86_64 and aarch64. Read off 91-linux-claude-rpm's install rather than off
+    # the repository index. The apk repository exists too and cannot be a route: osquery has
+    # no apk_packages table at any version, and its builds do not load on musl at all, so an
+    # Alpine host is a blind spot (docs/blind-spots.yaml), not a missing identifier.
+    rpm_packages: [claude-code]
 
   - id: openclaw
     name: OpenClaw
@@ -279,6 +293,12 @@ agents:
     # THE FLEET CONSEQUENCE IS THE POINT. A Mac that has not updated ChatGPT still reports
     # com.openai.chat, and until now the brew route was the only thing that would have found
     # it -- so a direct download, which is how most people install this app, was invisible.
+    #
+    # THIS IS THE HOST APP, NOT DOTS. A match says ChatGPT is installed, never that dots is
+    # enabled or in use. OpenAI's help centre, read second-hand (the page itself returned
+    # 403), has a dot run on a cloud computer, with local access opt-in through this app.
+    # The cask's zap list names com.openai.sky.CUAService, but nothing ties that to dots
+    # rather than the app's own computer use. The limit itself is in docs/blind-spots.yaml.
     bundle_ids: [com.openai.codex, com.openai.chat]
     homebrew: [chatgpt]
     # com.openai.chat IS PROVED, NOT SUPERSEDED. 12-chatgpt-pre-rename installs build
@@ -697,6 +717,37 @@ agents:
     # so the directory is the identifier -- the same shape as ~/.claude for Claude Code.
     state_dirs: ["~/.opencode"]
 
+  # Pi (pi.dev), the agent harness OpenClaw is built on. `pi` on PATH is too generic to name
+  # anything, so it is not a value.
+  #
+  # Read on 2026-10-08 off npm installs on Linux, osquery 5.23.1 npm_packages:
+  #   @earendil-works/pi-coding-agent 1.1.0    the current scope
+  #   @mariozechner/pi-coding-agent   0.73.1   the old scope, deprecated in its favour and
+  #                                            still installable, so old machines report it
+  # Both write ~/.pi/agent on their first run, not on install or --version. 87-linux-pi and
+  # 88-linux-pi-legacy install one scope each, because both ship the same `pi` binary.
+  #
+  # pi.dev/install.sh, the route pi.dev lists first, installs no npm global: it runs npm ci
+  # into ~/.pi/agent/install/releases/<version>/, which npm_packages never reads, and its
+  # script migrates an npm-installed Pi by removing it. So ~/.pi is that route's only value,
+  # present from install and carrying no version. Read off 84-linux-installers on 2026-10-19,
+  # when the installer's latest was 1.3.0; 20-cli-agents runs its macOS branch.
+  #
+  # NOT HERE: unscoped npm `pi-coding-agent` is a 0.0.1 placeholder, and @earendil-works/pi-tui
+  # is a library.
+  #
+  # IT OVER-MATCHES ON ONE ROUTE. OpenClaw 2026.1.29 to 2026.5.27 depended on pi-coding-agent
+  # itself, under each scope in turn; only pi-tui since. npm -g nests that dependency and the
+  # structural predicate drops it, but bun hoists it beside the global, so `bun add -g` of one
+  # of those releases reads as OpenClaw and Pi. Measured with bun 1.4.3 on 2026-10-18, and
+  # carried as a known gap of 87-linux-pi.
+  - id: pi
+    name: Pi
+    classification: Coding agent
+    platforms: [darwin, linux]
+    npm: ["@earendil-works/pi-coding-agent", "@mariozechner/pi-coding-agent"]
+    state_dirs: ["~/.pi"]
+
   # xAI's Grok Build. x.ai/cli/install.sh writes everything under ~/.grok, binary included
   # (~/.grok/bin/grok, beside a ~/.grok/bin/agent too generic to name anything), so the
   # directory is the one route. Read off 84-linux-installers on 2026-10-07.
@@ -755,6 +806,54 @@ agents:
     platforms: [darwin]
     bundle_ids: [com.trae.app, cn.trae.app]
     homebrew: [trae, trae-cn]
+
+  # META MUSE: TWO PRODUCTS, TWO ENTRIES, on kiro / kiro-cli's reasoning. A personal agent
+  # for the desktop and a terminal coding agent share a brand and nothing a route can see --
+  # not an id prefix, not an install path. 14-meta-muse installs both.
+  #
+  # Muse for Mac acts in native apps -- files, forms, Messages, Calendar, Notes -- with per-app
+  # opt-in, which is this catalog's test. Read off Muse.app/Contents/Info.plist in the
+  # Muse-8.0.dmg the app's own Sparkle feed served on 2026-10-19 -- the same file Meta's
+  # download page links, which only a browser can get a link from: CFBundleIdentifier
+  # com.meta.endo, CFBundleShortVersionString 8.0, LSMinimumSystemVersion 14.0, Developer ID
+  # "Meta Platforms, Inc." (V9WTTPBFK9). The disabled `muse` cask names the same id in its
+  # zap stanza, and that is NOT the source: a zap stanza is where bot.molt.mac came from.
+  #
+  # NO homebrew ROUTE. The cask was disabled on 2026-10-01 because muse.ai's download wants
+  # a signed-in Meta account -- 403 {"error":"not_eligible"} from a US address with no
+  # session -- so no run can produce the token. The feed is anonymous, SUFeedURL in that
+  # plist names it, and 14-meta-muse installs from it.
+  - id: muse-desktop
+    name: Muse for Mac
+    classification: Personal agent
+    platforms: [darwin]
+    bundle_ids: [com.meta.endo]
+
+  # Muse Code, the terminal agent. dev.meta.ai/install.sh writes a launcher to
+  # ~/.local/bin/muse, and the launcher fetches the binary beside it as
+  # ~/.local/bin/muse-bin-<version> -- 1.4.10-R6427.1 on 2026-10-19, with no sign-in to
+  # install. The value is front-anchored, so the versioned binary lands here too: one
+  # install, as hermes's sibling commands are. THE SAME PREFIX CLAIMS ANY OTHER
+  # ~/.local/bin/muse* -- a MuseScore alias, a pipx tool named museum -- and that is the
+  # route's shape, not a fix this entry can carry. test_matcher records the over-match
+  # beside the front anchor it does assert, so a change to either is seen.
+  #
+  # NOT VALUES: ~/.config/muse and ~/.local/share/muse, read off the binary's own help text,
+  # are a level too deep for the enumeration; ~/.muse holds projects and worktrees once the
+  # agent has run, which no scenario does. The release manifest also serves a muse.pkg
+  # (receipt ai.meta.dev.installer) whose whole payload is /usr/local/bin/muse, which no
+  # route reads -- docs/blind-spots.yaml carries that.
+  - id: muse-code
+    name: Muse Code
+    classification: Coding agent
+    platforms: [darwin, linux]
+    binaries: ["~/.local/bin/muse"]
+    # ALSO A CASK, binary-only: `muse-code` links muse-<arch>-macos as `muse`, fetched from
+    # the same lookaside.facebook.com artifact the installer uses. Read off a guest install
+    # on 2026-10-19: homebrew_packages rendered name=muse-code, type=cask, 1.4.10-R6427.1.
+    # A second `muse` on PATH, so 21-cli-agents-homebrew installs it, on a machine without
+    # the installer's copy.
+    homebrew: [muse-code]
 
   # A Cline fork, and its id is the substring trap for cline's: `roo-cline`. Read off
   # 85-linux-vscode-agents on 2026-10-07, v3.54.0, which also forbids cline. The Marketplace
