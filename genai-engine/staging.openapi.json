@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.1025"
+        "version": "2.1.1033"
     },
     "paths": {
         "/api/v2/engine-config": {
@@ -18033,6 +18033,9 @@
                     },
                     {
                         "$ref": "#/components/schemas/EndpointAgentCreationSource"
+                    },
+                    {
+                        "$ref": "#/components/schemas/NetworkAgentCreationSource"
                     }
                 ],
                 "title": "AgentCreationSource",
@@ -18043,6 +18046,7 @@
                         "ENDPOINT": "#/components/schemas/EndpointAgentCreationSource",
                         "GCP": "#/components/schemas/GCPAgentCreationSource",
                         "MANUAL": "#/components/schemas/ManualAgentCreationSource",
+                        "NETWORK": "#/components/schemas/NetworkAgentCreationSource",
                         "OTEL": "#/components/schemas/OTELAgentCreationSource",
                         "SIEM": "#/components/schemas/SIEMAgentCreationSource"
                     }
@@ -19713,7 +19717,8 @@
                         "type": "string",
                         "enum": [
                             "summarized",
-                            "omitted"
+                            "omitted",
+                            "updates"
                         ],
                         "title": "Display"
                     }
@@ -19740,7 +19745,8 @@
                         "type": "string",
                         "enum": [
                             "summarized",
-                            "omitted"
+                            "omitted",
+                            "updates"
                         ],
                         "title": "Display"
                     }
@@ -20682,7 +20688,7 @@
                     "address"
                 ],
                 "title": "CloudAgentCreationSource",
-                "description": "An agent read out of a cloud provider's agent runtime.\n\nEnumerated rather than searched, so ``address.query`` is absent. Account and region\nare part of the address because scanning is multi-account and multi-region."
+                "description": "An agent a cloud provider enumerates: in its agent runtime, or on one of its VMs.\n\n- AN AGENT RUNTIME (Bedrock, Vertex AI Agent Engine) lists the agents themselves:\n  account or project in ``instance``, region in ``scope``, the agent's id in\n  ``resource_id``.\n- A VM (Compute Engine, and EC2 after it) is listed by the provider and carries its\n  own software inventory, the payload an endpoint's collector writes, decoded the\n  same way. The VM is in ``instance``, where it is (project and zone) in ``scope``,\n  and the software in ``resource_kind`` and ``resource_id``: per (software, VM),\n  as on an endpoint, so two VMs are never one agent.\n\nEnumerated rather than searched, so ``address.query`` is absent. Where the agent is\nwithin the provider is part of the address because scanning is multi-account and\nmulti-region."
             },
             "CompletionRequest": {
                 "properties": {
@@ -22324,6 +22330,9 @@
                             },
                             {
                                 "$ref": "#/components/schemas/EndpointAgentCreationSource"
+                            },
+                            {
+                                "$ref": "#/components/schemas/NetworkAgentCreationSource"
                             }
                         ],
                         "title": "Creation Source",
@@ -22333,6 +22342,7 @@
                             "mapping": {
                                 "CLOUD": "#/components/schemas/CloudAgentCreationSource",
                                 "ENDPOINT": "#/components/schemas/EndpointAgentCreationSource",
+                                "NETWORK": "#/components/schemas/NetworkAgentCreationSource",
                                 "SIEM": "#/components/schemas/SIEMAgentCreationSource"
                             }
                         }
@@ -23999,6 +24009,17 @@
                 ],
                 "title": "HybridFusion",
                 "description": "Define how the query's hybrid fusion operation should be performed."
+            },
+            "IdentityBasis": {
+                "type": "string",
+                "enum": [
+                    "registered_agent",
+                    "credential",
+                    "claimed_agent",
+                    "client_address"
+                ],
+                "title": "IdentityBasis",
+                "description": "What a gateway caller record's identity rests on. Strongest first.\n\nRequired on every caller record and implied by its kind, except that an agent id\nis either one the gateway's registry issued or one the caller merely sent. Also\nwhat the record's detection follows: a registry row or an issued credential is\nseen directly, the rest is inferred from traffic."
             },
             "ImageURL": {
                 "properties": {
@@ -26250,6 +26271,79 @@
                 ],
                 "title": "NestedSpanWithMetricsResponse",
                 "description": "Nested span response with children for building span trees"
+            },
+            "NetworkAgentCreationSource": {
+                "properties": {
+                    "vendor": {
+                        "type": "string",
+                        "title": "Vendor",
+                        "description": "Upstream product this came from, e.g. 'splunk_enterprise', 'jamf_pro', 'aws_bedrock'. FREE TEXT, and deliberately not enumerated here: nothing in this package branches on the vendor -- capability and evidence ceilings are declared per source class -- so enumerating it would make every new vendor a release of this package plus a repin in three services. The registry is app_plane's discovery source type catalog, which is also where the display name lives. Values are `<platform>_<product>`, always, so a vendor shipping a second product that could be a source does not force a rename of the first."
+                    },
+                    "address": {
+                        "$ref": "#/components/schemas/SourceAddress",
+                        "description": "Where to find this agent again upstream. Required: a discovered agent that cannot be located again is not actionable."
+                    },
+                    "observations": {
+                        "$ref": "#/components/schemas/AgentObservations",
+                        "description": "What the source could see. Only fields in `observable_fields()` are ever populated by this category."
+                    },
+                    "type": {
+                        "type": "string",
+                        "const": "NETWORK",
+                        "title": "Type",
+                        "default": "NETWORK"
+                    },
+                    "identity_basis": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/IdentityBasis"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "What a gateway caller record's identity rests on; required on one, absent on a host record. See IdentityBasis."
+                    },
+                    "destinations": {
+                        "items": {
+                            "$ref": "#/components/schemas/NetworkDestination"
+                        },
+                        "type": "array",
+                        "maxItems": 100,
+                        "title": "Destinations",
+                        "description": "Inference destinations this host called, with who serves each. As first reported; when the host last called is provenance's last_seen."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "vendor",
+                    "address"
+                ],
+                "title": "NetworkAgentCreationSource",
+                "description": "An internal host seen sending traffic to a host that serves model inference.\n\nRead off network logs -- DNS query logs, flow logs, proxy or firewall logs -- by a\nconnector that extracts a source and a destination from each line and matches the\ndestination against known inference hosts. The record is the SOURCE HOST, not the\nagent: a network log shows that something called a provider, never which process\ndid or what it is.\n\nNOT A SIEM, though both read logs. A SIEM source runs the customer's own query and\nreports whatever columns it projects; a network source owns the matching and reads\none fixed kind of evidence, a connection or a lookup, so what it can fill is\nnarrower and fixed by the class: the host it saw and the network that host is in.\n\nTHE ADDRESS IS THE HOST, AND EVERY PART OF IT IS STABLE. The creation source is\nfrozen when a task is minted, and GenAI Engine and the ML engine match a later\nreport to it on the whole address, so a field that differs between two logs of\none host would split it in two:\n\n=============  =======================  ==================  ================\nresource_kind  instance                 scope               resource_id\n=============  =======================  ==================  ================\nworkload       the workload name        account/region, or  the workload name\n                                        the project\ninstance       the VM id                same                the VM id\neni            the interface id         same                the interface id\nip             the network (VPC) id     same                the address\n=============  =======================  ==================  ================\n\n- ``resource_kind`` is required: an instance id and an address are otherwise\n  indistinguishable strings of very different strength (see NetworkHostKind).\n- ``instance`` is the host itself (the workload, VM or interface), as on a\n  VM-hosted cloud record, never the account: records are told apart by ``instance``, so an account there would make\n  every host in it look alike. Only an address, which means nothing outside its\n  network, is placed in its network.\n- ``scope`` is required and is where the host is -- account and region, or project\n  -- which every log line of the host agrees on. Never the VPC for an instance or\n  an interface: some logs carry it and others do not, and a scope present in one\n  scan and absent in the next makes the same host two records. A line naming only\n  an address and no network cannot be placed, and the connector drops it rather\n  than guess.\n\nThe VPC a host is in is ``host_group``, an observation, so it can be shown without\nbeing identity. ``destinations`` is what the source called, which only this class\ncan see and which is the evidence itself, so it is a field of the class rather than\nof the shared AgentObservations. Empty by default, so a record without it still\nvalidates.\n\nA GATEWAY CALLER IS THE SECOND SHAPE, told apart by ``resource_kind`` (a\nNetworkCallerKind rather than a NetworkHostKind). An AI gateway learns of an agent\nfrom its traffic too, but sees the caller, not its host:\n\n=================  ===============  =====  ===============================\nresource_kind      instance         scope  resource_id\n=================  ===============  =====  ===============================\nagent_id           the gateway      --     the agent id\nvirtual_key        the gateway      --     the gateway's id or hash for it\nconsumer           the gateway      --     the consumer id\nclient_address     the gateway      --     the address\n=================  ===============  =====  ===============================\n\n- ``identity_basis`` is required and must fit the kind, so a caller record cannot\n  be mistaken for a host record or claim more than its kind allows.\n- ``scope`` is unset: a team or workspace can change between scans, and anything\n  in the address is identity. The team is observed as ``host_group``.\n- Detection is per record: a registry row or an issued credential is observed,\n  a claimed id or a bare address is inferred.\n- A caller fills only ``host_group``. No client addresses, which change on every\n  scan while the creation source does not, and no end user: one agent serves many,\n  often the gateway owner's own customers, and that is personal data no review has\n  covered.\n- Never a raw credential: a caller id that looks like a live key is refused,\n  whatever the identity basis."
+            },
+            "NetworkDestination": {
+                "properties": {
+                    "host": {
+                        "type": "string",
+                        "minLength": 1,
+                        "title": "Host",
+                        "description": "Destination as the log named it: a hostname, lowercased and without a trailing dot, or an IP address."
+                    },
+                    "provider": {
+                        "type": "string",
+                        "minLength": 1,
+                        "title": "Provider",
+                        "description": "Who serves it, e.g. 'OpenAI', 'Amazon Bedrock', or the source's own host or CIDR entry it matched."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "host",
+                    "provider"
+                ],
+                "title": "NetworkDestination",
+                "description": "One inference destination a network source was seen calling.\n\nOnly what stays true of the destination between scans: the host and who serves it.\nA record's creation source is kept as first reported -- GenAI Engine never rewrites\na task's creation source from a later scan -- so a per-scan count or time here\nwould be served unchanged forever. When the source last called anything is the\nrecord's provenance ``last_seen``, which moves with every scan. The provider is\nthe connector's name for who serves the host -- its catalog's, or the source's own\nentry for a host or range it added -- and free text for the same reason ``vendor``\nis."
             },
             "NewApiKeyRequest": {
                 "properties": {
@@ -31545,7 +31639,7 @@
                         "type": "string",
                         "minLength": 1,
                         "title": "Instance",
-                        "description": "Instance that was scanned: an account, project, SIEM workspace or device. Part of the address, so two instances of one vendor stay distinct."
+                        "description": "Instance that was scanned: an account, project, SIEM workspace, device or cloud VM. Part of the address, so two instances of one vendor stay distinct."
                     },
                     "scope": {
                         "anyOf": [
@@ -31557,7 +31651,7 @@
                             }
                         ],
                         "title": "Scope",
-                        "description": "Subdivision queried, where the source has one: a cloud region, a Splunk index, a Sentinel table, an Elastic data stream. Optional here because endpoints have no subdivision and a SIEM query may span every index, but required for CLOUD sources, which enforce it: there the region is part of the agent's identity rather than of the query."
+                        "description": "Subdivision queried, where the source has one: a cloud region (a VM's project and zone), a Splunk index, a Sentinel table, an Elastic data stream. Optional here because endpoints have no subdivision and a SIEM query may span every index, but required for CLOUD sources, which enforce it: there it is part of the agent's identity rather than of the query."
                     },
                     "resource_kind": {
                         "anyOf": [
@@ -31569,13 +31663,13 @@
                             }
                         ],
                         "title": "Resource Kind",
-                        "description": "Namespace `resource_id` lives in: a bundle id, npm package, launchd label, listening port, browser extension id. Identity rather than observation, and needed because '8788' and 'openclaw' are otherwise indistinguishable strings from colliding namespaces. Absent for sources with one kind of resource, which is every cloud and SIEM vendor -- there the vendor implies the kind, so carrying it would duplicate `vendor`. Free text: the vocabulary belongs to the collector's route registry, not to this schema."
+                        "description": "Namespace `resource_id` lives in: a bundle id, npm package, launchd label, listening port, browser extension id. Identity rather than observation, and needed because '8788' and 'openclaw' are otherwise indistinguishable strings from colliding namespaces. Absent for sources with one kind of resource, which is every SIEM and every cloud vendor except those reading a VM's software inventory -- there the vendor implies the kind, so carrying it would duplicate `vendor`. Free text: the vocabulary belongs to the collector's route registry, not to this schema."
                     },
                     "resource_id": {
                         "type": "string",
                         "minLength": 1,
                         "title": "Resource Id",
-                        "description": "The resource within that instance, in the namespace `resource_kind` names. For endpoints this is the software, with the device in `instance` -- the grain is per (software, device)."
+                        "description": "The resource within that instance, in the namespace `resource_kind` names. For endpoints and cloud VMs this is the software, with the machine in `instance` -- the grain is per (software, machine)."
                     },
                     "query": {
                         "anyOf": [
@@ -31596,7 +31690,7 @@
                     "resource_id"
                 ],
                 "title": "SourceAddress",
-                "description": "How to find a discovered agent again in the system that reported it.\n\nOne shape for every source, widest to narrowest:\n\n==============  ================  ==================  ==========  ============\nsource          instance          scope               kind        resource_id\n==============  ================  ==================  ==========  ============\nBedrock         AWS account       region              --          agent id\nVertex          GCP project       region              --          engine id\nSplunk          instance          index+sourcetype    --          record id\nSentinel        LA workspace      table               --          record id\nElastic         deployment        data stream         --          record id\nJamf / osquery  device key        --                  npm, app\u2026   software key\n==============  ================  ==================  ==========  ============\n\nOnly endpoints fill ``resource_kind``: they are the one source whose ids come from\nseveral namespaces at once. Every cloud and SIEM vendor addresses exactly one kind\nof resource, so the kind is implied by the vendor and stays absent.\n\n``scope`` carries two readings this one name does not separate. For a cloud source\nit addresses the *agent*: us-east-1 and us-west-2 hold different agents, so\n``CloudAgentCreationSource`` requires it. For a SIEM it addresses the *sighting*,\nand one agent may surface under two indexes, so it stays optional there. Code\ncomparing addresses across sources has to read `source_class` to know which it is\nlooking at.\n\nReused by Provenance rather than re-declared there, so a record and the task it\nresolves to address the upstream system identically. A vendor needing to address a\nsub-resource -- a Bedrock alias, a Vertex version -- is one more optional field\nhere, not a new shape."
+                "description": "How to find a discovered agent again in the system that reported it.\n\nOne shape for every source, widest to narrowest:\n\n==============  ================  ==================  ==========  ============\nsource          instance          scope               kind        resource_id\n==============  ================  ==================  ==========  ============\nBedrock         AWS account       region              --          agent id\nVertex          GCP project       region              --          engine id\nSplunk          instance          index+sourcetype    --          record id\nSentinel        LA workspace      table               --          record id\nElastic         deployment        data stream         --          record id\nCloudWatch      host (VM, ENI,    account/region      instance,   VM, ENI or IP\n                else network)                         eni, ip\nJamf / osquery  device key        --                  npm, app\u2026   software key\nCompute Engine  VM instance id    project/zone        deb, npm\u2026   software key\n==============  ================  ==================  ==========  ============\n\nOnly sources that read a machine's software inventory fill ``resource_kind``:\nendpoints, and cloud sources that read a VM's (Compute Engine, and EC2 after it).\nTheir ids come from several namespaces at once. So do network host records, which\nname a VM, an interface or an address (see NetworkHostKind). Every other cloud\nvendor and every SIEM addresses exactly one kind of resource, so the kind is\nimplied by the vendor and stays absent.\n\nA VM-hosted cloud record is addressed per (software, VM), like an endpoint: the VM\nin ``instance``, never the project. Records are told apart by ``instance``, so a\nproject there would make every VM in it one agent.\n\n``scope`` carries two readings this one name does not separate. For a cloud source\nit addresses the *agent*: us-east-1 and us-west-2 hold different agents, so\n``CloudAgentCreationSource`` requires it -- a region, or for a VM where the machine\nis (project and zone; account and region on EC2). For a SIEM it addresses the\n*sighting*, and one agent may surface under two indexes, so it stays optional\nthere. A network host record reads it like a VM does -- where the host is, its\naccount and region or its project -- and requires it. Code comparing addresses across sources has to read `source_class` to know\nwhich it is looking at.\n\nReused by Provenance rather than re-declared there, so a record and the task it\nresolves to address the upstream system identically. A vendor needing to address a\nsub-resource -- a Bedrock alias, a Vertex version -- is one more optional field\nhere, not a new shape."
             },
             "SourceClass": {
                 "type": "string",
@@ -31604,6 +31698,7 @@
                     "cloud",
                     "siem",
                     "endpoint",
+                    "network",
                     "otel",
                     "manual"
                 ],
