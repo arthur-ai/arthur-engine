@@ -391,6 +391,7 @@ def test_gke_workloads_are_controllers_by_stable_name_and_owned_objects_are_not(
     assert planner.creation_source.address.resource_kind == GKE_WORKLOAD
     assert planner.creation_source.address.scope == REGION
     assert planner.creation_source.observations.host_group == CLUSTER
+    assert planner.creation_source.observations.install_path
     # No Workload Identity: the pods call Google as the node pool's account.
     assert planner.name.endswith(f"(runs as {DEFAULT_SA})")
 

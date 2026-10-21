@@ -414,6 +414,8 @@ def record_for(
             observations=AgentObservations(
                 classification=classification,
                 host_group=workload.cluster,
+                # A container is installed as its image: the references it declares.
+                install_path=", ".join(workload.images) or None,
             ),
         ),
     )
