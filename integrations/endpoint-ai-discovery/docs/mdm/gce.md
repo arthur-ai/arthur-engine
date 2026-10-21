@@ -177,16 +177,29 @@ privilege. Without `compute.projects.get`, the source works only if every VM set
 source without a key uses the engine's own Application Default Credentials only when the engine
 sets `ARTHUR_ENGINE_GCP_COMPUTE_ENGINE_ALLOW_ADC=true`.
 
-The source does not publish two kinds of VM:
+The source does not publish three kinds of VM:
 
 - **`guest-attributes-disabled`**: `enable-guest-attributes` is not `TRUE` on the VM, or on its
   project when the VM does not set it. The API keeps serving old values after the setting is
   turned off, so they cannot be current.
+- **`osconfig-disabled`**: nothing was ever written for the VM, and `enable-osconfig` is not
+  `TRUE` on the VM, or on its project when the VM does not set it. The OS Config agent acts on
+  no policy there, so the rollout can never install the collector. A VM that has reported
+  keeps its own reasons, whatever the key says now. Without `compute.projects.get`, a VM that
+  does not set the key itself is counted as `never-reported` instead.
 - **`not-reported-in-window`**: the status line shows no report within the scan's lookback,
   for example because the VM is stopped or its timer was removed. Its agents go stale in
   Arthur.
 
 A VM that still reports but is failing keeps publishing its last good scan.
+
+Every VM the source could not read is also listed, as
+`device_coverage.unreadable_devices`: instance id, name, `project/zone`, the reason, and the
+time on its status line when it has one. The list holds 1,000 VMs per run; the rest are counted
+in `unreadable_devices_truncated`. The VMs a scan cannot see are where unmanaged AI sits, so
+that list is the finding to work through, and a VM whose owner turned the agent or guest
+attributes off is in it by name. No attribute value travels. Where the list can be read is in
+[architecture.md](../architecture.md#what-the-collector-emits).
 
 ## 08 · Rollback — terminal
 

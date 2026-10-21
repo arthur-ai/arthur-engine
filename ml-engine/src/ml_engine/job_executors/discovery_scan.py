@@ -24,7 +24,7 @@ them by exact match from everything it ships (see `log_redaction`).
 import json
 import logging
 import traceback
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from datetime import datetime, timezone
 from enum import Enum
 from typing import (
@@ -143,6 +143,35 @@ class DiscoverySourceConnector(Protocol):
     ) -> Iterator[Sequence[DiscoveryOutputRecord]]: ...
 
 
+# The most unreadable devices one run lists by identity. The counts are complete whatever
+# the fleet's size; the list is what someone acts on, and the Platform caps what it keeps
+# per run, as it does `denied_scopes`. Past the cap, `unreadable_devices_truncated` says
+# how many more there were.
+MAX_UNREADABLE_DEVICES = 1000
+
+
+@dataclass(frozen=True)
+class UnreadableDevice:
+    """One device the scan could not read: who it is, where it is, and why.
+
+    IDENTIFIERS ONLY. The carrier's device key, the name the carrier shows for it, where
+    in the carrier it lives, and when its status line last dated a report. Never an
+    attribute value, a payload or a credential: this travels in the job log, to every
+    standalone destination, and to the Platform's run store where the client declares it.
+    """
+
+    device_key: str
+    name: Optional[str]
+    # Where the carrier addresses the device, as `ManagedDevice.address_scope` has it:
+    # `project/zone`, `account/region`, None for an MDM whose key is unique.
+    location: Optional[str]
+    # A reason from `unreadable_by_reason`.
+    reason: str
+    # ISO 8601, from the device's status line or the MDM's report date; None when
+    # neither says.
+    last_reported: Optional[str]
+
+
 @dataclass
 class DeviceCoverage:
     """Which devices an endpoint scan read, and which of them it was allowed to use.
@@ -155,6 +184,10 @@ class DeviceCoverage:
     A device in several excluded groups counts toward each of them, so the per-group
     counts can sum to more than `devices_excluded`. Those are two different questions:
     how many devices policy kept out, and what each rule is keeping out.
+
+    THE UNREADABLE DEVICES ARE A FINDING, NOT ONLY A DENOMINATOR. A machine the scan
+    cannot see is where unmanaged AI sits, so each one is listed by identity and reason
+    as well as counted, for someone to go and look at.
     """
 
     devices_read: int = 0
@@ -166,6 +199,11 @@ class DeviceCoverage:
     # `devices_unreadable`: a Mac that has not reported since the collector shipped
     # asks for a different fix than a payload this side cannot parse.
     unreadable_by_reason: dict[str, int] = field(default_factory=dict)
+    # Each unreadable device the connector could name, up to MAX_UNREADABLE_DEVICES.
+    # The counts above cover every one of them, listed or not.
+    unreadable_devices: list[UnreadableDevice] = field(default_factory=list)
+    # Unreadable devices counted but not listed, once the cap was reached.
+    unreadable_devices_truncated: int = 0
     devices_excluded: int = 0
     # Group name -> devices it kept out.
     excluded_by_group: dict[str, int] = field(default_factory=dict)
@@ -174,9 +212,24 @@ class DeviceCoverage:
     # Group name -> in-scope devices it let in.
     included_by_group: dict[str, int] = field(default_factory=dict)
 
-    def count_unreadable(self, reason: str) -> None:
+    def count_unreadable(
+        self,
+        reason: str,
+        device: Optional[UnreadableDevice] = None,
+    ) -> None:
+        """Count one unreadable device, and list it when the caller can name it.
+
+        `device.reason` is the count's reason: the list and the counts must tell one
+        story, so the entry is listed under the reason it was counted by.
+        """
         self.devices_unreadable += 1
         self.unreadable_by_reason[reason] = self.unreadable_by_reason.get(reason, 0) + 1
+        if device is None:
+            return
+        if len(self.unreadable_devices) >= MAX_UNREADABLE_DEVICES:
+            self.unreadable_devices_truncated += 1
+            return
+        self.unreadable_devices.append(replace(device, reason=reason))
 
 
 @runtime_checkable

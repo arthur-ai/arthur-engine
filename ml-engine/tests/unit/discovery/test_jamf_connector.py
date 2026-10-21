@@ -439,6 +439,32 @@ def test_an_unreadable_mac_yields_nothing_and_is_not_reported_as_clean(
     assert "no usable payload" in caplog.text, because
 
 
+def test_an_unreadable_mac_is_listed_on_the_coverage_by_id_and_reason(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Who it is and when Jamf last heard from it; never what its attributes hold."""
+    monkeypatch.setattr(
+        "discovery.endpoint.jamf.connector.JamfClient",
+        lambda s, logger=None: client_for(
+            FakeJamf([[computer("m1", None), computer("m2", "no-cache")]]),
+        ),
+    )
+    connector = JamfConnector()
+    records = [r for batch in connector.scan(FakeConfig(CATALOG), 24, CREDS, FIELDS, LOG) for r in batch]  # type: ignore[arg-type]
+    assert records == []
+
+    coverage = connector.device_coverage()
+    assert coverage is not None
+    assert [
+        (d.device_key, d.name, d.location, d.reason, d.last_reported)
+        for d in coverage.unreadable_devices
+    ] == [
+        ("m1", "mac-m1", None, "never-reported", "2026-09-22T10:00:00Z"),
+        ("m2", "mac-m2", None, "no-cache", "2026-09-22T10:00:00Z"),
+    ]
+    assert coverage.unreadable_by_reason == {"never-reported": 1, "no-cache": 1}
+
+
 def _ea(name: str, value: Optional[str]) -> dict[str, Any]:
     return {"name": name, "values": [value] if value is not None else []}
 

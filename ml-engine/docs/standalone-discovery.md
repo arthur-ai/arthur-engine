@@ -161,7 +161,9 @@ Compute Engine records no time a guest attribute was written, so every scan list
 VM in the projects. The lookback is applied to the time on the collector's status line: a
 VM with no report inside it is counted, not published, and a window of `0` publishes
 every VM's last report. A VM whose `enable-guest-attributes` is off, on the VM or on its
-project, is counted as `guest-attributes-disabled` and not read.
+project, is counted as `guest-attributes-disabled` and not read. A VM nothing was ever
+written for whose `enable-osconfig` is off, on the VM or on its project, is counted as
+`osconfig-disabled`: the OS policy that installs the collector can never reach it.
 
 #### `aws_ec2` — EC2 instances
 
@@ -426,6 +428,44 @@ working is visible where its agents are:
 `credentials_unavailable`, `authentication_failed`, `permission_denied`,
 `provider_error`, `publication_failed`, `cancelled` or `internal_error`. Errors never
 carry the source's credentials or the destination's secrets.
+
+A source that reads machines (`jamf_pro`, `gcp_compute_engine`, `aws_ec2`) adds
+`device_coverage` to the outcome: how many machines it read, decoded and could not read,
+the unreadable ones by reason, and **each unreadable machine by identity**, which is the
+finding a destination should alert on, since a machine the scan cannot see is where
+unmanaged AI sits:
+
+```json
+"device_coverage": {
+  "devices_read": 412,
+  "devices_decoded": 380,
+  "devices_unreadable": 32,
+  "unreadable_by_reason": {"never-reported": 30, "osconfig-disabled": 2},
+  "unreadable_devices": [
+    {
+      "device_key": "4823710983451",
+      "name": "build-1",
+      "location": "acme-prod-123/us-central1-a",
+      "reason": "osconfig-disabled",
+      "last_reported": null
+    }
+  ],
+  "unreadable_devices_truncated": 0,
+  "...": "the scope counts"
+}
+```
+
+| Field | Meaning |
+|---|---|
+| `device_key` | The carrier's own stable id: a Jamf management id, a Compute Engine instance id, an EC2 instance id |
+| `name` | What the carrier shows for it: the computer name, the VM name, the `Name` tag |
+| `location` | Where the carrier addresses it: `project/zone` on Compute Engine, `account/region` on EC2, absent for an MDM |
+| `reason` | The reason it was counted under in `unreadable_by_reason` |
+| `last_reported` | When the machine last reported, from its status line or the MDM's report date; absent when neither says |
+
+The list holds at most 1,000 machines per scan; `unreadable_devices_truncated` is how
+many more were counted and not listed. No attribute value, payload or
+credential is ever in it.
 
 The same agents arrive on every scan: each scan sends what the source reports now, and
 the destination dedupes on `agent.external_id` and `source.id` if it needs to.

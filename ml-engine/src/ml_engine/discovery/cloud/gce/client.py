@@ -38,6 +38,11 @@ NAMESPACE = "arthur/"
 
 # Instance or project metadata that turns guest attributes on. Off unless set.
 GUEST_ATTRIBUTES_FLAG = "enable-guest-attributes"
+# Instance or project metadata without which the OS Config agent acts on no policy, so
+# nothing installs the collector. Off unless set.
+OSCONFIG_FLAG = "enable-osconfig"
+# The two keys a scan reads, and the only ones: metadata also carries startup scripts.
+METADATA_FLAGS = (GUEST_ATTRIBUTES_FLAG, OSCONFIG_FLAG)
 
 # The listing's own maximum.
 PAGE_SIZE = 500
@@ -69,6 +74,8 @@ class Instance:
     guest_attributes_flag: Optional[str] = None
     """The VM's own `enable-guest-attributes` metadata, or None when it has none and
     the project's applies."""
+    osconfig_flag: Optional[str] = None
+    """The VM's own `enable-osconfig` metadata, or None when the project's applies."""
 
 
 class ComputeEngineClient:
@@ -117,13 +124,11 @@ class ComputeEngineClient:
                 return
             params["pageToken"] = token
 
-    def project_guest_attributes_flag(self, project: str) -> Optional[str]:
-        """The project's `enable-guest-attributes` metadata, or None when unset."""
+    def project_flags(self, project: str) -> Mapping[str, Optional[str]]:
+        """The project's `METADATA_FLAGS`, each None when unset. One read for both."""
         body = self._get(f"{COMPUTE_API}/projects/{_segment(project)}", {}) or {}
-        return _metadata_value(
-            body.get("commonInstanceMetadata"),
-            GUEST_ATTRIBUTES_FLAG,
-        )
+        metadata = body.get("commonInstanceMetadata")
+        return {key: _metadata_value(metadata, key) for key in METADATA_FLAGS}
 
     def guest_attributes(self, instance: Instance) -> Optional[dict[str, str]]:
         """The VM's `arthur/` values as `namespace/key` -> value, or None when it has none.
@@ -229,13 +234,14 @@ def _instance(project: str, raw: Mapping[str, Any]) -> Instance:
             raw.get("metadata"),
             GUEST_ATTRIBUTES_FLAG,
         ),
+        osconfig_flag=_metadata_value(raw.get("metadata"), OSCONFIG_FLAG),
     )
 
 
 def _metadata_value(metadata: Optional[Mapping[str, Any]], key: str) -> Optional[str]:
     """One key's value from Compute Engine's `{"items": [{"key", "value"}]}` metadata.
 
-    Only the one key is looked at. Metadata also carries startup scripts and whatever
+    Only the named key is looked at. Metadata also carries startup scripts and whatever
     else a project keeps there, and none of it is read, kept or logged.
     """
     for item in (metadata or {}).get("items") or []:

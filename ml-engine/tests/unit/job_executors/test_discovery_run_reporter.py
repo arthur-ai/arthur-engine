@@ -4,24 +4,32 @@ import logging
 from dataclasses import asdict
 from datetime import datetime, timezone
 from types import SimpleNamespace
+from typing import Any, Optional
 from unittest.mock import MagicMock
 
 import pytest
 import urllib3
 from arthur_client.api_bindings import (
     ApiClient,
+    DiscoveryDeviceCoverage,
     DiscoveryRunStatus,
     DiscoveryRunsV1Api,
 )
 from arthur_client.api_bindings.exceptions import ApiException
 from arthur_client.api_bindings.rest import RESTResponse
 
+from job_executors import discovery_run_reporter
 from job_executors.discovery_run_reporter import (
     DELIVERY_ATTEMPTS,
+    PER_DEVICE_FIELDS,
     PlatformRunReporter,
     platform_outcome,
 )
-from job_executors.discovery_scan import DeviceCoverage, DiscoveryScanOutcome
+from job_executors.discovery_scan import (
+    DeviceCoverage,
+    DiscoveryScanOutcome,
+    UnreadableDevice,
+)
 
 JOB_ID = "77777777-7777-7777-7777-777777777777"
 JOB_RUN_ID = "99999999-9999-9999-9999-999999999999"
@@ -54,14 +62,29 @@ class VendorHTTPError(RuntimeError):
         self.status_code = status_code
 
 
-def test_a_finished_scan_is_a_done_run_carrying_its_device_coverage() -> None:
-    coverage = DeviceCoverage(
+UNREADABLE = UnreadableDevice(
+    device_key="4823710983451",
+    name="build-1",
+    location="acme-prod-123/us-central1-a",
+    reason="never-reported",
+    last_reported=None,
+)
+
+
+def _coverage() -> DeviceCoverage:
+    return DeviceCoverage(
         devices_read=60,
         devices_in_scope=60,
         devices_decoded=55,
         devices_unreadable=5,
         unreadable_by_reason={"never-reported": 4, "no-cache": 1},
+        unreadable_devices=[UNREADABLE],
+        unreadable_devices_truncated=0,
     )
+
+
+def test_a_finished_scan_is_a_done_run_carrying_its_device_coverage() -> None:
+    coverage = _coverage()
 
     body = platform_outcome(_outcome(device_coverage=coverage))
 
@@ -69,7 +92,67 @@ def test_a_finished_scan_is_a_done_run_carrying_its_device_coverage() -> None:
     assert (body.records_published, body.batches_published) == (48, 1)
     assert (body.error_count, body.error_code) == (0, None)
     assert body.device_coverage is not None
-    assert body.device_coverage.to_dict() == asdict(coverage)
+    counts = {k: v for k, v in asdict(coverage).items() if k not in PER_DEVICE_FIELDS}
+    assert body.device_coverage.to_dict() == counts
+
+
+def test_the_per_device_list_travels_once_the_run_store_declares_it(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The client in this tree does not carry the fields yet, so the list stays in the
+    job log; a client regenerated from a run store that does gets it with no further
+    change here."""
+    assert "unreadable_devices" not in DiscoveryDeviceCoverage.model_fields
+    sent = ApiClient().sanitize_for_serialization(
+        platform_outcome(_outcome(device_coverage=_coverage())),
+    )
+    assert "unreadable_devices" not in sent["device_coverage"]
+
+    class WithDevices(DiscoveryDeviceCoverage):
+        unreadable_devices: Optional[list[dict[str, Any]]] = None
+        unreadable_devices_truncated: Optional[int] = 0
+
+    monkeypatch.setattr(discovery_run_reporter, "DiscoveryDeviceCoverage", WithDevices)
+    body = platform_outcome(_outcome(device_coverage=_coverage()))
+
+    assert body.device_coverage is not None
+    assert body.device_coverage.to_dict() == asdict(_coverage())
+    assert body.device_coverage.to_dict()["unreadable_devices"] == [asdict(UNREADABLE)]
+
+
+@pytest.mark.parametrize(
+    "carried, sent",
+    [
+        ("2026-10-12T12:58:28+00:00", "2026-10-12T12:58:28+00:00"),
+        ("2026-09-22T10:00:00Z", "2026-09-22T10:00:00+00:00"),
+        ("2026-09-22T10:00:00", None),
+        ("last Tuesday", None),
+        (None, None),
+    ],
+)
+def test_a_last_report_the_run_store_cannot_take_is_sent_as_nothing(
+    carried: Optional[str],
+    sent: Optional[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The store takes a time with a zone or null; a carrier's string it would refuse
+    must not cost the whole outcome."""
+
+    class WithDevices(DiscoveryDeviceCoverage):
+        unreadable_devices: Optional[list[dict[str, Any]]] = None
+        unreadable_devices_truncated: Optional[int] = 0
+
+    monkeypatch.setattr(discovery_run_reporter, "DiscoveryDeviceCoverage", WithDevices)
+    coverage = DeviceCoverage()
+    coverage.count_unreadable(
+        "never-reported",
+        UnreadableDevice("m1", "mac-m1", None, "never-reported", carried),
+    )
+    body = platform_outcome(_outcome(device_coverage=coverage))
+
+    assert body.device_coverage is not None
+    ((device),) = body.device_coverage.to_dict()["unreadable_devices"]
+    assert device["last_reported"] == sent
 
 
 def test_a_failed_scan_is_a_failed_run_with_its_code_and_none_of_its_text() -> None:

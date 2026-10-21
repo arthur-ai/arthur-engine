@@ -17,7 +17,7 @@ import logging
 import time
 from dataclasses import asdict
 from datetime import datetime, timezone
-from typing import Callable
+from typing import Callable, Optional
 
 from arthur_client.api_bindings import (
     DiscoveryDeviceCoverage,
@@ -27,7 +27,17 @@ from arthur_client.api_bindings import (
 )
 from arthur_client.api_bindings.exceptions import ApiException
 
-from job_executors.discovery_scan import DiscoveryErrorCode, DiscoveryScanOutcome
+from job_executors.discovery_scan import (
+    DeviceCoverage,
+    DiscoveryErrorCode,
+    DiscoveryScanOutcome,
+)
+
+# The coverage fields the run store takes only once its schema declares them. The
+# Platform's schema is arthur-scope's, and the generated client says what it holds, so
+# the engine sends the per-device list where the client has a field for it and keeps it
+# in the job log either way.
+PER_DEVICE_FIELDS = ("unreadable_devices", "unreadable_devices_truncated")
 
 DELIVERY_ATTEMPTS = 3
 # Seconds per attempt, so a Platform that accepts the connection and never answers
@@ -61,11 +71,44 @@ def platform_outcome(outcome: DiscoveryScanOutcome) -> PutDiscoveryRunOutcome:
         ),
         denied_scopes=[],
         device_coverage=(
-            DiscoveryDeviceCoverage(**asdict(outcome.device_coverage))
+            platform_coverage(outcome.device_coverage)
             if outcome.device_coverage is not None
             else None
         ),
     )
+
+
+def platform_coverage(coverage: DeviceCoverage) -> DiscoveryDeviceCoverage:
+    """The run store's shape for a scan's device coverage.
+
+    Every count travels. The per-device list travels when the client's model declares
+    `PER_DEVICE_FIELDS`, and is left out otherwise, rather than refused by the model
+    and the whole outcome with it.
+
+    A device's `last_reported` is the carrier's string -- a status line's stamp, or
+    whatever the MDM put in its report date -- and the run store takes a time with a
+    zone or nothing. One it cannot take is sent as nothing rather than failing the
+    whole outcome; the job log keeps the string as the carrier gave it.
+    """
+    fields = asdict(coverage)
+    if PER_DEVICE_FIELDS[0] not in DiscoveryDeviceCoverage.model_fields:
+        for name in PER_DEVICE_FIELDS:
+            fields.pop(name)
+    else:
+        for device in fields["unreadable_devices"]:
+            device["last_reported"] = _aware_time(device["last_reported"])
+    return DiscoveryDeviceCoverage(**fields)
+
+
+def _aware_time(value: Optional[str]) -> Optional[str]:
+    """`value` as an ISO 8601 time with a zone, or None when it is not one."""
+    if not value:
+        return None
+    try:
+        when = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return when.isoformat() if when.tzinfo is not None else None
 
 
 class PlatformRunReporter:
