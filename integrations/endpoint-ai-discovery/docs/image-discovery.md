@@ -67,7 +67,10 @@ regardless of whether a tag or digest was originally specified in the Container 
 The roster is `services.list` in each region of each project, then every revision of each
 service, each marked serving or not from the service's `trafficStatuses`. A revision with no
 traffic stays in the roster and is reported as not serving: it can be routed to with one
-command, so it is not gone. Each digest is read once, however many revisions name it.
+command, so it is not gone. A digest is read once and its rows kept by digest (section 09),
+so a service deployed daily costs one pull per new revision, not one per retired revision on
+every scan. Each revision's `containers[].command` and `args` are read too: they replace the
+image's own command (section 04).
 
 **Jobs are the gap on this platform.** A job's execution carries `template.containers[].image`
 as it was written, and the Execution resource has no digest field at all, measured against the
@@ -116,6 +119,9 @@ What AWS documents about when that field is empty, and so what the reader has to
 A task without a digest is read by resolving its task definition's `image` at the registry at
 scan time, marked `digest=resolved-at-scan` as for a Cloud Run job, and counted
 `digest-unresolved-by-platform` so a fleet of old agents shows as what it is.
+
+The task's effective command is `overrides.containerOverrides[].command` where `RunTask` set
+one, else the task definition's `entryPoint` and `command`, else the image's (section 04).
 
 The roster is `ListClusters`, `ListServices` and `ListTasks` per cluster, `DescribeTasks` in
 pages of 100, and `DescribeTaskDefinition` once per task definition revision, in each region of
@@ -241,9 +247,17 @@ What it walks, on the filesystem the layers make, as branches that name themselv
 | `binaries` | the directories `config.Env`'s `PATH` names, and `/usr/local/bin` | name and size; no execution |
 | `filesystem-linux` | dotdirs and config files under `/root`, `/home/*`, `WorkingDir` | the same paths the Linux queries glob |
 | `systemd` | unit files under `/etc/systemd`, `/lib/systemd` | present in some images; never active |
-| `history` | `history[].created_by` from the config: the `RUN` lines | the build's install commands, a trace even when a later layer removed what one installed |
-| `config` | `Entrypoint`, `Cmd`, `User`, and the **names** of `config.Env` | values dropped before anything is written |
+| `history` | `history[].created_by` from the config: the `RUN` lines, through the command parser below | the build's installs as installer and package names, a trace even when a later layer removed what one installed. Never the line itself |
+| `config` | the effective command, through the command parser: the control plane's where it overrides the image (sections 01 and 02), else the image's `Entrypoint` and `Cmd`; `User`; and the **names** of `config.Env` | a deploy-time command replaces the image's, so the control plane's is the one that runs. Values dropped before anything is written |
 | `running`, `ports`, `runtime-linux`, `containers` | nothing | `absent`: no process exists. Said in the scan row rather than left out |
+
+**Commands are parsed, never carried.** A `RUN` line, an entrypoint or a deploy-time command
+can hold a token, a password in a URL, or a build argument's value, which a classic builder
+writes into the history as `|1 TOKEN=… /bin/sh -c …`. So the `history` and `config` branches
+pass every command through one parser that recognizes install commands -- `pip install`,
+`uv tool install`, `npm install -g`, `go install`, `cargo install`, a download piped to a shell
+-- and emits only the installer and the package names, or the host of a piped download. Text
+the parser does not recognize produces nothing but a count; an `ENV` line is never parsed.
 
 Each branch ends in a dated `kind=scan` row saying `ok`, `absent` or why it could not look, so
 an image with nothing in it reads as "looked, nothing there" and never as an empty value.
@@ -274,6 +288,9 @@ Identifiers and structure only. In particular:
   Run revision or the ECS task definition. Names are: `ANTHROPIC_API_KEY` as a name is evidence
   of an AI client; its value is a credential. Secret *references* (Secret Manager, Secrets
   Manager, SSM Parameter Store ARNs) are kept by name.
+- **Command text is never read into a row**, from the history, the image config or the
+  control plane. The parser of section 04 keeps the installer, the package names and the host
+  of a piped download, and nothing else.
 - **File contents are never read**, except package manifests and the package databases, whose
   shape the branch knows. A `~/.claude/settings.json` is reported as present, with its size,
   not its contents.
@@ -285,7 +302,7 @@ Identifiers and structure only. In particular:
 
 | Gap | Why | What covers it |
 |---|---|---|
-| Installs at startup | `pip install` or `curl \| sh` run when the container starts puts the agent in the running container, not in any layer | only a command in the image's metadata: an `Entrypoint` or `Cmd` that runs the install itself shows in the `config` branch. One inside a script the entrypoint runs does not, since file contents are not read (section 05). Whether to read entrypoint scripts is an open question (section 10) |
+| Installs at startup | `pip install` or `curl \| sh` run when the container starts puts the agent in the running container, not in any layer | only an install in the effective command, whether the control plane's override or the image's own, shows in the `config` branch. One inside a script the command runs does not, since file contents are not read (section 05). Whether to read those scripts is an open question (section 10) |
 | Images outside the account's registries | pullable, but no scanner has seen them, and public registries rate-limit pulls | the full read, budgeted; section 03 |
 | What the container talked to | nothing on disk says it | a network-signal source: DNS and flow logs to AI API endpoints, a separate design |
 | Cloud Run jobs by tag, ECS tasks without a platform digest | the platform recorded no digest | resolved at scan time and marked as such; counted, never silently promoted to a fact |
@@ -296,10 +313,14 @@ Identifiers and structure only. In particular:
 Every workload the roster lists is counted, decoded or not, and every one not decoded is listed
 with its reason, as the VM sources list machines. The reasons this source adds:
 
+The list puts serving workloads first and retired revisions last, so its cap never hides a
+serving workload behind a service's history.
+
 | Reason | Meaning |
 |---|---|
 | `digest-unresolved-by-platform` | the control plane recorded no digest (section 02's cases); the image was resolved at scan time |
-| `image-not-found` | the registry answers 404 for the digest: deleted, or in ECR archive |
+| `image-not-found` | the registry answers 404 for a serving workload's digest: deleted, or in ECR archive |
+| `retired-image-not-found` | the same for a Cloud Run revision with no traffic, typically one a registry cleanup policy removed |
 | `registry-denied` | the registry refused the pull; the whole repository is likely denied, so this is also a denied scope |
 | `unsupported-media-type` | not an OCI or Docker v2 image: a Helm chart, an attestation, a Windows image |
 | `image-too-large` | the unpacked tree passed the ceiling |
@@ -339,21 +360,20 @@ Each of these is a fact the code will depend on and the documentation does not s
 | The enumerator is a second enumerator upstream, not a reuse of the queries and not a copy | osquery needs a live OS; a copy of the paths drifts, which is the failure the one-implementation rule records |
 | Registry scanner data is a first pass, not the source of truth | it lists packages only, for images it has seen, and misses files; the full read is the floor |
 | Environment variable values are dropped before any row exists | the permissions that reach the digest also reach the values, and a value is a credential |
+| Commands are parsed into installer and package names; their text never leaves | `RUN` lines, entrypoints and deploy-time commands carry credentials as often as `config.Env` does |
+| The effective command is the control plane's where it overrides the image's | a deploy-time command replaces the image's, so reading only the image would miss what runs |
+| Rows are kept per digest on the engine's disk | a digest's bytes never change, so its rows never do; reading every retired revision on every scan would cost a pull per digest per scan for nothing. The cache holds rows, never layers, and never leaves the engine |
 | Per-workload coverage entries and denied scopes from the first version | the unobservable set is the finding a shadow AI program needs most, as it is on VMs |
 | Network signals are a separate design | they answer a different question, usage rather than presence, and need a different roster |
 
 ## 10 · Open questions
 
-- **Where rows live between scans.** A digest is immutable, so its rows never change; today
-  they would be regenerated by re-pulling on every scan, which is correct and costs a pull per
-  digest per scan. A per-digest cache on the engine's disk is the obvious optimization and
-  carries no new trust; a cache on the Platform would mean the Platform receiving raw rows,
-  which the architecture rules out.
-- **Reading entrypoint scripts.** An install at startup usually lives in a shell script that
-  `Entrypoint` or `Cmd` names, and section 05 rules out reading file contents. Reading those
-  scripts, for their command lines only and keeping nothing else, would close most of section
-  06's startup gap. A script can also hold a credential, so this needs a rule for what may
-  leave the engine that a parser enforces, not a path.
+- **Reading entrypoint scripts.** An install at startup usually lives in a shell script the
+  effective command names, and section 05 rules out reading file contents. Passing those
+  scripts' lines through section 04's command parser, which already keeps nothing but
+  installer and package names, would close most of section 06's startup gap. What is open is
+  whether reading a file the command names is worth its cost and its risk, not the rule for
+  what may leave.
 - **One source or three.** `gcp_cloud_run` and `aws_ecs` as sources in the Cloud class, each
   reading its own control plane and whatever registries its workloads name, is the shape the
   VM sources set. A separate registry source that reads every image in a repository, running or
