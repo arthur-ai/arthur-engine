@@ -217,6 +217,26 @@ pkill -TERM -P "$rpid"; kill -TERM "$rpid"; wait "$rpid"; rc=$?
 [ -z "$(ls -A "$ssm")" ] || bad "a TERMed run wrote something"
 ok "TERM during collection: exit $rc, nothing written"
 
+ssm="$work/ssm.tmpdir"; mkdir -p "$ssm"
+case_ "== the unit's TMPDIR loses empty osquery-<n> directories, and nothing else ===="
+start_fake ok
+out="$work/out.tmpdir"; mkdir -p "$out/tmp/osquery-11111" "$out/tmp/osquery-22222" "$out/tmp/other"
+: > "$out/tmp/osquery-22222/kept"
+mkdir -p "$work/shared/osquery-33333"
+printf 'arthur1.H4sIAAAA\n' > "$out/inventory.ea"
+printf 'ok 2026-10-12T00:00:00Z rows=3 apps=ok\n' > "$out/status.txt"
+stub 0
+for t in "$out/tmp" "$work/shared"; do
+  TMPDIR="$t" ARTHUR_COLLECT="$work/collect" ARTHUR_OUT_DIR="$out" ARTHUR_IMDS_URL="$imds" ARTHUR_SSM_DATA_DIR="$ssm" \
+    "$REPORT" > "$work/stdout" 2> "$work/stderr" || bad "a clean run with TMPDIR=$t exited $?"
+done
+[ ! -e "$out/tmp/osquery-11111" ] || bad "an empty osquery-<n> directory was left in the unit's TMPDIR"
+[ -f "$out/tmp/osquery-22222/kept" ] && [ -d "$out/tmp/other" ] \
+  || bad "the cleanup removed more than empty osquery-<n> directories"
+[ -d "$work/shared/osquery-33333" ] \
+  || bad "the cleanup reached a TMPDIR outside ARTHUR_OUT_DIR, where an osqueryi may be running"
+ok "cleared under ARTHUR_OUT_DIR; a non-empty one, another name and a shared TMPDIR kept"
+
 case_ "== the reporter leaves no working directory behind ======================="
 [ "$before" = "$(leaked)" ] || bad "the reporter leaked a working directory"
 ok "no arthur-report.* left behind"
