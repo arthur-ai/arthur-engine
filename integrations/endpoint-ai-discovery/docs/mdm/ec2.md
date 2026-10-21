@@ -297,7 +297,7 @@ reason, with the time on its status line when it has one, under
 `device_coverage.unreadable_devices`, up to 1,000 per run with the rest counted in
 `unreadable_devices_truncated`. The instances a scan cannot see are where unmanaged AI sits,
 so that list is the finding to work through, and an instance whose owner stopped the SSM Agent
-is in it by name. Identifiers only: no inventory value travels. Where the list can be read is in
+is in it by name. No inventory value travels. Where the list can be read is in
 [architecture.md](../architecture.md#what-the-collector-emits).
 
 ## 08 · Rollback — terminal
