@@ -184,11 +184,8 @@ Every VM the source could not read is also listed, as
 time on its status line when it has one. The list holds 1,000 VMs per run; the rest are counted
 in `unreadable_devices_truncated`. The VMs a scan cannot see are where unmanaged AI sits, so
 that list is the finding to work through, and a VM whose owner turned the agent or guest
-attributes off is in it by name. Identifiers only: no attribute value travels.
-
-The list is in the job log's `discovery_scan_outcome` line and in a standalone engine's
-scan outcome event. The Platform's discovery run shows the counts by reason, and shows the
-list too once its run store accepts it.
+attributes off is in it by name. Identifiers only: no attribute value travels. Where the list can be read is in
+[architecture.md](../architecture.md#what-the-collector-emits).
 
 ## 08 · Rollback — terminal
 
