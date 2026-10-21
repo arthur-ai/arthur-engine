@@ -150,13 +150,15 @@ is the engine's best guess. If the tenant does not know a name, Wiz rejects the 
 the scan fails as `not_configured` saying to set `entity_types`; set it to the types
 Wiz's inventory shows for the tenant's AI agents.
 
-Each resource is one record. `external_id` is the resource's provider id as Wiz reports
-it (`providerUniqueId`: an ARN, an Azure resource path, a GCP resource name), so it
-matches what a native cloud source reports for the same agent; a resource without one is
-`wiz:<Wiz's id>`. The address's instance is the cloud account (`subscriptionExternalId`,
-lower-cased for Azure), its scope the resource's region (`global` when it has none), and
-`last_seen` is Wiz's `lastSeen`, else the resource's update or creation time. No service
-names are claimed.
+Each resource is one record. `external_id` and the address's `resource_id` are the
+resource's native id as Wiz reports it (`providerUniqueId`: an ARN, an Azure resource
+path, a GCP resource name), verbatim, so they match what a native cloud source reports
+for the same agent. A record is never keyed on an id Wiz assigns itself: a resource
+without a `providerUniqueId` is skipped, with a job-log warning naming its entity type.
+The address's instance is the cloud account (`subscriptionExternalId`, lower-cased for
+Azure), its scope the resource's region (`global` when it has none), and `last_seen` is
+Wiz's `lastSeen`, else the resource's update or creation time; a resource with neither
+is skipped with a warning. No service names are claimed.
 
 The lookback window is not applied: `cloudResources` is an inventory, so every scan
 reports every matching resource whatever `lookback_window_seconds` says. A scan reads at

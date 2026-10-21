@@ -12,6 +12,7 @@ are the connector's assumptions, unverified; the pinned bodies below are named f
 
 import json
 import logging
+import uuid
 from datetime import datetime, timezone
 from typing import Any, Callable, Optional, Sequence
 
@@ -567,10 +568,42 @@ def test_a_record_carries_cloud_provenance_with_account_region_and_provider_id()
     assert source.address.query is None
 
 
-def test_without_a_provider_id_the_identity_is_wiz_and_wizs_id() -> None:
-    record = one(node("3f9a-graph-id", provider_id=None))
-    assert record.external_id == "wiz:3f9a-graph-id"
-    assert record.creation_source.address.resource_id == "3f9a-graph-id"
+def test_the_identity_is_the_providers_own_id_verbatim() -> None:
+    """Every pinned resource is keyed on its `providerUniqueId` exactly as Wiz sent it:
+    not lower-cased, not prefixed, never Wiz's `graphEntity.id`."""
+    nodes = PAGE_SHAPED_LIKE_XSOAR_CLOUD_RESOURCES_QUERY["data"]["cloudResources"][
+        "nodes"
+    ]
+    records = scan(FakeSession())
+    expected = [n["graphEntity"]["providerUniqueId"] for n in nodes]
+    assert ids(records) == expected
+    assert [r.creation_source.address.resource_id for r in records] == expected
+    wiz_ids = {n["graphEntity"]["id"] for n in nodes}
+    for record in records:
+        assert record.external_id not in wiz_ids
+        assert not record.external_id.startswith("wiz:")
+
+
+@pytest.mark.parametrize("provider_id", [None, "", "   "])
+def test_a_resource_without_a_provider_id_is_skipped_naming_its_entity_type(
+    provider_id: Optional[str],
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    unkeyed = node(
+        "3f9a-graph-id",
+        provider_id=provider_id,
+        entity_type="AI_SERVICE",
+        name="secret-ish-display-name",
+    )
+    with caplog.at_level(logging.WARNING):
+        records = scan(FakeSession(ok(page_body([unkeyed, node("a")]))))
+    assert ids(records) == [f"arn:aws:bedrock:us-east-1:{AWS_ACCOUNT}:agent/A"]
+    assert all("3f9a-graph-id" not in (r.external_id, r.name) for r in records)
+    warning = next(
+        r.getMessage() for r in caplog.records if "providerUniqueId" in r.getMessage()
+    )
+    assert "AI_SERVICE" in warning and "skipped" in warning
+    assert "secret-ish" not in caplog.text
 
 
 def test_the_region_falls_back_to_location() -> None:
@@ -1267,3 +1300,61 @@ def test_a_failure_part_way_reaches_the_run_after_publishing_what_was_found() ->
         run(session, result, sink)
     assert len(sink.published) == 1
     assert result.error_code is DiscoveryErrorCode.AUTHENTICATION_FAILED
+
+
+# -- a source id that arrives as a UUID object ---------------------------------------------
+
+SOURCE_UUID = uuid.UUID("44444444-4444-4444-4444-444444444444")
+
+
+def uuid_config() -> DiscoverySourceConfigSpec:
+    """A config whose `discovery_source_id` is a `uuid.UUID`, not its string: what a
+    caller that parsed the id hands over. `model_construct`, because the binding's own
+    validation would refuse anything but a str."""
+    return DiscoverySourceConfigSpec.model_construct(
+        discovery_source_id=SOURCE_UUID,
+        name="wiz",
+        vendor=VENDOR,
+        query="",
+        query_language="none",
+        lookback_window_seconds=86400,
+        source_fields=FIELDS,
+    )
+
+
+def test_a_uuid_source_id_scans_like_a_string_one() -> None:
+    """The connector never reads the source id, so a UUID object changes nothing in
+    the records it builds."""
+    batches = connector_with(FakeSession()).scan(uuid_config(), 24, CREDS, FIELDS, LOG)
+    records = [record for batch in batches for record in batch]
+    assert ids(records) == ids(scan(FakeSession()))
+    check_batch(records, "wiz")
+
+
+def test_a_uuid_source_id_runs_through_the_scan_loop_and_reports_its_string() -> None:
+    sink = AcceptingSink()
+    result = DiscoveryScanOutcome(
+        discovery_source_config_id=None,
+        discovery_source_config_name="wiz",
+        discovery_source_id=str(SOURCE_UUID),
+        vendor=VENDOR,
+        job_id="job",
+        scan_id=None,
+        lookback_hours=24,
+    )
+    run_source_scan(
+        config=uuid_config(),
+        lookback_hours=24,
+        workspace_id="workspace",
+        data_plane_id="data-plane",
+        outcome=result,
+        connector=connector_with(FakeSession()),
+        sink=sink,
+        logger=LOG,
+        credentials=CREDS,
+        source_fields=FIELDS,
+    )
+    assert len(sink.published) == 3
+    assert result.error is None
+    assert result.records_published == 3
+    assert result.discovery_source_id == "44444444-4444-4444-4444-444444444444"

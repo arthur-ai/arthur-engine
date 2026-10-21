@@ -16,18 +16,21 @@ default name Wiz answers BAD_USER_INPUT, and the scan fails as NOT_CONFIGURED wi
 message that says to set `entity_types` -- it never silently reports nothing.
 
 ONE RESOURCE, ONE RECORD, KEYED LIKE THE CLOUD'S OWN SOURCES. `external_id` is Wiz's
-`graphEntity.providerUniqueId` verbatim when there is one: the provider's native id (an
-AWS ARN, an Azure resource path, a GCP resource name), so an agent Wiz reports and the
-same agent a native cloud source reports carry the same identity string. A resource
-with no provider id is `wiz:<graphEntity.id>`. The address is `instance` = the cloud
-account Wiz names (`subscriptionExternalId`: the AWS account id, Azure subscription id
-or GCP project id; lower-cased for Azure, whose ids are case-insensitive GUIDs; Wiz's
-own `subscriptionId` when the external id is missing), `scope` = the resource's region
-from its properties (`region`, else `location`), "global" when it has none, and
-`resource_id` = the provider id, else Wiz's id. `last_seen` is Wiz's `lastSeen`, else
-the resource's update or creation time; a resource with none is skipped with a warning
-naming its id, never stamped with the scan's time. `runs_on` is set only for AWS, Azure
-and GCP, which `RunsOn` already has.
+`graphEntity.providerUniqueId` verbatim: the provider's native id (an AWS ARN, an Azure
+resource path, a GCP resource name), so an agent Wiz reports and the same agent a
+native cloud source reports carry the same identity string. The record is never keyed
+on an id Wiz mints itself (`graphEntity.id`, a scan or issue id): such an id names
+Wiz's view of the resource, not the resource, and would split one agent into two. A
+resource with no provider id is therefore skipped with a warning naming its Wiz entity
+type. The address is `instance` = the cloud account Wiz names
+(`subscriptionExternalId`: the AWS account id, Azure subscription id or GCP project id;
+lower-cased for Azure, whose ids are case-insensitive GUIDs; Wiz's own `subscriptionId`
+when the external id is missing), `scope` = the resource's region from its properties
+(`region`, else `location`), "global" when it has none, and `resource_id` = the
+provider id. `last_seen` is Wiz's `lastSeen`, else the resource's update or creation
+time; a resource with none is skipped with a warning naming its id, never stamped with
+the scan's time. `runs_on` is set only for AWS, Azure and GCP, which `RunsOn` already
+has.
 
 NO SERVICE NAMES, NO MODELS. Wiz sees configuration, not traces: nothing here says what
 `service.name` an agent's spans carry, and GenAI Engine's resolver claims every service
@@ -267,7 +270,17 @@ def record_for(
     resource: WizResource,
     logger: logging.Logger,
 ) -> Optional[DiscoveredAgentRecord]:
-    """One resource's record, or None when Wiz gave nothing to date or place it by."""
+    """One resource's record, or None when Wiz gave nothing to key, date or place it by."""
+    provider_id = resource.provider_unique_id
+    if provider_id is None:
+        logger.warning(
+            "Wiz resource %s of entity type %s reported no providerUniqueId; skipped, "
+            "because a record is keyed on the provider's own resource id (an ARN or "
+            "resource path), never on an id Wiz assigns",
+            resource.graph_id,
+            resource.entity_type or "(unknown)",
+        )
+        return None
     if resource.last_seen is None:
         logger.warning(
             "Wiz resource %s reported no lastSeen, update or creation time; skipped, "
@@ -289,7 +302,7 @@ def record_for(
         account = account.lower()
     return DiscoveredAgentRecord(
         # Verbatim: see the module docstring.
-        external_id=resource.provider_unique_id or f"wiz:{resource.graph_id}",
+        external_id=provider_id,
         name=resource.name or resource.graph_id,
         last_seen=resource.last_seen,
         runs_on=RUNS_ON.get(platform),
@@ -298,7 +311,7 @@ def record_for(
             address=SourceAddress(
                 instance=account,
                 scope=resource.region or GLOBAL_SCOPE,
-                resource_id=resource.provider_unique_id or resource.graph_id,
+                resource_id=provider_id,
             ),
         ),
     )
