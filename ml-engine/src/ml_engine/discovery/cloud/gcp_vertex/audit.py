@@ -39,6 +39,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Iterable, Iterator, Optional
 
 import google.auth
+import requests
 from arthur_common.models.agent_discovery_schemas import DiscoveredAgentRecord
 from arthur_common.models.agent_governance_schemas import (
     CloudAgentCreationSource,
@@ -47,6 +48,7 @@ from arthur_common.models.agent_governance_schemas import (
     SourceAddress,
 )
 from google.auth.credentials import Credentials
+from google.auth.exceptions import GoogleAuthError
 from google.auth.transport.requests import AuthorizedSession
 
 ENTRIES_LIST_URL = "https://logging.googleapis.com/v2/entries:list"
@@ -117,6 +119,7 @@ def read_entries(
         "orderBy": "timestamp desc",
         "pageSize": PAGE_SIZE,
     }
+    seen_tokens: set[str] = set()
     while True:
         response = session.post(ENTRIES_LIST_URL, json=body, timeout=(10, 60))
         if response.status_code >= 400:
@@ -126,6 +129,10 @@ def read_entries(
         token = page.get("nextPageToken")
         if not token:
             return
+        # A token handed back twice would page forever.
+        if token in seen_tokens:
+            raise AuditReadError(200, "Cloud Logging repeated a page token")
+        seen_tokens.add(token)
         body["pageToken"] = token
 
 
@@ -272,6 +279,17 @@ def audit_records(
             "the Agent Engine listing is unaffected.",
             project_id,
             e.status_code,
+        )
+        return []
+    except (requests.RequestException, GoogleAuthError, ValueError) as e:
+        # A network failure, a credential that cannot mint a token, or a body that is
+        # not JSON: the audit read is the optional half of the scan, so it is reported
+        # and the listing's records still go out.
+        logger.warning(
+            "Vertex AI audit log not read for project %s (%s); the Agent Engine "
+            "listing is unaffected.",
+            project_id,
+            type(e).__name__,
         )
         return []
     logger.info(

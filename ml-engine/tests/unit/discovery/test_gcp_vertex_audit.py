@@ -13,9 +13,11 @@ from pathlib import Path
 from typing import Any, Iterable, Optional
 
 import pytest
+import requests
 from arthur_client.api_bindings import DiscoverySourceConfigSpec
 from arthur_common.models.agent_governance_schemas import CloudAgentCreationSource
 from google.auth.credentials import Credentials
+from google.auth.exceptions import GoogleAuthError
 
 from discovery.cloud.gcp_vertex.audit import (
     DEFAULT_LOOKBACK,
@@ -25,6 +27,7 @@ from discovery.cloud.gcp_vertex.audit import (
     audit_filter,
     audit_records,
     fold,
+    read_entries,
     since_for,
 )
 from discovery.cloud.gcp_vertex.connector import (
@@ -200,3 +203,42 @@ def test_claude_on_vertex_is_a_model_call_named_by_its_publisher_model() -> None
     counts = AuditCounts()
     (caller,) = fold([entry], counts).values()
     assert (caller.location, caller.models) == ("us-east5", {"claude-sonnet-4-5"})
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        requests.ConnectionError("reset"),
+        GoogleAuthError("no token"),
+        ValueError("not json"),
+    ],
+)
+def test_a_failed_read_of_any_kind_leaves_the_listing_alone(
+    error: Exception, caplog: pytest.LogCaptureFixture
+) -> None:
+    with caplog.at_level(logging.WARNING):
+        assert records(Reader(error=error)) == []
+    assert "listing is unaffected" in caplog.text
+
+
+def test_a_repeated_page_token_stops_the_read(monkeypatch: pytest.MonkeyPatch) -> None:
+    class Response:
+        status_code = 200
+
+        def json(self) -> dict[str, Any]:
+            return {"entries": [], "nextPageToken": "same"}
+
+    class Session:
+        posts = 0
+
+        def __init__(self, credentials: Any) -> None:
+            pass
+
+        def post(self, *args: Any, **kwargs: Any) -> Response:
+            Session.posts += 1
+            return Response()
+
+    monkeypatch.setattr("discovery.cloud.gcp_vertex.audit.AuthorizedSession", Session)
+    with pytest.raises(AuditReadError, match="repeated a page token"):
+        list(read_entries("demo-project", "filter", object()))  # type: ignore[arg-type]
+    assert Session.posts == 2
