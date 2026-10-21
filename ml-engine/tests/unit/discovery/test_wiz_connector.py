@@ -5,9 +5,11 @@ bodies are shaped on PUBLIC sources, NOT captured from a live tenant: Wiz's host
 not reachable from where these were written. The token exchange and the GraphQL error
 codes follow Wiz's Backstage plugin (wiz-sec-public/backstage-plugin-wiz, `WizAuth.ts`
 and `types/index.ts`); the `cloudResources` node follows the Cortex XSOAR integration's
-`PULL_CLOUD_RESOURCES_NATIVE_QUERY` (demisto/content, Packs/Wiz). The `properties` keys
-(`region`, `cloudPlatform`, `updatedAt`, `creationDate`) and the AI entity type names
-are the connector's assumptions, unverified; the pinned bodies below are named for that.
+`PULL_CLOUD_RESOURCES_NATIVE_QUERY` (demisto/content, Packs/Wiz); the `graphSearch`
+node follows jtb75-org/wiz-sample-reports `sensor-versions/get-data.py`. The
+`properties` keys (`region`, `cloudPlatform`, `updatedAt`, `creationDate`,
+`subscriptionExternalId`), the AI entity type names and the AI technology names are the
+connector's assumptions, unverified; the pinned bodies below are named for that.
 """
 
 import json
@@ -28,6 +30,7 @@ from discovery import source_connectors
 from discovery.cloud.wiz import connector as wiz
 from discovery.cloud.wiz.client import (
     CLOUD_RESOURCES_QUERY,
+    GRAPH_SEARCH_QUERY,
     PAGE_SIZE,
     TOKEN_URLS,
     WizClient,
@@ -43,13 +46,18 @@ from discovery.cloud.wiz.connector import (
     ENTITY_TYPES_FIELD,
     GLOBAL_SCOPE,
     VENDOR,
+    WORKLOAD_INVENTORY_SCOPE,
+    WORKLOAD_TECHNOLOGIES,
     WizConnector,
     settings_from,
 )
 from discovery.retry import MAX_ATTEMPTS
 from job_executors.discovery_output_contract import check_batch
 from job_executors.discovery_scan import (
+    DENIED_PERMISSION,
+    DENIED_UNREACHABLE,
     AcceptsStopCheck,
+    DeniedScope,
     DiscoveryConfigurationError,
     DiscoveryErrorCode,
     DiscoveryPublishResult,
@@ -147,6 +155,103 @@ def graphql_error(code: Optional[str], message: str = FREE_TEXT) -> dict[str, An
     return {"errors": [error], "data": None}
 
 
+VM_ARN = f"arn:aws:ec2:us-east-1:{AWS_ACCOUNT}:instance/i-0abc123def4567890"
+LAMBDA_ARN = f"arn:aws:lambda:us-west-2:{AWS_ACCOUNT}:function:support-bot"
+IMAGE_ID = (
+    f"{AWS_ACCOUNT}.dkr.ecr.us-east-1.amazonaws.com/agents@sha256:"
+    + "0123456789abcdef" * 4
+)
+
+
+def entity(
+    gid: str,
+    entity_type: str,
+    *,
+    name: Optional[str] = None,
+    provider_id: Optional[str] = None,
+    properties: Any = None,
+    last_seen: Optional[str] = None,
+) -> dict[str, Any]:
+    """A `graphSearch` path entity as the query selects it."""
+    return {
+        "id": gid,
+        "name": name,
+        "type": entity_type,
+        "providerUniqueId": provider_id,
+        "properties": properties if properties is not None else {},
+        "firstSeen": CREATED,
+        "lastSeen": last_seen,
+    }
+
+
+def sighting(
+    tech: str = "LangChain",
+    *,
+    workload_type: str = "VIRTUAL_MACHINE",
+    workload_gid: str = "wiz-vm-1",
+    provider_id: Optional[str] = VM_ARN,
+    workload_name: Optional[str] = "agents-host-1",
+    account: Optional[str] = AWS_ACCOUNT,
+    platform: str = "AWS",
+    region: Optional[str] = "us-east-1",
+    version: Optional[str] = "0.3.7",
+    tech_last_seen: Optional[str] = LAST_SEEN,
+    workload_last_seen: Optional[str] = UPDATED,
+) -> dict[str, Any]:
+    """One HOSTED_TECHNOLOGY and the workload that RUNS it, as one `graphSearch` node."""
+    workload_properties: dict[str, Any] = {
+        "cloudPlatform": platform,
+        "externalId": "i-0abc123def4567890",
+        "nativeType": "virtualMachine",
+        "tags": {"owner": "secret-ish-tag-value"},
+    }
+    if account is not None:
+        workload_properties["subscriptionExternalId"] = account
+    if region is not None:
+        workload_properties["region"] = region
+    tech_properties: dict[str, Any] = {"techName": tech, "techId": "90210"}
+    if version is not None:
+        tech_properties["version"] = version
+    return {
+        "entities": [
+            entity(
+                f"wiz-tech-{tech}-{workload_gid}",
+                "HOSTED_TECHNOLOGY",
+                name=tech,
+                properties=tech_properties,
+                last_seen=tech_last_seen,
+            ),
+            entity(
+                workload_gid,
+                workload_type,
+                name=workload_name,
+                provider_id=provider_id,
+                properties=workload_properties,
+                last_seen=workload_last_seen,
+            ),
+        ],
+    }
+
+
+def graph_body(
+    nodes: Sequence[dict[str, Any]],
+    *,
+    has_next: bool = False,
+    cursor: Optional[str] = None,
+) -> dict[str, Any]:
+    return {
+        "data": {
+            "graphSearch": {
+                "nodes": list(nodes),
+                "pageInfo": {"hasNextPage": has_next, "endCursor": cursor},
+            },
+        },
+    }
+
+
+EMPTY_GRAPH = graph_body([])
+
+
 # One page and one token answer, shaped field for field on the public sources. Not
 # captured live: see the module docstring.
 TOKEN_SHAPED_LIKE_WIZ_AUTH_TS: dict[str, Any] = {
@@ -216,13 +321,15 @@ Route = Any  # a response, an exception, a list consumed in order, or a callable
 
 
 class FakeSession:
-    """Routes POSTs to a token URL to `token`, and to the GraphQL endpoint to
-    `graphql`. Anything else is a call the connector must not make."""
+    """Routes POSTs to a token URL to `token`, and to the GraphQL endpoint to `graphql`
+    for `cloudResources` or `workloads` for `graphSearch`. Anything else is a call the
+    connector must not make."""
 
     def __init__(
         self,
         graphql: Route = None,
         token: Route = None,
+        workloads: Route = None,
     ) -> None:
         self.graphql: Route = (
             ok(PAGE_SHAPED_LIKE_XSOAR_CLOUD_RESOURCES_QUERY)
@@ -232,12 +339,15 @@ class FakeSession:
         self.token: Route = (
             ok(TOKEN_SHAPED_LIKE_WIZ_AUTH_TS) if token is None else token
         )
+        self.workloads: Route = ok(EMPTY_GRAPH) if workloads is None else workloads
         self.calls: list[dict[str, Any]] = []
 
     def post(self, url: str, **kw: Any) -> FakeResponse:
         self.calls.append({"url": url, **kw})
         if url in TOKEN_URLS.values():
             route = self.token
+        elif _is_graph_search(kw):
+            route = self.workloads
         elif url == ENDPOINT or url.endswith("/graphql"):
             route = self.graphql
         else:
@@ -258,7 +368,20 @@ class FakeSession:
         return [c for c in self.calls if c["url"] in TOKEN_URLS.values()]
 
     def graphql_calls(self) -> list[dict[str, Any]]:
-        return [c for c in self.calls if c["url"] not in TOKEN_URLS.values()]
+        """The `cloudResources` calls."""
+        return [
+            c
+            for c in self.calls
+            if c["url"] not in TOKEN_URLS.values() and not _is_graph_search(c)
+        ]
+
+    def workload_calls(self) -> list[dict[str, Any]]:
+        return [c for c in self.calls if _is_graph_search(c)]
+
+
+def _is_graph_search(kw: dict[str, Any]) -> bool:
+    body = kw.get("json")
+    return isinstance(body, dict) and "graphSearch(" in str(body.get("query"))
 
 
 def connector_with(
@@ -400,7 +523,7 @@ def test_every_query_carries_the_bearer_token_to_the_endpoint() -> None:
 def test_redirects_are_refused_and_each_timeout_fits_the_preview_deadline() -> None:
     session = FakeSession()
     scan(session)
-    assert len(session.calls) == 2
+    assert len(session.calls) == 3
     for call in session.calls:
         assert call["allow_redirects"] is False
         connect, read = call["timeout"]
@@ -1149,6 +1272,7 @@ def test_the_token_is_refreshed_before_it_lapses() -> None:
         False,
         True,
         False,
+        False,
     ]
 
 
@@ -1175,13 +1299,14 @@ def test_no_secret_or_token_reaches_logs_records_or_errors(
 ) -> None:
     texts: list[str] = []
     with caplog.at_level(logging.DEBUG):
-        records = scan(FakeSession())
+        records = scan(FakeSession(workloads=ok(graph_body([sighting()]))))
         texts.extend(r.model_dump_json() for r in records)
         for session in (
             FakeSession(token=FakeResponse(401, {"error": "access_denied"})),
             FakeSession(ok(graphql_error("UNAUTHENTICATED"))),
             FakeSession(ok(graphql_error("BAD_USER_INPUT"))),
             FakeSession(FakeResponse(200, text_body=True)),
+            FakeSession(workloads=FakeResponse(500, graphql_error("INTERNAL"))),
         ):
             with pytest.raises(Exception) as exc:
                 scan(session)
@@ -1214,6 +1339,276 @@ def test_responses_shaped_like_the_public_wiz_sources_parse() -> None:
     assert gcp.name == "wiz-gcp-service"
     assert gcp.creation_source.address.scope == "us-central1"
     check_batch(list(by_id.values()), "wiz")
+
+
+# -- the workload inventory ----------------------------------------------------------------
+
+
+def workload_scan(
+    *nodes: dict[str, Any],
+    caplog: Optional[pytest.LogCaptureFixture] = None,
+) -> list[Any]:
+    """The workload records only: the AI-SPM inventory answers empty."""
+    session = FakeSession(ok(page_body([])), workloads=ok(graph_body(list(nodes))))
+    if caplog is None:
+        return scan(session)
+    with caplog.at_level(logging.INFO):
+        return scan(session)
+
+
+def test_a_technology_on_a_vm_is_one_record_addressed_like_a_vms_software() -> None:
+    (record,) = workload_scan(sighting())
+    assert record.external_id == f"{VM_ARN}:langchain"
+    assert record.name == "LangChain on agents-host-1"
+    assert record.last_seen == utc(LAST_SEEN)
+    assert record.runs_on is RunsOn.AWS
+    source = record.creation_source
+    assert isinstance(source, CloudAgentCreationSource)
+    assert source.vendor == VENDOR
+    assert source.address.instance == VM_ARN
+    assert source.address.scope == f"{AWS_ACCOUNT}/us-east-1"
+    assert source.address.resource_kind == "technology"
+    assert source.address.resource_id == "LangChain"
+    assert source.address.query is None
+    assert source.observations.version == "0.3.7"
+    assert source.observations.service_names == []
+    assert not record.llm_models
+    check_batch([record], "wiz")
+
+
+def test_workload_records_carry_only_native_ids_never_wizs() -> None:
+    records = workload_scan(
+        sighting("OpenAI SDK", workload_type="SERVERLESS", provider_id=LAMBDA_ARN),
+        sighting(
+            "Model Context Protocol",
+            workload_type="CONTAINER_IMAGE",
+            provider_id=IMAGE_ID,
+        ),
+    )
+    assert sorted(ids(records)) == sorted(
+        [f"{LAMBDA_ARN}:openai-sdk", f"{IMAGE_ID}:model-context-protocol"],
+    )
+    for record in records:
+        text = record.model_dump_json()
+        assert "wiz-vm-1" not in text
+        assert "wiz-tech-" not in text
+        assert "90210" not in text
+
+
+def test_a_workload_without_a_provider_id_is_skipped_naming_its_entity_type(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    records = workload_scan(
+        sighting(workload_type="CONTAINER_IMAGE", provider_id=None),
+        sighting("CrewAI"),
+        caplog=caplog,
+    )
+    assert ids(records) == [f"{VM_ARN}:crewai"]
+    assert "CONTAINER_IMAGE" in caplog.text
+    assert "providerUniqueId" in caplog.text
+
+
+def test_a_provider_id_in_the_workloads_properties_is_used_when_the_field_is_empty() -> (
+    None
+):
+    node_ = sighting(provider_id=None)
+    node_["entities"][1]["properties"]["providerUniqueId"] = VM_ARN
+    (record,) = workload_scan(node_)
+    assert record.creation_source.address.instance == VM_ARN
+
+
+def test_technologies_not_on_the_list_are_left_out(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    records = workload_scan(
+        sighting("OpenSSL"),
+        sighting("nginx"),
+        sighting("langchain"),
+        caplog=caplog,
+    )
+    assert ids(records) == [f"{VM_ARN}:langchain"]
+    assert "2 not on the engine's list" in caplog.text
+
+
+def test_one_technology_on_one_workload_twice_is_one_record_dated_by_the_newest() -> (
+    None
+):
+    older = sighting(tech_last_seen=CREATED, version="0.1.0")
+    newer = sighting(tech_last_seen=LAST_SEEN, version="0.3.7")
+    (record,) = workload_scan(older, newer, older)
+    assert record.last_seen == utc(LAST_SEEN)
+    assert record.creation_source.observations.version == "0.3.7"
+
+
+def test_two_workloads_with_one_technology_are_two_records() -> None:
+    other = f"arn:aws:ec2:us-east-1:{AWS_ACCOUNT}:instance/i-0fff"
+    records = workload_scan(
+        sighting(),
+        sighting(workload_gid="wiz-vm-2", provider_id=other),
+    )
+    assert sorted(ids(records)) == sorted([f"{VM_ARN}:langchain", f"{other}:langchain"])
+
+
+def test_last_seen_falls_back_to_the_workload_then_skips_without_one(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    (record,) = workload_scan(sighting(tech_last_seen=None))
+    assert record.last_seen == utc(UPDATED)
+    assert (
+        workload_scan(
+            sighting(tech_last_seen=None, workload_last_seen=None),
+            caplog=caplog,
+        )
+        == []
+    )
+    assert "no lastSeen" in caplog.text
+
+
+def test_a_workload_without_an_account_is_skipped_and_without_a_region_is_global(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    assert workload_scan(sighting(account=None), caplog=caplog) == []
+    assert "names no cloud account" in caplog.text
+    (record,) = workload_scan(sighting(region=None))
+    assert record.creation_source.address.scope == f"{AWS_ACCOUNT}/{GLOBAL_SCOPE}"
+
+
+def test_an_azure_workloads_account_is_lower_cased() -> None:
+    (record,) = workload_scan(sighting(account=AZURE_SUBSCRIPTION, platform="Azure"))
+    assert record.creation_source.address.scope == (
+        f"{AZURE_SUBSCRIPTION.lower()}/us-east-1"
+    )
+    assert record.runs_on is RunsOn.AZURE
+
+
+def test_a_path_without_a_technology_or_a_workload_is_skipped(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    lone = sighting()
+    lone["entities"] = lone["entities"][:1]
+    assert workload_scan(lone, {"entities": None}, caplog=caplog) == []
+    assert "2 workload path(s)" in caplog.text
+
+
+def test_the_workload_query_asks_for_the_listed_technologies_on_workloads() -> None:
+    session = FakeSession()
+    scan(session)
+    (call,) = session.workload_calls()
+    assert call["json"]["query"] == GRAPH_SEARCH_QUERY
+    variables = call["json"]["variables"]
+    assert variables["first"] == PAGE_SIZE
+    assert variables["projectId"] == "*"
+    assert "after" not in variables
+    query = variables["query"]
+    assert query["type"] == ["HOSTED_TECHNOLOGY"]
+    assert query["where"] == {"techName": {"EQUALS": list(WORKLOAD_TECHNOLOGIES)}}
+    (edge,) = query["relationships"]
+    assert edge["type"] == [{"type": "RUNS", "reverse": True}]
+    assert edge["with"] == {
+        "type": ["VIRTUAL_MACHINE", "CONTAINER_IMAGE", "SERVERLESS"],
+        "select": True,
+    }
+
+
+def test_only_the_token_and_the_two_queries_are_ever_sent() -> None:
+    session = FakeSession(workloads=ok(graph_body([sighting()])))
+    scan(session)
+    queries = [c["json"]["query"] for c in session.calls if "json" in c]
+    assert set(queries) == {CLOUD_RESOURCES_QUERY, GRAPH_SEARCH_QUERY}
+    assert len(session.token_calls()) == 1
+    for query in queries:
+        assert query.lstrip().startswith("query ")
+        assert "mutation" not in query
+    assert len(session.calls) == 3
+
+
+def test_workload_paging_follows_the_cursor_and_stops_on_a_repeat(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    other = f"arn:aws:ec2:us-east-1:{AWS_ACCOUNT}:instance/i-0fff"
+    session = FakeSession(
+        ok(page_body([])),
+        workloads=pages(
+            graph_body([sighting()], has_next=True, cursor="g1"),
+            graph_body([sighting(provider_id=other)], has_next=True, cursor="g1"),
+        ),
+    )
+    with caplog.at_level(logging.WARNING):
+        records = scan(session)
+    assert len(records) == 2
+    afters = [c["json"]["variables"].get("after") for c in session.workload_calls()]
+    assert afters == [None, "g1"]
+    assert "already returned" in caplog.text
+
+
+def test_the_workload_inventory_stops_at_its_page_cap(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    monkeypatch.setattr(wiz, "MAX_PAGES", 2)
+    counter = {"n": 0}
+
+    def endless(kw: dict[str, Any]) -> FakeResponse:
+        counter["n"] += 1
+        return ok(graph_body([sighting()], has_next=True, cursor=f"g{counter['n']}"))
+
+    session = FakeSession(ok(page_body([])), workloads=endless)
+    with caplog.at_level(logging.WARNING):
+        scan(session)
+    assert len(session.workload_calls()) == 2
+    assert "workload inventory stopped at 2 pages" in caplog.text
+
+
+def test_a_stop_after_the_resources_skips_the_workload_inventory_and_says_so(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    session = FakeSession()
+    connector = connector_with(session)
+    connector.stop_when(lambda: len(session.graphql_calls()) >= 1)
+    with caplog.at_level(logging.WARNING):
+        records = scan(session, connector=connector)
+    assert len(records) == 3
+    assert session.workload_calls() == []
+    assert "workload inventory was not read" in caplog.text
+
+
+@pytest.mark.parametrize(
+    ("code", "reason"),
+    [("UNAUTHORIZED", DENIED_PERMISSION), ("BAD_USER_INPUT", DENIED_UNREACHABLE)],
+)
+def test_a_refused_workload_inventory_is_partial_and_keeps_the_ai_spm_records(
+    code: str,
+    reason: str,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    session = FakeSession(workloads=ok(graphql_error(code)))
+    connector = connector_with(session)
+    with caplog.at_level(logging.WARNING):
+        records = scan(session, connector=connector)
+    assert len(records) == 3
+    assert connector.denied_scopes() == (DeniedScope(WORKLOAD_INVENTORY_SCOPE, reason),)
+    assert "refused the workload inventory" in caplog.text
+    assert FREE_TEXT not in caplog.text
+
+
+def test_any_other_workload_failure_publishes_what_was_found_then_raises(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    session = FakeSession(
+        workloads=[
+            ok(graph_body([sighting()], has_next=True, cursor="g1")),
+            ok(graphql_error("UNAUTHENTICATED")),
+        ],
+    )
+    connector = connector_with(session)
+    got: list[Any] = []
+    with caplog.at_level(logging.WARNING), pytest.raises(WizError) as exc:
+        for batch in connector.scan(config(), 24, CREDS, FIELDS, LOG):
+            got.extend(batch)
+    assert exc.value.status_code == 401
+    assert len(got) == 4
+    assert connector.denied_scopes() == ()
+    assert "failed part-way, in the workload inventory" in caplog.text
 
 
 # -- end to end through the scan loop ---------------------------------------------------------
@@ -1358,3 +1753,13 @@ def test_a_uuid_source_id_runs_through_the_scan_loop_and_reports_its_string() ->
     assert result.error is None
     assert result.records_published == 3
     assert result.discovery_source_id == "44444444-4444-4444-4444-444444444444"
+
+
+def test_a_refused_workload_inventory_reaches_the_run_as_a_denied_scope() -> None:
+    result, sink = outcome(), AcceptingSink()
+    run(FakeSession(workloads=ok(graphql_error("UNAUTHORIZED"))), result, sink)
+    assert result.records_published == 3
+    assert result.error is None
+    assert result.denied_scopes == [
+        DeniedScope(WORKLOAD_INVENTORY_SCOPE, DENIED_PERMISSION),
+    ]

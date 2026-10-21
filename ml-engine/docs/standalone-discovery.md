@@ -127,8 +127,10 @@ window misses nothing.
 
 #### `wiz_ai_spm` — Wiz AI-SPM
 
-Lists the cloud resources of the configured Wiz Security Graph entity types in one Wiz
-tenant, across every cloud account the tenant has connected.
+Reads two inventories from one Wiz tenant, across every cloud account the tenant has
+connected: the cloud resources of the configured Wiz Security Graph entity types
+(AI-SPM), and the AI frameworks and SDKs Wiz detected on VMs, container images and
+serverless functions (the workload inventory), which is where self-hosted agents show up.
 
 | Field | Secret | Required | Notes |
 |---|---|---|---|
@@ -139,10 +141,11 @@ tenant, across every cloud account the tenant has connected.
 | `entity_types` | no | no | Comma-separated Wiz Security Graph entity types to list instead of the default `AI_AGENT,AI_SERVICE` |
 
 Use `query: ""` and `query_language: none`. Give the service account only the
-`read:resources` scope; the scan sends nothing but the token request and one read-only
-`cloudResources` query, paged 500 at a time. A tenant that restricts API access to an IP
-allowlist must allow the engine's egress address, or every query fails with
-`FORBIDDEN_IP`.
+`read:resources` scope; the scan sends nothing but the token request and two read-only
+queries, `cloudResources` and `graphSearch`, each paged 500 at a time. That
+`read:resources` also covers `graphSearch` is inferred, not confirmed. A tenant that
+restricts API access to an IP allowlist must allow the engine's egress address, or every
+query fails with `FORBIDDEN_IP`.
 
 **The default entity types are not verified.** Wiz documents its entity types only
 behind a tenant login, and no public source lists the AI ones, so `AI_AGENT,AI_SERVICE`
@@ -160,9 +163,37 @@ Azure), its scope the resource's region (`global` when it has none), and `last_s
 Wiz's `lastSeen`, else the resource's update or creation time; a resource with neither
 is skipped with a warning. No service names are claimed.
 
-The lookback window is not applied: `cloudResources` is an inventory, so every scan
-reports every matching resource whatever `lookback_window_seconds` says. A scan reads at
-most 100 pages and says so in the job log when it stops there.
+**Workload inventory.** The scan also asks `graphSearch` for `HOSTED_TECHNOLOGY`
+entities whose `techName` is one of the engine's AI framework and SDK names (LangChain,
+LangGraph, LlamaIndex, CrewAI, AutoGen, Semantic Kernel, Haystack, the OpenAI, Anthropic
+and Claude agent SDKs, Google's Agent Development Kit and MCP), each with the
+`VIRTUAL_MACHINE`, `CONTAINER_IMAGE` or `SERVERLESS` entity that `RUNS` it. Running
+containers are left out: their ids change on every restart, and the image carries the
+same technologies. **The technology names are not verified** against Wiz's own
+spelling, and a name Wiz spells differently matches nothing; there is no field to change
+them yet.
+
+Each (technology, workload) is one record, addressed as a VM's software is on Compute
+Engine and EC2: the address's instance is the workload's `providerUniqueId` (an ARN, a
+resource path, an image id), its scope `<account>/<region>` (`<account>/global` without
+a region), its `resource_kind` `technology` and its `resource_id` the technology name.
+`external_id` is `<workload providerUniqueId>:<technology key>`, the key being the name
+lower-cased with each run of other characters made one `-`, for example
+`arn:aws:ec2:us-east-1:123456789012:instance/i-0abc:langchain`. Nothing Wiz assigns is
+part of it: a workload without a `providerUniqueId`, an account or a timestamp is
+skipped with a job-log warning naming its entity type. `last_seen` is the technology's
+`lastSeen`, else the workload's, else either's `updatedAt`; the record carries the
+detected version and no model or service name.
+
+If Wiz refuses the workload query (`UNAUTHORIZED`) or rejects its shape
+(`BAD_USER_INPUT`), the scan still publishes the AI-SPM records, says so in the job log
+and reports the denied scope `workload-inventory`. Any other failure fails the scan as
+before, after publishing what was found.
+
+The lookback window is not applied: both queries read an inventory, so every scan
+reports every matching resource and technology whatever `lookback_window_seconds` says.
+Each inventory is read for at most 100 pages, and the job log says so when one stops
+there.
 
 #### `jamf_pro` — Jamf Pro (managed Macs)
 

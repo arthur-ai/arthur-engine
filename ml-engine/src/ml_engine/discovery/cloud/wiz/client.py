@@ -1,21 +1,31 @@
 """Wiz's GraphQL API, as far as a discovery scan needs it.
 
-TWO CALLS, BOTH READS. A scan asks Wiz's token endpoint for an access token (OAuth 2.0
-client credentials, form-encoded, `audience=wiz-api`), then pages through one query,
-`cloudResources(filterBy: {type: [...]}, first, after)`, on the tenant's GraphQL
-endpoint. Nothing else is ever sent: no mutation, no issue, finding or graph search
-query, and nothing that reads a resource's contents. The GraphQL call is a POST, as
-every GraphQL call is, but the document is a query and the same one every time, so
-repeating it is as safe as repeating a GET; both calls are retried on 429 and 5xx
-through `discovery.retry`.
+THREE CALLS, ALL READS. A scan asks Wiz's token endpoint for an access token (OAuth 2.0
+client credentials, form-encoded, `audience=wiz-api`), then pages through two queries on
+the tenant's GraphQL endpoint: `cloudResources(filterBy: {type: [...]}, first, after)`
+for the AI resources, and `graphSearch` for the AI technologies Wiz detected on
+workloads (`HOSTED_TECHNOLOGY` entities that a `VIRTUAL_MACHINE`, `CONTAINER_IMAGE` or
+`SERVERLESS` entity `RUNS`). Nothing else is ever sent: no mutation, no issue or
+finding query, and nothing that reads a resource's contents. Each GraphQL call is a
+POST, as every GraphQL call is, but the documents are queries and the same ones every
+time, so repeating one is as safe as repeating a GET; every call is retried on 429 and
+5xx through `discovery.retry`.
 
 WHERE THE SHAPES COME FROM. Wiz's API reference needs a tenant login, and Wiz's hosts
 are not reachable from where this was written, so nothing here was checked against a
 live tenant. The token exchange follows `WizAuth.ts` in Wiz's own Backstage plugin
-(github.com/wiz-sec-public/backstage-plugin-wiz); the query is Cortex XSOAR's
+(github.com/wiz-sec-public/backstage-plugin-wiz); `cloudResources` is Cortex XSOAR's
 `PULL_CLOUD_RESOURCES_NATIVE_QUERY` (github.com/demisto/content, Packs/Wiz), minus the
 fields a record does not use; the error codes and their statuses are the Backstage
-plugin's `ErrorHttpStatusMap`.
+plugin's `ErrorHttpStatusMap`. The `graphSearch` call, its `GraphEntityQueryInput`
+(`type`, `select`, `where: {<property>: {EQUALS: [...]}}`, `relationships` with a
+reversed `RUNS`) and the `techName` and `version` properties of a `HOSTED_TECHNOLOGY`
+follow a Wiz sensor inventory script (github.com/jtb75-org/wiz-sample-reports,
+`sensor-versions/get-data.py`), which walks the same edge from `CONTAINER_IMAGE`; the
+entity and edge names are in the Wiz Terraform provider's `GraphEntityType` and
+`GraphRelationshipType` enums. That a `VIRTUAL_MACHINE` and a `SERVERLESS` reach their
+technologies over the same `RUNS` edge, that `techName` takes `EQUALS`, and that a
+workload's properties carry `subscriptionExternalId` are inferred, not confirmed.
 
 ERRORS ARRIVE IN THE BODY. Wiz answers a GraphQL failure with an `errors[]` list whose
 `extensions.code` says what went wrong, and often with HTTP 200. The code, not the HTTP
@@ -28,8 +38,8 @@ quote what was sent.
 
 Authenticated with a Wiz service account: `client_id` and `client_secret` from
 Settings > Service Accounts. Least privilege is a service account with the
-`read:resources` scope only (not yet verified against a live tenant; see
-docs/standalone-discovery.md).
+`read:resources` scope only, for both queries (not yet verified against a live tenant,
+and inferred for `graphSearch`; see docs/standalone-discovery.md).
 """
 
 import json
@@ -64,6 +74,50 @@ PAGE_SIZE = 500
 # A token is replaced this long before Wiz says it expires, so a long scan never sends
 # one that lapses in flight.
 TOKEN_REFRESH_MARGIN_SECONDS = 60.0
+
+GRAPH_SEARCH_QUERY = """
+query WorkloadTechnologySearch(
+  $query: GraphEntityQueryInput
+  $projectId: String!
+  $first: Int
+  $after: String
+  $quick: Boolean = true
+) {
+  graphSearch(
+    query: $query
+    projectId: $projectId
+    first: $first
+    after: $after
+    quick: $quick
+  ) {
+    nodes {
+      entities {
+        id
+        name
+        type
+        providerUniqueId
+        properties
+        firstSeen
+        lastSeen
+      }
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+  }
+}
+""".strip()
+
+# The Security Graph entity a detected technology is, and the workloads it is read on.
+# A running CONTAINER is left out: its id changes with every restart, and the image it
+# runs carries the same technologies under an id that does not.
+TECHNOLOGY_ENTITY_TYPE = "HOSTED_TECHNOLOGY"
+WORKLOAD_ENTITY_TYPES: tuple[str, ...] = (
+    "VIRTUAL_MACHINE",
+    "CONTAINER_IMAGE",
+    "SERVERLESS",
+)
 
 CLOUD_RESOURCES_QUERY = """
 query CloudResourceSearch($filterBy: CloudResourceFilters, $first: Int, $after: String) {
@@ -109,6 +163,12 @@ REGION_KEYS = ("region", "location")
 CLOUD_PLATFORM_KEY = "cloudPlatform"
 # Fallbacks for `graphEntity.lastSeen`, most recent first.
 TIMESTAMP_KEYS = ("updatedAt", "creationDate")
+# A graph entity's own copies of what `cloudResources` returns beside it.
+PROVIDER_ID_KEY = "providerUniqueId"
+ACCOUNT_KEY = "subscriptionExternalId"
+# A HOSTED_TECHNOLOGY's name and detected version.
+TECH_NAME_KEY = "techName"
+TECH_VERSION_KEY = "version"
 
 _Read = TypeVar("_Read")
 
@@ -186,6 +246,34 @@ class ResourcePage:
     unaddressable: int = 0
 
 
+@dataclass(frozen=True)
+class WorkloadTechnology:
+    """One technology Wiz detected on one workload. Everything else is dropped."""
+
+    technology_name: str
+    technology_version: Optional[str]
+    # Wiz's id for the workload, for warnings only: never part of a record.
+    workload_graph_id: str
+    workload_type: str
+    # The provider's own id (an ARN, a resource path, an image id), when Wiz has one.
+    workload_provider_id: Optional[str]
+    workload_name: Optional[str]
+    account: Optional[str]
+    region: Optional[str]
+    cloud_platform: Optional[str]
+    # The technology's `lastSeen`, else the workload's, else either's `updatedAt`.
+    last_seen: Optional[datetime]
+
+
+@dataclass(frozen=True)
+class WorkloadPage:
+    technologies: list[WorkloadTechnology]
+    has_next_page: bool
+    end_cursor: Optional[str]
+    # Nodes without both a named technology and an identified workload.
+    unaddressable: int = 0
+
+
 class WizClient:
     """One tenant, one service account. Lists cloud resources of the configured types."""
 
@@ -218,8 +306,42 @@ class WizClient:
         }
         if after is not None:
             variables["after"] = after
-        resp, payload = self._graphql(CLOUD_RESOURCES_QUERY, variables)
+        resp, payload = self._graphql(
+            "cloudResources",
+            CLOUD_RESOURCES_QUERY,
+            variables,
+        )
         return _page_from(resp, payload)
+
+    def workload_technologies_page(
+        self,
+        technologies: tuple[str, ...],
+        after: Optional[str] = None,
+    ) -> WorkloadPage:
+        """One page of the named technologies on workloads, each with its workload."""
+        variables: dict[str, Any] = {
+            "first": PAGE_SIZE,
+            "projectId": "*",
+            "quick": True,
+            "query": {
+                "type": [TECHNOLOGY_ENTITY_TYPE],
+                "select": True,
+                "where": {TECH_NAME_KEY: {"EQUALS": list(technologies)}},
+                "relationships": [
+                    {
+                        "type": [{"type": "RUNS", "reverse": True}],
+                        "with": {
+                            "type": list(WORKLOAD_ENTITY_TYPES),
+                            "select": True,
+                        },
+                    },
+                ],
+            },
+        }
+        if after is not None:
+            variables["after"] = after
+        resp, payload = self._graphql("graphSearch", GRAPH_SEARCH_QUERY, variables)
+        return _workload_page_from(resp, payload)
 
     # -- the token -----------------------------------------------------------------------
 
@@ -282,12 +404,14 @@ class WizClient:
 
     def _graphql(
         self,
+        what: str,
         query: str,
         variables: dict[str, Any],
     ) -> tuple[requests.Response, Any]:
-        """One GraphQL query's answer, retried when the failure passes."""
+        """One GraphQL query's answer, retried when the failure passes. `what` names
+        the query in errors."""
         resp, (payload, code) = self._send(
-            "cloudResources",
+            what,
             lambda: self._http.post(
                 self._s.api_endpoint_url,
                 json={"query": query, "variables": variables},
@@ -309,15 +433,23 @@ class WizClient:
         )
         status = _graphql_status(resp.status_code, code)
         if status != 200 or code is not None:
-            raise self._graphql_failure(resp, status, code or "")
+            raise self._graphql_failure(what, status, code or "")
         return resp, payload
 
     def _graphql_failure(
         self,
-        resp: requests.Response,
+        what: str,
         status: int,
         code: str,
     ) -> Exception:
+        if code == "BAD_USER_INPUT" and what == "graphSearch":
+            # The engine's own query, which no source field shapes: Wiz's error, with
+            # the status its code stands for.
+            return WizError(
+                "Wiz rejected the workload technology graphSearch query "
+                "(BAD_USER_INPUT).",
+                status_code=status,
+            )
         if code == "BAD_USER_INPUT":
             # The source's type filter, so the source is reported as needing a change
             # rather than as Wiz failing. It carries no status_code, and its text avoids
@@ -345,13 +477,12 @@ class WizClient:
         if status == 200:
             # Errors with no code Wiz documents: Wiz answered, with a failure.
             return WizError(
-                f"Wiz cloudResources query answered HTTP 200 with errors"
-                f"{_code_suffix(code)}.",
+                f"Wiz {what} query answered HTTP 200 with errors{_code_suffix(code)}.",
                 status_code=200,
             )
         return WizError(
-            f"Wiz cloudResources query failed with HTTP {status}"
-            f"{_code_suffix(code)}{_graphql_hint(status, code)}",
+            f"Wiz {what} query failed with HTTP {status}"
+            f"{_code_suffix(code)}{_graphql_hint(what, status, code)}",
             status_code=status,
         )
 
@@ -491,6 +622,84 @@ def _page_from(resp: requests.Response, payload: Any) -> ResourcePage:
     )
 
 
+def _workload_page_from(resp: requests.Response, payload: Any) -> WorkloadPage:
+    data = payload.get("data") if isinstance(payload, dict) else None
+    listing = data.get("graphSearch") if isinstance(data, dict) else None
+    nodes = listing.get("nodes") if isinstance(listing, dict) else None
+    page_info = listing.get("pageInfo") if isinstance(listing, dict) else None
+    if not isinstance(nodes, list) or not isinstance(page_info, dict):
+        raise WizError(
+            f"Wiz graphSearch query answered HTTP {resp.status_code} with a body that "
+            f"is not a graphSearch page "
+            f"({resp.headers.get('Content-Type') or 'no content type'}).",
+            status_code=resp.status_code,
+        )
+    technologies: list[WorkloadTechnology] = []
+    unaddressable = 0
+    for node in nodes:
+        technology = _workload_technology_from(node)
+        if technology is None:
+            unaddressable += 1
+        else:
+            technologies.append(technology)
+    cursor = page_info.get("endCursor")
+    return WorkloadPage(
+        technologies=technologies,
+        has_next_page=page_info.get("hasNextPage") is True,
+        end_cursor=cursor if isinstance(cursor, str) and cursor else None,
+        unaddressable=unaddressable,
+    )
+
+
+def _workload_technology_from(node: Any) -> Optional[WorkloadTechnology]:
+    """A path's technology and workload, or None without a named one of each."""
+    entities = node.get("entities") if isinstance(node, dict) else None
+    if not isinstance(entities, list):
+        return None
+    technology = _first_entity(entities, (TECHNOLOGY_ENTITY_TYPE,))
+    workload = _first_entity(entities, WORKLOAD_ENTITY_TYPES)
+    if technology is None or workload is None:
+        return None
+    tech_properties = _properties(technology.get("properties"))
+    name = _text(tech_properties.get(TECH_NAME_KEY)) or _text(technology.get("name"))
+    workload_graph_id = _text(workload.get("id"))
+    if name is None or workload_graph_id is None:
+        return None
+    properties = _properties(workload.get("properties"))
+    return WorkloadTechnology(
+        technology_name=name.strip(),
+        technology_version=_text(tech_properties.get(TECH_VERSION_KEY)),
+        workload_graph_id=workload_graph_id,
+        workload_type=str(workload.get("type")),
+        workload_provider_id=(
+            _text(workload.get("providerUniqueId"))
+            or _text(properties.get(PROVIDER_ID_KEY))
+        ),
+        workload_name=_text(workload.get("name")),
+        account=_text(properties.get(ACCOUNT_KEY)),
+        region=_first_text(properties, REGION_KEYS),
+        cloud_platform=_text(properties.get(CLOUD_PLATFORM_KEY)),
+        last_seen=_first_timestamp(
+            [
+                technology.get("lastSeen"),
+                workload.get("lastSeen"),
+                tech_properties.get("updatedAt"),
+                properties.get("updatedAt"),
+            ],
+        ),
+    )
+
+
+def _first_entity(
+    entities: list[Any],
+    types: tuple[str, ...],
+) -> Optional[dict[str, Any]]:
+    return next(
+        (e for e in entities if isinstance(e, dict) and e.get("type") in types),
+        None,
+    )
+
+
 def _resource_from(node: Any) -> Optional[WizResource]:
     if not isinstance(node, dict):
         return None
@@ -573,7 +782,7 @@ def _token_hint(status: int) -> str:
     return ""
 
 
-def _graphql_hint(status: int, code: str) -> str:
+def _graphql_hint(what: str, status: int, code: str) -> str:
     if code == "FORBIDDEN_IP":
         return (
             ". The tenant restricts API access to an IP allowlist that does not "
@@ -588,8 +797,8 @@ def _graphql_hint(status: int, code: str) -> str:
         )
     if status == 403:
         return (
-            ". The service account cannot list cloud resources: it needs the "
-            "read:resources scope"
+            f". The service account cannot run the {what} query: it needs the "
+            f"read:resources scope"
         )
     if status == 429:
         return ". Wiz's rate limit held through every retry; scan less often"

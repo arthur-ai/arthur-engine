@@ -1,10 +1,14 @@
 """Wiz AI-SPM's side of a DISCOVER_AGENTS scan.
 
-Lists the cloud resources of the configured Wiz Security Graph entity types in one Wiz
-tenant and emits one record per resource. Wiz is not the cloud the agents run in but a
-scanner of it, so one source covers every AWS account, Azure subscription and GCP
-project the tenant has connected. An inventory, so the scan's lookback is not applied:
-an agent deployed a year ago and still there is still there.
+Two inventories from one Wiz tenant. The AI-SPM inventory lists the cloud resources of
+the configured Wiz Security Graph entity types and emits one record per resource. The
+workload inventory lists the AI frameworks and SDKs Wiz detected on VMs, container
+images and serverless functions -- self-hosted agents no managed AI service knows
+about -- and emits one record per (technology, workload). Wiz is not the cloud the
+agents run in but a scanner of it, so one source covers every AWS account, Azure
+subscription and GCP project the tenant has connected. Both are inventories, so the
+scan's lookback is not applied: an agent deployed a year ago and still there is still
+there.
 
 WHICH TYPES ARE AI AGENTS IS NOT VERIFIED. Wiz documents its Security Graph entity types
 only behind a tenant login, and none of the public sources this connector was built from
@@ -15,7 +19,7 @@ one, and a source can replace it with `entity_types`. If the tenant does not kno
 default name Wiz answers BAD_USER_INPUT, and the scan fails as NOT_CONFIGURED with a
 message that says to set `entity_types` -- it never silently reports nothing.
 
-ONE RESOURCE, ONE RECORD, KEYED LIKE THE CLOUD'S OWN SOURCES. `external_id` is Wiz's
+ONE AI-SPM RESOURCE, ONE RECORD, KEYED LIKE THE CLOUD'S OWN SOURCES. `external_id` is Wiz's
 `graphEntity.providerUniqueId` verbatim: the provider's native id (an AWS ARN, an Azure
 resource path, a GCP resource name), so an agent Wiz reports and the same agent a
 native cloud source reports carry the same identity string. The record is never keyed
@@ -38,21 +42,60 @@ name a record holds, so none is claimed. Nor is `llm_models` set: a resource's
 properties may name a model, but no public source says which key, and a guess would be
 wrong in a way nobody notices.
 
-COMPLETENESS BEFORE RECORDS. Every page is read before the first batch is handed over,
-so the job log says how much of the inventory was read -- pages, duplicates, a page
-cap, a repeated cursor, a stop -- before anything is published. A call that fails part
-way still publishes the records collected before it, after that report, and then
-re-raises the failure unchanged, so the scan still fails with Wiz's status.
+WORKLOAD RECORDS ARE ADDRESSED LIKE A VM'S SOFTWARE. One record per (technology,
+workload), as Compute Engine and EC2 report the agents on a VM: `address.instance` is
+the workload's `providerUniqueId` (an instance ARN or resource path, a function ARN, an
+image id), `address.scope` is `<account>/<region>` (`<account>/global` without a
+region), and `resource_kind` "technology" with `resource_id` the technology's name as
+Wiz spells it. `external_id` is `<workload providerUniqueId>:<technology key>`, the key
+being the name lower-cased with every run of other characters made one "-":
+`arn:aws:ec2:us-east-1:123456789012:instance/i-0abc:langchain`. Nothing Wiz assigns
+(an entity id, a technology id) is part of it, so a workload without a provider id is
+skipped with a warning naming its entity type, as is one without an account or a
+timestamp. `last_seen` is the technology's `lastSeen`, else the workload's, else
+either's `updatedAt`, and a technology Wiz reports twice on one workload is one record
+dated by the newer. `version` is the detected version; no model, no service name. A
+running container is not a workload here: its id changes on every restart, and its
+image carries the same technologies under an id that does not.
+
+WHICH TECHNOLOGIES ARE AI FRAMEWORKS IS NOT VERIFIED. The shared agent catalog
+(`discovery/_vendor/agents.yaml`) lists agents and leaves out the libraries agents are
+built with, so it has nothing to match a framework against, and Wiz names its
+technologies in its own vocabulary in any case. `WORKLOAD_TECHNOLOGIES` is therefore
+the engine's list of Wiz technology names, matched exactly by the query and again,
+case-insensitively, here; a name Wiz spells differently matches nothing.
+
+THE WORKLOAD INVENTORY IS ONE PART OF THE SCAN. A service account Wiz refuses the
+`graphSearch` query (UNAUTHORIZED), or a tenant that rejects its shape
+(BAD_USER_INPUT), costs that part and not the scan: the job log says so, the run
+reports the denied scope `workload-inventory`, and the AI-SPM records are published.
+
+COMPLETENESS BEFORE RECORDS. Every page of both inventories is read before the first
+batch is handed over, so the job log says how much was read -- pages, duplicates, a
+page cap, a repeated cursor, a stop, a refused part -- before anything is published. A
+call that fails part way for any other reason still publishes the records collected
+before it, after that report, and then re-raises the failure unchanged, so the scan
+still fails with Wiz's status.
 """
 
 import logging
 import re
 from dataclasses import dataclass
-from typing import Callable, ClassVar, Iterator, Mapping, Optional, Sequence
+from typing import (
+    Callable,
+    ClassVar,
+    Iterator,
+    Mapping,
+    Optional,
+    Protocol,
+    Sequence,
+    TypeVar,
+)
 
 from arthur_client.api_bindings import DiscoverySourceConfigSpec
 from arthur_common.models.agent_discovery_schemas import DiscoveredAgentRecord
 from arthur_common.models.agent_governance_schemas import (
+    AgentObservations,
     CloudAgentCreationSource,
     RunsOn,
     SourceAddress,
@@ -61,13 +104,22 @@ from arthur_common.models.agent_governance_schemas import (
 from discovery.address import address_problem
 from discovery.cloud.wiz.client import (
     TOKEN_URLS,
+    ResourcePage,
     ScanStopped,
     WizClient,
+    WizError,
     WizResource,
     WizSettings,
+    WorkloadPage,
+    WorkloadTechnology,
 )
 from discovery.endpoint.scope import parse_group_names
-from job_executors.discovery_scan import DiscoveryConfigurationError
+from job_executors.discovery_scan import (
+    DENIED_PERMISSION,
+    DENIED_UNREACHABLE,
+    DeniedScope,
+    DiscoveryConfigurationError,
+)
 
 # The wire value. Identical to arthur-client's DiscoverySourceVendor member.
 VENDOR = "wiz_ai_spm"
@@ -100,6 +152,40 @@ ENTITY_TYPE_PATTERN = re.compile(r"[A-Z][A-Z0-9_]*")
 # Every record's address scope when the resource names no region.
 GLOBAL_SCOPE = "global"
 
+# UNVERIFIED: see the module docstring. The Wiz technology names the workload inventory
+# asks for: agent frameworks, the model providers' SDKs and MCP.
+WORKLOAD_TECHNOLOGIES: tuple[str, ...] = (
+    "LangChain",
+    "LangGraph",
+    "LlamaIndex",
+    "CrewAI",
+    "AutoGen",
+    "Semantic Kernel",
+    "Haystack",
+    "OpenAI Agents SDK",
+    "OpenAI SDK",
+    "Anthropic SDK",
+    "Claude Agent SDK",
+    "Google Agent Development Kit",
+    "Model Context Protocol",
+    "MCP Server",
+)
+
+# A workload record's `address.resource_kind`.
+TECHNOLOGY_RESOURCE_KIND = "technology"
+
+# The denied scope a run reports when Wiz refuses the workload inventory.
+WORKLOAD_INVENTORY_SCOPE = "workload-inventory"
+
+# The statuses that cost the workload inventory rather than the scan: a missing scope
+# (403) and a query shape the tenant rejects (400).
+WORKLOAD_REFUSED: Mapping[int, str] = {
+    403: DENIED_PERMISSION,
+    400: DENIED_UNREACHABLE,
+}
+
+_TECHNOLOGY_KEY_SEPARATOR = re.compile(r"[^a-z0-9]+")
+
 # Wiz's `cloudPlatform` property (lower-cased) -> where the agent runs, for the clouds
 # `RunsOn` already has. Every other platform leaves `runs_on` unset.
 RUNS_ON: Mapping[str, RunsOn] = {
@@ -126,9 +212,35 @@ def _default_client(settings: WizSettings, logger: logging.Logger) -> WizClient:
     return WizClient(settings, logger=logger)
 
 
+class _Page(Protocol):
+    @property
+    def has_next_page(self) -> bool: ...
+
+    @property
+    def end_cursor(self) -> Optional[str]: ...
+
+    @property
+    def unaddressable(self) -> int: ...
+
+
+_PageT = TypeVar("_PageT", bound=_Page)
+
+_RESOURCES = "AI-SPM inventory"
+_WORKLOADS = "workload inventory"
+
+
+@dataclass
+class _Progress:
+    """Which inventory the scan was reading, and how it ended."""
+
+    phase: str = _RESOURCES
+    stopped: bool = False
+    failed: bool = False
+
+
 @dataclass
 class _Tally:
-    """How much of the inventory one scan read, for the completeness report."""
+    """How much of one inventory a scan read, for the completeness report."""
 
     listed: int = 0
     pages: int = 0
@@ -139,8 +251,9 @@ class _Tally:
     repeated_cursor: bool = False
     missing_cursor: bool = False
     listing_complete: bool = False
-    stopped: bool = False
-    failed: bool = False
+    # Workload inventory only: technologies not on the list, and Wiz's refusal.
+    not_listed: int = 0
+    refused_status: Optional[int] = None
 
 
 class WizConnector:
@@ -157,9 +270,14 @@ class WizConnector:
     def __init__(self, client_factory: ClientFactory = _default_client) -> None:
         self._client_factory = client_factory
         self._should_stop: Callable[[], bool] = lambda: False
+        self._denied: list[DeniedScope] = []
 
     def stop_when(self, should_stop: Callable[[], bool]) -> None:
         self._should_stop = should_stop
+
+    def denied_scopes(self) -> Sequence[DeniedScope]:
+        """The workload inventory, when Wiz refused it; see the module docstring."""
+        return tuple(self._denied)
 
     def scan(
         self,
@@ -169,12 +287,13 @@ class WizConnector:
         source_fields: Mapping[str, str],
         logger: logging.Logger,
     ) -> Iterator[Sequence[DiscoveredAgentRecord]]:
-        """Every resource of the configured types in the source's tenant, in batches.
+        """Every resource of the configured types in the source's tenant, then every
+        listed technology on its workloads, in batches.
 
-        `lookback_hours` is not applied: Wiz's `cloudResources` is an inventory, not a
-        log, and filtering on `lastSeen` or `updatedAt` would make an agent that has not
-        changed vanish from every scan after the first. `logger` is the JOB's, so what
-        this reports reaches the Platform job log.
+        `lookback_hours` is not applied: both queries read an inventory, not a log, and
+        filtering on `lastSeen` or `updatedAt` would make an agent that has not changed
+        vanish from every scan after the first. `logger` is the JOB's, so what this
+        reports reaches the Platform job log.
         """
         settings = settings_from(credentials, source_fields)
         client = self._client_factory(settings, logger)
@@ -192,23 +311,30 @@ class WizConnector:
             ),
         )
 
-        tally = _Tally()
+        self._denied = []
+        tally, workloads = _Tally(), _Tally()
         records: list[DiscoveredAgentRecord] = []
+        workload_records: dict[str, DiscoveredAgentRecord] = {}
+        progress = _Progress()
         try:
             self._collect(client, logger, tally, records)
+            progress.phase = _WORKLOADS
+            self._collect_workloads(client, logger, workloads, workload_records)
         except ScanStopped:
-            tally.stopped = True
+            progress.stopped = True
         except Exception:
-            if records:
-                tally.failed = True
-                _report(logger, tally, len(records))
-                yield from _batches(records)
+            found = records + list(workload_records.values())
+            if found:
+                progress.failed = True
+                _report_all(logger, tally, workloads, progress, len(records), found)
+                yield from _batches(found)
             raise
 
+        found = records + list(workload_records.values())
         # Reported before the first batch is handed over, so a publish that fails part
         # way cannot leave a capped or partial answer unannounced.
-        _report(logger, tally, len(records))
-        yield from _batches(records)
+        _report_all(logger, tally, workloads, progress, len(records), found)
+        yield from _batches(found)
 
     def _collect(
         self,
@@ -217,24 +343,11 @@ class WizConnector:
         tally: _Tally,
         records: list[DiscoveredAgentRecord],
     ) -> None:
-        """Every page of the inventory, appending to `records` as pages arrive, so a
-        stop part-way still hands over what was found.
-
-        A cursor Wiz hands back twice ends the listing rather than looping on it, and so
-        does `MAX_PAGES`; both are reported as incomplete.
-        """
+        """Every page of the AI-SPM inventory, appending to `records` as pages arrive,
+        so a stop part-way still hands over what was found."""
         seen_ids: set[str] = set()
-        seen_cursors: set[str] = set()
-        cursor: Optional[str] = None
-        while True:
-            if tally.pages >= MAX_PAGES:
-                tally.page_cap_hit = True
-                return
-            if self._should_stop():
-                raise ScanStopped()
-            page = client.cloud_resources_page(cursor)
-            tally.pages += 1
-            tally.unaddressable += page.unaddressable
+
+        def take(page: ResourcePage) -> None:
             for resource in page.resources:
                 if resource.graph_id in seen_ids:
                     tally.duplicates += 1
@@ -246,6 +359,82 @@ class WizConnector:
                     tally.skipped += 1
                 else:
                     records.append(record)
+
+        self._walk(client.cloud_resources_page, take, tally)
+
+    def _collect_workloads(
+        self,
+        client: WizClient,
+        logger: logging.Logger,
+        tally: _Tally,
+        records: dict[str, DiscoveredAgentRecord],
+    ) -> None:
+        """Every page of the workload inventory, into `records` by `external_id`.
+
+        One technology on one workload can arrive more than once -- two versions, two
+        paths to it -- and is one record, dated by its newest sighting. A refusal costs
+        this part only; see the module docstring.
+        """
+        listed = {name.casefold() for name in WORKLOAD_TECHNOLOGIES}
+
+        def take(page: WorkloadPage) -> None:
+            for technology in page.technologies:
+                tally.listed += 1
+                if technology.technology_name.casefold() not in listed:
+                    tally.not_listed += 1
+                    continue
+                record = workload_record_for(technology, logger)
+                if record is None:
+                    tally.skipped += 1
+                    continue
+                kept = records.get(record.external_id)
+                if kept is not None:
+                    tally.duplicates += 1
+                    if kept.last_seen >= record.last_seen:
+                        continue
+                records[record.external_id] = record
+
+        def fetch(after: Optional[str]) -> WorkloadPage:
+            return client.workload_technologies_page(WORKLOAD_TECHNOLOGIES, after)
+
+        try:
+            self._walk(fetch, take, tally)
+        except WizError as exc:
+            reason = WORKLOAD_REFUSED.get(exc.status_code or 0)
+            if reason is None:
+                raise
+            tally.refused_status = exc.status_code
+            self._denied.append(DeniedScope(WORKLOAD_INVENTORY_SCOPE, reason))
+            logger.warning(
+                "Wiz refused the workload inventory: %s The AI-SPM records are still "
+                "published; the run reports the denied scope %s.",
+                exc,
+                WORKLOAD_INVENTORY_SCOPE,
+            )
+
+    def _walk(
+        self,
+        fetch: Callable[[Optional[str]], _PageT],
+        take: Callable[[_PageT], None],
+        tally: _Tally,
+    ) -> None:
+        """Every page `fetch` returns, each handed to `take` as it arrives.
+
+        A cursor Wiz hands back twice ends the listing rather than looping on it, and so
+        does `MAX_PAGES`; both are reported as incomplete.
+        """
+        seen_cursors: set[str] = set()
+        cursor: Optional[str] = None
+        while True:
+            if tally.pages >= MAX_PAGES:
+                tally.page_cap_hit = True
+                return
+            if self._should_stop():
+                raise ScanStopped()
+            page = fetch(cursor)
+            tally.pages += 1
+            tally.unaddressable += page.unaddressable
+            take(page)
             if not page.has_next_page:
                 tally.listing_complete = True
                 return
@@ -317,8 +506,150 @@ def record_for(
     )
 
 
+def workload_record_for(
+    technology: WorkloadTechnology,
+    logger: logging.Logger,
+) -> Optional[DiscoveredAgentRecord]:
+    """One technology's record on one workload, or None when Wiz gave nothing to key,
+    date or place it by."""
+    native_id = technology.workload_provider_id
+    if native_id is None:
+        logger.warning(
+            "Wiz %s %s reported no providerUniqueId; its %s is skipped, because a "
+            "record is keyed on the provider's own id for the workload, never on an id "
+            "Wiz assigns",
+            technology.workload_type,
+            technology.workload_graph_id,
+            technology.technology_name,
+        )
+        return None
+    key = _TECHNOLOGY_KEY_SEPARATOR.sub("-", technology.technology_name.lower()).strip(
+        "-",
+    )
+    if not key:
+        return None
+    if technology.last_seen is None:
+        logger.warning(
+            "Wiz %s %s reported no lastSeen or update time for %s; skipped, because "
+            "last_seen is required and inventing one would date the record to the scan",
+            technology.workload_type,
+            technology.workload_graph_id,
+            technology.technology_name,
+        )
+        return None
+    platform = (technology.cloud_platform or "").strip().lower()
+    account = technology.account
+    if account is None:
+        logger.warning(
+            "Wiz %s %s names no cloud account (subscriptionExternalId); its %s is "
+            "skipped, because the account is part of the record's address",
+            technology.workload_type,
+            technology.workload_graph_id,
+            technology.technology_name,
+        )
+        return None
+    if platform in CASE_INSENSITIVE_PLATFORMS:
+        account = account.lower()
+    return DiscoveredAgentRecord(
+        external_id=f"{native_id}:{key}",
+        name=f"{technology.technology_name} on {technology.workload_name or native_id}",
+        last_seen=technology.last_seen,
+        runs_on=RUNS_ON.get(platform),
+        creation_source=CloudAgentCreationSource(
+            vendor=VENDOR,
+            address=SourceAddress(
+                instance=native_id,
+                scope=f"{account}/{technology.region or GLOBAL_SCOPE}",
+                resource_kind=TECHNOLOGY_RESOURCE_KIND,
+                resource_id=technology.technology_name,
+            ),
+            observations=AgentObservations(version=technology.technology_version),
+        ),
+    )
+
+
+def _report_all(
+    logger: logging.Logger,
+    tally: _Tally,
+    workloads: _Tally,
+    progress: _Progress,
+    resource_records: int,
+    found: list[DiscoveredAgentRecord],
+) -> None:
+    """Both inventories' completeness, then how the scan ended."""
+    _report(logger, tally, resource_records)
+    workloads_read = workloads.pages > 0 or workloads.refused_status is not None
+    if workloads_read:
+        _report_workloads(logger, workloads, len(found) - resource_records)
+    if progress.failed:
+        logger.warning(
+            "Wiz AI-SPM scan failed part-way, in the %s; the %s record(s) found before "
+            "the failure are published, then the scan fails.",
+            progress.phase,
+            len(found),
+        )
+    if progress.stopped:
+        logger.warning(
+            "Wiz AI-SPM scan stopped early on request, in the %s; the records found so "
+            "far are all that is reported%s.",
+            progress.phase,
+            "" if workloads_read else ", and the workload inventory was not read",
+        )
+
+
+def _report_workloads(logger: logging.Logger, tally: _Tally, records: int) -> None:
+    """Say how complete the workload inventory is."""
+    if tally.refused_status is not None:
+        logger.warning(
+            "Wiz workload inventory not read (HTTP %s); %s record(s) from it.",
+            tally.refused_status,
+            records,
+        )
+        return
+    logger.info(
+        "Wiz workload inventory listed %s technology sighting(s) over %s page(s); %s "
+        "record(s), %s skipped, %s not on the engine's list, %s duplicate(s)",
+        tally.listed,
+        tally.pages,
+        records,
+        tally.skipped,
+        tally.not_listed,
+        tally.duplicates,
+    )
+    if tally.page_cap_hit:
+        logger.warning(
+            "Wiz workload inventory stopped at %s pages (%s sightings); technologies "
+            "past that were not read.",
+            tally.pages,
+            tally.listed,
+        )
+    if tally.repeated_cursor or tally.missing_cursor:
+        logger.warning(
+            "Wiz workload inventory ended after %s page(s) because Wiz %s; technologies "
+            "past that point may be missing.",
+            tally.pages,
+            (
+                "returned a page cursor it had already returned"
+                if tally.repeated_cursor
+                else "said more pages exist but returned no cursor"
+            ),
+        )
+    if tally.unaddressable:
+        logger.warning(
+            "Wiz returned %s workload path(s) without a named technology and an "
+            "identified workload; skipped.",
+            tally.unaddressable,
+        )
+    if tally.listing_complete and tally.listed == 0:
+        logger.info(
+            "Wiz reported none of the engine's AI technologies on any VM, container "
+            "image or serverless function.",
+        )
+
+
 def _report(logger: logging.Logger, tally: _Tally, records: int) -> None:
-    """Say how complete the answer is. A partial answer must not read as a full one."""
+    """Say how complete the AI-SPM inventory is. A partial answer must not read as a
+    full one."""
     logger.info(
         "Wiz AI-SPM scan listed %s resource(s) over %s page(s); %s record(s), %s "
         "skipped, %s duplicate(s) across pages",
@@ -328,19 +659,6 @@ def _report(logger: logging.Logger, tally: _Tally, records: int) -> None:
         tally.skipped,
         tally.duplicates,
     )
-    if tally.failed:
-        logger.warning(
-            "Wiz AI-SPM scan failed part-way after %s page(s); the %s record(s) found "
-            "before the failure are published, then the scan fails.",
-            tally.pages,
-            records,
-        )
-    if tally.stopped:
-        logger.warning(
-            "Wiz AI-SPM scan stopped early on request after %s page(s); the records "
-            "found so far are all that is reported.",
-            tally.pages,
-        )
     if tally.page_cap_hit:
         logger.warning(
             "Wiz resource list stopped at %s pages (%s resources); resources past that "
