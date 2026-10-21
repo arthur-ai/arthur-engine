@@ -67,6 +67,10 @@ Parameters:
     Type: Number
     Default: 1099511627776
     Description: 'Alarm is triggered when the GenAI Engine Aurora cluster VolumeBytesUsed exceeds this many bytes. Default 1 TiB. Aurora storage auto-grows, so this is a runaway-growth / cost watch, not a free-space watch.'
+  LambdaErrorsAlarmThreshold:
+    Type: Number
+    Default: 1
+    Description: 'Alarm is triggered when the account-wide AWS/Lambda Errors count reaches this value in a 5-minute period. Account-wide (no FunctionName dimension), so it covers every Lambda in the account and any added later.'
 
 Conditions:
   # Aurora Serverless v2 is only provisioned when the deployment is not bring-your-own-DB,
@@ -262,3 +266,27 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       TreatMissingData: notBreaching
       Unit: Bytes
+  # Account-wide Lambda Errors alarm. No FunctionName dimension, so it monitors the
+  # AWS/Lambda "Errors" aggregate across every function in the account (the engine task-scaling
+  # Lambda, demo-to-hubspot-sync in prod, and any future functions) with no per-function upkeep.
+  # Satisfies the Vanta serverless-function-error-rate-monitored-aws test. Errors is published on
+  # invocation, so TreatMissingData=notBreaching keeps the alarm at OK while idle and fires only
+  # when a Lambda actually errors.
+  ArthurAccountWideLambdaErrors:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "[${ArthurResourceNamespace}${ArthurResourceNameSuffix}] lambda-errors-account-wide-alarm"
+      AlarmDescription: !Sub "Alarm when the account-wide AWS/Lambda Errors count reaches ${LambdaErrorsAlarmThreshold} in a 5-minute period (no FunctionName dimension; covers all Lambdas in the account)"
+      ActionsEnabled: true
+      AlarmActions:
+        - !Ref AlarmSNSTopicArn
+      MetricName: Errors
+      Namespace: AWS/Lambda
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      DatapointsToAlarm: 1
+      Threshold: !Ref LambdaErrorsAlarmThreshold
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      Unit: Count
