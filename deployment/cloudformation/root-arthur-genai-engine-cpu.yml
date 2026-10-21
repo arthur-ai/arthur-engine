@@ -753,6 +753,7 @@ Resources:
         GenaiEngineLoadBalancerTarget5xxAlarmThreshold: !Ref GenaiEngineLoadBalancerTarget5xxAlarmThreshold
         GenaiEngineLoadBalancerTargetResponseTimeAlarmThreshold: !Ref GenaiEngineLoadBalancerTargetResponseTimeAlarmThreshold
         GenaiEngineECSMemoryAlarmThreshold: !Ref GenaiEngineECSMemoryAlarmThreshold
+        GenaiEngineRDSClusterIdentifier: !GetAtt [ CoreRDSStack, Outputs.RDSClusterIdentifierOutput ]
       TemplateURL: !Sub "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/genai-engine/arthur-genai-engine-cloudwatch-alarms.yml"
   GenaiEngineCloudwatchDashboardStack:
     Type: AWS::CloudFormation::Stack
