@@ -311,9 +311,17 @@ class Matcher:
 
         # Upstream names the row that speaks for a finding, and gives its version and path
         # only where that row's kind carries one -- the rule every consumer of the matcher
-        # shares, rather than one this collector keeps beside it.
-        described = _matcher.describe(rows, self._kind_rank)
+        # shares, rather than one this collector keeps beside it. The flags say which rows
+        # matched an identifier the vendor has replaced.
+        described = _matcher.describe(
+            rows,
+            self._kind_rank,
+            [bool(hit.get("superseded")) for hit, _row in evidence],
+        )
         primary = rows[described["primary"]]
+        # As text whatever the row held: the record's fields are strict strings, and match()
+        # takes rows that never passed the envelope's checks.
+        version, path = described.get("version"), described.get("path")
 
         # Upstream's split, because `perms` can end in a provenance token that is not a
         # permission, and a list of those tokens copied here would miss the next one. The
@@ -326,8 +334,8 @@ class Matcher:
             evidence=tuple(rows),
             primary_kind=str(primary.get("kind") or ""),
             primary_id=str(primary.get("id") or ""),
-            version=described.get("version"),
-            install_path=described.get("path"),
+            version=None if version is None else str(version),
+            install_path=None if path is None else str(path),
             permissions=permissions,
         )
 

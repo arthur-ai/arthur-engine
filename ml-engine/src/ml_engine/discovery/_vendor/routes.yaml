@@ -58,10 +58,9 @@
 #                     match `.../.claude` and `.../.claude/` and must NOT match
 #                     `.../.claudefoo` -- it did, for as long as the glob was
 #                     front-anchored only
-#   home-prefix       a `~/`-rooted path, then a `-`, a `/` or the end. `~/.local/bin/hermes`
-#                     has to keep matching hermes-acp and hermes-agent: one uv install
-#                     writes all three commands. `~/.local/bin/muse` must not match
-#                     `musescore`. A value ending in `/` claims everything under it
+#   home-prefix       a `~/`-rooted path and anything under it, never a name that starts
+#                     with it: `~/.local/bin/claude` must not match `claude-monitor`. A
+#                     value ending in `/` claims everything under it
 #   tool-dir          reached through bin/classify's TOOL_DIR bridge rather than the
 #                     generic loop: pipx and uv name each tool's directory after the
 #                     PACKAGE, so a path row can yield a package name. Excluded from the
@@ -290,8 +289,8 @@ routes:
   process_paths:
     # A `~/`-rooted path a RUNNING agent's executable sits under, for an agent whose process
     # does not run from the path `binaries` names. Its own values, so every one must be
-    # produced by a CI scenario. Front-anchored like `binaries`, because a version
-    # directory follows.
+    # produced by a CI scenario. Its values end in `/`, because a version directory
+    # follows.
     platform: posix
     kind: proc
     match: home-prefix
