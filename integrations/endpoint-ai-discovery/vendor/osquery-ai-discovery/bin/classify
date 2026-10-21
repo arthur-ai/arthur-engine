@@ -151,19 +151,19 @@ def home_pattern(value, mode):
                    `.../.claudefoo`. The glob was front-anchored only, so `.claudefoo`
                    DID match -- confirmed on a real Linux box, where `/home/%/.%/`
                    returns both directories side by side.
-      home-prefix  `~/.local/bin/hermes` -> still matches hermes-acp and hermes-agent,
-                   which is DELIBERATE: one `uv tool install` writes all three commands
-                   and they are the same install. So the value may be followed by a `-`
-                   or a `/`, and by nothing else: `~/.local/bin/muse` keeps Muse Code's
-                   muse-bin-<version> and stops claiming a `musescore` alias. A value
-                   ending in `/` is a directory, and claims everything under it.
+      home-prefix  `~/.local/bin/claude` -> that path, or anything under it, and nothing
+                   that merely starts with its name: `claude-monitor`, a third-party
+                   usage tool, is not Claude Code. A value ending in `/` claims everything
+                   under it, which is how a version directory is reached. A command's
+                   siblings (hermes-acp, muse-bin-<version>) are not claimed: the command
+                   itself is always written with them, so the agent is found anyway.
     """
     body = re.escape(value[2:])                      # strip the leading '~/'
     if mode == "home-dir":
         return re.compile("^" + HOME_ROOTS + body + "/?$")
     # A group rather than a lookahead: dist/signatures.sql hands this pattern to osquery's
     # regex_match, and a pattern it cannot compile aborts the whole statement.
-    return re.compile("^" + HOME_ROOTS + body + ("" if value.endswith("/") else "(?:[-/]|$)"))
+    return re.compile("^" + HOME_ROOTS + body + ("" if value.endswith("/") else "(?:/|$)"))
 
 
 def build_index(catalog, registry):
@@ -406,7 +406,7 @@ def kind_rank(routes):
     return rank
 
 
-def primary(rows, rank):
+def primary(rows, rank, superseded=None):
     """The index of the row that speaks for a finding: its version, its path, its address.
 
     ONE ANSWER FOR EVERY CONSUMER. A finding is one agent proved by several rows, and a
@@ -415,31 +415,39 @@ def primary(rows, rank):
 
       presence before liveness    a running process names a process, not an install, and
                                   an address taken from one moves whenever it stops
-      an install record next      a row whose kind carries a version was read from a
-                                  package database, a bundle or a manifest. `deb
-                                  claude-code` speaks before `~/.claude/`, which appears
-                                  on first run and carries no version
-      then kind_rank
       loaded before unreferenced  a browser profile keeps old version directories, and the
                                   first row is often one of them
+      an install record next      a row of a kind read from a package database, a bundle
+                                  or a manifest (VERSION_KINDS), whether or not this one's
+                                  version could be read. `deb claude-code` speaks before
+                                  `~/.claude/`, which appears on first run; and a bundle id
+                                  stays ahead of its Homebrew cask when the bundle declares
+                                  no version, because the KIND decides, not the string
+      current before superseded   `superseded`, when given, is one flag per row: the
+                                  identifier that matched it belongs to a release the
+                                  vendor has replaced (see build_index)
+      then kind_rank
 
     Ties keep evidence order, so one payload always gives one answer.
     """
+    flags = list(superseded) if superseded is not None else [False] * len(rows)
+
     def key(i):
         row = rows[i]
         kind = row.get("kind")
         return (kind in LIVE_KINDS,
-                not (kind in VERSION_KINDS and row.get("ver")),
-                rank.get(kind, len(rank)),
                 split_perms(row.get("perms"))[1] == "unreferenced",
+                kind not in VERSION_KINDS,
+                bool(flags[i]),
+                rank.get(kind, len(rank)),
                 i)
     return min(range(len(rows)), key=key)
 
 
-def describe(rows, rank):
+def describe(rows, rank, superseded=None):
     """`primary`, plus that row's `version` and `path` where its kind carries one. Omitted
     rather than emitted empty: an empty version reads as a known blank, not as none."""
-    i = primary(rows, rank)
+    i = primary(rows, rank, superseded)
     row = rows[i]
     out = {"primary": i}
     if row.get("kind") in VERSION_KINDS and row.get("ver"):
@@ -958,7 +966,8 @@ def _run(state, started):
                 {"id": aid, "name": hits[0][0]["name"],
                  "classification": hits[0][0]["classification"],
                  "evidence": [r for _, r in hits],
-                 **describe([r for _, r in hits], rank),
+                 **describe([r for _, r in hits], rank,
+                            [bool(m.get("superseded")) for m, _ in hits]),
                  **({"running": True}
                     if any(r.get("kind") in LIVE_KINDS for _, r in hits) else {}),
                  **({"superseded": [r.get("id") for m, r in hits if m.get("superseded")],
