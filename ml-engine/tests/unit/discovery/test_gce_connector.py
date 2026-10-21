@@ -199,8 +199,10 @@ class FakeCompute:
         children: Optional[dict[str, dict[str, list[tuple[str, str]]]]] = None,
         listing: Optional[dict[str, FakeResponse]] = None,
         resource_manager: Optional[FakeResponse] = None,
+        project_refused: frozenset[str] = frozenset(),
     ) -> None:
         self.pages = pages
+        self.project_refused = project_refused
         self.project_flag = {PROJECT: "TRUE"} if project_flag is None else project_flag
         self.project_osconfig = (
             {PROJECT: "TRUE"} if project_osconfig is None else project_osconfig
@@ -241,6 +243,19 @@ class FakeCompute:
             if self.unreachables and index == 0:
                 body["unreachables"] = self.unreachables
             return FakeResponse(200, body)
+
+        if len(parts) == 2 and parts[1] in self.project_refused:
+            return FakeResponse(
+                403,
+                {
+                    "error": {
+                        "code": 403,
+                        "message": f"Required 'compute.projects.get' permission for "
+                        f"'projects/{parts[1]}'",
+                        "errors": [{"reason": "forbidden"}],
+                    },
+                },
+            )
 
         if len(parts) == 2:
             items = [
@@ -618,6 +633,42 @@ def test_a_vm_nothing_was_written_for_with_osconfig_off_can_never_be_reached(
     # The project is read once, for both keys, and only when the VM does not say.
     project_reads = [url for url, _ in fake.calls if url == f"{API}/projects/{PROJECT}"]
     assert len(project_reads) == (1 if instance_osconfig is None else 0)
+
+
+def test_a_credential_without_compute_projects_get_still_scans_vms_that_set_their_keys(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """The OS Config key only names a VM more finely. Refused the project's metadata,
+    the scan goes on: a VM that does not set the key itself keeps never-reported, one
+    that does is still named, and the project is asked once."""
+    fake = FakeCompute(
+        {
+            PROJECT: [
+                [
+                    vm("1", flag="TRUE"),
+                    vm("2", flag="TRUE"),
+                    vm("3", flag="TRUE", osconfig="FALSE"),
+                ],
+            ],
+        },
+        guest={},
+        project_refused=frozenset({PROJECT}),
+    )
+    connector = connector_for(fake)
+    with caplog.at_level(logging.INFO):
+        assert scan(fake, connector=connector) == []
+
+    coverage = connector.device_coverage()
+    assert coverage is not None
+    assert coverage.unreadable_by_reason == {"never-reported": 2, OSCONFIG_DISABLED: 1}
+    assert [(d["device_key"], d["reason"]) for d in listed(connector)] == [
+        ("1", "never-reported"),
+        ("2", "never-reported"),
+        ("3", OSCONFIG_DISABLED),
+    ]
+    project_reads = [url for url, _ in fake.calls if url == f"{API}/projects/{PROJECT}"]
+    assert len(project_reads) == 1, "refused once, then not asked again"
+    assert "counted as never-reported rather than osconfig-disabled" in caplog.text
 
 
 def test_a_vm_that_has_reported_keeps_its_own_reasons_whatever_osconfig_says() -> None:

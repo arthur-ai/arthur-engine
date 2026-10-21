@@ -393,7 +393,8 @@ class ComputeEngineConnector:
                 "have reported within the lookback window (stopped, or the collector's "
                 "timer removed), or no VM has finished its first run, up to 15 minutes "
                 "after boot. Each VM is listed with its reason under "
-                "device_coverage.unreadable_devices on this run's outcome.",
+                "device_coverage.unreadable_devices in this job's "
+                "discovery_scan_outcome log line.",
                 seen,
             )
 
@@ -410,17 +411,48 @@ class ComputeEngineConnector:
     ) -> Iterator[Sequence[DiscoveredAgentRecord]]:
         """One project's VMs. A refusal ends it with the error, for the caller to judge."""
 
+        # Projects whose metadata the credential was refused, asked once each.
+        refused_metadata: set[str] = set()
+
         def flag(instance: Instance, key: str, own: Optional[str]) -> Optional[str]:
             """The VM's own value for the key, else its project's.
 
             The project is read only when a VM does not say, so a role without
-            compute.projects.get still scans a fleet that sets its keys per VM.
+            compute.projects.get still scans a fleet that sets enable-guest-attributes
+            per VM.
             """
             if own is not None:
                 return own
             if instance.project not in project_flags:
                 project_flags[instance.project] = client.project_flags(instance.project)
             return project_flags[instance.project][key]
+
+        def osconfig_off(instance: Instance) -> bool:
+            """Whether enable-osconfig is off for the VM, as far as the credential sees.
+
+            The key only names a VM nothing was written for more finely than
+            never-reported, so it is never a new way for a scan to fail: a credential
+            refused the project's metadata leaves a VM that does not set the key itself
+            with the reason it would have had without the check.
+            """
+            if instance.osconfig_flag is None and instance.project in refused_metadata:
+                return False
+            try:
+                value = flag(instance, OSCONFIG_FLAG, instance.osconfig_flag)
+            except ComputeEngineError as e:
+                if e.status_code != 403:
+                    raise
+                refused_metadata.add(instance.project)
+                logger.info(
+                    "projects/%s: project metadata not readable (%s). A VM there that "
+                    "does not set enable-osconfig itself is counted as never-reported "
+                    "rather than %s.",
+                    instance.project,
+                    e,
+                    OSCONFIG_DISABLED,
+                )
+                return False
+            return not _flag_on(value)
 
         for instance in self._until_stopped(client.instances(project)):
             device = _device_for(instance)
@@ -452,9 +484,7 @@ class ComputeEngineConnector:
                 coverage.count_unreadable(READ_FAILED, device.unreadable(READ_FAILED))
                 continue
 
-            if attributes is None and not _flag_on(
-                flag(instance, OSCONFIG_FLAG, instance.osconfig_flag),
-            ):
+            if attributes is None and osconfig_off(instance):
                 # Nothing written, and the agent that would install the collector is
                 # off: the rollout cannot reach this VM, as opposed to not yet.
                 coverage.count_unreadable(
