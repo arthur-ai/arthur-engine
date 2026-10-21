@@ -17,13 +17,16 @@ from pathlib import Path
 from typing import Any, Iterable, Optional
 
 import pytest
+import requests
 from arthur_client.api_bindings import DiscoverySourceConfigSpec
 from arthur_common.models.agent_governance_schemas import NetworkAgentCreationSource
 from google.auth.credentials import Credentials
 
 from discovery import source_connectors
 from discovery.network.gcp_logging.client import (
+    MAX_ATTEMPTS,
     LoggingReadError,
+    _send,
     dns_filter,
     serverless_flow_filter,
 )
@@ -222,3 +225,80 @@ def test_extra_hosts_follow_the_aws_network_rules() -> None:
 def test_the_connector_is_registered() -> None:
     assert source_connectors()[VENDOR] is GcpNetworkConnector
     assert GcpNetworkConnector.SENSITIVE_FIELDS == frozenset({"service_account_key"})
+
+
+class FakeResponse:
+    def __init__(self, status_code: int, headers: Optional[dict[str, str]] = None):
+        self.status_code = status_code
+        self.headers = headers or {}
+        self.reason = "reason"
+
+    def json(self) -> dict[str, Any]:
+        return {"error": {"message": f"status {self.status_code}"}}
+
+
+def test_a_quota_answer_is_retried_after_googles_wait() -> None:
+    answers = [
+        FakeResponse(429, {"Retry-After": "7"}),
+        FakeResponse(503),
+        FakeResponse(200),
+    ]
+    waits: list[float] = []
+    response = _send(lambda: answers.pop(0), sleep=waits.append)
+    assert response.status_code == 200
+    assert waits[0] == 7.0 and 2.0 <= waits[1] < 3.0
+
+
+def test_a_refusal_is_not_retried() -> None:
+    calls: list[int] = []
+
+    def refused() -> FakeResponse:
+        calls.append(1)
+        return FakeResponse(403)
+
+    with pytest.raises(LoggingReadError) as raised:
+        _send(refused, sleep=lambda _: None)
+    assert raised.value.status_code == 403 and len(calls) == 1
+
+
+def test_a_connection_that_never_answers_is_a_read_error_without_a_status() -> None:
+    calls: list[int] = []
+
+    def down() -> FakeResponse:
+        calls.append(1)
+        raise requests.ConnectionError("no route")
+
+    with pytest.raises(LoggingReadError) as raised:
+        _send(down, sleep=lambda _: None)
+    assert raised.value.status_code is None and len(calls) == MAX_ATTEMPTS
+
+
+def test_an_address_two_inference_hosts_answered_with_is_skipped() -> None:
+    shared = "162.159.140.245"
+    fold = NetworkFold(DestinationMatcher(), lambda region: JOBS[region])
+    for host in ("api.openai.com", "api.anthropic.com"):
+        fold.lookup(
+            {
+                "timestamp": "2026-10-20T23:40:00Z",
+                "jsonPayload": {
+                    "queryName": f"{host}.",
+                    "responseCode": "NOERROR",
+                    "rdata": f"{host}.\t60\tIN\ta\t{shared}",
+                },
+            }
+        )
+    fold.flow(
+        {
+            "timestamp": "2026-10-20T23:41:00Z",
+            "jsonPayload": {
+                "connection": {"dest_ip": shared, "dest_port": 443},
+                "src_serverless_details": {
+                    "project_id": "demo-project",
+                    "region": "us-east4",
+                    "cloud_run_job_details": {"job_name": "arthur-scn-run-abc12"},
+                },
+            },
+        }
+    )
+    assert fold.records(VENDOR) == []
+    assert fold.counts.ambiguous_flows == 1

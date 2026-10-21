@@ -135,11 +135,11 @@ class GcpNetworkConnector:
                 return logs.run_jobs(project, region)
             except LoggingReadError as e:
                 logger.warning(
-                    "GCP network logs: Cloud Run jobs in %s not listed (HTTP %s); job "
+                    "GCP network logs: Cloud Run jobs in %s not listed (%s); job "
                     "executions there are reported by execution name. roles/run.viewer "
                     "lets them be folded into their job.",
                     region,
-                    e.status_code,
+                    e,
                 )
                 return set()
 

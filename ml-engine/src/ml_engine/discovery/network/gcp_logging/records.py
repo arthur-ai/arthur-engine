@@ -105,7 +105,10 @@ class NetworkFold:
             return
         self.counts.inference_lookups += 1
         for ip in answers:
-            self._inference_ips.setdefault(ip, (name, destination))
+            known = self._inference_ips.setdefault(ip, (name, destination))
+            if known[0] != name:
+                # two inference hosts on one address: a flow to it names neither
+                self._other_ips.add(ip)
         vm_id = (payload.get("vmInstanceIdString") or "").strip()
         project = (payload.get("vmProjectId") or "").strip()
         zone = (payload.get("vmZoneName") or "").strip()
