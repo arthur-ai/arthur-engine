@@ -166,10 +166,13 @@ is stopping on shutdown.
 Compute Engine records no time a guest attribute was written, so every scan lists every
 VM in the projects. The lookback is applied to the time on the collector's status line: a
 VM with no report inside it is counted, not published, and a window of `0` publishes
-every VM's last report. A VM whose `enable-guest-attributes` is off, on the VM or on its
-project, is counted as `guest-attributes-disabled` and not read. A VM nothing was ever
-written for whose `enable-osconfig` is off, on the VM or on its project, is counted as
-`osconfig-disabled`: the OS policy that installs the collector can never reach it.
+every VM's last report. A VM's own metadata wins over its project's, key by key. A VM
+whose `enable-guest-attributes` is off, on the VM, or on its project when the VM does not
+set it, is counted as `guest-attributes-disabled` and not read. A VM nothing was ever
+written for whose `enable-osconfig` is off in the same way is counted as
+`osconfig-disabled`: the OS policy that installs the collector can never reach it. Without
+`compute.projects.get`, a VM that does not set `enable-osconfig` itself is counted as
+`never-reported` instead.
 
 #### `aws_ec2` — EC2 instances
 
