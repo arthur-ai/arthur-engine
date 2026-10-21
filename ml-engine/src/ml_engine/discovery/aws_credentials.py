@@ -18,6 +18,7 @@ credentials are refreshable rather than fetched once.
 """
 
 import os
+import re
 from typing import Mapping, Optional
 
 import boto3
@@ -44,6 +45,24 @@ ROLE_ARN_FIELD = AWS_CONNECTOR_ROLE_ARN_FIELD
 EXTERNAL_ID_FIELD = AWS_CONNECTOR_EXTERNAL_ID_FIELD
 
 SENSITIVE_FIELDS = frozenset({ACCESS_KEY_ID_FIELD, SECRET_ACCESS_KEY_FIELD})
+
+# An AWS region name: us-east-1, ap-southeast-2, us-gov-west-1. Checked because it is
+# part of every endpoint's host name.
+REGION_NAME = re.compile(r"^[a-z]{2}(-[a-z]+)+-\d{1,2}$")
+
+
+def describe_credentials(
+    credentials: Mapping[str, Optional[str]],
+    source_fields: Mapping[str, str],
+) -> str:
+    """Whose credentials a scan runs with, for the line that opens it."""
+    role = (source_fields.get(ROLE_ARN_FIELD) or "").strip()
+    keyed = bool((credentials.get(ACCESS_KEY_ID_FIELD) or "").strip())
+    if role:
+        return f"role {role}, assumed with " + (
+            "the source's access key" if keyed else "this engine's own credentials"
+        )
+    return "the source's access key" if keyed else "this engine's own credentials"
 
 
 def default_credentials_allowed(env_var: str) -> bool:

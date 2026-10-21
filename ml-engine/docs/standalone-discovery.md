@@ -190,6 +190,36 @@ instance with no report inside it is counted, not published, and a window of `0`
 publishes every instance's last report. A running instance SSM does not manage is
 counted as `not-ssm-managed`, and a Windows instance as `unsupported-platform`.
 
+#### `aws_bedrock` — AWS Bedrock
+
+Lists the account's Bedrock agents and AgentCore agent runtimes, and reads CloudTrail
+for the IAM roles that call Bedrock's models.
+
+| Field | Secret | Required | Notes |
+|---|---|---|---|
+| `regions` | no | yes | Comma-separated regions, such as `us-east-1,us-west-2` |
+| `list_agents` | no | no | `true` (default) or `false`: list agents and agent runtimes |
+| `read_cloudtrail` | no | no | `true` (default) or `false`: read model callers from CloudTrail |
+| `access_key_id` | yes | no | As for `aws_ec2`; without one, the engine uses its own AWS credentials only if `ARTHUR_ENGINE_AWS_BEDROCK_ALLOW_DEFAULT_CREDENTIALS=true` is set |
+| `secret_access_key` | yes | no | Set with `access_key_id`, or neither |
+| `role_arn` | no | no | A role those credentials assume, as session `arthur-ai-discovery` |
+| `external_id` | no | no | The external ID the role's trust policy requires; only with `role_arn` |
+
+The credential needs `bedrock:ListAgents`, `bedrock-agentcore:ListAgentRuntimes` and
+`cloudtrail:LookupEvents`. The connector never calls `GetAgentRuntime`, which returns a
+runtime's environment variables, or `GetAgent`, which returns its prompt. Use
+`query_language: none` and leave `query` empty.
+
+Agents and runtimes are an inventory: the lookback is not applied to them. CloudTrail is
+read over the lookback, or the last seven days when it is `0`, for `Converse`,
+`ConverseStream`, `InvokeModel` and `InvokeModelWithResponseStream`. Each IAM role (or
+IAM user) that called one becomes a record per region, named for the models it called,
+with external id `{account}/{region}/iam_role/{role ARN}`. IAM Identity Center (SSO)
+roles and the root user are people: their calls are counted in the job log, not
+reported. A part AWS refuses in a region, or a region AgentCore does not run in, is a
+warning and the rest of the scan goes on; a refused credential, or every part refused,
+fails the scan.
+
 #### `splunk_enterprise` — Splunk Enterprise
 
 Runs the config's SPL as a search job over the lookback window.
