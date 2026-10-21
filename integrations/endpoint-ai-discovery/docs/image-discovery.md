@@ -64,10 +64,10 @@ Google's reference for `ContainerStatus`: *"ImageDigest holds the resolved diges
 specified and resolved during the creation of Revision. This field holds the digest value
 regardless of whether a tag or digest was originally specified in the Container object."*
 
-The roster is `services.list` in each region of each project, then each service's revisions
-that carry traffic, read from the service's `traffic` and `trafficStatuses`. A revision with no
-traffic is kept in the roster and reported as such: it can be routed to with one command, so it
-is not gone, and it is read once per digest anyway.
+The roster is `services.list` in each region of each project, then every revision of each
+service, each marked serving or not from the service's `trafficStatuses`. A revision with no
+traffic stays in the roster and is reported as not serving: it can be routed to with one
+command, so it is not gone. Each digest is read once, however many revisions name it.
 
 **Jobs are the gap on this platform.** A job's execution carries `template.containers[].image`
 as it was written, and the Execution resource has no digest field at all, measured against the
@@ -241,7 +241,7 @@ What it walks, on the filesystem the layers make, as branches that name themselv
 | `binaries` | the directories `config.Env`'s `PATH` names, and `/usr/local/bin` | name and size; no execution |
 | `filesystem-linux` | dotdirs and config files under `/root`, `/home/*`, `WorkingDir` | the same paths the Linux queries glob |
 | `systemd` | unit files under `/etc/systemd`, `/lib/systemd` | present in some images; never active |
-| `history` | `history[].created_by` from the config: the `RUN` lines | the only trace of a `pip install` whose result is in the layer, and of a `curl | sh` whose result is not |
+| `history` | `history[].created_by` from the config: the `RUN` lines | the build's install commands, a trace even when a later layer removed what one installed |
 | `config` | `Entrypoint`, `Cmd`, `User`, and the **names** of `config.Env` | values dropped before anything is written |
 | `running`, `ports`, `runtime-linux`, `containers` | nothing | `absent`: no process exists. Said in the scan row rather than left out |
 
@@ -285,7 +285,7 @@ Identifiers and structure only. In particular:
 
 | Gap | Why | What covers it |
 |---|---|---|
-| Installs at startup | `pip install` or `curl \| sh` in an entrypoint puts the agent in the running container, not in any layer | the `history` and `config` branches show the install command, so the intent is a finding even when the result is not |
+| Installs at startup | `pip install` or `curl \| sh` run when the container starts puts the agent in the running container, not in any layer | only a command in the image's metadata: an `Entrypoint` or `Cmd` that runs the install itself shows in the `config` branch. One inside a script the entrypoint runs does not, since file contents are not read (section 05). Whether to read entrypoint scripts is an open question (section 10) |
 | Images outside the account's registries | pullable, but no scanner has seen them, and public registries rate-limit pulls | the full read, budgeted; section 03 |
 | What the container talked to | nothing on disk says it | a network-signal source: DNS and flow logs to AI API endpoints, a separate design |
 | Cloud Run jobs by tag, ECS tasks without a platform digest | the platform recorded no digest | resolved at scan time and marked as such; counted, never silently promoted to a fact |
@@ -349,6 +349,11 @@ Each of these is a fact the code will depend on and the documentation does not s
   digest per scan. A per-digest cache on the engine's disk is the obvious optimization and
   carries no new trust; a cache on the Platform would mean the Platform receiving raw rows,
   which the architecture rules out.
+- **Reading entrypoint scripts.** An install at startup usually lives in a shell script that
+  `Entrypoint` or `Cmd` names, and section 05 rules out reading file contents. Reading those
+  scripts, for their command lines only and keeping nothing else, would close most of section
+  06's startup gap. A script can also hold a credential, so this needs a rule for what may
+  leave the engine that a parser enforces, not a path.
 - **One source or three.** `gcp_cloud_run` and `aws_ecs` as sources in the Cloud class, each
   reading its own control plane and whatever registries its workloads name, is the shape the
   VM sources set. A separate registry source that reads every image in a repository, running or
