@@ -53,10 +53,12 @@ import boto3
 from arthur_client.api_bindings import DiscoverySourceConfigSpec
 from arthur_common.models.agent_discovery_schemas import DiscoveredAgentRecord
 from arthur_common.models.agent_governance_schemas import Platform, RunsOn
+from botocore.exceptions import UnknownRegionError
 
 from discovery.aws_credentials import (
     EXTERNAL_ID_FIELD,
     REGION_NAME,
+    ROLE_ARN_FIELD,
     SENSITIVE_FIELDS,
     assumed_role_session,
     aws_session,
@@ -102,9 +104,17 @@ DEFAULT_MEMBER_ROLE_NAME = "arthur-ai-discovery"
 # enabled, every active account in the organization.
 ALL = "all"
 
-# Where Organizations and DescribeRegions are asked. Either answers from any region;
-# this one exists in the aws partition, and a fleet in another names its regions.
-BOOTSTRAP_REGION = "us-east-1"
+# Where STS, Organizations and DescribeRegions are asked: a region every account in the
+# partition has enabled. Organizations answers from its partition's own endpoint whichever
+# region asks, and opt-in regions exist only in the aws partition, where us-east-1 is
+# never one. The partition is the source's named regions'; `regions: all` names none and
+# is the aws partition's. A partition not listed is asked in the first region named.
+BOOTSTRAP_REGIONS = {
+    "aws": "us-east-1",
+    "aws-us-gov": "us-gov-west-1",
+    "aws-cn": "cn-north-1",
+}
+BOOTSTRAP_REGION = BOOTSTRAP_REGIONS["aws"]
 
 # Opt-in for the engine's own AWS credentials, as Compute Engine's for ADC.
 ALLOW_DEFAULT_CREDENTIALS_ENV_VAR = "ARTHUR_ENGINE_AWS_EC2_ALLOW_DEFAULT_CREDENTIALS"
@@ -147,11 +157,21 @@ class Ec2Settings:
     # `accounts: all`: every active account Organizations lists.
     all_accounts: bool = False
     member_role_name: str = DEFAULT_MEMBER_ROLE_NAME
+    # The AWS partition the named regions are in, and so every ARN the scan builds.
+    partition: str = "aws"
 
     @property
     def spans_accounts(self) -> bool:
         """Whether the scan reads accounts through the member role, one at a time."""
         return self.all_accounts or self.accounts is not None
+
+    @property
+    def bootstrap_region(self) -> str:
+        """Where STS, Organizations and DescribeRegions are asked (`BOOTSTRAP_REGIONS`)."""
+        return BOOTSTRAP_REGIONS.get(
+            self.partition,
+            self.regions[0] if self.regions else BOOTSTRAP_REGION,
+        )
 
 
 SessionFactory = Callable[
@@ -170,19 +190,21 @@ def source_session(
 ) -> boto3.Session:
     """The source's AWS session, under EC2's opt-in for the engine's own credentials.
 
-    STS is asked in the first region the source scans, or `BOOTSTRAP_REGION` for a
-    source scanning every region.
+    STS is asked in the partition's bootstrap region. A source that spans accounts and
+    assumes no role of its own has an external ID for its member roles alone, so the
+    source's own session is built without it.
     """
-    regions = parse_group_names(source_fields.get(REGIONS_FIELD))
+    settings = settings_from(source_fields)
+    fields = dict(source_fields)
+    if settings.spans_accounts and not (fields.get(ROLE_ARN_FIELD) or "").strip():
+        fields.pop(EXTERNAL_ID_FIELD, None)
     return aws_session(
         credentials,
-        source_fields,
+        fields,
         source="EC2 source",
         allow_default_env_var=ALLOW_DEFAULT_CREDENTIALS_ENV_VAR,
         session_name=SESSION_NAME,
-        region_name=(
-            BOOTSTRAP_REGION if _is_all(regions) else regions[0] if regions else None
-        ),
+        region_name=settings.bootstrap_region,
     )
 
 
@@ -193,10 +215,14 @@ def member_session(
     external_id: Optional[str],
 ) -> boto3.Session:
     """The session for one account of the organization: its member role, assumed from
-    the source's own session with the source's external ID, as `SESSION_NAME`."""
+    the source's own session with the source's external ID, as `SESSION_NAME`. The role's
+    ARN is in the partition of the region the source's session asks in."""
+    partition = (
+        base.get_partition_for_region(base.region_name) if base.region_name else "aws"
+    )
     return assumed_role_session(
         base,
-        f"arn:aws:iam::{account}:role/{role_name}",
+        f"arn:{partition}:iam::{account}:role/{role_name}",
         external_id,
         SESSION_NAME,
         region_name=base.region_name,
@@ -280,7 +306,9 @@ class Ec2Connector:
         # each read through the member role. The management account is one of them.
         targets: list[tuple[Optional[str], Ec2Client]] = [(None, own)]
         if settings.spans_accounts:
-            accounts = settings.accounts or own.organization_accounts(BOOTSTRAP_REGION)
+            accounts = settings.accounts or own.organization_accounts(
+                settings.bootstrap_region,
+            )
             external_id = (source_fields.get(EXTERNAL_ID_FIELD) or "").strip() or None
             targets = [
                 (
@@ -337,13 +365,24 @@ class Ec2Connector:
 
         for account, client in targets:
             regions: Sequence[str] = settings.regions
-            if settings.all_regions:
+            if settings.all_regions or account is not None:
+                # A member account is asked which regions it has enabled even when the
+                # source names them: an opt-in region it never enabled answers every
+                # call as an authentication failure, which must not read as a refused
+                # credential. Such a region is that account's denied scope.
                 try:
-                    regions = client.enabled_regions(BOOTSTRAP_REGION)
+                    enabled = client.enabled_regions(settings.bootstrap_region)
                 except Ec2Error as e:
                     if not self._refused(settings, account, None, e, logger):
                         raise
                     continue
+                if settings.all_regions:
+                    regions = enabled
+                else:
+                    regions = [r for r in settings.regions if r in enabled]
+                    for region in settings.regions:
+                        if region not in enabled:
+                            self._not_enabled(account, region, logger)
             for region in regions:
                 try:
                     yield from self._scan_region(
@@ -427,6 +466,21 @@ class Ec2Connector:
                 "discovery_scan_outcome log line.",
                 seen,
             )
+
+    def _not_enabled(
+        self,
+        account: Optional[str],
+        region: str,
+        logger: logging.Logger,
+    ) -> None:
+        """A named region the account has not enabled: its denied scope, unasked."""
+        scope = f"{account}/{region}"
+        self._denied.append(DeniedScope(scope, DENIED_UNREACHABLE))
+        logger.warning(
+            "%s: not read (%s): the account has not enabled the region",
+            scope,
+            DENIED_UNREACHABLE,
+        )
 
     def _refused(
         self,
@@ -537,12 +591,25 @@ def settings_from(source_fields: Mapping[str, str]) -> Ec2Settings:
             f"field, not a secret.",
         )
     all_regions = _is_all(regions)
-    bad = [] if all_regions else [r for r in regions if not REGION_NAME.match(r)]
+    partitions: dict[str, str] = {}
+    bad = []
+    for region in () if all_regions else regions:
+        partition = _partition_for(region) if REGION_NAME.match(region) else None
+        if partition is None:
+            bad.append(region)
+        else:
+            partitions[region] = partition
     if bad:
         raise DiscoveryConfigurationError(
             f"EC2 source's '{REGIONS_FIELD}' has value(s) that are not AWS region "
             f"names: {', '.join(repr(r) for r in bad)}. A region name looks like "
             f"us-east-1; '{ALL}' alone scans every region each account has enabled.",
+        )
+    if len(set(partitions.values())) > 1:
+        raise DiscoveryConfigurationError(
+            f"EC2 source's '{REGIONS_FIELD}' names regions in more than one AWS "
+            f"partition ({', '.join(f'{r}: {p}' for r, p in partitions.items())}). One "
+            f"credential reaches one partition; use a source for each.",
         )
 
     accounts = parse_group_names(source_fields.get(ACCOUNTS_FIELD))
@@ -576,7 +643,17 @@ def settings_from(source_fields: Mapping[str, str]) -> Ec2Settings:
         accounts=None if all_accounts or not accounts else accounts,
         all_accounts=all_accounts,
         member_role_name=role_name,
+        partition=next(iter(partitions.values()), "aws"),
     )
+
+
+def _partition_for(region: str) -> Optional[str]:
+    """The AWS partition a region is in, from botocore's endpoint data, or None for a
+    name no partition claims."""
+    try:
+        return str(boto3.Session().get_partition_for_region(region))
+    except UnknownRegionError:
+        return None
 
 
 def _is_all(values: Sequence[str]) -> bool:

@@ -34,6 +34,7 @@ from botocore.exceptions import ClientError, EndpointConnectionError
 from botocore.session import Session as BotocoreSession
 from botocore.validate import ParamValidator
 
+import discovery.cloud.ec2.connector as ec2_connector
 from discovery import source_connectors
 from discovery.cloud.ec2.client import (
     MAX_PARTS,
@@ -929,9 +930,41 @@ def test_named_accounts_and_regions_are_read_without_asking_organizations() -> N
     assert [(s.account, s.role_name, s.external_id) for s in fleet.sessions] == [
         ("222222222222", "Reader", None),
     ]
-    assert not any(
-        c[2] == "DescribeRegions" for c in fleet.members["222222222222"].calls
+    # Named regions, yet the member account is asked which it enabled, once, in the
+    # bootstrap region: a region it never enabled is its denied scope, not a fault.
+    assert [
+        c[1] for c in fleet.members["222222222222"].calls if c[2] == "DescribeRegions"
+    ] == [BOOTSTRAP_REGION]
+
+
+def test_a_named_region_a_member_account_has_not_enabled_is_its_denied_scope(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """An opt-in region one account never enabled answers every call as an
+    authentication failure. It is that account's denied scope; the account's other
+    regions and every other account are still read, and nothing is asked there."""
+    fleet = org(
+        {
+            "1": member("1", REGION, "ap-east-1"),
+            "2": member("2", REGION),
+        },
     )
+    connector = connector_for_org(fleet)
+    with caplog.at_level(logging.WARNING):
+        records = scan(
+            fleet.own,
+            {"regions": f"{REGION},ap-east-1", "accounts": "all"},
+            connector,
+        )
+
+    assert sorted(r.external_id for r in records) == sorted(
+        f"{iid(i)}:codex-cli" for i in ("10", "11", "20")
+    )
+    assert connector.denied_scopes() == (
+        DeniedScope("222222222222/ap-east-1", DENIED_UNREACHABLE),
+    )
+    assert not any(c[1] == "ap-east-1" for c in fleet.members["222222222222"].calls)
+    assert "222222222222/ap-east-1: not read (unreachable)" in caplog.text
 
 
 def test_an_account_whose_role_cannot_be_assumed_is_a_denied_scope_and_the_rest_are_read(
@@ -1217,13 +1250,56 @@ def test_settings_take_every_region_and_the_organization_s_accounts() -> None:
 def test_settings_accept_several_regions_and_tidy_selectors() -> None:
     settings = settings_from(
         {
-            "regions": "us-east-1, us-gov-west-1, us-east-1",
+            "regions": "us-east-1, eu-west-1, us-east-1",
             "include_tags": " Env = Prod ,aws:autoscaling:groupName=web,Env=Prod",
         },
     )
-    assert settings.regions == ("us-east-1", "us-gov-west-1")
+    assert settings.regions == ("us-east-1", "eu-west-1")
     assert settings.include_tags == ("Env=Prod", "aws:autoscaling:groupName=web")
     assert parse_tag_selectors(None, "include_tags") == ()
+
+
+@pytest.mark.parametrize(
+    "regions, partition, bootstrap",
+    [
+        ("eu-west-1,ap-east-1", "aws", "us-east-1"),
+        ("all", "aws", "us-east-1"),
+        ("us-gov-east-1,us-gov-west-1", "aws-us-gov", "us-gov-west-1"),
+        ("cn-northwest-1", "aws-cn", "cn-north-1"),
+        ("us-iso-east-1", "aws-iso", "us-iso-east-1"),
+    ],
+)
+def test_the_named_regions_choose_the_partition_and_where_it_is_asked(
+    regions: str,
+    partition: str,
+    bootstrap: str,
+) -> None:
+    """STS, Organizations and DescribeRegions are asked in a region every account of
+    the partition has enabled; a partition with none listed, in the first region."""
+    settings = settings_from({"regions": regions, "accounts": "all"})
+    assert (settings.partition, settings.bootstrap_region) == (partition, bootstrap)
+
+
+def test_regions_in_two_partitions_are_refused() -> None:
+    with pytest.raises(
+        DiscoveryConfigurationError,
+        match="more than one AWS partition",
+    ):
+        settings_from({"regions": "us-east-1,us-gov-west-1"})
+
+
+def test_a_region_no_partition_claims_is_refused() -> None:
+    with pytest.raises(DiscoveryConfigurationError, match="not AWS region names"):
+        settings_from({"regions": "xx-east-1"})
+
+
+def test_an_organization_in_govcloud_is_listed_and_assumed_there() -> None:
+    fleet = org({"1": member("1", "us-gov-west-1")})
+    connector = connector_for_org(fleet)
+    scan(fleet.own, {"regions": "us-gov-west-1", "accounts": "all"}, connector)
+    assert [c[1] for c in fleet.own.calls if c[2] == "ListAccounts"] == [
+        "us-gov-west-1",
+    ]
 
 
 @pytest.mark.parametrize(
@@ -1278,6 +1354,38 @@ def test_a_role_is_assumed_lazily_and_refreshably() -> None:
     assert credentials.method == "assume-role"
     assert session.region_name == REGION, "STS is asked in the first region scanned"
     assert hasattr(credentials, "refresh_needed")
+
+
+def test_an_external_id_for_member_roles_needs_no_role_of_the_source_s_own() -> None:
+    """With `accounts`, the external ID is the member roles'; only a source reading its
+    own account with no role to send it with is refused."""
+    key = {"access_key_id": "AKIAEXAMPLE", "secret_access_key": "secret"}
+    session = source_session(
+        key,
+        {"regions": REGION, "accounts": "all", "external_id": "abc"},
+    )
+    assert session.get_credentials().method != "assume-role"
+    with pytest.raises(DiscoveryConfigurationError, match="without 'role_arn'"):
+        source_session(key, {"regions": REGION, "external_id": "abc"})
+
+
+def test_a_member_role_s_arn_is_in_the_source_s_partition(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    asked: list[str] = []
+
+    def assumed(base: Any, role_arn: str, *rest: Any, **kw: Any) -> boto3.Session:
+        asked.append(role_arn)
+        return base
+
+    monkeypatch.setattr(ec2_connector, "assumed_role_session", assumed)
+    base = source_session(
+        {"access_key_id": "AKIAEXAMPLE", "secret_access_key": "secret"},
+        {"regions": "us-gov-east-1", "accounts": "all"},
+    )
+    assert base.region_name == "us-gov-west-1"
+    member_session(base, "111111111111", "arthur-ai-discovery", None)
+    assert asked == ["arn:aws-us-gov:iam::111111111111:role/arthur-ai-discovery"]
 
 
 def test_every_region_asks_sts_in_the_bootstrap_region() -> None:
