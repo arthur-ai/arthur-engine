@@ -1,5 +1,5 @@
 repo   https://github.com/arthur-ai/osquery-ai-discovery.git
-ref    v0.13.0
+ref    v0.14.0
 kind   tag
-sha    a0a090c7e5a54e3a77f5c56d8c1364c0235f628c
-at     2026-10-21T03:57:08Z
+sha    15a95b8bf941e15de9b721d08c0a5df6b21fe87f
+at     2026-10-21T06:50:53Z

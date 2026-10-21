@@ -69,7 +69,7 @@ def test_floor_catalog_is_the_vendored_one() -> None:
     assert m.agent_count == 42
     # Upstream's own catalog_sha, computed over file bytes. If this changes, the vendor
     # tree moved and every record's recorded catalog version moved with it.
-    assert m.catalog_sha == "6a0003acce5b"
+    assert m.catalog_sha == "834b1210478a"
 
 
 def test_a_catalog_built_from_a_mapping_marks_its_hash_as_not_upstreams() -> None:
@@ -109,8 +109,9 @@ def test_one_agent_through_two_routes_is_one_finding(matcher: Matcher) -> None:
     assert set(finding.kinds) == {"npm", "file"}
 
 
-def test_primary_kind_prefers_the_earlier_declared_route(matcher: Matcher) -> None:
-    """`npm` is declared before `binaries` in routes.yaml, so npm speaks for the finding."""
+def test_an_install_record_speaks_before_a_path(matcher: Matcher) -> None:
+    """The npm row was read from a package manifest and carries a version; the binary is a
+    path that exists. The rule is upstream's `primary()`."""
     result = matcher.match(
         [
             row(
@@ -173,9 +174,26 @@ def test_a_running_row_speaks_when_nothing_else_proved_the_agent(
     finding = result.findings[0]
     assert finding.primary_kind == "proc"
     assert finding.version is None
-    assert (
-        finding.install_path == "/opt/homebrew/lib/node_modules/@openai/codex/bin/codex"
+    # A process row's `loc` is the app, the agent binary or the node interpreter running
+    # it, depending on the query, so it is not reported as where the agent is installed.
+    assert finding.install_path is None
+
+
+def test_an_apt_install_keeps_its_version_once_the_agent_has_run() -> None:
+    """dpkg's row off a real apt install on Ubuntu 22.04, beside the state directory the
+    first run creates. `file` is declared ahead of `deb` in routes.yaml, and ranked by that
+    alone the record lost its version and changed address on the user's first run."""
+    result = Matcher.from_source().match(
+        [
+            row("file", "/home/dana/.claude/", loc="/home/dana/.claude/"),
+            row("deb", "claude-code", ver="2.1.292-1"),
+        ],
     )
+    (finding,) = result.findings
+    assert finding.agent_id == "claude-code"
+    assert (finding.primary_kind, finding.primary_id) == ("deb", "claude-code")
+    assert finding.version == "2.1.292-1"
+    assert finding.install_path is None
 
 
 _CLAUDE_IN_CHROME = yaml.safe_dump(
@@ -222,13 +240,6 @@ def test_a_leftover_still_speaks_when_no_copy_is_loaded() -> None:
         ],
     )
     assert result.findings[0].version == "1.0.94"
-
-
-def test_unreferenced_is_still_upstreams_token() -> None:
-    """The ranking names the token; upstream owns it. A rename upstream fails here."""
-    from discovery.catalog import _UNREFERENCED, _matcher
-
-    assert _UNREFERENCED in _matcher.PERMS_PROVENANCE
 
 
 def test_permissions_split_into_a_tuple(matcher: Matcher) -> None:
@@ -505,7 +516,7 @@ class TestCatalogHashUsesFileBytes:
     number -- which is sha256 over the file's BYTES."""
 
     def test_the_floor_still_matches_upstreams_value(self) -> None:
-        assert Matcher.from_source().catalog_sha == "6a0003acce5b"
+        assert Matcher.from_source().catalog_sha == "834b1210478a"
 
     def test_crlf_does_not_change_the_hash_the_way_read_text_would(
         self,

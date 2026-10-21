@@ -832,11 +832,10 @@ agents:
   # Muse Code, the terminal agent. dev.meta.ai/install.sh writes a launcher to
   # ~/.local/bin/muse, and the launcher fetches the binary beside it as
   # ~/.local/bin/muse-bin-<version> -- 1.4.10-R6427.1 on 2026-10-19, with no sign-in to
-  # install. The value is front-anchored, so the versioned binary lands here too: one
-  # install, as hermes's sibling commands are. THE SAME PREFIX CLAIMS ANY OTHER
-  # ~/.local/bin/muse* -- a MuseScore alias, a pipx tool named museum -- and that is the
-  # route's shape, not a fix this entry can carry. test_matcher records the over-match
-  # beside the front anchor it does assert, so a change to either is seen.
+  # install. `binaries` lets a value be followed by `-`, so the versioned binary lands here
+  # too: one install, as hermes's sibling commands are. Nothing else follows it, so a
+  # MuseScore alias at ~/.local/bin/musescore or a pipx tool named museum is not claimed;
+  # test_matcher asserts both sides. Any other ~/.local/bin/muse-<anything> still is.
   #
   # NOT VALUES: ~/.config/muse and ~/.local/share/muse, read off the binary's own help text,
   # are a level too deep for the enumeration; ~/.muse holds projects and worktrees once the
