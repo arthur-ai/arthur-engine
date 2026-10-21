@@ -35,6 +35,8 @@ from discovery.endpoint.jamf.connector import VENDOR as JAMF_VENDOR
 from discovery.endpoint.jamf.connector import JamfConnector
 from discovery.network.cloudwatch_logs.connector import VENDOR as CLOUDWATCH_LOGS_VENDOR
 from discovery.network.cloudwatch_logs.connector import CloudWatchLogsConnector
+from discovery.network.gcp_logging.connector import VENDOR as GCP_NETWORK_VENDOR
+from discovery.network.gcp_logging.connector import GcpNetworkConnector
 from discovery.siem.elastic_security.connector import VENDOR as ELASTIC_SECURITY_VENDOR
 from discovery.siem.elastic_security.connector import ElasticSecurityConnector
 from discovery.siem.splunk.connector import VENDOR as SPLUNK_VENDOR
@@ -56,6 +58,7 @@ def source_connectors() -> dict[str, DiscoveryConnectorFactory]:
         SPLUNK_VENDOR: SplunkConnector,
         ELASTIC_SECURITY_VENDOR: ElasticSecurityConnector,
         CLOUDWATCH_LOGS_VENDOR: CloudWatchLogsConnector,
+        GCP_NETWORK_VENDOR: GcpNetworkConnector,
     }
 
 
@@ -75,4 +78,6 @@ __all__ = [
     "ELASTIC_SECURITY_VENDOR",
     "CloudWatchLogsConnector",
     "CLOUDWATCH_LOGS_VENDOR",
+    "GcpNetworkConnector",
+    "GCP_NETWORK_VENDOR",
 ]
