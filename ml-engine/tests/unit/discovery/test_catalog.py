@@ -11,6 +11,7 @@ import gzip
 import io
 import json
 import pathlib
+from typing import Any
 
 import pytest
 import yaml
@@ -66,10 +67,10 @@ def matcher() -> Matcher:
 
 def test_floor_catalog_is_the_vendored_one() -> None:
     m = Matcher.from_source()
-    assert m.agent_count == 39
+    assert m.agent_count == 42
     # Upstream's own catalog_sha, computed over file bytes. If this changes, the vendor
     # tree moved and every record's recorded catalog version moved with it.
-    assert m.catalog_sha == "b8772c7cd655"
+    assert m.catalog_sha == "5ed72c475327"
 
 
 def test_a_catalog_built_from_a_mapping_marks_its_hash_as_not_upstreams() -> None:
@@ -109,8 +110,9 @@ def test_one_agent_through_two_routes_is_one_finding(matcher: Matcher) -> None:
     assert set(finding.kinds) == {"npm", "file"}
 
 
-def test_primary_kind_prefers_the_earlier_declared_route(matcher: Matcher) -> None:
-    """`npm` is declared before `binaries` in routes.yaml, so npm speaks for the finding."""
+def test_an_install_record_speaks_before_a_path(matcher: Matcher) -> None:
+    """The npm row, read from a package manifest, describes the finding: its version and its
+    install path. The rule is upstream's `primary()`; this holds the mapping to it."""
     result = matcher.match(
         [
             row(
@@ -173,9 +175,96 @@ def test_a_running_row_speaks_when_nothing_else_proved_the_agent(
     finding = result.findings[0]
     assert finding.primary_kind == "proc"
     assert finding.version is None
-    assert (
-        finding.install_path == "/opt/homebrew/lib/node_modules/@openai/codex/bin/codex"
+    # A process row's `loc` is the app, the agent binary or the node interpreter running
+    # it, depending on the query, so it is not reported as where the agent is installed.
+    assert finding.install_path is None
+
+
+def test_a_bundle_without_a_version_still_speaks_before_its_cask() -> None:
+    """The kind makes an install record, not whether its version could be read. Ranked by
+    the version string, the record moved to the Caskroom whenever a bundle had none."""
+    result = Matcher.from_source().match(
+        [
+            row("brew", "claude", ver="1.2.3", loc="/opt/homebrew/Caskroom/claude"),
+            row(
+                "app",
+                "com.anthropic.claudefordesktop",
+                loc="/Applications/Claude.app",
+            ),
+        ],
     )
+    (finding,) = result.findings
+    assert (finding.primary_kind, finding.primary_id) == (
+        "app",
+        "com.anthropic.claudefordesktop",
+    )
+    assert finding.version is None
+    assert finding.install_path == "/Applications/Claude.app"
+
+
+def test_a_current_identifier_speaks_before_one_the_vendor_replaced() -> None:
+    """The matcher hands upstream which rows matched a superseded identifier. Without the
+    flags, evidence order would let the replaced generation describe the finding."""
+    catalog = yaml.safe_dump(
+        {
+            "version": 2,
+            "classifications": ["Personal agent"],
+            "agents": [
+                {
+                    "id": "openclaw",
+                    "name": "OpenClaw",
+                    "classification": "Personal agent",
+                    "platforms": ["darwin"],
+                    "npm": ["openclaw", "moltbot"],
+                    "superseded": [{"route": "npm", "value": "moltbot"}],
+                },
+            ],
+        },
+    )
+    result = Matcher.from_source(catalog_yaml=catalog).match(
+        [
+            row(
+                "npm",
+                "moltbot",
+                ver="0.1.0",
+                loc="/opt/homebrew/lib/node_modules/moltbot",
+            ),
+            row(
+                "npm",
+                "openclaw",
+                ver="2026.9.1",
+                loc="/opt/homebrew/lib/node_modules/openclaw",
+            ),
+        ],
+    )
+    (finding,) = result.findings
+    assert (finding.primary_id, finding.version) == ("openclaw", "2026.9.1")
+
+
+def test_a_version_that_is_not_text_is_reported_as_text(matcher: Matcher) -> None:
+    """`match()` is public and takes rows that never passed the envelope's checks, while
+    the record's version is a strict string field."""
+    rows: list[dict[str, Any]] = [
+        {**row("npm", "@openai/codex", loc="/opt/homebrew/lib/node_modules"), "ver": 2},
+    ]
+    assert matcher.match(rows).findings[0].version == "2"
+
+
+def test_an_apt_install_keeps_its_version_once_the_agent_has_run() -> None:
+    """dpkg's row off a real apt install on Ubuntu 22.04, beside the state directory the
+    first run creates. `file` is declared ahead of `deb` in routes.yaml, and ranked by that
+    alone the record lost its version and changed address on the user's first run."""
+    result = Matcher.from_source().match(
+        [
+            row("file", "/home/dana/.claude/", loc="/home/dana/.claude/"),
+            row("deb", "claude-code", ver="2.1.292-1"),
+        ],
+    )
+    (finding,) = result.findings
+    assert finding.agent_id == "claude-code"
+    assert (finding.primary_kind, finding.primary_id) == ("deb", "claude-code")
+    assert finding.version == "2.1.292-1"
+    assert finding.install_path is None
 
 
 _CLAUDE_IN_CHROME = yaml.safe_dump(
@@ -222,13 +311,6 @@ def test_a_leftover_still_speaks_when_no_copy_is_loaded() -> None:
         ],
     )
     assert result.findings[0].version == "1.0.94"
-
-
-def test_unreferenced_is_still_upstreams_token() -> None:
-    """The ranking names the token; upstream owns it. A rename upstream fails here."""
-    from discovery.catalog import _UNREFERENCED, _matcher
-
-    assert _UNREFERENCED in _matcher.PERMS_PROVENANCE
 
 
 def test_permissions_split_into_a_tuple(matcher: Matcher) -> None:
@@ -497,7 +579,7 @@ class TestLoadTimeValidation:
 
     def test_the_vendored_floor_passes_its_own_validation(self) -> None:
         """The guard must not have made the shipped catalog unloadable."""
-        assert Matcher.from_source().agent_count == 39
+        assert Matcher.from_source().agent_count == 42
 
 
 class TestCatalogHashUsesFileBytes:
@@ -505,7 +587,7 @@ class TestCatalogHashUsesFileBytes:
     number -- which is sha256 over the file's BYTES."""
 
     def test_the_floor_still_matches_upstreams_value(self) -> None:
-        assert Matcher.from_source().catalog_sha == "b8772c7cd655"
+        assert Matcher.from_source().catalog_sha == "5ed72c475327"
 
     def test_crlf_does_not_change_the_hash_the_way_read_text_would(
         self,
@@ -653,7 +735,7 @@ class TestCatalogShapes:
             Matcher.from_source(catalog_yaml=bad)
 
     def test_the_shipped_floor_still_loads(self) -> None:
-        assert Matcher.from_source().agent_count == 39
+        assert Matcher.from_source().agent_count == 42
 
     def test_a_catalog_sharing_fields_through_an_anchor_still_loads(self) -> None:
         """`<<` carries a tag PyYAML has no constructor for -- construct_mapping flattens
