@@ -125,7 +125,7 @@ The lookback window is not applied: Google's list API is an inventory, so every 
 reports every engine in the region whatever `lookback_window_seconds` says, and a short
 window misses nothing.
 
-#### `wiz_ai_spm` — Wiz AI-SPM
+#### `wiz` — Wiz
 
 Reads two inventories from one Wiz tenant, across every cloud account the tenant has
 connected: the cloud resources of the configured Wiz Security Graph entity types

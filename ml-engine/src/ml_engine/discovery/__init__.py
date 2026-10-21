@@ -33,7 +33,7 @@ from discovery.cloud.gce.connector import VENDOR as GCP_COMPUTE_ENGINE_VENDOR
 from discovery.cloud.gce.connector import ComputeEngineConnector
 from discovery.cloud.gcp_vertex.connector import VENDOR as GCP_VERTEX_VENDOR
 from discovery.cloud.gcp_vertex.connector import VertexAgentEngineConnector
-from discovery.cloud.wiz.connector import VENDOR as WIZ_AI_SPM_VENDOR
+from discovery.cloud.wiz.connector import VENDOR as WIZ_VENDOR
 from discovery.cloud.wiz.connector import WizConnector
 from discovery.endpoint.jamf.connector import VENDOR as JAMF_VENDOR
 from discovery.endpoint.jamf.connector import JamfConnector
@@ -60,7 +60,7 @@ def source_connectors() -> dict[str, DiscoveryConnectorFactory]:
         AWS_EC2_VENDOR: Ec2Connector,
         AWS_BEDROCK_VENDOR: BedrockConnector,
         GCP_VERTEX_VENDOR: VertexAgentEngineConnector,
-        WIZ_AI_SPM_VENDOR: WizConnector,
+        WIZ_VENDOR: WizConnector,
         SPLUNK_VENDOR: SplunkConnector,
         ELASTIC_SECURITY_VENDOR: ElasticSecurityConnector,
         CLOUDWATCH_LOGS_VENDOR: CloudWatchLogsConnector,
@@ -81,7 +81,7 @@ __all__ = [
     "VertexAgentEngineConnector",
     "GCP_VERTEX_VENDOR",
     "WizConnector",
-    "WIZ_AI_SPM_VENDOR",
+    "WIZ_VENDOR",
     "SplunkConnector",
     "SPLUNK_VENDOR",
     "ElasticSecurityConnector",

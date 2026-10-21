@@ -1,4 +1,4 @@
-"""Wiz AI-SPM's side of a DISCOVER_AGENTS scan.
+"""Wiz's side of a DISCOVER_AGENTS scan.
 
 Two inventories from one Wiz tenant. The AI-SPM inventory lists the cloud resources of
 the configured Wiz Security Graph entity types and emits one record per resource. The
@@ -122,7 +122,7 @@ from job_executors.discovery_scan import (
 )
 
 # The wire value. Identical to arthur-client's DiscoverySourceVendor member.
-VENDOR = "wiz_ai_spm"
+VENDOR = "wiz"
 
 # Field names. Identical to the Platform catalog's field names, one constant each.
 API_ENDPOINT_URL_FIELD = "api_endpoint_url"
@@ -300,7 +300,7 @@ class WizConnector:
         client.stop_when(self._should_stop)
 
         logger.info(
-            "Wiz AI-SPM scan starting against the %s environment, listing entity "
+            "Wiz scan starting against the %s environment, listing entity "
             "type(s) %s%s",
             settings.auth_environment,
             ", ".join(settings.entity_types),
@@ -583,14 +583,14 @@ def _report_all(
         _report_workloads(logger, workloads, len(found) - resource_records)
     if progress.failed:
         logger.warning(
-            "Wiz AI-SPM scan failed part-way, in the %s; the %s record(s) found before "
+            "Wiz scan failed part-way, in the %s; the %s record(s) found before "
             "the failure are published, then the scan fails.",
             progress.phase,
             len(found),
         )
     if progress.stopped:
         logger.warning(
-            "Wiz AI-SPM scan stopped early on request, in the %s; the records found so "
+            "Wiz scan stopped early on request, in the %s; the records found so "
             "far are all that is reported%s.",
             progress.phase,
             "" if workloads_read else ", and the workload inventory was not read",
@@ -651,7 +651,7 @@ def _report(logger: logging.Logger, tally: _Tally, records: int) -> None:
     """Say how complete the AI-SPM inventory is. A partial answer must not read as a
     full one."""
     logger.info(
-        "Wiz AI-SPM scan listed %s resource(s) over %s page(s); %s record(s), %s "
+        "Wiz scan listed %s resource(s) over %s page(s); %s record(s), %s "
         "skipped, %s duplicate(s) across pages",
         tally.listed,
         tally.pages,
@@ -714,7 +714,7 @@ def settings_from(
     ]
     if missing:
         raise DiscoveryConfigurationError(
-            f"Wiz AI-SPM source is missing required field(s): {', '.join(missing)}. "
+            f"Wiz source is missing required field(s): {', '.join(missing)}. "
             f"{API_ENDPOINT_URL_FIELD} and {CLIENT_ID_FIELD} are source fields; "
             f"{CLIENT_SECRET_FIELD} is a secret.",
         )
@@ -725,7 +725,7 @@ def settings_from(
         or API_ENDPOINT_PATTERN.fullmatch(normalized_url.lower()) is None
     ):
         raise DiscoveryConfigurationError(
-            f"Wiz AI-SPM source's {API_ENDPOINT_URL_FIELD} is not a Wiz GraphQL "
+            f"Wiz source's {API_ENDPOINT_URL_FIELD} is not a Wiz GraphQL "
             f"endpoint. Use the tenant's API endpoint as Wiz shows it under User "
             f"Settings > Tenant: https://api.<data center>.app.wiz.io/graphql, or "
             f"https://api.<data center>.app.wiz.us/graphql for FedRAMP.",
@@ -736,7 +736,7 @@ def settings_from(
     ).strip().lower() or DEFAULT_AUTH_ENVIRONMENT
     if environment not in TOKEN_URLS:
         raise DiscoveryConfigurationError(
-            f"Wiz AI-SPM source's {AUTH_ENVIRONMENT_FIELD} must be one of "
+            f"Wiz source's {AUTH_ENVIRONMENT_FIELD} must be one of "
             f"{', '.join(TOKEN_URLS)}.",
         )
 
@@ -748,7 +748,7 @@ def settings_from(
     )
     if any(ENTITY_TYPE_PATTERN.fullmatch(name) is None for name in entity_types):
         raise DiscoveryConfigurationError(
-            f"Wiz AI-SPM source's {ENTITY_TYPES_FIELD} must be comma-separated Wiz "
+            f"Wiz source's {ENTITY_TYPES_FIELD} must be comma-separated Wiz "
             f"Security Graph entity type names, such as VIRTUAL_MACHINE: letters, "
             f"digits and underscores only.",
         )

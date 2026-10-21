@@ -1,4 +1,4 @@
-"""Wiz AI-SPM connector: the token, the one query, its errors, and the records.
+"""Wiz connector: the token, the one query, its errors, and the records.
 
 A fake session stands in for Wiz's token endpoint and a tenant's GraphQL endpoint. Its
 bodies are shaped on PUBLIC sources, NOT captured from a live tenant: Wiz's hosts are
@@ -450,8 +450,8 @@ def pages(*answers: dict[str, Any]) -> Callable[[dict[str, Any]], FakeResponse]:
 # -- registration ---------------------------------------------------------------------------
 
 
-def test_the_connector_is_registered_under_wiz_ai_spm() -> None:
-    assert VENDOR == "wiz_ai_spm"
+def test_the_connector_is_registered_under_wiz() -> None:
+    assert VENDOR == "wiz"
     assert source_connectors()[VENDOR] is WizConnector
     assert isinstance(source_connectors()[VENDOR](), WizConnector)
 
@@ -684,7 +684,7 @@ def test_a_record_carries_cloud_provenance_with_account_region_and_provider_id()
     assert record.name == "support-agent"
     source = record.creation_source
     assert isinstance(source, CloudAgentCreationSource)
-    assert source.vendor == "wiz_ai_spm"
+    assert source.vendor == "wiz"
     assert source.address.instance == AWS_ACCOUNT
     assert source.address.scope == "us-east-1"
     assert source.address.resource_id == arn
