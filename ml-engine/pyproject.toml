@@ -59,6 +59,7 @@ dev = [
   "pre-commit==4.6.2",
   "types-pytz>=2025.2.0.20250516",
   "lazy-imports==1.2.0",
+  "graphql-core==3.3.0",
 ]
 linters = [
   "mypy>=2.3,<3",

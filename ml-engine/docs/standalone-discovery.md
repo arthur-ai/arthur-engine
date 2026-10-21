@@ -153,6 +153,10 @@ at a time. Scopes for the service account:
   (AxtonGrams/terraform-provider-wiz `4fee5a8`, `internal/common.go:87`), but no public
   source ties it to this query.
 
+The unit tests validate both queries and their variables against a pinned public copy of
+Wiz's GraphQL schema (ArcavenAE/stave `b893774`, `spec/wiz-schema.graphql`, printed
+from live introspection). That checks shape, not live data.
+
 When Wiz refuses a query for a missing scope, its denial lists the scopes that would do
 ("access denied, at least one of the following is required: [...]", **confirmed** in
 ArcavenAE/stave `6728a95`, `finding-009-*.md:29-34`). The engine quotes that list
