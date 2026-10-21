@@ -324,8 +324,13 @@ def _error(resp: requests.Response) -> Mapping[str, Any]:
 
 def _is_rate_limit(resp: requests.Response) -> bool:
     error = _error(resp)
-    reasons = {str(e.get("reason")) for e in error.get("errors") or []}
-    reasons |= {str(d.get("reason")) for d in error.get("details") or []}
+    reasons = {str(error.get("reason"))}
+    # Google lists its reasons in `errors` and `details`; Kubernetes' Status has a
+    # top-level `reason` and a `details` object, not a list.
+    for key in ("errors", "details"):
+        entries = error.get(key)
+        if isinstance(entries, list):
+            reasons |= {str(e.get("reason")) for e in entries if isinstance(e, dict)}
     return bool(reasons & _RATE_LIMIT_REASONS)
 
 

@@ -592,7 +592,12 @@ def test_a_cluster_whose_kubernetes_api_refuses_is_a_warning(
         kube={
             "/apis/apps/v1/deployments": FakeResponse(
                 403,
-                {"kind": "Status", "message": "deployments.apps is forbidden"},
+                {
+                    "kind": "Status",
+                    "reason": "Forbidden",
+                    "message": "deployments.apps is forbidden",
+                    "details": {"group": "apps", "kind": "deployments"},
+                },
             ),
         },
     )
