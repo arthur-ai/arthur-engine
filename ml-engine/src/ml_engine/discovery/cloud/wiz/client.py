@@ -215,7 +215,7 @@ _Read = TypeVar("_Read")
 _ERROR_CODE = re.compile(r"^[A-Za-z0-9_.\-]{1,64}$")
 
 _REQUIRED_SCOPES = re.compile(
-    r"at least one of the following is required: \[([^\]]*)\]"
+    r"at least one of the following is required: \[([^\]]*)\]",
 )
 _SCOPE_NAME = re.compile(r"^[a-z][a-z0-9_]*:[a-z][a-z0-9_]*$")
 _MAX_SCOPES_QUOTED = 32
@@ -257,10 +257,21 @@ class WizSettings:
     # which changes what a BAD_USER_INPUT asks the customer to do.
     entity_types_overridden: bool = False
     timeout_seconds: tuple[float, float] = REQUEST_TIMEOUT_SECONDS
+    # Development only: a local fake Wiz that serves both calls instead of Wiz. See
+    # `discovery.cloud.wiz.connector.local_override`.
+    local_override_url: Optional[str] = None
 
     @property
     def token_url(self) -> str:
+        if self.local_override_url is not None:
+            return f"{self.local_override_url}/oauth/token"
         return TOKEN_URLS[self.auth_environment]
+
+    @property
+    def graphql_url(self) -> str:
+        if self.local_override_url is not None:
+            return f"{self.local_override_url}/graphql"
+        return self.api_endpoint_url
 
 
 @dataclass(frozen=True)
@@ -460,7 +471,7 @@ class WizClient:
         resp, (payload, code) = self._send(
             what,
             lambda: self._http.post(
-                self._s.api_endpoint_url,
+                self._s.graphql_url,
                 json={"query": query, "variables": variables},
                 headers={
                     "Authorization": f"Bearer {self._access_token}",

@@ -100,6 +100,7 @@ still fails with Wiz's status.
 """
 
 import logging
+import os
 import re
 from dataclasses import dataclass, field
 from typing import (
@@ -112,6 +113,7 @@ from typing import (
     Sequence,
     TypeVar,
 )
+from urllib.parse import urlsplit
 
 from arthur_client.api_bindings import DiscoverySourceConfigSpec
 from arthur_common.models.agent_discovery_schemas import DiscoveredAgentRecord
@@ -165,6 +167,13 @@ DEFAULT_ENTITY_TYPES: tuple[str, ...] = ("AI_AGENT", "AI_SERVICE")
 API_ENDPOINT_PATTERN = re.compile(
     r"https://api\.[a-z0-9]([a-z0-9-]*[a-z0-9])?\.app\.wiz\.(io|us)/graphql",
 )
+
+# Development only, never a source field: the base URL of a local fake Wiz
+# (tests/fakes/wiz) that then serves `/oauth/token` and `/graphql` in place of Wiz. The
+# source's fields are still validated as for Wiz. Only a loopback host is accepted, so
+# an engine cannot be pointed at any other host this way.
+LOCAL_OVERRIDE_ENV_VAR = "ARTHUR_ENGINE_WIZ_API_BASE_URL_OVERRIDE"
+LOCAL_OVERRIDE_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
 
 # What one entity type name looks like in Wiz's enum: capitals, digits and underscores.
 ENTITY_TYPE_PATTERN = re.compile(r"[A-Z][A-Z0-9_]*")
@@ -374,6 +383,13 @@ class WizConnector:
         reports reaches the Platform job log.
         """
         settings = settings_from(credentials, source_fields)
+        if settings.local_override_url is not None:
+            logger.warning(
+                "%s is set: this scan talks to %s, not to Wiz. It is for local "
+                "development against a fake Wiz; unset it on any other engine.",
+                LOCAL_OVERRIDE_ENV_VAR,
+                settings.local_override_url,
+            )
         client = self._client_factory(settings, logger)
         client.stop_when(self._should_stop)
 
@@ -484,9 +500,10 @@ class WizConnector:
             tally.refused_status = exc.status_code
             self._denied.append(DeniedScope(WORKLOAD_INVENTORY_SCOPE, reason))
             logger.warning(
-                "Wiz refused the workload inventory: %s The AI-SPM records are still "
+                "Wiz refused the workload inventory: %s. The AI-SPM records are still "
                 "published; the run reports the denied scope %s.",
-                exc,
+                # Most of the client's messages end without a full stop, some with one.
+                str(exc).rstrip("."),
                 WORKLOAD_INVENTORY_SCOPE,
             )
 
@@ -868,4 +885,40 @@ def settings_from(
         client_secret=client_secret,
         entity_types=entity_types or DEFAULT_ENTITY_TYPES,
         entity_types_overridden=bool(entity_types),
+        local_override_url=local_override(),
     )
+
+
+def local_override() -> Optional[str]:
+    """`LOCAL_OVERRIDE_ENV_VAR` as `scheme://host[:port]`, or None when it is unset.
+
+    Anything but an http(s) URL on a loopback host with no path, user, query or
+    fragment fails the scan rather than falling back to Wiz, so a mistyped override is
+    never silently ignored. The error does not quote the value.
+    """
+    raw = os.getenv(LOCAL_OVERRIDE_ENV_VAR, "").strip()
+    if not raw:
+        return None
+    parts = urlsplit(raw)
+    try:
+        port = parts.port
+    except ValueError:
+        port = -1
+    if (
+        parts.scheme not in ("http", "https")
+        or parts.hostname not in LOCAL_OVERRIDE_HOSTS
+        or port == -1
+        or parts.username is not None
+        or parts.password is not None
+        or parts.path not in ("", "/")
+        or parts.query
+        or parts.fragment
+    ):
+        raise DiscoveryConfigurationError(
+            f"{LOCAL_OVERRIDE_ENV_VAR} is set on this engine but is not an http:// or "
+            f"https:// URL on localhost, 127.0.0.1 or [::1] with no path, such as "
+            f"http://127.0.0.1:8099. It is for local development against a fake Wiz "
+            f"only; unset it to reach Wiz.",
+        )
+    host = f"[{parts.hostname}]" if parts.hostname == "::1" else parts.hostname
+    return f"{parts.scheme}://{host}{f':{port}' if port is not None else ''}"

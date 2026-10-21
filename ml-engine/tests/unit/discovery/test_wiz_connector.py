@@ -44,6 +44,7 @@ from discovery.cloud.wiz.connector import (
     DEFAULT_ENTITY_TYPES,
     ENTITY_TYPES_FIELD,
     GLOBAL_SCOPE,
+    LOCAL_OVERRIDE_ENV_VAR,
     VENDOR,
     WORKLOAD_INVENTORY_SCOPE,
     WizConnector,
@@ -315,7 +316,7 @@ class FakeSession:
 
     def post(self, url: str, **kw: Any) -> FakeResponse:
         self.calls.append({"url": url, **kw})
-        if url in TOKEN_URLS.values():
+        if url in TOKEN_URLS.values() or url.endswith("/oauth/token"):
             route = self.token
         elif _is_graph_search(kw):
             route = self.workloads
@@ -732,8 +733,8 @@ def test_an_external_id_without_a_platform_is_skipped(
             FakeSession(
                 ok(
                     page_body(
-                        [node("a", provider_id=None, external_id="x", platform=None)]
-                    )
+                        [node("a", provider_id=None, external_id="x", platform=None)],
+                    ),
                 ),
             ),
         )
@@ -1088,6 +1089,91 @@ def test_the_settings_are_trimmed() -> None:
     assert settings.api_endpoint_url == ENDPOINT
     assert settings.auth_environment == "commercial"
     assert settings.entity_types_overridden is False
+
+
+# -- the local override ----------------------------------------------------------------------
+
+
+@pytest.fixture(autouse=True)
+def _no_local_override(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv(LOCAL_OVERRIDE_ENV_VAR, raising=False)
+
+
+def test_without_the_override_both_calls_go_to_wiz() -> None:
+    session = FakeSession()
+    scan(session)
+    assert {c["url"] for c in session.calls} == {TOKEN_URLS["commercial"], ENDPOINT}
+    with pytest.raises(DiscoveryConfigurationError):
+        settings_from(
+            CREDS,
+            {**FIELDS, "api_endpoint_url": "http://127.0.0.1:8099/graphql"},
+        )
+
+
+@pytest.mark.parametrize(
+    ("value", "base"),
+    [
+        ("http://127.0.0.1:8099", "http://127.0.0.1:8099"),
+        (" http://LOCALHOST:8099/ ", "http://localhost:8099"),
+        ("https://[::1]:8443", "https://[::1]:8443"),
+    ],
+)
+def test_the_override_sends_both_calls_to_a_local_fake(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    value: str,
+    base: str,
+) -> None:
+    monkeypatch.setenv(LOCAL_OVERRIDE_ENV_VAR, value)
+    session = FakeSession()
+    with caplog.at_level(logging.WARNING, logger=LOG.name):
+        scan(session)
+    assert {c["url"] for c in session.calls} == {
+        f"{base}/oauth/token",
+        f"{base}/graphql",
+    }
+    assert f"{LOCAL_OVERRIDE_ENV_VAR} is set: this scan talks to {base}" in caplog.text
+
+
+def test_the_override_still_validates_the_sources_endpoint(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv(LOCAL_OVERRIDE_ENV_VAR, "http://127.0.0.1:8099")
+    with pytest.raises(DiscoveryConfigurationError, match="api_endpoint_url"):
+        settings_from(
+            CREDS,
+            {**FIELDS, "api_endpoint_url": "https://attacker.example/graphql"},
+        )
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "http://wiz-fake.example.com:8099",
+        "http://127.0.0.1.attacker.example:8099",
+        "http://localhost@attacker.example:8099",
+        "http://user:pass@127.0.0.1:8099",
+        "http://10.0.0.5:8099",
+        "http://0.0.0.0:8099",
+        "http://host.docker.internal:8099",
+        "http://127.0.0.1:8099/graphql",
+        "http://127.0.0.1:8099?x=1",
+        "http://127.0.0.1:99999",
+        "ftp://127.0.0.1:8099",
+        "localhost:8099",
+    ],
+)
+def test_an_override_that_is_not_a_local_url_is_refused_before_any_call(
+    monkeypatch: pytest.MonkeyPatch,
+    value: str,
+) -> None:
+    monkeypatch.setenv(LOCAL_OVERRIDE_ENV_VAR, value)
+    session = FakeSession()
+    with pytest.raises(DiscoveryConfigurationError) as exc:
+        scan(session)
+    assert LOCAL_OVERRIDE_ENV_VAR in str(exc.value)
+    assert value not in str(exc.value)
+    assert session.calls == []
 
 
 # -- failures --------------------------------------------------------------------------------
@@ -1660,7 +1746,9 @@ def test_pytorch_and_tensorflow_make_no_record(
 
 def test_only_technology_name_is_matched_never_the_hosted_technologys_name() -> None:
     nginx = sighting(
-        "NGINX", hosted_name="NGINX (mcp-gateway)", workload_name="mcp-gateway"
+        "NGINX",
+        hosted_name="NGINX (mcp-gateway)",
+        workload_name="mcp-gateway",
     )
     assert workload_scan(nginx) == []
     unnamed = sighting(hosted_name="LangChain (agents-host-1)")
@@ -1677,7 +1765,7 @@ def test_mcp_and_model_context_protocol_make_records() -> None:
 
 def test_a_workload_without_a_provider_unique_id_uses_its_external_id() -> None:
     (record,) = workload_scan(
-        sighting(provider_id=None, external_id="i-0abc123def4567890")
+        sighting(provider_id=None, external_id="i-0abc123def4567890"),
     )
     workload = f"aws:{AWS_ACCOUNT}:i-0abc123def4567890"
     assert record.external_id == f"{workload}:langchain"

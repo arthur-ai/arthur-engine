@@ -21,7 +21,8 @@ repos:
             ml-engine/tests/unit/mock_data/mock_data_generator.py|
             ml-engine/tests/unit/mock_data/api_mock_helpers.py|
             ml-engine/tests/unit/mock_data/connector_helpers.py|
-            ml-engine/tests/unit/discovery/fixtures/wiz/prune_wiz_schema.py
+            ml-engine/tests/unit/discovery/fixtures/wiz/prune_wiz_schema.py|
+            ml-engine/tests/fakes/
           )
   - repo: https://github.com/pycqa/autoflake
     rev: v2.3.1

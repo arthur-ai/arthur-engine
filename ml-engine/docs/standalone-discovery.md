@@ -263,6 +263,80 @@ reports every matching resource and technology whatever `lookback_window_seconds
 Each inventory is read for at most 100 pages, and the job log says so when one stops
 there.
 
+##### Testing against a fake Wiz
+
+`ml-engine/tests/fakes/wiz` is a fake Wiz tenant for development: the token endpoint
+and the GraphQL API, with every query executed against the pruned copy of Wiz's schema
+the unit tests use, over synthetic data (`tenant.json`: 6 AI-SPM resources and 4
+agent frameworks on workloads that become records, plus the cases the connector skips
+or drops). It is not in the engine image. CI runs the connector against it in
+`tests/unit/discovery/test_wiz_fake_e2e.py`.
+
+1. Start it from `ml-engine/` (`uv sync --group dev` first). `--page-size 3` makes a
+   scan page through both inventories:
+
+   ```bash
+   uv run python -m tests.fakes.wiz --port 8099 --page-size 3
+   ```
+
+2. Point the engine at it. On the engine, and only there, set
+   `ARTHUR_ENGINE_WIZ_API_BASE_URL_OVERRIDE=http://127.0.0.1:8099`. Both the token
+   request and the queries then go to the fake, and every scan's job log warns that
+   the override is set. Only `http(s)://` on `localhost`, `127.0.0.1` or `[::1]` with
+   no path is accepted; anything else fails the scan. Unset, nothing changes.
+   - An engine run from a checkout reaches the fake on `127.0.0.1` as it is.
+   - An engine in Docker (the local stack's data-plane container) does not: set the
+     variable on that container (a compose override's `environment:`), recreate it,
+     then run the fake inside its network namespace:
+
+     ```bash
+     docker run --rm -d --name fake-wiz --network container:<data-plane container> \
+       -v "$PWD/ml-engine/tests:/w/tests:ro" -w /w python:3.13-slim \
+       sh -c 'pip install -q graphql-core==3.3.0 && python -m tests.fakes.wiz --port 8099 --page-size 3'
+     ```
+
+     Recreating the data-plane container again drops that namespace, so restart
+     `fake-wiz` after it.
+
+3. In the Platform UI, Governance > Discovery > Sources, add a Wiz source:
+
+   | Field | Value |
+   |---|---|
+   | `api_endpoint_url` | `https://api.us1.app.wiz.io/graphql` (validated as for Wiz, never contacted while the override is set) |
+   | `auth_environment` | `commercial` |
+   | `client_id` | `fake-wiz-client-id` |
+   | `client_secret` | `fake-wiz-client-secret` |
+   | `entity_types` | blank |
+
+   Add a config on the local engine with `query` empty, `query_language: none` and any
+   lookback.
+
+4. **Test Connection** succeeds with preview rows. **Scan now**: the Scans tab shows 10
+   records, and the Agents tab lists them with the Wiz mark, for example
+   `support-triage-agent` and `LangChain on agent-host-1`. The job log lists the
+   skipped resource and workload and the unmatched technologies (Anthropic, PyTorch,
+   TensorFlow).
+
+5. Flip a fault on the running fake and test again
+   (`curl -X POST 'localhost:8099/_control/fault?mode=<mode>'`, `mode=none` to stop):
+
+   | Mode | Expected |
+   |---|---|
+   | `bad-credentials` | Test Connection fails as Authentication, vendor status 401; a scan fails `authentication_failed` |
+   | `missing-scope` | Test Connection succeeds with AI-SPM rows only; the scan publishes 6 records, reports the denied scope `workload-inventory`, and the job log quotes `[read:inventory read:all]` |
+   | `forbidden-ip` | Fails as Authorization, status 403, naming the IP allowlist |
+   | `rate-limit-once` | One HTTP 429 with `Retry-After`, retried, then success |
+   | `rate-limit-in-200` | `RATE_LIMIT_EXCEEDED` inside an HTTP 200, retried, then success |
+   | `repeated-cursor` | The AI-SPM listing stops at the repeated cursor with a warning; 5 AI-SPM records |
+
+   `GET /_control/state` lists the requests the fake answered. `--fault <mode>` or
+   `FAKE_WIZ_FAULT` starts it with one set.
+
+For a standalone engine, use a `webhook` destination at
+`http://127.0.0.1:8099/_sink` with `allow_insecure_http: true`; `GET /_sink` returns
+what it was sent. Standalone configs refuse `vendor: wiz` until the engine's
+arthur-client includes the `wiz` vendor.
+
 #### `jamf_pro` — Jamf Pro (managed Macs)
 
 Reads the agent inventory Arthur's endpoint collector writes to each Mac.
