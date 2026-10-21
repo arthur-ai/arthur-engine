@@ -318,7 +318,8 @@ class Ec2Connector:
                 "association may not gather custom inventory, they may not have "
                 "reported within the lookback window, or no instance has finished its "
                 "first run and upload. Each instance is listed with its reason under "
-                "device_coverage.unreadable_devices on this run's outcome.",
+                "device_coverage.unreadable_devices in this job's "
+                "discovery_scan_outcome log line.",
                 seen,
             )
 
