@@ -397,7 +397,7 @@ unmanaged AI sits:
 | `last_reported` | When the machine last reported, from its status line or the MDM's report date; absent when neither says |
 
 The list holds at most 1,000 machines per scan; `unreadable_devices_truncated` is how
-many more were counted and not listed. Identifiers only: no attribute value, payload or
+many more were counted and not listed. No attribute value, payload or
 credential is ever in it.
 
 The same agents arrive on every scan: each scan sends what the source reports now, and
