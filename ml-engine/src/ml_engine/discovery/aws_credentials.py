@@ -15,6 +15,11 @@ the fields.
 A ROLE IS ASSUMED WHEN FIRST USED AND REFRESHED BEFORE IT EXPIRES. A scan of a large
 fleet makes a call per machine and can outlast the one-hour session, so the assumed
 credentials are refreshable rather than fetched once.
+
+A ROLE IN ANOTHER ACCOUNT IS ASSUMED FROM THE SOURCE'S OWN SESSION, whatever that is:
+the key, the role it assumes, or the engine's identity under the opt-in. `assumed_role_
+session` is that step on its own, for a scope that spans an organization's accounts,
+and it is refused per account rather than for the scan.
 """
 
 import os
@@ -135,12 +140,28 @@ def aws_session(
     if not role_arn:
         return base
 
-    source_credentials: Optional[Credentials] = base.get_credentials()
-    if source_credentials is None:
+    if base.get_credentials() is None:
         raise DiscoveryConfigurationError(
             f"{source} has no key to assume '{ROLE_ARN_FIELD}' with, and this engine "
             f"has no AWS credentials of its own to use instead.",
         )
+    return assumed_role_session(base, role_arn, external_id, session_name, region_name)
+
+
+def assumed_role_session(
+    base: boto3.Session,
+    role_arn: str,
+    external_id: Optional[str],
+    session_name: str,
+    region_name: Optional[str] = None,
+) -> boto3.Session:
+    """A session holding `role_arn`, assumed with `base`'s credentials when first used.
+
+    `base` must hold credentials; the caller has checked. The role is assumed lazily,
+    so a role STS refuses is refused by the first call that needs it, from the client
+    making that call.
+    """
+    source_credentials: Optional[Credentials] = base.get_credentials()
     extra: dict[str, str] = {"RoleSessionName": session_name}
     if external_id:
         extra["ExternalId"] = external_id
