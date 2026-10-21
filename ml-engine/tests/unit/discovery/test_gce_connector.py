@@ -200,9 +200,11 @@ class FakeCompute:
         listing: Optional[dict[str, FakeResponse]] = None,
         resource_manager: Optional[FakeResponse] = None,
         project_refused: frozenset[str] = frozenset(),
+        project_unavailable: frozenset[str] = frozenset(),
     ) -> None:
         self.pages = pages
         self.project_refused = project_refused
+        self.project_unavailable = project_unavailable
         self.project_flag = {PROJECT: "TRUE"} if project_flag is None else project_flag
         self.project_osconfig = (
             {PROJECT: "TRUE"} if project_osconfig is None else project_osconfig
@@ -243,6 +245,12 @@ class FakeCompute:
             if self.unreachables and index == 0:
                 body["unreachables"] = self.unreachables
             return FakeResponse(200, body)
+
+        if len(parts) == 2 and parts[1] in self.project_unavailable:
+            return FakeResponse(
+                503,
+                {"error": {"code": 503, "message": "Backend Error"}},
+            )
 
         if len(parts) == 2 and parts[1] in self.project_refused:
             return FakeResponse(
@@ -655,7 +663,7 @@ def test_a_credential_without_compute_projects_get_still_scans_vms_that_set_thei
         project_refused=frozenset({PROJECT}),
     )
     connector = connector_for(fake)
-    with caplog.at_level(logging.INFO):
+    with caplog.at_level(logging.WARNING):
         assert scan(fake, connector=connector) == []
 
     coverage = connector.device_coverage()
@@ -668,7 +676,37 @@ def test_a_credential_without_compute_projects_get_still_scans_vms_that_set_thei
     ]
     project_reads = [url for url, _ in fake.calls if url == f"{API}/projects/{PROJECT}"]
     assert len(project_reads) == 1, "refused once, then not asked again"
-    assert "counted as never-reported rather than osconfig-disabled" in caplog.text
+    assert (
+        caplog.text.count("counted as never-reported rather than osconfig-disabled")
+        == 1
+    )
+
+
+def test_project_metadata_that_stays_unavailable_never_fails_the_scan_either(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A 503 that outlasts the retries is no more the VM's fault than a 403: the VM keeps
+    never-reported, the scan goes on, and the project's retries are spent once."""
+    fake = FakeCompute(
+        {PROJECT: [[vm("1", flag="TRUE"), vm("2", flag="TRUE")]]},
+        guest={},
+        project_unavailable=frozenset({PROJECT}),
+    )
+    connector = connector_for(fake)
+    with caplog.at_level(logging.WARNING):
+        assert scan(fake, connector=connector) == []
+
+    coverage = connector.device_coverage()
+    assert coverage is not None
+    assert coverage.unreadable_by_reason == {"never-reported": 2}
+    project_reads = [url for url, _ in fake.calls if url == f"{API}/projects/{PROJECT}"]
+    assert (
+        len(project_reads) == gce_client.MAX_ATTEMPTS
+    ), "retried once, for the project"
+    assert (
+        caplog.text.count("counted as never-reported rather than osconfig-disabled")
+        == 1
+    )
 
 
 def test_a_vm_that_has_reported_keeps_its_own_reasons_whatever_osconfig_says() -> None:
@@ -1101,6 +1139,40 @@ def test_a_listed_project_the_credential_is_refused_is_a_denied_scope_and_the_re
     assert "projects/acme-dev-456: not read (permission_denied)" in caplog.text
     assert "compute.instances.list" in caplog.text
     assert "projects/acme-old-000: not read (unreachable)" in caplog.text
+
+
+def test_project_metadata_that_cannot_be_read_never_denies_a_project_under_an_org(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Under an organization, a refusal inside a project denies the project. The OS
+    Config lookup is not one: a project whose metadata is refused or unavailable is
+    still read, its VM that set guest attributes itself keeps never-reported, and no
+    denied scope is reported for it."""
+    projects = ["acme-prod-123", "acme-dev-456", "acme-ml-789", "acme-old-000"]
+    pages = {p: [[vm(str(i), project=p)]] for i, p in enumerate(projects, 1)}
+    pages["acme-dev-456"] = [[vm("2", project="acme-dev-456", flag="TRUE")]]
+    pages["acme-ml-789"] = [[vm("3", project="acme-ml-789", flag="TRUE")]]
+    fake = org_fake(
+        pages=pages,
+        guest={(ZONE, "vm-1"): attributes(CODEX), (ZONE, "vm-4"): attributes(CODEX)},
+        project_refused=frozenset({"acme-dev-456"}),
+        project_unavailable=frozenset({"acme-ml-789"}),
+    )
+    connector = connector_for(fake)
+    with caplog.at_level(logging.WARNING):
+        records = scan(fake, {"organization_id": "123456789"}, connector)
+
+    assert sorted(r.external_id for r in records) == ["1:codex-cli", "4:codex-cli"]
+    assert connector.denied_scopes() == ()
+    coverage = connector.device_coverage()
+    assert coverage is not None
+    assert coverage.unreadable_by_reason == {"never-reported": 2}
+    assert [(d["device_key"], d["reason"]) for d in listed(connector)] == [
+        ("2", "never-reported"),
+        ("3", "never-reported"),
+    ]
+    assert "projects/acme-dev-456: project metadata not read" in caplog.text
+    assert "projects/acme-ml-789: project metadata not read" in caplog.text
 
 
 def test_a_named_project_the_credential_is_refused_still_ends_the_scan() -> None:

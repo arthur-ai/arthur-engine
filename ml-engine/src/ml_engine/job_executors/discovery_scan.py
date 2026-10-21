@@ -156,8 +156,8 @@ class UnreadableDevice:
 
     IDENTIFIERS ONLY. The carrier's device key, the name the carrier shows for it, where
     in the carrier it lives, and when its status line last dated a report. Never an
-    attribute value, a payload or a credential: this travels to the Platform's run store
-    and to every standalone destination.
+    attribute value, a payload or a credential: this travels in the job log, to every
+    standalone destination, and to the Platform's run store where the client declares it.
     """
 
     device_key: str

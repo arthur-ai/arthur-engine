@@ -30,8 +30,8 @@ agent was turned off is visible by name. A VM that has reported keeps its own re
 what it wrote is evidence, whatever its key says now.
 
 EVERY UNREADABLE VM IS LISTED, NOT ONLY COUNTED. The VMs this scan cannot see are where
-unmanaged AI sits, so each goes on the run's coverage by instance id, name, project and
-zone, and reason, up to the run store's cap.
+unmanaged AI sits, so each goes on the run's device coverage by instance id, name,
+project and zone, and reason, up to `MAX_UNREADABLE_DEVICES`.
 
 LABELS STAND WHERE GROUPS DO. A selector is a `key=value` pair and is matched exactly;
 `discovery.endpoint.scope` applies them with Jamf's rules, exclude winning. Unlike a
@@ -55,7 +55,7 @@ import logging
 import re
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta, timezone
-from typing import Callable, ClassVar, Iterator, Mapping, Optional, Sequence
+from typing import Callable, ClassVar, Iterator, Mapping, Optional, Sequence, Union
 
 import google.auth
 import requests
@@ -302,7 +302,11 @@ class ComputeEngineConnector:
 
         carried: set[str] = set()
         reader = VmInventoryReader(coverage, matcher, VENDOR, since, logger)
-        project_flags: dict[str, Mapping[str, Optional[str]]] = {}
+        # Each project's metadata, or why it could not be read: asked once per project.
+        project_flags: dict[
+            str,
+            Union[Mapping[str, Optional[str]], ComputeEngineError],
+        ] = {}
         without_api: list[str] = []
 
         for project, listed in projects.items():
@@ -405,52 +409,62 @@ class ComputeEngineConnector:
         scope: DeviceScope,
         coverage: DeviceCoverage,
         reader: VmInventoryReader,
-        project_flags: dict[str, Mapping[str, Optional[str]]],
+        project_flags: dict[
+            str,
+            Union[Mapping[str, Optional[str]], ComputeEngineError],
+        ],
         carried: set[str],
         logger: logging.Logger,
     ) -> Iterator[Sequence[DiscoveredAgentRecord]]:
         """One project's VMs. A refusal ends it with the error, for the caller to judge."""
-
-        # Projects whose metadata the credential was refused, asked once each.
-        refused_metadata: set[str] = set()
 
         def flag(instance: Instance, key: str, own: Optional[str]) -> Optional[str]:
             """The VM's own value for the key, else its project's.
 
             The project is read only when a VM does not say, so a role without
             compute.projects.get still scans a fleet that sets enable-guest-attributes
-            per VM.
+            per VM. A project whose read failed raises that failure each time it is asked.
             """
             if own is not None:
                 return own
             if instance.project not in project_flags:
-                project_flags[instance.project] = client.project_flags(instance.project)
-            return project_flags[instance.project][key]
+                try:
+                    project_flags[instance.project] = client.project_flags(
+                        instance.project,
+                    )
+                except ComputeEngineError as e:
+                    project_flags[instance.project] = e
+            answer = project_flags[instance.project]
+            if isinstance(answer, ComputeEngineError):
+                raise answer
+            return answer[key]
 
         def osconfig_off(instance: Instance) -> bool:
-            """Whether enable-osconfig is off for the VM, as far as the credential sees.
+            """Whether enable-osconfig is off for the VM, as far as the scan can tell.
 
             The key only names a VM nothing was written for more finely than
-            never-reported, so it is never a new way for a scan to fail: a credential
-            refused the project's metadata leaves a VM that does not set the key itself
-            with the reason it would have had without the check.
+            never-reported, so it is never a new way for a scan to fail: when the
+            project's metadata cannot be read -- refused, rate-limited, unavailable -- a
+            VM that does not set the key itself keeps the reason it would have had
+            without the check. Only a refused credential still ends the scan.
             """
-            if instance.osconfig_flag is None and instance.project in refused_metadata:
-                return False
+            first = (
+                instance.osconfig_flag is None and instance.project not in project_flags
+            )
             try:
                 value = flag(instance, OSCONFIG_FLAG, instance.osconfig_flag)
             except ComputeEngineError as e:
-                if e.status_code != 403:
+                if e.status_code == 401:
                     raise
-                refused_metadata.add(instance.project)
-                logger.info(
-                    "projects/%s: project metadata not readable (%s). A VM there that "
-                    "does not set enable-osconfig itself is counted as never-reported "
-                    "rather than %s.",
-                    instance.project,
-                    e,
-                    OSCONFIG_DISABLED,
-                )
+                if first:
+                    logger.warning(
+                        "projects/%s: project metadata not read (%s). A VM there that "
+                        "does not set enable-osconfig itself is counted as "
+                        "never-reported rather than %s.",
+                        instance.project,
+                        e,
+                        OSCONFIG_DISABLED,
+                    )
                 return False
             return not _flag_on(value)
 
