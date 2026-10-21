@@ -177,3 +177,26 @@ def test_the_connector_reads_the_audit_log_only_when_asked(
     on = Reader()
     found = scan({"project_id": "demo-project", READ_AUDIT_LOGS_FIELD: "true"}, on)
     assert [r.creation_source.address.resource_id for r in found] == [WORKLOAD]
+
+
+def test_claude_on_vertex_is_a_model_call_named_by_its_publisher_model() -> None:
+    """Partner models (Anthropic's Claude on Vertex) are called with rawPredict and
+    streamRawPredict. The entry below is shaped from Vertex's documented request path
+    for partner models, not captured from a live call."""
+    entry = {
+        "timestamp": "2026-10-20T23:40:00.123456789Z",
+        "protoPayload": {
+            "serviceName": "aiplatform.googleapis.com",
+            "methodName": "google.cloud.aiplatform.v1.PredictionService.RawPredict",
+            "resourceName": (
+                "projects/demo-project/locations/us-east5/publishers/anthropic/"
+                "models/claude-sonnet-4-5"
+            ),
+            "authenticationInfo": {"principalEmail": WORKLOAD},
+        },
+    }
+    assert "RawPredict" in MODEL_CALL_METHODS
+    assert "StreamRawPredict" in MODEL_CALL_METHODS
+    counts = AuditCounts()
+    (caller,) = fold([entry], counts).values()
+    assert (caller.location, caller.models) == ("us-east5", {"claude-sonnet-4-5"})
