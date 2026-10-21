@@ -41,6 +41,12 @@ from discovery.network.gcp_logging.connector import VENDOR as GCP_NETWORK_VENDOR
 from discovery.network.gcp_logging.connector import GcpNetworkConnector
 from discovery.siem.elastic_security.connector import VENDOR as ELASTIC_SECURITY_VENDOR
 from discovery.siem.elastic_security.connector import ElasticSecurityConnector
+from discovery.siem.gcp_security_operations.connector import (
+    VENDOR as GCP_SECURITY_OPERATIONS_VENDOR,
+)
+from discovery.siem.gcp_security_operations.connector import (
+    GcpSecurityOperationsConnector,
+)
 from discovery.siem.splunk.connector import VENDOR as SPLUNK_VENDOR
 from discovery.siem.splunk.connector import SplunkConnector
 from job_executors.discovery_scan import DiscoveryConnectorFactory
@@ -60,6 +66,7 @@ def source_connectors() -> dict[str, DiscoveryConnectorFactory]:
         GCP_VERTEX_VENDOR: VertexAgentEngineConnector,
         SPLUNK_VENDOR: SplunkConnector,
         ELASTIC_SECURITY_VENDOR: ElasticSecurityConnector,
+        GCP_SECURITY_OPERATIONS_VENDOR: GcpSecurityOperationsConnector,
         CLOUDWATCH_LOGS_VENDOR: CloudWatchLogsConnector,
         GCP_NETWORK_VENDOR: GcpNetworkConnector,
     }
@@ -81,6 +88,8 @@ __all__ = [
     "SPLUNK_VENDOR",
     "ElasticSecurityConnector",
     "ELASTIC_SECURITY_VENDOR",
+    "GcpSecurityOperationsConnector",
+    "GCP_SECURITY_OPERATIONS_VENDOR",
     "CloudWatchLogsConnector",
     "CLOUDWATCH_LOGS_VENDOR",
     "GcpNetworkConnector",
