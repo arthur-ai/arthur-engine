@@ -1,6 +1,6 @@
 # Arthur endpoint AI discovery on Compute Engine: VM Manager installs osquery and a systemd
-# timer on every VM labelled arthur-ai-discovery=enabled, and the collector it runs publishes an
-# AI inventory to the VM's guest attributes, where Arthur's gcp_compute_engine discovery source
+# timer on every Debian and Ubuntu VM in the fleet, and the collector it runs publishes an AI
+# inventory to the VM's guest attributes, where Arthur's gcp_compute_engine discovery source
 # reads it. The runbook is docs/mdm/gce.md in this tree.
 #
 # THE POLICY IS deploy/arthur-ai-discovery.os-policy.yaml, read here rather than restated: the
@@ -14,7 +14,8 @@ locals {
 
   description = "Arthur endpoint AI discovery: osquery and a collector timer reporting to guest attributes"
 
-  labels = var.label == null ? try(tomap(local.policy.instanceFilter.inclusionLabels[0].labels), null) : tomap({ (var.label.key) = var.label.value })
+  # Null is the fleet: the policy targets every VM, and only a pilot narrows it to a label.
+  labels = var.label == null ? null : tomap({ (var.label.key) = var.label.value })
 
   # The policy names each file by its URL in this tree at COMMIT, so the path after the prefix
   # is the path beside this module.
@@ -74,7 +75,7 @@ locals {
         )]
       }]
     }]
-    instanceFilter = { inclusionLabels = [{ labels = try(local.policy.instanceFilter.inclusionLabels[0].labels, null) }] }
+    instanceFilter = { all = try(local.policy.instanceFilter.all, null) }
     rollout = {
       disruptionBudget = { percent = try(local.policy.rollout.disruptionBudget.percent, null) }
       minWaitDuration  = try(local.policy.rollout.minWaitDuration, null)
@@ -132,8 +133,8 @@ resource "google_project_service" "osconfig" {
 # Project-wide, as the default for each VM that does not set its own; a VM's own value wins, key
 # by key. The agent acts on policies only with enable-osconfig, so a VM's own FALSE there gets
 # nothing installed. Without enable-guest-attributes the policy installs and the timer runs, but
-# the reporter's writes are refused with 403. The policy still reaches only the label, and it
-# cannot set either key: it runs inside the VM.
+# the reporter's writes are refused with 403. The policy cannot set either key: it runs inside
+# the VM. Arthur's source counts a VM with either off, by name, so turning one off is visible.
 #
 # CREATING A KEY THE PROJECT ALREADY HOLDS FAILS THE APPLY, `key ... already present`, and
 # Google's VM Manager setup puts enable-osconfig in project metadata. Leave such a key out of

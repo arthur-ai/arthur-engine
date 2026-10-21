@@ -55,16 +55,13 @@ work="$(mktemp -d "${TMPDIR:-/var/tmp}/collector-test.XXXXXX")" || exit 1
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 out="$work/arthur"
 
-# A LEAKED WORK DIRECTORY IS A DISK THAT FILLS ON A SCHEDULE. collect.sh extracts its
-# payload to a private temp directory and removes it from a trap. `exec`ing the runner
-# there would replace the shell and skip the trap, which on an Ongoing schedule leaves one
-# copy of the payload behind per run and shows up months later as a full volume. Snapshot
-# rather than assert-none: another process's run is not this test's business.
-# The prefix is the vendored bundler's, not ours: tools/bundle.py mktemps
-# "${TMPDIR}/ai-discovery.XXXXXX". Searching for anything else makes this assertion
-# unfalsifiable -- it passes because it looks for a directory nothing creates.
-leaked() { ls -d "${TMPDIR:-/var/tmp}"/ai-discovery.* /var/tmp/ai-discovery.* 2>/dev/null | sort -u; }
-before="$(leaked)"
+# A LEAKED WORK DIRECTORY IS A DISK THAT FILLS ON A SCHEDULE. Every run writes to TMPDIR --
+# the bundle's extraction directory, the runner's working directory, and an empty
+# osquery-<n> directory from each osqueryi it starts -- and must remove all of it, failed
+# runs included. A TMPDIR of the test's own makes that an assertion that nothing is left,
+# rather than a search for names someone remembered to list.
+export TMPDIR="$work/tmp"
+mkdir "$TMPDIR" || exit 1
 
 echo "== a clean run =========================================================="
 ARTHUR_OUT_DIR="$out" "$COLLECT" > "$work/stdout" 2> "$work/stderr"
@@ -289,12 +286,12 @@ grep -q "osqueryi did not answer" "$work/stderr4" || bad "discover's own reason 
 [ -z "$(ls -d "$out"/.scan.* "$fresh"/.scan.* 2>/dev/null)" ] || bad "a staging directory was left in the output directory"
 [ "$fail" -eq "$before_phase" ] && note "failed JSON check: exit $status, both attribute values untouched, no staging left"
 
-echo "== the payload directory is not left on disk ============================="
-after="$(leaked)"
-if [ "$before" = "$after" ]; then
-  note "no ai-discovery.* work directory left behind by three runs"
+echo "== nothing is left in TMPDIR ============================================="
+left="$(ls -A "$TMPDIR")"
+if [ -z "$left" ]; then
+  note "every run above, failed ones included, left nothing in TMPDIR"
 else
-  bad "the extraction directory leaked: $(echo "$after" | comm -13 <(echo "$before") - | tr '\n' ' ')"
+  bad "left in TMPDIR: $(echo "$left" | tr '\n' ' ')"
 fi
 
 [ "$fail" -eq 0 ] && echo "collector: PASS" || echo "collector: FAIL"

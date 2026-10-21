@@ -29,36 +29,6 @@ from discovery.endpoint.envelope import (
     read,
 )
 
-# `loc` and `ver` mean different things per kind, and two of those meanings are not what
-# `AgentObservations` names. Measured on a real Mac: aider matched through `images`, whose
-# `loc` is the image digest -- reported as `install_path`, that is a filesystem path that
-# exists nowhere. `container` is worse in the other column: its `ver` is the container
-# STATE ("running"), so a version field would read "running" as though it were one.
-#
-# Listed as what DOES carry each meaning rather than what does not, so a kind added
-# upstream is absent until someone says otherwise rather than silently mis-mapped. `proc` is
-# absent on purpose: its `loc` is an app bundle, an agent binary or the node interpreter
-# running one, depending on which query emitted it.
-PATH_IN_LOC = frozenset(
-    {
-        "app",
-        "brew",
-        "daemon",
-        "ext",
-        "nmh",
-        "npm",
-        "file",
-        "vscodeext",
-        "port",
-        "desktop",
-        "unit",
-        "jbplugin",
-    },
-)
-VERSION_IN_VER = frozenset(
-    {"app", "brew", "ext", "npm", "vscodeext", "deb", "rpm", "jbplugin"},
-)
-
 
 class UnreadableReason(str, Enum):
     """Why a device's records could not be read, as the run's device coverage counts it.
@@ -273,10 +243,10 @@ def _source_for(
             resource_id=finding.primary_id,
         ),
         observations=AgentObservations(
-            install_path=(
-                finding.install_path if finding.primary_kind in PATH_IN_LOC else None
-            ),
-            version=finding.version if finding.primary_kind in VERSION_IN_VER else None,
+            # Already only where the row's kind carries one: an image's `loc` is a digest
+            # and a container's `ver` its state, and upstream's matcher says which is which.
+            install_path=finding.install_path,
+            version=finding.version,
             permissions=list(finding.permissions),
             classification=finding.classification or None,
             host_name=device.name,
