@@ -1,6 +1,6 @@
 [project]
 name = "ml-engine"
-version = "2.1.1029"
+version = "2.1.1030"
 description = ""
 authors = [{ name = "Arthur", email = "engineering@arthur.ai" }]
 license = "MIT"
@@ -26,6 +26,7 @@ dependencies = [
   # Ranged, not pinned: boto3 releases in lockstep with botocore, which aiobotocore (under
   # s3fs) caps, so the resolver picks the boto3 that matches it.
   "boto3>=1.43,<2",
+  "regex==2026.9.29",
   "simple-settings==1.2.0",
   "httpx==0.28.1",
   "duckdb==1.5.6",

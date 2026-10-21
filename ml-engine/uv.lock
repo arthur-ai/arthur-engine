@@ -8,7 +8,7 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "2026-10-17T22:37:55.213930912Z"
+exclude-newer = "2026-10-17T23:47:01.252807212Z"
 exclude-newer-span = "P3D"
 
 [options.exclude-newer-package]
@@ -1524,7 +1524,7 @@ wheels = [
 
 [[package]]
 name = "ml-engine"
-version = "2.1.1029"
+version = "2.1.1030"
 source = { editable = "." }
 dependencies = [
     { name = "adlfs" },
@@ -1553,6 +1553,7 @@ dependencies = [
     { name = "pymysql" },
     { name = "pyodbc" },
     { name = "pyyaml" },
+    { name = "regex" },
     { name = "requests" },
     { name = "s3fs" },
     { name = "simple-settings" },
@@ -1609,6 +1610,7 @@ requires-dist = [
     { name = "pymysql", specifier = "==1.2.3" },
     { name = "pyodbc", specifier = "==5.3.0" },
     { name = "pyyaml", specifier = "==6.0.3" },
+    { name = "regex", specifier = "==2026.9.29" },
     { name = "requests", specifier = "==2.34.2" },
     { name = "s3fs", specifier = "==2026.9.0" },
     { name = "simple-settings", specifier = "==1.2.0" },
