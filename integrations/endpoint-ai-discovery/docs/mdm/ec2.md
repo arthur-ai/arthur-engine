@@ -280,10 +280,14 @@ failing keeps publishing its last good scan.
 
 **Every instance counted is also listed**, by instance id, `Name` tag, `account/region` and
 reason, with the time on its status line when it has one, under
-`device_coverage.unreadable_devices` on the run's outcome, up to 1,000 per run with the rest
-counted in `unreadable_devices_truncated`. The instances a scan cannot see are where unmanaged
-AI sits, so that list is the finding to work through, and an instance whose owner stopped the
-SSM Agent is in it by name as `not-ssm-managed`. Identifiers only: no inventory value travels.
+`device_coverage.unreadable_devices`, up to 1,000 per run with the rest counted in
+`unreadable_devices_truncated`. The instances a scan cannot see are where unmanaged AI sits,
+so that list is the finding to work through, and an instance whose owner stopped the SSM Agent
+is in it by name. Identifiers only: no inventory value travels.
+
+The list is in the job log's `discovery_scan_outcome` line and in a standalone engine's
+scan outcome event. The Platform's discovery run shows the counts by reason, and shows the
+list too once its run store accepts it.
 
 ## 08 · Rollback — terminal
 
