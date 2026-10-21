@@ -1,15 +1,12 @@
-"""Wiz connector: the token, the one query, its errors, and the records.
+"""Wiz connector: the token, the two queries, their errors, and the records.
 
 A fake session stands in for Wiz's token endpoint and a tenant's GraphQL endpoint. Its
-bodies are shaped on PUBLIC sources, NOT captured from a live tenant: Wiz's hosts are
-not reachable from where these were written. The token exchange and the GraphQL error
+bodies are NOT captured from a live tenant. The token exchange and the GraphQL error
 codes follow Wiz's Backstage plugin (wiz-sec-public/backstage-plugin-wiz, `WizAuth.ts`
-and `types/index.ts`); the `cloudResources` node follows the Cortex XSOAR integration's
-`PULL_CLOUD_RESOURCES_NATIVE_QUERY` (demisto/content, Packs/Wiz); the `graphSearch`
-node follows jtb75-org/wiz-sample-reports `sensor-versions/get-data.py`. The
-`properties` keys (`region`, `cloudPlatform`, `updatedAt`, `creationDate`,
-`subscriptionExternalId`), the AI entity type names and the AI technology names are the
-connector's assumptions, unverified; the pinned bodies below are named for that.
+and `types/index.ts`); the `cloudResourcesV2` and `hostedTechnologies` nodes carry only
+fields of `CloudResourceV2`, `HostedTechnology` and `HostedTechnologyResource` in Wiz's
+introspected schema (ArcavenAE/stave, `spec/wiz-schema.graphql`). The technology names
+are the engine's guesses at Wiz's spellings.
 """
 
 import json
@@ -30,7 +27,7 @@ from discovery import source_connectors
 from discovery.cloud.wiz import connector as wiz
 from discovery.cloud.wiz.client import (
     CLOUD_RESOURCES_QUERY,
-    GRAPH_SEARCH_QUERY,
+    HOSTED_TECHNOLOGIES_QUERY,
     PAGE_SIZE,
     TOKEN_URLS,
     WizClient,
@@ -47,8 +44,8 @@ from discovery.cloud.wiz.connector import (
     GLOBAL_SCOPE,
     VENDOR,
     WORKLOAD_INVENTORY_SCOPE,
-    WORKLOAD_TECHNOLOGIES,
     WizConnector,
+    is_agent_framework,
     settings_from,
 )
 from discovery.retry import MAX_ATTEMPTS
@@ -99,36 +96,31 @@ def node(
     name: Optional[str] = "support-agent",
     entity_type: str = "AI_AGENT",
     account: Optional[str] = AWS_ACCOUNT,
-    subscription_id: Optional[str] = "6f3c1a2e-sub-wiz-internal",
-    properties: Any = "default",
+    platform: Optional[str] = "AWS",
+    region: Optional[str] = "us-east-1",
+    region_location: Optional[str] = None,
     last_seen: Optional[str] = LAST_SEEN,
+    updated: Optional[str] = UPDATED,
+    first_seen: Optional[str] = CREATED,
+    created: Optional[str] = CREATED,
 ) -> dict[str, Any]:
-    """A `cloudResources` node as XSOAR's query selects it."""
+    """A `cloudResourcesV2` node as the connector's query selects it."""
     if provider_id == "default":
         provider_id = f"arn:aws:bedrock:us-east-1:{AWS_ACCOUNT}:agent/{gid.upper()}"
-    if properties == "default":
-        properties = {
-            "cloudPlatform": "AWS",
-            "region": "us-east-1",
-            "nativeType": "bedrock#agent",
-            "creationDate": CREATED,
-            "tags": {"owner": "secret-ish-tag-value"},
-        }
     return {
         "id": gid,
         "name": name,
         "type": entity_type,
-        "subscriptionId": subscription_id,
-        "subscriptionExternalId": account,
-        "graphEntity": {
-            "id": gid,
-            "providerUniqueId": provider_id,
-            "name": name,
-            "type": entity_type,
-            "properties": properties,
-            "firstSeen": CREATED,
-            "lastSeen": last_seen,
-        },
+        "nativeType": "bedrock#agent",
+        "providerUniqueId": provider_id,
+        "cloudPlatform": platform,
+        "region": region,
+        "regionLocation": region_location,
+        "createdAt": created,
+        "updatedAt": updated,
+        "firstSeen": first_seen,
+        "lastSeen": last_seen,
+        "cloudAccount": None if account is None else {"externalId": account},
     }
 
 
@@ -140,7 +132,7 @@ def page_body(
 ) -> dict[str, Any]:
     return {
         "data": {
-            "cloudResources": {
+            "cloudResourcesV2": {
                 "nodes": list(nodes),
                 "pageInfo": {"hasNextPage": has_next, "endCursor": cursor},
             },
@@ -149,7 +141,7 @@ def page_body(
 
 
 def graphql_error(code: Optional[str], message: str = FREE_TEXT) -> dict[str, Any]:
-    error: dict[str, Any] = {"message": message, "path": ["cloudResources"]}
+    error: dict[str, Any] = {"message": message, "path": ["cloudResourcesV2"]}
     if code is not None:
         error["extensions"] = {"code": code}
     return {"errors": [error], "data": None}
@@ -163,27 +155,6 @@ IMAGE_ID = (
 )
 
 
-def entity(
-    gid: str,
-    entity_type: str,
-    *,
-    name: Optional[str] = None,
-    provider_id: Optional[str] = None,
-    properties: Any = None,
-    last_seen: Optional[str] = None,
-) -> dict[str, Any]:
-    """A `graphSearch` path entity as the query selects it."""
-    return {
-        "id": gid,
-        "name": name,
-        "type": entity_type,
-        "providerUniqueId": provider_id,
-        "properties": properties if properties is not None else {},
-        "firstSeen": CREATED,
-        "lastSeen": last_seen,
-    }
-
-
 def sighting(
     tech: str = "LangChain",
     *,
@@ -195,41 +166,28 @@ def sighting(
     platform: str = "AWS",
     region: Optional[str] = "us-east-1",
     version: Optional[str] = "0.3.7",
-    tech_last_seen: Optional[str] = LAST_SEEN,
-    workload_last_seen: Optional[str] = UPDATED,
+    updated: Optional[str] = LAST_SEEN,
+    first_seen: Optional[str] = CREATED,
 ) -> dict[str, Any]:
-    """One HOSTED_TECHNOLOGY and the workload that RUNS it, as one `graphSearch` node."""
-    workload_properties: dict[str, Any] = {
-        "cloudPlatform": platform,
-        "externalId": "i-0abc123def4567890",
-        "nativeType": "virtualMachine",
-        "tags": {"owner": "secret-ish-tag-value"},
-    }
-    if account is not None:
-        workload_properties["subscriptionExternalId"] = account
-    if region is not None:
-        workload_properties["region"] = region
-    tech_properties: dict[str, Any] = {"techName": tech, "techId": "90210"}
-    if version is not None:
-        tech_properties["version"] = version
+    """One `hostedTechnologies` node: a technology and the resource it was found on."""
     return {
-        "entities": [
-            entity(
-                f"wiz-tech-{tech}-{workload_gid}",
-                "HOSTED_TECHNOLOGY",
-                name=tech,
-                properties=tech_properties,
-                last_seen=tech_last_seen,
-            ),
-            entity(
-                workload_gid,
-                workload_type,
-                name=workload_name,
-                provider_id=provider_id,
-                properties=workload_properties,
-                last_seen=workload_last_seen,
-            ),
-        ],
+        "id": f"wiz-tech-{tech}-{workload_gid}",
+        "name": tech,
+        "firstSeen": first_seen,
+        "updatedAt": updated,
+        "versionDetails": None if version is None else {"version": version},
+        "technology": {"name": tech},
+        "resource": {
+            "id": workload_gid,
+            "name": workload_name,
+            "type": workload_type,
+            "nativeType": "virtualMachine",
+            "cloudPlatform": platform,
+            "region": region,
+            "regionLocation": None,
+            "cloudAccount": None if account is None else {"externalId": account},
+            "graphEntity": {"providerUniqueId": provider_id},
+        },
     }
 
 
@@ -241,7 +199,7 @@ def graph_body(
 ) -> dict[str, Any]:
     return {
         "data": {
-            "graphSearch": {
+            "hostedTechnologies": {
                 "nodes": list(nodes),
                 "pageInfo": {"hasNextPage": has_next, "endCursor": cursor},
             },
@@ -252,14 +210,13 @@ def graph_body(
 EMPTY_GRAPH = graph_body([])
 
 
-# One page and one token answer, shaped field for field on the public sources. Not
-# captured live: see the module docstring.
+# One page and one token answer. Not captured live: see the module docstring.
 TOKEN_SHAPED_LIKE_WIZ_AUTH_TS: dict[str, Any] = {
     "access_token": ACCESS_TOKEN,
     "expires_in": 86400,
     "token_type": "Bearer",
 }
-PAGE_SHAPED_LIKE_XSOAR_CLOUD_RESOURCES_QUERY: dict[str, Any] = page_body(
+PAGE_SHAPED_LIKE_CLOUD_RESOURCE_V2: dict[str, Any] = page_body(
     [
         node("wiz-aws-agent"),
         node(
@@ -271,11 +228,9 @@ PAGE_SHAPED_LIKE_XSOAR_CLOUD_RESOURCES_QUERY: dict[str, Any] = page_body(
             ),
             name="invoice-agent",
             account=AZURE_SUBSCRIPTION,
-            properties={
-                "cloudPlatform": "Azure",
-                "location": "eastus2",
-                "updatedAt": UPDATED,
-            },
+            platform="Azure",
+            region="eastus2",
+            last_seen=None,
         ),
         node(
             "wiz-gcp-service",
@@ -285,7 +240,9 @@ PAGE_SHAPED_LIKE_XSOAR_CLOUD_RESOURCES_QUERY: dict[str, Any] = page_body(
             name="",
             entity_type="AI_SERVICE",
             account=GCP_PROJECT,
-            properties=json.dumps({"cloudPlatform": "GCP", "region": "us-central1"}),
+            platform="GCP",
+            region=None,
+            region_location="us-central1",
         ),
     ],
 )
@@ -322,7 +279,7 @@ Route = Any  # a response, an exception, a list consumed in order, or a callable
 
 class FakeSession:
     """Routes POSTs to a token URL to `token`, and to the GraphQL endpoint to `graphql`
-    for `cloudResources` or `workloads` for `graphSearch`. Anything else is a call the
+    for `cloudResourcesV2` or `workloads` for `hostedTechnologies`. Anything else is a call the
     connector must not make."""
 
     def __init__(
@@ -332,9 +289,7 @@ class FakeSession:
         workloads: Route = None,
     ) -> None:
         self.graphql: Route = (
-            ok(PAGE_SHAPED_LIKE_XSOAR_CLOUD_RESOURCES_QUERY)
-            if graphql is None
-            else graphql
+            ok(PAGE_SHAPED_LIKE_CLOUD_RESOURCE_V2) if graphql is None else graphql
         )
         self.token: Route = (
             ok(TOKEN_SHAPED_LIKE_WIZ_AUTH_TS) if token is None else token
@@ -368,7 +323,7 @@ class FakeSession:
         return [c for c in self.calls if c["url"] in TOKEN_URLS.values()]
 
     def graphql_calls(self) -> list[dict[str, Any]]:
-        """The `cloudResources` calls."""
+        """The `cloudResourcesV2` calls."""
         return [
             c
             for c in self.calls
@@ -381,7 +336,7 @@ class FakeSession:
 
 def _is_graph_search(kw: dict[str, Any]) -> bool:
     body = kw.get("json")
-    return isinstance(body, dict) and "graphSearch(" in str(body.get("query"))
+    return isinstance(body, dict) and "hostedTechnologies(" in str(body.get("query"))
 
 
 def connector_with(
@@ -553,12 +508,12 @@ def test_the_default_entity_types_are_sent_when_entity_types_is_blank() -> None:
     session = FakeSession()
     scan(session, fields={**FIELDS, "entity_types": "  "})
     variables = session.graphql_calls()[0]["json"]["variables"]
-    assert variables["filterBy"] == {"type": list(DEFAULT_ENTITY_TYPES)}
+    assert variables["filterBy"] == {"type": {"equals": list(DEFAULT_ENTITY_TYPES)}}
     assert variables["first"] == PAGE_SIZE == 500
     assert "after" not in variables
 
 
-def test_the_default_entity_types_are_the_documented_unverified_pair() -> None:
+def test_the_default_entity_types_are_wizs_agent_and_service_types() -> None:
     assert DEFAULT_ENTITY_TYPES == ("AI_AGENT", "AI_SERVICE")
 
 
@@ -571,7 +526,7 @@ def test_entity_types_overrides_the_default_trimmed_upper_cased_and_deduplicated
         fields={**FIELDS, "entity_types": " ai_agent, SERVERLESS ,AI_AGENT,, "},
     )
     variables = session.graphql_calls()[0]["json"]["variables"]
-    assert variables["filterBy"] == {"type": ["AI_AGENT", "SERVERLESS"]}
+    assert variables["filterBy"] == {"type": {"equals": ["AI_AGENT", "SERVERLESS"]}}
 
 
 def test_the_lookback_is_not_applied() -> None:
@@ -665,7 +620,6 @@ def test_a_node_without_any_id_is_skipped_with_a_warning(
 ) -> None:
     broken = node("x")
     broken["id"] = None
-    broken["graphEntity"]["id"] = ""
     with caplog.at_level(logging.WARNING):
         records = scan(FakeSession(ok(page_body([broken, node("a")]))))
     assert len(records) == 1
@@ -693,15 +647,13 @@ def test_a_record_carries_cloud_provenance_with_account_region_and_provider_id()
 
 def test_the_identity_is_the_providers_own_id_verbatim() -> None:
     """Every pinned resource is keyed on its `providerUniqueId` exactly as Wiz sent it:
-    not lower-cased, not prefixed, never Wiz's `graphEntity.id`."""
-    nodes = PAGE_SHAPED_LIKE_XSOAR_CLOUD_RESOURCES_QUERY["data"]["cloudResources"][
-        "nodes"
-    ]
+    not lower-cased, not prefixed, never Wiz's `id`."""
+    nodes = PAGE_SHAPED_LIKE_CLOUD_RESOURCE_V2["data"]["cloudResourcesV2"]["nodes"]
     records = scan(FakeSession())
-    expected = [n["graphEntity"]["providerUniqueId"] for n in nodes]
+    expected = [n["providerUniqueId"] for n in nodes]
     assert ids(records) == expected
     assert [r.creation_source.address.resource_id for r in records] == expected
-    wiz_ids = {n["graphEntity"]["id"] for n in nodes}
+    wiz_ids = {n["id"] for n in nodes}
     for record in records:
         assert record.external_id not in wiz_ids
         assert not record.external_id.startswith("wiz:")
@@ -729,36 +681,65 @@ def test_a_resource_without_a_provider_id_is_skipped_naming_its_entity_type(
     assert "secret-ish" not in caplog.text
 
 
-def test_the_region_falls_back_to_location() -> None:
-    record = one(
-        node(
-            "a",
-            properties={"cloudPlatform": "Azure", "location": "westeurope"},
-        ),
-    )
+def test_the_region_falls_back_to_region_location() -> None:
+    record = one(node("a", region=None, region_location="westeurope"))
     assert record.creation_source.address.scope == "westeurope"
+    assert one(
+        node("b", region_location="elsewhere"),
+    ).creation_source.address.scope == ("us-east-1")
 
 
-@pytest.mark.parametrize("properties", [{}, None, "not json", {"region": "  "}])
-def test_a_resource_without_a_region_is_scoped_global(properties: Any) -> None:
-    record = one(node("a", properties=properties))
+@pytest.mark.parametrize("region", [None, "", "  "])
+def test_a_resource_without_a_region_is_scoped_global(region: Optional[str]) -> None:
+    record = one(node("a", region=region))
     assert record.creation_source.address.scope == GLOBAL_SCOPE == "global"
 
 
 def test_an_azure_subscription_is_lower_cased_and_others_are_kept_verbatim() -> None:
-    azure = one(
-        node("a", account=AZURE_SUBSCRIPTION, properties={"cloudPlatform": "Azure"}),
-    )
+    azure = one(node("a", account=AZURE_SUBSCRIPTION, platform="Azure"))
     assert azure.creation_source.address.instance == AZURE_SUBSCRIPTION.lower()
-    other = one(
-        node("b", account="MixedCase-Project", properties={"cloudPlatform": "GCP"}),
-    )
+    other = one(node("b", account="MixedCase-Project", platform="GCP"))
     assert other.creation_source.address.instance == "MixedCase-Project"
 
 
-def test_the_account_falls_back_to_wizs_subscription_id() -> None:
-    record = one(node("a", account=None, subscription_id="wiz-sub-1"))
-    assert record.creation_source.address.instance == "wiz-sub-1"
+def test_a_resource_maps_its_typed_cloud_resource_v2_fields() -> None:
+    record = one(
+        node(
+            "typed",
+            provider_id="arn:aws:bedrock:eu-west-1:210987654321:agent/TYPED",
+            name="typed-agent",
+            account="210987654321",
+            platform="AWS",
+            region="eu-west-1",
+            region_location="Ireland",
+            last_seen=None,
+            updated=UPDATED,
+        ),
+    )
+    assert record.external_id == "arn:aws:bedrock:eu-west-1:210987654321:agent/TYPED"
+    assert record.name == "typed-agent"
+    assert record.runs_on is RunsOn.AWS
+    assert record.last_seen == utc(UPDATED)
+    address = record.creation_source.address
+    assert address.instance == "210987654321"
+    assert address.scope == "eu-west-1"
+    assert address.resource_id == record.external_id
+
+
+def test_the_resource_query_reads_typed_fields_not_properties() -> None:
+    for name in (
+        "cloudResourcesV2(",
+        "providerUniqueId",
+        "regionLocation",
+        "cloudPlatform",
+        "nativeType",
+        "lastSeen",
+        "cloudAccount {",
+    ):
+        assert name in CLOUD_RESOURCES_QUERY
+    assert "properties" not in CLOUD_RESOURCES_QUERY
+    assert "graphEntity" not in CLOUD_RESOURCES_QUERY
+    assert "$filterBy: CloudResourceV2Filters" in CLOUD_RESOURCES_QUERY
 
 
 def test_a_resource_with_no_account_is_skipped_naming_only_its_id(
@@ -767,7 +748,7 @@ def test_a_resource_with_no_account_is_skipped_naming_only_its_id(
     with caplog.at_level(logging.WARNING):
         records = scan(
             FakeSession(
-                ok(page_body([node("orphan", account=None, subscription_id=None)])),
+                ok(page_body([node("orphan", account=None)])),
             ),
         )
     assert records == []
@@ -789,8 +770,7 @@ def test_runs_on_is_set_only_for_clouds_runs_on_has(
     platform: Optional[str],
     runs_on: Optional[RunsOn],
 ) -> None:
-    properties = {"region": "r1"} if platform is None else {"cloudPlatform": platform}
-    assert one(node("a", properties=properties)).runs_on is runs_on
+    assert one(node("a", platform=platform)).runs_on is runs_on
 
 
 def test_a_record_leaves_service_names_models_and_platform_unset() -> None:
@@ -808,22 +788,20 @@ def test_a_resource_without_a_name_is_named_by_its_id() -> None:
 
 
 @pytest.mark.parametrize(
-    "last_seen, properties, expected",
+    "fields, expected",
     [
-        (LAST_SEEN, {"updatedAt": UPDATED, "creationDate": CREATED}, LAST_SEEN),
-        (None, {"updatedAt": UPDATED, "creationDate": CREATED}, UPDATED),
-        (None, {"creationDate": CREATED}, CREATED),
-        ("not a time", {"creationDate": CREATED}, CREATED),
+        ({}, LAST_SEEN),
+        ({"last_seen": None}, UPDATED),
+        ({"last_seen": None, "updated": None, "first_seen": LAST_SEEN}, LAST_SEEN),
+        ({"last_seen": None, "updated": None, "first_seen": None}, CREATED),
+        ({"last_seen": "not a time", "updated": None, "first_seen": None}, CREATED),
     ],
 )
-def test_last_seen_is_wizs_last_seen_else_update_else_creation(
-    last_seen: Optional[str],
-    properties: dict[str, Any],
+def test_last_seen_is_wizs_last_seen_else_update_else_first_seen_else_creation(
+    fields: dict[str, Any],
     expected: str,
 ) -> None:
-    assert one(node("a", last_seen=last_seen, properties=properties)).last_seen == utc(
-        expected,
-    )
+    assert one(node("a", **fields)).last_seen == utc(expected)
 
 
 def test_a_naive_timestamp_is_read_as_utc() -> None:
@@ -834,7 +812,13 @@ def test_a_naive_timestamp_is_read_as_utc() -> None:
 def test_a_resource_with_no_timestamps_is_skipped_naming_only_its_id(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    undated = node("undated-1", last_seen=None, properties={"region": "us-east-1"})
+    undated = node(
+        "undated-1",
+        last_seen=None,
+        updated=None,
+        first_seen=None,
+        created=None,
+    )
     with caplog.at_level(logging.WARNING):
         records = scan(FakeSession(ok(page_body([undated, node("a")]))))
     assert len(records) == 1
@@ -1198,9 +1182,10 @@ def test_a_token_answer_without_a_token_is_wizs_error(token_response: Any) -> No
     [
         FakeResponse(200, text_body=True, headers={"Content-Type": "text/html"}),
         ok({"data": None}),
-        ok({"data": {"cloudResources": None}}),
-        ok({"data": {"cloudResources": {"nodes": "x", "pageInfo": {}}}}),
-        ok({"data": {"cloudResources": {"nodes": []}}}),
+        ok({"data": {"cloudResources": {"nodes": [], "pageInfo": {}}}}),
+        ok({"data": {"cloudResourcesV2": None}}),
+        ok({"data": {"cloudResourcesV2": {"nodes": "x", "pageInfo": {}}}}),
+        ok({"data": {"cloudResourcesV2": {"nodes": []}}}),
         ok([1, 2, 3]),
     ],
 )
@@ -1319,7 +1304,7 @@ def test_no_secret_or_token_reaches_logs_records_or_errors(
         assert "secret-ish" not in text
 
 
-def test_responses_shaped_like_the_public_wiz_sources_parse() -> None:
+def test_responses_shaped_like_wizs_schema_parse() -> None:
     by_id = {r.external_id: r for r in scan(FakeSession())}
     aws = by_id[f"arn:aws:bedrock:us-east-1:{AWS_ACCOUNT}:agent/WIZ-AWS-AGENT"]
     assert aws.runs_on is RunsOn.AWS
@@ -1332,9 +1317,10 @@ def test_responses_shaped_like_the_public_wiz_sources_parse() -> None:
     assert azure.runs_on is RunsOn.AZURE
     assert azure.creation_source.address.instance == AZURE_SUBSCRIPTION.lower()
     assert azure.creation_source.address.scope == "eastus2"
+    assert azure.last_seen == utc(UPDATED)
 
     gcp = by_id[f"projects/{GCP_PROJECT}/locations/us-central1/reasoningEngines/111"]
-    # Properties arrive as a JSON string here, and the blank name falls back to the id.
+    # The blank name falls back to the id, the missing region to regionLocation.
     assert gcp.runs_on is RunsOn.GCP
     assert gcp.name == "wiz-gcp-service"
     assert gcp.creation_source.address.scope == "us-central1"
@@ -1392,7 +1378,6 @@ def test_workload_records_carry_only_native_ids_never_wizs() -> None:
         text = record.model_dump_json()
         assert "wiz-vm-1" not in text
         assert "wiz-tech-" not in text
-        assert "90210" not in text
 
 
 def test_a_workload_without_a_provider_id_is_skipped_naming_its_entity_type(
@@ -1408,33 +1393,116 @@ def test_a_workload_without_a_provider_id_is_skipped_naming_its_entity_type(
     assert "providerUniqueId" in caplog.text
 
 
-def test_a_provider_id_in_the_workloads_properties_is_used_when_the_field_is_empty() -> (
-    None
-):
-    node_ = sighting(provider_id=None)
-    node_["entities"][1]["properties"]["providerUniqueId"] = VM_ARN
-    (record,) = workload_scan(node_)
-    assert record.creation_source.address.instance == VM_ARN
-
-
-def test_technologies_not_on_the_list_are_left_out(
+def test_non_agent_ml_technologies_are_left_out(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     records = workload_scan(
-        sighting("OpenSSL"),
-        sighting("nginx"),
+        sighting("PyTorch"),
+        sighting("Jupyter Notebook"),
         sighting("langchain"),
         caplog=caplog,
     )
     assert ids(records) == [f"{VM_ARN}:langchain"]
-    assert "2 not on the engine's list" in caplog.text
+    assert "2 not an agent framework" in caplog.text
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "LangChain",
+        "Langchain",
+        "LangChain Python",
+        "langchain-core",
+        "LangGraph",
+        "llama-index",
+        "LlamaIndex",
+        "Llama Index",
+        "CrewAI",
+        "crew.ai",
+        "AutoGen",
+        "Semantic Kernel",
+        "semantic-kernel",
+        "Haystack",
+        "OpenAI Agents SDK",
+        "openai",
+        "Anthropic SDK",
+        "Claude Agent SDK",
+        "Google ADK",
+        "Agent Development Kit",
+        "Model Context Protocol",
+        "MCP Server",
+        "FastMCP",
+    ],
+)
+def test_agent_framework_names_match_whatever_their_case_spaces_and_punctuation(
+    name: str,
+) -> None:
+    assert is_agent_framework(name)
+
+
+@pytest.mark.parametrize(
+    "name",
+    ["PyTorch", "Jupyter Notebook", "TensorFlow", "scikit-learn", "MLflow", "CUDA"],
+)
+def test_ml_technologies_that_are_not_agent_frameworks_do_not_match(
+    name: str,
+) -> None:
+    assert not is_agent_framework(name)
+
+
+def test_a_differently_spelled_framework_still_makes_a_record() -> None:
+    (record,) = workload_scan(sighting("LangChain Python"))
+    assert record.external_id == f"{VM_ARN}:langchain-python"
+    assert record.creation_source.address.resource_id == "LangChain Python"
+
+
+def test_unmatched_ml_technology_names_are_logged_once_by_name_only(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    other = f"arn:aws:ec2:us-east-1:{AWS_ACCOUNT}:instance/i-0fff"
+    session = FakeSession(
+        ok(page_body([])),
+        workloads=pages(
+            graph_body(
+                [sighting("PyTorch"), sighting("Jupyter"), sighting()],
+                has_next=True,
+                cursor="g1",
+            ),
+            graph_body(
+                [sighting("PyTorch", workload_gid="wiz-vm-2", provider_id=other)],
+            ),
+        ),
+    )
+    with caplog.at_level(logging.INFO):
+        records = scan(session)
+    assert ids(records) == [f"{VM_ARN}:langchain"]
+    (message,) = [
+        r.getMessage() for r in caplog.records if "does not match" in r.getMessage()
+    ]
+    assert message.endswith("agent frameworks: Jupyter, PyTorch")
+    assert VM_ARN not in message and other not in message
+    assert "wiz-vm" not in message
+
+
+def test_the_unmatched_names_line_is_capped(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    monkeypatch.setattr(wiz, "MAX_UNMATCHED_NAMES_LOGGED", 2)
+    workload_scan(
+        sighting("Alpha"),
+        sighting("Beta"),
+        sighting("Gamma"),
+        caplog=caplog,
+    )
+    assert "frameworks: Alpha, Beta, and 1 more" in caplog.text
 
 
 def test_one_technology_on_one_workload_twice_is_one_record_dated_by_the_newest() -> (
     None
 ):
-    older = sighting(tech_last_seen=CREATED, version="0.1.0")
-    newer = sighting(tech_last_seen=LAST_SEEN, version="0.3.7")
+    older = sighting(updated=CREATED, version="0.1.0")
+    newer = sighting(updated=LAST_SEEN, version="0.3.7")
     (record,) = workload_scan(older, newer, older)
     assert record.last_seen == utc(LAST_SEEN)
     assert record.creation_source.observations.version == "0.3.7"
@@ -1449,19 +1517,13 @@ def test_two_workloads_with_one_technology_are_two_records() -> None:
     assert sorted(ids(records)) == sorted([f"{VM_ARN}:langchain", f"{other}:langchain"])
 
 
-def test_last_seen_falls_back_to_the_workload_then_skips_without_one(
+def test_last_seen_is_the_update_else_first_seen_then_skips_without_one(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    (record,) = workload_scan(sighting(tech_last_seen=None))
-    assert record.last_seen == utc(UPDATED)
-    assert (
-        workload_scan(
-            sighting(tech_last_seen=None, workload_last_seen=None),
-            caplog=caplog,
-        )
-        == []
-    )
-    assert "no lastSeen" in caplog.text
+    (record,) = workload_scan(sighting(updated=None))
+    assert record.last_seen == utc(CREATED)
+    assert workload_scan(sighting(updated=None, first_seen=None), caplog=caplog) == []
+    assert "no update or first-seen time" in caplog.text
 
 
 def test_a_workload_without_an_account_is_skipped_and_without_a_region_is_global(
@@ -1481,40 +1543,41 @@ def test_an_azure_workloads_account_is_lower_cased() -> None:
     assert record.runs_on is RunsOn.AZURE
 
 
-def test_a_path_without_a_technology_or_a_workload_is_skipped(
+def test_a_hosted_technology_without_a_name_or_a_resource_is_skipped(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    lone = sighting()
-    lone["entities"] = lone["entities"][:1]
-    assert workload_scan(lone, {"entities": None}, caplog=caplog) == []
-    assert "2 workload path(s)" in caplog.text
+    unnamed = sighting()
+    unnamed["technology"] = None
+    unnamed["name"] = ""
+    homeless = sighting()
+    homeless["resource"] = None
+    assert workload_scan(unnamed, homeless, "not a node", caplog=caplog) == []
+    assert "3 hosted technology record(s)" in caplog.text
 
 
-def test_the_workload_query_asks_for_the_listed_technologies_on_workloads() -> None:
+def test_the_workload_query_filters_on_the_ai_stack_layer_and_workload_types() -> None:
     session = FakeSession()
     scan(session)
     (call,) = session.workload_calls()
-    assert call["json"]["query"] == GRAPH_SEARCH_QUERY
+    assert call["json"]["query"] == HOSTED_TECHNOLOGIES_QUERY
     variables = call["json"]["variables"]
+    assert set(variables) == {"first", "filterBy"}
     assert variables["first"] == PAGE_SIZE
-    assert variables["projectId"] == "*"
-    assert "after" not in variables
-    query = variables["query"]
-    assert query["type"] == ["HOSTED_TECHNOLOGY"]
-    assert query["where"] == {"techName": {"EQUALS": list(WORKLOAD_TECHNOLOGIES)}}
-    (edge,) = query["relationships"]
-    assert edge["type"] == [{"type": "RUNS", "reverse": True}]
-    assert edge["with"] == {
-        "type": ["VIRTUAL_MACHINE", "CONTAINER_IMAGE", "SERVERLESS"],
-        "select": True,
+    assert variables["filterBy"] == {
+        "technologyV2": {"category": {"stackLayer": ["MACHINE_LEARNING_AND_AI"]}},
+        "resource": {
+            "type": {"equals": ["VIRTUAL_MACHINE", "CONTAINER_IMAGE", "SERVERLESS"]},
+        },
     }
+    assert "$filterBy: HostedTechnologyFilters" in HOSTED_TECHNOLOGIES_QUERY
+    assert "providerUniqueId" in HOSTED_TECHNOLOGIES_QUERY
 
 
 def test_only_the_token_and_the_two_queries_are_ever_sent() -> None:
     session = FakeSession(workloads=ok(graph_body([sighting()])))
     scan(session)
     queries = [c["json"]["query"] for c in session.calls if "json" in c]
-    assert set(queries) == {CLOUD_RESOURCES_QUERY, GRAPH_SEARCH_QUERY}
+    assert set(queries) == {CLOUD_RESOURCES_QUERY, HOSTED_TECHNOLOGIES_QUERY}
     assert len(session.token_calls()) == 1
     for query in queries:
         assert query.lstrip().startswith("query ")
@@ -1589,6 +1652,15 @@ def test_a_refused_workload_inventory_is_partial_and_keeps_the_ai_spm_records(
     assert connector.denied_scopes() == (DeniedScope(WORKLOAD_INVENTORY_SCOPE, reason),)
     assert "refused the workload inventory" in caplog.text
     assert FREE_TEXT not in caplog.text
+
+
+def test_a_missing_scope_on_the_workload_query_names_both_scopes(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    with caplog.at_level(logging.WARNING):
+        scan(FakeSession(workloads=ok(graphql_error("UNAUTHORIZED"))))
+    assert "hostedTechnologies" in caplog.text
+    assert "read:resources" in caplog.text and "read:inventory" in caplog.text
 
 
 def test_any_other_workload_failure_publishes_what_was_found_then_raises(

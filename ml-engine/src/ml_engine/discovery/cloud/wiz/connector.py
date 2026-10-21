@@ -10,37 +10,36 @@ subscription and GCP project the tenant has connected. Both are inventories, so 
 scan's lookback is not applied: an agent deployed a year ago and still there is still
 there.
 
-WHICH TYPES ARE AI AGENTS IS NOT VERIFIED. Wiz documents its Security Graph entity types
-only behind a tenant login, and none of the public sources this connector was built from
-(Wiz's Backstage plugin, the Cortex XSOAR integration) lists an AI type: XSOAR's list of
-`cloudResources` types stops at the classic infrastructure ones. `DEFAULT_ENTITY_TYPES`
-is therefore the most plausible pair of names in Wiz's naming style, not a confirmed
-one, and a source can replace it with `entity_types`. If the tenant does not know a
-default name Wiz answers BAD_USER_INPUT, and the scan fails as NOT_CONFIGURED with a
-message that says to set `entity_types` -- it never silently reports nothing.
+THE DEFAULT TYPES ARE WIZ'S OWN NAMES. `DEFAULT_ENTITY_TYPES` is AI_AGENT and AI_SERVICE,
+both members of Wiz's `GraphEntityType` enum, as are the other AI types a source can
+list instead with `entity_types`: AI_AGENT_REGISTRY, AI_DATASET, AI_DEPLOYMENT,
+AI_EXTENSION, AI_GATEWAY, AI_GUARDRAIL, AI_MODEL, AI_PIPELINE, AI_SECURITY_FINDING,
+AI_SKILL, AI_SKILL_TEMPLATE, AI_TOOL and MCP_SERVER. Only the two are listed by default
+because the others are not agents: a model, a deployment or a tool per record would
+mint a task per item. If the tenant does not know a name Wiz answers BAD_USER_INPUT,
+and the scan fails as NOT_CONFIGURED with a message that says to set `entity_types` --
+it never silently reports nothing.
 
-ONE AI-SPM RESOURCE, ONE RECORD, KEYED LIKE THE CLOUD'S OWN SOURCES. `external_id` is Wiz's
-`graphEntity.providerUniqueId` verbatim: the provider's native id (an AWS ARN, an Azure
-resource path, a GCP resource name), so an agent Wiz reports and the same agent a
-native cloud source reports carry the same identity string. The record is never keyed
-on an id Wiz mints itself (`graphEntity.id`, a scan or issue id): such an id names
+ONE AI-SPM RESOURCE, ONE RECORD, KEYED LIKE THE CLOUD'S OWN SOURCES. `external_id` is the
+`cloudResourcesV2` node's `providerUniqueId` verbatim: the provider's native id (an AWS
+ARN, an Azure resource path, a GCP resource name), so an agent Wiz reports and the same
+agent a native cloud source reports carry the same identity string. The record is never
+keyed on an id Wiz mints itself (the node's `id`, a scan or issue id): such an id names
 Wiz's view of the resource, not the resource, and would split one agent into two. A
 resource with no provider id is therefore skipped with a warning naming its Wiz entity
-type. The address is `instance` = the cloud account Wiz names
-(`subscriptionExternalId`: the AWS account id, Azure subscription id or GCP project id;
-lower-cased for Azure, whose ids are case-insensitive GUIDs; Wiz's own `subscriptionId`
-when the external id is missing), `scope` = the resource's region from its properties
-(`region`, else `location`), "global" when it has none, and `resource_id` = the
-provider id. `last_seen` is Wiz's `lastSeen`, else the resource's update or creation
-time; a resource with none is skipped with a warning naming its id, never stamped with
-the scan's time. `runs_on` is set only for AWS, Azure and GCP, which `RunsOn` already
-has.
+type. The address is `instance` = the cloud account (`cloudAccount.externalId`: the AWS
+account id, Azure subscription id or GCP project id; lower-cased for Azure, whose ids
+are case-insensitive GUIDs), `scope` = the resource's `region`, else its
+`regionLocation`, "global" when it has neither, and `resource_id` = the provider id.
+`last_seen` is Wiz's `lastSeen`, else the resource's `updatedAt`, `firstSeen` or
+`createdAt`; a resource with none is skipped with a warning naming its id, never
+stamped with the scan's time. `runs_on` is set only for AWS, Azure and GCP, which
+`RunsOn` already has.
 
 NO SERVICE NAMES, NO MODELS. Wiz sees configuration, not traces: nothing here says what
 `service.name` an agent's spans carry, and GenAI Engine's resolver claims every service
-name a record holds, so none is claimed. Nor is `llm_models` set: a resource's
-properties may name a model, but no public source says which key, and a guess would be
-wrong in a way nobody notices.
+name a record holds, so none is claimed. Nor is `llm_models` set: nothing the queries
+read names a model, and a guess would be wrong in a way nobody notices.
 
 WORKLOAD RECORDS ARE ADDRESSED LIKE A VM'S SOFTWARE. One record per (technology,
 workload), as Compute Engine and EC2 report the agents on a VM: `address.instance` is
@@ -50,25 +49,27 @@ region), and `resource_kind` "technology" with `resource_id` the technology's na
 Wiz spells it. `external_id` is `<workload providerUniqueId>:<technology key>`, the key
 being the name lower-cased with every run of other characters made one "-":
 `arn:aws:ec2:us-east-1:123456789012:instance/i-0abc:langchain`. Nothing Wiz assigns
-(an entity id, a technology id) is part of it, so a workload without a provider id is
+(a resource id, a technology id) is part of it, so a workload without a provider id is
 skipped with a warning naming its entity type, as is one without an account or a
-timestamp. `last_seen` is the technology's `lastSeen`, else the workload's, else
-either's `updatedAt`, and a technology Wiz reports twice on one workload is one record
-dated by the newer. `version` is the detected version; no model, no service name. A
-running container is not a workload here: its id changes on every restart, and its
-image carries the same technologies under an id that does not.
+timestamp. `last_seen` is the hosted technology's `updatedAt`, else its `firstSeen`,
+and a technology Wiz reports twice on one workload is one record dated by the newer.
+`version` is the detected version; no model, no service name. A running container is
+not a workload here: its id changes on every restart, and its image carries the same
+technologies under an id that does not.
 
-WHICH TECHNOLOGIES ARE AI FRAMEWORKS IS NOT VERIFIED. The shared agent catalog
-(`discovery/_vendor/agents.yaml`) lists agents and leaves out the libraries agents are
-built with, so it has nothing to match a framework against, and Wiz names its
-technologies in its own vocabulary in any case. `WORKLOAD_TECHNOLOGIES` is therefore
-the engine's list of Wiz technology names, matched exactly by the query and again,
-case-insensitively, here; a name Wiz spells differently matches nothing.
+WHICH AI TECHNOLOGIES ARE AGENT FRAMEWORKS IS MATCHED HERE. Wiz is asked only for the
+technologies it files under the MACHINE_LEARNING_AND_AI stack layer, which also holds
+technologies no agent is built from (PyTorch, Jupyter). Each name is kept when, folded
+to lower-case letters and digits, it contains one of `AGENT_FRAMEWORK_STEMS`, so
+"LangChain", "langchain-core" and "LangChain Python" all match. Wiz's exact spellings
+are not published, so the scan logs, once, the ML and AI technology names it saw and did
+not match: names only, so the first live scan shows what the list misses.
 
 THE WORKLOAD INVENTORY IS ONE PART OF THE SCAN. A service account Wiz refuses the
-`graphSearch` query (UNAUTHORIZED), or a tenant that rejects its shape
-(BAD_USER_INPUT), costs that part and not the scan: the job log says so, the run
-reports the denied scope `workload-inventory`, and the AI-SPM records are published.
+`hostedTechnologies` query (UNAUTHORIZED, for a scope it lacks), or a tenant that
+rejects its shape (BAD_USER_INPUT), costs that part and not the scan: the job log says
+so, the run reports the denied scope `workload-inventory`, and the AI-SPM records are
+published.
 
 COMPLETENESS BEFORE RECORDS. Every page of both inventories is read before the first
 batch is handed over, so the job log says how much was read -- pages, duplicates, a
@@ -80,7 +81,7 @@ still fails with Wiz's status.
 
 import logging
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import (
     Callable,
     ClassVar,
@@ -133,10 +134,9 @@ ENTITY_TYPES_FIELD = "entity_types"
 
 DEFAULT_AUTH_ENVIRONMENT = "commercial"
 
-# UNVERIFIED: see the module docstring. The Wiz Security Graph entity types listed when
-# a source leaves `entity_types` blank. Chosen to be agents and the managed AI services
-# that host them; AI_MODEL is left out on purpose, because a model is not an agent and
-# would mint a task per deployed model.
+# The Wiz Security Graph entity types listed when a source leaves `entity_types` blank:
+# agents and the managed AI services that host them. See the module docstring for the
+# other AI types a source can list.
 DEFAULT_ENTITY_TYPES: tuple[str, ...] = ("AI_AGENT", "AI_SERVICE")
 
 # The tenant's GraphQL endpoint: `https://api.<data center>.app.wiz.io/graphql`, or
@@ -152,24 +152,28 @@ ENTITY_TYPE_PATTERN = re.compile(r"[A-Z][A-Z0-9_]*")
 # Every record's address scope when the resource names no region.
 GLOBAL_SCOPE = "global"
 
-# UNVERIFIED: see the module docstring. The Wiz technology names the workload inventory
-# asks for: agent frameworks, the model providers' SDKs and MCP.
-WORKLOAD_TECHNOLOGIES: tuple[str, ...] = (
-    "LangChain",
-    "LangGraph",
-    "LlamaIndex",
-    "CrewAI",
-    "AutoGen",
-    "Semantic Kernel",
-    "Haystack",
-    "OpenAI Agents SDK",
-    "OpenAI SDK",
-    "Anthropic SDK",
-    "Claude Agent SDK",
-    "Google Agent Development Kit",
-    "Model Context Protocol",
-    "MCP Server",
+# Agent frameworks, the model providers' SDKs and MCP, as `_fold` writes them: a Wiz ML
+# and AI technology whose folded name contains one is an agent framework.
+AGENT_FRAMEWORK_STEMS: tuple[str, ...] = (
+    "langchain",
+    "langgraph",
+    "llamaindex",
+    "crewai",
+    "autogen",
+    "semantickernel",
+    "haystack",
+    "openaiagents",
+    "openai",
+    "anthropic",
+    "claudeagent",
+    "agentdevelopmentkit",
+    "googleadk",
+    "modelcontextprotocol",
+    "mcp",
 )
+
+# The most unmatched technology names one scan's log line lists.
+MAX_UNMATCHED_NAMES_LOGGED = 50
 
 # A workload record's `address.resource_kind`.
 TECHNOLOGY_RESOURCE_KIND = "technology"
@@ -186,7 +190,20 @@ WORKLOAD_REFUSED: Mapping[int, str] = {
 
 _TECHNOLOGY_KEY_SEPARATOR = re.compile(r"[^a-z0-9]+")
 
-# Wiz's `cloudPlatform` property (lower-cased) -> where the agent runs, for the clouds
+
+def _fold(name: str) -> str:
+    """A technology name in lower-case letters and digits only: "Llama-Index" and
+    "llama index" are both "llamaindex"."""
+    return _TECHNOLOGY_KEY_SEPARATOR.sub("", name.casefold())
+
+
+def is_agent_framework(name: str) -> bool:
+    """Whether a Wiz ML and AI technology name is one of `AGENT_FRAMEWORK_STEMS`."""
+    folded = _fold(name)
+    return any(stem in folded for stem in AGENT_FRAMEWORK_STEMS)
+
+
+# Wiz's `cloudPlatform` (lower-cased) -> where the agent runs, for the clouds
 # `RunsOn` already has. Every other platform leaves `runs_on` unset.
 RUNS_ON: Mapping[str, RunsOn] = {
     "aws": RunsOn.AWS,
@@ -197,7 +214,7 @@ RUNS_ON: Mapping[str, RunsOn] = {
 # Clouds whose account ids are case-insensitive, so `instance` is lower-cased for them.
 CASE_INSENSITIVE_PLATFORMS = frozenset({"azure"})
 
-# Pages of `cloudResources` read before giving up: 100 x 500 resources. A tenant past
+# Pages of either inventory read before giving up: 100 x 500 resources. A tenant past
 # that is reported as capped rather than read for ever.
 MAX_PAGES = 100
 
@@ -251,8 +268,10 @@ class _Tally:
     repeated_cursor: bool = False
     missing_cursor: bool = False
     listing_complete: bool = False
-    # Workload inventory only: technologies not on the list, and Wiz's refusal.
+    # Workload inventory only: ML and AI technologies that are not agent frameworks,
+    # their distinct names, and Wiz's refusal.
     not_listed: int = 0
+    unmatched_names: set[str] = field(default_factory=set)
     refused_status: Optional[int] = None
 
 
@@ -288,7 +307,7 @@ class WizConnector:
         logger: logging.Logger,
     ) -> Iterator[Sequence[DiscoveredAgentRecord]]:
         """Every resource of the configured types in the source's tenant, then every
-        listed technology on its workloads, in batches.
+        agent framework on its workloads, in batches.
 
         `lookback_hours` is not applied: both queries read an inventory, not a log, and
         filtering on `lastSeen` or `updatedAt` would make an agent that has not changed
@@ -307,7 +326,7 @@ class WizConnector:
             (
                 f" from {ENTITY_TYPES_FIELD}"
                 if settings.entity_types_overridden
-                else " (the engine's unverified default)"
+                else " (the engine's default)"
             ),
         )
 
@@ -375,13 +394,13 @@ class WizConnector:
         paths to it -- and is one record, dated by its newest sighting. A refusal costs
         this part only; see the module docstring.
         """
-        listed = {name.casefold() for name in WORKLOAD_TECHNOLOGIES}
 
         def take(page: WorkloadPage) -> None:
             for technology in page.technologies:
                 tally.listed += 1
-                if technology.technology_name.casefold() not in listed:
+                if not is_agent_framework(technology.technology_name):
                     tally.not_listed += 1
+                    tally.unmatched_names.add(technology.technology_name)
                     continue
                 record = workload_record_for(technology, logger)
                 if record is None:
@@ -394,11 +413,8 @@ class WizConnector:
                         continue
                 records[record.external_id] = record
 
-        def fetch(after: Optional[str]) -> WorkloadPage:
-            return client.workload_technologies_page(WORKLOAD_TECHNOLOGIES, after)
-
         try:
-            self._walk(fetch, take, tally)
+            self._walk(client.workload_technologies_page, take, tally)
         except WizError as exc:
             reason = WORKLOAD_REFUSED.get(exc.status_code or 0)
             if reason is None:
@@ -463,26 +479,27 @@ def record_for(
     provider_id = resource.provider_unique_id
     if provider_id is None:
         logger.warning(
-            "Wiz resource %s of entity type %s reported no providerUniqueId; skipped, "
-            "because a record is keyed on the provider's own resource id (an ARN or "
-            "resource path), never on an id Wiz assigns",
+            "Wiz resource %s of entity type %s (%s) reported no providerUniqueId; "
+            "skipped, because a record is keyed on the provider's own resource id (an "
+            "ARN or resource path), never on an id Wiz assigns",
             resource.graph_id,
             resource.entity_type or "(unknown)",
+            resource.native_type or "no native type",
         )
         return None
     if resource.last_seen is None:
         logger.warning(
-            "Wiz resource %s reported no lastSeen, update or creation time; skipped, "
-            "because last_seen is required and inventing one would date the record to "
-            "the scan",
+            "Wiz resource %s reported no lastSeen, update, first-seen or creation time; "
+            "skipped, because last_seen is required and inventing one would date the "
+            "record to the scan",
             resource.graph_id,
         )
         return None
     platform = (resource.cloud_platform or "").strip().lower()
-    account = resource.subscription_external_id or resource.subscription_id
+    account = resource.account
     if account is None:
         logger.warning(
-            "Wiz resource %s names no cloud account (subscriptionExternalId); skipped, "
+            "Wiz resource %s names no cloud account (cloudAccount.externalId); skipped, "
             "because the account is part of the record's address",
             resource.graph_id,
         )
@@ -515,11 +532,12 @@ def workload_record_for(
     native_id = technology.workload_provider_id
     if native_id is None:
         logger.warning(
-            "Wiz %s %s reported no providerUniqueId; its %s is skipped, because a "
-            "record is keyed on the provider's own id for the workload, never on an id "
-            "Wiz assigns",
+            "Wiz %s %s (%s) reported no providerUniqueId; its %s is skipped, because "
+            "a record is keyed on the provider's own id for the workload, never on an "
+            "id Wiz assigns",
             technology.workload_type,
             technology.workload_graph_id,
+            technology.workload_native_type or "no native type",
             technology.technology_name,
         )
         return None
@@ -530,7 +548,7 @@ def workload_record_for(
         return None
     if technology.last_seen is None:
         logger.warning(
-            "Wiz %s %s reported no lastSeen or update time for %s; skipped, because "
+            "Wiz %s %s reported no update or first-seen time for %s; skipped, because "
             "last_seen is required and inventing one would date the record to the scan",
             technology.workload_type,
             technology.workload_graph_id,
@@ -541,7 +559,7 @@ def workload_record_for(
     account = technology.account
     if account is None:
         logger.warning(
-            "Wiz %s %s names no cloud account (subscriptionExternalId); its %s is "
+            "Wiz %s %s names no cloud account (cloudAccount.externalId); its %s is "
             "skipped, because the account is part of the record's address",
             technology.workload_type,
             technology.workload_graph_id,
@@ -607,8 +625,8 @@ def _report_workloads(logger: logging.Logger, tally: _Tally, records: int) -> No
         )
         return
     logger.info(
-        "Wiz workload inventory listed %s technology sighting(s) over %s page(s); %s "
-        "record(s), %s skipped, %s not on the engine's list, %s duplicate(s)",
+        "Wiz workload inventory listed %s ML and AI technology sighting(s) over %s "
+        "page(s); %s record(s), %s skipped, %s not an agent framework, %s duplicate(s)",
         tally.listed,
         tally.pages,
         records,
@@ -616,6 +634,16 @@ def _report_workloads(logger: logging.Logger, tally: _Tally, records: int) -> No
         tally.not_listed,
         tally.duplicates,
     )
+    if tally.unmatched_names:
+        names = sorted(tally.unmatched_names, key=str.casefold)
+        shown = names[:MAX_UNMATCHED_NAMES_LOGGED]
+        more = len(names) - len(shown)
+        logger.info(
+            "Wiz ML and AI technologies seen that the engine does not match as agent "
+            "frameworks: %s%s",
+            ", ".join(shown),
+            f", and {more} more" if more else "",
+        )
     if tally.page_cap_hit:
         logger.warning(
             "Wiz workload inventory stopped at %s pages (%s sightings); technologies "
@@ -636,14 +664,14 @@ def _report_workloads(logger: logging.Logger, tally: _Tally, records: int) -> No
         )
     if tally.unaddressable:
         logger.warning(
-            "Wiz returned %s workload path(s) without a named technology and an "
-            "identified workload; skipped.",
+            "Wiz returned %s hosted technology record(s) without a name or an "
+            "identified resource; skipped.",
             tally.unaddressable,
         )
     if tally.listing_complete and tally.listed == 0:
         logger.info(
-            "Wiz reported none of the engine's AI technologies on any VM, container "
-            "image or serverless function.",
+            "Wiz reported no ML or AI technologies on any VM, container image or "
+            "serverless function.",
         )
 
 
