@@ -78,6 +78,8 @@ CACHE=""
 # Set by run_bounded. A global rather than a command substitution, because the output has
 # to be discardable without ever being parsed.
 BOUNDED_OUT=""
+# Set by run_bounded too: the child's stderr, kept on every outcome so a failure can say why.
+BOUNDED_ERR=""
 # The wait status of a killed query, and it is NOT one number. Both measured on 5.23.1:
 #
 #   docker_images alone            **0**. osqueryi installs a SIGTERM handler and shuts
@@ -89,10 +91,14 @@ BOUNDED_OUT=""
 # Either of those arms alone is enough; it is not an interaction between them. Measured
 # 2026-09-13 against test/lib/fake_docker.py's wedge state on both platforms.
 #
-# Nothing branches on this -- test/docker_states.sh prints it every run so an osquery
-# upgrade that changes it is visible rather than discovered. It matters anyway, because it
-# is what makes the escalation below load-bearing rather than defensive.
+# test/docker_states.sh prints it every run so an osquery upgrade that changes it is visible
+# rather than discovered; it is what makes the escalation below load-bearing rather than
+# defensive. It is also the only sign the bound fired: set then and emptied by every call,
+# because a child that exits 124 itself returns the same status a timeout does.
 BOUNDED_SIGNAL=""
+# own_run_dir's directory. Unset rather than emptied: one inherited from the environment is
+# somebody else's, and must neither stop this run making its own nor reach the children.
+unset RUN_DIR
 
 need_arg() {
   [ $# -ge 2 ] && [ -n "${2:-}" ] || { echo "container-scan: $1 needs a value" >&2; exit 1; }
@@ -483,11 +489,27 @@ docker_state() {
   esac
 }
 
+# ONE DIRECTORY PER RUN FOR EVERY TEMPORARY FILE, exported as TMPDIR so the children's land
+# in it too, and removed on exit and on HUP, INT or TERM. osqueryi 5.23.1 leaves an empty
+# osquery-<n> directory in TMPDIR on every exit, clean or killed -- 9,964 of them on one Mac
+# -- and a scheduler stops an overrunning scan with TERM. Call it from the executing
+# script's shell, never inside a command substitution: a trap set there guards only that
+# subshell. osqueryi keeps nothing in that directory while it runs, and a 194-character
+# TMPDIR was measured to work.
+own_run_dir() {
+  [ -z "${RUN_DIR:-}" ] || return 0
+  RUN_DIR="$(mktemp -d "${TMPDIR:-/tmp}/$1.XXXXXX")" || return 1
+  trap 'rm -rf "$RUN_DIR"' EXIT
+  trap 'exit 1' HUP INT TERM
+  export TMPDIR="$RUN_DIR"
+}
+
 # Run a command with a hard wall-clock bound, reading stdin from a file. Portable to bash
 # 3.2, which is the only bash a managed Mac has: no `wait -n`, no timeout(1), no coreutils.
 # Output lands in BOUNDED_OUT on success and is DISCARDED on a timeout; the child's stderr
 # lands in BOUNDED_ERR either way, so a non-zero exit can say why. Returns 124 when the
-# bound fired, following timeout(1)'s convention, otherwise the command's own status.
+# bound fired, following timeout(1)'s convention, otherwise the command's own status --
+# which can be 124 too, so a caller asks BOUNDED_SIGNAL, set only when the bound fired.
 #
 # THE KILL DECIDES, NOT THE CHILD, and that is the whole reason this is not a one-liner.
 # Measured against a hung daemon on osquery 5.23.1: SIGTERM stops osqueryi in 0.35s and it
@@ -499,10 +521,8 @@ docker_state() {
 run_bounded() {
   local secs="$1" input="$2"; shift 2
   local tmp err rc pid waited grace
-  BOUNDED_OUT=""; BOUNDED_ERR=""
+  BOUNDED_OUT=""; BOUNDED_ERR=""; BOUNDED_SIGNAL=""
   tmp="$(mktemp "${TMPDIR:-/tmp}/container-scan.XXXXXX")" || return 1
-  # stderr to a file of its own, not /dev/null: test/docker_states.sh saw this child exit
-  # 1 against a healthy fake (2026-10-20) and the log could say only "exit 1".
   err="$(mktemp "${TMPDIR:-/tmp}/container-scan.XXXXXX")" || { rm -f "$tmp"; return 1; }
   "$@" <"$input" >"$tmp" 2>"$err" &
   pid=$!
@@ -660,7 +680,7 @@ container_scan() {
     marker "unhealthy:${DOCKER_CODE:-000}" "$sock"; return 2; }
 
   run_bounded "$SCAN_TIMEOUT" "$DEEP" "$osqi" --docker_socket="$sock" --json; rc=$?
-  if [ "$rc" = 124 ]; then
+  if [ "$rc" = 124 ] && [ -n "$BOUNDED_SIGNAL" ]; then
     echo "container-scan: the daemon answered /_ping and then stalled on the query." >&2
     echo "  Gave up at ${SCAN_TIMEOUT}s and discarded the output. osqueryi exits 0 with an" >&2
     echo "  empty JSON array when it is interrupted, so those rows would have read as a host" >&2
@@ -750,4 +770,5 @@ while [ $# -gt 0 ]; do
   esac
 done
 
+own_run_dir container-scan || { echo "container-scan: cannot create a working directory" >&2; exit 1; }
 scan_and_cache

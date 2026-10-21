@@ -117,11 +117,11 @@ PACK="${DISCOVER_PACK:-$ROOT/dist/ai-discovery.conf}"
 # a variable does:
 #
 #   globals    DEEP ROOT TIMEOUT SCAN_TIMEOUT SOCKET MARKER CACHE DOCKER_CODE DOCKER_SECS
-#              BOUNDED_OUT BOUNDED_SIGNAL RUNTIME_NAME RUNTIME_AT
-#   functions  need_arg json_str json_row osq_run json_concat merge_sql merge_branches
-#              osqueryi_path docker_socket_path _runtime_seen other_runtime docker_probe
-#              docker_healthy docker_state run_bounded marker no_docker cache_write
-#              container_scan scan_and_cache
+#              BOUNDED_OUT BOUNDED_ERR BOUNDED_SIGNAL RUNTIME_NAME RUNTIME_AT RUN_DIR TMPDIR
+#   functions  need_arg json_str json_row osq_run json_concat pack_branches merge_sql
+#              merge_branches osqueryi_path docker_socket_path _runtime_seen other_runtime
+#              docker_probe docker_healthy docker_state own_run_dir run_bounded marker
+#              no_docker cache_write container_scan scan_and_cache
 #
 # And what THIS script defines, so the next addition to either file can check both lists:
 #
@@ -176,6 +176,9 @@ done
 
 need_osqi() {
   osqi="$(osqueryi_path)" || { echo "discover: no osqueryi found (set OSQI)" >&2; exit 1; }
+  # Here because every mode that runs osqueryi calls this first, so what osqueryi leaves
+  # behind lands in the run directory. A missing --cache answers before it, needing neither.
+  own_run_dir discover || { echo "discover: cannot create a working directory" >&2; exit 1; }
 }
 
 # --- the status line and the names line, from ONE statement over ONE document -----------
@@ -406,13 +409,22 @@ EOF
     if run_bounded 30 "$tmpdir/$name.sql" "$osqi" --docker_socket=/nonexistent/docker.sock --json; then
       printf '%s' "$BOUNDED_OUT" > "$tmpdir/$name"
     else
+      branch_rc=$?
       # A SENTINEL, because an empty output file is ambiguous: a branch that ran and matched
       # nothing writes the same zero bytes as a branch that never finished. Without this the
       # merge called both "ok", so a failed branch reported success -- found by the
       # one-broken-branch test, which is the entire reason that test exists.
       : > "$tmpdir/$name"
       : > "$tmpdir/$name.failed"
-      echo "discover: branch '$name' did not complete" >> "$tmpdir/stderr"
+      # The reason as well as the fact, as container_scan gives it: osqueryi's own stderr,
+      # unless the bound fired, when what a killed child printed is not evidence of anything.
+      if [ "$branch_rc" = 124 ] && [ -n "$BOUNDED_SIGNAL" ]; then
+        echo "discover: branch '$name' did not complete (no answer in 30s)" >> "$tmpdir/stderr"
+      else
+        echo "discover: branch '$name' did not complete (exit $branch_rc)" >> "$tmpdir/stderr"
+        [ -z "$BOUNDED_ERR" ] \
+          || printf '%s\n' "$BOUNDED_ERR" | sed 's/^/  osqueryi: /' >> "$tmpdir/stderr"
+      fi
     fi
   done
 

@@ -66,7 +66,7 @@ depends on that.
 | A failed scan: non-zero exit, **both attribute values untouched** | Either half of the trade this tree made — republishing a stale value as fresh, or deleting a good one to signal a problem |
 | A failed first-ever scan: non-zero exit, **no files at all** | A partial file left behind claiming to be a result, when `no-cache` is the true answer |
 | A scan that fails its JSON check — the shipped driver against a stub `discover` whose `--cache` cannot run — leaves both previous files untouched, passes discover's reason through, and leaves no staging directory | A failure after the scan erasing the last good inventory. Every step of a run, not only the scan, keeps the last good one |
-| No `arthur-collect.*` directory left behind | The extraction directory leaking once per run, which on an Ongoing schedule fills a volume months later |
+| Nothing left in a private `TMPDIR`, failed runs included | The extraction directory, the runner's working directory or osqueryi's own `osquery-<n>` directories leaking once per run, which on an Ongoing schedule fills a volume months later |
 
 The container branch: the macOS runner has no Docker and reports `absent`; the Ubuntu runner
 has one and reports `ok`. The 15s cold-ping bound is reached by neither. The daemon states are
