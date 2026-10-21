@@ -11,27 +11,34 @@ is a POST, as every GraphQL call is, but the documents are queries and the same 
 every time, so repeating one is as safe as repeating a GET; every call is retried on
 429 and 5xx through `discovery.retry`.
 
-WHERE THE SHAPES COME FROM. Every type, field, filter and enum value in the two queries
-is in a Wiz GraphQL schema printed from live introspection and published at
-github.com/ArcavenAE/stave (`spec/wiz-schema.graphql`): `CloudResourceV2` and its
-`CloudResourceV2Filters`, `HostedTechnology`, `HostedTechnologyResource` and
-`HostedTechnologyFilters`, `TechnologyCategoryFilters.stackLayer` and the
-`TechnologyStackLayer` value `MACHINE_LEARNING_AND_AI`. The same filter shapes are used
-by public integrations (`type: {equals: [...]}` on `cloudResourcesV2`;
-`technologyV2: {category: {stackLayer: [MACHINE_LEARNING_AND_AI]}}` and
-`resource: {type: {equals: [...]}}` on `hostedTechnologies`). The token exchange follows
-`WizAuth.ts` in Wiz's own Backstage plugin (github.com/wiz-sec-public/backstage-plugin-
-wiz), and the error codes and their statuses are that plugin's `ErrorHttpStatusMap`.
-What no public source shows is a live answer: how many rows a tenant returns, and how
-Wiz spells each agent framework's name.
+WHERE THE SHAPES COME FROM. Confirmed: every type, field, filter and enum value in the
+two queries is in a Wiz GraphQL schema printed from live introspection and published at
+github.com/ArcavenAE/stave (commit b893774, `spec/wiz-schema.graphql`): `CloudResourceV2`
+(line 15753) and its `CloudResourceV2Filters`, `HostedTechnology` (61768),
+`HostedTechnologyResource` (62019), `HostedTechnologyFilters` (61919), `Technology`
+(88164, including `isCloudService: Boolean!` at 88185), `TechnologyCategory` (88245),
+`TechnologyCategoryFilters.stackLayer` and the `TechnologyStackLayer` value
+`MACHINE_LEARNING_AND_AI`. The same filter shapes are used by public integrations
+(`type: {equals: [...]}` on `cloudResourcesV2`; `technologyV2: {category: {stackLayer:
+[MACHINE_LEARNING_AND_AI]}}` and `resource: {type: {equals: [...]}}` on
+`hostedTechnologies`, as in lindsp77/wiz-health-assessment-skill e4afe70
+`scripts/generate_deck.py:743-751`). The token exchange follows `WizAuth.ts` in Wiz's own
+Backstage plugin (github.com/wiz-sec-public/backstage-plugin-wiz), and the error codes
+and their statuses are that plugin's `ErrorHttpStatusMap`. What no public source shows
+is how Wiz spells each agent framework's name.
 
-THE NATIVE ID IS `providerUniqueId`. `CloudResourceV2` carries both `externalId` and
-`providerUniqueId`, and a hosted technology's resource carries `externalId` and its
-`graphEntity`, whose `providerUniqueId` is the same field. A record is keyed on
-`providerUniqueId` alone: it is the field Wiz's graph names the provider's unique id (an
-AWS ARN, an Azure resource path), while `externalId` takes a different form per type
-(an instance's short id where the graph has its ARN), so mixing the two would give one
-resource two identities.
+THE NATIVE ID. Confirmed from the schema: `CloudResourceV2` has `externalId: String!`
+and a nullable `providerUniqueId`; a hosted technology's resource has only
+`externalId: String!`, with `providerUniqueId` on its `graphEntity`. Confirmed from a live
+run (ArcavenAE/stave 1cfb526, `_kos/findings/finding-010-*.md:39-43`):
+`providerUniqueId` was set on 9 of 20 `cloudResourcesV2` records. Both fields are the
+cloud provider's own ids, never Wiz's (strong inference: demisto/content f92da85
+`Packs/Wiz/Integrations/Wiz/Wiz.py:2832` looks resources up by an ARN in
+`providerUniqueId`, `README.md:461`; its `classifier-WizDefend_Mapper.json:65-67` maps
+`externalId` to the "Unique (provider) cloud resource ID",
+`incidentfield-Wiz_Resource_Cloud_ID.json:28`). `externalId` can be an id unique only
+inside its account (an instance's short id where `providerUniqueId` is its ARN), so the
+connector qualifies it; see `discovery.cloud.wiz.connector.native_id`.
 
 ERRORS ARRIVE IN THE BODY. Wiz answers a GraphQL failure with an `errors[]` list whose
 `extensions.code` says what went wrong, and often with HTTP 200. The code, not the HTTP
@@ -40,13 +47,20 @@ and FORBIDDEN_IP (the tenant's IP allowlist) are 403, RATE_LIMIT_EXCEEDED is 429
 retried like one, and BAD_USER_INPUT -- a type in the filter the tenant does not know --
 is the source's `entity_types` to fix, so it is a configuration error with no status.
 Only Wiz's codes reach an exception's text, never its free-text `message`, which can
-quote what was sent.
+quote what was sent -- with one exception: a denial's list of the scopes Wiz wanted,
+which holds scope names only and is carried verbatim, rebuilt from tokens shaped like
+`read:inventory` (confirmed format: ArcavenAE/stave 6728a95,
+`_kos/findings/finding-009-*.md:29-34`, "access denied, at least one of the following is
+required: [read:all read:permission_scopes]").
 
 Authenticated with a Wiz service account: `client_id` and `client_secret` from
-Settings > Service Accounts. Least privilege is a service account with the
-`read:resources` scope, which public integrations use for cloud resources;
-`hostedTechnologies` may also need `read:inventory`, which no public source ties to it
-(see docs/standalone-discovery.md).
+Settings > Service Accounts. The AI-SPM query needs `read:resources` (confirmed: the same
+finding-010 run read `cloudResourcesV2` with a credential holding `read:resources` and
+neither `read:inventory` nor `read:all`, whose scopes finding-009:31-34 lists).
+`hostedTechnologies` is granted `read:resources` and `read:inventory`, or `read:all`
+(unconfirmed: `read:inventory` is a real scope, AxtonGrams/terraform-provider-wiz 4fee5a8
+`internal/common.go:87`, but no public source ties it to the query; a denial names the
+scope Wiz wanted, so the job log says which). See docs/standalone-discovery.md.
 """
 
 import logging
@@ -93,6 +107,7 @@ query CloudResourceSearch(
       name
       type
       nativeType
+      externalId
       providerUniqueId
       cloudPlatform
       region
@@ -129,10 +144,18 @@ query WorkloadTechnologies(
         version
       }
       technology {
+        id
         name
+        isCloudService
+        stackLayer
+        categories {
+          id
+          name
+        }
       }
       resource {
         id
+        externalId
         name
         type
         nativeType
@@ -188,8 +211,14 @@ TECHNOLOGY_TIMESTAMP_FIELDS = ("updatedAt", "firstSeen")
 _Read = TypeVar("_Read")
 
 # An identifier-shaped error code (`invalid_client`, `UNAUTHORIZED`), the only part of an
-# error body carried into an exception's text.
+# error body carried into an exception's text besides a denial's scope list.
 _ERROR_CODE = re.compile(r"^[A-Za-z0-9_.\-]{1,64}$")
+
+_REQUIRED_SCOPES = re.compile(
+    r"at least one of the following is required: \[([^\]]*)\]"
+)
+_SCOPE_NAME = re.compile(r"^[a-z][a-z0-9_]*:[a-z][a-z0-9_]*$")
+_MAX_SCOPES_QUOTED = 32
 
 
 class WizError(Exception):
@@ -242,6 +271,9 @@ class WizResource:
     graph_id: str
     # The provider's own id (an ARN, an Azure resource path), when Wiz has one.
     provider_unique_id: Optional[str]
+    # `externalId`: the provider's id in whatever form Wiz keeps it, possibly one unique
+    # only inside its account.
+    provider_external_id: Optional[str]
     name: Optional[str]
     entity_type: Optional[str]
     native_type: Optional[str]
@@ -266,7 +298,13 @@ class ResourcePage:
 class WorkloadTechnology:
     """One technology Wiz detected on one workload. Everything else is dropped."""
 
+    # `technology.name`, never the hosted technology's own `name`, which is
+    # "<technology> (<resource name>)".
     technology_name: str
+    # Wiz's catalog id for the technology, a numeric string ("2599"), for the log only.
+    technology_id: Optional[str]
+    # `technology.isCloudService`: a managed service, which is AI-SPM's to report.
+    is_cloud_service: bool
     technology_version: Optional[str]
     # Wiz's id for the workload, for warnings only: never part of a record.
     workload_graph_id: str
@@ -275,6 +313,8 @@ class WorkloadTechnology:
     # `resource.graphEntity.providerUniqueId`: the provider's own id (an ARN, a
     # resource path, an image id), when Wiz has one.
     workload_provider_id: Optional[str]
+    # `resource.externalId`, possibly unique only inside its account.
+    workload_external_id: Optional[str]
     workload_name: Optional[str]
     account: Optional[str]
     region: Optional[str]
@@ -440,7 +480,12 @@ class WizClient:
         )
         status = _graphql_status(resp.status_code, code)
         if status != 200 or code is not None:
-            raise self._graphql_failure(what, status, code or "")
+            raise self._graphql_failure(
+                what,
+                status,
+                code or "",
+                _required_scopes(payload),
+            )
         return resp, payload
 
     def _graphql_failure(
@@ -448,6 +493,7 @@ class WizClient:
         what: str,
         status: int,
         code: str,
+        required_scopes: Optional[str] = None,
     ) -> Exception:
         if code == "BAD_USER_INPUT" and what == "hostedTechnologies":
             # The engine's own query, which no source field shapes: Wiz's error, with
@@ -487,8 +533,9 @@ class WizClient:
                 status_code=200,
             )
         return WizError(
-            f"Wiz {what} query failed with HTTP {status}"
-            f"{_code_suffix(code)}{_graphql_hint(what, status, code)}",
+            f"Wiz {what} query failed with HTTP {status}{_code_suffix(code)}"
+            + (f": Wiz says {required_scopes}" if required_scopes else "")
+            + _graphql_hint(what, status, code),
             status_code=status,
         )
 
@@ -597,6 +644,21 @@ def _graphql_error_code(payload: Any) -> Optional[str]:
     return code
 
 
+def _required_scopes(payload: Any) -> Optional[str]:
+    """A denial's "at least one of the following is required: [...]", rebuilt from its
+    scope names, or None when no error carries one made only of scope names."""
+    errors = payload.get("errors") if isinstance(payload, dict) else None
+    for error in errors if isinstance(errors, list) else []:
+        message = error.get("message") if isinstance(error, dict) else None
+        found = _REQUIRED_SCOPES.search(message) if isinstance(message, str) else None
+        scopes = found.group(1).split() if found else []
+        if 0 < len(scopes) <= _MAX_SCOPES_QUOTED and all(
+            _SCOPE_NAME.match(scope) for scope in scopes
+        ):
+            return f"at least one of the following is required: [{' '.join(scopes)}]"
+    return None
+
+
 def _page_from(resp: requests.Response, payload: Any) -> ResourcePage:
     nodes, page_info = _listing(resp, payload, "cloudResourcesV2")
     resources: list[WizResource] = []
@@ -659,17 +721,19 @@ def _listing(
 
 def _workload_technology_from(node: Any) -> Optional[WorkloadTechnology]:
     """A hosted technology and its resource, or None without a named technology and an
-    identified resource."""
+    identified resource. The name is `technology.name` only."""
     if not isinstance(node, dict):
         return None
     technology = _object(node.get("technology"))
     resource = _object(node.get("resource"))
-    name = _text(technology.get("name")) or _text(node.get("name"))
+    name = _text(technology.get("name"))
     workload_graph_id = _text(resource.get("id"))
     if name is None or workload_graph_id is None:
         return None
     return WorkloadTechnology(
         technology_name=name.strip(),
+        technology_id=_text(technology.get("id")),
+        is_cloud_service=technology.get("isCloudService") is True,
         technology_version=_text(_object(node.get("versionDetails")).get("version")),
         workload_graph_id=workload_graph_id,
         workload_type=str(resource.get("type")),
@@ -677,6 +741,7 @@ def _workload_technology_from(node: Any) -> Optional[WorkloadTechnology]:
         workload_provider_id=_text(
             _object(resource.get("graphEntity")).get("providerUniqueId"),
         ),
+        workload_external_id=_text(resource.get("externalId")),
         workload_name=_text(resource.get("name")),
         account=_text(_object(resource.get("cloudAccount")).get("externalId")),
         region=_first_text(resource, REGION_FIELDS),
@@ -696,6 +761,7 @@ def _resource_from(node: Any) -> Optional[WizResource]:
     return WizResource(
         graph_id=graph_id,
         provider_unique_id=_text(node.get("providerUniqueId")),
+        provider_external_id=_text(node.get("externalId")),
         name=_text(node.get("name")),
         entity_type=_text(node.get("type")),
         native_type=_text(node.get("nativeType")),
@@ -775,8 +841,8 @@ def _graphql_hint(what: str, status: int, code: str) -> str:
         )
     if status == 403 and what == "hostedTechnologies":
         return (
-            ". The service account cannot run the hostedTechnologies query: it needs "
-            "the read:resources scope, and may need read:inventory"
+            ". The service account cannot run the hostedTechnologies query: grant it "
+            "read:resources and read:inventory, or read:all"
         )
     if status == 403:
         return (

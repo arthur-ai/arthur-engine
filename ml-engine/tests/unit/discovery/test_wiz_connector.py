@@ -6,7 +6,9 @@ codes follow Wiz's Backstage plugin (wiz-sec-public/backstage-plugin-wiz, `WizAu
 and `types/index.ts`); the `cloudResourcesV2` and `hostedTechnologies` nodes carry only
 fields of `CloudResourceV2`, `HostedTechnology` and `HostedTechnologyResource` in Wiz's
 introspected schema (ArcavenAE/stave, `spec/wiz-schema.graphql`). The technology names
-are the engine's guesses at Wiz's spellings.
+are the engine's guesses at Wiz's spellings, and a hosted technology's own `name` follows
+Port's example, "<technology> (<resource name>)" (port-labs/ocean,
+`integrations/wiz/.port/examples/hosted-technology/a.json`).
 """
 
 import json
@@ -46,6 +48,7 @@ from discovery.cloud.wiz.connector import (
     WORKLOAD_INVENTORY_SCOPE,
     WizConnector,
     is_agent_framework,
+    native_id,
     settings_from,
 )
 from discovery.retry import MAX_ATTEMPTS
@@ -93,6 +96,7 @@ def node(
     gid: str,
     *,
     provider_id: Optional[str] = "default",
+    external_id: Optional[str] = None,
     name: Optional[str] = "support-agent",
     entity_type: str = "AI_AGENT",
     account: Optional[str] = AWS_ACCOUNT,
@@ -112,6 +116,7 @@ def node(
         "name": name,
         "type": entity_type,
         "nativeType": "bedrock#agent",
+        "externalId": external_id,
         "providerUniqueId": provider_id,
         "cloudPlatform": platform,
         "region": region,
@@ -158,9 +163,13 @@ IMAGE_ID = (
 def sighting(
     tech: str = "LangChain",
     *,
+    tech_id: Optional[str] = None,
+    cloud_service: bool = False,
+    hosted_name: Optional[str] = None,
     workload_type: str = "VIRTUAL_MACHINE",
     workload_gid: str = "wiz-vm-1",
     provider_id: Optional[str] = VM_ARN,
+    external_id: Optional[str] = None,
     workload_name: Optional[str] = "agents-host-1",
     account: Optional[str] = AWS_ACCOUNT,
     platform: str = "AWS",
@@ -172,13 +181,20 @@ def sighting(
     """One `hostedTechnologies` node: a technology and the resource it was found on."""
     return {
         "id": f"wiz-tech-{tech}-{workload_gid}",
-        "name": tech,
+        "name": hosted_name or f"{tech} ({workload_name})",
         "firstSeen": first_seen,
         "updatedAt": updated,
         "versionDetails": None if version is None else {"version": version},
-        "technology": {"name": tech},
+        "technology": {
+            "id": tech_id,
+            "name": tech,
+            "isCloudService": cloud_service,
+            "stackLayer": "MACHINE_LEARNING_AND_AI",
+            "categories": [{"id": "169", "name": "AI Agents"}],
+        },
         "resource": {
             "id": workload_gid,
+            "externalId": external_id,
             "name": workload_name,
             "type": workload_type,
             "nativeType": "virtualMachine",
@@ -218,7 +234,7 @@ TOKEN_SHAPED_LIKE_WIZ_AUTH_TS: dict[str, Any] = {
 }
 PAGE_SHAPED_LIKE_CLOUD_RESOURCE_V2: dict[str, Any] = page_body(
     [
-        node("wiz-aws-agent"),
+        node("wiz-aws-agent", external_id="WIZ-AWS-AGENT"),
         node(
             "wiz-azure-agent",
             provider_id=(
@@ -678,7 +694,75 @@ def test_a_resource_without_a_provider_id_is_skipped_naming_its_entity_type(
         r.getMessage() for r in caplog.records if "providerUniqueId" in r.getMessage()
     )
     assert "AI_SERVICE" in warning and "skipped" in warning
+    assert "externalId" in warning
     assert "secret-ish" not in caplog.text
+
+
+def test_without_a_provider_unique_id_the_external_id_is_qualified() -> None:
+    record = one(node("a", provider_id=None, external_id="i-0abc123def4567890"))
+    expected = f"aws:{AWS_ACCOUNT}:i-0abc123def4567890"
+    assert record.external_id == expected
+    assert record.creation_source.address.resource_id == expected
+    assert record.creation_source.address.instance == AWS_ACCOUNT
+
+
+def test_the_provider_unique_id_wins_over_the_external_id() -> None:
+    record = one(node("a", external_id="AGENT-SHORT-ID"))
+    assert record.external_id == f"arn:aws:bedrock:us-east-1:{AWS_ACCOUNT}:agent/A"
+
+
+def test_an_azure_external_id_is_qualified_by_the_lower_cased_subscription() -> None:
+    record = one(
+        node(
+            "a",
+            provider_id=None,
+            external_id="asst_1",
+            account=AZURE_SUBSCRIPTION,
+            platform="Azure",
+        ),
+    )
+    assert record.external_id == f"azure:{AZURE_SUBSCRIPTION.lower()}:asst_1"
+
+
+def test_an_external_id_without_a_platform_is_skipped(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    with caplog.at_level(logging.WARNING):
+        records = scan(
+            FakeSession(
+                ok(
+                    page_body(
+                        [node("a", provider_id=None, external_id="x", platform=None)]
+                    )
+                ),
+            ),
+        )
+    assert records == []
+    assert "cloudPlatform" in caplog.text
+
+
+@pytest.mark.parametrize(
+    ("provider_unique_id", "external_id", "platform", "expected"),
+    [
+        (
+            "arn:aws:ec2:us-east-1:1:instance/i-1",
+            "i-1",
+            "aws",
+            "arn:aws:ec2:us-east-1:1:instance/i-1",
+        ),
+        (None, "i-1", "aws", "aws:1:i-1"),
+        (None, " i-1 ", "gcp", "gcp:1:i-1"),
+        (None, "i-1", "", None),
+        (None, None, "aws", None),
+    ],
+)
+def test_native_id_never_falls_back_to_an_id_wiz_assigns(
+    provider_unique_id: Optional[str],
+    external_id: Optional[str],
+    platform: str,
+    expected: Optional[str],
+) -> None:
+    assert native_id(provider_unique_id, external_id, platform, "1") == expected
 
 
 def test_the_region_falls_back_to_region_location() -> None:
@@ -730,6 +814,7 @@ def test_the_resource_query_reads_typed_fields_not_properties() -> None:
     for name in (
         "cloudResourcesV2(",
         "providerUniqueId",
+        "externalId",
         "regionLocation",
         "cloudPlatform",
         "nativeType",
@@ -1046,6 +1131,40 @@ def test_a_missing_scope_is_permission_denied_naming_read_resources(
     assert failure_code(exc.value) is DiscoveryErrorCode.PERMISSION_DENIED
     assert "read:resources" in str(exc.value)
     assert FREE_TEXT not in str(exc.value)
+
+
+DENIAL = (
+    "access denied, at least one of the following is required: [read:all "
+    "read:resources], your permissions: [admin:audit read:issues]"
+)
+
+
+def test_a_denial_quotes_the_scopes_wiz_says_it_wanted_and_nothing_else() -> None:
+    with pytest.raises(WizError) as exc:
+        scan(FakeSession(ok(graphql_error("UNAUTHORIZED", message=DENIAL))))
+    text = str(exc.value)
+    assert exc.value.status_code == 403
+    assert (
+        "Wiz says at least one of the following is required: [read:all read:resources]"
+        in text
+    )
+    assert "your permissions" not in text and "admin:audit" not in text
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        "at least one of the following is required: [read:all <script>]",
+        "at least one of the following is required: []",
+        "at least one of the following is required: [Bearer eyJhbGciOi]",
+        FREE_TEXT,
+    ],
+)
+def test_a_denial_that_is_not_a_list_of_scope_names_is_not_quoted(message: str) -> None:
+    with pytest.raises(WizError) as exc:
+        scan(FakeSession(ok(graphql_error("UNAUTHORIZED", message=message))))
+    assert "Wiz says" not in str(exc.value)
+    assert "eyJ" not in str(exc.value) and "<script>" not in str(exc.value)
 
 
 def test_the_tenants_ip_allowlist_is_permission_denied_and_says_so() -> None:
@@ -1390,7 +1509,7 @@ def test_a_workload_without_a_provider_id_is_skipped_naming_its_entity_type(
     )
     assert ids(records) == [f"{VM_ARN}:crewai"]
     assert "CONTAINER_IMAGE" in caplog.text
-    assert "providerUniqueId" in caplog.text
+    assert "providerUniqueId" in caplog.text and "externalId" in caplog.text
 
 
 def test_non_agent_ml_technologies_are_left_out(
@@ -1424,13 +1543,22 @@ def test_non_agent_ml_technologies_are_left_out(
         "semantic-kernel",
         "Haystack",
         "OpenAI Agents SDK",
-        "openai",
+        "openai-agents",
+        "OpenAI SDK",
+        "OpenAI Python SDK",
+        "openai-python",
+        "OpenAI Node.js Library",
         "Anthropic SDK",
+        "anthropic-sdk-python",
+        "@anthropic-ai/sdk",
         "Claude Agent SDK",
+        "claude-agent-sdk",
         "Google ADK",
         "Agent Development Kit",
         "Model Context Protocol",
+        "model-context-protocol",
         "MCP Server",
+        "mcp",
         "FastMCP",
     ],
 )
@@ -1442,7 +1570,23 @@ def test_agent_framework_names_match_whatever_their_case_spaces_and_punctuation(
 
 @pytest.mark.parametrize(
     "name",
-    ["PyTorch", "Jupyter Notebook", "TensorFlow", "scikit-learn", "MLflow", "CUDA"],
+    [
+        "PyTorch",
+        "Jupyter Notebook",
+        "TensorFlow",
+        "scikit-learn",
+        "MLflow",
+        "CUDA",
+        # A vendor's name alone is its service, not its SDK.
+        "OpenAI",
+        "openai",
+        "Azure OpenAI",
+        "Anthropic",
+        "Claude",
+        # MCP only as a whole word.
+        "mcpx",
+        "Amcp Toolkit",
+    ],
 )
 def test_ml_technologies_that_are_not_agent_frameworks_do_not_match(
     name: str,
@@ -1482,6 +1626,64 @@ def test_unmatched_ml_technology_names_are_logged_once_by_name_only(
     assert message.endswith("agent frameworks: Jupyter, PyTorch")
     assert VM_ARN not in message and other not in message
     assert "wiz-vm" not in message
+
+
+def test_unmatched_names_carry_wizs_technology_id(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    workload_scan(sighting("PyTorch", tech_id="8361"), caplog=caplog)
+    assert "agent frameworks: PyTorch [8361]" in caplog.text
+
+
+def test_a_cloud_service_is_left_to_the_ai_spm_inventory(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    records = workload_scan(
+        sighting("Azure OpenAI", cloud_service=True),
+        sighting("Model Context Protocol", cloud_service=True),
+        sighting("Model Context Protocol"),
+        caplog=caplog,
+    )
+    assert ids(records) == [f"{VM_ARN}:model-context-protocol"]
+    assert "2 cloud service(s) left to the AI-SPM inventory" in caplog.text
+    assert "Azure OpenAI" not in caplog.text
+
+
+def test_pytorch_and_tensorflow_make_no_record(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    assert (
+        workload_scan(sighting("PyTorch"), sighting("TensorFlow"), caplog=caplog) == []
+    )
+    assert "2 not an agent framework" in caplog.text
+
+
+def test_only_technology_name_is_matched_never_the_hosted_technologys_name() -> None:
+    nginx = sighting(
+        "NGINX", hosted_name="NGINX (mcp-gateway)", workload_name="mcp-gateway"
+    )
+    assert workload_scan(nginx) == []
+    unnamed = sighting(hosted_name="LangChain (agents-host-1)")
+    unnamed["technology"] = {"id": "1", "name": None, "isCloudService": False}
+    assert workload_scan(unnamed) == []
+
+
+def test_mcp_and_model_context_protocol_make_records() -> None:
+    records = workload_scan(sighting("Model Context Protocol"), sighting("MCP Server"))
+    assert sorted(ids(records)) == sorted(
+        [f"{VM_ARN}:model-context-protocol", f"{VM_ARN}:mcp-server"],
+    )
+
+
+def test_a_workload_without_a_provider_unique_id_uses_its_external_id() -> None:
+    (record,) = workload_scan(
+        sighting(provider_id=None, external_id="i-0abc123def4567890")
+    )
+    workload = f"aws:{AWS_ACCOUNT}:i-0abc123def4567890"
+    assert record.external_id == f"{workload}:langchain"
+    assert record.creation_source.address.instance == workload
+    assert record.name == "LangChain on agents-host-1"
+    check_batch([record], "wiz")
 
 
 def test_the_unmatched_names_line_is_capped(
@@ -1571,6 +1773,8 @@ def test_the_workload_query_filters_on_the_ai_stack_layer_and_workload_types() -
     }
     assert "$filterBy: HostedTechnologyFilters" in HOSTED_TECHNOLOGIES_QUERY
     assert "providerUniqueId" in HOSTED_TECHNOLOGIES_QUERY
+    assert "externalId" in HOSTED_TECHNOLOGIES_QUERY
+    assert "isCloudService" in HOSTED_TECHNOLOGIES_QUERY
 
 
 def test_only_the_token_and_the_two_queries_are_ever_sent() -> None:
@@ -1661,6 +1865,23 @@ def test_a_missing_scope_on_the_workload_query_names_both_scopes(
         scan(FakeSession(workloads=ok(graphql_error("UNAUTHORIZED"))))
     assert "hostedTechnologies" in caplog.text
     assert "read:resources" in caplog.text and "read:inventory" in caplog.text
+
+
+def test_a_refused_workload_inventory_logs_the_scopes_wiz_wanted(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    denial = DENIAL.replace("read:resources", "read:inventory")
+    session = FakeSession(workloads=ok(graphql_error("UNAUTHORIZED", message=denial)))
+    connector = connector_with(session)
+    with caplog.at_level(logging.WARNING):
+        scan(session, connector=connector)
+    assert (
+        "at least one of the following is required: [read:all read:inventory]"
+        in caplog.text
+    )
+    assert connector.denied_scopes() == (
+        DeniedScope(WORKLOAD_INVENTORY_SCOPE, DENIED_PERMISSION),
+    )
 
 
 def test_any_other_workload_failure_publishes_what_was_found_then_raises(

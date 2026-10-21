@@ -140,13 +140,25 @@ serverless functions (the workload inventory), which is where self-hosted agents
 | `client_secret` | yes | yes | That service account's client secret |
 | `entity_types` | no | no | Comma-separated Wiz Security Graph entity types to list instead of the default `AI_AGENT,AI_SERVICE`, for example `AI_AGENT,AI_SERVICE,MCP_SERVER` |
 
-Use `query: ""` and `query_language: none`. Give the service account the
-`read:resources` scope; the scan sends nothing but the token request and two read-only
-queries, `cloudResourcesV2` and `hostedTechnologies`, each paged 500 at a time.
-`hostedTechnologies` may also need `read:inventory`: the scope exists, but no public
-source says which queries it covers, so add it if the job log reports the workload
-inventory refused. A tenant that restricts API access to an IP allowlist must allow the
-engine's egress address, or every query fails with `FORBIDDEN_IP`.
+Use `query: ""` and `query_language: none`. The scan sends nothing but the token request
+and two read-only queries, `cloudResourcesV2` and `hostedTechnologies`, each paged 500
+at a time. Scopes for the service account:
+
+- AI-SPM inventory (`cloudResourcesV2`): `read:resources`. **Confirmed**: a live run
+  read it with a credential holding `read:resources` and neither `read:inventory` nor
+  `read:all` (ArcavenAE/stave `1cfb526`, `_kos/findings/finding-010-*.md:39-43`, with
+  the credential's scopes in `finding-009-*.md:31-34`).
+- Workload inventory (`hostedTechnologies`): `read:resources` and `read:inventory`, or
+  `read:all`. **Unconfirmed**: `read:inventory` is a real scope
+  (AxtonGrams/terraform-provider-wiz `4fee5a8`, `internal/common.go:87`), but no public
+  source ties it to this query.
+
+When Wiz refuses a query for a missing scope, its denial lists the scopes that would do
+("access denied, at least one of the following is required: [...]", **confirmed** in
+ArcavenAE/stave `6728a95`, `finding-009-*.md:29-34`). The engine quotes that list
+verbatim, scope names only, in the Test Connection error and the job log, so they say
+which scope to add. A tenant that restricts API access to an IP allowlist must allow
+the engine's egress address, or every query fails with `FORBIDDEN_IP`.
 
 **Entity types.** `AI_AGENT` and `AI_SERVICE` are Wiz's own `GraphEntityType` names, as
 are the other AI types `entity_types` can list: `AI_AGENT_REGISTRY`, `AI_DATASET`,
@@ -157,46 +169,89 @@ record per model, deployment or tool would mint a task for each. If the tenant d
 know a name, Wiz rejects the query and the scan fails as `not_configured` saying to set
 `entity_types`.
 
-Each resource is one record. `external_id` and the address's `resource_id` are the
-resource's `providerUniqueId` (an ARN, an Azure resource path, a GCP resource name),
-verbatim, so they match what a native cloud source reports for the same agent. A record
-is never keyed on an id Wiz assigns itself, nor on the resource's `externalId`, whose
-form varies by type: a resource without a `providerUniqueId` is skipped, with a job-log
-warning naming its entity type. The address's instance is the cloud account
-(`cloudAccount.externalId`, lower-cased for Azure), its scope the resource's `region`,
-else its `regionLocation` (`global` when it has neither), and `last_seen` is Wiz's
-`lastSeen`, else the resource's `updatedAt`, `firstSeen` or `createdAt`; a resource with
-none is skipped with a warning. No service names are claimed.
+Each resource is one record, keyed on the cloud provider's own id and never on an id
+Wiz assigns itself:
+
+| Wiz has | `external_id` (and the address's `resource_id`) | Example |
+|---|---|---|
+| `providerUniqueId` | that, verbatim | `arn:aws:bedrock:us-east-1:123456789012:agent/AB12` |
+| only `externalId` | `<cloudPlatform>:<account>:<externalId>`, the platform lower-cased | `aws:123456789012:i-0abc123def4567890` |
+| neither, or `externalId` with no `cloudPlatform` | skipped, with a job-log warning naming the entity type | |
+
+Why both: `providerUniqueId` is nullable, and a live run had it on 9 of 20
+`cloudResourcesV2` records (**confirmed**, ArcavenAE/stave `1cfb526`,
+`finding-010-*.md:43`; the schema, `b893774` `spec/wiz-schema.graphql:15772,15797`, has
+`externalId: String!` beside `providerUniqueId: String`). Both are the provider's ids
+(**strong inference**: demisto/content `f92da85` looks a resource up by an ARN in
+`providerUniqueId`, `Packs/Wiz/Integrations/Wiz/Wiz.py:2832` and `README.md:461`, and
+maps `externalId` to the "Unique (provider) cloud resource ID",
+`Classifiers/classifier-WizDefend_Mapper.json:65-67`). `externalId` can be unique only
+inside its account (an instance's short id), hence the qualified form, which keeps
+`external_id` unique across every cloud the tenant scans. A resource that later gains a
+`providerUniqueId` changes identity once. The `providerUniqueId` form matches what a
+native cloud source reports for the same agent. The address's instance is the cloud
+account (`cloudAccount.externalId`, lower-cased for Azure, also in the qualified form),
+its scope the resource's `region`, else its `regionLocation` (`global` when it has
+neither), and `last_seen` is Wiz's `lastSeen`, else the resource's `updatedAt`,
+`firstSeen` or `createdAt`; a resource with none, or with no account, is skipped with a
+warning. No service names are claimed.
 
 **Workload inventory.** The scan also asks `hostedTechnologies` for the technologies
 Wiz files under the `MACHINE_LEARNING_AND_AI` stack layer on `VIRTUAL_MACHINE`,
-`CONTAINER_IMAGE` and `SERVERLESS` resources. Running containers are left out: their
-ids change on every restart, and the image carries the same technologies. That layer
-also holds technologies no agent is built from (PyTorch, Jupyter), so the engine keeps
-only agent frameworks and SDKs: a name is kept when, lower-cased with spaces and
-punctuation removed, it contains one of `langchain`, `langgraph`, `llamaindex`,
-`crewai`, `autogen`, `semantickernel`, `haystack`, `openaiagents`, `openai`,
-`anthropic`, `claudeagent`, `agentdevelopmentkit`, `googleadk`, `modelcontextprotocol`
-or `mcp`. **Wiz's exact spellings are not published**, so each scan logs, once, the ML
-and AI technology names it saw and did not keep (names only, at most 50), which shows
-what the list misses.
+`CONTAINER_IMAGE` and `SERVERLESS` resources (the same filter as
+lindsp77/wiz-health-assessment-skill `e4afe70`, `scripts/generate_deck.py:743-751`).
+Running containers are left out: their ids change on every restart, and the image
+carries the same technologies. Which technologies count as agent frameworks is decided
+by the engine, on `technology.name` only: the hosted technology's own `name` is
+`<technology> (<resource name>)` (**confirmed**, `NGINX (docker.io/nginx@dec7a90b)` in
+port-labs/ocean `67254a9`, `integrations/wiz/.port/examples/hosted-technology/a.json:3`),
+so a resource named `mcp-gateway` never makes NGINX an agent. The rules, in order:
+
+1. A technology Wiz marks `isCloudService` (Azure OpenAI, say) is dropped: managed AI
+   services are the AI-SPM inventory's (**confirmed** field,
+   `spec/wiz-schema.graphql:88185`; `false` on every technology in Port's examples).
+2. Kept when the name, lower-cased with spaces and punctuation removed, contains one of
+   `langchain`, `langgraph`, `llamaindex`, `crewai`, `autogen`, `semantickernel`,
+   `haystack`, `openaiagents`, `claudeagent`, `agentdevelopmentkit`, `googleadk`,
+   `modelcontextprotocol` or `fastmcp`.
+3. Kept when `mcp` is one of its words (`MCP Server`, `mcp`; not `mcpx`).
+4. Kept when it names a model vendor beside a word that makes it the vendor's library:
+   `openai` with `sdk`, `agent(s)`, `python`, `node`, `nodejs` or `library` (`OpenAI
+   Python SDK`, `openai-node`); `anthropic` or `claude` with `sdk` or `agent(s)`
+   (`Anthropic SDK`, `Claude Agent SDK`). A vendor's name alone (`OpenAI`, `openai`,
+   `Anthropic`) is not kept: it names the service (**strong inference**: the same
+   health-assessment repo lists `OpenAI` beside `Azure OpenAI` as services a scanner
+   covers, `scripts/csv_metrics_processor.py:255-257`).
+
+Everything else in that layer is dropped, PyTorch and TensorFlow included (**strong
+inference** that the layer holds them: `csv_metrics_processor.py:38`, "AI libraries &
+frameworks (PyTorch, TensorFlow, etc.)"). **Wiz's exact spellings of agent frameworks
+are not published**, so each scan logs, once, the ML and AI technology names it saw and
+did not keep, each with Wiz's technology id (a numeric string such as `2599`, Port's
+example line 5), at most 50 and never a resource name, which shows what the rules miss.
+The technology id is not stored on the record: `AgentObservations` has no field for it.
 
 Each (technology, workload) is one record, addressed as a VM's software is on Compute
-Engine and EC2: the address's instance is the workload's `providerUniqueId` (from the
-resource's `graphEntity`: an ARN, a resource path, an image id), its scope
-`<account>/<region>` (`<account>/global` without a region), its `resource_kind`
-`technology` and its `resource_id` the technology name as Wiz spells it. `external_id`
-is `<workload providerUniqueId>:<technology key>`, the key being the name lower-cased
-with each run of other characters made one `-`, for example
-`arn:aws:ec2:us-east-1:123456789012:instance/i-0abc:langchain`. Nothing Wiz assigns is
-part of it: a workload without a `providerUniqueId`, an account or a timestamp is
-skipped with a job-log warning naming its entity type. `last_seen` is the hosted
-technology's `updatedAt`, else its `firstSeen`; the record carries the detected version
-and no model or service name.
+Engine and EC2: the address's instance is the workload's native id (its `graphEntity`'s
+`providerUniqueId`, else `<cloudPlatform>:<account>:<externalId>` from the resource, as
+above), its scope `<account>/<region>` (`<account>/global` without a region), its
+`resource_kind` `technology` and its `resource_id` the technology name as Wiz spells
+it. `external_id` is `<workload native id>:<technology key>`, the key being the name
+lower-cased with each run of other characters made one `-`:
+
+| Workload id from | Example `external_id` |
+|---|---|
+| `graphEntity.providerUniqueId` | `arn:aws:ec2:us-east-1:123456789012:instance/i-0abc:langchain` |
+| `resource.externalId` | `aws:123456789012:i-0abc:langchain` |
+
+Nothing Wiz assigns is part of it: a workload with neither id, or no account or
+timestamp, is skipped with a job-log warning naming its entity type. `last_seen` is the
+hosted technology's `updatedAt`, else its `firstSeen`; the record carries the detected
+version and no model or service name.
 
 If Wiz refuses the workload query (`UNAUTHORIZED`) or rejects its shape
 (`BAD_USER_INPUT`), the scan still publishes the AI-SPM records, says so in the job log
-and reports the denied scope `workload-inventory`. Any other failure fails the scan as
+(quoting the scopes Wiz asked for) and reports the denied scope `workload-inventory`. Any other failure fails the scan as
 before, after publishing what was found.
 
 The lookback window is not applied: both queries read an inventory, so every scan
