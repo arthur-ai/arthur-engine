@@ -13,11 +13,12 @@ import json
 import logging
 from dataclasses import asdict
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any, Optional, Sequence
 
 import pytest
 import requests
 import yaml
+from arthur_client.api_bindings import DiscoveryRunStatus
 from arthur_common.models.agent_governance_schemas import (
     CloudAgentCreationSource,
     Platform,
@@ -28,7 +29,12 @@ from google.auth.exceptions import RefreshError
 
 from discovery import source_connectors
 from discovery.cloud.gce import client as gce_client
-from discovery.cloud.gce.client import ComputeEngineError
+from discovery.cloud.gce.client import (
+    CLOUD_PLATFORM_READONLY_SCOPE,
+    COMPUTE_READONLY_SCOPE,
+    RESOURCE_MANAGER_API,
+    ComputeEngineError,
+)
 from discovery.cloud.gce.connector import (
     ALLOW_ADC_ENV_VAR,
     GUEST_ATTRIBUTES_DISABLED,
@@ -41,13 +47,21 @@ from discovery.cloud.gce.connector import (
     settings_from,
 )
 from job_executors.discovery_output_contract import check_batch
+from job_executors.discovery_run_reporter import platform_outcome
 from job_executors.discovery_scan import (
+    DENIED_PERMISSION,
+    DENIED_UNREACHABLE,
     MAX_UNREADABLE_DEVICES,
     AcceptsStopCheck,
+    DeniedScope,
     DiscoveryConfigurationError,
     DiscoveryErrorCode,
+    DiscoveryPublishResult,
+    DiscoveryScanOutcome,
+    ReportsDeniedScopes,
     ReportsDeviceCoverage,
     failure_code,
+    run_source_scan,
 )
 
 SCAN_AT = 1790100381
@@ -163,12 +177,16 @@ class FakeResponse:
 
 
 class FakeCompute:
-    """Compute Engine's three read calls, and a log of what was asked.
+    """Compute Engine's three read calls, Resource Manager's two, and a log of what was
+    asked.
 
     `pages[project]` is the listing's pages; `project_flag[project]` the project's
     `enable-guest-attributes` and `project_osconfig[project]` its `enable-osconfig`,
     each absent when unset; `guest[(zone, name)]` a VM's answer, missing for 404, or a
-    list of responses to hand out in turn.
+    list of responses to hand out in turn. `children[parent]` is what Resource Manager
+    lists under an organization or folder: `(project id, state)` and `(folder name,
+    state)` pairs. `listing[project]` answers a project's listing instead of its pages,
+    and `resource_manager` answers every Resource Manager call.
     """
 
     def __init__(
@@ -178,6 +196,9 @@ class FakeCompute:
         guest: Optional[dict[tuple[str, str], Any]] = None,
         unreachables: Optional[list[str]] = None,
         project_osconfig: Optional[dict[str, str]] = None,
+        children: Optional[dict[str, dict[str, list[tuple[str, str]]]]] = None,
+        listing: Optional[dict[str, FakeResponse]] = None,
+        resource_manager: Optional[FakeResponse] = None,
         project_refused: frozenset[str] = frozenset(),
         project_unavailable: frozenset[str] = frozenset(),
     ) -> None:
@@ -190,14 +211,25 @@ class FakeCompute:
         )
         self.guest = guest or {}
         self.unreachables = unreachables or []
+        self.children = children or {}
+        self.listing = listing or {}
+        self.resource_manager = resource_manager
         self.calls: list[tuple[str, dict[str, Any]]] = []
+        self.scopes: Sequence[str] = ()
 
     def get(self, url: str, params: dict[str, Any], timeout: float) -> FakeResponse:
         self.calls.append((url, dict(params)))
+        if url.startswith(RESOURCE_MANAGER_API):
+            return self._resource_manager(
+                url.removeprefix(RESOURCE_MANAGER_API),
+                params,
+            )
         path = url.removeprefix(API)
         parts = path.strip("/").split("/")
 
         if parts[2:] == ["aggregated", "instances"]:
+            if parts[1] in self.listing:
+                return self.listing[parts[1]]
             pages = self.pages.get(parts[1], [[]])
             index = int(params.get("pageToken") or 0)
             body: dict[str, Any] = {
@@ -259,12 +291,43 @@ class FakeCompute:
 
         raise AssertionError(f"unexpected call {url}")
 
+    def _resource_manager(self, path: str, params: dict[str, Any]) -> FakeResponse:
+        if self.resource_manager is not None:
+            return self.resource_manager
+        kind = path.strip("/")
+        assert kind in ("projects", "folders"), path
+        assert params.get("pageSize"), "a listing names its page size"
+        listed = self.children.get(params["parent"], {}).get(kind, [])
+        # One child per page, so paging is exercised on every walk.
+        index = int(params.get("pageToken") or 0)
+        body: dict[str, Any] = {kind: []}
+        if index < len(listed):
+            ident, state = listed[index]
+            body[kind] = [
+                (
+                    {"projectId": ident, "name": f"projects/{index}", "state": state}
+                    if kind == "projects"
+                    else {"name": ident, "displayName": ident, "state": state}
+                ),
+            ]
+        if index + 1 < len(listed):
+            body["nextPageToken"] = str(index + 1)
+        return FakeResponse(200, body)
+
     def reads(self) -> list[str]:
         """The VMs whose guest attributes were read, by name."""
         return [
             url.split("/")[-2]
             for url, _ in self.calls
             if url.endswith("/getGuestAttributes")
+        ]
+
+    def listed(self) -> list[str]:
+        """The projects whose VMs were listed, in order."""
+        return [
+            url.removeprefix(API).split("/")[2]
+            for url, params in self.calls
+            if url.endswith("/aggregated/instances") and not params.get("pageToken")
         ]
 
 
@@ -287,7 +350,11 @@ def adc(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def connector_for(fake: FakeCompute) -> ComputeEngineConnector:
-    return ComputeEngineConnector(session_for=lambda creds: fake, clock=lambda: NOW)  # type: ignore[arg-type,return-value]
+    def session_for(creds: Any, scopes: Sequence[str]) -> FakeCompute:
+        fake.scopes = tuple(scopes)
+        return fake
+
+    return ComputeEngineConnector(session_for=session_for, clock=lambda: NOW)  # type: ignore[arg-type]
 
 
 def scan(
@@ -931,6 +998,327 @@ def test_a_scope_that_keeps_nothing_says_so(caplog: pytest.LogCaptureFixture) ->
     assert "left all 1 VM(s) it read out of scope" in caplog.text
 
 
+# --- an organization or a folder as the roster --------------------------------------
+
+
+ORG = "organizations/123456789"
+FORBIDDEN = FakeResponse(
+    403,
+    {
+        "error": {
+            "code": 403,
+            "message": "Required 'compute.instances.list' permission",
+            "errors": [{"reason": "forbidden"}],
+        },
+    },
+)
+NO_COMPUTE_API = FakeResponse(
+    403,
+    {
+        "error": {
+            "code": 403,
+            "message": "Compute Engine API has not been used in project acme-docs",
+            "errors": [{"reason": "accessNotConfigured"}],
+        },
+    },
+)
+
+
+def org_fake(**over: Any) -> FakeCompute:
+    """An organization of four projects: two at the top, one in a folder, one in a
+    folder inside it, plus one being deleted. Every VM reports."""
+    projects = ["acme-prod-123", "acme-dev-456", "acme-ml-789", "acme-old-000"]
+    args: dict[str, Any] = dict(
+        pages={p: [[vm(str(i), project=p)]] for i, p in enumerate(projects, 1)},
+        project_flag={p: "TRUE" for p in projects},
+        project_osconfig={p: "TRUE" for p in projects},
+        guest={(ZONE, f"vm-{i}"): attributes(CODEX) for i in "1234"},
+        children={
+            ORG: {
+                "projects": [
+                    ("acme-prod-123", "ACTIVE"),
+                    ("acme-dev-456", "ACTIVE"),
+                    ("acme-gone-111", "DELETE_REQUESTED"),
+                ],
+                "folders": [("folders/555", "ACTIVE")],
+            },
+            "folders/555": {
+                "projects": [("acme-ml-789", "ACTIVE")],
+                "folders": [("folders/777", "ACTIVE")],
+            },
+            "folders/777": {"projects": [("acme-old-000", "ACTIVE")], "folders": []},
+        },
+    )
+    args.update(over)
+    return FakeCompute(**args)
+
+
+def test_every_active_project_under_the_organization_is_listed_once_and_scanned(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Folders are walked; a project named as well as listed is read once; a project
+    being deleted is left out; and the token carries the Resource Manager scope."""
+    fake = org_fake()
+    connector = connector_for(fake)
+    with caplog.at_level(logging.INFO):
+        records = scan(
+            fake,
+            {"organization_id": "123456789", "project_ids": "acme-dev-456"},
+            connector,
+        )
+
+    assert sorted(r.external_id for r in records) == [f"{i}:codex-cli" for i in "1234"]
+    assert fake.listed() == [
+        "acme-dev-456",
+        "acme-prod-123",
+        "acme-ml-789",
+        "acme-old-000",
+    ]
+    assert fake.scopes == (COMPUTE_READONLY_SCOPE, CLOUD_PLATFORM_READONLY_SCOPE)
+    assert connector.denied_scopes() == ()
+    assert "4 project(s) (3 under organizations/123456789)" in caplog.text
+    assert "3 project(s) under organizations/123456789; 0 without" in caplog.text
+
+
+def test_folders_alone_are_a_scope_and_a_source_without_parents_keeps_its_scope() -> (
+    None
+):
+    fake = org_fake()
+    assert [r.external_id for r in scan(fake, {"folder_ids": "555, 777"})] == [
+        "3:codex-cli",
+        "4:codex-cli",
+    ]
+    assert fake.listed() == ["acme-ml-789", "acme-old-000"], "777 is under 555 too"
+
+    plain = FakeCompute(
+        {PROJECT: [[vm("1")]]},
+        guest={(ZONE, "vm-1"): attributes(CODEX)},
+    )
+    scan(plain)
+    assert plain.scopes == (COMPUTE_READONLY_SCOPE,)
+    assert not any(url.startswith(RESOURCE_MANAGER_API) for url, _ in plain.calls)
+
+
+def test_a_project_without_the_compute_api_is_counted_and_is_not_a_refusal(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    fake = org_fake(listing={"acme-dev-456": NO_COMPUTE_API})
+    connector = connector_for(fake)
+    with caplog.at_level(logging.INFO):
+        records = scan(fake, {"organization_id": "123456789"}, connector)
+
+    assert sorted(r.external_id for r in records) == [
+        "1:codex-cli",
+        "3:codex-cli",
+        "4:codex-cli",
+    ]
+    assert connector.denied_scopes() == ()
+    assert "1 without the Compute Engine API (acme-dev-456); 0 refused" in caplog.text
+
+
+def test_a_listed_project_the_credential_is_refused_is_a_denied_scope_and_the_rest_are_read(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """One project's refusal is reported and passed over; a listing that fails after
+    its retries is the same with the other reason."""
+    fake = org_fake(
+        listing={
+            "acme-dev-456": FORBIDDEN,
+            "acme-old-000": FakeResponse(503, {"error": {"message": "backend"}}),
+        },
+    )
+    connector = connector_for(fake)
+    with caplog.at_level(logging.WARNING):
+        records = scan(fake, {"organization_id": "123456789"}, connector)
+
+    assert sorted(r.external_id for r in records) == ["1:codex-cli", "3:codex-cli"]
+    assert connector.denied_scopes() == (
+        DeniedScope("projects/acme-dev-456", DENIED_PERMISSION),
+        DeniedScope("projects/acme-old-000", DENIED_UNREACHABLE),
+    )
+    assert "projects/acme-dev-456: not read (permission_denied)" in caplog.text
+    assert "compute.instances.list" in caplog.text
+    assert "projects/acme-old-000: not read (unreachable)" in caplog.text
+
+
+def test_project_metadata_that_cannot_be_read_never_denies_a_project_under_an_org(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Under an organization, a refusal inside a project denies the project. The OS
+    Config lookup is not one: a project whose metadata is refused or unavailable is
+    still read, its VM that set guest attributes itself keeps never-reported, and no
+    denied scope is reported for it."""
+    projects = ["acme-prod-123", "acme-dev-456", "acme-ml-789", "acme-old-000"]
+    pages = {p: [[vm(str(i), project=p)]] for i, p in enumerate(projects, 1)}
+    pages["acme-dev-456"] = [[vm("2", project="acme-dev-456", flag="TRUE")]]
+    pages["acme-ml-789"] = [[vm("3", project="acme-ml-789", flag="TRUE")]]
+    fake = org_fake(
+        pages=pages,
+        guest={(ZONE, "vm-1"): attributes(CODEX), (ZONE, "vm-4"): attributes(CODEX)},
+        project_refused=frozenset({"acme-dev-456"}),
+        project_unavailable=frozenset({"acme-ml-789"}),
+    )
+    connector = connector_for(fake)
+    with caplog.at_level(logging.WARNING):
+        records = scan(fake, {"organization_id": "123456789"}, connector)
+
+    assert sorted(r.external_id for r in records) == ["1:codex-cli", "4:codex-cli"]
+    assert connector.denied_scopes() == ()
+    coverage = connector.device_coverage()
+    assert coverage is not None
+    assert coverage.unreadable_by_reason == {"never-reported": 2}
+    assert [(d["device_key"], d["reason"]) for d in listed(connector)] == [
+        ("2", "never-reported"),
+        ("3", "never-reported"),
+    ]
+    assert "projects/acme-dev-456: project metadata not read" in caplog.text
+    assert "projects/acme-ml-789: project metadata not read" in caplog.text
+
+
+def test_a_named_project_the_credential_is_refused_still_ends_the_scan() -> None:
+    fake = org_fake(listing={"acme-dev-456": FORBIDDEN})
+    connector = connector_for(fake)
+    with pytest.raises(ComputeEngineError) as exc:
+        scan(
+            fake,
+            {"organization_id": "123456789", "project_ids": "acme-dev-456"},
+            connector,
+        )
+
+    assert failure_code(exc.value) is DiscoveryErrorCode.PERMISSION_DENIED
+    assert connector.denied_scopes() == ()
+
+
+@pytest.mark.parametrize(
+    "answers, code",
+    [
+        ({"forbidden": 4}, DiscoveryErrorCode.PERMISSION_DENIED),
+        ({"forbidden": 3, "down": 1}, DiscoveryErrorCode.PROVIDER_ERROR),
+    ],
+    ids=["all-forbidden", "forbidden-and-unreachable"],
+)
+def test_refused_every_project_it_could_read_fails_the_run(
+    answers: dict[str, int],
+    code: DiscoveryErrorCode,
+) -> None:
+    """A scan allowed to read nothing is not a clean organization. A project without
+    the Compute Engine API does not count as readable."""
+    projects = ["acme-prod-123", "acme-dev-456", "acme-ml-789", "acme-old-000"]
+    responses = [FORBIDDEN] * answers.get("forbidden", 0) + [
+        FakeResponse(503, {"error": {"message": "backend"}}),
+    ] * answers.get("down", 0)
+    fake = org_fake(listing=dict(zip(projects, responses)))
+    fake.children[ORG]["projects"].append(("acme-docs-222", "ACTIVE"))
+    fake.listing["acme-docs-222"] = NO_COMPUTE_API
+    connector = connector_for(fake)
+    with pytest.raises(ComputeEngineError, match="refused every project") as exc:
+        scan(fake, {"organization_id": "123456789"}, connector)
+
+    assert failure_code(exc.value) is code
+    assert len(connector.denied_scopes()) == 4
+
+
+def test_a_refused_credential_under_a_parent_still_ends_the_scan() -> None:
+    fake = org_fake(
+        listing={
+            "acme-prod-123": FakeResponse(
+                401,
+                {"error": {"code": 401, "message": "Invalid Credentials"}},
+            ),
+        },
+    )
+    with pytest.raises(ComputeEngineError) as exc:
+        scan(fake, {"organization_id": "123456789"})
+    assert failure_code(exc.value) is DiscoveryErrorCode.AUTHENTICATION_FAILED
+
+
+def test_a_refused_resource_manager_listing_ends_the_scan() -> None:
+    """The roster itself, not one project of it."""
+    fake = org_fake(
+        resource_manager=FakeResponse(
+            403,
+            {
+                "error": {
+                    "code": 403,
+                    "message": "Permission 'resourcemanager.projects.list' denied",
+                    "errors": [{"reason": "forbidden"}],
+                },
+            },
+        ),
+    )
+    with pytest.raises(ComputeEngineError, match="Resource Manager") as exc:
+        scan(fake, {"organization_id": "123456789"})
+    assert failure_code(exc.value) is DiscoveryErrorCode.PERMISSION_DENIED
+    assert fake.listed() == []
+
+
+def test_a_parent_with_no_active_project_is_reported_not_called_clean(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    fake = FakeCompute(
+        {},
+        children={
+            ORG: {"projects": [("acme-gone-111", "DELETE_REQUESTED")], "folders": []},
+        },
+    )
+    connector = connector_for(fake)
+    with caplog.at_level(logging.WARNING):
+        assert scan(fake, {"organization_id": "123456789"}, connector) == []
+
+    assert "found no active project under organizations/123456789" in caplog.text
+    assert connector.denied_scopes() == ()
+
+
+def test_the_denied_scopes_reach_the_run_outcome_and_the_run_store() -> None:
+    fake = org_fake(listing={"acme-dev-456": FORBIDDEN})
+    connector = connector_for(fake)
+    outcome = DiscoveryScanOutcome(
+        discovery_source_config_id=None,
+        discovery_source_config_name="acme gce",
+        discovery_source_id=None,
+        vendor=VENDOR,
+        job_id="job",
+        scan_id=None,
+        lookback_hours=24,
+    )
+    run_source_scan(
+        FakeConfig(),  # type: ignore[arg-type]
+        24,
+        "workspace",
+        "data-plane",
+        outcome,
+        connector,
+        AcceptingSink(),
+        LOG,
+        {},
+        {"organization_id": "123456789"},
+    )
+
+    assert outcome.error is None
+    assert outcome.denied_scopes == [
+        DeniedScope("projects/acme-dev-456", "permission_denied"),
+    ]
+    assert outcome.to_log_payload()["denied_scopes"] == [
+        {"scope": "projects/acme-dev-456", "reason": "permission_denied"},
+    ]
+    body = platform_outcome(outcome)
+    assert body.status == DiscoveryRunStatus.DONE
+    assert [(d.scope, d.reason) for d in body.denied_scopes or []] == [
+        ("projects/acme-dev-456", "permission_denied"),
+    ]
+
+
+class AcceptingSink:
+    def publish(
+        self,
+        workspace_id: str,
+        data_plane_id: str,
+        config: Any,
+        records: Sequence[Any],
+    ) -> DiscoveryPublishResult:
+        return DiscoveryPublishResult(accepted=len(records))
+
+
 # --- settings -------------------------------------------------------------------------
 
 
@@ -939,6 +1327,8 @@ def test_a_scope_that_keeps_nothing_says_so(caplog: pytest.LogCaptureFixture) ->
     [
         ({}, "project_ids"),
         ({"project_ids": " , "}, "project_ids"),
+        ({"organization_id": "organizations/123"}, "organizations/ or folders/ prefix"),
+        ({"folder_ids": "555, my-folder"}, "'my-folder'"),
         ({"project_ids": "My Project"}, "'My Project'"),
         ({"project_ids": "acme/../other"}, "'acme/../other'"),
         ({"project_ids": PROJECT, "include_labels": "prod"}, "'prod'"),
@@ -964,7 +1354,15 @@ def test_settings_accept_several_projects_and_tidy_selectors() -> None:
     )
     assert settings.project_ids == (PROJECT, "example.com:legacy-proj")
     assert settings.include_labels == ("env=prod", "owner=")
+    assert settings.parents == ()
     assert parse_label_selectors(None, "include_labels") == ()
+
+
+def test_settings_take_an_organization_or_folders_without_projects() -> None:
+    settings = settings_from({"organization_id": " 123 ", "folder_ids": "555, 777"})
+    assert settings.project_ids == ()
+    assert settings.parents == ("organizations/123", "folders/555", "folders/777")
+    assert settings.scopes == [COMPUTE_READONLY_SCOPE, CLOUD_PLATFORM_READONLY_SCOPE]
 
 
 def test_a_keyless_source_needs_the_engine_to_opt_in(
@@ -993,8 +1391,10 @@ def test_registered_with_its_secrets_declared_and_the_optional_protocols() -> No
     connector = ComputeEngineConnector()
     assert connector.SENSITIVE_FIELDS == frozenset({"service_account_key"})
     assert isinstance(connector, ReportsDeviceCoverage)
+    assert isinstance(connector, ReportsDeniedScopes)
     assert isinstance(connector, AcceptsStopCheck)
     assert connector.device_coverage() is None, "nothing read yet"
+    assert connector.denied_scopes() == ()
 
 
 def test_a_stop_check_ends_the_scan_after_the_vm_in_hand() -> None:

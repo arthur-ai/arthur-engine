@@ -325,13 +325,33 @@ Grant these three, not `AmazonEC2ReadOnlyAccess` and `AmazonSSMReadOnlyAccess`. 
 them, but `ssm:Get*` also reads Parameter Store and `ec2:Describe*` instance user data, where
 secrets are often kept. The source's `include_tags` and `exclude_tags` are the only scope there
 is, set by whoever owns governance, and an instance they leave out is still counted as excluded
-on every scan.
+on every scan. A source with `regions` set to `all` also needs `ec2:DescribeRegions`, to ask
+which regions the account has enabled.
 
 The source takes an access key (`access_key_id`, `secret_access_key`), and a `role_arn` with an
 optional `external_id` to assume with it. A source without a key uses the engine's own AWS
 credentials — IRSA on EKS, say — only when the engine sets
 `ARTHUR_ENGINE_AWS_EC2_ALLOW_DEFAULT_CREDENTIALS=true`; otherwise the scan fails and names the
 fields.
+
+**Every account in the organization.** Set `accounts` to `all`, or to a comma-separated list
+of account IDs, and `regions` to `all` or a list. The source lists the organization's active
+accounts (`organizations:ListAccounts`, from the management account or a delegated
+administrator), assumes `arn:PARTITION:iam::ACCOUNT:role/MEMBER_ROLE_NAME` in each with the
+source's `external_id`, as session `arthur-ai-discovery`, and asks each account for its enabled
+regions. With `accounts` set, `external_id` is the member roles' and needs no `role_arn` of the
+source's own.
+`member_role_name` defaults to `arthur-ai-discovery`. The management account is treated like
+any other. The credential the source holds needs `organizations:ListAccounts` and
+`sts:AssumeRole` on the member role; the member role holds the three actions above plus
+`ec2:DescribeRegions`, and trusts that credential. Deploy it to every account with a
+CloudFormation StackSet. The named regions choose the partition, and the scan asks STS,
+Organizations and each account's enabled regions in a region every account there has enabled:
+`us-east-1`, `us-gov-west-1` or `cn-north-1`. `regions: all` names none and is the `aws`
+partition's; a fleet in another partition names its regions, and one source reaches one
+partition. An account whose role cannot be assumed, a named region an account has not enabled,
+or a region the role is refused, is a denied scope on the run, which Arthur shows as a degraded
+source, and the scan reads the rest; refused everywhere, the run fails.
 
 **Measured 2026-10-20 in the sandbox account**, with a role holding exactly the policy above,
 trusted only with an external ID:

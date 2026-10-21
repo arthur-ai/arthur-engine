@@ -20,6 +20,7 @@ from datetime import datetime, timezone
 from typing import Callable, Optional
 
 from arthur_client.api_bindings import (
+    DiscoveryDeniedScope,
     DiscoveryDeviceCoverage,
     DiscoveryRunStatus,
     DiscoveryRunsV1Api,
@@ -28,6 +29,7 @@ from arthur_client.api_bindings import (
 from arthur_client.api_bindings.exceptions import ApiException
 
 from job_executors.discovery_scan import (
+    MAX_DENIED_SCOPES,
     DeviceCoverage,
     DiscoveryErrorCode,
     DiscoveryScanOutcome,
@@ -52,8 +54,9 @@ def platform_outcome(outcome: DiscoveryScanOutcome) -> PutDiscoveryRunOutcome:
     """The run store's shape for one outcome: counts and a code.
 
     The redacted error, failed records and column check stay in the job log, which
-    the stored run leads to by its job and job-run IDs. No scan here reports denied
-    scopes yet: Jamf reads one tenant, and a query-language source one index.
+    the stored run leads to by its job and job-run IDs. Denied scopes are the parts
+    of an organization-wide scope the scan was refused, up to the store's cap; the
+    job log carries them all.
     """
     failed = outcome.error is not None
     return PutDiscoveryRunOutcome(
@@ -69,7 +72,10 @@ def platform_outcome(outcome: DiscoveryScanOutcome) -> PutDiscoveryRunOutcome:
             if failed
             else None
         ),
-        denied_scopes=[],
+        denied_scopes=[
+            DiscoveryDeniedScope(scope=denied.scope, reason=denied.reason)
+            for denied in outcome.denied_scopes[:MAX_DENIED_SCOPES]
+        ],
         device_coverage=(
             platform_coverage(outcome.device_coverage)
             if outcome.device_coverage is not None
