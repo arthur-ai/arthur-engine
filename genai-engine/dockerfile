@@ -173,8 +173,8 @@ RUN TIKTOKEN_CACHE_DIR=/home/nonroot/tiktoken \
 #     current ca-certificates package and does not include G3.
 #   - Python packages that carry their own bundle are filtered in place: grpcio's
 #     grpc/_cython/_credentials/roots.pem (Vertex AI, Cloud Trace, OTLP/gRPC) still
-#     trusts G3 in every release, as do pip's vendored certifi and any certifi
-#     older than the 2026.10.19 floor in pyproject.toml.
+#     trusts G3 in every release, as do pip's vendored certifi and every certifi
+#     release before 2026.10.19.
 # Matched by content: every PEM copy of G3 starts with the base64 line below. Each
 # file holding it loses that certificate block (and its comment header), and the
 # build fails if any copy survives. A no-op once upstream drops the cert.
