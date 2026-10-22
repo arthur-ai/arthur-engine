@@ -670,3 +670,29 @@ def test_the_documented_example_config_loads(
     assert config is not None
     assert isinstance(config.destination, SplunkHecDestination)
     assert [s.config.vendor for s in config.scans()] == ["gcp_vertex"]
+
+
+@pytest.mark.parametrize("vendor,field", [("gcp_network", "project_id")])
+def test_a_vendor_the_platform_added_after_the_first_release_loads(
+    tmp_path: Path,
+    vendor: str,
+    field: str,
+) -> None:
+    """A source is validated against the Platform client's vendor list, so the pinned
+    client has to know every vendor this engine has a connector for."""
+    sources = textwrap.dedent(
+        f"""\
+        sources:
+          - name: gcp
+            vendor: {vendor}
+            fields:
+              - {{key: {field}, value: my-project}}
+            configs:
+              - name: c
+                query: ''
+                query_language: none
+                lookback_window_seconds: 86400
+        """,
+    )
+    config = load_config(write(tmp_path, minimal(sources=sources)))
+    assert [s.vendor.value for s in config.sources] == [vendor]

@@ -151,7 +151,7 @@ wheels = [
 
 [[package]]
 name = "arthur-client"
-version = "1.4.2879"
+version = "1.4.2883"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "authlib" },
@@ -163,9 +163,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ab/5f/d92275a9c945d0f978190ee90c7260d026bbd8989ddd6f9508494e169fd8/arthur_client-1.4.2879.tar.gz", hash = "sha256:ae9149a5fc3cd12b67e2dd3cfe1005d324cefc3308c5eca13b19754eb62ef7fa", size = 576471, upload-time = "2026-10-21T16:15:29.232Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/b3/e1/647851e276c04372b8c2442048304f084c50ef912a47a852c4508b3d44b8/arthur_client-1.4.2883.tar.gz", hash = "sha256:56e43e8db6243e39c17f08fd3a34a6cf51d38253061f1337f79c317606a5ada8", size = 576558, upload-time = "2026-10-21T23:15:34.22Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/67/e9/4078eade4344f11d40bd215c2b23fff9bd13cb9625cab90b2ee99cf4f7d8/arthur_client-1.4.2879-py3-none-any.whl", hash = "sha256:3efff577ed52bf65dbff98559b0a794223cc8aae2133d78282316d28b42b944e", size = 1948793, upload-time = "2026-10-21T16:15:31.327Z" },
+    { url = "https://files.pythonhosted.org/packages/0f/21/15989a9ec1ea122cfb51557c560528264ff06f032512450ec5c1648fa6b1/arthur_client-1.4.2883-py3-none-any.whl", hash = "sha256:1d038a8972de03b2e0f6fed646c971c0e3a7ea6b564bd8d4ed6bcee18e1527e3", size = 1948852, upload-time = "2026-10-21T23:15:31.579Z" },
 ]
 
 [[package]]
@@ -1524,7 +1524,7 @@ wheels = [
 
 [[package]]
 name = "ml-engine"
-version = "2.1.1039"
+version = "2.1.1040"
 source = { editable = "." }
 dependencies = [
     { name = "adlfs" },
@@ -1585,7 +1585,7 @@ linters = [
 [package.metadata]
 requires-dist = [
     { name = "adlfs", specifier = "==2026.8.0" },
-    { name = "arthur-client", specifier = "==1.4.2879" },
+    { name = "arthur-client", specifier = "==1.4.2883" },
     { name = "arthur-common", specifier = "==2.4.97" },
     { name = "boto3", specifier = ">=1.43,<2" },
     { name = "croniter", specifier = "==6.2.4" },
