@@ -8,12 +8,16 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "2026-11-03T08:55:05.489891057Z"
+exclude-newer = "2026-11-03T15:05:22.137958Z"
 exclude-newer-span = "P3D"
 
 [options.exclude-newer-package]
 arthur-client = false
 arthur-common = false
+certifi = false
+
+[manifest]
+constraints = [{ name = "certifi", specifier = ">=2026.10.19" }]
 
 [[package]]
 name = "adlfs"
