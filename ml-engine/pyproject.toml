@@ -69,7 +69,11 @@ linters = [
 
 [tool.uv]
 exclude-newer = "3 days"
-exclude-newer-package = { arthur-client = false, arthur-common = false }
+# SOC-222: certifi 2026.10.19 drops the compromised "emSign ECC Root CA - G3" root, which every
+# earlier release trusts (2026.10.18 removed too many roots, so floor at .19). certifi bypasses
+# the cooldown so the fix could land before 2026.10.19 was 3 days old.
+exclude-newer-package = { arthur-client = false, arthur-common = false, certifi = false }
+constraint-dependencies = ["certifi>=2026.10.19"]
 
 [build-system]
 requires = ["hatchling"]

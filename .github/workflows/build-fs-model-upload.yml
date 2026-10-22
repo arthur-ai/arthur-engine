@@ -100,6 +100,16 @@ jobs:
           # Attach a CycloneDX SBOM attestation to the pushed image, consumable via
           # `docker buildx imagetools inspect <image> --format '{{ json .SBOM }}'`.
           sbom: true
+      # SOC-222: re-check the pushed image for the compromised emSign ECC Root CA - G3
+      # (the Dockerfile already fails its own build if a copy survives). Only possible
+      # when the image was pushed: the check pulls it by tag.
+      - name: Check image does not trust emSign ECC Root CA - G3
+        if: inputs.push
+        env:
+          IMAGE: ${{ inputs.image }}:${{ env.VERSION }}
+        run: |
+          docker pull --platform linux/amd64 "$IMAGE"
+          .github/scripts/check_no_emsign_g3.sh "$IMAGE"
       - name: Update models manifest
         run: |
           cd deployment/model-upload
