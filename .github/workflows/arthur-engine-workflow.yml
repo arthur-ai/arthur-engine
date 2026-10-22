@@ -245,6 +245,7 @@ jobs:
     outputs:
       backend: ${{ steps.decide.outputs.backend }}
       ui: ${{ steps.decide.outputs.ui }}
+      image: ${{ steps.decide.outputs.image }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -284,6 +285,15 @@ jobs:
               # everyone.
               - '.github/workflows/arthur-engine-workflow.yml'
               - '.github/workflows/composite-actions/**'
+            # What the genai-engine image's CA trust depends on (SOC-222). PR-only:
+            # see check-genai-engine-image-ca-trust.
+            image:
+              - 'genai-engine/dockerfile'
+              - 'genai-engine/pyproject.toml'
+              - 'genai-engine/uv.lock'
+              - 'genai-engine/requirements-gpu.txt'
+              - '.github/scripts/check_no_emsign_g3.sh'
+              - '.github/workflows/arthur-engine-workflow.yml'
       # paths-filter@v2's base detection is unreliable on merge_group, so the queue
       # classifies its commit itself. Each queue entry is one squashed commit on top
       # of dev or of the entry ahead of it, so its diff against its first parent is
@@ -298,6 +308,7 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" = "merge_group" ]; then
             echo "ui=true" >> "$GITHUB_OUTPUT"
+            echo "image=false" >> "$GITHUB_OUTPUT"
             if ! changed=$(git diff --no-renames --name-only HEAD^ HEAD); then
               echo "::warning::Could not diff the queue commit against its parent; running the full suite"
               echo "backend=true" >> "$GITHUB_OUTPUT"
@@ -314,6 +325,7 @@ jobs:
           else
             echo "backend=${{ steps.changes.outputs.backend }}" >> "$GITHUB_OUTPUT"
             echo "ui=${{ steps.changes.outputs.ui }}" >> "$GITHUB_OUTPUT"
+            echo "image=${{ steps.changes.outputs.image }}" >> "$GITHUB_OUTPUT"
           fi
 
   check-ml-engine-changes:
@@ -560,6 +572,47 @@ jobs:
         run: |
           uv run --no-sync --directory ml-engine pytest tests/unit
 
+  # SOC-222: release images are only built on dev/main, so build the CPU image here
+  # whenever something its CA trust depends on changes, and fail if it still trusts
+  # the compromised emSign ECC Root CA - G3 (system bundle, certifi, grpcio, ...).
+  # The UI stage is swapped for a stub through a named build context: the trust
+  # stores are all in the Python side, and this keeps the private-registry token
+  # out of PR builds. Not run in the merge queue; the release build re-checks.
+  check-genai-engine-image-ca-trust:
+    needs: check-genai-engine-changes
+    if: |
+      github.event_name == 'pull_request' &&
+      needs.check-genai-engine-changes.outputs.image == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: mathio/gha-cleanup@v1
+        with:
+          remove-browsers: true
+          verbose: true
+      - uses: actions/checkout@v5
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4.1.0
+      - name: Stub the UI build
+        run: |
+          mkdir -p "${RUNNER_TEMP}/ui-stub/app/ui-dist"
+          echo '<!doctype html><title>ui stub</title>' > "${RUNNER_TEMP}/ui-stub/app/ui-dist/index.html"
+      - name: Build CPU image (linux/amd64)
+        uses: docker/build-push-action@v6.18.0
+        with:
+          context: genai-engine
+          file: genai-engine/dockerfile
+          build-args: |
+            TORCH_DEVICE=cpu
+          build-contexts: |
+            ui-build=${{ runner.temp }}/ui-stub
+          tags: genai-engine-cpu:ca-trust-check
+          platforms: linux/amd64
+          load: true
+          push: false
+      - name: Check the image does not trust emSign ECC Root CA - G3
+        run: .github/scripts/check_no_emsign_g3.sh genai-engine-cpu:ca-trust-check
+
   build-genai-engine-docker-images:
     environment: shared-protected-branch-secrets
     if: |
@@ -624,6 +677,19 @@ jobs:
           # secrets (Meticulous/GitLab/Amplitude/reCAPTCHA tokens) and mode=max records
           # build-arg values into the provenance attestation on this public image.
           sbom: true
+      # SOC-222: the dockerfile already fails the build if a copy of the compromised
+      # emSign ECC Root CA - G3 survives; this re-checks every platform of the image
+      # that was pushed, by certificate fingerprint, and fails the release if it does.
+      - name: Check image does not trust emSign ECC Root CA - G3
+        env:
+          IMAGE: arthurplatform/genai-engine-${{ matrix.torch_device }}:${{ env.VERSION }}
+          PLATFORMS: ${{ matrix.torch_device == 'cpu' && 'linux/amd64 linux/arm64' || 'linux/amd64' }}
+        run: |
+          for platform in $PLATFORMS; do
+            echo "== ${IMAGE} (${platform})"
+            docker pull --platform "$platform" "$IMAGE"
+            .github/scripts/check_no_emsign_g3.sh "$IMAGE"
+          done
       # Advisory vulnerability scan + justification docs (must never fail the release build).
       - name: Scan image & generate justification docs
         continue-on-error: true
@@ -682,6 +748,14 @@ jobs:
           push: true
           platforms: linux/amd64
           sbom: true
+      # SOC-222: re-check the pushed image for the compromised emSign ECC Root CA - G3
+      # (the Dockerfile already fails its own build if a copy survives).
+      - name: Check image does not trust emSign ECC Root CA - G3
+        env:
+          IMAGE: arthurplatform/ml-engine:${{ env.VERSION }}
+        run: |
+          docker pull --platform linux/amd64 "$IMAGE"
+          .github/scripts/check_no_emsign_g3.sh "$IMAGE"
       # Advisory vulnerability scan + justification docs (must never fail the release build).
       - name: Scan image & generate justification docs
         continue-on-error: true

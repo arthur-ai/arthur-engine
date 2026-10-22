@@ -119,6 +119,41 @@ RUN set -eu; \
       sys.exit('build tooling survived the cleanup: %s' % left) if left else \
       print('build tooling removed; interpreter ok:', sys.version.split()[0])"
 
+# SOC-222: stop trusting the compromised eMudhra "emSign ECC Root CA - G3" root.
+# The distroless base's own system bundle (/etc/ssl/certs/ca-certificates.crt)
+# still trusts it, so:
+#   - The system bundle (Python's ssl default, which the SIEM/sink TLS contexts
+#     build on, and the ODBC drivers) is replaced in the final stage by this
+#     stage's, which comes from bookworm's current ca-certificates package and does
+#     not include G3.
+#   - Python packages that carry their own bundle are filtered in place: grpcio's
+#     grpc/_cython/_credentials/roots.pem (BigQuery, GCS) still trusts G3 in every
+#     release, as does any certifi older than the 2026.10.19 floor in pyproject.toml.
+# Matched by content: every PEM copy of G3 starts with the base64 line below. Each
+# file holding it loses that certificate block (and its comment header), and the
+# build fails if any copy survives. A no-op once upstream drops the cert.
+ARG EMSIGN_G3_PEM_LINE=MIICTjCCAdOgAwIBAgIKPPYHqWhwDtqLhDAKBggqhkjOPQQDAzBrMQswCQYDVQQG
+RUN set -eu; \
+    cp /etc/ssl/certs/ca-certificates.crt /tmp/ca-certificates.crt; \
+    hits="$(grep -rlF -- "$EMSIGN_G3_PEM_LINE" /tmp/ca-certificates.crt /usr/local /opt /app)" || [ $? -eq 1 ]; \
+    for f in $hits; do \
+      awk -v g3="$EMSIGN_G3_PEM_LINE" ' \
+        /-----BEGIN CERTIFICATE-----/ { inblk = 1; blk = ""; skip = 0 }; \
+        inblk { blk = blk $0 "\n"; if (index($0, g3) == 1) skip = 1; \
+                if (/-----END CERTIFICATE-----/) { if (!skip) printf "%s%s", pre, blk; pre = ""; inblk = 0 }; \
+                next }; \
+        { pre = pre $0 "\n" }; \
+        END { printf "%s", pre } \
+      ' "$f" > /tmp/g3-filtered; \
+      cat /tmp/g3-filtered > "$f"; \
+      echo "  SOC-222: removed emSign ECC Root CA - G3 from ${f}"; \
+    done; \
+    rm -f /tmp/g3-filtered; \
+    grep -q "BEGIN CERTIFICATE" /tmp/ca-certificates.crt; \
+    if grep -rlF -- "$EMSIGN_G3_PEM_LINE" /tmp/ca-certificates.crt /usr/local /opt /app; then \
+      echo "ERROR: emSign ECC Root CA - G3 is still trusted by the files above (SOC-222)" >&2; exit 1; \
+    fi
+
 # Patch the libraries the distroless base keeps in /lib. Unlike bookworm, the base
 # is NOT merged-/usr: /lib is a real directory holding glibc (libc.so.6, libm,
 # libpthread, libnss_*, and the ELF interpreter that /lib64 symlinks to) plus
@@ -204,6 +239,8 @@ COPY --from=install /tmp/patched-lib /lib
 COPY --from=install /usr/local/lib/ /usr/local/lib/
 COPY --from=install /usr/local/bin/ /usr/local/bin/
 COPY --from=install /etc/ld.so.cache /etc/ld.so.cache
+# System CA bundle without emSign ECC Root CA - G3 (SOC-222, see install stage).
+COPY --from=install /tmp/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 # dpkg metadata corrected to match the shared objects copied above (see install stage).
 # Must precede the python3.11 cleanup below, which deletes three of these stanzas.
 COPY --from=install /tmp/dpkg-status.d /var/lib/dpkg/status.d
