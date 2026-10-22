@@ -117,9 +117,15 @@ resource "google_os_config_v2_policy_orchestrator_for_folder" "discovery" {
           }
         }
 
+        # Every VM in the zone, unless a pilot narrows it to a label. Never an exclusion label: a
+        # label a VM's owner can set would be an opt-out from discovery.
         instance_filter {
-          inclusion_labels {
-            labels = local.labels
+          all = local.labels == null ? true : null
+          dynamic "inclusion_labels" {
+            for_each = local.labels == null ? [] : [local.labels]
+            content {
+              labels = inclusion_labels.value
+            }
           }
         }
 
@@ -246,9 +252,15 @@ resource "google_os_config_v2_policy_orchestrator_for_organization" "discovery" 
           }
         }
 
+        # Every VM in the zone, unless a pilot narrows it to a label. Never an exclusion label: a
+        # label a VM's owner can set would be an opt-out from discovery.
         instance_filter {
-          inclusion_labels {
-            labels = local.labels
+          all = local.labels == null ? true : null
+          dynamic "inclusion_labels" {
+            for_each = local.labels == null ? [] : [local.labels]
+            content {
+              labels = inclusion_labels.value
+            }
           }
         }
 

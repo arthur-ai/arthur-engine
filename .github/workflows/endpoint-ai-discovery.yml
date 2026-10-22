@@ -12,11 +12,15 @@ on:
     paths:
       - 'integrations/endpoint-ai-discovery/**'
       - '.github/workflows/endpoint-ai-discovery.yml'
+      # lint.sh holds the EC2 reporter's wire format to the reader's.
+      - 'ml-engine/src/ml_engine/discovery/cloud/ec2/client.py'
   push:
     branches: [dev, main]
     paths:
       - 'integrations/endpoint-ai-discovery/**'
       - '.github/workflows/endpoint-ai-discovery.yml'
+      # lint.sh holds the EC2 reporter's wire format to the reader's.
+      - 'ml-engine/src/ml_engine/discovery/cloud/ec2/client.py'
   workflow_dispatch:
 
 # Read-only, and not left in the checkout. The macOS job runs the checked-out
@@ -49,6 +53,11 @@ jobs:
       # answers. No osquery: the collector is a stub, and the question is what is published.
       - name: test/run-guest-attributes.sh
         run: test/run-guest-attributes.sh
+
+      # The EC2 reporter against a fake IMDS. No osquery and no SSM Agent: the collector is
+      # a stub, and the question is the custom inventory file it writes.
+      - name: test/run-ssm-inventory.sh
+        run: test/run-ssm-inventory.sh
 
       # The collector embeds the darwin artifact alone, so it must refuse elsewhere by
       # name rather than by failing on a missing file. Asserts on the artifact the message

@@ -32,6 +32,7 @@ from arthur_client.api_bindings import (
     RejectedAgent,
     ToxicityConfig,
 )
+from arthur_common.models.agent_governance_schemas import CREATION_SOURCE_TYPE_BY_CLASS
 from genai_client import (
     ApiClient,
     Configuration,
@@ -442,12 +443,12 @@ def source_evidence(
     return evidence
 
 
-# The creation source a discovery record of each class is reported as. OTEL and manual
+# The creation source a discovery record of each class is reported as, from
+# arthur-common so a class added there is not silently dropped here. OTEL and manual
 # entries have no configured source, so never belong to a fetched one.
 _CREATION_SOURCE_TYPES: dict[str, str] = {
-    "cloud": "CLOUD",
-    "endpoint": "ENDPOINT",
-    "siem": "SIEM",
+    source_class.value: type_tag
+    for source_class, type_tag in CREATION_SOURCE_TYPE_BY_CLASS.items()
 }
 
 # Address fields that say which record an entry is, most specific last. Never the
