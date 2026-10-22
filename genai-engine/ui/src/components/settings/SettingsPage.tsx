@@ -4,6 +4,7 @@ import React from "react";
 import { useNavigate } from "react-router";
 
 import { ArthurLogo } from "../common/ArthurLogo";
+import { ModelSettingsTabs } from "./ModelSettingsTabs";
 
 import { SettingsMenuButton } from "@/components/settings/SettingsMenuButton";
 
@@ -34,6 +35,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ children }) => {
           <Button startIcon={<ArrowBackOutlined />} onClick={() => navigate("/")} sx={{ mb: 2, color: "text.secondary", textTransform: "none" }}>
             Back to All Tasks
           </Button>
+          <ModelSettingsTabs />
           {children}
         </Box>
       </Box>

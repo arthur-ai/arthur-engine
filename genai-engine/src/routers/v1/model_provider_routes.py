@@ -8,6 +8,9 @@ from starlette.status import HTTP_201_CREATED, HTTP_204_NO_CONTENT
 
 from config.config import Config
 from dependencies import get_db_session
+from repositories.guardrail_configuration_repository import (
+    GuardrailConfigurationRepository,
+)
 from repositories.model_provider_repository import ModelProviderRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
@@ -56,6 +59,10 @@ async def set_model_provider(
     """Set the configuration for a model provider"""
     try:
         repo = ModelProviderRepository(db_session)
+        GuardrailConfigurationRepository(db_session).authorize_provider_mutation(
+            provider,
+            current_user.get_role_names_set() if current_user else set(),
+        )
         repo.validate_model_provider_credentials(
             provider=provider,
             provider_credentials=provider_credentials,
@@ -98,7 +105,12 @@ async def set_model_provider(
     except (json.JSONDecodeError, ValueError) as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.warning(
+            "Unable to update model provider credentials (%s)", type(e).__name__
+        )
+        raise HTTPException(
+            status_code=500, detail="Unable to update model provider credentials."
+        ) from None
 
 
 @model_provider_routes.delete(
@@ -118,6 +130,10 @@ def delete_model_provider(
     """Set the configuration for a model provider"""
     try:
         repo = ModelProviderRepository(db_session)
+        GuardrailConfigurationRepository(db_session).authorize_provider_mutation(
+            provider,
+            current_user.get_role_names_set() if current_user else set(),
+        )
         repo.delete_model_provider_credentials(
             provider=provider,
         )

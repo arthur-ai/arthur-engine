@@ -25,6 +25,7 @@ from schemas.response_schemas import (
     ApplicationConfigurationResponse,
     DisplaySettingsResponse,
 )
+from services.guardrails.llm_configuration_service import validate_guardrail_selection
 from utils.constants import GENAI_ENGINE_SCOPE_URL_ENV_VAR
 from utils.currency_display import get_display_currency
 from utils.users import permission_checker
@@ -139,6 +140,8 @@ def update_configuration(
             tasks_repo.get_db_task_by_id(body.chat_task_id)
         config_repo = ConfigurationRepository(db_session)
 
+        if body.guardrail_llm is not None:
+            validate_guardrail_selection(db_session, body.guardrail_llm)
         new_config = config_repo.update_configurations(body)
 
         return new_config._to_response_model()

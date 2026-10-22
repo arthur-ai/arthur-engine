@@ -1,13 +1,14 @@
 import time
 
 from arthur_common.models.common_schemas import LLMTokenConsumption
-from schemas.custom_exceptions import LLMTokensPerPeriodRateLimitException
 from arthur_common.models.enums import (
     PIIEntityTypes,
     RuleResultEnum,
     RuleType,
     ToxicityViolationType,
 )
+
+from schemas.custom_exceptions import LLMTokensPerPeriodRateLimitException
 from schemas.scorer_schemas import (
     RuleScore,
     ScoreRequest,
@@ -20,6 +21,7 @@ from schemas.scorer_schemas import (
 )
 from scorer.llm_client import handle_llm_exception
 from scorer.score import ScorerClient
+from services.guardrails.judge_executor import JudgeContext
 
 MOCK_REGEX_PASSING_TEXT = "regex_mock_passing"
 MOCK_KEYWORD_PASSING_TEXT = "keyword_mock_passing"
@@ -32,7 +34,9 @@ class MockScorerClient(ScorerClient):
     def __init__(self):
         pass
 
-    def score(self, score_request: ScoreRequest) -> RuleScore:
+    def score(
+        self, score_request: ScoreRequest, judge_context: JudgeContext | None = None
+    ) -> RuleScore:
         if score_request.user_prompt == "MockScorerClientException":
             raise ValueError("This input throws an exception")
         if score_request.user_prompt == "RateLimitException":

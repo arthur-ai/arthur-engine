@@ -6,8 +6,6 @@ from itertools import repeat
 import torch
 from arthur_common.models.common_schemas import LLMTokenConsumption
 from arthur_common.models.enums import RuleResultEnum
-from langchain_core.messages.ai import AIMessage
-from langchain_openai import AzureChatOpenAI, ChatOpenAI
 from more_itertools import chunked
 from opentelemetry import trace
 from pydantic import BaseModel
@@ -26,8 +24,8 @@ from scorer.checks.hallucination.v2_legacy_prompts import (
     get_flagged_claim_explanation_prompt,
 )
 from scorer.checks.hallucination.v2_prompts import get_structured_output_prompt
-from scorer.llm_client import get_llm_executor, handle_llm_exception
 from scorer.scorer import RuleScorer
+from services.guardrails.judge_executor import JudgeContext, JudgeEvaluation
 from utils import constants, utils
 from utils.claim_parser import ClaimParser
 from utils.classifiers import Classifier, LogisticRegressionModel, get_device
@@ -124,17 +122,9 @@ class ReturnClaimFlags(BaseModel):
 
 
 class HallucinationClaimsV2(RuleScorer):
-    model: AzureChatOpenAI | ChatOpenAI
 
     def __init__(self, sentence_transformer: SentenceTransformer | None) -> None:
         self.claim_classifier = get_claim_classifier(sentence_transformer)
-        model = get_llm_executor().get_gpt_model()
-        if model is None:
-            raise RuntimeError(
-                "Failed to initialize LLM model for HallucinationClaimsV2. "
-                "Check your LLM configuration.",
-            )
-        self.model = model
         self.claim_parser = ClaimParser()
         self.flag_text_batch_template = get_claim_flagging_prompt()
         self.explanation_template = get_flagged_claim_explanation_prompt()
@@ -148,7 +138,12 @@ class HallucinationClaimsV2(RuleScorer):
         logger.info("Sentence transformer downloaded and classifier initialized.")
 
     @tracer.start_as_current_span("hallucination v2 score")
-    def score(self, request: ScoreRequest, claims_batch_size: int = 3) -> RuleScore:
+    def score(
+        self,
+        request: ScoreRequest,
+        claims_batch_size: int = 3,
+        judge_context: JudgeContext | None = None,
+    ) -> RuleScore:
         """runs hallucination v2 check that gives reasons for each claim being valid or not"""
 
         """
@@ -193,6 +188,7 @@ class HallucinationClaimsV2(RuleScorer):
             tuple[ClaimBatchValidation, RuleResultEnum]
         ] = []
         if claims:
+            evaluation = JudgeEvaluation(judge_context)
             batched_claims = chunked(claims, claims_batch_size)
             try:
                 with utils.TracedThreadPoolExecutor(tracer) as executor:
@@ -200,12 +196,13 @@ class HallucinationClaimsV2(RuleScorer):
                         self.validate_claim_batch,
                         repeat(request.context),
                         batched_claims,
+                        repeat(evaluation),
                     )
                 batch_validations_and_rule_results = list(
                     batch_validation_results_from_parallel_call,
                 )
             except Exception as e:
-                return handle_llm_exception(e)
+                return evaluation.unavailable(e)
         """
         Combine results into a single token consumption and merge claims, validity from batches
         """
@@ -289,21 +286,21 @@ class HallucinationClaimsV2(RuleScorer):
         self,
         context: str,
         claim_batch: list[OrderedClaim],
+        evaluation: JudgeEvaluation,
     ) -> tuple[ClaimBatchValidation, RuleResultEnum]:
-        if get_llm_executor().supports_structured_outputs():
-            return self.validate_claim_batch_structured_output(context, claim_batch)
+        if evaluation.context is not None and evaluation.context.structured_output:
+            return self.validate_claim_batch_structured_output(
+                context, claim_batch, evaluation
+            )
         else:
-            return self.validate_claim_batch_legacy(context, claim_batch)
+            return self.validate_claim_batch_legacy(context, claim_batch, evaluation)
 
     def validate_claim_batch_structured_output(
         self,
         context: str,
         claim_batch: list[OrderedClaim],
+        evaluation: JudgeEvaluation,
     ) -> tuple[ClaimBatchValidation, RuleResultEnum]:
-        flag_text_batch_chain = (
-            self.structured_output_prompt
-            | self.model.with_structured_output(ReturnClaimFlags)
-        )
 
         text_value = [claim.text for claim in claim_batch]
 
@@ -314,24 +311,21 @@ class HallucinationClaimsV2(RuleScorer):
             completion_tokens=0,
         )
 
-        call = lambda: flag_text_batch_chain.invoke(
-            {
-                "context": context,
-                "num_texts": claim_count,
-                "text_list_str": claim_batch_str,
-            },
-        )
-
-        return_claim_flags: ReturnClaimFlags
-        token_consumption: LLMTokenConsumption
-        return_claim_flags, token_consumption = get_llm_executor().execute(
-            call,
+        call_result = evaluation.complete(
+            self.structured_output_prompt.format_messages(
+                **{
+                    "context": context,
+                    "num_texts": claim_count,
+                    "text_list_str": claim_batch_str,
+                },
+            ),
             "hallucinationv2 claim validation",
-            model_name=getattr(self.model, "model_name", None),
+            ReturnClaimFlags,
         )
-
-        results = return_claim_flags.results
-        net_token_consumption.add(token_consumption)
+        if not isinstance(call_result.structured, ReturnClaimFlags):
+            raise ValueError("Invalid structured judge response.")
+        results = call_result.structured.results
+        net_token_consumption.add(call_result.tokens)
 
         if len(results) == claim_count:
             labelled_claims: list[LabelledClaim] = []
@@ -390,8 +384,8 @@ class HallucinationClaimsV2(RuleScorer):
         self,
         context: str,
         claim_batch: list[OrderedClaim],
+        evaluation: JudgeEvaluation,
     ) -> tuple[ClaimBatchValidation, RuleResultEnum]:
-        flag_text_batch_chain = self.flag_text_batch_template | self.model
 
         text_value = [claim.text for claim in claim_batch]
 
@@ -403,28 +397,20 @@ class HallucinationClaimsV2(RuleScorer):
         )
 
         # get 0 / 1 labels from the claim flagger
-        call = lambda: flag_text_batch_chain.invoke(
-            {
-                "context": context,
-                "num_texts": claim_count,
-                "text_list_str": claim_batch_str,
-            },
-        )
-
-        output: AIMessage
-        token_consumption: LLMTokenConsumption
-        output, token_consumption = get_llm_executor().execute(
-            call,
+        output = evaluation.complete(
+            self.flag_text_batch_template.format_messages(
+                **{
+                    "context": context,
+                    "num_texts": claim_count,
+                    "text_list_str": claim_batch_str,
+                },
+            ),
             "hallucinationv2 claim validation",
-            model_name=getattr(self.model, "model_name", None),
         )
-        net_token_consumption.add(token_consumption)
+        net_token_consumption.add(output.tokens)
 
         # remove anything that might come after a newline
-        if isinstance(output.content, str):
-            output_content = output.content.split("\n")[0]
-        else:
-            output_content = "".join([str(x) for x in output.content]).split("\n")[0]
+        output_content = output.text.split("\n")[0]
 
         # get the list of labels
         if "," not in output_content:
@@ -455,6 +441,7 @@ class HallucinationClaimsV2(RuleScorer):
                     self.get_explanation,
                     repeat(context),
                     labelled_claims,
+                    repeat(evaluation),
                 )
             explained_claims = list(explained_claims_results_from_parallel_call)
 
@@ -501,31 +488,23 @@ class HallucinationClaimsV2(RuleScorer):
         self,
         context: str,
         labelled_claim: LabelledClaim,
+        evaluation: JudgeEvaluation,
     ) -> LabelledClaim:
         if not labelled_claim.hallucination:
             return labelled_claim
-        explain_flagged_claim_chain = self.explanation_template | self.model
-        explain_call = lambda: explain_flagged_claim_chain.invoke(
-            {
-                "context": context,
-                "claim": labelled_claim.claim,
-            },
-        )
-
-        reason: AIMessage
-        explanation_tokens: LLMTokenConsumption
-        reason, explanation_tokens = get_llm_executor().execute(
-            explain_call,
+        reason = evaluation.complete(
+            self.explanation_template.format_messages(
+                **{
+                    "context": context,
+                    "claim": labelled_claim.claim,
+                },
+            ),
             "hallucinationv2 flagged claim explanation",
-            model_name=getattr(self.model, "model_name", None),
         )
 
         # in the call to the explainer, we gave the option to undo the flagging
         hallucination = True
-        if isinstance(reason.content, str):
-            reason_content = reason.content
-        else:
-            reason_content = "".join([str(x) for x in reason.content])
+        reason_content = reason.text
         if not any(
             x in reason_content.lower()
             for x in constants.HALLUCINATION_EXPLANATION_TRUE_POSITIVE_SIGNALS
@@ -542,5 +521,5 @@ class HallucinationClaimsV2(RuleScorer):
             order_number=labelled_claim.order_number,
             hallucination=hallucination,
             reason=evaluated_reason if not hallucination else reason_content,
-            token_consumption=explanation_tokens,
+            token_consumption=reason.tokens,
         )

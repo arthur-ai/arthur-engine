@@ -11,6 +11,7 @@ from starlette.status import HTTP_400_BAD_REQUEST
 
 from clients.llm.llm_client import LLMClient, get_static_catalog
 from db_models.secret_storage_models import DatabaseSecretStorage
+from repositories.guardrail_configuration_repository import lock_guardrail_configuration
 from schemas.enums import SecretType
 from schemas.internal_schemas import AwsBedrockCredentials, GCPServiceAccountCredentials
 from schemas.request_schemas import PutModelProviderCredentials
@@ -130,9 +131,13 @@ class ModelProviderRepository:
         self,
         provider: ModelProvider,
     ) -> DatabaseSecretStorage | None:
-        secret: DatabaseSecretStorage | None = self._provider_secret_query(
-            provider,
-        ).first()
+        secret: DatabaseSecretStorage | None = (
+            self._provider_secret_query(
+                provider,
+            )
+            .populate_existing()
+            .first()
+        )
         return secret
 
     def _require_provider_secret(
@@ -224,6 +229,7 @@ class ModelProviderRepository:
         aws_bedrock_credentials: AwsBedrockCredentials | None = None,
     ) -> None:
         # first check if this provider already exists
+        lock_guardrail_configuration(self.db_session)
         existing_provider = self._get_provider_secret(provider)
         secret_data = self._format_creds_for_provider_secret(api_key, api_base)
 
@@ -271,6 +277,7 @@ class ModelProviderRepository:
         self,
         provider: ModelProvider,
     ) -> None:
+        lock_guardrail_configuration(self.db_session)
         providers = self._provider_secret_query(provider).all()
         for provider_db in providers:
             self.db_session.delete(provider_db)
@@ -320,6 +327,13 @@ class ModelProviderRepository:
             .all()
         )
         enabled_providers = set([p[0] for p in enabled_providers_db_rows])
+        custom_openai_endpoint = (
+            self._provider_secret_query(ModelProvider.OPENAI)
+            .with_entities(DatabaseSecretStorage.id)
+            .filter(DatabaseSecretStorage.api_base.is_not(None))
+            .first()
+            is not None
+        )
 
         # construct responses based on if a secret is configured for the provider
         providers = []
@@ -328,6 +342,8 @@ class ModelProviderRepository:
                 ModelProviderResponse(
                     provider=provider,
                     enabled=provider in enabled_providers,
+                    supports_custom_models=provider == ModelProvider.AZURE
+                    or (provider == ModelProvider.OPENAI and custom_openai_endpoint),
                 ),
             )
 

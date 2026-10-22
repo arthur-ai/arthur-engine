@@ -2,7 +2,7 @@ import logging
 import threading
 import time
 import uuid
-from typing import Any, List, Optional, Union
+from typing import Any, Callable, List, Optional, Union
 
 import httpx
 import litellm
@@ -15,11 +15,16 @@ from litellm.types.utils import (
     TextCompletionResponse,
     TokenCountResponse,
 )
+from openai import AzureOpenAI, OpenAI
 from pydantic import BaseModel, ConfigDict, Field
 
 from repositories.organizations_repository import (
     enforce_token_quota,
     record_org_token_usage,
+)
+from schemas.custom_exceptions import (
+    LLMContentFilterException,
+    LLMMaxRequestTokensException,
 )
 
 logger = logging.getLogger(__name__)
@@ -201,6 +206,8 @@ class LLMClient:
             else:
                 raise ValueError("api_base is required for this provider")
 
+        if self.provider == ModelProvider.OPENAI and self.api_base:
+            kwargs["api_base"] = self.api_base
         return kwargs
 
     def calculate_cost(
@@ -242,6 +249,8 @@ class LLMClient:
         self,
         *args: Any,
         org_id: uuid.UUID,
+        raw_response_observer: Callable[[ModelResponse], None] | None = None,
+        sdk_client: OpenAI | AzureOpenAI | None = None,
         **kwargs: Any,
     ) -> LLMModelResponse:
         # `org_id` is required (kw-only): every LLM call bills the org that
@@ -250,9 +259,17 @@ class LLMClient:
         # `tokens_limit IS NULL` — not by passing a sentinel here. UP-4390.
         enforce_token_quota(org_id)
         kwargs = self._add_provider_credentials(kwargs)
+        if sdk_client is not None:
+            kwargs["client"] = sdk_client
 
         try:
             response = litellm.completion(*args, **kwargs)
+        except litellm.ContextWindowExceededError:
+            raise LLMMaxRequestTokensException(
+                "Request exceeds the model token limit."
+            ) from None
+        except litellm.ContentPolicyViolationError:
+            raise LLMContentFilterException() from None
         except litellm.BadRequestError as e:
             if "requires at least one non-system message" in str(e):
                 raise HTTPException(
@@ -261,7 +278,7 @@ class LLMClient:
                 )
             raise HTTPException(
                 status_code=400,
-                detail=f"Bad request to provider '{self.provider}': {str(e)}",
+                detail=f"Bad request to provider '{self.provider}'.",
             )
         except litellm.NotFoundError as e:
             # Model not found or not available
@@ -273,16 +290,16 @@ class LLMClient:
                     status_code=404,
                     detail=f"Model '{model}' is not available or not found for provider '{self.provider}'. Please check that the model exists and you have access to it.",
                 )
-            raise HTTPException(status_code=404, detail=f"Model not found: {error_msg}")
+            raise HTTPException(status_code=404, detail="Model not found.")
         except litellm.AuthenticationError as e:
             raise HTTPException(
                 status_code=401,
-                detail=f"Authentication failed for provider '{self.provider}': {str(e)}",
+                detail=f"Authentication failed for provider '{self.provider}'.",
             )
         except litellm.RateLimitError as e:
             raise HTTPException(
                 status_code=429,
-                detail=f"Rate limit exceeded for provider '{self.provider}': {str(e)}",
+                detail=f"Rate limit exceeded for provider '{self.provider}'.",
             )
         except litellm.ServiceUnavailableError as e:
             # ServiceUnavailableError can wrap other errors
@@ -297,23 +314,25 @@ class LLMClient:
                 )
             raise HTTPException(
                 status_code=503,
-                detail=f"Service unavailable for provider '{self.provider}': {error_msg}",
+                detail=f"Service unavailable for provider '{self.provider}'.",
             )
         except litellm.APIError as e:
             raise HTTPException(
                 status_code=e.status_code if hasattr(e, "status_code") else 500,
-                detail=f"API error from provider '{self.provider}': {str(e)}",
+                detail=f"API error from provider '{self.provider}'.",
             )
         except Exception as e:
-            logger.error(f"Unexpected error during completion: {e}", exc_info=True)
+            logger.error("Unexpected completion error (%s)", type(e).__name__)
             raise HTTPException(
                 status_code=500,
-                detail=f"Unexpected error during completion: {str(e)}",
+                detail="Unexpected completion error.",
             )
 
         cost = self.calculate_cost(response)
 
         self.record_token_usage(org_id, response)
+        if raw_response_observer is not None:
+            raw_response_observer(response)
 
         llm_model_response = LLMModelResponse(
             response=response,

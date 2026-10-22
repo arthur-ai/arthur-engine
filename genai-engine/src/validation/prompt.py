@@ -5,10 +5,11 @@ from arthur_common.models.response_schemas import ValidationResult
 from sqlalchemy.orm import Session
 
 from repositories.inference_repository import InferenceRepository
-from rules_engine import RuleEngine
 from schemas.internal_schemas import Rule, ValidationRequest
 from scorer.score import ScorerClient
+from services.guardrails.validation import evaluate_guardrails
 from services.trace.guardrail_span_emitter import guardrail_span
+from utils.constants import DEFAULT_ORG_ID
 
 
 def validate_prompt(
@@ -20,6 +21,7 @@ def validate_prompt(
     trace_id: str | None = None,
     parent_span_id: str | None = None,
     emit_guardrail_trace: bool = True,
+    billed_org_id: uuid.UUID = DEFAULT_ORG_ID,
 ) -> ValidationResult:
     inference_repo = InferenceRepository(db_session)
     # Pre-generated so the guardrail span's derived trace can start before
@@ -39,7 +41,9 @@ def validate_prompt(
         user_id=body.user_id,
         session_id=body.conversation_id,
     ) as gspan:
-        rule_results = RuleEngine(scorer_client).evaluate(validation_request, rules)
+        rule_results = evaluate_guardrails(
+            validation_request, rules, scorer_client, billed_org_id
+        )
         gspan.set_rule_results(rule_results)
 
     inference_prompt = inference_repo.save_prompt(

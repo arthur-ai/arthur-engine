@@ -16,17 +16,7 @@ class GenaiEngineOpenAIProvider(Enum):
 OPENAI_PRIVATE_CERT_PATH = "openai-cert.pem"
 
 
-class OpenAISettings(BaseSettings):
-    GENAI_ENGINE_OPENAI_PROVIDER: GenaiEngineOpenAIProvider = (
-        GenaiEngineOpenAIProvider.AZURE
-    )
-    GENAI_ENGINE_OPENAI_RATE_LIMIT_TOKENS_PER_PERIOD: int
-    GENAI_ENGINE_OPENAI_RATE_LIMIT_PERIOD_SECONDS: int
-    GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS: str | None = Field(...)
-    GENAI_ENGINE_OPENAI_EMBEDDINGS_NAMES_ENDPOINTS_KEYS: str | None = Field(
-        default=None,
-    )
-    OPENAI_API_VERSION: str | None = Field(default="2025-02-01-preview")
+class OpenAITransportSettings(BaseSettings):
     # TLS verification for outbound LLM / OpenAI-compatible proxy calls. Mirrors the
     # Postgres/Keycloak private-cert pattern: GENAI_ENGINE_OPENAI_PRIVATE_CERT_DOWNLOAD_URL
     # is fetched by docker-entrypoint.sh into OPENAI_PRIVATE_CERT_PATH and trusted as the
@@ -60,6 +50,36 @@ class OpenAISettings(BaseSettings):
         if not self.GENAI_ENGINE_OPENAI_VERIFY_SSL:
             return False
         return None
+
+
+class GuardrailRateSettings(BaseSettings):
+    GENAI_ENGINE_OPENAI_RATE_LIMIT_TOKENS_PER_PERIOD: int = Field(default=20000, gt=0)
+    GENAI_ENGINE_OPENAI_RATE_LIMIT_PERIOD_SECONDS: int = Field(default=60, gt=0)
+
+    model_config = SettingsConfigDict(
+        env_file=".env", env_file_encoding="utf-8", extra="ignore"
+    )
+
+
+class GuardrailEnvironmentSettings(OpenAITransportSettings, GuardrailRateSettings):
+    GENAI_ENGINE_OPENAI_PROVIDER: GenaiEngineOpenAIProvider = (
+        GenaiEngineOpenAIProvider.AZURE
+    )
+    GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS: str | None = None
+    OPENAI_API_VERSION: str | None = "2025-02-01-preview"
+
+
+class OpenAISettings(OpenAITransportSettings):
+    GENAI_ENGINE_OPENAI_PROVIDER: GenaiEngineOpenAIProvider = (
+        GenaiEngineOpenAIProvider.AZURE
+    )
+    GENAI_ENGINE_OPENAI_RATE_LIMIT_TOKENS_PER_PERIOD: int
+    GENAI_ENGINE_OPENAI_RATE_LIMIT_PERIOD_SECONDS: int
+    GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS: str | None = Field(...)
+    GENAI_ENGINE_OPENAI_EMBEDDINGS_NAMES_ENDPOINTS_KEYS: str | None = Field(
+        default=None
+    )
+    OPENAI_API_VERSION: str | None = Field(default="2025-02-01-preview")
 
     @field_validator("GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS")
     @classmethod

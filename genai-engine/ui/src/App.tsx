@@ -39,6 +39,7 @@ import { RagNotebooks } from "./components/retrievals/notebooks";
 import { RagConfigurationsPage } from "./components/retrievals/RagConfigurationsPage";
 import { RagExperimentsPage } from "./components/retrievals/RagExperimentsPage";
 import { SettingsPage } from "./components/settings/SettingsPage";
+import { GuardrailSettings } from "./components/settings/guardrail-settings";
 import { TaskLayout } from "./components/TaskLayout";
 import { TaskOverview } from "./components/TaskOverview";
 import { TestView } from "./components/test/TestView";
@@ -76,6 +77,16 @@ function AppRoutes() {
           <ProtectedRoute adminOnly>
             <SettingsPage>
               <ModelProviders />
+            </SettingsPage>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings/guardrails"
+        element={
+          <ProtectedRoute adminOnly>
+            <SettingsPage>
+              <GuardrailSettings />
             </SettingsPage>
           </ProtectedRoute>
         }

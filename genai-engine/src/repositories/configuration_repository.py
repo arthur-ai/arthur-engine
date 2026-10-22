@@ -1,6 +1,10 @@
 from sqlalchemy.orm import Session
 
 from db_models import DatabaseApplicationConfiguration
+from repositories.guardrail_configuration_repository import (
+    GuardrailConfigurationRepository,
+    lock_guardrail_configuration,
+)
 from schemas.enums import ApplicationConfigurations
 from schemas.internal_schemas import ApplicationConfiguration
 from schemas.request_schemas import ApplicationConfigurationUpdateRequest
@@ -14,6 +18,11 @@ class ConfigurationRepository:
         self,
         request: ApplicationConfigurationUpdateRequest,
     ) -> ApplicationConfiguration:
+        if "guardrail_llm" in request.model_fields_set:
+            lock_guardrail_configuration(self.db_session)
+            GuardrailConfigurationRepository(self.db_session).write(
+                request.guardrail_llm
+            )
         existing_configurations = self.get_database_configurations()
         if request.chat_task_id:
             chat_config = update_or_create_config(
@@ -102,6 +111,9 @@ class ConfigurationRepository:
     def get_configurations(self) -> ApplicationConfiguration:
         configs = self.get_database_configurations()
         config = ApplicationConfiguration._from_database_model(configs)
+        config.guardrail_llm, config.guardrail_llm_status = (
+            GuardrailConfigurationRepository(self.db_session).read()
+        )
         return config
 
 
