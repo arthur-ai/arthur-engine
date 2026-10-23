@@ -207,7 +207,9 @@ The source does not publish three kinds of VM:
   for example because the VM is stopped or its timer was removed. Its agents go stale in
   Arthur.
 
-A VM that still reports but is failing keeps publishing its last good scan.
+A VM that still reports but is failing keeps publishing its last good scan. A VM dated more
+than 15 minutes past the scan's clock is published too, and the scan's log names it and how far
+ahead it is: fix its time sync.
 
 Every VM the source could not read is also listed, as
 `device_coverage.unreadable_devices`: instance id, name, `project/zone`, the reason, and the

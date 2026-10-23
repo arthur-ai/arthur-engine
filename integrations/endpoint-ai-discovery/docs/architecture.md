@@ -151,6 +151,12 @@ The carriers surface the third case on the status line: `stale=NNh` on Jamf, and
 on Compute Engine and EC2. First-sighting is not reported by any source: the platform computes
 it as the earliest `last_seen` it has recorded.
 
+On Compute Engine and EC2 the report time is the machine's own clock, and the lookback bounds
+it only from below. A machine whose clock runs fast therefore stays inside the lookback that
+much longer once it stops reporting. Discovery comes first, so it is still published, and the
+scan names it with its skew rather than withholding it; no `last_seen` is later than the scan's
+own clock.
+
 ## Transport
 
 A carrier must provide four things, listed in [`mdm/README.md`](mdm/README.md):
