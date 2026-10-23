@@ -90,6 +90,7 @@ from discovery.cloud.aws_bedrock.connector import aggregate
 from discovery.cloud.aws_containers.client import (
     AwsContainersClient,
     AwsContainersError,
+    KubernetesApi,
     KubernetesError,
     ScanStopped,
     TokenFactory,
@@ -587,6 +588,7 @@ class _Scan:
                 node_roles=identity.node_roles,
                 fargate_selectors=identity.fargate_selectors,
             )
+            replicasets = self._deployment_replicasets(kube, cluster)
             for path, kind, asset_kind in K8S_KINDS:
                 for raw in kube.items(path):
                     workload = eks_workload(
@@ -597,12 +599,41 @@ class _Scan:
                         kind,
                         asset_kind,
                         raw,
+                        replicasets,
                     )
                     if workload is not None:
                         found.append(workload)
         # A cluster counts only when every kind was listed: half a cluster would read
         # as workloads that were deleted.
         return found
+
+    def _deployment_replicasets(
+        self,
+        kube: KubernetesApi,
+        cluster: Mapping[str, Any],
+    ) -> Optional[frozenset[tuple[str, str]]]:
+        """(namespace, name) of each ReplicaSet a Deployment owns, or None when they
+        cannot be read, which folds every ReplicaSet's pods as before."""
+        try:
+            return frozenset(
+                (
+                    str((rs.get("metadata") or {}).get("namespace") or ""),
+                    str((rs.get("metadata") or {}).get("name") or ""),
+                )
+                for rs in kube.items("/apis/apps/v1/replicasets")
+                if any(
+                    o.get("kind") == "Deployment"
+                    for o in (rs.get("metadata") or {}).get("ownerReferences") or []
+                )
+            )
+        except KubernetesError as e:
+            self._log.warning(
+                "ReplicaSets of EKS cluster %s not read (%s); pods of a ReplicaSet a "
+                "custom controller owns are folded into it and not reported",
+                cluster.get("name"),
+                e,
+            )
+            return None
 
     # --- refusals -----------------------------------------------------------------
 

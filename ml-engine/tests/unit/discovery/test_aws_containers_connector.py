@@ -769,6 +769,11 @@ def eks_account(kube_paths: dict[str, Any]) -> tuple[FakeAws, FakeKube]:
     aws.eks[EKS] = eks_cluster()
     aws.node_groups[EKS] = {"ng-1": NODE_ROLE}
     aws.pod_identity[EKS] = [("agents", "podid", POD_ID_ROLE)]
+    # k8s(owner=...) names its owner "x": a Deployment's ReplicaSet, as most are.
+    kube_paths.setdefault(
+        "/apis/apps/v1/replicasets",
+        [owned_by(k8s("replicaset", "x"), "Deployment", "web")],
+    )
     return aws, FakeKube(kube_paths)
 
 
@@ -890,6 +895,46 @@ def test_an_operator_owned_controller_is_still_a_workload() -> None:
     assert record.creation_source.address.resource_id == (
         f"{EKS}/agents/deployment/llm-predictor"
     )
+
+
+def owned_by(raw: Any, kind: str, name: str) -> Any:
+    raw["metadata"]["ownerReferences"] = [{"kind": kind, "name": name}]
+    return raw
+
+
+def test_a_pod_of_a_replicaset_a_rollout_owns_is_its_own_workload() -> None:
+    # An Argo Rollout owns its ReplicaSets, and the Rollout is not listed.
+    aws, kube = eks_account(
+        {
+            "/apis/apps/v1/replicasets": [
+                owned_by(k8s("replicaset", "web-5d9f"), "Deployment", "web"),
+                owned_by(k8s("replicaset", "canary-7c4b"), "Rollout", "canary"),
+            ],
+            "/api/v1/pods": [
+                owned_by(k8s("pod", "web-5d9f-x"), "ReplicaSet", "web-5d9f"),
+                owned_by(k8s("pod", "canary-7c4b-y"), "ReplicaSet", "canary-7c4b"),
+            ],
+        },
+    )
+    records = by_id(scan(aws, report_all(), kube))
+    assert sorted(records) == [f"{EKS}/agents/pod/canary-7c4b-y"]
+
+
+def test_unreadable_replicasets_fold_every_replicaset_pod_as_before() -> None:
+    aws, kube = eks_account(
+        {
+            "/apis/apps/v1/replicasets": FakeResponse(
+                403,
+                {"kind": "Status", "message": "forbidden"},
+            ),
+            "/api/v1/pods": [
+                owned_by(k8s("pod", "canary-7c4b-y"), "ReplicaSet", "canary-7c4b"),
+            ],
+        },
+    )
+    connector = connector_for(aws, kube)
+    assert scan(aws, report_all(), connector=connector) == []
+    assert connector.denied_scopes() == ()
 
 
 def test_pods_and_jobs_an_operator_owns_are_their_own_workloads() -> None:
