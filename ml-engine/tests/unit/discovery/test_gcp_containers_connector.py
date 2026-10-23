@@ -457,6 +457,27 @@ def test_a_controller_an_operator_owns_is_still_a_workload() -> None:
     assert ids == [f"{CLUSTER}/agents/deployment/llm-predictor"]
 
 
+def test_pods_and_jobs_an_operator_owns_are_their_own_workloads() -> None:
+    """A RayCluster owns its pods and a JobSet its Jobs, and neither owner is listed,
+    so those are workloads; a Job's own pods still fold into the Job."""
+    fake = FakeGoogle(
+        clusters=[cluster()],
+        kube={
+            "/apis/batch/v1/jobs": [[k8s("job", "train-0", owner="JobSet")]],
+            "/api/v1/pods": [
+                [
+                    k8s("pod", "ray-head", owner="RayCluster"),
+                    k8s("pod", "train-0-abcde", owner="Job"),
+                ],
+            ],
+        },
+    )
+
+    ids = sorted(r.creation_source.address.resource_id for r in scan(fake))
+
+    assert ids == [f"{CLUSTER}/agents/job/train-0", f"{CLUSTER}/agents/pod/ray-head"]
+
+
 def test_gke_system_namespaces_are_not_workloads() -> None:
     fake = FakeGoogle(
         clusters=[cluster()],

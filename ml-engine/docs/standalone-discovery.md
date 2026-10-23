@@ -153,7 +153,9 @@ workloads are selected by catalog image (or `report_all_workloads`) only. `query
 catalog, as for Jamf; `query_language: none`.
 
 A GKE workload is its controller -- Deployment, StatefulSet, DaemonSet, CronJob -- or a
-Job or Pod nothing owns; `kube-system`, `kube-public`, `kube-node-lease` and the `gke-`
+Job or Pod no listed workload owns (a CronJob's Jobs and the pods of a ReplicaSet,
+StatefulSet, DaemonSet or Job fold into their owner; an operator's, such as a Ray
+cluster's pods, are their own); `kube-system`, `kube-public`, `kube-node-lease` and the `gke-`
 and `gmp-` namespaces are left out. A pod without Workload Identity calls Google as its
 node pool's service account, which every pod on the node shares, so that account is
 labelled `node account` and an AI call from it does not select the workload; only the

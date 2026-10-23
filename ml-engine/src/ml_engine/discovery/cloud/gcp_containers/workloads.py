@@ -48,9 +48,14 @@ K8S_KINDS: tuple[tuple[str, str, str], ...] = (
     ("/api/v1/pods", "pod", "pods"),
 )
 
-# The kinds an owner's identity stands for: a ReplicaSet's (or a Job's) pods, a
-# CronJob's Jobs. Any other kind is a controller, reported even when an operator owns it.
-OWNED_KINDS = frozenset({"job", "pod"})
+# For a Job or Pod, the owner kinds that stand for it: a workload this scan lists itself
+# (a ReplicaSet is its Deployment's). Owned by anything else -- a RayCluster, an Argo
+# Workflow, a JobSet -- it is its own workload, because that owner is not listed. A
+# controller (Deployment, StatefulSet, DaemonSet, CronJob) is listed whatever owns it.
+FOLDED_INTO = {
+    "job": frozenset({"CronJob"}),
+    "pod": frozenset({"ReplicaSet", "StatefulSet", "DaemonSet", "Job"}),
+}
 
 # Namespaces GKE and Kubernetes run their own components in. Their workloads run on the
 # node's service account like any other, so an AI-calling node account would otherwise
@@ -177,11 +182,11 @@ def gke_workload(
 ) -> Optional[Workload]:
     """One Kubernetes object as a workload, or None when it is not its own workload.
 
-    None for a pod or Job something owns (a ReplicaSet's pods, a CronJob's Jobs), one
-    in a system namespace, and one with no name. A controller is its own workload
-    whatever owns it: an operator's custom resource (a KServe InferenceService, a Ray
-    cluster) owns the Deployment or StatefulSet it runs, and the resource itself is not
-    listed, so skipping an owned controller would drop exactly those workloads.
+    None for a Job or Pod a listed workload owns (a CronJob's Jobs; the pods of a
+    ReplicaSet, StatefulSet, DaemonSet or Job), one in a system namespace, and one with
+    no name. Anything an operator's custom resource owns -- a Deployment a KServe
+    InferenceService runs, a Ray cluster's pods, a JobSet's Jobs -- is its own workload:
+    the custom resource is not listed, so skipping what it owns would drop the workload.
     `annotations` is (namespace, KSA) -> the GCP service account its Workload Identity
     annotation names.
     """
@@ -190,7 +195,11 @@ def gke_workload(
     name = str(meta.get("name") or "")
     if not namespace or not name:
         return None
-    if path_kind in OWNED_KINDS and meta.get("ownerReferences"):
+    folded_into = FOLDED_INTO.get(path_kind, frozenset())
+    if any(
+        str(owner.get("kind") or "") in folded_into
+        for owner in meta.get("ownerReferences") or []
+    ):
         return None
     if namespace in SYSTEM_NAMESPACES or namespace.startswith(
         SYSTEM_NAMESPACE_PREFIXES,
