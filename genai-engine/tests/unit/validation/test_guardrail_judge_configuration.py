@@ -1,12 +1,20 @@
+import os
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from datetime import datetime
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
-from arthur_common.models.common_schemas import LLMTokenConsumption
+from arthur_common.models.common_schemas import (
+    KeywordsConfig,
+    LLMTokenConsumption,
+    PIIConfig,
+    RegexConfig,
+    ToxicityConfig,
+)
 from arthur_common.models.enums import RuleResultEnum, RuleScope, RuleType
 from arthur_common.models.llm_model_providers import ModelProvider
 from arthur_common.models.request_schemas import NewRuleRequest
@@ -16,6 +24,8 @@ from pydantic import SecretStr, ValidationError
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+import dependencies
+import server
 from config.database_config import DatabaseConfig
 from config.openai_config import GuardrailRateSettings
 from db_models import DatabaseApplicationConfiguration, DatabaseOrganization
@@ -42,9 +52,116 @@ from services.guardrails.judge_executor import (
     zero_tokens,
 )
 from services.guardrails.validation import evaluate_guardrails
+from tests.clients.base_test_client import override_get_db_session
 from utils import constants
 
 pytestmark = pytest.mark.unit_tests
+
+
+@pytest.mark.asyncio
+async def test_startup_and_local_validation_without_judge_env(monkeypatch, tmp_path):
+    monkeypatch.setenv("OPENAI_CONFIG_FILE", str(tmp_path / "absent.env"))
+    for name in tuple(os.environ):
+        if name.startswith("GENAI_ENGINE_OPENAI_"):
+            monkeypatch.delenv(name)
+    forbidden = MagicMock(
+        side_effect=AssertionError("Local validation must not initialize a judge")
+    )
+    monkeypatch.setattr("scorer.llm_client.OpenAISettings", forbidden)
+    monkeypatch.setattr(
+        "services.guardrails.validation.capture_judge_context", forbidden
+    )
+    monkeypatch.setattr(dependencies, "SINGLETON_SCORER_CLIENT", None)
+    local_classifier = MagicMock()
+    local_classifier.score.return_value = RuleScore(
+        result=RuleResultEnum.MODEL_NOT_AVAILABLE
+    )
+    monkeypatch.setattr(
+        dependencies, "BinaryPIIDataClassifier", lambda: local_classifier
+    )
+    monkeypatch.setattr(
+        dependencies, "BinaryPIIDataClassifierV1", lambda: local_classifier
+    )
+    for name in (
+        "PROMPT_INJECTION_MODEL",
+        "PROMPT_INJECTION_TOKENIZER",
+        "TOXICITY_MODEL",
+        "TOXICITY_TOKENIZER",
+    ):
+        monkeypatch.setattr(dependencies, name, None)
+    monkeypatch.setattr(
+        dependencies.BinaryPromptInjectionClassifier,
+        "_download_model_and_tokenizer",
+        lambda self: None,
+    )
+    monkeypatch.setattr(
+        dependencies.ToxicityScorer, "_download_model_and_tokenizer", lambda self: None
+    )
+    monkeypatch.setattr(
+        server, "get_db_session", lambda: iter([override_get_db_session()])
+    )
+    monkeypatch.setattr(
+        server, "get_keycloak_settings", lambda: SimpleNamespace(ENABLED=False)
+    )
+    monkeypatch.setattr(server, "is_api_only_mode_enabled", lambda: True)
+    monkeypatch.setattr(server, "relevance_models_enabled", lambda: False)
+    monkeypatch.setattr(server, "initialize_system_tasks", lambda session: None)
+
+    @contextmanager
+    def session_context():
+        with override_get_db_session() as session:
+            yield session
+
+    monkeypatch.setattr(server, "db_session_context", session_context)
+    for name in (
+        "send_telemetry_event",
+        "initialize_continuous_eval_queue_service",
+        "initialize_currency_conversion_service",
+        "initialize_trace_retention_service",
+        "shutdown_continuous_eval_queue_service",
+        "shutdown_currency_conversion_service",
+        "shutdown_trace_retention_service",
+    ):
+        monkeypatch.setattr(server, name, MagicMock())
+    for name in (
+        "download_models",
+        "get_claim_classifier_embedding_model",
+        "get_prompt_injection_model",
+        "get_prompt_injection_tokenizer",
+        "get_toxicity_model",
+        "get_toxicity_tokenizer",
+    ):
+        monkeypatch.setattr(server.model_load, name, lambda *args: None)
+    monkeypatch.setattr(
+        "scorer.checks.hallucination.v2.get_claim_classifier", lambda *args: None
+    )
+    async with server.lifespan(server.get_test_app()):
+        scorer = dependencies.get_scorer_client()
+        configurations = [
+            (RuleType.REGEX, RegexConfig(regex_patterns=["private"])),
+            (RuleType.KEYWORD, KeywordsConfig(keywords=["private"])),
+            (RuleType.PROMPT_INJECTION, None),
+            (RuleType.PII_DATA, PIIConfig()),
+            (RuleType.TOXICITY, ToxicityConfig(threshold=0.5)),
+        ]
+        rules = [
+            Rule._from_request_model(
+                NewRuleRequest(
+                    name=kind.value,
+                    type=kind,
+                    apply_to_prompt=True,
+                    apply_to_response=False,
+                    config=config,
+                ),
+                RuleScope.TASK,
+            )
+            for kind, config in configurations
+        ]
+        results = evaluate_guardrails(
+            ValidationRequest(prompt="public information"), rules, scorer, uuid4()
+        )
+        assert len(results) == len(rules)
+    forbidden.assert_not_called()
 
 
 @pytest.fixture
