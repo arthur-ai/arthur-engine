@@ -140,7 +140,7 @@ def capture_judge_context(org_id: UUID) -> JudgeContext:
                 if selection is not None and status == "configured"
                 else None
             )
-        rates = GuardrailRateSettings(_env_file=settings_file)
+        rates = GuardrailRateSettings(_env_file=settings_file)  # type: ignore[call-arg]
         limiter = get_judge_rate_limiter(
             rates.GENAI_ENGINE_OPENAI_RATE_LIMIT_TOKENS_PER_PERIOD,
             rates.GENAI_ENGINE_OPENAI_RATE_LIMIT_PERIOD_SECONDS,
@@ -150,7 +150,7 @@ def capture_judge_context(org_id: UUID) -> JudgeContext:
             structured, limit, temperature = model_capabilities(
                 selection.provider, metadata_model
             )
-            transport = OpenAITransportSettings(_env_file=settings_file)
+            transport = OpenAITransportSettings(_env_file=settings_file)  # type: ignore[call-arg]
             sdk_client: OpenAI | AzureOpenAI | None = None
             if selection.provider in (ModelProvider.OPENAI, ModelProvider.AZURE):
                 if not client.api_key or (
@@ -162,6 +162,7 @@ def capture_judge_context(org_id: UUID) -> JudgeContext:
                 http_client = httpx.Client(verify=True if verify is None else verify)
                 try:
                     if selection.provider == ModelProvider.AZURE:
+                        assert client.api_base is not None
                         sdk_client = AzureOpenAI(
                             api_key=client.api_key,
                             azure_endpoint=client.api_base,
@@ -203,7 +204,7 @@ def capture_judge_context(org_id: UUID) -> JudgeContext:
 
 
 def _environment_context(org_id: UUID, settings_file: str) -> JudgeContext:
-    settings = GuardrailEnvironmentSettings(_env_file=settings_file)
+    settings = GuardrailEnvironmentSettings(_env_file=settings_file)  # type: ignore[call-arg]
     contract = settings.GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS
     if not contract:
         return JudgeContext(org_id=org_id, error=NOT_CONFIGURED)

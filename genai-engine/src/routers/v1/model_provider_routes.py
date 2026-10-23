@@ -102,8 +102,10 @@ async def set_model_provider(
         return Response(status_code=HTTP_201_CREATED)
     except HTTPException:
         raise
-    except (json.JSONDecodeError, ValueError) as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    except (json.JSONDecodeError, ValueError):
+        raise HTTPException(
+            status_code=400, detail="Invalid model provider credentials."
+        ) from None
     except Exception as e:
         logger.warning(
             "Unable to update model provider credentials (%s)", type(e).__name__

@@ -239,7 +239,13 @@ export const ModelProviders: React.FC = () => {
                                 justifyContent: "flex-end",
                               }}
                             >
-                              <IconButton size="small" color="primary" onClick={() => handleEditClick(provider)} disabled={selectedProvider === provider.provider && !canWrite} title="Configure provider">
+                              <IconButton
+                                size="small"
+                                color="primary"
+                                onClick={() => handleEditClick(provider)}
+                                disabled={selectedProvider === provider.provider && !canWrite}
+                                title="Configure provider"
+                              >
                                 <Edit />
                               </IconButton>
                               <IconButton
@@ -300,8 +306,16 @@ export const ModelProviders: React.FC = () => {
           <Alert severity="warning" sx={{ mt: 2 }}>
             <Typography variant="body2">Any agents or evals currently using this provider will no longer work.</Typography>
           </Alert>
-          {deleteModal.provider?.provider === selectedProvider && <Alert severity="warning" sx={{ mt: 2 }}>Guardrails need a configured model provider. Removing this provider will require configuration.</Alert>}
-          {deleteError && <Alert severity="error" sx={{ mt: 2 }}>This provider could not be removed. Check your permissions and try again.</Alert>}
+          {deleteModal.provider?.provider === selectedProvider && (
+            <Alert severity="warning" sx={{ mt: 2 }}>
+              Guardrails need a configured model provider. Removing this provider will require configuration.
+            </Alert>
+          )}
+          {deleteError && (
+            <Alert severity="error" sx={{ mt: 2 }}>
+              This provider could not be removed. Check your permissions and try again.
+            </Alert>
+          )}
         </DialogContent>
         <DialogActions sx={{ p: 3 }}>
           <Button onClick={handleDeleteCancel} disabled={isDeleting} variant="outlined">
@@ -345,7 +359,11 @@ export const ModelProviders: React.FC = () => {
           </Box>
           Configure {getProviderDisplayName(editModal.provider?.provider || "")}
         </DialogTitle>
-        {editModal.provider?.provider === selectedProvider && <Alert severity="warning" sx={{ mx: 3 }}>Changing these credentials affects guardrails for all organizations. Only an organization administrator can change this provider.</Alert>}
+        {editModal.provider?.provider === selectedProvider && (
+          <Alert severity="warning" sx={{ mx: 3 }}>
+            Changing these credentials affects guardrails for all organizations. Only an organization administrator can change this provider.
+          </Alert>
+        )}
         {editModal.provider?.provider && (
           <EditForm
             provider={editModal.provider.provider}

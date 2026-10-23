@@ -55,6 +55,7 @@ class JudgeHandle(Protocol):
         messages: Sequence[BaseMessage],
         response_format: type[BaseModel] | None,
         observe: Callable[[LLMTokenConsumption], None],
+        started: Callable[[], None],
     ) -> JudgeCallResult: ...
 
     def close(self) -> None: ...
@@ -73,6 +74,7 @@ class ProviderJudgeHandle:
         messages: Sequence[BaseMessage],
         response_format: type[BaseModel] | None,
         observe: Callable[[LLMTokenConsumption], None],
+        started: Callable[[], None],
     ) -> JudgeCallResult:
         tokens = zero_tokens()
 
@@ -99,6 +101,7 @@ class ProviderJudgeHandle:
             org_id=self.org_id,
             sdk_client=self.sdk_client,
             raw_response_observer=raw_response,
+            call_started_observer=started,
             num_retries=0,
             **kwargs,
         )
@@ -128,10 +131,12 @@ class EnvironmentJudgeHandle:
         messages: Sequence[BaseMessage],
         response_format: type[BaseModel] | None,
         observe: Callable[[LLMTokenConsumption], None],
+        started: Callable[[], None],
     ) -> JudgeCallResult:
         self.enforce_quota(self.org_id)
         with get_openai_callback() as callback:
             try:
+                started()
                 if response_format is not None:
                     structured = self.model.with_structured_output(
                         response_format
@@ -249,14 +254,21 @@ class JudgeEvaluation:
         observed = zero_tokens()
         started = time.perf_counter()
         success = False
+        call_started = False
         error_type: str | None = None
 
         def observe(tokens: LLMTokenConsumption) -> None:
             observed.prompt_tokens = tokens.prompt_tokens
             observed.completion_tokens = tokens.completion_tokens
 
+        def started_call() -> None:
+            nonlocal call_started
+            call_started = True
+
         try:
-            result = context.handle.invoke(messages, response_format, observe)
+            result = context.handle.invoke(
+                messages, response_format, observe, started_call
+            )
             success = True
             return JudgeCallResult(result.text, result.structured, observed)
         except Exception as exc:
@@ -265,25 +277,28 @@ class JudgeEvaluation:
         finally:
             with self.lock:
                 self.tokens.add(observed)
-            if context.limiter is not None:
+            if context.limiter is not None and call_started:
                 context.limiter.record(observed)
             try:
-                record_model_invocation(
-                    ModelInvocation(
-                        model_name=context.model or "unknown",
-                        provider=(
-                            context.provider.value if context.provider else "unknown"
+                if call_started:
+                    record_model_invocation(
+                        ModelInvocation(
+                            model_name=context.model or "unknown",
+                            provider=(
+                                context.provider.value
+                                if context.provider
+                                else "unknown"
+                            ),
+                            model_type="llm",
+                            operation=operation,
+                            prompt_tokens=observed.prompt_tokens,
+                            completion_tokens=observed.completion_tokens,
+                            total_tokens=observed.total_tokens(),
+                            latency_ms=int((time.perf_counter() - started) * 1000),
+                            success=success,
+                            error_type=error_type,
                         ),
-                        model_type="llm",
-                        operation=operation,
-                        prompt_tokens=observed.prompt_tokens,
-                        completion_tokens=observed.completion_tokens,
-                        total_tokens=observed.total_tokens(),
-                        latency_ms=int((time.perf_counter() - started) * 1000),
-                        success=success,
-                        error_type=error_type,
-                    ),
-                )
+                    )
             except Exception:
                 pass
 

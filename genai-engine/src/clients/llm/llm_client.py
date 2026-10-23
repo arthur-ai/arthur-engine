@@ -250,6 +250,7 @@ class LLMClient:
         *args: Any,
         org_id: uuid.UUID,
         raw_response_observer: Callable[[ModelResponse], None] | None = None,
+        call_started_observer: Callable[[], None] | None = None,
         sdk_client: OpenAI | AzureOpenAI | None = None,
         **kwargs: Any,
     ) -> LLMModelResponse:
@@ -263,6 +264,8 @@ class LLMClient:
             kwargs["client"] = sdk_client
 
         try:
+            if call_started_observer is not None:
+                call_started_observer()
             response = litellm.completion(*args, **kwargs)
         except litellm.ContextWindowExceededError:
             raise LLMMaxRequestTokensException(
