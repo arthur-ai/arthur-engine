@@ -16,8 +16,9 @@
 # hosted runner; docs/mdm/ec2.md's real-instance run is the acceptance check, not this.
 #
 # WHY RUN IT AND NOT ONLY LINT IT. test/lint.sh reads the script. This runs the bytes a stack
-# ships, under dash: each fetch against the checksum the renderer pinned, the paths and modes,
-# a second run that changes nothing, and a file served with other bytes failing the run.
+# ships, under dash: a hybrid node left alone, each fetch against the checksum the renderer
+# pinned, the paths and modes, a second run that downloads nothing, and a pin change whose last
+# file is served wrong replacing none of the files verified before it.
 set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 UNIT=arthur-ai-discovery
@@ -68,12 +69,22 @@ grep -E '^ *fetch [^ ]+ [^ ]+ [0-7]+ [0-9a-f]{64}$' "$work/install.sh" > "$work/
 mkdir -p "$RUNTIME_DROPIN"
 printf '[Service]\nExecStart=\nExecStart=/bin/true\n' > "$RUNTIME_DROPIN/zz-test.conf"
 
-installed() {  # every destination's sha256 and mode, one line each
+installed() {  # every destination's sha256, mode and inode, one line each: a new inode is a replaced file
   while read -r _ _ dest _ _; do
     printf '%s %s %s\n' "$dest" "$(sha256sum < "$dest" 2>/dev/null | cut -d' ' -f1)" \
-      "$(stat -c %a "$dest" 2>/dev/null)"
+      "$(stat -c '%a %i' "$dest" 2>/dev/null)"
   done < "$work/fetches"
 }
+
+case_ "== a hybrid-activated node: nothing installed ============================"
+AWS_SSM_INSTANCE_ID=mi-0123456789abcdef0 sh "$work/install.sh" > "$work/run0" 2>&1; status=$?
+[ "$status" -eq 0 ] || bad "the script exited $status on a hybrid node: $(tail -3 "$work/run0")"
+grep -q "mi-0123456789abcdef0 is not an EC2 instance" "$work/run0" \
+  || bad "the output does not say why nothing was installed: $(tail -3 "$work/run0")"
+while read -r _ _ dest _ _; do
+  [ ! -e "$dest" ] || bad "a hybrid node got $dest"
+done < "$work/fetches"
+ok "exit 0, nothing written, and the output says why"
 
 case_ "== the rendered script installs each file where it is run ================="
 sh "$work/install.sh" > "$work/run1" 2>&1; status=$?
@@ -92,31 +103,56 @@ case "$dropins" in
 esac
 ok "$(wc -l < "$work/fetches" | tr -d ' ') files at their pinned sha256 and modes; timer enabled and active"
 
-case_ "== a second run changes nothing ============================================"
+case_ "== a second run changes nothing, and downloads nothing ===================="
 before="$(installed)"
 entered="$(systemctl show -p ActiveEnterTimestampMonotonic --value "$UNIT.timer")"
-sh "$work/install.sh" > "$work/run2" 2>&1; status=$?
-[ "$status" -eq 0 ] || bad "the second run exited $status: $(tail -5 "$work/run2")"
-[ "$(installed)" = "$before" ] || bad "the second run changed a file: $(diff <(echo "$before") <(installed))"
+# A base nothing serves: a run that downloaded any file would fail.
+with_base "file://$work/nowhere" "$work/offline.sh"
+sh "$work/offline.sh" > "$work/run2" 2>&1; status=$?
+[ "$status" -eq 0 ] || bad "the second run exited $status, so it downloaded: $(tail -5 "$work/run2")"
+[ "$(installed)" = "$before" ] || bad "the second run replaced a file: $(diff <(echo "$before") <(installed))"
 [ "$(systemctl show -p ActiveEnterTimestampMonotonic --value "$UNIT.timer")" = "$entered" ] \
   || bad "the second run restarted the timer"
-ok "every file and mode as it was; the timer not restarted"
+ok "no download; every file, mode and inode as it was; the timer not restarted"
+
+# AN INSTALL FROM ANOTHER PIN: the first and last files differ from this one's, the rest match.
+# Served with the last one's bytes wrong, the run must fail before replacing the first.
+read -r _ first first_dest _ _ < "$work/fetches"
+read -r _ last last_dest _ _ < <(tail -n 1 "$work/fetches")
+printf '# another pin\n' >> "$first_dest"
+printf '# another pin\n' >> "$last_dest"
 
 case_ "== a file served with other bytes fails the run and replaces nothing ======="
 mirror="$work/mirror"
 while read -r _ src _ _ _; do
   mkdir -p "$mirror/$(dirname "$src")" && cp "$ROOT/$src" "$mirror/$src"
 done < "$work/fetches"
-read -r _ first first_dest _ _ < "$work/fetches"
-printf '\n' >> "$mirror/$first"
+printf '\n' >> "$mirror/$last"
 with_base "file://$mirror" "$work/tampered.sh"
 before="$(installed)"
 sh "$work/tampered.sh" > "$work/run3" 2>&1; status=$?
-[ "$status" -ne 0 ] || bad "the script succeeded with $first served as other bytes"
-grep -qF "$first_dest.new: FAILED" "$work/run3" \
+[ "$status" -ne 0 ] || bad "the script succeeded with $last served as other bytes"
+grep -qF "$last_dest.new: FAILED" "$work/run3" \
   || bad "the run's output does not name the refused file: $(tail -3 "$work/run3")"
-[ "$(installed)" = "$before" ] || bad "a refused download replaced an installed file"
-ok "exit $status; the output names $first_dest.new; every installed file as it was"
+[ "$(installed)" = "$before" ] \
+  || bad "a refused download left a file replaced: $(diff <(echo "$before") <(installed))"
+ok "exit $status; the output names $last_dest.new; $first_dest, verified before it, not replaced"
+
+case_ "== served right, the run replaces just the files that differ ============="
+before="$(installed)"
+sh "$work/install.sh" > "$work/run4" 2>&1; status=$?
+[ "$status" -eq 0 ] || bad "the run exited $status: $(tail -5 "$work/run4")"
+while read -r _ src dest mode sha; do
+  was="$(grep "^$dest " <<<"$before")"; now="$(grep "^$dest " <(installed))"
+  [ "$(sha256sum < "$dest" | cut -d' ' -f1)" = "$sha" ] || bad "$dest is not the bytes pinned for $src"
+  case "$dest" in
+    "$first_dest"|"$last_dest") [ "$now" != "$was" ] || bad "$dest was not replaced" ;;
+    *) [ "$now" = "$was" ] || bad "$dest was replaced though it held its pinned bytes" ;;
+  esac
+done < "$work/fetches"
+[ -z "$(find /usr/local/arthur /etc/systemd/system -name '*.new' 2>/dev/null)" ] \
+  || bad "a staged .new file was left behind: $(find /usr/local/arthur /etc/systemd/system -name '*.new')"
+ok "$(basename "$first_dest") and $(basename "$last_dest") replaced, the rest untouched, nothing staged left"
 
 [ "$fails" -eq 0 ] && echo "ec2 install: PASS" || echo "ec2 install: FAIL ($fails)"
 [ "$fails" -eq 0 ]

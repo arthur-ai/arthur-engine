@@ -145,12 +145,17 @@ or Ubuntu 24.04.
    aws cloudformation deploy --region REGION --stack-name arthur-ai-discovery \
      --template-file arthur-ai-discovery.cfn.yaml --capabilities CAPABILITY_NAMED_IAM \
      --parameter-overrides CreateInventoryAssociation=CREATE_INVENTORY \
-         ArthurPrincipalArn=ARTHUR_PRINCIPAL_ARN ExternalId=EXTERNAL_ID MemberRoleRegion=us-east-1
+         ArthurPrincipalArn=ARTHUR_PRINCIPAL_ARN ExternalId=EXTERNAL_ID MemberRoleRegion=ROLE_REGION
    ```
 
-   `CREATE_INVENTORY` is `true` where step 1 found no inventory association, and `false` where
-   it found one. The stack installs osquery, the collector and its timer on every SSM-managed
-   Linux instance in the region, and creates the role Arthur assumes.
+   The placeholders:
+   - `CREATE_INVENTORY` is `true` where step 1 found no inventory association, and `false` where
+     it found one.
+   - `ROLE_REGION` is one of the regions you deploy to. Only that region's stack creates the role
+     Arthur assumes, so with any other region there is no role and no `MemberRoleArn`.
+
+   The stack installs osquery, the collector and its timer on every SSM-managed Linux instance in
+   the region.
 
    For an organization, deploy it as a StackSet to the member accounts instead. A StackSet
    never reaches the management account, so deploy a stack in each of its regions as above
@@ -169,7 +174,9 @@ or Ubuntu 24.04.
 
 6. **Connect Arthur.** Add an EC2 discovery source with these settings
    ([section 07](mdm/ec2.md#07--access-for-the-arthur-collector)):
-   - the access key of `ArthurPrincipalArn`
+   - the credential of `ArthurPrincipalArn`: an IAM user's access key, or for a role such as the
+     engine's IRSA role, the engine's own credentials with
+     `ARTHUR_ENGINE_AWS_EC2_ALLOW_DEFAULT_CREDENTIALS=true`
    - `role_arn` set to the stack's `MemberRoleArn` output
    - `external_id` set to `ExternalId`
    - your regions

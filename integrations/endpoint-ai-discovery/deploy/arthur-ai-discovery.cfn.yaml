@@ -35,8 +35,8 @@ Parameters:
   ExternalId:
     Type: String
     Default: ""
-    AllowedPattern: "^[A-Za-z0-9+=,.@:/_-]*$"
-    MaxLength: 1224
+    # STS takes an external ID of 2 to 1,224 of these characters, and refuses any other.
+    AllowedPattern: "^([A-Za-z0-9+=,.@:/_-]{2,1224})?$"
     Description: The source's external_id. The member role refuses an AssumeRole without it.
   MemberRoleName:
     Type: String
@@ -117,33 +117,52 @@ Resources:
               # POSIX sh, not bash: the step runs it with sh, which is dash on Ubuntu, and a
               # bashism there fails every run on those instances. test/lint.sh holds it to dash.
               #
-              # Idempotent: State Manager re-applies it on the association's schedule, and a run
-              # that changes nothing leaves the timer as it was. Each fetch names one file, its
-              # destination, its mode and its checksum, on one line: the renderer pins the
-              # checksum to the file the line names.
+              # Idempotent: State Manager re-applies it on the association's schedule. A file
+              # already holding its pinned bytes is not downloaded again, and a run that changes
+              # nothing leaves the timer as it was. Each fetch names one file, its destination, its
+              # mode and its checksum, on one line: the renderer pins the checksum to the file the
+              # line names.
               runCommand:
                 - |
                   # arthur-ai-discovery-install.sh
                   set -eu
+                  # A hybrid-activated node is not an EC2 instance: Arthur's source never reads it,
+                  # and the reporter finds no IMDS there. The agent names the node in this variable.
+                  case "${AWS_SSM_INSTANCE_ID:-}" in
+                    mi-*) echo "arthur-ai-discovery: $AWS_SSM_INSTANCE_ID is not an EC2 instance; nothing installed"; exit 0 ;;
+                  esac
                   BASE='{{ baseUrl }}'
-                  fetch() {  # path destination mode sha256
+                  staged=""
+                  fetch() {  # path destination mode sha256: stage a verified copy beside the destination
+                    if echo "$4  $2" | sha256sum -c --status 2>/dev/null; then chmod "$3" "$2"; return 0; fi
                     curl -fsSL --retry 3 -o "$2.new" "$BASE/$1"
                     echo "$4  $2.new" | sha256sum -c --quiet
-                    chmod "$3" "$2.new" && mv -f "$2.new" "$2"
+                    chmod "$3" "$2.new"
+                    staged="$staged $2"
                   }
+                  # apt-get before dnf and yum: a Debian or Ubuntu host may carry dnf as a package.
+                  # Only apt-get gives up at once on a lock, which cloud-init and unattended-upgrades
+                  # hold on a freshly booted instance; dnf and yum wait for it. DPkg::Lock::Timeout
+                  # makes install wait for the dpkg lock, but update ignores it for the lists lock,
+                  # so update is retried.
                   if ! command -v osqueryi >/dev/null 2>&1; then
-                    if command -v dnf >/dev/null 2>&1 || command -v yum >/dev/null 2>&1; then
-                      curl -fsSL -o /etc/pki/rpm-gpg/RPM-GPG-KEY-osquery https://pkg.osquery.io/rpm/GPG
-                      curl -fsSL -o /etc/yum.repos.d/osquery-s3-rpm.repo https://pkg.osquery.io/rpm/osquery-s3-rpm.repo
-                      if command -v dnf >/dev/null 2>&1; then dnf install -y osquery; else yum install -y osquery; fi
-                    elif command -v apt-get >/dev/null 2>&1; then
+                    if command -v apt-get >/dev/null 2>&1; then
                       install -d -m 755 /etc/apt/keyrings
                       curl -fsSL -o /etc/apt/keyrings/osquery.asc https://pkg.osquery.io/deb/pubkey.gpg
                       echo "deb [signed-by=/etc/apt/keyrings/osquery.asc] https://pkg.osquery.io/deb deb main" \
                         > /etc/apt/sources.list.d/osquery.list
-                      apt-get update -q && apt-get install -y -q osquery
+                      tries=0
+                      until apt-get update -q; do
+                        tries=$((tries + 1)); [ "$tries" -lt 60 ] || exit 1
+                        sleep 10
+                      done
+                      apt-get -o DPkg::Lock::Timeout=600 install -y -q osquery
+                    elif command -v dnf >/dev/null 2>&1 || command -v yum >/dev/null 2>&1; then
+                      curl -fsSL -o /etc/pki/rpm-gpg/RPM-GPG-KEY-osquery https://pkg.osquery.io/rpm/GPG
+                      curl -fsSL -o /etc/yum.repos.d/osquery-s3-rpm.repo https://pkg.osquery.io/rpm/osquery-s3-rpm.repo
+                      if command -v dnf >/dev/null 2>&1; then dnf install -y osquery; else yum install -y osquery; fi
                     else
-                      echo "arthur-ai-discovery: osquery is not installed, and there is no dnf, yum or apt-get to install it with" >&2
+                      echo "arthur-ai-discovery: osquery is not installed, and there is no apt-get, dnf or yum to install it with" >&2
                       exit 1
                     fi
                   fi
@@ -153,6 +172,9 @@ Resources:
                   fetch deploy/arthur-ai-discovery.service /etc/systemd/system/arthur-ai-discovery.service 644 SHA256_SERVICE
                   fetch deploy/arthur-ai-discovery.timer /etc/systemd/system/arthur-ai-discovery.timer 644 SHA256_TIMER
                   fetch deploy/arthur-ai-discovery.service.d/ec2.conf /etc/systemd/system/arthur-ai-discovery.service.d/ec2.conf 644 SHA256_DROPIN
+                  # Every file is verified before any is replaced: a failed download leaves the
+                  # last install whole, never half of one pin and half of another.
+                  for f in $staged; do mv -f "$f.new" "$f"; done
                   systemctl daemon-reload
                   systemctl enable --now arthur-ai-discovery.timer
 

@@ -147,9 +147,11 @@ checkout it does not own.
 
 | Case | What it catches |
 |---|---|
+| With `AWS_SSM_INSTANCE_ID=mi-…`, the run exits 0, says why, and writes nothing | osquery and a unit that fails every hour on an on-premises server Arthur's source never reads |
 | One run installs each fetched file at its destination, with its pinned sha256 and mode; the timer is enabled and active; systemd loads `ec2.conf` | A script that passes lint and fails on an instance: a path, a mode, a pin that is not the file's, a drop-in systemd never reads |
-| A second run changes no file or mode and does not restart the timer | State Manager's daily re-run disturbing a fleet that is already installed |
-| A file served with other bytes fails the run, names the refused file, and leaves every installed file as it was | A mirror or a moved ref replacing a good install with bytes nobody pinned |
+| A second run, against a base that serves nothing, succeeds, keeps every file's inode, and does not restart the timer | State Manager's daily run downloading the whole install again on every instance, or disturbing a fleet that is already installed |
+| With the first and last files from another pin and the last served wrong, the run fails, names the refused file, and replaces neither, the first verified included | A pin change failing part-way and leaving an instance on half of one pin and half of another |
+| The same run served right replaces just those two files, leaves the rest untouched, and leaves no `.new` behind | A pin change rewriting files that already held their bytes, or leaving staged copies |
 
 Without osquery on the machine, the script installs it from `pkg.osquery.io` as on an
 instance. In CI, osquery is already installed, so that branch is not run.

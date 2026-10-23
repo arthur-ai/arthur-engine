@@ -110,6 +110,12 @@ Under it, the five files must sit at their paths in this tree:
 
 The checksums still pin them.
 
+**Give each ref its own path on the mirror,** such as `https://mirror.example.com/endpoint-ai-discovery/REF`,
+and keep the old path serving until the pin change has finished. If one path is overwritten in
+place, its bytes and the template's checksums change at different moments, and every run in
+between fails its checksum. A new path is also what makes a pin change reach the association,
+which runs at once only when its `baseUrl` changes.
+
 ## 02 · Deploy the stack — terminal
 
 First settle `CreateInventoryAssociation` with section 03's check, region by region: it has no
@@ -120,8 +126,10 @@ default. `CREATE_INVENTORY` below is `true` where the region has no inventory as
 aws cloudformation deploy --region REGION --stack-name arthur-ai-discovery \
   --template-file arthur-ai-discovery.cfn.yaml --capabilities CAPABILITY_NAMED_IAM \
   --parameter-overrides CreateInventoryAssociation=CREATE_INVENTORY \
-      ArthurPrincipalArn=ARTHUR_PRINCIPAL_ARN ExternalId=EXTERNAL_ID MemberRoleRegion=us-east-1
+      ArthurPrincipalArn=ARTHUR_PRINCIPAL_ARN ExternalId=EXTERNAL_ID MemberRoleRegion=ROLE_REGION
 ```
+
+`ROLE_REGION` is one of the regions you deploy to: its stack creates the role.
 
 | Creates | Where | Turned off by |
 |---|---|---|
@@ -136,19 +144,29 @@ region you deploy to**, or no stack creates the role.
 **The script is POSIX `sh`, not bash.** The document's `aws:runShellScript` step runs it with
 `sh`, which on Ubuntu is dash. A `set -o pipefail` there fails every run with
 `Illegal option -o pipefail` (measured 2026-10-20 on Ubuntu 24.04). `test/lint.sh` holds the
-template's script to dash. The script is idempotent: State Manager re-applies it on its
-schedule, and a run that changes nothing leaves the timer as it was.
+template's script to dash.
+
+**The script is idempotent,** since State Manager re-applies it on its schedule:
+- It downloads only a file whose installed bytes are not the pinned ones.
+- It verifies every download before it replaces any file, so a failed download leaves the
+  last install whole.
+- A run that changes nothing leaves the timer as it was.
+- On a freshly booted Ubuntu instance, cloud-init or unattended-upgrades may hold apt's locks.
+  The script waits up to ten minutes for them.
 
 **The script travels in a document of its own, not `AWS-RunShellScript`**, so that a mirror's
 URL reaches it as the document's `baseUrl` parameter, held to a pattern that admits no shell
 metacharacter, rather than spliced into the script. A `platformType` precondition skips every
 instance but Linux.
 
-**Windows is skipped, not failed.** Measured 2026-10-23 with SSM Agent 3.3.5390.0 on Windows
-Server 2022: State Manager counted the instance as `Skipped`, `InvalidPlatform`. That holds
-under this document and under `AWS-RunShellScript` alike, so it never counts toward
-`MaxErrors`. Run Command's own history lists the same invocation as `Failed`, with the same
-detail.
+**Windows is skipped, not failed.** State Manager counts a Windows instance as `Skipped`, so it
+never counts toward `MaxErrors`. The measurement is in
+[architecture's Constraints](../architecture.md#constraints).
+
+**A hybrid-activated node is left alone.** A node whose id starts `mi-`, such as an on-premises
+server, is not an EC2 instance. Arthur's source does not read it, and the reporter finds no
+IMDS there, so the script exits at once and installs nothing. State Manager reports that run as
+a success.
 
 **The install rolls out a tenth of the fleet at a time.**
 - `MaxConcurrency 10%` runs the install on a tenth of the instances at a time.
@@ -331,7 +349,10 @@ fields.
 - `ArthurPrincipalArn` is the IAM user or role whose credential the source holds.
 
 For one account, give the source:
-- that principal's access key
+- that principal's credential:
+  - for an IAM user, its access key
+  - for a role, such as the engine's IRSA role, no key: the engine's own credentials, with
+    `ARTHUR_ENGINE_AWS_EC2_ALLOW_DEFAULT_CREDENTIALS=true`
 - `role_arn` set to the stack's `MemberRoleArn` output
 - `external_id` set to `ExternalId`
 
@@ -482,6 +503,23 @@ aws cloudformation update-stack-instances --stack-set-name arthur-ai-discovery \
   --regions us-east-1 us-east-2 eu-west-1 \
   --parameter-overrides ParameterKey=CreateInventoryAssociation,ParameterValue=true
 ```
+
+**An account that moves between two sets' OUs can end up with neither set's stack.** The new set
+may deploy before the old one has removed its stack. The new stack then fails on the
+document's name, and in `MemberRoleRegion` on the role's. Its instances then read as
+`never-reported`, or the account as a denied scope. After a move, check the account's stack
+instances, and once the old set's stack is gone, run the failed one again:
+
+```bash
+aws cloudformation list-stack-instances --stack-set-name arthur-ai-discovery \
+  --stack-instance-account ACCOUNT_ID \
+  --query 'Summaries[].[Region,Status,StatusReason]' --output text
+aws cloudformation update-stack-instances --stack-set-name arthur-ai-discovery \
+  --deployment-targets OrganizationalUnitIds=OU_ID,Accounts=ACCOUNT_ID,AccountFilterType=INTERSECTION \
+  --regions us-east-1 us-east-2 eu-west-1
+```
+
+One set with per-account overrides has no such window.
 
 **To change the pin**, render the template at the new ref and update the set. Name each
 parameter with `UsePreviousValue`, or it returns to its default:
