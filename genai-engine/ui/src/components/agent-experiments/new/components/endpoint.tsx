@@ -11,8 +11,16 @@ export const EndpointSetup = withFieldGroup({
   defaultValues: {} as Pick<NewAgentExperimentFormData, "endpoint">,
   render: function Render({ group }) {
     return (
-      <Stack gap={2}>
-        <Stack gap={2}>
+      <Stack
+        sx={{
+          gap: 2,
+        }}
+      >
+        <Stack
+          sx={{
+            gap: 2,
+          }}
+        >
           <group.AppField
             name="endpoint.name"
             validators={{
@@ -52,13 +60,35 @@ export const EndpointSetup = withFieldGroup({
         </Stack>
         <group.AppField name="endpoint.headers" mode="array">
           {(field) => (
-            <Stack component={Paper} variant="outlined" p={2}>
-              <Stack direction="row" justifyContent="space-between" alignItems="center">
+            <Stack
+              component={Paper}
+              variant="outlined"
+              sx={{
+                p: 2,
+              }}
+            >
+              <Stack
+                direction="row"
+                sx={{
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
                 <Stack>
-                  <Typography variant="body2" fontWeight="bold">
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      fontWeight: "bold",
+                    }}
+                  >
                     Headers
                   </Typography>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: "text.secondary",
+                    }}
+                  >
                     Add custom HTTP headers. Use{" "}
                     <Box component="code" sx={{ color: "primary.main", bgcolor: "action.hover", px: 0.5, borderRadius: 0.5 }}>{`{{ variable }}`}</Box>{" "}
                     for dynamic values.
@@ -75,10 +105,21 @@ export const EndpointSetup = withFieldGroup({
                 </Button>
               </Stack>
               <Divider sx={{ my: 2 }} />
-              <Stack gap={1}>
+              <Stack
+                sx={{
+                  gap: 1,
+                }}
+              >
                 {field.state.value.length > 0 ? (
                   field.state.value.map((header, index) => (
-                    <Stack key={index} direction="row" gap={1} alignItems="center">
+                    <Stack
+                      key={index}
+                      direction="row"
+                      sx={{
+                        gap: 1,
+                        alignItems: "center",
+                      }}
+                    >
                       <group.AppField
                         name={`endpoint.headers[${index}].name`}
                         validators={{
@@ -98,7 +139,13 @@ export const EndpointSetup = withFieldGroup({
                           />
                         )}
                       </group.AppField>
-                      <Typography variant="body2" color="text.secondary" mb={3}>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          color: "text.secondary",
+                          mb: 3,
+                        }}
+                      >
                         :
                       </Typography>
                       <group.AppField
@@ -137,7 +184,12 @@ export const EndpointSetup = withFieldGroup({
                       borderRadius: 1,
                     }}
                   >
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        color: "text.secondary",
+                      }}
+                    >
                       No headers added yet
                     </Typography>
                   </Box>
@@ -157,12 +209,29 @@ export const EndpointSetup = withFieldGroup({
             const error = field.state.meta.errors[0]?.message;
 
             return (
-              <Stack component={Paper} variant="outlined" p={2} sx={{ borderColor: hasErrors ? "error.main" : "divider" }}>
+              <Stack
+                component={Paper}
+                variant="outlined"
+                sx={{
+                  p: 2,
+                  borderColor: hasErrors ? "error.main" : "divider",
+                }}
+              >
                 <Stack>
-                  <Typography variant="body2" fontWeight="bold">
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      fontWeight: "bold",
+                    }}
+                  >
                     Request Body
                   </Typography>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: "text.secondary",
+                    }}
+                  >
                     Define the request body as a string. Use{" "}
                     <Box component="code" sx={{ color: "primary.main", bgcolor: "action.hover", px: 0.5, borderRadius: 0.5 }}>{`{{ variable }}`}</Box>{" "}
                     placeholders for dataset values. The body will be sent as-is after variable substitution.
@@ -177,7 +246,13 @@ export const EndpointSetup = withFieldGroup({
                   hideTokens={hasErrors}
                 />
                 {hasErrors && (
-                  <Typography variant="caption" color="error" mt={1}>
+                  <Typography
+                    variant="caption"
+                    color="error"
+                    sx={{
+                      mt: 1,
+                    }}
+                  >
                     {error}
                   </Typography>
                 )}

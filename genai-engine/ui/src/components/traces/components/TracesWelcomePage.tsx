@@ -3,7 +3,7 @@ import ArticleOutlinedIcon from "@mui/icons-material/ArticleOutlined";
 import BoltIcon from "@mui/icons-material/Bolt";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
-import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
+import HelpOutlineIcon from "@mui/icons-material/HelpOutlineOutlined";
 import KeyIcon from "@mui/icons-material/Key";
 import RocketLaunchIcon from "@mui/icons-material/RocketLaunch";
 import ShowChartIcon from "@mui/icons-material/ShowChart";
@@ -149,8 +149,8 @@ export const TracesWelcomePage: React.FC = () => {
             {/* Subtitle */}
             <Typography
               variant="body2"
-              color="text.secondary"
               sx={{
+                color: "text.secondary",
                 mb: 0,
                 fontWeight: 400,
                 textAlign: "center",
@@ -195,7 +195,13 @@ export const TracesWelcomePage: React.FC = () => {
                   },
                 }}
               >
-                <Stack direction="row" spacing={1} alignItems="flex-start">
+                <Stack
+                  direction="row"
+                  spacing={1}
+                  sx={{
+                    alignItems: "flex-start",
+                  }}
+                >
                   <Box
                     sx={{
                       width: 28,
@@ -212,7 +218,14 @@ export const TracesWelcomePage: React.FC = () => {
                     <CheckCircleIcon sx={{ color: "white", fontSize: 18 }} />
                   </Box>
                   <Box sx={{ flex: 1 }}>
-                    <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mb: 0 }}>
+                    <Stack
+                      direction="row"
+                      spacing={0.5}
+                      sx={{
+                        alignItems: "center",
+                        mb: 0,
+                      }}
+                    >
                       <Typography variant="subtitle1" sx={{ fontWeight: 600, fontSize: "0.8125rem" }}>
                         Install the Arthur Engine
                       </Typography>
@@ -232,7 +245,13 @@ export const TracesWelcomePage: React.FC = () => {
                         </Typography>
                       </Box>
                     </Stack>
-                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: "0.6875rem" }}>
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        color: "text.secondary",
+                        fontSize: "0.6875rem",
+                      }}
+                    >
                       Successfully connected to the engine
                     </Typography>
                   </Box>
@@ -261,7 +280,13 @@ export const TracesWelcomePage: React.FC = () => {
                 }}
                 onClick={!stepStatus.apiKeyClicked ? handleApiKeyClick : undefined}
               >
-                <Stack direction="row" spacing={1} alignItems="flex-start">
+                <Stack
+                  direction="row"
+                  spacing={1}
+                  sx={{
+                    alignItems: "flex-start",
+                  }}
+                >
                   <Box
                     sx={{
                       width: 28,
@@ -285,7 +310,14 @@ export const TracesWelcomePage: React.FC = () => {
                     )}
                   </Box>
                   <Box sx={{ flex: 1 }}>
-                    <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mb: 0 }}>
+                    <Stack
+                      direction="row"
+                      spacing={0.5}
+                      sx={{
+                        alignItems: "center",
+                        mb: 0,
+                      }}
+                    >
                       <Typography variant="subtitle1" sx={{ fontWeight: 600, fontSize: "0.8125rem" }}>
                         Configure your API Keys
                       </Typography>
@@ -365,7 +397,13 @@ export const TracesWelcomePage: React.FC = () => {
                   },
                 }}
               >
-                <Stack direction="row" spacing={1} alignItems="flex-start">
+                <Stack
+                  direction="row"
+                  spacing={1}
+                  sx={{
+                    alignItems: "flex-start",
+                  }}
+                >
                   <Box
                     sx={{
                       width: 28,
@@ -389,7 +427,14 @@ export const TracesWelcomePage: React.FC = () => {
                     )}
                   </Box>
                   <Box sx={{ flex: 1 }}>
-                    <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mb: 0 }}>
+                    <Stack
+                      direction="row"
+                      spacing={0.5}
+                      sx={{
+                        alignItems: "center",
+                        mb: 0,
+                      }}
+                    >
                       <Typography variant="subtitle1" sx={{ fontWeight: 600, fontSize: "0.8125rem" }}>
                         Copy your Task ID
                       </Typography>
@@ -427,7 +472,15 @@ export const TracesWelcomePage: React.FC = () => {
                         </Box>
                       )}
                     </Stack>
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5, fontSize: "0.6875rem", lineHeight: 1.25 }}>
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        color: "text.secondary",
+                        mb: 0.5,
+                        fontSize: "0.6875rem",
+                        lineHeight: 1.25,
+                      }}
+                    >
                       You can pass the task ID as a resource attribute{" "}
                       <Box
                         component="code"
@@ -492,7 +545,15 @@ export const TracesWelcomePage: React.FC = () => {
                         {stepStatus.taskIdCopied ? "Copied" : "Copy"}
                       </Button>
                     </Box>
-                    <Typography variant="caption" color="text.secondary" sx={{ mt: 0.375, display: "block", fontSize: "0.5625rem" }}>
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        color: "text.secondary",
+                        mt: 0.375,
+                        display: "block",
+                        fontSize: "0.5625rem",
+                      }}
+                    >
                       Need help?{" "}
                       <Link href="https://docs.arthur.ai/" target="_blank" rel="noopener noreferrer" sx={{ fontWeight: 500, color: "primary.main" }}>
                         See other options here
@@ -521,7 +582,13 @@ export const TracesWelcomePage: React.FC = () => {
                   },
                 }}
               >
-                <Stack direction="row" spacing={1} alignItems="flex-start">
+                <Stack
+                  direction="row"
+                  spacing={1}
+                  sx={{
+                    alignItems: "flex-start",
+                  }}
+                >
                   <Box
                     sx={{
                       width: 28,
@@ -545,7 +612,14 @@ export const TracesWelcomePage: React.FC = () => {
                     )}
                   </Box>
                   <Box sx={{ flex: 1 }}>
-                    <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mb: 0 }}>
+                    <Stack
+                      direction="row"
+                      spacing={0.5}
+                      sx={{
+                        alignItems: "center",
+                        mb: 0,
+                      }}
+                    >
                       <Typography variant="subtitle1" sx={{ fontWeight: 600, fontSize: "0.8125rem" }}>
                         Start tracing
                       </Typography>
@@ -583,7 +657,14 @@ export const TracesWelcomePage: React.FC = () => {
                         </Box>
                       )}
                     </Stack>
-                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: "0.6875rem", lineHeight: 1.25 }}>
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        color: "text.secondary",
+                        fontSize: "0.6875rem",
+                        lineHeight: 1.25,
+                      }}
+                    >
                       Once you've configured these steps, your agent calls will automatically start to capture traces here.
                     </Typography>
                   </Box>
@@ -655,7 +736,16 @@ export const TracesWelcomePage: React.FC = () => {
           </Box>
 
           {/* Footer Links */}
-          <Stack direction="row" spacing={0.75} alignItems="center" justifyContent="center" sx={{ mt: 0.75, mb: 0.75 }}>
+          <Stack
+            direction="row"
+            spacing={0.75}
+            sx={{
+              alignItems: "center",
+              justifyContent: "center",
+              mt: 0.75,
+              mb: 0.75,
+            }}
+          >
             <Link
               href="https://docs.arthur.ai/"
               target="_blank"

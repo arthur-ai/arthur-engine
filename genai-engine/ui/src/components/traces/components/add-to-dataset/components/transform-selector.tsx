@@ -173,18 +173,41 @@ const SelectorOption = ({ option, columnNames }: { option: TraceTransformRespons
   });
 
   return (
-    <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ width: "100%" }}>
+    <Stack
+      direction="row"
+      sx={{
+        justifyContent: "space-between",
+        alignItems: "center",
+        width: "100%",
+      }}
+    >
       <Stack direction="column">
-        <Typography variant="body2" fontWeight="medium">
+        <Typography
+          variant="body2"
+          sx={{
+            fontWeight: "medium",
+          }}
+        >
           {option.name}
         </Typography>
         {option.description && (
-          <Typography variant="body2" color="text.secondary">
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+            }}
+          >
             {option.description}
           </Typography>
         )}
       </Stack>
-      <Stack direction="row" gap={0.5} alignItems="center">
+      <Stack
+        direction="row"
+        sx={{
+          gap: 0.5,
+          alignItems: "center",
+        }}
+      >
         <Box
           component="span"
           sx={(theme) => {
@@ -201,7 +224,13 @@ const SelectorOption = ({ option, columnNames }: { option: TraceTransformRespons
             };
           }}
         >
-          <Typography variant="caption" fontWeight={500} color="inherit">
+          <Typography
+            variant="caption"
+            sx={{
+              fontWeight: 500,
+              color: "inherit",
+            }}
+          >
             {matchCount} of {definition?.variables.length ?? 0} match
           </Typography>
         </Box>
@@ -221,7 +250,13 @@ const SelectorOption = ({ option, columnNames }: { option: TraceTransformRespons
               };
             }}
           >
-            <Typography variant="caption" fontWeight={500} color="inherit">
+            <Typography
+              variant="caption"
+              sx={{
+                fontWeight: 500,
+                color: "inherit",
+              }}
+            >
               +{unmatchedTransform.length} new
             </Typography>
           </Box>

@@ -46,9 +46,9 @@ export const UserDrawerBody = ({ user, timeRange, onTimeRangeChange, taskId, onR
     <Stack spacing={0} sx={{ height: "100%" }}>
       <Stack
         direction="row"
-        justifyContent="space-between"
-        alignItems="center"
         sx={{
+          justifyContent: "space-between",
+          alignItems: "center",
           px: 4,
           py: 2,
           backgroundColor: "action.hover",
@@ -56,17 +56,41 @@ export const UserDrawerBody = ({ user, timeRange, onTimeRangeChange, taskId, onR
           borderColor: "divider",
         }}
       >
-        <Stack direction="column" gap={1}>
-          <Typography variant="body2" color="text.secondary">
+        <Stack
+          direction="column"
+          sx={{
+            gap: 1,
+          }}
+        >
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+            }}
+          >
             User Details
           </Typography>
-          <Typography variant="h5" color="text.primary" fontWeight="bold">
+          <Typography
+            variant="h5"
+            sx={{
+              color: "text.primary",
+              fontWeight: "bold",
+            }}
+          >
             {user.user_id}
           </Typography>
         </Stack>
       </Stack>
 
-      <Stack direction="row" alignItems="center" gap={2} sx={{ px: 4, py: 2 }}>
+      <Stack
+        direction="row"
+        sx={{
+          alignItems: "center",
+          gap: 2,
+          px: 4,
+          py: 2,
+        }}
+      >
         <TokenCountTooltip prompt={tokens[0] ?? 0} completion={tokens[1] ?? 0} total={tokens[2] ?? 0} />
         <TokenCostTooltip prompt={costs[0] ?? 0} completion={costs[1] ?? 0} total={costs[2] ?? 0} />
       </Stack>
@@ -74,7 +98,13 @@ export const UserDrawerBody = ({ user, timeRange, onTimeRangeChange, taskId, onR
       <Box sx={{ px: 4, py: 2 }}>
         <Paper variant="outlined">
           <Tabs.Root defaultValue="traces">
-            <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+            <Stack
+              direction="row"
+              sx={{
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+              }}
+            >
               <Tabs.List>
                 <Tabs.Tab value="traces">Traces</Tabs.Tab>
                 <Tabs.Tab value="sessions">Sessions</Tabs.Tab>
@@ -186,7 +216,12 @@ const UserTracesTable = ({ ids, taskId, onRowClick }: UserTableProps) => {
   };
 
   return (
-    <Stack gap={1} mt={1}>
+    <Stack
+      sx={{
+        gap: 1,
+        mt: 1,
+      }}
+    >
       <FilterRow
         filters={filters}
         onFiltersChange={handleFiltersChange}
@@ -206,7 +241,12 @@ const UserTracesTable = ({ ids, taskId, onRowClick }: UserTableProps) => {
         />
       ) : (
         <TracesEmptyState title="No traces found">
-          <Typography variant="body1" color="text.secondary">
+          <Typography
+            variant="body1"
+            sx={{
+              color: "text.secondary",
+            }}
+          >
             Try adjusting your search query
           </Typography>
         </TracesEmptyState>
@@ -279,7 +319,12 @@ const UserSessionsTable = ({ ids, taskId, onRowClick }: UserTableProps) => {
     </>
   ) : (
     <TracesEmptyState title="No sessions found">
-      <Typography variant="body1" color="text.secondary">
+      <Typography
+        variant="body1"
+        sx={{
+          color: "text.secondary",
+        }}
+      >
         Try adjusting your search query
       </Typography>
     </TracesEmptyState>

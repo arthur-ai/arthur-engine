@@ -71,11 +71,14 @@ export const AnnotationCell = ({ annotations, traceId, className }: Props) => {
     return (
       <Typography
         variant="caption"
-        color="text.secondary"
-        sx={{ whiteSpace: "nowrap", cursor: "pointer" }}
         onClick={() => dispatchTourEvent(TASK_TOUR_EVENTS.annotationsReviewed)}
+        sx={{
+          color: "text.secondary",
+          whiteSpace: "nowrap",
+          cursor: "pointer",
+        }}
       >
-        {annotations.length} annotation{annotations.length !== 1 ? "s" : ""}
+        {annotations.length}annotation{annotations.length !== 1 ? "s" : ""}
       </Typography>
     );
   }
@@ -101,7 +104,15 @@ export const AnnotationCell = ({ annotations, traceId, className }: Props) => {
           onClick={handleOpenModal}
         >
           <div ref={ref} className="overflow-visible w-min flex items-center">
-            <Typography variant="caption" color="inherit" fontWeight={500} className="select-none leading-none" sx={{ mx: 1 }}>
+            <Typography
+              variant="caption"
+              className="select-none leading-none"
+              sx={{
+                color: "inherit",
+                fontWeight: 500,
+                mx: 1,
+              }}
+            >
               {passedCount} / {failedCount} / {skippedCount} / {erroredCount}
             </Typography>
             <Box

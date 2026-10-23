@@ -156,7 +156,12 @@ const SetConfigDrawer = ({ open, onClose, taskId, onLoadConfig, onCreateNewConfi
           </Box>
 
           <Divider>
-            <Typography variant="caption" color="text.secondary">
+            <Typography
+              variant="caption"
+              sx={{
+                color: "text.secondary",
+              }}
+            >
               OR
             </Typography>
           </Divider>

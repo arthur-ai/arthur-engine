@@ -39,12 +39,30 @@ export const TracesViewLayout = ({ level, timeRange, onLevelChange, onTimeRangeC
           backgroundColor: "background.paper",
         }}
       >
-        <Stack direction="row" alignItems="flex-start" justifyContent="space-between">
+        <Stack
+          direction="row"
+          sx={{
+            alignItems: "flex-start",
+            justifyContent: "space-between",
+          }}
+        >
           <Box>
-            <Typography variant="h5" fontWeight={600} color="text.primary">
+            <Typography
+              variant="h5"
+              sx={{
+                fontWeight: 600,
+                color: "text.primary",
+              }}
+            >
               Traces
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+            <Typography
+              variant="body2"
+              sx={{
+                color: "text.secondary",
+                mt: 0.5,
+              }}
+            >
               Monitor and analyze inference traces
             </Typography>
           </Box>
