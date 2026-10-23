@@ -27,6 +27,8 @@ with what such clouds share among themselves in `discovery.cloud.vm_inventory`.
 
 from discovery.cloud.aws_bedrock.connector import VENDOR as AWS_BEDROCK_VENDOR
 from discovery.cloud.aws_bedrock.connector import BedrockConnector
+from discovery.cloud.aws_containers.connector import VENDOR as AWS_CONTAINERS_VENDOR
+from discovery.cloud.aws_containers.connector import AwsContainersConnector
 from discovery.cloud.ec2.connector import VENDOR as AWS_EC2_VENDOR
 from discovery.cloud.ec2.connector import Ec2Connector
 from discovery.cloud.gce.connector import VENDOR as GCP_COMPUTE_ENGINE_VENDOR
@@ -61,6 +63,7 @@ def source_connectors() -> dict[str, DiscoveryConnectorFactory]:
         GCP_COMPUTE_ENGINE_VENDOR: ComputeEngineConnector,
         AWS_EC2_VENDOR: Ec2Connector,
         AWS_BEDROCK_VENDOR: BedrockConnector,
+        AWS_CONTAINERS_VENDOR: AwsContainersConnector,
         GCP_VERTEX_VENDOR: VertexAgentEngineConnector,
         GCP_CONTAINERS_VENDOR: GcpContainersConnector,
         WIZ_VENDOR: WizConnector,
@@ -81,6 +84,8 @@ __all__ = [
     "AWS_EC2_VENDOR",
     "BedrockConnector",
     "AWS_BEDROCK_VENDOR",
+    "AwsContainersConnector",
+    "AWS_CONTAINERS_VENDOR",
     "VertexAgentEngineConnector",
     "GCP_VERTEX_VENDOR",
     "GcpContainersConnector",
