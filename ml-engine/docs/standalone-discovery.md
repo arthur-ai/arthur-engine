@@ -125,6 +125,218 @@ The lookback window is not applied: Google's list API is an inventory, so every 
 reports every engine in the region whatever `lookback_window_seconds` says, and a short
 window misses nothing.
 
+#### `wiz` — Wiz
+
+Reads two inventories from one Wiz tenant, across every cloud account the tenant has
+connected: the cloud resources of the configured Wiz Security Graph entity types
+(AI-SPM), and the AI frameworks and SDKs Wiz detected on VMs, container images and
+serverless functions (the workload inventory), which is where self-hosted agents show up.
+
+| Field | Secret | Required | Notes |
+|---|---|---|---|
+| `api_endpoint_url` | no | yes | The tenant's GraphQL endpoint from Wiz's User Settings > Tenant: `https://api.<data center>.app.wiz.io/graphql`, or `.app.wiz.us/graphql` for FedRAMP. Any other host is refused |
+| `auth_environment` | no | no | `commercial` (default, `auth.app.wiz.io`), `gov` (`auth.gov.wiz.io`) or `fedramp` (`auth.app.wiz.us`): which token endpoint issues the token |
+| `client_id` | no | yes | A Wiz service account's client ID |
+| `client_secret` | yes | yes | That service account's client secret |
+| `entity_types` | no | no | Comma-separated Wiz Security Graph entity types to list instead of the default `AI_AGENT,AI_SERVICE`, for example `AI_AGENT,AI_SERVICE,MCP_SERVER` |
+
+Use `query: ""` and `query_language: none`. The scan sends nothing but the token request
+and two read-only queries, `cloudResourcesV2` and `hostedTechnologies`, each paged 500
+at a time. Scopes for the service account:
+
+- AI-SPM inventory (`cloudResourcesV2`): `read:resources`. **Confirmed**: a live run
+  read it with a credential holding `read:resources` and neither `read:inventory` nor
+  `read:all` (ArcavenAE/stave `1cfb526`, `_kos/findings/finding-010-*.md:39-43`, with
+  the credential's scopes in `finding-009-*.md:31-34`).
+- Workload inventory (`hostedTechnologies`): `read:resources` and `read:inventory`, or
+  `read:all`. **Unconfirmed**: `read:inventory` is a real scope
+  (AxtonGrams/terraform-provider-wiz `4fee5a8`, `internal/common.go:87`), but no public
+  source ties it to this query.
+
+The unit tests validate both queries and their variables against a pinned public copy of
+Wiz's GraphQL schema (ArcavenAE/stave `b893774`, `spec/wiz-schema.graphql`, printed
+from live introspection). That checks shape, not live data.
+
+When Wiz refuses a query for a missing scope, its denial lists the scopes that would do
+("access denied, at least one of the following is required: [...]", **confirmed** in
+ArcavenAE/stave `6728a95`, `finding-009-*.md:29-34`). The engine quotes that list
+verbatim, scope names only, in the Test Connection error and the job log, so they say
+which scope to add. A tenant that restricts API access to an IP allowlist must allow
+the engine's egress address, or every query fails with `FORBIDDEN_IP`.
+
+**Entity types.** `AI_AGENT` and `AI_SERVICE` are Wiz's own `GraphEntityType` names, as
+are the other AI types `entity_types` can list: `AI_AGENT_REGISTRY`, `AI_DATASET`,
+`AI_DEPLOYMENT`, `AI_EXTENSION`, `AI_GATEWAY`, `AI_GUARDRAIL`, `AI_MODEL`,
+`AI_PIPELINE`, `AI_SECURITY_FINDING`, `AI_SKILL`, `AI_SKILL_TEMPLATE`, `AI_TOOL` and
+`MCP_SERVER`. Only the two are the default because the others are not agents, and a
+record per model, deployment or tool would mint a task for each. If the tenant does not
+know a name, Wiz rejects the query and the scan fails as `not_configured` saying to set
+`entity_types`.
+
+Each resource is one record, keyed on the cloud provider's own id and never on an id
+Wiz assigns itself:
+
+| Wiz has | `external_id` (and the address's `resource_id`) | Example |
+|---|---|---|
+| `providerUniqueId` | that, verbatim | `arn:aws:bedrock:us-east-1:123456789012:agent/AB12` |
+| only `externalId` | `<cloudPlatform>:<account>:<externalId>`, the platform lower-cased | `aws:123456789012:i-0abc123def4567890` |
+| neither, or `externalId` with no `cloudPlatform` | skipped, with a job-log warning naming the entity type | |
+
+Why both: `providerUniqueId` is nullable, and a live run had it on 9 of 20
+`cloudResourcesV2` records (**confirmed**, ArcavenAE/stave `1cfb526`,
+`finding-010-*.md:43`; the schema, `b893774` `spec/wiz-schema.graphql:15772,15797`, has
+`externalId: String!` beside `providerUniqueId: String`). Both are the provider's ids
+(**strong inference**: demisto/content `f92da85` looks a resource up by an ARN in
+`providerUniqueId`, `Packs/Wiz/Integrations/Wiz/Wiz.py:2832` and `README.md:461`, and
+maps `externalId` to the "Unique (provider) cloud resource ID",
+`Classifiers/classifier-WizDefend_Mapper.json:65-67`). `externalId` can be unique only
+inside its account (an instance's short id), hence the qualified form, which keeps
+`external_id` unique across every cloud the tenant scans. A resource that later gains a
+`providerUniqueId` changes identity once. The `providerUniqueId` form matches what a
+native cloud source reports for the same agent. The address's instance is the cloud
+account (`cloudAccount.externalId`, lower-cased for Azure, also in the qualified form),
+its scope the resource's `region`, else its `regionLocation` (`global` when it has
+neither), and `last_seen` is Wiz's `lastSeen`, else the resource's `updatedAt`,
+`firstSeen` or `createdAt`; a resource with none, or with no account, is skipped with a
+warning. No service names are claimed.
+
+**Workload inventory.** The scan also asks `hostedTechnologies` for the technologies
+Wiz files under the `MACHINE_LEARNING_AND_AI` stack layer on `VIRTUAL_MACHINE`,
+`CONTAINER_IMAGE` and `SERVERLESS` resources (the same filter as
+lindsp77/wiz-health-assessment-skill `e4afe70`, `scripts/generate_deck.py:743-751`).
+Running containers are left out: their ids change on every restart, and the image
+carries the same technologies. Which technologies count as agent frameworks is decided
+by the engine, on `technology.name` only: the hosted technology's own `name` is
+`<technology> (<resource name>)` (**confirmed**, `NGINX (docker.io/nginx@dec7a90b)` in
+port-labs/ocean `67254a9`, `integrations/wiz/.port/examples/hosted-technology/a.json:3`),
+so a resource named `mcp-gateway` never makes NGINX an agent. The rules, in order:
+
+1. A technology Wiz marks `isCloudService` (Azure OpenAI, say) is dropped: managed AI
+   services are the AI-SPM inventory's (**confirmed** field,
+   `spec/wiz-schema.graphql:88185`; `false` on every technology in Port's examples).
+2. Kept when the name, lower-cased with spaces and punctuation removed, contains one of
+   `langchain`, `langgraph`, `llamaindex`, `crewai`, `autogen`, `semantickernel`,
+   `haystack`, `openaiagents`, `claudeagent`, `agentdevelopmentkit`, `googleadk`,
+   `modelcontextprotocol` or `fastmcp`.
+3. Kept when `mcp` is one of its words (`MCP Server`, `mcp`; not `mcpx`).
+4. Kept when it names a model vendor beside a word that makes it the vendor's library:
+   `openai` with `sdk`, `agent(s)`, `python`, `node`, `nodejs` or `library` (`OpenAI
+   Python SDK`, `openai-node`); `anthropic` or `claude` with `sdk` or `agent(s)`
+   (`Anthropic SDK`, `Claude Agent SDK`). A vendor's name alone (`OpenAI`, `openai`,
+   `Anthropic`) is not kept: it names the service (**strong inference**: the same
+   health-assessment repo lists `OpenAI` beside `Azure OpenAI` as services a scanner
+   covers, `scripts/csv_metrics_processor.py:255-257`).
+
+Everything else in that layer is dropped, PyTorch and TensorFlow included (**strong
+inference** that the layer holds them: `csv_metrics_processor.py:38`, "AI libraries &
+frameworks (PyTorch, TensorFlow, etc.)"). **Wiz's exact spellings of agent frameworks
+are not published**, so each scan logs, once, the ML and AI technology names it saw and
+did not keep, each with Wiz's technology id (a numeric string such as `2599`, Port's
+example line 5), at most 50 and never a resource name, which shows what the rules miss.
+The technology id is not stored on the record: `AgentObservations` has no field for it.
+
+Each (technology, workload) is one record, addressed as a VM's software is on Compute
+Engine and EC2: the address's instance is the workload's native id (its `graphEntity`'s
+`providerUniqueId`, else `<cloudPlatform>:<account>:<externalId>` from the resource, as
+above), its scope `<account>/<region>` (`<account>/global` without a region), its
+`resource_kind` `technology` and its `resource_id` the technology name as Wiz spells
+it. `external_id` is `<workload native id>:<technology key>`, the key being the name
+lower-cased with each run of other characters made one `-`:
+
+| Workload id from | Example `external_id` |
+|---|---|
+| `graphEntity.providerUniqueId` | `arn:aws:ec2:us-east-1:123456789012:instance/i-0abc:langchain` |
+| `resource.externalId` | `aws:123456789012:i-0abc:langchain` |
+
+Nothing Wiz assigns is part of it: a workload with neither id, or no account or
+timestamp, is skipped with a job-log warning naming its entity type. `last_seen` is the
+hosted technology's `updatedAt`, else its `firstSeen`; the record carries the detected
+version and no model or service name.
+
+If Wiz refuses the workload query (`UNAUTHORIZED`) or rejects its shape
+(`BAD_USER_INPUT`), the scan still publishes the AI-SPM records, says so in the job log
+(quoting the scopes Wiz asked for) and reports the denied scope `workload-inventory`. Any other failure fails the scan as
+before, after publishing what was found.
+
+The lookback window is not applied: both queries read an inventory, so every scan
+reports every matching resource and technology whatever `lookback_window_seconds` says.
+Each inventory is read for at most 100 pages, and the job log says so when one stops
+there.
+
+##### Testing against a fake Wiz
+
+`ml-engine/tests/fakes/wiz` is a fake Wiz tenant for development: the token endpoint
+and the GraphQL API, with every query executed against the pruned copy of Wiz's schema
+the unit tests use, over synthetic data (`tenant.json`: 6 AI-SPM resources and 4
+agent frameworks on workloads that become records, plus the cases the connector skips
+or drops). It is not in the engine image. CI runs the connector against it in
+`tests/unit/discovery/test_wiz_fake_e2e.py`.
+
+1. Start it from `ml-engine/` (`uv sync --group dev` first). `--page-size 3` makes a
+   scan page through both inventories:
+
+   ```bash
+   uv run python -m tests.fakes.wiz --port 8099 --page-size 3
+   ```
+
+2. Point the engine at it. On the engine, and only there, set
+   `ARTHUR_ENGINE_WIZ_API_BASE_URL_OVERRIDE=http://127.0.0.1:8099`. Both the token
+   request and the queries then go to the fake, and every scan's job log warns that
+   the override is set. Only `http(s)://` on `localhost`, `127.0.0.1` or `[::1]` with
+   no path is accepted; anything else fails the scan. Unset, nothing changes.
+   - An engine run from a checkout reaches the fake on `127.0.0.1` as it is.
+   - An engine in Docker (the local stack's data-plane container) does not: set the
+     variable on that container (a compose override's `environment:`), recreate it,
+     then run the fake inside its network namespace:
+
+     ```bash
+     docker run --rm -d --name fake-wiz --network container:<data-plane container> \
+       -v "$PWD/ml-engine/tests:/w/tests:ro" -w /w python:3.13-slim \
+       sh -c 'pip install -q graphql-core==3.3.0 && python -m tests.fakes.wiz --port 8099 --page-size 3'
+     ```
+
+     Recreating the data-plane container again drops that namespace, so restart
+     `fake-wiz` after it.
+
+3. In the Platform UI, Governance > Discovery > Sources, add a Wiz source:
+
+   | Field | Value |
+   |---|---|
+   | `api_endpoint_url` | `https://api.us1.app.wiz.io/graphql` (validated as for Wiz, never contacted while the override is set) |
+   | `auth_environment` | `commercial` |
+   | `client_id` | `fake-wiz-client-id` |
+   | `client_secret` | `fake-wiz-client-secret` |
+   | `entity_types` | blank |
+
+   Add a config on the local engine with `query` empty, `query_language: none` and any
+   lookback.
+
+4. **Test Connection** succeeds with preview rows. **Scan now**: the Scans tab shows 10
+   records, and the Agents tab lists them with the Wiz mark, for example
+   `support-triage-agent` and `LangChain on agent-host-1`. The job log lists the
+   skipped resource and workload and the unmatched technologies (Anthropic, PyTorch,
+   TensorFlow).
+
+5. Flip a fault on the running fake and test again
+   (`curl -X POST 'localhost:8099/_control/fault?mode=<mode>'`, `mode=none` to stop):
+
+   | Mode | Expected |
+   |---|---|
+   | `bad-credentials` | Test Connection fails as Authentication, vendor status 401; a scan fails `authentication_failed` |
+   | `missing-scope` | Test Connection succeeds with AI-SPM rows only; the scan publishes 6 records, reports the denied scope `workload-inventory`, and the job log quotes `[read:inventory read:all]` |
+   | `forbidden-ip` | Fails as Authorization, status 403, naming the IP allowlist |
+   | `rate-limit-once` | One HTTP 429 with `Retry-After`, retried, then success |
+   | `rate-limit-in-200` | `RATE_LIMIT_EXCEEDED` inside an HTTP 200, retried, then success |
+   | `repeated-cursor` | The AI-SPM listing stops at the repeated cursor with a warning; 5 AI-SPM records |
+
+   `GET /_control/state` lists the requests the fake answered. `--fault <mode>` or
+   `FAKE_WIZ_FAULT` starts it with one set.
+
+For a standalone engine, use a `webhook` destination at
+`http://127.0.0.1:8099/_sink` with `allow_insecure_http: true`; `GET /_sink` returns
+what it was sent. Standalone configs refuse `vendor: wiz` until the engine's
+arthur-client includes the `wiz` vendor.
+
 #### `jamf_pro` — Jamf Pro (managed Macs)
 
 Reads the agent inventory Arthur's endpoint collector writes to each Mac.
