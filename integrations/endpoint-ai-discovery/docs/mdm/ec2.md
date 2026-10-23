@@ -46,7 +46,7 @@ differs.
 
 | | |
 |---|---|
-| Target | EC2 instances on Amazon Linux 2023 or Ubuntu 24.04, x86_64 or arm64. Each of the four has run on an instance. Amazon Linux 2 installs osquery through yum; the collector's and the reporter's tests pass in an `amazonlinux:2` container, but it has not run on an instance. A host with no osquery and no dnf, yum or apt-get fails the install, naming why, and counts toward `MaxErrors`: install osquery 5.18+ on it first |
+| Target | EC2 instances on Amazon Linux 2023 or Ubuntu 24.04, x86_64 or arm64. Amazon Linux 2 installs too, through yum, but is not yet run on an instance ([Constraints](../architecture.md#constraints)). A host with no osquery and no apt-get, dnf or yum fails the install, naming why, and counts toward `MaxErrors`: install osquery 5.18+ on it first |
 | Requires | osquery 5.18+, an SSM-managed instance, an inventory association that gathers custom inventory, IMDS enabled. No interpreter |
 | Per-instance cost | as on Compute Engine (`gce.md`), off the reporting path. 6s and 1.4s of CPU per run on a `t3.small`; 2.0s to 2.1s of CPU on a `t4g.small`. Burstable instances in standard credit mode are not yet measured |
 | Payload | of the 256 KB budget, cut into parts of 4,096 characters. On fresh headless instances: ~11 KB on Amazon Linux 2023 (809 rows on x86_64, 796 on arm64) and ~17 KB on Ubuntu 24.04 (1,075 rows on x86_64, 1,106 on arm64) |

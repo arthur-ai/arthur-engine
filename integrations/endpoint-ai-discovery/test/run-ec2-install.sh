@@ -146,7 +146,11 @@ while read -r _ src dest mode sha; do
   was="$(grep "^$dest " <<<"$before")"; now="$(grep "^$dest " <(installed))"
   [ "$(sha256sum < "$dest" | cut -d' ' -f1)" = "$sha" ] || bad "$dest is not the bytes pinned for $src"
   case "$dest" in
-    "$first_dest"|"$last_dest") [ "$now" != "$was" ] || bad "$dest was not replaced" ;;
+    # Replaced by a rename, so a new inode: a file written in place can be read half-written.
+    "$first_dest"|"$last_dest")
+      [ "$now" != "$was" ] || bad "$dest was not replaced"
+      [ "${now##* }" != "${was##* }" ] || bad "$dest was written in place, not replaced"
+      [ "$(stat -c %a "$dest")" = "$mode" ] || bad "$dest has mode $(stat -c %a "$dest"), not $mode" ;;
     *) [ "$now" = "$was" ] || bad "$dest was replaced though it held its pinned bytes" ;;
   esac
 done < "$work/fetches"

@@ -124,7 +124,8 @@ Full runbook: [gce.md](mdm/gce.md). The OS policy targets Debian 12 and Ubuntu 2
 ## EC2 instances
 
 Full runbook: [ec2.md](mdm/ec2.md). Instances must be managed by SSM and run Amazon Linux 2023
-or Ubuntu 24.04.
+or Ubuntu 24.04. Amazon Linux 2 installs too, but is not yet run on an instance (the
+[runbook's](mdm/ec2.md) Target row).
 
 1. **Check for an inventory association** in each region. An instance runs only one. Where one
    exists, you turn custom inventory on in it instead of creating a second, and deploy with

@@ -151,7 +151,7 @@ checkout it does not own.
 | One run installs each fetched file at its destination, with its pinned sha256 and mode; the timer is enabled and active; systemd loads `ec2.conf` | A script that passes lint and fails on an instance: a path, a mode, a pin that is not the file's, a drop-in systemd never reads |
 | A second run, against a base that serves nothing, succeeds, keeps every file's inode, and does not restart the timer | State Manager's daily run downloading the whole install again on every instance, or disturbing a fleet that is already installed |
 | With the first and last files from another pin and the last served wrong, the run fails, names the refused file, and replaces neither, the first verified included | A pin change failing part-way and leaving an instance on half of one pin and half of another |
-| The same run served right replaces just those two files, leaves the rest untouched, and leaves no `.new` behind | A pin change rewriting files that already held their bytes, or leaving staged copies |
+| The same run served right replaces just those two files, each by a rename to a new inode at its mode, leaves the rest untouched, and leaves no `.new` behind | A pin change rewriting files that already held their bytes, writing one in place where it can be read half-written, or leaving staged copies |
 
 Without osquery on the machine, the script installs it from `pkg.osquery.io` as on an
 instance. In CI, osquery is already installed, so that branch is not run.
