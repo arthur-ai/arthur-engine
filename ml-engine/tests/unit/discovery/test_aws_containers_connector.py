@@ -892,6 +892,29 @@ def test_an_operator_owned_controller_is_still_a_workload() -> None:
     )
 
 
+def test_pods_and_jobs_an_operator_owns_are_their_own_workloads() -> None:
+    # KubeRay owns its pods and JobSet its Jobs directly; neither owner is listed.
+    aws, kube = eks_account(
+        {
+            "/api/v1/pods": [
+                k8s("pod", "ray-head", owner="RayCluster"),
+                k8s("pod", "web-7d9f-x", owner="ReplicaSet"),
+                k8s("pod", "trainer-0", owner="StatefulSet"),
+                k8s("pod", "nightly-29001-abc", owner="Job"),
+            ],
+            "/apis/batch/v1/jobs": [
+                k8s("job", "train-0", owner="JobSet"),
+                k8s("job", "nightly-29001", owner="CronJob"),
+            ],
+        },
+    )
+    records = by_id(scan(aws, report_all(), kube))
+    assert sorted(records) == [
+        f"{EKS}/agents/job/train-0",
+        f"{EKS}/agents/pod/ray-head",
+    ]
+
+
 def test_a_call_that_failed_in_the_model_still_selects_and_names_its_model() -> None:
     aws = ecs_account()
     aws.events[REGION] = [model_call(TASK_ROLE, error_code="ModelErrorException")]

@@ -69,8 +69,14 @@ SYSTEM_NAMESPACE_PREFIXES = ("amazon-",)
 
 IRSA_ANNOTATION = "eks.amazonaws.com/role-arn"
 
-# The kinds an owner already stands for. A controller is listed whatever owns it.
-_OWNED_BY_A_CONTROLLER = frozenset({"job", "pod"})
+# For a Job or Pod, the owner kinds that stand for it: a workload this scan lists itself
+# (a ReplicaSet is its Deployment's). Owned by anything else -- a RayCluster, an Argo
+# Workflow, a JobSet -- it is its own workload, because that owner is not listed. A
+# controller (Deployment, StatefulSet, DaemonSet, CronJob) is listed whatever owns it.
+_FOLDED_INTO = {
+    "job": frozenset({"CronJob"}),
+    "pod": frozenset({"ReplicaSet", "StatefulSet", "DaemonSet", "Job"}),
+}
 
 SERVICE_GROUP_PREFIX = "service:"
 
@@ -347,18 +353,22 @@ def eks_workload(
 ) -> Optional[Workload]:
     """One Kubernetes object as a workload, or None when it is not its own workload.
 
-    None for a Job or Pod something owns (a CronJob's Jobs, a ReplicaSet's pods), one in
-    a system namespace, and one with no name. A controller is its own workload even when
-    something owns it: an operator's custom resource (a model server, a Ray cluster)
-    commonly owns the Deployment or StatefulSet that runs it, and that custom resource
-    is not listed here, so dropping the controller would drop the workload.
+    None for a Job or Pod a listed workload owns (a CronJob's Jobs; the pods of a
+    ReplicaSet, StatefulSet, DaemonSet or Job), one in a system namespace, and one with
+    no name. Anything an operator's custom resource owns -- a Deployment a model server
+    runs, a Ray cluster's pods, a JobSet's Jobs -- is its own workload: the custom
+    resource is not listed here, so dropping what it owns would drop the workload.
     """
     meta = raw.get("metadata") or {}
     namespace = str(meta.get("namespace") or "")
     name = str(meta.get("name") or "")
     if not namespace or not name:
         return None
-    if path_kind in _OWNED_BY_A_CONTROLLER and meta.get("ownerReferences"):
+    folded_into = _FOLDED_INTO.get(path_kind, frozenset())
+    if any(
+        str(owner.get("kind") or "") in folded_into
+        for owner in meta.get("ownerReferences") or []
+    ):
         return None
     if namespace in SYSTEM_NAMESPACES or namespace.startswith(
         SYSTEM_NAMESPACE_PREFIXES,
