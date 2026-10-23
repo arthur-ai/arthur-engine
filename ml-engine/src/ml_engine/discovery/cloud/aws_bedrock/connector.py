@@ -27,11 +27,12 @@ A caller is per region because a role calling models in two regions is two deplo
 of the workload, as two agents in two regions are; the account is in its ARN already,
 and in the external id so the id reads alone.
 
-A REFUSED CALL IS NOT A CALLER. CloudTrail logs a model call Bedrock refused, with its
-`errorCode` and no model, under the identity that tried. An identity whose every call
+A REFUSED CALL IS NOT A CALLER. CloudTrail logs a model call IAM refused, with an
+`AccessDenied` `errorCode` and no model, under the identity that tried. An identity whose every call
 was refused has called no model, so it is not reported; its refused calls are counted in
 the log, beside people's. Vertex AI writes no audit entry for a refused call, so the two
-clouds agree on what a caller is.
+clouds agree on what a caller is. A call that was allowed and then failed -- an error in
+the model, a throttle -- is still that identity's call, with its model.
 
 A PERSON IS NOT AN AGENT. An AWS IAM Identity Center (SSO) role is assumed by a person
 at a console or a CLI, so its calls are counted and logged, never reported; so is the
@@ -407,7 +408,7 @@ def aggregate(
         if person is not None:
             people[person] += 1
             continue
-        if call.error_code:
+        if call.refused:
             denied += 1
             continue
         kind = IAM_USER if ":user/" in call.caller_arn else IAM_ROLE

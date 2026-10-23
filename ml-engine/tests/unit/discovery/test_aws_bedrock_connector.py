@@ -433,6 +433,28 @@ def test_a_role_whose_every_call_was_refused_is_counted_and_not_reported(
     assert "people and 2 refused call(s) not reported" in caplog.text
 
 
+def test_a_call_that_failed_in_the_model_is_still_a_call() -> None:
+    # Allowed, then failed while the model ran: the role did call it.
+    aws = FakeAws(
+        events={
+            REGION: [
+                [
+                    event(
+                        role=OTHER_ROLE,
+                        model=TITAN,
+                        error_code="ModelErrorException",
+                        when="2026-10-12T11:00:00Z",
+                    ),
+                ],
+            ],
+        },
+    )
+    [record] = scan(aws, fields={**FIELDS, "list_agents": "false"})
+    assert record.creation_source.address.resource_id == OTHER_ROLE
+    assert [m.name for m in record.llm_models] == [TITAN]
+    assert record.last_seen == datetime(2026, 10, 12, 11, 0, tzinfo=timezone.utc)
+
+
 def test_the_root_user_is_a_person() -> None:
     root = f"arn:aws:iam::{ACCOUNT}:root"
     aws = FakeAws(
