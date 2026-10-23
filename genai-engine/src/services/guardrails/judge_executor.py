@@ -14,11 +14,10 @@ from arthur_common.models.common_schemas import LLMTokenConsumption
 from arthur_common.models.enums import RuleResultEnum
 from arthur_common.models.llm_model_providers import ModelProvider
 from fastapi import HTTPException
-from langchain_community.callbacks import get_openai_callback
 from langchain_core.language_models.chat_models import BaseChatModel
-from langchain_core.messages import BaseMessage, convert_to_openai_messages
+from langchain_core.messages import AIMessage, BaseMessage, convert_to_openai_messages
 from litellm.types.utils import ModelResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from monitoring.ai_activity import record_model_invocation
 from schemas.audit_log_schemas import ModelInvocation
@@ -119,6 +118,13 @@ class ProviderJudgeHandle:
             self.sdk_client.close()
 
 
+class _StructuredEnvironmentResponse(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+    raw: AIMessage
+    parsed: BaseModel | None = None
+    parsing_error: Exception | None = None
+
+
 @dataclass(frozen=True)
 class EnvironmentJudgeHandle:
     model: BaseChatModel = field(repr=False)
@@ -134,30 +140,37 @@ class EnvironmentJudgeHandle:
         started: Callable[[], None],
     ) -> JudgeCallResult:
         self.enforce_quota(self.org_id)
-        with get_openai_callback() as callback:
-            try:
-                started()
-                if response_format is not None:
-                    structured = self.model.with_structured_output(
-                        response_format
+        output: AIMessage | None = None
+        try:
+            started()
+            if response_format is not None:
+                response = _StructuredEnvironmentResponse.model_validate(
+                    self.model.with_structured_output(
+                        response_format, method="json_mode", include_raw=True
                     ).invoke(list(messages))
-                    if not isinstance(structured, BaseModel):
-                        raise ValueError("Invalid structured judge response.")
-                    return JudgeCallResult("", structured, zero_tokens())
-                output = self.model.invoke(list(messages))
-                text = (
-                    output.content
-                    if isinstance(output.content, str)
-                    else "".join(str(part) for part in output.content)
                 )
-                return JudgeCallResult(text, None, zero_tokens())
-            finally:
-                tokens = LLMTokenConsumption(
-                    prompt_tokens=callback.prompt_tokens,
-                    completion_tokens=callback.completion_tokens,
-                )
-                self.record_usage(self.org_id, tokens.total_tokens())
-                observe(tokens)
+                output = response.raw
+                if response.parsing_error is not None or response.parsed is None:
+                    raise ValueError("Invalid structured judge response.")
+                return JudgeCallResult("", response.parsed, zero_tokens())
+            message = self.model.invoke(list(messages))
+            if not isinstance(message, AIMessage):
+                raise ValueError("Invalid judge response.")
+            output = message
+            text = (
+                output.content
+                if isinstance(output.content, str)
+                else "".join(str(part) for part in output.content)
+            )
+            return JudgeCallResult(text, None, zero_tokens())
+        finally:
+            usage = output.usage_metadata if output is not None else None
+            tokens = LLMTokenConsumption(
+                prompt_tokens=usage["input_tokens"] if usage else 0,
+                completion_tokens=usage["output_tokens"] if usage else 0,
+            )
+            self.record_usage(self.org_id, tokens.total_tokens())
+            observe(tokens)
 
     def close(self) -> None:
         client = getattr(self.model, "http_client", None)

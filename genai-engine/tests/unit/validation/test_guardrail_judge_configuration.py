@@ -7,6 +7,8 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 from uuid import uuid4
 
+import httpx
+import openai
 import pytest
 from arthur_common.models.common_schemas import (
     KeywordsConfig,
@@ -26,7 +28,6 @@ from sqlalchemy.orm import sessionmaker
 
 import dependencies
 import server
-from config.database_config import DatabaseConfig
 from config.openai_config import GuardrailRateSettings
 from db_models import DatabaseApplicationConfiguration, DatabaseOrganization
 from db_models.secret_storage_models import DatabaseSecretStorage
@@ -166,7 +167,10 @@ async def test_startup_and_local_validation_without_judge_env(monkeypatch, tmp_p
 
 @pytest.fixture
 def judge_store(monkeypatch, tmp_path):
-    engine = create_engine(**DatabaseConfig(TEST_DATABASE=True).get_connection_params())
+    engine = create_engine(
+        f"sqlite:///{tmp_path / 'judge.db'}",
+        connect_args={"check_same_thread": False},
+    )
     for model in (
         DatabaseOrganization,
         DatabaseApplicationConfiguration,
@@ -210,6 +214,7 @@ def configure_provider(
     model="gpt-4o",
     endpoint=None,
     base_model=None,
+    api_key="local-test-credential",
 ):
     selection = GuardrailLLMConfiguration(
         provider=provider, model=model, base_model=base_model
@@ -217,7 +222,7 @@ def configure_provider(
     with sessions() as session:
         ModelProviderRepository(session).set_model_provider_credentials(
             provider,
-            api_key=SecretStr("local-test-credential"),
+            api_key=SecretStr(api_key) if api_key is not None else None,
             api_base=SecretStr(endpoint) if endpoint else None,
             api_version=(
                 "2025-02-01-preview" if provider == ModelProvider.AZURE else None
@@ -301,6 +306,55 @@ def test_unreadable_credentials_do_not_use_a_default_or_environment(
         context.close()
 
 
+@pytest.mark.parametrize(
+    ("provider", "field", "payload"),
+    [
+        (ModelProvider.OPENAI, "value", {"unexpected": "value"}),
+        (ModelProvider.ANTHROPIC, "value", None),
+        (ModelProvider.OPENAI, "value", {"api_key": ""}),
+        (ModelProvider.OPENAI, "api_base", {"unexpected": "value"}),
+        (ModelProvider.VERTEX_AI, "vertex_credentials", {"private_key": "partial"}),
+        (ModelProvider.BEDROCK, "aws_bedrock_credentials", {"unexpected": "value"}),
+        (
+            ModelProvider.BEDROCK,
+            "aws_bedrock_credentials",
+            {"aws_access_key_id": "partial"},
+        ),
+    ],
+)
+def test_malformed_readable_credentials_fail_before_client_creation(
+    judge_store, monkeypatch, provider, field, payload
+):
+    sessions, org_id = judge_store
+    configure_provider(sessions, provider=provider)
+    with sessions() as session:
+        secret = session.query(DatabaseSecretStorage).one()
+        setattr(secret, field, payload)
+        session.commit()
+    client_constructor = MagicMock(side_effect=AssertionError("No ambient credentials"))
+    fallback = MagicMock()
+    monkeypatch.setattr(
+        "repositories.model_provider_repository.LLMClient", client_constructor
+    )
+    monkeypatch.setattr(configuration_service, "_environment_context", fallback)
+    context = configuration_service.capture_judge_context(org_id)
+    assert context.error == CONFIGURATION_UNAVAILABLE
+    client_constructor.assert_not_called()
+    fallback.assert_not_called()
+
+
+@pytest.mark.parametrize("provider", [ModelProvider.VERTEX_AI, ModelProvider.BEDROCK])
+def test_absent_optional_credentials_preserve_workload_identity(judge_store, provider):
+    sessions, org_id = judge_store
+    configure_provider(sessions, provider=provider, api_key=None)
+    context = configuration_service.capture_judge_context(org_id)
+    try:
+        assert context.error is None
+        assert context.handle is not None
+    finally:
+        context.close()
+
+
 def test_malformed_selection_never_activates_environment(judge_store, monkeypatch):
     sessions, org_id = judge_store
     monkeypatch.setenv(
@@ -346,6 +400,56 @@ def test_configuration_and_errors_do_not_expose_secrets(
         configuration_service.capture_judge_context(uuid4()).error
         == CONFIGURATION_UNAVAILABLE
     )
+
+
+def test_database_failure_never_activates_environment(judge_store, monkeypatch, caplog):
+    _, org_id = judge_store
+    fallback = MagicMock()
+    monkeypatch.setattr(configuration_service, "_environment_context", fallback)
+    monkeypatch.setattr(
+        configuration_service,
+        "db_session_context",
+        MagicMock(side_effect=RuntimeError("private database connection detail")),
+    )
+    context = configuration_service.capture_judge_context(org_id)
+    assert context.error == CONFIGURATION_UNAVAILABLE
+    assert context.handle is None
+    assert "private database connection detail" not in repr(context) + caplog.text
+    fallback.assert_not_called()
+
+
+def test_provider_timeout_never_activates_environment(judge_store, monkeypatch):
+    sessions, org_id = judge_store
+    configure_provider(sessions)
+    context = configuration_service.capture_judge_context(org_id)
+    completion = MagicMock(
+        side_effect=openai.APITimeoutError(
+            request=httpx.Request("POST", "https://provider.example.test")
+        )
+    )
+    monkeypatch.setattr(context.handle.client, "completion", completion)
+    fallback = MagicMock()
+    monkeypatch.setattr(configuration_service, "_environment_context", fallback)
+    try:
+        result = SensitiveDataCustomExamples().score(
+            ScoreRequest(
+                rule_type=RuleType.MODEL_SENSITIVE_DATA,
+                user_prompt="Public information",
+                examples=[
+                    Example(
+                        exampleInput="private",
+                        ruleOutput=RuleScore(result=RuleResultEnum.FAIL),
+                    )
+                ],
+            ),
+            context,
+        )
+        assert result.result == RuleResultEnum.UNAVAILABLE
+        assert result.prompt_tokens == result.completion_tokens == 0
+        completion.assert_called_once()
+        fallback.assert_not_called()
+    finally:
+        context.close()
 
 
 def test_request_snapshot_refreshes_across_sessions(judge_store):

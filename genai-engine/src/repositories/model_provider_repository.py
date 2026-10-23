@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional
 
 from arthur_common.models.llm_model_providers import ModelProvider
 from fastapi import HTTPException
-from pydantic import SecretStr
+from pydantic import BaseModel, ConfigDict, Field, SecretStr
 from sqlalchemy.orm import Query, Session
 from starlette.status import HTTP_400_BAD_REQUEST
 
@@ -19,6 +19,16 @@ from schemas.response_schemas import ModelProviderResponse
 from utils.constants import EMPTY_MODEL_PROVIDER
 
 logger = logging.getLogger(__name__)
+
+
+class _StoredAPIKey(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    api_key: SecretStr = Field(min_length=1)
+
+
+class _StoredEndpoint(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    api_base: SecretStr = Field(min_length=1)
 
 
 class ModelProviderRepository:
@@ -300,16 +310,35 @@ class ModelProviderRepository:
             )
         secret = self._require_provider_secret(provider)
         if require_readable_credentials:
-            for credential in (
-                secret.value,
-                secret.api_base,
-                secret.vertex_credentials,
-                secret.aws_bedrock_credentials,
+            if secret.value is not None:
+                _StoredAPIKey.model_validate(secret.value)
+            elif provider not in (
+                ModelProvider.VERTEX_AI,
+                ModelProvider.BEDROCK,
+                ModelProvider.VLLM,
             ):
-                if credential is not None and (
-                    not isinstance(credential, dict) or not credential
+                raise ValueError("The model provider API key is missing.")
+            if secret.api_base is not None:
+                _StoredEndpoint.model_validate(secret.api_base)
+            if secret.vertex_credentials is not None:
+                vertex = GCPServiceAccountCredentials.model_validate(
+                    secret.vertex_credentials, extra="forbid"
+                )
+                if any(
+                    not value.strip() for value in vertex.to_sensitive_dict().values()
                 ):
-                    raise ValueError("The model provider credentials are unreadable.")
+                    raise ValueError("The model provider credentials are incomplete.")
+            if secret.aws_bedrock_credentials is not None:
+                bedrock = AwsBedrockCredentials.model_validate(
+                    secret.aws_bedrock_credentials, extra="forbid"
+                )
+                values = bedrock.to_sensitive_dict()
+                if not values or any(not value.strip() for value in values.values()):
+                    raise ValueError("The model provider credentials are incomplete.")
+                if bool(bedrock.aws_access_key_id) != bool(
+                    bedrock.aws_secret_access_key
+                ):
+                    raise ValueError("The model provider credentials are incomplete.")
 
         api_key = None
         if secret.value is not None:

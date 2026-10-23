@@ -49,6 +49,7 @@ describe("Guardrail Settings", () => {
     mocks.catalog.mockReturnValue({ isError: true, refetch: vi.fn() });
     render(<GuardrailSettings />);
     const metadata = screen.getByLabelText("Catalog base model (optional)");
+    fireEvent.focus(metadata);
     fireEvent.click(within(metadata.closest(".MuiAutocomplete-root") as HTMLElement).getByRole("button", { name: "Clear" }));
     fireEvent.change(screen.getByLabelText("Model or exact routing name"), { target: { value: "team/new/exact-alias" } });
     fireEvent.click(screen.getByRole("button", { name: "Save" }));

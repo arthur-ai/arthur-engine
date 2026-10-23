@@ -55,7 +55,7 @@ describe("provider guardrail lifecycle warnings", () => {
     render(<ModelProviders />);
     fireEvent.click(screen.getByTitle("Delete provider"));
     expect(screen.getByText("Guardrails need a configured model provider. Removing this provider will require configuration.")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Delete", exact: true }));
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
     await waitFor(() => expect(mocks.remove).toHaveBeenCalledWith("openai"));
   });
 
@@ -64,7 +64,7 @@ describe("provider guardrail lifecycle warnings", () => {
     fireEvent.click(screen.getByTitle("Delete provider"));
     mocks.configuration.mockReturnValue({ isError: true, refetch: mocks.refetch });
     view.rerender(<ModelProviders />);
-    expect((screen.getByRole("button", { name: "Delete", exact: true }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: "Delete" }) as HTMLButtonElement).disabled).toBe(true);
     expect(mocks.remove).not.toHaveBeenCalled();
   });
 
