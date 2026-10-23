@@ -17,6 +17,7 @@ from arthur_common.models.agent_governance_schemas import (
     RunsOn,
     SourceAddress,
 )
+from google.auth.exceptions import RefreshError
 
 from discovery import source_connectors
 from discovery.catalog import Matcher
@@ -778,6 +779,43 @@ def test_a_refused_credential_on_the_audit_read_ends_the_scan(
         scan(fake)
 
     assert raised.value.status_code == 401
+
+
+def test_a_refused_token_refresh_on_the_audit_read_ends_the_scan() -> None:
+    """A credential refused while minting the audit read's token is the credential's
+    refusal, not an unreachable log: the scan ends, as it does for a listing."""
+
+    def refuse(project: str, log_filter: str, credentials: Any) -> Any:
+        raise RefreshError("invalid_grant: account not found", retryable=False)
+
+    fake = FakeGoogle(services=[[service("web")]])
+    connector = GcpContainersConnector(
+        session_for=lambda c: fake,  # type: ignore[arg-type,return-value]
+        audit_reader=refuse,
+    )
+
+    with pytest.raises(GcpContainersError) as raised:
+        scan(fake, connector=connector)
+
+    assert raised.value.status_code == 401
+
+
+def test_a_transient_token_refresh_failure_on_the_audit_read_is_unreachable() -> None:
+    def flake(project: str, log_filter: str, credentials: Any) -> Any:
+        raise RefreshError("temporarily unavailable", retryable=True)
+
+    fake = FakeGoogle(services=[[service("agent", image=GOOSE)]])
+    connector = GcpContainersConnector(
+        session_for=lambda c: fake,  # type: ignore[arg-type,return-value]
+        audit_reader=flake,
+    )
+
+    records = scan(fake, report_all=False, connector=connector)
+
+    assert [r.creation_source.address.resource_id for r in records] == ["agent"]
+    assert connector.denied_scopes() == (
+        DeniedScope(f"projects/{PROJECT}/vertex-ai-audit-log", DENIED_UNREACHABLE),
+    )
 
 
 def test_a_refused_audit_read_is_a_denied_scope_and_the_catalog_still_selects(

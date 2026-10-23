@@ -68,7 +68,11 @@ from arthur_common.models.agent_governance_schemas import (
     SourceAddress,
 )
 from google.auth.credentials import Credentials
-from google.auth.exceptions import DefaultCredentialsError, GoogleAuthError
+from google.auth.exceptions import (
+    DefaultCredentialsError,
+    GoogleAuthError,
+    RefreshError,
+)
 from google.auth.transport.requests import AuthorizedSession
 
 from discovery.catalog import Matcher
@@ -105,6 +109,7 @@ from discovery.endpoint.scope import parse_group_names
 from discovery.gcp_credentials import (
     GCP_PROJECT_ID,
     SERVICE_ACCOUNT_KEY_FIELD,
+    mark_refused_credential,
     service_account_credentials,
 )
 from job_executors.discovery_scan import (
@@ -354,6 +359,26 @@ class GcpContainersConnector:
                     project,
                     e.status_code,
                     _audit_read_hint(e.status_code),
+                )
+                continue
+            except RefreshError as e:
+                # No token could be minted for the read. A refused credential ends the
+                # scan as it does for a listing; see discovery.gcp_credentials.
+                mark_refused_credential(e)
+                if getattr(e, "status_code", None) == 401:
+                    raise GcpContainersError(
+                        f"Vertex AI audit log read for project {project} was "
+                        f"refused the credential: {e}",
+                        status_code=401,
+                    ) from e
+                reads.deny(
+                    f"projects/{project}/vertex-ai-audit-log", DENIED_UNREACHABLE
+                )
+                logger.warning(
+                    "Vertex AI audit log not read for project %s (%s); its workloads "
+                    "are selected by catalog image only.",
+                    project,
+                    type(e).__name__,
                 )
                 continue
             except (requests.RequestException, GoogleAuthError, ValueError) as e:
