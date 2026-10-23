@@ -373,9 +373,8 @@ How the collector counts an instance that cannot report:
 
 A stopped instance is still read, and its status line decides. An instance still reporting but
 failing keeps publishing its last good scan. An instance dated more than 15 minutes past the
-scan's clock is published too, with no record dated past the scan, and the scan's log names it
-and how far ahead it is: fix its time sync, or its last values stay current that much longer
-once it stops reporting.
+scan's clock is published too, and the scan's log names it and how far ahead it is: fix its
+time sync.
 
 **Every instance counted is also listed**, by instance id, `Name` tag, `account/region` and
 reason, with the time on its status line when it has one, under
