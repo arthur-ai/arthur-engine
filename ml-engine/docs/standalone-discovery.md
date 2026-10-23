@@ -553,6 +553,98 @@ FROM kong-ai-logs
   stops at 1,000 rows. More consumers than that need a narrower query.
 - The key needs `read` on that index only. The query reads no request headers or bodies.
 
+#### `gcp_security_operations` — Google Security Operations
+
+Runs the config's YARA-L 2.0 statistics query over the lookback window with the Chronicle
+API's `dashboardQueries.execute`, against instances bound to a Google Cloud project
+(legacy Backstory-only tenants are not supported).
+
+| Field | Secret | Required | Notes |
+|---|---|---|---|
+| `project_id` | no | yes | The Google Cloud project the instance is bound to (ID or number) |
+| `location` | no | yes | The instance's region, e.g. `us`, `eu`, `europe-west2`. The engine builds the API host, `https://<location>-chronicle.googleapis.com`, from it, so it must be the region alone: a URL or host is refused |
+| `instance_id` | no | yes | The instance's customer ID (a UUID), from SIEM Settings > Profile |
+| `service_account_key` | yes | no | A service account JSON key. Without one, the engine uses Application Default Credentials only if `ARTHUR_ENGINE_GCP_SECURITY_OPERATIONS_ALLOW_ADC=true` is set |
+
+The service account needs one permission on the instance,
+`chronicle.dashboardQueries.execute`. Chronicle API Viewer (`roles/chronicle.viewer`)
+carries it, or grant a custom role holding only that permission. The engine asks for a
+token with the `chronicle` OAuth scope, the narrowest one the method accepts, and the
+Chronicle API must be enabled in the project.
+There are no TLS settings: the host is Google's, with a publicly trusted certificate.
+
+Use `query_language: yara_l`. The query is the text you would type into search, without
+a time range: a statistics query whose `match:` and `outcome:` variables are named after
+the output columns (`$external_id`, `$name`, `$last_seen`, and optionally the other
+columns of the discovery output contract). Every match variable becomes a column too, so
+match only on contract names. A JSON request body is refused.
+
+- The lookback goes in the request's time window, never into the query. Search and
+  dashboard queries read at most the last 90 days, so a window of `0` or longer than 90
+  days is sent as 90 days, and the log says so.
+- A custom query returns at most 1,000 rows, or 10,000 with a `limit:` section. A result
+  Google stopped at its row limit is reported in the log rather than published as
+  complete.
+- `array_distinct()` columns (`llm_models`, `tools`, `sub_agents`, `data_sources`)
+  become one entry per value. `last_seen` may be a timestamp or Unix seconds
+  (`max(metadata.event_timestamp.seconds)`).
+- One call must finish within 90 seconds. A slower query needs a shorter lookback or a
+  narrower event filter.
+
+##### Sample: hosts calling LLM provider APIs
+
+Proxy or web-gateway logs normalised to UDM `NETWORK_HTTP` events. One agent per host:
+
+```yara-l
+metadata.event_type = "NETWORK_HTTP"
+re.regex(target.hostname, `^(api\.openai\.com|api\.anthropic\.com|generativelanguage\.googleapis\.com|[a-z0-9-]+\.openai\.azure\.com|bedrock-runtime\.[a-z0-9-]+\.amazonaws\.com)$`) nocase
+principal.hostname != ""
+$external_id = principal.hostname
+$name = principal.hostname
+match:
+  $external_id, $name
+outcome:
+  $last_seen = max(metadata.event_timestamp.seconds)
+order:
+  $last_seen desc
+limit:
+  10000
+```
+
+##### Sample: an LLM gateway's request log, with models
+
+An LLM gateway whose request log is parsed into UDM with the calling key's name in
+`principal.user.userid` and the model served in `additional.fields["model"]`. One agent
+per credential, with the models it was served:
+
+```yara-l
+metadata.event_type = "NETWORK_HTTP"
+metadata.product_name = "LLM Gateway"
+principal.user.userid != ""
+additional.fields["model"] != ""
+$external_id = strings.concat("llm-gateway:", principal.user.userid)
+$name = principal.user.userid
+match:
+  $external_id, $name
+outcome:
+  $last_seen = max(metadata.event_timestamp.seconds)
+  $llm_models = array_distinct(additional.fields["model"])
+order:
+  $last_seen desc
+limit:
+  10000
+```
+
+- Replace `LLM Gateway` with the product name your parser sets, and `llm-gateway:` with a
+  fixed label for that gateway. It namespaces the credential, so two gateways never share
+  an agent. Never change it once scanned: the `external_id` is the agent's permanent key.
+- The query reads no request headers or bodies, and no key material.
+
+Neither sample has been run against a live instance yet. In particular, the
+`re.regex(...) nocase` filter, two match variables bound to one field, and
+`strings.concat` in a placeholder are unverified: run the query in search before
+scheduling it.
+
 #### `aws_network` — AWS network logs (read from Amazon CloudWatch Logs)
 
 Reads network logs from CloudWatch Logs log groups and reports each internal source seen

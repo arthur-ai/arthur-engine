@@ -53,6 +53,7 @@ from pydantic import (
 )
 
 from discovery import source_connectors
+from discovery.siem.gcp_security_operations.connector import QUERY_LANGUAGE as YARA_L
 from standalone.config_values import (
     BASE_DIR_CONTEXT,
     StrictModel,
@@ -75,6 +76,13 @@ DEFAULT_SCAN_TIMEOUT = timedelta(hours=6)
 # Namespace for the IDs minted for sources and configs, which the file does not carry.
 # Fixed so the same source has the same ID across restarts and in every event it emits.
 _ID_NAMESPACE = uuid.UUID("fb04595b-0284-4c6d-af3c-57dd3e1c5c0e")
+
+# Query languages a connector here reads that the pinned arthur-client's
+# DiscoveryQueryLanguage does not list yet. The Platform adds a language with the
+# catalog entry that uses it, and an arthur-client release carries it some time after;
+# refusing it here until then would leave a connector that exists unusable from a file.
+# Drop an entry once the pin's enum has it.
+_LANGUAGES_AHEAD_OF_CLIENT = frozenset({YARA_L})
 
 # What a config inherits from the source it sits under rather than stating itself.
 _DERIVED_CONFIG_KEYS = frozenset({"discovery_source_id", "vendor", "source_fields"})
@@ -186,7 +194,9 @@ class StandaloneSource(PostDiscoverySource):  # type: ignore[misc]
             raise ValueError(
                 f"config name(s) {', '.join(repeated)} are used more than once"
             )
-        languages = {language.value for language in DiscoveryQueryLanguage}
+        languages = {
+            language.value for language in DiscoveryQueryLanguage
+        } | _LANGUAGES_AHEAD_OF_CLIENT
         for config in self.configs:
             if config.query_language not in languages:
                 raise ValueError(

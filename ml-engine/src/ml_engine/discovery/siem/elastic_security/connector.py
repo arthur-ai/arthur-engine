@@ -153,8 +153,8 @@ def _report(
     logger.info("Elastic query returned %s row(s), %s record(s)", rows, records)
 
     # TODO(UP-4990): report a capped result on the scan outcome, not only the job log,
-    # once the framework has a way for a connector to say so. Splunk and Google SecOps
-    # need the same.
+    # once the framework has a way for a connector to say so. Splunk and Google Security
+    # Operations, which log theirs the same way, need the same.
     default_limit = _default_limit(result.warnings)
     if default_limit is not None and rows >= default_limit:
         logger.warning(
