@@ -12,7 +12,7 @@ import io
 import json
 import logging
 from dataclasses import asdict
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Optional, Sequence
 
 import pytest
@@ -37,6 +37,7 @@ from discovery.cloud.gce.client import (
 )
 from discovery.cloud.gce.connector import (
     ALLOW_ADC_ENV_VAR,
+    CLOCK_AHEAD,
     GUEST_ATTRIBUTES_DISABLED,
     NOT_REPORTED_IN_WINDOW,
     OSCONFIG_DISABLED,
@@ -535,6 +536,66 @@ def test_a_vm_that_has_not_reported_in_the_lookback_is_counted_and_not_published
 
     # A lookback of zero asks for every VM's last report, as on Jamf.
     assert len(scan(fake, lookback_hours=0)) == 5
+
+
+def test_a_vm_dated_ahead_of_the_scans_clock_is_counted_and_not_published(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Its clock runs an hour fast. The window bounds a date only from below, so it would
+    stay inside every lookback for as long as the clock does -- forever, once it stops
+    writing -- and keep its agents fresh on the Platform."""
+    hour_ahead = str(int((NOW + timedelta(hours=1)).timestamp()))
+    scanned_ahead = frame(
+        [
+            row("npm", "@openai/codex", ver="0.5.0"),
+            row("scan", "packages-linux", ver=hour_ahead, extra="ok"),
+        ],
+    )
+    no_status = {
+        "queryPath": "arthur/",
+        "queryValue": {
+            "items": [
+                {"namespace": "arthur", "key": "inventory", "value": scanned_ahead},
+            ],
+        },
+    }
+    fake = FakeCompute(
+        {PROJECT: [[vm("101"), vm("102"), vm("103"), vm("104")]]},
+        guest={
+            (ZONE, "vm-101"): attributes(
+                CODEX,
+                "ok 2026-10-12T14:30:00Z rows=2 packages-linux=ok",
+            ),
+            # A failed run is dated by the same clock.
+            (ZONE, "vm-102"): attributes(
+                CODEX,
+                f"{OK_STATUS} failed=2026-10-12T14:30:00Z osquery=absent",
+            ),
+            # No status line, so its payload's own scan dates it.
+            (ZONE, "vm-103"): no_status,
+            # Ten minutes fast is a fast clock, not a wrong one.
+            (ZONE, "vm-104"): attributes(
+                CODEX,
+                "ok 2026-10-12T13:40:00Z rows=2 packages-linux=ok",
+            ),
+        },
+    )
+    connector = connector_for(fake)
+    with caplog.at_level(logging.WARNING):
+        records = scan(fake, connector=connector)
+
+    assert [r.external_id for r in records] == ["104:codex-cli"]
+    coverage = connector.device_coverage()
+    assert coverage is not None
+    assert coverage.unreadable_by_reason == {CLOCK_AHEAD: 3}
+    assert [d["reason"] for d in listed(connector)] == [CLOCK_AHEAD] * 3
+    for ident in ("101", "102", "103"):
+        assert f"{ident} is dated 60 min ahead of this scan's clock" in caplog.text
+    assert "14:30:00Z" not in caplog.text, "the id and the skew, never the value"
+    assert "failed" not in caplog.text, "a VM left out is not among the failed runs"
+
+    # A date in the future is no date on the whole roster either.
+    assert [r.external_id for r in scan(fake, lookback_hours=0)] == ["104:codex-cli"]
 
 
 # --- VMs that cannot report -------------------------------------------------------------

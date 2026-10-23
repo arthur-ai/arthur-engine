@@ -74,6 +74,7 @@ from discovery.cloud.ec2.client import (
     default_client_factory,
 )
 from discovery.cloud.vm_inventory import (
+    CLOCK_AHEAD,
     NOT_REPORTED_IN_WINDOW,
     READ_FAILED,
     VmInventoryReader,
@@ -129,6 +130,7 @@ UNSUPPORTED_PLATFORM = "unsupported-platform"
 INVENTORY_INCOMPLETE = "inventory-incomplete"
 
 __all__ = [
+    "CLOCK_AHEAD",
     "INVENTORY_INCOMPLETE",
     "NOT_REPORTED_IN_WINDOW",
     "NOT_SSM_MANAGED",
@@ -295,12 +297,10 @@ class Ec2Connector:
             exclude={pair: pair for pair in settings.exclude_tags},
         )
         coverage = self._coverage = scope.new_coverage()
-        # A lookback of zero or less is the whole roster, as on Jamf.
-        since = (
-            self._clock() - timedelta(hours=lookback_hours)
-            if lookback_hours > 0
-            else None
-        )
+        # A lookback of zero or less is the whole roster, as on Jamf. One clock reading
+        # for the scan: the window's start and the bound on a date ahead of it.
+        now = self._clock()
+        since = now - timedelta(hours=lookback_hours) if lookback_hours > 0 else None
 
         # The roster: the source's own account, or every account named or listed,
         # each read through the member role. The management account is one of them.
@@ -360,7 +360,7 @@ class Ec2Connector:
             )
 
         carried: set[str] = set()
-        reader = VmInventoryReader(coverage, matcher, VENDOR, since, logger)
+        reader = VmInventoryReader(coverage, matcher, VENDOR, since, logger, now=now)
         scanned = 0
 
         for account, client in targets:
