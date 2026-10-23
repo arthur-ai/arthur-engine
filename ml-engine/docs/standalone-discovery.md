@@ -479,7 +479,9 @@ read over the lookback, or the last seven days when it is `0`, for `Converse`,
 IAM user) that called one becomes a record per region, named for the models it called,
 with external id `{account}/{region}/iam_role/{role ARN}`. IAM Identity Center (SSO)
 roles and the root user are people: their calls are counted in the job log, not
-reported. A part AWS refuses in a region, or a region AgentCore does not run in, is a
+reported. So is a call Bedrock refused (CloudTrail logs it with an `errorCode` and no
+model): a role whose every call was refused has called no model and gets no record. A
+part AWS refuses in a region, or a region AgentCore does not run in, is a
 warning and the rest of the scan goes on; a refused credential, or every part refused,
 fails the scan.
 
