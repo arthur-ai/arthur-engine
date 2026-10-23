@@ -14,10 +14,18 @@ declare module "@mui/material/styles" {
   interface ThemeOptions {
     tour?: { railWidth: number; contentWidth: number; hintColor: string };
   }
+  // Read by @arthur/shared-components for trace ids and code.
+  interface TypographyVariants {
+    fontFamilyMonospace?: string;
+  }
+  interface TypographyVariantsOptions {
+    fontFamilyMonospace?: string;
+  }
 }
 
 const commonTypography = {
   fontFamily: '"Geist", sans-serif',
+  fontFamilyMonospace: '"Geist Mono", monospace',
 };
 
 const createAppTheme = (mode: "light" | "dark") =>
