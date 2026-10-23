@@ -21,8 +21,9 @@ as the caller, so it is the key that joins a workload to the models it called.
 - GKE without Workload Identity, or on a node pool that opts out of it
   (`GCE_METADATA`): the node pool's service account, which every pod on the node
   shares. Which pool a controller's pods land on is the scheduler's, so every such
-  pool's account is listed. A match on one is a match on the node, not the workload,
-  and the record says which account matched.
+  pool's account is listed. A match on one is a match on the node, not the workload:
+  it is labelled as the node's account and does not select the workload, because an
+  AI-calling node account would otherwise report every pod on the node.
 """
 
 from dataclasses import dataclass, field
@@ -84,6 +85,8 @@ class Workload:
     last_seen: Optional[datetime]
     cluster: Optional[str] = None
     k8s_service_account: Optional[str] = None
+    node_service_accounts: tuple[str, ...] = ()
+    """The accounts in `service_accounts` that are the node's, not the workload's own."""
 
 
 @dataclass(frozen=True)
@@ -208,7 +211,8 @@ def gke_workload(
     )
     if annotated:
         accounts.append(annotated)
-    accounts.extend(identity.node_service_accounts)
+    node_accounts = tuple(a for a in identity.node_service_accounts if a != annotated)
+    accounts.extend(node_accounts)
     return Workload(
         project=project,
         location=location,
@@ -224,6 +228,7 @@ def gke_workload(
         last_seen=_k8s_last_seen(raw),
         cluster=cluster_name,
         k8s_service_account=ksa,
+        node_service_accounts=node_accounts,
     )
 
 
@@ -252,14 +257,24 @@ def resolve_default_accounts(
     if DEFAULT_SERVICE_ACCOUNT not in workload.service_accounts:
         return workload
     resolved = default_account(workload.project)
-    accounts = tuple(
-        dict.fromkeys(
-            (resolved if a == DEFAULT_SERVICE_ACCOUNT else a)
-            for a in workload.service_accounts
-            if a != DEFAULT_SERVICE_ACCOUNT or resolved
-        ),
+    replacement: tuple[str, ...] = (resolved,) if resolved else ()
+
+    def resolve(accounts: tuple[str, ...]) -> tuple[str, ...]:
+        return tuple(
+            dict.fromkeys(
+                r
+                for a in accounts
+                for r in (replacement if a == DEFAULT_SERVICE_ACCOUNT else (a,))
+            ),
+        )
+
+    return Workload(
+        **{
+            **workload.__dict__,
+            "service_accounts": resolve(workload.service_accounts),
+            "node_service_accounts": resolve(workload.node_service_accounts),
+        },
     )
-    return Workload(**{**workload.__dict__, "service_accounts": accounts})
 
 
 def select_workloads(
@@ -270,16 +285,22 @@ def select_workloads(
 ) -> list[SelectedWorkload]:
     """The workloads to report, each with why.
 
-    A workload is reported when an image matches an agent in the catalog, when it runs
-    as one of `ai_service_accounts` (the callers a Vertex AI audit-log read found), or
-    always when `report_all` is set, so every workload's service account is there to be
-    joined. Service accounts compare case-insensitively, as Google's emails do.
+    A workload is reported when an image matches an agent in the catalog, when its own
+    service account is one of `ai_service_accounts` (the callers a Vertex AI audit-log
+    read found), or always when `report_all` is set, so every workload's service account
+    is there to be joined. A node's account it only inherits does not select it.
+    Service accounts compare case-insensitively, as Google's emails do.
     """
     ai = {a.lower() for a in ai_service_accounts}
     selected: list[SelectedWorkload] = []
     for workload in workloads:
         findings = match_images(matcher, workload.images)
-        matched = tuple(a for a in workload.service_accounts if a.lower() in ai)
+        node = {a.lower() for a in workload.node_service_accounts}
+        matched = tuple(
+            a
+            for a in workload.service_accounts
+            if a.lower() in ai and a.lower() not in node
+        )
         reasons: list[str] = []
         if findings:
             reasons.append(REASON_CATALOG)

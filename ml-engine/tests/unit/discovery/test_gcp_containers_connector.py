@@ -46,6 +46,7 @@ from discovery.cloud.gcp_vertex.audit import AuditReadError
 from job_executors.discovery_output_contract import check_batch
 from job_executors.discovery_scan import (
     DENIED_PERMISSION,
+    DENIED_UNREACHABLE,
     AcceptsStopCheck,
     DeniedScope,
     DiscoveryConfigurationError,
@@ -431,7 +432,9 @@ def test_gke_workloads_are_controllers_by_stable_name_and_owned_objects_are_not(
     assert planner.creation_source.observations.install_path
     # No Workload Identity: the pods call Google as the node pool's account.
     # every workload here runs as the node's default account, and the name says so
-    assert planner.name.endswith(f"(runs as {DEFAULT_SA}, shared by 4 workloads)")
+    assert planner.name.endswith(
+        f"(runs as {DEFAULT_SA}, node account, shared by 4 workloads)",
+    )
 
 
 def test_a_controller_an_operator_owns_is_still_a_workload() -> None:
@@ -601,6 +604,73 @@ def test_a_workload_whose_account_called_vertex_is_reported_with_its_models(
     ]
 
 
+def test_an_ai_calling_node_account_selects_no_pod_and_is_labelled(
+    audit_log: dict[str, Any],
+) -> None:
+    """Without Workload Identity every pod on the node calls Google as the node's
+    account, so its AI calls are the node's: they label the pod, never select it."""
+    audit_log["entries"] = [model_call(NODE_SA)]
+    fake = FakeGoogle(
+        clusters=[cluster(node_sa=NODE_SA)],
+        kube={"/apis/apps/v1/deployments": [[k8s("deployment", "ingress")]]},
+    )
+
+    assert scan(fake, report_all=False) == []
+    (record,) = scan(fake, report_all=True)
+    assert record.name == f"{CLUSTER}/agents/ingress (runs as {NODE_SA}, node account)"
+    assert record.llm_models == []
+
+
+def test_a_pod_s_own_account_selects_it_with_only_its_own_models(
+    audit_log: dict[str, Any],
+) -> None:
+    """On a node pool that opts out of Workload Identity a bound pod still has its own
+    account; the node's AI calls neither select its neighbours nor add to its models."""
+    audit_log["entries"] = [
+        model_call(APP_SA, "claude-haiku-4-5"),
+        model_call(NODE_SA, "gemini-2.5-flash"),
+    ]
+    fake = FakeGoogle(
+        clusters=[
+            cluster(
+                workload_pool=f"{PROJECT}.svc.id.goog",
+                node_sa=NODE_SA,
+                mode="GCE_METADATA",
+            ),
+        ],
+        kube={
+            "/api/v1/serviceaccounts": [
+                [
+                    {
+                        "metadata": {
+                            "name": "planner",
+                            "namespace": "agents",
+                            "annotations": {"iam.gke.io/gcp-service-account": APP_SA},
+                        },
+                    },
+                ],
+            ],
+            "/apis/apps/v1/deployments": [
+                [
+                    k8s("deployment", "planner", ksa="planner"),
+                    k8s("deployment", "ingress", ksa="unbound"),
+                ],
+            ],
+        },
+    )
+
+    (record,) = scan(fake, report_all=False)
+
+    assert record.creation_source.address.resource_id == (
+        f"{CLUSTER}/agents/deployment/planner"
+    )
+    assert record.name == (
+        f"{CLUSTER}/agents/planner (runs as {APP_SA}, {NODE_SA}, node account, "
+        f"shared by 2 workloads)"
+    )
+    assert [m.name for m in record.llm_models] == ["claude-haiku-4-5"]
+
+
 def test_an_account_only_one_workload_runs_as_is_not_called_shared() -> None:
     fake = FakeGoogle(
         services=[[service("web", account=APP_SA), service("other", account=NODE_SA)]],
@@ -639,6 +709,24 @@ def test_a_refused_audit_read_is_a_denied_scope_and_the_catalog_still_selects(
         DeniedScope(f"projects/{PROJECT}/vertex-ai-audit-log", DENIED_PERMISSION),
     )
     assert "roles/logging.privateLogViewer" in caplog.text
+
+
+def test_an_audit_log_a_project_does_not_have_is_unreachable_not_a_missing_role(
+    audit_log: dict[str, Any],
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    audit_log["refuse"] = 404
+    fake = FakeGoogle(services=[[service("agent", image=GOOSE)]])
+    connector = GcpContainersConnector(session_for=lambda c: fake)  # type: ignore[arg-type,return-value]
+
+    with caplog.at_level(logging.WARNING):
+        scan(fake, report_all=False, connector=connector)
+
+    assert connector.denied_scopes() == (
+        DeniedScope(f"projects/{PROJECT}/vertex-ai-audit-log", DENIED_UNREACHABLE),
+    )
+    assert "check the project ID" in caplog.text
+    assert "privateLogViewer" not in caplog.text
 
 
 # --- paging ---------------------------------------------------------------------------

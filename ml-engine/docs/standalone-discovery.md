@@ -154,7 +154,10 @@ catalog, as for Jamf; `query_language: none`.
 
 A GKE workload is its controller -- Deployment, StatefulSet, DaemonSet, CronJob -- or a
 Job or Pod nothing owns; `kube-system`, `kube-public`, `kube-node-lease` and the `gke-`
-and `gmp-` namespaces are left out. The engine must be able to reach each cluster's
+and `gmp-` namespaces are left out. A pod without Workload Identity calls Google as its
+node pool's service account, which every pod on the node shares, so that account is
+labelled `node account` and an AI call from it does not select the workload; only the
+workload's own (Workload Identity) account does. The engine must be able to reach each cluster's
 endpoint; a cluster it cannot reach is logged, reported on the run as a denied scope,
 and the rest of the scan goes on, as is a project where an API, or its audit log, is off
 or refused. Two refusals do end the scan: a credential

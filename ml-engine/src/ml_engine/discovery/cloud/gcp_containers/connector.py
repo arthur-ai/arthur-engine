@@ -349,10 +349,10 @@ class GcpContainersConnector:
                 logger.warning(
                     "Vertex AI audit log not read for project %s (HTTP %s), so its "
                     "AI-calling service accounts are unknown and its workloads are "
-                    "selected by catalog image only. Reading it needs "
-                    "roles/logging.privateLogViewer on the project.",
+                    "selected by catalog image only.%s",
                     project,
                     e.status_code,
+                    _audit_read_hint(e.status_code),
                 )
                 continue
             except (requests.RequestException, GoogleAuthError, ValueError) as e:
@@ -522,6 +522,15 @@ def _default_account(
     return f"{number}-compute@developer.gserviceaccount.com"
 
 
+def _audit_read_hint(status_code: int) -> str:
+    """What a refused or failed audit-log read most likely needs, by its status."""
+    if status_code == 403:
+        return " Reading it needs roles/logging.privateLogViewer on the project."
+    if status_code == 404:
+        return " The project was not found; check the project ID."
+    return ""
+
+
 def record_for(
     selected: SelectedWorkload,
     logger: logging.Logger,
@@ -589,11 +598,13 @@ def display_name(
     selected: SelectedWorkload,
     sharing: Optional[Mapping[str, int]] = None,
 ) -> str:
-    """`<workload> [<catalog agents>] (runs as <account>[, shared by N workloads])`.
+    """`<workload> [<catalog agents>] (runs as <account>[, node account][, shared by N
+    workloads])`.
 
-    An account several workloads run as -- a node's default account without Workload
-    Identity, one account for many jobs -- says so, because a join on it (the audit
-    log's callers) cannot tell those workloads apart: a match through it is weak.
+    A node's account is marked, since every pod on the node calls Google as it. An
+    account several workloads run as -- a node's account, one account for many jobs --
+    says so, because a join on it (the audit log's callers) cannot tell those workloads
+    apart: a match through it is weak.
     """
     workload = selected.workload
     name = workload.name
@@ -603,8 +614,12 @@ def display_name(
         shared = max(
             (sharing or {}).get(a.lower(), 1) for a in workload.service_accounts
         )
+        node = set(workload.node_service_accounts)
+        accounts = ", ".join(
+            f"{a}, node account" if a in node else a for a in workload.service_accounts
+        )
         suffix = f", shared by {shared} workloads" if shared > 1 else ""
-        name += f" (runs as {', '.join(workload.service_accounts)}{suffix})"
+        name += f" (runs as {accounts}{suffix})"
     return name
 
 
