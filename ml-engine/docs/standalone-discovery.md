@@ -125,6 +125,38 @@ The lookback window is not applied: Google's list API is an inventory, so every 
 reports every engine in the region whatever `lookback_window_seconds` says, and a short
 window misses nothing.
 
+#### `gcp_containers` — Cloud Run and GKE workloads
+
+Lists every Cloud Run service, Cloud Run job and GKE workload in the projects, and
+reports a workload when one of its images is an agent's in the catalog (`images:`), or
+every workload when `report_all_workloads` is true. Each record names the GCP service
+account the workload runs as, so it can be joined with the callers in Vertex AI's audit
+log.
+
+| Field | Secret | Required | Notes |
+|---|---|---|---|
+| `project_ids` | no | yes | Comma-separated project **IDs**, not numbers |
+| `regions` | no | no | Comma-separated regions to list Cloud Run jobs in. Empty asks Cloud Run for every region it serves, one call each, which takes most of a scan's time |
+| `report_all_workloads` | no | no | `true` to report every workload, not only catalog matches. Defaults to `false` |
+| `service_account_key` | yes | no | A service account JSON key. Without one, the engine uses Application Default Credentials only if `ARTHUR_ENGINE_GCP_CONTAINERS_ALLOW_ADC=true` is set |
+
+The service account needs `roles/run.viewer` and `roles/container.viewer`. The second
+grants the Kubernetes reads too (`container.deployments.list`, `container.pods.list`,
+`container.serviceAccounts.list` and the rest), because GKE authorises a Google identity's
+Kubernetes calls against its IAM roles as well as RBAC; it does not grant reading
+Secrets. `query` is the catalog, as for Jamf; `query_language: none`.
+
+A GKE workload is its controller -- Deployment, StatefulSet, DaemonSet, CronJob -- or a
+Job or Pod nothing owns; `kube-system`, `kube-public`, `kube-node-lease` and the `gke-`
+and `gmp-` namespaces are left out. The engine must be able to reach each cluster's
+endpoint; a cluster it cannot reach is logged and the rest of the scan goes on, as is a
+project where an API is off or refused. Two refusals do end the scan: a credential
+refused outright (HTTP 401) stops it at once, and a scan that could list nothing at all
+fails with the first refusal's status, so a key with no access reads as denied rather
+than as a project without workloads.
+
+The lookback window is not applied: every scan lists every workload.
+
 #### `vercel_ai` — Vercel
 
 Lists one team's projects and reports each project that looks like it runs an AI agent.

@@ -31,6 +31,8 @@ from discovery.cloud.ec2.connector import VENDOR as AWS_EC2_VENDOR
 from discovery.cloud.ec2.connector import Ec2Connector
 from discovery.cloud.gce.connector import VENDOR as GCP_COMPUTE_ENGINE_VENDOR
 from discovery.cloud.gce.connector import ComputeEngineConnector
+from discovery.cloud.gcp_containers.connector import VENDOR as GCP_CONTAINERS_VENDOR
+from discovery.cloud.gcp_containers.connector import GcpContainersConnector
 from discovery.cloud.gcp_vertex.connector import VENDOR as GCP_VERTEX_VENDOR
 from discovery.cloud.gcp_vertex.connector import VertexAgentEngineConnector
 from discovery.cloud.vercel_ai.connector import VENDOR as VERCEL_AI_VENDOR
@@ -62,6 +64,7 @@ def source_connectors() -> dict[str, DiscoveryConnectorFactory]:
         AWS_EC2_VENDOR: Ec2Connector,
         AWS_BEDROCK_VENDOR: BedrockConnector,
         GCP_VERTEX_VENDOR: VertexAgentEngineConnector,
+        GCP_CONTAINERS_VENDOR: GcpContainersConnector,
         WIZ_VENDOR: WizConnector,
         SPLUNK_VENDOR: SplunkConnector,
         ELASTIC_SECURITY_VENDOR: ElasticSecurityConnector,
@@ -83,6 +86,8 @@ __all__ = [
     "AWS_BEDROCK_VENDOR",
     "VertexAgentEngineConnector",
     "GCP_VERTEX_VENDOR",
+    "GcpContainersConnector",
+    "GCP_CONTAINERS_VENDOR",
     "WizConnector",
     "WIZ_VENDOR",
     "SplunkConnector",
