@@ -1,12 +1,15 @@
+from uuid import UUID
+
 from arthur_common.models.request_schemas import ResponseValidationRequest
 from arthur_common.models.response_schemas import ValidationResult
 from sqlalchemy.orm import Session
 
 from repositories.inference_repository import InferenceRepository
-from rules_engine import RuleEngine
 from schemas.internal_schemas import Rule, ValidationRequest
 from scorer.score import ScorerClient
+from services.guardrails.validation import evaluate_guardrails
 from services.trace.guardrail_span_emitter import guardrail_span
+from utils.constants import DEFAULT_ORG_ID
 
 
 def validate_response(
@@ -19,6 +22,7 @@ def validate_response(
     trace_id: str | None = None,
     parent_span_id: str | None = None,
     emit_guardrail_trace: bool = True,
+    billed_org_id: UUID = DEFAULT_ORG_ID,
 ) -> ValidationResult:
     inference_repo = InferenceRepository(db_session)
     # Loaded up front: 404s on unknown ids before rules run, and supplies the
@@ -47,7 +51,9 @@ def validate_response(
         user_id=inference.user_id,
         session_id=inference.conversation_id,
     ) as gspan:
-        rule_results = RuleEngine(scorer_client).evaluate(validation_request, rules)
+        rule_results = evaluate_guardrails(
+            validation_request, rules, scorer_client, billed_org_id
+        )
         gspan.set_rule_results(rule_results)
 
     inference_response = inference_repo.save_response(

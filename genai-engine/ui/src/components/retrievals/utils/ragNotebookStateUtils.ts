@@ -10,12 +10,12 @@ import { DEFAULT_SEARCH_SETTINGS } from "@/constants/search";
 import type {
   RagNotebookState,
   RagNotebookStateResponse,
-  SavedRagConfigInput,
-  SavedRagConfigOutput,
+  SavedRagConfig as SavedRagConfigInput,
+  SavedRagConfig as SavedRagConfigOutput,
   UnsavedRagConfig,
   UnsavedRagConfigResponse,
   DatasetRefInput,
-  EvalRefInput,
+  EvalRef as EvalRefInput,
   RagProviderCollectionResponse,
   Api,
 } from "@/lib/api-client/api-client";

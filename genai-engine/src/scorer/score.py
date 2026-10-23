@@ -6,8 +6,13 @@ from arthur_common.models.metric_schemas import MetricRequest
 
 from schemas.internal_schemas import Metric, MetricResult
 from schemas.scorer_schemas import RuleScore, ScoreRequest
-from scorer import BinaryPIIDataClassifier
+from scorer import (
+    BinaryPIIDataClassifier,
+    HallucinationClaimsV2,
+    SensitiveDataCustomExamples,
+)
 from scorer.scorer import MetricScorer, RuleScorer
+from services.guardrails.judge_executor import JudgeContext
 
 
 class ScorerMapping(Protocol):
@@ -35,7 +40,9 @@ class ScorerClient:
     ):
         self.NAME_VERSION_MAPPING: ScorerMapping = name_version_mapping  # type: ignore[assignment]
 
-    def score(self, score_request: ScoreRequest) -> RuleScore:
+    def score(
+        self, score_request: ScoreRequest, judge_context: JudgeContext | None = None
+    ) -> RuleScore:
         """Scores any request with the provided rule
 
         :param score_request: scoring request object
@@ -48,6 +55,8 @@ class ScorerClient:
                 f"Rule type {score_request.rule_type} does not have a scorer",
             )
 
+        if isinstance(scorer_obj, (HallucinationClaimsV2, SensitiveDataCustomExamples)):
+            return scorer_obj.score(score_request, judge_context=judge_context)
         return scorer_obj.score(score_request)
 
     def score_metric(

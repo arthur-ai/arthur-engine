@@ -1,12 +1,12 @@
 import { formOptions } from "@tanstack/react-form";
 
 import {
-  AgenticEvalRefInput,
+  AgenticEvalRef as AgenticEvalRefInput,
   DatasetRefInput,
   HttpHeader,
   NewDatasetVersionRowColumnItemRequest,
   RequestTimeParameter,
-  TemplateVariableMappingInput,
+  TemplateVariableMapping as TemplateVariableMappingInput,
 } from "@/lib/api-client/api-client";
 
 export const agentNotebookStateFormOpts = formOptions({

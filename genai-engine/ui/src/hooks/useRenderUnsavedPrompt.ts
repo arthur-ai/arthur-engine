@@ -2,7 +2,7 @@ import { useMutation } from "@tanstack/react-query";
 
 import { useApi } from "./useApi";
 
-import type { OpenAIMessageInput, RenderedPromptResponse, VariableTemplateValue } from "@/lib/api-client/api-client";
+import type { OpenAIMessage as OpenAIMessageInput, RenderedPromptResponse, VariableTemplateValue } from "@/lib/api-client/api-client";
 
 interface RenderUnsavedPromptParams {
   messages: OpenAIMessageInput[];

@@ -6,17 +6,18 @@ from arthur_common.models.request_schemas import (
     ResponseValidationRequest,
 )
 from arthur_common.models.response_schemas import HTTPError, ValidationResult
-from fastapi import APIRouter, Depends, Header
+from fastapi import APIRouter, Depends, Header, HTTPException
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from config.cache_config import cache_config
+from db_models import DatabaseTask
 from dependencies import get_db_session, get_org_scope, get_scorer_client
 from repositories.inference_repository import InferenceRepository
 from repositories.rules_repository import RuleRepository
 from repositories.tasks_rules_repository import TasksRulesRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
-from rules_engine import RuleEngine
 from schemas.builtin_validate_schemas import (
     BuiltinValidationRequest,
     BuiltinValidationResponse,
@@ -29,7 +30,9 @@ from schemas.internal_schemas import (
     ValidationRequest,
 )
 from scorer.score import ScorerClient
+from services.guardrails.validation import evaluate_guardrails
 from services.trace.guardrail_span_emitter import parse_traceparent
+from utils.constants import DEFAULT_ORG_ID
 from utils.users import enforce_org_scope, permission_checker
 from validation.prompt import validate_prompt
 from validation.response import validate_response
@@ -38,6 +41,15 @@ validate_routes = APIRouter(
     prefix="/api/v2",
     route_class=GenaiEngineRoute,
 )
+
+
+def _task_org_id(session: Session, task_id: str) -> UUID:
+    org_id = session.execute(
+        select(DatabaseTask.org_id).where(DatabaseTask.id == task_id)
+    ).scalar_one_or_none()
+    if org_id is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return org_id
 
 
 @validate_routes.post(
@@ -94,10 +106,14 @@ def default_validate_response(
 ) -> ValidationResult:
     try:
         # Validate inference ownership for tenants before running rules / writes.
-        if org_scope is not None:
-            InferenceRepository(db_session).get_inference(
-                str(inference_id), org_scope=org_scope
-            )
+        inference = InferenceRepository(db_session).get_inference(
+            str(inference_id), org_scope=org_scope
+        )
+        billed_org_id = (
+            _task_org_id(db_session, inference.task_id)
+            if inference.task_id
+            else DEFAULT_ORG_ID
+        )
 
         rules_repo = RuleRepository(db_session)
 
@@ -112,6 +128,7 @@ def default_validate_response(
             db_session=db_session,
             scorer_client=scorer_client,
             rules=default_rules,
+            billed_org_id=billed_org_id,
         )
     finally:
         db_session.close()
@@ -145,6 +162,7 @@ def validate_prompt_endpoint(
 ) -> ValidationResult:
     try:
         trace_id, parent_span_id = parse_traceparent(traceparent)
+        billed_org_id = _task_org_id(db_session, str(task_id))
         tasks_rules_repo = TasksRulesRepository(db_session)
         task_rules = tasks_rules_repo.get_task_rules_ids_cached(str(task_id))
         rules_repo = RuleRepository(db_session)
@@ -158,6 +176,7 @@ def validate_prompt_endpoint(
             db_session=db_session,
             scorer_client=scorer_client,
             rules=rules,
+            billed_org_id=billed_org_id,
             trace_id=trace_id,
             parent_span_id=parent_span_id,
         )
@@ -197,13 +216,12 @@ def validate_response_endpoint(
 ) -> ValidationResult:
     try:
         trace_id, parent_span_id = parse_traceparent(traceparent)
-        # @enforce_org_scope above validated the task_id; also validate the
-        # inference belongs to a task in the caller's org so a tenant can't
-        # bind a foreign inference to their own task.
-        if org_scope is not None:
-            InferenceRepository(db_session).get_inference(
-                str(inference_id), org_scope=org_scope
-            )
+        billed_org_id = _task_org_id(db_session, str(task_id))
+        inference = InferenceRepository(db_session).get_inference(
+            str(inference_id), org_scope=org_scope
+        )
+        if inference.task_id != str(task_id):
+            raise HTTPException(status_code=404, detail="Inference not found")
         tasks_rules_repo = TasksRulesRepository(db_session)
         task_rules = tasks_rules_repo.get_task_rules_ids_cached(str(task_id))
         rules_repo = RuleRepository(db_session)
@@ -218,6 +236,7 @@ def validate_response_endpoint(
             scorer_client=scorer_client,
             rules=rules,
             task_id=str(task_id),
+            billed_org_id=billed_org_id,
             trace_id=trace_id,
             parent_span_id=parent_span_id,
         )
@@ -250,6 +269,7 @@ def stateless_validate(
     body: BuiltinValidationRequest,
     scorer_client: ScorerClient = Depends(get_scorer_client),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> BuiltinValidationResponse:
     rules = [Rule._from_request_model(c, RuleScope.DEFAULT) for c in body.checks]
     request = ValidationRequest(
@@ -257,7 +277,9 @@ def stateless_validate(
         response=body.response,
         context=body.context,
     )
-    engine_results = RuleEngine(scorer_client).evaluate(request, rules)
+    engine_results = evaluate_guardrails(
+        request, rules, scorer_client, org_scope or DEFAULT_ORG_ID
+    )
     results = [
         PromptRuleResult._from_rule_engine_model(r)._to_response_model()
         for r in engine_results

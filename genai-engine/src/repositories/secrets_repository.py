@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
 
 from db_models.secret_storage_models import DatabaseSecretStorage
+from repositories.guardrail_configuration_repository import lock_guardrail_configuration
 
 
 class SecretsRepository:
@@ -9,6 +10,7 @@ class SecretsRepository:
         self.db_session = db_session
 
     def rotate_secrets(self) -> None:
+        lock_guardrail_configuration(self.db_session)
         # rotate all secrets in the database
         secrets = self.db_session.query(DatabaseSecretStorage).all()
         for secret in secrets:

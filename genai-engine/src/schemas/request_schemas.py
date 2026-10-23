@@ -49,6 +49,7 @@ from schemas.enums import (
     RagSearchKind,
     TaskAnalyticsBucketSize,
 )
+from schemas.guardrail_schemas import GuardrailLLMConfiguration
 from utils.constants import ALLOWED_TRACE_RETENTION_DAYS
 
 
@@ -85,6 +86,7 @@ class DocumentStorageConfigurationUpdateRequest(BaseModel):
 
 
 class ApplicationConfigurationUpdateRequest(BaseModel):
+    guardrail_llm: GuardrailLLMConfiguration | None = None
     chat_task_id: Optional[str] = None
     default_currency: Optional[str] = None
     document_storage_configuration: Optional[

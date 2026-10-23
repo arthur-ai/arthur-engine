@@ -19955,6 +19955,26 @@
             },
             "ApplicationConfigurationResponse": {
                 "properties": {
+                    "guardrail_llm": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/GuardrailLLMConfiguration"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "guardrail_llm_status": {
+                        "type": "string",
+                        "enum": [
+                            "configured",
+                            "needs_configuration",
+                            "invalid"
+                        ],
+                        "title": "Guardrail Llm Status",
+                        "default": "needs_configuration"
+                    },
                     "chat_task_id": {
                         "anyOf": [
                             {
@@ -20013,6 +20033,16 @@
             },
             "ApplicationConfigurationUpdateRequest": {
                 "properties": {
+                    "guardrail_llm": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/GuardrailLLMConfiguration"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
                     "chat_task_id": {
                         "anyOf": [
                             {
@@ -23842,6 +23872,35 @@
                 "title": "GeneratedVariableSource",
                 "description": "Variable source for generated values (e.g., UUIDs, timestamps)"
             },
+            "GuardrailLLMConfiguration": {
+                "properties": {
+                    "provider": {
+                        "$ref": "#/components/schemas/ModelProvider"
+                    },
+                    "model": {
+                        "type": "string",
+                        "title": "Model"
+                    },
+                    "base_model": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Base Model"
+                    }
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                    "provider",
+                    "model"
+                ],
+                "title": "GuardrailLLMConfiguration"
+            },
             "HTTPError": {
                 "properties": {
                     "detail": {
@@ -25977,6 +26036,11 @@
             },
             "ModelProviderResponse": {
                 "properties": {
+                    "supports_custom_models": {
+                        "type": "boolean",
+                        "title": "Supports Custom Models",
+                        "default": false
+                    },
                     "provider": {
                         "$ref": "#/components/schemas/ModelProvider",
                         "description": "The model provider"

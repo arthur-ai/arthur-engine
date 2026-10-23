@@ -18,7 +18,7 @@ import { useCreateNewExperiment } from "./hooks/useCreateNewExperiment";
 import { mapFormToRequest, mapTemplateToRequest } from "./utils/mapper";
 
 import { getContentHeight } from "@/constants/layout";
-import { AgenticExperimentDetail, HttpHeader, TemplateVariableMappingInput } from "@/lib/api-client/api-client";
+import { AgenticExperimentDetail, HttpHeader, TemplateVariableMapping as TemplateVariableMappingInput } from "@/lib/api-client/api-client";
 import { track } from "@/services/analytics";
 
 function computeVars(endpoint: { body: string; headers: HttpHeader[] }): string[] {

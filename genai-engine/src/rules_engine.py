@@ -11,8 +11,8 @@ from opentelemetry import trace
 
 from schemas.internal_schemas import Rule, RuleEngineResult, ValidationRequest
 from schemas.scorer_schemas import Example, RuleScore, ScoreRequest, ScorerRuleDetails
-from scorer.llm_client import get_llm_executor
 from scorer.score import ScorerClient
+from services.guardrails.judge_executor import JudgeContext
 from utils import constants
 from utils.metric_counters import RULE_FAILURE_COUNTER
 from utils.token_count import TokenCounter
@@ -50,18 +50,33 @@ logger = logging.getLogger(__name__)
 
 
 class RuleEngine:
-    def __init__(self, scorer_client: ScorerClient):
+    def __init__(
+        self, scorer_client: ScorerClient, judge_context: JudgeContext | None = None
+    ):
         self.scorer = scorer_client
+        self.judge_context = judge_context
         self.token_counter = TokenCounter()
         self.hallucination_token_limit = self.set_hallucination_token_limit()
 
     def set_hallucination_token_limit(self) -> int:
-        token_limit = get_llm_executor().get_gpt_model_token_limit()
+        return (
+            self.judge_context.input_limit
+            if self.judge_context is not None
+            and self.judge_context.input_limit is not None
+            else MAX_HALLUCINATION_TOKEN_LIMIT
+        )
 
-        if token_limit == -1:
-            return MAX_HALLUCINATION_TOKEN_LIMIT
-
-        return token_limit
+    def needs_judge(self, request: ValidationRequest, rules: List[Rule]) -> bool:
+        for rule in rules:
+            if (
+                rule.type == RuleType.MODEL_SENSITIVE_DATA
+                and self.token_counter.count(request.prompt)
+                < MAX_SENSITIVE_DATA_TOKEN_LIMIT
+            ):
+                return True
+            if rule.type == RuleType.MODEL_HALLUCINATION_V2 and request.context:
+                return True
+        return False
 
     def evaluate(
         self,
@@ -165,7 +180,6 @@ class RuleEngine:
             score_request.llm_response = request.response
         else:
             score_request.user_prompt = request.prompt
-
         rule_score = self.scorer.score(score_request)
         return rule_score
 
@@ -221,7 +235,9 @@ class RuleEngine:
                 context=request.context,
             )
 
-            rule_score = self.scorer.score(score_request)
+            rule_score = self.scorer.score(
+                score_request, judge_context=self.judge_context
+            )
             return rule_score
         else:
             rule_score = RuleScore(
@@ -279,7 +295,7 @@ class RuleEngine:
         score_request: ScoreRequest,
         total_tokens: int,
     ) -> RuleScore:
-        rule_score = self.scorer.score(score_request)
+        rule_score = self.scorer.score(score_request, judge_context=self.judge_context)
         return rule_score
 
     @tracer.start_as_current_span("run prompt injection rule")

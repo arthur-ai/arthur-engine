@@ -15,7 +15,7 @@ import ModelParamsDialog from "./ModelParamsDialog";
 import PreviewPromptModal from "./PreviewPromptModal";
 
 import { TOUR_IDS } from "@/features/task-tour/selectors";
-import { PromptVariableMappingOutput } from "@/lib/api-client/api-client";
+import { PromptVariableMapping as PromptVariableMappingOutput } from "@/lib/api-client/api-client";
 import { track } from "@/services/analytics";
 
 interface ManagementButtonsProps {

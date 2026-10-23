@@ -9,6 +9,7 @@ export const DEFAULT_VALUES = {
   },
   openai: {
     api_key: "",
+    api_base: "",
   },
   gemini: {
     api_key: "",

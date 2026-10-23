@@ -10,7 +10,7 @@ import { useEvals } from "@/components/evaluators/hooks/useEvals";
 import { useEvalVersions } from "@/components/evaluators/hooks/useEvalVersions";
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
-import { AgenticEvalRefInput, AgenticEvalVariableMappingInput } from "@/lib/api-client/api-client";
+import { AgenticEvalRef as AgenticEvalRefInput, AgenticEvalVariableMapping as AgenticEvalVariableMappingInput } from "@/lib/api-client/api-client";
 
 export const EvaluatorsSelector = withFieldGroup({
   defaultValues: {} as Pick<NewAgentExperimentFormData, "evals">,

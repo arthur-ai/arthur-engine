@@ -57,6 +57,7 @@ class DocumentStorageEnvironment(str, Enum):
 
 # These are keys in config key : value pairs
 class ApplicationConfigurations(str, Enum):
+    GUARDRAIL_LLM = "guardrail_llm"
     CHAT_TASK_ID = "chat_task_id"
     DEFAULT_CURRENCY = "default_currency"
     DOCUMENT_STORAGE_ENV = "document_storage_environment"

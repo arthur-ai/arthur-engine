@@ -1,9 +1,11 @@
 import { useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 
+import { useAuth } from "@/contexts/AuthContext";
 import { useApi } from "@/hooks/useApi";
 import { useApiQuery } from "@/hooks/useApiQuery";
 import type { ApplicationConfigurationUpdateRequest } from "@/lib/api-client/api-client";
+import { queryKeys } from "@/lib/queryKeys";
 
 const QUERY_METHOD = "getConfigurationApiV2ConfigurationGet" as const;
 
@@ -13,13 +15,15 @@ interface UseApplicationConfigurationOptions {
 
 export function useApplicationConfiguration(options: UseApplicationConfigurationOptions = {}) {
   const { enabled = true } = options;
+  const { me } = useAuth();
+  const canRead = me?.roles.some((role) => role === "ORG-ADMIN" || role === "ORG-AUDITOR") ?? false;
   const api = useApi();
   const queryClient = useQueryClient();
 
   const query = useApiQuery({
     method: QUERY_METHOD,
     args: [] as const,
-    enabled,
+    enabled: enabled && canRead,
     queryOptions: {
       retry: (failureCount, error) => {
         if (axios.isAxiosError(error) && error.response?.status === 403) return false;
@@ -32,7 +36,7 @@ export function useApplicationConfiguration(options: UseApplicationConfiguration
     if (!api) throw new Error("API client not available");
     const res = await api.api.updateConfigurationApiV2ConfigurationPost(body);
     await queryClient.invalidateQueries({
-      queryKey: [QUERY_METHOD],
+      queryKey: queryKeys.configuration.all(),
     });
     return res.data;
   };

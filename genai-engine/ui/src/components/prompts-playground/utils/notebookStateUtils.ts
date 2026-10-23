@@ -5,8 +5,8 @@ import toFrontendPrompt from "./toFrontendPrompt";
 
 import {
   Api,
-  NotebookStateInput,
-  NotebookStateOutput,
+  NotebookState as NotebookStateInput,
+  NotebookState as NotebookStateOutput,
   PromptExperimentDetail,
   SavedPromptConfig,
   UnsavedPromptConfig,

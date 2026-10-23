@@ -4,7 +4,7 @@ import type {
   CreateRagExperimentRequest,
   NewDatasetVersionRowColumnItemRequest,
   UnsavedRagConfig,
-  SavedRagConfigInput,
+  SavedRagConfig as SavedRagConfigInput,
 } from "@/lib/api-client/api-client";
 
 interface RagConfigUIFields {

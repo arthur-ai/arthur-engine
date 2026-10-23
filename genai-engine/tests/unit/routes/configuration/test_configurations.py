@@ -3,12 +3,14 @@ import re
 from unittest.mock import patch
 
 import pytest
+from arthur_common.models.llm_model_providers import ModelProvider
 
+from clients.llm.llm_client import SUPPORTED_TEXT_MODELS
 from tests.clients.base_test_client import (
     MASTER_KEY_AUTHORIZED_HEADERS,
     GenaiEngineTestClientBase,
 )
-from utils import utils
+from utils import constants, utils
 
 
 @pytest.mark.parametrize(
@@ -133,6 +135,81 @@ def test_display_settings_scope_url_absent(client: GenaiEngineTestClientBase):
         response = client.base_client.get("/api/v2/display-settings")
     assert response.status_code == 200
     assert response.json()["scope_url"] is None
+
+
+@pytest.mark.unit_tests
+def test_guardrail_config_permissions_and_provider_lifecycle(client, monkeypatch):
+    monkeypatch.setitem(SUPPORTED_TEXT_MODELS, ModelProvider.GEMINI, ["gemini-test"])
+    admin = client.authorized_org_admin_api_key_headers
+    task_admin = client.authorized_user_api_key_headers
+    status, auditor_key = client.create_api_key(roles=[constants.ORG_AUDITOR])
+    assert status == 200
+    auditor = {"Authorization": f"Bearer {auditor_key.key}"}
+    selection = {"provider": "gemini", "model": "gemini-test", "base_model": None}
+    provider_url = "/api/v1/model_providers/gemini"
+    try:
+        assert (
+            client.base_client.put(
+                provider_url, json={"api_key": "local-gemini-key"}, headers=admin
+            ).status_code
+            == 201
+        )
+        saved = client.update_configs({"guardrail_llm": selection}, headers=admin)
+        assert saved.status_code == 200
+        assert saved.json()["guardrail_llm"] == selection
+        assert saved.json()["guardrail_llm_status"] == "configured"
+        assert "api_key" not in str(saved.json())
+        assert client.get_configs(headers=auditor).status_code == 200
+        for headers in (task_admin, auditor, {}):
+            response = client.base_client.post(
+                "/api/v2/configuration", json={"guardrail_llm": None}, headers=headers
+            )
+            assert response.status_code in (401, 403)
+        assert (
+            client.base_client.put(
+                provider_url, json={"api_key": "replacement"}, headers=task_admin
+            ).status_code
+            == 403
+        )
+        assert (
+            client.base_client.delete(provider_url, headers=task_admin).status_code
+            == 403
+        )
+        assert client.base_client.delete(provider_url, headers=admin).status_code == 204
+        missing = client.get_configs(headers=admin).json()
+        assert missing["guardrail_llm"] == selection
+        assert missing["guardrail_llm_status"] == "needs_configuration"
+        assert (
+            client.base_client.put(
+                provider_url, json={"api_key": "replacement"}, headers=task_admin
+            ).status_code
+            == 403
+        )
+        assert (
+            client.base_client.put(
+                provider_url, json={"api_key": "replacement"}, headers=admin
+            ).status_code
+            == 201
+        )
+        assert (
+            client.get_configs(headers=admin).json()["guardrail_llm_status"]
+            == "configured"
+        )
+        assert (
+            client.update_configs({"default_currency": "USD"}, headers=admin).json()[
+                "guardrail_llm"
+            ]
+            == selection
+        )
+        rejected = client.update_configs(
+            {"guardrail_llm": {**selection, "mode": "legacy"}}, headers=admin
+        )
+        assert rejected.status_code == 400
+        assert client.get_configs(headers=admin).json()["guardrail_llm"] == selection
+    finally:
+        client.update_configs({"guardrail_llm": None}, headers=admin)
+        client.base_client.delete(provider_url, headers=admin)
+        client.deactivate_api_key(auditor_key)
 
 
 @pytest.mark.unit_tests
