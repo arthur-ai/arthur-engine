@@ -707,7 +707,8 @@ def test_a_role_whose_every_call_was_refused_selects_nothing() -> None:
 
 
 def test_a_bare_task_role_name_matches_the_arn_cloudtrail_names() -> None:
-    # ECS accepts a role name for taskRoleArn; CloudTrail always names an ARN.
+    # Defensive: ECS expands a bare taskRoleArn at registration (observed), but a bare
+    # name must still match the ARN CloudTrail names, should one ever arrive.
     aws = FakeAws()
     d = aws.add_definition(task_definition("bot", task_role="support-bot-task"))
     aws.services[REGION] = [ecs_service("bot", d)]

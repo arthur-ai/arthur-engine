@@ -398,9 +398,12 @@ def eks_workload(
 
 
 def role_arn(account: str, role: str) -> str:
-    """The role as an ARN. ECS accepts a bare role name for `taskRoleArn`, which is a
-    role in the task's own account; CloudTrail always names the caller by ARN, so a bare
-    name would never match it."""
+    """The role as an ARN, since CloudTrail always names the caller by ARN.
+
+    Defensive: ECS accepts a bare role name for `taskRoleArn` but expands it when the
+    task definition is registered, and `DescribeTaskDefinition` returns the full ARN
+    (observed). Whether a `RunTask` override is stored bare has not been observed, and a
+    bare name would otherwise never match."""
     role = role.strip()
     if role.startswith("arn:"):
         return role
