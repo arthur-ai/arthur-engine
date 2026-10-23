@@ -21,7 +21,7 @@ from arthur_common.models.request_schemas import NewRuleRequest
 from fastapi import HTTPException
 from langchain_core.messages import HumanMessage
 from pydantic import SecretStr, ValidationError
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
 import dependencies
@@ -257,6 +257,48 @@ def test_config_precedence_and_automatic_fallback(judge_store, monkeypatch):
     context.close()
     monkeypatch.delenv("GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS")
     assert configuration_service.capture_judge_context(org_id).error == NOT_CONFIGURED
+
+
+@pytest.mark.parametrize(
+    ("provider", "field"),
+    [
+        (ModelProvider.OPENAI, "value"),
+        (ModelProvider.OPENAI, "api_base"),
+        (ModelProvider.AZURE, "api_base"),
+        (ModelProvider.VERTEX_AI, "vertex_credentials"),
+        (ModelProvider.BEDROCK, "aws_bedrock_credentials"),
+    ],
+)
+def test_unreadable_credentials_do_not_use_a_default_or_environment(
+    judge_store, monkeypatch, provider, field
+):
+    sessions, org_id = judge_store
+    configure_provider(
+        sessions,
+        provider=provider,
+        model="judge-alias",
+        endpoint="https://private.example.test/v1/",
+    )
+    with sessions() as session:
+        session.execute(
+            text(f"UPDATE secret_storage SET {field} = :ciphertext"),
+            {"ciphertext": "unreadable-ciphertext"},
+        )
+        session.commit()
+    fallback = MagicMock()
+    monkeypatch.setattr(configuration_service, "_environment_context", fallback)
+    client_constructor = MagicMock(side_effect=AssertionError("No ambient credentials"))
+    monkeypatch.setattr(
+        "repositories.model_provider_repository.LLMClient", client_constructor
+    )
+    context = configuration_service.capture_judge_context(org_id)
+    try:
+        assert context.error == CONFIGURATION_UNAVAILABLE
+        assert context.handle is None
+        fallback.assert_not_called()
+        client_constructor.assert_not_called()
+    finally:
+        context.close()
 
 
 def test_malformed_selection_never_activates_environment(judge_store, monkeypatch):

@@ -283,7 +283,12 @@ class ModelProviderRepository:
             self.db_session.delete(provider_db)
         self.db_session.commit()
 
-    def get_model_provider_client(self, provider: ModelProvider) -> LLMClient:
+    def get_model_provider_client(
+        self,
+        provider: ModelProvider,
+        *,
+        require_readable_credentials: bool = False,
+    ) -> LLMClient:
         """Returns an authenticated LiteLLM client instance for the provider"""
         if str(provider) == EMPTY_MODEL_PROVIDER:
             raise HTTPException(
@@ -294,6 +299,17 @@ class ModelProviderRepository:
                 ),
             )
         secret = self._require_provider_secret(provider)
+        if require_readable_credentials:
+            for credential in (
+                secret.value,
+                secret.api_base,
+                secret.vertex_credentials,
+                secret.aws_bedrock_credentials,
+            ):
+                if credential is not None and (
+                    not isinstance(credential, dict) or not credential
+                ):
+                    raise ValueError("The model provider credentials are unreadable.")
 
         api_key = None
         if secret.value is not None:
@@ -307,6 +323,10 @@ class ModelProviderRepository:
         api_base = None
         if secret.api_base:
             api_base = secret.api_base.get(self.API_BASE_SECRET_FIELD)
+            if require_readable_credentials and (
+                not isinstance(api_base, str) or not api_base.strip()
+            ):
+                raise ValueError("The model provider endpoint is invalid.")
 
         return LLMClient(
             provider=provider,

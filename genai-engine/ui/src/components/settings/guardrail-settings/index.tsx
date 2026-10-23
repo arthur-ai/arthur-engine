@@ -165,7 +165,7 @@ const GuardrailSettingsEditor = () => {
             <Autocomplete
               options={models}
               value={selection.base_model ?? null}
-              disabled={readOnly || !selectedProvider?.enabled || catalog.isError}
+              disabled={readOnly || !selectedProvider?.enabled}
               onChange={(_, base_model) => setDraft({ ...selection, base_model })}
               renderInput={(params) => (
                 <TextField

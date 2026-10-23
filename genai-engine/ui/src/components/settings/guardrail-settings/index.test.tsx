@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -33,6 +33,7 @@ beforeEach(() => {
     data: { guardrail_llm: { provider: "openai", model: "gpt-4o", base_model: null }, guardrail_llm_status: "configured" },
     refetch: mocks.refetch,
   });
+
   mocks.providers.mockReturnValue({ data: [{ provider: "openai", enabled: true, supports_custom_models: true }] });
   mocks.catalog.mockReturnValue({ data: { catalog: ["gpt-4o", "catalog-only-model"] } });
   mocks.mutate.mockResolvedValue({});
@@ -40,6 +41,19 @@ beforeEach(() => {
 });
 
 describe("Guardrail Settings", () => {
+  it("can clear saved optional metadata and save an exact alias when the catalog fails", async () => {
+    mocks.configuration.mockReturnValue({
+      data: { guardrail_llm: { provider: "openai", model: "team/old/alias", base_model: "gpt-4o" }, guardrail_llm_status: "configured" },
+      refetch: mocks.refetch,
+    });
+    mocks.catalog.mockReturnValue({ isError: true, refetch: vi.fn() });
+    render(<GuardrailSettings />);
+    const metadata = screen.getByLabelText("Catalog base model (optional)");
+    fireEvent.click(within(metadata.closest(".MuiAutocomplete-root") as HTMLElement).getByRole("button", { name: "Clear" }));
+    fireEvent.change(screen.getByLabelText("Model or exact routing name"), { target: { value: "team/new/exact-alias" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(mocks.mutate).toHaveBeenCalledWith({ provider: "openai", model: "team/new/exact-alias", base_model: null }));
+  });
   it("does not mount configuration queries for unauthorized readers", () => {
     mocks.permissions = { canRead: false, canWrite: false };
     render(<GuardrailSettings />);

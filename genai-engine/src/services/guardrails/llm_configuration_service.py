@@ -47,19 +47,21 @@ def validate_guardrail_selection(
     session: Session, selection: GuardrailLLMConfiguration
 ) -> None:
     repository = ModelProviderRepository(session)
+    lock_guardrail_configuration(session)
+    try:
+        client = repository.get_model_provider_client(
+            selection.provider, require_readable_credentials=True
+        )
+    except Exception:
+        raise HTTPException(
+            status_code=400,
+            detail="Configure the model provider before selecting a guardrail model.",
+        ) from None
     try:
         catalog = repository.list_catalog_models_for_provider(selection.provider)
     except Exception:
         raise HTTPException(
             status_code=400, detail="Unable to load the provider model catalog."
-        ) from None
-    lock_guardrail_configuration(session)
-    try:
-        client = repository.get_model_provider_client(selection.provider)
-    except Exception:
-        raise HTTPException(
-            status_code=400,
-            detail="Configure the model provider before selecting a guardrail model.",
         ) from None
     aliases_allowed = selection.provider == ModelProvider.AZURE or (
         selection.provider == ModelProvider.OPENAI and bool(client.api_base)
@@ -135,7 +137,7 @@ def capture_judge_context(org_id: UUID) -> JudgeContext:
                 return JudgeContext(org_id=org_id, error=CONFIGURATION_UNAVAILABLE)
             client = (
                 ModelProviderRepository(session).get_model_provider_client(
-                    selection.provider
+                    selection.provider, require_readable_credentials=True
                 )
                 if selection is not None and status == "configured"
                 else None

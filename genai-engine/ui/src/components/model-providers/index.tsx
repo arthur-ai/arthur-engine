@@ -38,8 +38,9 @@ import { ModelProviderResponse, PutModelProviderCredentials } from "@/lib/api-cl
 export const ModelProviders: React.FC = () => {
   const { enqueueSnackbar } = useSnackbar();
   const configuration = useGuardrailConfiguration();
-  const { canWrite } = useGuardrailPermissions();
+  const { canWrite, canRead } = useGuardrailPermissions();
   const selectedProvider = configuration.data?.guardrail_llm?.provider;
+  const configurationReady = !canRead || (!!configuration.data && !configuration.isError && !configuration.isFetching);
   const [deleteError, setDeleteError] = useState(false);
   const { data: providers, isLoading, error } = useProviders();
   const [deleteModal, setDeleteModal] = useState<{
@@ -66,12 +67,13 @@ export const ModelProviders: React.FC = () => {
   });
 
   const handleDeleteClick = (provider: ModelProviderResponse) => {
+    if (!configurationReady || (selectedProvider === provider.provider && !canWrite)) return;
     setDeleteError(false);
     setDeleteModal({ isOpen: true, provider });
   };
 
   const handleDeleteConfirm = async () => {
-    if (!deleteModal.provider) return;
+    if (!deleteModal.provider || !configurationReady || (selectedProvider === deleteModal.provider.provider && !canWrite)) return;
 
     try {
       await deleteProviderMutation.mutateAsync(deleteModal.provider.provider);
@@ -85,6 +87,7 @@ export const ModelProviders: React.FC = () => {
   };
 
   const handleEditClick = (provider: ModelProviderResponse) => {
+    if (!configurationReady || (selectedProvider === provider.provider && !canWrite)) return;
     setWhitelist(null);
 
     setWhitelistDirty(false);
@@ -97,7 +100,7 @@ export const ModelProviders: React.FC = () => {
   };
 
   const handleEditSave = async (data: PutModelProviderCredentials) => {
-    if (!editModal.provider) return;
+    if (!editModal.provider || !configurationReady || (selectedProvider === editModal.provider.provider && !canWrite)) return;
 
     try {
       await saveProviderMutation.mutateAsync({ provider: editModal.provider, data });
@@ -175,6 +178,17 @@ export const ModelProviders: React.FC = () => {
         </Box>
 
         <Box sx={{ p: 3 }}>
+          {canRead && !configurationReady && (
+            <Alert
+              severity={configuration.isError ? "error" : "info"}
+              sx={{ mb: 2 }}
+              action={configuration.isError ? <Button onClick={() => void configuration.refetch()}>Retry</Button> : undefined}
+            >
+              {configuration.isError
+                ? "Guardrail settings could not be loaded. Reload them before changing model providers."
+                : "Loading guardrail settings before changing model providers."}
+            </Alert>
+          )}
           <Card variant="outlined">
             <CardContent sx={{ p: 0, "&:last-child": { pb: 0 } }}>
               <TableContainer sx={{ maxHeight: "calc(100vh - 300px)", overflow: "auto" }}>
@@ -243,7 +257,7 @@ export const ModelProviders: React.FC = () => {
                                 size="small"
                                 color="primary"
                                 onClick={() => handleEditClick(provider)}
-                                disabled={selectedProvider === provider.provider && !canWrite}
+                                disabled={!configurationReady || (selectedProvider === provider.provider && !canWrite)}
                                 title="Configure provider"
                               >
                                 <Edit />
@@ -252,7 +266,7 @@ export const ModelProviders: React.FC = () => {
                                 size="small"
                                 color="error"
                                 onClick={() => handleDeleteClick(provider)}
-                                disabled={!provider.enabled || (selectedProvider === provider.provider && !canWrite)}
+                                disabled={!configurationReady || !provider.enabled || (selectedProvider === provider.provider && !canWrite)}
                                 title={provider.enabled ? "Delete provider" : "Delete provider (disabled - provider not enabled)"}
                               >
                                 <Delete />
@@ -323,7 +337,7 @@ export const ModelProviders: React.FC = () => {
           </Button>
           <Button
             onClick={handleDeleteConfirm}
-            disabled={isDeleting}
+            disabled={isDeleting || !configurationReady || (deleteModal.provider?.provider === selectedProvider && !canWrite)}
             color="error"
             variant="contained"
             startIcon={isDeleting ? <CircularProgress size={16} /> : null}
