@@ -561,29 +561,146 @@ else:
           if compared < len(pinned) else
           f"render: ok, HEAD's policy pins each of {len(pinned)} files to its own sha256")
 
-# --- the EC2 install script -----------------------------------------------------------------
-# IT IS POSIX sh. AWS-RunShellScript runs it with sh, which is dash on Ubuntu, and a bashism
-# there fails every run on those instances while Amazon Linux, where sh is bash, passes:
-# `set -o pipefail` did exactly that (ec2.md, section 02). Read from the runbook, since the
-# runbook is where it ships.
+# --- the EC2 template that installs the carrier ---------------------------------------------
+# THE INSTALL SCRIPT IS POSIX sh. The document's aws:runShellScript step runs it with sh, which
+# is dash on Ubuntu, and a bashism there fails every run on those instances while Amazon Linux,
+# where sh is bash, passes: `set -o pipefail` fails there with `Illegal option -o pipefail`.
 import shutil
-book = open(os.path.join(root, "docs", "mdm", "ec2.md")).read()
-block = re.search(r"^```sh\n(# arthur-ai-discovery-install\.sh\n.*?)^```$", book, re.M | re.S)
-if not block:
-    print("FAIL: docs/mdm/ec2.md has no ```sh block starting `# arthur-ai-discovery-install.sh`"); sys.exit(1)
-script = block.group(1)
+TEMPLATE = os.path.join("deploy", "arthur-ai-discovery.cfn.yaml")
+tpl = open(os.path.join(root, TEMPLATE)).read()
+blocks = re.findall(r"^( *)runCommand:\n\1  - \|\n((?:\1    .*\n|\n)+)", tpl, re.M)
+if len(blocks) != 1:
+    print(f"FAIL: {TEMPLATE} must hold one runCommand block scalar, the install script; found "
+          f"{len(blocks)}"); sys.exit(1)
+indent, body = blocks[0]
+script = "".join(l[len(indent) + 4:] + "\n" for l in body.rstrip("\n").split("\n"))
+if not script.startswith("# arthur-ai-discovery-install.sh\n"):
+    print(f"FAIL: {TEMPLATE}'s runCommand does not start with `# arthur-ai-discovery-install.sh`"); sys.exit(1)
 bashism = re.search(r"pipefail|\[\[|\bfunction\b|<<<|\$\{[^}]*//|^\s*source\b", script, re.M)
 if bashism:
-    print(f"FAIL: ec2.md's install script uses {bashism.group(0)!r}, which dash refuses; "
-          f"AWS-RunShellScript runs it with sh, which is dash on Ubuntu"); sys.exit(1)
+    print(f"FAIL: the template's install script uses {bashism.group(0)!r}, which dash refuses; "
+          f"aws:runShellScript runs it with sh, which is dash on Ubuntu"); sys.exit(1)
 if shutil.which("dash"):
     r = subprocess.run(["dash", "-n"], input=script, text=True, capture_output=True)
     if r.returncode != 0:
-        print(f"FAIL: dash -n refuses ec2.md's install script: {r.stderr.strip()}"); sys.exit(1)
+        print(f"FAIL: dash -n refuses the template's install script: {r.stderr.strip()}"); sys.exit(1)
     checked = "and dash -n accepts it"
 else:
     checked = "dash -n skipped, no dash here"
-print(f"ec2 install script: ok, no bashism {checked}")
+
+# EACH FETCH INSTALLS ITS FILE WHERE IT IS RUN, from its path in this tree. The drop-in runs the
+# reporter, the reporter runs the collector from its default, and systemd loads the units and
+# the drop-in by name; a file landing elsewhere is an instance whose association reads Success
+# and whose first run fails. One fetch per line, in the shape the renderer pins.
+fetches = re.findall(r"^\s*fetch (\S+) (\S+) ([0-7]+) (SHA256_[A-Z]+)$", script, re.M)
+if len(re.findall(r"^\s*fetch ", script, re.M)) != len(fetches) or \
+        len({p for *_, p in fetches}) != len(fetches):
+    print("FAIL: each fetch in the install script must be one line, `fetch SOURCE DESTINATION "
+          "MODE SHA256_NAME`, with a placeholder of its own, or the renderer cannot pin it"); sys.exit(1)
+fetched = {src: (dest, mode) for src, dest, mode, _ in fetches}
+UNITS = "/etc/systemd/system"
+want_ec2 = {
+    "dist/collect-linux.sh": (m.group(1), "755"),
+    "deploy/report-ssm-inventory.sh": (starts[1], "755"),
+    "deploy/arthur-ai-discovery.service": (f"{UNITS}/arthur-ai-discovery.service", "644"),
+    "deploy/arthur-ai-discovery.timer": (f"{UNITS}/arthur-ai-discovery.timer", "644"),
+    "deploy/arthur-ai-discovery.service.d/ec2.conf":
+        (f"{UNITS}/arthur-ai-discovery.service.d/ec2.conf", "644"),
+}
+if fetched != want_ec2:
+    for src in sorted(set(fetched) | set(want_ec2)):
+        if fetched.get(src) != want_ec2.get(src):
+            print(f"FAIL: {TEMPLATE} installs {src} as {fetched.get(src)}, but it is run as "
+                  f"{want_ec2.get(src)} (destination, mode)")
+    sys.exit(1)
+made = {d for args in re.findall(r"^\s*install -d\b(.*)$", script, re.M) for d in args.split()
+        if d.startswith("/")} | {UNITS}
+if any(os.path.dirname(dest) not in made for dest, _ in fetched.values()):
+    print(f"FAIL: the install script fetches into a directory it does not create: "
+          f"{sorted({os.path.dirname(d) for d, _ in fetched.values()} - made)}"); sys.exit(1)
+
+# THE FILES COME FROM ONE URL, the document's baseUrl. Its default and the value the
+# association passes are both this tree's URL at COMMIT, which the renderer pins; the
+# association passes it so that a new pin updates the association, not only the document.
+GH = "https://raw.githubusercontent.com/arthur-ai/arthur-engine/COMMIT/integrations/endpoint-ai-discovery"
+if "BASE='{{ baseUrl }}'" not in script or \
+        len(re.findall(rf"^\s+(?:default: |- ){re.escape(GH)}$", tpl, re.M)) != 2:
+    print(f"FAIL: {TEMPLATE} must set BASE='{{{{ baseUrl }}}}' in the script, with the "
+          f"document's default and the association's value both {GH}"); sys.exit(1)
+
+# baseUrl IS SUBSTITUTED INTO THE SCRIPT, so its pattern admits no character the shell gives a
+# meaning. And the stack's FileBaseUrl admits nothing the document refuses, or a mirror fails
+# the association at deploy rather than at the parameter.
+pat = re.search(r"^\s+allowedPattern: \"(.+)\"$", tpl, re.M)
+mirror = re.search(r"^  FileBaseUrl:\n(?:    .*\n)*?    AllowedPattern: \"(.+)\"$", tpl, re.M)
+if not pat or not mirror or mirror.group(1) != f"^({pat.group(1)[1:-1]})?$":
+    print(f"FAIL: FileBaseUrl's AllowedPattern must be the document's baseUrl pattern, made "
+          f"optional"); sys.exit(1)
+for url in (GH.replace("COMMIT", "0" * 40), "https://mirror.example.com:8443/endpoint-ai-discovery"):
+    if not re.fullmatch(pat.group(1), url):
+        print(f"FAIL: the document's baseUrl pattern refuses {url}"); sys.exit(1)
+for url in ("https://x.example/a'b", "https://x.example/a;b", "https://x.example/$(id)",
+            "https://x.example/`id`", "https://x.example/a b", "https://x.example/a\nb",
+            "https://x.example/", "http://x.example/a"):
+    if re.fullmatch(pat.group(1), url):
+        print(f"FAIL: the document's baseUrl pattern admits {url!r}"); sys.exit(1)
+
+# THE MEMBER ROLE GRANTS EXACTLY WHAT THE SOURCE CALLS IN AN ACCOUNT. A call it lacks reads
+# as a denied scope on every account; one the source never makes is access nobody needs.
+# Organizations is the source credential's own, never the member role's.
+granted = set(re.findall(r"^\s+- ((?:ec2|ssm):[A-Za-z]+)$", tpl, re.M))
+role_name = (re.search(r"^  MemberRoleName:\n(?:    .*\n)*?    Default: (\S+)$", tpl, re.M) or [None, None])[1]
+if os.path.exists(client):
+    calls = re.findall(r"\b(ec2|ssm)\.(?:get_paginator\(\"([a-z_]+)\"\)|([a-z_]+)\()", reader)
+    called = {f"{svc}:{''.join(w.title() for w in (paged or direct).split('_'))}"
+              for svc, paged, direct in calls}
+    if granted != called:
+        print(f"FAIL: {TEMPLATE}'s member role grants {sorted(granted)}, but the ML Engine "
+              f"calls {sorted(called)}"); sys.exit(1)
+    connector = open(os.path.join(os.path.dirname(client), "connector.py")).read()
+    default_role = (re.search(r'^DEFAULT_MEMBER_ROLE_NAME = "([^"]+)"$', connector, re.M) or [None, None])[1]
+    if role_name != default_role:
+        print(f"FAIL: {TEMPLATE} names the member role {role_name}, but the source's "
+              f"member_role_name defaults to {default_role}"); sys.exit(1)
+    role = "the member role grants what the ML Engine calls, under its default name"
+else:
+    role = "the ML Engine's reader is not in this checkout"
+print(f"ec2 template: ok, no bashism {checked}; {len(fetched)} files from this tree, each "
+      f"installed where it is run; one baseUrl, no shell metacharacter in it; {role}")
+
+# THE RENDERED TEMPLATE PINS EACH FILE TO ITS OWN BYTES, as the rendered OS policy does.
+committed = subprocess.run(["git", "-C", root, "cat-file", "-e", f"HEAD:./{TEMPLATE}"],
+                           capture_output=True).returncode == 0
+if not committed:
+    print(f"render: skipped, {TEMPLATE} is not committed yet and the renderer reads HEAD")
+else:
+    r = subprocess.run([os.path.join(root, "tools", "render-cfn-template.sh"), "HEAD"],
+                       capture_output=True, text=True)
+    if r.returncode != 0:
+        print(f"FAIL: tools/render-cfn-template.sh HEAD exited {r.returncode}: {r.stderr.strip()}"); sys.exit(1)
+    if re.search(r"/COMMIT/|SHA256_[A-Z]", r.stdout):
+        print("FAIL: tools/render-cfn-template.sh left a placeholder in the template"); sys.exit(1)
+    head = subprocess.run(["git", "-C", root, "rev-parse", "HEAD"], capture_output=True,
+                          text=True).stdout.strip()
+    at_head = GH.replace("/COMMIT/", f"/{head}/")
+    if len(re.findall(rf"^\s+(?:default: |- ){re.escape(at_head)}$", r.stdout, re.M)) != 2:
+        print(f"FAIL: the rendered template does not name {at_head} as the document's default "
+              f"and the association's value"); sys.exit(1)
+    pinned = re.findall(r"^\s*fetch (\S+) \S+ [0-7]+ ([0-9a-f]{64})$", r.stdout, re.M)
+    if sorted(src for src, _ in pinned) != sorted(want_ec2):
+        print(f"FAIL: the rendered template pins {sorted(src for src, _ in pinned)}, not the "
+              f"files {TEMPLATE} fetches"); sys.exit(1)
+    compared = 0
+    for src, sha in pinned:
+        if subprocess.run(["git", "-C", root, "diff", "--quiet", "HEAD", "--", src]).returncode != 0:
+            continue
+        compared += 1
+        if hashlib.sha256(open(os.path.join(root, src), "rb").read()).hexdigest() != sha:
+            print(f"FAIL: the rendered template pins {src} to {sha}, which is not its sha256"); sys.exit(1)
+    print(f"render: ok, HEAD's template pins each file to its own sha256 "
+          f"({compared} of {len(pinned)} compared; the rest differ from HEAD in this tree)"
+          if compared < len(pinned) else
+          f"render: ok, HEAD's template pins each of {len(pinned)} files to its own sha256")
 VENDOR
 
 [ "$fail" -eq 0 ] && echo "lint: PASS" || echo "lint: FAIL"
