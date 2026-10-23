@@ -150,7 +150,10 @@ A GKE workload is its controller -- Deployment, StatefulSet, DaemonSet, CronJob 
 Job or Pod nothing owns; `kube-system`, `kube-public`, `kube-node-lease` and the `gke-`
 and `gmp-` namespaces are left out. The engine must be able to reach each cluster's
 endpoint; a cluster it cannot reach is logged and the rest of the scan goes on, as is a
-project where an API is off or refused.
+project where an API is off or refused. Two refusals do end the scan: a credential
+refused outright (HTTP 401) stops it at once, and a scan that could list nothing at all
+fails with the first refusal's status, so a key with no access reads as denied rather
+than as a project without workloads.
 
 The lookback window is not applied: every scan lists every workload.
 
