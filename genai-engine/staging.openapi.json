@@ -4472,6 +4472,42 @@
                         "API Key": []
                     }
                 ],
+                "parameters": [
+                    {
+                        "name": "content-encoding",
+                        "in": "header",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "Content-Encoding"
+                        }
+                    },
+                    {
+                        "name": "x-arthur-task",
+                        "in": "header",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Task for spans whose resource has no arthur.task attribute. For senders that can set headers but not resource attributes, such as the Claude Platform's OpenTelemetry export.",
+                            "title": "X-Arthur-Task"
+                        },
+                        "description": "Task for spans whose resource has no arthur.task attribute. For senders that can set headers but not resource attributes, such as the Claude Platform's OpenTelemetry export."
+                    }
+                ],
                 "requestBody": {
                     "required": true,
                     "content": {

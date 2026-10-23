@@ -1,4 +1,5 @@
 import logging
+import zlib
 from datetime import datetime
 from typing import Annotated
 from uuid import UUID
@@ -12,7 +13,16 @@ from arthur_common.models.response_schemas import (
     SpanWithMetricsResponse,
     TraceResponse,
 )
-from fastapi import APIRouter, Body, Depends, HTTPException, Query, Response, status
+from fastapi import (
+    APIRouter,
+    Body,
+    Depends,
+    Header,
+    HTTPException,
+    Query,
+    Response,
+    status,
+)
 from google.protobuf.message import DecodeError
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
@@ -73,6 +83,48 @@ def _get_span_repository(db_session: Session) -> SpanRepository:
     return SpanRepository(db_session, tasks_metrics_repo, metrics_repo)
 
 
+# A gzip body is unpacked to at most this size, so a small request can't expand
+# into an unbounded one.
+MAX_DECOMPRESSED_TRACE_BYTES = 64 * 1024 * 1024
+
+
+def _decode_body(body: bytes, content_encoding: str | None) -> bytes:
+    """Undo the request's Content-Encoding. OTLP/HTTP senders may gzip the body;
+    an encoding the engine can't undo gets 415, which tells an OTLP exporter to
+    resend it uncompressed."""
+    encoding = (content_encoding or "identity").strip().lower()
+    if encoding == "identity":
+        return body
+    if encoding != "gzip":
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail=f"Unsupported Content-Encoding: {content_encoding}",
+        )
+    # A gzip body can hold several members back to back; each must end cleanly,
+    # and the output is checked against the cap before it is kept.
+    data = bytearray()
+    remaining = body
+    try:
+        while remaining:
+            decompressor = zlib.decompressobj(wbits=16 + zlib.MAX_WBITS)
+            chunk = remaining
+            while chunk and not decompressor.eof:
+                budget = MAX_DECOMPRESSED_TRACE_BYTES - len(data)
+                data += decompressor.decompress(chunk, budget + 1)
+                if len(data) > MAX_DECOMPRESSED_TRACE_BYTES:
+                    raise HTTPException(
+                        status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                        detail="Decompressed trace data is too large",
+                    )
+                chunk = decompressor.unconsumed_tail
+            if not decompressor.eof:
+                raise HTTPException(status_code=400, detail="Invalid gzip body")
+            remaining = decompressor.unused_data
+    except zlib.error:
+        raise HTTPException(status_code=400, detail="Invalid gzip body")
+    return bytes(data)
+
+
 # TRACE ENDPOINTS
 
 
@@ -87,19 +139,32 @@ def _get_span_repository(db_session: Session) -> SpanRepository:
 @permission_checker(permissions=PermissionLevelsEnum.TRACES_WRITE.value)
 def receive_traces(
     body: bytes = Body(...),
+    content_encoding: str | None = Header(default=None),
+    x_arthur_task: str | None = Header(
+        default=None,
+        description="Task for spans whose resource has no arthur.task attribute. "
+        "For senders that can set headers but not resource attributes, such as "
+        "the Claude Platform's OpenTelemetry export.",
+    ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ) -> Response:
     """Receive and process OpenInference trace data."""
     try:
+        trace_data = _decode_body(body, content_encoding)
         span_repo = _get_span_repository(db_session)
-        db_spans, span_results = span_repo.create_traces(body)
+        db_spans, span_results = span_repo.create_traces(
+            trace_data,
+            default_task_id=(x_arthur_task or "").strip() or None,
+        )
 
         # Enqueue continuous evals for root spans
         continuous_evals_repo = ContinuousEvalsRepository(db_session)
         continuous_evals_repo.enqueue_continuous_evals_for_root_spans(db_spans)
 
         return _create_response(*span_results)
+    except HTTPException:
+        raise
     except DecodeError as e:
         logger.error(f"Failed to decode protobuf message: {e}")
         raise HTTPException(status_code=400, detail="Invalid protobuf message format")
