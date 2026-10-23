@@ -39,8 +39,9 @@ refused, and a cluster whose Kubernetes API answers 401 or 403 or cannot be reac
 reported on the run as a denied scope and the rest of the scan goes on. A Kubernetes 401
 is not the AWS credential's refusal: EKS answers it to any identity that has no access
 entry on that cluster. Only a refused AWS credential ends the scan, and a scan that could
-list nothing at all fails with what refused it, so a key with no access reads as denied
-rather than as an account without workloads.
+list no workload at all fails with what refused it, so a key without its ECS and EKS
+grants reads as denied rather than as an account without workloads. The CloudTrail read
+does not count as a listing: it only adds callers to the workloads listed.
 """
 
 import logging
@@ -319,11 +320,12 @@ class AwsContainersConnector:
         for start_at in range(0, len(records), BATCH_SIZE):
             yield records[start_at : start_at + BATCH_SIZE]
 
-        if not stopped and self._denied and not scan.read:
-            # Nothing at all could be listed: a key with no access, not an empty
-            # account. Said with the status failure_code reads.
+        if not stopped and self._denied and not scan.listed:
+            # No workload could be listed: a key without its ECS and EKS grants, not
+            # an empty account, even when CloudTrail answered. Said with the status
+            # failure_code reads.
             raise AwsContainersError(
-                f"ECS and EKS scan was refused everything it tried to list "
+                f"ECS and EKS scan was refused every workload listing it tried "
                 f"({', '.join(d.scope for d in self._denied)}). The first: "
                 f"{scan.first_refusal}",
                 status_code=(
@@ -350,7 +352,10 @@ class _Scan:
         self._identity_region = identity_region
         self.denied = denied
         self._log = logger
-        self.read = 0
+        self.listed = 0
+        """Workload listings that succeeded. The CloudTrail read only adds callers to
+        them, so it never counts: a source that listed no container is not a clean
+        account, whatever CloudTrail answered."""
         self.first_refusal: Optional[Exception] = None
         self.counts: Counter[str] = Counter()
         self._task_definitions: dict[str, Mapping[str, Any]] = {}
@@ -378,7 +383,6 @@ class _Scan:
                     raise
                 self._refuse(f"{self._account}/{region}/cloudtrail", e)
                 continue
-            self.read += 1
             callers, _, events, denied = aggregate(iter(calls))
             self.counts["model_call_events"] += events
             self.counts["refused_model_calls"] += denied
@@ -400,7 +404,7 @@ class _Scan:
                 raise
             self._refuse(f"{self._account}/{region}/ecs", e)
             return []
-        self.read += 1
+        self.listed += 1
         out: list[Workload] = []
         for arn in clusters:
             cluster = arn.rsplit("/", 1)[-1]
@@ -470,7 +474,7 @@ class _Scan:
                     self._instance_roles(region, arn, group_tasks, definitions),
                 ),
             )
-        self.read += 1
+        self.listed += 1
         return out
 
     def _task_definition(self, region: str, arn: str) -> Mapping[str, Any]:
@@ -521,7 +525,7 @@ class _Scan:
                 raise
             self._refuse(f"{self._account}/{region}/eks", e)
             return []
-        self.read += 1
+        self.listed += 1
         out: list[Workload] = []
         for name in names:
             scope = f"{self._account}/{region}/eks/{name}"
@@ -560,7 +564,7 @@ class _Scan:
                 self._refuse(scope, e, kubernetes=True)
                 continue
             out.extend(found)
-            self.read += 1
+            self.listed += 1
         return out
 
     def _eks_cluster(

@@ -542,8 +542,9 @@ An account-region whose ECS or EKS listing is refused, and a cluster whose Kuber
 answers 401 or 403 or cannot be reached (a private endpoint the engine is outside of), is
 a denied scope on the run, and the rest of the scan goes on. EKS answers 401 to an IAM
 principal with no access entry on that cluster, so that is the cluster's refusal, not the
-credential's. A refused AWS credential ends the scan, and so does a scan refused
-everything it tried to list.
+credential's. A refused AWS credential ends the scan, and so does a scan refused every
+ECS and EKS listing, even when CloudTrail could be read: a source that listed no
+container reads as denied, not as an account without workloads.
 
 #### `splunk_enterprise` — Splunk Enterprise
 

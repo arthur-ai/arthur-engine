@@ -890,6 +890,31 @@ def test_a_denied_listing_is_a_denied_scope_and_everything_denied_fails() -> Non
     assert failure_code(caught.value) == DiscoveryErrorCode.PERMISSION_DENIED
 
 
+def test_cloudtrail_alone_is_not_a_listing_so_refused_ecs_and_eks_fail() -> None:
+    # The CloudTrail read answers; every workload listing is refused.
+    aws = ecs_account()
+    aws.eks[EKS] = eks_cluster()
+    aws.events[REGION] = [model_call(TASK_ROLE)]
+    aws.errors[("ecs", "ListClusters")] = client_error(
+        "AccessDeniedException",
+        "ListClusters",
+    )
+    aws.errors[("eks", "ListClusters")] = client_error(
+        "AccessDeniedException",
+        "ListClusters",
+    )
+    connector = connector_for(aws)
+    with pytest.raises(Exception) as caught:
+        scan(aws, report_all(), connector=connector)
+
+    assert failure_code(caught.value) == DiscoveryErrorCode.PERMISSION_DENIED
+    assert "LookupEvents" in aws.operations()
+    assert connector.denied_scopes() == (
+        DeniedScope(f"{ACCOUNT}/{REGION}/ecs", DENIED_PERMISSION),
+        DeniedScope(f"{ACCOUNT}/{REGION}/eks", DENIED_PERMISSION),
+    )
+
+
 def test_env_values_never_reach_a_record_or_the_log(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
