@@ -335,13 +335,16 @@ class GcpContainersConnector:
                     counts,
                 )
             except AuditReadError as e:
+                if e.status_code == 401:
+                    # A refused credential ends the scan, as it does for a listing.
+                    raise GcpContainersError(
+                        f"Vertex AI audit log read for project {project} was "
+                        f"refused the credential: {e}",
+                        status_code=401,
+                    ) from e
                 reads.deny(
                     f"projects/{project}/vertex-ai-audit-log",
-                    (
-                        DENIED_PERMISSION
-                        if e.status_code in (401, 403)
-                        else DENIED_UNREACHABLE
-                    ),
+                    (DENIED_PERMISSION if e.status_code == 403 else DENIED_UNREACHABLE),
                 )
                 logger.warning(
                     "Vertex AI audit log not read for project %s (HTTP %s), so its "

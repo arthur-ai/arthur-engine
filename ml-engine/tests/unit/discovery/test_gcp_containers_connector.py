@@ -27,6 +27,7 @@ from discovery.cloud.gcp_containers.client import (
     RESOURCE_MANAGER_API,
     RUN_V1_API,
     RUN_V2_API,
+    GcpContainersError,
 )
 from discovery.cloud.gcp_containers.connector import (
     ALLOW_ADC_ENV_VAR,
@@ -588,6 +589,18 @@ def test_an_account_only_one_workload_runs_as_is_not_called_shared() -> None:
     names = sorted(r.name for r in scan(fake))
 
     assert names == [f"other (runs as {NODE_SA})", f"web (runs as {APP_SA})"]
+
+
+def test_a_refused_credential_on_the_audit_read_ends_the_scan(
+    audit_log: dict[str, Any],
+) -> None:
+    audit_log["refuse"] = 401
+    fake = FakeGoogle(services=[[service("web")]])
+
+    with pytest.raises(GcpContainersError) as raised:
+        scan(fake)
+
+    assert raised.value.status_code == 401
 
 
 def test_a_refused_audit_read_is_a_denied_scope_and_the_catalog_still_selects(
