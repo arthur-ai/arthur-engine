@@ -63,11 +63,14 @@ renumbering them is a code change.
 | `deploy/arthur-ai-discovery.os-policy.yaml` | the Compute Engine OS policy, and its only copy: `tools/render-os-policy.sh` renders it for gcloud and `deploy/terraform/` reads it. |
 | `deploy/terraform/` | a Terraform module that deploys that policy to a fleet's projects and zones, or through one policy orchestrator. Its tests are `terraform test`, against mocked providers. |
 | `tools/render-os-policy.sh` | pin the OS policy to one ref: each file's URL there, and the sha256 of the bytes the ref holds. |
+| `deploy/arthur-ai-discovery.cfn.yaml` | the EC2 CloudFormation template, and the only copy of its install script: deployed as a stack per region, or as an organization StackSet. Long-form intrinsics only, so it stays plain YAML. |
+| `tools/render-cfn-template.sh` | pin the EC2 template to one ref, as `render-os-policy.sh` pins the OS policy. |
 | `test/lint.sh` | static checks on everything this tree owns. ~1s, no VM. |
 | `test/run-collector.sh` | runs this platform's collector and asserts on it. ~15s, needs osquery. |
 | `test/run-guest-attributes.sh` | runs the reporter against a fake metadata server built from measured answers. ~3s, no osquery. |
 | `test/run-ssm-inventory.sh` | runs the EC2 reporter against a fake IMDS built from AWS's documentation, and reassembles the file it writes. ~6s, no osquery. |
 | `test/run-systemd.sh` | installs and runs the Linux collector under systemd. CI only — it writes to the machine. |
+| `test/run-ec2-install.sh` | runs a rendered template's install script twice under `sh`, against the checkout over `file://`. CI only — it writes to the machine. |
 
 ## Commands
 
@@ -86,6 +89,7 @@ test/run-guest-attributes.sh          # what the Compute Engine reporter publish
 test/run-ssm-inventory.sh             # what the EC2 reporter writes, ~6s
 
 tools/render-os-policy.sh <ref>       # the Compute Engine OS policy, pinned to a ref
+tools/render-cfn-template.sh <ref>    # the EC2 CloudFormation template, pinned to a ref
 cd deploy/terraform && terraform init -backend=false && terraform test   # the module, mocked
 ```
 
@@ -93,10 +97,10 @@ Run both after any vendor bump or template edit. `lint.sh` **reads** the deploya
 `run-collector.sh` **runs** it, which is the difference that matters: every static guard here
 passed for as long as the collector's extraction preamble went unexecuted by anything but a
 human. CI runs lint and the reporter test on Ubuntu, the Mac collector on a macOS runner, and
-the Linux collector plus `run-systemd.sh` on an Ubuntu runner, where systemd is PID 1. It runs
-the Terraform module's tests too, and validates a caller at the lowest Terraform and Google
-provider the module admits: anything newer passes every other check and breaks a caller pinned
-there.
+the Linux collector plus `run-systemd.sh` and `run-ec2-install.sh` on an Ubuntu runner, where
+systemd is PID 1. It runs `cfn-lint` on the EC2 template and the Terraform module's tests too.
+It also validates a caller at the lowest Terraform and Google provider the module admits:
+anything newer passes every other check and breaks a caller pinned there.
 
 **The VM scenario suite is upstream's.** At the vendored ref that is `test/lint.sh`,
 `test/docker_states.sh` (all six Docker daemon states, including `wedge`) and thirteen VM

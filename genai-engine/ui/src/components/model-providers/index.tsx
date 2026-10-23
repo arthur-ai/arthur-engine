@@ -156,10 +156,22 @@ export const ModelProviders: React.FC = () => {
             backgroundColor: "background.paper",
           }}
         >
-          <Typography variant="h5" color="text.primary" fontWeight={600}>
+          <Typography
+            variant="h5"
+            sx={{
+              color: "text.primary",
+              fontWeight: 600,
+            }}
+          >
             Model Providers
           </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+              mt: 0.5,
+            }}
+          >
             Manage and configure model providers to use LLM features
           </Typography>
         </Box>
@@ -203,7 +215,12 @@ export const ModelProviders: React.FC = () => {
                     {providers?.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={3} align="center">
-                          <Typography variant="body2" color="text.secondary">
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              color: "text.secondary",
+                            }}
+                          >
                             No model providers found
                           </Typography>
                         </TableCell>
@@ -214,7 +231,12 @@ export const ModelProviders: React.FC = () => {
                           <TableCell>
                             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                               {getProviderIcon(provider.provider)}
-                              <Typography variant="body2" fontWeight="medium">
+                              <Typography
+                                variant="body2"
+                                sx={{
+                                  fontWeight: "medium",
+                                }}
+                              >
                                 {getProviderDisplayName(provider.provider)}
                               </Typography>
                             </Box>
@@ -281,7 +303,12 @@ export const ModelProviders: React.FC = () => {
         <DialogContent sx={{ textAlign: "center" }}>
           <Typography variant="body1" sx={{ mb: 2 }}>
             Are you sure you want to delete{" "}
-            <Typography component="span" fontWeight="bold">
+            <Typography
+              component="span"
+              sx={{
+                fontWeight: "bold",
+              }}
+            >
               {getProviderDisplayName(deleteModal.provider?.provider || "")}
             </Typography>
             ?

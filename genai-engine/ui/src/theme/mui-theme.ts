@@ -14,10 +14,18 @@ declare module "@mui/material/styles" {
   interface ThemeOptions {
     tour?: { railWidth: number; contentWidth: number; hintColor: string };
   }
+  // Read by @arthur/shared-components for trace ids and code.
+  interface TypographyVariants {
+    fontFamilyMonospace?: string;
+  }
+  interface TypographyVariantsOptions {
+    fontFamilyMonospace?: string;
+  }
 }
 
 const commonTypography = {
   fontFamily: '"Geist", sans-serif',
+  fontFamilyMonospace: '"Geist Mono", monospace',
 };
 
 const createAppTheme = (mode: "light" | "dark") =>
@@ -55,19 +63,28 @@ const createAppTheme = (mode: "light" | "dark") =>
       },
       MuiDrawer: {
         styleOverrides: {
-          paperAnchorRight: {
-            // Anchor to the content edge (panel's left) instead of the window edge…
-            right: "var(--app-inset-right, 0px)",
-            // …and cap the width so a drawer sized as a viewport percentage
-            // (e.g. width: "80%"/"90%") resolves against the content region
-            // rather than the full window and overflows under the panel.
-            // Capping below 100% leaves a left gutter of exposed backdrop —
-            // clicking it is a primary way to close the drawer, so it must never
-            // be fully covered. Defaults to `none` (TRULY inert off-tour, so a
-            // drawer's own maxWidth — e.g. the 95% PromptVersionDrawer — is
-            // untouched); TourSidePanel sets the 90%-content calc only while the
-            // panel reserves space.
-            maxWidth: "var(--app-drawer-max-width, none)",
+          // Material UI v9 removed `paperAnchorRight`. A paper-slot variant keeps the
+          // same single-class specificity, so a drawer's own `sx` paper styles still win.
+          paper: {
+            variants: [
+              {
+                props: { anchor: "right" },
+                style: {
+                  // Anchor to the content edge (panel's left) instead of the window edge…
+                  right: "var(--app-inset-right, 0px)",
+                  // …and cap the width so a drawer sized as a viewport percentage
+                  // (e.g. width: "80%"/"90%") resolves against the content region
+                  // rather than the full window and overflows under the panel.
+                  // Capping below 100% leaves a left gutter of exposed backdrop —
+                  // clicking it is a primary way to close the drawer, so it must never
+                  // be fully covered. Defaults to `none` (TRULY inert off-tour, so a
+                  // drawer's own maxWidth — e.g. the 95% PromptVersionDrawer — is
+                  // untouched); TourSidePanel sets the 90%-content calc only while the
+                  // panel reserves space.
+                  maxWidth: "var(--app-drawer-max-width, none)",
+                },
+              },
+            ],
           },
         },
       },

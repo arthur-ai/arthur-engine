@@ -12,15 +12,19 @@ on:
     paths:
       - 'integrations/endpoint-ai-discovery/**'
       - '.github/workflows/endpoint-ai-discovery.yml'
-      # lint.sh holds the EC2 reporter's wire format to the reader's.
+      # lint.sh holds the EC2 reporter's wire format to the reader's, and the template's member
+      # role to the calls the reader makes and the role name the connector defaults to.
       - 'ml-engine/src/ml_engine/discovery/cloud/ec2/client.py'
+      - 'ml-engine/src/ml_engine/discovery/cloud/ec2/connector.py'
   push:
     branches: [dev, main]
     paths:
       - 'integrations/endpoint-ai-discovery/**'
       - '.github/workflows/endpoint-ai-discovery.yml'
-      # lint.sh holds the EC2 reporter's wire format to the reader's.
+      # lint.sh holds the EC2 reporter's wire format to the reader's, and the template's member
+      # role to the calls the reader makes and the role name the connector defaults to.
       - 'ml-engine/src/ml_engine/discovery/cloud/ec2/client.py'
+      - 'ml-engine/src/ml_engine/discovery/cloud/ec2/connector.py'
   workflow_dispatch:
 
 # Read-only, and not left in the checkout. The macOS job runs the checked-out
@@ -48,6 +52,11 @@ jobs:
           persist-credentials: false
       - name: test/lint.sh
         run: test/lint.sh
+
+      # CloudFormation's own schema on the template as committed: resource types, properties,
+      # intrinsic functions, conditions and rules. A placeholder is a plain string to it.
+      - name: cfn-lint
+        run: pipx run --spec cfn-lint==1.58.0 cfn-lint deploy/arthur-ai-discovery.cfn.yaml
 
       # The Compute Engine reporter against a fake metadata server built from measured
       # answers. No osquery: the collector is a stub, and the question is what is published.
@@ -236,3 +245,11 @@ jobs:
       # under systemd against the fake metadata server, and removes them again.
       - name: test/run-systemd.sh
         run: sudo -n env ARTHUR_TEST_INSTALLS_UNITS=1 test/run-systemd.sh
+
+      # The EC2 install script as a stack ships it, run twice as root under sh -- dash here, as
+      # on every Ubuntu instance -- against this checkout over file://. Rendered first, as the
+      # runner: git refuses root a checkout it does not own.
+      - name: test/run-ec2-install.sh
+        run: |
+          tools/render-cfn-template.sh HEAD > "$RUNNER_TEMP/arthur-ai-discovery.cfn.yaml"
+          sudo -n env ARTHUR_TEST_INSTALLS_UNITS=1 test/run-ec2-install.sh "$RUNNER_TEMP/arthur-ai-discovery.cfn.yaml"

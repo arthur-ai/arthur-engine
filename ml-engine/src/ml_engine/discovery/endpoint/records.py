@@ -58,6 +58,9 @@ class DeviceRead:
 
     records: list[DiscoveredAgentRecord] = field(default_factory=list)
     unreadable: Optional[UnreadableReason] = None
+    # When the payload dates its scan: set for every payload that decoded, whether or not
+    # anything in it matched, so a carrier can judge how current the device is.
+    last_seen: Optional[datetime] = None
 
 
 def _inventory_value(
@@ -216,7 +219,7 @@ def records_for(
         )
         for finding in result.findings
     ]
-    return DeviceRead(records=records)
+    return DeviceRead(records=records, last_seen=last_seen)
 
 
 def _source_for(

@@ -70,11 +70,11 @@ const SpanTreeItem = ({ span, level, selectedSpanId }: { span: NestedSpanWithMet
         render={
           <Stack
             direction="row"
-            alignItems="center"
             spacing={1}
             data-has-children={hasChildren ? "" : undefined}
             className="group-data-selected:rounded-t rounded-b group-data-selected:data-open:data-has-children:rounded-b-none transition-all duration-75 cursor-pointer select-none"
             sx={{
+              alignItems: "center",
               "--offset-start": "4px",
               "--offset-multiply": 16,
               pl: `calc(var(--offset-start) + var(--offset-multiply) * ${level} * 1px)`,
@@ -98,20 +98,41 @@ const SpanTreeItem = ({ span, level, selectedSpanId }: { span: NestedSpanWithMet
         </Accordion.Trigger>
         <Stack
           direction="row"
-          alignItems="center"
           spacing={0}
           sx={{
+            alignItems: "center",
             position: "relative",
             width: "100%",
             pr: 1,
           }}
         >
           {chip}
-          <Stack direction="row" alignItems="center" justifyContent="space-between" flex={1} gap={0} ml={1}>
-            <Typography variant="body2" fontWeight={500} fontSize={12}>
+          <Stack
+            direction="row"
+            sx={{
+              alignItems: "center",
+              justifyContent: "space-between",
+              flex: 1,
+              gap: 0,
+              ml: 1,
+            }}
+          >
+            <Typography
+              variant="body2"
+              sx={{
+                fontWeight: 500,
+                fontSize: 12,
+              }}
+            >
               {span.span_name}
             </Typography>
-            <Stack direction="row" alignItems="center" gap={0.5}>
+            <Stack
+              direction="row"
+              sx={{
+                alignItems: "center",
+                gap: 0.5,
+              }}
+            >
               {typeof duration === "number" ? <DurationCellWithBucket duration={duration} /> : null}
               <SpanStatusBadge status={span.status_code ?? "Unset"} disableLabel />
             </Stack>

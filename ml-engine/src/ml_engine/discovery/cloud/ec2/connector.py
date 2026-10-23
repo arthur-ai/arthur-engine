@@ -360,7 +360,14 @@ class Ec2Connector:
             )
 
         carried: set[str] = set()
-        reader = VmInventoryReader(coverage, matcher, VENDOR, since, logger)
+        reader = VmInventoryReader(
+            coverage,
+            matcher,
+            VENDOR,
+            since,
+            logger,
+            clock=self._clock,
+        )
         scanned = 0
 
         for account, client in targets:

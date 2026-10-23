@@ -49,11 +49,23 @@ export const DatasetRowDrawer: React.FC<DatasetRowDrawerProps> = ({
       <Stack direction="column" sx={{ height: "100%" }}>
         <Stack
           direction="row"
-          alignItems="center"
-          justifyContent="space-between"
-          sx={{ px: 2, py: 1.5, borderBottom: 1, borderColor: "divider", backgroundColor: "background.paper" }}
+          sx={{
+            alignItems: "center",
+            justifyContent: "space-between",
+            px: 2,
+            py: 1.5,
+            borderBottom: 1,
+            borderColor: "divider",
+            backgroundColor: "background.paper",
+          }}
         >
-          <Typography variant="subtitle1" fontWeight={600} color="text.primary">
+          <Typography
+            variant="subtitle1"
+            sx={{
+              fontWeight: 600,
+              color: "text.primary",
+            }}
+          >
             Dataset Row Data
           </Typography>
           <Tooltip title="Close">

@@ -33,18 +33,46 @@ export const SearchSliderField: React.FC<SearchSliderFieldProps> = React.memo(
 
     return (
       <Stack spacing={1}>
-        <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
-          <Stack spacing={0.5} flexGrow={1}>
-            <Typography variant="subtitle2" color="text.primary">
+        <Stack
+          direction="row"
+          sx={{
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+          }}
+        >
+          <Stack
+            spacing={0.5}
+            sx={{
+              flexGrow: 1,
+            }}
+          >
+            <Typography
+              variant="subtitle2"
+              sx={{
+                color: "text.primary",
+              }}
+            >
               {label}
             </Typography>
             {helperText ? (
-              <Typography variant="caption" color="text.secondary">
+              <Typography
+                variant="caption"
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
                 {helperText}
               </Typography>
             ) : null}
           </Stack>
-          <Typography variant="body2" color="text.secondary" sx={{ minWidth: 48, textAlign: "right" }}>
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+              minWidth: 48,
+              textAlign: "right",
+            }}
+          >
             {displayValue}
           </Typography>
         </Stack>

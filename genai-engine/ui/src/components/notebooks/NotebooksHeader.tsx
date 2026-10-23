@@ -22,10 +22,22 @@ const NotebooksHeader = ({ onCreateNotebook }: NotebooksHeaderProps) => {
         }}
       >
         <Box>
-          <Typography variant="h5" fontWeight={600} color="text.primary">
+          <Typography
+            variant="h5"
+            sx={{
+              fontWeight: 600,
+              color: "text.primary",
+            }}
+          >
             Prompt Notebooks
           </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+              mt: 0.5,
+            }}
+          >
             Manage and organize your prompt experiment notebooks
           </Typography>
         </Box>

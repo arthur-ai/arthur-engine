@@ -262,7 +262,12 @@ const EvalDetailView = ({ evalData, isLoading, error, evalName, version, latestV
           <Box sx={{ display: "flex", gap: 3, flexWrap: "wrap", alignItems: "center" }}>
             {evalData.model_provider && evalData.model_name && (
               <Box data-tour-id={TOUR_IDS.evaluatorDetailModel} sx={{ display: "flex", gap: 0.5, alignItems: "baseline" }}>
-                <Typography variant="caption" color="text.secondary">
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: "text.secondary",
+                  }}
+                >
                   Model:
                 </Typography>
                 <Typography variant="body2" sx={{ fontWeight: 500 }}>
@@ -272,7 +277,12 @@ const EvalDetailView = ({ evalData, isLoading, error, evalName, version, latestV
             )}
             {evalData.eval_kind && evalData.eval_kind !== "llm_as_a_judge" && (
               <Box sx={{ display: "flex", gap: 0.5, alignItems: "baseline" }}>
-                <Typography variant="caption" color="text.secondary">
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: "text.secondary",
+                  }}
+                >
                   Type:
                 </Typography>
                 <Typography variant="body2" sx={{ fontWeight: 500 }}>
@@ -281,7 +291,12 @@ const EvalDetailView = ({ evalData, isLoading, error, evalName, version, latestV
               </Box>
             )}
             <Box sx={{ display: "flex", gap: 0.5, alignItems: "baseline" }}>
-              <Typography variant="caption" color="text.secondary">
+              <Typography
+                variant="caption"
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
                 Created:
               </Typography>
               <Typography variant="body2" sx={{ fontWeight: 500 }}>
@@ -290,7 +305,12 @@ const EvalDetailView = ({ evalData, isLoading, error, evalName, version, latestV
             </Box>
             {evalData.deleted_at && (
               <Box sx={{ display: "flex", gap: 0.5, alignItems: "baseline" }}>
-                <Typography variant="caption" color="text.secondary">
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: "text.secondary",
+                  }}
+                >
                   Deleted:
                 </Typography>
                 <Typography variant="body2" sx={{ fontWeight: 500, color: "error.main" }}>
@@ -385,7 +405,14 @@ const EvalDetailView = ({ evalData, isLoading, error, evalName, version, latestV
           <Typography variant="subtitle1" sx={{ mb: 0.5, fontWeight: 600 }}>
             Evaluator Tags
           </Typography>
-          <Typography variant="caption" color="text.secondary" sx={{ mb: 2, display: "block" }}>
+          <Typography
+            variant="caption"
+            sx={{
+              color: "text.secondary",
+              mb: 2,
+              display: "block",
+            }}
+          >
             Tags to easily identify your evaluators.
           </Typography>
 
@@ -394,7 +421,14 @@ const EvalDetailView = ({ evalData, isLoading, error, evalName, version, latestV
           <Typography variant="subtitle1" sx={{ mb: 0.5, fontWeight: 600 }}>
             Add Tag
           </Typography>
-          <Typography variant="caption" color="text.secondary" sx={{ mb: 2, display: "block" }}>
+          <Typography
+            variant="caption"
+            sx={{
+              color: "text.secondary",
+              mb: 2,
+              display: "block",
+            }}
+          >
             Add a tag to this evaluator version
           </Typography>
 

@@ -65,14 +65,24 @@ export const TraceContentModal: React.FC<TraceContentModalProps> = ({ open, onCl
               <Typography variant="h6" gutterBottom>
                 {title}
               </Typography>
-              <Typography variant="caption" color="text.secondary">
+              <Typography
+                variant="caption"
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
                 {charCount.toLocaleString()} characters
               </Typography>
               {(traceId || spanId) && (
                 <Box sx={{ display: "flex", gap: 1, mt: 1, flexWrap: "wrap" }}>
                   {traceId && (
                     <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                      <Typography variant="caption" color="text.secondary">
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          color: "text.secondary",
+                        }}
+                      >
                         Trace ID
                       </Typography>
                       <CopyableChip label={traceId} size="small" sx={{ fontFamily: "monospace" }} />
@@ -80,7 +90,12 @@ export const TraceContentModal: React.FC<TraceContentModalProps> = ({ open, onCl
                   )}
                   {spanId && (
                     <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                      <Typography variant="caption" color="text.secondary">
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          color: "text.secondary",
+                        }}
+                      >
                         Span ID
                       </Typography>
                       <CopyableChip label={spanId} size="small" sx={{ fontFamily: "monospace" }} />
@@ -100,7 +115,12 @@ export const TraceContentModal: React.FC<TraceContentModalProps> = ({ open, onCl
             {content ? (
               <Highlight code={content} language={language} />
             ) : (
-              <Typography variant="body2" color="text.secondary">
+              <Typography
+                variant="body2"
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
                 No content available.
               </Typography>
             )}

@@ -44,13 +44,13 @@ const TruncatedText = ({ text }: { text: string }) => {
   const content = (
     <Typography
       variant="body1"
-      color="text.primary"
+      ref={textRef}
       sx={{
+        color: "text.primary",
         overflow: "hidden",
         textOverflow: "ellipsis",
         whiteSpace: "nowrap",
       }}
-      ref={textRef}
     >
       {text}
     </Typography>
@@ -215,7 +215,14 @@ const PromptSelectors = ({
                 >
                   <TruncatedText text={option.name} />
                 </Box>
-                <Typography variant="body2" color="text.secondary" sx={{ ml: 1, flexShrink: 0 }}>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: "text.secondary",
+                    ml: 1,
+                    flexShrink: 0,
+                  }}
+                >
                   ({option.versions})
                 </Typography>
               </Box>

@@ -45,7 +45,12 @@ export const TransformEditHistoryPanel: React.FC<TransformEditHistoryPanelProps>
 
   if (!versions || versions.length === 0) {
     return (
-      <Typography variant="body2" color="text.secondary">
+      <Typography
+        variant="body2"
+        sx={{
+          color: "text.secondary",
+        }}
+      >
         No version history available.
       </Typography>
     );
@@ -62,7 +67,13 @@ export const TransformEditHistoryPanel: React.FC<TransformEditHistoryPanelProps>
             "&:first-of-type": { pt: 0 },
           }}
         >
-          <Stack direction="row" spacing={1.5} alignItems="flex-start">
+          <Stack
+            direction="row"
+            spacing={1.5}
+            sx={{
+              alignItems: "flex-start",
+            }}
+          >
             <Box
               sx={{
                 mt: 0.25,
@@ -79,20 +90,49 @@ export const TransformEditHistoryPanel: React.FC<TransformEditHistoryPanelProps>
               <HistoryIcon sx={{ fontSize: 16, color: "primary.main" }} />
             </Box>
             <Box sx={{ flex: 1, minWidth: 0 }}>
-              <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.25 }}>
-                <Typography variant="body2" fontWeight="medium">
+              <Stack
+                direction="row"
+                spacing={1}
+                sx={{
+                  alignItems: "center",
+                  mb: 0.25,
+                }}
+              >
+                <Typography
+                  variant="body2"
+                  sx={{
+                    fontWeight: "medium",
+                  }}
+                >
                   Version {version.version_number}
                 </Typography>
                 {index === 0 && (
-                  <Typography variant="caption" color="primary.main" fontWeight="medium">
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: "primary.main",
+                      fontWeight: "medium",
+                    }}
+                  >
                     (current)
                   </Typography>
                 )}
-                <Typography variant="caption" color="text.secondary">
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: "text.secondary",
+                  }}
+                >
                   {formatTimestamp(version.created_at)}
                 </Typography>
               </Stack>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+              <Typography
+                variant="body2"
+                sx={{
+                  color: "text.secondary",
+                  mb: 0.5,
+                }}
+              >
                 {buildChangeSummary(version.definition)}
               </Typography>
             </Box>

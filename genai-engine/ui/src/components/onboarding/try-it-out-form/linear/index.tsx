@@ -263,7 +263,14 @@ export const TryItOutFormLinear: React.FC<TryItOutFormProps> = ({ onBack, onSubm
                         value={opt.id}
                         control={<Radio sx={{ position: "absolute", opacity: 0, pointerEvents: "none" }} />}
                         label={
-                          <Stack direction="row" alignItems="center" spacing={1.25} sx={{ width: "100%" }}>
+                          <Stack
+                            direction="row"
+                            spacing={1.25}
+                            sx={{
+                              alignItems: "center",
+                              width: "100%",
+                            }}
+                          >
                             <Box
                               sx={{
                                 width: 10,
@@ -345,7 +352,14 @@ export const TryItOutFormLinear: React.FC<TryItOutFormProps> = ({ onBack, onSubm
             };
             return (
               <FormControl error={!!errorMessage} component="fieldset" sx={{ width: "100%" }}>
-                <Stack direction="row" alignItems="baseline" spacing={1} sx={{ mb: 1 }}>
+                <Stack
+                  direction="row"
+                  spacing={1}
+                  sx={{
+                    alignItems: "baseline",
+                    mb: 1,
+                  }}
+                >
                   <FormLabel component="legend" sx={{ ...sectionLabelSx, "&.Mui-focused": { color: sectionLabelSx.color } }}>
                     Have you used any of these tools before?
                   </FormLabel>
@@ -421,7 +435,14 @@ export const TryItOutFormLinear: React.FC<TryItOutFormProps> = ({ onBack, onSubm
           )}
         </form.Subscribe>
 
-        <Stack direction="row" alignItems="center" spacing={1} sx={{ mt: 0.25 }}>
+        <Stack
+          direction="row"
+          spacing={1}
+          sx={{
+            alignItems: "center",
+            mt: 0.25,
+          }}
+        >
           <BoltIcon sx={{ fontSize: 14, color: "secondary.main" }} />
           <Typography sx={{ fontSize: 12, color: "text.secondary" }}>Your demo task is yours alone. The API key is scoped to it.</Typography>
         </Stack>
