@@ -132,16 +132,19 @@ Resources:
                     chmod "$3" "$2.new" && mv -f "$2.new" "$2"
                   }
                   if ! command -v osqueryi >/dev/null 2>&1; then
-                    if command -v dnf >/dev/null 2>&1; then
+                    if command -v dnf >/dev/null 2>&1 || command -v yum >/dev/null 2>&1; then
                       curl -fsSL -o /etc/pki/rpm-gpg/RPM-GPG-KEY-osquery https://pkg.osquery.io/rpm/GPG
                       curl -fsSL -o /etc/yum.repos.d/osquery-s3-rpm.repo https://pkg.osquery.io/rpm/osquery-s3-rpm.repo
-                      dnf install -y osquery
-                    else
+                      if command -v dnf >/dev/null 2>&1; then dnf install -y osquery; else yum install -y osquery; fi
+                    elif command -v apt-get >/dev/null 2>&1; then
                       install -d -m 755 /etc/apt/keyrings
                       curl -fsSL -o /etc/apt/keyrings/osquery.asc https://pkg.osquery.io/deb/pubkey.gpg
                       echo "deb [signed-by=/etc/apt/keyrings/osquery.asc] https://pkg.osquery.io/deb deb main" \
                         > /etc/apt/sources.list.d/osquery.list
                       apt-get update -q && apt-get install -y -q osquery
+                    else
+                      echo "arthur-ai-discovery: osquery is not installed, and there is no dnf, yum or apt-get to install it with" >&2
+                      exit 1
                     fi
                   fi
                   install -d -m 755 /usr/local/arthur /etc/systemd/system/arthur-ai-discovery.service.d

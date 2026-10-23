@@ -126,8 +126,8 @@ Full runbook: [gce.md](mdm/gce.md). The OS policy targets Debian 12 and Ubuntu 2
 Full runbook: [ec2.md](mdm/ec2.md). Instances must be managed by SSM and run Amazon Linux 2023
 or Ubuntu 24.04.
 
-1. **Check for an inventory association.** An instance runs only one. If the account already
-   has one, you turn custom inventory on in it instead of creating a second, and deploy with
+1. **Check for an inventory association** in each region. An instance runs only one. Where one
+   exists, you turn custom inventory on in it instead of creating a second, and deploy with
    `CreateInventoryAssociation=false`
    ([section 03](mdm/ec2.md#03--the-inventory-association--terminal)).
 2. **Render the template** at a release tag of this repository. It pins every file the
@@ -144,13 +144,16 @@ or Ubuntu 24.04.
    ```bash
    aws cloudformation deploy --region REGION --stack-name arthur-ai-discovery \
      --template-file arthur-ai-discovery.cfn.yaml --capabilities CAPABILITY_NAMED_IAM \
-     --parameter-overrides CreateInventoryAssociation=true \
+     --parameter-overrides CreateInventoryAssociation=CREATE_INVENTORY \
          ArthurPrincipalArn=ARTHUR_PRINCIPAL_ARN ExternalId=EXTERNAL_ID MemberRoleRegion=us-east-1
    ```
 
-   It installs osquery, the collector and its timer on every SSM-managed Linux instance in the
-   region, and creates the role Arthur assumes. For every account in an organization, deploy it
-   as a StackSet instead
+   `CREATE_INVENTORY` is `true` where step 1 found no inventory association, and `false` where
+   it found one. The stack installs osquery, the collector and its timer on every SSM-managed
+   Linux instance in the region, and creates the role Arthur assumes.
+
+   For an organization, deploy it as a StackSet to the member accounts instead. A StackSet
+   never reaches the management account, so deploy a stack in each of its regions as above
    ([section 09](mdm/ec2.md#09--across-the-organization--terminal)).
 4. **Every managed Linux instance is targeted.** Both associations target every instance SSM
    manages in the region, and the install skips Windows. No tag is needed, and there is no

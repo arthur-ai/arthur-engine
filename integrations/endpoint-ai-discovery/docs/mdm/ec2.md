@@ -46,7 +46,7 @@ differs.
 
 | | |
 |---|---|
-| Target | EC2 instances on Amazon Linux 2023 or Ubuntu 24.04, x86_64 or arm64. Each of the four has run on an instance |
+| Target | EC2 instances on Amazon Linux 2023 or Ubuntu 24.04, x86_64 or arm64. Each of the four has run on an instance. Amazon Linux 2 installs osquery through yum; the collector's and the reporter's tests pass in an `amazonlinux:2` container, but it has not run on an instance. A host with no osquery and no dnf, yum or apt-get fails the install, naming why, and counts toward `MaxErrors`: install osquery 5.18+ on it first |
 | Requires | osquery 5.18+, an SSM-managed instance, an inventory association that gathers custom inventory, IMDS enabled. No interpreter |
 | Per-instance cost | as on Compute Engine (`gce.md`), off the reporting path. 6s and 1.4s of CPU per run on a `t3.small`; 2.0s to 2.1s of CPU on a `t4g.small`. Burstable instances in standard credit mode are not yet measured |
 | Payload | of the 256 KB budget, cut into parts of 4,096 characters. On fresh headless instances: ~11 KB on Amazon Linux 2023 (809 rows on x86_64, 796 on arm64) and ~17 KB on Ubuntu 24.04 (1,075 rows on x86_64, 1,106 on arm64) |
@@ -112,13 +112,14 @@ The checksums still pin them.
 
 ## 02 · Deploy the stack — terminal
 
-First settle `CreateInventoryAssociation` with section 03's check: it has no default. Then
-deploy in each region the fleet runs in:
+First settle `CreateInventoryAssociation` with section 03's check, region by region: it has no
+default. `CREATE_INVENTORY` below is `true` where the region has no inventory association, and
+`false` where it has one. Then deploy in each region the fleet runs in:
 
 ```bash
 aws cloudformation deploy --region REGION --stack-name arthur-ai-discovery \
   --template-file arthur-ai-discovery.cfn.yaml --capabilities CAPABILITY_NAMED_IAM \
-  --parameter-overrides CreateInventoryAssociation=true \
+  --parameter-overrides CreateInventoryAssociation=CREATE_INVENTORY \
       ArthurPrincipalArn=ARTHUR_PRINCIPAL_ARN ExternalId=EXTERNAL_ID MemberRoleRegion=us-east-1
 ```
 
@@ -437,7 +438,7 @@ aws cloudformation create-stack-set --stack-set-name arthur-ai-discovery \
   --template-body file://arthur-ai-discovery.cfn.yaml --capabilities CAPABILITY_NAMED_IAM \
   --permission-model SERVICE_MANAGED \
   --auto-deployment Enabled=true,RetainStacksOnAccountRemoval=false \
-  --parameters ParameterKey=CreateInventoryAssociation,ParameterValue=true \
+  --parameters ParameterKey=CreateInventoryAssociation,ParameterValue=CREATE_INVENTORY \
                ParameterKey=ArthurPrincipalArn,ParameterValue=ARTHUR_PRINCIPAL_ARN \
                ParameterKey=ExternalId,ParameterValue=EXTERNAL_ID \
                ParameterKey=MemberRoleRegion,ParameterValue=us-east-1
@@ -447,6 +448,7 @@ aws cloudformation create-stack-instances --stack-set-name arthur-ai-discovery \
   --operation-preferences RegionConcurrencyType=PARALLEL,MaxConcurrentPercentage=25,FailureTolerancePercentage=10
 ```
 
+`CREATE_INVENTORY` is `true` or `false`, chosen by OU as described below.
 `FailureTolerancePercentage=10` stops the operation in a region once a tenth of its accounts
 have failed, the way `MaxErrors` stops the install on a tenth of the instances.
 
@@ -457,20 +459,29 @@ denied scope. Deploy the template there as a stack in each region (section 02).
 **`MemberRoleRegion` must be one of `--regions`.** Each account's role is created once, by the
 stack in that region. Without it, every account reads as a denied scope.
 
-**`CreateInventoryAssociation` is the set's, for every account**, auto-deployed ones included.
-Set the StackSet to the common case. For an account that already has an inventory association
-(section 03), override the value when you create its instances:
+**`CreateInventoryAssociation` follows the OU, not the account.** An account that joins a target
+OU later is deployed with the set's own value. An override reaches only the accounts in its
+targets when it is made, never one that joins afterwards. The wrong value fails one of two ways:
+- `true` in an account with its own inventory association gives its instances two, and then
+  neither runs, the account's own included.
+- `false` in an account with none uploads nothing, and Arthur counts each of its instances as
+  `never-reported`, by name.
+
+So split by OU, with section 03's check in each account:
+- **OUs whose accounts all gather inventory already** get a StackSet of their own, set to
+  `false`, under another `--stack-set-name`. Two sets must never reach the same account: the
+  second's document fails on the first's name.
+- **OUs whose accounts gather none** get a set with `true`.
+- **An OU that mixes the two** gets a set with `false`, the failure Arthur shows by name. Override
+  each account there that has no inventory association, once its instances exist, and again for
+  each such account that joins later:
 
 ```bash
-aws cloudformation create-stack-instances --stack-set-name arthur-ai-discovery \
+aws cloudformation update-stack-instances --stack-set-name arthur-ai-discovery \
   --deployment-targets OrganizationalUnitIds=OU_ID,Accounts=ACCOUNT_ID,AccountFilterType=INTERSECTION \
   --regions us-east-1 us-east-2 eu-west-1 \
-  --parameter-overrides ParameterKey=CreateInventoryAssociation,ParameterValue=false
+  --parameter-overrides ParameterKey=CreateInventoryAssociation,ParameterValue=true
 ```
-
-**Leave those accounts out of the first `create-stack-instances`** with `Accounts=…` and
-`AccountFilterType=DIFFERENCE`. Otherwise they get a second inventory association, and until
-the override lands neither association runs.
 
 **To change the pin**, render the template at the new ref and update the set. Name each
 parameter with `UsePreviousValue`, or it returns to its default:
