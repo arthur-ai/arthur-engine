@@ -56,25 +56,38 @@ gcloud compute os-config os-policy-assignments create arthur-ai-discovery \
   --location=ZONE --file=arthur-ai-discovery.yaml
 ```
 
-The policy targets VMs labelled `arthur-ai-discovery=enabled`, and updates 10% of them every
-five minutes. An assignment covers one zone, so create one in each zone the fleet runs in.
+The policy targets every VM in the zone whose OS Config agent is on, and updates 10% of them
+every five minutes. An assignment covers one zone, so create one in each zone the fleet runs in.
 The policy installs osquery from its apt repository, so it selects Debian and Ubuntu VMs
 only; any other image is left alone.
 
 ## 03 · Scope and roll out — terminal
 
-The label is what turns discovery on for a VM:
+The assignment targets every VM in its zone, so the two metadata keys of section 00 are the
+only switch. Set them on the project, and each VM takes them as its default:
 
 ```bash
-gcloud compute instances add-metadata VM --zone=ZONE \
+gcloud compute project-info add-metadata --project=PROJECT \
   --metadata=enable-osconfig=TRUE,enable-guest-attributes=TRUE
-gcloud compute instances add-labels VM --zone=ZONE --labels=arthur-ai-discovery=enabled
 ```
 
-Start with a few VMs, then widen. On Debian 12 (measured), the policy applied within a minute.
-A VM labelled when it was created first reported 14.5 minutes after boot: the timer waits
-5 minutes after boot, plus a random delay of up to 10. A VM that was already running reported
-about 1.5 minutes after it was labelled.
+**No label narrows the fleet, and no label excludes a VM.** Discovery is for what nobody opted
+in, and a VM's owner can set its labels, so an opt-out label would be a way to hide from it.
+The only exclusions are on Arthur's source (section 07), set by whoever owns governance, and
+counted. An owner can still set `enable-osconfig=FALSE` or `enable-guest-attributes=FALSE` on
+the VM itself, which overrides the project's default. Arthur's source then counts the VM
+instead of publishing it as a clean machine: `guest-attributes-disabled` for the second key,
+and `never-reported` for a VM the first kept from ever being installed.
+
+**To pilot on a few VMs first**, replace `all: true` in the rendered policy with an
+`inclusionLabels` block and label those VMs; with Terraform, set the module's `label`. Then put
+`all: true` back. The policy's rollout paces the fleet either way: 10% of the targeted VMs every
+five minutes.
+
+On Debian 12 (measured, under a pilot label), the policy applied within a minute. A VM created
+with the agent on first reported 14.5 minutes after boot: the timer waits 5 minutes after boot,
+plus a random delay of up to 10. A VM that was already running reported about 1.5 minutes after
+the policy reached it.
 
 ## 04 · Prove it on one VM — terminal
 
@@ -150,8 +163,11 @@ journalctl -u arthur-ai-discovery.service -n 50        # the collector's stderr,
 ## 07 · Access for the Arthur collector
 
 In Arthur, add a **Compute Engine** discovery source (`gcp_compute_engine`). Set
-`project_ids`, optionally `include_labels` or `exclude_labels`, and `service_account_key`:
-a JSON key for an account with these permissions:
+`project_ids`, or `organization_id` or `folder_ids` to scan every active project under them
+(below), optionally `include_labels` or `exclude_labels`, and `service_account_key`. The two
+label fields are the only scope there is, set by whoever owns governance, and a VM they leave
+out is still counted as excluded. The key is a JSON key for an account with these
+permissions:
 
 - `compute.instances.list`
 - `compute.instances.getGuestAttributes`
@@ -163,22 +179,48 @@ privilege. Without `compute.projects.get`, the source works only if every VM set
 source without a key uses the engine's own Application Default Credentials only when the engine
 sets `ARTHUR_ENGINE_GCP_COMPUTE_ENGINE_ALLOW_ADC=true`.
 
-The source does not publish two kinds of VM:
+**An organization or a folder as the scope.** `organization_id` is the organization's number,
+`folder_ids` a comma-separated list of folder numbers; either may stand alone or beside
+`project_ids`. The source lists every active project under them, folders walked, on every
+scan, so a project created tomorrow is in scope tomorrow. The account needs
+`resourcemanager.projects.list` and `resourcemanager.folders.list` on the organization or
+folder (`roles/browser`), and `roles/compute.viewer` granted there rather than per project;
+the Terraform module's `reader` grants per project only. Resource Manager bills the listing to
+the credential's own project, so that project needs `cloudresourcemanager.googleapis.com`
+enabled; without it every listing answers 403 `accessNotConfigured` and the run fails. A
+project the account is refused is
+a denied scope on the run, which Arthur shows as a degraded source, and the scan reads the
+rest; refused every project, the run fails. A project without the Compute Engine API is
+counted and skipped, since no VM can exist in it.
+
+The source does not publish three kinds of VM:
 
 - **`guest-attributes-disabled`**: `enable-guest-attributes` is not `TRUE` on the VM, or on its
   project when the VM does not set it. The API keeps serving old values after the setting is
   turned off, so they cannot be current.
+- **`osconfig-disabled`**: nothing was ever written for the VM, and `enable-osconfig` is not
+  `TRUE` on the VM, or on its project when the VM does not set it. The OS Config agent acts on
+  no policy there, so the rollout can never install the collector. A VM that has reported
+  keeps its own reasons, whatever the key says now. Without `compute.projects.get`, a VM that
+  does not set the key itself is counted as `never-reported` instead.
 - **`not-reported-in-window`**: the status line shows no report within the scan's lookback,
   for example because the VM is stopped or its timer was removed. Its agents go stale in
   Arthur.
 
 A VM that still reports but is failing keeps publishing its last good scan.
 
+Every VM the source could not read is also listed, as
+`device_coverage.unreadable_devices`: instance id, name, `project/zone`, the reason, and the
+time on its status line when it has one. The list holds 1,000 VMs per run; the rest are counted
+in `unreadable_devices_truncated`. The VMs a scan cannot see are where unmanaged AI sits, so
+that list is the finding to work through, and a VM whose owner turned the agent or guest
+attributes off is in it by name. No attribute value travels. Where the list can be read is in
+[architecture.md](../architecture.md#what-the-collector-emits).
+
 ## 08 · Rollback — terminal
 
 ```bash
 gcloud compute os-config os-policy-assignments delete arthur-ai-discovery --location=ZONE
-gcloud compute instances remove-labels VM --zone=ZONE --labels=arthur-ai-discovery
 # on each VM:
 sudo systemctl disable --now arthur-ai-discovery.timer
 sudo rm -f /etc/systemd/system/arthur-ai-discovery.service /etc/systemd/system/arthur-ai-discovery.timer
@@ -205,7 +247,7 @@ module "arthur_ai_discovery" {
   reader            = "serviceAccount:arthur-discovery@my-project.iam.gserviceaccount.com"
 }
 
-# project_ids and include_labels for the source in section 07
+# project_ids for the source in section 07; include_labels is null unless `label` narrows a pilot
 output "arthur_source" {
   value = module.arthur_ai_discovery.arthur_source
 }
@@ -218,7 +260,8 @@ output "arthur_source" {
 | `enable-osconfig=TRUE`, `enable-guest-attributes=TRUE` | Every project's metadata, as the default for VMs that do not set their own | Leaving a key out of `project_metadata` |
 | `roles/compute.viewer` for Arthur's credential | Every project | Leaving `reader` unset |
 
-Then label the VMs (section 03), wherever they are defined.
+Nothing per VM remains. `label` narrows the assignments to a pilot label (section 03); there
+is no exclusion label.
 
 **A VM's own metadata overrides the project's, key by key.** A VM with its own
 `enable-osconfig=FALSE` gets nothing installed. A VM with its own

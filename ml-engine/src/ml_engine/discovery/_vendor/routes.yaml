@@ -24,10 +24,11 @@
 #            of the types we would need (`brew`, `chocolatey`) are NOT on the official
 #            list, so shipping them would put a coordinate an SBOM consumer rejects
 #            inside someone else's pipeline where nobody here can see it.
-#   version: what a row's `ver` column MEANS on this route -- a package version, a
-#            marketing version, an image tag that is not a version at all. Omitted until
-#            the output contract emits it. `table` and `min_osquery` below are present
-#            because test/lint.sh does check them against the query frontmatter.
+#   version: what a row's `ver` column MEANS. Not a route field: the query that emits a
+#            kind fixes it, so bin/classify declares it per kind (VERSION_KINDS, beside
+#            PATH_KINDS and LIVE_KINDS) and a custom registry cannot get it wrong.
+#            `table` and `min_osquery` below are present because test/lint.sh does check
+#            them against the query frontmatter.
 #
 # FIELDS
 #   platform      darwin | linux | windows | posix   (posix == darwin AND linux)
@@ -57,10 +58,9 @@
 #                     match `.../.claude` and `.../.claude/` and must NOT match
 #                     `.../.claudefoo` -- it did, for as long as the glob was
 #                     front-anchored only
-#   home-prefix       a `~/`-rooted path, front-anchored ON PURPOSE. `~/.local/bin/hermes`
-#                     has to keep matching hermes-acp and hermes-agent: one uv install
-#                     writes all three commands. This is why the missing `$` above is a
-#                     per-route fix and not a blanket one
+#   home-prefix       a `~/`-rooted path and anything under it, never a name that starts
+#                     with it: `~/.local/bin/claude` must not match `claude-monitor`. A
+#                     value ending in `/` claims everything under it
 #   tool-dir          reached through bin/classify's TOOL_DIR bridge rather than the
 #                     generic loop: pipx and uv name each tool's directory after the
 #                     PACKAGE, so a path row can yield a package name. Excluded from the
@@ -289,8 +289,8 @@ routes:
   process_paths:
     # A `~/`-rooted path a RUNNING agent's executable sits under, for an agent whose process
     # does not run from the path `binaries` names. Its own values, so every one must be
-    # produced by a CI scenario. Front-anchored like `binaries`, because a version
-    # directory follows.
+    # produced by a CI scenario. Its values end in `/`, because a version directory
+    # follows.
     platform: posix
     kind: proc
     match: home-prefix

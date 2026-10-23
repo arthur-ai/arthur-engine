@@ -25,6 +25,8 @@ whose VMs carry that payload (Compute Engine, EC2) reuses it too, from `discover
 with what such clouds share among themselves in `discovery.cloud.vm_inventory`.
 """
 
+from discovery.cloud.aws_bedrock.connector import VENDOR as AWS_BEDROCK_VENDOR
+from discovery.cloud.aws_bedrock.connector import BedrockConnector
 from discovery.cloud.ec2.connector import VENDOR as AWS_EC2_VENDOR
 from discovery.cloud.ec2.connector import Ec2Connector
 from discovery.cloud.gce.connector import VENDOR as GCP_COMPUTE_ENGINE_VENDOR
@@ -33,10 +35,14 @@ from discovery.cloud.gcp_vertex.connector import VENDOR as GCP_VERTEX_VENDOR
 from discovery.cloud.gcp_vertex.connector import VertexAgentEngineConnector
 from discovery.cloud.vercel_ai.connector import VENDOR as VERCEL_AI_VENDOR
 from discovery.cloud.vercel_ai.connector import VercelConnector
+from discovery.cloud.wiz.connector import VENDOR as WIZ_VENDOR
+from discovery.cloud.wiz.connector import WizConnector
 from discovery.endpoint.jamf.connector import VENDOR as JAMF_VENDOR
 from discovery.endpoint.jamf.connector import JamfConnector
 from discovery.network.cloudwatch_logs.connector import VENDOR as CLOUDWATCH_LOGS_VENDOR
 from discovery.network.cloudwatch_logs.connector import CloudWatchLogsConnector
+from discovery.network.gcp_logging.connector import VENDOR as GCP_NETWORK_VENDOR
+from discovery.network.gcp_logging.connector import GcpNetworkConnector
 from discovery.siem.elastic_security.connector import VENDOR as ELASTIC_SECURITY_VENDOR
 from discovery.siem.elastic_security.connector import ElasticSecurityConnector
 from discovery.siem.splunk.connector import VENDOR as SPLUNK_VENDOR
@@ -54,11 +60,14 @@ def source_connectors() -> dict[str, DiscoveryConnectorFactory]:
         JAMF_VENDOR: JamfConnector,
         GCP_COMPUTE_ENGINE_VENDOR: ComputeEngineConnector,
         AWS_EC2_VENDOR: Ec2Connector,
+        AWS_BEDROCK_VENDOR: BedrockConnector,
         GCP_VERTEX_VENDOR: VertexAgentEngineConnector,
+        WIZ_VENDOR: WizConnector,
         SPLUNK_VENDOR: SplunkConnector,
         ELASTIC_SECURITY_VENDOR: ElasticSecurityConnector,
         VERCEL_AI_VENDOR: VercelConnector,
         CLOUDWATCH_LOGS_VENDOR: CloudWatchLogsConnector,
+        GCP_NETWORK_VENDOR: GcpNetworkConnector,
     }
 
 
@@ -70,8 +79,12 @@ __all__ = [
     "GCP_COMPUTE_ENGINE_VENDOR",
     "Ec2Connector",
     "AWS_EC2_VENDOR",
+    "BedrockConnector",
+    "AWS_BEDROCK_VENDOR",
     "VertexAgentEngineConnector",
     "GCP_VERTEX_VENDOR",
+    "WizConnector",
+    "WIZ_VENDOR",
     "SplunkConnector",
     "SPLUNK_VENDOR",
     "ElasticSecurityConnector",
@@ -80,4 +93,6 @@ __all__ = [
     "VERCEL_AI_VENDOR",
     "CloudWatchLogsConnector",
     "CLOUDWATCH_LOGS_VENDOR",
+    "GcpNetworkConnector",
+    "GCP_NETWORK_VENDOR",
 ]

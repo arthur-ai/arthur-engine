@@ -73,7 +73,7 @@ run "an_assignment_per_project_and_zone" {
           )]
         }]
       }]
-      instanceFilter = { inclusionLabels = [for l in a.instance_filter[0].inclusion_labels : { labels = l.labels }] }
+      instanceFilter = { all = a.instance_filter[0].all }
       rollout        = { disruptionBudget = { percent = a.rollout[0].disruption_budget[0].percent }, minWaitDuration = a.rollout[0].min_wait_duration }
     }) == jsonencode(var.pinned_policy_without_modes)])
     error_message = "An assignment does not render the policy file, pinned to this tree at the ref."
@@ -81,6 +81,16 @@ run "an_assignment_per_project_and_zone" {
   assert {
     condition     = google_os_config_os_policy_assignment.discovery["fleet-one/us-central1-a"].skip_await_rollout
     error_message = "A fleet rollout outlasts the provider's timeout; the assignment must not wait for it."
+  }
+  # The policy targets every VM, and nothing in it excludes one: an exclusion label a VM's owner
+  # could set would be an opt-out from discovery.
+  assert {
+    condition     = jsonencode(var.pinned_policy.instanceFilter) == jsonencode({ all = true })
+    error_message = "The policy file must target every VM (instanceFilter.all) with no inclusion or exclusion label."
+  }
+  assert {
+    condition     = alltrue([for a in google_os_config_os_policy_assignment.discovery : a.instance_filter[0].all && length(a.instance_filter[0].inclusion_labels) == 0 && length(a.instance_filter[0].exclusion_labels) == 0])
+    error_message = "Each assignment must target every VM in its zone, with no label."
   }
   assert {
     condition     = length(google_os_config_v2_policy_orchestrator_for_folder.discovery) + length(google_os_config_v2_policy_orchestrator_for_organization.discovery) == 0
@@ -102,8 +112,8 @@ run "an_assignment_per_project_and_zone" {
     error_message = "No grant without var.reader."
   }
   assert {
-    condition     = output.arthur_source == { project_ids = "fleet-one,fleet-two", include_labels = "arthur-ai-discovery=enabled" }
-    error_message = "arthur_source does not name the projects and the label."
+    condition     = output.arthur_source.project_ids == "fleet-one,fleet-two" && output.arthur_source.include_labels == null
+    error_message = "arthur_source does not name the projects, or names a label when none narrows the fleet."
   }
 }
 
@@ -151,8 +161,8 @@ run "a_label_and_a_reader" {
   }
 
   assert {
-    condition     = alltrue([for a in google_os_config_os_policy_assignment.discovery : a.instance_filter[0].inclusion_labels[0].labels == tomap({ ai-inventory = "on" })])
-    error_message = "label does not replace the policy's label."
+    condition     = alltrue([for a in google_os_config_os_policy_assignment.discovery : a.instance_filter[0].inclusion_labels[0].labels == tomap({ ai-inventory = "on" }) && !coalesce(a.instance_filter[0].all, false)])
+    error_message = "label does not narrow the assignments to the pilot label alone."
   }
   assert {
     condition     = output.arthur_source.include_labels == "ai-inventory=on"
@@ -253,7 +263,7 @@ run "a_folder_orchestrator" {
             )]
           }]
         }]
-        instanceFilter = { inclusionLabels = [for l in a.instance_filter[0].inclusion_labels : { labels = l.labels }] }
+        instanceFilter = { all = a.instance_filter[0].all }
         rollout        = { disruptionBudget = { percent = a.rollout[0].disruption_budget[0].percent }, minWaitDuration = a.rollout[0].min_wait_duration }
       }
     }) == jsonencode({ doc = var.pinned_policy })
@@ -296,7 +306,7 @@ run "an_organization_orchestrator" {
             )]
           }]
         }]
-        instanceFilter = { inclusionLabels = [for l in a.instance_filter[0].inclusion_labels : { labels = l.labels }] }
+        instanceFilter = { all = a.instance_filter[0].all }
         rollout        = { disruptionBudget = { percent = a.rollout[0].disruption_budget[0].percent }, minWaitDuration = a.rollout[0].min_wait_duration }
       }
     }) == jsonencode({ doc = var.pinned_policy })

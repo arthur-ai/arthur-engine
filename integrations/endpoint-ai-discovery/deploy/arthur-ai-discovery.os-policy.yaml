@@ -88,10 +88,12 @@ osPolicies:
               enforce:
                 interpreter: SHELL
                 script: systemctl daemon-reload && systemctl enable --now arthur-ai-discovery.timer && exit 100
+# Every VM the OS Config agent runs on. Discovery is for what nobody opted in, so no label of a
+# VM's own narrows this, and there is no exclusion label on purpose: a label a VM's owner can
+# set would be an opt-out. A pilot targets a label through the module's `label`, or by editing
+# this block, and then widens to the fleet.
 instanceFilter:
-  inclusionLabels:
-    - labels:
-        arthur-ai-discovery: enabled
+  all: true
 rollout:
   disruptionBudget:
     percent: 10

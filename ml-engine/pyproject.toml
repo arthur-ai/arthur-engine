@@ -1,6 +1,6 @@
 [project]
 name = "ml-engine"
-version = "2.1.1030"
+version = "2.1.1041"
 description = ""
 authors = [{ name = "Arthur", email = "engineering@arthur.ai" }]
 license = "MIT"
@@ -46,7 +46,7 @@ dependencies = [
   "snowflake-sqlalchemy==1.11.1",
   "databricks-sqlalchemy>=2.0,<3",
   "databricks-sdk>=0.84.0,<1",
-  "arthur-client==1.4.2868",
+  "arthur-client==1.4.2883",
 ]
 
 [dependency-groups]
@@ -59,6 +59,7 @@ dev = [
   "pre-commit==4.6.2",
   "types-pytz>=2025.2.0.20250516",
   "lazy-imports==1.2.0",
+  "graphql-core==3.3.0",
 ]
 linters = [
   "mypy>=2.3,<3",
@@ -102,7 +103,8 @@ src_paths = ["src/ml_engine", "tests"]
 extend_skip_glob = ["src/ml_engine/discovery/_vendor/*"]
 
 [tool.pytest.ini_options]
-pythonpath = ["src", "src/genai_client"]
+# "." makes tests.fakes importable, as `python -m tests.fakes.<vendor>` runs them.
+pythonpath = [".", "src", "src/genai_client"]
 testpaths = ["tests"]
 markers = [
     "integration_tests: mark a test as an integration test (requires real backend credentials via env vars)",
