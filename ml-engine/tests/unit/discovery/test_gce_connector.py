@@ -558,7 +558,7 @@ def test_a_vm_dated_ahead_of_the_scans_clock_is_published_and_named(
     hour_ahead = NOW + timedelta(hours=1)
     codex = row("npm", "@openai/codex", ver="0.5.0")
     fake = FakeCompute(
-        {PROJECT: [[vm("101"), vm("102"), vm("103"), vm("104"), vm("105")]]},
+        {PROJECT: [[vm(str(ident)) for ident in range(101, 107)]]},
         guest={
             (ZONE, "vm-101"): attributes(
                 CODEX,
@@ -578,6 +578,11 @@ def test_a_vm_dated_ahead_of_the_scans_clock_is_published_and_named(
             ),
             # Nothing matched, and still named: its clock needs fixing all the same.
             (ZONE, "vm-105"): without_status(scanned_at(hour_ahead)),
+            # Nothing to publish either, and named without claiming otherwise.
+            (ZONE, "vm-106"): attributes(
+                "arthur1.not-a-payload",
+                "ok 2026-10-12T14:30:00Z rows=2 packages-linux=ok",
+            ),
         },
     )
     connector = connector_for(fake)
@@ -593,9 +598,11 @@ def test_a_vm_dated_ahead_of_the_scans_clock_is_published_and_named(
     assert records[2].last_seen == NOW, "no record is dated past the scan's clock"
     coverage = connector.device_coverage()
     assert coverage is not None
-    assert (coverage.devices_decoded, coverage.unreadable_by_reason) == (5, {})
-    for ident in ("101", "102", "103", "105"):
+    assert coverage.devices_decoded == 5
+    assert coverage.unreadable_by_reason == {"malformed": 1}
+    for ident in ("101", "102", "103", "105", "106"):
         assert f"{ident} is dated 60 min ahead of this scan's clock" in caplog.text
+    assert "publish" not in caplog.text.lower(), "the warning names the clock only"
     assert "104 is dated" not in caplog.text
     assert "14:30:00Z" not in caplog.text, "the id and the skew, never the value"
 

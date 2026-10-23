@@ -152,13 +152,12 @@ class VmInventoryReader:
         when: datetime,
         now: datetime,
     ) -> None:
-        """Name the VM and its skew. The id and the skew only: never the value the date
-        came from."""
+        """Name the VM and its skew, whatever its payload holds: the clock is wrong
+        either way. The id and the skew only: never the value the date came from."""
         self._log.warning(
             "%s is dated %s min ahead of this scan's clock, so its clock is at least "
-            "that fast. Published, with its records dated no later than this scan; "
-            "until its time sync is fixed, its last values stay current that much "
-            "longer once it stops reporting.",
+            "that fast, and it counts as reporting that much longer once it stops. "
+            "Fix its time sync.",
             device.device_key,
             int((when - now).total_seconds() // 60),
         )
