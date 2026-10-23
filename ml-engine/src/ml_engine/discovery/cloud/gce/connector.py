@@ -251,10 +251,12 @@ class ComputeEngineConnector:
             exclude={pair: pair for pair in settings.exclude_labels},
         )
         coverage = self._coverage = scope.new_coverage()
-        # A lookback of zero or less is the whole roster, as on Jamf. One clock reading
-        # for the scan: the window's start and the bound on a date ahead of it.
-        now = self._clock()
-        since = now - timedelta(hours=lookback_hours) if lookback_hours > 0 else None
+        # A lookback of zero or less is the whole roster, as on Jamf.
+        since = (
+            self._clock() - timedelta(hours=lookback_hours)
+            if lookback_hours > 0
+            else None
+        )
 
         # The roster: the projects named, then every active project under each parent,
         # each once. A named project is read or the scan fails, as before there were
@@ -298,7 +300,14 @@ class ComputeEngineConnector:
             )
 
         carried: set[str] = set()
-        reader = VmInventoryReader(coverage, matcher, VENDOR, since, logger, now=now)
+        reader = VmInventoryReader(
+            coverage,
+            matcher,
+            VENDOR,
+            since,
+            logger,
+            clock=self._clock,
+        )
         # Each project's metadata, or why it could not be read: asked once per project.
         project_flags: dict[
             str,

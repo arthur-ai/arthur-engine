@@ -19,9 +19,10 @@ are dated by the scan inside the payload, never by the read.
 A DATE IN THE FUTURE IS NO DATE. The status line is the VM's to write, by the VM's clock,
 and the window only bounds it from below: a VM whose clock runs ahead would stay inside
 every lookback for as long as it does -- forever, once it stops writing -- and keep its
-agents fresh on the Platform. So a date more than `CLOCK_AHEAD_MARGIN` past this scan's
-own clock is counted as `clock-ahead` and not published, whether it came from the status
-line or, with none, from the payload's scan. A clock a few minutes fast still reported.
+agents fresh on the Platform. So a date more than `CLOCK_AHEAD_MARGIN` past the scan's
+own clock, read when the VM is, is counted as `clock-ahead` and not published, whether it
+came from the status line or, with none, from the payload's scan. A clock a few minutes
+fast still reported.
 """
 
 import logging
@@ -73,14 +74,16 @@ class VmInventoryReader:
         since: Optional[datetime],
         logger: logging.Logger,
         *,
-        now: datetime,
+        clock: Callable[[], datetime],
     ) -> None:
-        """`now` is the scan's own clock, the one `since` was taken from."""
+        """`clock` is the scan's own, the one `since` was taken from. It is read again for
+        each VM: a long scan's window starts when the scan does, but a VM that reported
+        while it ran is dated after that, and is not ahead."""
         self.coverage = coverage
         self._matcher = matcher
         self._vendor = vendor
         self._since = since
-        self._now = now
+        self._clock = clock
         self._log = logger
         self.not_running: Counter[str] = Counter()
         self.failed_runs: Counter[str] = Counter()
@@ -96,12 +99,14 @@ class VmInventoryReader:
         for a VM that was not running when listed, None for one that was.
         """
         coverage = self.coverage
+        # After the VM's values were read, so nothing it wrote before then is ahead.
+        now = self._clock()
         status = device.attribute(STATUS_ATTRIBUTE)
         reported = last_reported(status)
         if reported is not None:
             device = replace(device, last_reported=reported.isoformat())
-        if reported is not None and ahead(reported, self._now):
-            self._clock_ahead(device, reported)
+        if reported is not None and ahead(reported, now):
+            self._clock_ahead(device, reported, now)
             return []
         if before(reported, self._since):
             coverage.count_unreadable(
@@ -119,8 +124,8 @@ class VmInventoryReader:
         if reported is None and read.records:
             # No status line to date the VM by, so its payload's own scan does.
             scanned = read.records[0].last_seen
-            if ahead(scanned, self._now):
-                self._clock_ahead(device, scanned)
+            if ahead(scanned, now):
+                self._clock_ahead(device, scanned, now)
                 return []
             if before(scanned, self._since):
                 coverage.count_unreadable(
@@ -141,11 +146,16 @@ class VmInventoryReader:
         coverage.devices_decoded += 1
         return read.records
 
-    def _clock_ahead(self, device: ManagedDevice, when: datetime) -> None:
+    def _clock_ahead(
+        self,
+        device: ManagedDevice,
+        when: datetime,
+        now: datetime,
+    ) -> None:
         """Count the VM as clock-ahead, and say by how much. The id and the skew only:
         never the value the date came from."""
         self.coverage.count_unreadable(CLOCK_AHEAD, device.unreadable(CLOCK_AHEAD))
-        minutes = int((when - self._now).total_seconds() // 60)
+        minutes = int((when - now).total_seconds() // 60)
         self._log.warning(
             "%s is dated %s min ahead of this scan's clock, more than the %s min a fast "
             "clock is allowed. Counted as %s and not published until its clock is right: "

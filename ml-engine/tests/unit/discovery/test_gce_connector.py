@@ -598,6 +598,35 @@ def test_a_vm_dated_ahead_of_the_scans_clock_is_counted_and_not_published(
     assert [r.external_id for r in scan(fake, lookback_hours=0)] == ["104:codex-cli"]
 
 
+def test_a_vm_that_reported_while_a_long_scan_ran_is_not_ahead() -> None:
+    """The window starts when the scan does; the bound on a date ahead is the clock when
+    the VM is read. An hour into the scan, a report from 50 min in is current."""
+    readings = iter([NOW])
+    fake = FakeCompute(
+        {PROJECT: [[vm("1")]]},
+        guest={
+            (ZONE, "vm-1"): attributes(
+                CODEX,
+                "ok 2026-10-12T14:20:00Z rows=2 packages-linux=ok",
+            ),
+        },
+    )
+
+    def session_for(creds: Any, scopes: Sequence[str]) -> FakeCompute:
+        return fake
+
+    connector = ComputeEngineConnector(
+        session_for=session_for,  # type: ignore[arg-type]
+        clock=lambda: next(readings, NOW + timedelta(hours=1)),
+    )
+    records = scan(fake, connector=connector)
+
+    assert [r.external_id for r in records] == ["1:codex-cli"]
+    coverage = connector.device_coverage()
+    assert coverage is not None
+    assert coverage.unreadable_by_reason == {}
+
+
 # --- VMs that cannot report -------------------------------------------------------------
 
 

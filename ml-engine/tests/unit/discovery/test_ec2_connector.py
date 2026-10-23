@@ -17,7 +17,7 @@ import io
 import json
 import logging
 from dataclasses import asdict
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 from typing import Any, Iterator, Optional
 
@@ -566,6 +566,26 @@ def test_an_instance_dated_ahead_of_the_scans_clock_is_counted_and_not_published
     ]
     assert f"{iid('1')} is dated 60 min ahead of this scan's clock" in caplog.text
     assert "14:30:00Z" not in caplog.text, "the id and the skew, never the value"
+
+
+def test_an_instance_that_reported_while_a_long_scan_ran_is_not_ahead() -> None:
+    """The window starts when the scan does; the bound on a date ahead is the clock when
+    the instance is read. An hour into the scan, a report from 50 min in is current."""
+    readings = iter([NOW])
+    fifty_minutes_in = "ok 2026-10-12T14:20:00Z rows=2 packages-linux=ok"
+    aws = FakeAws(
+        {REGION: [[instance("1")]]},
+        inventory={iid("1"): reported(status=fifty_minutes_in)},
+    )
+    connector = Ec2Connector(
+        session_for=lambda creds, fields: boto3.Session(),
+        clients_for=lambda session: aws.client_for,
+        clock=lambda: next(readings, NOW + timedelta(hours=1)),
+    )
+    records = scan(aws, connector=connector)
+
+    assert [r.external_id for r in records] == [f"{iid('1')}:codex-cli"]
+    assert coverage_of(connector) == {}
 
 
 def test_a_clock_a_few_minutes_fast_still_reported() -> None:
