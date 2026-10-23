@@ -389,7 +389,7 @@ class _Scan:
             for caller in callers:
                 models.setdefault(role_key(caller.arn), set()).update(caller.models)
             for call in calls:
-                if call.error_code and SSO_ROLE_PATH not in call.caller_arn:
+                if call.refused and SSO_ROLE_PATH not in call.caller_arn:
                     models.setdefault(role_key(call.caller_arn), set())
         self.counts["ai_roles"] = len(models)
         return {key: frozenset(m) for key, m in models.items()}

@@ -65,6 +65,9 @@ SYSTEM_NAMESPACE_PREFIXES = ("amazon-",)
 
 IRSA_ANNOTATION = "eks.amazonaws.com/role-arn"
 
+# The kinds an owner already stands for. A controller is listed whatever owns it.
+_OWNED_BY_A_CONTROLLER = frozenset({"job", "pod"})
+
 SERVICE_GROUP_PREFIX = "service:"
 
 # Why a workload is reported.
@@ -305,13 +308,18 @@ def eks_workload(
 ) -> Optional[Workload]:
     """One Kubernetes object as a workload, or None when it is not its own workload.
 
-    None for an object something owns (a ReplicaSet's pods, a CronJob's Jobs), one in a
-    system namespace, and one with no name.
+    None for a Job or Pod something owns (a CronJob's Jobs, a ReplicaSet's pods), one in
+    a system namespace, and one with no name. A controller is its own workload even when
+    something owns it: an operator's custom resource (a model server, a Ray cluster)
+    commonly owns the Deployment or StatefulSet that runs it, and that custom resource
+    is not listed here, so dropping the controller would drop the workload.
     """
     meta = raw.get("metadata") or {}
     namespace = str(meta.get("namespace") or "")
     name = str(meta.get("name") or "")
-    if not namespace or not name or meta.get("ownerReferences"):
+    if not namespace or not name:
+        return None
+    if path_kind in _OWNED_BY_A_CONTROLLER and meta.get("ownerReferences"):
         return None
     if namespace in SYSTEM_NAMESPACES or namespace.startswith(
         SYSTEM_NAMESPACE_PREFIXES,

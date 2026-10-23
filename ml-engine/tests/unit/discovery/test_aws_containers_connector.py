@@ -785,6 +785,30 @@ def test_eks_identity_is_irsa_then_pod_identity_then_the_node_role() -> None:
     assert isinstance(verify, str) and verify.endswith(".pem")
 
 
+def test_an_operator_owned_controller_is_still_a_workload() -> None:
+    # A model server's operator owns its Deployment; the custom resource is not listed.
+    aws, kube = eks_account(
+        {
+            "/apis/apps/v1/deployments": [
+                k8s("deployment", "llm-predictor", owner="InferenceService"),
+            ],
+            "/api/v1/pods": [k8s("pod", "llm-predictor-5d9f-x", owner="ReplicaSet")],
+        },
+    )
+    [record] = scan(aws, report_all(), kube)
+    assert record.creation_source.address.resource_id == (
+        f"{EKS}/agents/deployment/llm-predictor"
+    )
+
+
+def test_a_call_that_failed_in_the_model_still_selects_and_names_its_model() -> None:
+    aws = ecs_account()
+    aws.events[REGION] = [model_call(TASK_ROLE, error_code="ModelErrorException")]
+
+    [record] = scan(aws)
+    assert [m.name for m in record.llm_models] == [MODEL]
+
+
 def test_an_eks_node_role_that_calls_bedrock_does_not_report_system_pods() -> None:
     aws, kube = eks_account(
         {

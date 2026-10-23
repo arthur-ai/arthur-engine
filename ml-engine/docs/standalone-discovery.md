@@ -525,7 +525,7 @@ is the catalog, as for Jamf; `query_language: none`.
 A workload is an ECS service (its tasks are folded in by their `service:` group), the
 tasks no service owns that share a `group` (`family:<task definition family>` unless
 whoever ran them set one), or an EKS controller -- Deployment, StatefulSet, DaemonSet,
-CronJob -- or a Job or Pod nothing owns; `kube-system`, `kube-public`, `kube-node-lease`,
+CronJob, even one an operator's custom resource owns -- or a Job or Pod nothing owns; `kube-system`, `kube-public`, `kube-node-lease`,
 `aws-observability` and the `amazon-` namespaces are left out. ECS lists a stopped task
 for about an hour, so a task group is seen only while one of its tasks runs or has just
 run.
