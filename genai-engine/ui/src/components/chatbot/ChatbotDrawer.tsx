@@ -1,5 +1,5 @@
 import CloseIcon from "@mui/icons-material/Close";
-import DeleteOutlineIcon from "@mui/icons-material/DeleteOutlined";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutlineOutlined";
 import { Box, IconButton, Paper, Tooltip, Typography } from "@mui/material";
 
 import { ChatPanel } from "./ChatPanel";

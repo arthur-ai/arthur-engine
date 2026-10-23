@@ -20,7 +20,7 @@ import {
   Typography,
 } from "@mui/material";
 import { BarChart } from "@mui/x-charts/BarChart";
-import { LineChart } from "@mui/x-charts/LineChart";
+import { LineChart, lineClasses } from "@mui/x-charts/LineChart";
 import React, { useState } from "react";
 
 import { ChartCard } from "./task-overview/ChartCard";
@@ -385,7 +385,7 @@ export const TaskOverview: React.FC = () => {
                 grid={{ horizontal: true }}
                 margin={{ left: 50, right: 20, top: 20, bottom: 30 }}
                 hideLegend
-                sx={{ "& .MuiAreaElement-root": { fillOpacity: 0.1 } }}
+                sx={{ [`& .${lineClasses.area}`]: { fillOpacity: 0.1 } }}
               />
             ) : (
               <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: 256 }}>
@@ -458,7 +458,7 @@ export const TaskOverview: React.FC = () => {
                 grid={{ horizontal: true }}
                 margin={{ left: 60, right: 20, top: 20, bottom: 30 }}
                 hideLegend
-                sx={{ "& .MuiAreaElement-root": { fillOpacity: 0.1 } }}
+                sx={{ [`& .${lineClasses.area}`]: { fillOpacity: 0.1 } }}
               />
             ) : (
               <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: 256 }}>
@@ -498,7 +498,7 @@ export const TaskOverview: React.FC = () => {
                 grid={{ horizontal: true }}
                 margin={{ left: 50, right: 20, top: 20, bottom: 30 }}
                 hideLegend
-                sx={{ "& .MuiAreaElement-root": { fillOpacity: 0.1 } }}
+                sx={{ [`& .${lineClasses.area}`]: { fillOpacity: 0.1 } }}
               />
             ) : (
               <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: 256 }}>

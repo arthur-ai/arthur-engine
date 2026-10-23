@@ -3,7 +3,7 @@ import ArticleOutlinedIcon from "@mui/icons-material/ArticleOutlined";
 import BoltIcon from "@mui/icons-material/Bolt";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
-import HelpOutlineIcon from "@mui/icons-material/HelpOutlined";
+import HelpOutlineIcon from "@mui/icons-material/HelpOutlineOutlined";
 import KeyIcon from "@mui/icons-material/Key";
 import RocketLaunchIcon from "@mui/icons-material/RocketLaunch";
 import ShowChartIcon from "@mui/icons-material/ShowChart";

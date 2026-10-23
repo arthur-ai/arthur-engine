@@ -1,4 +1,4 @@
-import DeleteOutlineIcon from "@mui/icons-material/DeleteOutlined";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutlineOutlined";
 import { Box, Card, CardContent, Chip, CircularProgress, IconButton, Stack, Switch, Tooltip, Typography } from "@mui/material";
 import React from "react";
 

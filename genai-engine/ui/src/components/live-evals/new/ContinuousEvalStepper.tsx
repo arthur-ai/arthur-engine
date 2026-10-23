@@ -2,7 +2,7 @@ import { MustacheHighlightedTextField, useAppForm } from "@arthur/shared-compone
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 import GpsFixedIcon from "@mui/icons-material/GpsFixed";
-import HelpOutlineIcon from "@mui/icons-material/HelpOutlined";
+import HelpOutlineIcon from "@mui/icons-material/HelpOutlineOutlined";
 import {
   Alert,
   Autocomplete,
