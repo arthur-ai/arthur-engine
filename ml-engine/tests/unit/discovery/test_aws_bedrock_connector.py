@@ -455,6 +455,27 @@ def test_a_call_that_failed_in_the_model_is_still_a_call() -> None:
     assert record.last_seen == datetime(2026, 10, 12, 11, 0, tzinfo=timezone.utc)
 
 
+def test_a_persons_refused_call_is_counted_as_refused_not_as_a_persons_call(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    aws = FakeAws(
+        events={
+            REGION: [
+                [
+                    event(role=SSO_ROLE, model=None, error_code="AccessDenied"),
+                    event(role=SSO_ROLE),
+                ],
+            ],
+        },
+    )
+    with caplog.at_level(logging.INFO):
+        assert scan(aws, fields={**FIELDS, "list_agents": "false"}) == []
+    assert "1 refused model call(s) counted, not reported" in caplog.text
+    assert "1 model call(s) by people (sso role: 1) counted, not reported" in (
+        caplog.text
+    )
+
+
 def test_the_root_user_is_a_person() -> None:
     root = f"arn:aws:iam::{ACCOUNT}:root"
     aws = FakeAws(

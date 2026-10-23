@@ -396,20 +396,21 @@ class _Scan:
 def aggregate(
     calls: Iterator[ModelCall],
 ) -> tuple[list[_Caller], Counter[str], int, int]:
-    """(workload callers, people's calls by kind, events read, refused workload calls)
-    from one region's calls."""
+    """(workload callers, people's allowed calls by kind, events read, refused calls)
+    from one region's calls. A refused call is counted as refused whoever made it,
+    a person included, and is never a caller."""
     callers: dict[str, _Caller] = {}
     people: Counter[str] = Counter()
     events = 0
     denied = 0
     for call in calls:
         events += 1
+        if call.refused:
+            denied += 1
+            continue
         person = _person(call)
         if person is not None:
             people[person] += 1
-            continue
-        if call.refused:
-            denied += 1
             continue
         kind = IAM_USER if ":user/" in call.caller_arn else IAM_ROLE
         caller = callers.setdefault(call.caller_arn, _Caller(call.caller_arn, kind))
