@@ -56,7 +56,14 @@ export const TryItOutFormWizardAboutStep = withForm({
                               value={opt.id}
                               control={<Radio sx={{ position: "absolute", opacity: 0, pointerEvents: "none" }} />}
                               label={
-                                <Stack direction="row" alignItems="center" spacing={1.25} sx={{ width: "100%" }}>
+                                <Stack
+                                  direction="row"
+                                  spacing={1.25}
+                                  sx={{
+                                    alignItems: "center",
+                                    width: "100%",
+                                  }}
+                                >
                                   <Box
                                     sx={{
                                       width: 10,

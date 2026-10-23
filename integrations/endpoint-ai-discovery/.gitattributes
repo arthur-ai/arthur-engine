@@ -1,0 +1,7 @@
+# THE FILES A COMPUTE ENGINE VM DOWNLOADS ARE PINNED BY sha256: deploy/terraform/ hashes the copy
+# in a checkout, and raw.githubusercontent.com serves the blob. A checkout that rewrote their line
+# endings (core.autocrlf on Windows) would pin bytes no URL serves, so they are LF everywhere.
+dist/collect-linux.sh                   text eol=lf
+deploy/report-guest-attributes.sh       text eol=lf
+deploy/arthur-ai-discovery.service      text eol=lf
+deploy/arthur-ai-discovery.timer        text eol=lf

@@ -10,6 +10,8 @@ from typing import Mapping, Optional
 
 from arthur_common.models.agent_governance_schemas import Platform, RunsOn
 
+from job_executors.discovery_scan import UnreadableDevice
+
 
 @dataclass(frozen=True)
 class ManagedDevice:
@@ -71,3 +73,16 @@ class ManagedDevice:
 
     def attribute(self, name: str) -> Optional[str]:
         return self.attributes.get(name)
+
+    def unreadable(self, reason: str) -> UnreadableDevice:
+        """This device as the run lists it when its payload could not be read.
+
+        Identity and whereabouts only, never an attribute: the list leaves the engine.
+        """
+        return UnreadableDevice(
+            device_key=self.device_key,
+            name=self.name,
+            location=self.address_scope,
+            reason=reason,
+            last_reported=self.last_reported,
+        )

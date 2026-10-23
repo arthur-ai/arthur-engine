@@ -46,7 +46,6 @@ from routers.auth_routes import auth_routes
 from routers.chat_routes import app_chat_routes
 from routers.health_routes import health_router
 from routers.user_routes import user_identity_routes, user_management_routes
-from routers.v1.agent_polling_routes import agent_polling_routes
 from routers.v1.agentic_experiment_routes import agentic_experiment_routes
 from routers.v1.agentic_notebook_routes import agentic_notebook_routes
 from routers.v1.agentic_prompt_routes import agentic_prompt_routes
@@ -87,10 +86,6 @@ from services.currency import (
     shutdown_currency_conversion_service,
 )
 from services.system_tasks_service import initialize_system_tasks
-from services.task import (
-    initialize_global_agent_polling_service,
-    shutdown_global_agent_polling_service,
-)
 from services.trace_retention_service import (
     initialize_trace_retention_service,
     shutdown_trace_retention_service,
@@ -263,12 +258,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     except Exception as e:
         logger.error(f"Error initializing trace retention service: {e}")
 
-    # Initialize global agent polling service
-    try:
-        initialize_global_agent_polling_service(num_workers=4)
-    except Exception as e:
-        logger.error(f"Error initializing global agent polling service: {e}")
-
     # Conditionally load relevance models
     if relevance_models_enabled():
         model_load.get_bert_scorer()
@@ -288,7 +277,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     shutdown_trace_retention_service()
     shutdown_currency_conversion_service()
     shutdown_continuous_eval_queue_service()
-    shutdown_global_agent_polling_service()
 
 
 class TransferEncodingMiddleware(BaseHTTPMiddleware):
@@ -506,7 +494,6 @@ def get_app_with_routes() -> FastAPI:
             agentic_experiment_routes,
             transform_routes,
             continuous_eval_routes,
-            agent_polling_routes,
             demo_task_routes,
             demo_certificate_routes,
             tenant_signup_routes,
@@ -561,7 +548,6 @@ def get_test_app() -> FastAPI:
             agentic_experiment_routes,
             transform_routes,
             continuous_eval_routes,
-            agent_polling_routes,
             chatbot_routes,
             demo_task_routes,
             demo_certificate_routes,
@@ -625,7 +611,6 @@ def get_app() -> FastAPI:
             agentic_experiment_routes,
             transform_routes,
             continuous_eval_routes,
-            agent_polling_routes,
         ],
     )
     if extra_feature_config.CHATBOT_ENABLED:

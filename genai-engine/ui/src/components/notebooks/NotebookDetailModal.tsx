@@ -142,7 +142,13 @@ const NotebookDetailModal: React.FC<NotebookDetailModalProps> = ({ open, noteboo
               </Typography>
 
               {!notebook.state?.prompt_configs && !notebook.state?.dataset_ref && !notebook.state?.eval_list ? (
-                <Typography variant="body2" color="text.secondary" sx={{ fontStyle: "italic" }}>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: "text.secondary",
+                    fontStyle: "italic",
+                  }}
+                >
                   No configuration set
                 </Typography>
               ) : (
@@ -153,7 +159,14 @@ const NotebookDetailModal: React.FC<NotebookDetailModalProps> = ({ open, noteboo
                       <Typography variant="caption" sx={{ color: "text.secondary", mb: 0.5, display: "block" }}>
                         Prompts ({notebook.state.prompt_configs.length})
                       </Typography>
-                      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                      <Stack
+                        direction="row"
+                        spacing={1}
+                        useFlexGap
+                        sx={{
+                          flexWrap: "wrap",
+                        }}
+                      >
                         {notebook.state.prompt_configs.map(
                           (config: ({ type: "saved" } & SavedPromptConfig) | ({ type: "unsaved" } & UnsavedPromptConfig), idx: number) => (
                             <Chip
@@ -246,7 +259,14 @@ const NotebookDetailModal: React.FC<NotebookDetailModalProps> = ({ open, noteboo
                       <Typography variant="caption" sx={{ color: "text.secondary", mb: 0.5, display: "block" }}>
                         Evaluators ({notebook.state.eval_list.length})
                       </Typography>
-                      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                      <Stack
+                        direction="row"
+                        spacing={1}
+                        useFlexGap
+                        sx={{
+                          flexWrap: "wrap",
+                        }}
+                      >
                         {notebook.state.eval_list.map((evalRef: EvalRefOutput, idx: number) => (
                           <Chip
                             key={idx}
@@ -305,7 +325,12 @@ const NotebookDetailModal: React.FC<NotebookDetailModalProps> = ({ open, noteboo
                   EXPERIMENT HISTORY (Recent 10)
                 </Typography>
                 {experiments.length > 0 && (
-                  <Typography variant="caption" color="text.secondary">
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: "text.secondary",
+                    }}
+                  >
                     {experiments.length} experiment{experiments.length !== 1 ? "s" : ""}
                   </Typography>
                 )}
@@ -316,7 +341,14 @@ const NotebookDetailModal: React.FC<NotebookDetailModalProps> = ({ open, noteboo
                   <CircularProgress size={24} />
                 </Box>
               ) : experiments.length === 0 ? (
-                <Typography variant="body2" color="text.secondary" sx={{ fontStyle: "italic", py: 2 }}>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: "text.secondary",
+                    fontStyle: "italic",
+                    py: 2,
+                  }}
+                >
                   No experiments run yet
                 </Typography>
               ) : (

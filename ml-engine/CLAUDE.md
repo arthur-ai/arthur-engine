@@ -26,4 +26,3 @@ Needs `ARTHUR_API_HOST`, `ARTHUR_CLIENT_ID`, `ARTHUR_CLIENT_SECRET` to talk to t
 - Job executors should be stateless and idempotent where possible.
 - Health check endpoints must respond quickly — slow responses cause container restarts.
 - Discovery connectors are listed in `discovery.source_connectors()` and must declare `SENSITIVE_FIELDS`, or standalone mode refuses them; sink targets are listed in `standalone.sinks.Destination`, one module each.
-- Adding or changing a discovery connector: load the skill for its source class first (`discovery-source-cloud`, `discovery-source-siem`, `discovery-source-endpoint`, `discovery-source-gateway`); it states the record contract, error model and tests.

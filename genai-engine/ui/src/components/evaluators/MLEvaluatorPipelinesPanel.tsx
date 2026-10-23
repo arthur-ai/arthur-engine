@@ -27,9 +27,23 @@ export const MLEvaluatorPipelinesPanel = ({ taskId, evalName, pipelines }: MLEva
 
   if (pipelines.length === 0) {
     return (
-      <Stack alignItems="center" justifyContent="center" sx={{ py: 4, px: 3 }} gap={1.5}>
+      <Stack
+        sx={{
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 1.5,
+          py: 4,
+          px: 3,
+        }}
+      >
         <LiveTvOutlinedIcon sx={{ fontSize: 40, color: "text.secondary" }} />
-        <Typography variant="body2" color="text.secondary" textAlign="center">
+        <Typography
+          variant="body2"
+          sx={{
+            color: "text.secondary",
+            textAlign: "center",
+          }}
+        >
           No continuous evals yet. Add one to start running this evaluator automatically on incoming traces.
         </Typography>
         <Button variant="contained" size="small" startIcon={<AddIcon />} onClick={handleAddContinuousEval}>
@@ -57,7 +71,12 @@ export const MLEvaluatorPipelinesPanel = ({ taskId, evalName, pipelines }: MLEva
             <TableRow key={ce.id} hover>
               <TableCell>
                 <MuiLink component={Link} to={`/tasks/${taskId}/continuous-evals/${ce.id}`} underline="hover">
-                  <Typography variant="body2" fontWeight={500}>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      fontWeight: 500,
+                    }}
+                  >
                     {ce.name}
                   </Typography>
                 </MuiLink>
@@ -71,14 +90,24 @@ export const MLEvaluatorPipelinesPanel = ({ taskId, evalName, pipelines }: MLEva
                 {ce.description ? (
                   <Typography
                     variant="body2"
-                    color="text.secondary"
-                    sx={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 180 }}
                     title={ce.description}
+                    sx={{
+                      color: "text.secondary",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      maxWidth: 180,
+                    }}
                   >
                     {ce.description}
                   </Typography>
                 ) : (
-                  <Typography variant="body2" color="text.disabled">
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: "text.disabled",
+                    }}
+                  >
                     —
                   </Typography>
                 )}
@@ -94,7 +123,13 @@ export const MLEvaluatorPipelinesPanel = ({ taskId, evalName, pipelines }: MLEva
               </TableCell>
 
               <TableCell>
-                <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: "nowrap" }}>
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: "text.secondary",
+                    whiteSpace: "nowrap",
+                  }}
+                >
                   {formatDateInTimezone(ce.created_at, timezone, { hour12: !use24Hour })}
                 </Typography>
               </TableCell>

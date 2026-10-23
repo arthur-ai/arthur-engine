@@ -96,7 +96,12 @@ export const DatasetHeader: React.FC<DatasetHeaderProps> = ({
                 • Unsaved changes
               </Typography>
             )}
-            <Typography variant="body2" color="text.secondary">
+            <Typography
+              variant="body2"
+              sx={{
+                color: "text.secondary",
+              }}
+            >
               {columnCount} column{columnCount !== 1 ? "s" : ""} • {rowCount.toLocaleString()} / {MAX_DATASET_ROWS} rows
             </Typography>
           </Box>
@@ -131,7 +136,14 @@ export const DatasetHeader: React.FC<DatasetHeaderProps> = ({
 
       {/* Description */}
       {description && (
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2, ml: 6 }}>
+        <Typography
+          variant="body2"
+          sx={{
+            color: "text.secondary",
+            mb: 2,
+            ml: 6,
+          }}
+        >
           {description}
         </Typography>
       )}

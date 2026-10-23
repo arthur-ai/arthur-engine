@@ -81,7 +81,12 @@ export const SyntheticDataChat: React.FC<SyntheticDataChatProps> = ({ conversati
         {isLoading && (
           <Box sx={{ display: "flex", alignItems: "center", gap: 1, p: 1 }}>
             <CircularProgress size={16} />
-            <Typography variant="body2" color="text.secondary">
+            <Typography
+              variant="body2"
+              sx={{
+                color: "text.secondary",
+              }}
+            >
               Thinking...
             </Typography>
           </Box>
@@ -127,7 +132,14 @@ export const SyntheticDataChat: React.FC<SyntheticDataChatProps> = ({ conversati
             <Send />
           </IconButton>
         </Box>
-        <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
+        <Typography
+          variant="caption"
+          sx={{
+            color: "text.secondary",
+            display: "block",
+            mt: 1,
+          }}
+        >
           Try: "Add 5 more diverse rows", "Make the data more realistic", "Remove rows 3-5"
         </Typography>
       </Box>

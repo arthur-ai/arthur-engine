@@ -72,7 +72,14 @@ export function ChatPanel({
 
       <Box sx={{ flex: 1, overflowY: "auto", px: 2, py: 2 }}>
         {messages.length === 0 && (
-          <Typography variant="body2" color="text.secondary" sx={{ textAlign: "center", mt: 4 }}>
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+              textAlign: "center",
+              mt: 4,
+            }}
+          >
             {emptyStateText}
           </Typography>
         )}

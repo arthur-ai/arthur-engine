@@ -34,7 +34,7 @@ log names for one that says less.
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import (
     Any,
     Callable,
@@ -60,6 +60,7 @@ from google.auth.exceptions import RefreshError
 from google.genai import errors as genai_errors
 from pydantic import BaseModel
 
+from discovery.cloud.gcp_vertex.audit import EntryReader, audit_records, read_entries
 from discovery.gcp_credentials import (
     SERVICE_ACCOUNT_KEY_FIELD,
     mark_refused_credential,
@@ -70,6 +71,9 @@ VENDOR = "gcp_vertex"
 
 PROJECT_ID_FIELD = "project_id"
 LOCATION_FIELD = "location"
+# "true" to also read the project's Vertex AI Data Access audit log for the service
+# accounts that call models directly. See `discovery.cloud.gcp_vertex.audit`.
+READ_AUDIT_LOGS_FIELD = "read_audit_logs"
 
 # The legacy Vertex poller's default, kept so a source that leaves the region blank
 # scans what that poller scanned.
@@ -89,6 +93,7 @@ BATCH_SIZE = 100
 class VertexSettings(BaseModel):
     project_id: str
     location: str
+    read_audit_logs: bool = False
 
 
 # (settings, credentials or None for ADC) -> the SDK's AgentEngine objects. A seam so tests
@@ -124,8 +129,15 @@ class VertexAgentEngineConnector:
 
     SENSITIVE_FIELDS: ClassVar[frozenset[str]] = frozenset({SERVICE_ACCOUNT_KEY_FIELD})
 
-    def __init__(self, lister: AgentEngineLister = list_agent_engines) -> None:
+    def __init__(
+        self,
+        lister: AgentEngineLister = list_agent_engines,
+        audit_reader: EntryReader = read_entries,
+        clock: Callable[[], datetime] = lambda: datetime.now(timezone.utc),
+    ) -> None:
         self._lister = lister
+        self._audit_reader = audit_reader
+        self._clock = clock
 
     def scan(
         self,
@@ -137,7 +149,7 @@ class VertexAgentEngineConnector:
     ) -> Iterator[Sequence[DiscoveredAgentRecord]]:
         """Every Agent Engine in the source's project and region, in batches.
 
-        `lookback_hours` is not applied. The list API is an inventory, not a log: an
+        `lookback_hours` is not applied to the listing. The list API is an inventory, not a log: an
         engine deployed a year ago and never updated is still deployed, and filtering
         on `update_time` would make it vanish from every scan after the first.
         """
@@ -168,9 +180,6 @@ class VertexAgentEngineConnector:
             if len(batch) >= BATCH_SIZE:
                 yield batch
                 batch = []
-        if batch:
-            yield batch
-
         logger.info(
             "Vertex AI Agent Engine scan listed %s engine(s) in %s/%s, %s skipped",
             listed,
@@ -178,6 +187,22 @@ class VertexAgentEngineConnector:
             settings.location,
             skipped,
         )
+
+        # Unlike the listing, the audit log is a log: the lookback applies.
+        if settings.read_audit_logs:
+            batch.extend(
+                audit_records(
+                    self._audit_reader,
+                    settings.project_id,
+                    google_credentials,
+                    lookback_hours,
+                    self._clock(),
+                    VENDOR,
+                    logger,
+                )
+            )
+        for offset in range(0, len(batch), BATCH_SIZE):
+            yield batch[offset : offset + BATCH_SIZE]
 
 
 def with_vendor_status(
@@ -214,7 +239,12 @@ def settings_from(source_fields: Mapping[str, str]) -> VertexSettings:
             f"It is a source field, not a secret.",
         )
     location = (source_fields.get(LOCATION_FIELD) or "").strip() or DEFAULT_LOCATION
-    return VertexSettings(project_id=project_id, location=location)
+    read_audit_logs = (source_fields.get(READ_AUDIT_LOGS_FIELD) or "").strip().lower()
+    return VertexSettings(
+        project_id=project_id,
+        location=location,
+        read_audit_logs=read_audit_logs in {"true", "1", "yes"},
+    )
 
 
 def credentials_from(

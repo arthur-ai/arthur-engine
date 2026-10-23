@@ -101,7 +101,14 @@ export const PickCard: React.FC<PickCardProps> = ({ variant, icon, badge, title,
           "& .MuiCardActionArea-focusHighlight": { background: "transparent" },
         }}
       >
-        <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ width: "100%" }}>
+        <Stack
+          direction="row"
+          sx={{
+            alignItems: "center",
+            justifyContent: "space-between",
+            width: "100%",
+          }}
+        >
           <Box
             sx={{
               width: 36,
@@ -158,9 +165,9 @@ export const PickCard: React.FC<PickCardProps> = ({ variant, icon, badge, title,
 
         <Stack
           direction="row"
-          alignItems="center"
           spacing={0.75}
           sx={{
+            alignItems: "center",
             fontSize: 13,
             fontWeight: 600,
             color: isPrimary ? "primary.dark" : "text.primary",

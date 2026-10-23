@@ -1,517 +1,302 @@
-# Endpoint discovery: the end-to-end design
+# Endpoint discovery: architecture
 
-How AI tooling on a Mac becomes a finding in Arthur. Three repos, one direction of travel, and
-one rule that decides most of the design: **the endpoint enumerates, the collector classifies.**
+This doc covers how AI tooling on a machine becomes a finding in Arthur. One rule decides most
+of the design: **the endpoint enumerates, and the collector classifies.**
 
 ## Ownership
 
 | | Repo | Holds | Must not hold |
 |---|---|---|---|
-| Queries and signatures | [`osquery-ai-discovery`](https://github.com/arthur-ai/osquery-ai-discovery) (public, MIT) | the SQL, the runner, the guard, the wall-clock bound, **and the catalog** | any Jamf or Arthur specific deployment glue |
-| Deployable | `integrations/endpoint-ai-discovery/` (this tree) | the `arthur1.` wire format, the size budget, the deployable artifacts, the Jamf and Compute Engine transports | a copy of the queries, **the catalog**, or the matching |
-| Collector | `ml-engine/src/ml_engine/discovery/` | **matching**, summaries, the record sink, **and the catalog it matches against** | a copy of the queries |
-| Policies | arthur-platform | what to do about a finding | collection concerns |
+| Queries and catalog | [`osquery-ai-discovery`](https://github.com/arthur-ai/osquery-ai-discovery) (public, MIT) | the SQL, the runner, the Docker health guard, the wall-clock bound, and the agent catalog | anything specific to Arthur or to a carrier |
+| Deployable | `integrations/endpoint-ai-discovery/` (this tree) | the build, the `arthur1.` wire format, the size budget, and the Jamf, Compute Engine and EC2 transports | a copy of the queries, the catalog, or any matching |
+| Collector | `ml-engine/src/ml_engine/discovery/` | matching, the catalog it matches against (vendored at the same upstream ref), and the records it emits | a copy of the queries |
+| Policies | arthur-platform | what to do about a finding | anything about collection |
 
-Framing is this tree's, not upstream's: the wire format is Arthur's and the size budget a
-property of the reporting channel, and neither is a fact about osquery. `tools/build-collector.py` now owns the framing, and
-`lint.sh` fails if `dist/collect.sh` passes `bin/discover` a flag the vendored runner no longer
-accepts, which is how that removal was caught rather than shipped.
+**Matching happens in exactly one place: the collector.** The endpoint lists everything and
+sends it as evidence, so a newly added signature can re-match evidence Arthur already holds,
+without a new scan of any machine.
 
-**Matching happens in exactly one place: the collector. The endpoint matches nothing.**
-Everything below follows from that. It is why the endpoint enumerates, why there is no summary
-Extension Attribute, and why a new signature can be added without re-scanning a single Mac.
+Upstream's bundler packs one catalog-derived file into every bundle: `dist/signatures.sql`, for
+`bin/discover --names`. It rides in the payload unread. `test/lint.sh` fails if the collector
+ever passes `--names`. `tools/build-collector.py` admits payload files by name, so no other
+catalog-derived file reaches an endpoint unvetted.
 
-**One catalog-derived file rides in the payload, unread.** Upstream's bundler packs
-`dist/signatures.sql`, the catalog rendered into SQL, into every bundle for
-`bin/discover --names`. `dist/collect.sh` never passes `--names`, and `test/lint.sh` fails if it
-starts to. `tools/build-collector.py` admits payload files by name, so nothing else
-catalog-derived reaches an endpoint unvetted.
+The catalog covers agents only. Model runners, the MCP SDK, LLM gateways and container
+runtimes do not act on a user's behalf, so they are out of scope. Upstream's
+`catalog/agents.yaml` records each exclusion and its reason.
 
-The catalog the collector matches against is **authoritative in the public repo** and vendored
-here alongside the queries. One file, one place to add a signature, and a public one — a
-catalog of published product identifiers is osquery material in the same sense the queries are,
-and `bin/classify` there is the reference implementation of what a signature means. What must
-never exist is a *second* catalog: two would drift on signatures, which is the failure
-enumeration was adopted to prevent.
+**One driver, two builds.** Upstream's macOS and Linux queries use different tables, so this
+tree builds one collector per platform around the same driver:
 
-**The catalog is agents only, and that narrowed upstream.** Model runners (`ollama`,
-`lm-studio`, `jan`, `llama-cpp`), the MCP SDK, LiteLLM and Docker Desktop were all removed: a
-runner *serves* a model, an SDK is what an agent is *built with*, a gateway is what one *calls
-through*, and a container runtime is *how we look* rather than what we look for. None acts on a
-user's behalf, so counting them as agents overstates the finding. Two consequences reach this
-repo: the `model` query branch went with them, and whether Docker is present is now answered by
-the `scan` row's `ok` / `absent` / `unhealthy:<code>` / `timeout:<n>`, which a bundle id could
-never distinguish. `catalog/agents.yaml` carries the removals as data, with the reason for each.
+- `dist/collect.sh` for Macs, run by a Jamf Policy or a LaunchDaemon
+- `dist/collect-linux.sh` for Compute Engine and EC2, run by a systemd timer
 
-**One driver, two builds.** From v0.3.0 there is no single composed artifact —
-`dist/discovery-darwin.sql` and `dist/discovery-linux.sql` name disjoint sets of tables, and
-`bin/discover` chooses by `uname -s`. So this tree builds one collector per platform around the
-same driver: `dist/collect.sh` for Macs (a Jamf Policy or the LaunchDaemon) and
-`dist/collect-linux.sh` for Compute Engine VMs (a systemd timer). Each embeds its own artifact
-and refuses the other platform by name rather than by failing on a missing path.
-
-The `ports` route is retired too, and the reasoning is worth keeping: `bin/classify` refuses a
-port unless the process holding it already names the agent, so the port never fires until
-something else has identified it — no identifying power, a second opinion from the same witness.
-A listening port says an agent is *running* rather than installed, which is liveness, not
-identity.
+Each refuses to run on the other platform and names the reason.
 
 ## End-to-end flow
 
-Boundaries are where things **run**, not who owns the code — ownership is the table above.
-Each arrow is labelled with what crosses it: the platform never sees a raw row, and **no Mac
-ever talks to the collector.**
-
 ```
-                        ┌──────────────────────────────────────────────────┐
-     build time         │ osquery-ai-discovery                      public │
-                        │   queries/*.sql ──► tools/build.py ──► dist/     │
-                        │   catalog/agents.yaml    the signatures          │
-                        └────────────────────────┬─────────────────────────┘
-                                                 │ vendored at a pinned tag:
-                                                 │ dist/ to the Mac below,
-                                                 │ catalog/ to the collector
-                                                 ▼
-  ┌───────────────────────────── the Mac ──────────────────────────────────┐
-  │  vendor/osquery-ai-discovery/dist/                                     │
-  │    discovery-darwin.sql · discovery-deep.sql                           │
-  │  plus the collector script this tree builds around them, which frames  │
-  │  the value: bin/discover writes the JSON, collect.sh writes the ea     │
-  │                        │ scheduled run: one process per branch,        │
-  │                        │ guarded and wall-clock bounded                │
-  │                        ▼                                               │
-  │  /var/lib/arthur/   inventory.ea   evidence, ~24 KB framed here        │
-  │                     status.txt     collection health, 195 bytes        │
-  └────────────────────────────────┬───────────────────────────────────────┘
-                                   │ two Extension Attributes,
-                                   │ collected by `jamf recon`
-                                   ▼
-  ┌──────────────────────────── Jamf Pro ──────────────────────────────────┐
-  │  the inventory record for this Mac                                     │
-  │    Arthur AI Inventory          the evidence                           │
-  │    Arthur AI Inventory Status   the health line                        │
-  │    serial · hostname · OS · general.reportDate  ◄── Jamf knows these   │
-  └────────────────────────────────┬───────────────────────────────────────┘
-                                   │ THE COLLECTOR REACHES OUT, on a schedule
-                                   │ GET /api/v1/computers-inventory
-                                   │   ?section=EXTENSION_ATTRIBUTES,GENERAL
-                                   │   filtered on general.reportDate
-                                   ▼
-  ┌──── collector ─────────────────────────────────────────────────────────┐
-  │  ml-engine/src/ml_engine/discovery/                                    │
-  │  • matching, against vendor/…/catalog/agents.yaml at the same tag      │
-  │  • THE ONLY PLACE MATCHING HAPPENS. No Mac holds a catalog             │
-  │  • matching · summaries                                                │
-  │  • NO INBOUND PATH AT ALL. Outbound HTTPS to Jamf, one credential      │
-  └────────────────────────────────┬───────────────────────────────────────┘
-                                   │ FINDINGS, not evidence. The platform
-                                   │ never receives a raw row.
-                                   ▼
-  ┌──── arthur-platform ───────────────────────────────────────────────────┐
-  │  • policies, and what to do about a finding                            │
-  │  • holds no collection concerns: no queries, no catalog, no transport  │
-  └────────────────────────────────────────────────────────────────────────┘
+  osquery-ai-discovery (public)        queries, runner, catalog
+          │
+          │  vendored at a pinned tag: dist/ into this tree, catalog/ into ml-engine
+          ▼
+  the machine                          dist/collect.sh or collect-linux.sh, on a schedule
+    /var/lib/arthur/inventory.ea       the evidence: arthur1.<base64(gzip(json))>
+    /var/lib/arthur/status.txt         collection health, one line
+          │
+          │  the carrier the machine already reports to:
+          │  Jamf Extension Attributes · Compute Engine guest attributes · EC2 SSM custom inventory
+          ▼
+  the carrier's API                    Jamf Pro API · Compute Engine API · SSM API
+          │
+          │  the collector polls; nothing connects to it
+          ▼
+  collector (ml-engine)                decodes, matches, emits one record per (device, agent)
+          │
+          │  findings only; the platform never receives a raw row
+          ▼
+  arthur-platform                      policies
 ```
 
-Jamf is in the evidence path, not beside it. That is the whole point: the Mac already talks to
-Jamf and to nothing else, so the fleet needs no new route, no new firewall rule and no
-device-held credential.
-
-**Nothing connects *to* the collector.** Not a Mac, not Jamf — the collector polls. It needs
-outbound HTTPS to the Jamf Pro API and nothing listening, which is one fewer assumption than
-even a webhook would require.
+The machine talks only to the carrier it already reports to. That means no new network route,
+no firewall rule and no credential on the device. The collector needs outbound HTTPS to the
+carrier's API, and nothing listens for inbound connections.
 
 ## Contracts
 
 ### The row
 
-Six columns, in this order, from every branch:
+Every branch emits rows with the same six columns, in this order:
 
 ```
 kind, id, ver, loc, extra, perms
 ```
 
-`kind` is one of `app`, `npm`, `brew`, `daemon`, `port`, `ext`, `nmh`, `file`, `image`,
-`container`, `ilabel` — plus `scan`, below. `container` and `ilabel` arrived with v0.4.0; what
-they claim, and how strongly, is upstream's `docs/containers.md`. What matters here is that they
-reach the deployed payload — `discover --write` runs every branch, so they appear without
-`--deep` — and so count against the size budget below.
+`kind` says what the row is: `app`, `npm`, `ext`, `image`, and so on. The set of kinds, and what
+each one claims, is upstream's. See upstream's
+[`docs/agents.md`](https://github.com/arthur-ai/osquery-ai-discovery/blob/main/docs/agents.md)
+and [`docs/containers.md`](https://github.com/arthur-ai/osquery-ai-discovery/blob/main/docs/containers.md).
+Every kind counts against the size budget, because the deployed run executes every branch.
 
-`model` was a tenth and is gone: upstream dropped the model runners from the catalog, and
-the manifest-glob branch that fed it went with them. A branch's first `UNION ALL` arm must alias all six by name: a
-UNION takes its column names from the first arm alone, and an unaliased one silently inherits
-whatever precedes it. That shipped once — the pack's `browser` query returned 74
-correctly-counted rows keyed `'ext'` and `permissions || CASE WHEN manifest_json LIKE …`,
-readable by nothing.
+### The payload
+
+The payload is a bare JSON array of rows, framed as `arthur1.<base64(gzip(json))>`. If the
+framed value is larger than the budget, the payload is replaced by `ERROR:oversize:<bytes>`.
+Serial, hostname and OS are left out on purpose. The carrier's record already holds them, and
+a second copy would be a second source of truth for a device's identity.
 
 ### The scan row
 
-Every payload carries one per branch, dated:
+Every payload carries one dated scan row per branch:
 
 ```json
-{"kind":"scan","id":"containers","ver":"1788199567","loc":"/var/run/docker.sock","extra":"ok"}
+{"kind":"scan","id":"containers","ver":"1788199567","loc":"/var/run/docker.sock","extra":"ok","perms":""}
 ```
 
-`ver` is unix seconds — the payload dates itself, because a reader that can only `cat` a file
-cannot check its mtime, and a config-management tool that redeploys the file resets the mtime
-without changing the truth. `extra` is a closed vocabulary:
+`ver` is the scan time in unix seconds, so the payload dates itself. A carrier that can only
+`cat` a file cannot read the file's mtime, and a redeploy resets the mtime anyway. `extra` is
+the branch's outcome, which the status line repeats as `branch=outcome`. That vocabulary is
+upstream's
+([`deployment.md`](https://github.com/arthur-ai/osquery-ai-discovery/blob/main/docs/deployment.md#statustxt-whose-vocabulary-is-a-contract)).
+It is a contract: Smart Groups match on these strings, and the collector branches on them.
 
-| `extra` | means |
-|---|---|
-| `ok` | the branch ran; its rows in this payload are real |
-| `absent` | the scan found no runtime it can name — no Docker socket, and none of the other runtimes it probes for. A fact about the machine rather than a fault, and the only non-`ok` value that leaves the status line's first token `ok` |
-| `unreadable:<runtime>` | a runtime is installed but this scan does not read it — Podman, say. Containers it holds are uncounted, so this is a gap and not an absence |
-| `unhealthy:<code>` | the socket answered `<code>`, not 200. `000` is no reply inside the probe budget |
-| `timeout:<n>` | answered `/_ping`, then blocked on the query and was killed at `<n>`s |
-| `error` | the branch failed outright, typically a table this osquery build lacks |
-| `no-cache` | nothing has been written. A deployment fault, not a fact about the Mac |
-| `stale=NNh` | **not a scan-row value.** The *status* attribute appends it when the served scan is over a day old — the collector keeps the last good payload when a run fails, so `ok` alone stopped implying recency. Derived by the EA from the timestamp in the value |
+The carriers in this tree add tokens to the status line:
 
-This vocabulary is a contract. Smart Groups match on these strings and the collector branches
-on them, so it does not grow silently.
-
-**`ok` and `absent` are the two that say nothing is wrong** — one ran and found things, the
-other looked and there was nothing to find. The rest are branches that could not look, and
-keeping them apart is what makes the first token worth alerting on: a signal that fires on
-every Mac without Docker is one a fleet learns to ignore.
-
-`unreadable:<runtime>` exists because `absent` used to cover both cases — a Podman host
-reported the state needing action as the state needing none. It is also the bound on what
-`absent` claims: the scan names the runtimes it knows, so `absent` means none of those were
-found, not that no container can exist on the machine. That is the same bound every branch
-has — `apps=ok` reports what matched where it globbed.
-
-### The envelope the collector receives
-
-```json
-{"scan": {"serial": "…", "host": "…", "os": "…", "osquery": "…",
-          "at": "…", "tool": "…", "containers_scanned": true},
- "findings": [ …rows… ]}
-```
-
-Three things the envelope does not carry, and why:
-
-- **`findings` becomes the enumerated rows** — 83 to roughly 759 on a reference Mac. The
-  collector filters; the endpoint no longer does.
-- **`containers_scanned` is superseded.** A boolean cannot distinguish "no Docker" from
-  "Docker wedged", which is precisely the distinction the guard exists to make. The scan rows
-  carry it exactly. Derive the boolean from the `containers` scan row during migration, then
-  retire it.
-- **Identity comes from Jamf, not from the payload.** `serial`, `host` and `os` are already
-  in the computer's inventory record, which the collector is reading anyway — that is what
-  `section=…,GENERAL` is for. Putting them in the EA value spends payload on data Jamf already
-  holds, and invents a second source of truth for a Mac's identity. The endpoint keeps only
-  what Jamf cannot know: the rows, the per-branch outcomes, and the osquery version that
-  produced them.
+- `stale=NNh`: appended by the Jamf status attribute when the scan is more than a day old
+- `failed=<UTC>`, `osquery=absent` and `inventory=refused:<code>`: appended by the Compute
+  Engine and EC2 reporters about the latest run
 
 ### What the collector emits
 
-Findings, never evidence. One record per (device, agent), carrying the identity the
-resolver keys on and everything the sensor could see:
+The collector emits findings, never evidence. It emits one record per (device, agent):
 
 ```
 external_id        f"{device_key}:{agent_id}"
 name               the catalog's name for the agent
-last_seen          the scan row's `ver` -- when the MAC scanned
-creation_source    address + observations, below
+last_seen          the scan row's `ver`: when the machine scanned
+creation_source    address + observations
 ```
 
-**Routes collapse into the grain.** One agent commonly arrives through several at once —
-Codex CLI as an npm global *and* a CLI shim, Claude Desktop as a bundle id *and* a
-native-messaging host — and a per-route key would report one install several times.
-Measured on a developer Mac: 10 agents across 20 evidence rows.
+**Several routes collapse into one record.** One agent often shows up through several routes.
+Codex CLI, for example, appears as an npm global *and* a CLI shim. A key per route would report
+one install several times. On one developer Mac, 20 evidence rows made 10 agents.
 
-`device_key` is the MDM's own id, never the serial: VMs and refurbished units produce
-empty or duplicate serials, and an identity that churns mints a duplicate every scan.
+`device_key` is the carrier's own device id, never the serial number. VMs and refurbished units
+have empty or duplicate serials, and an id that changes creates a duplicate record on every scan.
+`external_id` stays stable when one of an agent's routes is uninstalled. The address is
+(device, primary route), because its job is to find the thing on the machine again.
 
-**The address names the evidence; `external_id` names the agent.** `external_id` stays
-stable when one of an agent's routes is uninstalled; the address is (device, primary
-route) because its job is finding the thing again on the machine.
+**It also reports the machines it could not read.** Each scan's outcome carries device
+coverage: how many machines it read and decoded, the unreadable ones counted by reason, and
+each of those listed, up to 1,000 per scan. An entry says which machine it is (device key and
+name), where it is, why it could not be read and when it last reported, and nothing else:
+never an attribute value, a payload or a credential. The list reaches the job log's
+`discovery_scan_outcome` line and a standalone engine's outcome event on every scan. The
+Platform's run gets the counts, and gets the list once the engine's `arthur-client` declares
+the field; the engine needs no change for that.
 
-`loc` and `ver` mean different things per kind, and two of those meanings are not what an
-observation field names: the `images` route carries a digest in `loc`, not a path, and a
-`container` row carries its *state* in `ver`, not a version. Both are mapped per kind.
+`loc` and `ver` mean different things for different kinds, and the collector maps them per
+kind. For example, an `image` row carries a digest in `loc`, and a `container` row carries its
+state in `ver`.
 
-### Three timestamps, three failure modes
+### Three timestamps
 
-| | source | freezes when |
+| | Source | Freezes when |
 |---|---|---|
-| `last_seen` | the `kind=scan` row's `ver` | the agent is uninstalled — it stops appearing in rows |
-| `last_scanned` | the MDM's own per-device report date | the Mac stops checking in |
-| *(derived)* | report date recent **and** `ver` old | the scheduled scan died on a live, reporting Mac |
+| `last_seen` | the scan row's `ver`, or the report time when the payload carries none | the agent is uninstalled and stops appearing in rows |
+| report time | Jamf: `general.reportDate`. Compute Engine and EC2: the newest timestamp on the status line, so a later `failed=<UTC>` counts | the machine stops reporting |
+| *(derived)* | report time recent, but `ver` old | the scheduled scan keeps failing on a machine that still reports |
 
-The third is the only fault the collector can report and no Smart Group can see.
-First-sighting is absent because no source can report it — it is the earliest `last_seen`
-the platform has recorded, and the platform computes it.
+The carriers surface the third case on the status line: `stale=NNh` on Jamf, and `failed=<UTC>`
+on Compute Engine and EC2. First-sighting is not reported by any source: the platform computes
+it as the earliest `last_seen` it has recorded.
+
+On Compute Engine and EC2 the report time is the machine's own clock, and the lookback bounds
+it only from below. A machine whose clock runs fast therefore stays inside the lookback that
+much longer once it stops reporting. Discovery comes first, so it is still published, and the
+scan names it with its skew rather than withholding it; no `last_seen` is later than the scan's
+own clock.
 
 ## Transport
 
-**Jamf and Compute Engine carry this; neither is special.** The collector names no vendor:
-it runs on a schedule, writes three files, and stops. What a carrier has to provide — a
-scheduled script, a per-device string attribute large enough for the payload, an inventory API
-filterable on a per-device report date, and a stable device id — is written down in
-[`mdm/README.md`](mdm/README.md). The sections below describe how Jamf satisfies each, then
-how Compute Engine does.
+A carrier must provide four things, listed in [`mdm/README.md`](mdm/README.md):
 
+- a way to run a script on a schedule
+- a per-device string attribute
+- an inventory API
+- a stable device id
 
-**The collector polls Jamf. Nothing connects to the collector.** Jamf's own documented pattern
-for an integration that needs inventory data, and the reason the fleet needs no new
-networking.
+The collector names no carrier, so each transport below is the carrier half alone.
 
-Two Extension Attributes, both written by the scheduled run and both read by `jamf recon`.
-The names below are the reference deployment's; the collector finds the evidence by the
-`arthur1.` prefix on its value rather than by name, so a fleet may call them anything:
+### Jamf Pro: Extension Attributes
 
-| EA | Carries | Size |
+Two Extension Attributes are read by `jamf recon`:
+
+- **the inventory**: `arthur1.…`, ~24 KB
+- **the status line**: ~200 bytes, for Smart Groups
+
+The collector finds the inventory by its `arthur1.` prefix, not by the attribute's name, so a
+fleet can name both attributes anything.
+
+The collector polls `GET /api/v1/computers-inventory?section=EXTENSION_ATTRIBUTES,GENERAL`. It
+filters and sorts on `general.reportDate`, Jamf's documented way to find devices that submitted
+inventory recently. The same pull runs on a schedule (since the last success) and on demand
+(since an operator's choice). A source can be limited to computer groups. It resolves the
+group names before reading any device, and drops out-of-scope Macs before decoding their
+payloads. Each run reports devices read, in scope and excluded as `device_coverage`.
+
+**An on-demand pull must show Jamf's report date beside the collector's own ingest time.** When
+someone says the data is old, there are two possible causes, and only one is the collector's:
+
+| Observation | Cause | Fix |
 |---|---|---|
-| `Arthur AI Inventory` | the evidence — `arthur1.<base64(gzip(json))>`, or `ERROR:oversize:<bytes>` | ~24 KB, measured |
-| `Arthur AI Inventory Status` | collection health, plain text and greppable | 154 bytes, measured |
-
-The health line is the writer's own status output, unchanged:
-
-```
-ok 2026-09-18T13:46:38Z rows=804 apps=ok browser=ok containers=ok filesystem=ok homebrew=ok native-messaging=ok packages=ok ports=ok runtime=ok vscode=ok
-```
-
-Its only consumer is Jamf itself — a Smart Group finding Macs where collection is broken, so a
-Jamf policy can remediate. The collector does not need it: the same per-branch outcomes are
-inside the evidence payload.
-
-### How the collector gets it
-
-**It polls. There is no webhook.** One function, two triggers:
-
-```
-pull(since)  ── scheduled ──  since = the last successful run
-             └─ on demand ──  since = an operator's choice, or one serial
-```
-
-`GET /api/v1/computers-inventory?section=EXTENSION_ATTRIBUTES,GENERAL`, filtered on
-`general.reportDate` — Jamf's documented parameter for "devices that have submitted inventory
-within the last day". The `Read Computers` privilege and nothing else — unless the source
-is scoped to device groups, below.
-
-**Device-group scope.** A Jamf source can name computer groups to include and to exclude, in
-its `include_groups` and `exclude_groups` fields (comma-separated names). Each scan resolves
-the names against `GET /api/v1/computer-groups` before reading a device, adds
-`GROUP_MEMBERSHIPS` to the inventory sections, and drops every out-of-scope Mac before its
-payload is decoded. Exclude wins over include; an empty include means the whole fleet. A name
-that matches no group — misspelled, or renamed in Jamf — fails the scan, because an exclude
-rule that quietly matched nothing would scan exactly the Macs it was meant to leave out.
-Scoping needs `Read Smart Computer Groups` and `Read Static Computer Groups` as well, and an
-unscoped source asks for neither. Each run reports devices read, in scope, and excluded per
-group, as `device_coverage` on the scan outcome.
-
-**Why not `ComputerInventoryCompleted`.** Jamf documents 24 webhook events and **documents no
-delivery semantics for any of them**: no retry policy, no delivery guarantee, no timeout, no
-dead-letter, and nothing about whether a webhook is disabled after repeated failures. Checked
-in both the admin documentation and the developer documentation. So delivery must be assumed
-fire-and-forget — which means a reconciliation pull is required regardless, and once the pull
-exists the webhook buys only latency. Latency below a day is not wanted here, and Jamf does
-not collect inventory more than daily anyway.
-
-That leaves the webhook as an inbound HTTPS endpoint, its own authentication, its own failure
-modes and a permanent "did we miss an event" question, in exchange for nothing. Dropped.
-
-(For the record, in case it is ever wanted: the event carries serial number, device name,
-model, OS version and build, user and network details — enough to identify a Mac, never the
-inventory record. It is always trigger-then-callback.)
-
-### On demand, and telling two kinds of stale apart
-
-The on-demand trigger exists for one case: somebody looks at Arthur and says the data is old.
-It is the same `pull()`, so it costs nothing extra to have.
-
-**It must report Jamf's `general.reportDate` beside the collector's own last-ingest time**, per
-Mac, because there are two unrelated causes and only one is the collector's:
-
-| observation | cause | fix |
-|---|---|---|
-| Jamf's report date is recent, the collector's ingest is older | the collector is behind | the on-demand pull fixes it |
-| Jamf's report date is itself nine days old | the Mac has not run `recon` | nothing the collector can do. A Jamf problem |
-
-Without that comparison the on-demand pull becomes a button people press that changes nothing,
-and the real fault stays invisible.
-
-### Push was considered and rejected
-
-The retired inline script carried a `--push URL` mode, and it was **never part of this
-design.** Its two justifications are both gone: sub-daily latency is not wanted, and a
-collector that cannot reach the Jamf Pro API cannot poll either, so it has no fallback role. It
-costs a route from every Mac to the collector plus a credential on every Mac.
-
-Recorded as rejected rather than retained as an option, because an option in a design document
-is something somebody eventually builds. It went with the script.
-
-### One EA for evidence, not one per query
-
-Rejected deliberately:
-
-- The argument for splitting was per-EA size headroom, and that rests on a cap we invented
-  (see Constraints).
-- The thing splitting would buy — knowing which branch failed — is already inside the payload
-  as one dated `kind=scan` row per branch.
-- Splitting adds correlation: several values collected at possibly different times, needing a
-  scan id, with a partial-scan failure mode a single payload does not have. Under the pull
-  model the collector would have to reassemble them per computer, for nothing.
+| Jamf's report date is recent; the collector's ingest is older | the collector is behind | the on-demand pull |
+| Jamf's report date is itself old | the Mac has not run `recon` | a Jamf problem, which the collector cannot fix |
 
 ### Compute Engine: guest attributes
 
-A VM writes its own guest attributes through its metadata server and the Compute Engine API
-serves them — Jamf's shape again: the machine writes where it already can, the collector reads
-with an API call, nothing connects to the machine and no credential lives on it.
-`deploy/report-guest-attributes.sh` runs the collector and publishes `arthur/inventory` and
-`arthur/status`. It is the Compute Engine half of the carrier, as the Extension Attribute is on
-Jamf, so the collector stays vendor-neutral. [`mdm/gce.md`](mdm/gce.md) has the deployment.
+A VM writes its own guest attributes through its metadata server, and the Compute Engine API
+serves them. As with Jamf, the machine writes where it already can, and the collector reads
+with one API call. `deploy/report-guest-attributes.sh` runs the collector and publishes
+`arthur/inventory` and `arthur/status`. [`mdm/gce.md`](mdm/gce.md) covers the deployment.
 
-**One key carries the inventory.** A guest attribute holds exactly 262,144 bytes — measured, and
-refused with a 400 above it — which is this tree's budget to the byte, so splitting the payload
-across keys buys nothing a real one needs. A GCS object write was the other option and is
-strictly worse: a credential and an egress path on every VM.
+**One key carries the inventory.** A guest attribute holds exactly 262,144 bytes, which is this
+tree's budget to the byte, so splitting the payload across keys would gain nothing.
 
-**What it lacks is a report date.** Nothing records when a guest attribute was written, and a
-stopped VM, or one whose guest attributes were turned off, keeps serving its last values.
-Freshness is the status line's timestamp, and the reporter adds `failed=<UTC>` when the latest
-run did not succeed. The Compute Engine collector reads every instance on every scan.
+**There is no report date.** Nothing records when a guest attribute was written, and a stopped
+VM keeps serving its last values. So freshness comes from the status line's timestamp, and the
+collector reads every instance on every scan.
+
+### EC2: SSM custom inventory
+
+An instance's SSM Agent uploads custom inventory from a file the instance writes, and the SSM
+API serves it. `deploy/report-ssm-inventory.sh` runs the collector and writes
+`Custom:ArthurAIDiscovery`. A drop-in on the same systemd unit runs it in place of the
+guest-attribute reporter. The agent uploads with the instance's existing SSM permissions, so no
+credential is added. [`mdm/ec2.md`](mdm/ec2.md) covers the deployment.
+
+**The payload travels in parts.** A custom inventory value holds at most 4,096 characters. So
+each value is cut into numbered parts, and every part carries the whole value's sha256. The
+reader refuses any set of parts that does not rebuild exactly one whole value. A lost part
+therefore reads as an instance that cannot be read, never as a shorter payload with fewer
+agents in it.
+
+**The reporter cannot see the upload.** A refused or capped upload shows in the agent's log,
+not in the values. So the only sign Arthur gets is a status line that stops advancing. As on
+Compute Engine, freshness is the status line's timestamp. It is never the inventory's
+`CaptureTime`, which advances on every association run whether or not the values changed.
 
 ## Failure semantics
 
-This is the part the project is actually built on. Every defect found in it so far has been
-silent: plausible output, wrong values, exit code zero, no error anywhere.
+**An empty value looks exactly like a clean machine.** Most of the design defends against that.
+Every failure reports a reason, and no path may report "nothing" without saying why:
 
-**An empty value is indistinguishable from a clean Mac.** That is the failure everything else
-here defends against. So every failure reports a reason, and no path is allowed to return
-"nothing" without saying why.
-
-**A bounded query must not trust what it killed.** Measured on osquery 5.23.1 against a daemon
-that answers `/_ping` and then stalls: `SIGTERM` stops `osqueryi` in 0.35s and it exits **0**,
-having printed `[\n\n]` — a valid, parseable, *empty* JSON array. A wrapper reading the child's
-exit code and stdout would report a Mac with no AI tools on it. Output is discarded on the
-strength of having fired the kill, and on nothing else.
-
-**A health check is necessary and not sufficient.** Per Docker state, whether each guard admits
-the branch:
-
-```
-                    absent  refuse  hang   error  wedge   healthy
-connect() only      skip    skip    RUN    RUN    RUN     RUN      <- stalls forever
-curl -s             skip    skip    skip   RUN    RUN     RUN      <- silent zero rows
-HTTP 200 required   skip    skip    skip   skip   RUN     RUN      <- still stalls
-200 + wall clock    skip    skip    skip   skip   KILLED  RUN      <- correct
-```
-
-`wedge` — 200 on `/_ping`, silence on `/images/json` — is Docker Desktop with a live API and an
-engine that is not serving, the ordinary condition of a Mac starting Docker. The window between
-probe and query is small and not zero.
-
-**Branches run in their own process on the write path**, and that is a reliability decision
-rather than a performance one. Composed into one statement, one unavailable table returns **0
-rows and exit 1**, with five bytes of valid empty JSON on stdout — a consumer that ignores exit
-status cannot tell that from a clean Mac. Run apart, the same fault costs one branch: 6 of 6
-reported, the bad one contributing 0. Every query declares `min-osquery: 5.10.0`, so a missing
-table is a real deployment state.
-
-**Freshness is judged from the payload, never from a file.** The scan row's `ver` is the only
-timestamp that survives a redeploy.
+- **A branch that cannot look** writes a dated scan row that says so, such as `unhealthy:000`,
+  `timeout:6` or `error`, rather than dropping its rows silently. How upstream bounds and
+  guards each branch is its
+  [`containers.md`](https://github.com/arthur-ai/osquery-ai-discovery/blob/main/docs/containers.md).
+- **An oversize payload** writes `ERROR:oversize:<bytes>`, never a truncated value or nothing.
+- **A scan that cannot run** keeps the last good payload and fails the run, so the Jamf Policy
+  or the systemd unit reads as failed. Erasing good evidence to signal a fault would report a
+  well-equipped machine as empty.
+- **The kept payload dates itself.** Each carrier makes its age visible: `stale=NNh` on Jamf,
+  `failed=<UTC>` from the Linux reporters. The collector judges freshness from the scan rows'
+  `ver`, the only timestamp that survives a redeploy.
 
 ## Constraints
 
-Each with its status, because two of these were quoted as platform limits for a long time and
-are not.
-
 | Constraint | Value | Status |
 |---|---|---|
-| EA script timeout | — | **No documented Jamf timeout.** Community evidence runs the other way: EAs measured at 21s, and `jamf recon` *stalling* rather than being cut off. An unbounded EA does not fail fast; it hangs that Mac's inventory |
-| EA value cap | **≥ 1 MB** | **Measured** 2026-09-05, and it is not the budget below. A 1,048,576-byte value round-tripped script → `jamf recon` → Jamf Pro → API read with an identical sha256 — not truncated, not rejected. Jamf documents no cap and the column is `LONGTEXT`. The ceiling above 1 MB is still unmeasured, and nothing here needs it |
-| Guest attribute value cap | **exactly 262,144 bytes** | **Measured** 2026-10-03 on a Debian 12 VM: 262,144 accepted, 262,145 refused with HTTP 400 — never truncated. Equal to our budget, so `test/lint.sh` fails if the budget rises, and the reporter sends the value without the file's trailing newline |
-| Guest attributes over a VM's life | survive reboot and stop/start; served while stopped | **Measured** 2026-10-03, identical sha256. With `enable-guest-attributes=FALSE` the VM gets HTTP 403 and the API still serves the old values. Suspend and resume **not measured** |
-| Our time budget | 10s composed | **Self-imposed**, to keep recon brisk. Enforced by `tools/measure.py --check` |
-| Our size budget | 256 KB framed | **Self-imposed** on Jamf, and on Compute Engine **the platform's own cap** (the row below), so it must not rise. **Not** a bandwidth decision — fleet cost is payload × fleet (200 MB per sync at 10,000 Macs) whatever this says. It buys margin: `ERROR:oversize:<bytes>` is loud and known, what Jamf does past its own limit is unobserved, and margin keeps the known failure in front of the unknown one. Was 30 KB, which an ordinary Mac reached 68% of. At the measured 25.4 framed bytes/row it fires near 10,300 rows against the ~840 a loaded Mac carries — 13× a real machine, 4× under the measured floor, and a tripwire for a runaway branch |
-| Enumerated payload | 929 rows, 155,562 B raw, 24,668 B framed (9% of budget) | **Measured** 2026-10-11 at vendored ref `v0.12.0`, Apple Silicon, macOS 26.6.2, osquery 5.23.1, Docker up, run unprivileged. 68 of the rows are `proc`, from the `running` branches v0.12.0 added. Was 804 rows / 20,808 B framed at `v0.4.0` |
-| Enumerated payload, Linux VM | 623 rows, 66,737 B raw, 9,816 B framed (3.7% of budget) | **Measured** 2026-10-12 on an `e2-small` Debian 12 VM installed by the OS policy in `mdm/gce.md`, as root under systemd, vendored ref `v0.12.2`, osquery 5.23.1. ~8s and 1.3s of CPU per run, cold |
-| Enumerated payload, Linux runner | 1,782 rows, 193,075 B raw, 27,400 B framed (10% of budget) | **Measured** the same day on GitHub's `ubuntu-24.04` runner as root, Docker up. A runner carries far more tooling than a server VM |
-| Fleet cost through Jamf | 179 MB per full sync at 10,000 Macs | **Measured** (27 MB filtered). Now a cost accepted rather than avoided: it buys 10,000 fewer network paths. The same bytes leave the Mac either way |
-| Health line | 195 bytes | **Measured** at thirteen branches (v0.12.0), all `ok`; a degraded line runs longer |
-| Jamf inventory cadence | at most once per day per device | **Documented by Jamf.** Caps end-to-end discovery latency at ~24h |
-| Jamf API concurrency | 5 concurrent connections | **Documented by Jamf.** No hard rate limit; exceeding it degrades Jamf Pro |
-| Incremental pulls | `general.reportDate` filter | **Documented by Jamf** — "devices that have submitted inventory within the last day" |
-| Webhook delivery semantics | **undocumented** | Checked both the admin and developer documentation: no retry policy, no delivery guarantee, no timeout, no dead-letter. This is why the design polls |
-| Collector ingress | none | Nothing listens. Outbound HTTPS to Jamf — plus Amplitude if the collector is built on the vendored `bin/classify`, which from v0.4.0 sends usage telemetry by default (upstream's `docs/telemetry.md`). **The endpoint stays silent** — `classify` is not in the payload |
-| `docker_images` | no timeout of its own | **Measured.** osquery 5.23.1 offers no flag to bound a query: `--docker_socket` is the only docker flag, `--alarm_timeout` is shutdown-only with a 10s floor, `--schedule_timeout` bounds osqueryd's schedule |
+| Jamf EA script timeout | none documented | Community reports show EAs running 21s, and `jamf recon` stalling rather than being cut off. An EA without a time limit does not fail fast; it hangs that Mac's inventory |
+| Jamf EA value cap | **≥ 1 MB** | **Measured** 2026-09-05: a 1,048,576-byte value round-tripped from script through `jamf recon` and Jamf Pro to an API read, with identical sha256. Jamf documents no cap. Anything above 1 MB is unmeasured |
+| Guest attribute value cap | **exactly 262,144 bytes** | **Measured** 2026-10-03 on Debian 12: one byte more is refused with HTTP 400, never truncated |
+| Guest attributes over a VM's life | survive reboot and stop/start; served while stopped | **Measured** 2026-10-03, identical sha256. With `enable-guest-attributes=FALSE`, the VM gets HTTP 403 and the API still serves the old values. Suspend and resume are not measured |
+| SSM custom inventory value cap | **exactly 4,096 characters** | **Measured** 2026-10-16 on Amazon Linux 2023. The agent refuses 4,097 *silently*: it logs to `/var/log/amazon/ssm/errors.log`, skips the file, and reports the association as `Success` |
+| SSM custom inventory per type | no cap at the budget | **Measured** 2026-10-16: AWS's quotas page says 200 KB, yet 262,144 and 614,400 characters each uploaded and read back intact |
+| SSM inventory per node per day | **5,000 KB, enforced** | **Measured** 2026-10-16: the upload that crosses it fails with `TotalSizeLimitExceededException`, and the previous values are still served |
+| Size budget | 256 KB framed | **Our choice** on Jamf. On Compute Engine it is the platform's own cap, so it must not rise; `test/lint.sh` enforces this. The budget keeps our loud failure (`ERROR:oversize`) ahead of any carrier's unobserved one. At ~26 framed bytes per row it fires near 10,000 rows, about 11× the Mac measured below |
+| Jamf inventory cadence | at most once a day per device | **Documented by Jamf.** This limits discovery latency to ~24h |
+| Jamf API concurrency | 5 concurrent connections | **Documented by Jamf.** There is no hard rate limit, but exceeding it degrades Jamf Pro |
+| Webhook delivery | **undocumented** | Neither Jamf's admin docs nor its developer docs give a retry policy, delivery guarantee, timeout or dead-letter queue |
+| Collector ingress | none | Nothing listens. Built on the vendored `bin/classify`, the collector also sends usage telemetry by default (upstream's `docs/telemetry.md`). The endpoint sends nothing |
 
-Neither self-imposed budget should be restated as a platform limit. The cap in particular was
-the entire argument for splitting evidence across many Extension Attributes.
+Measured payloads with osquery 5.23.1, run cold:
+
+| Machine | Vendored ref | Rows | Raw | Framed | Run |
+|---|---|---|---|---|---|
+| Apple Silicon Mac, macOS 26.6.2, Docker up, unprivileged (2026-10-11) | `v0.12.0` | 929 | 155,562 B | 24,668 B (9%) | ~8s |
+| `e2-small` Debian 12 VM, root under systemd (2026-10-12) | `v0.12.2` | 623 | 66,737 B | 9,816 B (3.7%) | ~8s, 1.3s CPU |
+| `t3.small` Amazon Linux 2023, root under systemd (2026-10-16) | `v0.12.2` | 809 | 88,050 B | 11,376 B (4.3%) | 6s, 1.4s CPU |
+| GitHub `ubuntu-24.04` runner, root, Docker up (2026-10-12) | `v0.12.2` | 1,782 | 193,075 B | 27,400 B (10%) | — |
+
+Through Jamf, a full sync at 10,000 Macs moves about 250 MB: the Mac above's 24,668 bytes
+each. That cost is accepted: it saves 10,000 network paths, and the same bytes leave each Mac
+whichever way they travel.
 
 ## Decisions
 
-**One reversal, recorded rather than quietly replaced.** Direct push from each Mac was chosen
-first, on the strength of keeping the payload out of Jamf's inventory. It was superseded
-once the cost was counted properly: push needs a route and a credential on every Mac, and the
-same ~21 KB leaves the Mac either way — through Jamf it is `Mac → Jamf 21 KB` plus one
-incremental server-to-server read, against push's `Mac → Jamf 154 B` plus `Mac → collector
-21 KB`. The bytes are close. The 10,000 network paths and 10,000 credentials are not.
-
 | Decision | Why |
 |---|---|
-| The endpoint enumerates | A filtered endpoint never sends the evidence, so a new signature cannot re-match against what is already held — which is the property this tree's README already claims |
-| Matching happens only in the collector; the endpoint matches nothing | One place to change, and changing it costs no fleet re-scan |
-| `dist/signatures.sql` rides in the payload, unread | Upstream packs it into every bundle from v0.11.0. Leaving it out would mean patching the vendored bundler, and the catalog is public anyway. What the design forbids is matching on the endpoint, and that stays guarded: the collector never passes `--names` |
-| The catalog is authoritative in the public repo and vendored into the collector | A catalog of published identifiers is osquery material, and keeping it public means a signature is added once, in the open, next to the queries and the reference matcher. A second private catalog would drift, which is the failure enumeration exists to prevent |
-| No summary EA | Computing counts on the endpoint needs a catalog there. Under enumeration the retired summary query goes from 238 chars to **13,522**, with `ids=` naming **564** ids — Adobe, Citrix, stock Apple apps. And the counts stop meaning "AI things": `app=4` becomes `app=398` on the reference Mac. The status line carries collection health instead |
-| Jamf carries health only | Policies are managed in arthur-platform, so Jamf needs no findings targeting |
-| The collector **polls** Jamf; nothing connects to the collector | The Mac already talks to Jamf and nothing else, so the fleet needs no new route, firewall rule or device-held credential. Polling also means no inbound path to the collector — one fewer assumption than a webhook needs |
-| No webhook | Jamf documents no delivery semantics for any of its 24 events — no retry, no guarantee, no timeout, no dead-letter. Delivery must be assumed fire-and-forget, so a reconciliation pull is required anyway; the webhook then buys only latency, which is not wanted |
-| Push rejected outright, not retained as an option | Both its justifications are gone: sub-daily latency is not wanted, and a collector that cannot reach the Jamf API cannot poll either. An option in a design document is something somebody eventually builds |
-| ~24h discovery latency accepted | Jamf collects inventory at most once per day per device, so this follows from the decision above rather than being chosen separately. AI-tool inventory is not threat detection |
-| Identity read from Jamf's record, not the payload | `serial`, `host` and `os` are already in the record the collector fetches. Duplicating them spends payload and invents a second source of truth |
-| One EA, not one per query | See Transport. The size argument rests on a cap we invented; attribution already exists in the payload |
-| Guest attributes carry Compute Engine, one key for the inventory | The VM writes through its own metadata server — no credential, no route, nothing connecting in — and the measured cap equals the budget. A GCS object write needs a credential and egress on every VM |
-| A reporter wraps the collector on Compute Engine | The collector names no vendor; the reporter is the carrier half, as the Extension Attribute is on Jamf, and it can name a failed run because it saw one |
-| One driver for both platforms | The JSON check is the vendored runner's `--cache`, so nothing in the driver is one platform's |
-| Queries vendored at a pinned tag | Reviewable diffs, works offline, and the version is visible in the tree. A submodule adds clone and CI friction; fetch-at-build needs network in CI |
-| The bound lives in the runner, not the SQL | osquery has no per-query timeout, so the only bound is a kill on a process — and a kill is per process, which is why the expensive branch runs in its own |
+| The endpoint enumerates; only the collector matches | A filtering endpoint never sends the evidence, so a new signature could not re-match what Arthur already holds. With one place to match, a catalog change needs no fleet re-scan |
+| The catalog lives in the public repo and is vendored into the collector | A catalog of published product identifiers is osquery material, so it belongs with the queries and the reference matcher. A second, private catalog would drift |
+| `dist/signatures.sql` rides in the payload, unread | Upstream packs it into every bundle. Leaving it out would mean patching the vendored bundler. The real rule, no matching on the endpoint, stays guarded: the collector never passes `--names` |
+| No summary attribute | Counting agents on the endpoint needs a catalog there. Raw counts mean nothing: `app=4` becomes `app=398` once everything is enumerated. The status line carries collection health instead |
+| Identity comes from the carrier's record, not the payload | The collector already fetches the record. Duplicating serial, host and OS spends payload and creates a second source of truth |
+| One inventory attribute, not one per query | The size argument for splitting rests on a cap we invented. Per-branch outcomes are already in the payload. Splitting would add correlation across values collected at different times |
+| The collector polls; nothing connects to it | Each machine already talks to its carrier and to nothing else. So the fleet needs no new route, firewall rule or device-held credential, and the collector needs no inbound path |
+| No Jamf webhook | Jamf documents no delivery semantics for any of its webhook events, so a reconciliation pull would be needed anyway. The webhook would then add only latency, which is not wanted |
+| No push from each machine | Push needs a route and a credential on every machine, while the bytes are about the same: ~24 KB leaves each Mac through Jamf or directly. A collector that cannot reach the carrier's API could not poll either, so push is no fallback |
+| ~24h discovery latency | Jamf collects inventory at most once a day. AI-tool inventory is not threat detection |
+| Guest attributes carry Compute Engine; one key holds the inventory | The VM writes through its own metadata server, with no credential, no route and nothing connecting in. The measured cap equals the budget. A GCS write would need a credential and egress on every VM |
+| SSM custom inventory carries EC2, in parts that each carry the whole value's sha256 | The agent uploads with the instance's own SSM permissions. The alternatives all fall short: instance tags hold 256 characters and need a credential to write; Parameter Store holds 4–8 KB and needs one too; Run Command output stops at 24,000 characters and needs `ssm:SendCommand` |
+| A reporter wraps the collector on Linux, one per cloud | The collector names no carrier. The reporter is the carrier half, as the Extension Attribute is on Jamf, and it can name a failed run because it saw it |
+| One unit file for both clouds; a drop-in picks EC2's reporter | The collector, schedule and hardening are the same on both clouds, so a second unit would be a drifting copy. The drop-in clears `ExecStart` before setting it, which `test/lint.sh` checks |
+| Queries vendored at a pinned tag | Diffs are reviewable, the build works offline, and the version is visible in the tree. A submodule adds friction to cloning and CI; fetching at build time needs network in CI |
 
 ## Open questions
 
-- ~~**What to pin.**~~ — closed. Upstream cuts releases and this tree pins a tag;
-  `vendor/osquery-ai-discovery/VERSION` records which. A bare commit still prints
-  `PROVISIONAL`, which is legitimate until a tag carries what you need.
-- **Jamf API credential scope and rotation.** One credential with `Read Computers` (plus
-  `Read Smart Computer Groups` and `Read Static Computer Groups` for a group-scoped source),
-  held by the collector. Where it lives and how it rotates is undecided, and it is now the only
-  secret in the data path.
-
-### Answered by polling Jamf
-
-Four questions about this direction, and their answers:
-
-- ~~Whether webhook delivery is reliable enough~~ — **it is undocumented, so the question is
-  moot.** The pull is required either way, and the webhook is gone.
-- ~~Auth and reachability for the push path~~ — no path from any Mac, and one server-side
-  credential instead of 10,000.
-- ~~How the collector notices a Mac that stopped reporting~~ — **Jamf is the roster.**
-  `general.reportDate` answers it directly, which is stronger than a Smart Group on
-  `no-cache`: it distinguishes "reported, and collection is broken" from "has not reported at
-  all", and the second is invisible to an Extension Attribute by construction.
-- ~~Envelope provenance~~ — `serial`, `host` and `os` come from the computer record the
-  collector already fetches.
-
-## One implementation
-
-This tree carries **one** osquery implementation, the vendored one.
-
-| Path | What happened |
-|---|---|
-| `endpoint/discovery.sql` | **deleted.** Superseded by the vendored `dist/discovery-darwin.sql` (`dist/discovery.sql` until v0.3.0 split it per platform), which enumerates where this one filtered |
-| `endpoint/containers.sql` | **deleted.** Superseded by the vendored `dist/discovery-deep.sql`, whose version carries the guard matrix and the wall-clock bound |
-| `endpoint/summary.sql` | **deleted.** The status line carries collection health; the collector computes everything else |
-| `endpoint/discovery.sh` | **deleted**, rather than reduced to a wrapper. `dist/collect.sh` already runs the vendored runner and writes both attribute values, and a second thing that also framed `arthur1.` would be a second implementation of the one format this tree owns. `--push`, `PUSH_URL` and the envelope builder went with it |
-| `test/endpoint/fake_docker.py`, `docker_states.sh` | **deleted.** Upstream's versions are supersets — all six daemon states including `wedge`, the bound's tests, and a whole-suite ceiling this copy never had |
-| `test/endpoint/scenarios/*` | **deleted.** Nine of eleven shared a name with the public repo's, which now has thirteen; `30-local-models` covered a kind upstream retired, and `70-docker` is covered by upstream's `docker_states.sh`. They tested the queries, which are no longer this tree's concern |
-| `test/endpoint/lint.sh` | **kept, moved to `test/lint.sh` and rewritten** around what this tree owns, plus a new guard: no `.sql` file, no `osqueryi` invocation and no plaintext query outside `vendor/` |
-| `README.md`, `CLAUDE.md` | **rewritten.** Both describe an endpoint that enumerates, and name the vendored tree as the only implementation |
-
-**The guard matters more than the deletion.** A second copy does not announce itself — this
-one filtered where the deployed artifact enumerated, answered a different question about the
-same Mac, and passed every test, because the tests tested the copy. `test/lint.sh` fails if it
-comes back.
+- **Quick Setup and custom inventory.** Quick Setup's host-management inventory association
+  takes priority over any other. Whether it gathers custom inventory is undocumented and
+  unmeasured. A fleet whose inventory comes from it may need a change before it reports.
+- **Jamf API credential storage and rotation.** It is not decided where the collector's Jamf
+  credential lives or how it rotates. It is the only secret in the data path.

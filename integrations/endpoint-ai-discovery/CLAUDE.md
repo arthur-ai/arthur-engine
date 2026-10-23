@@ -1,8 +1,8 @@
 # CLAUDE.md
 
 Endpoint AI agent discovery for Arthur. osquery finds what is installed on a Mac or a Linux VM;
-a scheduled script writes a file; Jamf Extension Attributes, or a Compute Engine VM's guest
-attributes, carry it; a collector classifies.
+a scheduled script writes a file; Jamf Extension Attributes, a Compute Engine VM's guest
+attributes, or an EC2 instance's SSM custom inventory, carry it; a collector classifies.
 
 ## The boundary, first
 
@@ -30,9 +30,26 @@ should leave this tree's docs mostly untouched; if it does not, they were carryi
 
 [`docs/architecture.md`](docs/architecture.md) is the end-to-end design: the endpoint
 enumerates, the collector matches, and the catalog is authoritative in the public repo and
-vendored here. It also records which constraints are measured and which are ours — the "10s
-Extension Attribute timeout" and the size budget are both self-imposed, and neither is
-documented by Jamf.
+vendored into ml-engine, not here. It also records which constraints are measured and which are
+ours. The size budget is ours on Jamf and Compute Engine's own cap, and Jamf documents no
+Extension Attribute timeout.
+
+## Docs
+
+One fact, one place. Before adding a sentence, find the doc that owns it:
+
+| Doc | Owns |
+|---|---|
+| `README.md` | what this is, how it works in three steps, the layout, the dev commands |
+| `docs/quickstart.md` | the shortest path per carrier. Steps and a verify command only; it links to a runbook section for anything more |
+| `docs/mdm/<carrier>.md` | operating one carrier: prerequisites, deploy, verify, read the status, troubleshoot, Arthur's access, rollback |
+| `docs/architecture.md` | contracts, transport, failure semantics, **every measurement of the payload and the carriers** (Constraints), and every *why* (Decisions). A test's rough runtime beside its command is a hint, not a measurement |
+| `test/README.md` | what each guard catches |
+
+Runbooks state what to do, not the history of how a step came to be; a measurement a runbook
+needs is quoted once, with its number, and the evidence stays in architecture's Constraints.
+Section numbers in `gce.md` and `ec2.md` are cited by ml-engine's log messages and tests —
+renumbering them is a code change.
 
 ## Layout
 
@@ -42,10 +59,14 @@ documented by Jamf.
 | `tools/vendor-queries.sh` | vendor `bin/` and `dist/` from the public repo at one ref. Not `catalog/` — that is the collector's. |
 | `tools/build-collector.py` | build `dist/collect.sh` and `dist/collect-linux.sh`, one file per platform, around one driver. Holds the `arthur1.` framing. |
 | `dist/` | generated, and committed on purpose — a reviewer should see it change. |
-| `deploy/` | the LaunchDaemon for Macs; the systemd units and `report-guest-attributes.sh`, the Compute Engine carrier. |
+| `deploy/` | the LaunchDaemon for Macs; the systemd units and `report-guest-attributes.sh`, the Compute Engine carrier; `report-ssm-inventory.sh` and the `ec2.conf` drop-in that runs it, the EC2 carrier. |
+| `deploy/arthur-ai-discovery.os-policy.yaml` | the Compute Engine OS policy, and its only copy: `tools/render-os-policy.sh` renders it for gcloud and `deploy/terraform/` reads it. |
+| `deploy/terraform/` | a Terraform module that deploys that policy to a fleet's projects and zones, or through one policy orchestrator. Its tests are `terraform test`, against mocked providers. |
+| `tools/render-os-policy.sh` | pin the OS policy to one ref: each file's URL there, and the sha256 of the bytes the ref holds. |
 | `test/lint.sh` | static checks on everything this tree owns. ~1s, no VM. |
 | `test/run-collector.sh` | runs this platform's collector and asserts on it. ~15s, needs osquery. |
 | `test/run-guest-attributes.sh` | runs the reporter against a fake metadata server built from measured answers. ~3s, no osquery. |
+| `test/run-ssm-inventory.sh` | runs the EC2 reporter against a fake IMDS built from AWS's documentation, and reassembles the file it writes. ~6s, no osquery. |
 | `test/run-systemd.sh` | installs and runs the Linux collector under systemd. CI only — it writes to the machine. |
 
 ## Commands
@@ -55,20 +76,27 @@ sudo ARTHUR_OUT_DIR=/tmp/arthur dist/collect.sh   # run what deploys; writes 3 f
 vendor/osquery-ai-discovery/bin/discover          # raw rows, no framing, no files
 vendor/osquery-ai-discovery/bin/discover --deep   # ...plus a live container scan
 
-tools/vendor-queries.sh <ref>         # vendor the public queries + catalog at a ref
+tools/vendor-queries.sh <ref>         # vendor the public queries and runner at a ref
 tools/build-collector.py              # build both collectors around them
 tools/build-collector.py --check      # ...and confirm it carries the vendored tree
 
 test/lint.sh                          # static checks, ~1s, no VM
 test/run-collector.sh                 # run this platform's collector and assert on it, ~15s
 test/run-guest-attributes.sh          # what the Compute Engine reporter publishes, ~3s
+test/run-ssm-inventory.sh             # what the EC2 reporter writes, ~6s
+
+tools/render-os-policy.sh <ref>       # the Compute Engine OS policy, pinned to a ref
+cd deploy/terraform && terraform init -backend=false && terraform test   # the module, mocked
 ```
 
 Run both after any vendor bump or template edit. `lint.sh` **reads** the deployable and
 `run-collector.sh` **runs** it, which is the difference that matters: every static guard here
 passed for as long as the collector's extraction preamble went unexecuted by anything but a
 human. CI runs lint and the reporter test on Ubuntu, the Mac collector on a macOS runner, and
-the Linux collector plus `run-systemd.sh` on an Ubuntu runner, where systemd is PID 1.
+the Linux collector plus `run-systemd.sh` on an Ubuntu runner, where systemd is PID 1. It runs
+the Terraform module's tests too, and validates a caller at the lowest Terraform and Google
+provider the module admits: anything newer passes every other check and breaks a caller pinned
+there.
 
 **The VM scenario suite is upstream's.** At the vendored ref that is `test/lint.sh`,
 `test/docker_states.sh` (all six Docker daemon states, including `wedge`) and thirteen VM
@@ -188,13 +216,8 @@ does not need it.
 Apple Silicon. Running `dist/collect.sh` needs osquery and nothing else — no VM, and from
 vendored ref `v0.5.0` no interpreter either.
 
-**Both halves had to move, and ours was not sufficient alone.** `gzip`/`base64` and the vendored
-runner's `discover --cache` replaced this tree's `python3 -c`; upstream then removed its last one, putting the JSON work
-into shell helpers and osquery's own `json_valid`/`json_type`. In between, a claim that the
-deployable needed only osquery shipped and was false — the check behind it looked at
-`dist/collect.sh` and not at the vendored binaries inside it. `test/lint.sh` now derives the
-answer from the payload and counts invocations rather than mentions: it read three comments as
-a live dependency at the very ref that removed it.
+`test/lint.sh` derives that from the payload, not from `dist/collect.sh`'s own code: it counts
+interpreter invocations in the vendored binaries, ignoring comments that mention one.
 
 A Tart VM harness lives upstream with the scenarios, at `test/run.sh` in
 [`osquery-ai-discovery`](https://github.com/arthur-ai/osquery-ai-discovery).

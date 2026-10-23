@@ -19,7 +19,11 @@ export const BedrockFields = withFieldGroup({
     const type = useStore(group.store, (state) => state.values.type);
 
     return (
-      <Stack gap={2}>
+      <Stack
+        sx={{
+          gap: 2,
+        }}
+      >
         <group.AppField
           name="type"
           defaultValue="api_key"
