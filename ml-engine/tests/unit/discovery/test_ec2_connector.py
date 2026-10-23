@@ -46,7 +46,6 @@ from discovery.cloud.ec2.client import (
 from discovery.cloud.ec2.connector import (
     ALLOW_DEFAULT_CREDENTIALS_ENV_VAR,
     BOOTSTRAP_REGION,
-    CLOCK_AHEAD,
     DEFAULT_MEMBER_ROLE_NAME,
     INVENTORY_INCOMPLETE,
     NOT_REPORTED_IN_WINDOW,
@@ -542,35 +541,39 @@ def test_an_instance_that_has_not_reported_in_the_lookback_is_counted_and_not_pu
     assert coverage_of(connector) == {NOT_REPORTED_IN_WINDOW: 1}
 
 
-def test_an_instance_dated_ahead_of_the_scans_clock_is_counted_and_not_published(
+def test_an_instance_dated_ahead_of_the_scans_clock_is_published_and_named(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """Its clock runs an hour fast. The window bounds a date only from below, so it would
-    stay inside every lookback for as long as the clock does -- forever, once it stops
-    writing -- and keep its agents fresh on the Platform."""
+    """Its clock runs an hour fast. Discovery comes first, so it is published, and named
+    with its skew for someone to fix its time sync. Ten minutes fast is a fast clock."""
     hour_ahead = "ok 2026-10-12T14:30:00Z rows=2 packages-linux=ok"
+    ten_minutes_ahead = "ok 2026-10-12T13:40:00Z rows=2 packages-linux=ok"
     aws = FakeAws(
         {REGION: [[instance("1"), instance("2")]]},
-        inventory={iid("1"): reported(status=hour_ahead), iid("2"): reported()},
+        inventory={
+            iid("1"): reported(status=hour_ahead),
+            iid("2"): reported(status=ten_minutes_ahead),
+        },
     )
     connector = connector_for(aws)
     with caplog.at_level(logging.WARNING):
         records = scan(aws, connector=connector)
 
-    assert [r.external_id for r in records] == [f"{iid('2')}:codex-cli"]
-    assert coverage_of(connector) == {CLOCK_AHEAD: 1}
-    coverage = connector.device_coverage()
-    assert coverage is not None
-    assert [(d.device_key, d.reason) for d in coverage.unreadable_devices] == [
-        (iid("1"), CLOCK_AHEAD),
+    assert [r.external_id for r in records] == [
+        f"{iid('1')}:codex-cli",
+        f"{iid('2')}:codex-cli",
     ]
+    assert coverage_of(connector) == {}
     assert f"{iid('1')} is dated 60 min ahead of this scan's clock" in caplog.text
+    assert iid("2") not in caplog.text
     assert "14:30:00Z" not in caplog.text, "the id and the skew, never the value"
 
 
-def test_an_instance_that_reported_while_a_long_scan_ran_is_not_ahead() -> None:
-    """The window starts when the scan does; the bound on a date ahead is the clock when
-    the instance is read. An hour into the scan, a report from 50 min in is current."""
+def test_an_instance_that_reported_while_a_long_scan_ran_is_not_ahead(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """The window starts when the scan does; a date is ahead only of the clock when the
+    instance is read. An hour into the scan, a report from 50 min in is not ahead."""
     readings = iter([NOW])
     fifty_minutes_in = "ok 2026-10-12T14:20:00Z rows=2 packages-linux=ok"
     aws = FakeAws(
@@ -582,23 +585,11 @@ def test_an_instance_that_reported_while_a_long_scan_ran_is_not_ahead() -> None:
         clients_for=lambda session: aws.client_for,
         clock=lambda: next(readings, NOW + timedelta(hours=1)),
     )
-    records = scan(aws, connector=connector)
+    with caplog.at_level(logging.WARNING):
+        records = scan(aws, connector=connector)
 
     assert [r.external_id for r in records] == [f"{iid('1')}:codex-cli"]
-    assert coverage_of(connector) == {}
-
-
-def test_a_clock_a_few_minutes_fast_still_reported() -> None:
-    ten_minutes_ahead = "ok 2026-10-12T13:40:00Z rows=2 packages-linux=ok"
-    aws = FakeAws(
-        {REGION: [[instance("1")]]},
-        inventory={iid("1"): reported(status=ten_minutes_ahead)},
-    )
-    connector = connector_for(aws)
-    records = scan(aws, connector=connector)
-
-    assert [r.external_id for r in records] == [f"{iid('1')}:codex-cli"]
-    assert coverage_of(connector) == {}
+    assert "ahead of this scan's clock" not in caplog.text
 
 
 def test_a_running_instance_ssm_does_not_manage_is_counted_by_name_and_not_read() -> (

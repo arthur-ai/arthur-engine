@@ -16,13 +16,12 @@ which dates evidence by when a scan last handed it over, not by `last_seen`. A V
 reporting but failing keeps publishing its last good scan, as a Jamf Mac does. Records
 are dated by the scan inside the payload, never by the read.
 
-A DATE IN THE FUTURE IS NO DATE. The status line is the VM's to write, by the VM's clock,
-and the window only bounds it from below: a VM whose clock runs ahead would stay inside
-every lookback for as long as it does -- forever, once it stops writing -- and keep its
-agents fresh on the Platform. So a date more than `CLOCK_AHEAD_MARGIN` past the scan's
-own clock, read when the VM is, is counted as `clock-ahead` and not published, whether it
-came from the status line or, with none, from the payload's scan. A clock a few minutes
-fast still reported.
+A DATE IN THE FUTURE IS THE VM'S CLOCK, NOT ITS REPORT. The status line is the VM's to
+write, by the VM's clock, and the window only bounds it from below: a VM whose clock runs
+ahead stays inside the lookback that much longer after it stops writing. Discovery comes
+first, so it is still published, with no record dated past the scan's own clock. A date
+more than `CLOCK_AHEAD_MARGIN` past that clock, read when the VM is, is logged with the
+VM's id and how far ahead it is, so someone fixes its time sync.
 """
 
 import logging
@@ -44,10 +43,9 @@ from job_executors.discovery_scan import DeviceCoverage, DiscoveryConfigurationE
 # Device coverage reasons every VM-carrying cloud produces, beside the payload's own.
 READ_FAILED = "read-failed"
 NOT_REPORTED_IN_WINDOW = "not-reported-in-window"
-CLOCK_AHEAD = "clock-ahead"
 
-# How far past this scan's own clock a VM's date may be and still count: the drift of a
-# clock that is merely fast, not one that is wrong.
+# How far past this scan's own clock a VM's date may be before it is named: the drift of
+# a clock that is merely fast, not one whose time sync is broken.
 CLOCK_AHEAD_MARGIN = timedelta(minutes=15)
 
 # The collector's reporter publishes the status line under this name on every cloud.
@@ -105,9 +103,6 @@ class VmInventoryReader:
         reported = last_reported(status)
         if reported is not None:
             device = replace(device, last_reported=reported.isoformat())
-        if reported is not None and ahead(reported, now):
-            self._clock_ahead(device, reported, now)
-            return []
         if before(reported, self._since):
             coverage.count_unreadable(
                 NOT_REPORTED_IN_WINDOW,
@@ -121,18 +116,19 @@ class VmInventoryReader:
             self._log,
             source_type=CloudAgentCreationSource,
         )
-        if reported is None and read.records:
-            # No status line to date the VM by, so its payload's own scan does.
-            scanned = read.records[0].last_seen
-            if ahead(scanned, now):
-                self._clock_ahead(device, scanned, now)
-                return []
-            if before(scanned, self._since):
+        dated = reported
+        if reported is None and read.last_seen is not None:
+            # No status line to date the VM by, so its payload's own scan does, whether
+            # or not anything in it matched.
+            dated = read.last_seen
+            if before(dated, self._since):
                 coverage.count_unreadable(
                     NOT_REPORTED_IN_WINDOW,
                     device.unreadable(NOT_REPORTED_IN_WINDOW),
                 )
                 return []
+        if dated is not None and ahead(dated, now):
+            self._warn_clock_ahead(device, dated, now)
 
         if state is not None:
             self.not_running[state or "UNKNOWN"] += 1
@@ -144,26 +140,27 @@ class VmInventoryReader:
             )
             return []
         coverage.devices_decoded += 1
-        return read.records
+        # No VM can have seen anything after this scan's clock.
+        return [
+            record.model_copy(update={"last_seen": min(record.last_seen, now)})
+            for record in read.records
+        ]
 
-    def _clock_ahead(
+    def _warn_clock_ahead(
         self,
         device: ManagedDevice,
         when: datetime,
         now: datetime,
     ) -> None:
-        """Count the VM as clock-ahead, and say by how much. The id and the skew only:
-        never the value the date came from."""
-        self.coverage.count_unreadable(CLOCK_AHEAD, device.unreadable(CLOCK_AHEAD))
-        minutes = int((when - now).total_seconds() // 60)
+        """Name the VM and its skew. The id and the skew only: never the value the date
+        came from."""
         self._log.warning(
-            "%s is dated %s min ahead of this scan's clock, more than the %s min a fast "
-            "clock is allowed. Counted as %s and not published until its clock is right: "
-            "check its time sync.",
+            "%s is dated %s min ahead of this scan's clock, so its clock is at least "
+            "that fast. Published, with its records dated no later than this scan; "
+            "until its time sync is fixed, its last values stay current that much "
+            "longer once it stops reporting.",
             device.device_key,
-            minutes,
-            int(CLOCK_AHEAD_MARGIN.total_seconds() // 60),
-            CLOCK_AHEAD,
+            int((when - now).total_seconds() // 60),
         )
 
     def log_summary(self, provider: str, noun: str, journal: str) -> None:

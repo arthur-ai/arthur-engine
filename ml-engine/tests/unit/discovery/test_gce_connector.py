@@ -37,7 +37,6 @@ from discovery.cloud.gce.client import (
 )
 from discovery.cloud.gce.connector import (
     ALLOW_ADC_ENV_VAR,
-    CLOCK_AHEAD,
     GUEST_ATTRIBUTES_DISABLED,
     NOT_REPORTED_IN_WINDOW,
     OSCONFIG_DISABLED,
@@ -158,6 +157,22 @@ def attributes(inventory: str, status: str = OK_STATUS) -> dict[str, Any]:
             ],
         },
     }
+
+
+def without_status(inventory: str) -> dict[str, Any]:
+    """The same answer with no status line, so the payload's own scan dates the VM."""
+    return {
+        "queryPath": "arthur/",
+        "queryValue": {
+            "items": [{"namespace": "arthur", "key": "inventory", "value": inventory}],
+        },
+    }
+
+
+def scanned_at(when: datetime, *rows: dict[str, str]) -> str:
+    """A payload whose scan is dated `when`, carrying `rows` beside its scan row."""
+    stamp = str(int(when.timestamp()))
+    return frame([*rows, row("scan", "packages-linux", ver=stamp, extra="ok")])
 
 
 class FakeResponse:
@@ -489,12 +504,6 @@ def test_a_vm_that_has_not_reported_in_the_lookback_is_counted_and_not_published
     """Its last values are still served, and publishing them again would keep its agents
     fresh on the Platform, which dates evidence by when a scan last handed it over."""
     days_ago = "ok 2026-10-09T08:00:00Z rows=2 packages-linux=ok"
-    no_status = {
-        "queryPath": "arthur/",
-        "queryValue": {
-            "items": [{"namespace": "arthur", "key": "inventory", "value": CODEX}],
-        },
-    }
     fake = FakeCompute(
         {
             PROJECT: [
@@ -509,6 +518,8 @@ def test_a_vm_that_has_not_reported_in_the_lookback_is_counted_and_not_published
                     # A stamp that is not a time is skipped, not fatal.
                     vm("4"),
                     vm("5"),
+                    # No status line and nothing matched: its payload's scan dates it.
+                    vm("6"),
                 ],
             ],
         },
@@ -518,9 +529,10 @@ def test_a_vm_that_has_not_reported_in_the_lookback_is_counted_and_not_published
                 CODEX,
                 f"{days_ago} failed=2026-10-12T13:05:00Z osquery=absent",
             ),
-            (ZONE, "vm-3"): no_status,
+            (ZONE, "vm-3"): without_status(CODEX),
             (ZONE, "vm-4"): attributes(CODEX, "ok 2026-13-45T08:00:00Z rows=2"),
             (ZONE, "vm-5"): attributes(CODEX),
+            (ZONE, "vm-6"): without_status(scanned_at(NOW - timedelta(days=3))),
         },
     )
     connector = connector_for(fake)
@@ -530,7 +542,7 @@ def test_a_vm_that_has_not_reported_in_the_lookback_is_counted_and_not_published
     assert sorted(r.external_id for r in records) == ["2:codex-cli", "5:codex-cli"]
     coverage = connector.device_coverage()
     assert coverage is not None
-    assert coverage.unreadable_by_reason == {NOT_REPORTED_IN_WINDOW: 3}
+    assert coverage.unreadable_by_reason == {NOT_REPORTED_IN_WINDOW: 4}
     assert "not running" not in caplog.text, "the stopped VM was left out"
     assert "1 VM(s) report that their collector's latest run failed" in caplog.text
 
@@ -538,29 +550,15 @@ def test_a_vm_that_has_not_reported_in_the_lookback_is_counted_and_not_published
     assert len(scan(fake, lookback_hours=0)) == 5
 
 
-def test_a_vm_dated_ahead_of_the_scans_clock_is_counted_and_not_published(
+def test_a_vm_dated_ahead_of_the_scans_clock_is_published_and_named(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """Its clock runs an hour fast. The window bounds a date only from below, so it would
-    stay inside every lookback for as long as the clock does -- forever, once it stops
-    writing -- and keep its agents fresh on the Platform."""
-    hour_ahead = str(int((NOW + timedelta(hours=1)).timestamp()))
-    scanned_ahead = frame(
-        [
-            row("npm", "@openai/codex", ver="0.5.0"),
-            row("scan", "packages-linux", ver=hour_ahead, extra="ok"),
-        ],
-    )
-    no_status = {
-        "queryPath": "arthur/",
-        "queryValue": {
-            "items": [
-                {"namespace": "arthur", "key": "inventory", "value": scanned_ahead},
-            ],
-        },
-    }
+    """Its clock runs an hour fast. Discovery comes first, so it is published, and named
+    with its skew for someone to fix its time sync. No record is dated past the scan."""
+    hour_ahead = NOW + timedelta(hours=1)
+    codex = row("npm", "@openai/codex", ver="0.5.0")
     fake = FakeCompute(
-        {PROJECT: [[vm("101"), vm("102"), vm("103"), vm("104")]]},
+        {PROJECT: [[vm("101"), vm("102"), vm("103"), vm("104"), vm("105")]]},
         guest={
             (ZONE, "vm-101"): attributes(
                 CODEX,
@@ -572,35 +570,41 @@ def test_a_vm_dated_ahead_of_the_scans_clock_is_counted_and_not_published(
                 f"{OK_STATUS} failed=2026-10-12T14:30:00Z osquery=absent",
             ),
             # No status line, so its payload's own scan dates it.
-            (ZONE, "vm-103"): no_status,
-            # Ten minutes fast is a fast clock, not a wrong one.
+            (ZONE, "vm-103"): without_status(scanned_at(hour_ahead, codex)),
+            # Ten minutes fast is a fast clock, not a broken one.
             (ZONE, "vm-104"): attributes(
                 CODEX,
                 "ok 2026-10-12T13:40:00Z rows=2 packages-linux=ok",
             ),
+            # Nothing matched, and still named: its clock needs fixing all the same.
+            (ZONE, "vm-105"): without_status(scanned_at(hour_ahead)),
         },
     )
     connector = connector_for(fake)
     with caplog.at_level(logging.WARNING):
         records = scan(fake, connector=connector)
 
-    assert [r.external_id for r in records] == ["104:codex-cli"]
+    assert [r.external_id for r in records] == [
+        "101:codex-cli",
+        "102:codex-cli",
+        "103:codex-cli",
+        "104:codex-cli",
+    ]
+    assert records[2].last_seen == NOW, "no record is dated past the scan's clock"
     coverage = connector.device_coverage()
     assert coverage is not None
-    assert coverage.unreadable_by_reason == {CLOCK_AHEAD: 3}
-    assert [d["reason"] for d in listed(connector)] == [CLOCK_AHEAD] * 3
-    for ident in ("101", "102", "103"):
+    assert (coverage.devices_decoded, coverage.unreadable_by_reason) == (5, {})
+    for ident in ("101", "102", "103", "105"):
         assert f"{ident} is dated 60 min ahead of this scan's clock" in caplog.text
+    assert "104 is dated" not in caplog.text
     assert "14:30:00Z" not in caplog.text, "the id and the skew, never the value"
-    assert "failed" not in caplog.text, "a VM left out is not among the failed runs"
-
-    # A date in the future is no date on the whole roster either.
-    assert [r.external_id for r in scan(fake, lookback_hours=0)] == ["104:codex-cli"]
 
 
-def test_a_vm_that_reported_while_a_long_scan_ran_is_not_ahead() -> None:
-    """The window starts when the scan does; the bound on a date ahead is the clock when
-    the VM is read. An hour into the scan, a report from 50 min in is current."""
+def test_a_vm_that_reported_while_a_long_scan_ran_is_not_ahead(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """The window starts when the scan does; a date is ahead only of the clock when the
+    VM is read. An hour into the scan, a report from 50 min in is not ahead."""
     readings = iter([NOW])
     fake = FakeCompute(
         {PROJECT: [[vm("1")]]},
@@ -619,12 +623,11 @@ def test_a_vm_that_reported_while_a_long_scan_ran_is_not_ahead() -> None:
         session_for=session_for,  # type: ignore[arg-type]
         clock=lambda: next(readings, NOW + timedelta(hours=1)),
     )
-    records = scan(fake, connector=connector)
+    with caplog.at_level(logging.WARNING):
+        records = scan(fake, connector=connector)
 
     assert [r.external_id for r in records] == ["1:codex-cli"]
-    coverage = connector.device_coverage()
-    assert coverage is not None
-    assert coverage.unreadable_by_reason == {}
+    assert "ahead of this scan's clock" not in caplog.text
 
 
 # --- VMs that cannot report -------------------------------------------------------------

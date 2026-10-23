@@ -78,7 +78,6 @@ from discovery.cloud.gce.client import (
     Instance,
 )
 from discovery.cloud.vm_inventory import (
-    CLOCK_AHEAD,
     NOT_REPORTED_IN_WINDOW,
     READ_FAILED,
     VmInventoryReader,
@@ -118,7 +117,6 @@ GUEST_ATTRIBUTES_DISABLED = "guest-attributes-disabled"
 OSCONFIG_DISABLED = "osconfig-disabled"
 
 __all__ = [
-    "CLOCK_AHEAD",
     "GUEST_ATTRIBUTES_DISABLED",
     "NOT_REPORTED_IN_WINDOW",
     "OSCONFIG_DISABLED",

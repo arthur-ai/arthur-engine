@@ -74,7 +74,6 @@ from discovery.cloud.ec2.client import (
     default_client_factory,
 )
 from discovery.cloud.vm_inventory import (
-    CLOCK_AHEAD,
     NOT_REPORTED_IN_WINDOW,
     READ_FAILED,
     VmInventoryReader,
@@ -130,7 +129,6 @@ UNSUPPORTED_PLATFORM = "unsupported-platform"
 INVENTORY_INCOMPLETE = "inventory-incomplete"
 
 __all__ = [
-    "CLOCK_AHEAD",
     "INVENTORY_INCOMPLETE",
     "NOT_REPORTED_IN_WINDOW",
     "NOT_SSM_MANAGED",
