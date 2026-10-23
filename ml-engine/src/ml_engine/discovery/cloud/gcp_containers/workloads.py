@@ -28,7 +28,7 @@ as the caller, so it is the key that joins a workload to the models it called.
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Callable, Iterable, Mapping, Optional, Sequence
+from typing import AbstractSet, Any, Callable, Iterable, Mapping, Optional, Sequence
 
 from discovery.catalog import Finding, Matcher
 
@@ -179,8 +179,14 @@ def gke_workload(
     path_kind: str,
     asset_kind: str,
     raw: Mapping[str, Any],
+    deployment_replicasets: Optional[AbstractSet[tuple[str, str]]] = None,
 ) -> Optional[Workload]:
     """One Kubernetes object as a workload, or None when it is not its own workload.
+
+    `deployment_replicasets` is (namespace, name) of each ReplicaSet a Deployment owns.
+    A pod folds into its ReplicaSet only when that ReplicaSet is one of them: one an
+    Argo Rollout or another custom controller owns has no listed workload above it.
+    None, when ReplicaSets could not be read, folds every ReplicaSet's pods.
 
     None for a Job or Pod a listed workload owns (a CronJob's Jobs; the pods of a
     ReplicaSet, StatefulSet, DaemonSet or Job), one in a system namespace, and one with
@@ -195,11 +201,7 @@ def gke_workload(
     name = str(meta.get("name") or "")
     if not namespace or not name:
         return None
-    folded_into = FOLDED_INTO.get(path_kind, frozenset())
-    if any(
-        str(owner.get("kind") or "") in folded_into
-        for owner in meta.get("ownerReferences") or []
-    ):
+    if _folded(path_kind, namespace, meta, deployment_replicasets):
         return None
     if namespace in SYSTEM_NAMESPACES or namespace.startswith(
         SYSTEM_NAMESPACE_PREFIXES,
@@ -336,6 +338,28 @@ def match_images(matcher: Matcher, images: Sequence[str]) -> tuple[Finding, ...]
     if not rows:
         return ()
     return matcher.match(rows).findings
+
+
+def _folded(
+    path_kind: str,
+    namespace: str,
+    meta: Mapping[str, Any],
+    deployment_replicasets: Optional[AbstractSet[tuple[str, str]]],
+) -> bool:
+    """Whether a listed workload owns this Job or Pod, so it is not its own."""
+    folded_into = FOLDED_INTO.get(path_kind, frozenset())
+    for owner in meta.get("ownerReferences") or []:
+        kind = str(owner.get("kind") or "")
+        if kind not in folded_into:
+            continue
+        if (
+            kind == "ReplicaSet"
+            and deployment_replicasets is not None
+            and (namespace, str(owner.get("name") or "")) not in deployment_replicasets
+        ):
+            continue
+        return True
+    return False
 
 
 def _pod_spec(raw: Mapping[str, Any], path_kind: str) -> Mapping[str, Any]:

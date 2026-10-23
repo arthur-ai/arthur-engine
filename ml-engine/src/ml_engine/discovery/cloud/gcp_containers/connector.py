@@ -75,6 +75,7 @@ from discovery.catalog import Matcher
 from discovery.cloud.gcp_containers.client import (
     GcpContainersClient,
     GcpContainersError,
+    KubernetesApi,
     ScanStopped,
 )
 from discovery.cloud.gcp_containers.workloads import (
@@ -473,6 +474,7 @@ def _gke(
                     if identity.workload_identity
                     else {}
                 )
+                replicasets = _deployment_replicasets(kube, label, logger)
                 found: list[Workload] = []
                 for path, kind, asset_kind in K8S_KINDS:
                     for raw in kube.items(path):
@@ -484,6 +486,7 @@ def _gke(
                             kind,
                             asset_kind,
                             raw,
+                            replicasets,
                         )
                         if workload is not None:
                             found.append(workload)
@@ -499,6 +502,37 @@ def _gke(
                 e,
             )
     return out
+
+
+def _deployment_replicasets(
+    kube: KubernetesApi,
+    label: str,
+    logger: logging.Logger,
+) -> Optional[frozenset[tuple[str, str]]]:
+    """(namespace, name) of each ReplicaSet a Deployment owns, or None when they cannot
+    be read, which folds every ReplicaSet's pods as before."""
+    try:
+        return frozenset(
+            (
+                str((rs.get("metadata") or {}).get("namespace") or ""),
+                str((rs.get("metadata") or {}).get("name") or ""),
+            )
+            for rs in kube.items("/apis/apps/v1/replicasets")
+            if any(
+                o.get("kind") == "Deployment"
+                for o in (rs.get("metadata") or {}).get("ownerReferences") or []
+            )
+        )
+    except GcpContainersError as e:
+        if e.status_code == 401:
+            raise
+        logger.warning(
+            "ReplicaSets of %s not read (%s); pods of a ReplicaSet a custom controller "
+            "owns are folded into it and not reported",
+            label,
+            e,
+        )
+        return None
 
 
 def _default_account(

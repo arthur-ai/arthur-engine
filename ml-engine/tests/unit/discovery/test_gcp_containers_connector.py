@@ -162,6 +162,16 @@ def k8s(
     return {"metadata": meta, "spec": spec, "status": {}}
 
 
+def replicaset(name: str, owner: str = "Deployment") -> Any:
+    return {
+        "metadata": {
+            "name": name,
+            "namespace": "agents",
+            "ownerReferences": [{"kind": owner, "name": "x"}],
+        },
+    }
+
+
 def cluster(
     workload_pool: Optional[str] = None,
     node_sa: str = "default",
@@ -203,7 +213,9 @@ class FakeGoogle:
         self.jobs = {} if jobs is None else jobs
         self.regions = [[REGION]] if regions is None else regions
         self.clusters = [] if clusters is None else clusters
-        self.kube = kube or {}
+        # k8s(owner=...) names every owner "x": a Deployment's ReplicaSet unless a
+        # test lists ReplicaSets itself.
+        self.kube = {"/apis/apps/v1/replicasets": [[replicaset("x")]], **(kube or {})}
         self.calls: list[tuple[str, dict[str, Any], Optional[str]]] = []
 
     def get(
@@ -476,6 +488,60 @@ def test_pods_and_jobs_an_operator_owns_are_their_own_workloads() -> None:
     ids = sorted(r.creation_source.address.resource_id for r in scan(fake))
 
     assert ids == [f"{CLUSTER}/agents/job/train-0", f"{CLUSTER}/agents/pod/ray-head"]
+
+
+def test_a_pod_of_a_replicaset_a_rollout_owns_is_its_own_workload() -> None:
+    """An Argo Rollout owns its ReplicaSets and neither is listed, so its pods are
+    workloads; a Deployment's ReplicaSet's pods still fold into the Deployment."""
+    fake = FakeGoogle(
+        clusters=[cluster()],
+        kube={
+            "/apis/apps/v1/replicasets": [
+                [replicaset("x"), replicaset("canary", owner="Rollout")],
+            ],
+            "/api/v1/pods": [
+                [
+                    k8s("pod", "web-abcde", owner="ReplicaSet"),
+                    {
+                        **k8s("pod", "canary-fghij"),
+                        "metadata": {
+                            **k8s("pod", "canary-fghij")["metadata"],
+                            "ownerReferences": [
+                                {"kind": "ReplicaSet", "name": "canary"},
+                            ],
+                        },
+                    },
+                ],
+            ],
+        },
+    )
+
+    ids = [r.creation_source.address.resource_id for r in scan(fake)]
+
+    assert ids == [f"{CLUSTER}/agents/pod/canary-fghij"]
+
+
+def test_unreadable_replicasets_fold_every_replicaset_pod_as_before(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    fake = FakeGoogle(
+        clusters=[cluster()],
+        kube={
+            "/apis/apps/v1/replicasets": FakeResponse(403, {"message": "forbidden"}),
+            "/apis/apps/v1/deployments": [[k8s("deployment", "web")]],
+            "/api/v1/pods": [[k8s("pod", "web-abcde", owner="ReplicaSet")]],
+        },
+    )
+    connector = GcpContainersConnector(session_for=lambda c: fake)  # type: ignore[arg-type,return-value]
+
+    with caplog.at_level(logging.WARNING):
+        records = scan(fake, connector=connector)
+
+    assert [r.creation_source.address.resource_id for r in records] == [
+        f"{CLUSTER}/agents/deployment/web",
+    ]
+    assert "ReplicaSets of GKE cluster" in caplog.text
+    assert connector.denied_scopes() == ()
 
 
 def test_gke_system_namespaces_are_not_workloads() -> None:
