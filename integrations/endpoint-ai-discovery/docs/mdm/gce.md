@@ -193,7 +193,7 @@ a denied scope on the run, which Arthur shows as a degraded source, and the scan
 rest; refused every project, the run fails. A project without the Compute Engine API is
 counted and skipped, since no VM can exist in it.
 
-The source does not publish four kinds of VM:
+The source does not publish three kinds of VM:
 
 - **`guest-attributes-disabled`**: `enable-guest-attributes` is not `TRUE` on the VM, or on its
   project when the VM does not set it. The API keeps serving old values after the setting is
@@ -206,12 +206,11 @@ The source does not publish four kinds of VM:
 - **`not-reported-in-window`**: the status line shows no report within the scan's lookback,
   for example because the VM is stopped or its timer was removed. Its agents go stale in
   Arthur.
-- **`clock-ahead`**: the status line, or with none the scan in the payload, is dated more than
-  15 minutes past the scan's own clock. A date in the future would keep the VM inside every
-  lookback, so it is not published until the VM's time sync is fixed. The scan logs the VM's
-  id and how far ahead it is.
 
-A VM that still reports but is failing keeps publishing its last good scan.
+A VM that still reports but is failing keeps publishing its last good scan. A VM dated more
+than 15 minutes past the scan's clock is published too, with no record dated past the scan, and
+the scan's log names it and how far ahead it is: fix its time sync, or its last values stay
+current that much longer once it stops reporting.
 
 Every VM the source could not read is also listed, as
 `device_coverage.unreadable_devices`: instance id, name, `project/zone`, the reason, and the
