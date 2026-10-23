@@ -128,10 +128,13 @@ window misses nothing.
 #### `gcp_containers` — Cloud Run and GKE workloads
 
 Lists every Cloud Run service, Cloud Run job and GKE workload in the projects, and
-reports a workload when one of its images is an agent's in the catalog (`images:`), or
-every workload when `report_all_workloads` is true. Each record names the GCP service
-account the workload runs as, so it can be joined with the callers in Vertex AI's audit
-log.
+reports a workload when one of its images is an agent's in the catalog (`images:`), when
+it runs as a service account that called a Vertex AI model in the lookback (read off the
+project's Data Access audit log by the scan itself), or every workload when
+`report_all_workloads` is true. Each record names the GCP service account the workload
+runs as, with `shared by N workloads` when several run as it (a match through a shared
+account cannot tell them apart), and lists the models that account called as
+`llm_models`.
 
 | Field | Secret | Required | Notes |
 |---|---|---|---|
@@ -144,18 +147,23 @@ The service account needs `roles/run.viewer` and `roles/container.viewer`. The s
 grants the Kubernetes reads too (`container.deployments.list`, `container.pods.list`,
 `container.serviceAccounts.list` and the rest), because GKE authorises a Google identity's
 Kubernetes calls against its IAM roles as well as RBAC; it does not grant reading
-Secrets. `query` is the catalog, as for Jamf; `query_language: none`.
+Secrets. Selecting by AI caller also needs `roles/logging.privateLogViewer` and Data
+Access audit logs on for `aiplatform.googleapis.com`; without them that project's
+workloads are selected by catalog image (or `report_all_workloads`) only. `query` is the
+catalog, as for Jamf; `query_language: none`.
 
 A GKE workload is its controller -- Deployment, StatefulSet, DaemonSet, CronJob -- or a
 Job or Pod nothing owns; `kube-system`, `kube-public`, `kube-node-lease` and the `gke-`
 and `gmp-` namespaces are left out. The engine must be able to reach each cluster's
-endpoint; a cluster it cannot reach is logged and the rest of the scan goes on, as is a
-project where an API is off or refused. Two refusals do end the scan: a credential
+endpoint; a cluster it cannot reach is logged, reported on the run as a denied scope,
+and the rest of the scan goes on, as is a project where an API, or its audit log, is off
+or refused. Two refusals do end the scan: a credential
 refused outright (HTTP 401) stops it at once, and a scan that could list nothing at all
 fails with the first refusal's status, so a key with no access reads as denied rather
 than as a project without workloads.
 
-The lookback window is not applied: every scan lists every workload.
+The lookback window bounds only the audit-log read of AI callers (30 days for a zero
+lookback): every scan lists every workload.
 
 #### `wiz` — Wiz
 

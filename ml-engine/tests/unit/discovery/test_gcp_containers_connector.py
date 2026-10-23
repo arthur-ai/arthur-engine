@@ -21,6 +21,7 @@ from arthur_common.models.agent_governance_schemas import (
 from discovery import source_connectors
 from discovery.catalog import Matcher
 from discovery.cloud.gcp_containers import client as containers_client
+from discovery.cloud.gcp_containers import connector as containers_connector
 from discovery.cloud.gcp_containers.client import (
     CONTAINER_API,
     RESOURCE_MANAGER_API,
@@ -40,11 +41,15 @@ from discovery.cloud.gcp_containers.workloads import (
     Workload,
     select_workloads,
 )
+from discovery.cloud.gcp_vertex.audit import AuditReadError
 from job_executors.discovery_output_contract import check_batch
 from job_executors.discovery_scan import (
+    DENIED_PERMISSION,
     AcceptsStopCheck,
+    DeniedScope,
     DiscoveryConfigurationError,
     DiscoveryErrorCode,
+    ReportsDeniedScopes,
     failure_code,
 )
 
@@ -268,6 +273,37 @@ def no_backoff(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(containers_client, "backoff_seconds", lambda a, b: 0.0)
 
 
+AUDIT: dict[str, Any] = {"entries": [], "refuse": None, "asked": []}
+
+
+@pytest.fixture(autouse=True)
+def audit_log(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
+    """No test reaches Cloud Logging: the audit read sees the entries a test sets."""
+    AUDIT.update(entries=[], refuse=None, asked=[])
+
+    def read(project: str, log_filter: str, credentials: Any) -> list[dict[str, Any]]:
+        AUDIT["asked"].append((project, log_filter))
+        if AUDIT["refuse"] is not None:
+            raise AuditReadError(AUDIT["refuse"], "refused")
+        return list(AUDIT["entries"])
+
+    monkeypatch.setattr(containers_connector, "read_entries", read)
+    return AUDIT
+
+
+def model_call(account: str, model: str = "gemini-2.5-flash") -> dict[str, Any]:
+    """One Data Access audit entry: `account` called `model` in REGION."""
+    return {
+        "timestamp": "2026-10-22T12:00:00Z",
+        "protoPayload": {
+            "authenticationInfo": {"principalEmail": account},
+            "resourceName": (
+                f"projects/{PROJECT}/locations/{REGION}/publishers/google/models/{model}"
+            ),
+        },
+    }
+
+
 @pytest.fixture(autouse=True)
 def adc(monkeypatch: pytest.MonkeyPatch) -> None:
     """Keyless sources, so no test needs a real service account key."""
@@ -393,7 +429,8 @@ def test_gke_workloads_are_controllers_by_stable_name_and_owned_objects_are_not(
     assert planner.creation_source.observations.host_group == CLUSTER
     assert planner.creation_source.observations.install_path
     # No Workload Identity: the pods call Google as the node pool's account.
-    assert planner.name.endswith(f"(runs as {DEFAULT_SA})")
+    # every workload here runs as the node's default account, and the name says so
+    assert planner.name.endswith(f"(runs as {DEFAULT_SA}, shared by 4 workloads)")
 
 
 def test_gke_system_namespaces_are_not_workloads() -> None:
@@ -470,7 +507,7 @@ def test_only_a_catalog_image_is_reported_by_default_and_a_digest_still_matches(
 
     (record,) = records
     assert record.creation_source.address.resource_id == "agent"
-    assert record.name == f"agent [goose] (runs as {APP_SA})"
+    assert record.name == f"agent [goose] (runs as {APP_SA}, shared by 2 workloads)"
     assert record.creation_source.observations.classification == "Coding agent"
 
 
@@ -511,12 +548,64 @@ def test_select_workloads_is_a_pure_join_on_the_service_account() -> None:
     assert selected.findings == ()
 
 
-def test_the_lookback_is_not_applied() -> None:
+def test_the_lookback_bounds_only_the_audit_read(audit_log: dict[str, Any]) -> None:
     fake = FakeGoogle(services=[[service("web")]], jobs={REGION: [[job("nightly")]]})
 
     assert len(scan(fake, lookback_hours=1)) == len(scan(fake, lookback_hours=0)) == 2
     for _, params, _ in fake.calls:
         assert set(params) <= {"pageSize", "pageToken", "limit", "continue"}
+    # one audit read per scan of the one project, each with a time bound
+    assert [project for project, _ in audit_log["asked"]] == [PROJECT, PROJECT]
+    assert all('timestamp>="' in f for _, f in audit_log["asked"])
+
+
+def test_a_workload_whose_account_called_vertex_is_reported_with_its_models(
+    audit_log: dict[str, Any],
+) -> None:
+    audit_log["entries"] = [
+        model_call(APP_SA),
+        model_call(APP_SA, "claude-haiku-4-5"),
+    ]
+    fake = FakeGoogle(
+        services=[[service("web", account=APP_SA), service("other", account=NODE_SA)]],
+    )
+
+    records = scan(fake, report_all=False)
+
+    (record,) = records
+    assert record.creation_source.address.resource_id == "web"
+    assert sorted(m.name for m in record.llm_models) == [
+        "claude-haiku-4-5",
+        "gemini-2.5-flash",
+    ]
+
+
+def test_an_account_only_one_workload_runs_as_is_not_called_shared() -> None:
+    fake = FakeGoogle(
+        services=[[service("web", account=APP_SA), service("other", account=NODE_SA)]],
+    )
+
+    names = sorted(r.name for r in scan(fake))
+
+    assert names == [f"other (runs as {NODE_SA})", f"web (runs as {APP_SA})"]
+
+
+def test_a_refused_audit_read_is_a_denied_scope_and_the_catalog_still_selects(
+    audit_log: dict[str, Any],
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    audit_log["refuse"] = 403
+    fake = FakeGoogle(services=[[service("agent", image=GOOSE), service("web")]])
+    connector = GcpContainersConnector(session_for=lambda c: fake)  # type: ignore[arg-type,return-value]
+
+    with caplog.at_level(logging.WARNING):
+        records = scan(fake, report_all=False, connector=connector)
+
+    assert [r.creation_source.address.resource_id for r in records] == ["agent"]
+    assert connector.denied_scopes() == (
+        DeniedScope(f"projects/{PROJECT}/vertex-ai-audit-log", DENIED_PERMISSION),
+    )
+    assert "roles/logging.privateLogViewer" in caplog.text
 
 
 # --- paging ---------------------------------------------------------------------------
@@ -575,13 +664,18 @@ def test_a_refused_api_is_a_warning_and_the_rest_is_still_reported(
         {"error": {"code": 403, "message": "Kubernetes Engine API has not been used"}},
     )
     fake = FakeGoogle(services=[[service("web")]], clusters=denied)
+    connector = GcpContainersConnector(session_for=lambda c: fake)  # type: ignore[arg-type,return-value]
 
     with caplog.at_level(logging.WARNING):
-        records = scan(fake)
+        records = scan(fake, connector=connector)
 
     assert [r.creation_source.address.resource_id for r in records] == ["web"]
     assert f"GKE clusters in project {PROJECT} not listed" in caplog.text
     assert "HTTP 403" in caplog.text
+    # and the run reports which part of the scope was refused
+    assert connector.denied_scopes() == (
+        DeniedScope(f"projects/{PROJECT}/gke-clusters", DENIED_PERMISSION),
+    )
 
 
 def test_a_cluster_whose_kubernetes_api_refuses_is_a_warning(
@@ -713,6 +807,7 @@ def test_registered_with_its_secret_declared_and_a_stop_check() -> None:
         {"service_account_key"},
     )
     assert isinstance(connector, AcceptsStopCheck)
+    assert isinstance(connector, ReportsDeniedScopes)
 
 
 def test_a_stop_before_the_first_call_sends_nothing() -> None:
