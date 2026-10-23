@@ -1,0 +1,237 @@
+# The EC2 deployment: an SSM document that installs osquery, the collector, the SSM inventory
+# reporter, the two units and the EC2 drop-in, and enables the timer; the association that
+# runs it on every managed instance; and, by parameter, the inventory association that uploads
+# what the reporter writes and the member role Arthur's aws_ec2 source assumes.
+# docs/mdm/ec2.md is the runbook.
+#
+# ONE TEMPLATE, TWO WAYS TO DEPLOY IT: a stack in each region of one account, or a StackSet
+# across an organization. `tools/render-cfn-template.sh REF` pins the file URLs and their
+# checksums to REF. Edit this file, not a rendered copy of it.
+#
+# Long-form intrinsic functions only. With no `!` tags this is plain YAML, which test/lint.sh
+# and the renderer read without a CloudFormation parser.
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  Arthur endpoint AI discovery on EC2: osquery and a collector timer on every SSM-managed Linux
+  instance, reporting to SSM custom inventory.
+
+Parameters:
+  # No default: an instance runs one inventory association, and with two neither runs. Only
+  # whoever deploys can know whether the account already has one (docs/mdm/ec2.md, section 03).
+  CreateInventoryAssociation:
+    Type: String
+    AllowedValues: ["true", "false"]
+    Description: >-
+      true creates an AWS-GatherSoftwareInventory association with custom inventory on, for
+      every instance. false when the account already has one: turn custom inventory on in it
+      instead.
+  ArthurPrincipalArn:
+    Type: String
+    Default: ""
+    AllowedPattern: "^(arn:aws[a-z-]*:iam::[0-9]{12}:(root|user/.+|role/.+))?$"
+    Description: >-
+      The IAM user or role whose credential Arthur's aws_ec2 source holds. The member role
+      trusts it. Empty creates no role.
+  ExternalId:
+    Type: String
+    Default: ""
+    AllowedPattern: "^[A-Za-z0-9+=,.@:/_-]*$"
+    MaxLength: 1224
+    Description: The source's external_id. The member role refuses an AssumeRole without it.
+  MemberRoleName:
+    Type: String
+    Default: arthur-ai-discovery
+    AllowedPattern: "^[A-Za-z0-9+=,.@_-]{1,64}$"
+    Description: The source's member_role_name.
+  # IAM is global, so one region's stack creates the role; a second would fail on the name.
+  MemberRoleRegion:
+    Type: String
+    Default: us-east-1
+    AllowedPattern: "^[a-z]{2}(-[a-z]+)+-[0-9]$"
+    Description: The one region whose stack creates the member role.
+  TargetInstanceIds:
+    Type: CommaDelimitedList
+    Default: "*"
+    Description: >-
+      A pilot: the instance ids both associations target. * is every managed instance in the
+      region. There is no tag to exclude an instance on purpose: one its owner could set would
+      be an opt-out from discovery.
+  FileBaseUrl:
+    Type: String
+    Default: ""
+    AllowedPattern: "^(https://[A-Za-z0-9.-]+(:[0-9]+)?(/[A-Za-z0-9._~%+-]+)*)?$"
+    Description: >-
+      A mirror of the files, under which they sit at their paths in this tree. Empty
+      downloads them from GitHub at the rendered ref. The checksums are pinned either way.
+
+Rules:
+  ExternalIdWithPrincipal:
+    RuleCondition:
+      Fn::Not: [{Fn::Equals: [{Ref: ArthurPrincipalArn}, ""]}]
+    Assertions:
+      - Assert:
+          Fn::Not: [{Fn::Equals: [{Ref: ExternalId}, ""]}]
+        AssertDescription: A member role trusts its principal only with an ExternalId
+
+Conditions:
+  CreateInventory:
+    Fn::Equals: [{Ref: CreateInventoryAssociation}, "true"]
+  HasMirror:
+    Fn::Not: [{Fn::Equals: [{Ref: FileBaseUrl}, ""]}]
+  CreateMemberRole:
+    Fn::And:
+      - Fn::Not: [{Fn::Equals: [{Ref: ArthurPrincipalArn}, ""]}]
+      - Fn::Equals: [{Ref: "AWS::Region"}, {Ref: MemberRoleRegion}]
+
+Resources:
+  # A document of its own rather than AWS-RunShellScript, so that a mirror's URL reaches the
+  # script as a parameter held to a pattern, never spliced into shell. The precondition skips
+  # every platform but Linux; State Manager counts that instance as Skipped, not toward
+  # MaxErrors.
+  #
+  # NewVersion, because the name is fixed: CloudFormation cannot replace a named resource, and
+  # a new version becomes the document's default.
+  InstallDocument:
+    Type: AWS::SSM::Document
+    Properties:
+      Name: arthur-ai-discovery-install
+      DocumentType: Command
+      DocumentFormat: JSON
+      UpdateMethod: NewVersion
+      Content:
+        schemaVersion: "2.2"
+        description: "Arthur endpoint AI discovery: osquery, the collector and its timer, on Linux"
+        parameters:
+          # Substituted into the script, so held to characters the shell gives no meaning.
+          baseUrl:
+            type: String
+            description: The URL under which the files sit at their paths in this tree.
+            default: https://raw.githubusercontent.com/arthur-ai/arthur-engine/COMMIT/integrations/endpoint-ai-discovery
+            allowedPattern: "^https://[A-Za-z0-9.-]+(:[0-9]+)?(/[A-Za-z0-9._~%+-]+)*$"
+        mainSteps:
+          - action: aws:runShellScript
+            name: install
+            precondition:
+              StringEquals: [platformType, Linux]
+            inputs:
+              # POSIX sh, not bash: the step runs it with sh, which is dash on Ubuntu, and a
+              # bashism there fails every run on those instances. test/lint.sh holds it to dash.
+              #
+              # Idempotent: State Manager re-applies it on the association's schedule, and a run
+              # that changes nothing leaves the timer as it was. Each fetch names one file, its
+              # destination, its mode and its checksum, on one line: the renderer pins the
+              # checksum to the file the line names.
+              runCommand:
+                - |
+                  # arthur-ai-discovery-install.sh
+                  set -eu
+                  BASE='{{ baseUrl }}'
+                  fetch() {  # path destination mode sha256
+                    curl -fsSL --retry 3 -o "$2.new" "$BASE/$1"
+                    echo "$4  $2.new" | sha256sum -c --quiet
+                    chmod "$3" "$2.new" && mv -f "$2.new" "$2"
+                  }
+                  if ! command -v osqueryi >/dev/null 2>&1; then
+                    if command -v dnf >/dev/null 2>&1; then
+                      curl -fsSL -o /etc/pki/rpm-gpg/RPM-GPG-KEY-osquery https://pkg.osquery.io/rpm/GPG
+                      curl -fsSL -o /etc/yum.repos.d/osquery-s3-rpm.repo https://pkg.osquery.io/rpm/osquery-s3-rpm.repo
+                      dnf install -y osquery
+                    else
+                      install -d -m 755 /etc/apt/keyrings
+                      curl -fsSL -o /etc/apt/keyrings/osquery.asc https://pkg.osquery.io/deb/pubkey.gpg
+                      echo "deb [signed-by=/etc/apt/keyrings/osquery.asc] https://pkg.osquery.io/deb deb main" \
+                        > /etc/apt/sources.list.d/osquery.list
+                      apt-get update -q && apt-get install -y -q osquery
+                    fi
+                  fi
+                  install -d -m 755 /usr/local/arthur /etc/systemd/system/arthur-ai-discovery.service.d
+                  fetch dist/collect-linux.sh /usr/local/arthur/collect-linux.sh 755 SHA256_COLLECTOR
+                  fetch deploy/report-ssm-inventory.sh /usr/local/arthur/report-ssm-inventory.sh 755 SHA256_REPORTER
+                  fetch deploy/arthur-ai-discovery.service /etc/systemd/system/arthur-ai-discovery.service 644 SHA256_SERVICE
+                  fetch deploy/arthur-ai-discovery.timer /etc/systemd/system/arthur-ai-discovery.timer 644 SHA256_TIMER
+                  fetch deploy/arthur-ai-discovery.service.d/ec2.conf /etc/systemd/system/arthur-ai-discovery.service.d/ec2.conf 644 SHA256_DROPIN
+                  systemctl daemon-reload
+                  systemctl enable --now arthur-ai-discovery.timer
+
+  # baseUrl is passed on every deploy, never left to the document's default, so that a stack
+  # update with a new pin changes the association itself.
+  #
+  # MaxConcurrency 10% installs on a tenth of the instances at a time. MaxErrors 10% stops
+  # sending it to more once over a tenth have failed; runs already under way still finish, so
+  # a bad pin can fail on somewhat more than a tenth before the rollout stops.
+  InstallAssociation:
+    Type: AWS::SSM::Association
+    Properties:
+      AssociationName: arthur-ai-discovery
+      Name: {Ref: InstallDocument}
+      DocumentVersion: "$DEFAULT"
+      Targets:
+        - Key: InstanceIds
+          Values: {Ref: TargetInstanceIds}
+      Parameters:
+        baseUrl:
+          - Fn::If:
+              - HasMirror
+              - {Ref: FileBaseUrl}
+              - https://raw.githubusercontent.com/arthur-ai/arthur-engine/COMMIT/integrations/endpoint-ai-discovery
+      ScheduleExpression: rate(1 day)
+      MaxConcurrency: 10%
+      MaxErrors: 10%
+
+  # Hourly, and not faster: SSM enforces 5,000 KB of inventory per instance per day, and each
+  # run whose values changed uploads them. files and windowsRegistry stay at their defaults; a
+  # value such as Disabled fails every run.
+  InventoryAssociation:
+    Type: AWS::SSM::Association
+    Condition: CreateInventory
+    Properties:
+      AssociationName: arthur-ai-discovery-inventory
+      Name: AWS-GatherSoftwareInventory
+      Targets:
+        - Key: InstanceIds
+          Values: {Ref: TargetInstanceIds}
+      Parameters:
+        customInventory: [Enabled]
+      ScheduleExpression: rate(1 hour)
+
+  # Exactly the actions the source uses, none of which can be scoped to a resource. Not
+  # AmazonEC2ReadOnlyAccess or AmazonSSMReadOnlyAccess: ec2:Describe* reads instance user data
+  # and ssm:Get* reads Parameter Store, where secrets are kept.
+  MemberRole:
+    Type: AWS::IAM::Role
+    Condition: CreateMemberRole
+    Properties:
+      RoleName: {Ref: MemberRoleName}
+      Description: Arthur's aws_ec2 discovery source reads instances and their SSM custom inventory
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: {Ref: ArthurPrincipalArn}
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                sts:ExternalId: {Ref: ExternalId}
+      Policies:
+        - PolicyName: arthur-ai-discovery-read
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ec2:DescribeInstances
+                  - ec2:DescribeRegions
+                  - ssm:DescribeInstanceInformation
+                  - ssm:ListInventoryEntries
+                Resource: "*"
+
+Outputs:
+  InstallAssociationId:
+    Value: {Ref: InstallAssociation}
+  InventoryAssociationId:
+    Condition: CreateInventory
+    Value: {Ref: InventoryAssociation}
+  MemberRoleArn:
+    Condition: CreateMemberRole
+    Value: {Fn::GetAtt: [MemberRole, Arn]}

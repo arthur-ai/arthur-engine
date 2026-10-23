@@ -36,7 +36,12 @@ what a fleet receives.
 | `tools/render-os-policy.sh HEAD` leaves no placeholder and pins each file to its own sha256 | A rendered policy every VM refuses. Skipped, and says so, until the policy is committed: the renderer reads git |
 | The EC2 drop-in clears `ExecStart` before setting it, and runs `report-ssm-inventory.sh` from the reporter's directory; that reporter runs the same collector and calls no interpreter | An instance that also runs the guest-attribute reporter, and fails every run |
 | The EC2 reporter's `PART` is at most 4,096 and equals the reader's part size, and its type name, attribute names and budget match ml-engine's `cloud/ec2/client.py` | A part the SSM Agent skips without saying so; values the reader refuses; every instance reading as never reported after a rename on one side |
-| The EC2 install script in `docs/mdm/ec2.md` is POSIX `sh`: no bashism, and `dash -n` accepts it where dash is installed | Every Ubuntu instance failing section 02 with `Illegal option -o pipefail`, while Amazon Linux, where `sh` is bash, passes. Measured |
+| The EC2 template's install script is POSIX `sh`: no bashism, and `dash -n` accepts it where dash is installed | Every Ubuntu instance failing its install with `Illegal option -o pipefail`, while Amazon Linux, where `sh` is bash, passes. Measured |
+| The template's script fetches each of the five files, one line per file, to where the drop-in, the reporter or systemd runs it, at its mode, into a directory it creates | An instance whose association reads Success and whose first run fails on a missing path; a fetch the renderer cannot pin |
+| The script reads `BASE` from the document's `baseUrl`, and the document's default and the association's value are both this tree's URL at `COMMIT` | A pin bump that changes the document but never the association, or files fetched from somewhere the renderer did not pin |
+| The `baseUrl` pattern admits this tree's URL and a mirror, and refuses a quote, `;`, `$(`, a backtick, a space, a newline, a trailing `/` and `http://`; `FileBaseUrl`'s pattern is the same one, made optional | A mirror URL that runs as shell on every instance; a stack parameter that passes CloudFormation and then fails the association |
+| The member role grants exactly the EC2 and SSM calls ml-engine's `cloud/ec2/client.py` makes, under the role name `connector.py` defaults to | Every account reading as a denied scope after the collector starts calling something new; access nobody uses; a role the source never asks for |
+| `tools/render-cfn-template.sh HEAD` leaves no placeholder, names HEAD in both URLs, and pins each file to its own sha256 | A rendered template every instance refuses. Skipped, and says so, until the template is committed: the renderer reads git |
 | `arthur1.` and `ERROR:oversize` present | The framing or its over-cap reason being dropped, which leaves an empty attribute — indistinguishable from a Mac with no AI tools on it |
 | `bash -n` on both collectors, the reporter and `vendor-queries.sh` | A template edit in `build-collector.py` producing a syntax error nobody runs until a Policy does |
 | Vendored `VERSION` exists; `PROVISIONAL` is announced | A commit pin becoming permanent by inattention |
@@ -128,6 +133,26 @@ guest attributes disabled, then starts the timer and checks it has a next run, a
 everything. The first activation starts with a leftover `osquery-<n>` directory in the unit's
 `TMPDIR` and must end with that directory empty: no temp cleaner reads it. It writes to the machine, so it runs only with
 `ARTHUR_TEST_INSTALLS_UNITS=1`, as root, where systemd is PID 1 — in CI, the Ubuntu runner.
+
+## `test/run-ec2-install.sh`
+
+Takes a template rendered by `tools/render-cfn-template.sh`, cuts out the document's
+`runCommand` as the document hands it to `sh`, sets `{{ baseUrl }}` to the checkout over
+`file://` as SSM would set it, and runs the script as root under `sh`. That is dash on the
+Ubuntu runner, as on every Ubuntu instance. While it runs, a runtime drop-in keeps the unit
+from running anything when the timer fires; what the unit runs is `run-systemd.sh`'s question.
+It writes to the machine, so like `run-systemd.sh` it runs only with
+`ARTHUR_TEST_INSTALLS_UNITS=1`. In CI it renders HEAD as the runner first: git refuses root a
+checkout it does not own.
+
+| Case | What it catches |
+|---|---|
+| One run installs each fetched file at its destination, with its pinned sha256 and mode; the timer is enabled and active; systemd loads `ec2.conf` | A script that passes lint and fails on an instance: a path, a mode, a pin that is not the file's, a drop-in systemd never reads |
+| A second run changes no file or mode and does not restart the timer | State Manager's daily re-run disturbing a fleet that is already installed |
+| A file served with other bytes fails the run, names the refused file, and leaves every installed file as it was | A mirror or a moved ref replacing a good install with bytes nobody pinned |
+
+Without osquery on the machine, the script installs it from `pkg.osquery.io` as on an
+instance. In CI, osquery is already installed, so that branch is not run.
 
 ## `deploy/terraform/tests/`
 

@@ -5,17 +5,37 @@ the collector, and a reporter writes what it wrote as the instance's **SSM custo
 which the SSM Agent uploads and the SSM API serves to Arthur. Nothing connects to the instance,
 and the instance connects to nothing it does not already reach.
 
-**Five files and two associations.** A State Manager association installs osquery, drops
-`collect-linux.sh`, the reporter, the two systemd units and a drop-in that points the unit at
-the reporter, and enables the timer. The instance's inventory association uploads what the
-reporter writes. The collector is the one a Compute Engine VM runs; only the reporter differs.
+**One template, deployed as a stack or a StackSet.**
+[`deploy/arthur-ai-discovery.cfn.yaml`](../../deploy/arthur-ai-discovery.cfn.yaml) holds:
+- an SSM document whose script installs osquery, `collect-linux.sh`, the reporter, the two
+  systemd units and a drop-in that points the unit at the reporter, and enables the timer
+- the State Manager association that runs it on every managed instance
+- by parameter, the inventory association that uploads what the reporter writes, and the role
+  Arthur's source assumes
 
-> **Run on four instances.** On 2026-10-20 sections 01 to 03 ran, from a pinned commit, on fresh
-> Amazon Linux 2023 and Ubuntu 24.04 instances, each on x86_64 (`t3.small`) and arm64
-> (`t4g.small`), with the install script in an `AWS-RunShellScript` association targeted by a
-> tag. Section 02 now carries the same script in a document that skips Windows, and both
-> associations target every managed instance; **that shape is not yet run**. Measured then:
-> - Section 02's association ran twice in a row on each. The second run changed nothing: the
+Deploy it as a stack in each region of one account (section 02), or as a StackSet across an
+organization (section 09). The collector is the one a Compute Engine VM runs; only the reporter
+differs.
+
+> **Run from the template on 2026-10-23.** It ran as a self-managed StackSet in one account,
+> across us-east-2 and us-east-1, on a fresh Amazon Linux 2023 instance (`t3.small`) and a
+> Windows Server 2022 instance. Measured:
+> - Each region's stack created the document and both associations. Only us-east-1's stack
+>   created the role.
+> - The install ran on the Linux instance within a minute of SSM managing it, and was skipped
+>   on Windows.
+> - The timer's first run collected 809 rows, and the stack's inventory association uploaded
+>   them in 3 parts.
+> - A scan through the template's role, with its external ID, decoded the instance. It
+>   published a `~/.claude` as a `claude-code` record and counted the Windows instance as
+>   `unsupported-platform`. With a wrong external ID, STS refused the role.
+> - A pin bump re-ran the install at once. Every file kept its sha256 and the timer was not
+>   restarted. Drift detection found every resource in sync.
+>
+> **Run on four instances.** On 2026-10-20 the same script ran from an `AWS-RunShellScript`
+> association targeted by a tag. It ran on fresh Amazon Linux 2023 and Ubuntu 24.04 instances,
+> each on x86_64 (`t3.small`) and arm64 (`t4g.small`). Measured:
+> - The install association ran twice in a row on each. The second run changed nothing: the
 >   timer was not restarted and every file kept its sha256.
 > - Each instance collected, uploaded through section 03's association, and was decoded by the
 >   Arthur collector.
@@ -60,113 +80,90 @@ and [quotas](https://docs.aws.amazon.com/general/latest/gr/ssm.html) pages.
 | A route to the SSM endpoints | The agent's uploads | The managed instance already has one: a NAT, or the `ssm`, `ssmmessages` and `ec2messages` VPC endpoints |
 | IMDS enabled | The reporter learns the instance id from IMDSv2; the inventory directory is named for it | On by default (`HttpEndpoint=enabled`). A hop limit of 1 is enough: the reporter runs on the host |
 | A route to `pkg.osquery.io` and `pkg.osquerypackages.com` | The osquery package; the first redirects to the second | A NAT, or your own mirror |
-| A route to wherever the five files are hosted | The install script fetches them by URL (section 01) | As above, or host them in your own bucket |
+| A route to wherever the five files are hosted | The install script fetches them by URL (section 01) | As above, or a mirror named by `FileBaseUrl` |
+| Rights to deploy a stack that creates an IAM role | The template creates the role Arthur assumes (section 07) | `CAPABILITY_NAMED_IAM`, as in section 02 |
 
-## 01 · Pin the files — terminal
+## 01 · Render the template — terminal
 
 The install script downloads each file by URL and refuses it unless its sha256 matches, so the
-association names exact bytes. Pin a commit of this tree:
+template names exact bytes. Render it at a release tag of this repository:
 
 ```bash
-git clone https://github.com/arthur-ai/arthur-engine && cd arthur-engine
-COMMIT=$(git rev-parse HEAD)
-cd integrations/endpoint-ai-discovery
+git clone https://github.com/arthur-ai/arthur-engine && cd arthur-engine/integrations/endpoint-ai-discovery
+git checkout REF
 tools/build-collector.py --check && test/lint.sh        # the tree you are pinning is the built one
-shasum -a 256 dist/collect-linux.sh deploy/report-ssm-inventory.sh \
-              deploy/arthur-ai-discovery.service deploy/arthur-ai-discovery.timer \
-              deploy/arthur-ai-discovery.service.d/ec2.conf
-echo "$COMMIT"
+tools/render-cfn-template.sh REF > arthur-ai-discovery.cfn.yaml
 ```
 
-## 02 · The install association — terminal
+**Pin a tag or a commit, never a branch.** Every run of the association downloads the files at
+`REF`, so a ref that moves breaks every instance. The renderer reads each checksum from git at
+`REF`, not from the working tree. The instances download from GitHub at `REF`, so it must be
+pushed there.
 
-Replace `COMMIT` and the five `SHA256_*` values with section 01's output. The script is
-idempotent: State Manager re-applies it on its schedule, and a run that changes nothing leaves
-the timer as it was.
+**To serve the files from a mirror,** set `FileBaseUrl` in section 02 to an `https://` URL.
+Under it, the five files must sit at their paths in this tree:
+- `dist/collect-linux.sh`
+- `deploy/report-ssm-inventory.sh`
+- `deploy/arthur-ai-discovery.service`
+- `deploy/arthur-ai-discovery.timer`
+- `deploy/arthur-ai-discovery.service.d/ec2.conf`
 
-**It is POSIX `sh`, not bash.** The `aws:runShellScript` step runs it with `sh`, which on
-Ubuntu is dash: a `set -o pipefail` there fails every run with `Illegal option -o pipefail`
-(measured 2026-10-20 on Ubuntu 24.04). Keep it free of bashisms when editing it.
+The checksums still pin them.
 
-```sh
-# arthur-ai-discovery-install.sh
-set -eu
-BASE=https://raw.githubusercontent.com/arthur-ai/arthur-engine/COMMIT/integrations/endpoint-ai-discovery
-fetch() {  # path destination mode sha256
-  curl -fsSL --retry 3 -o "$2.new" "$BASE/$1"
-  echo "$4  $2.new" | sha256sum -c --quiet
-  chmod "$3" "$2.new" && mv -f "$2.new" "$2"
-}
-if ! command -v osqueryi >/dev/null 2>&1; then
-  if command -v dnf >/dev/null 2>&1; then
-    curl -fsSL -o /etc/pki/rpm-gpg/RPM-GPG-KEY-osquery https://pkg.osquery.io/rpm/GPG
-    curl -fsSL -o /etc/yum.repos.d/osquery-s3-rpm.repo https://pkg.osquery.io/rpm/osquery-s3-rpm.repo
-    dnf install -y osquery
-  else
-    install -d -m 755 /etc/apt/keyrings
-    curl -fsSL -o /etc/apt/keyrings/osquery.asc https://pkg.osquery.io/deb/pubkey.gpg
-    echo "deb [signed-by=/etc/apt/keyrings/osquery.asc] https://pkg.osquery.io/deb deb main" \
-      > /etc/apt/sources.list.d/osquery.list
-    apt-get update -q && apt-get install -y -q osquery
-  fi
-fi
-install -d -m 755 /usr/local/arthur /etc/systemd/system/arthur-ai-discovery.service.d
-fetch dist/collect-linux.sh /usr/local/arthur/collect-linux.sh 755 SHA256_COLLECTOR
-fetch deploy/report-ssm-inventory.sh /usr/local/arthur/report-ssm-inventory.sh 755 SHA256_REPORTER
-fetch deploy/arthur-ai-discovery.service /etc/systemd/system/arthur-ai-discovery.service 644 SHA256_SERVICE
-fetch deploy/arthur-ai-discovery.timer /etc/systemd/system/arthur-ai-discovery.timer 644 SHA256_TIMER
-fetch deploy/arthur-ai-discovery.service.d/ec2.conf \
-      /etc/systemd/system/arthur-ai-discovery.service.d/ec2.conf 644 SHA256_DROPIN
-systemctl daemon-reload
-systemctl enable --now arthur-ai-discovery.timer
-```
+## 02 · Deploy the stack — terminal
 
-**The script travels in a document of its own, not `AWS-RunShellScript`**, so that an
-association targeting every instance can skip Windows. In a schema 2.2 document, a step whose
-`platformType` precondition does not hold is skipped rather than failed. `AWS-RunShellScript`
-would fail on every Windows instance, and each failure would count toward `--max-errors`.
+First settle `CreateInventoryAssociation` with section 03's check: it has no default. Then
+deploy in each region the fleet runs in:
 
 ```bash
-jq -n --rawfile script arthur-ai-discovery-install.sh '{
-  schemaVersion: "2.2",
-  description: "Arthur endpoint AI discovery: osquery, the collector and its timer, on Linux",
-  mainSteps: [{
-    action: "aws:runShellScript", name: "install",
-    precondition: { StringEquals: ["platformType", "Linux"] },
-    inputs: { runCommand: [$script] }
-  }]
-}' > arthur-ai-discovery-install.json
-aws ssm create-document --name arthur-ai-discovery-install --document-type Command \
-  --document-format JSON --content file://arthur-ai-discovery-install.json
-aws ssm create-association --association-name arthur-ai-discovery \
-  --name arthur-ai-discovery-install \
-  --targets 'Key=InstanceIds,Values=*' \
-  --schedule-expression 'rate(1 day)' \
-  --max-concurrency 10% --max-errors 10%
+aws cloudformation deploy --region REGION --stack-name arthur-ai-discovery \
+  --template-file arthur-ai-discovery.cfn.yaml --capabilities CAPABILITY_NAMED_IAM \
+  --parameter-overrides CreateInventoryAssociation=true \
+      ArthurPrincipalArn=ARTHUR_PRINCIPAL_ARN ExternalId=EXTERNAL_ID MemberRoleRegion=us-east-1
 ```
 
-The document and the association are per region; create both in each region the fleet runs
-in. An instance SSM starts managing later is picked up by the association, which runs on it at
-once.
+| Creates | Where | Turned off by |
+|---|---|---|
+| The document `arthur-ai-discovery-install`, and the association `arthur-ai-discovery` that runs it daily | Every region's stack | — |
+| The association `arthur-ai-discovery-inventory`: `AWS-GatherSoftwareInventory`, custom inventory on, hourly | Every region's stack | `CreateInventoryAssociation=false` |
+| The role `arthur-ai-discovery`, which Arthur's source assumes (section 07) | Only the stack in `MemberRoleRegion`, since IAM is global | Leaving `ArthurPrincipalArn` empty |
 
-`--max-concurrency 10%` runs the install on a tenth of the instances at a time. `--max-errors
-10%` stops State Manager sending it to further instances once more than a tenth of them have
-failed. Runs already under way at that point still finish, and some of them may fail too, so a
-bad pin can fail on more than a tenth of the fleet before the rollout stops. With
-`--max-concurrency 1` the count is exact, at the cost of one instance at a time.
+Both associations target every instance SSM manages in the region. When SSM starts managing a
+new instance, the associations pick it up and run on it at once. **`MemberRoleRegion` must be a
+region you deploy to**, or no stack creates the role.
 
-**To change the script**, update the document, then make the new version its default. The
-association runs the document's default version, so each instance gets the change on the
-association's next run; `start-associations-once` runs it now:
+**The script is POSIX `sh`, not bash.** The document's `aws:runShellScript` step runs it with
+`sh`, which on Ubuntu is dash. A `set -o pipefail` there fails every run with
+`Illegal option -o pipefail` (measured 2026-10-20 on Ubuntu 24.04). `test/lint.sh` holds the
+template's script to dash. The script is idempotent: State Manager re-applies it on its
+schedule, and a run that changes nothing leaves the timer as it was.
 
-```bash
-version=$(aws ssm update-document --name arthur-ai-discovery-install \
-  --content file://arthur-ai-discovery-install.json --document-format JSON \
-  --document-version '$LATEST' --query DocumentDescription.DocumentVersion --output text)
-aws ssm update-document-default-version --name arthur-ai-discovery-install \
-  --document-version "$version"
-aws ssm start-associations-once --association-ids INSTALL_ASSOCIATION_ID
-```
+**The script travels in a document of its own, not `AWS-RunShellScript`**, so that a mirror's
+URL reaches it as the document's `baseUrl` parameter, held to a pattern that admits no shell
+metacharacter, rather than spliced into the script. A `platformType` precondition skips every
+instance but Linux.
+
+**Windows is skipped, not failed.** Measured 2026-10-23 with SSM Agent 3.3.5390.0 on Windows
+Server 2022: State Manager counted the instance as `Skipped`, `InvalidPlatform`. That holds
+under this document and under `AWS-RunShellScript` alike, so it never counts toward
+`MaxErrors`. Run Command's own history lists the same invocation as `Failed`, with the same
+detail.
+
+**The install rolls out a tenth of the fleet at a time.**
+- `MaxConcurrency 10%` runs the install on a tenth of the instances at a time.
+- `MaxErrors 10%` stops State Manager sending it to further instances once more than a tenth of
+  them have failed. Runs already under way at that point still finish, and some of them may
+  fail too, so a bad pin can fail on more than a tenth of the fleet before the rollout stops.
+
+**To change the pin**, render the template at the new ref and run the same `deploy` again.
+`deploy` keeps the value of any parameter you leave out. CloudFormation adds a version of the
+document and makes it the default. The association names the ref in its `baseUrl`, so it is
+updated too, and an updated association runs at once, at its own `MaxConcurrency`. The new
+pin reaches every instance in that run, not on the next day's.
+
+**A document named `arthur-ai-discovery-install` that the region already holds fails the
+stack.** Document names are unique in a region. Delete it and any association that runs it
+first.
 
 ## 03 · The inventory association — terminal
 
@@ -180,22 +177,15 @@ aws ssm describe-instance-associations-status --instance-id INSTANCE \
   --query 'InstanceAssociationStatusInfos[?Name==`AWS-GatherSoftwareInventory`]'
 ```
 
-- **One exists:** it has to gather custom inventory and target every instance, since an
-  instance outside its targets never uploads a report. Update it as shown after the next
-  block. Quick Setup's host-management association takes priority over any other; whether it
-  gathers custom inventory is not documented and **not yet measured**.
-- **Several exist, each on part of the fleet:** turn custom inventory on in each, and leave
-  their targets alone. Widening one over another's instances gives those instances two, and
-  then neither runs.
-- **None exists:** create one, on every instance.
-
-```bash
-aws ssm create-association --association-name arthur-ai-discovery-inventory \
-  --name AWS-GatherSoftwareInventory \
-  --targets 'Key=InstanceIds,Values=*' \
-  --schedule-expression 'rate(1 hour)' \
-  --parameters customInventory=Enabled
-```
+- **None exists:** deploy with `CreateInventoryAssociation=true`, and the stack creates one on
+  every instance.
+- **One exists:** deploy with `false`. The existing association has to gather custom inventory
+  and target every instance, since an instance outside its targets never uploads a report.
+  Update it as shown below. Quick Setup's host-management association takes priority over any
+  other; whether it gathers custom inventory is not documented and **not yet measured**.
+- **Several exist, each on part of the fleet:** deploy with `false`, turn custom inventory on in
+  each, and leave their targets alone. Widening one over another's instances gives those
+  instances two, and then neither runs.
 
 **An update replaces the whole association.** `update-association` sets every field it is not
 given to null, the document name, its parameters, the schedule and the rate controls included.
@@ -244,10 +234,10 @@ Arthur's source then counts the instance instead of publishing it as a clean mac
 policy can deny `ssm:DeregisterManagedInstance` and instance profile changes, which Compute
 Engine has no equivalent of.
 
-**To pilot on a handful first**, create both associations with
-`--targets Key=InstanceIds,Values=i-…,i-…`, then widen each with section 03's update, which
-changes only the targets. Never widen with `update-association --targets` alone: it sets the
-association's parameters, schedule and rate controls to null.
+**To pilot on a handful first**, deploy with `TargetInstanceIds=i-…,i-…`, which narrows both of
+the stack's associations. Then widen them by deploying again with `TargetInstanceIds='*'`.
+`deploy` keeps a parameter's last value, so the widening has to name it. Across an
+organization, pilot by deploying the StackSet to one account or OU first (section 09).
 
 **When the first report arrives:** the timer's first run is 5 minutes after boot plus up to 10
 of random delay, and the upload follows on the inventory association's next run, up to its
@@ -334,6 +324,18 @@ credentials — IRSA on EKS, say — only when the engine sets
 `ARTHUR_ENGINE_AWS_EC2_ALLOW_DEFAULT_CREDENTIALS=true`; otherwise the scan fails and names the
 fields.
 
+**The template creates that role** when `ArthurPrincipalArn` is set:
+- It holds the three actions above plus `ec2:DescribeRegions`.
+- It trusts `ArthurPrincipalArn` only with `ExternalId`.
+- `ArthurPrincipalArn` is the IAM user or role whose credential the source holds.
+
+For one account, give the source:
+- that principal's access key
+- `role_arn` set to the stack's `MemberRoleArn` output
+- `external_id` set to `ExternalId`
+
+`test/lint.sh` holds the role's actions to the calls the collector makes.
+
 **Every account in the organization.** Set `accounts` to `all`, or to a comma-separated list
 of account IDs, and `regions` to `all` or a list. The source lists the organization's active
 accounts (`organizations:ListAccounts`, from the management account or a delegated
@@ -342,10 +344,21 @@ source's `external_id`, as session `arthur-ai-discovery`, and asks each account 
 regions. With `accounts` set, `external_id` is the member roles' and needs no `role_arn` of the
 source's own.
 `member_role_name` defaults to `arthur-ai-discovery`. The management account is treated like
-any other. The credential the source holds needs `organizations:ListAccounts` and
-`sts:AssumeRole` on the member role; the member role holds the three actions above plus
-`ec2:DescribeRegions`, and trusts that credential. Deploy it to every account with a
-CloudFormation StackSet. The named regions choose the partition, and the scan asks STS,
+any other. The member role is the template's, deployed to every account by section 09's
+StackSet, and the credential the source holds needs this:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    { "Effect": "Allow", "Action": "organizations:ListAccounts", "Resource": "*" },
+    { "Effect": "Allow", "Action": "sts:AssumeRole", "Resource": "arn:aws:iam::*:role/arthur-ai-discovery" }
+  ]
+}
+```
+
+In another partition, the role ARN starts `arn:aws-us-gov:` or `arn:aws-cn:`. The named
+regions choose the partition, and the scan asks STS,
 Organizations and each account's enabled regions in a region every account there has enabled:
 `us-east-1`, `us-gov-west-1` or `cn-north-1`. `regions: all` names none and is the `aws`
 partition's; a fleet in another partition names its regions, and one source reaches one
@@ -387,9 +400,11 @@ is in it by name. No inventory value travels. Where the list can be read is in
 ## 08 · Rollback — terminal
 
 ```bash
-aws ssm delete-association --association-id INSTALL_ASSOCIATION_ID
-aws ssm delete-association --association-id INVENTORY_ASSOCIATION_ID   # only if you created it
-aws ssm delete-document --name arthur-ai-discovery-install
+aws cloudformation delete-stack --region REGION --stack-name arthur-ai-discovery   # each region
+# a StackSet (section 09): its instances first, then the set
+aws cloudformation delete-stack-instances --stack-set-name arthur-ai-discovery \
+  --deployment-targets OrganizationalUnitIds=OU_ID --regions REGION … --no-retain-stacks
+aws cloudformation delete-stack-set --stack-set-name arthur-ai-discovery
 # on each instance:
 sudo systemctl disable --now arthur-ai-discovery.timer
 sudo rm -rf /etc/systemd/system/arthur-ai-discovery.service.d
@@ -399,6 +414,81 @@ sudo rm -rf /usr/local/arthur /var/lib/arthur
 sudo rm -f /var/lib/amazon/ssm/*/inventory/custom/ArthurAIDiscovery.json
 ```
 
-Deleting an association does not remove what it installed, hence the commands on each
-instance. SSM keeps the last upload for 30 days; `aws ssm delete-inventory` removes a custom
-type's data for the whole account, never for one instance.
+Deleting a stack deletes its associations, its document and its role, but not what the
+association installed, hence the commands on each instance. If you turned custom inventory on
+in an association of your own (section 03), turn it off there. SSM keeps the last upload for 30
+days; `aws ssm delete-inventory` removes a custom type's data for the whole account, never for
+one instance.
+
+## 09 · Across the organization — terminal
+
+A service-managed StackSet deploys the template to every account in the OUs you name, in each
+region you name. It also deploys to each account that joins one of those OUs later.
+- Run it from the management account, after `aws cloudformation activate-organizations-access`.
+- Or run it from a delegated administrator for StackSets, adding `--call-as DELEGATED_ADMIN` to
+  each command.
+
+> **Not yet run against a real organization.** The template ran as a self-managed StackSet
+> across two regions of one account (see the measurements at the top). Service-managed
+> deployment to OUs, and auto-deployment to an account that joins one, have not run.
+
+```bash
+aws cloudformation create-stack-set --stack-set-name arthur-ai-discovery \
+  --template-body file://arthur-ai-discovery.cfn.yaml --capabilities CAPABILITY_NAMED_IAM \
+  --permission-model SERVICE_MANAGED \
+  --auto-deployment Enabled=true,RetainStacksOnAccountRemoval=false \
+  --parameters ParameterKey=CreateInventoryAssociation,ParameterValue=true \
+               ParameterKey=ArthurPrincipalArn,ParameterValue=ARTHUR_PRINCIPAL_ARN \
+               ParameterKey=ExternalId,ParameterValue=EXTERNAL_ID \
+               ParameterKey=MemberRoleRegion,ParameterValue=us-east-1
+aws cloudformation create-stack-instances --stack-set-name arthur-ai-discovery \
+  --deployment-targets OrganizationalUnitIds=ROOT_OR_OU_ID \
+  --regions us-east-1 us-east-2 eu-west-1 \
+  --operation-preferences RegionConcurrencyType=PARALLEL,MaxConcurrentPercentage=25,FailureTolerancePercentage=10
+```
+
+`FailureTolerancePercentage=10` stops the operation in a region once a tenth of its accounts
+have failed, the way `MaxErrors` stops the install on a tenth of the instances.
+
+**The management account is never a target of a service-managed StackSet**, even with the root
+as the target. The source scans it like any other account, and without the role it reads as a
+denied scope. Deploy the template there as a stack in each region (section 02).
+
+**`MemberRoleRegion` must be one of `--regions`.** Each account's role is created once, by the
+stack in that region. Without it, every account reads as a denied scope.
+
+**`CreateInventoryAssociation` is the set's, for every account**, auto-deployed ones included.
+Set the StackSet to the common case. For an account that already has an inventory association
+(section 03), override the value when you create its instances:
+
+```bash
+aws cloudformation create-stack-instances --stack-set-name arthur-ai-discovery \
+  --deployment-targets OrganizationalUnitIds=OU_ID,Accounts=ACCOUNT_ID,AccountFilterType=INTERSECTION \
+  --regions us-east-1 us-east-2 eu-west-1 \
+  --parameter-overrides ParameterKey=CreateInventoryAssociation,ParameterValue=false
+```
+
+**Leave those accounts out of the first `create-stack-instances`** with `Accounts=…` and
+`AccountFilterType=DIFFERENCE`. Otherwise they get a second inventory association, and until
+the override lands neither association runs.
+
+**To change the pin**, render the template at the new ref and update the set. Name each
+parameter with `UsePreviousValue`, or it returns to its default:
+
+```bash
+aws cloudformation update-stack-set --stack-set-name arthur-ai-discovery \
+  --template-body file://arthur-ai-discovery.cfn.yaml --capabilities CAPABILITY_NAMED_IAM \
+  --parameters ParameterKey=CreateInventoryAssociation,UsePreviousValue=true \
+               ParameterKey=ArthurPrincipalArn,UsePreviousValue=true \
+               ParameterKey=ExternalId,UsePreviousValue=true \
+               ParameterKey=MemberRoleName,UsePreviousValue=true \
+               ParameterKey=MemberRoleRegion,UsePreviousValue=true \
+               ParameterKey=TargetInstanceIds,UsePreviousValue=true \
+               ParameterKey=FileBaseUrl,UsePreviousValue=true \
+  --operation-preferences RegionConcurrencyType=PARALLEL,MaxConcurrentPercentage=25,FailureTolerancePercentage=10
+```
+
+**Being SSM-managed is still the only switch.** The StackSet does not make instances
+SSM-managed. Default Host Management Configuration does that per account and region, and Quick
+Setup can turn it on across the organization. Arthur counts an instance that is not managed,
+by name, as `not-ssm-managed` (section 07).
