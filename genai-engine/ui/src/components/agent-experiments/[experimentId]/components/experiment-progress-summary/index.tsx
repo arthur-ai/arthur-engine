@@ -11,12 +11,26 @@ export const ExperimentProgressSummary = ({ experiment }: Props) => {
 
   return (
     <Paper variant="outlined" sx={{ p: 2 }}>
-      <Stack gap={2}>
+      <Stack
+        sx={{
+          gap: 2,
+        }}
+      >
         <Stack>
-          <Typography variant="h6" fontWeight="bold">
+          <Typography
+            variant="h6"
+            sx={{
+              fontWeight: "bold",
+            }}
+          >
             Test Case Progress
           </Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+            }}
+          >
             {experiment.total_rows} test cases to run. {experiment.completed_rows} completed and {experiment.failed_rows} failed.
           </Typography>
         </Stack>

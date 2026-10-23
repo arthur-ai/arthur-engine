@@ -274,7 +274,14 @@ export const SyntheticDataTable: React.FC<SyntheticDataTableProps> = ({
                             >
                               <Typography variant="body2" noWrap>
                                 {value || (
-                                  <Typography component="span" variant="body2" color="text.secondary" fontStyle="italic">
+                                  <Typography
+                                    component="span"
+                                    variant="body2"
+                                    sx={{
+                                      color: "text.secondary",
+                                      fontStyle: "italic",
+                                    }}
+                                  >
                                     Click to edit
                                   </Typography>
                                 )}

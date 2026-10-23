@@ -1,5 +1,5 @@
-import PauseCircleOutlineIcon from "@mui/icons-material/PauseCircleOutline";
-import PlayCircleOutlineIcon from "@mui/icons-material/PlayCircleOutline";
+import PauseCircleOutlineIcon from "@mui/icons-material/PauseCircleOutlined";
+import PlayCircleOutlineIcon from "@mui/icons-material/PlayCircleOutlined";
 import { Chip } from "@mui/material";
 
 import type { LiveEvalDetail } from "./types";

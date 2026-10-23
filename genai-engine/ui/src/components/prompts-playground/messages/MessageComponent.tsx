@@ -325,7 +325,12 @@ const Message: React.FC<MessageComponentProps> = ({ id, parentId, role, defaultC
                 }}
               >
                 <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1 }}>
-                  <Typography variant="caption" color="text.secondary">
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: "text.secondary",
+                    }}
+                  >
                     Tool Call {index + 1}
                   </Typography>
                   <Tooltip title="Remove tool call" placement="top-start" arrow>

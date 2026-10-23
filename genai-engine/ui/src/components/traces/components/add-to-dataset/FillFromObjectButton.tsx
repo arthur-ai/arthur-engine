@@ -148,14 +148,27 @@ export function FillFromObjectButton({ spans, columns, onFillColumns }: FillFrom
                   fullWidth
                   autoFocus
                 />
-                <Typography variant="caption" color="text.secondary" sx={{ mt: 1 }}>
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: "text.secondary",
+                    mt: 1,
+                  }}
+                >
                   {search ? "Showing all matching objects" : "Showing objects with column matches"}
                 </Typography>
               </Stack>
 
               <List dense className="overflow-auto max-h-[50vh]">
                 {displayedObjects.length === 0 ? (
-                  <Typography variant="body2" color="text.secondary" sx={{ p: 2, textAlign: "center" }}>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: "text.secondary",
+                      p: 2,
+                      textAlign: "center",
+                    }}
+                  >
                     {search ? "No objects found matching your search" : "No objects with matching column names found. Try searching."}
                   </Typography>
                 ) : (
@@ -174,8 +187,20 @@ export function FillFromObjectButton({ spans, columns, onFillColumns }: FillFrom
                             </Typography>
                           }
                           secondary={
-                            <Stack direction="column" gap={0.5} mt={0.5}>
-                              <Stack direction="row" gap={0.5} alignItems="center">
+                            <Stack
+                              direction="column"
+                              sx={{
+                                gap: 0.5,
+                                mt: 0.5,
+                              }}
+                            >
+                              <Stack
+                                direction="row"
+                                sx={{
+                                  gap: 0.5,
+                                  alignItems: "center",
+                                }}
+                              >
                                 <Chip
                                   size="small"
                                   label={`${obj.matchCount} match${obj.matchCount !== 1 ? "es" : ""}`}
@@ -183,14 +208,24 @@ export function FillFromObjectButton({ spans, columns, onFillColumns }: FillFrom
                                   variant={hasMatches ? "filled" : "outlined"}
                                 />
                                 {hasMatches && (
-                                  <Typography variant="caption" color="text.secondary">
+                                  <Typography
+                                    variant="caption"
+                                    sx={{
+                                      color: "text.secondary",
+                                    }}
+                                  >
                                     {obj.matchingKeys.slice(0, 3).join(", ")}
                                     {obj.matchingKeys.length > 3 && ` +${obj.matchingKeys.length - 3}`}
                                   </Typography>
                                 )}
                               </Stack>
                               {!hasMatches && (
-                                <Typography variant="caption" color="text.disabled">
+                                <Typography
+                                  variant="caption"
+                                  sx={{
+                                    color: "text.disabled",
+                                  }}
+                                >
                                   Keys: {getKeysPreview(obj)}
                                 </Typography>
                               )}

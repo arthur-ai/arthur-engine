@@ -235,7 +235,14 @@ export const ConfigureColumnsModal: React.FC<ConfigureColumnsModalProps> = ({
                   }}
                 >
                   {columns.length === 0 ? (
-                    <Typography variant="body2" color="text.secondary" sx={{ py: 2, textAlign: "center" }}>
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        color: "text.secondary",
+                        py: 2,
+                        textAlign: "center",
+                      }}
+                    >
                       No columns yet. Add your first column below.
                     </Typography>
                   ) : (
@@ -333,7 +340,12 @@ export const ConfigureColumnsModal: React.FC<ConfigureColumnsModalProps> = ({
             <FormControlLabel
               control={<Checkbox checked={applyToExisting} onChange={(e) => setApplyToExisting(e.target.checked)} size="small" />}
               label={
-                <Typography variant="body2" color="text.secondary">
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: "text.secondary",
+                  }}
+                >
                   Apply defaults to existing rows ({existingRowCount} row
                   {existingRowCount !== 1 ? "s" : ""})
                 </Typography>
@@ -431,7 +443,13 @@ const DisplayColumnRow: React.FC<DisplayColumnRowProps> = ({ column, defaultConf
       </IconButton>
     </Box>
     <Box sx={{ display: "flex", alignItems: "center", gap: 1, pl: 1 }}>
-      <Typography variant="body2" color="text.secondary" sx={{ minWidth: 60 }}>
+      <Typography
+        variant="body2"
+        sx={{
+          color: "text.secondary",
+          minWidth: 60,
+        }}
+      >
         Default:
       </Typography>
       <DefaultValueSelector value={defaultConfig} onChange={onDefaultChange} />

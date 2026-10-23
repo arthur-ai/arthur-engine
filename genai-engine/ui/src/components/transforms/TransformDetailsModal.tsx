@@ -37,7 +37,13 @@ export const TransformDetailsModal: React.FC<TransformDetailsModalProps> = ({ op
         <Box sx={{ mt: 1 }}>
           {/* Transform ID Section */}
           <Box sx={{ mb: 3 }}>
-            <Typography variant="subtitle2" fontWeight="medium" gutterBottom>
+            <Typography
+              variant="subtitle2"
+              gutterBottom
+              sx={{
+                fontWeight: "medium",
+              }}
+            >
               Transform ID
             </Typography>
             <Box
@@ -79,17 +85,34 @@ export const TransformDetailsModal: React.FC<TransformDetailsModalProps> = ({ op
 
           {transform.description && (
             <Box sx={{ mb: 3 }}>
-              <Typography variant="subtitle2" fontWeight="medium" gutterBottom>
+              <Typography
+                variant="subtitle2"
+                gutterBottom
+                sx={{
+                  fontWeight: "medium",
+                }}
+              >
                 Description
               </Typography>
-              <Typography variant="body2" color="text.secondary">
+              <Typography
+                variant="body2"
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
                 {transform.description}
               </Typography>
             </Box>
           )}
 
           <Box sx={{ mb: 3 }}>
-            <Typography variant="subtitle2" fontWeight="medium" gutterBottom>
+            <Typography
+              variant="subtitle2"
+              gutterBottom
+              sx={{
+                fontWeight: "medium",
+              }}
+            >
               Variable Mappings ({definition?.variables.length ?? 0})
             </Typography>
             <Box sx={{ display: "flex", flexDirection: "column", gap: 1, mt: 1 }}>
@@ -104,14 +127,30 @@ export const TransformDetailsModal: React.FC<TransformDetailsModalProps> = ({ op
                     borderColor: "divider",
                   }}
                 >
-                  <Typography variant="body2" fontWeight="medium">
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      fontWeight: "medium",
+                    }}
+                  >
                     {variable.variable_name}
                   </Typography>
-                  <Typography variant="caption" color="text.secondary">
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: "text.secondary",
+                    }}
+                  >
                     Span: <code>{variable.span_name}</code> → Path: <code>{variable.attribute_path}</code>
                   </Typography>
                   {variable.fallback !== undefined && (
-                    <Typography variant="caption" color="text.secondary" display="block">
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        color: "text.secondary",
+                        display: "block",
+                      }}
+                    >
                       Fallback: {JSON.stringify(variable.fallback)}
                     </Typography>
                   )}
@@ -121,7 +160,13 @@ export const TransformDetailsModal: React.FC<TransformDetailsModalProps> = ({ op
           </Box>
 
           <Box>
-            <Typography variant="subtitle2" fontWeight="medium" gutterBottom>
+            <Typography
+              variant="subtitle2"
+              gutterBottom
+              sx={{
+                fontWeight: "medium",
+              }}
+            >
               Full JSON Definition
             </Typography>
             <Box
@@ -145,7 +190,13 @@ export const TransformDetailsModal: React.FC<TransformDetailsModalProps> = ({ op
           <Divider sx={{ my: 3 }} />
 
           <Box>
-            <Typography variant="subtitle2" fontWeight="medium" gutterBottom>
+            <Typography
+              variant="subtitle2"
+              gutterBottom
+              sx={{
+                fontWeight: "medium",
+              }}
+            >
               Edit History
             </Typography>
             <TransformEditHistoryPanel transformId={transform.id} />
