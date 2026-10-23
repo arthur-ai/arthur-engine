@@ -370,6 +370,7 @@ How the collector counts an instance that cannot report:
 | No `Custom:ArthurAIDiscovery` entries | `never-reported` |
 | Parts that do not reassemble, or a value over the budget | `inventory-incomplete` |
 | A status line outside the scan's lookback — stopped, or its timer or uploads gone | `not-reported-in-window`, and not published |
+| A status line, or with none the scan in the payload, dated more than 15 minutes past the scan's own clock | `clock-ahead`, and not published until the instance's time sync is fixed |
 
 A stopped instance is still read, and its status line decides. An instance still reporting but
 failing keeps publishing its last good scan.
