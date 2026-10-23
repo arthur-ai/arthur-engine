@@ -27,6 +27,9 @@ joins a workload to the models it called.
   an EKS Pod Identity association binds to that service account; else the managed node
   groups' node roles, which every pod on those nodes shares. Which group a controller's
   pods land on is the scheduler's, so every group's role is listed, marked as the node's.
+  A pod a Fargate profile selects has no node role at all. Nodes outside managed node
+  groups (self-managed, Karpenter, Auto Mode) are not listed by EKS, so their roles are
+  not known here.
 
 A ROLE MAY BE SHARED. Two services given one task role, or every pod on a node, run as
 the same identity; a match on it says one of them called a model, not which. The record
@@ -35,6 +38,7 @@ says how many workloads in the scan share each role, and which roles are a node'
 
 from dataclasses import dataclass, field
 from datetime import datetime
+from fnmatch import fnmatchcase
 from typing import Any, Iterable, Mapping, Optional, Sequence
 
 from discovery.catalog import Finding, Matcher
@@ -170,7 +174,11 @@ def ecs_service_workload(
     images = tuple(
         dict.fromkeys(i for d in definitions for i in task_definition_images(d))
     )
-    roles = [str(d.get("taskRoleArn")) for d in definitions if d.get("taskRoleArn")]
+    roles = [
+        role_arn(account, str(d.get("taskRoleArn")))
+        for d in definitions
+        if d.get("taskRoleArn")
+    ]
     node_roles: tuple[str, ...] = ()
     if any(not d.get("taskRoleArn") for d in definitions):
         node_roles = tuple(instance_roles)
@@ -185,8 +193,7 @@ def ecs_service_workload(
         region=region,
         kind=ECS_SERVICE,
         resource_id=f"{cluster}/{name}",
-        external_id=str(service.get("serviceArn") or "")
-        or f"{account}/{region}/{ECS_SERVICE}/{cluster}/{name}",
+        external_id=_service_external_id(account, region, cluster, name, service),
         name=f"{cluster}/{name}",
         images=images,
         roles=tuple(dict.fromkeys([*roles, *node_roles])),
@@ -223,7 +230,7 @@ def ecs_task_group_workload(
         definition = by_arn.get(str(task.get("taskDefinitionArn") or "")) or {}
         role = override or str(definition.get("taskRoleArn") or "")
         if role:
-            roles.append(role)
+            roles.append(role_arn(account, role))
         else:
             without_role = True
     node_roles = tuple(instance_roles) if without_role else ()
@@ -247,6 +254,22 @@ def ecs_task_group_workload(
         digests=task_digests(tasks),
         node_roles=node_roles,
     )
+
+
+def _service_external_id(
+    account: str,
+    region: str,
+    cluster: str,
+    name: str,
+    service: Mapping[str, Any],
+) -> str:
+    """The service's ARN when it is the long format, which names the cluster
+    (`service/<cluster>/<name>`). The old short format (`service/<name>`) does not, so
+    two clusters' services of one name would share it; those get a composed id."""
+    arn = str(service.get("serviceArn") or "")
+    if arn.endswith(f":service/{cluster}/{name}"):
+        return arn
+    return f"{account}/{region}/{ECS_SERVICE}/{cluster}/{name}"
 
 
 def service_name_of(task: Mapping[str, Any]) -> Optional[str]:
@@ -282,6 +305,22 @@ class ClusterIdentity:
     """(namespace, service account) -> the role an EKS Pod Identity association binds."""
     node_roles: tuple[str, ...]
     """Roles of the cluster's managed node groups."""
+    fargate_selectors: tuple[tuple[str, Mapping[str, str]], ...] = ()
+    """(namespace pattern, labels) of each Fargate profile selector. A pod one selects
+    runs on Fargate, where there is no node role to fall back to."""
+
+    def on_fargate(self, namespace: str, labels: Mapping[str, str]) -> bool:
+        """Whether a Fargate profile selects pods in this namespace with these labels.
+        Namespaces and label values take `*` and `?` wildcards, as EKS allows."""
+        for pattern, wanted in self.fargate_selectors:
+            if not fnmatchcase(namespace, pattern):
+                continue
+            if all(
+                key in labels and fnmatchcase(labels[key], value)
+                for key, value in wanted.items()
+            ):
+                return True
+        return False
 
 
 def irsa_annotations(
@@ -336,7 +375,9 @@ def eks_workload(
     own = identity.irsa.get((namespace, ksa)) or identity.pod_identity.get(
         (namespace, ksa),
     )
-    roles = (own,) if own else identity.node_roles
+    on_fargate = identity.on_fargate(namespace, _pod_labels(raw, path_kind))
+    node_roles = () if on_fargate else identity.node_roles
+    roles = (own,) if own else node_roles
     return Workload(
         account=account,
         region=region,
@@ -349,11 +390,21 @@ def eks_workload(
         last_seen=_k8s_last_seen(raw),
         cluster=cluster_name,
         digests=_pod_digests(raw, path_kind),
-        node_roles=() if own else identity.node_roles,
+        node_roles=() if own else node_roles,
     )
 
 
 # --- selection ------------------------------------------------------------------------
+
+
+def role_arn(account: str, role: str) -> str:
+    """The role as an ARN. ECS accepts a bare role name for `taskRoleArn`, which is a
+    role in the task's own account; CloudTrail always names the caller by ARN, so a bare
+    name would never match it."""
+    role = role.strip()
+    if role.startswith("arn:"):
+        return role
+    return f"arn:aws:iam::{account}:role/{role}"
 
 
 def role_key(arn: str) -> str:
@@ -378,9 +429,7 @@ def select_workloads(
 ) -> list[SelectedWorkload]:
     """The workloads to report, each with why.
 
-    `ai_roles` is `role_key` -> the models that role was allowed to call; a role whose
-    every call was refused maps to no models and still selects its workload, because it
-    tried. Reported when an image matches an agent in the catalog, when it runs as one
+    `ai_roles` is `role_key` -> the models that role called. Reported when an image matches an agent in the catalog, when it runs as one
     of `ai_roles`, or always when `report_all` is set.
     """
     selected: list[SelectedWorkload] = []
@@ -441,6 +490,18 @@ def pinned_images(workload: Workload) -> list[str]:
         else:
             out.extend(f"{image}@{d}" for d in digests)
     return out
+
+
+def _pod_labels(raw: Mapping[str, Any], path_kind: str) -> Mapping[str, str]:
+    """The labels a controller's pods are created with, or a bare pod's own."""
+    if path_kind == "pod":
+        meta = raw.get("metadata") or {}
+    else:
+        spec = raw.get("spec") or {}
+        if path_kind == "cronjob":
+            spec = (spec.get("jobTemplate") or {}).get("spec") or {}
+        meta = (spec.get("template") or {}).get("metadata") or {}
+    return {str(k): str(v) for k, v in (meta.get("labels") or {}).items()}
 
 
 def _pod_spec(raw: Mapping[str, Any], path_kind: str) -> Mapping[str, Any]:

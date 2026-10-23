@@ -8,9 +8,9 @@ container runtime lists every workload, not only agents, so a workload is report
   `agents.yaml`, or the source config's own catalog), matched by the vendored matcher's
   container route; or
 - it runs as an IAM role that called a Bedrock model within the lookback, which this
-  scan reads from CloudTrail itself (`read_cloudtrail`, on by default). A role whose
-  every call Bedrock refused still selects its workload -- it tried -- but adds no
-  model to the record; or
+  scan reads from CloudTrail itself (`read_cloudtrail`, on by default). A call IAM
+  refused is not a call, as in the Bedrock source, so a role whose every call was
+  refused selects nothing; or
 - the source sets `report_all_workloads`, which reports every workload so each one's
   role is in the record.
 
@@ -86,7 +86,7 @@ from discovery.cloud.aws_bedrock.client import (
     ModelCall,
     default_client_factory,
 )
-from discovery.cloud.aws_bedrock.connector import SSO_ROLE_PATH, aggregate
+from discovery.cloud.aws_bedrock.connector import aggregate
 from discovery.cloud.aws_containers.client import (
     AwsContainersClient,
     AwsContainersError,
@@ -372,7 +372,8 @@ class _Scan:
         """`role_key` -> the models it was allowed to call, across every region read.
 
         Across regions because a task in one region may call a model in another. A role
-        whose every call was refused maps to no models: it tried.
+        whose every call was refused is not here: it called no model, which is the Bedrock
+        source's rule for a caller too.
         """
         models: dict[str, set[str]] = {}
         for region in regions:
@@ -388,9 +389,6 @@ class _Scan:
             self.counts["refused_model_calls"] += denied
             for caller in callers:
                 models.setdefault(role_key(caller.arn), set()).update(caller.models)
-            for call in calls:
-                if call.refused and SSO_ROLE_PATH not in call.caller_arn:
-                    models.setdefault(role_key(call.caller_arn), set())
         self.counts["ai_roles"] = len(models)
         return {key: frozenset(m) for key, m in models.items()}
 
@@ -557,6 +555,14 @@ class _Scan:
                         region,
                     ),
                 ),
+                fargate_selectors=tuple(
+                    self._optional(
+                        lambda: self._client.fargate_selectors(region, name),
+                        [],
+                        f"Fargate profiles of {scope}",
+                        region,
+                    ),
+                ),
             )
             try:
                 found = self._eks_cluster(region, cluster, identity)
@@ -579,6 +585,7 @@ class _Scan:
                 irsa=irsa_annotations(kube.items("/api/v1/serviceaccounts")),
                 pod_identity=identity.pod_identity,
                 node_roles=identity.node_roles,
+                fargate_selectors=identity.fargate_selectors,
             )
             for path, kind, asset_kind in K8S_KINDS:
                 for raw in kube.items(path):

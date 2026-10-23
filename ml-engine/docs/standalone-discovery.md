@@ -511,7 +511,8 @@ The credential needs, all read-only:
   `ecs:DescribeContainerInstances`, `ec2:DescribeInstances` and `iam:GetInstanceProfile`.
 - EKS: `eks:ListClusters`, `eks:DescribeCluster`, `eks:ListNodegroups`,
   `eks:DescribeNodegroup`, `eks:ListPodIdentityAssociations`,
-  `eks:DescribePodIdentityAssociation`, and on each cluster an access entry for the
+  `eks:DescribePodIdentityAssociation`, `eks:ListFargateProfiles`,
+  `eks:DescribeFargateProfile`, and on each cluster an access entry for the
   credential's IAM principal with the `AmazonEKSViewPolicy` access policy at cluster
   scope (`aws eks create-access-entry`, then `aws eks associate-access-policy ...
   --access-scope type=cluster`). A cluster still on `CONFIG_MAP` authentication needs the
@@ -536,8 +537,10 @@ EKS Pod Identity association binds to it, else the managed node groups' node rol
 EC2 task with no task role runs as its container instance's role. A node's or instance's
 role is shared by everything on it, and the name says so, as it says how many of the
 scan's workloads share a role. CloudTrail is read over the lookback, or the last seven
-days when it is `0`; a role whose every call Bedrock refused still selects its workload,
-without models.
+days when it is `0`; a call IAM refused is not a call, as in `aws_bedrock`, so a role
+whose every call was refused selects nothing. A pod a Fargate profile selects has no
+node role; nodes outside managed node groups (self-managed, Karpenter, Auto Mode) are
+not listed by EKS, so their roles are not reported.
 
 An account-region whose ECS or EKS listing is refused, and a cluster whose Kubernetes API
 answers 401 or 403 or cannot be reached (a private endpoint the engine is outside of), is

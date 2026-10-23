@@ -11,7 +11,8 @@ THE AWS CALLS, through boto3 as every AWS source here:
   `DescribeContainerInstances`, then EC2's `DescribeInstances` and IAM's
   `GetInstanceProfile` for the role the instance runs as.
 - EKS: `ListClusters`, `DescribeCluster` (endpoint and CA), `ListNodegroups` +
-  `DescribeNodegroup` (node roles), `ListPodIdentityAssociations` +
+  `DescribeNodegroup` (node roles), `ListFargateProfiles` + `DescribeFargateProfile`
+  (which pods run on Fargate, with no node role), `ListPodIdentityAssociations` +
   `DescribePodIdentityAssociation` (the role each binds).
 - STS: a presigned `GetCallerIdentity`, which is the token EKS's Kubernetes API takes
   (`k8s-aws-v1.` and the URL, base64url); it is signed here, never sent to STS.
@@ -276,6 +277,37 @@ class AwsContainersClient:
                 roles.append(role)
         return list(dict.fromkeys(roles))
 
+    def fargate_selectors(
+        self,
+        region: str,
+        cluster: str,
+    ) -> list[tuple[str, dict[str, str]]]:
+        """Every Fargate profile's selectors, as (namespace pattern, labels)."""
+        out: list[tuple[str, dict[str, str]]] = []
+        for profile in self._pages(
+            "eks",
+            region,
+            "list_fargate_profiles",
+            "fargateProfileNames",
+            clusterName=cluster,
+        ):
+            body = self._call(
+                "eks",
+                region,
+                "describe_fargate_profile",
+                clusterName=cluster,
+                fargateProfileName=profile,
+            )
+            for selector in (body.get("fargateProfile") or {}).get("selectors") or []:
+                namespace = str(selector.get("namespace") or "")
+                if namespace:
+                    labels = {
+                        str(k): str(v)
+                        for k, v in (selector.get("labels") or {}).items()
+                    }
+                    out.append((namespace, labels))
+        return out
+
     def pod_identity_roles(
         self,
         region: str,
@@ -326,12 +358,17 @@ class AwsContainersClient:
             raise KubernetesError(
                 "EKS returned a cluster CA that is not base64"
             ) from exc
-        token = self._token_for(region, str(cluster.get("name") or ""))
+        name = str(cluster.get("name") or "")
         fd, path = tempfile.mkstemp(prefix="eks-ca-", suffix=".pem")
         try:
             with os.fdopen(fd, "wb") as f:
                 f.write(ca)
-            yield KubernetesApi(self, endpoint.rstrip("/"), path, token)
+            yield KubernetesApi(
+                self,
+                endpoint.rstrip("/"),
+                path,
+                lambda: self._token_for(region, name),
+            )
         finally:
             os.unlink(path)
 
@@ -449,7 +486,7 @@ class KubernetesApi:
         client: AwsContainersClient,
         base: str,
         ca_path: str,
-        token: str,
+        token: Callable[[], str],
     ) -> None:
         self._client = client
         self._base = base
@@ -464,7 +501,9 @@ class KubernetesApi:
             page = self._client._kube_get(
                 self._base + path,
                 params,
-                self._token,
+                # Minted per page: a presigned token lasts minutes, and a large
+                # cluster's listing can outlast it, which would read as a 401.
+                self._token(),
                 self._ca,
             )
             yield from page.get("items") or []

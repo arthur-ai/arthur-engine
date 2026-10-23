@@ -205,6 +205,7 @@ def k8s(
     ksa: Optional[str] = None,
     owner: Optional[str] = None,
     image_id: Optional[str] = None,
+    labels: Optional[dict[str, str]] = None,
 ) -> Any:
     pod: dict[str, Any] = {"containers": [{"image": image, "env": [SECRET_ENV]}]}
     if ksa:
@@ -216,15 +217,20 @@ def k8s(
     }
     if owner:
         meta["ownerReferences"] = [{"kind": owner, "name": "x"}]
+    template: dict[str, Any] = {"spec": pod}
+    if labels:
+        template["metadata"] = {"labels": labels}
     status: dict[str, Any] = {}
     if kind == "pod":
         spec: dict[str, Any] = pod
+        if labels:
+            meta["labels"] = labels
         if image_id:
             status["containerStatuses"] = [{"image": image, "imageID": image_id}]
     elif kind == "cronjob":
-        spec = {"jobTemplate": {"spec": {"template": {"spec": pod}}}}
+        spec = {"jobTemplate": {"spec": {"template": template}}}
     else:
-        spec = {"template": {"spec": pod}}
+        spec = {"template": template}
     return {"metadata": meta, "spec": spec, "status": status}
 
 
@@ -287,6 +293,7 @@ class FakeAws:
         self.eks: dict[str, Any] = {}
         self.node_groups: dict[str, dict[str, str]] = {}
         self.pod_identity: dict[str, list[tuple[str, str, str]]] = {}
+        self.fargate: dict[str, dict[str, list[dict[str, Any]]]] = {}
         self.events: dict[str, list[Any]] = {}
         self.errors: dict[tuple[str, str], Exception] = {}
         self.calls: list[tuple[str, str, str, dict[str, Any]]] = []
@@ -451,6 +458,13 @@ class FakeClient:
                 )
             ],
         }
+
+    def _ListFargateProfiles(self, clusterName: str, **params: Any) -> Any:
+        return {"fargateProfileNames": list(self._aws.fargate.get(clusterName, {}))}
+
+    def _DescribeFargateProfile(self, clusterName: str, fargateProfileName: str) -> Any:
+        selectors = self._aws.fargate[clusterName][fargateProfileName]
+        return {"fargateProfile": {"selectors": selectors}}
 
     def _DescribePodIdentityAssociation(
         self, clusterName: str, associationId: str
@@ -684,12 +698,38 @@ def test_a_workload_whose_role_called_bedrock_is_reported_with_its_models() -> N
     assert ("cloudtrail", REGION, "LookupEvents") in {c[:3] for c in aws.calls}
 
 
-def test_a_role_whose_every_call_was_refused_still_selects_its_workload() -> None:
+def test_a_role_whose_every_call_was_refused_selects_nothing() -> None:
+    # As in the Bedrock source: an IAM refusal is not a call.
     aws = ecs_account()
     aws.events[REGION] = [model_call(TASK_ROLE, model=None, error_code="AccessDenied")]
 
+    assert scan(aws) == []
+
+
+def test_a_bare_task_role_name_matches_the_arn_cloudtrail_names() -> None:
+    # ECS accepts a role name for taskRoleArn; CloudTrail always names an ARN.
+    aws = FakeAws()
+    d = aws.add_definition(task_definition("bot", task_role="support-bot-task"))
+    aws.services[REGION] = [ecs_service("bot", d)]
+    aws.tasks[REGION] = []
+    aws.events[REGION] = [model_call(TASK_ROLE)]
+
     [record] = scan(aws)
-    assert record.llm_models is None
+    assert [m.name for m in record.llm_models] == [MODEL]
+    assert record.name == f"{CLUSTER}/bot (runs as support-bot-task)"
+
+
+def test_an_old_format_service_arn_gets_an_id_that_names_the_cluster() -> None:
+    # arn:...:service/<name> has no cluster, so two clusters' "bot" would collide.
+    aws = FakeAws()
+    d = aws.add_definition(task_definition("bot"))
+    service = ecs_service("bot", d)
+    service["serviceArn"] = f"arn:aws:ecs:{REGION}:{ACCOUNT}:service/bot"
+    aws.services[REGION] = [service]
+    aws.tasks[REGION] = []
+
+    [record] = scan(aws, report_all())
+    assert record.external_id == f"{ACCOUNT}/{REGION}/ecs_service/{CLUSTER}/bot"
 
 
 def test_reading_cloudtrail_can_be_turned_off() -> None:
@@ -783,6 +823,56 @@ def test_eks_identity_is_irsa_then_pod_identity_then_the_node_role() -> None:
     path, headers, verify = kube.calls[0]
     assert headers["Authorization"] == f"Bearer token-for-{EKS}"
     assert isinstance(verify, str) and verify.endswith(".pem")
+
+
+def test_a_pod_a_fargate_profile_selects_has_no_node_role() -> None:
+    aws, kube = eks_account(
+        {
+            "/apis/apps/v1/deployments": [
+                k8s("deployment", "on-fargate", namespace="serverless"),
+                k8s("deployment", "labelled", labels={"compute": "fargate", "x": "y"}),
+                k8s("deployment", "on-node", labels={"compute": "ec2"}),
+            ],
+        },
+    )
+    aws.fargate[EKS] = {
+        "fp-ns": [{"namespace": "server*"}],
+        "fp-label": [{"namespace": "agents", "labels": {"compute": "farg?te"}}],
+    }
+    records = by_id(scan(aws, report_all(), kube))
+
+    assert records[f"{EKS}/serverless/deployment/on-fargate"].name == (
+        f"{EKS}/serverless/on-fargate"
+    )
+    assert records[f"{EKS}/agents/deployment/labelled"].name == f"{EKS}/agents/labelled"
+    assert records[f"{EKS}/agents/deployment/on-node"].name.endswith(
+        "(runs as eks-nodes, node role)",
+    )
+
+
+def test_the_kubernetes_token_is_minted_for_every_page() -> None:
+    # A presigned token lasts minutes; a large cluster's listing can outlast one.
+    minted: list[str] = []
+
+    def tokens_for(session: Any) -> Callable[[str, str], str]:
+        def token(region: str, cluster: str) -> str:
+            minted.append(cluster)
+            return f"token-{len(minted)}"
+
+        return token
+
+    aws, kube = eks_account({"/apis/apps/v1/deployments": [k8s("deployment", "a")]})
+    connector = AwsContainersConnector(
+        session_for=lambda creds, fields: boto3.Session(),
+        clients_for=lambda session: aws.client_for,
+        tokens_for=tokens_for,
+        http=kube,  # type: ignore[arg-type]
+        clock=lambda: NOW,
+        sleep=lambda seconds: None,
+    )
+    scan(aws, report_all(), connector=connector)
+    assert len(minted) == len(kube.calls) > 1
+    assert len({h["Authorization"] for _, h, _ in kube.calls}) == len(kube.calls)
 
 
 def test_an_operator_owned_controller_is_still_a_workload() -> None:
