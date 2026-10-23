@@ -122,6 +122,7 @@ def event(
     event_type: str = "AwsApiCall",
     user_arn: Optional[str] = None,
     identity_type: str = "AssumedRole",
+    error_code: Optional[str] = None,
 ) -> dict[str, Any]:
     """A LookupEvents event, with its CloudTrailEvent JSON as AWS sends it."""
     who: dict[str, Any] = {"type": identity_type, "accountId": ACCOUNT}
@@ -143,6 +144,9 @@ def event(
         "eventType": event_type,
         "recipientAccountId": ACCOUNT,
     }
+    if error_code is not None:
+        detail["errorCode"] = error_code
+        detail["errorMessage"] = f"User: {who.get('arn')} is not authorized"
     return {
         "EventId": "e",
         "EventName": name,
@@ -397,6 +401,36 @@ def test_an_sso_role_is_a_person_counted_and_not_reported(
         caplog.text
     )
     assert "AWSReservedSSO" not in " ".join(r.external_id for r in records)
+
+
+def test_a_role_whose_every_call_was_refused_is_counted_and_not_reported(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    # As CloudTrail logs a refused Converse: errorCode set, no requestParameters.
+    aws = FakeAws(
+        events={
+            REGION: [
+                [
+                    event(role=OTHER_ROLE, model=None, error_code="AccessDenied"),
+                    event(model=CLAUDE, when="2026-10-12T10:00:00Z"),
+                    event(
+                        model=None,
+                        error_code="AccessDenied",
+                        when="2026-10-12T11:00:00Z",
+                    ),
+                ],
+            ],
+        },
+    )
+    with caplog.at_level(logging.INFO):
+        [record] = scan(aws, fields={**FIELDS, "list_agents": "false"})
+
+    assert record.creation_source.address.resource_id == WORKLOAD_ROLE
+    assert [m.name for m in record.llm_models] == [CLAUDE]
+    # The refused call is not when the role last called a model.
+    assert record.last_seen == datetime(2026, 10, 12, 10, 0, tzinfo=timezone.utc)
+    assert "2 refused model call(s) counted, not reported" in caplog.text
+    assert "people and 2 refused call(s) not reported" in caplog.text
 
 
 def test_the_root_user_is_a_person() -> None:

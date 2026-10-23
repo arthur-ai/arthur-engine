@@ -114,6 +114,8 @@ class ModelCall:
     caller_type: str
     model_id: Optional[str]
     event_time: datetime
+    error_code: Optional[str] = None
+    """CloudTrail's `errorCode`: set when Bedrock refused the call."""
 
 
 ClientFactory = Callable[[str, str], Any]
@@ -341,6 +343,7 @@ def _model_call(raw: Mapping[str, Any]) -> Optional[ModelCall]:
         caller_type=str(who.get("type") or ""),
         model_id=str(model) if model else None,
         event_time=when,
+        error_code=str(detail.get("errorCode") or "") or None,
     )
 
 
