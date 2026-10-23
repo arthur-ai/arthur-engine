@@ -14,7 +14,7 @@ import { usePromptContext } from "../PromptsPlaygroundContext";
 import { PromptType } from "../types";
 
 import { useRenderUnsavedPrompt } from "@/hooks/useRenderUnsavedPrompt";
-import type { OpenAIMessageOutput } from "@/lib/api-client/api-client";
+import type { OpenAIMessage as OpenAIMessageOutput } from "@/lib/api-client/api-client";
 
 interface PreviewPromptModalProps {
   open: boolean;

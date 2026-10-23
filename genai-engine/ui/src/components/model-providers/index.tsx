@@ -26,11 +26,11 @@ import { useSnackbar } from "notistack";
 import React, { useState } from "react";
 
 import { EditForm } from "./components/edit-form";
+import { useGuardrailConfiguration, useGuardrailPermissions } from "./hooks/useGuardrailConfiguration";
 import { useProviders } from "./hooks/useProviders";
 import { useRemoveProvider } from "./hooks/useRemoveProvider";
 import { useSaveModelWhitelist } from "./hooks/useSaveModelWhitelist";
 import { useSaveProvider } from "./hooks/useSaveProvider";
-import { useGuardrailConfiguration, useGuardrailPermissions } from "./hooks/useGuardrailConfiguration";
 
 import { getContentHeight } from "@/constants/layout";
 import { ModelProviderResponse, PutModelProviderCredentials } from "@/lib/api-client/api-client";

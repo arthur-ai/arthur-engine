@@ -5,7 +5,7 @@ import { useEffect, useRef } from "react";
 import { agentNotebookStateFormOpts } from "../form";
 
 import { extractVariablesFromText } from "@/components/agent-experiments/hooks/useExtractVariables";
-import { HttpHeader, TemplateVariableMappingInput } from "@/lib/api-client/api-client";
+import { HttpHeader, TemplateVariableMapping as TemplateVariableMappingInput } from "@/lib/api-client/api-client";
 
 function computeVars(endpoint: { body: string; headers: HttpHeader[] }): string[] {
   const bodyVars = extractVariablesFromText(endpoint.body);

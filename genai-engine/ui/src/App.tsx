@@ -38,8 +38,8 @@ import { RagExperimentsListView, RagExperimentDetailView } from "./components/ra
 import { RagNotebooks } from "./components/retrievals/notebooks";
 import { RagConfigurationsPage } from "./components/retrievals/RagConfigurationsPage";
 import { RagExperimentsPage } from "./components/retrievals/RagExperimentsPage";
-import { SettingsPage } from "./components/settings/SettingsPage";
 import { GuardrailSettings } from "./components/settings/guardrail-settings";
+import { SettingsPage } from "./components/settings/SettingsPage";
 import { TaskLayout } from "./components/TaskLayout";
 import { TaskOverview } from "./components/TaskOverview";
 import { TestView } from "./components/test/TestView";

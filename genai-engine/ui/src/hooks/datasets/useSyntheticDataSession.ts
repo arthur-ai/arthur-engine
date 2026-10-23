@@ -4,7 +4,7 @@ import type { GenerationConfig, SyntheticRow } from "@/components/datasets/synth
 import { useOutOfCreditsDialog } from "@/contexts/OutOfCreditsContext";
 import { useApi } from "@/hooks/useApi";
 import type {
-  OpenAIMessageInput,
+  OpenAIMessage as OpenAIMessageInput,
   SyntheticDataRowResponse,
   NewDatasetVersionRowColumnItemRequest,
   DatasetVersionRowResponse,

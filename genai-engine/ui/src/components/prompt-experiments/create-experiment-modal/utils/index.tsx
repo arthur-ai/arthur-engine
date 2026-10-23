@@ -1,6 +1,6 @@
 import { CreateExperimentModalFormValues } from "../form";
 
-import { CreatePromptExperimentRequest, EvalVariableMappingInput, PromptExperimentDetail } from "@/lib/api-client/api-client";
+import { CreatePromptExperimentRequest, EvalVariableMapping as EvalVariableMappingInput, PromptExperimentDetail } from "@/lib/api-client/api-client";
 
 export type DeepPartial<T> = {
   [K in keyof T]?: T[K] extends object ? DeepPartial<T[K]> : T[K];

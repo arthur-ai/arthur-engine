@@ -24,9 +24,9 @@ import { useNavigate, useParams } from "react-router";
 import { EditableTitle } from "@/components/common";
 import { useNotebook, useNotebookHistory, useUpdateNotebookMutation } from "@/hooks/useNotebooks";
 import {
-  EvalRefOutput,
+  EvalRef as EvalRefOutput,
   PromptExperimentSummary,
-  PromptVariableMappingOutput,
+  PromptVariableMapping as PromptVariableMappingOutput,
   SavedPromptConfig,
   UnsavedPromptConfig,
 } from "@/lib/api-client/api-client";

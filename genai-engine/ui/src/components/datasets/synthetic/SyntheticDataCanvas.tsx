@@ -6,7 +6,7 @@ import { SyntheticDataChat } from "./SyntheticDataChat";
 import { SyntheticDataTable } from "./SyntheticDataTable";
 import type { SyntheticRow } from "./types";
 
-import type { OpenAIMessageInput } from "@/lib/api-client/api-client";
+import type { OpenAIMessage as OpenAIMessageInput } from "@/lib/api-client/api-client";
 
 interface SyntheticDataCanvasProps {
   rows: SyntheticRow[];

@@ -4,6 +4,7 @@ import React from "react";
 import { useNavigate } from "react-router";
 
 import { ArthurLogo } from "../common/ArthurLogo";
+
 import { ModelSettingsTabs } from "./ModelSettingsTabs";
 
 import { SettingsMenuButton } from "@/components/settings/SettingsMenuButton";

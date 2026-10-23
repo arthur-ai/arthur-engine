@@ -2,8 +2,9 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { GuardrailSettings } from "./index";
 import { ModelSettingsTabs } from "../ModelSettingsTabs";
+
+import { GuardrailSettings } from "./index";
 
 const mocks = vi.hoisted(() => ({
   permissions: { canRead: true, canWrite: true },

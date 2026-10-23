@@ -2,7 +2,7 @@ import { Send, SmartToy, Person } from "@mui/icons-material";
 import { Box, CircularProgress, IconButton, Paper, TextField, Typography } from "@mui/material";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
-import type { OpenAIMessageInput } from "@/lib/api-client/api-client";
+import type { OpenAIMessage as OpenAIMessageInput } from "@/lib/api-client/api-client";
 
 interface SyntheticDataChatProps {
   conversation: OpenAIMessageInput[];

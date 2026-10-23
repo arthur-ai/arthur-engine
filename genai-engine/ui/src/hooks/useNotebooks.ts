@@ -7,7 +7,7 @@ import type {
   CreateNotebookRequest,
   UpdateNotebookRequest,
   SetNotebookStateRequest,
-  NotebookStateOutput,
+  NotebookState as NotebookStateOutput,
   PromptExperimentListResponse,
 } from "@/lib/api-client/api-client";
 

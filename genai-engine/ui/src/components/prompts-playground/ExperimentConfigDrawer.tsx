@@ -15,9 +15,9 @@ import { useTask } from "@/hooks/useTask";
 import type {
   PromptExperimentDetail,
   PromptExperimentSummary,
-  PromptVariableMappingOutput,
-  EvalRefOutput,
-  EvalVariableMappingOutput,
+  PromptVariableMapping as PromptVariableMappingOutput,
+  EvalRef as EvalRefOutput,
+  EvalVariableMapping as EvalVariableMappingOutput,
   PromptEvalResultSummaries,
   EvalResultSummary,
 } from "@/lib/api-client/api-client";

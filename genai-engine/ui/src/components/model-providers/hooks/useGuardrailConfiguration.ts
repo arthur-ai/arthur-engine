@@ -17,7 +17,7 @@ export const useGuardrailConfiguration = () => {
     method: "getConfigurationApiV2ConfigurationGet",
     args: [],
     enabled: canRead,
-    queryOptions: { queryKey: queryKeys.configuration.all(), retry: false },
+    queryOptions: { retry: false },
   });
 };
 
@@ -26,7 +26,7 @@ export const useGuardrailCatalog = (provider: ModelProvider | "", enabled: boole
     method: "getModelProviderWhitelistApiV1ModelProvidersProviderModelWhitelistGet",
     args: [provider || "openai"],
     enabled: enabled && !!provider,
-    queryOptions: { queryKey: queryKeys.providers.modelWhitelist(provider), retry: false },
+    queryOptions: { retry: false },
   });
 
 export const useSaveGuardrailConfiguration = () => {

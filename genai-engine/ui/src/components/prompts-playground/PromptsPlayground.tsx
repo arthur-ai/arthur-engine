@@ -29,7 +29,7 @@ import { refreshTaskTourTarget } from "@/features/task-tour/tourEvents";
 import { useModelProviders, useAvailableModels } from "@/hooks/useModelProviders";
 import { useNotebookHistory } from "@/hooks/useNotebooks";
 import { useTask } from "@/hooks/useTask";
-import { PromptVariableMappingOutput } from "@/lib/api-client/api-client";
+import { PromptVariableMapping as PromptVariableMappingOutput } from "@/lib/api-client/api-client";
 import { track } from "@/services/analytics";
 
 const PromptsPlayground = ({ initialData }: { initialData: PlaygroundInitialData }) => {

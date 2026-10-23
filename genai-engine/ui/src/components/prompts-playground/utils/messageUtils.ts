@@ -1,6 +1,6 @@
 import { MessageType } from "../types";
 
-import { OpenAIMessageInput, OpenAIMessageItem } from "@/lib/api-client/api-client";
+import { OpenAIMessage as OpenAIMessageInput, OpenAIMessageItem } from "@/lib/api-client/api-client";
 
 /**
  * Converts MessageType[] to OpenAIMessageInput[] by stripping frontend-specific fields

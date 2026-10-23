@@ -33,7 +33,7 @@ import { PromptResultDetailModal, EvalInputsDialog } from "./PromptResultDetailM
 import { usePrompt } from "@/components/prompts-management/hooks/usePrompt";
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { usePromptVersionResults } from "@/hooks/usePromptExperiments";
-import { EvalExecution, OpenAIMessageInput, LLMToolInput } from "@/lib/api-client/api-client";
+import { EvalExecution, OpenAIMessage as OpenAIMessageInput, LLMTool as LLMToolInput } from "@/lib/api-client/api-client";
 import { formatCurrency, formatDateInTimezone } from "@/utils/formatters";
 
 interface EvalResult {

@@ -1,11 +1,11 @@
 import { useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
-import { useAuth } from "@/contexts/AuthContext";
-import { queryKeys } from "@/lib/queryKeys";
 
+import { useAuth } from "@/contexts/AuthContext";
 import { useApi } from "@/hooks/useApi";
 import { useApiQuery } from "@/hooks/useApiQuery";
 import type { ApplicationConfigurationUpdateRequest } from "@/lib/api-client/api-client";
+import { queryKeys } from "@/lib/queryKeys";
 
 const QUERY_METHOD = "getConfigurationApiV2ConfigurationGet" as const;
 

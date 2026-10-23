@@ -132,8 +132,8 @@ export const queryKeys = {
     all: () => ["getModelProvidersApiV1ModelProvidersGet"] as const,
     availableModels: (providers: string[]) => ["availableModels", ...providers] as const,
     availableModelsAll: () => ["availableModels"] as const,
-    modelWhitelist: (provider: string) => ["modelWhitelist", provider] as const,
-    modelWhitelistAll: () => ["modelWhitelist"] as const,
+    modelWhitelist: (provider: string) => ["getModelProviderWhitelistApiV1ModelProvidersProviderModelWhitelistGet", provider] as const,
+    modelWhitelistAll: () => ["getModelProviderWhitelistApiV1ModelProvidersProviderModelWhitelistGet"] as const,
   },
   tasksOverview: {
     all: (taskIds: string[]) => ["tasksOverview", [...taskIds].sort().join(",")] as const,

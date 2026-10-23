@@ -7,7 +7,7 @@ import { useEffect, useMemo } from "react";
 
 import { newAgentExperimentFormOpts } from "../form";
 
-import { TemplateVariableMappingInput } from "@/lib/api-client/api-client";
+import { TemplateVariableMapping as TemplateVariableMappingInput } from "@/lib/api-client/api-client";
 
 export const RequestTimeMapper = withForm({
   ...newAgentExperimentFormOpts,
