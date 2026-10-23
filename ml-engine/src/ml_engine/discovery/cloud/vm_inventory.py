@@ -85,7 +85,10 @@ class VmInventoryReader:
         if reported is not None:
             device = replace(device, last_reported=reported.isoformat())
         if before(reported, self._since):
-            coverage.count_unreadable(NOT_REPORTED_IN_WINDOW)
+            coverage.count_unreadable(
+                NOT_REPORTED_IN_WINDOW,
+                device.unreadable(NOT_REPORTED_IN_WINDOW),
+            )
             return []
         read = records_for(
             device,
@@ -100,14 +103,20 @@ class VmInventoryReader:
             and before(read.records[0].last_seen, self._since)
         ):
             # No status line to date the VM by, so its payload's own scan does.
-            coverage.count_unreadable(NOT_REPORTED_IN_WINDOW)
+            coverage.count_unreadable(
+                NOT_REPORTED_IN_WINDOW,
+                device.unreadable(NOT_REPORTED_IN_WINDOW),
+            )
             return []
 
         if state is not None:
             self.not_running[state or "UNKNOWN"] += 1
         self.failed_runs.update(failed_run(status))
         if read.unreadable is not None:
-            coverage.count_unreadable(read.unreadable.value)
+            coverage.count_unreadable(
+                read.unreadable.value,
+                device.unreadable(read.unreadable.value),
+            )
             return []
         coverage.devices_decoded += 1
         return read.records
