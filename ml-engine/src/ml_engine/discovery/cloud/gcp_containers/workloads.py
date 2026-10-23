@@ -47,6 +47,10 @@ K8S_KINDS: tuple[tuple[str, str, str], ...] = (
     ("/api/v1/pods", "pod", "pods"),
 )
 
+# The kinds an owner's identity stands for: a ReplicaSet's (or a Job's) pods, a
+# CronJob's Jobs. Any other kind is a controller, reported even when an operator owns it.
+OWNED_KINDS = frozenset({"job", "pod"})
+
 # Namespaces GKE and Kubernetes run their own components in. Their workloads run on the
 # node's service account like any other, so an AI-calling node account would otherwise
 # report every one of them.
@@ -170,14 +174,20 @@ def gke_workload(
 ) -> Optional[Workload]:
     """One Kubernetes object as a workload, or None when it is not its own workload.
 
-    None for an object something owns (a ReplicaSet's pods, a CronJob's Jobs), one in a
-    system namespace, and one with no name. `annotations` is (namespace, KSA) -> the
-    GCP service account its Workload Identity annotation names.
+    None for a pod or Job something owns (a ReplicaSet's pods, a CronJob's Jobs), one
+    in a system namespace, and one with no name. A controller is its own workload
+    whatever owns it: an operator's custom resource (a KServe InferenceService, a Ray
+    cluster) owns the Deployment or StatefulSet it runs, and the resource itself is not
+    listed, so skipping an owned controller would drop exactly those workloads.
+    `annotations` is (namespace, KSA) -> the GCP service account its Workload Identity
+    annotation names.
     """
     meta = raw.get("metadata") or {}
     namespace = str(meta.get("namespace") or "")
     name = str(meta.get("name") or "")
-    if not namespace or not name or meta.get("ownerReferences"):
+    if not namespace or not name:
+        return None
+    if path_kind in OWNED_KINDS and meta.get("ownerReferences"):
         return None
     if namespace in SYSTEM_NAMESPACES or namespace.startswith(
         SYSTEM_NAMESPACE_PREFIXES,

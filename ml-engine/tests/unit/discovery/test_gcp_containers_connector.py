@@ -434,6 +434,26 @@ def test_gke_workloads_are_controllers_by_stable_name_and_owned_objects_are_not(
     assert planner.name.endswith(f"(runs as {DEFAULT_SA}, shared by 4 workloads)")
 
 
+def test_a_controller_an_operator_owns_is_still_a_workload() -> None:
+    """A KServe InferenceService owns its predictor Deployment and is not itself
+    listed; the Deployment is the workload, and its ReplicaSet's pods still are not."""
+    fake = FakeGoogle(
+        clusters=[cluster()],
+        kube={
+            "/apis/apps/v1/deployments": [
+                [k8s("deployment", "llm-predictor", owner="InferenceService")],
+            ],
+            "/api/v1/pods": [
+                [k8s("pod", "llm-predictor-5c9b7f-abcde", owner="ReplicaSet")],
+            ],
+        },
+    )
+
+    ids = [r.creation_source.address.resource_id for r in scan(fake)]
+
+    assert ids == [f"{CLUSTER}/agents/deployment/llm-predictor"]
+
+
 def test_gke_system_namespaces_are_not_workloads() -> None:
     fake = FakeGoogle(
         clusters=[cluster()],
