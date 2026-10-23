@@ -27,7 +27,7 @@ from discovery import gcp_credentials, source_connectors
 from discovery.retry import MAX_ATTEMPTS
 from discovery.siem.gcp_security_operations import client as client_module
 from discovery.siem.gcp_security_operations.client import (
-    CHRONICLE_READONLY_SCOPE,
+    CHRONICLE_SCOPE,
     GcpSecurityOperationsClient,
     GcpSecurityOperationsError,
     GcpSecurityOperationsSettings,
@@ -375,16 +375,14 @@ def test_a_window_google_serves_is_sent_as_it_is_without_a_warning(
 # -- credentials ---------------------------------------------------------------------
 
 
-def test_a_service_account_key_is_loaded_with_the_chronicle_readonly_scope(
+def test_a_service_account_key_is_loaded_with_the_chronicle_scope(
     stub_key_loader: list[dict[str, Any]],
 ) -> None:
     settings = settings_from(CREDS, FIELDS)
     [loaded] = stub_key_loader
     assert loaded["info"] == FAKE_KEY
-    assert loaded["scopes"] == [CHRONICLE_READONLY_SCOPE]
-    assert CHRONICLE_READONLY_SCOPE == (
-        "https://www.googleapis.com/auth/chronicle.readonly"
-    )
+    assert loaded["scopes"] == [CHRONICLE_SCOPE]
+    assert CHRONICLE_SCOPE == "https://www.googleapis.com/auth/chronicle"
     assert settings.credentials is not None
 
 
@@ -426,8 +424,8 @@ def test_the_engines_own_identity_is_asked_for_the_readonly_scope(
 
     monkeypatch.setattr(client_module.google.auth, "default", default)
     monkeypatch.setattr(client_module, "AuthorizedSession", lambda c: ("signed", c))
-    session = authorized_session(None, [CHRONICLE_READONLY_SCOPE])
-    assert asked == [[CHRONICLE_READONLY_SCOPE]]
+    session = authorized_session(None, [CHRONICLE_SCOPE])
+    assert asked == [[CHRONICLE_SCOPE]]
     assert session[0] == "signed"  # type: ignore[index]
 
 
@@ -439,7 +437,7 @@ def test_an_engine_without_its_own_identity_is_a_configuration_error(
 
     monkeypatch.setattr(client_module.google.auth, "default", default)
     with pytest.raises(DiscoveryConfigurationError, match="service_account_key") as exc:
-        authorized_session(None, [CHRONICLE_READONLY_SCOPE])
+        authorized_session(None, [CHRONICLE_SCOPE])
     assert exc.value.__cause__ is None
 
 
@@ -874,7 +872,7 @@ def test_a_project_id_or_number_is_accepted(project_id: str) -> None:
             "PERMISSION_DENIED",
             "ACCESS_TOKEN_SCOPE_INSUFFICIENT",
             DiscoveryErrorCode.PERMISSION_DENIED,
-            "chronicle.readonly",
+            "OAuth scope (chronicle)",
         ),
     ],
 )

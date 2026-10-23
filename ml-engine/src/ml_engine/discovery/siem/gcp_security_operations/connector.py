@@ -39,7 +39,7 @@ from discovery.gcp_credentials import (
     service_account_credentials,
 )
 from discovery.siem.gcp_security_operations.client import (
-    CHRONICLE_READONLY_SCOPE,
+    CHRONICLE_SCOPE,
     GcpSecurityOperationsClient,
     GcpSecurityOperationsSettings,
     QueryResult,
@@ -327,7 +327,7 @@ def settings_from(
             credentials,
             source="Google Security Operations source",
             allow_adc_env_var=ALLOW_ADC_ENV_VAR,
-            scopes=[CHRONICLE_READONLY_SCOPE],
+            scopes=[CHRONICLE_SCOPE],
         ),
     )
 

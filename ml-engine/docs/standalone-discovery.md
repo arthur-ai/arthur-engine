@@ -323,11 +323,10 @@ API's `dashboardQueries.execute`, against instances bound to a Google Cloud proj
 | `service_account_key` | yes | no | A service account JSON key. Without one, the engine uses Application Default Credentials only if `ARTHUR_ENGINE_GCP_SECURITY_OPERATIONS_ALLOW_ADC=true` is set |
 
 The service account needs one permission on the instance,
-`chronicle.dashboardQueries.execute`. Grant it with a custom role holding only that
-permission; Chronicle API Viewer (`roles/chronicle.viewer`) is Google's read-only role
-for the API, but whether it carries this permission has not been verified (check with
-`gcloud iam roles describe roles/chronicle.viewer`). The engine asks for a token with the
-`chronicle.readonly` OAuth scope, and the Chronicle API must be enabled in the project.
+`chronicle.dashboardQueries.execute`. Chronicle API Viewer (`roles/chronicle.viewer`)
+carries it, or grant a custom role holding only that permission. The engine asks for a
+token with the `chronicle` OAuth scope, the narrowest one the method accepts, and the
+Chronicle API must be enabled in the project.
 There are no TLS settings: the host is Google's, with a publicly trusted certificate.
 
 Use `query_language: yara_l`. The query is the text you would type into search, without

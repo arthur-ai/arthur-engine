@@ -26,8 +26,8 @@ put into one.
 
 Authenticated with a Google service account (or the engine's own identity, where the
 engine opts in) through google-auth's `AuthorizedSession`, with a token for the
-`chronicle.readonly` OAuth scope. Running the query needs one IAM permission on the
-instance, `chronicle.dashboardQueries.execute`.
+`chronicle` OAuth scope, the narrowest one `dashboardQueries.execute` accepts. Running
+the query needs one IAM permission on the instance, `chronicle.dashboardQueries.execute`.
 """
 
 import logging
@@ -53,10 +53,10 @@ from job_executors.discovery_scan import DiscoveryConfigurationError
 # less (a shorter lookback, a narrower filter).
 REQUEST_TIMEOUT_SECONDS = (10.0, 90.0)
 
-# Read-only by OAuth scope as well as by IAM, as Compute Engine is with its readonly
-# scope: a token minted for this scan cannot write to the instance whatever the service
-# account's roles allow.
-CHRONICLE_READONLY_SCOPE = "https://www.googleapis.com/auth/chronicle.readonly"
+# `dashboardQueries.execute` accepts only `auth/chronicle` or `auth/cloud-platform`; there
+# is no read-only Chronicle scope for it. Read-only is the IAM role's job: the service
+# account holds only `chronicle.dashboardQueries.execute` (Chronicle API Viewer has it).
+CHRONICLE_SCOPE = "https://www.googleapis.com/auth/chronicle"
 
 API_VERSION = "v1"
 
@@ -181,7 +181,7 @@ class GcpSecurityOperationsClient:
         self._sleep = sleep
         self._http = session or authorized_session(
             settings.credentials,
-            [CHRONICLE_READONLY_SCOPE],
+            [CHRONICLE_SCOPE],
         )
 
     def query(
@@ -493,13 +493,11 @@ def _hint(status: int, reason: str) -> str:
     if status == 403 and reason == "SERVICE_DISABLED":
         return ". Enable the Chronicle API in project_id."
     if status == 403 and reason == "ACCESS_TOKEN_SCOPE_INSUFFICIENT":
-        return (
-            ". The token's OAuth scope (chronicle.readonly) does not cover this method."
-        )
+        return ". The token's OAuth scope (chronicle) does not cover this method."
     if status == 403:
         return (
             ". The service account needs chronicle.dashboardQueries.execute on the "
-            "instance (a custom role with that permission, or Chronicle API Viewer, "
-            "roles/chronicle.viewer, if it carries it)."
+            "instance: Chronicle API Viewer (roles/chronicle.viewer) carries it, or a "
+            "custom role with only that permission."
         )
     return ""
