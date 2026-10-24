@@ -43,8 +43,18 @@ export const Header = withForm({
           backgroundColor: "background.paper",
         }}
       >
-        <Stack direction="row" justifyContent="space-between" alignItems="center">
-          <Stack alignItems="flex-start">
+        <Stack
+          direction="row"
+          sx={{
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <Stack
+            sx={{
+              alignItems: "flex-start",
+            }}
+          >
             <Button
               size="small"
               component={Link}
@@ -56,8 +66,18 @@ export const Header = withForm({
             >
               Back to Notebooks
             </Button>
-            <Stack mb={1}>
-              <Stack direction="row" alignItems="center" gap={1}>
+            <Stack
+              sx={{
+                mb: 1,
+              }}
+            >
+              <Stack
+                direction="row"
+                sx={{
+                  alignItems: "center",
+                  gap: 1,
+                }}
+              >
                 <EditableTitle
                   value={notebook.name}
                   onSave={async (newName) => {
@@ -70,7 +90,13 @@ export const Header = withForm({
                 {edited && (
                   <Chip
                     label={
-                      <Stack direction="row" alignItems="center" gap={1}>
+                      <Stack
+                        direction="row"
+                        sx={{
+                          alignItems: "center",
+                          gap: 1,
+                        }}
+                      >
                         {isSaving ? <CircularProgress size={12} color="inherit" /> : null}
                         Edited
                       </Stack>
@@ -81,17 +107,42 @@ export const Header = withForm({
                 )}
               </Stack>
 
-              <Typography variant="body2" color="text.secondary">
+              <Typography
+                variant="body2"
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
                 {notebook.description}
               </Typography>
-              <Stack direction="row" gap={2}>
-                <Typography variant="body2" color="text.secondary">
+              <Stack
+                direction="row"
+                sx={{
+                  gap: 2,
+                }}
+              >
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: "text.secondary",
+                  }}
+                >
                   <span className="font-bold">Created:</span> {formatDateInTimezone(notebook?.created_at, timezone, { hour12: !use24Hour })}
                 </Typography>
-                <Typography variant="body2" color="text.secondary">
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: "text.secondary",
+                  }}
+                >
                   <span className="font-bold">Updated:</span> {formatDateInTimezone(notebook.updated_at, timezone, { hour12: !use24Hour })}
                 </Typography>
-                <Typography variant="body2" color="text.secondary">
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: "text.secondary",
+                  }}
+                >
                   <span className="font-bold">Runs:</span>{" "}
                   <MuiLink component={Link} to={`?show=history`}>
                     {notebook.experiments.length} run(s)
@@ -101,7 +152,13 @@ export const Header = withForm({
             </Stack>
           </Stack>
 
-          <Stack direction="row" gap={1} alignItems="center">
+          <Stack
+            direction="row"
+            sx={{
+              gap: 1,
+              alignItems: "center",
+            }}
+          >
             <Tooltip title={edited ? "Save unsaved changes" : "No unsaved changes"}>
               <span>
                 <Button

@@ -38,8 +38,22 @@ export const RulesList: React.FC<RulesListProps> = ({
 }) => {
   return (
     <Stack spacing={2} sx={{ height: "100%" }}>
-      <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1}>
-        <Stack direction="row" alignItems="baseline" spacing={1} sx={{ minWidth: 0 }}>
+      <Stack
+        direction="row"
+        spacing={1}
+        sx={{
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <Stack
+          direction="row"
+          spacing={1}
+          sx={{
+            alignItems: "baseline",
+            minWidth: 0,
+          }}
+        >
           <Typography variant="h6" sx={{ fontWeight: 600 }}>
             Rules
           </Typography>
@@ -49,7 +63,13 @@ export const RulesList: React.FC<RulesListProps> = ({
             </Typography>
           )}
         </Stack>
-        <Stack direction="row" alignItems="center" spacing={1}>
+        <Stack
+          direction="row"
+          spacing={1}
+          sx={{
+            alignItems: "center",
+          }}
+        >
           <Button variant="text" size="small" color="inherit" onClick={onDiscard} disabled={!hasUnsavedChanges || isSaving}>
             Discard
           </Button>
@@ -87,7 +107,12 @@ export const RulesList: React.FC<RulesListProps> = ({
             textAlign: "center",
           }}
         >
-          <Typography variant="body2" color="text.secondary">
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+            }}
+          >
             No rules attached to this task. Click <strong>Add rule</strong> to create one.
           </Typography>
         </Box>
