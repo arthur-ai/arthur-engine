@@ -43,7 +43,7 @@ dependencies = [
   # Held below 2.1: snowflake-sqlalchemy subclasses sqlalchemy.orm.context.ORMSelectCompileState,
   # which SQLAlchemy 2.1 made private, so it fails at import. See the sqlalchemy rule in /renovate.json.
   "sqlalchemy==2.0.54",
-  "snowflake-sqlalchemy==1.11.1",
+  "snowflake-sqlalchemy==2.0.0",
   "databricks-sqlalchemy>=2.0,<3",
   "databricks-sdk>=0.84.0,<1",
   "arthur-client==1.4.2883",
