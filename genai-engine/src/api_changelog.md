@@ -2,6 +2,14 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 10/22/2026
+- **CHANGE** for **URL**: /api/v1/model_providers  added the optional property 'providers/items/supports_custom_models' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/configuration  added the optional property 'guardrail_llm' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/configuration  added the optional property 'guardrail_llm_status' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/configuration  added the new optional request property 'guardrail_llm'
+- **CHANGE** for **URL**: /api/v2/configuration  added the optional property 'guardrail_llm' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/configuration  added the optional property 'guardrail_llm_status' to the response with the '200' status
+
 # 10/20/2026
 - **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  added the new `updates` enum value to the `config/anyOf[subschema #1: LLMBaseConfigSettings]/thinking/anyOf[subschema #1: AnthropicThinkingParam]/display` response property for the response status `200`
 - **CHANGE** in API GET /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/tags/{tag}

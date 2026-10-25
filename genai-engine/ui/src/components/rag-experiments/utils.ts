@@ -1,4 +1,4 @@
-import type { SavedRagConfigOutput, UnsavedRagConfigResponse, RagEvalResultSummaries } from "@/lib/api-client/api-client";
+import type { SavedRagConfig as SavedRagConfigOutput, UnsavedRagConfigResponse, RagEvalResultSummaries } from "@/lib/api-client/api-client";
 
 /**
  * Union type for RAG configurations (saved or unsaved)

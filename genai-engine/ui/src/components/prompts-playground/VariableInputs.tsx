@@ -11,7 +11,7 @@ import React, { useRef, useState, useEffect } from "react";
 
 import { usePromptContext } from "./PromptsPlaygroundContext";
 
-import { PromptVariableMappingOutput } from "@/lib/api-client/api-client";
+import { PromptVariableMapping as PromptVariableMappingOutput } from "@/lib/api-client/api-client";
 import { track } from "@/services/analytics";
 
 const VariableInputs = () => {

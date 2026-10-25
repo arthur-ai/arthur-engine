@@ -30,7 +30,7 @@ import { UpdateDatasetRowModal } from "@/components/common/UpdateDatasetRowModal
 import { EvalInputsDialog } from "@/components/prompt-experiments/PromptResultDetailModal";
 import { useExperimentTestCases } from "@/hooks/usePromptExperiments";
 import useSnackbar from "@/hooks/useSnackbar";
-import type { EvalExecution, EvalRefOutput, PromptResult, TestCase } from "@/lib/api-client/api-client";
+import type { EvalExecution, EvalRef as EvalRefOutput, PromptResult, TestCase } from "@/lib/api-client/api-client";
 import { getStatusChipSx } from "@/utils/statusChipStyles";
 
 interface ResultsTableProps {

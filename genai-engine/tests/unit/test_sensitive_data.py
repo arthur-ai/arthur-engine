@@ -1,148 +1,82 @@
-import os
-from unittest import mock
 from unittest.mock import patch
 
 import pytest
 from arthur_common.models.common_schemas import LLMTokenConsumption
 from arthur_common.models.enums import RuleResultEnum, RuleType
-from langchain_core.messages import AIMessage
-from langchain_openai import AzureChatOpenAI
 
-import utils.constants
 from schemas.custom_exceptions import LLMContentFilterException, LLMExecutionException
 from schemas.scorer_schemas import Example, RuleScore, ScoreRequest
 from scorer.checks.sensitive_data.custom_examples import SensitiveDataCustomExamples
+from services.guardrails.judge_executor import JudgeCallResult
+from utils import constants
 
-os.environ[utils.constants.GENAI_ENGINE_OPENAI_EMBEDDINGS_ENDPOINTS_KEYS_ENV_VAR] = (
-    "1::2/::3"
+pytestmark = pytest.mark.unit_tests
+
+
+@pytest.mark.parametrize("hint", [None, "specific individual's medical conditions"])
+@pytest.mark.parametrize(
+    ("output", "expected"), [("no", RuleResultEnum.PASS), ("yes", RuleResultEnum.FAIL)]
 )
-os.environ[utils.constants.GENAI_ENGINE_OPENAI_GPT_ENDPOINTS_KEYS_ENV_VAR] = "1::2/::3"
-os.environ[utils.constants.GENAI_ENGINE_OPENAI_PROVIDER_ENV_VAR] = "Azure"
-
-DEFAULT_TOKEN_CONSUMPTION = LLMTokenConsumption(prompt_tokens=0, completion_tokens=0)
-
-BASE_CASE_REQUEST = ScoreRequest(
-    rule_type=RuleType.MODEL_SENSITIVE_DATA,
-    context="Test Context",
-    response="Test Response",
-    examples=[
-        Example(
-            exampleInput="test example",
-            ruleOutput=RuleScore(result=RuleResultEnum.FAIL),
-        ),
-    ],
-)
-
-HINT_REQUEST = ScoreRequest(
-    rule_type=RuleType.MODEL_SENSITIVE_DATA,
-    context="Test Context",
-    response="Test Response",
-    examples=[
-        Example(
-            exampleInput="test example",
-            ruleOutput=RuleScore(result=RuleResultEnum.FAIL),
-        ),
-    ],
-    hint="specific individual's medical conditions",
-)
-
-NO_EXAMPLES_REQUEST = ScoreRequest(
-    rule_type=RuleType.MODEL_SENSITIVE_DATA,
-    context="Test Context",
-    response="Test Response",
-)
-
-
-@patch.object(AzureChatOpenAI, "__init__", lambda *args, **kwargs: None)
-@patch.object(AzureChatOpenAI, "invoke", lambda *args: AIMessage(content="no"))
-@pytest.mark.unit_tests
-def test_score_no_sensitive_data():
-    # Create the scorer object
-    scorer = SensitiveDataCustomExamples()
-    score = scorer.score(BASE_CASE_REQUEST)
-
-    # Assertions
-    assert score.result is RuleResultEnum.PASS
+def test_sensitive_data_classification(output, expected, hint):
+    request = ScoreRequest(
+        rule_type=RuleType.MODEL_SENSITIVE_DATA,
+        user_prompt="Test prompt",
+        hint=hint,
+        examples=[
+            Example(
+                exampleInput="test example",
+                ruleOutput=RuleScore(result=RuleResultEnum.FAIL),
+            )
+        ],
+    )
+    tokens = LLMTokenConsumption(prompt_tokens=10, completion_tokens=5)
+    with patch(
+        "services.guardrails.judge_executor.JudgeEvaluation.complete",
+        return_value=JudgeCallResult(output, None, tokens),
+    ) as complete:
+        score = SensitiveDataCustomExamples().score(request)
+    assert score.result is expected
     assert score.details is None
+    assert score.prompt_tokens == 10
+    assert score.completion_tokens == 5
+    prompt = complete.call_args.args[0][0].content
+    assert "test example" in prompt
+    if hint:
+        assert hint in prompt
 
 
-@patch.object(AzureChatOpenAI, "__init__", lambda *args, **kwargs: None)
-@patch.object(AzureChatOpenAI, "invoke", lambda *args: AIMessage(content="yes"))
-@pytest.mark.unit_tests
-def test_score_sensitive_data():
-    # Create the scorer object
-    scorer = SensitiveDataCustomExamples()
-    score = scorer.score(BASE_CASE_REQUEST)
-
-    # Assertions
-    assert score.result is RuleResultEnum.FAIL
-    assert score.details is None
-
-
-@patch.object(AzureChatOpenAI, "__init__", lambda *args, **kwargs: None)
-@patch.object(AzureChatOpenAI, "invoke", lambda *args: AIMessage(content="no"))
-@pytest.mark.unit_tests
-def test_score_no_sensitive_data_with_hint():
-    # Create the scorer object
-    scorer = SensitiveDataCustomExamples()
-    score = scorer.score(HINT_REQUEST)
-
-    # Assertions
-    assert score.result is RuleResultEnum.PASS
-    assert score.details is None
-
-
-@patch.object(AzureChatOpenAI, "__init__", lambda *args, **kwargs: None)
-@patch.object(AzureChatOpenAI, "invoke", lambda *args: AIMessage(content="yes"))
-@pytest.mark.unit_tests
-def test_score_sensitive_data_with_hint():
-    # Create the scorer object
-    scorer = SensitiveDataCustomExamples()
-    score = scorer.score(HINT_REQUEST)
-
-    # Assertions
-    assert score.result is RuleResultEnum.FAIL
-    assert score.details is None
-
-
-@patch.object(AzureChatOpenAI, "__init__", lambda *args, **kwargs: None)
-@pytest.mark.unit_tests
 def test_score_no_examples():
-    # Set up the mock grader llm
-    scorer = SensitiveDataCustomExamples()
-
-    # Check that ValueError is raised if no examples are provided
+    request = ScoreRequest(rule_type=RuleType.MODEL_SENSITIVE_DATA)
     with pytest.raises(ValueError):
-        scorer.score(NO_EXAMPLES_REQUEST)
+        SensitiveDataCustomExamples().score(request)
 
 
-class LLMContentExecutionException:
-    pass
-
-
-@pytest.mark.unit_tests
-def test_llm_execution_exception_handling():
-    with mock.patch.object(
-        SensitiveDataCustomExamples,
-        "prompt_llm",
-        side_effect=LLMExecutionException("test error"),
+@pytest.mark.parametrize(
+    ("error", "message"),
+    [
+        (
+            LLMExecutionException("untrusted provider detail"),
+            constants.ERROR_DEFAULT_RULE_ENGINE,
+        ),
+        (
+            LLMContentFilterException(),
+            "GenAI Engine was unable to evaluate due to an upstream content policy",
+        ),
+    ],
+)
+def test_llm_execution_exception_handling(error, message):
+    request = ScoreRequest(
+        rule_type=RuleType.MODEL_SENSITIVE_DATA,
+        examples=[
+            Example(
+                exampleInput="test example",
+                ruleOutput=RuleScore(result=RuleResultEnum.FAIL),
+            )
+        ],
+    )
+    with patch(
+        "services.guardrails.judge_executor.JudgeEvaluation.complete", side_effect=error
     ):
-        sensitive_data_rule = SensitiveDataCustomExamples()
-        rule_score = sensitive_data_rule.score(BASE_CASE_REQUEST)
-
-        assert rule_score.result == RuleResultEnum.UNAVAILABLE
-        assert rule_score.details.message == "test error"
-
-    with mock.patch.object(
-        SensitiveDataCustomExamples,
-        "prompt_llm",
-        side_effect=LLMContentFilterException(),
-    ):
-        sensitive_data_rule = SensitiveDataCustomExamples()
-        rule_score = sensitive_data_rule.score(BASE_CASE_REQUEST)
-
-        assert rule_score.result == RuleResultEnum.UNAVAILABLE
-        assert (
-            rule_score.details.message
-            == "GenAI Engine was unable to evaluate due to an upstream content policy"
-        )
+        score = SensitiveDataCustomExamples().score(request)
+    assert score.result == RuleResultEnum.UNAVAILABLE
+    assert score.details.message == message

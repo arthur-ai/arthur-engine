@@ -1,5 +1,5 @@
 import { useAppForm } from "@arthur/shared-components";
-import { Button, Dialog, DialogActions, DialogContent } from "@mui/material";
+import { Button, Dialog, DialogActions, DialogContent, TextField } from "@mui/material";
 import { useState } from "react";
 
 import { APIKeyFields } from "./components/api";
@@ -172,6 +172,22 @@ export const EditForm = ({
                 api_key: "api_key",
               }}
             />
+          )}
+          {provider === "openai" && (
+            <form.AppField name="api_base">
+              {(field) => (
+                <TextField
+                  variant="filled"
+                  label="Custom endpoint URL (optional)"
+                  fullWidth
+                  value={field.state.value}
+                  onChange={(event) => field.handleChange(event.target.value)}
+                  onBlur={field.handleBlur}
+                  helperText="Leave blank for OpenAI's default endpoint. Enter the custom endpoint again when rotating credentials."
+                  sx={{ mt: 2 }}
+                />
+              )}
+            </form.AppField>
           )}
           {provider === "vertex_ai" && (
             <VertexAIFields

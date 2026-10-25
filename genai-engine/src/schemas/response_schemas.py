@@ -32,6 +32,7 @@ from schemas.enums import (
     RagSearchKind,
     TestRunStatus,
 )
+from schemas.guardrail_schemas import GuardrailLLMConfiguration, GuardrailLLMStatus
 
 
 class OrganizationResponse(BaseModel):
@@ -61,6 +62,8 @@ class DocumentStorageConfigurationResponse(BaseModel):
 
 
 class ApplicationConfigurationResponse(BaseModel):
+    guardrail_llm: GuardrailLLMConfiguration | None = None
+    guardrail_llm_status: GuardrailLLMStatus = "needs_configuration"
     chat_task_id: Optional[str] = None
     default_currency: Optional[str] = None
     document_storage_configuration: Optional[DocumentStorageConfigurationResponse] = (
@@ -357,6 +360,7 @@ class AgenticPromptRunResponse(BaseModel):
 
 
 class ModelProviderResponse(BaseModel):
+    supports_custom_models: bool = False
     provider: ModelProvider = Field(description="The model provider")
     enabled: bool = Field(
         description="Whether the provider is enabled with credentials",

@@ -2,6 +2,9 @@ import type { GetFilteredSpansParams, GetFilteredTracesParams, GetSessionsParams
 import type { TimeInterval } from "@/utils/timeWindows";
 
 export const queryKeys = {
+  configuration: {
+    all: () => ["getConfigurationApiV2ConfigurationGet"] as const,
+  },
   amplitude: {
     experiments: {
       variant: (experimentName: string) => ["amplitudeExperiments", experimentName] as const,
@@ -129,7 +132,8 @@ export const queryKeys = {
     all: () => ["getModelProvidersApiV1ModelProvidersGet"] as const,
     availableModels: (providers: string[]) => ["availableModels", ...providers] as const,
     availableModelsAll: () => ["availableModels"] as const,
-    modelWhitelist: (provider: string) => ["modelWhitelist", provider] as const,
+    modelWhitelist: (provider: string) => ["getModelProviderWhitelistApiV1ModelProvidersProviderModelWhitelistGet", provider] as const,
+    modelWhitelistAll: () => ["getModelProviderWhitelistApiV1ModelProvidersProviderModelWhitelistGet"] as const,
   },
   tasksOverview: {
     all: (taskIds: string[]) => ["tasksOverview", [...taskIds].sort().join(",")] as const,

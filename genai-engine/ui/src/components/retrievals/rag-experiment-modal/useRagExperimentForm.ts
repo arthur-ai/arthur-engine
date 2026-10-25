@@ -15,10 +15,10 @@ import type {
   LLMGetAllMetadataResponse,
   LLMVersionResponse,
   CreateRagExperimentRequest,
-  SavedRagConfigInput,
+  SavedRagConfig as SavedRagConfigInput,
   UnsavedRagConfig,
   DatasetColumnVariableSource,
-  EvalRefInput,
+  EvalRef as EvalRefInput,
   RagSearchSettingConfigurationVersionResponse,
 } from "@/lib/api-client/api-client";
 

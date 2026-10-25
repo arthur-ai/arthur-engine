@@ -5,12 +5,13 @@ from typing import Any, Dict, List, Optional
 
 from arthur_common.models.llm_model_providers import ModelProvider
 from fastapi import HTTPException
-from pydantic import SecretStr
+from pydantic import BaseModel, ConfigDict, Field, SecretStr
 from sqlalchemy.orm import Query, Session
 from starlette.status import HTTP_400_BAD_REQUEST
 
 from clients.llm.llm_client import LLMClient, get_static_catalog
 from db_models.secret_storage_models import DatabaseSecretStorage
+from repositories.guardrail_configuration_repository import lock_guardrail_configuration
 from schemas.enums import SecretType
 from schemas.internal_schemas import AwsBedrockCredentials, GCPServiceAccountCredentials
 from schemas.request_schemas import PutModelProviderCredentials
@@ -18,6 +19,16 @@ from schemas.response_schemas import ModelProviderResponse
 from utils.constants import EMPTY_MODEL_PROVIDER
 
 logger = logging.getLogger(__name__)
+
+
+class _StoredAPIKey(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    api_key: SecretStr = Field(min_length=1)
+
+
+class _StoredEndpoint(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    api_base: SecretStr = Field(min_length=1)
 
 
 class ModelProviderRepository:
@@ -130,9 +141,13 @@ class ModelProviderRepository:
         self,
         provider: ModelProvider,
     ) -> DatabaseSecretStorage | None:
-        secret: DatabaseSecretStorage | None = self._provider_secret_query(
-            provider,
-        ).first()
+        secret: DatabaseSecretStorage | None = (
+            self._provider_secret_query(
+                provider,
+            )
+            .populate_existing()
+            .first()
+        )
         return secret
 
     def _require_provider_secret(
@@ -224,6 +239,7 @@ class ModelProviderRepository:
         aws_bedrock_credentials: AwsBedrockCredentials | None = None,
     ) -> None:
         # first check if this provider already exists
+        lock_guardrail_configuration(self.db_session)
         existing_provider = self._get_provider_secret(provider)
         secret_data = self._format_creds_for_provider_secret(api_key, api_base)
 
@@ -271,12 +287,18 @@ class ModelProviderRepository:
         self,
         provider: ModelProvider,
     ) -> None:
+        lock_guardrail_configuration(self.db_session)
         providers = self._provider_secret_query(provider).all()
         for provider_db in providers:
             self.db_session.delete(provider_db)
         self.db_session.commit()
 
-    def get_model_provider_client(self, provider: ModelProvider) -> LLMClient:
+    def get_model_provider_client(
+        self,
+        provider: ModelProvider,
+        *,
+        require_readable_credentials: bool = False,
+    ) -> LLMClient:
         """Returns an authenticated LiteLLM client instance for the provider"""
         if str(provider) == EMPTY_MODEL_PROVIDER:
             raise HTTPException(
@@ -287,6 +309,36 @@ class ModelProviderRepository:
                 ),
             )
         secret = self._require_provider_secret(provider)
+        if require_readable_credentials:
+            if secret.value is not None:
+                _StoredAPIKey.model_validate(secret.value)
+            elif provider not in (
+                ModelProvider.VERTEX_AI,
+                ModelProvider.BEDROCK,
+                ModelProvider.VLLM,
+            ):
+                raise ValueError("The model provider API key is missing.")
+            if secret.api_base is not None:
+                _StoredEndpoint.model_validate(secret.api_base)
+            if secret.vertex_credentials is not None:
+                vertex = GCPServiceAccountCredentials.model_validate(
+                    secret.vertex_credentials, extra="forbid"
+                )
+                if any(
+                    not value.strip() for value in vertex.to_sensitive_dict().values()
+                ):
+                    raise ValueError("The model provider credentials are incomplete.")
+            if secret.aws_bedrock_credentials is not None:
+                bedrock = AwsBedrockCredentials.model_validate(
+                    secret.aws_bedrock_credentials, extra="forbid"
+                )
+                values = bedrock.to_sensitive_dict()
+                if not values or any(not value.strip() for value in values.values()):
+                    raise ValueError("The model provider credentials are incomplete.")
+                if bool(bedrock.aws_access_key_id) != bool(
+                    bedrock.aws_secret_access_key
+                ):
+                    raise ValueError("The model provider credentials are incomplete.")
 
         api_key = None
         if secret.value is not None:
@@ -300,6 +352,10 @@ class ModelProviderRepository:
         api_base = None
         if secret.api_base:
             api_base = secret.api_base.get(self.API_BASE_SECRET_FIELD)
+            if require_readable_credentials and (
+                not isinstance(api_base, str) or not api_base.strip()
+            ):
+                raise ValueError("The model provider endpoint is invalid.")
 
         return LLMClient(
             provider=provider,
@@ -320,6 +376,13 @@ class ModelProviderRepository:
             .all()
         )
         enabled_providers = set([p[0] for p in enabled_providers_db_rows])
+        custom_openai_endpoint = (
+            self._provider_secret_query(ModelProvider.OPENAI)
+            .with_entities(DatabaseSecretStorage.id)
+            .filter(DatabaseSecretStorage.api_base.is_not(None))
+            .first()
+            is not None
+        )
 
         # construct responses based on if a secret is configured for the provider
         providers = []
@@ -328,6 +391,8 @@ class ModelProviderRepository:
                 ModelProviderResponse(
                     provider=provider,
                     enabled=provider in enabled_providers,
+                    supports_custom_models=provider == ModelProvider.AZURE
+                    or (provider == ModelProvider.OPENAI and custom_openai_endpoint),
                 ),
             )
 

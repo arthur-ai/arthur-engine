@@ -169,6 +169,7 @@ from schemas.enums import (
     SecretType,
     TestRunStatus,
 )
+from schemas.guardrail_schemas import GuardrailLLMConfiguration, GuardrailLLMStatus
 from schemas.metric_schemas import MetricScoreDetails
 from schemas.rag_experiment_schemas import (
     RagConfig,
@@ -1912,6 +1913,8 @@ class DocumentStorageConfiguration(BaseModel):
 
 
 class ApplicationConfiguration(BaseModel):
+    guardrail_llm: GuardrailLLMConfiguration | None = None
+    guardrail_llm_status: GuardrailLLMStatus = "needs_configuration"
     chat_task_id: Optional[str] = None
     default_currency: Optional[str] = None
     document_storage_configuration: Optional[DocumentStorageConfiguration] = None
@@ -2002,6 +2005,8 @@ class ApplicationConfiguration(BaseModel):
 
     def _to_response_model(self) -> ApplicationConfigurationResponse:
         return ApplicationConfigurationResponse(
+            guardrail_llm=self.guardrail_llm,
+            guardrail_llm_status=self.guardrail_llm_status,
             chat_task_id=self.chat_task_id,
             default_currency=self.default_currency,
             document_storage_configuration=(

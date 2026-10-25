@@ -20,6 +20,9 @@ export const useRemoveProvider = ({ onSuccess }: Opts = {}) => {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: queryKeys.providers.all() });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.configuration.all() });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.providers.modelWhitelistAll() });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.providers.availableModelsAll() });
 
       await onSuccess?.();
     },

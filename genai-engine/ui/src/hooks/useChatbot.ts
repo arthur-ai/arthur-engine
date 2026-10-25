@@ -3,7 +3,7 @@ import { useCallback, useRef, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useOutOfCreditsDialog } from "@/contexts/OutOfCreditsContext";
 import { API_BASE_URL } from "@/lib/api";
-import type { OpenAIMessageInput } from "@/lib/api-client/api-client";
+import type { OpenAIMessage as OpenAIMessageInput } from "@/lib/api-client/api-client";
 import { getTokenLimitDetail, isTokenLimitExceededError } from "@/lib/api-errors";
 import { queryClient } from "@/lib/queryClient";
 import { useChatbotStore } from "@/stores/chatbot.store";

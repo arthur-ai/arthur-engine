@@ -26,6 +26,7 @@ import { useSnackbar } from "notistack";
 import React, { useState } from "react";
 
 import { EditForm } from "./components/edit-form";
+import { useGuardrailConfiguration, useGuardrailPermissions } from "./hooks/useGuardrailConfiguration";
 import { useProviders } from "./hooks/useProviders";
 import { useRemoveProvider } from "./hooks/useRemoveProvider";
 import { useSaveModelWhitelist } from "./hooks/useSaveModelWhitelist";
@@ -36,6 +37,11 @@ import { ModelProviderResponse, PutModelProviderCredentials } from "@/lib/api-cl
 
 export const ModelProviders: React.FC = () => {
   const { enqueueSnackbar } = useSnackbar();
+  const configuration = useGuardrailConfiguration();
+  const { canWrite, canRead } = useGuardrailPermissions();
+  const selectedProvider = configuration.data?.guardrail_llm?.provider;
+  const configurationReady = !canRead || (!!configuration.data && !configuration.isError && !configuration.isFetching);
+  const [deleteError, setDeleteError] = useState(false);
   const { data: providers, isLoading, error } = useProviders();
   const [deleteModal, setDeleteModal] = useState<{
     isOpen: boolean;
@@ -61,13 +67,19 @@ export const ModelProviders: React.FC = () => {
   });
 
   const handleDeleteClick = (provider: ModelProviderResponse) => {
+    if (!configurationReady || (selectedProvider === provider.provider && !canWrite)) return;
+    setDeleteError(false);
     setDeleteModal({ isOpen: true, provider });
   };
 
   const handleDeleteConfirm = async () => {
-    if (!deleteModal.provider) return;
+    if (!deleteModal.provider || !configurationReady || (selectedProvider === deleteModal.provider.provider && !canWrite)) return;
 
-    deleteProviderMutation.mutate(deleteModal.provider.provider);
+    try {
+      await deleteProviderMutation.mutateAsync(deleteModal.provider.provider);
+    } catch {
+      setDeleteError(true);
+    }
   };
 
   const handleDeleteCancel = () => {
@@ -75,6 +87,7 @@ export const ModelProviders: React.FC = () => {
   };
 
   const handleEditClick = (provider: ModelProviderResponse) => {
+    if (!configurationReady || (selectedProvider === provider.provider && !canWrite)) return;
     setWhitelist(null);
 
     setWhitelistDirty(false);
@@ -87,7 +100,7 @@ export const ModelProviders: React.FC = () => {
   };
 
   const handleEditSave = async (data: PutModelProviderCredentials) => {
-    if (!editModal.provider) return;
+    if (!editModal.provider || !configurationReady || (selectedProvider === editModal.provider.provider && !canWrite)) return;
 
     try {
       await saveProviderMutation.mutateAsync({ provider: editModal.provider, data });
@@ -177,6 +190,17 @@ export const ModelProviders: React.FC = () => {
         </Box>
 
         <Box sx={{ p: 3 }}>
+          {canRead && !configurationReady && (
+            <Alert
+              severity={configuration.isError ? "error" : "info"}
+              sx={{ mb: 2 }}
+              action={configuration.isError ? <Button onClick={() => void configuration.refetch()}>Retry</Button> : undefined}
+            >
+              {configuration.isError
+                ? "Guardrail settings could not be loaded. Reload them before changing model providers."
+                : "Loading guardrail settings before changing model providers."}
+            </Alert>
+          )}
           <Card variant="outlined">
             <CardContent sx={{ p: 0, "&:last-child": { pb: 0 } }}>
               <TableContainer sx={{ maxHeight: "calc(100vh - 300px)", overflow: "auto" }}>
@@ -239,6 +263,7 @@ export const ModelProviders: React.FC = () => {
                               >
                                 {getProviderDisplayName(provider.provider)}
                               </Typography>
+                              {selectedProvider === provider.provider && <Chip size="small" label="Guardrail judge" variant="outlined" />}
                             </Box>
                           </TableCell>
                           <TableCell align="center">{getStatusBadge(provider.enabled)}</TableCell>
@@ -250,14 +275,20 @@ export const ModelProviders: React.FC = () => {
                                 justifyContent: "flex-end",
                               }}
                             >
-                              <IconButton size="small" color="primary" onClick={() => handleEditClick(provider)} title="Configure provider">
+                              <IconButton
+                                size="small"
+                                color="primary"
+                                onClick={() => handleEditClick(provider)}
+                                disabled={!configurationReady || (selectedProvider === provider.provider && !canWrite)}
+                                title="Configure provider"
+                              >
                                 <Edit />
                               </IconButton>
                               <IconButton
                                 size="small"
                                 color="error"
                                 onClick={() => handleDeleteClick(provider)}
-                                disabled={!provider.enabled}
+                                disabled={!configurationReady || !provider.enabled || (selectedProvider === provider.provider && !canWrite)}
                                 title={provider.enabled ? "Delete provider" : "Delete provider (disabled - provider not enabled)"}
                               >
                                 <Delete />
@@ -316,6 +347,16 @@ export const ModelProviders: React.FC = () => {
           <Alert severity="warning" sx={{ mt: 2 }}>
             <Typography variant="body2">Any agents or evals currently using this provider will no longer work.</Typography>
           </Alert>
+          {deleteModal.provider?.provider === selectedProvider && (
+            <Alert severity="warning" sx={{ mt: 2 }}>
+              Guardrails need a configured model provider. Removing this provider will require configuration.
+            </Alert>
+          )}
+          {deleteError && (
+            <Alert severity="error" sx={{ mt: 2 }}>
+              This provider could not be removed. Check your permissions and try again.
+            </Alert>
+          )}
         </DialogContent>
         <DialogActions sx={{ p: 3 }}>
           <Button onClick={handleDeleteCancel} disabled={isDeleting} variant="outlined">
@@ -323,7 +364,7 @@ export const ModelProviders: React.FC = () => {
           </Button>
           <Button
             onClick={handleDeleteConfirm}
-            disabled={isDeleting}
+            disabled={isDeleting || !configurationReady || (deleteModal.provider?.provider === selectedProvider && !canWrite)}
             color="error"
             variant="contained"
             startIcon={isDeleting ? <CircularProgress size={16} /> : null}
@@ -359,6 +400,11 @@ export const ModelProviders: React.FC = () => {
           </Box>
           Configure {getProviderDisplayName(editModal.provider?.provider || "")}
         </DialogTitle>
+        {editModal.provider?.provider === selectedProvider && (
+          <Alert severity="warning" sx={{ mx: 3 }}>
+            Changing these credentials affects guardrails for all organizations. Only an organization administrator can change this provider.
+          </Alert>
+        )}
         {editModal.provider?.provider && (
           <EditForm
             provider={editModal.provider.provider}

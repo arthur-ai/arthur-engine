@@ -21,7 +21,28 @@ export type AddTagToLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVe
 export type AddTagToLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionTagsPutError = HTTPValidationError;
 
 /** AgentCreationSource */
-export type AgentCreationSource = GCPAgentCreationSource | OTELAgentCreationSource | ManualAgentCreationSource;
+export type AgentCreationSource =
+  | ({
+      type: "CLOUD";
+    } & CloudAgentCreationSource)
+  | ({
+      type: "ENDPOINT";
+    } & EndpointAgentCreationSource)
+  | ({
+      type: "GCP";
+    } & GCPAgentCreationSource)
+  | ({
+      type: "MANUAL";
+    } & ManualAgentCreationSource)
+  | ({
+      type: "NETWORK";
+    } & NetworkAgentCreationSource)
+  | ({
+      type: "OTEL";
+    } & OTELAgentCreationSource)
+  | ({
+      type: "SIEM";
+    } & SIEMAgentCreationSource);
 
 /** AgentMetadata */
 export interface AgentMetadata {
@@ -45,6 +66,62 @@ export interface AgentMetadataResponse {
    * List of service names that send traces to this task
    */
   service_names?: string[] | null;
+}
+
+/**
+ * AgentObservations
+ * What a source could see about an agent. Shared across categories, all optional.
+ *
+ * An absent field means the source cannot see it, not that collection failed. That
+ * promise is kept by each source declaring ``observable_fields()``, which is also
+ * what lets visibility be computed without a per-vendor branch in consumers.
+ */
+export interface AgentObservations {
+  /**
+   * Assigned User
+   * User the source attributes the host to. PERSONAL DATA: this is the field that makes a record attributable to an individual, and is subject to works-council and DPIA review before EU deployment. Omit it where that review has not happened.
+   */
+  assigned_user?: string | null;
+  /**
+   * Classification
+   * Short catalog label shown beside the name, e.g. 'Personal agent'. Free text so the catalog can add one without a schema release. Absent for uncatalogued software, which must still render.
+   */
+  classification?: string | null;
+  /**
+   * Host Group
+   * Grouping the host belongs to: a Jamf site or smart group, a cloud resource group.
+   */
+  host_group?: string | null;
+  /**
+   * Host Name
+   * Host the agent was observed on, e.g. 'MBP-4471'.
+   */
+  host_name?: string | null;
+  /**
+   * Install Path
+   * Install location, shaped to '~/...' rather than '/Users/<name>/...' so a username does not travel in a path.
+   */
+  install_path?: string | null;
+  /**
+   * Os Version
+   * Guest OS version, e.g. 'macOS 15.3 (24D60)'.
+   */
+  os_version?: string | null;
+  /**
+   * Permissions
+   * Capabilities the agent declared for itself, e.g. a browser extension's manifest permissions ('tabs', 'nativeMessaging', '<all_urls>'). A cloud agent's action groups or service-account scopes answer the same question, which is why this is shared rather than endpoint-only.
+   */
+  permissions?: string[];
+  /**
+   * Service Names
+   * Service names this agent emits telemetry under. What links a discovered agent to traces already arriving.
+   */
+  service_names?: string[];
+  /**
+   * Version
+   * Version read statically, never by executing the discovered binary.
+   */
+  version?: string | null;
 }
 
 /**
@@ -159,7 +236,7 @@ export type AgenticAnnotationType = "human" | "continuous_eval";
  * AgenticEvalRef
  * Reference to an evaluation configuration with transform
  */
-export interface AgenticEvalRefInput {
+export interface AgenticEvalRef {
   /**
    * Name
    * Name of the evaluation
@@ -175,35 +252,7 @@ export interface AgenticEvalRefInput {
    * Variable Mapping
    * Mapping of eval variables to data sources (supports transform variables for agentic experiments)
    */
-  variable_mapping: AgenticEvalVariableMappingInput[];
-  /**
-   * Version
-   * Version of the evaluation
-   */
-  version: number;
-}
-
-/**
- * AgenticEvalRef
- * Reference to an evaluation configuration with transform
- */
-export interface AgenticEvalRefOutput {
-  /**
-   * Name
-   * Name of the evaluation
-   */
-  name: string;
-  /**
-   * Transform Id
-   * ID of the transform to apply to the trace before evaluation
-   * @format uuid
-   */
-  transform_id: string;
-  /**
-   * Variable Mapping
-   * Mapping of eval variables to data sources (supports transform variables for agentic experiments)
-   */
-  variable_mapping: AgenticEvalVariableMappingOutput[];
+  variable_mapping: AgenticEvalVariableMapping[];
   /**
    * Version
    * Version of the evaluation
@@ -246,33 +295,7 @@ export interface AgenticEvalResultSummaries {
  * For transform variables, use ExperimentOutputVariableSource with transform_variable_name
  * in the experiment_output field. The transform_id comes from the associated AgenticEvalRef.
  */
-export interface AgenticEvalVariableMappingInput {
-  /**
-   * Source
-   * Source of the variable value
-   */
-  source:
-    | ({
-        type: "dataset_column";
-      } & DatasetColumnVariableSource)
-    | ({
-        type: "experiment_output";
-      } & AgenticExperimentOutputVariableSource);
-  /**
-   * Variable Name
-   * Name of the eval variable
-   */
-  variable_name: string;
-}
-
-/**
- * AgenticEvalVariableMapping
- * Mapping of an eval variable to its source (dataset column or experiment output).
- *
- * For transform variables, use ExperimentOutputVariableSource with transform_variable_name
- * in the experiment_output field. The transform_id comes from the associated AgenticEvalRef.
- */
-export interface AgenticEvalVariableMappingOutput {
+export interface AgenticEvalVariableMapping {
   /**
    * Source
    * Source of the variable value
@@ -322,7 +345,7 @@ export interface AgenticExperimentDetail {
    * Eval List
    * List of evaluations being run, each with an associated transform
    */
-  eval_list: AgenticEvalRefOutput[];
+  eval_list: AgenticEvalRef[];
   /**
    * Failed Rows
    * Number of test rows that failed
@@ -358,7 +381,7 @@ export interface AgenticExperimentDetail {
    * Template Variable Mapping
    * Mapping of template variables to their sources (dataset columns, request-time parameters, or generated variables)
    */
-  template_variable_mapping: TemplateVariableMappingOutput[];
+  template_variable_mapping: TemplateVariableMapping[];
   /**
    * Total Cost
    * Total cost of running the experiment
@@ -585,14 +608,14 @@ export interface AgenticNotebookState {
    * Eval List
    * List of evaluations
    */
-  eval_list?: AgenticEvalRefInput[] | null;
+  eval_list?: AgenticEvalRef[] | null;
   /** HTTP template configuration for the agent endpoint */
   http_template?: HttpTemplate | null;
   /**
    * Template Variable Mapping
    * Mapping of template variables to their sources (dataset columns, request-time parameters, or generated variables like UUIDs)
    */
-  template_variable_mapping?: TemplateVariableMappingInput[] | null;
+  template_variable_mapping?: TemplateVariableMapping[] | null;
 }
 
 /**
@@ -612,14 +635,14 @@ export interface AgenticNotebookStateResponse {
    * Eval List
    * List of evaluations
    */
-  eval_list?: AgenticEvalRefOutput[] | null;
+  eval_list?: AgenticEvalRef[] | null;
   /** HTTP template configuration for the agent endpoint */
   http_template?: HttpTemplate | null;
   /**
    * Template Variable Mapping
    * Mapping of template variables to their sources (dataset columns, request-time parameters, or generated variables like UUIDs)
    */
-  template_variable_mapping?: TemplateVariableMappingOutput[] | null;
+  template_variable_mapping?: TemplateVariableMapping[] | null;
 }
 
 /**
@@ -712,7 +735,7 @@ export interface AgenticPrompt {
    * Messages
    * List of chat messages in OpenAI format (e.g., [{'role': 'user', 'content': 'Hello'}])
    */
-  messages: OpenAIMessageOutput[];
+  messages: OpenAIMessage[];
   /**
    * Model Name
    * Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet')
@@ -737,7 +760,7 @@ export interface AgenticPrompt {
    * Tools
    * Available tools/functions for the model to call, in OpenAI function calling format
    */
-  tools?: LLMToolOutput[] | null;
+  tools?: LLMTool[] | null;
   /**
    * Variables
    * List of variable names for the agentic prompt
@@ -935,23 +958,33 @@ export type AnnotateTraceApiV1TracesTraceIdAnnotationsPostError = HTTPValidation
 export interface AnthropicThinkingParamInput {
   /** Budget Tokens */
   budget_tokens?: number;
+  /** Display */
+  display?: AnthropicThinkingParamInputDisplayEnum;
   /** Type */
   type?: AnthropicThinkingParamInputTypeEnum;
 }
 
+/** Display */
+export type AnthropicThinkingParamInputDisplayEnum = "summarized" | "omitted" | "updates";
+
 /** Type */
-export type AnthropicThinkingParamInputTypeEnum = "enabled" | "adaptive";
+export type AnthropicThinkingParamInputTypeEnum = "enabled" | "adaptive" | "disabled";
 
 /** AnthropicThinkingParam */
 export interface AnthropicThinkingParamOutput {
   /** Budget Tokens */
   budget_tokens?: number;
+  /** Display */
+  display?: AnthropicThinkingParamOutputDisplayEnum;
   /** Type */
   type?: AnthropicThinkingParamOutputTypeEnum;
 }
 
+/** Display */
+export type AnthropicThinkingParamOutputDisplayEnum = "summarized" | "omitted" | "updates";
+
 /** Type */
-export type AnthropicThinkingParamOutputTypeEnum = "enabled" | "adaptive";
+export type AnthropicThinkingParamOutputTypeEnum = "enabled" | "adaptive" | "disabled";
 
 /** ApiKeyRagAuthenticationConfigRequest */
 export interface ApiKeyRagAuthenticationConfigRequest {
@@ -1074,11 +1107,23 @@ export interface ApplicationConfigurationResponse {
   /** Default Currency */
   default_currency?: string | null;
   document_storage_configuration?: DocumentStorageConfigurationResponse | null;
+  guardrail_llm?: GuardrailLLMConfiguration | null;
+  /**
+   * Guardrail Llm Status
+   * @default "needs_configuration"
+   */
+  guardrail_llm_status?: ApplicationConfigurationResponseGuardrailLlmStatusEnum;
   /** Max Llm Rules Per Task Count */
   max_llm_rules_per_task_count: number;
   /** Trace Retention Days */
   trace_retention_days: number;
 }
+
+/**
+ * Guardrail Llm Status
+ * @default "needs_configuration"
+ */
+export type ApplicationConfigurationResponseGuardrailLlmStatusEnum = "configured" | "needs_configuration" | "invalid";
 
 /** ApplicationConfigurationUpdateRequest */
 export interface ApplicationConfigurationUpdateRequest {
@@ -1087,6 +1132,7 @@ export interface ApplicationConfigurationUpdateRequest {
   /** Default Currency */
   default_currency?: string | null;
   document_storage_configuration?: DocumentStorageConfigurationUpdateRequest | null;
+  guardrail_llm?: GuardrailLLMConfiguration | null;
   /** Max Llm Rules Per Task Count */
   max_llm_rules_per_task_count?: number | null;
   /** Trace Retention Days */
@@ -1446,7 +1492,7 @@ export interface ChatbotConfigUpdateRequest {
 /** ChatbotRequest */
 export interface ChatbotRequest {
   /** History */
-  history: OpenAIMessageInput[];
+  history: OpenAIMessage[];
   /** Session Id */
   session_id?: string | null;
 }
@@ -1463,6 +1509,40 @@ export interface CheckUserPermissionUsersPermissionsCheckGetParams {
 }
 
 /**
+ * CloudAgentCreationSource
+ * An agent a cloud provider enumerates: in its agent runtime, or on one of its VMs.
+ *
+ * - AN AGENT RUNTIME (Bedrock, Vertex AI Agent Engine) lists the agents themselves:
+ *   account or project in ``instance``, region in ``scope``, the agent's id in
+ *   ``resource_id``.
+ * - A VM (Compute Engine, and EC2 after it) is listed by the provider and carries its
+ *   own software inventory, the payload an endpoint's collector writes, decoded the
+ *   same way. The VM is in ``instance``, where it is (project and zone) in ``scope``,
+ *   and the software in ``resource_kind`` and ``resource_id``: per (software, VM),
+ *   as on an endpoint, so two VMs are never one agent.
+ *
+ * Enumerated rather than searched, so ``address.query`` is absent. Where the agent is
+ * within the provider is part of the address because scanning is multi-account and
+ * multi-region.
+ */
+export interface CloudAgentCreationSource {
+  /** Where to find this agent again upstream. Required: a discovered agent that cannot be located again is not actionable. */
+  address: SourceAddress;
+  /** What the source could see. Only fields in `observable_fields()` are ever populated by this category. */
+  observations?: AgentObservations;
+  /**
+   * Type
+   * @default "CLOUD"
+   */
+  type?: "CLOUD";
+  /**
+   * Vendor
+   * Upstream product this came from, e.g. 'splunk_enterprise', 'jamf_pro', 'aws_bedrock'. FREE TEXT, and deliberately not enumerated here: nothing in this package branches on the vendor -- capability and evidence ceilings are declared per source class -- so enumerating it would make every new vendor a release of this package plus a repin in three services. The registry is app_plane's discovery source type catalog, which is also where the display name lives. Values are `<platform>_<product>`, always, so a vendor shipping a second product that could be a source does not force a rename of the first.
+   */
+  vendor: string;
+}
+
+/**
  * CompletionRequest
  * Request schema for running an unsaved agentic prompt
  */
@@ -1475,7 +1555,7 @@ export interface CompletionRequest {
    * Messages
    * List of chat messages in OpenAI format (e.g., [{'role': 'user', 'content': 'Hello'}])
    */
-  messages: OpenAIMessageInput[];
+  messages: OpenAIMessage[];
   /**
    * Model Name
    * Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet')
@@ -1487,7 +1567,7 @@ export interface CompletionRequest {
    * Tools
    * Available tools/functions for the model to call, in OpenAI function calling format
    */
-  tools?: LLMToolInput[] | null;
+  tools?: LLMTool[] | null;
 }
 
 export type ComputeSessionMetricsApiV1TracesSessionsSessionIdMetricsGetData = SessionTracesResponse;
@@ -1844,7 +1924,7 @@ export interface CreateAgenticExperimentRequest {
    * Eval List
    * List of evaluations to run, each with an associated transform
    */
-  eval_list: AgenticEvalRefInput[];
+  eval_list: AgenticEvalRef[];
   /** HTTP template configuration for the agent endpoint */
   http_template: HttpTemplate;
   /**
@@ -1861,7 +1941,7 @@ export interface CreateAgenticExperimentRequest {
    * Template Variable Mapping
    * Mapping of template variables to their sources (dataset columns, request-time parameters, or generated variables like UUIDs)
    */
-  template_variable_mapping: TemplateVariableMappingInput[];
+  template_variable_mapping: TemplateVariableMapping[];
 }
 
 export type CreateAgenticNotebookApiV1TasksTaskIdAgenticNotebooksPostData = AgenticNotebookDetail;
@@ -1895,7 +1975,7 @@ export interface CreateAgenticPromptRequest {
    * Messages
    * List of chat messages in OpenAI format (e.g., [{'role': 'user', 'content': 'Hello'}])
    */
-  messages: OpenAIMessageInput[];
+  messages: OpenAIMessage[];
   /**
    * Model Name
    * Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet')
@@ -1907,7 +1987,7 @@ export interface CreateAgenticPromptRequest {
    * Tools
    * Available tools/functions for the model to call, in OpenAI function calling format
    */
-  tools?: LLMToolInput[] | null;
+  tools?: LLMTool[] | null;
 }
 
 export type CreateApiKeyAuthApiKeysPostData = ApiKeyResponse;
@@ -1979,7 +2059,7 @@ export interface CreateNotebookRequest {
    */
   name: string;
   /** Initial state */
-  state?: NotebookStateInput | null;
+  state?: NotebookState | null;
 }
 
 export type CreatePromptExperimentApiV1TasksTaskIdPromptExperimentsPostData = PromptExperimentSummary;
@@ -2007,7 +2087,7 @@ export interface CreatePromptExperimentRequest {
    * Eval List
    * List of evaluations to run
    */
-  eval_list: EvalRefInput[];
+  eval_list: EvalRef[];
   /**
    * Name
    * Name for the experiment
@@ -2029,7 +2109,7 @@ export interface CreatePromptExperimentRequest {
    * Prompt Variable Mapping
    * Shared variable mapping for all prompts
    */
-  prompt_variable_mapping: PromptVariableMappingInput[];
+  prompt_variable_mapping: PromptVariableMapping[];
 }
 
 export type CreateRagExperimentApiV1TasksTaskIdRagExperimentsPostData = RagExperimentSummary;
@@ -2057,7 +2137,7 @@ export interface CreateRagExperimentRequest {
    * Eval List
    * List of evaluations to run
    */
-  eval_list: EvalRefInput[];
+  eval_list: EvalRef[];
   /**
    * Name
    * Name for the experiment
@@ -2070,7 +2150,7 @@ export interface CreateRagExperimentRequest {
   rag_configs: (
     | ({
         type: "saved";
-      } & SavedRagConfigInput)
+      } & SavedRagConfig)
     | ({
         type: "unsaved";
       } & UnsavedRagConfig)
@@ -2592,6 +2672,83 @@ export interface DemoTaskSignupResponse {
 }
 
 /**
+ * DiscoveredAgentRecord
+ * One record from a discovery scan, on its way to becoming a task.
+ *
+ * `DiscoveryOutputRecord` is what a source's QUERY must return; this is what a
+ * CONNECTOR hands onward, which is the same columns plus the two things only the
+ * connector knows. Modelled as an extension rather than a separate shape because that
+ * is the actual relationship, and because the alternative -- putting `creation_source`
+ * on the output contract itself -- would make a customer's SPL nominally owe a column
+ * no query can produce, and would force `required_columns()` to be hand-listed rather
+ * than derived.
+ *
+ * **Column validation runs against `DiscoveryOutputRecord`, never against this.**
+ * `required_columns()` is inherited and would answer for this model's fields too, so a
+ * validator that reaches for it through a record instance gets the wrong answer.
+ */
+export interface DiscoveredAgentRecord {
+  /**
+   * Creation Source
+   * The source that reported this agent, its upstream address and what it observed. Supplied by the connector, never by the source's query.
+   */
+  creation_source:
+    | ({
+        type: "CLOUD";
+      } & CloudAgentCreationSource)
+    | ({
+        type: "ENDPOINT";
+      } & EndpointAgentCreationSource)
+    | ({
+        type: "NETWORK";
+      } & NetworkAgentCreationSource)
+    | ({
+        type: "SIEM";
+      } & SIEMAgentCreationSource);
+  /** Data Sources */
+  data_sources?: DataSource[] | null;
+  /**
+   * External Id
+   * Stable identity from the source. Required, and canonical: no identity resolution runs across sources in v1.
+   * @minLength 1
+   */
+  external_id: string;
+  /**
+   * Last Seen
+   * When the source last observed this agent.
+   * @format date-time
+   */
+  last_seen: string;
+  /** Llm Models */
+  llm_models?: LLMModel[] | null;
+  /**
+   * Name
+   * Human-readable agent name.
+   * @minLength 1
+   */
+  name: string;
+  /** OS the agent runs on, when the source can tell. Feeds the task's `provenance.platform`, and is paired with `runs_on` rather than implied by it. */
+  platform?: Platform | null;
+  /** Where the machine hosting the agent is, when the source can tell. Feeds the task's `provenance.runs_on`. Per record rather than per vendor, as `RunsOn` explains: a managed-endpoint connector always knows the answer, a SIEM query over host-enriched data can project it, and one over proxy logs cannot. Absent rather than defaulted to UNKNOWN, so a record that says nothing about location is told apart from one that says it cannot tell. */
+  runs_on?: RunsOn | null;
+  /** Sub Agents */
+  sub_agents?: SubAgent[] | null;
+  /**
+   * Task Id
+   * Existing task to route this record to, when the caller already knows it. Optional HERE AND ONLY HERE -- a SIEM does not know Arthur's task IDs. Every record still comes back with one.
+   */
+  task_id?: string | null;
+  /** Tools */
+  tools?: Tool[] | null;
+}
+
+/**
+ * DiscoveredRecordFailureReason
+ * Why a record came back in `failed` rather than `resolved`.
+ */
+export type DiscoveredRecordFailureReason = "task_not_found";
+
+/**
  * DisplaySettingsResponse
  * Public display settings (e.g. default currency for cost formatting).
  */
@@ -2638,6 +2795,59 @@ export interface DocumentStorageConfigurationUpdateRequest {
 /** DocumentStorageEnvironment */
 export type DocumentStorageEnvironment = "aws" | "azure";
 
+/**
+ * EndpointAgentCreationSource
+ * One agent observed on one managed endpoint.
+ *
+ * Grain is per (software, device): ``address.instance`` is the device and
+ * ``address.resource_id`` the software, because the Discovery list shows a row per
+ * machine.
+ *
+ * What it fills comes from three places: the collector's on-disk output, the MDM's
+ * device record, and the collector's catalog.
+ *
+ * Where the collector's six output columns land, so none is unaccounted for:
+ *
+ * ========  =============================================
+ * column    carried as
+ * ========  =============================================
+ * kind      ``address.resource_kind``
+ * id        ``address.resource_id``
+ * ver       ``observations.version``
+ * loc       ``observations.install_path``
+ * perms     ``observations.permissions``
+ * extra     nothing -- see below
+ * ========  =============================================
+ *
+ * ``extra`` means a different thing per kind (browser type, image size, deb arch,
+ * unit state, listening address) and a field here means one thing for every source.
+ * The listening address is the one value in it worth its own field eventually.
+ *
+ * ``scan`` rows must never arrive: that kind marks a branch that could not look, not
+ * an agent that was found.
+ *
+ * A one-shot scan sees the machine, not behaviour over time. Anything needing
+ * persistent event capture -- outbound destinations, connection counts -- is out of
+ * reach until osqueryd runs with the audit subsystem, which would put code signing,
+ * notarization and PPPC on the critical path.
+ */
+export interface EndpointAgentCreationSource {
+  /** Where to find this agent again upstream. Required: a discovered agent that cannot be located again is not actionable. */
+  address: SourceAddress;
+  /** What the source could see. Only fields in `observable_fields()` are ever populated by this category. */
+  observations?: AgentObservations;
+  /**
+   * Type
+   * @default "ENDPOINT"
+   */
+  type?: "ENDPOINT";
+  /**
+   * Vendor
+   * Upstream product this came from, e.g. 'splunk_enterprise', 'jamf_pro', 'aws_bedrock'. FREE TEXT, and deliberately not enumerated here: nothing in this package branches on the vendor -- capability and evidence ceilings are declared per source class -- so enumerating it would make every new vendor a release of this package plus a repin in three services. The registry is app_plane's discovery source type catalog, which is also where the display name lives. Values are `<platform>_<product>`, always, so a vendor shipping a second product that could be a source does not force a rename of the first.
+   */
+  vendor: string;
+}
+
 /** EngineConfigResponse */
 export interface EngineConfigResponse {
   /**
@@ -2649,7 +2859,12 @@ export interface EngineConfigResponse {
 
 /**
  * EnrichedTaskResponse
- * Response model for agent-tasks endpoint with enriched metadata.
+ * The agent-tasks response, with the task's provenance.
+ *
+ * Extends the shared model rather than living in it only until `arthur_common` carries
+ * `provenance` on `EnrichedTaskResponse` itself, at which point this subclass goes.
+ * Named the same so the OpenAPI component, and the generated clients built from it,
+ * keep their name either way.
  */
 export interface EnrichedTaskResponse {
   /**
@@ -2696,6 +2911,8 @@ export interface EnrichedTaskResponse {
    * Number of spans associated with this task
    */
   num_spans?: number | null;
+  /** Every source that has reported this agent, and where upstream each reported it. Absent only for a task with no creation source recorded. */
+  provenance?: Provenance | null;
   /**
    * Rules
    * Rules associated with this task
@@ -2834,7 +3051,7 @@ export type EvalKind = "llm_as_a_judge" | "pii" | "pii_v1" | "toxicity" | "promp
  * EvalRef
  * Reference to an evaluation configuration
  */
-export interface EvalRefInput {
+export interface EvalRef {
   /**
    * Name
    * Name of the evaluation
@@ -2844,29 +3061,7 @@ export interface EvalRefInput {
    * Variable Mapping
    * Mapping of eval variables to data sources
    */
-  variable_mapping: EvalVariableMappingInput[];
-  /**
-   * Version
-   * Version of the evaluation
-   */
-  version: number;
-}
-
-/**
- * EvalRef
- * Reference to an evaluation configuration
- */
-export interface EvalRefOutput {
-  /**
-   * Name
-   * Name of the evaluation
-   */
-  name: string;
-  /**
-   * Variable Mapping
-   * Mapping of eval variables to data sources
-   */
-  variable_mapping: EvalVariableMappingOutput[];
+  variable_mapping: EvalVariableMapping[];
   /**
    * Version
    * Version of the evaluation
@@ -2927,30 +3122,7 @@ export type EvalType = "llm_eval" | "ml_eval";
  * EvalVariableMapping
  * Mapping of an eval variable to its source (dataset column or experiment output)
  */
-export interface EvalVariableMappingInput {
-  /**
-   * Source
-   * Source of the variable value
-   */
-  source:
-    | ({
-        type: "dataset_column";
-      } & DatasetColumnVariableSource)
-    | ({
-        type: "experiment_output";
-      } & ExperimentOutputVariableSource);
-  /**
-   * Variable Name
-   * Name of the eval variable
-   */
-  variable_name: string;
-}
-
-/**
- * EvalVariableMapping
- * Mapping of an eval variable to its source (dataset column or experiment output)
- */
-export interface EvalVariableMappingOutput {
+export interface EvalVariableMapping {
   /**
    * Source
    * Source of the variable value
@@ -3176,6 +3348,30 @@ export interface ExternalRuleResult {
   scope: RuleScope;
 }
 
+/**
+ * FailedDiscoveredRecord
+ * A record that could not be resolved, reported so the rest of its batch can be.
+ */
+export interface FailedDiscoveredRecord {
+  /**
+   * Detail
+   * Human-readable explanation of the failure
+   */
+  detail: string;
+  /**
+   * External Id
+   * Identity the record arrived with
+   */
+  external_id: string;
+  /** Why the record could not be resolved */
+  reason: DiscoveredRecordFailureReason;
+  /**
+   * Task Id
+   * Task the record named or resolved to, which does not exist
+   */
+  task_id: string;
+}
+
 /** FeedbackRequest */
 export interface FeedbackRequest {
   /** Reason */
@@ -3203,9 +3399,26 @@ export interface FileUploadResult {
 
 /**
  * GCPAgentCreationSource
- * Creation source for GCP-discovered agents.
+ * DEPRECATED. Use ``CloudAgentCreationSource`` with ``cloud=gcp_vertex``.
+ *
+ * Deprecated and to be removed. A Vertex record is a cloud record, and nothing
+ * about GCP warrants its own union member now that Cloud exists.
+ *
+ * It cannot go yet because ``tasks_repository.find_by_gcp_engine_id`` reads
+ * ``task_metadata->'creation_source'->>'gcp_reasoning_engine_id'`` directly, and that
+ * is step 4 of the task-resolution ladder. Removal, in four safe steps rather than
+ * one risky one -- which is what serializing ``address`` below buys:
+ *
+ * 1. Backfill ``address``; rows rewritten through this model gain it for free.
+ * 2. Repoint that query at ``address->>'resource_id'``.
+ * 3. Move the three prod call sites to ``CloudAgentCreationSource``
+ *    with ``vendor="gcp_vertex"``.
+ * 4. Delete this class and its ``service_names`` field.
+ * @deprecated
  */
 export interface GCPAgentCreationSource {
+  /** The flat GCP fields in the shape every other source uses. */
+  readonly address: SourceAddress | null;
   /**
    * Gcp Project Id
    * GCP project ID
@@ -3222,8 +3435,17 @@ export interface GCPAgentCreationSource {
    */
   gcp_region: string;
   /**
+   * What a source could see about an agent. Shared across categories, all optional.
+   *
+   * An absent field means the source cannot see it, not that collection failed. That
+   * promise is kept by each source declaring ``observable_fields()``, which is also
+   * what lets visibility be computed without a per-vendor branch in consumers.
+   */
+  readonly observations: AgentObservations;
+  /**
    * Service Names
-   * Service names associated with this agent
+   * Service names associated with this agent. Deprecated and will be removed; use observations.service_names, which is the one read path for every variant. Populated at query time from service_name_task_mappings.
+   * @deprecated
    */
   service_names?: string[];
   /**
@@ -3231,6 +3453,11 @@ export interface GCPAgentCreationSource {
    * @default "GCP"
    */
   type?: "GCP";
+  /**
+   * Vendor
+   * The vendor this shape has always meant, named the way the rest name it.
+   */
+  readonly vendor: string | null;
 }
 
 /** GCPAgentMetadata */
@@ -3353,6 +3580,40 @@ export interface GeneratedVariableSource {
 
 /** Response Get Agent Tasks Api V2 Agent Tasks Get */
 export type GetAgentTasksApiV2AgentTasksGetData = EnrichedTaskResponse[];
+
+export type GetAgentTasksApiV2AgentTasksGetError = HTTPValidationError;
+
+export interface GetAgentTasksApiV2AgentTasksGetParams {
+  /**
+   * After Task Id
+   * Return the tasks after this one: the last task of the previous page. Omit it for the first page.
+   */
+  after_task_id?: string | null;
+  /**
+   * Discovery Source Id
+   * Only return tasks this Discovery Source has reported. A task counts whether the source's scan minted it or resolved to it, so a re-scan returns the agents it found again, not only the new ones.
+   */
+  discovery_source_id?: string | null;
+  /**
+   * Page Size
+   * Tasks per page. A page shorter than this is the last one.
+   * @min 1
+   * @max 1000
+   * @default 1000
+   */
+  page_size?: number;
+  /**
+   * Reported Since
+   * Only return tasks a discovery scan reported on or after this time; UTC if no offset is given. Tasks no discovery source has reported are excluded when this filter is set.
+   */
+  reported_since?: string | null;
+  /**
+   * Unreported
+   * Only return tasks no discovery source has reported, such as agents known only from their traces. Cannot be combined with `discovery_source_id` or `reported_since`.
+   * @default false
+   */
+  unreported?: boolean;
+}
 
 export type GetAgenticExperimentApiV1AgenticExperimentsExperimentIdGetData = AgenticExperimentDetail;
 
@@ -3990,7 +4251,7 @@ export interface GetNotebookHistoryApiV1NotebooksNotebookIdHistoryGetParams {
   sort?: PaginationSortMethod;
 }
 
-export type GetNotebookStateApiV1NotebooksNotebookIdStateGetData = NotebookStateOutput;
+export type GetNotebookStateApiV1NotebooksNotebookIdStateGetData = NotebookState;
 
 export type GetNotebookStateApiV1NotebooksNotebookIdStateGetError = HTTPValidationError;
 
@@ -4453,6 +4714,15 @@ export interface GetUserDetailsApiV1TracesUsersUserIdGetParams {
   userId: string;
 }
 
+/** GuardrailLLMConfiguration */
+export interface GuardrailLLMConfiguration {
+  /** Base Model */
+  base_model?: string | null;
+  /** Model */
+  model: string;
+  provider: ModelProvider;
+}
+
 /**
  * HTTPError
  * @example {"detail":"HTTPException raised."}
@@ -4543,6 +4813,17 @@ export interface HttpTemplate {
  * Define how the query's hybrid fusion operation should be performed.
  */
 export type HybridFusion = "FUSION_TYPE_RANKED" | "FUSION_TYPE_RELATIVE_SCORE";
+
+/**
+ * IdentityBasis
+ * What a gateway caller record's identity rests on. Strongest first.
+ *
+ * Required on every caller record and implied by its kind, except that an agent id
+ * is either one the gateway's registry issued or one the caller merely sent. Also
+ * what the record's detection follows: a registry row or an issued credential is
+ * seen directly, the rest is inferred from traffic.
+ */
+export type IdentityBasis = "registered_agent" | "credential" | "claimed_agent" | "client_address";
 
 /** ImageURL */
 export interface ImageURL {
@@ -4802,7 +5083,7 @@ export interface LLMConfigSettings {
    * Response Format
    * Either a structured json_schema or a Pydantic model to enforce structured outputs.
    */
-  response_format?: LLMResponseFormatOutput | null;
+  response_format?: LLMResponseFormat | null;
   /**
    * Seed
    * Random seed for reproducible outputs
@@ -4966,7 +5247,7 @@ export interface LLMPromptRequestConfigSettings {
   /** Reasoning effort level for models that support it (e.g., OpenAI o1 series) */
   reasoning_effort?: ReasoningEffortEnum | null;
   /** Response format specification (e.g., {'type': 'json_object'} for JSON mode) */
-  response_format?: LLMResponseFormatInput | null;
+  response_format?: LLMResponseFormat | null;
   /**
    * Seed
    * Random seed for reproducible outputs
@@ -5076,48 +5357,19 @@ export interface LLMRequestConfigSettings {
   top_p?: number | null;
 }
 
+/** LLMResponseFormat */
+export interface LLMResponseFormat {
+  /** JSON schema definition (required when type is 'json_schema') */
+  json_schema?: LLMResponseSchema | null;
+  /** Response format type: 'text', 'json_object', or 'json_schema' */
+  type: LLMResponseFormatEnum;
+}
+
 /** LLMResponseFormatEnum */
 export type LLMResponseFormatEnum = "text" | "json_object" | "json_schema";
 
-/** LLMResponseFormat */
-export interface LLMResponseFormatInput {
-  /** JSON schema definition (required when type is 'json_schema') */
-  json_schema?: LLMResponseSchemaInput | null;
-  /** Response format type: 'text', 'json_object', or 'json_schema' */
-  type: LLMResponseFormatEnum;
-}
-
-/** LLMResponseFormat */
-export interface LLMResponseFormatOutput {
-  /** JSON schema definition (required when type is 'json_schema') */
-  json_schema?: LLMResponseSchemaOutput | null;
-  /** Response format type: 'text', 'json_object', or 'json_schema' */
-  type: LLMResponseFormatEnum;
-}
-
 /** LLMResponseSchema */
-export interface LLMResponseSchemaInput {
-  /**
-   * Description
-   * Description of the schema
-   */
-  description?: string | null;
-  /**
-   * Name
-   * Name of the schema
-   */
-  name: string;
-  /** The JSON schema object */
-  schema: JsonSchema;
-  /**
-   * Strict
-   * Whether to enforce strict schema adherence
-   */
-  strict?: boolean | null;
-}
-
-/** LLMResponseSchema */
-export interface LLMResponseSchemaOutput {
+export interface LLMResponseSchema {
   /**
    * Description
    * Description of the schema
@@ -5138,26 +5390,9 @@ export interface LLMResponseSchemaOutput {
 }
 
 /** LLMTool */
-export interface LLMToolInput {
+export interface LLMTool {
   /** The function definition */
-  function: ToolFunctionInput;
-  /**
-   * Strict
-   * Whether the function definition should use OpenAI's strict mode
-   */
-  strict?: boolean | null;
-  /**
-   * Type
-   * The type of tool. Should always be 'function'
-   * @default "function"
-   */
-  type?: string;
-}
-
-/** LLMTool */
-export interface LLMToolOutput {
-  /** The function definition */
-  function: ToolFunctionOutput;
+  function: ToolFunction;
   /**
    * Strict
    * Whether the function definition should use OpenAI's strict mode
@@ -6017,7 +6252,7 @@ export interface ListSpansMetadataApiV1TracesSpansGetParams {
   span_name_contains?: string;
   /**
    * Span Types
-   * Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN
+   * Span types to filter on. Optional. Valid values: AGENT, CHAIN, DECISION, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN
    */
   span_types?: string[];
   /**
@@ -6422,7 +6657,7 @@ export interface ListTracesMetadataApiV1TracesGetParams {
   span_name_contains?: string;
   /**
    * Span Types
-   * Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN
+   * Span types to filter on. Optional. Valid values: AGENT, CHAIN, DECISION, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN
    */
   span_types?: string[];
   /**
@@ -6631,14 +6866,28 @@ export interface LogitBiasItem {
 
 /**
  * ManualAgentCreationSource
- * Creation source for manually created tasks.
+ * A hand-created task. Nothing to address, nothing observed, no evidence to grade.
  */
 export interface ManualAgentCreationSource {
+  readonly address: SourceAddress | null;
+  /**
+   * What a source could see about an agent. Shared across categories, all optional.
+   *
+   * An absent field means the source cannot see it, not that collection failed. That
+   * promise is kept by each source declaring ``observable_fields()``, which is also
+   * what lets visibility be computed without a per-vendor branch in consumers.
+   */
+  readonly observations: AgentObservations;
   /**
    * Type
    * @default "MANUAL"
    */
   type?: "MANUAL";
+  /**
+   * Vendor
+   * None: nobody reported this agent, someone typed it in.
+   */
+  readonly vendor: string | null;
 }
 
 /** MeResponse */
@@ -6833,6 +7082,11 @@ export interface ModelProviderResponse {
   enabled: boolean;
   /** The model provider */
   provider: ModelProvider;
+  /**
+   * Supports Custom Models
+   * @default false
+   */
+  supports_custom_models?: boolean;
 }
 
 /** ModelProviderWhitelist */
@@ -6969,6 +7223,134 @@ export interface NestedSpanWithMetricsResponse {
   updated_at: string;
   /** User Id */
   user_id?: string | null;
+}
+
+/**
+ * NetworkAgentCreationSource
+ * An internal host seen sending traffic to a host that serves model inference.
+ *
+ * Read off network logs -- DNS query logs, flow logs, proxy or firewall logs -- by a
+ * connector that extracts a source and a destination from each line and matches the
+ * destination against known inference hosts. The record is the SOURCE HOST, not the
+ * agent: a network log shows that something called a provider, never which process
+ * did or what it is.
+ *
+ * NOT A SIEM, though both read logs. A SIEM source runs the customer's own query and
+ * reports whatever columns it projects; a network source owns the matching and reads
+ * one fixed kind of evidence, a connection or a lookup, so what it can fill is
+ * narrower and fixed by the class: the host it saw and the network that host is in.
+ *
+ * THE ADDRESS IS THE HOST, AND EVERY PART OF IT IS STABLE. The creation source is
+ * frozen when a task is minted, and GenAI Engine and the ML engine match a later
+ * report to it on the whole address, so a field that differs between two logs of
+ * one host would split it in two:
+ *
+ * =============  =======================  ==================  ================
+ * resource_kind  instance                 scope               resource_id
+ * =============  =======================  ==================  ================
+ * workload       the workload name        account/region, or  the workload name
+ *                                         the project
+ * instance       the VM id                same                the VM id
+ * eni            the interface id         same                the interface id
+ * ip             the network (VPC) id     same                the address
+ * =============  =======================  ==================  ================
+ *
+ * - ``resource_kind`` is required: an instance id and an address are otherwise
+ *   indistinguishable strings of very different strength (see NetworkHostKind).
+ * - ``instance`` is the host itself (the workload, VM or interface), as on a
+ *   VM-hosted cloud record, never the account: records are told apart by ``instance``, so an account there would make
+ *   every host in it look alike. Only an address, which means nothing outside its
+ *   network, is placed in its network.
+ * - ``scope`` is required and is where the host is -- account and region, or project
+ *   -- which every log line of the host agrees on. Never the VPC for an instance or
+ *   an interface: some logs carry it and others do not, and a scope present in one
+ *   scan and absent in the next makes the same host two records. A line naming only
+ *   an address and no network cannot be placed, and the connector drops it rather
+ *   than guess.
+ *
+ * The VPC a host is in is ``host_group``, an observation, so it can be shown without
+ * being identity. ``destinations`` is what the source called, which only this class
+ * can see and which is the evidence itself, so it is a field of the class rather than
+ * of the shared AgentObservations. Empty by default, so a record without it still
+ * validates.
+ *
+ * A GATEWAY CALLER IS THE SECOND SHAPE, told apart by ``resource_kind`` (a
+ * NetworkCallerKind rather than a NetworkHostKind). An AI gateway learns of an agent
+ * from its traffic too, but sees the caller, not its host:
+ *
+ * =================  ===============  =====  ===============================
+ * resource_kind      instance         scope  resource_id
+ * =================  ===============  =====  ===============================
+ * agent_id           the gateway      --     the agent id
+ * virtual_key        the gateway      --     the gateway's id or hash for it
+ * consumer           the gateway      --     the consumer id
+ * client_address     the gateway      --     the address
+ * =================  ===============  =====  ===============================
+ *
+ * - ``identity_basis`` is required and must fit the kind, so a caller record cannot
+ *   be mistaken for a host record or claim more than its kind allows.
+ * - ``scope`` is unset: a team or workspace can change between scans, and anything
+ *   in the address is identity. The team is observed as ``host_group``.
+ * - Detection is per record: a registry row or an issued credential is observed,
+ *   a claimed id or a bare address is inferred.
+ * - A caller fills only ``host_group``. No client addresses, which change on every
+ *   scan while the creation source does not, and no end user: one agent serves many,
+ *   often the gateway owner's own customers, and that is personal data no review has
+ *   covered.
+ * - Never a raw credential: a caller id that looks like a live key is refused,
+ *   whatever the identity basis.
+ */
+export interface NetworkAgentCreationSource {
+  /** Where to find this agent again upstream. Required: a discovered agent that cannot be located again is not actionable. */
+  address: SourceAddress;
+  /**
+   * Destinations
+   * Inference destinations this host called, with who serves each. As first reported; when the host last called is provenance's last_seen.
+   * @maxItems 100
+   */
+  destinations?: NetworkDestination[];
+  /** What a gateway caller record's identity rests on; required on one, absent on a host record. See IdentityBasis. */
+  identity_basis?: IdentityBasis | null;
+  /** What the source could see. Only fields in `observable_fields()` are ever populated by this category. */
+  observations?: AgentObservations;
+  /**
+   * Type
+   * @default "NETWORK"
+   */
+  type?: "NETWORK";
+  /**
+   * Vendor
+   * Upstream product this came from, e.g. 'splunk_enterprise', 'jamf_pro', 'aws_bedrock'. FREE TEXT, and deliberately not enumerated here: nothing in this package branches on the vendor -- capability and evidence ceilings are declared per source class -- so enumerating it would make every new vendor a release of this package plus a repin in three services. The registry is app_plane's discovery source type catalog, which is also where the display name lives. Values are `<platform>_<product>`, always, so a vendor shipping a second product that could be a source does not force a rename of the first.
+   */
+  vendor: string;
+}
+
+/**
+ * NetworkDestination
+ * One inference destination a network source was seen calling.
+ *
+ * Only what stays true of the destination between scans: the host and who serves it.
+ * A record's creation source is kept as first reported -- GenAI Engine never rewrites
+ * a task's creation source from a later scan -- so a per-scan count or time here
+ * would be served unchanged forever. When the source last called anything is the
+ * record's provenance ``last_seen``, which moves with every scan. The provider is
+ * the connector's name for who serves the host -- its catalog's, or the source's own
+ * entry for a host or range it added -- and free text for the same reason ``vendor``
+ * is.
+ */
+export interface NetworkDestination {
+  /**
+   * Host
+   * Destination as the log named it: a hostname, lowercased and without a trailing dot, or an IP address.
+   * @minLength 1
+   */
+  host: string;
+  /**
+   * Provider
+   * Who serves it, e.g. 'OpenAI', 'Amazon Bedrock', or the source's own host or CIDR entry it matched.
+   * @minLength 1
+   */
+  provider: string;
 }
 
 /** NewApiKeyRequest */
@@ -7139,10 +7521,10 @@ export interface NewTaskRequest {
   agent_metadata?: AgentMetadata | null;
   /**
    * Is Agentic
-   * Whether the task is agentic or not.
-   * @default false
+   * DEPRECATED: formerly marked tasks as agentic or not; now does nothing.
+   * @deprecated
    */
-  is_agentic?: boolean;
+  is_agentic?: boolean | null;
   /**
    * Name
    * Name of the task.
@@ -7198,7 +7580,7 @@ export interface NotebookDetail {
    */
   name: string;
   /** Current draft state */
-  state: NotebookStateOutput;
+  state: NotebookState;
   /**
    * Task Id
    * Associated task ID
@@ -7247,7 +7629,7 @@ export interface NotebookListResponse {
  * NotebookState
  * Draft state of a notebook - mirrors experiment config but all fields optional.
  */
-export interface NotebookStateInput {
+export interface NotebookState {
   /** Dataset reference (includes name) */
   dataset_ref?: DatasetRef | null;
   /**
@@ -7259,7 +7641,7 @@ export interface NotebookStateInput {
    * Eval List
    * List of evaluations
    */
-  eval_list?: EvalRefInput[] | null;
+  eval_list?: EvalRef[] | null;
   /**
    * Prompt Configs
    * List of prompt configurations
@@ -7278,45 +7660,7 @@ export interface NotebookStateInput {
    * Prompt Variable Mapping
    * Variable mappings for prompts
    */
-  prompt_variable_mapping?: PromptVariableMappingInput[] | null;
-}
-
-/**
- * NotebookState
- * Draft state of a notebook - mirrors experiment config but all fields optional.
- */
-export interface NotebookStateOutput {
-  /** Dataset reference (includes name) */
-  dataset_ref?: DatasetRef | null;
-  /**
-   * Dataset Row Filter
-   * Optional list of column name and value filters. Only rows matching ALL specified column name-value pairs (AND condition) will be included.
-   */
-  dataset_row_filter?: NewDatasetVersionRowColumnItemRequest[] | null;
-  /**
-   * Eval List
-   * List of evaluations
-   */
-  eval_list?: EvalRefOutput[] | null;
-  /**
-   * Prompt Configs
-   * List of prompt configurations
-   */
-  prompt_configs?:
-    | (
-        | ({
-            type: "saved";
-          } & SavedPromptConfig)
-        | ({
-            type: "unsaved";
-          } & UnsavedPromptConfig)
-      )[]
-    | null;
-  /**
-   * Prompt Variable Mapping
-   * Variable mappings for prompts
-   */
-  prompt_variable_mapping?: PromptVariableMappingOutput[] | null;
+  prompt_variable_mapping?: PromptVariableMapping[] | null;
 }
 
 /**
@@ -7370,12 +7714,25 @@ export interface NotebookSummary {
 
 /**
  * OTELAgentCreationSource
- * Creation source for OTEL-discovered agents (auto-created from traces).
+ * An agent that instrumented itself; its traces arrived.
+ *
+ * Not a discovery source and not deprecated. There is no upstream system to address.
  */
 export interface OTELAgentCreationSource {
+  /** None: a self-instrumented agent was not found in an upstream system. */
+  readonly address: SourceAddress | null;
+  /**
+   * What a source could see about an agent. Shared across categories, all optional.
+   *
+   * An absent field means the source cannot see it, not that collection failed. That
+   * promise is kept by each source declaring ``observable_fields()``, which is also
+   * what lets visibility be computed without a per-vendor branch in consumers.
+   */
+  readonly observations: AgentObservations;
   /**
    * Service Names
-   * Service names associated with this agent
+   * Service names associated with this agent. Deprecated and will be removed; use observations.service_names. The class is not deprecated, only this flattened accessor.
+   * @deprecated
    */
   service_names?: string[];
   /**
@@ -7383,6 +7740,11 @@ export interface OTELAgentCreationSource {
    * @default "OTEL"
    */
   type?: "OTEL";
+  /**
+   * Vendor
+   * None: nothing upstream reported this agent.
+   */
+  readonly vendor: string | null;
 }
 
 /**
@@ -7451,7 +7813,7 @@ export interface OnboardingTryItOutFormData {
  * The message schema class for the prompts playground.
  * This class adheres to OpenAI's message schema.
  */
-export interface OpenAIMessageInput {
+export interface OpenAIMessage {
   /**
    * Content
    * Content of the message
@@ -7489,36 +7851,6 @@ export interface OpenAIMessageItem {
   text?: string | null;
   /** Type of the message (either 'text', 'image_url', or 'input_audio') */
   type: OpenAIMessageType;
-}
-
-/**
- * OpenAIMessage
- * The message schema class for the prompts playground.
- * This class adheres to OpenAI's message schema.
- */
-export interface OpenAIMessageOutput {
-  /**
-   * Content
-   * Content of the message
-   */
-  content?: string | OpenAIMessageItem[] | null;
-  /**
-   * Name
-   * An optional name for the participant. Provides the model information to differentiate between participants of the same role.
-   */
-  name?: string | null;
-  /** Role of the message */
-  role: MessageRole;
-  /**
-   * Tool Call Id
-   * ID of the tool call this message is responding to
-   */
-  tool_call_id?: string | null;
-  /**
-   * Tool Calls
-   * Tool calls made by assistant
-   */
-  tool_calls?: ToolCall[] | null;
 }
 
 /** OpenAIMessageType */
@@ -7655,22 +7987,26 @@ export interface PageConversationBaseResponse {
 /** PaginationSortMethod */
 export type PaginationSortMethod = "asc" | "desc";
 
-/**
- * TaskSortField
- * Server-side sort column for `/api/v2/tasks/search`.
- *
- * `NAME`/`CREATED_AT`/`UPDATED_AT` sort on the corresponding
- * `tasks` columns. `LAST_ACTIVE` sorts on the most recent trace
- * activity per task (`MAX(trace_metadata.end_time)`), which is not a
- * stored task column but computed by joining the trace-metadata table.
- */
-export type TaskSortField = "name" | "created_at" | "updated_at" | "last_active";
-
 /** PasswordResetRequest */
 export interface PasswordResetRequest {
   /** Password */
   password: string;
 }
+
+/**
+ * Platform
+ * Which OS the agent runs on.
+ *
+ * A COMPANION TO RunsOn, not a widening of it. ``runs_on`` answers where the machine
+ * is, this answers which OS it runs. Neither implies the other: a darwin machine can
+ * be a managed laptop (``runs_on=ENDPOINT``) or an EC2 Mac instance
+ * (``runs_on=AWS``), and a linux machine can be either a laptop or a cloud VM.
+ *
+ * Enumerated, unlike ``vendor``: this set is bounded and stable, and a typo like
+ * "macos" for "darwin" would silently break a filter. Vendors are open and growing,
+ * which is why they are free text.
+ */
+export type Platform = "darwin" | "linux" | "windows";
 
 export type PostChatFeedbackApiChatFeedbackInferenceIdPostData = any;
 
@@ -7768,7 +8104,7 @@ export interface PromptExperimentDetail {
    * Eval List
    * List of evaluations being run
    */
-  eval_list: EvalRefOutput[];
+  eval_list: EvalRef[];
   /**
    * Failed Rows
    * Number of test rows that failed
@@ -7810,7 +8146,7 @@ export interface PromptExperimentDetail {
    * Prompt Variable Mapping
    * Shared variable mapping for all prompts
    */
-  prompt_variable_mapping: PromptVariableMappingOutput[];
+  prompt_variable_mapping: PromptVariableMapping[];
   /** Current status of the experiment */
   status: ExperimentStatus;
   /** Summary of results across all test cases */
@@ -8031,21 +8367,7 @@ export interface PromptValidationRequest {
  * PromptVariableMapping
  * Mapping of a prompt variable to a dataset column source
  */
-export interface PromptVariableMappingInput {
-  /** Dataset column source */
-  source: DatasetColumnVariableSource;
-  /**
-   * Variable Name
-   * Name of the prompt variable
-   */
-  variable_name: string;
-}
-
-/**
- * PromptVariableMapping
- * Mapping of a prompt variable to a dataset column source
- */
-export interface PromptVariableMappingOutput {
+export interface PromptVariableMapping {
   /** Dataset column source */
   source: DatasetColumnVariableSource;
   /**
@@ -8121,6 +8443,78 @@ export interface PromptVersionResultListResponse {
    * Total number of pages
    */
   total_pages: number;
+}
+
+/**
+ * Provenance
+ * Where an agent was found and what it runs on.
+ *
+ * The single source of truth for both: there is no flat ``infrastructure`` enum
+ * beside it and no standalone ``location`` object. Set on the task at resolution
+ * time and served through the API intact.
+ */
+export interface Provenance {
+  /** OS the agent runs on, paired with `runs_on` rather than folded into it: neither implies the other, since a darwin machine can be a managed laptop or an EC2 Mac instance. Not endpoint-only -- a SIEM query over host-enriched data can project it, ECS calls it `host.os.platform` with these same values, though a proxy-log query cannot. Absent when the query did not carry it: a column always populated with a guess is worse than one honestly empty. */
+  platform?: Platform | null;
+  /**
+   * Deployment substrate the agent runs on. Scalar, unlike sources: where an agent runs is one fact even when several sources report it, and the more specific answer wins. Defaults to UNKNOWN, which for a SIEM row is usually the honest answer and for a managed laptop is simply correct.
+   * @default "unknown"
+   */
+  runs_on?: RunsOn;
+  /**
+   * Source Classes
+   * Distinct source classes behind this agent, in first-seen order.
+   *
+   * Derived so it cannot disagree with ``sources``, and serialized because it backs
+   * the inventory's "Found by" column and filter.
+   */
+  readonly source_classes: SourceClass[];
+  /**
+   * Sources
+   * Every source that has reported this agent, one entry each. Grows as sources corroborate.
+   * @minItems 1
+   */
+  sources: ProvenanceSource[];
+}
+
+/**
+ * ProvenanceSource
+ * One source's contribution to a task's provenance.
+ *
+ * Provenance holds a list of these rather than scalars beside a list of source
+ * classes: with scalars, an agent corroborated by two sources has two entries in
+ * found_by but one address, and nothing says which source it belongs to.
+ */
+export interface ProvenanceSource {
+  /** Where upstream this came from -- the same type the creation source carries, so a record and its task address the system identically. Absent for OTEL and manual agents. */
+  address?: SourceAddress | null;
+  /**
+   * External Id
+   * The source's own identifier for the record behind this entry -- the record's `external_id`, canonical and never reconciled across sources. With `source_id` it names exactly one record, which is what a consumer keys that record's evidence on. Absent for OTEL, manual and legacy GCP agents, which carry no discovery record, and from producers that predate it.
+   */
+  external_id?: string | null;
+  /**
+   * Last Scanned
+   * When a scan of this source last reported the record: scan recency on the reporting engine's clock, where `last_seen` is evidence recency on the source's. The same fact as `Evidence.last_scanned`, which staleness is derived from. Absent for OTEL, manual and legacy GCP agents, and from producers that predate it.
+   */
+  last_scanned?: string | null;
+  /**
+   * Last Seen
+   * When this source last observed the agent -- the discovered record's own `last_seen`, not when a scan last reported it. Evidence recency rather than scan recency: a source can keep reporting an agent it has not actually seen for weeks. Only ever moves forward, so an out-of-order batch cannot make an agent look staler than it is. Absent for OTEL, manual and legacy GCP agents, which carry no discovery record.
+   */
+  last_seen?: string | null;
+  /** Where this contribution was observed from. */
+  source_class: SourceClass;
+  /**
+   * Source Id
+   * The Discovery Source behind it. Absent for agents predating discovery, and retained after a source is deleted.
+   */
+  source_id?: string | null;
+  /**
+   * Vendor
+   * Upstream product behind this contribution, e.g. 'splunk_enterprise'. Same value and same registry as the record's `vendor`. Absent for OTEL and manual agents, which have no upstream product.
+   */
+  vendor?: string | null;
 }
 
 /** PutModelProviderCredentials */
@@ -8433,7 +8827,7 @@ export interface QuerySpansByTypeV1SpansQueryGetParams {
   sort?: PaginationSortMethod;
   /**
    * Span Types
-   * Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN
+   * Span types to filter on. Optional. Valid values: AGENT, CHAIN, DECISION, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN
    */
   span_types?: string[];
   /**
@@ -8704,7 +9098,7 @@ export interface QuerySpansV1TracesQueryGetParams {
   span_name_contains?: string;
   /**
    * Span Types
-   * Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN
+   * Span types to filter on. Optional. Valid values: AGENT, CHAIN, DECISION, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN
    */
   span_types?: string[];
   /**
@@ -9045,7 +9439,7 @@ export interface QuerySpansWithMetricsV1TracesMetricsGetParams {
   span_name_contains?: string;
   /**
    * Span Types
-   * Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN
+   * Span types to filter on. Optional. Valid values: AGENT, CHAIN, DECISION, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN
    */
   span_types?: string[];
   /**
@@ -9292,7 +9686,7 @@ export interface RagExperimentDetail {
    * Eval List
    * List of evaluations being run
    */
-  eval_list: EvalRefOutput[];
+  eval_list: EvalRef[];
   /**
    * Failed Rows
    * Number of test rows that failed
@@ -9325,7 +9719,7 @@ export interface RagExperimentDetail {
   rag_configs: (
     | ({
         type: "saved";
-      } & SavedRagConfigOutput)
+      } & SavedRagConfig)
     | ({
         type: "unsaved";
       } & UnsavedRagConfigResponse)
@@ -9441,7 +9835,7 @@ export interface RagExperimentSummary {
   rag_configs: (
     | ({
         type: "saved";
-      } & SavedRagConfigOutput)
+      } & SavedRagConfig)
     | ({
         type: "unsaved";
       } & UnsavedRagConfigResponse)
@@ -9565,7 +9959,7 @@ export interface RagNotebookState {
    * Eval List
    * List of evaluations
    */
-  eval_list?: EvalRefInput[] | null;
+  eval_list?: EvalRef[] | null;
   /**
    * Rag Configs
    * List of RAG configurations
@@ -9574,7 +9968,7 @@ export interface RagNotebookState {
     | (
         | ({
             type: "saved";
-          } & SavedRagConfigInput)
+          } & SavedRagConfig)
         | ({
             type: "unsaved";
           } & UnsavedRagConfig)
@@ -9599,7 +9993,7 @@ export interface RagNotebookStateResponse {
    * Eval List
    * List of evaluations
    */
-  eval_list?: EvalRefOutput[] | null;
+  eval_list?: EvalRef[] | null;
   /**
    * Rag Configs
    * List of RAG configurations
@@ -9608,7 +10002,7 @@ export interface RagNotebookStateResponse {
     | (
         | ({
             type: "saved";
-          } & SavedRagConfigOutput)
+          } & SavedRagConfig)
         | ({
             type: "unsaved";
           } & UnsavedRagConfigResponse)
@@ -10153,7 +10547,7 @@ export interface RenderedPromptResponse {
    * Messages
    * List of chat messages in OpenAI format (e.g., [{'role': 'user', 'content': 'Hello'}])
    */
-  messages: OpenAIMessageOutput[];
+  messages: OpenAIMessage[];
 }
 
 /**
@@ -10192,6 +10586,74 @@ export type RerunContinuousEvalApiV1ContinuousEvalsResultsRunIdRerunPostError = 
 export type ResetUserPasswordUsersUserIdResetPasswordPostData = any;
 
 export type ResetUserPasswordUsersUserIdResetPasswordPostError = HTTPValidationError;
+
+export type ResolveDiscoveredAgentsApiV2AgentTasksResolvePostData = ResolveDiscoveredAgentsResponse;
+
+export type ResolveDiscoveredAgentsApiV2AgentTasksResolvePostError = HTTPValidationError;
+
+/**
+ * ResolveDiscoveredAgentsRequest
+ * A scan's worth of discovered records to resolve to tasks.
+ */
+export interface ResolveDiscoveredAgentsRequest {
+  /**
+   * Records
+   * Records to resolve. Order is preserved in the response.
+   * @maxItems 1000
+   * @minItems 1
+   */
+  records: DiscoveredAgentRecord[];
+  /**
+   * Source Id
+   * The Discovery Source whose scan produced these records, recorded in each resolved task's provenance. Per request rather than per record because a scan job runs exactly one source config, and so one source. Required: a record resolved without it could never be fetched back for its source.
+   * @format uuid
+   */
+  source_id: string;
+}
+
+/**
+ * ResolveDiscoveredAgentsResponse
+ * Every submitted record, in exactly one of `resolved` or `failed`.
+ *
+ * A record that cannot be resolved does not fail its batch: the rest resolve, and
+ * the scan job can tell which records landed without re-submitting them.
+ */
+export interface ResolveDiscoveredAgentsResponse {
+  /**
+   * Failed
+   * Records that could not be resolved, in request order. Re-submitting one unchanged fails the same way.
+   */
+  failed?: FailedDiscoveredRecord[];
+  /**
+   * Resolved
+   * Records that resolved to a task, in request order
+   */
+  resolved: ResolvedAgentTask[];
+}
+
+/**
+ * ResolvedAgentTask
+ * What one discovered record resolved to. Always carries a task ID.
+ */
+export interface ResolvedAgentTask {
+  /**
+   * External Id
+   * Identity the record arrived with
+   */
+  external_id: string;
+  /**
+   * Name
+   * Name of the resolved task, which for an existing task is its current name rather than the name the record carried
+   */
+  name: string;
+  /** Which rung of the resolution ladder answered */
+  resolved_by: TaskResolutionMethod;
+  /**
+   * Task Id
+   * Task this record resolved to
+   */
+  task_id: string;
+}
 
 /** ResponseValidationRequest */
 export interface ResponseValidationRequest {
@@ -10288,6 +10750,63 @@ export type RunSavedLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionCo
 
 export type RunSavedLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionCompletionsPostError = HTTPValidationError;
 
+/**
+ * RunsOn
+ * Where the machine hosting a discovered agent is. ONE AXIS: location.
+ *
+ * Lives on Provenance rather than being derived from the source type: a Jamf record
+ * runs on a laptop, not on the cloud hosting the engine that reported it.
+ *
+ * Deliberately NOT a place for `docker` or `kubernetes`. Those answer a different
+ * question -- how the agent is packaged on the machine -- and mixing the two makes
+ * the common case lossy: an agent in an EKS pod is both `aws` and orchestrated, and
+ * one field can only say one. They are also values nothing can currently fill. In the
+ * endpoint collector Docker is a detection ROUTE (`docker_images`, surfaced as
+ * ``resource_kind=image``), and in app_plane `Infrastructure.Docker` describes how
+ * the ENGINE was deployed. Neither is a statement about where a discovered agent
+ * runs. If the packaging axis starts mattering, it wants its own field.
+ *
+ * ``on_prem`` is the natural next member on this axis and is left out only because
+ * nothing in v1 can fill it: on-prem records arrive through a SIEM, which cannot see
+ * the machine, so UNKNOWN is already the honest answer there.
+ */
+export type RunsOn = "aws" | "azure" | "gcp" | "endpoint" | "unknown";
+
+/**
+ * SIEMAgentCreationSource
+ * An agent surfaced by a query against the customer's security stack.
+ *
+ * One variant for all three SIEMs, discriminated by ``siem``: the payload is
+ * identical in every case and only the query language differs, which belongs to the
+ * connector that runs the query.
+ *
+ * HOW MUCH IT OBSERVES DEPENDS ON WHAT THE CUSTOMER INDEXES, not on the vendor. A
+ * query over proxy or DNS logs sees a destination and little else, which is what
+ * every v1 example query does. One over host-enriched data can carry the OS and the
+ * cloud -- ECS has ``host.os.platform``, ``host.os.version`` and ``cloud.provider``;
+ * Sentinel's Heartbeat table has ``OSName`` and ``ComputerEnvironment``. Since the
+ * customer's own query controls the output columns, either is reachable.
+ *
+ * OBSERVABLE_FIELDS below is therefore a ceiling in the fullest sense: it says what a
+ * SIEM query *can* project, and most will project almost none of it.
+ */
+export interface SIEMAgentCreationSource {
+  /** Where to find this agent again upstream. Required: a discovered agent that cannot be located again is not actionable. */
+  address: SourceAddress;
+  /** What the source could see. Only fields in `observable_fields()` are ever populated by this category. */
+  observations?: AgentObservations;
+  /**
+   * Type
+   * @default "SIEM"
+   */
+  type?: "SIEM";
+  /**
+   * Vendor
+   * Upstream product this came from, e.g. 'splunk_enterprise', 'jamf_pro', 'aws_bedrock'. FREE TEXT, and deliberately not enumerated here: nothing in this package branches on the vendor -- capability and evidence ceilings are declared per source class -- so enumerating it would make every new vendor a release of this package plus a repin in three services. The registry is app_plane's discovery source type catalog, which is also where the display name lives. Values are `<platform>_<product>`, always, so a vendor shipping a second product that could be a source does not force a rename of the first.
+   */
+  vendor: string;
+}
+
 export type SaveAgenticPromptApiV1TasksTaskIdPromptsPromptNamePostData = AgenticPrompt;
 
 export type SaveAgenticPromptApiV1TasksTaskIdPromptsPromptNamePostError = HTTPValidationError;
@@ -10335,32 +10854,7 @@ export interface SavedPromptRenderingRequest {
  * SavedRagConfig
  * Configuration for a saved RAG setting configuration version
  */
-export interface SavedRagConfigInput {
-  /** Dataset column to use as the RAG search query */
-  query_column: DatasetColumnVariableSource;
-  /**
-   * Setting Configuration Id
-   * ID of the RAG search setting configuration
-   * @format uuid
-   */
-  setting_configuration_id: string;
-  /**
-   * Type
-   * @default "saved"
-   */
-  type?: "saved";
-  /**
-   * Version
-   * Version of the RAG search setting configuration
-   */
-  version: number;
-}
-
-/**
- * SavedRagConfig
- * Configuration for a saved RAG setting configuration version
- */
-export interface SavedRagConfigOutput {
+export interface SavedRagConfig {
   /** Dataset column to use as the RAG search query */
   query_column: DatasetColumnVariableSource;
   /**
@@ -10495,13 +10989,11 @@ export interface SearchTasksApiV2TasksSearchPostParams {
   /**
    * Last Active End Time
    * Only return tasks whose last trace activity (max trace end-time) is on or before this UTC time. Tasks with no traces are excluded when this filter is set.
-   * @format date-time
    */
   last_active_end_time?: string | null;
   /**
    * Last Active Start Time
    * Only return tasks whose last trace activity (max trace end-time) is on or after this UTC time. Tasks with no traces are excluded when this filter is set.
-   * @format date-time
    */
   last_active_start_time?: string | null;
   /**
@@ -10521,7 +11013,10 @@ export interface SearchTasksApiV2TasksSearchPostParams {
    * @default "desc"
    */
   sort?: PaginationSortMethod;
-  /** Column to sort by (server-side). One of 'name', 'created_at', 'updated_at', 'last_active'. 'last_active' sorts on the most recent trace activity per task. Sort direction is controlled by the 'sort' parameter. When omitted, results keep the default ordering (created_at). */
+  /**
+   * Sort Field
+   * Column to sort by (server-side). One of 'name', 'created_at', 'updated_at', 'last_active'. 'last_active' sorts on the most recent trace activity per task. Sort direction is controlled by the 'sort' parameter. When omitted, results keep the default ordering (created_at).
+   */
   sort_field?: TaskSortField | null;
 }
 
@@ -10534,7 +11029,8 @@ export interface SearchTasksRequest {
   include_archived?: boolean | null;
   /**
    * Is Agentic
-   * Filter tasks by agentic status. If not provided, returns both agentic and non-agentic tasks.
+   * DEPRECATED: formerly filtered tasks by agentic status; now does nothing.
+   * @deprecated
    */
   is_agentic?: boolean | null;
   /**
@@ -10766,7 +11262,7 @@ export type SetNotebookStateApiV1NotebooksNotebookIdStatePutError = HTTPValidati
  */
 export interface SetNotebookStateRequest {
   /** New state for the notebook */
-  state: NotebookStateInput;
+  state: NotebookState;
 }
 
 export type SetRagNotebookStateApiV1RagNotebooksNotebookIdStatePutData = RagNotebookDetail;
@@ -10785,6 +11281,94 @@ export interface SetRagNotebookStateRequest {
 export type SoftDeleteLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionDeleteData = any;
 
 export type SoftDeleteLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionDeleteError = HTTPValidationError;
+
+/**
+ * SourceAddress
+ * How to find a discovered agent again in the system that reported it.
+ *
+ * One shape for every source, widest to narrowest:
+ *
+ * ==============  ================  ==================  ==========  ============
+ * source          instance          scope               kind        resource_id
+ * ==============  ================  ==================  ==========  ============
+ * Bedrock         AWS account       region              --          agent id
+ * Vertex          GCP project       region              --          engine id
+ * Splunk          instance          index+sourcetype    --          record id
+ * Sentinel        LA workspace      table               --          record id
+ * Elastic         deployment        data stream         --          record id
+ * CloudWatch      host (VM, ENI,    account/region      instance,   VM, ENI or IP
+ *                 else network)                         eni, ip
+ * Jamf / osquery  device key        --                  npm, app…   software key
+ * Compute Engine  VM instance id    project/zone        deb, npm…   software key
+ * ==============  ================  ==================  ==========  ============
+ *
+ * Only sources that read a machine's software inventory fill ``resource_kind``:
+ * endpoints, and cloud sources that read a VM's (Compute Engine, and EC2 after it).
+ * Their ids come from several namespaces at once. So do network host records, which
+ * name a VM, an interface or an address (see NetworkHostKind). Every other cloud
+ * vendor and every SIEM addresses exactly one kind of resource, so the kind is
+ * implied by the vendor and stays absent.
+ *
+ * A VM-hosted cloud record is addressed per (software, VM), like an endpoint: the VM
+ * in ``instance``, never the project. Records are told apart by ``instance``, so a
+ * project there would make every VM in it one agent.
+ *
+ * ``scope`` carries two readings this one name does not separate. For a cloud source
+ * it addresses the *agent*: us-east-1 and us-west-2 hold different agents, so
+ * ``CloudAgentCreationSource`` requires it -- a region, or for a VM where the machine
+ * is (project and zone; account and region on EC2). For a SIEM it addresses the
+ * *sighting*, and one agent may surface under two indexes, so it stays optional
+ * there. A network host record reads it like a VM does -- where the host is, its
+ * account and region or its project -- and requires it. Code comparing addresses across sources has to read `source_class` to know
+ * which it is looking at.
+ *
+ * Reused by Provenance rather than re-declared there, so a record and the task it
+ * resolves to address the upstream system identically. A vendor needing to address a
+ * sub-resource -- a Bedrock alias, a Vertex version -- is one more optional field
+ * here, not a new shape.
+ */
+export interface SourceAddress {
+  /**
+   * Instance
+   * Instance that was scanned: an account, project, SIEM workspace, device or cloud VM. Part of the address, so two instances of one vendor stay distinct.
+   * @minLength 1
+   */
+  instance: string;
+  /**
+   * Query
+   * Query text that produced this record, so it can be explained and reproduced. Absent for sources that are enumerated rather than searched. Never parsed here -- only the output columns are contracted.
+   */
+  query?: string | null;
+  /**
+   * Resource Id
+   * The resource within that instance, in the namespace `resource_kind` names. For endpoints and cloud VMs this is the software, with the machine in `instance` -- the grain is per (software, machine).
+   * @minLength 1
+   */
+  resource_id: string;
+  /**
+   * Resource Kind
+   * Namespace `resource_id` lives in: a bundle id, npm package, launchd label, listening port, browser extension id. Identity rather than observation, and needed because '8788' and 'openclaw' are otherwise indistinguishable strings from colliding namespaces. Absent for sources with one kind of resource, which is every SIEM and every cloud vendor except those reading a VM's software inventory -- there the vendor implies the kind, so carrying it would duplicate `vendor`. Free text: the vocabulary belongs to the collector's route registry, not to this schema.
+   */
+  resource_kind?: string | null;
+  /**
+   * Scope
+   * Subdivision queried, where the source has one: a cloud region (a VM's project and zone), a Splunk index, a Sentinel table, an Elastic data stream. Optional here because endpoints have no subdivision and a SIEM query may span every index, but required for CLOUD sources, which enforce it: there it is part of the agent's identity rather than of the query.
+   */
+  scope?: string | null;
+}
+
+/**
+ * SourceClass
+ * Where a source observes from. One name for this concept everywhere.
+ *
+ * The design docs' "source class"; earlier API drafts called it ``vantage_point``.
+ * Used on a configured discovery source and on a task's provenance alike, so the two
+ * are the same vocabulary rather than two that have to be reconciled.
+ *
+ * Consumers branch on this -- capability and evidence ceilings are declared per class
+ * -- which is why it is a closed enum while the vendor is not.
+ */
+export type SourceClass = "cloud" | "siem" | "endpoint" | "network" | "otel" | "manual";
 
 /**
  * SpanListResponse
@@ -11110,7 +11694,7 @@ export interface SyntheticDataConversationRequest {
    * Conversation History
    * Previous conversation messages for context.
    */
-  conversation_history: OpenAIMessageInput[];
+  conversation_history: OpenAIMessage[];
   /**
    * Current Rows
    * Current state of generated rows (including any manual edits).
@@ -11175,7 +11759,7 @@ export interface SyntheticDataGenerationRequest {
  */
 export interface SyntheticDataGenerationResponse {
   /** The assistant's response message explaining what was done. */
-  assistant_message: OpenAIMessageOutput;
+  assistant_message: OpenAIMessage;
   /**
    * Rows
    * Full current state of all generated rows.
@@ -11240,6 +11824,16 @@ export interface SyntheticDataRowResponse {
  */
 export type TaskAnalyticsBucketSize = "hour" | "day" | "week";
 
+/**
+ * TaskResolutionMethod
+ * Which rung of the resolution ladder answered for a record.
+ *
+ * Returned per record because the caller cannot otherwise tell a stable re-scan from
+ * a run that minted 500 duplicates, and that difference is the whole identity
+ * guarantee. Not stored: it describes one resolution, not the task.
+ */
+export type TaskResolutionMethod = "explicit_task_id" | "external_id" | "service_name" | "created";
+
 /** TaskResponse */
 export interface TaskResponse {
   /** Metadata to describe the creation source/provider for registered agents. */
@@ -11256,7 +11850,8 @@ export interface TaskResponse {
   id: string;
   /**
    * Is Agentic
-   * Whether the task is agentic or not
+   * Deprecated — every task is agentic post-consolidation; genai-engine returns True. Will be removed in a future release.
+   * @deprecated
    */
   is_agentic?: boolean | null;
   /**
@@ -11300,36 +11895,21 @@ export interface TaskResponse {
 }
 
 /**
- * TemplateVariableMapping
- * Mapping of a template variable to its source
+ * TaskSortField
+ * Server-side sort column for ``/api/v2/tasks/search``.
+ *
+ * ``NAME``/``CREATED_AT``/``UPDATED_AT`` sort on the corresponding
+ * ``tasks`` columns. ``LAST_ACTIVE`` sorts on the most recent trace
+ * activity per task (``MAX(trace_metadata.end_time)``), which is not a
+ * stored task column but computed by joining the trace-metadata table.
  */
-export interface TemplateVariableMappingInput {
-  /**
-   * Source
-   * Source of the variable value
-   */
-  source:
-    | ({
-        type: "dataset_column";
-      } & DatasetColumnVariableSource)
-    | ({
-        type: "generated";
-      } & GeneratedVariableSource)
-    | ({
-        type: "request_time_parameter";
-      } & RequestTimeParameterSource);
-  /**
-   * Variable Name
-   * Name of the template variable
-   */
-  variable_name: string;
-}
+export type TaskSortField = "name" | "created_at" | "updated_at" | "last_active";
 
 /**
  * TemplateVariableMapping
  * Mapping of a template variable to its source
  */
-export interface TemplateVariableMappingOutput {
+export interface TemplateVariableMapping {
   /**
    * Source
    * Source of the variable value
@@ -11588,23 +12168,7 @@ export interface ToolChoiceFunction {
 export type ToolClassEnum = 0 | 1 | 2;
 
 /** ToolFunction */
-export interface ToolFunctionInput {
-  /**
-   * Description
-   * Description of what the tool does
-   */
-  description?: string | null;
-  /**
-   * Name
-   * The name of the tool/function
-   */
-  name: string;
-  /** The function's parameter schema */
-  parameters?: JsonSchema | null;
-}
-
-/** ToolFunction */
-export interface ToolFunctionOutput {
+export interface ToolFunction {
   /**
    * Description
    * Description of what the tool does
@@ -12418,7 +12982,7 @@ export interface UnsavedPromptRenderingRequest {
    * Messages
    * List of chat messages in OpenAI format (e.g., [{'role': 'user', 'content': 'Hello'}])
    */
-  messages: OpenAIMessageInput[];
+  messages: OpenAIMessage[];
 }
 
 /** UnsavedPromptVariablesListResponse */
@@ -12439,7 +13003,7 @@ export interface UnsavedPromptVariablesRequest {
    * Messages
    * List of chat messages in OpenAI format (e.g., [{'role': 'user', 'content': 'Hello'}])
    */
-  messages: OpenAIMessageInput[];
+  messages: OpenAIMessage[];
 }
 
 /**
@@ -13663,7 +14227,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.748
+ * @version 2.1.1040
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
@@ -15141,7 +15705,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * @description Get agentic tasks with enriched agent metadata (tools, sub-agents, models). Returns only agentic tasks.
+     * @description Get agentic tasks with enriched agent metadata (tools, sub-agents, models) and provenance. Returns only agentic tasks. Filter by `discovery_source_id` and `reported_since` to get the tasks one discovery source reported in a window, or set `unreported` to get the tasks no discovery source has reported. Paged by cursor: a caller that needs every matching task passes the last task's ID as `after_task_id` until a page comes back with fewer than `page_size` tasks. A task created or archived mid-walk never repeats or skips another.
      *
      * @tags Tasks
      * @name GetAgentTasksApiV2AgentTasksGet
@@ -15149,10 +15713,11 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request GET:/api/v2/agent-tasks
      * @secure
      */
-    getAgentTasksApiV2AgentTasksGet: (params: RequestParams = {}) =>
-      this.request<GetAgentTasksApiV2AgentTasksGetData, any>({
+    getAgentTasksApiV2AgentTasksGet: (query: GetAgentTasksApiV2AgentTasksGetParams, params: RequestParams = {}) =>
+      this.request<GetAgentTasksApiV2AgentTasksGetData, GetAgentTasksApiV2AgentTasksGetError>({
         path: `/api/v2/agent-tasks`,
         method: "GET",
+        query: query,
         secure: true,
         format: "json",
         ...params,
@@ -16995,6 +17560,26 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         path: `/api/v1/continuous_evals/results/${runId}/rerun`,
         method: "POST",
         secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Resolve records from a discovery scan to tasks, minting a task for any agent not already known. Every submitted record comes back with a task ID, and re-submitting the same records resolves them to the same tasks. A record naming a task that does not exist is reported in `failed` without holding up the rest of the batch.
+     *
+     * @tags Tasks
+     * @name ResolveDiscoveredAgentsApiV2AgentTasksResolvePost
+     * @summary Resolve Discovered Agents
+     * @request POST:/api/v2/agent-tasks/resolve
+     * @secure
+     */
+    resolveDiscoveredAgentsApiV2AgentTasksResolvePost: (data: ResolveDiscoveredAgentsRequest, params: RequestParams = {}) =>
+      this.request<ResolveDiscoveredAgentsApiV2AgentTasksResolvePostData, ResolveDiscoveredAgentsApiV2AgentTasksResolvePostError>({
+        path: `/api/v2/agent-tasks/resolve`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
         format: "json",
         ...params,
       }),
