@@ -1,5 +1,5 @@
 from logging import Logger
-from typing import Any, Dict, Tuple, Union
+from typing import Any, Dict, Tuple
 
 from arthur_client.api_bindings import (
     ConnectorCheckOutcome,
@@ -82,7 +82,7 @@ class SnowflakeConnector(ODBCConnector):
     def _build_engine_url(
         self,
         conn_str: str = "",
-    ) -> Tuple[Union[str, URL], Dict[str, Any]]:
+    ) -> Tuple[str, Dict[str, Any]]:
         """Overrides _build_engine_url to create a Snowflake-specific SQLAlchemy engine URL following official documentation.
 
         https://docs.snowflake.com/en/developer-guide/python-connector/sqlalchemy#:~:text=role%3Dmyrole%27%0A)-,For,-convenience%2C%20you%20can
