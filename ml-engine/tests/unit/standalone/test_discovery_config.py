@@ -16,6 +16,9 @@ import pytest
 from discovery import source_connectors
 from discovery.cloud.gcp_vertex.connector import settings_from
 from discovery.endpoint.jamf.connector import _settings_from as jamf_settings_from
+from discovery.siem.gcp_security_operations.connector import (
+    query_text as secops_query_text,
+)
 from standalone.discovery_config import (
     DISCOVERY_CONFIG_ENV_VAR,
     StandaloneConfigError,
@@ -296,6 +299,42 @@ def test_an_unknown_query_language_is_refused(tmp_path: Path) -> None:
     )
 
     assert "query_language must be one of" in load_error(tmp_path, text)
+
+
+SECOPS_SOURCE = """\
+sources:
+  - name: secops
+    vendor: gcp_security_operations
+    fields:
+      - {key: project_id, value: acme-secops}
+      - {key: location, value: us}
+      - {key: instance_id, value: 0c1d2e3f-4a5b-4c6d-8e7f-a0b1c2d3e4f5}
+      - {key: service_account_key, value: '{"type": "service_account"}'}
+    configs:
+      - name: llm-hosts
+        query: 'metadata.event_type = "NETWORK_HTTP" match: $external_id'
+        query_language: yara_l
+        lookback_window_seconds: 86400
+"""
+
+
+def test_a_yara_l_config_loads_before_the_client_lists_the_language(
+    tmp_path: Path,
+) -> None:
+    """yara_l is the Platform's language for this vendor; it is accepted by name until
+    an arthur-client release carries it in DiscoveryQueryLanguage."""
+    config = load_config(write(tmp_path, minimal(sources=SECOPS_SOURCE)))
+    assert config is not None
+
+    [scan] = config.scans()
+    assert scan.config.query_language == "yara_l"
+    assert secops_query_text(scan.config).startswith("metadata.event_type")
+    assert scan.credentials == {"service_account_key": '{"type": "service_account"}'}
+    assert scan.source_fields == {
+        "project_id": "acme-secops",
+        "location": "us",
+        "instance_id": "0c1d2e3f-4a5b-4c6d-8e7f-a0b1c2d3e4f5",
+    }
 
 
 def test_a_repeated_field_is_refused(tmp_path: Path) -> None:
