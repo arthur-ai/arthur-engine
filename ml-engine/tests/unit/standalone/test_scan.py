@@ -124,7 +124,7 @@ class StoppableConnector(FakeConnector):
 @pytest.fixture
 def connectors(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
     registry: dict[str, Any] = {}
-    monkeypatch.setattr("standalone.scan.source_connectors", lambda: registry)
+    monkeypatch.setattr("standalone.scan.standalone_connectors", lambda: registry)
     return registry
 
 

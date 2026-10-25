@@ -19,6 +19,10 @@ Adding an MDM is one more entry here and one more package under `discovery.endpo
 adding a SIEM is the same under `discovery.siem`, a cloud provider product under
 `discovery.cloud`, and a network log source under `discovery.network`. A package goes
 where its vendor's source class is, which is also the record type it emits.
+
+A connector a standalone engine can run and a Platform job cannot goes in
+`standalone_connectors()` instead: the Platform has no vendor for it, and its executors
+build their map from `source_connectors()` alone.
 Everything the new MDM shares with Jamf -- the `arthur1.` frame, the six-column rows,
 matching, the record shape -- is already neutral and is not touched. A cloud product
 whose VMs carry that payload (Compute Engine, EC2) reuses it too, from `discovery.cloud`,
@@ -39,6 +43,8 @@ from discovery.cloud.wiz.connector import VENDOR as WIZ_VENDOR
 from discovery.cloud.wiz.connector import WizConnector
 from discovery.endpoint.jamf.connector import VENDOR as JAMF_VENDOR
 from discovery.endpoint.jamf.connector import JamfConnector
+from discovery.endpoint.local.connector import VENDOR as LOCAL_VENDOR
+from discovery.endpoint.local.connector import LocalConnector
 from discovery.network.cloudwatch_logs.connector import VENDOR as CLOUDWATCH_LOGS_VENDOR
 from discovery.network.cloudwatch_logs.connector import CloudWatchLogsConnector
 from discovery.network.gcp_logging.connector import VENDOR as GCP_NETWORK_VENDOR
@@ -71,8 +77,22 @@ def source_connectors() -> dict[str, DiscoveryConnectorFactory]:
     }
 
 
+def standalone_connectors() -> dict[str, DiscoveryConnectorFactory]:
+    """What a standalone engine's config may name: every Platform vendor, plus the
+    sources that only make sense without one.
+
+    `local` reads one machine's endpoint collector output from a folder someone mounted
+    into the engine, which a data-plane engine never has. A new dict on every call, as
+    `source_connectors()` is.
+    """
+    return {**source_connectors(), LOCAL_VENDOR: LocalConnector}
+
+
 __all__ = [
     "source_connectors",
+    "standalone_connectors",
+    "LocalConnector",
+    "LOCAL_VENDOR",
     "JamfConnector",
     "JAMF_VENDOR",
     "ComputeEngineConnector",
