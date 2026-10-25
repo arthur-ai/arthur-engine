@@ -9,7 +9,7 @@ import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Optional, Union
+from typing import Any, Mapping, Optional, Sequence, Union
 
 from arthur_common.models.agent_discovery_schemas import DiscoveredAgentRecord
 from arthur_common.models.agent_governance_schemas import (
@@ -160,6 +160,27 @@ def records_for(
         )
         return DeviceRead(unreadable=UnreadableReason(envelope.outcome.value))
 
+    return records_from_rows(
+        device, envelope.rows, matcher, vendor, log, source_type=source_type
+    )
+
+
+def records_from_rows(
+    device: ManagedDevice,
+    rows: Sequence[Mapping[str, Any]],
+    matcher: Matcher,
+    vendor: str,
+    logger: Optional[logging.Logger] = None,
+    source_type: InventorySource = EndpointAgentCreationSource,
+) -> DeviceRead:
+    """One device's records from a payload already decoded: `records_for` past the
+    carrier.
+
+    For a source that reads the runner's rows itself rather than through a carrier's
+    attribute, so there is no value to find and no frame to remove -- the rows are
+    matched, dated and addressed exactly as a carried payload's are.
+    """
+    log = logger or logging.getLogger(__name__)
     if not device.device_key.strip():
         # external_id is f"{device_key}:{agent_id}", so a blank half reads as
         # ":codex-cli" -- not blank, so every later guard passes it, while collapsing
@@ -170,7 +191,7 @@ def records_for(
         )
         return DeviceRead(unreadable=UnreadableReason.NO_DEVICE_ID)
 
-    result = matcher.match(envelope.rows)
+    result = matcher.match(rows)
 
     if result.dropped:
         log.warning(

@@ -201,6 +201,22 @@ def read(value: Optional[str]) -> Envelope:
         # a GOOD header with a corrupted body raises zlib.error and would escape.
         return _malformed(f"gzip did not decompress: {exc}")
 
+    return read_document(raw)
+
+
+def read_document(raw: bytes) -> Envelope:
+    """Decode the payload itself: the JSON array the frame wraps.
+
+    What `read` does once the frame is off, and what a reader with the runner's file in
+    hand does instead -- no carrier sat between them, so there is no frame to remove, but
+    the rows owe the same contract. Bounded like the frame's contents, since the file
+    is as large as whatever the runner wrote.
+    """
+    if len(raw) > MAX_DECOMPRESSED_BYTES:
+        return _malformed(
+            f"payload is past the {MAX_DECOMPRESSED_BYTES}-byte bound",
+        )
+
     try:
         doc = json.loads(raw)
     except (json.JSONDecodeError, UnicodeDecodeError, RecursionError) as exc:

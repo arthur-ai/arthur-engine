@@ -13,7 +13,7 @@ from typing import Any
 
 import pytest
 
-from discovery import source_connectors
+from discovery import standalone_connectors
 from discovery.cloud.gcp_vertex.connector import settings_from
 from discovery.endpoint.jamf.connector import _settings_from as jamf_settings_from
 from standalone.discovery_config import (
@@ -263,14 +263,35 @@ def test_an_unknown_vendor_is_refused(tmp_path: Path) -> None:
     assert "sources.0.vendor" in load_error(tmp_path, text)
 
 
+def test_a_local_source_loads(tmp_path: Path) -> None:
+    """`local` has no Platform vendor, so the file accepts it beside the Platform's."""
+    sources = """\
+sources:
+  - name: this-machine
+    vendor: local
+    fields:
+      - {key: inventory_dir, value: /etc/deckard/local-scan}
+    configs:
+      - {name: inventory, query: "", query_language: none, lookback_window_seconds: 0}
+"""
+    config = load_config(write(tmp_path, minimal(sources=sources)))
+
+    assert config is not None
+    [scan] = config.scans()
+    assert scan.config.vendor == "local"
+    assert scan.source_fields == {"inventory_dir": "/etc/deckard/local-scan"}
+    assert scan.credentials == {}
+    assert scan.lookback_hours == 0
+
+
 @pytest.fixture
 def undeclared_connector(monkeypatch: pytest.MonkeyPatch) -> None:
     class Undeclared:
         pass
 
-    connectors = {**source_connectors(), "microsoft_sentinel": Undeclared}
+    connectors = {**standalone_connectors(), "microsoft_sentinel": Undeclared}
     monkeypatch.setattr(
-        "standalone.discovery_config.source_connectors",
+        "standalone.discovery_config.standalone_connectors",
         lambda: connectors,
     )
 
@@ -284,7 +305,7 @@ def test_a_connector_that_does_not_declare_secrets_is_refused(tmp_path: Path) ->
 
 def test_every_registered_connector_declares_its_secrets() -> None:
     """Without it a connector can only be scanned via the Platform."""
-    for vendor, connector in source_connectors().items():
+    for vendor, connector in standalone_connectors().items():
         assert isinstance(
             getattr(connector, "SENSITIVE_FIELDS", None), frozenset
         ), vendor
@@ -656,4 +677,4 @@ def test_a_vendor_the_platform_added_after_the_first_release_loads(
         """,
     )
     config = load_config(write(tmp_path, minimal(sources=sources)))
-    assert [s.vendor.value for s in config.sources] == [vendor]
+    assert [s.vendor for s in config.sources] == [vendor]
