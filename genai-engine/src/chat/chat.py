@@ -49,7 +49,7 @@ class ArthurChat:
         self.token_counter = TokenCounter()
         self.embedding_repository = embeddings_repository
         self.file_ids = file_ids
-        self.retrieval_info = None
+        self.retrieval_info: AugmentedRetrieval | None = None
 
         # create the memory context
         self._create_memory_context(inference_repository, conversation_id)
