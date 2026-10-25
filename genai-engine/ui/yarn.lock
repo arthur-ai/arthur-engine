@@ -4985,25 +4985,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"framer-motion@npm:13.5.1":
-  version: 13.5.1
-  resolution: "framer-motion@npm:13.5.1"
-  dependencies:
-    motion-dom: "npm:13.5.1"
-    motion-utils: "npm:13.5.0"
-    tslib: "npm:^2.4.0"
-  peerDependencies:
-    react: ^18.0.0 || ^19.0.0
-    react-dom: ^18.0.0 || ^19.0.0
-  peerDependenciesMeta:
-    react:
-      optional: true
-    react-dom:
-      optional: true
-  checksum: 10c0/8e9ba69d85447c74fad726454fc25f0ebdab89f272dcd43ac3ecf0500602630db61875ecd063b3b48a07aac28b4ad4a587bd26a890e538913a7b9e810f23131f
-  languageName: node
-  linkType: hard
-
 "framer-motion@npm:14.3.1":
   version: 14.3.1
   resolution: "framer-motion@npm:14.3.1"
@@ -5020,6 +5001,25 @@ __metadata:
     react-dom:
       optional: true
   checksum: 10c0/0aca1d90c4521a0f34fda9ec34b2ded640282b1310872c3cedccac1ef3b18e39d0b32b4aa8d007288a1a538e27d33b70ba3e1ed1589c48f4027488d513fea01b
+  languageName: node
+  linkType: hard
+
+"framer-motion@npm:14.5.0":
+  version: 14.5.0
+  resolution: "framer-motion@npm:14.5.0"
+  dependencies:
+    motion-dom: "npm:14.5.0"
+    motion-utils: "npm:14.1.1"
+    tslib: "npm:^2.4.0"
+  peerDependencies:
+    react: ^18.0.0 || ^19.0.0
+    react-dom: ^18.0.0 || ^19.0.0
+  peerDependenciesMeta:
+    react:
+      optional: true
+    react-dom:
+      optional: true
+  checksum: 10c0/af81c8bdb3a0a6a1f0dfc528d8c7b29f355c81d1597c145226734fcc9daa7f8aa84331a4f428ed360762963ac54fc09815b1e0cd8914f650af15a720b4b50096
   languageName: node
   linkType: hard
 
@@ -6779,15 +6779,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"motion-dom@npm:13.5.1":
-  version: 13.5.1
-  resolution: "motion-dom@npm:13.5.1"
-  dependencies:
-    motion-utils: "npm:13.5.0"
-  checksum: 10c0/f28f63b11b0a2c192885ea58fd7e795641435d316442b1750608f28c8f44c84c16be8c8fce0413ab6b9b8c86f33e2c4c48e895ebf395f89c93e41dc6424e527f
-  languageName: node
-  linkType: hard
-
 "motion-dom@npm:14.3.1":
   version: 14.3.1
   resolution: "motion-dom@npm:14.3.1"
@@ -6797,10 +6788,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"motion-utils@npm:13.5.0":
-  version: 13.5.0
-  resolution: "motion-utils@npm:13.5.0"
-  checksum: 10c0/25182af58dafe8aafd596106529ee3bcf39f1295c2cf1016eded6f8876cfd28c550c368fe2d4167dad0782c5ea106c06c39efaedbbb1be2a7cb325b1a827ed11
+"motion-dom@npm:14.5.0":
+  version: 14.5.0
+  resolution: "motion-dom@npm:14.5.0"
+  dependencies:
+    motion-utils: "npm:14.1.1"
+  checksum: 10c0/550be2329a3b5caad230e3dfd7279c72d3c8921bdd33ce67cc2b1986d92f9ab8979772ff5f9cee02b4ab49339e30977cfb6cd762717384a10e9bcab3cacecc25
   languageName: node
   linkType: hard
 
@@ -6808,24 +6801,6 @@ __metadata:
   version: 14.1.1
   resolution: "motion-utils@npm:14.1.1"
   checksum: 10c0/ee89684857aae2b02897d7297568e1e6dc6c1eec08c61533fbc0a9650de5d5c454aa888532b825baabac92defddecd364cbb8cd7fa63b2171152edf8f9f819f0
-  languageName: node
-  linkType: hard
-
-"motion@npm:13.5.1":
-  version: 13.5.1
-  resolution: "motion@npm:13.5.1"
-  dependencies:
-    framer-motion: "npm:13.5.1"
-    tslib: "npm:^2.4.0"
-  peerDependencies:
-    react: ^18.0.0 || ^19.0.0
-    react-dom: ^18.0.0 || ^19.0.0
-  peerDependenciesMeta:
-    react:
-      optional: true
-    react-dom:
-      optional: true
-  checksum: 10c0/ad6acdda9013d993ed79a8c38653d008d4b5521657ff055ae7ecedbbb86ea770ad448547b14a47f98f416772ed1e974a9d5913f639bf2d844b4fed324ed56d62
   languageName: node
   linkType: hard
 
@@ -6844,6 +6819,24 @@ __metadata:
     react-dom:
       optional: true
   checksum: 10c0/cb37cd497b736ce20f435ee99417af90cbbec33a2b1da827de710a2682c3f5b46c14f0ca034406df07ad92c5ba0cc997f6aa82b90a00c500f231dd7d4a400b46
+  languageName: node
+  linkType: hard
+
+"motion@npm:14.5.0":
+  version: 14.5.0
+  resolution: "motion@npm:14.5.0"
+  dependencies:
+    framer-motion: "npm:14.5.0"
+    tslib: "npm:^2.4.0"
+  peerDependencies:
+    react: ^18.0.0 || ^19.0.0
+    react-dom: ^18.0.0 || ^19.0.0
+  peerDependenciesMeta:
+    react:
+      optional: true
+    react-dom:
+      optional: true
+  checksum: 10c0/2005863c05766127aaf32d71cd730965390a462f8d31f6a1cbbeacb2f788c4d4f93b85ae1a373801f90ec905685bed952697945f40ba7cf9a2e2022b4d166033
   languageName: node
   linkType: hard
 
@@ -8725,7 +8718,7 @@ __metadata:
     material-react-table: "npm:3.2.1"
     mitt: "npm:^3.0.1"
     monaco-editor: "npm:0.57.0"
-    motion: "npm:13.5.1"
+    motion: "npm:14.5.0"
     notistack: "npm:3.0.2"
     nuqs: "npm:2.10.2"
     ohash: "npm:2.0.12"
