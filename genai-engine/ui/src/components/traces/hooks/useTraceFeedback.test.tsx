@@ -73,6 +73,15 @@ describe("useTraceFeedback", () => {
     expect(dispatchTourEvent).toHaveBeenCalledWith(TASK_TOUR_EVENTS.feedbackAdded);
   });
 
+  it("replaces the existing human rating in the cached trace instead of adding a second one", async () => {
+    api.annotateTraceApiV1TracesTraceIdAnnotationsPost.mockReturnValue(new Promise(() => {}));
+    const { result, cachedAnnotationTypes } = renderFeedback();
+
+    act(() => void result.current.onSubmit({ score: 1, description: "Still helpful" }));
+
+    await waitFor(() => expect(cachedAnnotationTypes()).toEqual(["continuous_eval", "human"]));
+  });
+
   it("rejects and restores the cached trace when the write fails", async () => {
     api.annotateTraceApiV1TracesTraceIdAnnotationsPost.mockRejectedValue(new Error("boom"));
     const { result, cachedAnnotationTypes } = renderFeedback();

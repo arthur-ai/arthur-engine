@@ -10,6 +10,9 @@ import { track } from "@/services/analytics";
 
 const toFeedbackType = (score: TraceFeedback["score"]) => (score === 1 ? "positive" : "negative");
 
+const withoutHumanFeedback = (annotations: TraceResponse["annotations"]) =>
+  (annotations ?? []).filter((annotation) => annotation.annotation_type !== "human");
+
 const getErrorMessage = (error: unknown, fallback: string) => (error instanceof Error ? error.message : fallback);
 
 /** Writes the trace's human feedback, with optimistic updates of the cached trace. */
@@ -41,8 +44,9 @@ export const useTraceFeedback = (traceId: string): FeedbackPanelHandlers => {
     onMutate: ({ score, description }) =>
       updateCachedTrace((trace) => ({
         ...trace,
+        // The engine keeps one human annotation per trace and overwrites it on each submit.
         annotations: [
-          ...(trace.annotations ?? []),
+          ...withoutHumanFeedback(trace.annotations),
           { annotation_type: "human", annotation_score: score, annotation_description: description } as AgenticAnnotationResponse,
         ],
       })),
@@ -73,7 +77,7 @@ export const useTraceFeedback = (traceId: string): FeedbackPanelHandlers => {
     onMutate: () =>
       updateCachedTrace((trace) => ({
         ...trace,
-        annotations: trace.annotations?.filter((annotation) => annotation.annotation_type !== "human"),
+        annotations: withoutHumanFeedback(trace.annotations),
       })),
     onSuccess: () => {
       enqueueSnackbar("Feedback cleared", { variant: "success" });
