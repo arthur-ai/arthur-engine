@@ -128,10 +128,13 @@ window misses nothing.
 #### `gcp_containers` — Cloud Run and GKE workloads
 
 Lists every Cloud Run service, Cloud Run job and GKE workload in the projects, and
-reports a workload when one of its images is an agent's in the catalog (`images:`), or
-every workload when `report_all_workloads` is true. Each record names the GCP service
-account the workload runs as, so it can be joined with the callers in Vertex AI's audit
-log.
+reports a workload when one of its images is an agent's in the catalog (`images:`), when
+it runs as a service account that called a Vertex AI model in the lookback (read off the
+project's Data Access audit log by the scan itself), or every workload when
+`report_all_workloads` is true. Each record names the GCP service account the workload
+runs as, with `shared by N workloads` when several run as it (a match through a shared
+account cannot tell them apart), and lists the models that account called as
+`llm_models`.
 
 | Field | Secret | Required | Notes |
 |---|---|---|---|
@@ -144,18 +147,29 @@ The service account needs `roles/run.viewer` and `roles/container.viewer`. The s
 grants the Kubernetes reads too (`container.deployments.list`, `container.pods.list`,
 `container.serviceAccounts.list` and the rest), because GKE authorises a Google identity's
 Kubernetes calls against its IAM roles as well as RBAC; it does not grant reading
-Secrets. `query` is the catalog, as for Jamf; `query_language: none`.
+Secrets. Selecting by AI caller also needs `roles/logging.privateLogViewer` and Data
+Access audit logs on for `aiplatform.googleapis.com`; without them that project's
+workloads are selected by catalog image (or `report_all_workloads`) only. `query` is the
+catalog, as for Jamf; `query_language: none`.
 
 A GKE workload is its controller -- Deployment, StatefulSet, DaemonSet, CronJob -- or a
-Job or Pod nothing owns; `kube-system`, `kube-public`, `kube-node-lease` and the `gke-`
-and `gmp-` namespaces are left out. The engine must be able to reach each cluster's
-endpoint; a cluster it cannot reach is logged and the rest of the scan goes on, as is a
-project where an API is off or refused. Two refusals do end the scan: a credential
+Job or Pod no listed workload owns (a CronJob's Jobs, and the pods of a Deployment's
+ReplicaSet, a StatefulSet, DaemonSet or Job, fold into their owner; an operator's, such
+as a Ray cluster's pods or an Argo Rollout's, are their own; if ReplicaSets cannot be
+read, every ReplicaSet's pods fold); `kube-system`, `kube-public`, `kube-node-lease` and the `gke-`
+and `gmp-` namespaces are left out. A pod without Workload Identity calls Google as its
+node pool's service account, which every pod on the node shares, so that account is
+labelled `node account` and an AI call from it does not select the workload; only the
+workload's own (Workload Identity) account does. The engine must be able to reach each cluster's
+endpoint; a cluster it cannot reach is logged, reported on the run as a denied scope,
+and the rest of the scan goes on, as is a project where an API, or its audit log, is off
+or refused. Two refusals do end the scan: a credential
 refused outright (HTTP 401) stops it at once, and a scan that could list nothing at all
 fails with the first refusal's status, so a key with no access reads as denied rather
 than as a project without workloads.
 
-The lookback window is not applied: every scan lists every workload.
+The lookback window bounds only the audit-log read of AI callers (30 days for a zero
+lookback): every scan lists every workload.
 
 #### `wiz` — Wiz
 
@@ -544,7 +558,10 @@ read over the lookback, or the last seven days when it is `0`, for `Converse`,
 IAM user) that called one becomes a record per region, named for the models it called,
 with external id `{account}/{region}/iam_role/{role ARN}`. IAM Identity Center (SSO)
 roles and the root user are people: their calls are counted in the job log, not
-reported. A part AWS refuses in a region, or a region AgentCore does not run in, is a
+reported. So is a call IAM refused (CloudTrail logs it with an `AccessDenied` `errorCode` and
+no model): a role whose every call was refused has called no model and gets no record. A
+call that was allowed and then failed in the model is still counted as that role's call. A
+part AWS refuses in a region, or a region AgentCore does not run in, is a
 warning and the rest of the scan goes on; a refused credential, or every part refused,
 fails the scan.
 
