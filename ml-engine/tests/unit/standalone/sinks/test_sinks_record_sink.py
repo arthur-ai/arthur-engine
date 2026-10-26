@@ -10,8 +10,10 @@ from arthur_client.api_bindings import DiscoverySourceConfigSpec
 from arthur_common.models.agent_discovery_schemas import DiscoveryOutputRecord
 
 from job_executors.discovery_scan import (
+    DeviceCoverage,
     DiscoveryErrorCode,
     DiscoveryScanOutcome,
+    UnreadableDevice,
     run_source_scan,
 )
 from standalone.sinks import Destination
@@ -134,6 +136,37 @@ def test_the_outcome_event_carries_the_logged_payload() -> None:
     assert emitted["observed_at"] == OBSERVED_AT.isoformat()
     assert emitted["source"]["name"] == "corp-macs"
     assert emitted["outcome"] == finished.to_log_payload()
+
+
+def test_the_outcome_event_lists_each_unreadable_device() -> None:
+    """A machine the scan could not see reaches the destination by identity and reason,
+    so it can be alerted on there as a finding."""
+    coverage = DeviceCoverage(devices_read=2, devices_in_scope=2, devices_decoded=1)
+    coverage.count_unreadable(
+        "never-reported",
+        UnreadableDevice(
+            device_key="i-00000000000000001",
+            name="build-1",
+            location="123456789012/us-east-1",
+            reason="never-reported",
+            last_reported=None,
+        ),
+    )
+    finished = outcome(finished_at=OBSERVED_AT, device_coverage=coverage)
+
+    emitted = scan_outcome_event(finished, "corp-ec2")
+
+    assert emitted["outcome"]["device_coverage"]["unreadable_devices"] == [
+        {
+            "device_key": "i-00000000000000001",
+            "name": "build-1",
+            "location": "123456789012/us-east-1",
+            "reason": "never-reported",
+            "last_reported": None,
+        },
+    ]
+    assert emitted["outcome"]["device_coverage"]["unreadable_devices_truncated"] == 0
+    assert emitted["outcome"]["device_coverage"]["devices_unreadable"] == 1
 
 
 class TwoBatchConnector:

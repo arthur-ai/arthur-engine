@@ -1,9 +1,9 @@
+import { TracesEmptyState } from "@arthur/shared-components";
 import { Box, CircularProgress, Typography } from "@mui/material";
 import { useEffect } from "react";
 
 import { useWelcomeStore } from "../stores/welcome.store";
 
-import { TracesEmptyState } from "./TracesEmptyState";
 import { TracesWelcomePage } from "./TracesWelcomePage";
 
 import { useTask } from "@/hooks/useTask";
@@ -46,7 +46,12 @@ export const DataContentGate = ({ welcomeDismissed, hasData, hasActiveFilters, i
         {/* Show empty state message when filters are active but no data */}
         {!hasData && hasActiveFilters && (
           <TracesEmptyState title={`No ${dataType} found`}>
-            <Typography variant="body1" color="text.secondary">
+            <Typography
+              variant="body1"
+              sx={{
+                color: "text.secondary",
+              }}
+            >
               Try adjusting your search query
             </Typography>
           </TracesEmptyState>
@@ -67,7 +72,12 @@ export const DataContentGate = ({ welcomeDismissed, hasData, hasActiveFilters, i
   // Default empty state when no data and no filters
   return (
     <TracesEmptyState title={`No ${dataType} yet`}>
-      <Typography variant="body1" color="text.secondary">
+      <Typography
+        variant="body1"
+        sx={{
+          color: "text.secondary",
+        }}
+      >
         {dataType.charAt(0).toUpperCase() + dataType.slice(1)} will appear here once your application starts sending data
       </Typography>
     </TracesEmptyState>

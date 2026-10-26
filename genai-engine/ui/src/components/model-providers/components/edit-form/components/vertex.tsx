@@ -13,7 +13,11 @@ export const VertexAIFields = withFieldGroup({
   } as VertexAIFormValues,
   render: function Render({ group }) {
     return (
-      <Stack gap={2}>
+      <Stack
+        sx={{
+          gap: 2,
+        }}
+      >
         <group.AppField name="project_id" validators={{ onChange: z.string() }}>
           {(field) => (
             <TextField
@@ -45,7 +49,11 @@ export const VertexAIFields = withFieldGroup({
 
         <group.AppField name="gcp_service_account_credentials" validators={{ onChange: z.instanceof(File).nullable() }}>
           {(field) => (
-            <Stack gap={1}>
+            <Stack
+              sx={{
+                gap: 1,
+              }}
+            >
               <Button component="label" variant="contained" color="primary" disableElevation tabIndex={-1} startIcon={<UploadFileIcon />}>
                 Upload Credentials (Optional)
                 <VisuallyHiddenInput
@@ -60,13 +68,23 @@ export const VertexAIFields = withFieldGroup({
                   {field.state.meta.errors[0]?.message}
                 </Typography>
               ) : (
-                <Typography variant="body2" color="text.secondary">
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: "text.secondary",
+                  }}
+                >
                   <group.Subscribe selector={(state) => state.values.gcp_service_account_credentials?.name}>
                     {(name) => name ?? "No file selected"}
                   </group.Subscribe>
                 </Typography>
               )}
-              <Typography variant="caption" color="text.secondary">
+              <Typography
+                variant="caption"
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
                 If no credentials file is provided, the engine will use{" "}
                 <Link href="https://cloud.google.com/docs/authentication/application-default-credentials" target="_blank" rel="noopener">
                   Application Default Credentials

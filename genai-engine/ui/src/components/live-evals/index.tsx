@@ -26,9 +26,9 @@ export const LiveEvals = () => {
       >
         <Stack
           direction="row"
-          alignItems="center"
-          justifyContent="space-between"
           sx={{
+            alignItems: "center",
+            justifyContent: "space-between",
             px: 3,
             pt: 3,
             pb: 2,
@@ -38,10 +38,22 @@ export const LiveEvals = () => {
           }}
         >
           <Stack>
-            <Typography variant="h5" color="text.primary" fontWeight="bold" mb={0.5}>
+            <Typography
+              variant="h5"
+              sx={{
+                color: "text.primary",
+                fontWeight: "bold",
+                mb: 0.5,
+              }}
+            >
               Continuous Evals
             </Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography
+              variant="body2"
+              sx={{
+                color: "text.secondary",
+              }}
+            >
               Continuous evals are used to monitor and analyze your model's performance in real-time.
             </Typography>
           </Stack>
@@ -95,9 +107,9 @@ export const LiveEvalsSkeleton = () => {
       {/* Header section */}
       <Stack
         direction="row"
-        alignItems="center"
-        justifyContent="space-between"
         sx={{
+          alignItems: "center",
+          justifyContent: "space-between",
           px: 3,
           pt: 3,
           pb: 2,

@@ -1,39 +1,34 @@
 import {
   BucketProvider,
-  CopyableChip as SharedCopyableChip,
+  buildThresholdsFromSample,
   createTraceLevelColumns,
-  DurationCellWithBucket,
-  type ColumnDependencies as SharedColumnDependencies,
-  TextOperators,
+  TraceDisplaySettingsProvider,
   TracesTable,
+  useTraceColumnDependencies,
+  useTraceDisplaySettings,
 } from "@arthur/shared-components";
-import { Search } from "@mui/icons-material";
-import { Alert, Box, Button, Paper, Stack, TextField } from "@mui/material";
+import { Alert, Box, Stack } from "@mui/material";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { type OnChangeFn, type PaginationState, type RowSelectionState, SortingState } from "@tanstack/react-table";
 import { isAxiosError } from "axios";
 import type { MRT_ColumnDef } from "material-react-table";
 import { useSnackbar } from "notistack";
-import { memo, useCallback, useMemo, useState } from "react";
+import { type ComponentProps, memo, useCallback, useMemo, useState } from "react";
 
-import { TokenCostTooltip, TokenCountTooltip } from "../../data/common";
 import { useDrawerTarget } from "../../hooks/useDrawerTarget";
 import { useSyncFiltersToUrl } from "../../hooks/useSyncFiltersToUrl";
+import { useAnnotationCellOptions } from "../../hooks/useTraceAnnotationActions";
 import { useFilterStore } from "../../stores/filter.store";
 import { usePaginationContext } from "../../stores/pagination-context";
-import { buildThresholdsFromSample } from "../../utils/duration";
 import { BulkAddToDatasetDialog } from "../add-to-dataset/BulkAddToDatasetDialog";
 import { useBulkAddTracesToDataset } from "../add-to-dataset/hooks/useBulkAddTracesToDataset";
-import { AnnotationCell } from "../AnnotationCell";
 import { DataContentGate } from "../DataContentGate";
-import { TraceContentCell } from "../TraceContentCell";
 
 import { EvalPickerDialog } from "./components/EvalPickerDialog";
 import { SelectionActionBar } from "./components/SelectionActionBar";
-import { TracingFilterModal } from "./components/TracingFilterModal";
+import { TraceFiltersBar } from "./components/TraceFiltersBar";
 
 import { TestRunDialog } from "@/components/live-evals/components/TestRunDialog";
-import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { TOUR_IDS } from "@/features/task-tour/selectors";
 import { dispatchTourEvent, TASK_TOUR_EVENTS } from "@/features/task-tour/tourEvents";
 import { useApi } from "@/hooks/useApi";
@@ -44,7 +39,6 @@ import { FETCH_SIZE, MAX_TRACES_PER_TEST_RUN } from "@/lib/constants";
 import { queryKeys } from "@/lib/queryKeys";
 import { track, trackDynamic } from "@/services/analytics";
 import { getFilteredTraces } from "@/services/tracing";
-import { formatCurrency, formatDateInTimezone } from "@/utils/formatters";
 
 const DEFAULT_DATA: TraceMetadataResponse[] = [];
 
@@ -59,13 +53,31 @@ interface TraceLevelProps {
   welcomeDismissed: boolean;
 }
 
+type TraceLevelTableProps = Omit<ComponentProps<typeof TracesTable<TraceMetadataResponse>>, "columns" | "rowCount" | "hasNextPage"> & {
+  rowCount: number;
+};
+
+const TraceLevelTable = (props: TraceLevelTableProps) => {
+  const annotationCell = useAnnotationCellOptions();
+  const columnDependencies = useTraceColumnDependencies({ onTrack: trackDynamic, annotationCell });
+
+  const columns = useMemo(() => {
+    const raw = createTraceLevelColumns(columnDependencies) as MRT_ColumnDef<TraceMetadataResponse, unknown>[];
+    return raw.map((col) => {
+      const colId = (col as { id?: string }).id ?? (col as { accessorKey?: string }).accessorKey ?? "";
+      return { ...col, enableSorting: colId in SORTABLE_COLUMN_MAP };
+    });
+  }, [columnDependencies]);
+
+  return <TracesTable columns={columns} {...props} />;
+};
+
 export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
   const { task } = useTask();
-  const { defaultCurrency, timezone, use24Hour } = useDisplaySettings();
+  const displaySettings = useTraceDisplaySettings();
   const { pagination, props } = useMRTPagination({ initialPageSize: FETCH_SIZE });
 
   const [, setDrawerTarget] = useDrawerTarget();
-  const [searchInput, setSearchInput] = useState("");
 
   const timeRange = useFilterStore((state) => state.timeRange);
   const filters = useFilterStore((state) => state.filters);
@@ -218,47 +230,11 @@ export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
     [data?.traces, setContext, setDrawerTarget, task?.id]
   );
 
-  const displayCurrency = data?.display_currency ?? defaultCurrency;
-
-  const columns = useMemo(() => {
-    const deps: SharedColumnDependencies = {
-      formatDate: (v) => formatDateInTimezone(v, timezone, { hour12: !use24Hour }),
-      formatCurrency: (amount: number) => formatCurrency(amount, displayCurrency),
-      onTrack: trackDynamic,
-      Chip: SharedCopyableChip,
-      DurationCell: DurationCellWithBucket,
-      TraceContentCell,
-      AnnotationCell: AnnotationCell as unknown as SharedColumnDependencies["AnnotationCell"],
-      SpanStatusBadge: () => null,
-      TypeChip: () => null,
-      TokenCountTooltip,
-      TokenCostTooltip,
-    };
-    const raw = createTraceLevelColumns(deps) as MRT_ColumnDef<TraceMetadataResponse, unknown>[];
-    return raw.map((col) => {
-      const colId = (col as { id?: string }).id ?? (col as { accessorKey?: string }).accessorKey ?? "";
-      return { ...col, enableSorting: colId in SORTABLE_COLUMN_MAP };
-    });
-  }, [displayCurrency, timezone, use24Hour]);
-
-  const setFilters = useFilterStore((state) => state.setFilters);
-
-  const handleSearch = useCallback(() => {
-    if (searchInput.trim()) {
-      const existingFilters = filters.filter((f) => f.name !== "span_name");
-      setFilters([
-        ...existingFilters,
-        {
-          name: "span_name",
-          operator: TextOperators.CONTAINS,
-          value: searchInput.trim(),
-        },
-      ]);
-    } else {
-      // Clear the span_name filter if search is empty
-      setFilters(filters.filter((f) => f.name !== "span_name"));
-    }
-  }, [searchInput, filters, setFilters]);
+  // Costs come in the currency the server reports for this page.
+  const tableDisplaySettings = useMemo(
+    () => ({ ...displaySettings, currency: data?.display_currency ?? displaySettings.currency }),
+    [displaySettings, data?.display_currency]
+  );
 
   const thresholds = useMemo(() => buildThresholdsFromSample(data?.traces?.map((trace) => trace.duration_ms) ?? []), [data?.traces]);
 
@@ -268,7 +244,13 @@ export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
   const hasData = Boolean(data?.traces?.length);
 
   return (
-    <Stack gap={1} height="100%" overflow="hidden">
+    <Stack
+      sx={{
+        gap: 1,
+        height: "100%",
+        overflow: "hidden",
+      }}
+    >
       <DataContentGate
         welcomeDismissed={welcomeDismissed}
         hasData={hasData}
@@ -277,28 +259,7 @@ export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
         dataType="traces"
       >
         {/* Search bar and filter button */}
-        {(hasData || hasActiveFilters || error) && (
-          <Paper variant="outlined" sx={{ p: 2 }}>
-            <Stack direction="row" spacing={2} alignItems="center">
-              <TextField
-                size="small"
-                placeholder="Search by span name"
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    handleSearch();
-                  }
-                }}
-                sx={{ width: 300 }}
-              />
-              <Button variant="outlined" startIcon={<Search />} onClick={handleSearch}>
-                Search
-              </Button>
-              <TracingFilterModal />
-            </Stack>
-          </Paper>
-        )}
+        {(hasData || hasActiveFilters || error) && <TraceFiltersBar />}
 
         {error && (
           <Box sx={{ p: 2 }}>
@@ -316,22 +277,23 @@ export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
         {hasData && (
           <BucketProvider thresholds={thresholds}>
             <Box sx={{ height: "100%", minHeight: 0, display: "flex", flexDirection: "column" }}>
-              <TracesTable
-                data={data?.traces ?? DEFAULT_DATA}
-                columns={columns as MRT_ColumnDef<TraceMetadataResponse, unknown>[]}
-                rowCount={data?.count ?? 0}
-                pagination={pagination}
-                onPaginationChange={handlePaginationChange}
-                isLoading={isLoading}
-                onRowClick={handleRowClick}
-                sorting={sorting}
-                onSortingChange={handleSortingChange}
-                enableRowSelection
-                rowSelection={rowSelection}
-                onRowSelectionChange={setRowSelection}
-                getRowId={(row) => row.trace_id}
-                getRowProps={({ rowIndex }) => (rowIndex === 0 ? { "data-tour-id": TOUR_IDS.tracesFirstRow } : {})}
-              />
+              <TraceDisplaySettingsProvider value={tableDisplaySettings}>
+                <TraceLevelTable
+                  data={data?.traces ?? DEFAULT_DATA}
+                  rowCount={data?.count ?? 0}
+                  pagination={pagination}
+                  onPaginationChange={handlePaginationChange}
+                  isLoading={isLoading}
+                  onRowClick={handleRowClick}
+                  sorting={sorting}
+                  onSortingChange={handleSortingChange}
+                  enableRowSelection
+                  rowSelection={rowSelection}
+                  onRowSelectionChange={setRowSelection}
+                  getRowId={(row) => row.trace_id}
+                  getRowProps={({ rowIndex }) => (rowIndex === 0 ? { "data-tour-id": TOUR_IDS.tracesFirstRow } : {})}
+                />
+              </TraceDisplaySettingsProvider>
             </Box>
           </BucketProvider>
         )}

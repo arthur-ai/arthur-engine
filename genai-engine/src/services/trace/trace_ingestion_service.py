@@ -64,6 +64,7 @@ class TraceUpdateDBBase(TypedDict):
     prompt_token_cost: float | None
     completion_token_cost: float | None
     total_token_cost: float | None
+    ingest_bytes: int | None
     input_content: str | None
     output_content: str | None
 
@@ -89,13 +90,27 @@ class TraceIngestionService:
         self,
         trace_data: bytes,
         commit: bool = True,
+        count_ingest_bytes: bool = False,
         default_task_id: str | None = None,
     ) -> tuple[list[DatabaseSpan], tuple[int, int, int, list[str]]]:
-        """Process trace data from protobuf format and return statistics."""
-        json_traces = self._grpc_trace_to_dict(trace_data)
+        """Process trace data from protobuf format and return statistics.
+
+        With count_ingest_bytes, each span records its share of len(trace_data), the
+        request body as received, and the shares add up to it exactly unless every
+        span of some trace in a resource span is rejected. Only the trace ingestion endpoints
+        set it: the bytes are customer ingest volume.
+        """
+        trace_request = self._parse_trace_request(trace_data)
+        json_traces = cast(dict[str, Any], MessageToDict(trace_request))
+        span_ingest_bytes = (
+            self._span_ingest_bytes(trace_request, len(trace_data))
+            if count_ingest_bytes
+            else None
+        )
 
         spans_data, stats = self._extract_and_process_spans(
             json_traces,
+            span_ingest_bytes,
             default_task_id=default_task_id,
         )
 
@@ -105,22 +120,73 @@ class TraceIngestionService:
 
         return spans_data, stats
 
-    def _grpc_trace_to_dict(self, trace_data: bytes) -> dict[str, Any]:
-        """Convert gRPC trace data to dictionary format."""
+    @staticmethod
+    def _parse_trace_request(trace_data: bytes) -> ExportTraceServiceRequest:
         try:
             trace_request = ExportTraceServiceRequest()
             trace_request.ParseFromString(trace_data)
-            return cast(dict[str, Any], MessageToDict(trace_request))
+            return trace_request
         except DecodeError as e:
             raise DecodeError("Failed to decode protobuf message.") from e
+
+    @staticmethod
+    def _span_ingest_bytes(
+        trace_request: ExportTraceServiceRequest,
+        body_size: int,
+    ) -> list[int]:
+        """Split the request body's size across its spans, in span order.
+
+        Each span is weighted by its own encoded size plus an even share of its
+        resource's overhead (resource attributes, scopes), so the bytes for one
+        request can be attributed to the traces and tasks it carried. Largest
+        remainder rounding makes the shares sum to body_size exactly.
+        """
+        weights: list[float] = []
+        for resource_span in trace_request.resource_spans:
+            span_sizes = [
+                span.ByteSize()
+                for scope_span in resource_span.scope_spans
+                for span in scope_span.spans
+            ]
+            if not span_sizes:
+                continue
+            overhead = max(resource_span.ByteSize() - sum(span_sizes), 0)
+            weights.extend(size + overhead / len(span_sizes) for size in span_sizes)
+
+        return TraceIngestionService._split_by_weight(body_size, weights)
+
+    @staticmethod
+    def _split_by_weight(total: int, weights: list[float]) -> list[int]:
+        """Split total proportionally to weights (evenly if they are all zero).
+        Largest remainder rounding makes the shares sum to total exactly."""
+        if not weights:
+            return []
+        total_weight = sum(weights)
+        if total_weight <= 0:
+            weights = [1.0] * len(weights)
+            total_weight = float(len(weights))
+
+        exact = [total * weight / total_weight for weight in weights]
+        shares = [int(value) for value in exact]
+        by_remainder = sorted(
+            range(len(exact)),
+            key=lambda i: exact[i] - shares[i],
+            reverse=True,
+        )
+        for i in by_remainder[: total - sum(shares)]:
+            shares[i] += 1
+        return shares
 
     def _extract_and_process_spans(
         self,
         json_traces: dict[str, Any],
+        span_ingest_bytes: list[int] | None = None,
         default_task_id: str | None = None,
     ) -> tuple[list[DatabaseSpan], tuple[int, int, int, list[str]]]:
         """Extract and process spans from JSON trace data.
 
+        span_ingest_bytes, when given, holds each span's ingest bytes in the order
+        the spans appear in the request (MessageToDict keeps that order).
         default_task_id (the request's x-arthur-task header) stands in for a
         resource's arthur.task attribute when the resource has none.
         """
@@ -128,7 +194,7 @@ class TraceIngestionService:
         accepted_spans = 0
         rejected_spans = 0
         rejected_reasons = []
-        spans_data = []
+        spans_data: list[DatabaseSpan] = []
 
         for resource_span in json_traces.get("resourceSpans", []):
             # Extract task ID from resource attributes (new format)
@@ -177,9 +243,26 @@ class TraceIngestionService:
                 default=DEFAULT_ORG_ID,
             )
 
+            # Per trace in this resource span, keyed by the span's raw traceId:
+            # bytes received, stored spans, and whether any span was rejected.
+            trace_bytes: dict[Any, int] = {}
+            trace_stored: dict[Any, list[DatabaseSpan]] = {}
+            traces_with_rejects: set[Any] = set()
+
             for scope_span in resource_span.get("scopeSpans", []):
                 for span_data in scope_span.get("spans", []):
+                    span_index = total_spans
                     total_spans += 1
+                    trace_key = (
+                        span_data.get("traceId")
+                        if isinstance(span_data, dict)
+                        else None
+                    )
+                    if span_ingest_bytes is not None:
+                        trace_bytes[trace_key] = (
+                            trace_bytes.get(trace_key, 0)
+                            + span_ingest_bytes[span_index]
+                        )
 
                     try:
                         # Pass the resolved task ID and resource_id to the span processing
@@ -188,17 +271,41 @@ class TraceIngestionService:
                             resolved_task_id,
                             resource_id,
                             resolved_org_id,
+                            ingest_bytes=(
+                                span_ingest_bytes[span_index]
+                                if span_ingest_bytes is not None
+                                else None
+                            ),
                         )
                         spans_data.append(processed_span)
+                        trace_stored.setdefault(trace_key, []).append(processed_span)
                         accepted_spans += 1
                     except Exception as e:
                         rejected_spans += 1
+                        traces_with_rejects.add(trace_key)
                         error_msg = f"Invalid span data format: {str(e)}"
                         rejected_reasons.append(error_msg)
                         logger.error(
                             f"Rejected span due to error: {str(e)}\nSpan data keys: {list(span_data.keys()) if isinstance(span_data, dict) else 'not a dict'}",
                             exc_info=True,
                         )
+
+            # A rejected span's share would otherwise be lost: its bytes were still
+            # received, so spread them over the stored spans of the same trace in
+            # this resource span, which share its trace, task and org. If every span
+            # of that trace was rejected, nothing is stored for it, and its bytes
+            # stay unattributed rather than credited to another trace.
+            if span_ingest_bytes is not None:
+                for trace_key in traces_with_rejects:
+                    stored = trace_stored.get(trace_key)
+                    if not stored:
+                        continue
+                    shares = self._split_by_weight(
+                        trace_bytes[trace_key],
+                        [float(span.ingest_bytes or 0) for span in stored],
+                    )
+                    for span, share in zip(stored, shares, strict=True):
+                        span.ingest_bytes = share
 
         return spans_data, (
             total_spans,
@@ -391,6 +498,7 @@ class TraceIngestionService:
         resource_task_id: str,
         resource_id: str | None = None,
         resource_org_id: uuid.UUID = DEFAULT_ORG_ID,
+        ingest_bytes: int | None = None,
     ) -> DatabaseSpan:
         """Process and clean span data, returning None if the span data is invalid."""
         span_data = self._normalize_span_attributes(span_data)
@@ -446,6 +554,7 @@ class TraceIngestionService:
             prompt_token_cost=token_data.prompt_token_cost,
             completion_token_cost=token_data.completion_token_cost,
             total_token_cost=token_data.total_token_cost,
+            ingest_bytes=ingest_bytes,
         )
 
     def _extract_value_from_otel_format(
@@ -602,6 +711,7 @@ class TraceIngestionService:
                     prompt_token_cost=None,
                     completion_token_cost=None,
                     total_token_cost=None,
+                    ingest_bytes=None,
                 )
 
             # Aggregate within this batch (handles multiple spans per trace in one ingestion)
@@ -662,7 +772,7 @@ class TraceIngestionService:
                         trace_utils.value_to_string(output_value)
                     )
 
-            for field in TOKEN_FIELDS:
+            for field in [*TOKEN_FIELDS, "ingest_bytes"]:
                 span_value = getattr(span, field)
                 trace_updates[trace_id][field] = safe_add(  # type: ignore[literal-required]
                     trace_updates[trace_id][field],  # type: ignore[literal-required]
@@ -784,6 +894,11 @@ class TraceIngestionService:
                 DatabaseTraceMetadata.total_token_cost + stmt.excluded.total_token_cost,
                 DatabaseTraceMetadata.total_token_cost,
                 stmt.excluded.total_token_cost,
+            ),
+            ingest_bytes=func.coalesce(
+                DatabaseTraceMetadata.ingest_bytes + stmt.excluded.ingest_bytes,
+                DatabaseTraceMetadata.ingest_bytes,
+                stmt.excluded.ingest_bytes,
             ),
             # Prefer new non-null values for input/output content
             # This allows updates if a new batch provides a better root span

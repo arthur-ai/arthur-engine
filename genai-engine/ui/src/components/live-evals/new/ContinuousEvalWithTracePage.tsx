@@ -1,4 +1,5 @@
-import type { GetSpanDetailsStrategy } from "@arthur/shared-components";
+import { OpenInferenceSpanKind } from "@arizeai/openinference-semantic-conventions";
+import { getSpanDetailsStrategy, SpanDetails, SpanDetailsHeader, SpanDetailsPanels, SpanDetailsWidgets, SpanTree } from "@arthur/shared-components";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { Box, IconButton, Stack, Tooltip, Typography } from "@mui/material";
 import { useSuspenseQuery } from "@tanstack/react-query";
@@ -8,9 +9,6 @@ import { useNavigate } from "react-router";
 import { AttributePickerTree } from "./AttributePickerTree";
 import { ContinuousEvalStepper, type PickerState } from "./ContinuousEvalStepper";
 
-import { SpanDetails, SpanDetailsHeader, SpanDetailsPanels, SpanDetailsWidgets } from "@/components/traces/components/SpanDetails";
-import { SpanTree } from "@/components/traces/components/SpanTree";
-import { getSpanDetailsStrategy } from "@/components/traces/data/details-strategy";
 import { flattenSpans } from "@/components/traces/utils/spans";
 import { getContentHeight } from "@/constants/layout";
 import { useApi } from "@/hooks/useApi";
@@ -88,19 +86,37 @@ export const ContinuousEvalWithTracePage = ({ traceId }: Props) => {
     <Stack direction="column" sx={{ height: getContentHeight() }}>
       <Stack
         direction="row"
-        alignItems="center"
-        gap={1}
-        sx={{ px: 2, py: 1, borderBottom: 1, borderColor: "divider", backgroundColor: "background.paper" }}
+        sx={{
+          alignItems: "center",
+          gap: 1,
+          px: 2,
+          py: 1,
+          borderBottom: 1,
+          borderColor: "divider",
+          backgroundColor: "background.paper",
+        }}
       >
         <Tooltip title="Go back">
           <IconButton onClick={() => navigate(-1)} size="small">
             <ArrowBackIcon />
           </IconButton>
         </Tooltip>
-        <Typography variant="subtitle1" fontWeight={600} color="text.primary">
+        <Typography
+          variant="subtitle1"
+          sx={{
+            fontWeight: 600,
+            color: "text.primary",
+          }}
+        >
           Create Continuous Eval from Trace
         </Typography>
-        <Typography variant="caption" color="text.secondary" sx={{ fontFamily: "monospace" }}>
+        <Typography
+          variant="caption"
+          sx={{
+            color: "text.secondary",
+            fontFamily: "monospace",
+          }}
+        >
           {traceId}
         </Typography>
       </Stack>
@@ -141,7 +157,12 @@ export const ContinuousEvalWithTracePage = ({ traceId }: Props) => {
             <SpanContentView span={selectedSpan} />
           ) : (
             <Box sx={{ p: 3 }}>
-              <Typography variant="body2" color="text.secondary">
+              <Typography
+                variant="body2"
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
                 Select a span to view its details
               </Typography>
             </Box>
@@ -173,12 +194,17 @@ export const ContinuousEvalWithTracePage = ({ traceId }: Props) => {
 };
 
 const SpanContentView = ({ span }: { span: NestedSpanWithMetricsResponse }) => {
-  const strategy = getSpanDetailsStrategy(span.span_kind as Parameters<Exclude<GetSpanDetailsStrategy, undefined>>[0]);
+  const strategy = getSpanDetailsStrategy(span.span_kind as OpenInferenceSpanKind);
 
   if (!strategy) {
     return (
       <Box sx={{ p: 3 }}>
-        <Typography variant="body2" color="text.secondary">
+        <Typography
+          variant="body2"
+          sx={{
+            color: "text.secondary",
+          }}
+        >
           No details available for this span type.
         </Typography>
       </Box>

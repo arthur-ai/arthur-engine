@@ -1,5 +1,5 @@
-repo   https://github.com/arthur-ai/osquery-ai-discovery.git
-ref    v0.12.2
+repo   https://github.com/arthur-ai/ai-detection-spec.git
+ref    v0.15.0
 kind   tag
-sha    59e27fca3cdcbe3dfffe728d1054f54a6671b304
-at     2026-10-12T06:10:39Z
+sha    45a5bca58b41ee1349c438f87843301a2257eb5c
+at     2026-10-26T06:29:12Z

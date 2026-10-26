@@ -193,6 +193,12 @@ class TraceMetadataResponse(TokenCountCostSchema):
     start_time: datetime = Field(description="Start time of the earliest span")
     end_time: datetime = Field(description="End time of the latest span")
     span_count: int = Field(description="Number of spans in this trace")
+    ingest_bytes: Optional[int] = Field(
+        None,
+        description="OTLP payload bytes received for this trace's spans on the "
+        "trace ingestion endpoints. Absent for traces ingested before it was "
+        "recorded, or that didn't arrive through those endpoints.",
+    )
     duration_ms: float = Field(description="Total trace duration in milliseconds")
     created_at: datetime = Field(description="When the trace was first created")
     updated_at: datetime = Field(description="When the trace was last updated")

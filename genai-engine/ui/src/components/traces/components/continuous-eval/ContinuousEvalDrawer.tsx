@@ -1,4 +1,5 @@
-import type { GetSpanDetailsStrategy } from "@arthur/shared-components";
+import { OpenInferenceSpanKind } from "@arizeai/openinference-semantic-conventions";
+import { getSpanDetailsStrategy, SpanDetails, SpanDetailsHeader, SpanDetailsPanels, SpanDetailsWidgets, SpanTree } from "@arthur/shared-components";
 import CloseIcon from "@mui/icons-material/Close";
 import { Box, Button, Drawer, IconButton, Stack, Tooltip, Typography } from "@mui/material";
 import { CircularProgress } from "@mui/material";
@@ -9,9 +10,6 @@ import { useNavigate } from "react-router";
 
 import { AttributePickerTree } from "@/components/live-evals/new/AttributePickerTree";
 import { ContinuousEvalStepper, type PickerState } from "@/components/live-evals/new/ContinuousEvalStepper";
-import { SpanDetails, SpanDetailsHeader, SpanDetailsPanels, SpanDetailsWidgets } from "@/components/traces/components/SpanDetails";
-import { SpanTree } from "@/components/traces/components/SpanTree";
-import { getSpanDetailsStrategy } from "@/components/traces/data/details-strategy";
 import { flattenSpans } from "@/components/traces/utils/spans";
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
@@ -126,15 +124,39 @@ const ContinuousEvalDrawerContent = ({ traceId, onClose }: { traceId: string; on
     <Stack direction="column" sx={{ height: "100%" }}>
       <Stack
         direction="row"
-        alignItems="center"
-        justifyContent="space-between"
-        sx={{ px: 2, py: 1, borderBottom: 1, borderColor: "divider", backgroundColor: "background.paper" }}
+        sx={{
+          alignItems: "center",
+          justifyContent: "space-between",
+          px: 2,
+          py: 1,
+          borderBottom: 1,
+          borderColor: "divider",
+          backgroundColor: "background.paper",
+        }}
       >
-        <Stack direction="row" alignItems="center" gap={1}>
-          <Typography variant="subtitle1" fontWeight={600} color="text.primary">
+        <Stack
+          direction="row"
+          sx={{
+            alignItems: "center",
+            gap: 1,
+          }}
+        >
+          <Typography
+            variant="subtitle1"
+            sx={{
+              fontWeight: 600,
+              color: "text.primary",
+            }}
+          >
             Create Continuous Eval from Trace
           </Typography>
-          <Typography variant="caption" color="text.secondary" sx={{ fontFamily: "monospace" }}>
+          <Typography
+            variant="caption"
+            sx={{
+              color: "text.secondary",
+              fontFamily: "monospace",
+            }}
+          >
             {traceId}
           </Typography>
         </Stack>
@@ -181,7 +203,12 @@ const ContinuousEvalDrawerContent = ({ traceId, onClose }: { traceId: string; on
             <SpanContentView span={selectedSpan} />
           ) : (
             <Box sx={{ p: 3 }}>
-              <Typography variant="body2" color="text.secondary">
+              <Typography
+                variant="body2"
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
                 Select a span to view its details
               </Typography>
             </Box>
@@ -214,12 +241,17 @@ const ContinuousEvalDrawerContent = ({ traceId, onClose }: { traceId: string; on
 };
 
 const SpanContentView = ({ span }: { span: NestedSpanWithMetricsResponse }) => {
-  const strategy = getSpanDetailsStrategy(span.span_kind as Parameters<Exclude<GetSpanDetailsStrategy, undefined>>[0]);
+  const strategy = getSpanDetailsStrategy(span.span_kind as OpenInferenceSpanKind);
 
   if (!strategy) {
     return (
       <Box sx={{ p: 3 }}>
-        <Typography variant="body2" color="text.secondary">
+        <Typography
+          variant="body2"
+          sx={{
+            color: "text.secondary",
+          }}
+        >
           No details available for this span type.
         </Typography>
       </Box>

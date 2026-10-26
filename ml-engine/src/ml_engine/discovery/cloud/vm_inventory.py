@@ -15,13 +15,20 @@ leaving the Mac out. Publishing it again would keep its agents fresh on the Plat
 which dates evidence by when a scan last handed it over, not by `last_seen`. A VM still
 reporting but failing keeps publishing its last good scan, as a Jamf Mac does. Records
 are dated by the scan inside the payload, never by the read.
+
+A DATE IN THE FUTURE IS THE VM'S CLOCK, NOT ITS REPORT. The status line is the VM's to
+write, by the VM's clock, and the window only bounds it from below: a VM whose clock runs
+ahead stays inside the lookback that much longer after it stops writing. Discovery comes
+first, so it is still published, with no record dated past the scan's own clock. A date
+more than `CLOCK_AHEAD_MARGIN` past that clock, read when the VM is, is logged with the
+VM's id and how far ahead it is, so someone fixes its time sync.
 """
 
 import logging
 import re
 from collections import Counter
 from dataclasses import replace
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Callable, Mapping, Optional
 
 from arthur_common.models.agent_discovery_schemas import DiscoveredAgentRecord
@@ -36,6 +43,10 @@ from job_executors.discovery_scan import DeviceCoverage, DiscoveryConfigurationE
 # Device coverage reasons every VM-carrying cloud produces, beside the payload's own.
 READ_FAILED = "read-failed"
 NOT_REPORTED_IN_WINDOW = "not-reported-in-window"
+
+# How far past this scan's own clock a VM's date may be before it is named: the drift of
+# a clock that is merely fast, not one whose time sync is broken.
+CLOCK_AHEAD_MARGIN = timedelta(minutes=15)
 
 # The collector's reporter publishes the status line under this name on every cloud.
 STATUS_ATTRIBUTE = "arthur/status"
@@ -60,11 +71,17 @@ class VmInventoryReader:
         vendor: str,
         since: Optional[datetime],
         logger: logging.Logger,
+        *,
+        clock: Callable[[], datetime],
     ) -> None:
+        """`clock` is the scan's own, the one `since` was taken from. It is read again for
+        each VM: a long scan's window starts when the scan does, but a VM that reported
+        while it ran is dated after that, and is not ahead."""
         self.coverage = coverage
         self._matcher = matcher
         self._vendor = vendor
         self._since = since
+        self._clock = clock
         self._log = logger
         self.not_running: Counter[str] = Counter()
         self.failed_runs: Counter[str] = Counter()
@@ -80,12 +97,17 @@ class VmInventoryReader:
         for a VM that was not running when listed, None for one that was.
         """
         coverage = self.coverage
+        # After the VM's values were read, so nothing it wrote before then is ahead.
+        now = self._clock()
         status = device.attribute(STATUS_ATTRIBUTE)
         reported = last_reported(status)
         if reported is not None:
             device = replace(device, last_reported=reported.isoformat())
         if before(reported, self._since):
-            coverage.count_unreadable(NOT_REPORTED_IN_WINDOW)
+            coverage.count_unreadable(
+                NOT_REPORTED_IN_WINDOW,
+                device.unreadable(NOT_REPORTED_IN_WINDOW),
+            )
             return []
         read = records_for(
             device,
@@ -94,23 +116,51 @@ class VmInventoryReader:
             self._log,
             source_type=CloudAgentCreationSource,
         )
-        if (
-            reported is None
-            and read.records
-            and before(read.records[0].last_seen, self._since)
-        ):
-            # No status line to date the VM by, so its payload's own scan does.
-            coverage.count_unreadable(NOT_REPORTED_IN_WINDOW)
-            return []
+        dated = reported
+        if reported is None and read.last_seen is not None:
+            # No status line to date the VM by, so its payload's own scan does, whether
+            # or not anything in it matched.
+            dated = read.last_seen
+            if before(dated, self._since):
+                coverage.count_unreadable(
+                    NOT_REPORTED_IN_WINDOW,
+                    device.unreadable(NOT_REPORTED_IN_WINDOW),
+                )
+                return []
+        if dated is not None and ahead(dated, now):
+            self._warn_clock_ahead(device, dated, now)
 
         if state is not None:
             self.not_running[state or "UNKNOWN"] += 1
         self.failed_runs.update(failed_run(status))
         if read.unreadable is not None:
-            coverage.count_unreadable(read.unreadable.value)
+            coverage.count_unreadable(
+                read.unreadable.value,
+                device.unreadable(read.unreadable.value),
+            )
             return []
         coverage.devices_decoded += 1
-        return read.records
+        # No VM can have seen anything after this scan's clock.
+        return [
+            record.model_copy(update={"last_seen": min(record.last_seen, now)})
+            for record in read.records
+        ]
+
+    def _warn_clock_ahead(
+        self,
+        device: ManagedDevice,
+        when: datetime,
+        now: datetime,
+    ) -> None:
+        """Name the VM and its skew, whatever its payload holds: the clock is wrong
+        either way. The id and the skew only: never the value the date came from."""
+        self._log.warning(
+            "%s is dated %s min ahead of this scan's clock, so its clock is at least "
+            "that fast, and it counts as reporting that much longer once it stops. "
+            "Fix its time sync.",
+            device.device_key,
+            int((when - now).total_seconds() // 60),
+        )
 
     def log_summary(self, provider: str, noun: str, journal: str) -> None:
         """The counts, the VMs that were not running, and the runs that failed.
@@ -210,6 +260,11 @@ def last_reported(status: Optional[str]) -> Optional[datetime]:
 def before(when: Optional[datetime], since: Optional[datetime]) -> bool:
     """Whether `when` falls before the window. Nothing to compare is never before it."""
     return when is not None and since is not None and when < since
+
+
+def ahead(when: datetime, now: datetime) -> bool:
+    """Whether `when` is later than `now` by more than a fast clock accounts for."""
+    return when > now + CLOCK_AHEAD_MARGIN
 
 
 def failed_run(status: Optional[str]) -> list[str]:

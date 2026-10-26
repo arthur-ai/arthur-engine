@@ -39,7 +39,12 @@ export const ImportConfigurationStep: React.FC<ImportConfigurationStepProps> = (
 }) => {
   return (
     <>
-      <Typography variant="body2" color="text.secondary">
+      <Typography
+        variant="body2"
+        sx={{
+          color: "text.secondary",
+        }}
+      >
         {CSV_IMPORT_MESSAGES.info.uploadInstructions}
       </Typography>
 
@@ -121,7 +126,9 @@ export const ImportConfigurationStep: React.FC<ImportConfigurationStepProps> = (
               onChange={(e) => onConfigChange({ ...config, quoteChar: e.target.value })}
               size="small"
               fullWidth
-              inputProps={{ maxLength: 1 }}
+              slotProps={{
+                htmlInput: { maxLength: 1 },
+              }}
             />
             <TextField
               label={CSV_IMPORT_MESSAGES.labels.escapeChar}
@@ -129,7 +136,9 @@ export const ImportConfigurationStep: React.FC<ImportConfigurationStepProps> = (
               onChange={(e) => onConfigChange({ ...config, escapeChar: e.target.value })}
               size="small"
               fullWidth
-              inputProps={{ maxLength: 1 }}
+              slotProps={{
+                htmlInput: { maxLength: 1 },
+              }}
             />
           </Box>
 
@@ -187,7 +196,12 @@ export const ImportConfigurationStep: React.FC<ImportConfigurationStepProps> = (
 
       {error && <Alert severity="error">{error}</Alert>}
 
-      <Typography variant="caption" color="text.secondary">
+      <Typography
+        variant="caption"
+        sx={{
+          color: "text.secondary",
+        }}
+      >
         {CSV_IMPORT_MESSAGES.info.importNote(MAX_DATASET_ROWS)}
       </Typography>
     </>

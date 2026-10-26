@@ -23,17 +23,39 @@ export const DatasetSetup = withFieldGroup({
     const { versions } = useDatasetVersionHistory(id ?? undefined);
 
     return (
-      <Stack component={Paper} variant="outlined" p={2}>
+      <Stack
+        component={Paper}
+        variant="outlined"
+        sx={{
+          p: 2,
+        }}
+      >
         <Stack>
-          <Typography variant="body2" color="text.primary" fontWeight="bold">
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.primary",
+              fontWeight: "bold",
+            }}
+          >
             Select Dataset
           </Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+            }}
+          >
             Choose the dataset and version for this experiment.
           </Typography>
         </Stack>
         <Divider sx={{ my: 2 }} />
-        <Stack gap={2} direction="row">
+        <Stack
+          direction="row"
+          sx={{
+            gap: 2,
+          }}
+        >
           <group.AppField
             name="datasetRef.id"
             listeners={{
@@ -105,12 +127,30 @@ const DatasetRowFilters = withFieldGroup({
       <group.AppField name="datasetRowFilter" mode="array">
         {(field) => (
           <>
-            <Stack direction="row" gap={2} alignItems="center" justifyContent="space-between">
+            <Stack
+              direction="row"
+              sx={{
+                gap: 2,
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
+            >
               <Stack>
-                <Typography variant="body2" color="text.primary" fontWeight="bold">
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: "text.primary",
+                    fontWeight: "bold",
+                  }}
+                >
                   Dataset Row Filters
                 </Typography>
-                <Typography variant="body2" color="text.secondary">
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: "text.secondary",
+                  }}
+                >
                   Filter the dataset rows that will be used for this experiment.
                 </Typography>
               </Stack>
@@ -119,10 +159,21 @@ const DatasetRowFilters = withFieldGroup({
               </Button>
             </Stack>
             <Divider sx={{ my: 2 }} />
-            <Stack gap={2}>
+            <Stack
+              sx={{
+                gap: 2,
+              }}
+            >
               {field.state.value.length > 0 ? (
                 field.state.value.map((item, index) => (
-                  <Stack key={index} direction="row" gap={2} alignItems="center">
+                  <Stack
+                    key={index}
+                    direction="row"
+                    sx={{
+                      gap: 2,
+                      alignItems: "center",
+                    }}
+                  >
                     <group.AppField
                       name={`datasetRowFilter[${index}].column_name`}
                       validators={{ onChange: z.string().min(1, "Column is required") }}
@@ -163,7 +214,12 @@ const DatasetRowFilters = withFieldGroup({
                 ))
               ) : (
                 <div className="flex items-center justify-center py-8 border border-dashed border-neutral-200 rounded-md">
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: "text.secondary",
+                    }}
+                  >
                     No filters added yet
                   </Typography>
                 </div>

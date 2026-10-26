@@ -51,10 +51,22 @@ export const EvaluateView = () => {
       >
         <Box sx={{ display: "flex", flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" }}>
           <Box>
-            <Typography variant="h5" fontWeight={600} color="text.primary">
+            <Typography
+              variant="h5"
+              sx={{
+                fontWeight: 600,
+                color: "text.primary",
+              }}
+            >
               Evaluate
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+            <Typography
+              variant="body2"
+              sx={{
+                color: "text.secondary",
+                mt: 0.5,
+              }}
+            >
               Manage evaluators and monitor continuous evaluation performance
             </Typography>
           </Box>

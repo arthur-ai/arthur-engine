@@ -44,7 +44,12 @@ export const CellContentModal: React.FC<CellContentModalProps> = ({ open, onClos
               <Typography variant="h6" gutterBottom>
                 {columnName}
               </Typography>
-              <Typography variant="caption" color="text.secondary">
+              <Typography
+                variant="caption"
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
                 {charCount.toLocaleString()} characters
               </Typography>
             </Box>

@@ -163,8 +163,21 @@ export const EvaluatorAccordionList = ({ evals, taskId, onExpandToFullScreen, on
                 }}
               >
                 {/* Left: name, type chip, version chip, continuous eval count */}
-                <Stack direction="row" alignItems="center" gap={1.5} flexShrink={0} flexWrap="wrap">
-                  <Typography variant="body1" fontWeight={500}>
+                <Stack
+                  direction="row"
+                  sx={{
+                    alignItems: "center",
+                    gap: 1.5,
+                    flexShrink: 0,
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <Typography
+                    variant="body1"
+                    sx={{
+                      fontWeight: 500,
+                    }}
+                  >
                     {evalMeta.name}
                   </Typography>
                   {/* Eval type chip */}
@@ -203,8 +216,8 @@ export const EvaluatorAccordionList = ({ evals, taskId, onExpandToFullScreen, on
             {/* Date text — aligned with "Last Updated" column header */}
             <Typography
               variant="caption"
-              color="text.secondary"
               sx={{
+                color: "text.secondary",
                 position: "absolute",
                 top: 0,
                 right: 150,
@@ -218,7 +231,18 @@ export const EvaluatorAccordionList = ({ evals, taskId, onExpandToFullScreen, on
               Updated {formatDateInTimezone(evalMeta.latest_version_created_at ?? null, timezone, { hour12: !use24Hour })}
             </Typography>
             {/* Action icons — positioned outside AccordionSummary to avoid nested <button> elements */}
-            <Stack direction="row" alignItems="center" gap={0.5} sx={{ position: "absolute", top: 0, right: 48, height: 56, zIndex: 2 }}>
+            <Stack
+              direction="row"
+              sx={{
+                alignItems: "center",
+                gap: 0.5,
+                position: "absolute",
+                top: 0,
+                right: 48,
+                height: 56,
+                zIndex: 2,
+              }}
+            >
               {isLLM && (
                 <Tooltip title="View full details">
                   <IconButton

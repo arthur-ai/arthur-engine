@@ -1,0 +1,5794 @@
+{
+  "format": "ai-detection-spec/0.1",
+  "platforms": [
+    "darwin",
+    "linux",
+    "windows"
+  ],
+  "platform_groups": {
+    "posix": [
+      "darwin",
+      "linux"
+    ]
+  },
+  "classifications": [
+    {
+      "name": "Coding agent",
+      "definition": "Operates on a codebase, usually with shell access."
+    },
+    {
+      "name": "Personal agent",
+      "definition": "General-purpose, and often bridged to messaging."
+    },
+    {
+      "name": "AI browser",
+      "definition": "A browser whose AI features are the product."
+    },
+    {
+      "name": "Browser agent",
+      "definition": "An extension that acts inside the browser on the user's behalf."
+    },
+    {
+      "name": "Desktop assistant",
+      "definition": "A chat client that can run tools on the machine, for example through MCP."
+    }
+  ],
+  "routes": {
+    "bundle_ids": {
+      "kind": "app",
+      "match": "exact",
+      "platform": "darwin",
+      "value_pattern": "^[A-Za-z0-9-]+(\\.[A-Za-z0-9-]+){2,}$",
+      "bindings": {
+        "osquery": {
+          "table": "apps",
+          "min_osquery": "5.10.0"
+        }
+      }
+    },
+    "homebrew": {
+      "kind": "brew",
+      "match": "exact",
+      "platform": "darwin",
+      "bindings": {
+        "osquery": {
+          "table": "homebrew_packages",
+          "min_osquery": "5.10.0"
+        }
+      }
+    },
+    "launchd_prefixes": {
+      "kind": "daemon",
+      "match": "prefix",
+      "platform": "darwin",
+      "bindings": {
+        "osquery": {
+          "table": "launchd",
+          "min_osquery": "5.10.0"
+        }
+      }
+    },
+    "running_apps": {
+      "kind": "proc",
+      "match": "exact",
+      "platform": "darwin",
+      "values_from": "bundle_ids",
+      "live": true,
+      "bindings": {
+        "osquery": {
+          "table": "processes",
+          "min_osquery": "5.10.0"
+        }
+      }
+    },
+    "npm": {
+      "kind": "npm",
+      "match": "exact",
+      "platform": "posix",
+      "purl": "npm",
+      "bindings": {
+        "osquery": {
+          "table": "npm_packages",
+          "min_osquery": "5.10.0"
+        }
+      }
+    },
+    "running_npm": {
+      "kind": "proc",
+      "match": "exact",
+      "platform": "posix",
+      "values_from": "npm",
+      "live": true,
+      "bindings": {
+        "osquery": {
+          "table": "processes",
+          "min_osquery": "5.10.0"
+        }
+      }
+    },
+    "pypi": {
+      "kind": "file",
+      "match": "tool-dir",
+      "platform": "posix",
+      "purl": "pypi",
+      "bindings": {
+        "osquery": {
+          "table": "file",
+          "min_osquery": "5.10.0"
+        }
+      }
+    },
+    "extension_ids": {
+      "kind": "ext",
+      "match": "exact",
+      "platform": "posix",
+      "value_pattern": "^[a-p]{32}$",
+      "purl": "chrome-extension",
+      "bindings": {
+        "osquery": {
+          "table": "chrome_extensions",
+          "min_osquery": "5.10.0"
+        }
+      }
+    },
+    "native_messaging_hosts": {
+      "kind": "nmh",
+      "match": "exact",
+      "platform": "posix",
+      "bindings": {
+        "osquery": {
+          "table": "file",
+          "min_osquery": "5.10.0"
+        }
+      }
+    },
+    "vscode_extensions": {
+      "kind": "vscodeext",
+      "match": "exact",
+      "platform": "posix",
+      "value_pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*\\.[A-Za-z0-9][A-Za-z0-9._-]*$",
+      "purl": "vscode-extension",
+      "bindings": {
+        "osquery": {
+          "table": "vscode_extensions",
+          "min_osquery": "5.11.0"
+        }
+      }
+    },
+    "jetbrains_plugins": {
+      "kind": "jbplugin",
+      "match": "exact",
+      "platform": "posix",
+      "value_pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+      "bindings": {
+        "osquery": {
+          "table": "jetbrains_plugins",
+          "min_osquery": "5.18.0"
+        }
+      }
+    },
+    "images": {
+      "kind": "image",
+      "match": "exact-normalised",
+      "platform": "posix",
+      "bindings": {
+        "osquery": {
+          "table": "docker_images",
+          "min_osquery": "5.10.0"
+        }
+      }
+    },
+    "container_images": {
+      "kind": "container",
+      "match": "exact-normalised",
+      "platform": "posix",
+      "values_from": "images",
+      "live": true,
+      "bindings": {
+        "osquery": {
+          "table": "docker_containers",
+          "min_osquery": "5.10.0"
+        }
+      }
+    },
+    "image_labels": {
+      "kind": "ilabel",
+      "match": "exact",
+      "platform": "posix",
+      "value_pattern": "^https?://[A-Za-z0-9.-]+/[A-Za-z0-9._~:/?#@!$&()*+,;=%-]+$",
+      "bindings": {
+        "osquery": {
+          "table": "docker_image_labels",
+          "min_osquery": "5.10.0"
+        }
+      }
+    },
+    "state_dirs": {
+      "kind": "file",
+      "match": "home-dir",
+      "platform": "posix",
+      "bindings": {
+        "osquery": {
+          "table": "file",
+          "min_osquery": "5.10.0"
+        }
+      }
+    },
+    "binaries": {
+      "kind": "file",
+      "match": "home-prefix",
+      "platform": "posix",
+      "bindings": {
+        "osquery": {
+          "table": "file",
+          "min_osquery": "5.10.0"
+        }
+      }
+    },
+    "process_paths": {
+      "kind": "proc",
+      "match": "home-prefix",
+      "platform": "posix",
+      "live": true,
+      "bindings": {
+        "osquery": {
+          "table": "processes",
+          "min_osquery": "5.10.0"
+        }
+      }
+    },
+    "model_stores": {
+      "kind": "file",
+      "match": "home-prefix",
+      "platform": "posix",
+      "bindings": {
+        "osquery": {
+          "table": "file",
+          "min_osquery": "5.10.0"
+        }
+      }
+    },
+    "ports": {
+      "kind": "port",
+      "match": "exact",
+      "platform": "posix",
+      "retired": true,
+      "bindings": {
+        "osquery": {
+          "table": "listening_ports",
+          "min_osquery": "5.10.0"
+        }
+      }
+    },
+    "deb_packages": {
+      "kind": "deb",
+      "match": "exact",
+      "platform": "linux",
+      "bindings": {
+        "osquery": {
+          "table": "deb_packages",
+          "min_osquery": "5.10.0"
+        }
+      }
+    },
+    "rpm_packages": {
+      "kind": "rpm",
+      "match": "exact",
+      "platform": "linux",
+      "bindings": {
+        "osquery": {
+          "table": "rpm_packages",
+          "min_osquery": "5.10.0"
+        }
+      }
+    },
+    "desktop_ids": {
+      "kind": "desktop",
+      "match": "exact",
+      "platform": "linux",
+      "value_pattern": "^[A-Za-z0-9][A-Za-z0-9._+-]*\\.desktop$",
+      "bindings": {
+        "osquery": {
+          "table": "file",
+          "min_osquery": "5.10.0"
+        }
+      }
+    },
+    "systemd_prefixes": {
+      "kind": "unit",
+      "match": "prefix",
+      "platform": "linux",
+      "bindings": {
+        "osquery": {
+          "table": "systemd_units",
+          "min_osquery": "5.10.0"
+        }
+      }
+    }
+  },
+  "agents": [
+    {
+      "id": "claude-desktop",
+      "name": "Claude Desktop",
+      "classification": "Desktop assistant",
+      "platforms": [
+        "darwin"
+      ],
+      "identifiers": [
+        {
+          "route": "bundle_ids",
+          "value": "com.anthropic.claudefordesktop",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "10-desktop-apps",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64",
+              "agent_version": "1.46388.4"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "10-desktop-apps",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64",
+              "agent_version": "2.31226.1"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "40-browser",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64",
+              "agent_version": "1.46388.4"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "40-browser",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64",
+              "agent_version": "2.31226.1"
+            }
+          ]
+        },
+        {
+          "route": "homebrew",
+          "value": "claude",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "10-desktop-apps",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64",
+              "agent_version": "1.46388.4,50e62f90a2c85243eef42913398f7c8f1534abef"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "10-desktop-apps",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64",
+              "agent_version": "2.31226.1,8576520051724193e9f74fc538f9ce8125e9ddd2"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "40-browser",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64",
+              "agent_version": "1.46388.4,50e62f90a2c85243eef42913398f7c8f1534abef"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "40-browser",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64",
+              "agent_version": "2.31226.1,8576520051724193e9f74fc538f9ce8125e9ddd2"
+            }
+          ]
+        },
+        {
+          "route": "native_messaging_hosts",
+          "value": "com.anthropic.claude_browser_extension.json",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "75-linux-browser",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "amzn-2023",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "75-linux-browser",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "debian-12",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "75-linux-browser",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "fedora-41",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "75-linux-browser",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "rocky-9.8",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "75-linux-browser",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "x86_64"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "claude-in-chrome",
+      "name": "Claude in Chrome",
+      "classification": "Browser agent",
+      "platforms": [
+        "darwin",
+        "linux"
+      ],
+      "identifiers": [
+        {
+          "route": "extension_ids",
+          "value": "fcoeoabgfenejglbffodgkkbkcdhcgfn",
+          "status": "current",
+          "purl": "pkg:chrome-extension/fcoeoabgfenejglbffodgkkbkcdhcgfn",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "45-claude-extension",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64",
+              "agent_version": "1.0.102"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "45-claude-extension",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64",
+              "agent_version": "1.0.102"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "claude-code",
+      "name": "Claude Code",
+      "classification": "Coding agent",
+      "platforms": [
+        "darwin",
+        "linux"
+      ],
+      "identifiers": [
+        {
+          "route": "npm",
+          "value": "@anthropic-ai/claude-code",
+          "status": "current",
+          "purl": "pkg:npm/%40anthropic-ai/claude-code",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "21-cli-agents-homebrew",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64",
+              "agent_version": "2.1.310"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "21-cli-agents-homebrew",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64",
+              "agent_version": "2.1.310"
+            }
+          ]
+        },
+        {
+          "route": "vscode_extensions",
+          "value": "anthropic.claude-code",
+          "status": "current",
+          "purl": "pkg:vscode-extension/anthropic/claude-code",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "85-linux-vscode-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "amzn-2023",
+              "arch": "x86_64",
+              "agent_version": "2.1.310"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "85-linux-vscode-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "debian-12",
+              "arch": "x86_64",
+              "agent_version": "2.1.310"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "85-linux-vscode-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "fedora-41",
+              "arch": "x86_64",
+              "agent_version": "2.1.310"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "85-linux-vscode-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "rocky-9.8",
+              "arch": "x86_64",
+              "agent_version": "2.1.310"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "85-linux-vscode-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "aarch64",
+              "agent_version": "2.1.310"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "85-linux-vscode-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "x86_64",
+              "agent_version": "2.1.310"
+            }
+          ]
+        },
+        {
+          "route": "state_dirs",
+          "value": "~/.claude",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "20-cli-agents",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "20-cli-agents",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "71-linux-cli-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "amzn-2023",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "71-linux-cli-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "debian-12",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "71-linux-cli-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "fedora-41",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "71-linux-cli-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "rocky-9.8",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "71-linux-cli-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "aarch64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "71-linux-cli-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "83-linux-claude-running",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "aarch64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "83-linux-claude-running",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "x86_64"
+            }
+          ]
+        },
+        {
+          "route": "binaries",
+          "value": "~/.local/bin/claude",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "20-cli-agents",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "20-cli-agents",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "71-linux-cli-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "amzn-2023",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "71-linux-cli-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "debian-12",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "71-linux-cli-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "fedora-41",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "71-linux-cli-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "rocky-9.8",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "71-linux-cli-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "aarch64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "71-linux-cli-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "83-linux-claude-running",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "aarch64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "83-linux-claude-running",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "x86_64"
+            }
+          ]
+        },
+        {
+          "route": "process_paths",
+          "value": "~/.local/share/claude/versions/",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "83-linux-claude-running",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "aarch64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "83-linux-claude-running",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "x86_64"
+            }
+          ]
+        },
+        {
+          "route": "deb_packages",
+          "value": "claude-code",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "89-linux-claude-deb",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "debian-12",
+              "arch": "x86_64",
+              "agent_version": "2.1.308-1"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "89-linux-claude-deb",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "aarch64",
+              "agent_version": "2.1.308-1"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "89-linux-claude-deb",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "x86_64",
+              "agent_version": "2.1.308-1"
+            }
+          ]
+        },
+        {
+          "route": "rpm_packages",
+          "value": "claude-code",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "91-linux-claude-rpm",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "amzn-2023",
+              "arch": "x86_64",
+              "agent_version": "2.1.308"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "91-linux-claude-rpm",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "fedora-41",
+              "arch": "x86_64",
+              "agent_version": "2.1.308"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "91-linux-claude-rpm",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "rocky-9.8",
+              "arch": "x86_64",
+              "agent_version": "2.1.308"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "openclaw",
+      "name": "OpenClaw",
+      "classification": "Personal agent",
+      "platforms": [
+        "darwin",
+        "linux"
+      ],
+      "identifiers": [
+        {
+          "route": "bundle_ids",
+          "value": "ai.openclaw.mac",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "50-autonomous",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64",
+              "agent_version": "2026.9.2"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "50-autonomous",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64",
+              "agent_version": "2026.10.2"
+            }
+          ]
+        },
+        {
+          "route": "bundle_ids",
+          "value": "com.clawdbot.mac",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "57-clawdbot-era",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64",
+              "agent_version": "2026.1.23"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "57-clawdbot-era",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64",
+              "agent_version": "2026.1.23"
+            }
+          ]
+        },
+        {
+          "route": "homebrew",
+          "value": "openclaw",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "50-autonomous",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64",
+              "agent_version": "2026.9.2"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "50-autonomous",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64",
+              "agent_version": "2026.10.2"
+            }
+          ]
+        },
+        {
+          "route": "launchd_prefixes",
+          "value": "ai.openclaw.",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "60-persistence",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "60-persistence",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64"
+            }
+          ]
+        },
+        {
+          "route": "npm",
+          "value": "openclaw",
+          "status": "current",
+          "purl": "pkg:npm/openclaw",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "55-openclaw-npm",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64",
+              "agent_version": "2026.10.7"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "55-openclaw-npm",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64",
+              "agent_version": "2026.10.7"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "82-linux-running",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "amzn-2023",
+              "arch": "x86_64",
+              "agent_version": "2026.10.7"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "82-linux-running",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "debian-12",
+              "arch": "x86_64",
+              "agent_version": "2026.10.7"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "82-linux-running",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "fedora-41",
+              "arch": "x86_64",
+              "agent_version": "2026.10.7"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "82-linux-running",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "rocky-9.8",
+              "arch": "x86_64",
+              "agent_version": "2026.10.7"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "82-linux-running",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "aarch64",
+              "agent_version": "2026.10.7"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "82-linux-running",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "x86_64",
+              "agent_version": "2026.10.7"
+            }
+          ]
+        },
+        {
+          "route": "npm",
+          "value": "clawdbot",
+          "status": "current",
+          "purl": "pkg:npm/clawdbot",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "56-openclaw-retired-names",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64",
+              "agent_version": "2026.1.24-3"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "56-openclaw-retired-names",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64",
+              "agent_version": "2026.1.24-3"
+            }
+          ]
+        },
+        {
+          "route": "npm",
+          "value": "moltbot",
+          "status": "current",
+          "purl": "pkg:npm/moltbot",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "56-openclaw-retired-names",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64",
+              "agent_version": "0.1.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "56-openclaw-retired-names",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64",
+              "agent_version": "0.1.0"
+            }
+          ]
+        },
+        {
+          "route": "state_dirs",
+          "value": "~/.openclaw",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "55-openclaw-npm",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "55-openclaw-npm",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "82-linux-running",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "amzn-2023",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "82-linux-running",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "debian-12",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "82-linux-running",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "fedora-41",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "82-linux-running",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "rocky-9.8",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "82-linux-running",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "aarch64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "82-linux-running",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "x86_64"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "chatgpt-desktop",
+      "name": "ChatGPT Desktop",
+      "classification": "Desktop assistant",
+      "platforms": [
+        "darwin"
+      ],
+      "identifiers": [
+        {
+          "route": "bundle_ids",
+          "value": "com.openai.codex",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "10-desktop-apps",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64",
+              "agent_version": "26.901.51231"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "10-desktop-apps",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64",
+              "agent_version": "26.1007.30912"
+            }
+          ]
+        },
+        {
+          "route": "bundle_ids",
+          "value": "com.openai.chat",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "12-chatgpt-pre-rename",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64",
+              "agent_version": "1.2026.160"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "12-chatgpt-pre-rename",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64",
+              "agent_version": "1.2026.160"
+            }
+          ]
+        },
+        {
+          "route": "homebrew",
+          "value": "chatgpt",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "10-desktop-apps",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64",
+              "agent_version": "26.901.51231"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "10-desktop-apps",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64",
+              "agent_version": "26.1007.30912"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "codex-cli",
+      "name": "Codex CLI",
+      "classification": "Coding agent",
+      "platforms": [
+        "darwin",
+        "linux"
+      ],
+      "identifiers": [
+        {
+          "route": "homebrew",
+          "value": "codex",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "21-cli-agents-homebrew",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64",
+              "agent_version": "0.153.4"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "21-cli-agents-homebrew",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64",
+              "agent_version": "0.163.0"
+            }
+          ]
+        },
+        {
+          "route": "npm",
+          "value": "@openai/codex",
+          "status": "current",
+          "purl": "pkg:npm/%40openai/codex",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "20-cli-agents",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64",
+              "agent_version": "0.164.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "20-cli-agents",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64",
+              "agent_version": "0.164.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "71-linux-cli-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "amzn-2023",
+              "arch": "x86_64",
+              "agent_version": "0.164.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "71-linux-cli-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "debian-12",
+              "arch": "x86_64",
+              "agent_version": "0.164.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "71-linux-cli-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "fedora-41",
+              "arch": "x86_64",
+              "agent_version": "0.164.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "71-linux-cli-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "rocky-9.8",
+              "arch": "x86_64",
+              "agent_version": "0.164.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "71-linux-cli-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "aarch64",
+              "agent_version": "0.164.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "71-linux-cli-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "x86_64",
+              "agent_version": "0.164.0"
+            }
+          ]
+        },
+        {
+          "route": "vscode_extensions",
+          "value": "openai.chatgpt",
+          "status": "current",
+          "purl": "pkg:vscode-extension/openai/chatgpt",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "85-linux-vscode-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "amzn-2023",
+              "arch": "x86_64",
+              "agent_version": "26.1021.22027"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "85-linux-vscode-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "debian-12",
+              "arch": "x86_64",
+              "agent_version": "26.1021.22027"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "85-linux-vscode-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "fedora-41",
+              "arch": "x86_64",
+              "agent_version": "26.1021.22027"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "85-linux-vscode-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "rocky-9.8",
+              "arch": "x86_64",
+              "agent_version": "26.1021.22027"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "85-linux-vscode-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "aarch64",
+              "agent_version": "26.1021.22027"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "85-linux-vscode-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "x86_64",
+              "agent_version": "26.1021.22027"
+            }
+          ]
+        },
+        {
+          "route": "state_dirs",
+          "value": "~/.codex",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "20-cli-agents",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "20-cli-agents",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "71-linux-cli-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "amzn-2023",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "71-linux-cli-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "debian-12",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "71-linux-cli-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "fedora-41",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "71-linux-cli-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "rocky-9.8",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "71-linux-cli-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "aarch64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "71-linux-cli-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "x86_64"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cursor",
+      "name": "Cursor",
+      "classification": "Coding agent",
+      "platforms": [
+        "darwin",
+        "linux"
+      ],
+      "identifiers": [
+        {
+          "route": "bundle_ids",
+          "value": "com.todesktop.230313mzl4w4u92",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "10-desktop-apps",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64",
+              "agent_version": "3.19.13"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "10-desktop-apps",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64",
+              "agent_version": "3.24.12"
+            }
+          ]
+        },
+        {
+          "route": "homebrew",
+          "value": "cursor",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "10-desktop-apps",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64",
+              "agent_version": "3.19.13,dd066f332fcea7382764400fde902f61920648d5"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "10-desktop-apps",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64",
+              "agent_version": "3.24.12,37b865941ccb31e2fc90c685157534efca87f964"
+            }
+          ]
+        },
+        {
+          "route": "homebrew",
+          "value": "cursor-cli",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "21-cli-agents-homebrew",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64",
+              "agent_version": "2026.09.02-c22c1a3"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "21-cli-agents-homebrew",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64",
+              "agent_version": "2026.10.19-6bbf2c4"
+            }
+          ]
+        },
+        {
+          "route": "binaries",
+          "value": "~/.local/bin/cursor-agent",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "84-linux-installers",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "amzn-2023",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "84-linux-installers",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "debian-12",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "84-linux-installers",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "fedora-41",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "84-linux-installers",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "rocky-9.8",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "84-linux-installers",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "aarch64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "84-linux-installers",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "x86_64"
+            }
+          ]
+        },
+        {
+          "route": "deb_packages",
+          "value": "cursor",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "73-linux-deb",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "debian-12",
+              "arch": "x86_64",
+              "agent_version": "3.27.12-1792724272"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "73-linux-deb",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "aarch64",
+              "agent_version": "3.27.12-1792724452"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "73-linux-deb",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "x86_64",
+              "agent_version": "3.27.12-1792724272"
+            }
+          ]
+        },
+        {
+          "route": "rpm_packages",
+          "value": "cursor",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "77-linux-rpm",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "amzn-2023",
+              "arch": "x86_64",
+              "agent_version": "3.27.12"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "77-linux-rpm",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "fedora-41",
+              "arch": "x86_64",
+              "agent_version": "3.27.12"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "77-linux-rpm",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "rocky-9.8",
+              "arch": "x86_64",
+              "agent_version": "3.27.12"
+            }
+          ]
+        },
+        {
+          "route": "desktop_ids",
+          "value": "cursor.desktop",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "73-linux-deb",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "debian-12",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "73-linux-deb",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "aarch64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "73-linux-deb",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "77-linux-rpm",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "amzn-2023",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "77-linux-rpm",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "fedora-41",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "77-linux-rpm",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "rocky-9.8",
+              "arch": "x86_64"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "perplexity-comet",
+      "name": "Perplexity Comet",
+      "classification": "AI browser",
+      "platforms": [
+        "darwin"
+      ],
+      "identifiers": [
+        {
+          "route": "bundle_ids",
+          "value": "ai.perplexity.comet",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "10-desktop-apps",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64",
+              "agent_version": "155.0.8059.148"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "10-desktop-apps",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64",
+              "agent_version": "155.0.8059.148"
+            }
+          ]
+        },
+        {
+          "route": "homebrew",
+          "value": "comet",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "10-desktop-apps",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64",
+              "agent_version": "145.2.7632.4581"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "10-desktop-apps",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64",
+              "agent_version": "145.2.7632.4581"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "perplexity-desktop",
+      "name": "Perplexity",
+      "classification": "Desktop assistant",
+      "platforms": [
+        "darwin"
+      ],
+      "identifiers": [
+        {
+          "route": "bundle_ids",
+          "value": "ai.perplexity.macv3",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "11-perplexity-desktop",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64",
+              "agent_version": "26.42.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "11-perplexity-desktop",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64",
+              "agent_version": "26.42.0"
+            }
+          ]
+        },
+        {
+          "route": "homebrew",
+          "value": "perplexity",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "11-perplexity-desktop",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64",
+              "agent_version": "26.35.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "11-perplexity-desktop",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64",
+              "agent_version": "26.42.0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "windsurf",
+      "name": "Windsurf",
+      "classification": "Coding agent",
+      "platforms": [
+        "darwin"
+      ],
+      "identifiers": [
+        {
+          "route": "bundle_ids",
+          "value": "com.exafunction.windsurf",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "10-desktop-apps",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64",
+              "agent_version": "3.8.20"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "10-desktop-apps",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64",
+              "agent_version": "3.10.48"
+            }
+          ]
+        },
+        {
+          "route": "homebrew",
+          "value": "devin-desktop",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "10-desktop-apps",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64",
+              "agent_version": "3.8.20,2d9020110aa91587b3c3b0fcf7d1faaf601fc7b8"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "10-desktop-apps",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64",
+              "agent_version": "3.10.48,fcf7ba39e6150055fad817f8716385b4d320d46d"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "orion",
+      "name": "Orion",
+      "classification": "AI browser",
+      "platforms": [
+        "darwin"
+      ],
+      "identifiers": [
+        {
+          "route": "bundle_ids",
+          "value": "com.kagi.kagimacOS",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "10-desktop-apps",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64",
+              "agent_version": "1.1.2"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "10-desktop-apps",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64",
+              "agent_version": "1.1.3"
+            }
+          ]
+        },
+        {
+          "route": "homebrew",
+          "value": "orion",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "10-desktop-apps",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64",
+              "agent_version": "1.1.2,151"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "10-desktop-apps",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64",
+              "agent_version": "1.1.3,152"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "kiro",
+      "name": "Kiro",
+      "classification": "Coding agent",
+      "platforms": [
+        "darwin"
+      ],
+      "identifiers": [
+        {
+          "route": "bundle_ids",
+          "value": "dev.kiro.desktop",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "10-desktop-apps",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64",
+              "agent_version": "1.0.437"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "10-desktop-apps",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64",
+              "agent_version": "1.2.56"
+            }
+          ]
+        },
+        {
+          "route": "homebrew",
+          "value": "kiro",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "10-desktop-apps",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64",
+              "agent_version": "1.0.437"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "10-desktop-apps",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64",
+              "agent_version": "1.2.56"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "antigravity",
+      "name": "Google Antigravity",
+      "classification": "Coding agent",
+      "platforms": [
+        "darwin"
+      ],
+      "identifiers": [
+        {
+          "route": "bundle_ids",
+          "value": "com.google.antigravity",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "10-desktop-apps",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64",
+              "agent_version": "2.12.2"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "10-desktop-apps",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64",
+              "agent_version": "2.22.0"
+            }
+          ]
+        },
+        {
+          "route": "bundle_ids",
+          "value": "com.google.antigravity-ide",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "10-desktop-apps",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64",
+              "agent_version": "2.5.5"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "10-desktop-apps",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64",
+              "agent_version": "2.5.5"
+            }
+          ]
+        },
+        {
+          "route": "homebrew",
+          "value": "antigravity",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "10-desktop-apps",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64",
+              "agent_version": "2.12.2,6298742303883264"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "10-desktop-apps",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64",
+              "agent_version": "2.22.0,5446056071266304"
+            }
+          ]
+        },
+        {
+          "route": "homebrew",
+          "value": "antigravity-ide",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "10-desktop-apps",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64",
+              "agent_version": "2.5.5,4923483625488384"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "10-desktop-apps",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64",
+              "agent_version": "2.5.5,4923483625488384"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "aider",
+      "name": "aider",
+      "classification": "Coding agent",
+      "platforms": [
+        "darwin",
+        "linux"
+      ],
+      "identifiers": [
+        {
+          "route": "homebrew",
+          "value": "aider",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "21-cli-agents-homebrew",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64",
+              "agent_version": "0.86.2"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "21-cli-agents-homebrew",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64",
+              "agent_version": "0.86.2"
+            }
+          ]
+        },
+        {
+          "route": "pypi",
+          "value": "aider-chat",
+          "status": "current",
+          "purl": "pkg:pypi/aider-chat",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "25-python-agents",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "25-python-agents",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "72-linux-python-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "amzn-2023",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "72-linux-python-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "debian-12",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "72-linux-python-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "fedora-41",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "72-linux-python-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "rocky-9.8",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "72-linux-python-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "aarch64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "72-linux-python-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "x86_64"
+            }
+          ]
+        },
+        {
+          "route": "images",
+          "value": "paulgauthier/aider",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "79-linux-image",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "aarch64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "79-linux-image",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "x86_64"
+            }
+          ]
+        },
+        {
+          "route": "state_dirs",
+          "value": "~/.aider",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "25-python-agents",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "25-python-agents",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "72-linux-python-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "amzn-2023",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "72-linux-python-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "debian-12",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "72-linux-python-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "fedora-41",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "72-linux-python-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "rocky-9.8",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "72-linux-python-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "aarch64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "72-linux-python-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "x86_64"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "openhands",
+      "name": "OpenHands",
+      "classification": "Coding agent",
+      "platforms": [
+        "darwin",
+        "linux"
+      ],
+      "identifiers": [
+        {
+          "route": "images",
+          "value": "ghcr.io/openhands/openhands",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "79-linux-image",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "aarch64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "79-linux-image",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "x86_64"
+            }
+          ]
+        },
+        {
+          "route": "images",
+          "value": "ghcr.io/all-hands-ai/openhands",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "79-linux-image",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "aarch64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "79-linux-image",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "x86_64"
+            }
+          ]
+        },
+        {
+          "route": "image_labels",
+          "value": "https://github.com/OpenHands/OpenHands",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "79-linux-image",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "aarch64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "79-linux-image",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "x86_64"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "goose",
+      "name": "goose",
+      "classification": "Coding agent",
+      "platforms": [
+        "darwin",
+        "linux"
+      ],
+      "identifiers": [
+        {
+          "route": "bundle_ids",
+          "value": "com.electron.goose",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "13-desktop-apps-more",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64",
+              "agent_version": "1.56.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "13-desktop-apps-more",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64",
+              "agent_version": "1.56.0"
+            }
+          ]
+        },
+        {
+          "route": "homebrew",
+          "value": "block-goose-cli",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "21-cli-agents-homebrew",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64",
+              "agent_version": "1.49.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "21-cli-agents-homebrew",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64",
+              "agent_version": "1.55.0"
+            }
+          ]
+        },
+        {
+          "route": "homebrew",
+          "value": "block-goose",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "13-desktop-apps-more",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64",
+              "agent_version": "1.56.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "13-desktop-apps-more",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64",
+              "agent_version": "1.56.0"
+            }
+          ]
+        },
+        {
+          "route": "images",
+          "value": "ghcr.io/block/goose",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "79-linux-image",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "aarch64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "79-linux-image",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "x86_64"
+            }
+          ]
+        },
+        {
+          "route": "image_labels",
+          "value": "https://github.com/block/goose",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "79-linux-image",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "aarch64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "79-linux-image",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "x86_64"
+            }
+          ]
+        },
+        {
+          "route": "binaries",
+          "value": "~/.local/bin/goose",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "84-linux-installers",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "amzn-2023",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "84-linux-installers",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "debian-12",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "84-linux-installers",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "fedora-41",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "84-linux-installers",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "rocky-9.8",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "84-linux-installers",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "aarch64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "84-linux-installers",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "x86_64"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "swe-agent",
+      "name": "SWE-agent",
+      "classification": "Coding agent",
+      "platforms": [
+        "darwin",
+        "linux"
+      ],
+      "identifiers": [
+        {
+          "route": "images",
+          "value": "sweagent/swe-agent",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "79-linux-image",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "aarch64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "79-linux-image",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "x86_64"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gemini-cli",
+      "name": "Gemini CLI",
+      "classification": "Coding agent",
+      "platforms": [
+        "darwin",
+        "linux"
+      ],
+      "identifiers": [
+        {
+          "route": "homebrew",
+          "value": "gemini-cli",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "21-cli-agents-homebrew",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64",
+              "agent_version": "0.46.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "21-cli-agents-homebrew",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64",
+              "agent_version": "0.64.0"
+            }
+          ]
+        },
+        {
+          "route": "npm",
+          "value": "@google/gemini-cli",
+          "status": "current",
+          "purl": "pkg:npm/%40google/gemini-cli",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "20-cli-agents",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64",
+              "agent_version": "0.65.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "20-cli-agents",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64",
+              "agent_version": "0.65.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "71-linux-cli-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "amzn-2023",
+              "arch": "x86_64",
+              "agent_version": "0.1.9"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "71-linux-cli-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "debian-12",
+              "arch": "x86_64",
+              "agent_version": "0.65.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "71-linux-cli-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "fedora-41",
+              "arch": "x86_64",
+              "agent_version": "0.65.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "71-linux-cli-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "rocky-9.8",
+              "arch": "x86_64",
+              "agent_version": "0.65.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "71-linux-cli-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "aarch64",
+              "agent_version": "0.65.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "71-linux-cli-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "x86_64",
+              "agent_version": "0.65.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "81-linux-bun",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "amzn-2023",
+              "arch": "x86_64",
+              "agent_version": "0.65.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "81-linux-bun",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "debian-12",
+              "arch": "x86_64",
+              "agent_version": "0.65.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "81-linux-bun",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "fedora-41",
+              "arch": "x86_64",
+              "agent_version": "0.65.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "81-linux-bun",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "rocky-9.8",
+              "arch": "x86_64",
+              "agent_version": "0.65.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "81-linux-bun",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "aarch64",
+              "agent_version": "0.65.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "81-linux-bun",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "x86_64",
+              "agent_version": "0.65.0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "copilot-cli",
+      "name": "GitHub Copilot",
+      "classification": "Coding agent",
+      "platforms": [
+        "darwin",
+        "linux"
+      ],
+      "identifiers": [
+        {
+          "route": "homebrew",
+          "value": "copilot-cli",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "21-cli-agents-homebrew",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64",
+              "agent_version": "1.0.83"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "21-cli-agents-homebrew",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64",
+              "agent_version": "1.0.101"
+            }
+          ]
+        },
+        {
+          "route": "npm",
+          "value": "@github/copilot",
+          "status": "current",
+          "purl": "pkg:npm/%40github/copilot",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "20-cli-agents",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64",
+              "agent_version": "1.0.103"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "20-cli-agents",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64",
+              "agent_version": "1.0.103"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "71-linux-cli-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "amzn-2023",
+              "arch": "x86_64",
+              "agent_version": "1.0.103"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "71-linux-cli-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "debian-12",
+              "arch": "x86_64",
+              "agent_version": "1.0.103"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "71-linux-cli-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "fedora-41",
+              "arch": "x86_64",
+              "agent_version": "1.0.103"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "71-linux-cli-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "rocky-9.8",
+              "arch": "x86_64",
+              "agent_version": "1.0.103"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "71-linux-cli-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "aarch64",
+              "agent_version": "1.0.103"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "71-linux-cli-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "x86_64",
+              "agent_version": "1.0.103"
+            }
+          ]
+        },
+        {
+          "route": "jetbrains_plugins",
+          "value": "github-copilot-intellij",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "86-linux-jetbrains-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "amzn-2023",
+              "arch": "x86_64",
+              "agent_version": "1.19.2-261-linux-arm64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "86-linux-jetbrains-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "debian-12",
+              "arch": "x86_64",
+              "agent_version": "1.19.2-261-linux-arm64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "86-linux-jetbrains-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "fedora-41",
+              "arch": "x86_64",
+              "agent_version": "1.19.2-261-linux-arm64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "86-linux-jetbrains-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "rocky-9.8",
+              "arch": "x86_64",
+              "agent_version": "1.19.2-261-linux-arm64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "86-linux-jetbrains-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "aarch64",
+              "agent_version": "1.19.2-261-linux-arm64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "86-linux-jetbrains-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "x86_64",
+              "agent_version": "1.19.2-261-linux-arm64"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cline",
+      "name": "Cline",
+      "classification": "Coding agent",
+      "platforms": [
+        "darwin",
+        "linux"
+      ],
+      "identifiers": [
+        {
+          "route": "npm",
+          "value": "cline",
+          "status": "current",
+          "purl": "pkg:npm/cline",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "20-cli-agents",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64",
+              "agent_version": "3.0.73"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "20-cli-agents",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64",
+              "agent_version": "3.0.74"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "71-linux-cli-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "amzn-2023",
+              "arch": "x86_64",
+              "agent_version": "3.0.74"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "71-linux-cli-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "debian-12",
+              "arch": "x86_64",
+              "agent_version": "3.0.74"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "71-linux-cli-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "fedora-41",
+              "arch": "x86_64",
+              "agent_version": "3.0.73"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "71-linux-cli-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "rocky-9.8",
+              "arch": "x86_64",
+              "agent_version": "3.0.73"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "71-linux-cli-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "aarch64",
+              "agent_version": "3.0.74"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "71-linux-cli-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "x86_64",
+              "agent_version": "3.0.74"
+            }
+          ]
+        },
+        {
+          "route": "vscode_extensions",
+          "value": "saoudrizwan.claude-dev",
+          "status": "current",
+          "purl": "pkg:vscode-extension/saoudrizwan/claude-dev",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "78-linux-vscode",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "amzn-2023",
+              "arch": "x86_64",
+              "agent_version": "4.1.25"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "78-linux-vscode",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "debian-12",
+              "arch": "x86_64",
+              "agent_version": "4.1.25"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "78-linux-vscode",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "fedora-41",
+              "arch": "x86_64",
+              "agent_version": "4.1.25"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "78-linux-vscode",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "rocky-9.8",
+              "arch": "x86_64",
+              "agent_version": "4.1.25"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "78-linux-vscode",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "aarch64",
+              "agent_version": "4.1.25"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "78-linux-vscode",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "x86_64",
+              "agent_version": "4.1.25"
+            }
+          ]
+        },
+        {
+          "route": "jetbrains_plugins",
+          "value": "cline",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "80-linux-jetbrains",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "amzn-2023",
+              "arch": "x86_64",
+              "agent_version": "2.0.8"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "80-linux-jetbrains",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "debian-12",
+              "arch": "x86_64",
+              "agent_version": "2.0.8"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "80-linux-jetbrains",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "fedora-41",
+              "arch": "x86_64",
+              "agent_version": "2.0.8"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "80-linux-jetbrains",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "rocky-9.8",
+              "arch": "x86_64",
+              "agent_version": "2.0.8"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "80-linux-jetbrains",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "aarch64",
+              "agent_version": "2.0.8"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "80-linux-jetbrains",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "x86_64",
+              "agent_version": "2.0.8"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "continue",
+      "name": "Continue",
+      "classification": "Coding agent",
+      "platforms": [
+        "darwin",
+        "linux"
+      ],
+      "identifiers": [
+        {
+          "route": "npm",
+          "value": "@continuedev/cli",
+          "status": "current",
+          "purl": "pkg:npm/%40continuedev/cli",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "20-cli-agents",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64",
+              "agent_version": "1.5.47"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "20-cli-agents",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64",
+              "agent_version": "1.5.47"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "71-linux-cli-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "amzn-2023",
+              "arch": "x86_64",
+              "agent_version": "1.5.47"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "71-linux-cli-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "debian-12",
+              "arch": "x86_64",
+              "agent_version": "1.5.47"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "71-linux-cli-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "fedora-41",
+              "arch": "x86_64",
+              "agent_version": "1.5.47"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "71-linux-cli-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "rocky-9.8",
+              "arch": "x86_64",
+              "agent_version": "1.5.47"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "71-linux-cli-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "aarch64",
+              "agent_version": "1.5.47"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "71-linux-cli-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "x86_64",
+              "agent_version": "1.5.47"
+            }
+          ]
+        },
+        {
+          "route": "vscode_extensions",
+          "value": "continue.continue",
+          "status": "current",
+          "purl": "pkg:vscode-extension/continue/continue",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "78-linux-vscode",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "amzn-2023",
+              "arch": "x86_64",
+              "agent_version": "2.0.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "78-linux-vscode",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "debian-12",
+              "arch": "x86_64",
+              "agent_version": "2.0.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "78-linux-vscode",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "fedora-41",
+              "arch": "x86_64",
+              "agent_version": "2.0.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "78-linux-vscode",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "rocky-9.8",
+              "arch": "x86_64",
+              "agent_version": "2.0.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "78-linux-vscode",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "aarch64",
+              "agent_version": "2.0.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "78-linux-vscode",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "x86_64",
+              "agent_version": "2.0.0"
+            }
+          ]
+        },
+        {
+          "route": "jetbrains_plugins",
+          "value": "continue-intellij-extension",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "80-linux-jetbrains",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "amzn-2023",
+              "arch": "x86_64",
+              "agent_version": "1.0.67"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "80-linux-jetbrains",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "debian-12",
+              "arch": "x86_64",
+              "agent_version": "1.0.67"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "80-linux-jetbrains",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "fedora-41",
+              "arch": "x86_64",
+              "agent_version": "1.0.67"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "80-linux-jetbrains",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "rocky-9.8",
+              "arch": "x86_64",
+              "agent_version": "1.0.67"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "80-linux-jetbrains",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "aarch64",
+              "agent_version": "1.0.67"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "80-linux-jetbrains",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "x86_64",
+              "agent_version": "1.0.67"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "hermes",
+      "name": "Hermes Agent",
+      "classification": "Personal agent",
+      "platforms": [
+        "darwin",
+        "linux"
+      ],
+      "identifiers": [
+        {
+          "route": "homebrew",
+          "value": "hermes-agent",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "21-cli-agents-homebrew",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64",
+              "agent_version": "2026.8.31_1"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "21-cli-agents-homebrew",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64",
+              "agent_version": "0.22.2"
+            }
+          ]
+        },
+        {
+          "route": "pypi",
+          "value": "hermes-agent",
+          "status": "current",
+          "purl": "pkg:pypi/hermes-agent",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "25-python-agents",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "25-python-agents",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "72-linux-python-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "amzn-2023",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "72-linux-python-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "debian-12",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "72-linux-python-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "fedora-41",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "72-linux-python-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "rocky-9.8",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "72-linux-python-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "aarch64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "72-linux-python-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "x86_64"
+            }
+          ]
+        },
+        {
+          "route": "state_dirs",
+          "value": "~/.hermes",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "25-python-agents",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "25-python-agents",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "72-linux-python-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "amzn-2023",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "72-linux-python-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "debian-12",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "72-linux-python-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "fedora-41",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "72-linux-python-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "rocky-9.8",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "72-linux-python-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "aarch64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "72-linux-python-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "x86_64"
+            }
+          ]
+        },
+        {
+          "route": "binaries",
+          "value": "~/.local/bin/hermes",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "25-python-agents",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "25-python-agents",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "72-linux-python-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "amzn-2023",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "72-linux-python-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "debian-12",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "72-linux-python-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "fedora-41",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "72-linux-python-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "rocky-9.8",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "72-linux-python-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "aarch64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "72-linux-python-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "x86_64"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "opencode",
+      "name": "opencode",
+      "classification": "Coding agent",
+      "platforms": [
+        "darwin",
+        "linux"
+      ],
+      "identifiers": [
+        {
+          "route": "homebrew",
+          "value": "opencode",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "21-cli-agents-homebrew",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64",
+              "agent_version": "1.18.20"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "21-cli-agents-homebrew",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64",
+              "agent_version": "2.1.2"
+            }
+          ]
+        },
+        {
+          "route": "npm",
+          "value": "opencode-ai",
+          "status": "current",
+          "purl": "pkg:npm/opencode-ai",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "20-cli-agents",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64",
+              "agent_version": "1.19.4"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "20-cli-agents",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64",
+              "agent_version": "1.19.4"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "71-linux-cli-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "amzn-2023",
+              "arch": "x86_64",
+              "agent_version": "1.19.4"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "71-linux-cli-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "debian-12",
+              "arch": "x86_64",
+              "agent_version": "1.19.4"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "71-linux-cli-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "fedora-41",
+              "arch": "x86_64",
+              "agent_version": "1.19.4"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "71-linux-cli-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "rocky-9.8",
+              "arch": "x86_64",
+              "agent_version": "1.19.4"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "71-linux-cli-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "aarch64",
+              "agent_version": "1.19.4"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "71-linux-cli-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "x86_64",
+              "agent_version": "1.19.4"
+            }
+          ]
+        },
+        {
+          "route": "state_dirs",
+          "value": "~/.opencode",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "84-linux-installers",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "amzn-2023",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "84-linux-installers",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "debian-12",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "84-linux-installers",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "fedora-41",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "84-linux-installers",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "rocky-9.8",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "84-linux-installers",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "aarch64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "84-linux-installers",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "x86_64"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pi",
+      "name": "Pi",
+      "classification": "Coding agent",
+      "platforms": [
+        "darwin",
+        "linux"
+      ],
+      "identifiers": [
+        {
+          "route": "npm",
+          "value": "@earendil-works/pi-coding-agent",
+          "status": "current",
+          "purl": "pkg:npm/%40earendil-works/pi-coding-agent",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "87-linux-pi",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "amzn-2023",
+              "arch": "x86_64",
+              "agent_version": "1.4.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "87-linux-pi",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "debian-12",
+              "arch": "x86_64",
+              "agent_version": "1.4.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "87-linux-pi",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "fedora-41",
+              "arch": "x86_64",
+              "agent_version": "1.4.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "87-linux-pi",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "rocky-9.8",
+              "arch": "x86_64",
+              "agent_version": "1.4.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "87-linux-pi",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "aarch64",
+              "agent_version": "1.4.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "87-linux-pi",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "x86_64",
+              "agent_version": "1.4.0"
+            }
+          ]
+        },
+        {
+          "route": "npm",
+          "value": "@mariozechner/pi-coding-agent",
+          "status": "current",
+          "purl": "pkg:npm/%40mariozechner/pi-coding-agent",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "88-linux-pi-legacy",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "amzn-2023",
+              "arch": "x86_64",
+              "agent_version": "0.73.1"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "88-linux-pi-legacy",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "debian-12",
+              "arch": "x86_64",
+              "agent_version": "0.73.1"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "88-linux-pi-legacy",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "fedora-41",
+              "arch": "x86_64",
+              "agent_version": "0.73.1"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "88-linux-pi-legacy",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "rocky-9.8",
+              "arch": "x86_64",
+              "agent_version": "0.73.1"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "88-linux-pi-legacy",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "aarch64",
+              "agent_version": "0.73.1"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "88-linux-pi-legacy",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "x86_64",
+              "agent_version": "0.73.1"
+            }
+          ]
+        },
+        {
+          "route": "state_dirs",
+          "value": "~/.pi",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "20-cli-agents",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "20-cli-agents",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "84-linux-installers",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "amzn-2023",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "84-linux-installers",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "debian-12",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "84-linux-installers",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "fedora-41",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "84-linux-installers",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "rocky-9.8",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "84-linux-installers",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "aarch64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "84-linux-installers",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "88-linux-pi-legacy",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "amzn-2023",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "88-linux-pi-legacy",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "debian-12",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "88-linux-pi-legacy",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "fedora-41",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "88-linux-pi-legacy",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "rocky-9.8",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "88-linux-pi-legacy",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "aarch64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "88-linux-pi-legacy",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "x86_64"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "grok",
+      "name": "Grok Build",
+      "classification": "Coding agent",
+      "platforms": [
+        "darwin",
+        "linux"
+      ],
+      "identifiers": [
+        {
+          "route": "state_dirs",
+          "value": "~/.grok",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "84-linux-installers",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "amzn-2023",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "84-linux-installers",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "debian-12",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "84-linux-installers",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "fedora-41",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "84-linux-installers",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "rocky-9.8",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "84-linux-installers",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "aarch64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "84-linux-installers",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "x86_64"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "kiro-cli",
+      "name": "Kiro CLI",
+      "classification": "Coding agent",
+      "platforms": [
+        "darwin",
+        "linux"
+      ],
+      "identifiers": [
+        {
+          "route": "bundle_ids",
+          "value": "com.amazon.codewhisperer",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "21-cli-agents-homebrew",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64",
+              "agent_version": "2.21.1"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "21-cli-agents-homebrew",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64",
+              "agent_version": "2.33.0"
+            }
+          ]
+        },
+        {
+          "route": "homebrew",
+          "value": "kiro-cli",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "21-cli-agents-homebrew",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64",
+              "agent_version": "2.21.1"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "21-cli-agents-homebrew",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64",
+              "agent_version": "2.33.0"
+            }
+          ]
+        },
+        {
+          "route": "binaries",
+          "value": "~/.local/bin/kiro-cli",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "84-linux-installers",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "amzn-2023",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "84-linux-installers",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "debian-12",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "84-linux-installers",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "fedora-41",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "84-linux-installers",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "rocky-9.8",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "84-linux-installers",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "aarch64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "84-linux-installers",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "x86_64"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dia",
+      "name": "Dia",
+      "classification": "AI browser",
+      "platforms": [
+        "darwin"
+      ],
+      "identifiers": [
+        {
+          "route": "bundle_ids",
+          "value": "company.thebrowser.dia",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "13-desktop-apps-more",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64",
+              "agent_version": "1.54.2"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "13-desktop-apps-more",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64",
+              "agent_version": "1.54.2"
+            }
+          ]
+        },
+        {
+          "route": "homebrew",
+          "value": "thebrowsercompany-dia",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "13-desktop-apps-more",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64",
+              "agent_version": "1.54.2,89247"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "13-desktop-apps-more",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64",
+              "agent_version": "1.54.2,89247"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "trae",
+      "name": "Trae",
+      "classification": "Coding agent",
+      "platforms": [
+        "darwin"
+      ],
+      "identifiers": [
+        {
+          "route": "bundle_ids",
+          "value": "com.trae.app",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "13-desktop-apps-more",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64",
+              "agent_version": "3.5.81"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "13-desktop-apps-more",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64",
+              "agent_version": "3.5.81"
+            }
+          ]
+        },
+        {
+          "route": "bundle_ids",
+          "value": "cn.trae.app",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "13-desktop-apps-more",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64",
+              "agent_version": "3.3.83"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "13-desktop-apps-more",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64",
+              "agent_version": "3.3.83"
+            }
+          ]
+        },
+        {
+          "route": "homebrew",
+          "value": "trae",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "13-desktop-apps-more",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64",
+              "agent_version": "2.3.61406"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "13-desktop-apps-more",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64",
+              "agent_version": "2.3.61406"
+            }
+          ]
+        },
+        {
+          "route": "homebrew",
+          "value": "trae-cn",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "13-desktop-apps-more",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64",
+              "agent_version": "2.3.62837"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "13-desktop-apps-more",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64",
+              "agent_version": "2.3.62837"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "muse-desktop",
+      "name": "Muse for Mac",
+      "classification": "Personal agent",
+      "platforms": [
+        "darwin"
+      ],
+      "identifiers": [
+        {
+          "route": "bundle_ids",
+          "value": "com.meta.endo",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "14-meta-muse",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64",
+              "agent_version": "9.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "14-meta-muse",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64",
+              "agent_version": "9.0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "muse-code",
+      "name": "Muse Code",
+      "classification": "Coding agent",
+      "platforms": [
+        "darwin",
+        "linux"
+      ],
+      "identifiers": [
+        {
+          "route": "homebrew",
+          "value": "muse-code",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "21-cli-agents-homebrew",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64",
+              "agent_version": "1.0.3-R2198.1"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "21-cli-agents-homebrew",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64",
+              "agent_version": "1.4.11-R6667.1"
+            }
+          ]
+        },
+        {
+          "route": "binaries",
+          "value": "~/.local/bin/muse",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "14-meta-muse",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "14-meta-muse",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "84-linux-installers",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "amzn-2023",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "84-linux-installers",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "debian-12",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "84-linux-installers",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "fedora-41",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "84-linux-installers",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "rocky-9.8",
+              "arch": "x86_64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "84-linux-installers",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "aarch64"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "84-linux-installers",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "x86_64"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "roo-code",
+      "name": "Roo Code",
+      "classification": "Coding agent",
+      "platforms": [
+        "darwin",
+        "linux"
+      ],
+      "identifiers": [
+        {
+          "route": "vscode_extensions",
+          "value": "rooveterinaryinc.roo-cline",
+          "status": "current",
+          "purl": "pkg:vscode-extension/rooveterinaryinc/roo-cline",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "85-linux-vscode-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "amzn-2023",
+              "arch": "x86_64",
+              "agent_version": "3.54.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "85-linux-vscode-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "debian-12",
+              "arch": "x86_64",
+              "agent_version": "3.54.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "85-linux-vscode-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "fedora-41",
+              "arch": "x86_64",
+              "agent_version": "3.54.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "85-linux-vscode-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "rocky-9.8",
+              "arch": "x86_64",
+              "agent_version": "3.54.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "85-linux-vscode-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "aarch64",
+              "agent_version": "3.54.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "85-linux-vscode-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "x86_64",
+              "agent_version": "3.54.0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "kilo-code",
+      "name": "Kilo Code",
+      "classification": "Coding agent",
+      "platforms": [
+        "darwin",
+        "linux"
+      ],
+      "identifiers": [
+        {
+          "route": "npm",
+          "value": "@kilocode/cli",
+          "status": "current",
+          "purl": "pkg:npm/%40kilocode/cli",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "20-cli-agents",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64",
+              "agent_version": "7.8.17"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "20-cli-agents",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64",
+              "agent_version": "7.8.17"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "71-linux-cli-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "amzn-2023",
+              "arch": "x86_64",
+              "agent_version": "7.8.17"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "71-linux-cli-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "debian-12",
+              "arch": "x86_64",
+              "agent_version": "7.8.17"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "71-linux-cli-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "fedora-41",
+              "arch": "x86_64",
+              "agent_version": "7.8.17"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "71-linux-cli-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "rocky-9.8",
+              "arch": "x86_64",
+              "agent_version": "7.8.17"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "71-linux-cli-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "aarch64",
+              "agent_version": "7.8.17"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "71-linux-cli-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "x86_64",
+              "agent_version": "7.8.17"
+            }
+          ]
+        },
+        {
+          "route": "vscode_extensions",
+          "value": "kilocode.kilo-code",
+          "status": "current",
+          "purl": "pkg:vscode-extension/kilocode/kilo-code",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "85-linux-vscode-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "amzn-2023",
+              "arch": "x86_64",
+              "agent_version": "7.8.17"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "85-linux-vscode-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "debian-12",
+              "arch": "x86_64",
+              "agent_version": "7.8.17"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "85-linux-vscode-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "fedora-41",
+              "arch": "x86_64",
+              "agent_version": "7.8.17"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "85-linux-vscode-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "rocky-9.8",
+              "arch": "x86_64",
+              "agent_version": "7.8.17"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "85-linux-vscode-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "aarch64",
+              "agent_version": "7.8.17"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "85-linux-vscode-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "x86_64",
+              "agent_version": "7.8.17"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "augment",
+      "name": "Augment Code",
+      "classification": "Coding agent",
+      "platforms": [
+        "darwin",
+        "linux"
+      ],
+      "identifiers": [
+        {
+          "route": "npm",
+          "value": "@augmentcode/auggie",
+          "status": "current",
+          "purl": "pkg:npm/%40augmentcode/auggie",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "20-cli-agents",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64",
+              "agent_version": "0.36.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "20-cli-agents",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64",
+              "agent_version": "0.36.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "71-linux-cli-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "amzn-2023",
+              "arch": "x86_64",
+              "agent_version": "0.36.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "71-linux-cli-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "debian-12",
+              "arch": "x86_64",
+              "agent_version": "0.36.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "71-linux-cli-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "fedora-41",
+              "arch": "x86_64",
+              "agent_version": "0.36.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "71-linux-cli-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "rocky-9.8",
+              "arch": "x86_64",
+              "agent_version": "0.36.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "71-linux-cli-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "aarch64",
+              "agent_version": "0.36.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "71-linux-cli-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "x86_64",
+              "agent_version": "0.36.0"
+            }
+          ]
+        },
+        {
+          "route": "vscode_extensions",
+          "value": "augment.vscode-augment",
+          "status": "current",
+          "purl": "pkg:vscode-extension/augment/vscode-augment",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "85-linux-vscode-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "amzn-2023",
+              "arch": "x86_64",
+              "agent_version": "0.904.1"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "85-linux-vscode-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "debian-12",
+              "arch": "x86_64",
+              "agent_version": "0.904.1"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "85-linux-vscode-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "fedora-41",
+              "arch": "x86_64",
+              "agent_version": "0.904.1"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "85-linux-vscode-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "rocky-9.8",
+              "arch": "x86_64",
+              "agent_version": "0.904.1"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "85-linux-vscode-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "aarch64",
+              "agent_version": "0.904.1"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "85-linux-vscode-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "x86_64",
+              "agent_version": "0.904.1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gemini-code-assist",
+      "name": "Gemini Code Assist",
+      "classification": "Coding agent",
+      "platforms": [
+        "darwin",
+        "linux"
+      ],
+      "identifiers": [
+        {
+          "route": "vscode_extensions",
+          "value": "google.geminicodeassist",
+          "status": "current",
+          "purl": "pkg:vscode-extension/google/geminicodeassist",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "85-linux-vscode-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "amzn-2023",
+              "arch": "x86_64",
+              "agent_version": "2.104.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "85-linux-vscode-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "debian-12",
+              "arch": "x86_64",
+              "agent_version": "2.104.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "85-linux-vscode-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "fedora-41",
+              "arch": "x86_64",
+              "agent_version": "2.104.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "85-linux-vscode-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "rocky-9.8",
+              "arch": "x86_64",
+              "agent_version": "2.104.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "85-linux-vscode-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "aarch64",
+              "agent_version": "2.104.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "85-linux-vscode-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "x86_64",
+              "agent_version": "2.104.0"
+            }
+          ]
+        },
+        {
+          "route": "jetbrains_plugins",
+          "value": "gemini",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "86-linux-jetbrains-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "amzn-2023",
+              "arch": "x86_64",
+              "agent_version": "1.60.1-253"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "86-linux-jetbrains-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "debian-12",
+              "arch": "x86_64",
+              "agent_version": "1.60.1-253"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "86-linux-jetbrains-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "fedora-41",
+              "arch": "x86_64",
+              "agent_version": "1.60.1-253"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "86-linux-jetbrains-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "rocky-9.8",
+              "arch": "x86_64",
+              "agent_version": "1.60.1-253"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "86-linux-jetbrains-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "aarch64",
+              "agent_version": "1.60.1-253"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "86-linux-jetbrains-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "x86_64",
+              "agent_version": "1.60.1-253"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "amazon-q",
+      "name": "Amazon Q Developer",
+      "classification": "Coding agent",
+      "platforms": [
+        "darwin",
+        "linux"
+      ],
+      "identifiers": [
+        {
+          "route": "vscode_extensions",
+          "value": "amazonwebservices.amazon-q-vscode",
+          "status": "current",
+          "purl": "pkg:vscode-extension/amazonwebservices/amazon-q-vscode",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "85-linux-vscode-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "amzn-2023",
+              "arch": "x86_64",
+              "agent_version": "2.8.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "85-linux-vscode-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "debian-12",
+              "arch": "x86_64",
+              "agent_version": "2.8.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "85-linux-vscode-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "fedora-41",
+              "arch": "x86_64",
+              "agent_version": "2.8.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "85-linux-vscode-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "rocky-9.8",
+              "arch": "x86_64",
+              "agent_version": "2.8.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "85-linux-vscode-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "aarch64",
+              "agent_version": "2.8.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "85-linux-vscode-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "x86_64",
+              "agent_version": "2.8.0"
+            }
+          ]
+        },
+        {
+          "route": "jetbrains_plugins",
+          "value": "plugin-amazonq",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "86-linux-jetbrains-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "amzn-2023",
+              "arch": "x86_64",
+              "agent_version": "4.9.262"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "86-linux-jetbrains-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "debian-12",
+              "arch": "x86_64",
+              "agent_version": "4.9.262"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "86-linux-jetbrains-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "fedora-41",
+              "arch": "x86_64",
+              "agent_version": "4.9.262"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "86-linux-jetbrains-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "rocky-9.8",
+              "arch": "x86_64",
+              "agent_version": "4.9.262"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "86-linux-jetbrains-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "aarch64",
+              "agent_version": "4.9.262"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "86-linux-jetbrains-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "x86_64",
+              "agent_version": "4.9.262"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cody",
+      "name": "Cody",
+      "classification": "Coding agent",
+      "platforms": [
+        "darwin",
+        "linux"
+      ],
+      "identifiers": [
+        {
+          "route": "vscode_extensions",
+          "value": "sourcegraph.cody-ai",
+          "status": "current",
+          "purl": "pkg:vscode-extension/sourcegraph/cody-ai",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "85-linux-vscode-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "amzn-2023",
+              "arch": "x86_64",
+              "agent_version": "1.156.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "85-linux-vscode-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "debian-12",
+              "arch": "x86_64",
+              "agent_version": "1.156.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "85-linux-vscode-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "fedora-41",
+              "arch": "x86_64",
+              "agent_version": "1.156.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "85-linux-vscode-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "rocky-9.8",
+              "arch": "x86_64",
+              "agent_version": "1.156.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "85-linux-vscode-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "aarch64",
+              "agent_version": "1.156.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "85-linux-vscode-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "x86_64",
+              "agent_version": "1.156.0"
+            }
+          ]
+        },
+        {
+          "route": "jetbrains_plugins",
+          "value": "Sourcegraph",
+          "status": "current",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "86-linux-jetbrains-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "amzn-2023",
+              "arch": "x86_64",
+              "agent_version": "7.155.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "86-linux-jetbrains-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "debian-12",
+              "arch": "x86_64",
+              "agent_version": "7.155.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "86-linux-jetbrains-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "fedora-41",
+              "arch": "x86_64",
+              "agent_version": "7.155.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "86-linux-jetbrains-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "rocky-9.8",
+              "arch": "x86_64",
+              "agent_version": "7.155.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "86-linux-jetbrains-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "aarch64",
+              "agent_version": "7.155.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "86-linux-jetbrains-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "x86_64",
+              "agent_version": "7.155.0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "codegpt",
+      "name": "CodeGPT",
+      "classification": "Coding agent",
+      "platforms": [
+        "darwin",
+        "linux"
+      ],
+      "identifiers": [
+        {
+          "route": "vscode_extensions",
+          "value": "danielsanmedium.dscodegpt",
+          "status": "current",
+          "purl": "pkg:vscode-extension/danielsanmedium/dscodegpt",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "85-linux-vscode-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "amzn-2023",
+              "arch": "x86_64",
+              "agent_version": "3.24.79"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "85-linux-vscode-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "debian-12",
+              "arch": "x86_64",
+              "agent_version": "3.24.79"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "85-linux-vscode-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "fedora-41",
+              "arch": "x86_64",
+              "agent_version": "3.24.79"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "85-linux-vscode-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "rocky-9.8",
+              "arch": "x86_64",
+              "agent_version": "3.24.79"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "85-linux-vscode-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "aarch64",
+              "agent_version": "3.24.79"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "85-linux-vscode-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "x86_64",
+              "agent_version": "3.24.79"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "blackbox",
+      "name": "BLACKBOX AI",
+      "classification": "Coding agent",
+      "platforms": [
+        "darwin",
+        "linux"
+      ],
+      "identifiers": [
+        {
+          "route": "vscode_extensions",
+          "value": "blackboxapp.blackbox",
+          "status": "current",
+          "purl": "pkg:vscode-extension/blackboxapp/blackbox",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "85-linux-vscode-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "amzn-2023",
+              "arch": "x86_64",
+              "agent_version": "2.8.53"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "85-linux-vscode-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "debian-12",
+              "arch": "x86_64",
+              "agent_version": "2.8.53"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "85-linux-vscode-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "fedora-41",
+              "arch": "x86_64",
+              "agent_version": "2.8.53"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "85-linux-vscode-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "rocky-9.8",
+              "arch": "x86_64",
+              "agent_version": "2.8.53"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "85-linux-vscode-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "aarch64",
+              "agent_version": "2.8.53"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "85-linux-vscode-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "x86_64",
+              "agent_version": "2.8.53"
+            }
+          ]
+        },
+        {
+          "route": "vscode_extensions",
+          "value": "blackboxapp.blackboxagent",
+          "status": "current",
+          "purl": "pkg:vscode-extension/blackboxapp/blackboxagent",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "85-linux-vscode-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "amzn-2023",
+              "arch": "x86_64",
+              "agent_version": "3.7.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "85-linux-vscode-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "debian-12",
+              "arch": "x86_64",
+              "agent_version": "3.7.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "85-linux-vscode-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "fedora-41",
+              "arch": "x86_64",
+              "agent_version": "3.7.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "85-linux-vscode-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "rocky-9.8",
+              "arch": "x86_64",
+              "agent_version": "3.7.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "85-linux-vscode-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "aarch64",
+              "agent_version": "3.7.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "85-linux-vscode-agents",
+              "platform": "linux",
+              "run": "40267041759",
+              "os": "ubuntu-24.04",
+              "arch": "x86_64",
+              "agent_version": "3.7.0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "harpa",
+      "name": "HARPA AI",
+      "classification": "Browser agent",
+      "platforms": [
+        "darwin",
+        "linux"
+      ],
+      "identifiers": [
+        {
+          "route": "extension_ids",
+          "value": "eanggfilgoajaocelnaflolkadkeghjp",
+          "status": "current",
+          "purl": "pkg:chrome-extension/eanggfilgoajaocelnaflolkadkeghjp",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "45-claude-extension",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64",
+              "agent_version": "16.1.0"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "45-claude-extension",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64",
+              "agent_version": "16.1.0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "monica",
+      "name": "Monica",
+      "classification": "Browser agent",
+      "platforms": [
+        "darwin",
+        "linux"
+      ],
+      "identifiers": [
+        {
+          "route": "extension_ids",
+          "value": "ofpnmcalabcbjgholdjcjblkibolbppb",
+          "status": "current",
+          "purl": "pkg:chrome-extension/ofpnmcalabcbjgholdjcjblkibolbppb",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "45-claude-extension",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64",
+              "agent_version": "9.0.23"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "45-claude-extension",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64",
+              "agent_version": "9.0.23"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sider",
+      "name": "Sider",
+      "classification": "Browser agent",
+      "platforms": [
+        "darwin",
+        "linux"
+      ],
+      "identifiers": [
+        {
+          "route": "extension_ids",
+          "value": "difoiogjjojoaoomphldepapgpbgkhkb",
+          "status": "current",
+          "purl": "pkg:chrome-extension/difoiogjjojoaoomphldepapgpbgkhkb",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "45-claude-extension",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64",
+              "agent_version": "5.35.3"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "45-claude-extension",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64",
+              "agent_version": "5.35.3"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "merlin",
+      "name": "Merlin",
+      "classification": "Browser agent",
+      "platforms": [
+        "darwin",
+        "linux"
+      ],
+      "identifiers": [
+        {
+          "route": "extension_ids",
+          "value": "camppjleccjaphfdbohjdohecfnoikec",
+          "status": "current",
+          "purl": "pkg:chrome-extension/camppjleccjaphfdbohjdohecfnoikec",
+          "proof": [
+            {
+              "binding": "osquery",
+              "scenario": "45-claude-extension",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "15.7.9",
+              "arch": "arm64",
+              "agent_version": "8.3.1"
+            },
+            {
+              "binding": "osquery",
+              "scenario": "45-claude-extension",
+              "platform": "darwin",
+              "run": "40267041759",
+              "os": "26.6.2",
+              "arch": "arm64",
+              "agent_version": "8.3.1"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "removed": [
+    {
+      "id": "mcp-sdk",
+      "what_it_is": "a library an agent is **built with**"
+    },
+    {
+      "id": "litellm",
+      "what_it_is": "a gateway an agent **calls through**"
+    },
+    {
+      "id": "docker",
+      "what_it_is": "a runtime: **how we look**, not what we look for"
+    },
+    {
+      "id": "ollama",
+      "what_it_is": "a model runner. It **serves** models; an agent drives one"
+    },
+    {
+      "id": "lm-studio",
+      "what_it_is": "a model runner, and a desktop app for one"
+    },
+    {
+      "id": "jan",
+      "what_it_is": "a model runner"
+    },
+    {
+      "id": "llama-cpp",
+      "what_it_is": "a model runner, and the engine several others embed"
+    }
+  ],
+  "source": {
+    "catalog_sha256": "5d09e4736f66a1dde00cfb84cd365e0aac5ec8e32d408dd42d70b71000141fd5",
+    "routes_sha256": "0adadfaca55b388b25513b0302293014d108465f47ccd152fa46d0fb9f77e3b0",
+    "commit": "45a5bca58b41ee1349c438f87843301a2257eb5c"
+  }
+}

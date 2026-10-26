@@ -100,14 +100,14 @@ Full runbook: [gce.md](mdm/gce.md). The OS policy targets Debian 12 and Ubuntu 2
 2. **Check the VMs can install it.** Each VM needs a service account attached (it needs no
    roles). It also needs a route to the osquery package repository and to GitHub
    ([section 00](mdm/gce.md#00--prerequisites--project)).
-3. **Label the VMs to cover.** The label is what turns discovery on for a VM.
-
-   ```bash
-   gcloud compute instances add-labels VM --zone=ZONE --labels=arthur-ai-discovery=enabled
-   ```
-
+3. **Every Debian and Ubuntu VM is targeted.** The policy targets each one in the zones. The
+   module's project metadata turns the OS Config agent and guest attributes on for each VM
+   that does not set its own; a VM's own `FALSE` for either key wins, and Arthur counts that
+   VM instead of reading it as clean. No label is needed, and there is no exclusion label:
+   discovery is for what nobody opted in. To pilot on a few VMs first, set the module's
+   `label` and label those VMs ([section 03](mdm/gce.md#03--scope-and-roll-out--terminal)).
 4. **Check one VM.** A new VM reports within about 15 minutes of boot. A VM that was already
-   running reports a few minutes after it is labelled.
+   running reports a few minutes after the policy reaches it.
 
    ```bash
    gcloud compute instances get-guest-attributes VM --zone=ZONE --query-path=arthur/
@@ -116,29 +116,55 @@ Full runbook: [gce.md](mdm/gce.md). The OS policy targets Debian 12 and Ubuntu 2
    You should see two keys: `inventory`, starting with `arthur1.`, and `status`, starting with
    `ok` or `degraded`. If a key is missing or reads `no-cache`, follow
    [section 06](mdm/gce.md#06--when-a-vm-is-not-reporting--on-the-vm).
-5. **Connect Arthur.** Add a Compute Engine discovery source. Set its `project_ids` and
-   `include_labels` from the `arthur_source` output, and give it the service account's JSON
-   key ([section 07](mdm/gce.md#07--access-for-the-arthur-collector)).
+5. **Connect Arthur.** Add a Compute Engine discovery source. Set its `project_ids` from the
+   `arthur_source` output, and give it the service account's JSON key
+   ([section 07](mdm/gce.md#07--access-for-the-arthur-collector)). To scan every project
+   under an organization or a folder instead, set `organization_id` or `folder_ids`.
 
 ## EC2 instances
 
 Full runbook: [ec2.md](mdm/ec2.md). Instances must be managed by SSM and run Amazon Linux 2023
-or Ubuntu 24.04.
+or Ubuntu 24.04. Amazon Linux 2 installs too, but is not yet run on an instance (the
+[runbook's](mdm/ec2.md) Target row).
 
-1. **Pin the files.** Pin a commit of this repository and record the checksums of the five
-   files it installs ([section 01](mdm/ec2.md#01--pin-the-files--terminal)).
-2. **Create the install association.** It installs osquery, the collector and its timer on
-   instances tagged `arthur-ai-discovery=enabled`
-   ([section 02](mdm/ec2.md#02--the-install-association--terminal)).
-3. **Make sure custom inventory is gathered.** An instance runs only one inventory
-   association. If one already exists, update it rather than adding a second
+1. **Check for an inventory association** in each region. An instance runs only one. Where one
+   exists, you turn custom inventory on in it instead of creating a second, and deploy with
+   `CreateInventoryAssociation=false`
    ([section 03](mdm/ec2.md#03--the-inventory-association--terminal)).
-4. **Tag the instances to cover:**
+2. **Render the template** at a release tag of this repository. It pins every file the
+   instances download to its checksum
+   ([section 01](mdm/ec2.md#01--render-the-template--terminal)):
 
    ```bash
-   aws ec2 create-tags --resources INSTANCE --tags Key=arthur-ai-discovery,Value=enabled
+   tools/render-cfn-template.sh REF > arthur-ai-discovery.cfn.yaml
    ```
 
+3. **Deploy it.** For one account, deploy a stack in each region
+   ([section 02](mdm/ec2.md#02--deploy-the-stack--terminal)):
+
+   ```bash
+   aws cloudformation deploy --region REGION --stack-name arthur-ai-discovery \
+     --template-file arthur-ai-discovery.cfn.yaml --capabilities CAPABILITY_NAMED_IAM \
+     --parameter-overrides CreateInventoryAssociation=CREATE_INVENTORY \
+         ArthurPrincipalArn=ARTHUR_PRINCIPAL_ARN ExternalId=EXTERNAL_ID MemberRoleRegion=ROLE_REGION
+   ```
+
+   The placeholders:
+   - `CREATE_INVENTORY` is `true` where step 1 found no inventory association, and `false` where
+     it found one.
+   - `ROLE_REGION` is one of the regions you deploy to. Only that region's stack creates the role
+     Arthur assumes, so with any other region there is no role and no `MemberRoleArn`.
+
+   The stack installs osquery, the collector and its timer on every SSM-managed Linux instance in
+   the region.
+
+   For an organization, deploy it as a StackSet to the member accounts instead. A StackSet
+   never reaches the management account, so deploy a stack in each of its regions as above
+   ([section 09](mdm/ec2.md#09--across-the-organization--terminal)).
+4. **Every managed Linux instance is targeted.** Both associations target every instance SSM
+   manages in the region, and the install skips Windows. No tag is needed, and there is no
+   exclusion tag: discovery is for what nobody opted in. To pilot on a few instances first,
+   set `TargetInstanceIds` ([section 04](mdm/ec2.md#04--scope-and-roll-out--terminal)).
 5. **Check one instance.** Wait for the timer's first run and the next inventory upload
    ([section 05](mdm/ec2.md#05--prove-it-on-one-instance--terminal)):
 
@@ -147,9 +173,17 @@ or Ubuntu 24.04.
      --type-name Custom:ArthurAIDiscovery --query 'Entries[].[Key,Part,Parts]' --output text
    ```
 
-6. **Connect Arthur.** Grant a credential the three read-only actions listed in
-   [section 07](mdm/ec2.md#07--access-for-the-arthur-collector). Then add an EC2 discovery
-   source with that credential and your regions.
+6. **Connect Arthur.** Add an EC2 discovery source with these settings
+   ([section 07](mdm/ec2.md#07--access-for-the-arthur-collector)):
+   - the credential of `ArthurPrincipalArn`: an IAM user's access key, or for a role such as the
+     engine's IRSA role, the engine's own credentials with
+     `ARTHUR_ENGINE_AWS_EC2_ALLOW_DEFAULT_CREDENTIALS=true`
+   - `role_arn` set to the stack's `MemberRoleArn` output
+   - `external_id` set to `ExternalId`
+   - your regions
+
+   For the organization, give the credential the policy in section 07's *Every account in the
+   organization*. Then set `accounts` to `all` and leave `role_arn` unset.
 
 ## Next
 

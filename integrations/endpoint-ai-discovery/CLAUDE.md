@@ -7,9 +7,9 @@ attributes, or an EC2 instance's SSM custom inventory, carry it; a collector cla
 ## The boundary, first
 
 **This tree writes no osquery.** The queries, the runner, the Docker health guard and the
-wall-clock bound all live in
-[`osquery-ai-discovery`](https://github.com/arthur-ai/osquery-ai-discovery) and are vendored
-here at a pinned ref. What this tree owns is the deployable: the vendoring, the build, the
+wall-clock bound are the osquery binding of
+[`ai-detection-spec`](https://github.com/arthur-ai/ai-detection-spec), vendored here at a
+pinned ref. What this tree owns is the deployable: the vendoring, the build, the
 `arthur1.` wire format and the reporting size budget.
 
 A second implementation here would answer a different question about the same Mac than the
@@ -19,9 +19,10 @@ if a `.sql` file, an `osqueryi` call or a plaintext query appears outside `vendo
 So: **a query change is an upstream change.** Open it there, vendor the new ref, rebuild.
 
 **The boundary applies to prose too: do not restate upstream's documentation here.** Upstream
-documents its own behaviour — `docs/containers.md`, `queries/COST.md`, `docs/telemetry.md` —
-and a copy of it in this tree is a second implementation with the same failure mode as the
-deleted `endpoint/`: it drifts silently, and a reader cannot tell which is current. Link to it
+documents its own behaviour — `osquery/docs/containers.md`, `osquery/queries/COST.md`,
+`docs/telemetry.md` — and a copy of it in this tree is a second implementation with the same
+failure mode as the deleted `endpoint/`: it drifts silently, and a reader cannot tell which is
+current. Link to it
 instead. Write down only what this tree decides — a number, a budget, a guard — and say what
 the decision is, not the upstream reasoning behind the thing being decided about. A vendor bump
 should leave this tree's docs mostly untouched; if it does not, they were carrying upstream's.
@@ -55,26 +56,29 @@ renumbering them is a code change.
 
 | Path | What it is |
 |---|---|
-| `vendor/osquery-ai-discovery/` | the queries and the runner, at a pinned ref. **The only osquery implementation. Do not edit** — run `tools/vendor-queries.sh`. |
-| `tools/vendor-queries.sh` | vendor `bin/` and `dist/` from the public repo at one ref. Not `catalog/` — that is the collector's. |
+| `vendor/ai-detection-spec/` | the queries and the runner, at a pinned ref. **The only osquery implementation. Do not edit** — run `tools/vendor-queries.sh`. |
+| `tools/vendor-queries.sh` | vendor upstream's osquery binding — `osquery/bin/`, `osquery/dist/` and the bundler — at one ref. Not `catalog/` or `bin/classify` — those are the collector's. |
 | `tools/build-collector.py` | build `dist/collect.sh` and `dist/collect-linux.sh`, one file per platform, around one driver. Holds the `arthur1.` framing. |
 | `dist/` | generated, and committed on purpose — a reviewer should see it change. |
 | `deploy/` | the LaunchDaemon for Macs; the systemd units and `report-guest-attributes.sh`, the Compute Engine carrier; `report-ssm-inventory.sh` and the `ec2.conf` drop-in that runs it, the EC2 carrier. |
 | `deploy/arthur-ai-discovery.os-policy.yaml` | the Compute Engine OS policy, and its only copy: `tools/render-os-policy.sh` renders it for gcloud and `deploy/terraform/` reads it. |
 | `deploy/terraform/` | a Terraform module that deploys that policy to a fleet's projects and zones, or through one policy orchestrator. Its tests are `terraform test`, against mocked providers. |
 | `tools/render-os-policy.sh` | pin the OS policy to one ref: each file's URL there, and the sha256 of the bytes the ref holds. |
+| `deploy/arthur-ai-discovery.cfn.yaml` | the EC2 CloudFormation template, and the only copy of its install script: deployed as a stack per region, or as an organization StackSet. Long-form intrinsics only, so it stays plain YAML. |
+| `tools/render-cfn-template.sh` | pin the EC2 template to one ref, as `render-os-policy.sh` pins the OS policy. |
 | `test/lint.sh` | static checks on everything this tree owns. ~1s, no VM. |
 | `test/run-collector.sh` | runs this platform's collector and asserts on it. ~15s, needs osquery. |
 | `test/run-guest-attributes.sh` | runs the reporter against a fake metadata server built from measured answers. ~3s, no osquery. |
 | `test/run-ssm-inventory.sh` | runs the EC2 reporter against a fake IMDS built from AWS's documentation, and reassembles the file it writes. ~6s, no osquery. |
 | `test/run-systemd.sh` | installs and runs the Linux collector under systemd. CI only — it writes to the machine. |
+| `test/run-ec2-install.sh` | runs a rendered template's install script twice under `sh`, against the checkout over `file://`. CI only — it writes to the machine. |
 
 ## Commands
 
 ```bash
 sudo ARTHUR_OUT_DIR=/tmp/arthur dist/collect.sh   # run what deploys; writes 3 files
-vendor/osquery-ai-discovery/bin/discover          # raw rows, no framing, no files
-vendor/osquery-ai-discovery/bin/discover --deep   # ...plus a live container scan
+vendor/ai-detection-spec/bin/discover             # raw rows, no framing, no files
+vendor/ai-detection-spec/bin/discover --deep      # ...plus a live container scan
 
 tools/vendor-queries.sh <ref>         # vendor the public queries and runner at a ref
 tools/build-collector.py              # build both collectors around them
@@ -86,6 +90,7 @@ test/run-guest-attributes.sh          # what the Compute Engine reporter publish
 test/run-ssm-inventory.sh             # what the EC2 reporter writes, ~6s
 
 tools/render-os-policy.sh <ref>       # the Compute Engine OS policy, pinned to a ref
+tools/render-cfn-template.sh <ref>    # the EC2 CloudFormation template, pinned to a ref
 cd deploy/terraform && terraform init -backend=false && terraform test   # the module, mocked
 ```
 
@@ -93,15 +98,15 @@ Run both after any vendor bump or template edit. `lint.sh` **reads** the deploya
 `run-collector.sh` **runs** it, which is the difference that matters: every static guard here
 passed for as long as the collector's extraction preamble went unexecuted by anything but a
 human. CI runs lint and the reporter test on Ubuntu, the Mac collector on a macOS runner, and
-the Linux collector plus `run-systemd.sh` on an Ubuntu runner, where systemd is PID 1. It runs
-the Terraform module's tests too, and validates a caller at the lowest Terraform and Google
-provider the module admits: anything newer passes every other check and breaks a caller pinned
-there.
+the Linux collector plus `run-systemd.sh` and `run-ec2-install.sh` on an Ubuntu runner, where
+systemd is PID 1. It runs `cfn-lint` on the EC2 template and the Terraform module's tests too.
+It also validates a caller at the lowest Terraform and Google provider the module admits:
+anything newer passes every other check and breaks a caller pinned there.
 
-**The VM scenario suite is upstream's.** At the vendored ref that is `test/lint.sh`,
-`test/docker_states.sh` (all six Docker daemon states, including `wedge`) and thirteen VM
-scenarios, run by upstream CI. Do not re-create it here — the copy that lived here is exactly
-how the two implementations diverged unnoticed.
+**The VM scenario suite is upstream's.** At the vendored ref that is `osquery/test/lint.sh`,
+`osquery/test/docker_states.sh` (every Docker daemon state, including `wedge`) and the VM and
+container scenarios under `test/scenarios/`, run by upstream CI. Do not re-create it here —
+the copy that lived here is exactly how the two implementations diverged unnoticed.
 
 `test/run-collector.sh` is not that copy coming back, and the line between them is what each
 one asserts about. The scenarios ask *did the query find this software*, which is a question
@@ -220,4 +225,4 @@ vendored ref `v0.5.0` no interpreter either.
 interpreter invocations in the vendored binaries, ignoring comments that mention one.
 
 A Tart VM harness lives upstream with the scenarios, at `test/run.sh` in
-[`osquery-ai-discovery`](https://github.com/arthur-ai/osquery-ai-discovery).
+[`ai-detection-spec`](https://github.com/arthur-ai/ai-detection-spec).

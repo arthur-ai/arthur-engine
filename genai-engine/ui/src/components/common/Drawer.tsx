@@ -71,7 +71,10 @@ const Content = ({ children, ...props }: Omit<DrawerProps, "open" | "onClose">) 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 Content.muiName = (BaseDrawer as any).muiName;
 
-type TriggerProps = useRender.ComponentProps<typeof Button>;
+// Button's `type` widened to `string` in Material UI v9, but the native <button> merged below needs the literal union.
+type ButtonType = { type?: "button" | "submit" | "reset" };
+
+type TriggerProps = Omit<useRender.ComponentProps<typeof Button>, "type"> & ButtonType;
 
 const Trigger = (props: TriggerProps) => {
   const { render, ...otherProps } = props;
@@ -88,7 +91,7 @@ const Trigger = (props: TriggerProps) => {
   return element;
 };
 
-type CloseProps = useRender.ComponentProps<typeof Button>;
+type CloseProps = Omit<useRender.ComponentProps<typeof Button>, "type"> & ButtonType;
 
 const Close = (props: CloseProps) => {
   const { render, ...otherProps } = props;

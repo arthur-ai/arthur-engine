@@ -100,11 +100,21 @@ export const RagProvidersModal: React.FC<RagProvidersModalProps> = ({ open, onCl
           const provider = row.original;
           return (
             <Box>
-              <Typography variant="body2" fontWeight="medium">
+              <Typography
+                variant="body2"
+                sx={{
+                  fontWeight: "medium",
+                }}
+              >
                 {provider.name}
               </Typography>
               {provider.description && (
-                <Typography variant="caption" color="text.secondary">
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: "text.secondary",
+                  }}
+                >
                   {provider.description}
                 </Typography>
               )}
@@ -136,7 +146,12 @@ export const RagProvidersModal: React.FC<RagProvidersModalProps> = ({ open, onCl
         header: "Created",
         accessorKey: "created_at",
         cell: ({ row }) => (
-          <Typography variant="body2" color="text.secondary">
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+            }}
+          >
             {formatDateInTimezone(row.original.created_at, timezone, { hour12: !use24Hour })}
           </Typography>
         ),
@@ -179,7 +194,12 @@ export const RagProvidersModal: React.FC<RagProvidersModalProps> = ({ open, onCl
           <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <Box>
               <Typography variant="h6">Manage RAG Providers</Typography>
-              <Typography variant="caption" color="text.secondary">
+              <Typography
+                variant="caption"
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
                 Configure vector database connections for retrieval-augmented generation
               </Typography>
             </Box>

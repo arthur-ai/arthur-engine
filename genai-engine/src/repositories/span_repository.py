@@ -734,14 +734,16 @@ class SpanRepository:
         trace_data: bytes,
         default_task_id: str | None = None,
     ) -> Tuple[list[DatabaseSpan], tuple[int, int, int, list[str]]]:
-        """Process trace data from protobuf format and store in database.
+        """Process trace data received on a trace ingestion endpoint and store it.
 
+        Counts the request body as customer ingest volume (ingest_bytes).
         default_task_id is used for resource spans without an arthur.task
         attribute, before service.name is looked up.
         """
         try:
             return self.trace_ingestion_service.process_trace_data(
                 trace_data,
+                count_ingest_bytes=True,
                 default_task_id=default_task_id,
             )
         except DecodeError as e:

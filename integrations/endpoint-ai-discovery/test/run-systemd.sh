@@ -97,6 +97,9 @@ activate
 [ "$(head -c 8 "$store/arthur/inventory" 2>/dev/null)" = arthur1. ] || bad "arthur/inventory is not an arthur1. value"
 cmp -s <(tr -d '\n' < /var/lib/arthur/inventory.ea) "$store/arthur/inventory" \
   || bad "arthur/inventory is not the value the collector framed, byte for byte"
+# The one temp directory no cleaner reads: the run must leave nothing there.
+[ -z "$(ls -A /var/lib/arthur/tmp 2>/dev/null)" ] \
+  || bad "the unit's TMPDIR is not empty: $(ls -A /var/lib/arthur/tmp | tr '\n' ' ')"
 grep -Eq '^(ok|degraded) [0-9-]+T[0-9:]+Z rows=[0-9]+ ' "$store/arthur/status" \
   || bad "arthur/status is not a status line: $(cat "$store/arthur/status" 2>/dev/null)"
 journal_has "published arthur/inventory" || bad "the journal does not say what was published: $(tail -5 "$work/journal")"

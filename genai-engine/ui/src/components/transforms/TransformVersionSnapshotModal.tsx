@@ -70,7 +70,12 @@ export const TransformVersionSnapshotModal: React.FC<TransformVersionSnapshotMod
               {formattedDate && (
                 <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
                   <CalendarTodayIcon sx={{ fontSize: 16, color: "text.secondary" }} />
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: "text.secondary",
+                    }}
+                  >
                     {formattedDate}
                   </Typography>
                 </Box>
@@ -82,7 +87,13 @@ export const TransformVersionSnapshotModal: React.FC<TransformVersionSnapshotMod
             {/* Variable Mappings */}
             {snapshot.variables && snapshot.variables.length > 0 && (
               <Box sx={{ mb: 3 }}>
-                <Typography variant="subtitle2" fontWeight="medium" gutterBottom>
+                <Typography
+                  variant="subtitle2"
+                  gutterBottom
+                  sx={{
+                    fontWeight: "medium",
+                  }}
+                >
                   Variable Mappings ({snapshot.variables.length})
                 </Typography>
                 <Box sx={{ display: "flex", flexDirection: "column", gap: 1, mt: 1 }}>
@@ -97,14 +108,30 @@ export const TransformVersionSnapshotModal: React.FC<TransformVersionSnapshotMod
                         borderColor: "divider",
                       }}
                     >
-                      <Typography variant="body2" fontWeight="medium">
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          fontWeight: "medium",
+                        }}
+                      >
                         {variable.variable_name}
                       </Typography>
-                      <Typography variant="caption" color="text.secondary">
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          color: "text.secondary",
+                        }}
+                      >
                         Span: <code>{variable.span_name}</code> → Path: <code>{variable.attribute_path}</code>
                       </Typography>
                       {variable.fallback !== undefined && variable.fallback !== null && (
-                        <Typography variant="caption" color="text.secondary" display="block">
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            color: "text.secondary",
+                            display: "block",
+                          }}
+                        >
                           Fallback: {JSON.stringify(variable.fallback)}
                         </Typography>
                       )}
@@ -116,7 +143,13 @@ export const TransformVersionSnapshotModal: React.FC<TransformVersionSnapshotMod
 
             {/* Full JSON */}
             <Box>
-              <Typography variant="subtitle2" fontWeight="medium" gutterBottom>
+              <Typography
+                variant="subtitle2"
+                gutterBottom
+                sx={{
+                  fontWeight: "medium",
+                }}
+              >
                 Full JSON Snapshot
               </Typography>
               <Box

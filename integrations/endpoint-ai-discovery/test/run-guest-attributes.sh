@@ -182,7 +182,7 @@ ok "TERM during collection: exit $rc, nothing published, nothing misreported"
 
 case_ "== the reporter leaves no working directory behind ======================="
 [ "$before" = "$(leaked)" ] || bad "the reporter leaked a working directory"
-ok "no arthur-report.* left by twelve runs"
+ok "no arthur-report.* left behind"
 
 [ "$fails" -eq 0 ] && echo "guest-attributes: PASS" || echo "guest-attributes: FAIL ($fails)"
 [ "$fails" -eq 0 ]

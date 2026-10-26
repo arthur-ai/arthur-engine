@@ -1,25 +1,28 @@
-import { TracesTable } from "@arthur/shared-components";
+import {
+  createSessionLevelColumns,
+  createTraceLevelColumns,
+  TimeRangeSelect,
+  TokenCostTooltip,
+  TokenCountTooltip,
+  TracesEmptyState,
+  TracesTable,
+  useTraceColumnDependencies,
+} from "@arthur/shared-components";
 import { Box, Paper, Skeleton, Stack, Typography } from "@mui/material";
 import { useQuery } from "@tanstack/react-query";
 import { Suspense, useCallback, useMemo } from "react";
 
 import type { TimeRange } from "../../constants";
-import { TokenCostTooltip, TokenCountTooltip } from "../../data/common";
-import { createSessionLevelColumns } from "../../data/create-session-level-columns";
-import { createTraceLevelColumns } from "../../data/create-trace-level-columns";
 import { useDrawerTarget } from "../../hooks/useDrawerTarget";
+import { useAnnotationCellOptions } from "../../hooks/useTraceAnnotationActions";
 import { FilterStoreProvider, useFilterStore } from "../../stores/filter.store";
 import { filterFields } from "../filtering/fields";
 import { FilterRow } from "../filtering/FilterRow";
 import { IncomingFilter } from "../filtering/mapper";
 import { TRACE_FIELDS } from "../filtering/trace-fields";
 import { Operators } from "../filtering/types";
-import { TimeRangeSelect } from "../TimeRangeSelect";
-import { TracesEmptyState } from "../TracesEmptyState";
 
-import { CopyableChip } from "@/components/common";
 import { Tabs } from "@/components/ui/Tabs";
-import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useApi } from "@/hooks/useApi";
 import { useMRTPagination } from "@/hooks/useMRTPagination";
 import { SessionMetadataResponse, TraceMetadataResponse, TraceUserMetadataResponse } from "@/lib/api-client/api-client";
@@ -27,7 +30,6 @@ import { FETCH_SIZE } from "@/lib/constants";
 import { queryKeys } from "@/lib/queryKeys";
 import { trackDynamic } from "@/services/analytics";
 import { getFilteredSessions, getFilteredTraces } from "@/services/tracing";
-import { formatDateInTimezone } from "@/utils/formatters";
 
 type UserDrawerBodyProps = {
   user: TraceUserMetadataResponse;
@@ -46,9 +48,9 @@ export const UserDrawerBody = ({ user, timeRange, onTimeRangeChange, taskId, onR
     <Stack spacing={0} sx={{ height: "100%" }}>
       <Stack
         direction="row"
-        justifyContent="space-between"
-        alignItems="center"
         sx={{
+          justifyContent: "space-between",
+          alignItems: "center",
           px: 4,
           py: 2,
           backgroundColor: "action.hover",
@@ -56,17 +58,41 @@ export const UserDrawerBody = ({ user, timeRange, onTimeRangeChange, taskId, onR
           borderColor: "divider",
         }}
       >
-        <Stack direction="column" gap={1}>
-          <Typography variant="body2" color="text.secondary">
+        <Stack
+          direction="column"
+          sx={{
+            gap: 1,
+          }}
+        >
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+            }}
+          >
             User Details
           </Typography>
-          <Typography variant="h5" color="text.primary" fontWeight="bold">
+          <Typography
+            variant="h5"
+            sx={{
+              color: "text.primary",
+              fontWeight: "bold",
+            }}
+          >
             {user.user_id}
           </Typography>
         </Stack>
       </Stack>
 
-      <Stack direction="row" alignItems="center" gap={2} sx={{ px: 4, py: 2 }}>
+      <Stack
+        direction="row"
+        sx={{
+          alignItems: "center",
+          gap: 2,
+          px: 4,
+          py: 2,
+        }}
+      >
         <TokenCountTooltip prompt={tokens[0] ?? 0} completion={tokens[1] ?? 0} total={tokens[2] ?? 0} />
         <TokenCostTooltip prompt={costs[0] ?? 0} completion={costs[1] ?? 0} total={costs[2] ?? 0} />
       </Stack>
@@ -74,7 +100,13 @@ export const UserDrawerBody = ({ user, timeRange, onTimeRangeChange, taskId, onR
       <Box sx={{ px: 4, py: 2 }}>
         <Paper variant="outlined">
           <Tabs.Root defaultValue="traces">
-            <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+            <Stack
+              direction="row"
+              sx={{
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+              }}
+            >
               <Tabs.List>
                 <Tabs.Tab value="traces">Traces</Tabs.Tab>
                 <Tabs.Tab value="sessions">Sessions</Tabs.Tab>
@@ -118,7 +150,8 @@ type UserTableProps = {
 const UserTracesTable = ({ ids, taskId, onRowClick }: UserTableProps) => {
   const api = useApi()!;
   const [, setDrawerTarget] = useDrawerTarget();
-  const { timezone, use24Hour } = useDisplaySettings();
+  const annotationCell = useAnnotationCellOptions();
+  const columnDependencies = useTraceColumnDependencies({ onTrack: trackDynamic, annotationCell });
 
   const { pagination, props } = useMRTPagination({ initialPageSize: FETCH_SIZE });
 
@@ -141,23 +174,7 @@ const UserTracesTable = ({ ids, taskId, onRowClick }: UserTableProps) => {
     queryFn: () => getFilteredTraces(api, params),
   });
 
-  const columns = useMemo(
-    () =>
-      createTraceLevelColumns({
-        formatDate: (v) => formatDateInTimezone(v, timezone, { hour12: !use24Hour }),
-        formatCurrency: () => "",
-        onTrack: trackDynamic,
-        Chip: CopyableChip,
-        DurationCell: () => null,
-        TraceContentCell: () => null,
-        AnnotationCell: () => null,
-        SpanStatusBadge: () => null,
-        TypeChip: () => null,
-        TokenCountTooltip,
-        TokenCostTooltip,
-      }),
-    [timezone, use24Hour]
-  );
+  const columns = useMemo(() => createTraceLevelColumns(columnDependencies), [columnDependencies]);
 
   const setFilters = useFilterStore((state) => state.setFilters);
 
@@ -186,7 +203,12 @@ const UserTracesTable = ({ ids, taskId, onRowClick }: UserTableProps) => {
   };
 
   return (
-    <Stack gap={1} mt={1}>
+    <Stack
+      sx={{
+        gap: 1,
+        mt: 1,
+      }}
+    >
       <FilterRow
         filters={filters}
         onFiltersChange={handleFiltersChange}
@@ -206,7 +228,12 @@ const UserTracesTable = ({ ids, taskId, onRowClick }: UserTableProps) => {
         />
       ) : (
         <TracesEmptyState title="No traces found">
-          <Typography variant="body1" color="text.secondary">
+          <Typography
+            variant="body1"
+            sx={{
+              color: "text.secondary",
+            }}
+          >
             Try adjusting your search query
           </Typography>
         </TracesEmptyState>
@@ -218,7 +245,7 @@ const UserTracesTable = ({ ids, taskId, onRowClick }: UserTableProps) => {
 const UserSessionsTable = ({ ids, taskId, onRowClick }: UserTableProps) => {
   const api = useApi()!;
   const [, setDrawerTarget] = useDrawerTarget();
-  const { timezone, use24Hour } = useDisplaySettings();
+  const columnDependencies = useTraceColumnDependencies({ onTrack: trackDynamic });
   const { pagination, props } = useMRTPagination({ initialPageSize: FETCH_SIZE });
 
   const timeRange = useFilterStore((state) => state.timeRange);
@@ -239,23 +266,7 @@ const UserSessionsTable = ({ ids, taskId, onRowClick }: UserTableProps) => {
     queryFn: () => getFilteredSessions(api, params),
   });
 
-  const columns = useMemo(
-    () =>
-      createSessionLevelColumns({
-        formatDate: (v) => formatDateInTimezone(v, timezone, { hour12: !use24Hour }),
-        formatCurrency: () => "",
-        onTrack: trackDynamic,
-        Chip: CopyableChip,
-        DurationCell: () => null,
-        TraceContentCell: () => null,
-        AnnotationCell: () => null,
-        SpanStatusBadge: () => null,
-        TypeChip: () => null,
-        TokenCountTooltip,
-        TokenCostTooltip,
-      }),
-    [timezone, use24Hour]
-  );
+  const columns = useMemo(() => createSessionLevelColumns(columnDependencies), [columnDependencies]);
 
   const handleRowClick = (row: SessionMetadataResponse) => {
     if (onRowClick) {
@@ -279,7 +290,12 @@ const UserSessionsTable = ({ ids, taskId, onRowClick }: UserTableProps) => {
     </>
   ) : (
     <TracesEmptyState title="No sessions found">
-      <Typography variant="body1" color="text.secondary">
+      <Typography
+        variant="body1"
+        sx={{
+          color: "text.secondary",
+        }}
+      >
         Try adjusting your search query
       </Typography>
     </TracesEmptyState>
