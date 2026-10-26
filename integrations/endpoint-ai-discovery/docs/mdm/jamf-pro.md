@@ -16,14 +16,14 @@ notarized, because the script carries its own payload. The
 A Docker daemon that answers its health check and then stalls hangs the query, and with it
 `jamf recon`. Jamf documents no timeout for Extension Attributes. The scheduled script puts a
 time limit on every query; the attributes only read files. Upstream's
-[deployment guide](https://github.com/arthur-ai/osquery-ai-discovery/blob/main/docs/deployment.md)
+[deployment guide](https://github.com/arthur-ai/ai-detection-spec/blob/main/osquery/docs/deployment.md)
 gives the details.
 
 ## 00 · Install osquery — Jamf Pro
 
 Install osquery 5.18 or later. Older versions run, but every branch whose table they lack
 reports `error`. Upstream's
-[`docs/limits.md`](https://github.com/arthur-ai/osquery-ai-discovery/blob/main/docs/limits.md)
+[`docs/limits.md`](https://github.com/arthur-ai/ai-detection-spec/blob/main/docs/limits.md)
 lists which branch needs which version.
 
 Jamf does not see osquery by default: it installs under `/opt/osquery`, which Application
@@ -99,8 +99,8 @@ cd arthur-engine/integrations/endpoint-ai-discovery
 tools/build-collector.py --check   # expect: dist/collect.sh is up to date (vendored ref …)
 ```
 
-`--check` prints the vendored osquery-ai-discovery ref, which
-`vendor/osquery-ai-discovery/VERSION` also records. A ref pinned to a bare commit prints
+`--check` prints the vendored ai-detection-spec ref, which
+`vendor/ai-detection-spec/VERSION` also records. A ref pinned to a bare commit prints
 `PROVISIONAL`; that is legitimate. If the check reports drift, run `tools/build-collector.py`
 to rebuild the script before you deploy it.
 
@@ -216,18 +216,20 @@ In Jamf, the Mac's record should show *Arthur AI Inventory* starting with `arthu
 you copied from Jamf, run this from this directory:
 
 ```bash
+v=../../ml-engine/src/ml_engine/discovery/_vendor; t="$(mktemp -d)"
+mkdir "$t/bin" "$t/schema" && cp "$v/classify.py" "$t/bin/classify" && cp "$v/catalog.schema.json" "$t/schema/"
 pbpaste | python3 -c 'import base64,gzip,json,sys
 v=sys.stdin.read().strip()
 json.dump(json.loads(gzip.decompress(base64.b64decode(v[8:]))),sys.stdout,indent=1)' \
-  | AI_DISCOVERY_TELEMETRY=0 vendor/osquery-ai-discovery/bin/classify /dev/stdin \
-      --catalog ../../ml-engine/src/ml_engine/discovery/_vendor/agents.yaml \
-      --routes  ../../ml-engine/src/ml_engine/discovery/_vendor/routes.yaml
+  | AI_DETECTION_SPEC_TELEMETRY=0 python3 "$t/bin/classify" --catalog "$v/catalog.json" /dev/stdin
 ```
 
 The output lists the agents it found, which branches ran and when, and `COULD NOT LOOK` for
-any branch that did not. The catalog comes from ml-engine's vendored copy, because the
-collector is what matches. `AI_DISCOVERY_TELEMETRY=0` matters: without it, `classify` sends a
-usage event about the payload it read, and this payload comes from a customer's Mac.
+any branch that did not. The matcher and the catalog are ml-engine's vendored copies, because
+the collector is what matches. `classify` reads the schema from `schema/` beside its own
+`bin/`, as a release lays them out, and needs jsonschema. `AI_DETECTION_SPEC_TELEMETRY=0`
+matters: without it, `classify` sends a usage event about the payload it read, and this
+payload comes from a customer's Mac.
 
 ## 06 · Smart Groups — Jamf Pro
 
@@ -279,7 +281,7 @@ The status line holds:
 4. one `branch=outcome` token per query branch
 
 The outcome vocabulary is upstream's
-([`deployment.md`](https://github.com/arthur-ai/osquery-ai-discovery/blob/main/docs/deployment.md));
+([`deployment.md`](https://github.com/arthur-ai/ai-detection-spec/blob/main/osquery/docs/deployment.md#statustxt));
 this table says what to do about each:
 
 | Outcome | Means | Do |

@@ -7,9 +7,9 @@ attributes, or an EC2 instance's SSM custom inventory, carry it; a collector cla
 ## The boundary, first
 
 **This tree writes no osquery.** The queries, the runner, the Docker health guard and the
-wall-clock bound all live in
-[`osquery-ai-discovery`](https://github.com/arthur-ai/osquery-ai-discovery) and are vendored
-here at a pinned ref. What this tree owns is the deployable: the vendoring, the build, the
+wall-clock bound are the osquery binding of
+[`ai-detection-spec`](https://github.com/arthur-ai/ai-detection-spec), vendored here at a
+pinned ref. What this tree owns is the deployable: the vendoring, the build, the
 `arthur1.` wire format and the reporting size budget.
 
 A second implementation here would answer a different question about the same Mac than the
@@ -19,9 +19,10 @@ if a `.sql` file, an `osqueryi` call or a plaintext query appears outside `vendo
 So: **a query change is an upstream change.** Open it there, vendor the new ref, rebuild.
 
 **The boundary applies to prose too: do not restate upstream's documentation here.** Upstream
-documents its own behaviour — `docs/containers.md`, `queries/COST.md`, `docs/telemetry.md` —
-and a copy of it in this tree is a second implementation with the same failure mode as the
-deleted `endpoint/`: it drifts silently, and a reader cannot tell which is current. Link to it
+documents its own behaviour — `osquery/docs/containers.md`, `osquery/queries/COST.md`,
+`docs/telemetry.md` — and a copy of it in this tree is a second implementation with the same
+failure mode as the deleted `endpoint/`: it drifts silently, and a reader cannot tell which is
+current. Link to it
 instead. Write down only what this tree decides — a number, a budget, a guard — and say what
 the decision is, not the upstream reasoning behind the thing being decided about. A vendor bump
 should leave this tree's docs mostly untouched; if it does not, they were carrying upstream's.
@@ -55,8 +56,8 @@ renumbering them is a code change.
 
 | Path | What it is |
 |---|---|
-| `vendor/osquery-ai-discovery/` | the queries and the runner, at a pinned ref. **The only osquery implementation. Do not edit** — run `tools/vendor-queries.sh`. |
-| `tools/vendor-queries.sh` | vendor `bin/` and `dist/` from the public repo at one ref. Not `catalog/` — that is the collector's. |
+| `vendor/ai-detection-spec/` | the queries and the runner, at a pinned ref. **The only osquery implementation. Do not edit** — run `tools/vendor-queries.sh`. |
+| `tools/vendor-queries.sh` | vendor upstream's osquery binding — `osquery/bin/`, `osquery/dist/` and the bundler — at one ref. Not `catalog/` or `bin/classify` — those are the collector's. |
 | `tools/build-collector.py` | build `dist/collect.sh` and `dist/collect-linux.sh`, one file per platform, around one driver. Holds the `arthur1.` framing. |
 | `dist/` | generated, and committed on purpose — a reviewer should see it change. |
 | `deploy/` | the LaunchDaemon for Macs; the systemd units and `report-guest-attributes.sh`, the Compute Engine carrier; `report-ssm-inventory.sh` and the `ec2.conf` drop-in that runs it, the EC2 carrier. |
@@ -76,8 +77,8 @@ renumbering them is a code change.
 
 ```bash
 sudo ARTHUR_OUT_DIR=/tmp/arthur dist/collect.sh   # run what deploys; writes 3 files
-vendor/osquery-ai-discovery/bin/discover          # raw rows, no framing, no files
-vendor/osquery-ai-discovery/bin/discover --deep   # ...plus a live container scan
+vendor/ai-detection-spec/bin/discover             # raw rows, no framing, no files
+vendor/ai-detection-spec/bin/discover --deep      # ...plus a live container scan
 
 tools/vendor-queries.sh <ref>         # vendor the public queries and runner at a ref
 tools/build-collector.py              # build both collectors around them
@@ -102,10 +103,10 @@ systemd is PID 1. It runs `cfn-lint` on the EC2 template and the Terraform modul
 It also validates a caller at the lowest Terraform and Google provider the module admits:
 anything newer passes every other check and breaks a caller pinned there.
 
-**The VM scenario suite is upstream's.** At the vendored ref that is `test/lint.sh`,
-`test/docker_states.sh` (all six Docker daemon states, including `wedge`) and thirteen VM
-scenarios, run by upstream CI. Do not re-create it here — the copy that lived here is exactly
-how the two implementations diverged unnoticed.
+**The VM scenario suite is upstream's.** At the vendored ref that is `osquery/test/lint.sh`,
+`osquery/test/docker_states.sh` (every Docker daemon state, including `wedge`) and the VM and
+container scenarios under `test/scenarios/`, run by upstream CI. Do not re-create it here —
+the copy that lived here is exactly how the two implementations diverged unnoticed.
 
 `test/run-collector.sh` is not that copy coming back, and the line between them is what each
 one asserts about. The scenarios ask *did the query find this software*, which is a question
@@ -224,4 +225,4 @@ vendored ref `v0.5.0` no interpreter either.
 interpreter invocations in the vendored binaries, ignoring comments that mention one.
 
 A Tart VM harness lives upstream with the scenarios, at `test/run.sh` in
-[`osquery-ai-discovery`](https://github.com/arthur-ai/osquery-ai-discovery).
+[`ai-detection-spec`](https://github.com/arthur-ai/ai-detection-spec).

@@ -19,7 +19,6 @@ from typing import Any, Optional
 
 import pytest
 import requests
-import yaml
 from arthur_common.models.agent_governance_schemas import (
     AgentObservations,
     EndpointAgentCreationSource,
@@ -38,24 +37,18 @@ from job_executors.discovery_scan import (
     DiscoveryErrorCode,
     failure_code,
 )
+from tests.fakes.catalog import agent, document
 
 SCAN_AT = 1790100381
 LOG = logging.getLogger("discovery-test")
-CATALOG = yaml.safe_dump(
-    {
-        "version": 2,
-        "classifications": ["Coding agent"],
-        "agents": [
-            {
-                "id": "codex-cli",
-                "name": "Codex CLI",
-                "classification": "Coding agent",
-                "platforms": ["darwin"],
-                "npm": ["@openai/codex"],
-                "binaries": ["~/.local/bin/codex"],
-            },
-        ],
-    },
+CATALOG = document(
+    agent(
+        "codex-cli",
+        "Codex CLI",
+        "Coding agent",
+        npm=["@openai/codex"],
+        binaries=["~/.local/bin/codex"],
+    ),
 )
 FIELDS = {"base_url": "https://acme.jamfcloud.com"}
 CREDS = {
@@ -819,20 +812,13 @@ def test_observations_carry_what_only_the_connector_saw(
 ) -> None:
     """install_path, version, permissions and classification come off the payload and
     the catalog; the device fields come off Jamf's own record."""
-    catalog = yaml.safe_dump(
-        {
-            "version": 2,
-            "classifications": ["Desktop assistant"],
-            "agents": [
-                {
-                    "id": "claude-desktop",
-                    "name": "Claude Desktop",
-                    "classification": "Desktop assistant",
-                    "platforms": ["darwin"],
-                    "bundle_ids": ["com.anthropic.claudefordesktop"],
-                },
-            ],
-        },
+    catalog = document(
+        agent(
+            "claude-desktop",
+            "Claude Desktop",
+            "Desktop assistant",
+            bundle_ids=["com.anthropic.claudefordesktop"],
+        ),
     )
     fake = FakeJamf([[computer("m1", full_payload())]])
     monkeypatch.setattr(
@@ -927,21 +913,14 @@ def test_an_opaque_id_is_not_reported_as_an_install_path(
     """`loc` is a filesystem path for most kinds and an image or container id for the
     container ones. Found on a real Mac: aider matched through `images` and reported its
     image sha as install_path -- a path that does not exist anywhere."""
-    catalog = yaml.safe_dump(
-        {
-            "version": 2,
-            "classifications": ["Coding agent"],
-            "agents": [
-                {
-                    "id": "aider",
-                    "name": "aider",
-                    "classification": "Coding agent",
-                    "platforms": ["darwin"],
-                    "images": ["paulgauthier/aider"],
-                    "image_labels": ["https://github.com/x/y"],
-                },
-            ],
-        },
+    catalog = document(
+        agent(
+            "aider",
+            "aider",
+            "Coding agent",
+            images=["paulgauthier/aider"],
+            image_labels=["https://github.com/x/y"],
+        ),
     )
     payload = frame([row(kind, ident, loc=loc, ver=ver), scan_row("containers")])
     fake = FakeJamf([[computer("m1", payload)]])
@@ -957,28 +936,22 @@ def test_an_opaque_id_is_not_reported_as_an_install_path(
     assert records[0].creation_source.address.resource_id == ident
 
 
-def test_a_container_state_is_not_reported_as_a_version(
+def test_a_container_reports_no_version_and_no_path(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """`ver` on a container row is its state. "running" is not a version."""
-    catalog = yaml.safe_dump(
-        {
-            "version": 2,
-            "classifications": ["Coding agent"],
-            "agents": [
-                {
-                    "id": "aider",
-                    "name": "aider",
-                    "classification": "Coding agent",
-                    "platforms": ["darwin"],
-                    "images": ["paulgauthier/aider"],
-                },
-            ],
-        },
+    """A container row is a running container: `ver` is empty, and `loc` is the
+    container's id, which is not a path."""
+    catalog = document(
+        agent(
+            "aider",
+            "aider",
+            "Coding agent",
+            images=["paulgauthier/aider"],
+        ),
     )
     payload = frame(
         [
-            row("container", "paulgauthier/aider:latest", ver="running", loc="c0ffee"),
+            row("container", "paulgauthier/aider:latest", loc="c0ffee"),
             scan_row("containers"),
         ],
     )
@@ -989,7 +962,9 @@ def test_a_container_state_is_not_reported_as_a_version(
     )
     records = [r for b in JamfConnector().scan(FakeConfig(catalog), 24, CREDS, FIELDS, LOG) for r in b]  # type: ignore[arg-type]
 
-    assert records[0].creation_source.observations.version is None
+    observations = records[0].creation_source.observations
+    assert observations.version is None
+    assert observations.install_path is None
 
 
 @pytest.mark.parametrize(
@@ -1022,21 +997,14 @@ def test_the_newer_kinds_report_only_a_real_path_and_version(
     is an app bundle, an agent binary or the interpreter running one, depending on which
     query emitted it.
     """
-    catalog = yaml.safe_dump(
-        {
-            "version": 2,
-            "classifications": ["Coding agent"],
-            "agents": [
-                {
-                    "id": "example",
-                    "name": "Example",
-                    "classification": "Coding agent",
-                    "platforms": ["darwin"],
-                    "jetbrains_plugins": ["example"],
-                    "bundle_ids": ["com.example.agent"],
-                },
-            ],
-        },
+    catalog = document(
+        agent(
+            "example",
+            "Example",
+            "Coding agent",
+            jetbrains_plugins=["example"],
+            bundle_ids=["com.example.agent"],
+        ),
     )
     payload = frame([row(kind, ident, loc=loc, ver=ver), scan_row("apps")])
     fake = FakeJamf([[computer("m1", payload)]])
@@ -1505,8 +1473,8 @@ def test_unreadable_macs_are_counted_by_why(monkeypatch: pytest.MonkeyPatch) -> 
 # D-19's never-collected list: prompt and response contents, file contents, keystrokes
 # or screen data, personal browsing history. Enforced in three places, each with a test
 # here: the sections the connector asks Jamf for, the fields it keeps from a device
-# record, and the six columns it accepts from the collector. The record schema is the
-# fourth: it has no field that could carry any of them.
+# record, and the members of an evidence row it carries from the collector. The record
+# schema is the fourth: it has no field that could carry any of them.
 
 PERSONAL = {
     "email": "nori@example.com",
@@ -1585,21 +1553,24 @@ def test_a_device_record_keeps_nothing_the_observations_do_not_name(
     assert '"assigned_user": "nori"' in wire, "the allow-listed user is still there"
 
 
-def test_a_row_with_more_than_the_six_columns_is_refused_not_forwarded(
+def test_a_member_the_spec_does_not_name_is_ignored_not_forwarded(
     monkeypatch: pytest.MonkeyPatch,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """A collector that starts writing what it read -- a prompt, a file -- fails the
-    device rather than shipping the extra column. The contract is the privacy boundary,
-    and the warning names the column, never its value."""
+    """A collector that starts writing what it read -- a prompt, a file -- has that member
+    ignored, as the spec has a matcher ignore it: it goes no further than the reader, and the
+    warning names the member, never its value."""
     rows = [row("npm", "@openai/codex", ver="0.5.0"), scan_row("packages")]
     rows[0]["contents"] = PERSONAL["prompt text"]
     with caplog.at_level(logging.WARNING, logger=LOG.name):
         records = scan(FakeJamf([[computer("m1", frame(rows))]]), monkeypatch)
 
-    assert records == []
-    assert "unexpected ['contents']" in caplog.text
+    assert [r.name for r in records] == ["Codex CLI"]
+    assert "ignored unread: contents" in caplog.text
     assert PERSONAL["prompt text"] not in caplog.text
+    assert PERSONAL["prompt text"] not in json.dumps(
+        [r.model_dump(mode="json") for r in records],
+    )
 
 
 def test_the_extra_column_never_reaches_a_record(
