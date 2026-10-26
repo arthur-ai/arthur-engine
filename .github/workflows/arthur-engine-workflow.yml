@@ -682,8 +682,6 @@ jobs:
             ${{ github.ref == 'refs/heads/main' && 'arthurplatform/ml-engine:latest' || '' }}
             ${{ github.ref == 'refs/heads/dev' && 'arthurplatform/ml-engine:latest-dev' || '' }}
           push: true
-          # arm64 ships without ODBC Driver 17 and with a different Oracle Instant Client;
-          # see ml-engine/Dockerfile.
           platforms: linux/amd64,linux/arm64
           sbom: true
       # Advisory vulnerability scan + justification docs (must never fail the release build).

@@ -54,6 +54,7 @@ cd scripts
 cd ..
 docker build . -t ml-engine:local
 ```
+This builds for your machine's architecture (`linux/arm64` on Apple Silicon). To run the image on an amd64 host or cluster, build it for that platform instead: `docker build --platform linux/amd64 . -t ml-engine:local`.
 3. Run docker image
 ```bash
 docker run -e ARTHUR_API_HOST=https://platform.arthur.ai -e ARTHUR_CLIENT_SECRET=<value given when engine is registered> -e ARTHUR_CLIENT_ID=<value given when engine is registered> -it ml-engine:local
@@ -95,20 +96,10 @@ The script supports Mac systems only.
 
 **Note:** This script is designed for local development installations. For Docker deployments, the database dependencies are automatically installed during the Docker build process.
 
-4. Install Oracle Manually for database drivers (optional, for running the engine locally only—not currently needed for unit tests)
+Oracle needs nothing installed: the ODBC connector's Oracle Native dialect uses python-oracledb in thin mode, which
+does not load an Oracle client. The Docker image ships none either.
 
-**NOTE**: This is only required if you are doing work with an ODBC Connector that is connecting to an Oracle database.
-If that doesn't apply to you you can skip this step and come back to it when it's needed. Oracle is still built into
-the ML engine, so if it does apply to you but you don't want to have to do this, just run the ML engine you're using
-in Docker instead of in your Python environment.
-
-For Intel Macs, follow the instructions here: https://www.oracle.com/database/technologies/instant-client/macos-intel-x86-downloads.html.
-You need to install both the Basic and the ODBC package linked on that page.
-
-For ARM Macs, follow the installation instructions here: https://www.oracle.com/database/technologies/instant-client/macos-arm64-downloads.html
-You need to install both the Basic and the ODBC package linked on that page.
-
-5. Install Python dependencies
+4. Install Python dependencies
 ```bash
 uv sync
 ```
