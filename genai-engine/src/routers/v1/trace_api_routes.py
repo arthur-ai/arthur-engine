@@ -133,10 +133,22 @@ def _decode_body(body: bytes, content_encoding: str | None) -> bytes:
 @trace_api_routes.post(
     "/traces",
     summary="Receive Traces",
-    description="Receiver for OpenInference trace standard.",
+    description="Receiver for OpenInference trace standard. The body may be "
+    "gzip-compressed (Content-Encoding: gzip).",
     response_model=None,
     response_model_exclude_none=True,
     tags=["Traces"],
+    responses={
+        status.HTTP_400_BAD_REQUEST: {
+            "description": "The body is not a valid protobuf message, or not valid gzip.",
+        },
+        status.HTTP_413_REQUEST_ENTITY_TOO_LARGE: {
+            "description": "A gzip body unpacks to more than 64 MiB.",
+        },
+        status.HTTP_415_UNSUPPORTED_MEDIA_TYPE: {
+            "description": "Content-Encoding is neither gzip nor identity.",
+        },
+    },
 )
 @permission_checker(permissions=PermissionLevelsEnum.TRACES_WRITE.value)
 def receive_traces(

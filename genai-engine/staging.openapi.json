@@ -4465,7 +4465,7 @@
                     "Traces"
                 ],
                 "summary": "Receive Traces",
-                "description": "Receiver for OpenInference trace standard.",
+                "description": "Receiver for OpenInference trace standard. The body may be gzip-compressed (Content-Encoding: gzip).",
                 "operationId": "receive_traces_api_v1_traces_post",
                 "security": [
                     {
@@ -4528,6 +4528,15 @@
                                 "schema": {}
                             }
                         }
+                    },
+                    "400": {
+                        "description": "The body is not a valid protobuf message, or not valid gzip."
+                    },
+                    "413": {
+                        "description": "A gzip body unpacks to more than 64 MiB."
+                    },
+                    "415": {
+                        "description": "Content-Encoding is neither gzip nor identity."
                     },
                     "422": {
                         "description": "Validation Error",

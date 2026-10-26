@@ -3,6 +3,9 @@ The intention of this changelog is to document API changes as they happen to eff
 ---
 
 # 10/26/2026
+- **CHANGE** for **URL**: /api/v1/traces  added the non-success response with the status `400`
+- **CHANGE** for **URL**: /api/v1/traces  added the non-success response with the status `413`
+- **CHANGE** for **URL**: /api/v1/traces  added the non-success response with the status `415`
 - **CHANGE** for **URL**: /api/v1/traces  added the optional property `traces/items/ingest_bytes` to the response with the `200` status
 
 # 10/20/2026
