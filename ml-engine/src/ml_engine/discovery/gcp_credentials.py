@@ -26,6 +26,7 @@ network's failure, not a refused credential.
 
 import json
 import os
+import re
 from typing import Mapping, Optional, Sequence
 
 from google.auth.credentials import Credentials
@@ -35,6 +36,10 @@ from google.oauth2 import service_account
 from job_executors.discovery_scan import DiscoveryConfigurationError
 
 SERVICE_ACCOUNT_KEY_FIELD = "service_account_key"
+
+# A project id, optionally domain-scoped (`example.com:my-project`). Checked by every
+# connector that takes one, because it is a path segment in every call.
+GCP_PROJECT_ID = re.compile(r"^(?:[a-z0-9.-]+:)?[a-z][a-z0-9-]{4,28}[a-z0-9]$")
 
 
 def adc_allowed(env_var: str) -> bool:

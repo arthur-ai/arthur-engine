@@ -159,7 +159,12 @@ const columns: ColumnDef<MockEvalsResults>[] = [
     accessorKey: "name",
     cell: ({ row }) => {
       return (
-        <Typography variant="body2" color="text.secondary">
+        <Typography
+          variant="body2"
+          sx={{
+            color: "text.secondary",
+          }}
+        >
           {row.original.name}
         </Typography>
       );
@@ -171,7 +176,12 @@ const columns: ColumnDef<MockEvalsResults>[] = [
     accessorKey: "reason",
     cell: ({ row }) => {
       return (
-        <Typography variant="body2" color="text.secondary">
+        <Typography
+          variant="body2"
+          sx={{
+            color: "text.secondary",
+          }}
+        >
           {row.original.reason}
         </Typography>
       );

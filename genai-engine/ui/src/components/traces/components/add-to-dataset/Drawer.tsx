@@ -328,9 +328,9 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
           <Stack
             direction="row"
             spacing={0}
-            justifyContent="space-between"
-            alignItems="center"
             sx={{
+              justifyContent: "space-between",
+              alignItems: "center",
               px: 4,
               py: 2,
               backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.100"),
@@ -339,16 +339,40 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
             }}
           >
             <Stack direction="column" spacing={0}>
-              <Typography variant="h5" color="text.primary" fontWeight="bold">
+              <Typography
+                variant="h5"
+                sx={{
+                  color: "text.primary",
+                  fontWeight: "bold",
+                }}
+              >
                 Add to Dataset
               </Typography>
-              <Typography variant="body2" color="text.secondary">
+              <Typography
+                variant="body2"
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
                 Select a span and drill down through its keys to extract data. The live preview shows the current value.
               </Typography>
             </Stack>
           </Stack>
-          <Stack direction="column" gap={2} sx={{ p: 4, overflow: "auto", flex: 1 }}>
-            <Stack direction="row" gap={2}>
+          <Stack
+            direction="column"
+            sx={{
+              gap: 2,
+              p: 4,
+              overflow: "auto",
+              flex: 1,
+            }}
+          >
+            <Stack
+              direction="row"
+              sx={{
+                gap: 2,
+              }}
+            >
               <form.Field name="dataset">
                 {(field) => {
                   // Add a special "Create New Dataset" option at the end

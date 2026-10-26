@@ -38,8 +38,13 @@ export const createColumns = ({ onEdit, timezone, use24Hour }: { onEdit: (id: st
           <Tooltip title={description} className="w-min">
             <Typography
               variant="body2"
-              color="text.secondary"
-              sx={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 200 }}
+              sx={{
+                color: "text.secondary",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+                maxWidth: 200,
+              }}
             >
               {description}
             </Typography>
@@ -57,7 +62,12 @@ export const createColumns = ({ onEdit, timezone, use24Hour }: { onEdit: (id: st
         header: "Evaluator",
         cell: ({ getValue }) => {
           return (
-            <Typography variant="body2" color="text.secondary">
+            <Typography
+              variant="body2"
+              sx={{
+                color: "text.secondary",
+              }}
+            >
               {getValue()}
             </Typography>
           );

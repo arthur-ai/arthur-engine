@@ -17,13 +17,12 @@ import io
 import json
 import logging
 from dataclasses import asdict
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 from typing import Any, Iterator, Optional
 
 import boto3
 import pytest
-import yaml
 from arthur_common.models.agent_governance_schemas import (
     CloudAgentCreationSource,
     Platform,
@@ -71,23 +70,18 @@ from job_executors.discovery_scan import (
     ReportsDeviceCoverage,
     failure_code,
 )
+from tests.fakes.catalog import agent, document
 
 SCAN_AT = 1790100381
 LOG = logging.getLogger("discovery-test")
-CATALOG = yaml.safe_dump(
-    {
-        "version": 2,
-        "classifications": ["Coding agent"],
-        "agents": [
-            {
-                "id": "codex-cli",
-                "name": "Codex CLI",
-                "classification": "Coding agent",
-                "platforms": ["darwin", "linux"],
-                "npm": ["@openai/codex"],
-            },
-        ],
-    },
+CATALOG = document(
+    agent(
+        "codex-cli",
+        "Codex CLI",
+        "Coding agent",
+        platforms=["darwin", "linux"],
+        npm=["@openai/codex"],
+    ),
 )
 ACCOUNT = "123456789012"
 REGION = "us-east-1"
@@ -539,6 +533,57 @@ def test_an_instance_that_has_not_reported_in_the_lookback_is_counted_and_not_pu
 
     assert [r.external_id for r in records] == [f"{iid('2')}:codex-cli"]
     assert coverage_of(connector) == {NOT_REPORTED_IN_WINDOW: 1}
+
+
+def test_an_instance_dated_ahead_of_the_scans_clock_is_published_and_named(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Its clock runs an hour fast. Discovery comes first, so it is published, and named
+    with its skew for someone to fix its time sync. Ten minutes fast is a fast clock."""
+    hour_ahead = "ok 2026-10-12T14:30:00Z rows=2 packages-linux=ok"
+    ten_minutes_ahead = "ok 2026-10-12T13:40:00Z rows=2 packages-linux=ok"
+    aws = FakeAws(
+        {REGION: [[instance("1"), instance("2")]]},
+        inventory={
+            iid("1"): reported(status=hour_ahead),
+            iid("2"): reported(status=ten_minutes_ahead),
+        },
+    )
+    connector = connector_for(aws)
+    with caplog.at_level(logging.WARNING):
+        records = scan(aws, connector=connector)
+
+    assert [r.external_id for r in records] == [
+        f"{iid('1')}:codex-cli",
+        f"{iid('2')}:codex-cli",
+    ]
+    assert coverage_of(connector) == {}
+    assert f"{iid('1')} is dated 60 min ahead of this scan's clock" in caplog.text
+    assert iid("2") not in caplog.text
+    assert "14:30:00Z" not in caplog.text, "the id and the skew, never the value"
+
+
+def test_an_instance_that_reported_while_a_long_scan_ran_is_not_ahead(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """The window starts when the scan does; a date is ahead only of the clock when the
+    instance is read. An hour into the scan, a report from 50 min in is not ahead."""
+    readings = iter([NOW])
+    fifty_minutes_in = "ok 2026-10-12T14:20:00Z rows=2 packages-linux=ok"
+    aws = FakeAws(
+        {REGION: [[instance("1")]]},
+        inventory={iid("1"): reported(status=fifty_minutes_in)},
+    )
+    connector = Ec2Connector(
+        session_for=lambda creds, fields: boto3.Session(),
+        clients_for=lambda session: aws.client_for,
+        clock=lambda: next(readings, NOW + timedelta(hours=1)),
+    )
+    with caplog.at_level(logging.WARNING):
+        records = scan(aws, connector=connector)
+
+    assert [r.external_id for r in records] == [f"{iid('1')}:codex-cli"]
+    assert "ahead of this scan's clock" not in caplog.text
 
 
 def test_a_running_instance_ssm_does_not_manage_is_counted_by_name_and_not_read() -> (

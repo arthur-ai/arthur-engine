@@ -88,19 +88,37 @@ export const ContinuousEvalWithTracePage = ({ traceId }: Props) => {
     <Stack direction="column" sx={{ height: getContentHeight() }}>
       <Stack
         direction="row"
-        alignItems="center"
-        gap={1}
-        sx={{ px: 2, py: 1, borderBottom: 1, borderColor: "divider", backgroundColor: "background.paper" }}
+        sx={{
+          alignItems: "center",
+          gap: 1,
+          px: 2,
+          py: 1,
+          borderBottom: 1,
+          borderColor: "divider",
+          backgroundColor: "background.paper",
+        }}
       >
         <Tooltip title="Go back">
           <IconButton onClick={() => navigate(-1)} size="small">
             <ArrowBackIcon />
           </IconButton>
         </Tooltip>
-        <Typography variant="subtitle1" fontWeight={600} color="text.primary">
+        <Typography
+          variant="subtitle1"
+          sx={{
+            fontWeight: 600,
+            color: "text.primary",
+          }}
+        >
           Create Continuous Eval from Trace
         </Typography>
-        <Typography variant="caption" color="text.secondary" sx={{ fontFamily: "monospace" }}>
+        <Typography
+          variant="caption"
+          sx={{
+            color: "text.secondary",
+            fontFamily: "monospace",
+          }}
+        >
           {traceId}
         </Typography>
       </Stack>
@@ -141,7 +159,12 @@ export const ContinuousEvalWithTracePage = ({ traceId }: Props) => {
             <SpanContentView span={selectedSpan} />
           ) : (
             <Box sx={{ p: 3 }}>
-              <Typography variant="body2" color="text.secondary">
+              <Typography
+                variant="body2"
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
                 Select a span to view its details
               </Typography>
             </Box>
@@ -178,7 +201,12 @@ const SpanContentView = ({ span }: { span: NestedSpanWithMetricsResponse }) => {
   if (!strategy) {
     return (
       <Box sx={{ p: 3 }}>
-        <Typography variant="body2" color="text.secondary">
+        <Typography
+          variant="body2"
+          sx={{
+            color: "text.secondary",
+          }}
+        >
           No details available for this span type.
         </Typography>
       </Box>

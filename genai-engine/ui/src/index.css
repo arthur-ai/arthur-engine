@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+/* @arthur/shared-components ships Tailwind classes but no CSS, and Tailwind skips
+   node_modules, so its build output has to be listed as a source here. */
+@source "../node_modules/@arthur/shared-components/dist";
+
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* Registering the inset as a typed <length> lets it be transitioned: when

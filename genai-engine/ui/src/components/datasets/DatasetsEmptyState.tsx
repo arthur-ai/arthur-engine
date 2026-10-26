@@ -27,7 +27,13 @@ export const DatasetsEmptyState: React.FC<DatasetsEmptyStateProps> = ({ type, on
         <Typography variant="h5" gutterBottom sx={{ fontWeight: 500, color: "text.primary" }}>
           No datasets yet
         </Typography>
-        <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+        <Typography
+          variant="body1"
+          sx={{
+            color: "text.secondary",
+            mb: 3,
+          }}
+        >
           Get started by creating your first dataset
         </Typography>
         <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={onCreateDataset} size="large">
@@ -53,7 +59,12 @@ export const DatasetsEmptyState: React.FC<DatasetsEmptyStateProps> = ({ type, on
       <Typography variant="h5" gutterBottom sx={{ fontWeight: 500, color: "text.primary" }}>
         No datasets found
       </Typography>
-      <Typography variant="body1" color="text.secondary">
+      <Typography
+        variant="body1"
+        sx={{
+          color: "text.secondary",
+        }}
+      >
         Try adjusting your search query
       </Typography>
     </Box>

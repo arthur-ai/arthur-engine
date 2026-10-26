@@ -1,6 +1,6 @@
 [project]
 name = "ml-engine"
-version = "2.1.1039"
+version = "2.1.1053"
 description = ""
 authors = [{ name = "Arthur", email = "engineering@arthur.ai" }]
 license = "MIT"
@@ -11,8 +11,8 @@ dependencies = [
   "croniter==6.2.4",
   "oracledb>=26,<27",
   "flask==3.1.3",
-  "gcsfs==2026.8.1",
-  "google-cloud-bigquery==3.45.2",
+  "gcsfs==2026.10.1",
+  "google-cloud-bigquery==3.46.2",
   "google-cloud-trace>=1.13.0,<2",
   "google-cloud-aiplatform>=2.1.3,<3",
   "pandas==3.0.6",
@@ -20,6 +20,7 @@ dependencies = [
   "pymysql==1.2.3",
   "pyodbc==5.3.0",
   "pyyaml==6.0.3",
+  "jsonschema==4.26.0",
   "requests==2.34.2",
   "adlfs==2026.8.0",
   "s3fs==2026.9.0",
@@ -33,38 +34,39 @@ dependencies = [
   "fsspec==2026.9.0",
   "datasketches==5.2.0",
   "numpy==2.3.2",
-  "types-croniter==6.2.4.20260711",
+  "types-croniter==6.2.4.20261006",
   "types-psutil==7.2.2.20260906",
-  "types-requests==2.33.0.20260906",
+  "types-requests==2.33.0.20261006",
   "psutil==7.2.2",
   "pyarrow==25.0.1",
-  "arthur-common==2.4.97",
+  "arthur-common==2.4.99",
   "gunicorn>=26,<27",
   # Held below 2.1: snowflake-sqlalchemy subclasses sqlalchemy.orm.context.ORMSelectCompileState,
   # which SQLAlchemy 2.1 made private, so it fails at import. See the sqlalchemy rule in /renovate.json.
-  "sqlalchemy==2.0.54",
+  "sqlalchemy==2.0.55",
   "snowflake-sqlalchemy==1.11.1",
   "databricks-sqlalchemy>=2.0,<3",
   "databricks-sdk>=0.84.0,<1",
-  "arthur-client==1.4.2874",
+  "arthur-client==1.4.2900",
 ]
 
 [dependency-groups]
 dev = [
   "pytest==9.1.1",
   "responses==0.26.3",
-  "pytest-httpserver==1.1.5",
+  "pytest-httpserver==1.2.0",
   "pytest-asyncio==1.4.0",
   "pytest-httpx==0.36.2",
-  "pre-commit==4.6.2",
+  "pre-commit==4.7.0",
   "types-pytz>=2025.2.0.20250516",
   "lazy-imports==1.2.0",
+  "graphql-core==3.3.0",
 ]
 linters = [
   "mypy>=2.3,<3",
   "isort>=9,<10",
   "autoflake>=2.3.1,<3",
-  "black==26.5.1",
+  "black==26.10.1",
 ]
 
 [tool.uv]
@@ -102,7 +104,8 @@ src_paths = ["src/ml_engine", "tests"]
 extend_skip_glob = ["src/ml_engine/discovery/_vendor/*"]
 
 [tool.pytest.ini_options]
-pythonpath = ["src", "src/genai_client"]
+# "." makes tests.fakes importable, as `python -m tests.fakes.<vendor>` runs them.
+pythonpath = [".", "src", "src/genai_client"]
 testpaths = ["tests"]
 markers = [
     "integration_tests: mark a test as an integration test (requires real backend credentials via env vars)",

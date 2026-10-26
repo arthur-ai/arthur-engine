@@ -87,6 +87,7 @@ from discovery.cloud.vm_inventory import (
 from discovery.endpoint.device import ManagedDevice
 from discovery.endpoint.scope import DeviceScope, parse_group_names
 from discovery.gcp_credentials import (
+    GCP_PROJECT_ID,
     SERVICE_ACCOUNT_KEY_FIELD,
     service_account_credentials,
 )
@@ -122,10 +123,6 @@ __all__ = [
     "READ_FAILED",
     "ComputeEngineConnector",
 ]
-
-# A project id, optionally domain-scoped (`example.com:my-project`). Checked because it
-# is a path segment in every call.
-_PROJECT_ID = re.compile(r"^(?:[a-z0-9.-]+:)?[a-z][a-z0-9-]{4,28}[a-z0-9]$")
 
 # A Compute Engine label key. Values may be empty.
 _LABEL_KEY = re.compile(r"^[a-z][a-z0-9_-]{0,62}$")
@@ -240,7 +237,7 @@ class ComputeEngineConnector:
             allow_adc_env_var=ALLOW_ADC_ENV_VAR,
             scopes=settings.scopes,
         )
-        matcher = Matcher.from_source(catalog_yaml=config.query or None, logger=logger)
+        matcher = Matcher.from_source(catalog_json=config.query or None, logger=logger)
         client = ComputeEngineClient(
             self._session_for(google_credentials, settings.scopes),
             logger,
@@ -301,7 +298,14 @@ class ComputeEngineConnector:
             )
 
         carried: set[str] = set()
-        reader = VmInventoryReader(coverage, matcher, VENDOR, since, logger)
+        reader = VmInventoryReader(
+            coverage,
+            matcher,
+            VENDOR,
+            since,
+            logger,
+            clock=self._clock,
+        )
         # Each project's metadata, or why it could not be read: asked once per project.
         project_flags: dict[
             str,
@@ -526,7 +530,7 @@ def settings_from(source_fields: Mapping[str, str]) -> ComputeEngineSettings:
             f"'{ORGANIZATION_ID_FIELD}' or '{FOLDER_IDS_FIELD}'. They are source "
             f"fields, not secrets.",
         )
-    bad = [p for p in projects if not _PROJECT_ID.match(p)]
+    bad = [p for p in projects if not GCP_PROJECT_ID.match(p)]
     if bad:
         raise DiscoveryConfigurationError(
             f"Compute Engine source's '{PROJECT_IDS_FIELD}' has value(s) that are not "

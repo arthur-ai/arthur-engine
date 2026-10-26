@@ -18,7 +18,7 @@ import logging
 import uuid
 from typing import Callable
 
-from discovery import source_connectors
+from discovery import standalone_connectors
 from job_executors.discovery_scan import (
     AcceptsStopCheck,
     DiscoveryErrorCode,
@@ -155,7 +155,7 @@ def _connector(
     scan: ResolvedScan,
     should_stop: Callable[[], bool],
 ) -> DiscoverySourceConnector:
-    factory = source_connectors().get(scan.config.vendor)
+    factory = standalone_connectors().get(scan.config.vendor)
     if factory is None:
         # Checked when the config was loaded; kept so a scan names the reason anyway.
         raise UnsupportedDiscoveryVendorError(

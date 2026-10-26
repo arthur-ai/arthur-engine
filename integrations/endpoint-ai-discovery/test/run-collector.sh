@@ -158,10 +158,14 @@ bad = []
 if not rows:
     bad.append("the payload has no rows at all -- a clean Mac and a failed scan look alike")
 
-COLS = {"kind", "id", "ver", "loc", "extra", "perms"}
-off = [r for r in rows if set(r) != COLS]
+# Evidence rows (SPEC.md 5.1): `kind` and `id` always, every value a string, and no member
+# the spec does not name. The reader ignores one, and this collector writing one means it
+# has started writing something else.
+NAMED = {"kind", "id", "ver", "loc", "extra", "perms"}
+off = [r for r in rows if not {"kind", "id"} <= set(r) <= NAMED
+       or not all(isinstance(v, str) for v in r.values())]
 if off:
-    bad.append(f"{len(off)} rows violate the six-column contract: {off[0]}")
+    bad.append(f"{len(off)} rows are not evidence rows of the members the spec names: {off[0]}")
 
 # ONE STATUS LINE, and its vocabulary is what a Smart Group matches on.
 if status.count("\n") != 1:
@@ -202,7 +206,7 @@ for name, r in scans.items():
 # The endpoint enumerates and matches nothing, so the catalog must not be in the payload --
 # and it must not be reachable through it either.
 blob = json.dumps(rows)
-for leak in ("agents.yaml", "routes.yaml"):
+for leak in ("agents.yaml", "routes.yaml", "catalog.json"):
     if leak in blob:
         bad.append(f"the payload mentions {leak} -- the endpoint holds no catalog")
 
@@ -276,7 +280,7 @@ STUB
 chmod +x "$work/stub/bin/discover"
 "$ROOT/tools/build-collector.py" --driver-of "$COLLECT" > "$work/driver"
 cp "$out/inventory.ea" "$work/ea.before"; cp "$out/status.txt" "$work/status.before"
-AI_DISCOVERY_ROOT="$work/stub" ARTHUR_OUT_DIR="$out" bash "$work/driver" > /dev/null 2> "$work/stderr4"
+AI_DETECTION_SPEC_ROOT="$work/stub" ARTHUR_OUT_DIR="$out" bash "$work/driver" > /dev/null 2> "$work/stderr4"
 status=$?
 sed 's/^/    /' "$work/stderr4"
 [ "$status" -ne 0 ] || bad "a scan that failed its JSON check exited 0"
