@@ -95,8 +95,9 @@ class TraceIngestionService:
         """Process trace data from protobuf format and return statistics.
 
         With count_ingest_bytes, each span records its share of len(trace_data), the
-        request body as received, and the shares add up to it exactly. Only the trace
-        ingestion endpoints set it: the bytes are customer ingest volume.
+        request body as received, and the shares add up to it exactly unless every
+        span of some resource span is rejected. Only the trace ingestion endpoints
+        set it: the bytes are customer ingest volume.
         """
         trace_request = self._parse_trace_request(trace_data)
         json_traces = cast(dict[str, Any], MessageToDict(trace_request))
@@ -188,7 +189,7 @@ class TraceIngestionService:
         accepted_spans = 0
         rejected_spans = 0
         rejected_reasons = []
-        spans_data = []
+        spans_data: list[DatabaseSpan] = []
 
         for resource_span in json_traces.get("resourceSpans", []):
             # Extract task ID from resource attributes (new format)
@@ -236,6 +237,10 @@ class TraceIngestionService:
                 default=DEFAULT_ORG_ID,
             )
 
+            resource_first_index = total_spans
+            resource_first_stored = len(spans_data)
+            resource_rejected = False
+
             for scope_span in resource_span.get("scopeSpans", []):
                 for span_data in scope_span.get("spans", []):
                     span_index = total_spans
@@ -258,6 +263,7 @@ class TraceIngestionService:
                         accepted_spans += 1
                     except Exception as e:
                         rejected_spans += 1
+                        resource_rejected = True
                         error_msg = f"Invalid span data format: {str(e)}"
                         rejected_reasons.append(error_msg)
                         logger.error(
@@ -265,16 +271,19 @@ class TraceIngestionService:
                             exc_info=True,
                         )
 
-        # A rejected span's share would otherwise be lost: the request's bytes were
-        # still received, so spread them over the spans that were stored. If every
-        # span was rejected, nothing is stored and there is nothing to attribute to.
-        if span_ingest_bytes is not None and rejected_spans and spans_data:
-            shares = self._split_by_weight(
-                sum(span_ingest_bytes),
-                [float(span.ingest_bytes or 0) for span in spans_data],
-            )
-            for span, share in zip(spans_data, shares, strict=True):
-                span.ingest_bytes = share
+            # A rejected span's share would otherwise be lost: its bytes were still
+            # received, so spread them over the stored spans of the same resource
+            # span, which share its task and org. If every span of a resource span
+            # was rejected, nothing is stored for it and there is nothing to
+            # attribute its bytes to without crediting another task.
+            resource_stored = spans_data[resource_first_stored:]
+            if span_ingest_bytes is not None and resource_rejected and resource_stored:
+                shares = self._split_by_weight(
+                    sum(span_ingest_bytes[resource_first_index:total_spans]),
+                    [float(span.ingest_bytes or 0) for span in resource_stored],
+                )
+                for span, share in zip(resource_stored, shares, strict=True):
+                    span.ingest_bytes = share
 
         return spans_data, (
             total_spans,

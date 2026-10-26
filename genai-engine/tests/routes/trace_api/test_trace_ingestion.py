@@ -1153,6 +1153,18 @@ def test_ingest_bytes_are_not_recorded_outside_the_ingestion_endpoints():
     assert spans and all(span.ingest_bytes is None for span in spans)
 
 
+def _reject_spans_named_reject(monkeypatch):
+    """Make span processing reject every span named "reject"."""
+    process_span_data = TraceIngestionService._process_span_data
+
+    def reject_named_span(self, span_data, *args, **kwargs):
+        if span_data.get("name") == "reject":
+            raise ValueError("rejected for the test")
+        return process_span_data(self, span_data, *args, **kwargs)
+
+    monkeypatch.setattr(TraceIngestionService, "_process_span_data", reject_named_span)
+
+
 @pytest.mark.unit_tests
 def test_rejected_span_bytes_are_kept_on_the_accepted_spans(monkeypatch):
     """A rejected span isn't stored, but its share of the received bytes moves to
@@ -1168,14 +1180,7 @@ def test_rejected_span_bytes_are_kept_on_the_accepted_spans(monkeypatch):
     )
     body = trace_request.SerializeToString()
 
-    process_span_data = TraceIngestionService._process_span_data
-
-    def reject_named_span(self, span_data, *args, **kwargs):
-        if span_data.get("name") == "reject":
-            raise ValueError("rejected for the test")
-        return process_span_data(self, span_data, *args, **kwargs)
-
-    monkeypatch.setattr(TraceIngestionService, "_process_span_data", reject_named_span)
+    _reject_spans_named_reject(monkeypatch)
     db_session = override_get_db_session()
 
     _, (total, accepted, rejected, _) = TraceIngestionService(
@@ -1196,6 +1201,55 @@ def test_rejected_span_bytes_are_kept_on_the_accepted_spans(monkeypatch):
         .one()
     )
     assert trace.ingest_bytes == len(body)
+
+
+@pytest.mark.unit_tests
+def test_rejected_span_bytes_stay_within_their_task(monkeypatch):
+    """Rejected bytes move only to stored spans of the same resource span (task).
+    A task whose spans were all rejected stores nothing, and its bytes don't
+    land on another task's traces."""
+    kept_trace, rejected_trace = uuid4().bytes, uuid4().bytes
+    trace_request = _ingest_bytes_request(
+        [kept_trace],
+        spans_per_trace=3,
+        task_ids=[f"ingest_bytes_task_{uuid4()}"],
+    )
+    trace_request.resource_spans[0].scope_spans[0].spans.append(
+        _create_span(trace_id=kept_trace, span_id=uuid4().bytes[:8], name="reject"),
+    )
+    other_task = _ingest_bytes_request(
+        [rejected_trace],
+        spans_per_trace=2,
+        task_ids=[f"ingest_bytes_task_{uuid4()}"],
+    )
+    for span in other_task.resource_spans[0].scope_spans[0].spans:
+        span.name = "reject"
+    trace_request.resource_spans.extend(other_task.resource_spans)
+    body = trace_request.SerializeToString()
+    first_task_bytes = sum(
+        TraceIngestionService._span_ingest_bytes(trace_request, len(body))[:4],
+    )
+
+    _reject_spans_named_reject(monkeypatch)
+    db_session = override_get_db_session()
+
+    _, (total, accepted, rejected, _) = TraceIngestionService(
+        db_session,
+    ).process_trace_data(body, count_ingest_bytes=True)
+
+    assert (total, accepted, rejected) == (6, 3, 3)
+    trace = (
+        db_session.query(DatabaseTraceMetadata)
+        .filter(DatabaseTraceMetadata.trace_id == kept_trace.hex())
+        .one()
+    )
+    assert trace.ingest_bytes == first_task_bytes < len(body)
+    assert (
+        db_session.query(DatabaseTraceMetadata)
+        .filter(DatabaseTraceMetadata.trace_id == rejected_trace.hex())
+        .count()
+        == 0
+    )
 
 
 @pytest.mark.unit_tests
