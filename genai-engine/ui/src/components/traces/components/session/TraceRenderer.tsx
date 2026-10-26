@@ -1,9 +1,9 @@
+import { Highlight } from "@arthur/shared-components";
 import { Box, Paper, Stack, Typography } from "@mui/material";
 
 import { useDrawerTarget } from "../../hooks/useDrawerTarget";
 import { getSpanInput, getSpanOutput } from "../../utils/spans";
 
-import { Highlight } from "@/components/common/Highlight";
 import { Tabs } from "@/components/ui/Tabs";
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { TraceResponse } from "@/lib/api";

@@ -1,8 +1,7 @@
+import { Highlight } from "@arthur/shared-components";
 import { createMRTColumnHelper } from "material-react-table";
 
 import type { AgentExperimentEndpoint } from "../types";
-
-import { Highlight } from "@/components/common/Highlight";
 
 const columnHelper = createMRTColumnHelper<AgentExperimentEndpoint>();
 
