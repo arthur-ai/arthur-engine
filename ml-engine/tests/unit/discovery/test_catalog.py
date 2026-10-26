@@ -503,8 +503,14 @@ def test_real_payload_reconciles_and_collapses_routes() -> None:
     result = Matcher.from_source().match(rows)
 
     evidence = sum(len(f.evidence) for f in result.findings)
+    # Every bucket, so a Mac without Docker -- an `absent` marker -- reconciles too.
     assert (
-        evidence + result.unmatched + len(result.gaps) + len(result.scans)
+        evidence
+        + result.unmatched
+        + len(result.gaps)
+        + len(result.scans)
+        + len(result.absences)
+        + result.dropped
         == result.rows_total
     )
     assert result.dropped == 0, "a route is missing from the vendored catalog"
