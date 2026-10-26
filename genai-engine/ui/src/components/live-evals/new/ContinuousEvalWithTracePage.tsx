@@ -1,4 +1,5 @@
-import type { GetSpanDetailsStrategy } from "@arthur/shared-components";
+import { OpenInferenceSpanKind } from "@arizeai/openinference-semantic-conventions";
+import { getSpanDetailsStrategy, SpanDetails, SpanDetailsHeader, SpanDetailsPanels, SpanDetailsWidgets, SpanTree } from "@arthur/shared-components";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { Box, IconButton, Stack, Tooltip, Typography } from "@mui/material";
 import { useSuspenseQuery } from "@tanstack/react-query";
@@ -8,9 +9,6 @@ import { useNavigate } from "react-router";
 import { AttributePickerTree } from "./AttributePickerTree";
 import { ContinuousEvalStepper, type PickerState } from "./ContinuousEvalStepper";
 
-import { SpanDetails, SpanDetailsHeader, SpanDetailsPanels, SpanDetailsWidgets } from "@/components/traces/components/SpanDetails";
-import { SpanTree } from "@/components/traces/components/SpanTree";
-import { getSpanDetailsStrategy } from "@/components/traces/data/details-strategy";
 import { flattenSpans } from "@/components/traces/utils/spans";
 import { getContentHeight } from "@/constants/layout";
 import { useApi } from "@/hooks/useApi";
@@ -196,7 +194,7 @@ export const ContinuousEvalWithTracePage = ({ traceId }: Props) => {
 };
 
 const SpanContentView = ({ span }: { span: NestedSpanWithMetricsResponse }) => {
-  const strategy = getSpanDetailsStrategy(span.span_kind as Parameters<Exclude<GetSpanDetailsStrategy, undefined>>[0]);
+  const strategy = getSpanDetailsStrategy(span.span_kind as OpenInferenceSpanKind);
 
   if (!strategy) {
     return (
