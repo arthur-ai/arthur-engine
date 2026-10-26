@@ -575,7 +575,7 @@ the workload runs as.
 
 | Field | Secret | Required | Notes |
 |---|---|---|---|
-| `regions` | no | yes | Comma-separated regions, such as `us-east-1,us-west-2`. Both ECS and EKS are listed in each, and CloudTrail is read in each |
+| `regions` | no | yes | Comma-separated regions, such as `us-east-1,us-west-2`. Both ECS and EKS are listed in each, and CloudTrail is read in each when `read_cloudtrail` is on |
 | `read_cloudtrail` | no | no | `true` (default) or `false`: read the roles that call Bedrock models, so a workload running as one is reported |
 | `report_all_workloads` | no | no | `true` to report every workload, not only catalog matches and AI-calling roles. Defaults to `false` |
 | `access_key_id` | yes | no | As for `aws_ec2`; without one, the engine uses its own AWS credentials only if `ARTHUR_ENGINE_AWS_CONTAINERS_ALLOW_DEFAULT_CREDENTIALS=true` is set |

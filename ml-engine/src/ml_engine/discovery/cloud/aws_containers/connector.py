@@ -403,7 +403,9 @@ class _Scan:
                 raise
             self._refuse(f"{self._account}/{region}/ecs", e)
             return []
-        self.listed += 1
+        if not clusters:
+            # An empty region is an answer; otherwise a cluster counts once it is read.
+            self.listed += 1
         out: list[Workload] = []
         for arn in clusters:
             cluster = arn.rsplit("/", 1)[-1]
@@ -524,7 +526,9 @@ class _Scan:
                 raise
             self._refuse(f"{self._account}/{region}/eks", e)
             return []
-        self.listed += 1
+        if not names:
+            # An empty region is an answer; otherwise a cluster counts once it is read.
+            self.listed += 1
         out: list[Workload] = []
         for name in names:
             scope = f"{self._account}/{region}/eks/{name}"

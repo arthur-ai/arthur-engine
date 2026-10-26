@@ -1067,6 +1067,24 @@ def test_a_denied_listing_is_a_denied_scope_and_everything_denied_fails() -> Non
     assert failure_code(caught.value) == DiscoveryErrorCode.PERMISSION_DENIED
 
 
+def test_listing_cluster_names_is_not_a_listing_when_every_cluster_is_refused() -> None:
+    aws = ecs_account()
+    aws.eks[EKS] = eks_cluster()
+    aws.errors[("ecs", "ListServices")] = client_error(
+        "AccessDeniedException", "ListServices"
+    )
+    aws.errors[("eks", "DescribeCluster")] = client_error(
+        "AccessDeniedException", "DescribeCluster"
+    )
+    with pytest.raises(Exception) as caught:
+        scan(aws, report_all(read_cloudtrail="false"))
+    assert failure_code(caught.value) == DiscoveryErrorCode.PERMISSION_DENIED
+
+    # A region with no ECS clusters answered, so refused EKS clusters alone do not fail.
+    aws.services.clear()
+    assert scan(aws, report_all(read_cloudtrail="false")) == []
+
+
 def test_cloudtrail_alone_is_not_a_listing_so_refused_ecs_and_eks_fail() -> None:
     # The CloudTrail read answers; every workload listing is refused.
     aws = ecs_account()
