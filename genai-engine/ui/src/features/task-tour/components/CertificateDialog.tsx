@@ -239,9 +239,9 @@ export function CertificateDialog({ open, recipientName = "Alex Rivera", issuedO
 
           <Stack
             direction="row"
-            alignItems="flex-end"
-            justifyContent="space-between"
             sx={{
+              alignItems: "flex-end",
+              justifyContent: "space-between",
               position: { xs: "static", md: "absolute" },
               left: { md: 54 },
               right: { md: 54 },
@@ -261,7 +261,14 @@ export function CertificateDialog({ open, recipientName = "Alex Rivera", issuedO
               </Box>
             </Box>
 
-            <Stack direction="row" alignItems="center" spacing={0.75} sx={{ pb: 3 }}>
+            <Stack
+              direction="row"
+              spacing={0.75}
+              sx={{
+                alignItems: "center",
+                pb: 3,
+              }}
+            >
               <ArthurLogo width={26} height={26} aria-hidden="true" />
               <Typography variant="h6" sx={{ fontWeight: 700, letterSpacing: -0.5, opacity: 0.6 }}>
                 Arthur
@@ -282,7 +289,17 @@ export function CertificateDialog({ open, recipientName = "Alex Rivera", issuedO
         </Paper>
       </Box>
 
-      <Stack direction="row" justifyContent="center" spacing={1} sx={{ px: 2, pb: 1.5, flexWrap: "wrap", rowGap: 1 }}>
+      <Stack
+        direction="row"
+        spacing={1}
+        sx={{
+          justifyContent: "center",
+          px: 2,
+          pb: 1.5,
+          flexWrap: "wrap",
+          rowGap: 1,
+        }}
+      >
         <Button
           size="small"
           variant="contained"

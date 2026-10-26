@@ -381,8 +381,73 @@ Reads the agent inventory Arthur's endpoint collector writes to each Mac.
 | `include_groups` | no | no | Comma-separated computer group names to limit the scan to |
 | `exclude_groups` | no | no | Comma-separated computer group names to leave out |
 
-`query` is the agent catalog YAML; leave it `""` to use the one the engine ships with.
+`query` is the agent catalog; leave it `""` to use the one the engine ships with. A catalog
+of your own is an [ai-detection-spec](https://github.com/arthur-ai/ai-detection-spec) catalog
+document (`format: ai-detection-spec/0.1`), such as the `catalog.json` a release attaches. It
+is validated against the spec's schema, and the scan refuses one that fails.
 Use `query_language: none`. Jamf scans stop early on shutdown and report as cancelled.
+
+#### `local` — one machine's scan, from a folder
+
+Reads the scan Arthur's endpoint collector wrote into a folder, and reports each agent on
+that machine. It exists so someone can try discovery on their own laptop without an MDM
+or a cloud: run the collector on the machine, mount its folder into the engine, and the
+engine matches and sends what it found. **Standalone only**: the Platform has no such
+vendor, and a Platform-dispatched engine never runs it.
+
+| Field | Secret | Required | Notes |
+|---|---|---|---|
+| `inventory_dir` | no | yes | The folder, as an absolute path inside the engine, e.g. where it is mounted into the container |
+
+```yaml
+sources:
+  - name: this-machine
+    vendor: local
+    fields:
+      - {key: inventory_dir, value: /etc/deckard/local-scan}
+    configs:
+      - name: inventory
+        query: ""
+        query_language: none
+        lookback_window_seconds: 604800   # publish a scan up to 7 days old
+```
+
+`query` is the agent catalog, as for Jamf; `""` uses the one the engine ships with.
+
+**What fills the folder.** Two files, both readable by the engine's user (UID `65532` in
+the image):
+
+| File | Written by | Holds |
+|---|---|---|
+| `inventory.json` | the collector, run with `ARTHUR_OUT_DIR` set to the folder: [`dist/collect.sh`](../../integrations/endpoint-ai-discovery/dist/collect.sh) on macOS, [`dist/collect-linux.sh`](../../integrations/endpoint-ai-discovery/dist/collect-linux.sh) on Linux. It needs [osquery](https://osquery.io/downloads) on the machine, and not root: run as a user, it sees what that user can read | the scan's rows |
+| `machine.json` | whatever ran the collector | who the machine is, below |
+
+The collector also writes `status.txt` and `inventory.ea` there; neither is read.
+
+`machine.json` names the machine, because an engine in a container cannot see the host's
+own id or hostname:
+
+```json
+{"device_id": "8915B3AB-AFBD-55AA-B7B4-2442BEC733A9", "hostname": "my-laptop", "platform": "darwin"}
+```
+
+| Key | Required | |
+|---|---|---|
+| `device_id` | yes | The left half of every `external_id`, so it must not change while the machine does: the platform UUID on macOS (`ioreg -rd1 -c IOPlatformExpertDevice`, `IOPlatformUUID`), `/etc/machine-id` on Linux. Never the hostname |
+| `hostname` | no | Reported as each agent's `host_name` |
+| `platform` | no | `darwin` or `linux` |
+| `os_version` | no | Reported as each agent's `os_version` |
+
+**Freshness.** The engine re-reads the folder every interval; it changes only when the
+collector runs again. A collector run that fails leaves the previous scan in place, so
+the folder never says whether the latest run worked -- check the collector's exit status
+for that. Records are dated by when the machine was scanned, never by when the folder was
+read. With a lookback, a scan older than it is not published: the scan fails saying how
+old it is, and its outcome counts the machine as `not-reported-in-window`. A lookback of
+`0` publishes the folder's scan however old it is.
+
+An empty folder, a missing or incomplete `machine.json`, or an `inventory.json` that does
+not decode fails the scan with the reason, rather than reporting a machine without agents.
 
 #### `gcp_compute_engine` — Compute Engine VMs
 
@@ -766,7 +831,7 @@ succeeded with denied scopes is a scan that did not see all of its scope, which 
 destination should alert on. The list is empty for a source whose scope is one thing,
 which fails the scan instead.
 
-A source that reads machines (`jamf_pro`, `gcp_compute_engine`, `aws_ec2`) adds
+A source that reads machines (`jamf_pro`, `gcp_compute_engine`, `aws_ec2`, `local`) adds
 `device_coverage` to the outcome: how many machines it read, decoded and could not read,
 the unreadable ones by reason, and **each unreadable machine by identity**, which is the
 finding a destination should alert on, since a machine the scan cannot see is where

@@ -179,7 +179,13 @@ export const RagExperimentsHeader: React.FC<RagExperimentsHeaderProps> = ({
         </Tooltip>
 
         {/* Panel Count */}
-        <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: "nowrap" }}>
+        <Typography
+          variant="body2"
+          sx={{
+            color: "text.secondary",
+            whiteSpace: "nowrap",
+          }}
+        >
           {state.panels.length}/{MAX_PANELS}
         </Typography>
 

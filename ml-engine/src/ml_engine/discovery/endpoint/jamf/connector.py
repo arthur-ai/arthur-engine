@@ -97,7 +97,7 @@ class JamfConnector:
         """
         settings = _settings_from(credentials, source_fields)
         matcher = Matcher.from_source(
-            catalog_yaml=config.query or None,
+            catalog_json=config.query or None,
             logger=logger,
         )
         client = JamfClient(settings, logger=logger)

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Inventory this machine's AI tooling. The entry point for the shipped artifacts.
+# Collect this machine's agent evidence. The entry point for the shipped artifacts.
 # macOS and Linux both -- the composed artifact is chosen by `uname -s` below.
 #
 #     bin/discover                     # base inventory, as one JSON array
@@ -12,8 +12,8 @@
 #     bin/discover --names --cache PATH   # the same, from the cache: an Extension Attribute
 #
 # --names MATCHES ON THE ENDPOINT, which every other mode refuses to do, and it is the one
-# mode that should. The JSON is for a collector; a Jamf Extension Attribute is one printed
-# value a Smart Group matches on, and a reader with osqueryi and no collector wants a name,
+# mode that should. The JSON is for a pipeline that stores it; a Jamf Extension Attribute is one printed
+# value a Smart Group matches on, and a reader with osqueryi and no pipeline wants a name,
 # not a payload. The signatures come from dist/signatures.sql, the catalog rendered into
 # SQL by tools/render_match.py and held row for row to bin/classify by
 # test/test_match_sql.py. The line carries the status vocabulary after a `; `, so `none`
@@ -22,41 +22,22 @@
 #     Claude Code 2.0.1, Cursor 1.7.44; ok 2026-10-05T13:20:11Z rows=775 apps=ok ... containers=absent
 #     none; degraded 2026-10-05T13:20:11Z rows=612 ... containers=timeout:6
 #
-# TWO ARTIFACTS, TWO PROCESSES, AND THAT IS THE POINT.
+# TWO ARTIFACTS, TWO PROCESSES. dist/discovery-<platform>.sql composes every fast and slow
+# query and cannot block. dist/discovery-deep.sql can block forever, so bin/container-scan
+# runs it behind a health guard and a wall-clock kill. osquery has no per-query timeout, and
+# a kill is per process: composed into one file, bounding the container branch would discard
+# the rows every other branch had already produced.
 #
-#   dist/discovery-<platform>.sql  every fast and slow query for this platform,
-#                                  composed. ~1.2s, cannot block.
-#   dist/discovery-deep.sql  the expensive ones. CAN BLOCK FOREVER, so it runs behind a
-#                            health guard and a wall-clock kill -- bin/container-scan.
-#
-# osquery has no per-query timeout (5.23.1: --docker_socket is the only docker flag,
-# --alarm_timeout is shutdown-only, --schedule_timeout is osqueryd's schedule), so the only
-# bound available is a kill on a process. A kill is indivisible: composed into one file the
-# two would share one process, and bounding the container branch would mean discarding the
-# 580-odd rows the other branches had already produced. Separate processes is what makes
-# the bound cost nothing but the container rows.
-#
-# WITHOUT --deep NOTHING CHANGES. Same artifact, same single process, same cost as the
-# quickstart has always had. The flag is opt-in because the deep path talks to a daemon,
-# and a daemon is a dependency the base path deliberately does not have.
-#
-# A deep failure never costs the base rows. It prints them, plus one kind=scan marker row
-# saying why the container half is missing, and still exits 0 -- because the inventory did
-# succeed, and because a consumer that records stdout and discards the exit status sees only
-# what was printed,
-# so the marker row is the only channel the reason has. See bin/container-scan.
+# --deep is opt-in because it talks to a daemon. A deep failure never costs the base rows:
+# they print, with a kind=scan marker saying why the container half is missing, and the exit
+# is 0, because a consumer that keeps only stdout learns the reason from that row alone.
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-# THE ARTIFACT IS PER PLATFORM, and picking the wrong one is not a soft failure: the
-# tables are disjoint, so a Linux artifact on macOS dies on the first table and prints
-# "[\n\n]" -- valid, empty, entirely plausible JSON. It does at least exit non-zero,
-# which is the only reason that state is recoverable.
-#
-# `uname -s` rather than a flag, because the endpoint has no operator to ask. An
-# unrecognised platform stops here rather than falling through to a missing file, where
-# the message would be about a path instead of about the platform.
+# THE ARTIFACT IS PER PLATFORM: on the wrong one it prints "[\n\n]", valid empty JSON, and
+# exits 1. `uname -s` picks, because the endpoint has no operator to ask, and an unrecognised
+# platform stops here with a message about the platform rather than a missing file.
 case "$(uname -s)" in
   Darwin) PLATFORM=darwin ;;
   Linux)  PLATFORM=linux ;;
@@ -65,48 +46,23 @@ case "$(uname -s)" in
 esac
 BASE="${DISCOVER_BASE:-$ROOT/dist/discovery-$PLATFORM.sql}"
 DEEP_SCAN=0
-# --cache reads what a scheduled bin/container-scan --cache wrote, and never talks to a
-# daemon. That is the deployment shape to prefer: see bin/container-scan's cache_write.
-# --cache emits the file --write produced and RUNS NOTHING. The file already holds every
-# branch, so re-running the base query beside it double-counted the whole inventory: 773
-# rows read back as 1530. It is `cat` with a parse check, which is the point -- the endpoint
-# integration is a file read, and this is the same thing with a diagnostic.
+# --cache emits the file --write produced and RUNS NOTHING: `cat` with a parse check. The
+# file already holds every branch, and running the base query beside it double-counted them.
 CACHE_PATH=""
 WRITE=""
-# --status writes ONE plain line, for a second attribute that inventory tooling can actually
-# match on. A consumer that compresses this payload for transport cannot see inside the result,
-# and a consumer that stores it as one blob cannot query it -- so the payload alone cannot
-# answer "show me every machine where the container scan is failing". This can:
-#
-#   degraded 2026-08-31T17:52:03Z apps=ok browser=ok containers=timeout:6 ...
-#
-# First token is ok or degraded, so a group is `like "degraded"`; per-branch tokens let a
-# group narrow to `like "containers=timeout"`.
-#
-# `absent` DOES NOT DEGRADE. It is a stated fact about the machine -- no Docker, no systemd
-# bus -- not a branch that failed to look, and the two need different responses: one is
-# nothing to do, the other is someone's morning. Rolling them together makes the first token
-# fire on every machine that simply does not run Docker, which is the fastest way to teach a
-# fleet to ignore it. A branch that could not look still says so in its own token, so
-# narrowing to `like "containers="` loses nothing.
+# --status writes ONE plain line that inventory tooling can match on, which a compressed or
+# blob-stored payload is not: `degraded <time> rows=N apps=ok containers=timeout:6 ...`.
+# `absent` DOES NOT DEGRADE. It is a fact about the machine, not a branch that failed to
+# look, and a first token that fired on every Docker-less machine would teach a fleet to
+# ignore it. The branch's own token still says `absent`.
 STATUS=""
-# One process per branch, for --write only. The composed artifact exists to save process
-# startup when something is WAITING; a scheduled writer has nobody waiting, and paying ~0.5s
-# per branch buys the reliability below. MEASURED, and it is not a small difference:
-#
-#   one branch's table unavailable, as on an older osquery:
-#     composed, one statement ..... 0 rows, exit 1, stdout "[\n\n]" -- five bytes of
-#                                   VALID EMPTY JSON. One missing table and the machine
-#                                   reports as though nothing is installed on it.
-#     independent ................. 6 of 6 branches, 757 rows, the bad one contributes 0
-#
-# Every query declares `min-osquery: 5.10.0`, so a table being absent is a real deployment
-# state and not a hypothetical. Independent execution also gives each branch its own bound
-# and its own scan row, so "we could not look" is per branch instead of all-or-nothing.
-# Overridable so test/docker_states.sh can hand this a pack containing a deliberately
-# broken query and assert the other branches still report. That assertion is the whole
-# justification for running branches apart, and it should not live only in CI.
-PACK="${DISCOVER_PACK:-$ROOT/dist/ai-discovery.conf}"
+# One process per branch, for --write only, where nobody is waiting on process startup.
+# Composed, one unavailable table fails the whole statement with a valid empty array;
+# apart, it costs one branch, and each branch gets its own bound and scan row
+# (queries/COST.md). Most queries need osquery 5.10.0, vscode 5.11.0 and jetbrains 5.18.0,
+# so a missing table is a real deployment state. Overridable so test/docker_states.sh can
+# hand this a pack with a broken query and assert the other branches still report.
+PACK="${DISCOVER_PACK:-$ROOT/dist/ai-detection-spec.conf}"
 # An array, so a socket path with a space in it survives. Appended to with `+=` and
 # expanded with the ${a[@]+...} guard, because bash 3.2 -- the only bash a managed Mac has
 # -- treats "${a[@]}" on an EMPTY array as an unbound variable under `set -u`. It is fixed
@@ -121,7 +77,7 @@ PACK="${DISCOVER_PACK:-$ROOT/dist/ai-discovery.conf}"
 #   functions  need_arg json_str json_row osq_run json_concat pack_branches merge_sql
 #              merge_branches osqueryi_path docker_socket_path _runtime_seen other_runtime
 #              docker_probe docker_healthy docker_state own_run_dir run_bounded marker
-#              no_docker cache_write container_scan scan_and_cache
+#              no_docker cannot_run cache_write container_scan scan_and_cache
 #
 # And what THIS script defines, so the next addition to either file can check both lists:
 #
@@ -226,12 +182,10 @@ status_sql() {
 #
 # THE VERSION IS ONE OF THOSE SEEN, NOT THE HIGHEST. max() over strings is alphabetical, so
 # 1.9.0 beats 1.10.0; comparing versions properly is not a thing this SQL should attempt.
-# Container rows are left out of it entirely: queries/containers.sql puts the container's
-# STATE in `ver`, so without the guard a running aider container printed `aider running`.
 names_sql() {
   printf "(SELECT coalesce(group_concat(name || CASE WHEN ver != '' THEN ' ' || ver"
   printf " ELSE '' END, ', '), 'none') FROM (SELECT name,"
-  printf " max(CASE WHEN kind = 'container' THEN '' ELSE ver END) AS ver FROM hit"
+  printf " max(ver) AS ver FROM hit"
   printf " GROUP BY agent ORDER BY name))"
 }
 
@@ -246,7 +200,7 @@ names_sql() {
 summary() {
   local out
   if [ "$2" = 1 ]; then
-    [ -s "$SIGS" ] || { echo "discover: no $SIGS (run tools/render_match.py)" >&2; return 1; }
+    [ -s "$SIGS" ] || { echo "discover: no $SIGS (in a clone, run osquery/tools/render_match.py)" >&2; return 1; }
     out="$({ payload_cte "$1"; cat "$SIGS"
              printf "SELECT "; names_sql; printf " AS names, "; status_sql; printf " AS status;"
            } | osq_run "$osqi" --line)"
@@ -304,7 +258,7 @@ if [ -n "$CACHE_PATH" ]; then
   fi
   need_osqi
   # Parsed rather than echoed, so a truncated or half-written file is caught here instead of
-  # reaching a collector as "this machine reported nothing". The parser is osqueryi -- the
+  # reaching a consumer as "this machine reported nothing". The parser is osqueryi -- the
   # same SQLite that wrote the file.
   #
   # THE VERDICT COMES BACK, NOT THE ROWS. json_valid() and json_type() answer `bad` on a
@@ -355,12 +309,12 @@ fi
 # Every mode below this line runs queries, so both are prerequisites for all of them. The
 # artifact check no longer gates --cache, which never reads the artifact.
 need_osqi
-[ -s "$BASE" ] || { echo "discover: no $BASE (run tools/build.py)" >&2; exit 1; }
+[ -s "$BASE" ] || { echo "discover: no $BASE (in a clone, run osquery/tools/build.py)" >&2; exit 1; }
 
 # --write: every branch in its own process, then one payload. Runs before anything else
 # because it is a different mode rather than an addition to the default one.
 if [ -n "$WRITE" ]; then
-  [ -s "$PACK" ] || { echo "discover: no $PACK (run tools/build.py)" >&2; exit 1; }
+  [ -s "$PACK" ] || { echo "discover: no $PACK (in a clone, run osquery/tools/build.py)" >&2; exit 1; }
   tmpdir="$(mktemp -d "${TMPDIR:-/tmp}/discover.XXXXXX")" || exit 1
   # The pack is the artifact that carries one named query per file, already flattened to a
   # single argv-safe line. Running it is running what ships.
@@ -434,14 +388,14 @@ EOF
   merge_branches "$osqi" "$tmpdir" $names > "$tmpdir/payload"
   [ -s "$tmpdir/payload" ] || { echo "discover: produced no payload; $WRITE left alone" >&2; rm -rf "$tmpdir"; exit 1; }
   # Rename, never write in place: a `cat` that caught a half-written file yields truncated
-  # JSON, which a collector reads as a machine that reported nothing.
+  # JSON, which a consumer reads as a machine that reported nothing.
   mkdir -p "$(dirname "$WRITE")" 2>/dev/null
   mv -f "$tmpdir/payload" "$WRITE" || { echo "discover: could not write $WRITE" >&2; rm -rf "$tmpdir"; exit 1; }
   chmod 644 "$WRITE" 2>/dev/null
 
   # ONE STATEMENT for the status and, with --names, the names beside it -- and it reads
   # back $WRITE rather than the rows on their way there, so the line describes the file a
-  # collector will actually find. The expressions live in status_sql and names_sql above.
+  # consumer will actually find. The expressions live in status_sql and names_sql above.
   if [ -n "$STATUS" ] || [ "$NAMES" = 1 ]; then
     if summary "$WRITE" "$NAMES"; then
       if [ -n "$STATUS" ]; then
@@ -485,9 +439,9 @@ base="$("$osqi" --json < "$BASE")" || { echo "discover: the base query failed" >
 
 if [ "$DEEP_SCAN" = 0 ]; then
   if [ "$NAMES" = 1 ]; then
-    # No marker rows on this path -- the composed artifact carries none -- so the status
-    # half reads `ok <stamp> rows=N` and nothing more. That is honest: nothing here could
-    # fail to look except by failing outright, which exits 1 above.
+    # No per-branch markers on this path: the composed artifact carries only what its own
+    # SQL emits (systemd= on Linux, nothing on macOS). A branch cannot fail alone here; a
+    # failure fails the statement, which exits 1 above.
     names_line "$base" || exit 1
     exit 0
   fi
@@ -501,7 +455,7 @@ deep="$("$ROOT/bin/container-scan" ${SCAN_ARGS[@]+"${SCAN_ARGS[@]}"})"; deep_rc=
 case "$deep_rc" in
   0) ;;
   2|3) ;;  # did not scan, or gave up. The marker row carries which, and base survives.
-  *) echo "discover: container-scan could not run (exit $deep_rc); reporting base rows only" >&2 ;;
+  *) echo "discover: container-scan could not run (exit $deep_rc); its marker says containers=error" >&2 ;;
 esac
 
 # Join by PARSING both documents, never by splicing brackets -- see json_concat, which

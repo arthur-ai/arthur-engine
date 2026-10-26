@@ -90,7 +90,13 @@ const MLEvaluators: React.FC<MLEvaluatorsProps> = ({ isCreateModalOpen: external
             <Typography variant="h5" gutterBottom sx={{ fontWeight: 500 }}>
               No ML evals yet
             </Typography>
-            <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+            <Typography
+              variant="body1"
+              sx={{
+                color: "text.secondary",
+                mb: 3,
+              }}
+            >
               Get started by creating your first ML eval
             </Typography>
             <Button variant="contained" startIcon={<AddIcon />} onClick={() => setInternalOpen(true)} size="large">
@@ -122,12 +128,29 @@ const MLEvaluators: React.FC<MLEvaluatorsProps> = ({ isCreateModalOpen: external
 const MLEvalCard = ({ eval_, onEdit }: { eval_: LLMGetAllMetadataResponse; onEdit: (evalName: string) => void }) => {
   return (
     <Paper variant="outlined" sx={{ p: 2 }}>
-      <Stack direction="row" alignItems="center" justifyContent="space-between">
+      <Stack
+        direction="row"
+        sx={{
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
         <Box>
-          <Typography variant="subtitle1" fontWeight={600}>
+          <Typography
+            variant="subtitle1"
+            sx={{
+              fontWeight: 600,
+            }}
+          >
             {eval_.name}
           </Typography>
-          <Stack direction="row" gap={1} mt={0.5}>
+          <Stack
+            direction="row"
+            sx={{
+              gap: 1,
+              mt: 0.5,
+            }}
+          >
             <Chip label={ML_EVAL_TYPE_LABELS[eval_.eval_kind ?? ""] ?? eval_.eval_kind} size="small" variant="outlined" color="secondary" />
             <Chip
               label={`${eval_.versions} version${eval_.versions !== 1 ? "s" : ""}`}

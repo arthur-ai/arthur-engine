@@ -145,8 +145,20 @@ export const AllTasks: React.FC = () => {
   };
 
   const filterToolbar = (
-    <Stack direction="row" spacing={1.5} alignItems="center">
-      <Stack direction="row" spacing={0.5} alignItems="center">
+    <Stack
+      direction="row"
+      spacing={1.5}
+      sx={{
+        alignItems: "center",
+      }}
+    >
+      <Stack
+        direction="row"
+        spacing={0.5}
+        sx={{
+          alignItems: "center",
+        }}
+      >
         <FormControl size="small" variant="standard">
           <Select
             value={inactiveDays}
@@ -166,16 +178,24 @@ export const AllTasks: React.FC = () => {
         <Stack
           direction="row"
           spacing={0.5}
-          alignItems="center"
           onClick={() => setHideSystemTasks(!hideSystemTasks)}
-          sx={{ cursor: "pointer", "&:hover": { opacity: 0.7 } }}
+          sx={{
+            alignItems: "center",
+            cursor: "pointer",
+            "&:hover": { opacity: 0.7 },
+          }}
         >
           {hideSystemTasks ? (
             <VisibilityOffIcon sx={{ fontSize: 16, color: "text.disabled" }} />
           ) : (
             <VisibilityIcon sx={{ fontSize: 16, color: "text.disabled" }} />
           )}
-          <Typography variant="body2" color="text.secondary">
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+            }}
+          >
             {hideSystemTasks ? "System tasks hidden" : "System tasks visible"}
           </Typography>
         </Stack>
@@ -215,10 +235,21 @@ export const AllTasks: React.FC = () => {
               <Alert severity="error">Failed to load tasks. Please check your authentication.</Alert>
             ) : hasNoResults && !isFilterApplied ? (
               <Box sx={{ textAlign: "center", py: 6 }}>
-                <Typography variant="h6" color="text.secondary">
+                <Typography
+                  variant="h6"
+                  sx={{
+                    color: "text.secondary",
+                  }}
+                >
                   No tasks found
                 </Typography>
-                <Typography variant="body2" color="text.disabled" sx={{ mb: 4 }}>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: "text.disabled",
+                    mb: 4,
+                  }}
+                >
                   Get started by creating your first agent task.
                 </Typography>
                 <CreateTaskForm embedded={true} onTaskCreated={handleTaskCreated} onCancel={() => {}} />
@@ -250,10 +281,27 @@ export const AllTasks: React.FC = () => {
                 {/* Filter toolbar */}
                 <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 3 }}>
                   {filterToolbar}
-                  <Stack direction="row" spacing={1.5} alignItems="center">
-                    <Stack direction="row" spacing={0.5} alignItems="center">
+                  <Stack
+                    direction="row"
+                    spacing={1.5}
+                    sx={{
+                      alignItems: "center",
+                    }}
+                  >
+                    <Stack
+                      direction="row"
+                      spacing={0.5}
+                      sx={{
+                        alignItems: "center",
+                      }}
+                    >
                       <ShowChartIcon sx={{ fontSize: 16, color: "text.disabled" }} />
-                      <Typography variant="body2" color="text.secondary">
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          color: "text.secondary",
+                        }}
+                      >
                         Metrics from last 7 days
                       </Typography>
                     </Stack>
@@ -268,16 +316,31 @@ export const AllTasks: React.FC = () => {
                 {/* Active task grid */}
                 {hasNoResults && isSearching ? (
                   <Box sx={{ textAlign: "center", py: 6 }}>
-                    <Typography variant="h6" color="text.secondary">
+                    <Typography
+                      variant="h6"
+                      sx={{
+                        color: "text.secondary",
+                      }}
+                    >
                       No tasks match &quot;{debouncedSearchQuery}&quot;
                     </Typography>
-                    <Typography variant="body2" color="text.disabled">
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        color: "text.disabled",
+                      }}
+                    >
                       Try a different search term.
                     </Typography>
                   </Box>
                 ) : filteredTasks.length === 0 ? (
                   <Box sx={{ textAlign: "center", py: 6 }}>
-                    <Typography variant="h6" color="text.secondary">
+                    <Typography
+                      variant="h6"
+                      sx={{
+                        color: "text.secondary",
+                      }}
+                    >
                       {inactiveDays === 0
                         ? "No tasks found"
                         : inactiveDays === "archived"
@@ -285,7 +348,12 @@ export const AllTasks: React.FC = () => {
                           : `No tasks active in the last ${inactiveDays} days`}
                     </Typography>
                     {inactiveDays !== 0 && inactiveDays !== "archived" && (
-                      <Typography variant="body2" color="text.disabled">
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          color: "text.disabled",
+                        }}
+                      >
                         Try expanding the time range or selecting &quot;All time&quot;.
                       </Typography>
                     )}
@@ -321,7 +389,12 @@ export const AllTasks: React.FC = () => {
                 )}
                 {!hasNextPage && tasks.length > 0 && (
                   <Box sx={{ textAlign: "center", py: 2 }}>
-                    <Typography variant="caption" color="text.disabled">
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        color: "text.disabled",
+                      }}
+                    >
                       All {totalCount} tasks loaded
                     </Typography>
                   </Box>
@@ -334,9 +407,21 @@ export const AllTasks: React.FC = () => {
         {/* Archived Tasks Dialog */}
         <Dialog open={archivedDialogOpen} onClose={() => setArchivedDialogOpen(false)} maxWidth="lg" fullWidth>
           <DialogTitle sx={{ pb: 1 }}>
-            <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+            <Stack
+              direction="row"
+              sx={{
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+              }}
+            >
               <Box>
-                <Stack direction="row" spacing={1} alignItems="center">
+                <Stack
+                  direction="row"
+                  spacing={1}
+                  sx={{
+                    alignItems: "center",
+                  }}
+                >
                   <InventoryIcon sx={{ fontSize: 20, color: "text.secondary" }} />
                   <Typography variant="h6">Archived Tasks</Typography>
                   {!isLoadingArchived && archivedTasks.length > 0 && (
@@ -351,7 +436,13 @@ export const AllTasks: React.FC = () => {
                     />
                   )}
                 </Stack>
-                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: "text.secondary",
+                    mt: 0.5,
+                  }}
+                >
                   Unarchive a task to restore it to your active list
                 </Typography>
               </Box>
@@ -370,10 +461,20 @@ export const AllTasks: React.FC = () => {
             ) : filteredArchivedTasks.length === 0 ? (
               <Box sx={{ textAlign: "center", py: 6 }}>
                 <InventoryIcon sx={{ fontSize: 40, color: "text.disabled", mb: 1 }} />
-                <Typography variant="h6" color="text.secondary">
+                <Typography
+                  variant="h6"
+                  sx={{
+                    color: "text.secondary",
+                  }}
+                >
                   No archived tasks
                 </Typography>
-                <Typography variant="body2" color="text.disabled">
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: "text.disabled",
+                  }}
+                >
                   Tasks you archive will appear here. Unarchive any task to restore it.
                 </Typography>
               </Box>
@@ -398,7 +499,12 @@ export const AllTasks: React.FC = () => {
                 )}
                 {!archivedHasNextPage && archivedTasks.length > 0 && (
                   <Box sx={{ textAlign: "center", py: 2 }}>
-                    <Typography variant="caption" color="text.disabled">
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        color: "text.disabled",
+                      }}
+                    >
                       All {archivedTotalCount} archived tasks loaded
                     </Typography>
                   </Box>

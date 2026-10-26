@@ -97,7 +97,13 @@ const PreviewPromptModal = ({ open, setOpen, prompt }: PreviewPromptModalProps) 
 
         {!isLoading && !error && renderedMessages.length === 0 && (
           <Box sx={{ padding: 2 }}>
-            <Typography color="text.secondary">No messages to display</Typography>
+            <Typography
+              sx={{
+                color: "text.secondary",
+              }}
+            >
+              No messages to display
+            </Typography>
           </Box>
         )}
 
@@ -106,7 +112,14 @@ const PreviewPromptModal = ({ open, setOpen, prompt }: PreviewPromptModalProps) 
             {renderedMessages.map((message, index) => (
               <Card key={index} variant="outlined">
                 <CardContent>
-                  <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, textTransform: "capitalize" }}>
+                  <Typography
+                    variant="subtitle2"
+                    sx={{
+                      color: "text.secondary",
+                      mb: 1,
+                      textTransform: "capitalize",
+                    }}
+                  >
                     {message.role}
                   </Typography>
                   <Typography
@@ -123,7 +136,13 @@ const PreviewPromptModal = ({ open, setOpen, prompt }: PreviewPromptModalProps) 
                   </Typography>
                   {message.tool_calls && message.tool_calls.length > 0 && (
                     <Box sx={{ mt: 2 }}>
-                      <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
+                      <Typography
+                        variant="subtitle2"
+                        sx={{
+                          color: "text.secondary",
+                          mb: 1,
+                        }}
+                      >
                         Tool Calls
                       </Typography>
                       <Typography

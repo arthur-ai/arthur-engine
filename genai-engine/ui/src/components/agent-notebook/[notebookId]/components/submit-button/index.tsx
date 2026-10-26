@@ -53,8 +53,17 @@ export const SubmitButton = withForm({
         <Dialog open={showDialog} onClose={() => setShowDialog(false)} fullWidth>
           <DialogTitle>Fill Request Time Parameters</DialogTitle>
           <DialogContent dividers>
-            <Stack gap={2}>
-              <Typography variant="body2" color="text.secondary">
+            <Stack
+              sx={{
+                gap: 2,
+              }}
+            >
+              <Typography
+                variant="body2"
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
                 These values are passed directly to the execution thread and are not stored in the database.
               </Typography>
               <form.AppField name="requestTimeParameters" mode="array">

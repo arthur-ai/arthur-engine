@@ -28,10 +28,10 @@ export const SpanStatusBadge = memo(({ status, disableLabel = false }: Props) =>
   return (
     <Tooltip title={capitalize(status)}>
       <Stack
-        gap={0.5}
         direction="row"
-        alignItems="center"
         sx={{
+          gap: 0.5,
+          alignItems: "center",
           color,
           px: 1,
           ...(disableLabel && { py: 1 }),
@@ -44,7 +44,14 @@ export const SpanStatusBadge = memo(({ status, disableLabel = false }: Props) =>
       >
         <Icon sx={{ fontSize: 12 }} />
         {!disableLabel && (
-          <Typography variant="caption" sx={{ color }} fontWeight={500} className="select-none">
+          <Typography
+            variant="caption"
+            className="select-none"
+            sx={{
+              fontWeight: 500,
+              color,
+            }}
+          >
             {capitalize(status)}
           </Typography>
         )}

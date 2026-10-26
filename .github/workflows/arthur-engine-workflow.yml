@@ -125,7 +125,7 @@ jobs:
         id: mypy
         continue-on-error: true
         run: |
-          uv run --no-sync --directory ml-engine mypy src/ml_engine
+          uv run --no-sync --directory ml-engine mypy src/ml_engine scripts/jamf_smoke.py
       - name: Check linter results
         if: steps.isort.outcome == 'failure' || steps.autoflake.outcome == 'failure' || steps.black.outcome == 'failure' || steps.mypy.outcome == 'failure'
         run: |
@@ -339,7 +339,7 @@ jobs:
               - 'ml-engine/**'
               - 'arthur-observability-sdk/**'
               - 'genai-engine/staging.openapi.json'
-              # ml-engine's tests assert that its vendored copy of osquery-ai-discovery
+              # ml-engine's tests assert that its vendored copy of ai-detection-spec
               # names the same upstream ref as the endpoint's. tools/vendor-queries.sh
               # writes only the endpoint copy, so a re-vendor produces a changeset
               # confined to integrations/ -- and without this the parity test, the only

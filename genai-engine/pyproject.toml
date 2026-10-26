@@ -1,66 +1,66 @@
 [project]
 name = "arthur-genai-engine"
-version = "2.1.1044"
+version = "2.1.1053"
 description = ""
 authors = [{ name = "Arthur", email = "engineering@arthur.ai" }]
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
 
 dependencies = [
-  # Held at 2.x: litellm 1.105.1 requires openai<3.0.0. Renovate's openai v3 bump (#2134)
+  # Held at 2.x: litellm 1.106.0 requires openai<3.0.0. Renovate's openai v3 bump (#2134)
   # edited this pin without relocking, so uv.lock kept 2.54.0 and `uv lock` could not
   # re-resolve at all. Raise this only once litellm supports openai v3.
   "openai==2.54.0",
-  "fastapi==0.142.2",
+  "fastapi==0.159.1",
   "uvicorn==0.54.0",
-  "pydantic==2.13.5",
+  "pydantic==2.14.1",
   "sse-starlette==3.5.0",
   "fastapi-sqlalchemy==0.2.1",
-  "alembic==1.20.0",
-  "boto3==1.43.106",
-  "python-dotenv==1.2.3",
+  "alembic==1.20.1",
+  "boto3==1.43.117",
+  "python-dotenv==1.2.4",
   "psycopg2-binary==2.9.13",
   # Held below 2.1: opentelemetry-instrumentation-sqlalchemy (every release through 0.66b1)
   # declares sqlalchemy<2.1.0 and skips instrumenting outside it, so DB tracing would silently
   # stop. See the sqlalchemy rule in /renovate.json.
-  "sqlalchemy==2.0.54",
-  "pgvector==0.5.0",
+  "sqlalchemy==2.0.55",
+  "pgvector==0.5.1",
   "python-multipart==0.0.32",
-  "pypdf==6.19.0",
+  "pypdf==6.21.2",
   "httpx==0.28.1",
   # Held below 5.14.0: gliner 0.2.28 (the latest release) requires
   # transformers>=4.51.3,<5.14.0. See the transformers rule in /renovate.json.
   "transformers==5.13.1",
-  "authlib==1.8.0",
+  "authlib==1.9.1",
   "requests==2.34.2",
-  "starlette==1.7.0",
+  "starlette==1.9.0",
   "pyjwt==2.15.1",
   "azure-storage-blob==12.31.0",
   "itsdangerous==2.2.0",
   "newrelic==13.6.1",
-  # Held below 9.0: litellm 1.105.1 requires importlib-metadata>=8.0.0,<9.0. See the
+  # Held below 9.0: litellm 1.106.0 requires importlib-metadata>=8.0.0,<9.0. See the
   # importlib-metadata rule in /renovate.json. Raise once litellm widens its ceiling.
-  "importlib-metadata==8.7.1",
+  "importlib-metadata==8.9.0",
   "opentelemetry-instrumentation-logging>=0.65b0,<0.66",
   "opentelemetry-instrumentation>=0.65b0,<0.66",
   "opentelemetry-instrumentation-fastapi>=0.65b0,<0.66",
   "opentelemetry-exporter-otlp>=1.39.1,<2",
   "opentelemetry-instrumentation-sqlalchemy>=0.65b0,<0.66",
   "tiktoken==0.14.0",
-  "nltk==3.10.3",
-  "more-itertools==11.1.0",
+  "nltk==3.10.4",
+  "more-itertools==11.2.1",
   "presidio-analyzer==2.2.364",
   "presidio-anonymizer==2.2.364",
   "python-keycloak==7.1.1",
   "bcrypt==5.0.0",
-  "cachetools==7.2.0",
-  "sentence-transformers==6.1.0",
+  "cachetools==7.2.4",
+  "sentence-transformers==6.2.0",
   "en-core-web-lg @ https://github.com/explosion/spacy-models/releases/download/en_core_web_lg-3.8.0/en_core_web_lg-3.8.0-py3-none-any.whl",
   "torch==2.13.0 ; sys_platform == 'darwin'",
   "torch==2.13.0+cpu ; sys_platform == 'linux' or sys_platform == 'win32'",
   "commonmark==0.9.2",
   "gunicorn>=26,<27",
-  "fastapi-pagination==0.16.0",
+  "fastapi-pagination==0.16.1",
   "pydantic-settings>=2.3.4,<3",
   "spacy>=3.8.3",
   "date-spacy>=0.0.1,<0.1",
@@ -75,16 +75,16 @@ dependencies = [
   "sentencepiece==0.2.2",
   "gliner==0.2.29",
   "openinference-semantic-conventions>=0.1.12,<0.2",
-  "litellm==1.105.1",
+  "litellm==1.106.0",
   "jinja2>=3.1.6,<4",
-  "python-benedict>=0.39,<0.40",
+  "python-benedict>=0.40,<0.41",
   "weaviate-client>=4.17.0,<5",
-  "arthur-common==2.4.97",
+  "arthur-common==2.4.99",
   "google-auth>=2.48.0,<3",
   "google-cloud-aiplatform>=1.38",
   "google-cloud-trace>=1.11.0,<2",
   "opentelemetry-semantic-conventions>=0.65b0,<0.66",
-  "arthur-client==1.4.2774",
+  "arthur-client==1.4.2900",
 ]
 
 [project.scripts]
@@ -98,14 +98,14 @@ dev = [
   "pytest-asyncio==1.4.0",
   "pytest-cov==7.1.0",
   "pytest-xdist==3.8.0",
-  "pre-commit==4.6.2",
+  "pre-commit==4.7.0",
   "types-cachetools>=6.2.0.20251022",
 ]
 performance = [
-  "locust==2.46.6",
+  "locust==2.47.0",
 ]
 linters = [
-  "black==26.5.1",
+  "black==26.10.1",
   "mypy>=2.3,<3",
   "isort>=7.0.0",
   "autoflake>=2.3.1,<3",

@@ -26,3 +26,4 @@ Needs `ARTHUR_API_HOST`, `ARTHUR_CLIENT_ID`, `ARTHUR_CLIENT_SECRET` to talk to t
 - Job executors should be stateless and idempotent where possible.
 - Health check endpoints must respond quickly — slow responses cause container restarts.
 - Discovery connectors are listed in `discovery.source_connectors()` and must declare `SENSITIVE_FIELDS`, or standalone mode refuses them; sink targets are listed in `standalone.sinks.Destination`, one module each.
+- A connector with no Platform vendor goes in `discovery.standalone_connectors()` instead, so Platform executors never see it. `local` is one: it reads the endpoint collector's `inventory.json` from a mounted folder, for Deckard's quickstart, and depends on the collector still publishing that file under that name.
