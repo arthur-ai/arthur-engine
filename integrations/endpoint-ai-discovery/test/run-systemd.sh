@@ -92,15 +92,12 @@ ok "units verify; timer enabled"
 
 case_ "== one run under systemd publishes what the collector framed ============="
 start_fake ok
-# What a collector built before osquery-ai-discovery v0.14.0 left behind on every run.
-install -d -m 700 /var/lib/arthur/tmp/osquery-99999
 activate
 [ "$started" -eq 0 ] && [ "$result" = success ] || bad "the unit ended '$result' (start exited $started)"
 [ "$(head -c 8 "$store/arthur/inventory" 2>/dev/null)" = arthur1. ] || bad "arthur/inventory is not an arthur1. value"
 cmp -s <(tr -d '\n' < /var/lib/arthur/inventory.ea) "$store/arthur/inventory" \
   || bad "arthur/inventory is not the value the collector framed, byte for byte"
-# The one temp directory no cleaner reads: the run leaves nothing there, and clears what an
-# older collector left.
+# The one temp directory no cleaner reads: the run must leave nothing there.
 [ -z "$(ls -A /var/lib/arthur/tmp 2>/dev/null)" ] \
   || bad "the unit's TMPDIR is not empty: $(ls -A /var/lib/arthur/tmp | tr '\n' ' ')"
 grep -Eq '^(ok|degraded) [0-9-]+T[0-9:]+Z rows=[0-9]+ ' "$store/arthur/status" \

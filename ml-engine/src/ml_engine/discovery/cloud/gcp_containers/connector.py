@@ -4,9 +4,9 @@ Lists every Cloud Run service, Cloud Run job and GKE workload in the configured 
 and reports the ones that are, or may be, agents. A container runtime lists every
 workload, not only agents, so a workload is reported when:
 
-- one of its images is an agent's in the catalog (`images:` in the vendored
-  `agents.yaml`, or the source config's own catalog), matched by the vendored
-  matcher's container route; or
+- one of its images is an agent's in the catalog (an `images` identifier in the
+  vendored catalog, or the source config's own), matched by the vendored matcher's
+  container route; or
 - it runs as a GCP service account in the scan's set of AI-calling service accounts --
   the callers a Vertex AI audit-log read names. `workloads.select_workloads` takes that
   set as a parameter so the two sources can be joined there; nothing fills it yet; or
@@ -186,7 +186,7 @@ class GcpContainersConnector:
             allow_adc_env_var=ALLOW_ADC_ENV_VAR,
             scopes=[CLOUD_PLATFORM_SCOPE],
         )
-        matcher = Matcher.from_source(catalog_yaml=config.query or None, logger=logger)
+        matcher = Matcher.from_source(catalog_json=config.query or None, logger=logger)
         client = GcpContainersClient(
             self._session_for(google_credentials),
             logger,
