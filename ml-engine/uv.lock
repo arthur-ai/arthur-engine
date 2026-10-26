@@ -170,7 +170,7 @@ wheels = [
 
 [[package]]
 name = "arthur-common"
-version = "2.4.99"
+version = "2.4.101"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "datasketches" },
@@ -186,9 +186,9 @@ dependencies = [
     { name = "types-requests" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/2d/13/b60f7866f3a6d24a27bd61cc726641422097853c301b913cb9e74a0da54a/arthur_common-2.4.99.tar.gz", hash = "sha256:86d92093e0f5b14eefe4a3020a2fe896aaa787bbd25bea7745e1271cf3a6ddcd", size = 14762252, upload-time = "2026-10-21T16:07:32.595Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/07/1a/4039ce8ee216c11944689a2943776bbd1df413d60b43f8088a9b5517f8cd/arthur_common-2.4.101.tar.gz", hash = "sha256:17a16bce9d97aec1daaae9b3109a5ad6548f4172ea48a23c08b3771a1920d902", size = 14765516, upload-time = "2026-10-26T18:05:00.093Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/df/29/d8b35167df9a18b65997b2cabda93b25868846ec11da7ca8e981493fdadb/arthur_common-2.4.99-py3-none-any.whl", hash = "sha256:1878395d335b716b1a36488f788fb8232f9f2dd03faf7ceaf22db9a417b9a54a", size = 108774, upload-time = "2026-10-21T16:07:30.482Z" },
+    { url = "https://files.pythonhosted.org/packages/2b/dd/52e9a420fe922cbbd86e851ca1ce59bcdb9487733143e41964974fea964a/arthur_common-2.4.101-py3-none-any.whl", hash = "sha256:5a4ba264876bb8d4db4b0b111aa6901a08590059939b2f3e625269a51075b545", size = 111035, upload-time = "2026-10-26T18:04:57.888Z" },
 ]
 
 [[package]]
@@ -1598,7 +1598,7 @@ linters = [
 requires-dist = [
     { name = "adlfs", specifier = "==2026.8.0" },
     { name = "arthur-client", specifier = "==1.4.2900" },
-    { name = "arthur-common", specifier = "==2.4.99" },
+    { name = "arthur-common", specifier = "==2.4.101" },
     { name = "boto3", specifier = ">=1.43,<2" },
     { name = "croniter", specifier = "==6.2.4" },
     { name = "databricks-sdk", specifier = ">=0.84.0,<1" },
