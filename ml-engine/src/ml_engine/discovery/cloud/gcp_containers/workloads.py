@@ -21,13 +21,14 @@ as the caller, so it is the key that joins a workload to the models it called.
 - GKE without Workload Identity, or on a node pool that opts out of it
   (`GCE_METADATA`): the node pool's service account, which every pod on the node
   shares. Which pool a controller's pods land on is the scheduler's, so every such
-  pool's account is listed. A match on one is a match on the node, not the workload,
-  and the record says which account matched.
+  pool's account is listed. A match on one is a match on the node, not the workload:
+  it is labelled as the node's account and does not select the workload, because an
+  AI-calling node account would otherwise report every pod on the node.
 """
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Callable, Iterable, Mapping, Optional, Sequence
+from typing import AbstractSet, Any, Callable, Iterable, Mapping, Optional, Sequence
 
 from discovery.catalog import Finding, Matcher
 
@@ -46,6 +47,15 @@ K8S_KINDS: tuple[tuple[str, str, str], ...] = (
     ("/apis/batch/v1/jobs", "job", "batch/jobs"),
     ("/api/v1/pods", "pod", "pods"),
 )
+
+# For a Job or Pod, the owner kinds that stand for it: a workload this scan lists itself
+# (a ReplicaSet is its Deployment's). Owned by anything else -- a RayCluster, an Argo
+# Workflow, a JobSet -- it is its own workload, because that owner is not listed. A
+# controller (Deployment, StatefulSet, DaemonSet, CronJob) is listed whatever owns it.
+FOLDED_INTO = {
+    "job": frozenset({"CronJob"}),
+    "pod": frozenset({"ReplicaSet", "StatefulSet", "DaemonSet", "Job"}),
+}
 
 # Namespaces GKE and Kubernetes run their own components in. Their workloads run on the
 # node's service account like any other, so an AI-calling node account would otherwise
@@ -80,6 +90,8 @@ class Workload:
     last_seen: Optional[datetime]
     cluster: Optional[str] = None
     k8s_service_account: Optional[str] = None
+    node_service_accounts: tuple[str, ...] = ()
+    """The accounts in `service_accounts` that are the node's, not the workload's own."""
 
 
 @dataclass(frozen=True)
@@ -167,17 +179,29 @@ def gke_workload(
     path_kind: str,
     asset_kind: str,
     raw: Mapping[str, Any],
+    deployment_replicasets: Optional[AbstractSet[tuple[str, str]]] = None,
 ) -> Optional[Workload]:
     """One Kubernetes object as a workload, or None when it is not its own workload.
 
-    None for an object something owns (a ReplicaSet's pods, a CronJob's Jobs), one in a
-    system namespace, and one with no name. `annotations` is (namespace, KSA) -> the
-    GCP service account its Workload Identity annotation names.
+    `deployment_replicasets` is (namespace, name) of each ReplicaSet a Deployment owns.
+    A pod folds into its ReplicaSet only when that ReplicaSet is one of them: one an
+    Argo Rollout or another custom controller owns has no listed workload above it.
+    None, when ReplicaSets could not be read, folds every ReplicaSet's pods.
+
+    None for a Job or Pod a listed workload owns (a CronJob's Jobs; the pods of a
+    ReplicaSet, StatefulSet, DaemonSet or Job), one in a system namespace, and one with
+    no name. Anything an operator's custom resource owns -- a Deployment a KServe
+    InferenceService runs, a Ray cluster's pods, a JobSet's Jobs -- is its own workload:
+    the custom resource is not listed, so skipping what it owns would drop the workload.
+    `annotations` is (namespace, KSA) -> the GCP service account its Workload Identity
+    annotation names.
     """
     meta = raw.get("metadata") or {}
     namespace = str(meta.get("namespace") or "")
     name = str(meta.get("name") or "")
-    if not namespace or not name or meta.get("ownerReferences"):
+    if not namespace or not name:
+        return None
+    if _folded(path_kind, namespace, meta, deployment_replicasets):
         return None
     if namespace in SYSTEM_NAMESPACES or namespace.startswith(
         SYSTEM_NAMESPACE_PREFIXES,
@@ -198,7 +222,8 @@ def gke_workload(
     )
     if annotated:
         accounts.append(annotated)
-    accounts.extend(identity.node_service_accounts)
+    node_accounts = tuple(a for a in identity.node_service_accounts if a != annotated)
+    accounts.extend(node_accounts)
     return Workload(
         project=project,
         location=location,
@@ -214,6 +239,7 @@ def gke_workload(
         last_seen=_k8s_last_seen(raw),
         cluster=cluster_name,
         k8s_service_account=ksa,
+        node_service_accounts=node_accounts,
     )
 
 
@@ -242,14 +268,24 @@ def resolve_default_accounts(
     if DEFAULT_SERVICE_ACCOUNT not in workload.service_accounts:
         return workload
     resolved = default_account(workload.project)
-    accounts = tuple(
-        dict.fromkeys(
-            (resolved if a == DEFAULT_SERVICE_ACCOUNT else a)
-            for a in workload.service_accounts
-            if a != DEFAULT_SERVICE_ACCOUNT or resolved
-        ),
+    replacement: tuple[str, ...] = (resolved,) if resolved else ()
+
+    def resolve(accounts: tuple[str, ...]) -> tuple[str, ...]:
+        return tuple(
+            dict.fromkeys(
+                r
+                for a in accounts
+                for r in (replacement if a == DEFAULT_SERVICE_ACCOUNT else (a,))
+            ),
+        )
+
+    return Workload(
+        **{
+            **workload.__dict__,
+            "service_accounts": resolve(workload.service_accounts),
+            "node_service_accounts": resolve(workload.node_service_accounts),
+        },
     )
-    return Workload(**{**workload.__dict__, "service_accounts": accounts})
 
 
 def select_workloads(
@@ -260,16 +296,22 @@ def select_workloads(
 ) -> list[SelectedWorkload]:
     """The workloads to report, each with why.
 
-    A workload is reported when an image matches an agent in the catalog, when it runs
-    as one of `ai_service_accounts` (the callers a Vertex AI audit-log read found), or
-    always when `report_all` is set, so every workload's service account is there to be
-    joined. Service accounts compare case-insensitively, as Google's emails do.
+    A workload is reported when an image matches an agent in the catalog, when its own
+    service account is one of `ai_service_accounts` (the callers a Vertex AI audit-log
+    read found), or always when `report_all` is set, so every workload's service account
+    is there to be joined. A node's account it only inherits does not select it.
+    Service accounts compare case-insensitively, as Google's emails do.
     """
     ai = {a.lower() for a in ai_service_accounts}
     selected: list[SelectedWorkload] = []
     for workload in workloads:
         findings = match_images(matcher, workload.images)
-        matched = tuple(a for a in workload.service_accounts if a.lower() in ai)
+        node = {a.lower() for a in workload.node_service_accounts}
+        matched = tuple(
+            a
+            for a in workload.service_accounts
+            if a.lower() in ai and a.lower() not in node
+        )
         reasons: list[str] = []
         if findings:
             reasons.append(REASON_CATALOG)
@@ -296,6 +338,28 @@ def match_images(matcher: Matcher, images: Sequence[str]) -> tuple[Finding, ...]
     if not rows:
         return ()
     return matcher.match(rows).findings
+
+
+def _folded(
+    path_kind: str,
+    namespace: str,
+    meta: Mapping[str, Any],
+    deployment_replicasets: Optional[AbstractSet[tuple[str, str]]],
+) -> bool:
+    """Whether a listed workload owns this Job or Pod, so it is not its own."""
+    folded_into = FOLDED_INTO.get(path_kind, frozenset())
+    for owner in meta.get("ownerReferences") or []:
+        kind = str(owner.get("kind") or "")
+        if kind not in folded_into:
+            continue
+        if (
+            kind == "ReplicaSet"
+            and deployment_replicasets is not None
+            and (namespace, str(owner.get("name") or "")) not in deployment_replicasets
+        ):
+            continue
+        return True
+    return False
 
 
 def _pod_spec(raw: Mapping[str, Any], path_kind: str) -> Mapping[str, Any]:

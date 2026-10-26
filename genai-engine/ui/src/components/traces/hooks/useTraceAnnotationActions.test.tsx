@@ -1,24 +1,18 @@
+import { AnnotationCell } from "@arthur/shared-components";
 import { fireEvent, render, screen } from "@testing-library/react";
+import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { AnnotationCell } from ".";
+import { useAnnotationCellOptions } from "./useTraceAnnotationActions";
 
 import { dispatchTourEvent, TASK_TOUR_EVENTS } from "@/features/task-tour/tourEvents";
 
-vi.mock("./table", () => ({
-  AnnotationsTable: () => <div>Annotations table</div>,
-}));
-
-vi.mock("@/components/common", () => ({
-  CopyableChip: ({ label }: { label: string }) => <span>{label}</span>,
-}));
+vi.mock("@/hooks/useTask", () => ({ useTask: () => ({ task: { id: "task-id" } }) }));
 
 vi.mock("@/features/task-tour/tourEvents", () => ({
   dispatchTourEvent: vi.fn(),
   refreshTaskTourTarget: vi.fn(),
-  TASK_TOUR_EVENTS: {
-    annotationsReviewed: "task-tour:annotations-reviewed",
-  },
+  TASK_TOUR_EVENTS: { annotationsReviewed: "task-tour:annotations-reviewed" },
 }));
 
 const annotation = {
@@ -34,8 +28,11 @@ const annotation = {
   updated_at: "2026-01-01T00:00:00Z",
 } as const;
 
-describe("AnnotationCell task tour events", () => {
+const TraceAnnotationCell = () => <AnnotationCell annotations={[annotation]} traceId="trace-id" {...useAnnotationCellOptions()} />;
+
+describe("useAnnotationCellOptions", () => {
   beforeEach(() => {
+    vi.clearAllMocks();
     vi.stubGlobal(
       "ResizeObserver",
       class ResizeObserver {
@@ -46,8 +43,12 @@ describe("AnnotationCell task tour events", () => {
     );
   });
 
-  it("marks annotations reviewed only after the modal is closed", () => {
-    render(<AnnotationCell annotations={[annotation]} traceId="trace-id" />);
+  it("marks annotations reviewed only after the dialog is closed", () => {
+    render(
+      <MemoryRouter>
+        <TraceAnnotationCell />
+      </MemoryRouter>
+    );
 
     fireEvent.click(screen.getByRole("button"));
 
