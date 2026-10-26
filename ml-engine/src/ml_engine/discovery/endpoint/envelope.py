@@ -5,8 +5,8 @@ Arthur's wire format, not osquery's and not any MDM's: the endpoint writes
     printf 'arthur1.'; gzip -9 -c inventory.json | base64 | tr -d '
 '
 
-and this reverses it. The payload is a BARE JSON ARRAY of six-column rows -- serial, host
-and OS are deliberately absent, because the MDM already knows them.
+and this reverses it. The payload is a BARE JSON ARRAY of ai-detection-spec evidence rows
+(SPEC.md 5) -- serial, host and OS are deliberately absent, because the MDM already knows them.
 
 Returns a named outcome rather than rows or an exception. An unreadable value and a Mac
 with no agents on it are different facts, and returning `[]` for a truncated payload would
@@ -19,6 +19,8 @@ import binascii
 import gzip
 import io
 import json
+import pathlib
+import re
 import zlib
 from dataclasses import dataclass, field
 from enum import Enum
@@ -36,8 +38,28 @@ OVERSIZE_PREFIX = "ERROR:oversize:"
 # fact about the Mac.
 NO_CACHE = "no-cache"
 
-# The six-column contract. Order carries it upstream; by the time it is JSON, the keys do.
-ROW_COLUMNS = frozenset({"kind", "id", "ver", "loc", "extra", "perms"})
+# THE ROW CONTRACT IS THE SPEC'S, read off its vendored evidence schema rather than restated
+# here. Validating with jsonschema itself costs ~25 ms for a 1,000-row device, against ~0.6 ms
+# to match one, so the schema's rules are applied by _row_problem() and a test holds that to
+# jsonschema's verdict.
+_EVIDENCE = json.loads(
+    (
+        pathlib.Path(__file__).resolve().parent.parent
+        / "_vendor"
+        / "evidence.schema.json"
+    ).read_text(),
+)
+_ROW = _EVIDENCE["$defs"]["row"]
+# The members the spec names. One a row omits reads as the empty string (SPEC.md 5.1).
+_MEMBERS = tuple(_ROW["properties"])
+_REQUIRED = tuple(_ROW["required"])
+_KIND = re.compile(_ROW["properties"]["kind"]["pattern"])
+_SCAN_KIND = _ROW["if"]["properties"]["kind"]["const"]
+_SCAN_REQUIRED = tuple(_ROW["then"]["required"])
+_SCAN_VER = re.compile(_ROW["then"]["properties"]["ver"]["pattern"])
+_OUTCOMES = _EVIDENCE["$defs"]["scan_outcome"]["anyOf"]
+_OUTCOME_WORDS = frozenset(w for o in _OUTCOMES for w in o.get("enum", ()))
+_OUTCOME_PATTERNS = tuple(re.compile(o["pattern"]) for o in _OUTCOMES if "pattern" in o)
 
 # Three orders of magnitude above the measured ~127 KB payload. Decompressing untrusted
 # bytes without a limit is how a scan job becomes an out-of-memory kill. RecursionError is
@@ -76,11 +98,15 @@ class Envelope:
 
     `rows` is populated only for `OK`, so an empty `rows` never means "this Mac is clean"
     unless `outcome is OK`. Forcing that distinction is what the type is for.
+
+    `ignored` names the members the rows carried and the spec does not, which were left out
+    of `rows` unread.
     """
 
     outcome: EnvelopeOutcome
     rows: tuple[dict[str, Any], ...] = field(default=())
     detail: Optional[str] = None
+    ignored: tuple[str, ...] = field(default=())
 
     @property
     def ok(self) -> bool:
@@ -116,43 +142,68 @@ def _gunzip_bounded(blob: bytes) -> bytes:
     return out
 
 
+def _row_problem(row: Any) -> Optional[str]:
+    """Why `row` is not an evidence row the spec's schema admits, or None.
+
+    Values from the payload are quoted short: the value is of unknown provenance here.
+    """
+    if not isinstance(row, dict):
+        return f"is {type(row).__name__}, expected an object"
+    missing = [m for m in _REQUIRED if m not in row]
+    if missing:
+        return f"is missing {missing}"
+    # Every member is a string, those the spec names and any a binding adds. A non-string
+    # reaches the matcher as-is -- a null `id` raises TypeError inside its regex and takes the
+    # whole scan with it.
+    bad = sorted(k for k, v in row.items() if not isinstance(v, str))
+    if bad:
+        return f"has non-string member(s): {bad}"
+    if not _KIND.search(row["kind"]):
+        return f"has kind {row['kind'][:40]!r}, which is not a kind name"
+    if row["kind"] == _SCAN_KIND:
+        missing = [m for m in _SCAN_REQUIRED if m not in row]
+        if missing:
+            return f"is a scan marker missing {missing}"
+        if not _SCAN_VER.search(row["ver"]):
+            return f"is a scan marker whose ver {row['ver'][:40]!r} is not unix seconds"
+        outcome = row["extra"]
+        if outcome not in _OUTCOME_WORDS and not any(
+            p.search(outcome) for p in _OUTCOME_PATTERNS
+        ):
+            return (
+                f"is a scan marker with an outcome outside the spec's: {outcome[:40]!r}"
+            )
+    return None
+
+
 def _validate_rows(
     doc: Any,
-) -> tuple[Optional[tuple[dict[str, Any], ...]], Optional[str]]:
-    """Check the decoded document against the six-column contract.
+) -> tuple[Optional[tuple[dict[str, Any], ...]], Optional[str], tuple[str, ...]]:
+    """Check the decoded document against the spec's evidence schema (SPEC.md 5).
 
-    One wrong row fails the whole device rather than being dropped: the columns are the
-    wire format, so a row that does not match means this reader may be misreading all of
-    them, and keeping the rest would turn a format change into a slow leak of records.
+    One wrong row fails the whole device rather than being dropped: a row the schema refuses
+    means this reader may be misreading all of them, and keeping the rest would turn a format
+    change into a slow leak of records. A member a row omits reads as the empty string.
+
+    A MEMBER THE SPEC DOES NOT NAME IS IGNORED, AND THAT MEANS NOT CARRIED. A binding may add
+    one, a string like every member, and a matcher must ignore it; this reader is also the
+    privacy boundary, so it keeps only the members the spec names. A collector that starts
+    writing what it read -- a prompt, a file -- has that value go no further than here, and
+    the member is named, never its value. Returns (rows, reason, the names ignored).
     """
     if not isinstance(doc, list):
-        return None, f"payload is {type(doc).__name__}, expected a JSON array"
+        return None, f"payload is {type(doc).__name__}, expected a JSON array", ()
 
+    rows: list[dict[str, Any]] = []
+    ignored: set[str] = set()
     for i, row in enumerate(doc):
-        if not isinstance(row, dict):
-            return None, f"row {i} is {type(row).__name__}, expected an object"
-        bad = [k for k, v in row.items() if not isinstance(v, str)]
-        if bad and frozenset(row) == ROW_COLUMNS:
-            # Every column is a JSON string in the six-column contract. A non-string
-            # reaches the matcher as-is -- a null `id` raises TypeError inside its regex
-            # and takes the whole scan with it.
-            return None, f"row {i} has non-string column(s): {sorted(bad)}"
+        problem = _row_problem(row)
+        if problem is not None:
+            return None, f"row {i} {problem} (SPEC.md 5)", ()
+        ignored.update(k for k in row if k not in _MEMBERS)
+        rows.append({m: row.get(m, "") for m in _MEMBERS})
 
-        keys = frozenset(row)
-        if keys != ROW_COLUMNS:
-            missing = sorted(ROW_COLUMNS - keys)
-            extra = sorted(keys - ROW_COLUMNS)
-            detail = ", ".join(
-                part
-                for part in (
-                    f"missing {missing}" if missing else "",
-                    f"unexpected {extra}" if extra else "",
-                )
-                if part
-            )
-            return None, f"row {i} breaks the six-column contract: {detail}"
-
-    return tuple(doc), None
+    return tuple(rows), None, tuple(sorted(name[:40] for name in ignored))
 
 
 def read(value: Optional[str]) -> Envelope:
@@ -222,9 +273,9 @@ def read_document(raw: bytes) -> Envelope:
     except (json.JSONDecodeError, UnicodeDecodeError, RecursionError) as exc:
         return _malformed(f"payload is not valid JSON: {exc}")
 
-    rows, reason = _validate_rows(doc)
+    rows, reason, ignored = _validate_rows(doc)
     if reason is not None:
         return _malformed(reason)
 
     assert rows is not None
-    return Envelope(outcome=EnvelopeOutcome.OK, rows=rows)
+    return Envelope(outcome=EnvelopeOutcome.OK, rows=rows, ignored=ignored)

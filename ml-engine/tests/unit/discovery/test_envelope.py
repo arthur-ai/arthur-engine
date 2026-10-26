@@ -12,7 +12,9 @@ import gzip
 import io
 import json
 import pathlib
+from typing import Any
 
+import jsonschema
 import pytest
 
 from discovery.endpoint.envelope import (
@@ -20,9 +22,17 @@ from discovery.endpoint.envelope import (
     MAX_DECOMPRESSED_BYTES,
     EnvelopeOutcome,
     read,
+    read_document,
 )
 
 COLLECTOR_OUTPUT = pathlib.Path("/var/lib/arthur")
+VENDOR = (
+    pathlib.Path(__file__).resolve().parents[3]
+    / "src"
+    / "ml_engine"
+    / "discovery"
+    / "_vendor"
+)
 
 
 def row(
@@ -30,7 +40,7 @@ def row(
     id: str = "com.example.thing",
     **over: str,
 ) -> dict[str, str]:
-    """A six-column row. Every column present, because that is the contract."""
+    """An evidence row carrying every member the spec names (SPEC.md 5.1)."""
     base = {
         "kind": kind,
         "id": id,
@@ -148,23 +158,126 @@ def test_an_object_payload_is_malformed_because_the_wire_shape_is_an_array() -> 
     assert "expected a JSON array" in (env.detail or "")
 
 
-# --- the six-column contract -------------------------------------------------------
+# --- the spec's evidence rows (SPEC.md 5) ------------------------------------------
 
 
-def test_a_row_missing_a_column_fails_the_whole_device() -> None:
+def test_a_member_a_row_omits_reads_as_the_empty_string() -> None:
+    """Only `kind` and `id` are required."""
+    env = read(frame([{"kind": "npm", "id": "@openai/codex"}]))
+    assert env.outcome is EnvelopeOutcome.OK
+    assert env.rows == (
+        {
+            "kind": "npm",
+            "id": "@openai/codex",
+            "ver": "",
+            "loc": "",
+            "extra": "",
+            "perms": "",
+        },
+    )
+
+
+@pytest.mark.parametrize("member", ["kind", "id"])
+def test_a_row_missing_a_required_member_fails_the_whole_device(member: str) -> None:
     """Not dropped. One wrong row means the wire format moved, so every row is suspect."""
     bad = row()
-    del bad["perms"]
+    del bad[member]
     env = read(frame([row(), bad]))
     assert env.outcome is EnvelopeOutcome.MALFORMED
     assert "row 1" in (env.detail or "")
-    assert "perms" in (env.detail or "")
+    assert member in (env.detail or "")
 
 
-def test_a_row_with_an_unexpected_column_is_also_a_violation() -> None:
-    env = read(frame([row(platform="darwin")]))
+def test_a_member_the_spec_does_not_name_is_ignored_and_not_carried() -> None:
+    """A binding may add members, and a matcher must ignore them. Not carried past the
+    reader, so what one holds reaches no record and no log; only its name is kept."""
+    env = read(frame([row(contents="what the user typed")]))
+    assert env.outcome is EnvelopeOutcome.OK
+    assert "contents" not in env.rows[0]
+    assert env.ignored == ("contents",)
+
+
+@pytest.mark.parametrize(
+    "bad,named",
+    [
+        (row(kind="App"), "kind"),
+        (row(kind="scan", ver="yesterday", extra="ok"), "ver"),
+        (row(kind="scan", ver="1790100381", extra="wedged"), "outcome"),
+        ({"kind": "scan", "id": "apps", "ver": "1790100381"}, "extra"),
+    ],
+)
+def test_a_row_the_spec_refuses_fails_the_whole_device(
+    bad: dict[str, str],
+    named: str,
+) -> None:
+    """A kind that is not a kind name, and a scan marker undated or outside the spec's
+    closed outcome vocabulary (SPEC.md 5.2)."""
+    env = read(frame([bad]))
     assert env.outcome is EnvelopeOutcome.MALFORMED
-    assert "platform" in (env.detail or "")
+    assert named in (env.detail or "")
+
+
+def _scan(**over: Any) -> dict[str, Any]:
+    return {"kind": "scan", "id": "apps", "ver": "1790100381", "extra": "ok", **over}
+
+
+# Each rule the reader applies by hand, from both sides, and the spec's own vectors' rows.
+_CANDIDATES: list[Any] = [
+    row(),
+    {"kind": "npm", "id": "x"},
+    {"kind": "npm"},
+    {"id": "x"},
+    row(kind="App"),
+    row(kind="9app"),
+    row(kind="a-b"),
+    row(kind=""),
+    row(ver=7),
+    row(extra=None),
+    row(added="text"),
+    row(added=1),
+    _scan(),
+    {"kind": "scan", "id": "apps", "ver": "1790100381"},
+    {"kind": "scan", "id": "apps", "extra": "ok"},
+    _scan(ver=""),
+    _scan(ver="17.9"),
+    _scan(ver="1790100381\n"),
+    *(
+        _scan(extra=e)
+        for e in (
+            "absent",
+            "error",
+            "no-cache",
+            "unreadable:podman",
+            "unreadable:Podman",
+            "unhealthy:000",
+            "unhealthy:no-units",
+            "timeout:6",
+            "timeout:x",
+            "timeout:",
+            "OK",
+            "ok\n",
+        )
+    ),
+    "just a string",
+    7,
+    None,
+    [],
+    *(
+        r
+        for v in json.loads((VENDOR / "vectors.json").read_text())["vectors"]
+        for r in v["rows"]
+    ),
+]
+
+
+@pytest.mark.parametrize("candidate", _CANDIDATES)
+def test_the_reader_agrees_with_the_evidence_schema(candidate: Any) -> None:
+    """The reader applies the schema's rules itself, because jsonschema costs ~40x the
+    matching per device. jsonschema is the referee."""
+    schema = json.loads((VENDOR / "evidence.schema.json").read_text())
+    want = jsonschema.Draft202012Validator(schema).is_valid([candidate])
+    got = read_document(json.dumps([candidate]).encode()).outcome
+    assert (got is EnvelopeOutcome.OK) == want
 
 
 def test_a_non_object_row_is_a_violation() -> None:
@@ -244,8 +357,8 @@ def test_a_corrupted_deflate_body_is_malformed_rather_than_an_exception() -> Non
     [(None, "id"), (7, "ver"), ({"a": 1}, "extra"), ([], "perms")],
 )
 def test_a_non_string_column_is_refused(value: object, column: str) -> None:
-    """Every column is a JSON string in the six-column contract. A non-string reaches the
-    matcher as-is: a null `id` raises TypeError inside its regex and ends the scan."""
+    """Every member of an evidence row is a string. A non-string reaches the matcher
+    as-is: a null `id` raises TypeError inside its regex and ends the scan."""
     bad = row()
     bad[column] = value  # type: ignore[assignment]
     env = read(frame([bad]))

@@ -17,7 +17,6 @@ from typing import Any, Optional, Sequence
 
 import pytest
 import requests
-import yaml
 from arthur_client.api_bindings import DiscoveryRunStatus
 from arthur_common.models.agent_governance_schemas import (
     CloudAgentCreationSource,
@@ -63,23 +62,18 @@ from job_executors.discovery_scan import (
     failure_code,
     run_source_scan,
 )
+from tests.fakes.catalog import agent, document
 
 SCAN_AT = 1790100381
 LOG = logging.getLogger("discovery-test")
-CATALOG = yaml.safe_dump(
-    {
-        "version": 2,
-        "classifications": ["Coding agent"],
-        "agents": [
-            {
-                "id": "codex-cli",
-                "name": "Codex CLI",
-                "classification": "Coding agent",
-                "platforms": ["darwin", "linux"],
-                "npm": ["@openai/codex"],
-            },
-        ],
-    },
+CATALOG = document(
+    agent(
+        "codex-cli",
+        "Codex CLI",
+        "Coding agent",
+        platforms=["darwin", "linux"],
+        npm=["@openai/codex"],
+    ),
 )
 PROJECT = "acme-prod-123"
 ZONE = "us-central1-a"

@@ -10,7 +10,7 @@ matching, dating and addressing are the same as for a Mac a Jamf scan read.
 
 THE FOLDER IS A CONTRACT WITH WHATEVER FILLS IT, and it holds two files:
 
-    inventory.json   the collector's readable payload: the six-column rows, unframed
+    inventory.json   the collector's readable payload: the evidence rows, unframed
     machine.json     who the machine is -- see `machine`
 
 `inventory.json` and not `inventory.ea`: the framed value is sized for a carrier's
@@ -94,7 +94,7 @@ class LocalConnector:
         folder = _folder_from(source_fields)
         device = read_machine(folder)
         matcher = Matcher.from_source(
-            catalog_yaml=config.query or None,
+            catalog_json=config.query or None,
             logger=logger,
         )
         logger.info(
@@ -130,7 +130,14 @@ class LocalConnector:
                     f"{folder / INVENTORY_FILE} could not be read: {envelope.detail}",
                 ),
             )
-        read = records_from_rows(device, envelope.rows, matcher, VENDOR, logger)
+        read = records_from_rows(
+            device,
+            envelope.rows,
+            matcher,
+            VENDOR,
+            logger,
+            ignored=envelope.ignored,
+        )
         if read.unreadable is not None:
             raise unreadable(
                 read.unreadable.value,

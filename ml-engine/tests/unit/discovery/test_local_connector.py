@@ -16,7 +16,6 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
 import pytest
-import yaml
 from arthur_client.api_bindings import DiscoverySourceConfigSpec
 from arthur_common.models.agent_governance_schemas import (
     EndpointAgentCreationSource,
@@ -38,27 +37,22 @@ from job_executors.discovery_scan import (
     DiscoveryErrorCode,
     failure_code,
 )
+from tests.fakes.catalog import agent, document
 
 SCAN_AT = 1790100381
 SCANNED = datetime.fromtimestamp(SCAN_AT, tz=timezone.utc)
 LOG = logging.getLogger("discovery-test")
 DEVICE_ID = "6F1A2B3C-0000-4000-8000-0123456789AB"
 MACHINE = {"device_id": DEVICE_ID, "hostname": "nadia-mbp", "platform": "darwin"}
-CATALOG = yaml.safe_dump(
-    {
-        "version": 2,
-        "classifications": ["Coding agent"],
-        "agents": [
-            {
-                "id": "codex-cli",
-                "name": "Codex CLI",
-                "classification": "Coding agent",
-                "platforms": ["darwin", "linux"],
-                "npm": ["@openai/codex"],
-                "binaries": ["~/.local/bin/codex"],
-            },
-        ],
-    },
+CATALOG = document(
+    agent(
+        "codex-cli",
+        "Codex CLI",
+        "Coding agent",
+        platforms=["darwin", "linux"],
+        npm=["@openai/codex"],
+        binaries=["~/.local/bin/codex"],
+    ),
 )
 ENDPOINT_TREE = (
     pathlib.Path(__file__).resolve().parents[4]
@@ -290,8 +284,8 @@ def test_an_empty_folder_says_to_run_the_collector(tmp_path: pathlib.Path) -> No
 
 @pytest.mark.parametrize(
     "inventory",
-    ["[\n\n", '{"kind": "app"}', '[{"kind": "app", "id": "x"}]'],
-    ids=["truncated", "not-an-array", "short-row"],
+    ["[\n\n", '{"kind": "app"}', '[{"kind": "app"}]'],
+    ids=["truncated", "not-an-array", "row-without-id"],
 )
 def test_a_payload_that_does_not_decode_fails_rather_than_reading_clean(
     tmp_path: pathlib.Path,
@@ -360,14 +354,15 @@ def test_the_collector_still_publishes_the_file_this_reads() -> None:
 
 def _osqueryi() -> bool:
     return shutil.which("osqueryi") is not None or os.path.exists(
-        "/opt/osquery/lib/osquery.app/Contents/MacOS/osqueryi"
+        "/opt/osquery/lib/osquery.app/Contents/MacOS/osqueryi",
     )
 
 
 @pytest.mark.skipif(not ENDPOINT_TREE.is_dir(), reason="endpoint tree not present")
 @pytest.mark.skipif(not _osqueryi(), reason="osquery is not installed")
 @pytest.mark.skipif(
-    sys.platform not in ("darwin", "linux"), reason="the collector is darwin and linux"
+    sys.platform not in ("darwin", "linux"),
+    reason="the collector is darwin and linux",
 )
 def test_the_real_collectors_output_reads_back(
     tmp_path: pathlib.Path,
