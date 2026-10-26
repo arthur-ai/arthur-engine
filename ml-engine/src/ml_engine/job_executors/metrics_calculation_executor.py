@@ -111,7 +111,10 @@ def consumption_aggregation_spec(dataset: Dataset) -> InternalAggregationSpec | 
             aggregation_args=[MetricsArgSpec(arg_key="dataset", arg_value=dataset.id)],
             aggregation_kind=AggregationKind.DEFAULT,
         )
-    if dataset.model_problem_type == ModelProblemType.ARTHUR_SHIELD or dataset.is_static:
+    if (
+        dataset.model_problem_type == ModelProblemType.ARTHUR_SHIELD
+        or dataset.is_static
+    ):
         return None
 
     timestamp_col_id = primary_timestamp_col_id(dataset)
