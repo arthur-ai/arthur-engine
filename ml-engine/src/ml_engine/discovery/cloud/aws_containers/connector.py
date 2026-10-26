@@ -4,8 +4,8 @@ Lists every ECS service, every ECS task no service owns, and every EKS workload 
 configured regions of one account, and reports the ones that are, or may be, agents. A
 container runtime lists every workload, not only agents, so a workload is reported when:
 
-- one of its images is an agent's in the catalog (`images:` in the vendored
-  `agents.yaml`, or the source config's own catalog), matched by the vendored matcher's
+- one of its images is an agent's in the catalog (an `images` identifier in the
+  vendored catalog, or the source config's own), matched by the vendored matcher's
   container route; or
 - it runs as an IAM role that called a Bedrock model within the lookback, which this
   scan reads from CloudTrail itself (`read_cloudtrail`, on by default). A call IAM
@@ -255,7 +255,7 @@ class AwsContainersConnector:
             http=self._http,
             sleep=self._sleep,
         )
-        matcher = Matcher.from_source(catalog_yaml=config.query or None, logger=logger)
+        matcher = Matcher.from_source(catalog_json=config.query or None, logger=logger)
 
         # Asked first: it needs no permission, so a refusal here is the credential.
         identity = bedrock.identity(settings.regions[0])

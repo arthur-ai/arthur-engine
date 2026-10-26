@@ -15,7 +15,6 @@ from typing import Any, Callable, Optional
 
 import boto3
 import pytest
-import yaml
 from arthur_common.models.agent_governance_schemas import (
     CloudAgentCreationSource,
     RunsOn,
@@ -50,6 +49,7 @@ from job_executors.discovery_scan import (
     ReportsDeniedScopes,
     failure_code,
 )
+from tests.fakes.catalog import agent, document
 
 LOG = logging.getLogger("discovery-test")
 ACCOUNT = "123456789012"
@@ -68,20 +68,14 @@ DIGEST = "sha256:" + "d" * 64
 APP = "123456789012.dkr.ecr.us-east-1.amazonaws.com/support-bot:3"
 SIDECAR = "public.ecr.aws/docker/library/busybox:1.37.0"
 GOOSE = "ghcr.io/block/goose:1.2"
-CATALOG = yaml.safe_dump(
-    {
-        "version": 2,
-        "classifications": ["Coding agent"],
-        "agents": [
-            {
-                "id": "goose",
-                "name": "goose",
-                "classification": "Coding agent",
-                "platforms": ["darwin", "linux"],
-                "images": ["ghcr.io/block/goose"],
-            },
-        ],
-    },
+CATALOG = document(
+    agent(
+        "goose",
+        "goose",
+        "Coding agent",
+        platforms=["darwin", "linux"],
+        images=["ghcr.io/block/goose"],
+    ),
 )
 SERVICES = ("ecs", "eks", "ec2", "iam", "sts", "cloudtrail")
 MODELS = {svc: BotocoreSession().get_service_model(svc) for svc in SERVICES}
