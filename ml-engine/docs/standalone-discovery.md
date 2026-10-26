@@ -690,6 +690,41 @@ status — point `url` at the address it redirects to.
 Point `url` at the `/services/collector/event` endpoint. Each event's HEC `time` is when
 it was observed. Indexer acknowledgement is not used: a 200 means HEC accepted the batch.
 
+#### `elasticsearch` — Elasticsearch and Elastic Security
+
+| Key | Default | |
+|---|---|---|
+| `api_key` | | API key (secret): the `encoded` value from `POST /_security/api_key`, or `id:api_key` |
+| `username`, `password` | | Basic auth instead of `api_key`; `password` is a secret. Set one or the other |
+| `index` | `logs-arthur.discovery-default` | An index, alias or data stream |
+| `pipeline` | | An ingest pipeline to run each document through |
+
+Point `url` at the cluster (`https://host:9243`, with a path for one behind a gateway);
+the engine sends to its `_bulk` endpoint. Each document is the event with `@timestamp`
+set to when it was observed, written with `create`. The default index matches
+Elasticsearch's built-in `logs-*-*` template, so the data stream is created on the first
+write with no setup; it then shows up in Elastic Security wherever `logs-*` is searched.
+
+The credentials need `create_doc` on the index, and `auto_configure` too if the engine's
+first write is what creates the data stream:
+
+```json
+POST /_security/api_key
+{
+  "name": "arthur-discovery",
+  "role_descriptors": {
+    "arthur-discovery": {
+      "indices": [{"names": ["logs-arthur.discovery-*"], "privileges": ["create_doc", "auto_configure"]}]
+    }
+  }
+}
+```
+
+`_bulk` answers 200 even when it refuses documents, so the engine reads the answer: a
+batch with any document refused fails with the first refusal's reason (a mapping
+conflict, say), and the documents before and after it in the batch stay indexed. That
+failure is not retried, since a re-send would index the accepted documents twice.
+
 #### `webhook` — any HTTPS endpoint
 
 | Key | Default | |

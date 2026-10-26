@@ -2,7 +2,8 @@
 
 A target subclasses both halves -- `HttpDestination` for the settings every HTTP
 destination has, `HttpSink` for batching, retries and scrubbing -- and supplies only
-how it frames a batch and which of its settings are secret.
+how it frames a batch and which of its settings are secret, and, if its 2xx can still
+refuse events, how to read one.
 
 A DESTINATION'S SECRETS NEVER LEAVE IN AN ERROR. `HttpSink` scrubs what its subclass
 declares, plus the URL's password, path and query, which is where a webhook's own
@@ -166,6 +167,16 @@ class HttpSink:
         """The request body and headers for one batch."""
         raise NotImplementedError
 
+    def _check_accepted(
+        self, response: requests.Response, batch: Sequence[Event]
+    ) -> None:
+        """Raise `SinkDeliveryError` if a 2xx answer still refused events.
+
+        Most destinations mean a 2xx; one that reports per event in the body, as
+        Elasticsearch's bulk API does, reads it here. Not retried: what it refused, a
+        re-send would be refused again, and what it took would be indexed twice.
+        """
+
     def secrets(self) -> tuple[str, ...]:
         return self._secrets
 
@@ -220,6 +231,7 @@ class HttpSink:
                 # Not `response.ok`, which is anything under 400: with redirects off, a
                 # 3xx means the events went nowhere.
                 if 200 <= status < 300:
+                    self._check_accepted(response, batch)
                     return
                 if status not in RETRY_STATUSES or last:
                     hint = (
