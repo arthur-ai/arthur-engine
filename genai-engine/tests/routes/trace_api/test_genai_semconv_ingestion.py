@@ -189,6 +189,7 @@ def test_unsupported_encoding_is_415_and_bad_gzip_is_400(
     # 415 tells an OTLP exporter to resend the body uncompressed.
     assert _post(client, body, **{"Content-Encoding": "br"}).status_code == 415
     assert _post(client, b"not gzip", **{"Content-Encoding": "gzip"}).status_code == 400
+    assert _post(client, b"", **{"Content-Encoding": "gzip"}).status_code == 400
 
 
 @pytest.mark.unit_tests

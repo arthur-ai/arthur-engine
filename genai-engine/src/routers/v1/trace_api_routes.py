@@ -100,6 +100,8 @@ def _decode_body(body: bytes, content_encoding: str | None) -> bytes:
             status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
             detail=f"Unsupported Content-Encoding: {content_encoding}",
         )
+    if not body:
+        raise HTTPException(status_code=400, detail="Invalid gzip body")
     # A gzip body can hold several members back to back; each must end cleanly,
     # and the output is checked against the cap before it is kept.
     data = bytearray()
