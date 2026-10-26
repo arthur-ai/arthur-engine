@@ -16,15 +16,18 @@ from arthur_common.models.agent_governance_schemas import (
     RunsOn,
     SourceAddress,
 )
+from google.auth.exceptions import RefreshError
 
 from discovery import source_connectors
 from discovery.catalog import Matcher
 from discovery.cloud.gcp_containers import client as containers_client
+from discovery.cloud.gcp_containers import connector as containers_connector
 from discovery.cloud.gcp_containers.client import (
     CONTAINER_API,
     RESOURCE_MANAGER_API,
     RUN_V1_API,
     RUN_V2_API,
+    GcpContainersError,
 )
 from discovery.cloud.gcp_containers.connector import (
     ALLOW_ADC_ENV_VAR,
@@ -39,11 +42,16 @@ from discovery.cloud.gcp_containers.workloads import (
     Workload,
     select_workloads,
 )
+from discovery.cloud.gcp_vertex.audit import AuditReadError
 from job_executors.discovery_output_contract import check_batch
 from job_executors.discovery_scan import (
+    DENIED_PERMISSION,
+    DENIED_UNREACHABLE,
     AcceptsStopCheck,
+    DeniedScope,
     DiscoveryConfigurationError,
     DiscoveryErrorCode,
+    ReportsDeniedScopes,
     failure_code,
 )
 from tests.fakes.catalog import agent, document
@@ -149,6 +157,16 @@ def k8s(
     return {"metadata": meta, "spec": spec, "status": {}}
 
 
+def replicaset(name: str, owner: str = "Deployment") -> Any:
+    return {
+        "metadata": {
+            "name": name,
+            "namespace": "agents",
+            "ownerReferences": [{"kind": owner, "name": "x"}],
+        },
+    }
+
+
 def cluster(
     workload_pool: Optional[str] = None,
     node_sa: str = "default",
@@ -190,7 +208,9 @@ class FakeGoogle:
         self.jobs = {} if jobs is None else jobs
         self.regions = [[REGION]] if regions is None else regions
         self.clusters = [] if clusters is None else clusters
-        self.kube = kube or {}
+        # k8s(owner=...) names every owner "x": a Deployment's ReplicaSet unless a
+        # test lists ReplicaSets itself.
+        self.kube = {"/apis/apps/v1/replicasets": [[replicaset("x")]], **(kube or {})}
         self.calls: list[tuple[str, dict[str, Any], Optional[str]]] = []
 
     def get(
@@ -260,6 +280,37 @@ class FakeConfig:
 @pytest.fixture(autouse=True)
 def no_backoff(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(containers_client, "backoff_seconds", lambda a, b: 0.0)
+
+
+AUDIT: dict[str, Any] = {"entries": [], "refuse": None, "asked": []}
+
+
+@pytest.fixture(autouse=True)
+def audit_log(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
+    """No test reaches Cloud Logging: the audit read sees the entries a test sets."""
+    AUDIT.update(entries=[], refuse=None, asked=[])
+
+    def read(project: str, log_filter: str, credentials: Any) -> list[dict[str, Any]]:
+        AUDIT["asked"].append((project, log_filter))
+        if AUDIT["refuse"] is not None:
+            raise AuditReadError(AUDIT["refuse"], "refused")
+        return list(AUDIT["entries"])
+
+    monkeypatch.setattr(containers_connector, "read_entries", read)
+    return AUDIT
+
+
+def model_call(account: str, model: str = "gemini-2.5-flash") -> dict[str, Any]:
+    """One Data Access audit entry: `account` called `model` in REGION."""
+    return {
+        "timestamp": "2026-10-22T12:00:00Z",
+        "protoPayload": {
+            "authenticationInfo": {"principalEmail": account},
+            "resourceName": (
+                f"projects/{PROJECT}/locations/{REGION}/publishers/google/models/{model}"
+            ),
+        },
+    }
 
 
 @pytest.fixture(autouse=True)
@@ -387,7 +438,105 @@ def test_gke_workloads_are_controllers_by_stable_name_and_owned_objects_are_not(
     assert planner.creation_source.observations.host_group == CLUSTER
     assert planner.creation_source.observations.install_path
     # No Workload Identity: the pods call Google as the node pool's account.
-    assert planner.name.endswith(f"(runs as {DEFAULT_SA})")
+    # every workload here runs as the node's default account, and the name says so
+    assert planner.name.endswith(
+        f"(runs as {DEFAULT_SA}, node account, shared by 4 workloads)",
+    )
+
+
+def test_a_controller_an_operator_owns_is_still_a_workload() -> None:
+    """A KServe InferenceService owns its predictor Deployment and is not itself
+    listed; the Deployment is the workload, and its ReplicaSet's pods still are not."""
+    fake = FakeGoogle(
+        clusters=[cluster()],
+        kube={
+            "/apis/apps/v1/deployments": [
+                [k8s("deployment", "llm-predictor", owner="InferenceService")],
+            ],
+            "/api/v1/pods": [
+                [k8s("pod", "llm-predictor-5c9b7f-abcde", owner="ReplicaSet")],
+            ],
+        },
+    )
+
+    ids = [r.creation_source.address.resource_id for r in scan(fake)]
+
+    assert ids == [f"{CLUSTER}/agents/deployment/llm-predictor"]
+
+
+def test_pods_and_jobs_an_operator_owns_are_their_own_workloads() -> None:
+    """A RayCluster owns its pods and a JobSet its Jobs, and neither owner is listed,
+    so those are workloads; a Job's own pods still fold into the Job."""
+    fake = FakeGoogle(
+        clusters=[cluster()],
+        kube={
+            "/apis/batch/v1/jobs": [[k8s("job", "train-0", owner="JobSet")]],
+            "/api/v1/pods": [
+                [
+                    k8s("pod", "ray-head", owner="RayCluster"),
+                    k8s("pod", "train-0-abcde", owner="Job"),
+                ],
+            ],
+        },
+    )
+
+    ids = sorted(r.creation_source.address.resource_id for r in scan(fake))
+
+    assert ids == [f"{CLUSTER}/agents/job/train-0", f"{CLUSTER}/agents/pod/ray-head"]
+
+
+def test_a_pod_of_a_replicaset_a_rollout_owns_is_its_own_workload() -> None:
+    """An Argo Rollout owns its ReplicaSets and neither is listed, so its pods are
+    workloads; a Deployment's ReplicaSet's pods still fold into the Deployment."""
+    fake = FakeGoogle(
+        clusters=[cluster()],
+        kube={
+            "/apis/apps/v1/replicasets": [
+                [replicaset("x"), replicaset("canary", owner="Rollout")],
+            ],
+            "/api/v1/pods": [
+                [
+                    k8s("pod", "web-abcde", owner="ReplicaSet"),
+                    {
+                        **k8s("pod", "canary-fghij"),
+                        "metadata": {
+                            **k8s("pod", "canary-fghij")["metadata"],
+                            "ownerReferences": [
+                                {"kind": "ReplicaSet", "name": "canary"},
+                            ],
+                        },
+                    },
+                ],
+            ],
+        },
+    )
+
+    ids = [r.creation_source.address.resource_id for r in scan(fake)]
+
+    assert ids == [f"{CLUSTER}/agents/pod/canary-fghij"]
+
+
+def test_unreadable_replicasets_fold_every_replicaset_pod_as_before(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    fake = FakeGoogle(
+        clusters=[cluster()],
+        kube={
+            "/apis/apps/v1/replicasets": FakeResponse(403, {"message": "forbidden"}),
+            "/apis/apps/v1/deployments": [[k8s("deployment", "web")]],
+            "/api/v1/pods": [[k8s("pod", "web-abcde", owner="ReplicaSet")]],
+        },
+    )
+    connector = GcpContainersConnector(session_for=lambda c: fake)  # type: ignore[arg-type,return-value]
+
+    with caplog.at_level(logging.WARNING):
+        records = scan(fake, connector=connector)
+
+    assert [r.creation_source.address.resource_id for r in records] == [
+        f"{CLUSTER}/agents/deployment/web",
+    ]
+    assert "ReplicaSets of GKE cluster" in caplog.text
+    assert connector.denied_scopes() == ()
 
 
 def test_gke_system_namespaces_are_not_workloads() -> None:
@@ -464,7 +613,7 @@ def test_only_a_catalog_image_is_reported_by_default_and_a_digest_still_matches(
 
     (record,) = records
     assert record.creation_source.address.resource_id == "agent"
-    assert record.name == f"agent [goose] (runs as {APP_SA})"
+    assert record.name == f"agent [goose] (runs as {APP_SA}, shared by 2 workloads)"
     assert record.creation_source.observations.classification == "Coding agent"
 
 
@@ -505,12 +654,198 @@ def test_select_workloads_is_a_pure_join_on_the_service_account() -> None:
     assert selected.findings == ()
 
 
-def test_the_lookback_is_not_applied() -> None:
+def test_the_lookback_bounds_only_the_audit_read(audit_log: dict[str, Any]) -> None:
     fake = FakeGoogle(services=[[service("web")]], jobs={REGION: [[job("nightly")]]})
 
     assert len(scan(fake, lookback_hours=1)) == len(scan(fake, lookback_hours=0)) == 2
     for _, params, _ in fake.calls:
         assert set(params) <= {"pageSize", "pageToken", "limit", "continue"}
+    # one audit read per scan of the one project, each with a time bound
+    assert [project for project, _ in audit_log["asked"]] == [PROJECT, PROJECT]
+    assert all('timestamp>="' in f for _, f in audit_log["asked"])
+
+
+def test_a_workload_whose_account_called_vertex_is_reported_with_its_models(
+    audit_log: dict[str, Any],
+) -> None:
+    audit_log["entries"] = [
+        model_call(APP_SA),
+        model_call(APP_SA, "claude-haiku-4-5"),
+    ]
+    fake = FakeGoogle(
+        services=[[service("web", account=APP_SA), service("other", account=NODE_SA)]],
+    )
+
+    records = scan(fake, report_all=False)
+
+    (record,) = records
+    assert record.creation_source.address.resource_id == "web"
+    assert sorted(m.name for m in record.llm_models) == [
+        "claude-haiku-4-5",
+        "gemini-2.5-flash",
+    ]
+
+
+def test_an_ai_calling_node_account_selects_no_pod_and_is_labelled(
+    audit_log: dict[str, Any],
+) -> None:
+    """Without Workload Identity every pod on the node calls Google as the node's
+    account, so its AI calls are the node's: they label the pod, never select it."""
+    audit_log["entries"] = [model_call(NODE_SA)]
+    fake = FakeGoogle(
+        clusters=[cluster(node_sa=NODE_SA)],
+        kube={"/apis/apps/v1/deployments": [[k8s("deployment", "ingress")]]},
+    )
+
+    assert scan(fake, report_all=False) == []
+    (record,) = scan(fake, report_all=True)
+    assert record.name == f"{CLUSTER}/agents/ingress (runs as {NODE_SA}, node account)"
+    assert record.llm_models == []
+
+
+def test_a_pod_s_own_account_selects_it_with_only_its_own_models(
+    audit_log: dict[str, Any],
+) -> None:
+    """On a node pool that opts out of Workload Identity a bound pod still has its own
+    account; the node's AI calls neither select its neighbours nor add to its models."""
+    audit_log["entries"] = [
+        model_call(APP_SA, "claude-haiku-4-5"),
+        model_call(NODE_SA, "gemini-2.5-flash"),
+    ]
+    fake = FakeGoogle(
+        clusters=[
+            cluster(
+                workload_pool=f"{PROJECT}.svc.id.goog",
+                node_sa=NODE_SA,
+                mode="GCE_METADATA",
+            ),
+        ],
+        kube={
+            "/api/v1/serviceaccounts": [
+                [
+                    {
+                        "metadata": {
+                            "name": "planner",
+                            "namespace": "agents",
+                            "annotations": {"iam.gke.io/gcp-service-account": APP_SA},
+                        },
+                    },
+                ],
+            ],
+            "/apis/apps/v1/deployments": [
+                [
+                    k8s("deployment", "planner", ksa="planner"),
+                    k8s("deployment", "ingress", ksa="unbound"),
+                ],
+            ],
+        },
+    )
+
+    (record,) = scan(fake, report_all=False)
+
+    assert record.creation_source.address.resource_id == (
+        f"{CLUSTER}/agents/deployment/planner"
+    )
+    assert record.name == (
+        f"{CLUSTER}/agents/planner (runs as {APP_SA}, {NODE_SA}, node account, "
+        f"shared by 2 workloads)"
+    )
+    assert [m.name for m in record.llm_models] == ["claude-haiku-4-5"]
+
+
+def test_an_account_only_one_workload_runs_as_is_not_called_shared() -> None:
+    fake = FakeGoogle(
+        services=[[service("web", account=APP_SA), service("other", account=NODE_SA)]],
+    )
+
+    names = sorted(r.name for r in scan(fake))
+
+    assert names == [f"other (runs as {NODE_SA})", f"web (runs as {APP_SA})"]
+
+
+def test_a_refused_credential_on_the_audit_read_ends_the_scan(
+    audit_log: dict[str, Any],
+) -> None:
+    audit_log["refuse"] = 401
+    fake = FakeGoogle(services=[[service("web")]])
+
+    with pytest.raises(GcpContainersError) as raised:
+        scan(fake)
+
+    assert raised.value.status_code == 401
+
+
+def test_a_refused_token_refresh_on_the_audit_read_ends_the_scan() -> None:
+    """A credential refused while minting the audit read's token is the credential's
+    refusal, not an unreachable log: the scan ends, as it does for a listing."""
+
+    def refuse(project: str, log_filter: str, credentials: Any) -> Any:
+        raise RefreshError("invalid_grant: account not found", retryable=False)
+
+    fake = FakeGoogle(services=[[service("web")]])
+    connector = GcpContainersConnector(
+        session_for=lambda c: fake,  # type: ignore[arg-type,return-value]
+        audit_reader=refuse,
+    )
+
+    with pytest.raises(GcpContainersError) as raised:
+        scan(fake, connector=connector)
+
+    assert raised.value.status_code == 401
+
+
+def test_a_transient_token_refresh_failure_on_the_audit_read_is_unreachable() -> None:
+    def flake(project: str, log_filter: str, credentials: Any) -> Any:
+        raise RefreshError("temporarily unavailable", retryable=True)
+
+    fake = FakeGoogle(services=[[service("agent", image=GOOSE)]])
+    connector = GcpContainersConnector(
+        session_for=lambda c: fake,  # type: ignore[arg-type,return-value]
+        audit_reader=flake,
+    )
+
+    records = scan(fake, report_all=False, connector=connector)
+
+    assert [r.creation_source.address.resource_id for r in records] == ["agent"]
+    assert connector.denied_scopes() == (
+        DeniedScope(f"projects/{PROJECT}/vertex-ai-audit-log", DENIED_UNREACHABLE),
+    )
+
+
+def test_a_refused_audit_read_is_a_denied_scope_and_the_catalog_still_selects(
+    audit_log: dict[str, Any],
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    audit_log["refuse"] = 403
+    fake = FakeGoogle(services=[[service("agent", image=GOOSE), service("web")]])
+    connector = GcpContainersConnector(session_for=lambda c: fake)  # type: ignore[arg-type,return-value]
+
+    with caplog.at_level(logging.WARNING):
+        records = scan(fake, report_all=False, connector=connector)
+
+    assert [r.creation_source.address.resource_id for r in records] == ["agent"]
+    assert connector.denied_scopes() == (
+        DeniedScope(f"projects/{PROJECT}/vertex-ai-audit-log", DENIED_PERMISSION),
+    )
+    assert "roles/logging.privateLogViewer" in caplog.text
+
+
+def test_an_audit_log_a_project_does_not_have_is_unreachable_not_a_missing_role(
+    audit_log: dict[str, Any],
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    audit_log["refuse"] = 404
+    fake = FakeGoogle(services=[[service("agent", image=GOOSE)]])
+    connector = GcpContainersConnector(session_for=lambda c: fake)  # type: ignore[arg-type,return-value]
+
+    with caplog.at_level(logging.WARNING):
+        scan(fake, report_all=False, connector=connector)
+
+    assert connector.denied_scopes() == (
+        DeniedScope(f"projects/{PROJECT}/vertex-ai-audit-log", DENIED_UNREACHABLE),
+    )
+    assert "check the project ID" in caplog.text
+    assert "privateLogViewer" not in caplog.text
 
 
 # --- paging ---------------------------------------------------------------------------
@@ -569,13 +904,18 @@ def test_a_refused_api_is_a_warning_and_the_rest_is_still_reported(
         {"error": {"code": 403, "message": "Kubernetes Engine API has not been used"}},
     )
     fake = FakeGoogle(services=[[service("web")]], clusters=denied)
+    connector = GcpContainersConnector(session_for=lambda c: fake)  # type: ignore[arg-type,return-value]
 
     with caplog.at_level(logging.WARNING):
-        records = scan(fake)
+        records = scan(fake, connector=connector)
 
     assert [r.creation_source.address.resource_id for r in records] == ["web"]
     assert f"GKE clusters in project {PROJECT} not listed" in caplog.text
     assert "HTTP 403" in caplog.text
+    # and the run reports which part of the scope was refused
+    assert connector.denied_scopes() == (
+        DeniedScope(f"projects/{PROJECT}/gke-clusters", DENIED_PERMISSION),
+    )
 
 
 def test_a_cluster_whose_kubernetes_api_refuses_is_a_warning(
@@ -707,6 +1047,7 @@ def test_registered_with_its_secret_declared_and_a_stop_check() -> None:
         {"service_account_key"},
     )
     assert isinstance(connector, AcceptsStopCheck)
+    assert isinstance(connector, ReportsDeniedScopes)
 
 
 def test_a_stop_before_the_first_call_sends_nothing() -> None:
