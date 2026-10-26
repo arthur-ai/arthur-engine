@@ -1154,6 +1154,57 @@ def test_ingest_bytes_are_not_recorded_outside_the_ingestion_endpoints():
 
 
 @pytest.mark.unit_tests
+def test_rejected_span_bytes_are_kept_on_the_accepted_spans(monkeypatch):
+    """A rejected span isn't stored, but its share of the received bytes moves to
+    the stored spans, so the trace totals still add up to the request body."""
+    trace_id = uuid4().bytes
+    trace_request = _ingest_bytes_request(
+        [trace_id],
+        spans_per_trace=3,
+        task_ids=[f"ingest_bytes_task_{uuid4()}"],
+    )
+    trace_request.resource_spans[0].scope_spans[0].spans.append(
+        _create_span(trace_id=uuid4().bytes, span_id=uuid4().bytes[:8], name="reject"),
+    )
+    body = trace_request.SerializeToString()
+
+    process_span_data = TraceIngestionService._process_span_data
+
+    def reject_named_span(self, span_data, *args, **kwargs):
+        if span_data.get("name") == "reject":
+            raise ValueError("rejected for the test")
+        return process_span_data(self, span_data, *args, **kwargs)
+
+    monkeypatch.setattr(TraceIngestionService, "_process_span_data", reject_named_span)
+    db_session = override_get_db_session()
+
+    _, (total, accepted, rejected, _) = TraceIngestionService(
+        db_session,
+    ).process_trace_data(body, count_ingest_bytes=True)
+
+    assert (total, accepted, rejected) == (4, 3, 1)
+    spans = (
+        db_session.query(DatabaseSpan)
+        .filter(DatabaseSpan.trace_id == trace_id.hex())
+        .all()
+    )
+    assert len(spans) == 3
+    assert sum(span.ingest_bytes for span in spans) == len(body)
+    trace = (
+        db_session.query(DatabaseTraceMetadata)
+        .filter(DatabaseTraceMetadata.trace_id == trace_id.hex())
+        .one()
+    )
+    assert trace.ingest_bytes == len(body)
+
+
+@pytest.mark.unit_tests
+def test_split_by_weight_falls_back_to_even_shares():
+    assert TraceIngestionService._split_by_weight(10, [0.0, 0.0, 0.0]) == [4, 3, 3]
+    assert TraceIngestionService._split_by_weight(5, []) == []
+
+
+@pytest.mark.unit_tests
 def test_span_ingest_bytes_shares_sum_to_the_body_size():
     trace_request = _ingest_bytes_request(
         [uuid4().bytes, uuid4().bytes],
@@ -1172,4 +1223,6 @@ def test_span_ingest_bytes_shares_sum_to_the_body_size():
     shares = TraceIngestionService._span_ingest_bytes(trace_request, 1_000_000)
     assert shares[3] > shares[0]
 
-    assert TraceIngestionService._span_ingest_bytes(ExportTraceServiceRequest(), 10) == []
+    assert (
+        TraceIngestionService._span_ingest_bytes(ExportTraceServiceRequest(), 10) == []
+    )

@@ -150,6 +150,12 @@ class TraceIngestionService:
             overhead = max(resource_span.ByteSize() - sum(span_sizes), 0)
             weights.extend(size + overhead / len(span_sizes) for size in span_sizes)
 
+        return TraceIngestionService._split_by_weight(body_size, weights)
+
+    @staticmethod
+    def _split_by_weight(total: int, weights: list[float]) -> list[int]:
+        """Split total proportionally to weights (evenly if they are all zero).
+        Largest remainder rounding makes the shares sum to total exactly."""
         if not weights:
             return []
         total_weight = sum(weights)
@@ -157,14 +163,14 @@ class TraceIngestionService:
             weights = [1.0] * len(weights)
             total_weight = float(len(weights))
 
-        exact = [body_size * weight / total_weight for weight in weights]
+        exact = [total * weight / total_weight for weight in weights]
         shares = [int(value) for value in exact]
         by_remainder = sorted(
             range(len(exact)),
             key=lambda i: exact[i] - shares[i],
             reverse=True,
         )
-        for i in by_remainder[: body_size - sum(shares)]:
+        for i in by_remainder[: total - sum(shares)]:
             shares[i] += 1
         return shares
 
@@ -258,6 +264,17 @@ class TraceIngestionService:
                             f"Rejected span due to error: {str(e)}\nSpan data keys: {list(span_data.keys()) if isinstance(span_data, dict) else 'not a dict'}",
                             exc_info=True,
                         )
+
+        # A rejected span's share would otherwise be lost: the request's bytes were
+        # still received, so spread them over the spans that were stored. If every
+        # span was rejected, nothing is stored and there is nothing to attribute to.
+        if span_ingest_bytes is not None and rejected_spans and spans_data:
+            shares = self._split_by_weight(
+                sum(span_ingest_bytes),
+                [float(span.ingest_bytes or 0) for span in spans_data],
+            )
+            for span, share in zip(spans_data, shares, strict=True):
+                span.ingest_bytes = share
 
         return spans_data, (
             total_spans,
