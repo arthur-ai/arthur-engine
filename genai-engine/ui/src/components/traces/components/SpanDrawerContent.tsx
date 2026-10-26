@@ -1,8 +1,7 @@
-import { type GetSpanDetailsStrategy, SpanDrawerBody } from "@arthur/shared-components";
+import { SpanDrawerBody } from "@arthur/shared-components";
 import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router";
 
-import { getSpanDetailsStrategy } from "../data/details-strategy";
 import { useDrawerTarget } from "../hooks/useDrawerTarget";
 import { useSelection } from "../hooks/useSelection";
 import { usePaginationContext } from "../stores/pagination-context";
@@ -106,7 +105,6 @@ export const SpanDrawerContent = ({ id }: Props) => {
       currentId={current?.id ?? null}
       paginationContext={paginationContext}
       onNavigate={(target, navId) => setDrawerTarget({ target, id: navId })}
-      getSpanDetailsStrategy={getSpanDetailsStrategy as GetSpanDetailsStrategy}
     />
   );
 };

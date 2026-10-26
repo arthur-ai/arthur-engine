@@ -341,30 +341,32 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@arthur/shared-components@npm:^4.1.0":
-  version: 4.1.0
-  resolution: "@arthur/shared-components@npm:4.1.0::__archiveUrl=https%3A%2F%2Fgitlab.com%2Fapi%2Fv4%2Fprojects%2F54848372%2Fpackages%2Fnpm%2F%40arthur%2Fshared-components%2F-%2F%40arthur%2Fshared-components-4.1.0.tgz"
+"@arthur/shared-components@npm:^4.3.0":
+  version: 4.3.0
+  resolution: "@arthur/shared-components@npm:4.3.0::__archiveUrl=https%3A%2F%2Fgitlab.com%2Fapi%2Fv4%2Fprojects%2F54848372%2Fpackages%2Fnpm%2F%40arthur%2Fshared-components%2F-%2F%40arthur%2Fshared-components-4.3.0.tgz"
   dependencies:
     "@arizeai/openinference-semantic-conventions": "npm:2.14.0"
-    "@arthur/shield-types": "npm:^4.0.0"
-    "@arthur/unify-types": "npm:^4.0.0"
+    "@arthur/shield-types": "npm:^4.3.0"
+    "@arthur/unify-types": "npm:^4.3.0"
     "@floating-ui/react": "npm:0.27.20"
     "@tanstack/react-form": "npm:1.33.5"
-    "@tanstack/react-query": "npm:5.104.4"
-    "@tanstack/react-query-devtools": "npm:5.104.4"
+    "@tanstack/react-query": "npm:5.104.5"
+    "@tanstack/react-query-devtools": "npm:5.104.5"
+    "@tanstack/react-table": "npm:8.20.6"
     clsx: "npm:2.1.1"
     dayjs: "npm:1.11.23"
     material-react-table: "npm:3.2.1"
     mitt: "npm:3.0.1"
-    motion: "npm:14.3.1"
+    motion: "npm:14.6.0"
     pdfjs-dist: "npm:6.4.299"
     prism-react-renderer: "npm:2.4.1"
     react-markdown: "npm:10.1.0"
+    react-use-measure: "npm:2.1.7"
     remark-gfm: "npm:4.0.1"
     tailwind-merge: "npm:3.7.0"
     uuid: "npm:14.0.3"
     zod: "npm:4.6.7"
-    zustand: "npm:5.0.15"
+    zustand: "npm:5.0.16"
   peerDependencies:
     "@base-ui/react": ^1.9.0
     "@emotion/react": ^11.14.0
@@ -372,32 +374,30 @@ __metadata:
     "@mui/icons-material": ^9.5.0
     "@mui/material": ^9.5.0
     "@mui/system": ^9.5.0
-    "@mui/x-date-pickers": ^9.15.0
-    i18next: ^26.5.2
+    "@mui/x-date-pickers": ^9.16.0
     react: ^18.0.0 || ^19.0.0
     react-dom: ^18.0.0 || ^19.0.0
     react-error-boundary: ^6.1.6
-    react-i18next: ^17.1.0
-    react-router: ^8.4.0
-  checksum: 10c0/9d7c4ba249dd4dbebb4103211d7acc936a1f2f93579bae9406fd74c998c60559d17d6a0034de1c3a6288fe495a9822abeb507ead232855a8965fd83491d07bac
+    react-router: ^8.5.0
+  checksum: 10c0/ac9641d3829c1f123861994ac91c83a85a56f002f7a1bbdcce6b656db615ee9eadcf304f18da806900e06e41ffe5b0090300a7b85f6e19a74d28339ac066920c
   languageName: node
   linkType: hard
 
-"@arthur/shield-types@npm:^4.0.0":
-  version: 4.0.0
-  resolution: "@arthur/shield-types@npm:4.0.0::__archiveUrl=https%3A%2F%2Fgitlab.com%2Fapi%2Fv4%2Fprojects%2F54848372%2Fpackages%2Fnpm%2F%40arthur%2Fshield-types%2F-%2F%40arthur%2Fshield-types-4.0.0.tgz"
+"@arthur/shield-types@npm:^4.3.0":
+  version: 4.3.0
+  resolution: "@arthur/shield-types@npm:4.3.0::__archiveUrl=https%3A%2F%2Fgitlab.com%2Fapi%2Fv4%2Fprojects%2F54848372%2Fpackages%2Fnpm%2F%40arthur%2Fshield-types%2F-%2F%40arthur%2Fshield-types-4.3.0.tgz"
   dependencies:
     react: "npm:^19.3.1"
-  checksum: 10c0/6d7ace6fb17518a46dd6e3ce044799194581dbb3b8bb744d8f0ef32d030566000ee914914f004873271645c167696f3c64585a9032a4974db20151ba4bb32711
+  checksum: 10c0/c5cbcbf11b1205bfdc369f928f31afabddf6c733837d048a0799015ae4d5e203a932642ed3ad02a66ca32f60ce2880542a5a58b801896d962d850abcc12203e4
   languageName: node
   linkType: hard
 
-"@arthur/unify-types@npm:^4.0.0":
-  version: 4.0.0
-  resolution: "@arthur/unify-types@npm:4.0.0::__archiveUrl=https%3A%2F%2Fgitlab.com%2Fapi%2Fv4%2Fprojects%2F54848372%2Fpackages%2Fnpm%2F%40arthur%2Funify-types%2F-%2F%40arthur%2Funify-types-4.0.0.tgz"
+"@arthur/unify-types@npm:^4.3.0":
+  version: 4.3.0
+  resolution: "@arthur/unify-types@npm:4.3.0::__archiveUrl=https%3A%2F%2Fgitlab.com%2Fapi%2Fv4%2Fprojects%2F54848372%2Fpackages%2Fnpm%2F%40arthur%2Funify-types%2F-%2F%40arthur%2Funify-types-4.3.0.tgz"
   dependencies:
     react: "npm:19.3.1"
-  checksum: 10c0/1d96244f986ae8c7131d6edb3e2e4ef54a39e0c6253f1ce96dcb09e6fbb100a05942486d150baa387111ae8a1fb93b7a739e4ade68e57849a25be0bf4eb88ebe
+  checksum: 10c0/0d4fd779ebac70171133c0e1afca10ec81b664386d18b72f2972dfa93b367a5b40c5e8e4fd280e0076ba6807123e6af257dfa2fb54585eb5517aef99f210d653
   languageName: node
   linkType: hard
 
@@ -2400,36 +2400,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tanstack/query-core@npm:5.104.4":
-  version: 5.104.4
-  resolution: "@tanstack/query-core@npm:5.104.4"
-  checksum: 10c0/059587b4eec5abc186e9361b23ede4b5ecf0b0899e0e10154d70793f2b00ce4fd168e5d9636cdacabca464bb6c882372d2866a4bfd354ec3d2fd4b0ba6ef1110
-  languageName: node
-  linkType: hard
-
 "@tanstack/query-core@npm:5.104.5":
   version: 5.104.5
   resolution: "@tanstack/query-core@npm:5.104.5"
   checksum: 10c0/bc2f0626e33ccb1c881343e2b351168d6c07df01f42ed0b4f679d4ecc753af5864678f3e09f57bef500a02de5fc52cfef13aa7c3f2d3be6b62297bac024acaed
-  languageName: node
-  linkType: hard
-
-"@tanstack/query-devtools@npm:5.104.4":
-  version: 5.104.4
-  resolution: "@tanstack/query-devtools@npm:5.104.4"
-  dependencies:
-    "@kobalte/core": "npm:^0.13.14"
-    "@solid-primitives/keyed": "npm:^1.5.3"
-    "@solid-primitives/resize-observer": "npm:^2.2.0"
-    "@solid-primitives/storage": "npm:^1.3.11"
-    "@tanstack/match-sorter-utils": "npm:^9.1.2"
-    "@tanstack/query-core": "npm:5.104.4"
-    clsx: "npm:^2.1.1"
-    goober: "npm:^2.1.19"
-    solid-js: "npm:^1.9.15"
-    solid-transition-group: "npm:^0.2.3"
-    superjson: "npm:^2.2.6"
-  checksum: 10c0/139c41d6d9a2c0ef91674c71c848854982934e0aa88f821e1924e52a082667e2c132e787ae0e3f440bbbf12a4bce05931f7efd045f0a578a4c21da864b897001
   languageName: node
   linkType: hard
 
@@ -2480,22 +2454,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tanstack/react-query-devtools@npm:5.104.4":
-  version: 5.104.4
-  resolution: "@tanstack/react-query-devtools@npm:5.104.4"
-  dependencies:
-    "@tanstack/query-devtools": "npm:5.104.4"
-  peerDependencies:
-    "@tanstack/react-query": ^5.104.4
-    "@types/react": ^18 || ^19
-    react: ^18 || ^19
-  peerDependenciesMeta:
-    "@types/react":
-      optional: true
-  checksum: 10c0/1a3685940cb6a1079f39bd0a953c285b0a5db9a3865f58c06aaeb1b990649058f599ffa3cdb1459f42291ea382bbb06501fee15e880f7f51b9df88536fc78f17
-  languageName: node
-  linkType: hard
-
 "@tanstack/react-query-devtools@npm:5.104.5":
   version: 5.104.5
   resolution: "@tanstack/react-query-devtools@npm:5.104.5"
@@ -2509,21 +2467,6 @@ __metadata:
     "@types/react":
       optional: true
   checksum: 10c0/4a0cea1ddfb9ec8b74e9f41b37fe3bfdba55a22978d90830ef270851e50f91c49db52624ab590145d1a0f45217807a655d81dc5888d3745e27c3330578e2a69e
-  languageName: node
-  linkType: hard
-
-"@tanstack/react-query@npm:5.104.4":
-  version: 5.104.4
-  resolution: "@tanstack/react-query@npm:5.104.4"
-  dependencies:
-    "@tanstack/query-core": "npm:5.104.4"
-  peerDependencies:
-    "@types/react": ^18 || ^19
-    react: ^18 || ^19
-  peerDependenciesMeta:
-    "@types/react":
-      optional: true
-  checksum: 10c0/c4999d44e59de7849dcb9e54ecff5670e9bbfb31f4eba82d4dcac6855171e1dce64e436a0192dddc669a9e2aa1f658bb836b1cd9026074268a4c28197dad54a3
   languageName: node
   linkType: hard
 
@@ -5004,12 +4947,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"framer-motion@npm:14.3.1":
-  version: 14.3.1
-  resolution: "framer-motion@npm:14.3.1"
+"framer-motion@npm:14.6.0":
+  version: 14.6.0
+  resolution: "framer-motion@npm:14.6.0"
   dependencies:
-    motion-dom: "npm:14.3.1"
-    motion-utils: "npm:14.1.1"
+    motion-dom: "npm:14.6.0"
+    motion-utils: "npm:14.6.0"
     tslib: "npm:^2.4.0"
   peerDependencies:
     react: ^18.0.0 || ^19.0.0
@@ -5019,7 +4962,7 @@ __metadata:
       optional: true
     react-dom:
       optional: true
-  checksum: 10c0/0aca1d90c4521a0f34fda9ec34b2ded640282b1310872c3cedccac1ef3b18e39d0b32b4aa8d007288a1a538e27d33b70ba3e1ed1589c48f4027488d513fea01b
+  checksum: 10c0/cca23ea04ed6c8a025400f943f4782f53181da9555b11af63bbb3642b3054dc7f427b6cdc0a3abbf0683cf6d58fa8f85d68b865b319fc4de6c0693eddddad630
   languageName: node
   linkType: hard
 
@@ -6788,12 +6731,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"motion-dom@npm:14.3.1":
-  version: 14.3.1
-  resolution: "motion-dom@npm:14.3.1"
+"motion-dom@npm:14.6.0":
+  version: 14.6.0
+  resolution: "motion-dom@npm:14.6.0"
   dependencies:
-    motion-utils: "npm:14.1.1"
-  checksum: 10c0/09b33d89b748e5f43abee5b5e3d5053211bb2384dc445eccb684cfe6f4437b96b42819f32fedbe79e7fcc296efbd09a76c8a5ad2441e0ad21d4ab4abc6698c97
+    motion-utils: "npm:14.6.0"
+  checksum: 10c0/ef2c979c615778e838cf9d68398887f23308032ae18dc44e7ce0a7c499a1025a4a23e6510b7c7ca2e2e987a19bf97228236360efeba69bbd7295805d3b3366b9
   languageName: node
   linkType: hard
 
@@ -6804,10 +6747,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"motion-utils@npm:14.1.1":
-  version: 14.1.1
-  resolution: "motion-utils@npm:14.1.1"
-  checksum: 10c0/ee89684857aae2b02897d7297568e1e6dc6c1eec08c61533fbc0a9650de5d5c454aa888532b825baabac92defddecd364cbb8cd7fa63b2171152edf8f9f819f0
+"motion-utils@npm:14.6.0":
+  version: 14.6.0
+  resolution: "motion-utils@npm:14.6.0"
+  checksum: 10c0/bdc1b32d09385f3f68237c763af9fbdb9495dda08b668a17aea6659ce7639db9466128069266bb4e68125ab1297b6653975366b054737f849af4103ce755f45a
   languageName: node
   linkType: hard
 
@@ -6829,11 +6772,11 @@ __metadata:
   languageName: node
   linkType: hard
 
-"motion@npm:14.3.1":
-  version: 14.3.1
-  resolution: "motion@npm:14.3.1"
+"motion@npm:14.6.0":
+  version: 14.6.0
+  resolution: "motion@npm:14.6.0"
   dependencies:
-    framer-motion: "npm:14.3.1"
+    framer-motion: "npm:14.6.0"
     tslib: "npm:^2.4.0"
   peerDependencies:
     react: ^18.0.0 || ^19.0.0
@@ -6843,7 +6786,7 @@ __metadata:
       optional: true
     react-dom:
       optional: true
-  checksum: 10c0/cb37cd497b736ce20f435ee99417af90cbbec33a2b1da827de710a2682c3f5b46c14f0ca034406df07ad92c5ba0cc997f6aa82b90a00c500f231dd7d4a400b46
+  checksum: 10c0/fe21d5c6e4ea1920ebcfd305369a39cd5b12feb875d0c8d8f2dff5124682ed7d50d91031cf5316bedb7e805ad747cd61e49283cda681eb8dc5ac5e25c861a384
   languageName: node
   linkType: hard
 
@@ -8680,7 +8623,7 @@ __metadata:
     "@amplitude/experiment-js-client": "npm:^1.21.1"
     "@amplitude/plugin-session-replay-browser": "npm:^1.33.6"
     "@arizeai/openinference-semantic-conventions": "npm:2.14.0"
-    "@arthur/shared-components": "npm:^4.1.0"
+    "@arthur/shared-components": "npm:^4.3.0"
     "@base-ui/react": "npm:1.9.0"
     "@dnd-kit/core": "npm:6.3.1"
     "@dnd-kit/sortable": "npm:10.0.0"
@@ -8731,13 +8674,11 @@ __metadata:
     ohash: "npm:2.0.12"
     papaparse: "npm:5.7.0"
     prettier: "npm:3.9.10"
-    prism-react-renderer: "npm:2.4.1"
     react: "npm:19.3.1"
     react-dom: "npm:19.3.1"
     react-error-boundary: "npm:6.1.6"
     react-markdown: "npm:10.1.0"
     react-router: "npm:^8.3.0"
-    react-use-measure: "npm:2.1.7"
     rehype-sanitize: "npm:^6.0.0"
     remark-gfm: "npm:4.0.1"
     swagger-typescript-api: "npm:^13.12.6"
@@ -9430,27 +9371,6 @@ __metadata:
   version: 4.6.5
   resolution: "zod@npm:4.6.5"
   checksum: 10c0/32eb6c5e98becbe045675b2141c3611451c16ba567f9779231d79af41c4d651ca1c22f154aef7e6c6e77b929f23e43f1154ca05b82e119e922353725d6776af5
-  languageName: node
-  linkType: hard
-
-"zustand@npm:5.0.15":
-  version: 5.0.15
-  resolution: "zustand@npm:5.0.15"
-  peerDependencies:
-    "@types/react": ">=18.0.0"
-    immer: ">=9.0.6"
-    react: ">=18.0.0"
-    use-sync-external-store: ">=1.2.0"
-  peerDependenciesMeta:
-    "@types/react":
-      optional: true
-    immer:
-      optional: true
-    react:
-      optional: true
-    use-sync-external-store:
-      optional: true
-  checksum: 10c0/ed3a883950a8c22d98e8c72cef103af18043ce66b45faf218ad20ccc8ee29716aacfc6b0a3e783b2152ea38b7663f3982bb6bf2b13ce3df692b05276446afa04
   languageName: node
   linkType: hard
 

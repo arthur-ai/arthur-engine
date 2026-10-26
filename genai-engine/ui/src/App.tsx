@@ -42,6 +42,7 @@ import { SettingsPage } from "./components/settings/SettingsPage";
 import { TaskLayout } from "./components/TaskLayout";
 import { TaskOverview } from "./components/TaskOverview";
 import { TestView } from "./components/test/TestView";
+import { TraceViewerProviders } from "./components/traces/TraceViewerProviders";
 import { TracesView } from "./components/TracesView";
 import TransformsManagement from "./components/transforms/TransformsManagement";
 import { AuthProvider } from "./contexts/AuthContext";
@@ -188,16 +189,18 @@ function App() {
                 <EngineConfigProvider>
                   <AuthProvider>
                     <DisplaySettingsProvider>
-                      <OutOfCreditsProvider>
-                        <Router>
-                          <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-                            <EngineConfigGate>
-                              <AppRoutes />
-                            </EngineConfigGate>
-                          </div>
-                        </Router>
-                        <OutOfCreditsDialog />
-                      </OutOfCreditsProvider>
+                      <TraceViewerProviders>
+                        <OutOfCreditsProvider>
+                          <Router>
+                            <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+                              <EngineConfigGate>
+                                <AppRoutes />
+                              </EngineConfigGate>
+                            </div>
+                          </Router>
+                          <OutOfCreditsDialog />
+                        </OutOfCreditsProvider>
+                      </TraceViewerProviders>
                     </DisplaySettingsProvider>
                   </AuthProvider>
                 </EngineConfigProvider>
