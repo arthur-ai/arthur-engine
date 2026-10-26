@@ -8,7 +8,7 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "2026-10-22T19:56:21.787540228Z"
+exclude-newer = "2026-10-23T17:39:50.033898011Z"
 exclude-newer-span = "P3D"
 
 [options.exclude-newer-package]
@@ -1534,7 +1534,7 @@ wheels = [
 
 [[package]]
 name = "ml-engine"
-version = "2.1.1052"
+version = "2.1.1054"
 source = { editable = "." }
 dependencies = [
     { name = "adlfs" },
@@ -1554,6 +1554,7 @@ dependencies = [
     { name = "google-cloud-trace" },
     { name = "gunicorn" },
     { name = "httpx" },
+    { name = "jsonschema" },
     { name = "numpy" },
     { name = "oracledb" },
     { name = "pandas" },
@@ -1612,6 +1613,7 @@ requires-dist = [
     { name = "google-cloud-trace", specifier = ">=1.13.0,<2" },
     { name = "gunicorn", specifier = ">=26,<27" },
     { name = "httpx", specifier = "==0.28.1" },
+    { name = "jsonschema", specifier = "==4.26.0" },
     { name = "numpy", specifier = "==2.3.2" },
     { name = "oracledb", specifier = ">=26,<27" },
     { name = "pandas", specifier = "==3.0.6" },

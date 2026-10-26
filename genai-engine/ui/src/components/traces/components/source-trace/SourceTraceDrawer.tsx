@@ -1,4 +1,5 @@
 import { OpenInferenceSpanKind } from "@arizeai/openinference-semantic-conventions";
+import { getSpanDetailsStrategy, SpanDetails, SpanDetailsHeader, SpanDetailsPanels, SpanDetailsWidgets, SpanTree } from "@arthur/shared-components";
 import CloseIcon from "@mui/icons-material/Close";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import { Box, Button, CircularProgress, Drawer, IconButton, Stack, Tooltip, Typography } from "@mui/material";
@@ -9,9 +10,6 @@ import { Link as RouterLink } from "react-router";
 
 import { CopyableChip } from "@/components/common";
 import { traceDeepLinkPath } from "@/components/common/SourceTraceLink";
-import { SpanDetails, SpanDetailsHeader, SpanDetailsPanels, SpanDetailsWidgets } from "@/components/traces/components/SpanDetails";
-import { SpanTree } from "@/components/traces/components/SpanTree";
-import { getSpanDetailsStrategy } from "@/components/traces/data/details-strategy";
 import { flattenSpans } from "@/components/traces/utils/spans";
 import { useApi } from "@/hooks/useApi";
 import type { NestedSpanWithMetricsResponse } from "@/lib/api-client/api-client";

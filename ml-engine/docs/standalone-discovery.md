@@ -381,7 +381,10 @@ Reads the agent inventory Arthur's endpoint collector writes to each Mac.
 | `include_groups` | no | no | Comma-separated computer group names to limit the scan to |
 | `exclude_groups` | no | no | Comma-separated computer group names to leave out |
 
-`query` is the agent catalog YAML; leave it `""` to use the one the engine ships with.
+`query` is the agent catalog; leave it `""` to use the one the engine ships with. A catalog
+of your own is an [ai-detection-spec](https://github.com/arthur-ai/ai-detection-spec) catalog
+document (`format: ai-detection-spec/0.1`), such as the `catalog.json` a release attaches. It
+is validated against the spec's schema, and the scan refuses one that fails.
 Use `query_language: none`. Jamf scans stop early on shutdown and report as cancelled.
 
 #### `local` — one machine's scan, from a folder

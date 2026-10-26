@@ -50,9 +50,9 @@ It cannot see:
 
 ## Development
 
-**This tree writes no osquery.** The queries and the runner come from
-[osquery-ai-discovery](https://github.com/arthur-ai/osquery-ai-discovery) and are vendored
-under `vendor/` at a pinned ref, so a query change is made upstream. This tree owns four
+**This tree writes no osquery.** The queries and the runner are the osquery binding of
+[ai-detection-spec](https://github.com/arthur-ai/ai-detection-spec), vendored under
+`vendor/` at a pinned ref, so a query change is made upstream. This tree owns four
 things:
 
 - the build
@@ -64,8 +64,8 @@ things:
 
 | Path | Contents |
 |---|---|
-| `vendor/osquery-ai-discovery/` | the queries and the runner at a pinned ref. **Do not edit**; re-vendor instead |
-| `tools/vendor-queries.sh` | vendors upstream's `bin/` and `dist/` at one ref. The agent catalog is vendored into ml-engine instead |
+| `vendor/ai-detection-spec/` | the queries and the runner at a pinned ref. **Do not edit**; re-vendor instead |
+| `tools/vendor-queries.sh` | vendors upstream's osquery binding (`osquery/bin/`, `osquery/dist/`, the bundler) at one ref. The agent catalog and the matcher are vendored into ml-engine instead |
 | `tools/build-collector.py` | builds `dist/collect.sh` and `dist/collect-linux.sh`, each one self-contained file |
 | `dist/` | the built collectors. Generated, and committed so reviewers see them change |
 | `deploy/` | the macOS LaunchDaemon; the systemd units, the Compute Engine and EC2 reporters, the Compute Engine OS policy and the EC2 CloudFormation template |

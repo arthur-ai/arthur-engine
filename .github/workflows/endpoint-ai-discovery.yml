@@ -213,7 +213,7 @@ jobs:
 
       # A hosted runner has no Docker, so the container branch reports `absent` and the
       # 15s cold-ping bound is never reached. Daemon states are upstream's
-      # test/docker_states.sh.
+      # osquery/test/docker_states.sh.
       - name: What this job did not prove
         run: |
           echo "no Docker on a hosted runner, so the container branch reported absent"

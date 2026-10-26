@@ -23,7 +23,7 @@ where its vendor's source class is, which is also the record type it emits.
 A connector a standalone engine can run and a Platform job cannot goes in
 `standalone_connectors()` instead: the Platform has no vendor for it, and its executors
 build their map from `source_connectors()` alone.
-Everything the new MDM shares with Jamf -- the `arthur1.` frame, the six-column rows,
+Everything the new MDM shares with Jamf -- the `arthur1.` frame, the evidence rows,
 matching, the record shape -- is already neutral and is not touched. A cloud product
 whose VMs carry that payload (Compute Engine, EC2) reuses it too, from `discovery.cloud`,
 with what such clouds share among themselves in `discovery.cloud.vm_inventory`.
