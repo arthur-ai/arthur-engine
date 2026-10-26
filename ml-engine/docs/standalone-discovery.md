@@ -565,6 +565,70 @@ part AWS refuses in a region, or a region AgentCore does not run in, is a
 warning and the rest of the scan goes on; a refused credential, or every part refused,
 fails the scan.
 
+#### `aws_containers` — ECS and EKS workloads
+
+Lists every ECS service, every ECS task no service owns, and every EKS workload in the
+regions of one account, and reports a workload when one of its images is an agent's in
+the catalog (`images:`), when it runs as an IAM role CloudTrail shows calling a Bedrock
+model, or every workload when `report_all_workloads` is true. Each record names the role
+the workload runs as.
+
+| Field | Secret | Required | Notes |
+|---|---|---|---|
+| `regions` | no | yes | Comma-separated regions, such as `us-east-1,us-west-2`. Both ECS and EKS are listed in each, and CloudTrail is read in each when `read_cloudtrail` is on |
+| `read_cloudtrail` | no | no | `true` (default) or `false`: read the roles that call Bedrock models, so a workload running as one is reported |
+| `report_all_workloads` | no | no | `true` to report every workload, not only catalog matches and AI-calling roles. Defaults to `false` |
+| `access_key_id` | yes | no | As for `aws_ec2`; without one, the engine uses its own AWS credentials only if `ARTHUR_ENGINE_AWS_CONTAINERS_ALLOW_DEFAULT_CREDENTIALS=true` is set |
+| `secret_access_key` | yes | no | Set with `access_key_id`, or neither |
+| `role_arn` | no | no | A role those credentials assume, as session `arthur-ai-discovery` |
+| `external_id` | no | no | The external ID the role's trust policy requires; only with `role_arn` |
+
+The credential needs, all read-only:
+
+- ECS: `ecs:ListClusters`, `ecs:ListServices`, `ecs:DescribeServices`, `ecs:ListTasks`,
+  `ecs:DescribeTasks`, `ecs:DescribeTaskDefinition`; for tasks on EC2 with no task role,
+  `ecs:DescribeContainerInstances`, `ec2:DescribeInstances` and `iam:GetInstanceProfile`.
+- EKS: `eks:ListClusters`, `eks:DescribeCluster`, `eks:ListNodegroups`,
+  `eks:DescribeNodegroup`, `eks:ListPodIdentityAssociations`,
+  `eks:DescribePodIdentityAssociation`, `eks:ListFargateProfiles`,
+  `eks:DescribeFargateProfile`, and on each cluster an access entry for the
+  credential's IAM principal with the `AmazonEKSViewPolicy` access policy at cluster
+  scope (`aws eks create-access-entry`, then `aws eks associate-access-policy ...
+  --access-scope type=cluster`). A cluster still on `CONFIG_MAP` authentication needs the
+  principal mapped in `aws-auth` to a group bound to the `view` ClusterRole instead.
+- CloudTrail: `cloudtrail:LookupEvents`, when `read_cloudtrail` is on.
+
+`DescribeTaskDefinition` and the Kubernetes listings return containers' environment
+variables; the connector reads only images, roles, names and timestamps off them. `query`
+is the catalog, as for Jamf; `query_language: none`.
+
+A workload is an ECS service (its tasks are folded in by their `service:` group), the
+tasks no service owns that share a `group` (`family:<task definition family>` unless
+whoever ran them set one), or an EKS controller -- Deployment, StatefulSet, DaemonSet,
+CronJob, even one an operator's custom resource owns -- or a Job or Pod nothing owns; `kube-system`, `kube-public`, `kube-node-lease`,
+`aws-observability` and the `amazon-` namespaces are left out. ECS lists a stopped task
+for about an hour, so a task group is seen only while one of its tasks runs or has just
+run.
+
+The role is the task role on ECS, never the execution role. On EKS it is the IRSA
+annotation (`eks.amazonaws.com/role-arn`) on the pod's service account, else the role an
+EKS Pod Identity association binds to it, else the managed node groups' node roles. An
+EC2 task with no task role runs as its container instance's role. A node's or instance's
+role is shared by everything on it, and the name says so, as it says how many of the
+scan's workloads share a role. CloudTrail is read over the lookback, or the last seven
+days when it is `0`; a call IAM refused is not a call, as in `aws_bedrock`, so a role
+whose every call was refused selects nothing. A pod a Fargate profile selects has no
+node role; nodes outside managed node groups (self-managed, Karpenter, Auto Mode) are
+not listed by EKS, so their roles are not reported.
+
+An account-region whose ECS or EKS listing is refused, and a cluster whose Kubernetes API
+answers 401 or 403 or cannot be reached (a private endpoint the engine is outside of), is
+a denied scope on the run, and the rest of the scan goes on. EKS answers 401 to an IAM
+principal with no access entry on that cluster, so that is the cluster's refusal, not the
+credential's. A refused AWS credential ends the scan, and so does a scan refused every
+ECS and EKS listing, even when CloudTrail could be read: a source that listed no
+container reads as denied, not as an account without workloads.
+
 #### `splunk_enterprise` — Splunk Enterprise
 
 Runs the config's SPL as a search job over the lookback window.
