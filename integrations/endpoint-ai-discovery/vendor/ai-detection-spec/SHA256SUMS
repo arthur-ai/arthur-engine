@@ -1,0 +1,11 @@
+c6e1f138c0928e8e2c86cd35073c179df9629ec4e957a21802055c9043a54fc9  ./bin/container-scan
+a3b8d856e85b18f9d4950959fb2292ee214a7a532fa8160b3fe6ff90cb7ba77d  ./bin/discover
+41313117f55c4dad244301a21309b3e4b349f202cfcb6c1aa2dd6f8236543b6c  ./dist/agents-darwin.sql
+82fdcc689d93a3d676619666929a7d3a63cb26e232d131abbb0653a54b206acd  ./dist/agents-linux.sql
+97420fa6324600a0b932f55cded4c15465e0c2868a506d4ca2128a24a6538bde  ./dist/ai-detection-spec.conf
+8b0ee9c74a3ba8565beb6c67efdf31c3415766a0b04a02dafa0a3fb53f859ac0  ./dist/discovery-darwin.sql
+8df38695b04089a9e090b3c73acc3c38b1c525820cd0163ddc72bdc4c33fac0e  ./dist/discovery-deep.sql
+47a43f0ec0f29cdc6a76490a95dc30525719b8b58d6dc70b152b9d74e0c0fae5  ./dist/discovery-linux.sql
+d5f8403b90b845afcd9280c20fbeff0529d2edf126fc851c44a905cfb36988ff  ./dist/fleet-policies.yml
+987103315cb43a115587e2c27044d9d7b125f5f8dae16ccb59197fe708a39de4  ./dist/signatures.sql
+bf24fe3019a75b49bc285e2566b7dea12f2d732c581d21b252541c3bc0cd1892  ./tools/bundle.py

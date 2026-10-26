@@ -12,7 +12,7 @@ no static check exercises the extraction code inside `dist/collect.sh`.
 
 These tests cover what this tree owns: the build, the `arthur1.` framing, the size budget and
 the carriers. The queries, the runner, the Docker health guard and the wall-clock bound belong
-to [`osquery-ai-discovery`](https://github.com/arthur-ai/osquery-ai-discovery), and so do their
+to [`ai-detection-spec`](https://github.com/arthur-ai/ai-detection-spec)'s osquery binding, and so do their
 tests. **Do not re-create that suite here.** A local copy would test a local query rather than
 what a fleet receives.
 
@@ -23,7 +23,7 @@ what a fleet receives.
 | No `.sql`, no `osqueryi` call, no plaintext query outside `vendor/` | A second discovery implementation reappearing |
 | `build-collector.py --check` | `dist/collect.sh` built before the last `tools/vendor-queries.sh` |
 | Payload files admitted by name (`ENDPOINT_FILES` in `tools/build-collector.py`, run through `--check`) | A file upstream adds to its bundle reaching endpoints unvetted, catalog-derived ones above all |
-| No `agents.yaml`, no `catalog/` in the built collector | The catalog reaching a Mac. The endpoint enumerates and matches nothing |
+| No `agents.yaml`, no `catalog.json`, no `catalog/` in the built collector | The catalog reaching a Mac. The endpoint enumerates and matches nothing |
 | No `--names` in the driver | Matching on the endpoint. The bundle carries `dist/signatures.sql` for it, unread |
 | One `ARTHUR_PAYLOAD_EOF` pair | The collector embedding a previous copy of itself |
 | Every flag either collector passes to `bin/discover`, in every call, is still accepted | A vendor bump removing a flag. This has happened: upstream deleted `--framed`, correctly, and the collector called it |
@@ -75,7 +75,7 @@ depends on that.
 
 The container branch: the macOS runner has no Docker and reports `absent`; the Ubuntu runner
 has one and reports `ok`. The 15s cold-ping bound is reached by neither. The daemon states are
-upstream's `test/docker_states.sh`, against the vendored runner.
+upstream's `osquery/test/docker_states.sh`, against the vendored runner.
 
 ## `test/run-guest-attributes.sh`
 

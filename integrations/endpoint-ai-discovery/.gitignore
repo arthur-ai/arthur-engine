@@ -23,5 +23,5 @@ deploy/terraform/.terraform.lock.hcl
 # because git will not re-include a file whose parent directory is still excluded.
 !dist/
 !dist/**
-!vendor/osquery-ai-discovery/dist/
-!vendor/osquery-ai-discovery/dist/**
+!vendor/ai-detection-spec/dist/
+!vendor/ai-detection-spec/dist/**
