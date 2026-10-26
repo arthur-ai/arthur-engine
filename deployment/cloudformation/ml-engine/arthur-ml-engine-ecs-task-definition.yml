@@ -73,6 +73,13 @@ Parameters:
       - 'true'
       - 'false'
     Description: 'Whether to fetch raw data from the data plane'
+  MLEngineAwsDiscoveryAllowDefaultCredentials:
+    Type: String
+    Default: 'false'
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Description: 'Whether an AWS discovery source with no access key may use the ML Engine task role'
 
 Conditions:
   IsContainerRepositoryCredentialRequired: !Equals [ !Ref ContainerRepositoryCredentialRequired, 'true' ]
@@ -117,6 +124,14 @@ Resources:
               Value: !Ref GenaiEngineMaxPageSize
             - Name: 'FETCH_RAW_DATA_ENABLED'
               Value: !Ref FetchRawDataEnabled
+            - Name: 'ARTHUR_ENGINE_AWS_BEDROCK_ALLOW_DEFAULT_CREDENTIALS'
+              Value: !Ref MLEngineAwsDiscoveryAllowDefaultCredentials
+            - Name: 'ARTHUR_ENGINE_AWS_CONTAINERS_ALLOW_DEFAULT_CREDENTIALS'
+              Value: !Ref MLEngineAwsDiscoveryAllowDefaultCredentials
+            - Name: 'ARTHUR_ENGINE_AWS_EC2_ALLOW_DEFAULT_CREDENTIALS'
+              Value: !Ref MLEngineAwsDiscoveryAllowDefaultCredentials
+            - Name: 'ARTHUR_ENGINE_AWS_NETWORK_ALLOW_DEFAULT_CREDENTIALS'
+              Value: !Ref MLEngineAwsDiscoveryAllowDefaultCredentials
           Secrets:
             - Name: 'ARTHUR_CLIENT_ID'
               ValueFrom: !Sub '${MLEngineClientCredentialsSecretARN}:client_id::'
