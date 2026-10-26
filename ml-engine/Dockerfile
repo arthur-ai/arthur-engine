@@ -2,9 +2,13 @@
 # dpkg metadata it ships (see the status.d sync at the end of that stage), and again
 # as the final image below. The same tag resolves to the same digest within one
 # build, so this adds a metadata read, not a second base image.
-FROM --platform=linux/amd64 gcr.io/distroless/python3-debian12:nonroot AS distroless_meta
+#
+# Built for linux/amd64 and linux/arm64. The two differ only where a vendor ships
+# nothing for arm64 — ODBC Driver 17 and the Oracle Instant Client version; see the
+# driver steps below.
+FROM gcr.io/distroless/python3-debian12:nonroot AS distroless_meta
 
-FROM --platform=linux/amd64 python:3.13-slim-bookworm AS install
+FROM python:3.13-slim-bookworm AS install
 
 # install uv and wget; upgrade OS packages for Debian security fixes
 # (libssl3, libc6, libexpat1, ...). These libraries live in /usr/lib and are
@@ -31,37 +35,64 @@ RUN apt-get update && apt-get install -y \
     unzip \
     && rm -rf /var/lib/apt/lists/*
 
-# install Microsoft ODBC Drivers 17 and 18
-RUN echo "deb [arch=amd64 signed-by=/usr/share/keyrings/msprod.gpg] https://packages.microsoft.com/debian/12/prod bookworm main" \
-      > /etc/apt/sources.list.d/msprod.list && \
-    curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > /usr/share/keyrings/msprod.gpg && \
-    apt-get update && \
-    ACCEPT_EULA=Y apt-get install -y msodbcsql18 msodbcsql17 mssql-tools18 && \
+# install Microsoft ODBC Drivers 18 and (amd64 only) 17
+#
+# Microsoft publishes msodbcsql17 for amd64 only, so the arm64 image ships Driver 18
+# alone and a connector configured for Driver 17 fails there with "Can't open lib".
+# Driver 17 is deliberately not aliased to the Driver 18 library: 18 defaults to
+# Encrypt=yes, so the alias would silently change how those connections negotiate TLS.
+RUN set -eux; \
+    ARCH="$(dpkg --print-architecture)"; \
+    echo "deb [arch=${ARCH} signed-by=/usr/share/keyrings/msprod.gpg] https://packages.microsoft.com/debian/12/prod bookworm main" \
+      > /etc/apt/sources.list.d/msprod.list; \
+    curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > /usr/share/keyrings/msprod.gpg; \
+    apt-get update; \
+    PKGS="msodbcsql18 mssql-tools18"; \
+    if [ "$ARCH" = amd64 ]; then PKGS="$PKGS msodbcsql17"; fi; \
+    ACCEPT_EULA=Y apt-get install -y $PKGS; \
     rm -rf /var/lib/apt/lists/*
 
 # configure ODBC drivers
 RUN set -eux; \
     DRV18="$(basename /opt/microsoft/msodbcsql18/lib64/libmsodbcsql-*.so* | head -n1)"; \
-    DRV17="$(basename /opt/microsoft/msodbcsql17/lib64/libmsodbcsql-*.so* | head -n1)"; \
-    printf '%s\n' \
-      "[ODBC Driver 18 for SQL Server]" \
-      "Description=Microsoft ODBC Driver 18 for SQL Server" \
-      "Driver=/opt/microsoft/msodbcsql18/lib64/${DRV18}" \
-      "UsageCount=1" \
-      "" \
-      "[ODBC Driver 17 for SQL Server]" \
-      "Description=Microsoft ODBC Driver 17 for SQL Server" \
-      "Driver=/opt/microsoft/msodbcsql17/lib64/${DRV17}" \
-      "UsageCount=1" \
-      > /etc/odbcinst.ini
+    { \
+      printf '%s\n' \
+        "[ODBC Driver 18 for SQL Server]" \
+        "Description=Microsoft ODBC Driver 18 for SQL Server" \
+        "Driver=/opt/microsoft/msodbcsql18/lib64/${DRV18}" \
+        "UsageCount=1"; \
+      if [ -d /opt/microsoft/msodbcsql17 ]; then \
+        DRV17="$(basename /opt/microsoft/msodbcsql17/lib64/libmsodbcsql-*.so* | head -n1)"; \
+        printf '%s\n' \
+          "" \
+          "[ODBC Driver 17 for SQL Server]" \
+          "Description=Microsoft ODBC Driver 17 for SQL Server" \
+          "Driver=/opt/microsoft/msodbcsql17/lib64/${DRV17}" \
+          "UsageCount=1"; \
+      fi; \
+    } > /etc/odbcinst.ini
 
 # install Oracle Instant Client
-RUN mkdir -p /opt/oracle && \
-    wget -O /tmp/oracle-basic.zip https://download.oracle.com/otn_software/linux/instantclient/2112000/instantclient-basic-linux.x64-21.12.0.0.0dbru.zip && \
-    wget -O /tmp/oracle-sdk.zip https://download.oracle.com/otn_software/linux/instantclient/2112000/instantclient-sdk-linux.x64-21.12.0.0.0dbru.zip && \
-    unzip -q /tmp/oracle-basic.zip -d /opt/oracle && \
-    unzip -q /tmp/oracle-sdk.zip -d /opt/oracle && \
-    ln -sf /opt/oracle/instantclient_21_12 /opt/oracle/instantclient && \
+#
+# Oracle publishes no arm64 build of 21c, so arm64 gets 23ai. The version split has
+# no runtime effect today: ml-engine connects through python-oracledb in thin mode
+# (nothing calls init_oracle_client), which does not load the Instant Client.
+# The 23ai basic and sdk zips both carry a top-level META-INF/MANIFEST.MF, so the
+# second unzip overwrites (-o) rather than prompting, and the jar manifest is dropped.
+RUN set -eux; \
+    case "$(dpkg --print-architecture)" in \
+      amd64) IC_DIR=2112000; IC_SUFFIX=linux.x64-21.12.0.0.0dbru; IC_HOME=instantclient_21_12 ;; \
+      arm64) IC_DIR=2326400; IC_SUFFIX=linux.arm64-23.26.4.0.0; IC_HOME=instantclient_23_26 ;; \
+      *) echo "no Oracle Instant Client pinned for $(dpkg --print-architecture)" >&2; exit 1 ;; \
+    esac; \
+    mkdir -p /opt/oracle; \
+    for PART in basic sdk; do \
+      wget -O "/tmp/oracle-${PART}.zip" \
+        "https://download.oracle.com/otn_software/linux/instantclient/${IC_DIR}/instantclient-${PART}-${IC_SUFFIX}.zip"; \
+      unzip -qo "/tmp/oracle-${PART}.zip" -d /opt/oracle; \
+    done; \
+    rm -rf /opt/oracle/META-INF; \
+    ln -sf "/opt/oracle/${IC_HOME}" /opt/oracle/instantclient; \
     rm -f /tmp/oracle-basic.zip /tmp/oracle-sdk.zip
 
 # Set Oracle environment variables
@@ -187,7 +218,7 @@ RUN set -eu; \
     done
 
 # Final Stage(s): Create ml-engine image
-FROM --platform=linux/amd64 gcr.io/distroless/python3-debian12:nonroot AS ml-engine-distroless-base
+FROM gcr.io/distroless/python3-debian12:nonroot AS ml-engine-distroless-base
 
 COPY --from=install /bin/sh /bin/sh
 COPY --from=install /bin/bash /bin/bash
@@ -208,8 +239,8 @@ COPY --from=install /etc/ld.so.cache /etc/ld.so.cache
 # Must precede the python3.11 cleanup below, which deletes three of these stanzas.
 COPY --from=install /tmp/dpkg-status.d /var/lib/dpkg/status.d
 COPY --from=install /opt/oracle/ /opt/oracle/
-COPY --from=install /opt/microsoft/msodbcsql18 /opt/microsoft/msodbcsql18
-COPY --from=install /opt/microsoft/msodbcsql17 /opt/microsoft/msodbcsql17
+# msodbcsql18, plus msodbcsql17 on amd64 (see install stage)
+COPY --from=install /opt/microsoft/ /opt/microsoft/
 COPY --from=install /etc/odbcinst.ini /etc/odbcinst.ini
 COPY --from=install --chown=nonroot:nonroot /app/ /home/nonroot/app/
 

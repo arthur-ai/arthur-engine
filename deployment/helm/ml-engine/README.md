@@ -21,6 +21,7 @@ The chart is tested on AWS Elastic Kubernetes Service (EKS) version 1.31.
   * Memory: 16 GiB
   * CPU: 4 cores
   * Metrics server
+* The ML Engine image is published for `linux/amd64` and `linux/arm64`, so either node architecture works. The arm64 image does not include Microsoft ODBC Driver 17 for SQL Server, which Microsoft does not publish for arm64: on arm64 nodes, configure SQL Server connectors for ODBC Driver 18.
 
 ### Container Image Repository Access
 * There must be a network route available to connect to Docker Hub
@@ -36,6 +37,12 @@ By default the chart pulls the ML Engine image from Docker Hub (`arthurplatform/
     docker pull arthurplatform/ml-engine:<version>
     docker tag  arthurplatform/ml-engine:<version> <your-registry>/<path>/ml-engine:<tag>
     docker push <your-registry>/<path>/ml-engine:<tag>
+    ```
+
+    `docker pull` fetches only your workstation's architecture, so the mirror holds only that one. To mirror both `linux/amd64` and `linux/arm64`, copy the whole multi-arch image instead, e.g. with [crane](https://github.com/google/go-containerregistry/blob/main/cmd/crane/README.md):
+
+    ```bash
+    crane copy arthurplatform/ml-engine:<version> <your-registry>/<path>/ml-engine:<tag>
     ```
 
 2. **Create an image pull secret** — only if your registry requires authentication. This must be a standard Kubernetes `docker-registry` secret (type `kubernetes.io/dockerconfigjson`); the chart references it as a pod `imagePullSecrets` entry. Point `--docker-server` at your registry host:
