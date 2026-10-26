@@ -76,18 +76,34 @@ const RagNotebookDetailModal: React.FC<RagNotebookDetailModalProps> = ({ open, n
         ) : (
           <>
             <Box sx={{ mb: 3 }}>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+              <Typography
+                variant="body2"
+                sx={{
+                  color: "text.secondary",
+                  mb: 1,
+                }}
+              >
                 {notebook?.description || "No description"}
               </Typography>
               <Box sx={{ display: "flex", gap: 3, mt: 2 }}>
                 <Box>
-                  <Typography variant="caption" color="text.secondary">
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: "text.secondary",
+                    }}
+                  >
                     Created
                   </Typography>
                   <Typography variant="body2">{notebook?.created_at ? new Date(notebook.created_at).toLocaleString() : "—"}</Typography>
                 </Box>
                 <Box>
-                  <Typography variant="caption" color="text.secondary">
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: "text.secondary",
+                    }}
+                  >
                     Last Updated
                   </Typography>
                   <Typography variant="body2">{notebook?.updated_at ? new Date(notebook.updated_at).toLocaleString() : "—"}</Typography>
@@ -103,7 +119,12 @@ const RagNotebookDetailModal: React.FC<RagNotebookDetailModalProps> = ({ open, n
               </Typography>
               {experiments.length === 0 ? (
                 <Box sx={{ py: 3, textAlign: "center" }}>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: "text.secondary",
+                    }}
+                  >
                     No experiments have been run from this notebook yet.
                   </Typography>
                 </Box>
@@ -147,7 +168,12 @@ const RagNotebookDetailModal: React.FC<RagNotebookDetailModalProps> = ({ open, n
                             <Typography variant="body2">{experiment.rag_configs?.length || 0}</Typography>
                           </TableCell>
                           <TableCell>
-                            <Typography variant="body2" color="text.secondary">
+                            <Typography
+                              variant="body2"
+                              sx={{
+                                color: "text.secondary",
+                              }}
+                            >
                               {new Date(experiment.created_at).toLocaleString()}
                             </Typography>
                           </TableCell>

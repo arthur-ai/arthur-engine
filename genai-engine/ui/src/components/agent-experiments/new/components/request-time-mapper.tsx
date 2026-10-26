@@ -33,12 +33,31 @@ export const RequestTimeMapper = withForm({
     const ready = templateVariableMapping.length > 0;
 
     return (
-      <Stack component={Paper} variant="outlined" p={2} sx={{ opacity: ready ? 1 : 0.5, pointerEvents: ready ? "auto" : "none" }}>
+      <Stack
+        component={Paper}
+        variant="outlined"
+        sx={{
+          p: 2,
+          opacity: ready ? 1 : 0.5,
+          pointerEvents: ready ? "auto" : "none",
+        }}
+      >
         <Stack>
-          <Typography variant="body2" color="text.primary" fontWeight="bold">
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.primary",
+              fontWeight: "bold",
+            }}
+          >
             Request Time Parameters
           </Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+            }}
+          >
             Map request time parameters to the template variables used in your endpoint configuration. These are not saved in the database, they are
             passed directly to the execution thread.
           </Typography>

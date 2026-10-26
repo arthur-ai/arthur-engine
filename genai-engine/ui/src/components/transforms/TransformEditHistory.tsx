@@ -95,7 +95,15 @@ export const TransformEditHistory: React.FC<TransformEditHistoryProps> = ({ tran
                 </Typography>
               </Box>
             </Box>
-            <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: "nowrap", ml: 2, flexShrink: 0 }}>
+            <Typography
+              variant="caption"
+              sx={{
+                color: "text.secondary",
+                whiteSpace: "nowrap",
+                ml: 2,
+                flexShrink: 0,
+              }}
+            >
               {formatTimestamp(version.created_at)}
             </Typography>
           </Box>

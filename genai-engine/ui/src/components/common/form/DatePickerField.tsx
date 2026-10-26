@@ -6,7 +6,7 @@ export const DatePickerField = ({
   value,
   onChange,
   ...props
-}: Omit<DatePickerProps<Dayjs>, "value" | "onChange"> & {
+}: Omit<DatePickerProps, "value" | "onChange"> & {
   value?: Dayjs | null;
   onChange?: (value: Dayjs | null) => void;
 }) => {

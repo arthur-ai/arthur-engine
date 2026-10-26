@@ -31,10 +31,22 @@ export const ToolsTab = ({ span }: Props) => {
   if (tools.length === 0) {
     return (
       <TracesEmptyState title="No tools found">
-        <Typography variant="body2" color="text.secondary" textAlign="center">
+        <Typography
+          variant="body2"
+          sx={{
+            color: "text.secondary",
+            textAlign: "center",
+          }}
+        >
           The LLM didn&apos;t have any tools available, or the tracing instrumentation is not capturing the tools the LLM has access to.
         </Typography>
-        <Typography variant="body2" color="text.secondary" textAlign="center">
+        <Typography
+          variant="body2"
+          sx={{
+            color: "text.secondary",
+            textAlign: "center",
+          }}
+        >
           To fix this, review your tracing setup and ensure it includes the tool definitions in the span attributes when instrumenting LLM calls. See
           the{" "}
           <Link href="https://docs.arthur.ai/docs/get-started-with-tracing" target="_blank" rel="noopener">
@@ -48,13 +60,24 @@ export const ToolsTab = ({ span }: Props) => {
 
   return (
     <>
-      <Stack direction="column" spacing={1} p={1}>
+      <Stack
+        direction="column"
+        spacing={1}
+        sx={{
+          p: 1,
+        }}
+      >
         {tools.map((tool) => (
           <Collapsible.Root className="bg-blue-600! border-blue-800!" render={<Paper variant="outlined" />}>
             <Collapsible.Trigger className="group w-full flex flex-row gap-2 p-2 items-center data-panel-open:border-b border-blue-800 text-white">
               <KeyboardArrowRightIcon fontSize="small" className="group-data-panel-open:rotate-90 transition-transform duration-75" />
               <ConstructionIcon sx={{ fontSize: 16 }} />
-              <Typography variant="body2" fontWeight={800}>
+              <Typography
+                variant="body2"
+                sx={{
+                  fontWeight: 800,
+                }}
+              >
                 {tool.name}
               </Typography>
               <IconButton

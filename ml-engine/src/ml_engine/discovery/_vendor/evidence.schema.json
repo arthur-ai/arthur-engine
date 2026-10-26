@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ai-detection-spec:schema:evidence:0.1",
+  "title": "ai-detection-spec: evidence",
+  "description": "What a binding reports: an array of evidence rows. SPEC.md section 5.",
+  "type": "array",
+  "items": {"$ref": "#/$defs/row"},
+  "$defs": {
+    "row": {
+      "type": "object",
+      "required": ["kind", "id"],
+      "properties": {
+        "kind": {"type": "string", "pattern": "^[a-z][a-z0-9]*$"},
+        "id": {"type": "string"},
+        "ver": {"type": "string"},
+        "loc": {"type": "string"},
+        "extra": {"type": "string"},
+        "perms": {"type": "string"}
+      },
+      "additionalProperties": {"type": "string"},
+      "if": {"properties": {"kind": {"const": "scan"}}},
+      "then": {
+        "required": ["kind", "id", "ver", "extra"],
+        "properties": {
+          "ver": {"type": "string", "pattern": "^[0-9]+$"},
+          "extra": {"$ref": "#/$defs/scan_outcome"}
+        }
+      }
+    },
+    "scan_outcome": {
+      "description": "SPEC.md 5.2. Closed in this version: adding an outcome is a change to the spec.",
+      "anyOf": [
+        {"enum": ["ok", "absent", "error", "no-cache"]},
+        {"type": "string", "pattern": "^unreadable:[a-z0-9-]+$"},
+        {"type": "string", "pattern": "^unhealthy:[a-z0-9-]+$"},
+        {"type": "string", "pattern": "^timeout:[0-9]+$"}
+      ]
+    }
+  }
+}

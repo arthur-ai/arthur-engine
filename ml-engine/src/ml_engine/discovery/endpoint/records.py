@@ -9,7 +9,7 @@ import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Optional, Union
+from typing import Any, Mapping, Optional, Sequence, Union
 
 from arthur_common.models.agent_discovery_schemas import DiscoveredAgentRecord
 from arthur_common.models.agent_governance_schemas import (
@@ -27,36 +27,6 @@ from discovery.endpoint.envelope import (
     OVERSIZE_PREFIX,
     EnvelopeOutcome,
     read,
-)
-
-# `loc` and `ver` mean different things per kind, and two of those meanings are not what
-# `AgentObservations` names. Measured on a real Mac: aider matched through `images`, whose
-# `loc` is the image digest -- reported as `install_path`, that is a filesystem path that
-# exists nowhere. `container` is worse in the other column: its `ver` is the container
-# STATE ("running"), so a version field would read "running" as though it were one.
-#
-# Listed as what DOES carry each meaning rather than what does not, so a kind added
-# upstream is absent until someone says otherwise rather than silently mis-mapped. `proc` is
-# absent on purpose: its `loc` is an app bundle, an agent binary or the node interpreter
-# running one, depending on which query emitted it.
-PATH_IN_LOC = frozenset(
-    {
-        "app",
-        "brew",
-        "daemon",
-        "ext",
-        "nmh",
-        "npm",
-        "file",
-        "vscodeext",
-        "port",
-        "desktop",
-        "unit",
-        "jbplugin",
-    },
-)
-VERSION_IN_VER = frozenset(
-    {"app", "brew", "ext", "npm", "vscodeext", "deb", "rpm", "jbplugin"},
 )
 
 
@@ -88,6 +58,9 @@ class DeviceRead:
 
     records: list[DiscoveredAgentRecord] = field(default_factory=list)
     unreadable: Optional[UnreadableReason] = None
+    # When the payload dates its scan: set for every payload that decoded, whether or not
+    # anything in it matched, so a carrier can judge how current the device is.
+    last_seen: Optional[datetime] = None
 
 
 def _inventory_value(
@@ -187,6 +160,44 @@ def records_for(
         )
         return DeviceRead(unreadable=UnreadableReason(envelope.outcome.value))
 
+    return records_from_rows(
+        device,
+        envelope.rows,
+        matcher,
+        vendor,
+        log,
+        source_type=source_type,
+        ignored=envelope.ignored,
+    )
+
+
+def records_from_rows(
+    device: ManagedDevice,
+    rows: Sequence[Mapping[str, Any]],
+    matcher: Matcher,
+    vendor: str,
+    logger: Optional[logging.Logger] = None,
+    source_type: InventorySource = EndpointAgentCreationSource,
+    ignored: Sequence[str] = (),
+) -> DeviceRead:
+    """One device's records from a payload already decoded: `records_for` past the
+    carrier.
+
+    For a source that reads the runner's rows itself rather than through a carrier's
+    attribute, so there is no value to find and no frame to remove -- the rows are
+    matched, dated and addressed exactly as a carried payload's are. `ignored` is the
+    envelope's: the members its rows carried that the spec does not name.
+    """
+    log = logger or logging.getLogger(__name__)
+    if ignored:
+        # Our collector writes only the members the spec names, so one more means it has
+        # started writing something else. Named, never its value.
+        log.warning(
+            "%s: the payload's rows carry member(s) the spec does not name, ignored "
+            "unread: %s",
+            device.device_key,
+            ", ".join(ignored),
+        )
     if not device.device_key.strip():
         # external_id is f"{device_key}:{agent_id}", so a blank half reads as
         # ":codex-cli" -- not blank, so every later guard passes it, while collapsing
@@ -197,11 +208,11 @@ def records_for(
         )
         return DeviceRead(unreadable=UnreadableReason.NO_DEVICE_ID)
 
-    result = matcher.match(envelope.rows)
+    result = matcher.match(rows)
 
     if result.dropped:
         log.warning(
-            "%s: %s row(s) dropped by the matcher; a route is missing from routes.yaml",
+            "%s: %s row(s) dropped by the matcher; a route is missing from the catalog",
             device.device_key,
             result.dropped,
         )
@@ -246,7 +257,7 @@ def records_for(
         )
         for finding in result.findings
     ]
-    return DeviceRead(records=records)
+    return DeviceRead(records=records, last_seen=last_seen)
 
 
 def _source_for(
@@ -273,10 +284,11 @@ def _source_for(
             resource_id=finding.primary_id,
         ),
         observations=AgentObservations(
-            install_path=(
-                finding.install_path if finding.primary_kind in PATH_IN_LOC else None
-            ),
-            version=finding.version if finding.primary_kind in VERSION_IN_VER else None,
+            # Already only where the row carries one: upstream's matcher takes `ver` as a
+            # version wherever it is set, and `loc` as a path only on the kinds whose `loc`
+            # is one -- an image's is a digest.
+            install_path=finding.install_path,
+            version=finding.version,
             permissions=list(finding.permissions),
             classification=finding.classification or None,
             host_name=device.name,

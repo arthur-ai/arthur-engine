@@ -3,10 +3,10 @@
 # can gate on it.
 #
 # This repo owns the deployable and nothing else. The queries, the runner, the Docker guard
-# and the wall-clock bound live in osquery-ai-discovery and are vendored at a pinned ref;
-# their regression suite is upstream's — `test/lint.sh`, `test/docker_states.sh` and
-# thirteen VM scenarios at the vendored ref, run by upstream CI. Duplicating any of it here
-# is how the two drift apart.
+# and the wall-clock bound are ai-detection-spec's osquery binding, vendored at a pinned ref;
+# their regression suite is upstream's — `osquery/test/lint.sh`,
+# `osquery/test/docker_states.sh` and the VM and container scenarios under `test/` at the
+# vendored ref, run by upstream CI. Duplicating any of it here is how the two drift apart.
 #
 # So what is checked here is the seam: that nothing outside vendor/ implements discovery,
 # that the built collector carries the vendored tree, and that the framing this repo owns
@@ -29,7 +29,7 @@ root = sys.argv[1]
 # THE TABLES ARE READ OFF THE VENDORED PACK, not listed here: a hand list covers only the
 # tables someone remembered to name, and a vendor bump adds more. CTE names are declared
 # `name AS (` and dropped. A pack this cannot read FAILS, rather than shrinking the scan.
-pack_path = os.path.join("vendor", "osquery-ai-discovery", "dist", "ai-discovery.conf")
+pack_path = os.path.join("vendor", "ai-detection-spec", "dist", "ai-detection-spec.conf")
 tables = set()
 try:
     for q in json.load(open(os.path.join(root, pack_path)))["queries"].values():
@@ -83,10 +83,10 @@ for dirpath, dirnames, filenames in os.walk(root):
 for b in sorted(set(bad)):
     print(f"FAIL: {b}")
 if bad:
-    print("       The only osquery implementation is vendor/osquery-ai-discovery/. "
+    print("       The only osquery implementation is vendor/ai-detection-spec/. "
           "Re-vendor with tools/vendor-queries.sh; do not write queries here.")
     sys.exit(1)
-print("ok: no osquery implementation outside vendor/osquery-ai-discovery/")
+print("ok: no osquery implementation outside vendor/ai-detection-spec/")
 ONE
 
 # --- the shell this repo ships -----------------------------------------------------------
@@ -94,7 +94,7 @@ ONE
 # in tools/build-collector.py produces it unexamined, and bash reports a syntax error only
 # when the Policy runs on a Mac.
 for f in "$ROOT"/tools/vendor-queries.sh "$ROOT"/dist/collect.sh "$ROOT"/dist/collect-linux.sh \
-         "$ROOT"/deploy/report-guest-attributes.sh; do
+         "$ROOT"/deploy/report-guest-attributes.sh "$ROOT"/deploy/report-ssm-inventory.sh; do
   bash -n "$f" || { echo "FAIL: bash syntax in ${f#$ROOT/}"; fail=1; }
 done
 
@@ -102,8 +102,8 @@ done
 # The ref stamp names a release; only this says the files still match it. A formatter
 # reaching into vendor/ leaves the tag right and the bytes wrong, and tools/bundle.py is
 # what BUILDS the deployable. Regenerate with tools/vendor-queries.sh.
-if [ -f "$ROOT/vendor/osquery-ai-discovery/SHA256SUMS" ]; then
-  if ( cd "$ROOT/vendor/osquery-ai-discovery" && shasum -a 256 --quiet --check SHA256SUMS >/dev/null 2>&1 ); then
+if [ -f "$ROOT/vendor/ai-detection-spec/SHA256SUMS" ]; then
+  if ( cd "$ROOT/vendor/ai-detection-spec" && shasum -a 256 --quiet --check SHA256SUMS >/dev/null 2>&1 ); then
     echo "vendor tree: ok, every file matches the manifest written when it was vendored"
   else
     echo "FAIL: a vendored file differs from the manifest:"
@@ -111,7 +111,7 @@ if [ -f "$ROOT/vendor/osquery-ai-discovery/SHA256SUMS" ]; then
     # propagates through the pipe, the subshell is a bare command in an else body, and
     # `set -e` would abort here -- taking the remediation line, `fail=1`, and every
     # remaining check in this file with it.
-    ( cd "$ROOT/vendor/osquery-ai-discovery" && shasum -a 256 --check SHA256SUMS 2>&1 | grep -v ': OK$' | sed 's/^/      /' ) || true
+    ( cd "$ROOT/vendor/ai-detection-spec" && shasum -a 256 --check SHA256SUMS 2>&1 | grep -v ': OK$' | sed 's/^/      /' ) || true
     echo "      The tree must be verbatim. Restore it, or re-vendor to adopt the change."
     fail=1
   fi
@@ -119,7 +119,7 @@ if [ -f "$ROOT/vendor/osquery-ai-discovery/SHA256SUMS" ]; then
   # AND THAT THE MANIFEST COVERS EVERY FILE. `shasum --check` reads the manifest, so a
   # file ADDED to the tree passes it by not being mentioned -- and the build packs bin/
   # and dist/ into dist/collect.sh, so an extra one there ships to every Mac.
-  extra="$( cd "$ROOT/vendor/osquery-ai-discovery" && \
+  extra="$( cd "$ROOT/vendor/ai-detection-spec" && \
     comm -23 <(find . -type f ! -name VERSION ! -name SHA256SUMS | sort) \
              <(sed 's/^[0-9a-f]*  //' SHA256SUMS | sort) || true )"
   if [ -n "$extra" ]; then
@@ -131,7 +131,7 @@ if [ -f "$ROOT/vendor/osquery-ai-discovery/SHA256SUMS" ]; then
     echo "vendor tree: ok, the manifest lists every file present"
   fi
 else
-  echo "FAIL: vendor/osquery-ai-discovery/SHA256SUMS is missing; re-vendor to write it"
+  echo "FAIL: vendor/ai-detection-spec/SHA256SUMS is missing; re-vendor to write it"
   fail=1
 fi
 
@@ -139,8 +139,8 @@ fi
 # Both can rot silently: a vendored tree edited by hand, and a dist/collect.sh built before
 # the last vendor. Not conditional on vendor/ existing -- without it there is no discovery
 # implementation in this repo at all, which is a failure and not a reason to skip.
-[ -d "$ROOT/vendor/osquery-ai-discovery" ] || {
-  echo "FAIL: no vendor/osquery-ai-discovery/ -- run tools/vendor-queries.sh <ref>"
+[ -d "$ROOT/vendor/ai-detection-spec" ] || {
+  echo "FAIL: no vendor/ai-detection-spec/ -- run tools/vendor-queries.sh <ref>"
   echo "lint: FAIL"; exit 1; }
 
 # THE VENDORED TREE IS NOT WRITTEN TO, INCLUDING BY US. tools/vendor-queries.sh removes and
@@ -162,12 +162,13 @@ python3 "$ROOT/tools/build-collector.py" --check || fail=1
 python3 - "$ROOT" <<'VENDOR' || fail=1
 import os, plistlib, re, subprocess, sys
 root = sys.argv[1]
-v = os.path.join(root, "vendor", "osquery-ai-discovery")
+v = os.path.join(root, "vendor", "ai-detection-spec")
 
 # The catalog is vendored FOR THE COLLECTOR and must never reach a Mac. The payload list is
 # checked by build-collector.py; this checks the built artifact, which is what deploys.
 # BOTH BUILDS, EVERY CHECK. They share a driver, but each is its own artifact on its own fleet,
 # and a check run on one says nothing about the bytes in the other.
+budgets = {}
 for name in ("collect.sh", "collect-linux.sh"):
     built = os.path.join(root, "dist", name)
     if not os.path.exists(built):
@@ -189,7 +190,7 @@ for name in ("collect.sh", "collect-linux.sh"):
 
     # Everything that EXECUTES on a Mac: upstream's wrapper plus our driver, with the base64
     # body left out. Scanning the body would be scanning an alphabet -- it can spell anything.
-    _mark = "AI_DISCOVERY_PAYLOAD_EOF"
+    _mark = "AI_DETECTION_SPEC_PAYLOAD_EOF"
     _head, _, _rest = text.partition(f"<<'{_mark}'\n")
     _, _, _tail = _rest.partition(f"\n{_mark}\n")
     shipped = _head + _tail + "\n" + driver
@@ -206,7 +207,7 @@ for name in ("collect.sh", "collect-linux.sh"):
     # same thing at v0.6.0. Two implementations of one mechanism is the failure this repo is
     # organised around, and the local one is gone -- asserted, because it is exactly the kind
     # of thing that grows back the next time the bundler is inconvenient.
-    if "GENERATED by tools/bundle.py from osquery-ai-discovery" not in text:
+    if "GENERATED by osquery/tools/bundle.py from ai-detection-spec" not in text:
         print(f"FAIL: dist/{name} was not built by the vendored bundler. The extraction "
               "half is upstream's; see tools/build-collector.py."); sys.exit(1)
     bc = open(os.path.join(root, "tools", "build-collector.py")).read()
@@ -217,13 +218,26 @@ for name in ("collect.sh", "collect-linux.sh"):
     # Behind build-collector.py's ENDPOINT_FILES, which admits payload files by name: no
     # catalog file is named anywhere in what deploys. dist/signatures.sql is catalog-derived
     # and admitted there by name; the --names guard below is what keeps it unread.
-    for forbidden in ("agents.yaml", "routes.yaml", "catalog/"):
+    for forbidden in ("agents.yaml", "routes.yaml", "catalog.json", "catalog/"):
         if forbidden in text:
             print(f"FAIL: dist/{name} mentions {forbidden!r} -- the endpoint holds no "
                   f"catalog. See docs/architecture.md."); sys.exit(1)
-    if text.count("AI_DISCOVERY_PAYLOAD_EOF") != 2:
+    if text.count(_mark) != 2:
         print(f"FAIL: dist/{name} has a nested payload marker -- it may be embedding a "
               "previous copy of itself"); sys.exit(1)
+
+    # THE WRAPPER NAMES THE EXTRACTED TREE AND THE DRIVER READS THAT NAME. Upstream chooses
+    # it, so a bump can rename it, and a driver reading any other finds it unset and exits 1
+    # on every endpoint. Read off the wrapper, so the invocations below are found by the name
+    # the wrapper actually sets.
+    rootm = re.search(r'^([A-Z_]+)="\$work" "\$work/driver"', _tail, re.M)
+    if not rootm:
+        print(f"FAIL: dist/{name}: cannot find where the wrapper runs the driver, so nothing "
+              f"below can tell which variable names the extracted tree."); sys.exit(1)
+    root_var = rootm.group(1)
+    if f'"${root_var}/' not in driver_code:
+        print(f"FAIL: dist/{name}: the wrapper sets {root_var}, and the driver never reads it. "
+              f"Upstream renamed it; follow the rename in tools/build-collector.py's DRIVER."); sys.exit(1)
 
     # THE COLLECTOR CALLS A VENDORED PROGRAM, AND UPSTREAM MAY DROP A FLAG -- a bump would
     # then ship a collector whose only real work exits 1 on every Mac. Every flag the
@@ -236,7 +250,7 @@ for name in ("collect.sh", "collect-linux.sh"):
     # EVERY invocation in the driver's code -- the scan and the JSON check both call it -- each
     # read to its last continued line.
     cmd = []
-    for at in [m.start() for m in re.finditer(re.escape('"$AI_DISCOVERY_ROOT/bin/discover"'),
+    for at in [m.start() for m in re.finditer(re.escape(f'"${root_var}/bin/discover"'),
                                               driver_code)]:
         for line in driver_code[at:].splitlines():
             cmd.append(line)
@@ -333,7 +347,7 @@ for name in ("collect.sh", "collect-linux.sh"):
     needs = [h for f in ("bin/discover", "bin/container-scan")
              for h in _interp(os.path.join(v, f))]
     # EVERY RUNBOOK THAT STATES A PREREQUISITE, held to the payload it deploys.
-    for doc in ("jamf-pro.md", "gce.md"):
+    for doc in ("jamf-pro.md", "gce.md", "ec2.md"):
         runbook = open(os.path.join(root, "docs", "mdm", doc)).read()
         claims_none = re.search(r"no interpreter", runbook, re.I) is not None
         lists_python = "| python3 3.7+ |" in runbook
@@ -344,8 +358,8 @@ for name in ("collect.sh", "collect-linux.sh"):
         if not needs and lists_python:
             print(f"FAIL: docs/mdm/{doc} lists python3 as a prerequisite, but nothing in "
                   f"the payload invokes it any more. Drop the row."); sys.exit(1)
-    print(f"prereqs: ok, payload {'needs' if needs else 'does not need'} python3 and both "
-          f"runbooks agree")
+    print(f"prereqs: ok, payload {'needs' if needs else 'does not need'} python3 and every "
+          f"runbook agrees")
 
     # An oversize payload must write a REASON, not nothing and not a truncated value. The
     # cap is a property of the reporting channel, so it is this repo's to enforce.
@@ -356,6 +370,7 @@ for name in ("collect.sh", "collect-linux.sh"):
         print(f"FAIL: dist/{name} sets CAP={capm.group(1) if capm else '(none)'}; a Compute "
               f"Engine guest attribute refuses a value over 262,144 bytes, so ERROR:oversize "
               f"must fire at or below that."); sys.exit(1)
+    budgets[name] = capm.group(1)
     if "ERROR:oversize" not in driver_code:
         print(f"FAIL: dist/{name} does not report ERROR:oversize -- an attribute that is "
               "absent, empty or stale reads as a Mac with no AI tools on it."); sys.exit(1)
@@ -364,7 +379,7 @@ for name in ("collect.sh", "collect-linux.sh"):
 # loud is the only thing that stops it becoming permanent by inattention.
 version = os.path.join(v, "VERSION")
 if not os.path.exists(version):
-    print("FAIL: vendor/osquery-ai-discovery/VERSION missing. Run tools/vendor-queries.sh.")
+    print("FAIL: vendor/ai-detection-spec/VERSION missing. Run tools/vendor-queries.sh.")
     sys.exit(1)
 info = dict(l.split(None, 1) for l in open(version).read().splitlines() if l.strip())
 print(f"vendor: ok, ref {info.get('ref','?').strip()} ({info.get('kind','?').strip()})")
@@ -432,6 +447,70 @@ if "no osqueryi found" in rep_code and "no osqueryi found" not in runner:
 print(f"carrier: ok, timer -> {exec_start.split('/')[-1]} -> {m.group(1).split('/')[-1]}; "
       f"no interpreter; upstream still prints the osquery diagnosis")
 
+# --- the EC2 carrier: a drop-in on the same unit, and the reporter it runs ----------------
+# THE DROP-IN REPLACES ExecStart, NEVER ADDS ONE. A oneshot runs every ExecStart in turn, so
+# without the empty assignment an EC2 instance would also run the guest-attribute reporter,
+# fail it on every run, and fail the unit.
+drop = os.path.join(root, "deploy", "arthur-ai-discovery.service.d", "ec2.conf")
+starts = [l.split("=", 1)[1].strip() for l in open(drop).read().splitlines()
+          if l.strip().startswith("ExecStart=")]
+if len(starts) != 2 or starts[0] != "" or not starts[1].endswith("/report-ssm-inventory.sh") \
+        or os.path.dirname(starts[1]) != os.path.dirname(exec_start):
+    print(f"FAIL: deploy/arthur-ai-discovery.service.d/ec2.conf must clear ExecStart and then "
+          f"run report-ssm-inventory.sh from {os.path.dirname(exec_start)}, got {starts}")
+    sys.exit(1)
+ssm = open(os.path.join(root, "deploy", "report-ssm-inventory.sh")).read()
+ssm_code = "\n".join(l for l in ssm.splitlines() if not l.strip().startswith("#"))
+m2 = re.search(r'COLLECT="\$\{ARTHUR_COLLECT:-([^}]+)\}"', ssm)
+if not m2 or m2.group(1) != m.group(1):
+    print(f"FAIL: deploy/report-ssm-inventory.sh runs {m2.group(1) if m2 else '(no default)'}, "
+          f"not {m.group(1)} beside it"); sys.exit(1)
+interp = re.search(r"(?:^|[|;&(`]|\$\(|\s)(python3?|perl|ruby|node|jq)\b", ssm_code, re.M)
+if interp:
+    print(f"FAIL: deploy/report-ssm-inventory.sh invokes {interp.group(1)}; it runs on the "
+          f"endpoint and may use only what the collector may."); sys.exit(1)
+if "no osqueryi found" in ssm_code and "no osqueryi found" not in runner:
+    print("FAIL: deploy/report-ssm-inventory.sh keys `osquery=absent` on \"no osqueryi "
+          "found\", which the vendored bin/discover no longer prints."); sys.exit(1)
+
+# A PART MAY NOT EXCEED SSM'S CAP ON ONE VALUE. SSM's API refuses a custom inventory value
+# over 4,096 characters, and the refusal reaches only the agent's log, never the reporter.
+part = re.search(r"^PART=([0-9]+)$", ssm, re.M)
+if not part or not 0 < int(part.group(1)) <= 4096:
+    print(f"FAIL: deploy/report-ssm-inventory.sh sets PART={part.group(1) if part else '(none)'}; "
+          f"an SSM custom inventory value holds at most 4,096 characters."); sys.exit(1)
+
+# THE WIRE FORMAT IS WRITTEN HERE AND READ IN THE ML ENGINE. A type name or attribute renamed
+# on one side only leaves every instance reading as never-reported.
+client = os.path.join(root, "..", "..", "ml-engine", "src", "ml_engine", "discovery",
+                      "cloud", "ec2", "client.py")
+if os.path.exists(client):
+    reader = open(client).read()
+    const = lambda name: (re.search(rf'^{name} = "?([^"\n]+)"?$', reader, re.M) or [None, None])[1]
+    written_type = (re.search(r'^TYPE_NAME="([^"]+)"$', ssm, re.M) or [None, None])[1]
+    if const("TYPE_NAME") != written_type:
+        print(f"FAIL: the reporter writes {written_type} but the ML Engine reads "
+              f"{const('TYPE_NAME')}"); sys.exit(1)
+    for attr in ("KEY", "PART", "PARTS", "SHA256", "VALUE"):
+        if f'"{const(attr)}":' not in ssm_code:
+            print(f"FAIL: the ML Engine reads attribute {const(attr)!r}, which the reporter "
+                  f"does not write"); sys.exit(1)
+    if const("MAX_VALUE_LENGTH") != budgets["collect-linux.sh"]:
+        print(f"FAIL: the ML Engine refuses values over {const('MAX_VALUE_LENGTH')} "
+              f"characters, but the Linux collector's budget is "
+              f"{budgets['collect-linux.sh']}"); sys.exit(1)
+    # The reader refuses more parts than its own part size cuts the budget into, so a
+    # smaller PART here would make values it refuses.
+    if const("PART_LENGTH") != part.group(1):
+        print(f"FAIL: the reporter cuts parts of {part.group(1)} characters, but the ML "
+              f"Engine expects parts of {const('PART_LENGTH')} and refuses more of them "
+              f"than that size makes"); sys.exit(1)
+    wire = "the ML Engine reads the same type, attributes, part size and budget"
+else:
+    wire = "the ML Engine's reader is not in this checkout"
+print(f"carrier: ok, ec2.conf -> {starts[1].split('/')[-1]}; no interpreter; parts of "
+      f"{part.group(1)}; {wire}")
+
 # --- the OS policy that installs the carrier ------------------------------------------------
 # THE POLICY INSTALLS EACH FILE WHERE IT IS RUN. The unit runs the reporter from ExecStart, the
 # reporter runs the collector from its default, and systemd loads the units by name; a policy
@@ -494,6 +573,147 @@ else:
           f"({compared} of {len(pinned)} compared; the rest differ from HEAD in this tree)"
           if compared < len(pinned) else
           f"render: ok, HEAD's policy pins each of {len(pinned)} files to its own sha256")
+
+# --- the EC2 template that installs the carrier ---------------------------------------------
+# THE INSTALL SCRIPT IS POSIX sh. The document's aws:runShellScript step runs it with sh, which
+# is dash on Ubuntu, and a bashism there fails every run on those instances while Amazon Linux,
+# where sh is bash, passes: `set -o pipefail` fails there with `Illegal option -o pipefail`.
+import shutil
+TEMPLATE = os.path.join("deploy", "arthur-ai-discovery.cfn.yaml")
+tpl = open(os.path.join(root, TEMPLATE)).read()
+blocks = re.findall(r"^( *)runCommand:\n\1  - \|\n((?:\1    .*\n|\n)+)", tpl, re.M)
+if len(blocks) != 1:
+    print(f"FAIL: {TEMPLATE} must hold one runCommand block scalar, the install script; found "
+          f"{len(blocks)}"); sys.exit(1)
+indent, body = blocks[0]
+script = "".join(l[len(indent) + 4:] + "\n" for l in body.rstrip("\n").split("\n"))
+if not script.startswith("# arthur-ai-discovery-install.sh\n"):
+    print(f"FAIL: {TEMPLATE}'s runCommand does not start with `# arthur-ai-discovery-install.sh`"); sys.exit(1)
+bashism = re.search(r"pipefail|\[\[|\bfunction\b|<<<|\$\{[^}]*//|^\s*source\b", script, re.M)
+if bashism:
+    print(f"FAIL: the template's install script uses {bashism.group(0)!r}, which dash refuses; "
+          f"aws:runShellScript runs it with sh, which is dash on Ubuntu"); sys.exit(1)
+if shutil.which("dash"):
+    r = subprocess.run(["dash", "-n"], input=script, text=True, capture_output=True)
+    if r.returncode != 0:
+        print(f"FAIL: dash -n refuses the template's install script: {r.stderr.strip()}"); sys.exit(1)
+    checked = "and dash -n accepts it"
+else:
+    checked = "dash -n skipped, no dash here"
+
+# EACH FETCH INSTALLS ITS FILE WHERE IT IS RUN, from its path in this tree. The drop-in runs the
+# reporter, the reporter runs the collector from its default, and systemd loads the units and
+# the drop-in by name; a file landing elsewhere is an instance whose association reads Success
+# and whose first run fails. One fetch per line, in the shape the renderer pins.
+fetches = re.findall(r"^\s*fetch (\S+) (\S+) ([0-7]+) (SHA256_[A-Z]+)$", script, re.M)
+if len(re.findall(r"^\s*fetch ", script, re.M)) != len(fetches) or \
+        len({p for *_, p in fetches}) != len(fetches):
+    print("FAIL: each fetch in the install script must be one line, `fetch SOURCE DESTINATION "
+          "MODE SHA256_NAME`, with a placeholder of its own, or the renderer cannot pin it"); sys.exit(1)
+fetched = {src: (dest, mode) for src, dest, mode, _ in fetches}
+UNITS = "/etc/systemd/system"
+want_ec2 = {
+    "dist/collect-linux.sh": (m.group(1), "755"),
+    "deploy/report-ssm-inventory.sh": (starts[1], "755"),
+    "deploy/arthur-ai-discovery.service": (f"{UNITS}/arthur-ai-discovery.service", "644"),
+    "deploy/arthur-ai-discovery.timer": (f"{UNITS}/arthur-ai-discovery.timer", "644"),
+    "deploy/arthur-ai-discovery.service.d/ec2.conf":
+        (f"{UNITS}/arthur-ai-discovery.service.d/ec2.conf", "644"),
+}
+if fetched != want_ec2:
+    for src in sorted(set(fetched) | set(want_ec2)):
+        if fetched.get(src) != want_ec2.get(src):
+            print(f"FAIL: {TEMPLATE} installs {src} as {fetched.get(src)}, but it is run as "
+                  f"{want_ec2.get(src)} (destination, mode)")
+    sys.exit(1)
+made = {d for args in re.findall(r"^\s*install -d\b(.*)$", script, re.M) for d in args.split()
+        if d.startswith("/")} | {UNITS}
+if any(os.path.dirname(dest) not in made for dest, _ in fetched.values()):
+    print(f"FAIL: the install script fetches into a directory it does not create: "
+          f"{sorted({os.path.dirname(d) for d, _ in fetched.values()} - made)}"); sys.exit(1)
+
+# THE FILES COME FROM ONE URL, the document's baseUrl. Its default and the value the
+# association passes are both this tree's URL at COMMIT, which the renderer pins; the
+# association passes it so that a new pin updates the association, not only the document.
+GH = "https://raw.githubusercontent.com/arthur-ai/arthur-engine/COMMIT/integrations/endpoint-ai-discovery"
+if "BASE='{{ baseUrl }}'" not in script or \
+        len(re.findall(rf"^\s+(?:default: |- ){re.escape(GH)}$", tpl, re.M)) != 2:
+    print(f"FAIL: {TEMPLATE} must set BASE='{{{{ baseUrl }}}}' in the script, with the "
+          f"document's default and the association's value both {GH}"); sys.exit(1)
+
+# baseUrl IS SUBSTITUTED INTO THE SCRIPT, so its pattern admits no character the shell gives a
+# meaning. And the stack's FileBaseUrl admits nothing the document refuses, or a mirror fails
+# the association at deploy rather than at the parameter.
+pat = re.search(r"^\s+allowedPattern: \"(.+)\"$", tpl, re.M)
+mirror = re.search(r"^  FileBaseUrl:\n(?:    .*\n)*?    AllowedPattern: \"(.+)\"$", tpl, re.M)
+if not pat or not mirror or mirror.group(1) != f"^({pat.group(1)[1:-1]})?$":
+    print(f"FAIL: FileBaseUrl's AllowedPattern must be the document's baseUrl pattern, made "
+          f"optional"); sys.exit(1)
+for url in (GH.replace("COMMIT", "0" * 40), "https://mirror.example.com:8443/endpoint-ai-discovery"):
+    if not re.fullmatch(pat.group(1), url):
+        print(f"FAIL: the document's baseUrl pattern refuses {url}"); sys.exit(1)
+for url in ("https://x.example/a'b", "https://x.example/a;b", "https://x.example/$(id)",
+            "https://x.example/`id`", "https://x.example/a b", "https://x.example/a\nb",
+            "https://x.example/", "http://x.example/a"):
+    if re.fullmatch(pat.group(1), url):
+        print(f"FAIL: the document's baseUrl pattern admits {url!r}"); sys.exit(1)
+
+# THE MEMBER ROLE GRANTS EXACTLY WHAT THE SOURCE CALLS IN AN ACCOUNT. A call it lacks reads
+# as a denied scope on every account; one the source never makes is access nobody needs.
+# Organizations is the source credential's own, never the member role's.
+granted = set(re.findall(r"^\s+- ((?:ec2|ssm):[A-Za-z]+)$", tpl, re.M))
+role_name = (re.search(r"^  MemberRoleName:\n(?:    .*\n)*?    Default: (\S+)$", tpl, re.M) or [None, None])[1]
+if os.path.exists(client):
+    calls = re.findall(r"\b(ec2|ssm)\.(?:get_paginator\(\"([a-z_]+)\"\)|([a-z_]+)\()", reader)
+    called = {f"{svc}:{''.join(w.title() for w in (paged or direct).split('_'))}"
+              for svc, paged, direct in calls}
+    if granted != called:
+        print(f"FAIL: {TEMPLATE}'s member role grants {sorted(granted)}, but the ML Engine "
+              f"calls {sorted(called)}"); sys.exit(1)
+    connector = open(os.path.join(os.path.dirname(client), "connector.py")).read()
+    default_role = (re.search(r'^DEFAULT_MEMBER_ROLE_NAME = "([^"]+)"$', connector, re.M) or [None, None])[1]
+    if role_name != default_role:
+        print(f"FAIL: {TEMPLATE} names the member role {role_name}, but the source's "
+              f"member_role_name defaults to {default_role}"); sys.exit(1)
+    role = "the member role grants what the ML Engine calls, under its default name"
+else:
+    role = "the ML Engine's reader is not in this checkout"
+print(f"ec2 template: ok, no bashism {checked}; {len(fetched)} files from this tree, each "
+      f"installed where it is run; one baseUrl, no shell metacharacter in it; {role}")
+
+# THE RENDERED TEMPLATE PINS EACH FILE TO ITS OWN BYTES, as the rendered OS policy does.
+committed = subprocess.run(["git", "-C", root, "cat-file", "-e", f"HEAD:./{TEMPLATE}"],
+                           capture_output=True).returncode == 0
+if not committed:
+    print(f"render: skipped, {TEMPLATE} is not committed yet and the renderer reads HEAD")
+else:
+    r = subprocess.run([os.path.join(root, "tools", "render-cfn-template.sh"), "HEAD"],
+                       capture_output=True, text=True)
+    if r.returncode != 0:
+        print(f"FAIL: tools/render-cfn-template.sh HEAD exited {r.returncode}: {r.stderr.strip()}"); sys.exit(1)
+    if re.search(r"/COMMIT/|SHA256_[A-Z]", r.stdout):
+        print("FAIL: tools/render-cfn-template.sh left a placeholder in the template"); sys.exit(1)
+    head = subprocess.run(["git", "-C", root, "rev-parse", "HEAD"], capture_output=True,
+                          text=True).stdout.strip()
+    at_head = GH.replace("/COMMIT/", f"/{head}/")
+    if len(re.findall(rf"^\s+(?:default: |- ){re.escape(at_head)}$", r.stdout, re.M)) != 2:
+        print(f"FAIL: the rendered template does not name {at_head} as the document's default "
+              f"and the association's value"); sys.exit(1)
+    pinned = re.findall(r"^\s*fetch (\S+) \S+ [0-7]+ ([0-9a-f]{64})$", r.stdout, re.M)
+    if sorted(src for src, _ in pinned) != sorted(want_ec2):
+        print(f"FAIL: the rendered template pins {sorted(src for src, _ in pinned)}, not the "
+              f"files {TEMPLATE} fetches"); sys.exit(1)
+    compared = 0
+    for src, sha in pinned:
+        if subprocess.run(["git", "-C", root, "diff", "--quiet", "HEAD", "--", src]).returncode != 0:
+            continue
+        compared += 1
+        if hashlib.sha256(open(os.path.join(root, src), "rb").read()).hexdigest() != sha:
+            print(f"FAIL: the rendered template pins {src} to {sha}, which is not its sha256"); sys.exit(1)
+    print(f"render: ok, HEAD's template pins each file to its own sha256 "
+          f"({compared} of {len(pinned)} compared; the rest differ from HEAD in this tree)"
+          if compared < len(pinned) else
+          f"render: ok, HEAD's template pins each of {len(pinned)} files to its own sha256")
 VENDOR
 
 [ "$fail" -eq 0 ] && echo "lint: PASS" || echo "lint: FAIL"

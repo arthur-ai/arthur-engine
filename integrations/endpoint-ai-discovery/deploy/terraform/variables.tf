@@ -47,7 +47,7 @@ variable "name" {
 }
 
 variable "label" {
-  description = "The VM label that switches discovery on. Defaults to the policy's own, arthur-ai-discovery=enabled."
+  description = "A pilot: target only the VMs carrying this label, instead of every VM in the zones. Leave unset for the fleet. There is no exclusion label on purpose: a label a VM's owner can set would be an opt-out from discovery."
   type = object({
     key   = string
     value = string
@@ -86,7 +86,7 @@ variable "enable_apis" {
 }
 
 variable "reader" {
-  description = "IAM member for the credential of Arthur's gcp_compute_engine discovery source, such as serviceAccount:arthur-discovery@my-project.iam.gserviceaccount.com. Granted reader_role in each project."
+  description = "IAM member for the credential of Arthur's gcp_compute_engine discovery source, such as serviceAccount:arthur-discovery@my-project.iam.gserviceaccount.com. Granted reader_role in each project. A source scoped to an organization or a folder is granted there instead, outside this module."
   type        = string
   default     = null
 }

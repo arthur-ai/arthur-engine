@@ -125,6 +125,250 @@ The lookback window is not applied: Google's list API is an inventory, so every 
 reports every engine in the region whatever `lookback_window_seconds` says, and a short
 window misses nothing.
 
+#### `gcp_containers` — Cloud Run and GKE workloads
+
+Lists every Cloud Run service, Cloud Run job and GKE workload in the projects, and
+reports a workload when one of its images is an agent's in the catalog (`images:`), or
+every workload when `report_all_workloads` is true. Each record names the GCP service
+account the workload runs as, so it can be joined with the callers in Vertex AI's audit
+log.
+
+| Field | Secret | Required | Notes |
+|---|---|---|---|
+| `project_ids` | no | yes | Comma-separated project **IDs**, not numbers |
+| `regions` | no | no | Comma-separated regions to list Cloud Run jobs in. Empty asks Cloud Run for every region it serves, one call each, which takes most of a scan's time |
+| `report_all_workloads` | no | no | `true` to report every workload, not only catalog matches. Defaults to `false` |
+| `service_account_key` | yes | no | A service account JSON key. Without one, the engine uses Application Default Credentials only if `ARTHUR_ENGINE_GCP_CONTAINERS_ALLOW_ADC=true` is set |
+
+The service account needs `roles/run.viewer` and `roles/container.viewer`. The second
+grants the Kubernetes reads too (`container.deployments.list`, `container.pods.list`,
+`container.serviceAccounts.list` and the rest), because GKE authorises a Google identity's
+Kubernetes calls against its IAM roles as well as RBAC; it does not grant reading
+Secrets. `query` is the catalog, as for Jamf; `query_language: none`.
+
+A GKE workload is its controller -- Deployment, StatefulSet, DaemonSet, CronJob -- or a
+Job or Pod nothing owns; `kube-system`, `kube-public`, `kube-node-lease` and the `gke-`
+and `gmp-` namespaces are left out. The engine must be able to reach each cluster's
+endpoint; a cluster it cannot reach is logged and the rest of the scan goes on, as is a
+project where an API is off or refused. Two refusals do end the scan: a credential
+refused outright (HTTP 401) stops it at once, and a scan that could list nothing at all
+fails with the first refusal's status, so a key with no access reads as denied rather
+than as a project without workloads.
+
+The lookback window is not applied: every scan lists every workload.
+
+#### `wiz` — Wiz
+
+Reads two inventories from one Wiz tenant, across every cloud account the tenant has
+connected: the cloud resources of the configured Wiz Security Graph entity types
+(AI-SPM), and the AI frameworks and SDKs Wiz detected on VMs, container images and
+serverless functions (the workload inventory), which is where self-hosted agents show up.
+
+| Field | Secret | Required | Notes |
+|---|---|---|---|
+| `api_endpoint_url` | no | yes | The tenant's GraphQL endpoint from Wiz's User Settings > Tenant: `https://api.<data center>.app.wiz.io/graphql`, or `.app.wiz.us/graphql` for FedRAMP. Any other host is refused |
+| `auth_environment` | no | no | `commercial` (default, `auth.app.wiz.io`), `gov` (`auth.gov.wiz.io`) or `fedramp` (`auth.app.wiz.us`): which token endpoint issues the token |
+| `client_id` | no | yes | A Wiz service account's client ID |
+| `client_secret` | yes | yes | That service account's client secret |
+| `entity_types` | no | no | Comma-separated Wiz Security Graph entity types to list instead of the default `AI_AGENT,AI_SERVICE`, for example `AI_AGENT,AI_SERVICE,MCP_SERVER` |
+
+Use `query: ""` and `query_language: none`. The scan sends nothing but the token request
+and two read-only queries, `cloudResourcesV2` and `hostedTechnologies`, each paged 500
+at a time. Scopes for the service account:
+
+- AI-SPM inventory (`cloudResourcesV2`): `read:resources`. **Confirmed**: a live run
+  read it with a credential holding `read:resources` and neither `read:inventory` nor
+  `read:all` (ArcavenAE/stave `1cfb526`, `_kos/findings/finding-010-*.md:39-43`, with
+  the credential's scopes in `finding-009-*.md:31-34`).
+- Workload inventory (`hostedTechnologies`): `read:resources` and `read:inventory`, or
+  `read:all`. **Unconfirmed**: `read:inventory` is a real scope
+  (AxtonGrams/terraform-provider-wiz `4fee5a8`, `internal/common.go:87`), but no public
+  source ties it to this query.
+
+The unit tests validate both queries and their variables against a pinned public copy of
+Wiz's GraphQL schema (ArcavenAE/stave `b893774`, `spec/wiz-schema.graphql`, printed
+from live introspection). That checks shape, not live data.
+
+When Wiz refuses a query for a missing scope, its denial lists the scopes that would do
+("access denied, at least one of the following is required: [...]", **confirmed** in
+ArcavenAE/stave `6728a95`, `finding-009-*.md:29-34`). The engine quotes that list
+verbatim, scope names only, in the Test Connection error and the job log, so they say
+which scope to add. A tenant that restricts API access to an IP allowlist must allow
+the engine's egress address, or every query fails with `FORBIDDEN_IP`.
+
+**Entity types.** `AI_AGENT` and `AI_SERVICE` are Wiz's own `GraphEntityType` names, as
+are the other AI types `entity_types` can list: `AI_AGENT_REGISTRY`, `AI_DATASET`,
+`AI_DEPLOYMENT`, `AI_EXTENSION`, `AI_GATEWAY`, `AI_GUARDRAIL`, `AI_MODEL`,
+`AI_PIPELINE`, `AI_SECURITY_FINDING`, `AI_SKILL`, `AI_SKILL_TEMPLATE`, `AI_TOOL` and
+`MCP_SERVER`. Only the two are the default because the others are not agents, and a
+record per model, deployment or tool would mint a task for each. If the tenant does not
+know a name, Wiz rejects the query and the scan fails as `not_configured` saying to set
+`entity_types`.
+
+Each resource is one record, keyed on the cloud provider's own id and never on an id
+Wiz assigns itself:
+
+| Wiz has | `external_id` (and the address's `resource_id`) | Example |
+|---|---|---|
+| `providerUniqueId` | that, verbatim | `arn:aws:bedrock:us-east-1:123456789012:agent/AB12` |
+| only `externalId` | `<cloudPlatform>:<account>:<externalId>`, the platform lower-cased | `aws:123456789012:i-0abc123def4567890` |
+| neither, or `externalId` with no `cloudPlatform` | skipped, with a job-log warning naming the entity type | |
+
+Why both: `providerUniqueId` is nullable, and a live run had it on 9 of 20
+`cloudResourcesV2` records (**confirmed**, ArcavenAE/stave `1cfb526`,
+`finding-010-*.md:43`; the schema, `b893774` `spec/wiz-schema.graphql:15772,15797`, has
+`externalId: String!` beside `providerUniqueId: String`). Both are the provider's ids
+(**strong inference**: demisto/content `f92da85` looks a resource up by an ARN in
+`providerUniqueId`, `Packs/Wiz/Integrations/Wiz/Wiz.py:2832` and `README.md:461`, and
+maps `externalId` to the "Unique (provider) cloud resource ID",
+`Classifiers/classifier-WizDefend_Mapper.json:65-67`). `externalId` can be unique only
+inside its account (an instance's short id), hence the qualified form, which keeps
+`external_id` unique across every cloud the tenant scans. A resource that later gains a
+`providerUniqueId` changes identity once. The `providerUniqueId` form matches what a
+native cloud source reports for the same agent. The address's instance is the cloud
+account (`cloudAccount.externalId`, lower-cased for Azure, also in the qualified form),
+its scope the resource's `region`, else its `regionLocation` (`global` when it has
+neither), and `last_seen` is Wiz's `lastSeen`, else the resource's `updatedAt`,
+`firstSeen` or `createdAt`; a resource with none, or with no account, is skipped with a
+warning. No service names are claimed.
+
+**Workload inventory.** The scan also asks `hostedTechnologies` for the technologies
+Wiz files under the `MACHINE_LEARNING_AND_AI` stack layer on `VIRTUAL_MACHINE`,
+`CONTAINER_IMAGE` and `SERVERLESS` resources (the same filter as
+lindsp77/wiz-health-assessment-skill `e4afe70`, `scripts/generate_deck.py:743-751`).
+Running containers are left out: their ids change on every restart, and the image
+carries the same technologies. Which technologies count as agent frameworks is decided
+by the engine, on `technology.name` only: the hosted technology's own `name` is
+`<technology> (<resource name>)` (**confirmed**, `NGINX (docker.io/nginx@dec7a90b)` in
+port-labs/ocean `67254a9`, `integrations/wiz/.port/examples/hosted-technology/a.json:3`),
+so a resource named `mcp-gateway` never makes NGINX an agent. The rules, in order:
+
+1. A technology Wiz marks `isCloudService` (Azure OpenAI, say) is dropped: managed AI
+   services are the AI-SPM inventory's (**confirmed** field,
+   `spec/wiz-schema.graphql:88185`; `false` on every technology in Port's examples).
+2. Kept when the name, lower-cased with spaces and punctuation removed, contains one of
+   `langchain`, `langgraph`, `llamaindex`, `crewai`, `autogen`, `semantickernel`,
+   `haystack`, `openaiagents`, `claudeagent`, `agentdevelopmentkit`, `googleadk`,
+   `modelcontextprotocol` or `fastmcp`.
+3. Kept when `mcp` is one of its words (`MCP Server`, `mcp`; not `mcpx`).
+4. Kept when it names a model vendor beside a word that makes it the vendor's library:
+   `openai` with `sdk`, `agent(s)`, `python`, `node`, `nodejs` or `library` (`OpenAI
+   Python SDK`, `openai-node`); `anthropic` or `claude` with `sdk` or `agent(s)`
+   (`Anthropic SDK`, `Claude Agent SDK`). A vendor's name alone (`OpenAI`, `openai`,
+   `Anthropic`) is not kept: it names the service (**strong inference**: the same
+   health-assessment repo lists `OpenAI` beside `Azure OpenAI` as services a scanner
+   covers, `scripts/csv_metrics_processor.py:255-257`).
+
+Everything else in that layer is dropped, PyTorch and TensorFlow included (**strong
+inference** that the layer holds them: `csv_metrics_processor.py:38`, "AI libraries &
+frameworks (PyTorch, TensorFlow, etc.)"). **Wiz's exact spellings of agent frameworks
+are not published**, so each scan logs, once, the ML and AI technology names it saw and
+did not keep, each with Wiz's technology id (a numeric string such as `2599`, Port's
+example line 5), at most 50 and never a resource name, which shows what the rules miss.
+The technology id is not stored on the record: `AgentObservations` has no field for it.
+
+Each (technology, workload) is one record, addressed as a VM's software is on Compute
+Engine and EC2: the address's instance is the workload's native id (its `graphEntity`'s
+`providerUniqueId`, else `<cloudPlatform>:<account>:<externalId>` from the resource, as
+above), its scope `<account>/<region>` (`<account>/global` without a region), its
+`resource_kind` `technology` and its `resource_id` the technology name as Wiz spells
+it. `external_id` is `<workload native id>:<technology key>`, the key being the name
+lower-cased with each run of other characters made one `-`:
+
+| Workload id from | Example `external_id` |
+|---|---|
+| `graphEntity.providerUniqueId` | `arn:aws:ec2:us-east-1:123456789012:instance/i-0abc:langchain` |
+| `resource.externalId` | `aws:123456789012:i-0abc:langchain` |
+
+Nothing Wiz assigns is part of it: a workload with neither id, or no account or
+timestamp, is skipped with a job-log warning naming its entity type. `last_seen` is the
+hosted technology's `updatedAt`, else its `firstSeen`; the record carries the detected
+version and no model or service name.
+
+If Wiz refuses the workload query (`UNAUTHORIZED`) or rejects its shape
+(`BAD_USER_INPUT`), the scan still publishes the AI-SPM records, says so in the job log
+(quoting the scopes Wiz asked for) and reports the denied scope `workload-inventory`. Any other failure fails the scan as
+before, after publishing what was found.
+
+The lookback window is not applied: both queries read an inventory, so every scan
+reports every matching resource and technology whatever `lookback_window_seconds` says.
+Each inventory is read for at most 100 pages, and the job log says so when one stops
+there.
+
+##### Testing against a fake Wiz
+
+`ml-engine/tests/fakes/wiz` is a fake Wiz tenant for development: the token endpoint
+and the GraphQL API, with every query executed against the pruned copy of Wiz's schema
+the unit tests use, over synthetic data (`tenant.json`: 6 AI-SPM resources and 4
+agent frameworks on workloads that become records, plus the cases the connector skips
+or drops). It is not in the engine image. CI runs the connector against it in
+`tests/unit/discovery/test_wiz_fake_e2e.py`.
+
+1. Start it from `ml-engine/` (`uv sync --group dev` first). `--page-size 3` makes a
+   scan page through both inventories:
+
+   ```bash
+   uv run python -m tests.fakes.wiz --port 8099 --page-size 3
+   ```
+
+2. Point the engine at it. On the engine, and only there, set
+   `ARTHUR_ENGINE_WIZ_API_BASE_URL_OVERRIDE=http://127.0.0.1:8099`. Both the token
+   request and the queries then go to the fake, and every scan's job log warns that
+   the override is set. Only `http(s)://` on `localhost`, `127.0.0.1` or `[::1]` with
+   no path is accepted; anything else fails the scan. Unset, nothing changes.
+   - An engine run from a checkout reaches the fake on `127.0.0.1` as it is.
+   - An engine in Docker (the local stack's data-plane container) does not: set the
+     variable on that container (a compose override's `environment:`), recreate it,
+     then run the fake inside its network namespace:
+
+     ```bash
+     docker run --rm -d --name fake-wiz --network container:<data-plane container> \
+       -v "$PWD/ml-engine/tests:/w/tests:ro" -w /w python:3.13-slim \
+       sh -c 'pip install -q graphql-core==3.3.0 && python -m tests.fakes.wiz --port 8099 --page-size 3'
+     ```
+
+     Recreating the data-plane container again drops that namespace, so restart
+     `fake-wiz` after it.
+
+3. In the Platform UI, Governance > Discovery > Sources, add a Wiz source:
+
+   | Field | Value |
+   |---|---|
+   | `api_endpoint_url` | `https://api.us1.app.wiz.io/graphql` (validated as for Wiz, never contacted while the override is set) |
+   | `auth_environment` | `commercial` |
+   | `client_id` | `fake-wiz-client-id` |
+   | `client_secret` | `fake-wiz-client-secret` |
+   | `entity_types` | blank |
+
+   Add a config on the local engine with `query` empty, `query_language: none` and any
+   lookback.
+
+4. **Test Connection** succeeds with preview rows. **Scan now**: the Scans tab shows 10
+   records, and the Agents tab lists them with the Wiz mark, for example
+   `support-triage-agent` and `LangChain on agent-host-1`. The job log lists the
+   skipped resource and workload and the unmatched technologies (Anthropic, PyTorch,
+   TensorFlow).
+
+5. Flip a fault on the running fake and test again
+   (`curl -X POST 'localhost:8099/_control/fault?mode=<mode>'`, `mode=none` to stop):
+
+   | Mode | Expected |
+   |---|---|
+   | `bad-credentials` | Test Connection fails as Authentication, vendor status 401; a scan fails `authentication_failed` |
+   | `missing-scope` | Test Connection succeeds with AI-SPM rows only; the scan publishes 6 records, reports the denied scope `workload-inventory`, and the job log quotes `[read:inventory read:all]` |
+   | `forbidden-ip` | Fails as Authorization, status 403, naming the IP allowlist |
+   | `rate-limit-once` | One HTTP 429 with `Retry-After`, retried, then success |
+   | `rate-limit-in-200` | `RATE_LIMIT_EXCEEDED` inside an HTTP 200, retried, then success |
+   | `repeated-cursor` | The AI-SPM listing stops at the repeated cursor with a warning; 5 AI-SPM records |
+
+   `GET /_control/state` lists the requests the fake answered. `--fault <mode>` or
+   `FAKE_WIZ_FAULT` starts it with one set.
+
+For a standalone engine, use a `webhook` destination at
+`http://127.0.0.1:8099/_sink` with `allow_insecure_http: true`; `GET /_sink` returns
+what it was sent. Standalone configs refuse `vendor: wiz` until the engine's
+arthur-client includes the `wiz` vendor.
+
 #### `jamf_pro` — Jamf Pro (managed Macs)
 
 Reads the agent inventory Arthur's endpoint collector writes to each Mac.
@@ -137,8 +381,73 @@ Reads the agent inventory Arthur's endpoint collector writes to each Mac.
 | `include_groups` | no | no | Comma-separated computer group names to limit the scan to |
 | `exclude_groups` | no | no | Comma-separated computer group names to leave out |
 
-`query` is the agent catalog YAML; leave it `""` to use the one the engine ships with.
+`query` is the agent catalog; leave it `""` to use the one the engine ships with. A catalog
+of your own is an [ai-detection-spec](https://github.com/arthur-ai/ai-detection-spec) catalog
+document (`format: ai-detection-spec/0.1`), such as the `catalog.json` a release attaches. It
+is validated against the spec's schema, and the scan refuses one that fails.
 Use `query_language: none`. Jamf scans stop early on shutdown and report as cancelled.
+
+#### `local` — one machine's scan, from a folder
+
+Reads the scan Arthur's endpoint collector wrote into a folder, and reports each agent on
+that machine. It exists so someone can try discovery on their own laptop without an MDM
+or a cloud: run the collector on the machine, mount its folder into the engine, and the
+engine matches and sends what it found. **Standalone only**: the Platform has no such
+vendor, and a Platform-dispatched engine never runs it.
+
+| Field | Secret | Required | Notes |
+|---|---|---|---|
+| `inventory_dir` | no | yes | The folder, as an absolute path inside the engine, e.g. where it is mounted into the container |
+
+```yaml
+sources:
+  - name: this-machine
+    vendor: local
+    fields:
+      - {key: inventory_dir, value: /etc/deckard/local-scan}
+    configs:
+      - name: inventory
+        query: ""
+        query_language: none
+        lookback_window_seconds: 604800   # publish a scan up to 7 days old
+```
+
+`query` is the agent catalog, as for Jamf; `""` uses the one the engine ships with.
+
+**What fills the folder.** Two files, both readable by the engine's user (UID `65532` in
+the image):
+
+| File | Written by | Holds |
+|---|---|---|
+| `inventory.json` | the collector, run with `ARTHUR_OUT_DIR` set to the folder: [`dist/collect.sh`](../../integrations/endpoint-ai-discovery/dist/collect.sh) on macOS, [`dist/collect-linux.sh`](../../integrations/endpoint-ai-discovery/dist/collect-linux.sh) on Linux. It needs [osquery](https://osquery.io/downloads) on the machine, and not root: run as a user, it sees what that user can read | the scan's rows |
+| `machine.json` | whatever ran the collector | who the machine is, below |
+
+The collector also writes `status.txt` and `inventory.ea` there; neither is read.
+
+`machine.json` names the machine, because an engine in a container cannot see the host's
+own id or hostname:
+
+```json
+{"device_id": "8915B3AB-AFBD-55AA-B7B4-2442BEC733A9", "hostname": "my-laptop", "platform": "darwin"}
+```
+
+| Key | Required | |
+|---|---|---|
+| `device_id` | yes | The left half of every `external_id`, so it must not change while the machine does: the platform UUID on macOS (`ioreg -rd1 -c IOPlatformExpertDevice`, `IOPlatformUUID`), `/etc/machine-id` on Linux. Never the hostname |
+| `hostname` | no | Reported as each agent's `host_name` |
+| `platform` | no | `darwin` or `linux` |
+| `os_version` | no | Reported as each agent's `os_version` |
+
+**Freshness.** The engine re-reads the folder every interval; it changes only when the
+collector runs again. A collector run that fails leaves the previous scan in place, so
+the folder never says whether the latest run worked -- check the collector's exit status
+for that. Records are dated by when the machine was scanned, never by when the folder was
+read. With a lookback, a scan older than it is not published: the scan fails saying how
+old it is, and its outcome counts the machine as `not-reported-in-window`. A lookback of
+`0` publishes the folder's scan however old it is.
+
+An empty folder, a missing or incomplete `machine.json`, or an `inventory.json` that does
+not decode fails the scan with the reason, rather than reporting a machine without agents.
 
 #### `gcp_compute_engine` — Compute Engine VMs
 
@@ -148,20 +457,96 @@ attributes. Deploying the collector is
 
 | Field | Secret | Required | Notes |
 |---|---|---|---|
-| `project_ids` | no | yes | Comma-separated project **IDs**, not numbers |
+| `project_ids` | no | one of three | Comma-separated project **IDs**, not numbers |
+| `organization_id` | no | one of three | The organization's number: every active project under it, folders walked |
+| `folder_ids` | no | one of three | Comma-separated folder numbers: every active project under each |
 | `include_labels` | no | no | Comma-separated `key=value` labels to limit the scan to |
 | `exclude_labels` | no | no | Comma-separated `key=value` labels to leave out; exclude wins |
 | `service_account_key` | yes | no | A service account JSON key. Without one, the engine uses Application Default Credentials only if `ARTHUR_ENGINE_GCP_COMPUTE_ENGINE_ALLOW_ADC=true` is set |
 
 The service account needs `compute.instances.list`, `compute.instances.getGuestAttributes`
-and `compute.projects.get`, all in `roles/compute.viewer`. `query` and `query_language`
-are as for Jamf, and so is stopping on shutdown.
+and `compute.projects.get`, all in `roles/compute.viewer`. Under an organization or a
+folder it also needs `resourcemanager.projects.list` and `resourcemanager.folders.list`
+there (`roles/browser`), with `roles/compute.viewer` granted there rather than per project.
+A project it is refused is a denied scope in the scan's outcome and the scan reads the rest;
+refused every project, the scan fails. `query` and `query_language` are as for Jamf, and so
+is stopping on shutdown.
 
 Compute Engine records no time a guest attribute was written, so every scan lists every
 VM in the projects. The lookback is applied to the time on the collector's status line: a
 VM with no report inside it is counted, not published, and a window of `0` publishes
-every VM's last report. A VM whose `enable-guest-attributes` is off, on the VM or on its
-project, is counted as `guest-attributes-disabled` and not read.
+every VM's last report. A VM's own metadata wins over its project's, key by key. A VM
+whose `enable-guest-attributes` is off, on the VM, or on its project when the VM does not
+set it, is counted as `guest-attributes-disabled` and not read. A VM nothing was ever
+written for whose `enable-osconfig` is off in the same way is counted as
+`osconfig-disabled`: the OS policy that installs the collector can never reach it. Without
+`compute.projects.get`, a VM that does not set `enable-osconfig` itself is counted as
+`never-reported` instead.
+
+#### `aws_ec2` — EC2 instances
+
+Reads the agent inventory Arthur's endpoint collector writes to each instance's SSM custom
+inventory. Deploying the collector is
+[the EC2 runbook](../../integrations/endpoint-ai-discovery/docs/mdm/ec2.md).
+
+| Field | Secret | Required | Notes |
+|---|---|---|---|
+| `regions` | no | yes | Comma-separated regions, such as `us-east-1,eu-west-1`, or `all` for every region each account has enabled. The named regions choose the partition, and must share one; `all` is the `aws` partition's, so another partition names its regions |
+| `access_key_id` | yes | no | An access key, with `secret_access_key`. Without one, the engine uses its own AWS credentials only if `ARTHUR_ENGINE_AWS_EC2_ALLOW_DEFAULT_CREDENTIALS=true` is set |
+| `secret_access_key` | yes | no | Set with `access_key_id`, or neither |
+| `role_arn` | no | no | A role those credentials assume, as session `arthur-ai-discovery` |
+| `external_id` | no | no | The external ID the role's trust policy requires; with `role_arn`, or with `accounts`, where it is sent when assuming the member role in each account and needs no `role_arn` |
+| `accounts` | no | no | `all` for every active account in the organization, or comma-separated 12-digit account IDs. Each is read through its member role; unset, the credential's own account is read directly |
+| `member_role_name` | no | no | The role assumed in each account, by name; defaults to `arthur-ai-discovery` |
+| `include_tags` | no | no | Comma-separated `key=value` tags to limit the scan to |
+| `exclude_tags` | no | no | Comma-separated `key=value` tags to leave out; exclude wins |
+
+The credential needs `ec2:DescribeInstances`, `ssm:DescribeInstanceInformation` and
+`ssm:ListInventoryEntries`, plus `ec2:DescribeRegions` with `regions: all`, and nothing
+more: AWS's read-only managed policies cover them but also read Parameter Store and
+instance user data. With `accounts` set it needs
+`organizations:ListAccounts` (for `all`) and `sts:AssumeRole` on the member role instead,
+and the member role in each account holds the three actions plus `ec2:DescribeRegions`.
+An account whose role cannot be assumed, a named region the account has not enabled, or a
+region it is refused, is a denied scope in the scan's outcome and the scan reads the rest;
+refused everywhere, the scan fails.
+`query` and `query_language` are as for Jamf, and so is stopping on shutdown.
+
+EC2 has no per-instance report date to filter on, so every scan lists every instance in
+the regions. The lookback is applied to the time on the collector's status line: an
+instance with no report inside it is counted, not published, and a window of `0`
+publishes every instance's last report. A running instance SSM does not manage is
+counted as `not-ssm-managed`, and a Windows instance as `unsupported-platform`.
+
+#### `aws_bedrock` — AWS Bedrock
+
+Lists the account's Bedrock agents and AgentCore agent runtimes, and reads CloudTrail
+for the IAM roles that call Bedrock's models.
+
+| Field | Secret | Required | Notes |
+|---|---|---|---|
+| `regions` | no | yes | Comma-separated regions, such as `us-east-1,us-west-2` |
+| `list_agents` | no | no | `true` (default) or `false`: list agents and agent runtimes |
+| `read_cloudtrail` | no | no | `true` (default) or `false`: read model callers from CloudTrail |
+| `access_key_id` | yes | no | As for `aws_ec2`; without one, the engine uses its own AWS credentials only if `ARTHUR_ENGINE_AWS_BEDROCK_ALLOW_DEFAULT_CREDENTIALS=true` is set |
+| `secret_access_key` | yes | no | Set with `access_key_id`, or neither |
+| `role_arn` | no | no | A role those credentials assume, as session `arthur-ai-discovery` |
+| `external_id` | no | no | The external ID the role's trust policy requires; only with `role_arn` |
+
+The credential needs `bedrock:ListAgents`, `bedrock-agentcore:ListAgentRuntimes` and
+`cloudtrail:LookupEvents`. The connector never calls `GetAgentRuntime`, which returns a
+runtime's environment variables, or `GetAgent`, which returns its prompt. Use
+`query_language: none` and leave `query` empty.
+
+Agents and runtimes are an inventory: the lookback is not applied to them. CloudTrail is
+read over the lookback, or the last seven days when it is `0`, for `Converse`,
+`ConverseStream`, `InvokeModel` and `InvokeModelWithResponseStream`. Each IAM role (or
+IAM user) that called one becomes a record per region, named for the models it called,
+with external id `{account}/{region}/iam_role/{role ARN}`. IAM Identity Center (SSO)
+roles and the root user are people: their calls are counted in the job log, not
+reported. A part AWS refuses in a region, or a region AgentCore does not run in, is a
+warning and the rest of the scan goes on; a refused credential, or every part refused,
+fails the scan.
 
 #### `splunk_enterprise` — Splunk Enterprise
 
@@ -232,6 +617,43 @@ FROM kong-ai-logs
 - `LIMIT 10000` is Elasticsearch's default maximum for one query; without it the cluster
   stops at 1,000 rows. More consumers than that need a narrower query.
 - The key needs `read` on that index only. The query reads no request headers or bodies.
+
+#### `aws_network` — AWS network logs (read from Amazon CloudWatch Logs)
+
+Reads network logs from CloudWatch Logs log groups and reports each internal source seen
+calling a host known to serve model inference (OpenAI, Anthropic, Amazon Bedrock, Azure
+OpenAI and AI Foundry, Gemini and Vertex AI, Mistral, Cohere, Groq, OpenRouter, Together,
+DeepSeek, xAI, Perplexity, Fireworks), or one of the source's own hosts or ranges. One
+record per EC2 instance; else per network interface (default VPC flow logs name one);
+else per address in its VPC. A line naming only an address and no VPC is counted in the
+log and skipped, since the same address in two VPCs is two hosts.
+
+| Field | Secret | Required | Notes |
+|---|---|---|---|
+| `region` | no | yes | Region of the log groups, e.g. `us-east-1` |
+| `log_group_names` | no | yes | Comma-separated log groups, up to 20; a log group shared into a monitoring account by its ARN |
+| `log_format` | no | yes | How lines are read: `route53_resolver_query_log` (Route 53 Resolver query logs, JSON), `vpc_flow_log_v2` (VPC Flow Logs, default version 2 format), or `custom` to use `extraction_regex` |
+| `extraction_regex` | no | no | Required for `log_format: custom` and read only then. A regex with named groups: `src` and `dest` (a hostname or IP) required; `instance_id`, `interface_id`, `vpc_id`, `account_id`, `timestamp` (ISO 8601 or epoch) optional. `(?P<name>…)` or `(?<name>…)`; at most 2048 characters |
+| `access_key_id` | no | no | IAM access key ID; set with `secret_access_key`, or leave both empty to use the engine's own AWS credentials, which needs `ARTHUR_ENGINE_AWS_NETWORK_ALLOW_DEFAULT_CREDENTIALS=true` on the engine |
+| `secret_access_key` | yes | no | The key's secret |
+| `role_arn` | no | no | An IAM role to assume with that credential before reading |
+| `external_id` | no | no | Sent when assuming `role_arn` |
+| `extra_inference_hosts` | no | no | Comma-separated, up to 100: hosts (`*` stands for part of one label; a host also matches its subdomains) or IP addresses and CIDRs, such as an internal LLM gateway |
+
+The credential (or `role_arn`) needs only `logs:FilterLogEvents` on the log groups;
+assuming `role_arn` also needs `sts:AssumeRole` on it.
+
+Use `query: ""` and `query_language: none`: the extractor is a field of the source, and a
+config's query is ignored. The lookback window is the time range read; `0` reads
+everything the log groups retain. A scan reads at most 1,000,000 events; one at that cap
+is reported in the log rather than published as complete. Lines are matched in the
+engine, each with a 50 ms limit and a 16 KiB length cap, so a regex that backtracks
+badly skips lines (counted in the job log) instead of holding the scan.
+
+VPC Flow Logs carry only addresses, and the large providers serve from shared CDN
+addresses, so with `vpc_flow_log_v2` only `extra_inference_hosts` ranges match. A source
+identified by address is weaker evidence than an instance: Lambda functions, containers
+and pods share and reuse VPC addresses.
 
 ### Destination
 
@@ -332,6 +754,53 @@ working is visible where its agents are:
 `credentials_unavailable`, `authentication_failed`, `permission_denied`,
 `provider_error`, `publication_failed`, `cancelled` or `internal_error`. Errors never
 carry the source's credentials or the destination's secrets.
+
+`denied_scopes` lists the parts of an organization-wide scope the scan was refused and
+read past, each as `{"scope": "projects/acme-dev-456", "reason": "permission_denied"}`:
+a project under a Compute Engine source's organization or folder, an AWS account
+(`123456789012`) whose member role could not be assumed, or an account and region
+(`123456789012/eu-west-1`). `reason` is `permission_denied` or `unreachable`. A scan
+succeeded with denied scopes is a scan that did not see all of its scope, which a
+destination should alert on. The list is empty for a source whose scope is one thing,
+which fails the scan instead.
+
+A source that reads machines (`jamf_pro`, `gcp_compute_engine`, `aws_ec2`, `local`) adds
+`device_coverage` to the outcome: how many machines it read, decoded and could not read,
+the unreadable ones by reason, and **each unreadable machine by identity**, which is the
+finding a destination should alert on, since a machine the scan cannot see is where
+unmanaged AI sits:
+
+```json
+"device_coverage": {
+  "devices_read": 412,
+  "devices_decoded": 380,
+  "devices_unreadable": 32,
+  "unreadable_by_reason": {"never-reported": 30, "osconfig-disabled": 2},
+  "unreadable_devices": [
+    {
+      "device_key": "4823710983451",
+      "name": "build-1",
+      "location": "acme-prod-123/us-central1-a",
+      "reason": "osconfig-disabled",
+      "last_reported": null
+    }
+  ],
+  "unreadable_devices_truncated": 0,
+  "...": "the scope counts"
+}
+```
+
+| Field | Meaning |
+|---|---|
+| `device_key` | The carrier's own stable id: a Jamf management id, a Compute Engine instance id, an EC2 instance id |
+| `name` | What the carrier shows for it: the computer name, the VM name, the `Name` tag |
+| `location` | Where the carrier addresses it: `project/zone` on Compute Engine, `account/region` on EC2, absent for an MDM |
+| `reason` | The reason it was counted under in `unreadable_by_reason` |
+| `last_reported` | When the machine last reported, from its status line or the MDM's report date; absent when neither says |
+
+The list holds at most 1,000 machines per scan; `unreadable_devices_truncated` is how
+many more were counted and not listed. No attribute value, payload or
+credential is ever in it.
 
 The same agents arrive on every scan: each scan sends what the source reports now, and
 the destination dedupes on `agent.external_id` and `source.id` if it needs to.

@@ -76,25 +76,58 @@ export const SpanDetailsHeader = ({ onOpenSpanDrawer, onOpenPlayground }: SpanDe
   };
 
   return (
-    <Stack direction="column" spacing={1} justifyContent="center">
-      <Stack direction="row" spacing={2} justifyContent="space-between" alignItems="center">
-        <Stack direction="row" spacing={1} alignItems="center">
+    <Stack
+      direction="column"
+      spacing={1}
+      sx={{
+        justifyContent: "center",
+      }}
+    >
+      <Stack
+        direction="row"
+        spacing={2}
+        sx={{
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <Stack
+          direction="row"
+          spacing={1}
+          sx={{
+            alignItems: "center",
+          }}
+        >
           <Stack
             component="button"
             direction="row"
             spacing={1}
-            alignItems="center"
-            color="primary.main"
             className="group cursor-pointer"
             onClick={handleOpenSpanDrawer}
+            sx={{
+              alignItems: "center",
+              color: "primary.main",
+            }}
           >
-            <Typography variant="h6" fontWeight={700} className="group-hover:underline">
+            <Typography
+              variant="h6"
+              className="group-hover:underline"
+              sx={{
+                fontWeight: 700,
+              }}
+            >
               {span.span_name}
             </Typography>
           </Stack>
           <SpanStatusBadge status={span.status_code ?? "Unset"} />
         </Stack>
-        <Stack direction="row" spacing={1} alignItems="center">
+        <Stack
+          direction="row"
+          spacing={1}
+          sx={{
+            alignItems: "center",
+          }}
+        >
           {isLLM && (
             <Button variant="outlined" size="small" onClick={handleOpenInPlayground} disabled={!span.task_id} startIcon={<OpenInNewIcon />}>
               Open in Playground
@@ -103,8 +136,19 @@ export const SpanDetailsHeader = ({ onOpenSpanDrawer, onOpenPlayground }: SpanDe
           <CopyableChip label={span.span_id} sx={{ fontFamily: "monospace" }} />
         </Stack>
       </Stack>
-      <Stack direction="row" spacing={1} alignItems="center">
-        <Typography variant="caption" color="text.secondary">
+      <Stack
+        direction="row"
+        spacing={1}
+        sx={{
+          alignItems: "center",
+        }}
+      >
+        <Typography
+          variant="caption"
+          sx={{
+            color: "text.secondary",
+          }}
+        >
           {formatDateInTimezone(span.start_time, timezone, { hour12: !use24Hour })}
         </Typography>
         {typeof duration === "number" && <DurationCellWithBucket duration={duration} />}
@@ -130,20 +174,36 @@ export const SpanDetailsPanels = () => {
           ))}
           <Tabs.Indicator />
         </Tabs.List>
-        <Tabs.Panel value="formatted" render={<Stack direction="column" gap={1} />}>
+        <Tabs.Panel
+          value="formatted"
+          render={
+            <Stack
+              direction="column"
+              sx={{
+                gap: 1,
+              }}
+            />
+          }
+        >
           {strategy?.panels.map((panel) => (
             <Collapsible.Root render={<Stack direction="column" spacing={1} />} key={panel.label} defaultOpen={panel.defaultOpen}>
               <Collapsible.Trigger className="group">
                 <Stack
                   direction="row"
                   spacing={1}
-                  alignItems="center"
                   sx={{
+                    alignItems: "center",
                     color: "text.primary",
                   }}
                 >
                   <KeyboardArrowRightIcon fontSize="small" className="group-data-panel-open:rotate-90 transition-transform duration-75" />
-                  <Typography variant="body2" color="text.primary" fontWeight={700}>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: "text.primary",
+                      fontWeight: 700,
+                    }}
+                  >
                     {panel.label}
                   </Typography>
                 </Stack>
@@ -166,7 +226,14 @@ export const SpanDetailsWidgets = () => {
   const { span, strategy } = useSpanDetails();
 
   return (
-    <Stack direction="row" gap={1} flexWrap="wrap" alignItems="center">
+    <Stack
+      direction="row"
+      sx={{
+        gap: 1,
+        flexWrap: "wrap",
+        alignItems: "center",
+      }}
+    >
       {strategy.widgets.map((widget, index) =>
         widget.wrapped ? (
           <Paper key={index} variant="outlined" sx={{ px: 1, py: 0.5 }}>
