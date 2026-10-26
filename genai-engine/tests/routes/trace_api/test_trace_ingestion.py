@@ -1176,7 +1176,7 @@ def test_rejected_span_bytes_are_kept_on_the_accepted_spans(monkeypatch):
         task_ids=[f"ingest_bytes_task_{uuid4()}"],
     )
     trace_request.resource_spans[0].scope_spans[0].spans.append(
-        _create_span(trace_id=uuid4().bytes, span_id=uuid4().bytes[:8], name="reject"),
+        _create_span(trace_id=trace_id, span_id=uuid4().bytes[:8], name="reject"),
     )
     body = trace_request.SerializeToString()
 
@@ -1244,6 +1244,54 @@ def test_rejected_span_bytes_stay_within_their_task(monkeypatch):
         .one()
     )
     assert trace.ingest_bytes == first_task_bytes < len(body)
+    assert (
+        db_session.query(DatabaseTraceMetadata)
+        .filter(DatabaseTraceMetadata.trace_id == rejected_trace.hex())
+        .count()
+        == 0
+    )
+
+
+@pytest.mark.unit_tests
+def test_rejected_span_bytes_stay_within_their_trace(monkeypatch):
+    """Within one task, rejected bytes move only to stored spans of the same
+    trace. A trace whose spans were all rejected stores nothing, and its bytes
+    don't land on another trace of that task."""
+    kept_trace, rejected_trace = uuid4().bytes, uuid4().bytes
+    trace_request = _ingest_bytes_request(
+        [kept_trace, rejected_trace],
+        spans_per_trace=2,
+        task_ids=[f"ingest_bytes_task_{uuid4()}"],
+    )
+    spans = trace_request.resource_spans[0].scope_spans[0].spans
+    for span in spans:
+        if span.trace_id == rejected_trace:
+            span.name = "reject"
+    spans.append(
+        _create_span(trace_id=kept_trace, span_id=uuid4().bytes[:8], name="reject"),
+    )
+    body = trace_request.SerializeToString()
+    shares = TraceIngestionService._span_ingest_bytes(trace_request, len(body))
+    kept_trace_bytes = sum(
+        share
+        for span, share in zip(spans, shares, strict=True)
+        if span.trace_id == kept_trace
+    )
+
+    _reject_spans_named_reject(monkeypatch)
+    db_session = override_get_db_session()
+
+    _, (total, accepted, rejected, _) = TraceIngestionService(
+        db_session,
+    ).process_trace_data(body, count_ingest_bytes=True)
+
+    assert (total, accepted, rejected) == (5, 2, 3)
+    trace = (
+        db_session.query(DatabaseTraceMetadata)
+        .filter(DatabaseTraceMetadata.trace_id == kept_trace.hex())
+        .one()
+    )
+    assert trace.ingest_bytes == kept_trace_bytes < len(body)
     assert (
         db_session.query(DatabaseTraceMetadata)
         .filter(DatabaseTraceMetadata.trace_id == rejected_trace.hex())

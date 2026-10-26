@@ -96,7 +96,7 @@ class TraceIngestionService:
 
         With count_ingest_bytes, each span records its share of len(trace_data), the
         request body as received, and the shares add up to it exactly unless every
-        span of some resource span is rejected. Only the trace ingestion endpoints
+        span of some trace in a resource span is rejected. Only the trace ingestion endpoints
         set it: the bytes are customer ingest volume.
         """
         trace_request = self._parse_trace_request(trace_data)
@@ -237,14 +237,26 @@ class TraceIngestionService:
                 default=DEFAULT_ORG_ID,
             )
 
-            resource_first_index = total_spans
-            resource_first_stored = len(spans_data)
-            resource_rejected = False
+            # Per trace in this resource span, keyed by the span's raw traceId:
+            # bytes received, stored spans, and whether any span was rejected.
+            trace_bytes: dict[Any, int] = {}
+            trace_stored: dict[Any, list[DatabaseSpan]] = {}
+            traces_with_rejects: set[Any] = set()
 
             for scope_span in resource_span.get("scopeSpans", []):
                 for span_data in scope_span.get("spans", []):
                     span_index = total_spans
                     total_spans += 1
+                    trace_key = (
+                        span_data.get("traceId")
+                        if isinstance(span_data, dict)
+                        else None
+                    )
+                    if span_ingest_bytes is not None:
+                        trace_bytes[trace_key] = (
+                            trace_bytes.get(trace_key, 0)
+                            + span_ingest_bytes[span_index]
+                        )
 
                     try:
                         # Pass the resolved task ID and resource_id to the span processing
@@ -260,10 +272,11 @@ class TraceIngestionService:
                             ),
                         )
                         spans_data.append(processed_span)
+                        trace_stored.setdefault(trace_key, []).append(processed_span)
                         accepted_spans += 1
                     except Exception as e:
                         rejected_spans += 1
-                        resource_rejected = True
+                        traces_with_rejects.add(trace_key)
                         error_msg = f"Invalid span data format: {str(e)}"
                         rejected_reasons.append(error_msg)
                         logger.error(
@@ -272,18 +285,21 @@ class TraceIngestionService:
                         )
 
             # A rejected span's share would otherwise be lost: its bytes were still
-            # received, so spread them over the stored spans of the same resource
-            # span, which share its task and org. If every span of a resource span
-            # was rejected, nothing is stored for it and there is nothing to
-            # attribute its bytes to without crediting another task.
-            resource_stored = spans_data[resource_first_stored:]
-            if span_ingest_bytes is not None and resource_rejected and resource_stored:
-                shares = self._split_by_weight(
-                    sum(span_ingest_bytes[resource_first_index:total_spans]),
-                    [float(span.ingest_bytes or 0) for span in resource_stored],
-                )
-                for span, share in zip(resource_stored, shares, strict=True):
-                    span.ingest_bytes = share
+            # received, so spread them over the stored spans of the same trace in
+            # this resource span, which share its trace, task and org. If every span
+            # of that trace was rejected, nothing is stored for it, and its bytes
+            # stay unattributed rather than credited to another trace.
+            if span_ingest_bytes is not None:
+                for trace_key in traces_with_rejects:
+                    stored = trace_stored.get(trace_key)
+                    if not stored:
+                        continue
+                    shares = self._split_by_weight(
+                        trace_bytes[trace_key],
+                        [float(span.ingest_bytes or 0) for span in stored],
+                    )
+                    for span, share in zip(stored, shares, strict=True):
+                        span.ingest_bytes = share
 
         return spans_data, (
             total_spans,
