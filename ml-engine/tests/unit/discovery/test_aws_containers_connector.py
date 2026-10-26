@@ -11,6 +11,7 @@ import base64
 import json
 import logging
 from datetime import datetime, timezone
+from types import SimpleNamespace
 from typing import Any, Callable, Optional
 
 import boto3
@@ -25,12 +26,14 @@ from botocore.session import Session as BotocoreSession
 from botocore.validate import ParamValidator
 
 from discovery import source_connectors
+from discovery.aws_organization import BOOTSTRAP_REGION, DEFAULT_MEMBER_ROLE_NAME
 from discovery.cloud.aws_containers.client import presigned_token
 from discovery.cloud.aws_containers.connector import (
     ALLOW_DEFAULT_CREDENTIALS_ENV_VAR,
     VENDOR,
     AwsContainersConnector,
     settings_from,
+    source_session,
 )
 from discovery.cloud.aws_containers.workloads import (
     ECS_SERVICE,
@@ -77,7 +80,7 @@ CATALOG = document(
         images=["ghcr.io/block/goose"],
     ),
 )
-SERVICES = ("ecs", "eks", "ec2", "iam", "sts", "cloudtrail")
+SERVICES = ("ecs", "eks", "ec2", "iam", "sts", "cloudtrail", "organizations")
 MODELS = {svc: BotocoreSession().get_service_model(svc) for svc in SERVICES}
 SECRET_ENV = {"name": "API_TOKEN", "value": "do-not-read"}
 
@@ -229,7 +232,9 @@ def k8s(
 
 
 def service_account(
-    name: str, namespace: str = "agents", irsa: Optional[str] = None
+    name: str,
+    namespace: str = "agents",
+    irsa: Optional[str] = None,
 ) -> Any:
     meta: dict[str, Any] = {"name": name, "namespace": namespace}
     if irsa:
@@ -274,12 +279,22 @@ def client_error(code: str, operation: str) -> ClientError:
 
 
 class FakeAws:
-    """ECS, EKS, EC2, IAM, STS and CloudTrail, as one account's state.
+    """ECS, EKS, EC2, IAM, STS, CloudTrail and Organizations, as one account's state.
 
     `errors[(service, Operation)]` is raised by every such call; set it to refuse an API.
+    `accounts_listed` is what ListAccounts answers, each account's `State` as AWS
+    gives it now, or its retired `Status` when `account_field` says so;
+    `regions_enabled` is what DescribeRegions answers, and `assume_error` what every
+    call raises when the account's member role cannot be assumed: the role is fetched
+    lazily, by the first call.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, account: str = ACCOUNT) -> None:
+        self.account = account
+        self.accounts_listed: list[tuple[str, str]] = []
+        self.account_field = "State"
+        self.regions_enabled: list[str] = [REGION]
+        self.assume_error: Optional[Exception] = None
         self.services: dict[str, list[Any]] = {}
         self.tasks: dict[str, list[Any]] = {}
         self.definitions: dict[str, Any] = {}
@@ -322,6 +337,8 @@ class FakeClient:
                 report = ParamValidator().validate(params, shape)
                 assert not report.has_errors(), report.generate_report()
             self._aws.calls.append((self._service, self._region, operation, params))
+            if self._aws.assume_error is not None:
+                raise self._aws.assume_error
             error = self._aws.errors.get((self._service, operation))
             if error is not None:
                 raise error
@@ -336,16 +353,36 @@ class FakeClient:
     # sts / cloudtrail
 
     def _GetCallerIdentity(self) -> Any:
-        return {"Account": ACCOUNT, "Arn": f"arn:aws:sts::{ACCOUNT}:assumed-role/r/s"}
+        account = self._aws.account
+        return {"Account": account, "Arn": f"arn:aws:sts::{account}:assumed-role/r/s"}
 
     def _LookupEvents(self, **params: Any) -> Any:
         return {"Events": self._aws.events.get(self._region, [])}
+
+    # organizations / ec2 regions
+
+    def _ListAccounts(self, **params: Any) -> Any:
+        # One account per page, so paging is exercised.
+        at = int(params.get("NextToken") or 0)
+        listed = self._aws.accounts_listed
+        body: dict[str, Any] = {
+            "Accounts": [
+                {"Id": i, self._aws.account_field: s} for i, s in listed[at : at + 1]
+            ],
+        }
+        if at + 1 < len(listed):
+            body["NextToken"] = str(at + 1)
+        return body
+
+    def _DescribeRegions(self, **params: Any) -> Any:
+        assert params == {"AllRegions": False}, "only the regions the account enabled"
+        return {"Regions": [{"RegionName": r} for r in self._aws.regions_enabled]}
 
     # ecs
 
     def _ListClusters(self, **params: Any) -> Any:
         return {
-            "clusterArns": [CLUSTER_ARN] if self._region in self._aws.services else []
+            "clusterArns": [CLUSTER_ARN] if self._region in self._aws.services else [],
         }
 
     def _ListServices(self, cluster: str, **params: Any) -> Any:
@@ -368,7 +405,7 @@ class FakeClient:
         if desiredStatus != "RUNNING":
             return {"taskArns": []}
         return {
-            "taskArns": [t["taskArn"] for t in self._aws.tasks.get(self._region, [])]
+            "taskArns": [t["taskArn"] for t in self._aws.tasks.get(self._region, [])],
         }
 
     def _DescribeTasks(self, cluster: str, tasks: list[str]) -> Any:
@@ -439,7 +476,7 @@ class FakeClient:
     def _DescribeNodegroup(self, clusterName: str, nodegroupName: str) -> Any:
         return {
             "nodegroup": {
-                "nodeRole": self._aws.node_groups[clusterName][nodegroupName]
+                "nodeRole": self._aws.node_groups[clusterName][nodegroupName],
             },
         }
 
@@ -448,7 +485,7 @@ class FakeClient:
             "associations": [
                 {"associationId": f"a-{i}", "namespace": ns, "serviceAccount": sa}
                 for i, (ns, sa, _) in enumerate(
-                    self._aws.pod_identity.get(clusterName, [])
+                    self._aws.pod_identity.get(clusterName, []),
                 )
             ],
         }
@@ -461,7 +498,9 @@ class FakeClient:
         return {"fargateProfile": {"selectors": selectors}}
 
     def _DescribePodIdentityAssociation(
-        self, clusterName: str, associationId: str
+        self,
+        clusterName: str,
+        associationId: str,
     ) -> Any:
         ns, sa, arn = self._aws.pod_identity[clusterName][int(associationId[2:])]
         return {"association": {"namespace": ns, "serviceAccount": sa, "roleArn": arn}}
@@ -493,7 +532,12 @@ class FakeKube:
         self.calls: list[tuple[str, dict[str, str], Any]] = []
 
     def get(
-        self, url: str, params: Any, headers: dict[str, str], verify: Any, **_: Any
+        self,
+        url: str,
+        params: Any,
+        headers: dict[str, str],
+        verify: Any,
+        **_: Any,
     ) -> Any:
         path = url[len(EKS_ENDPOINT) :]
         self.calls.append((path, headers, verify))
@@ -513,7 +557,8 @@ class FakeConfig:
 
 
 def connector_for(
-    aws: FakeAws, kube: Optional[FakeKube] = None
+    aws: FakeAws,
+    kube: Optional[FakeKube] = None,
 ) -> AwsContainersConnector:
     return AwsContainersConnector(
         session_for=lambda creds, fields: boto3.Session(),
@@ -610,7 +655,7 @@ def test_a_service_is_one_record_whatever_its_tasks_and_names_its_task_role() ->
 def test_a_task_no_service_owns_is_its_group_and_reported_only_when_all_are() -> None:
     aws = FakeAws()
     d = aws.add_definition(
-        task_definition("nightly-eval", task_role=None, exec_role=None)
+        task_definition("nightly-eval", task_role=None, exec_role=None),
     )
     aws.services[REGION] = []
     aws.tasks[REGION] = [
@@ -643,7 +688,7 @@ def test_an_ec2_task_without_a_task_role_runs_as_its_instance_role() -> None:
     )
     aws.services[REGION] = [ecs_service("legacy", d, launch="EC2")]
     aws.tasks[REGION] = [
-        ecs_task("t", d, "service:legacy", container_instance=instance)
+        ecs_task("t", d, "service:legacy", container_instance=instance),
     ]
 
     [record] = scan(aws, report_all())
@@ -985,8 +1030,9 @@ def test_a_kubernetes_401_is_that_clusters_refusal_and_the_scan_goes_on(
     aws, kube = eks_account(
         {
             "/api/v1/serviceaccounts": FakeResponse(
-                401, {"kind": "Status", "message": "Unauthorized"}
-            )
+                401,
+                {"kind": "Status", "message": "Unauthorized"},
+            ),
         },
     )
     ecs_account(aws)
@@ -1050,7 +1096,8 @@ def test_a_denied_listing_is_a_denied_scope_and_everything_denied_fails() -> Non
     aws = ecs_account()
     aws.eks[EKS] = eks_cluster()
     aws.errors[("ecs", "ListClusters")] = client_error(
-        "AccessDeniedException", "ListClusters"
+        "AccessDeniedException",
+        "ListClusters",
     )
     connector = connector_for(aws)
     records = scan(aws, report_all(read_cloudtrail="false"), connector=connector)
@@ -1060,7 +1107,8 @@ def test_a_denied_listing_is_a_denied_scope_and_everything_denied_fails() -> Non
     )
 
     aws.errors[("eks", "ListClusters")] = client_error(
-        "AccessDeniedException", "ListClusters"
+        "AccessDeniedException",
+        "ListClusters",
     )
     with pytest.raises(Exception) as caught:
         scan(aws, report_all(read_cloudtrail="false"))
@@ -1122,6 +1170,286 @@ def test_env_values_never_reach_a_record_or_the_log(
     assert "do-not-read" not in dumped
 
 
+# --- an organization as the roster ------------------------------------------------------
+
+
+ONE = "111111111111"
+TWO = "222222222222"
+WEST = "us-west-2"
+ORG_FIELDS = {
+    "regions": WEST,
+    "accounts": "all",
+    "external_id": "abc",
+    "report_all_workloads": "true",
+}
+ASSUME_DENIED = client_error("AccessDenied", "AssumeRole")
+
+
+class FakeOrg:
+    """An organization: the source's own account, which lists the members, and each
+    member account, reached through the member role the connector asks for."""
+
+    def __init__(self, members: list[FakeAws]) -> None:
+        self.own = FakeAws()
+        self.own.accounts_listed = [(m.account, "ACTIVE") for m in members]
+        self.own.accounts_listed.append(("333333333333", "SUSPENDED"))
+        self.members = {m.account: m for m in members}
+        self.sessions: list[Any] = []
+
+    def clients(self, session: Any) -> Any:
+        account = getattr(session, "account", None)
+        return (self.members[account] if account else self.own).client_for
+
+    def account_session(
+        self,
+        base: boto3.Session,
+        account: str,
+        role_name: str,
+        external_id: Optional[str],
+    ) -> Any:
+        session = SimpleNamespace(
+            account=account,
+            role_name=role_name,
+            external_id=external_id,
+            region_name=base.region_name,
+        )
+        self.sessions.append(session)
+        return session
+
+
+def connector_for_org(org: FakeOrg) -> AwsContainersConnector:
+    return AwsContainersConnector(
+        session_for=lambda creds, fields: boto3.Session(region_name=BOOTSTRAP_REGION),
+        clients_for=org.clients,
+        tokens_for=lambda session: (lambda region, cluster: f"token-for-{cluster}"),
+        http=FakeKube(),  # type: ignore[arg-type]
+        clock=lambda: NOW,
+        sleep=lambda seconds: None,
+        account_session_for=org.account_session,
+    )
+
+
+def member(account: str, service: str, region: str = WEST) -> FakeAws:
+    """A member account with one Fargate service, running as a task role of its own."""
+    aws = FakeAws(account)
+    aws.regions_enabled = [REGION, region]
+    d = aws.add_definition(
+        task_definition(
+            service,
+            task_role=f"arn:aws:iam::{account}:role/agent-task",
+        ),
+    )
+    aws.services[region] = [ecs_service(service, d)]
+    aws.tasks[region] = [ecs_task(f"{service}-1", d, f"service:{service}")]
+    return aws
+
+
+def accounts_of(records: list[Any]) -> set[tuple[str, str]]:
+    return {
+        (r.creation_source.address.instance, r.creation_source.address.resource_id)
+        for r in records
+    }
+
+
+def test_every_active_account_is_read_through_the_member_role(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Organizations gives the roster, a suspended account left out; the member role is
+    assumed per account with the source's external ID; STS and Organizations are asked
+    in the partition's bootstrap region, the workloads in the regions named."""
+    org = FakeOrg([member(ONE, "support-bot"), member(TWO, "billing-bot")])
+    connector = connector_for_org(org)
+    with caplog.at_level(logging.INFO):
+        records = scan(org.own, ORG_FIELDS, connector=connector)
+
+    assert accounts_of(records) == {
+        (ONE, f"{CLUSTER}/support-bot"),
+        (TWO, f"{CLUSTER}/billing-bot"),
+    }
+    assert [(s.account, s.role_name, s.external_id) for s in org.sessions] == [
+        (ONE, DEFAULT_MEMBER_ROLE_NAME, "abc"),
+        (TWO, DEFAULT_MEMBER_ROLE_NAME, "abc"),
+    ]
+    assert [(c[1], c[2]) for c in org.own.calls] == [
+        (BOOTSTRAP_REGION, "ListAccounts"),
+        (BOOTSTRAP_REGION, "ListAccounts"),
+        (BOOTSTRAP_REGION, "ListAccounts"),
+    ]
+    one = org.members[ONE].calls
+    assert [c[1] for c in one if c[2] == "GetCallerIdentity"] == [BOOTSTRAP_REGION]
+    assert {c[1] for c in one if c[0] == "ecs"} == {WEST}
+    assert connector.denied_scopes() == ()
+    assert "reading 2 account(s) through role arthur-ai-discovery" in caplog.text
+    assert "2 account(s) read through role arthur-ai-discovery; 0 refused" in (
+        caplog.text
+    )
+
+
+def test_an_account_listed_with_only_the_retired_status_is_still_read() -> None:
+    """Organizations retired `Status` for `State` on 2026-09-09; the fake answers with
+    `State` everywhere else. An answer with only `Status` still names who is active."""
+    org = FakeOrg([member(ONE, "support-bot")])
+    org.own.account_field = "Status"
+    records = scan(org.own, ORG_FIELDS, connector=connector_for_org(org))
+
+    assert accounts_of(records) == {(ONE, f"{CLUSTER}/support-bot")}
+    assert [s.account for s in org.sessions] == [ONE], "the suspended one is left out"
+
+
+def test_named_accounts_are_read_without_asking_organizations() -> None:
+    org = FakeOrg([member(ONE, "support-bot"), member(TWO, "billing-bot")])
+    connector = connector_for_org(org)
+    records = scan(
+        org.own,
+        {
+            **report_all(),
+            "regions": WEST,
+            "accounts": TWO,
+            "member_role_name": "Reader",
+        },
+        connector=connector,
+    )
+
+    assert accounts_of(records) == {(TWO, f"{CLUSTER}/billing-bot")}
+    assert org.own.calls == [], "no listing was asked for"
+    assert [(s.account, s.role_name, s.external_id) for s in org.sessions] == [
+        (TWO, "Reader", None),
+    ]
+
+
+def test_an_account_whose_role_cannot_be_assumed_is_a_denied_scope(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """The role is assumed by the account's first call, so its refusal arrives there.
+    That account is one scope, its regions unasked; every other account is read."""
+    refused = member(TWO, "billing-bot")
+    refused.assume_error = ASSUME_DENIED
+    org = FakeOrg([member(ONE, "support-bot"), refused])
+    connector = connector_for_org(org)
+    with caplog.at_level(logging.WARNING):
+        records = scan(org.own, ORG_FIELDS, connector=connector)
+
+    assert accounts_of(records) == {(ONE, f"{CLUSTER}/support-bot")}
+    assert connector.denied_scopes() == (DeniedScope(TWO, DENIED_PERMISSION),)
+    assert [c[2] for c in refused.calls] == ["GetCallerIdentity"]
+    assert f"{TWO}: not read (permission_denied): STS AssumeRole" in caplog.text
+
+
+def test_a_member_accounts_refused_listing_names_that_account() -> None:
+    denied = member(TWO, "billing-bot")
+    denied.errors[("ecs", "ListClusters")] = client_error(
+        "AccessDeniedException",
+        "ListClusters",
+    )
+    org = FakeOrg([member(ONE, "support-bot"), denied])
+    connector = connector_for_org(org)
+    records = scan(org.own, ORG_FIELDS, connector=connector)
+
+    assert accounts_of(records) == {(ONE, f"{CLUSTER}/support-bot")}
+    assert connector.denied_scopes() == (
+        DeniedScope(f"{TWO}/{WEST}/ecs", DENIED_PERMISSION),
+    )
+
+
+def test_every_account_refused_fails_the_scan() -> None:
+    org = FakeOrg([member(ONE, "support-bot"), member(TWO, "billing-bot")])
+    for refused in org.members.values():
+        refused.assume_error = ASSUME_DENIED
+    connector = connector_for_org(org)
+    with pytest.raises(Exception) as caught:
+        scan(org.own, ORG_FIELDS, connector=connector)
+
+    assert failure_code(caught.value) == DiscoveryErrorCode.PERMISSION_DENIED
+    assert "Check that role arthur-ai-discovery exists" in str(caught.value)
+    assert connector.denied_scopes() == (
+        DeniedScope(ONE, DENIED_PERMISSION),
+        DeniedScope(TWO, DENIED_PERMISSION),
+    )
+
+
+def test_a_refused_credential_ends_an_organization_scan() -> None:
+    """A 401 is the source's credential, whichever account's call met it."""
+    refused = member(ONE, "support-bot")
+    refused.assume_error = client_error("InvalidClientTokenId", "AssumeRole")
+    org = FakeOrg([refused, member(TWO, "billing-bot")])
+    with pytest.raises(Exception) as caught:
+        scan(org.own, ORG_FIELDS, connector=connector_for_org(org))
+
+    assert failure_code(caught.value) == DiscoveryErrorCode.AUTHENTICATION_FAILED
+    assert org.members[TWO].calls == [], "the scan ended at the first account"
+
+
+def test_a_refused_organization_listing_fails_the_scan() -> None:
+    org = FakeOrg([member(ONE, "support-bot")])
+    org.own.errors[("organizations", "ListAccounts")] = client_error(
+        "AccessDeniedException",
+        "ListAccounts",
+    )
+    with pytest.raises(Exception) as caught:
+        scan(org.own, ORG_FIELDS, connector=connector_for_org(org))
+
+    assert failure_code(caught.value) == DiscoveryErrorCode.PERMISSION_DENIED
+    assert org.members[ONE].calls == []
+
+
+def test_every_region_is_each_accounts_enabled_regions() -> None:
+    org = FakeOrg([member(ONE, "support-bot")])
+    records = scan(
+        org.own,
+        {**ORG_FIELDS, "regions": "all"},
+        connector=connector_for_org(org),
+    )
+
+    assert accounts_of(records) == {(ONE, f"{CLUSTER}/support-bot")}
+    calls = org.members[ONE].calls
+    assert [c[1] for c in calls if c[2] == "DescribeRegions"] == [BOOTSTRAP_REGION]
+    assert {c[1] for c in calls if c[0] == "ecs" and c[2] == "ListClusters"} == {
+        REGION,
+        WEST,
+    }
+    assert {c[1] for c in calls if c[2] == "LookupEvents"} == {REGION, WEST}
+
+
+def test_one_accounts_model_callers_never_select_anothers_workloads() -> None:
+    """Two accounts each run a role named agent-task; only ONE's called a model. Roles
+    are keyed by account, so TWO's workload is not reported."""
+    caller = member(ONE, "support-bot")
+    caller.events[WEST] = [model_call(f"arn:aws:iam::{ONE}:role/agent-task")]
+    org = FakeOrg([caller, member(TWO, "billing-bot")])
+    records = scan(
+        org.own,
+        {**ORG_FIELDS, "report_all_workloads": "false"},
+        connector=connector_for_org(org),
+    )
+
+    assert accounts_of(records) == {(ONE, f"{CLUSTER}/support-bot")}
+    [record] = records
+    assert [m.name for m in record.llm_models or []] == [MODEL]
+
+
+def test_an_external_id_for_member_roles_needs_no_role_of_the_source_s_own() -> None:
+    """With `accounts`, the external ID is the member roles'; the source's own session
+    is asked in the bootstrap region. With a role of its own, it is sent to both."""
+    key = {"access_key_id": "AKIAEXAMPLE", "secret_access_key": "secret"}
+    session = source_session(
+        key,
+        {"regions": WEST, "accounts": "all", "external_id": "x"},
+    )
+    assert session.get_credentials().method != "assume-role"
+    assert session.region_name == BOOTSTRAP_REGION
+
+    hub = source_session(
+        key,
+        {
+            "regions": WEST,
+            "accounts": "all",
+            "role_arn": "arn:aws:iam::123456789012:role/arthur-ai-discovery-hub",
+            "external_id": "x",
+        },
+    )
+    assert hub.get_credentials().method == "assume-role"
+
+
 # --- settings ---------------------------------------------------------------------------
 
 
@@ -1132,6 +1460,10 @@ def test_env_values_never_reach_a_record_or_the_log(
         {"regions": "us-east-1,mars-1"},
         {"regions": REGION, "read_cloudtrail": "maybe"},
         {"regions": REGION, "report_all_workloads": "yes please"},
+        {"regions": f"{REGION},us-gov-west-1"},
+        {"regions": REGION, "accounts": "12345"},
+        {"regions": REGION, "accounts": f"all,{ONE}"},
+        {"regions": REGION, "accounts": "all", "member_role_name": "arn:aws:iam::x"},
     ],
 )
 def test_bad_settings_are_configuration_errors(fields: dict[str, str]) -> None:
@@ -1144,6 +1476,25 @@ def test_toggles_default_to_cloudtrail_on_and_report_all_off() -> None:
     assert settings.regions == ("us-east-1", "us-west-2")
     assert settings.read_cloudtrail is True
     assert settings.report_all_workloads is False
+    assert not settings.spans_accounts
+    assert settings.home_region == "us-east-1", "one account: its first region"
+
+
+def test_an_organization_and_every_region_are_asked_where_every_account_answers() -> (
+    None
+):
+    settings = settings_from({"regions": "all", "accounts": "ALL"})
+    assert settings.all_regions and settings.all_accounts and settings.spans_accounts
+    assert settings.regions == ()
+    assert settings.member_role_name == DEFAULT_MEMBER_ROLE_NAME
+    assert settings.home_region == BOOTSTRAP_REGION
+
+    named = settings_from({"regions": WEST, "accounts": f"{ONE}, {TWO}"})
+    assert named.accounts == (ONE, TWO) and not named.all_accounts
+    assert named.home_region == BOOTSTRAP_REGION
+
+    gov = settings_from({"regions": "us-gov-east-1", "accounts": "all"})
+    assert gov.home_region == "us-gov-west-1"
 
 
 def test_a_source_without_a_key_needs_the_engines_opt_in(
@@ -1151,7 +1502,8 @@ def test_a_source_without_a_key_needs_the_engines_opt_in(
 ) -> None:
     monkeypatch.delenv(ALLOW_DEFAULT_CREDENTIALS_ENV_VAR, raising=False)
     with pytest.raises(
-        DiscoveryConfigurationError, match=ALLOW_DEFAULT_CREDENTIALS_ENV_VAR
+        DiscoveryConfigurationError,
+        match=ALLOW_DEFAULT_CREDENTIALS_ENV_VAR,
     ):
         AwsContainersConnector().scan(
             FakeConfig(),  # type: ignore[arg-type]

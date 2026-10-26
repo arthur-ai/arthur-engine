@@ -16,6 +16,9 @@ THE AWS CALLS, through boto3 as every AWS source here:
   `DescribePodIdentityAssociation` (the role each binds).
 - STS: a presigned `GetCallerIdentity`, which is the token EKS's Kubernetes API takes
   (`k8s-aws-v1.` and the URL, base64url); it is signed here, never sent to STS.
+- A scope that spans accounts or every region (`discovery.aws_organization`):
+  Organizations' `ListAccounts` for `accounts: all`, and EC2's `DescribeRegions` for
+  `regions: all`.
 
 THE KUBERNETES API IS ASKED FOR CONTROLLERS, NOT PODS, as on GKE: a pod's name changes
 every rollout, the Deployment that owns it does not. Pods and Jobs are read for the
@@ -52,6 +55,8 @@ from job_executors.discovery_scan import DiscoveryConfigurationError
 
 PAGE_SIZE = 100
 MAX_PAGES = 1000
+# The most accounts Organizations answers ListAccounts with per call.
+ORGANIZATIONS_PAGE_SIZE = 20
 
 # What ECS and EKS answer a describe call with at most, per call.
 DESCRIBE_SERVICES_BATCH = 10
@@ -226,7 +231,7 @@ class AwsContainersClient:
             for reservation in body.get("Reservations") or []:
                 for instance in reservation.get("Instances") or []:
                     arn = str(
-                        (instance.get("IamInstanceProfile") or {}).get("Arn") or ""
+                        (instance.get("IamInstanceProfile") or {}).get("Arn") or "",
                     )
                     if arn:
                         profiles.append(arn.rsplit("/", 1)[-1])
@@ -356,7 +361,7 @@ class AwsContainersClient:
             ca = base64.b64decode(ca_b64, validate=True)
         except ValueError as exc:
             raise KubernetesError(
-                "EKS returned a cluster CA that is not base64"
+                "EKS returned a cluster CA that is not base64",
             ) from exc
         name = str(cluster.get("name") or "")
         fd, path = tempfile.mkstemp(prefix="eks-ca-", suffix=".pem")
@@ -371,6 +376,46 @@ class AwsContainersClient:
             )
         finally:
             os.unlink(path)
+
+    # --- the scope ----------------------------------------------------------------
+
+    def organization_accounts(self, ask_in: str) -> list[str]:
+        """Every ACTIVE account in the organization, asked in `ask_in`.
+
+        An account being closed or suspended is left out: nothing in it can be read.
+        """
+        accounts: list[str] = []
+        token: Optional[str] = None
+        for _ in range(MAX_PAGES):
+            args: dict[str, Any] = {"MaxResults": ORGANIZATIONS_PAGE_SIZE}
+            if token:
+                args["NextToken"] = token
+            body = self._call("organizations", ask_in, "list_accounts", **args)
+            accounts.extend(
+                str(account["Id"])
+                for account in body.get("Accounts") or []
+                if _active(account) and account.get("Id")
+            )
+            next_token = body.get("NextToken")
+            if not next_token or next_token == token:
+                return accounts
+            token = next_token
+        self._log.warning(
+            "organizations ListAccounts still had pages after %s; the roster is "
+            "incomplete",
+            MAX_PAGES,
+        )
+        return accounts
+
+    def enabled_regions(self, ask_in: str) -> list[str]:
+        """The regions this account can use, asked in `ask_in`. Opt-in regions the
+        account has not enabled are left out, so nothing answers OptInRequired."""
+        body = self._call("ec2", ask_in, "describe_regions", AllRegions=False)
+        return sorted(
+            str(region["RegionName"])
+            for region in body.get("Regions") or []
+            if region.get("RegionName")
+        )
 
     # --- transport ----------------------------------------------------------------
 
@@ -512,12 +557,12 @@ class KubernetesApi:
                 return
             if token in seen:
                 raise KubernetesError(
-                    f"Kubernetes GET {path} repeated a continue token"
+                    f"Kubernetes GET {path} repeated a continue token",
                 )
             seen.add(token)
             params["continue"] = token
         raise KubernetesError(
-            f"Kubernetes GET {path} still had pages after {MAX_PAGES}"
+            f"Kubernetes GET {path} still had pages after {MAX_PAGES}",
         )
 
 
@@ -543,6 +588,13 @@ def presigned_token(sts_client: Any, cluster: str) -> str:
     )
     encoded = base64.urlsafe_b64encode(url.encode("utf-8")).decode("utf-8")
     return "k8s-aws-v1." + encoded.rstrip("=")
+
+
+def _active(account: Mapping[str, Any]) -> bool:
+    """Whether Organizations lists the account as one that can be read. `State` replaced
+    `Status`, which Organizations retired on 2026-09-09; an older answer has only
+    `Status`."""
+    return (account.get("State") or account.get("Status")) == "ACTIVE"
 
 
 def _batches(items: Sequence[str], size: int) -> Iterator[list[str]]:

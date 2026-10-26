@@ -568,22 +568,25 @@ fails the scan.
 #### `aws_containers` — ECS and EKS workloads
 
 Lists every ECS service, every ECS task no service owns, and every EKS workload in the
-regions of one account, and reports a workload when one of its images is an agent's in
-the catalog (`images:`), when it runs as an IAM role CloudTrail shows calling a Bedrock
-model, or every workload when `report_all_workloads` is true. Each record names the role
-the workload runs as.
+regions of one account, or of every account in an organization, and reports a workload
+when one of its images is an agent's in the catalog (`images:`), when it runs as an IAM
+role CloudTrail shows calling a Bedrock model, or every workload when
+`report_all_workloads` is true. Each record names the role the workload runs as.
 
 | Field | Secret | Required | Notes |
 |---|---|---|---|
-| `regions` | no | yes | Comma-separated regions, such as `us-east-1,us-west-2`. Both ECS and EKS are listed in each, and CloudTrail is read in each when `read_cloudtrail` is on |
+| `regions` | no | yes | Comma-separated regions, such as `us-east-1,us-west-2`, or `all` for every region each account has enabled. Both ECS and EKS are listed in each, and CloudTrail is read in each when `read_cloudtrail` is on. The named regions must share one partition |
 | `read_cloudtrail` | no | no | `true` (default) or `false`: read the roles that call Bedrock models, so a workload running as one is reported |
 | `report_all_workloads` | no | no | `true` to report every workload, not only catalog matches and AI-calling roles. Defaults to `false` |
 | `access_key_id` | yes | no | As for `aws_ec2`; without one, the engine uses its own AWS credentials only if `ARTHUR_ENGINE_AWS_CONTAINERS_ALLOW_DEFAULT_CREDENTIALS=true` is set |
 | `secret_access_key` | yes | no | Set with `access_key_id`, or neither |
 | `role_arn` | no | no | A role those credentials assume, as session `arthur-ai-discovery` |
-| `external_id` | no | no | The external ID the role's trust policy requires; only with `role_arn` |
+| `external_id` | no | no | The external ID the role's trust policy requires; with `role_arn`, or with `accounts`, where it is sent when assuming the member role in each account and needs no `role_arn` |
+| `accounts` | no | no | `all` for every active account in the organization, or comma-separated 12-digit account IDs. Each is read through its member role; unset, the credential's own account is read directly |
+| `member_role_name` | no | no | The role assumed in each account, by name; defaults to `arthur-ai-discovery` |
 
-The credential needs, all read-only:
+The credential (or, with `accounts`, the member role in each account) needs, all
+read-only:
 
 - ECS: `ecs:ListClusters`, `ecs:ListServices`, `ecs:DescribeServices`, `ecs:ListTasks`,
   `ecs:DescribeTasks`, `ecs:DescribeTaskDefinition`; for tasks on EC2 with no task role,
@@ -597,6 +600,33 @@ The credential needs, all read-only:
   --access-scope type=cluster`). A cluster still on `CONFIG_MAP` authentication needs the
   principal mapped in `aws-auth` to a group bound to the `view` ClusterRole instead.
 - CloudTrail: `cloudtrail:LookupEvents`, when `read_cloudtrail` is on.
+- EC2: `ec2:DescribeRegions`, with `regions: all`.
+
+**Every account in the organization.** Set `accounts` to `all`, or to account IDs, as for
+`aws_ec2`. The source lists the organization's active accounts
+(`organizations:ListAccounts`, from the management account or a delegated administrator),
+and in each assumes `arn:PARTITION:iam::ACCOUNT:role/MEMBER_ROLE_NAME` with the source's
+`external_id`, as session `arthur-ai-discovery`. The management account is treated like
+any other. With `role_arn` set too, the member roles are assumed from that role's session,
+so a hub role in the management account can hold the organization-wide grant for a
+credential that lives elsewhere. The source's own credential (or `role_arn`) needs:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    { "Effect": "Allow", "Action": "organizations:ListAccounts", "Resource": "*" },
+    { "Effect": "Allow", "Action": "sts:AssumeRole", "Resource": "arn:aws:iam::*:role/arthur-ai-discovery" }
+  ]
+}
+```
+
+and the member role in each account holds the actions above. A service-managed StackSet
+deploys the role to every account in an organizational unit, and to each that joins it
+later, but never to the management account, which needs the role created there directly.
+Each account's CloudTrail is read for its own roles, so one account's model callers never
+select another's workloads. An EKS access entry names the member role of the cluster's
+own account.
 
 `DescribeTaskDefinition` and the Kubernetes listings return containers' environment
 variables; the connector reads only images, roles, names and timestamps off them. `query`
@@ -627,7 +657,10 @@ a denied scope on the run, and the rest of the scan goes on. EKS answers 401 to 
 principal with no access entry on that cluster, so that is the cluster's refusal, not the
 credential's. A refused AWS credential ends the scan, and so does a scan refused every
 ECS and EKS listing, even when CloudTrail could be read: a source that listed no
-container reads as denied, not as an account without workloads.
+container reads as denied, not as an account without workloads. With `accounts`, an
+account whose member role cannot be assumed is a denied scope (`123456789012`) and the
+scan reads the rest; refused in every account, the scan fails. A refused credential is
+never one account's problem: a `401` from any account ends the scan.
 
 #### `splunk_enterprise` — Splunk Enterprise
 

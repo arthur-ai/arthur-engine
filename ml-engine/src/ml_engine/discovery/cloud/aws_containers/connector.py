@@ -1,7 +1,8 @@
 """ECS and EKS's side of a DISCOVER_AGENTS scan: container runtime inventory.
 
 Lists every ECS service, every ECS task no service owns, and every EKS workload in the
-configured regions of one account, and reports the ones that are, or may be, agents. A
+configured regions of one account, or of every account in an organization, and reports
+the ones that are, or may be, agents. A
 container runtime lists every workload, not only agents, so a workload is reported when:
 
 - one of its images is an agent's in the catalog (an `images` identifier in the
@@ -42,6 +43,13 @@ entry on that cluster. Only a refused AWS credential ends the scan, and a scan t
 list no workload at all fails with what refused it, so a key without its ECS and EKS
 grants reads as denied rather than as an account without workloads. The CloudTrail read
 does not count as a listing: it only adds callers to the workloads listed.
+
+AN ORGANIZATION IS A ROSTER, as on EC2 (`discovery.aws_organization`). `accounts` names
+accounts, or `all` for every active one Organizations lists, each read through a member
+role of one name assumed from the source's own session; `regions` may be `all`, each
+account's enabled regions. Each account's CloudTrail is read for its own roles. A member
+account whose role cannot be assumed is a denied scope and the scan reads the rest; a scan
+that could list no workload in any account fails, as one account's does.
 """
 
 import logging
@@ -73,10 +81,23 @@ from arthur_common.models.agent_governance_schemas import (
 )
 
 from discovery.aws_credentials import (
+    EXTERNAL_ID_FIELD,
     REGION_NAME,
+    ROLE_ARN_FIELD,
     SENSITIVE_FIELDS,
     aws_session,
     describe_credentials,
+)
+from discovery.aws_organization import (
+    ALL,
+    BOOTSTRAP_REGION,
+    BOOTSTRAP_REGIONS,
+    DEFAULT_MEMBER_ROLE_NAME,
+    is_all,
+    member_session,
+    parse_accounts,
+    parse_member_role_name,
+    partition_for,
 )
 from discovery.catalog import Matcher
 from discovery.cloud.aws_bedrock.client import (
@@ -122,7 +143,8 @@ from job_executors.discovery_scan import (
 
 VENDOR = "aws_containers"
 
-# Non-sensitive source fields, beside aws_credentials' role_arn and external_id.
+# Non-sensitive source fields, beside aws_credentials' role_arn and external_id, and
+# aws_organization's accounts and member_role_name.
 REGIONS_FIELD = "regions"
 READ_CLOUDTRAIL_FIELD = "read_cloudtrail"
 REPORT_ALL_FIELD = "report_all_workloads"
@@ -145,7 +167,7 @@ _FALSE = frozenset({"false", "0", "no", ""})
 # What a region the account has not enabled answers with, as a refused credential
 # would. Raised only from the region the credential was proven in.
 _REGION_NOT_ENABLED_CODES = frozenset(
-    {"InvalidClientTokenId", "UnrecognizedClientException"}
+    {"InvalidClientTokenId", "UnrecognizedClientException"},
 )
 # A cluster EKS is still building or tearing down has no API worth asking.
 _LISTABLE_CLUSTER_STATUSES = frozenset({"ACTIVE", "UPDATING"})
@@ -155,13 +177,44 @@ _T = TypeVar("_T")
 
 @dataclass(frozen=True)
 class ContainersSettings:
+    # The regions named; empty for `regions: all`.
     regions: tuple[str, ...]
     read_cloudtrail: bool = True
     report_all_workloads: bool = False
+    # `regions: all`: every region each account has enabled, asked per account.
+    all_regions: bool = False
+    # The accounts named, None for the credential's own.
+    accounts: Optional[tuple[str, ...]] = None
+    # `accounts: all`: every active account Organizations lists.
+    all_accounts: bool = False
+    member_role_name: str = DEFAULT_MEMBER_ROLE_NAME
+    # The AWS partition the named regions are in.
+    partition: str = "aws"
+
+    @property
+    def spans_accounts(self) -> bool:
+        """Whether the scan reads accounts through the member role, one at a time."""
+        return self.all_accounts or self.accounts is not None
+
+    @property
+    def home_region(self) -> str:
+        """Where STS, Organizations and DescribeRegions are asked: one account's first
+        named region, or, for a scope that spans accounts or every region, its
+        partition's bootstrap region, which every account there has enabled."""
+        if self.regions and not (self.spans_accounts or self.all_regions):
+            return self.regions[0]
+        return BOOTSTRAP_REGIONS.get(
+            self.partition,
+            self.regions[0] if self.regions else BOOTSTRAP_REGION,
+        )
 
 
 SessionFactory = Callable[
     [Mapping[str, Optional[str]], Mapping[str, str]],
+    boto3.Session,
+]
+AccountSessionFactory = Callable[
+    [boto3.Session, str, str, Optional[str]],
     boto3.Session,
 ]
 
@@ -171,15 +224,22 @@ def source_session(
     source_fields: Mapping[str, str],
 ) -> boto3.Session:
     """The source's AWS session, under this vendor's opt-in for the engine's own
-    credentials. STS is asked in the first region the source scans."""
-    regions = parse_group_names(source_fields.get(REGIONS_FIELD))
+    credentials. STS is asked in the scan's home region (`ContainersSettings`).
+
+    A source that spans accounts and assumes no role of its own has an external ID for
+    its member roles alone, so the source's own session is built without it.
+    """
+    settings = settings_from(source_fields)
+    fields = dict(source_fields)
+    if settings.spans_accounts and not (fields.get(ROLE_ARN_FIELD) or "").strip():
+        fields.pop(EXTERNAL_ID_FIELD, None)
     return aws_session(
         credentials,
-        source_fields,
+        fields,
         source="ECS and EKS source",
         allow_default_env_var=ALLOW_DEFAULT_CREDENTIALS_ENV_VAR,
         session_name=SESSION_NAME,
-        region_name=regions[0] if regions else None,
+        region_name=settings.home_region,
     )
 
 
@@ -211,6 +271,7 @@ class AwsContainersConnector:
         http: Optional[requests.Session] = None,
         clock: Callable[[], datetime] = lambda: datetime.now(timezone.utc),
         sleep: Callable[[float], None] = time.sleep,
+        account_session_for: AccountSessionFactory = member_session,
     ) -> None:
         self._session_for = session_for
         self._clients_for = clients_for
@@ -218,15 +279,19 @@ class AwsContainersConnector:
         self._http = http
         self._clock = clock
         self._sleep = sleep
+        self._account_session_for = account_session_for
         self._should_stop: Callable[[], bool] = lambda: False
         self._denied: list[DeniedScope] = []
+        # The member accounts the scan could not enter, and why.
+        self._refused_accounts: list[tuple[str, Exception]] = []
 
     def stop_when(self, should_stop: Callable[[], bool]) -> None:
         """Asked before every call, so a stop never waits on another listing."""
         self._should_stop = should_stop
 
     def denied_scopes(self) -> Sequence[DeniedScope]:
-        """The account-regions and clusters the scan was refused, and continued past."""
+        """The accounts, account-regions and clusters the scan was refused, and
+        continued past."""
         return tuple(self._denied)
 
     def scan(
@@ -240,67 +305,71 @@ class AwsContainersConnector:
         """`logger` is the JOB's, so what this reports reaches the Platform job log."""
         settings = settings_from(source_fields)
         session = self._session_for(credentials, source_fields)
-        client_for = self._clients_for(session)
-        bedrock = BedrockClient(
-            client_for,
-            logger,
-            should_stop=self._should_stop,
-            sleep=self._sleep,
-        )
-        client = AwsContainersClient(
-            client_for,
-            self._tokens_for(session),
-            logger,
-            should_stop=self._should_stop,
-            http=self._http,
-            sleep=self._sleep,
-        )
         matcher = Matcher.from_source(catalog_json=config.query or None, logger=logger)
-
-        # Asked first: it needs no permission, so a refusal here is the credential.
-        identity = bedrock.identity(settings.regions[0])
         end = self._clock()
         start = end - (
             timedelta(hours=lookback_hours)
             if lookback_hours > 0
             else DEFAULT_CLOUDTRAIL_LOOKBACK
         )
-        logger.info(
-            "ECS and EKS scan starting in account %s, region(s) %s, catalog %s, using "
-            "%s; reporting %s. Every workload is listed as it is now. CloudTrail model "
-            "callers: %s.",
-            identity.account,
-            ", ".join(settings.regions),
-            matcher.catalog_sha,
-            describe_credentials(credentials, source_fields),
-            (
-                "every workload"
-                if settings.report_all_workloads
-                else "workloads whose image is in the catalog or whose role calls AI"
-            ),
-            (
-                f"read from {start.isoformat()} to {end.isoformat()}"
-                if settings.read_cloudtrail
-                else "off"
-            ),
-        )
 
-        scan = _Scan(
-            client,
-            identity.account,
-            settings.regions[0],
-            self._denied,
-            logger,
-        )
         workloads: list[Workload] = []
         ai_roles: dict[str, frozenset[str]] = {}
+        scans: list[_Scan] = []
         stopped = False
         try:
-            if settings.read_cloudtrail:
-                ai_roles = scan.ai_roles(bedrock, settings.regions, start, end)
-            for region in settings.regions:
-                workloads.extend(scan.ecs(region))
-                workloads.extend(scan.eks(region))
+            # The roster: the source's own account, or every account named or listed,
+            # each read through the member role. The management account is one of them.
+            targets: list[tuple[Optional[str], boto3.Session]] = [(None, session)]
+            if settings.spans_accounts:
+                accounts = settings.accounts or self._client(
+                    session,
+                    logger,
+                ).organization_accounts(settings.home_region)
+                external_id = (
+                    source_fields.get(EXTERNAL_ID_FIELD) or ""
+                ).strip() or None
+                targets = [
+                    (
+                        account,
+                        self._account_session_for(
+                            session,
+                            account,
+                            settings.member_role_name,
+                            external_id,
+                        ),
+                    )
+                    for account in accounts
+                ]
+                logger.info(
+                    "ECS and EKS scan reading %s account(s) through role %s, using %s",
+                    len(targets),
+                    settings.member_role_name,
+                    describe_credentials(credentials, source_fields),
+                )
+                if not targets:
+                    logger.warning(
+                        "ECS and EKS scan found no active account in the organization. "
+                        "Nothing can be read, so this is the credential's view of "
+                        "Organizations, not an organization without workloads.",
+                    )
+            for account, account_session in targets:
+                self._scan_account(
+                    account,
+                    account_session,
+                    settings,
+                    matcher,
+                    (start, end),
+                    (
+                        describe_credentials(credentials, source_fields)
+                        if account is None
+                        else f"role {settings.member_role_name}"
+                    ),
+                    scans,
+                    workloads,
+                    ai_roles,
+                    logger,
+                )
         except ScanStopped:
             stopped = True
             logger.info(
@@ -316,25 +385,148 @@ class AwsContainersConnector:
             settings.report_all_workloads,
         )
         records = [r for r in (record_for(s, sharing, logger) for s in selected) if r]
-        _log_summary(workloads, selected, records, scan, logger)
+        _log_summary(workloads, selected, records, scans, len(self._denied), logger)
+        if settings.spans_accounts:
+            logger.info(
+                "ECS and EKS scope: %s account(s) read through role %s; %s refused%s",
+                len(scans),
+                settings.member_role_name,
+                len(self._refused_accounts),
+                _named([account for account, _ in self._refused_accounts]),
+            )
 
         for start_at in range(0, len(records), BATCH_SIZE):
             yield records[start_at : start_at + BATCH_SIZE]
 
-        if not stopped and self._denied and not scan.listed:
+        if not stopped and self._denied and not any(s.listed for s in scans):
             # No workload could be listed: a key without its ECS and EKS grants, not
             # an empty account, even when CloudTrail answered. Said with the status
             # failure_code reads.
+            first = next(
+                (s.first_refusal for s in scans if s.first_refusal is not None),
+                self._refused_accounts[0][1] if self._refused_accounts else None,
+            )
             raise AwsContainersError(
                 f"ECS and EKS scan was refused every workload listing it tried "
-                f"({', '.join(d.scope for d in self._denied)}). The first: "
-                f"{scan.first_refusal}",
+                f"({', '.join(d.scope for d in self._denied)}). The first: {first}"
+                + (
+                    f". Check that role {settings.member_role_name} exists in each "
+                    f"account and trusts this credential."
+                    if settings.spans_accounts
+                    else ""
+                ),
                 status_code=(
                     403
                     if all(d.reason == DENIED_PERMISSION for d in self._denied)
                     else None
                 ),
             )
+
+    def _client(
+        self,
+        session: boto3.Session,
+        logger: logging.Logger,
+    ) -> AwsContainersClient:
+        return AwsContainersClient(
+            self._clients_for(session),
+            self._tokens_for(session),
+            logger,
+            should_stop=self._should_stop,
+            http=self._http,
+            sleep=self._sleep,
+        )
+
+    def _scan_account(
+        self,
+        account: Optional[str],
+        session: boto3.Session,
+        settings: ContainersSettings,
+        matcher: Matcher,
+        window: tuple[datetime, datetime],
+        using: str,
+        scans: list["_Scan"],
+        workloads: list[Workload],
+        ai_roles: dict[str, frozenset[str]],
+        logger: logging.Logger,
+    ) -> None:
+        """One account's workloads and AI-calling roles, added to the scan's as each
+        region is read, so a stop keeps what was read before it.
+
+        `account` is None for the source's own, whose every refusal ends the scan. A
+        member account the scan cannot enter -- its role refused, or its regions -- is
+        a denied scope; a refused credential (401) is never one account's problem.
+        """
+        bedrock = BedrockClient(
+            self._clients_for(session),
+            logger,
+            should_stop=self._should_stop,
+            sleep=self._sleep,
+        )
+        client = self._client(session, logger)
+        try:
+            # Asked first: it needs no permission, so a refusal here is the credential,
+            # or in a member account the member role, which is assumed by this call.
+            identity = bedrock.identity(settings.home_region)
+            regions: Sequence[str] = (
+                client.enabled_regions(settings.home_region)
+                if settings.all_regions
+                else settings.regions
+            )
+        except (BedrockError, AwsContainersError) as e:
+            if account is None or e.status_code == 401:
+                raise
+            self._refuse_account(account, e, logger)
+            return
+
+        start, end = window
+        logger.info(
+            "ECS and EKS scan starting in account %s, region(s) %s, catalog %s, using "
+            "%s; reporting %s. Every workload is listed as it is now. CloudTrail model "
+            "callers: %s.",
+            identity.account,
+            ", ".join(regions) or "none enabled",
+            matcher.catalog_sha,
+            using,
+            (
+                "every workload"
+                if settings.report_all_workloads
+                else "workloads whose image is in the catalog or whose role calls AI"
+            ),
+            (
+                f"read from {start.isoformat()} to {end.isoformat()}"
+                if settings.read_cloudtrail
+                else "off"
+            ),
+        )
+
+        scan = _Scan(
+            client,
+            identity.account,
+            settings.home_region,
+            self._denied,
+            logger,
+        )
+        scans.append(scan)
+        if settings.read_cloudtrail:
+            # Keyed by `role_key`, which names the role's account: one account's
+            # callers never select another's workloads.
+            ai_roles.update(scan.ai_roles(bedrock, regions, start, end))
+        for region in regions:
+            workloads.extend(scan.ecs(region))
+            workloads.extend(scan.eks(region))
+
+    def _refuse_account(
+        self,
+        account: str,
+        error: Exception,
+        logger: logging.Logger,
+    ) -> None:
+        """A member account the scan could not enter: one scope, its every region."""
+        status = getattr(error, "status_code", None)
+        reason = DENIED_PERMISSION if status == 403 else DENIED_UNREACHABLE
+        self._denied.append(DeniedScope(account, reason))
+        self._refused_accounts.append((account, error))
+        logger.warning("%s: not read (%s): %s", account, reason, error)
 
 
 class _Scan:
@@ -541,7 +733,9 @@ class _Scan:
                 continue
             if str(cluster.get("status") or "ACTIVE") not in _LISTABLE_CLUSTER_STATUSES:
                 self._log.info(
-                    "EKS cluster %s is %s; not listed", scope, cluster["status"]
+                    "EKS cluster %s is %s; not listed",
+                    scope,
+                    cluster["status"],
                 )
                 continue
             identity = ClusterIdentity(
@@ -753,23 +947,44 @@ def display_name(selected: SelectedWorkload, sharing: Mapping[str, int]) -> str:
 
 
 def settings_from(source_fields: Mapping[str, str]) -> ContainersSettings:
-    """The regions and toggles from the source's non-sensitive fields."""
+    """The regions, accounts and toggles from the source's non-sensitive fields."""
     regions = parse_group_names(source_fields.get(REGIONS_FIELD))
     if not regions:
         raise DiscoveryConfigurationError(
             f"ECS and EKS source is missing required field '{REGIONS_FIELD}'. It is a "
             f"source field, not a secret.",
         )
-    bad = [r for r in regions if not REGION_NAME.match(r)]
+    all_regions = is_all(regions)
+    partitions: dict[str, str] = {}
+    bad = []
+    for region in () if all_regions else regions:
+        partition = partition_for(region) if REGION_NAME.match(region) else None
+        if partition is None:
+            bad.append(region)
+        else:
+            partitions[region] = partition
     if bad:
         raise DiscoveryConfigurationError(
             f"ECS and EKS source's '{REGIONS_FIELD}' has value(s) that are not AWS "
-            f"regions: {', '.join(repr(r) for r in bad)}. Use names such as us-east-1.",
+            f"regions: {', '.join(repr(r) for r in bad)}. Use names such as us-east-1, "
+            f"or '{ALL}' alone for every region each account has enabled.",
         )
+    if len(set(partitions.values())) > 1:
+        raise DiscoveryConfigurationError(
+            f"ECS and EKS source's '{REGIONS_FIELD}' names regions in more than one AWS "
+            f"partition ({', '.join(f'{r}: {p}' for r, p in partitions.items())}). One "
+            f"credential reaches one partition; use a source for each.",
+        )
+    accounts, all_accounts = parse_accounts(source_fields, "ECS and EKS source")
     return ContainersSettings(
-        regions=regions,
+        regions=() if all_regions else regions,
         read_cloudtrail=_flag(source_fields, READ_CLOUDTRAIL_FIELD, default=True),
         report_all_workloads=_flag(source_fields, REPORT_ALL_FIELD, default=False),
+        all_regions=all_regions,
+        accounts=accounts,
+        all_accounts=all_accounts,
+        member_role_name=parse_member_role_name(source_fields, "ECS and EKS source"),
+        partition=next(iter(partitions.values()), "aws"),
     )
 
 
@@ -784,15 +999,25 @@ def _flag(source_fields: Mapping[str, str], name: str, default: bool) -> bool:
     return raw in _TRUE
 
 
+def _named(items: Sequence[str]) -> str:
+    """` (a, b, c, ...)` naming the first few, or nothing for none."""
+    if not items:
+        return ""
+    shown = ", ".join(items[:10])
+    return f" ({shown}{', ...' if len(items) > 10 else ''})"
+
+
 def _log_summary(
     workloads: Sequence[Workload],
     selected: Sequence[SelectedWorkload],
     records: Sequence[DiscoveredAgentRecord],
-    scan: _Scan,
+    scans: Sequence[_Scan],
+    refused: int,
     logger: logging.Logger,
 ) -> None:
     by_kind: Counter[str] = Counter(w.kind for w in workloads)
     by_reason: Counter[str] = Counter(r for s in selected for r in s.reasons)
+    counts: Counter[str] = sum((s.counts for s in scans), Counter())
     logger.info(
         "ECS and EKS scan listed %s workload(s) (%s); %s reported (%s); %s AI-calling "
         "role(s) from %s model call event(s), %s of them refused; %s part(s) refused",
@@ -800,8 +1025,8 @@ def _log_summary(
         ", ".join(f"{k}: {n}" for k, n in sorted(by_kind.items())) or "none",
         len(records),
         ", ".join(f"{k}: {n}" for k, n in sorted(by_reason.items())) or "none",
-        scan.counts["ai_roles"],
-        scan.counts["model_call_events"],
-        scan.counts["refused_model_calls"],
-        len(scan.denied),
+        counts["ai_roles"],
+        counts["model_call_events"],
+        counts["refused_model_calls"],
+        refused,
     )

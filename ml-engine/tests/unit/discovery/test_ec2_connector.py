@@ -33,7 +33,7 @@ from botocore.exceptions import ClientError, EndpointConnectionError
 from botocore.session import Session as BotocoreSession
 from botocore.validate import ParamValidator
 
-import discovery.cloud.ec2.connector as ec2_connector
+import discovery.aws_organization as aws_organization
 from discovery import source_connectors
 from discovery.cloud.ec2.client import (
     MAX_PARTS,
@@ -1423,7 +1423,7 @@ def test_a_member_role_s_arn_is_in_the_source_s_partition(
         asked.append(role_arn)
         return base
 
-    monkeypatch.setattr(ec2_connector, "assumed_role_session", assumed)
+    monkeypatch.setattr(aws_organization, "assumed_role_session", assumed)
     base = source_session(
         {"access_key_id": "AKIAEXAMPLE", "secret_access_key": "secret"},
         {"regions": "us-gov-east-1", "accounts": "all"},

@@ -44,7 +44,6 @@ account and region, and reason, up to the run store's cap.
 """
 
 import logging
-import re
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta, timezone
 from typing import Callable, ClassVar, Iterator, Mapping, Optional, Sequence
@@ -53,16 +52,25 @@ import boto3
 from arthur_client.api_bindings import DiscoverySourceConfigSpec
 from arthur_common.models.agent_discovery_schemas import DiscoveredAgentRecord
 from arthur_common.models.agent_governance_schemas import Platform, RunsOn
-from botocore.exceptions import UnknownRegionError
 
 from discovery.aws_credentials import (
     EXTERNAL_ID_FIELD,
     REGION_NAME,
     ROLE_ARN_FIELD,
     SENSITIVE_FIELDS,
-    assumed_role_session,
     aws_session,
     describe_credentials,
+)
+from discovery.aws_organization import (
+    ALL,
+    BOOTSTRAP_REGION,
+    BOOTSTRAP_REGIONS,
+    DEFAULT_MEMBER_ROLE_NAME,
+    is_all,
+    member_session,
+    parse_accounts,
+    parse_member_role_name,
+    partition_for,
 )
 from discovery.catalog import Matcher
 from discovery.cloud.ec2.client import (
@@ -92,29 +100,11 @@ from job_executors.discovery_scan import (
 
 VENDOR = "aws_ec2"
 
-# Non-sensitive source fields, beside aws_credentials' role_arn and external_id.
+# Non-sensitive source fields, beside aws_credentials' role_arn and external_id, and
+# aws_organization's accounts and member_role_name.
 REGIONS_FIELD = "regions"
 INCLUDE_TAGS_FIELD = "include_tags"
 EXCLUDE_TAGS_FIELD = "exclude_tags"
-ACCOUNTS_FIELD = "accounts"
-MEMBER_ROLE_NAME_FIELD = "member_role_name"
-DEFAULT_MEMBER_ROLE_NAME = "arthur-ai-discovery"
-
-# What `regions` or `accounts` says to mean every one: each region an account has
-# enabled, every active account in the organization.
-ALL = "all"
-
-# Where STS, Organizations and DescribeRegions are asked: a region every account in the
-# partition has enabled. Organizations answers from its partition's own endpoint whichever
-# region asks, and opt-in regions exist only in the aws partition, where us-east-1 is
-# never one. The partition is the source's named regions'; `regions: all` names none and
-# is the aws partition's. A partition not listed is asked in the first region named.
-BOOTSTRAP_REGIONS = {
-    "aws": "us-east-1",
-    "aws-us-gov": "us-gov-west-1",
-    "aws-cn": "cn-north-1",
-}
-BOOTSTRAP_REGION = BOOTSTRAP_REGIONS["aws"]
 
 # Opt-in for the engine's own AWS credentials, as Compute Engine's for ADC.
 ALLOW_DEFAULT_CREDENTIALS_ENV_VAR = "ARTHUR_ENGINE_AWS_EC2_ALLOW_DEFAULT_CREDENTIALS"
@@ -139,10 +129,6 @@ __all__ = [
 
 # An EC2 tag key's length limit. Any character is allowed in one.
 _TAG_KEY_MAX = 128
-
-_ACCOUNT_ID = re.compile(r"^[0-9]{12}$")
-# IAM's own rule for a role name.
-_ROLE_NAME = re.compile(r"^[\w+=,.@-]{1,64}$")
 
 
 @dataclass(frozen=True)
@@ -205,27 +191,6 @@ def source_session(
         allow_default_env_var=ALLOW_DEFAULT_CREDENTIALS_ENV_VAR,
         session_name=SESSION_NAME,
         region_name=settings.bootstrap_region,
-    )
-
-
-def member_session(
-    base: boto3.Session,
-    account: str,
-    role_name: str,
-    external_id: Optional[str],
-) -> boto3.Session:
-    """The session for one account of the organization: its member role, assumed from
-    the source's own session with the source's external ID, as `SESSION_NAME`. The role's
-    ARN is in the partition of the region the source's session asks in."""
-    partition = (
-        base.get_partition_for_region(base.region_name) if base.region_name else "aws"
-    )
-    return assumed_role_session(
-        base,
-        f"arn:{partition}:iam::{account}:role/{role_name}",
-        external_id,
-        SESSION_NAME,
-        region_name=base.region_name,
     )
 
 
@@ -597,11 +562,11 @@ def settings_from(source_fields: Mapping[str, str]) -> Ec2Settings:
             f"EC2 source is missing required field '{REGIONS_FIELD}'. It is a source "
             f"field, not a secret.",
         )
-    all_regions = _is_all(regions)
+    all_regions = is_all(regions)
     partitions: dict[str, str] = {}
     bad = []
     for region in () if all_regions else regions:
-        partition = _partition_for(region) if REGION_NAME.match(region) else None
+        partition = partition_for(region) if REGION_NAME.match(region) else None
         if partition is None:
             bad.append(region)
         else:
@@ -619,23 +584,8 @@ def settings_from(source_fields: Mapping[str, str]) -> Ec2Settings:
             f"credential reaches one partition; use a source for each.",
         )
 
-    accounts = parse_group_names(source_fields.get(ACCOUNTS_FIELD))
-    all_accounts = _is_all(accounts)
-    bad = [] if all_accounts else [a for a in accounts if not _ACCOUNT_ID.match(a)]
-    if bad:
-        raise DiscoveryConfigurationError(
-            f"EC2 source's '{ACCOUNTS_FIELD}' has value(s) that are not AWS account "
-            f"IDs: {', '.join(repr(a) for a in bad)}. An account ID is 12 digits; "
-            f"'{ALL}' alone scans every active account in the organization.",
-        )
-    role_name = (
-        source_fields.get(MEMBER_ROLE_NAME_FIELD) or ""
-    ).strip() or DEFAULT_MEMBER_ROLE_NAME
-    if not _ROLE_NAME.match(role_name):
-        raise DiscoveryConfigurationError(
-            f"EC2 source's '{MEMBER_ROLE_NAME_FIELD}' is not an IAM role name: "
-            f"{role_name!r}. It is the name alone, not an ARN.",
-        )
+    accounts, all_accounts = parse_accounts(source_fields, "EC2 source")
+    role_name = parse_member_role_name(source_fields, "EC2 source")
     return Ec2Settings(
         regions=() if all_regions else regions,
         include_tags=parse_tag_selectors(
@@ -647,25 +597,11 @@ def settings_from(source_fields: Mapping[str, str]) -> Ec2Settings:
             EXCLUDE_TAGS_FIELD,
         ),
         all_regions=all_regions,
-        accounts=None if all_accounts or not accounts else accounts,
+        accounts=accounts,
         all_accounts=all_accounts,
         member_role_name=role_name,
         partition=next(iter(partitions.values()), "aws"),
     )
-
-
-def _partition_for(region: str) -> Optional[str]:
-    """The AWS partition a region is in, from botocore's endpoint data, or None for a
-    name no partition claims."""
-    try:
-        return str(boto3.Session().get_partition_for_region(region))
-    except UnknownRegionError:
-        return None
-
-
-def _is_all(values: Sequence[str]) -> bool:
-    """Whether a list field says `all`, which it can only say alone."""
-    return len(values) == 1 and values[0].lower() == ALL
 
 
 def parse_tag_selectors(value: Optional[str], field: str) -> tuple[str, ...]:
