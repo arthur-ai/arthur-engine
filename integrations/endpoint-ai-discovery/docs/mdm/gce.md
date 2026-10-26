@@ -119,7 +119,7 @@ print(len(json.loads(gzip.decompress(base64.b64decode(v[8:])))),"rows")'
 ## 05 · Reading the status
 
 `arthur/status` holds the collector's status line, whose vocabulary is upstream's
-([`deployment.md`](https://github.com/arthur-ai/osquery-ai-discovery/blob/main/docs/deployment.md)).
+([`deployment.md`](https://github.com/arthur-ai/ai-detection-spec/blob/main/osquery/docs/deployment.md#statustxt)).
 The Jamf runbook's [outcome table](jamf-pro.md#08--reading-the-status--jamf-pro) says what to do
 about each outcome. The reporter adds tokens about the latest run:
 
@@ -207,7 +207,9 @@ The source does not publish three kinds of VM:
   for example because the VM is stopped or its timer was removed. Its agents go stale in
   Arthur.
 
-A VM that still reports but is failing keeps publishing its last good scan.
+A VM that still reports but is failing keeps publishing its last good scan. A VM dated more
+than 15 minutes past the scan's clock is published too, and the scan's log names it and how far
+ahead it is: fix its time sync.
 
 Every VM the source could not read is also listed, as
 `device_coverage.unreadable_devices`: instance id, name, `project/zone`, the reason, and the

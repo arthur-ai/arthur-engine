@@ -68,9 +68,9 @@ export const VersionTagsDialog: React.FC<VersionTagsDialogProps> = ({ open, onCl
               options={suggestedTags}
               value={tags}
               onChange={(_e, newValue) => setTags(newValue)}
-              renderTags={(value, getTagProps) =>
+              renderValue={(value, getItemProps) =>
                 value.map((option, index) => {
-                  const { key, ...tagProps } = getTagProps({ index });
+                  const { key, ...tagProps } = getItemProps({ index });
                   return <Chip key={key} label={option} variant="outlined" {...tagProps} />;
                 })
               }

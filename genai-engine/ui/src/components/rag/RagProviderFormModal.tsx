@@ -171,7 +171,15 @@ export const RagProviderFormModal: React.FC<RagProviderFormModalProps> = ({ open
   const canSave = mode === "edit" ? canSubmitForm && (connectionTested || !values.api_key.trim()) : canSubmitForm && connectionTested;
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth TransitionProps={{ onEnter: handleModalEnter }}>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="sm"
+      fullWidth
+      slotProps={{
+        transition: { onEnter: handleModalEnter },
+      }}
+    >
       <DialogTitle>{mode === "create" ? "Create RAG Provider" : "Edit RAG Provider"}</DialogTitle>
       <DialogContent>
         <Box sx={{ display: "flex", flexDirection: "column", gap: 2, pt: 1 }}>

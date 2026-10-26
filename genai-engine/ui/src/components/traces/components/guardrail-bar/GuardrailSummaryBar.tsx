@@ -44,13 +44,27 @@ export function GuardrailSummaryBar({ invocations, selectedSpanId, onJumpToSpan 
 
   return (
     <Paper variant="outlined" sx={{ borderRadius: 1, overflow: "hidden" }}>
-      <Stack direction="row" alignItems="center" spacing={1.5} sx={{ px: 2, py: 1.25 }}>
+      <Stack
+        direction="row"
+        spacing={1.5}
+        sx={{
+          alignItems: "center",
+          px: 2,
+          py: 1.25,
+        }}
+      >
         <ShieldOutlinedIcon sx={{ fontSize: 20, color: "text.secondary" }} />
         <Typography variant="subtitle2" sx={{ whiteSpace: "nowrap" }}>
           {summary.total} {summary.total === 1 ? "guardrail" : "guardrails"}
         </Typography>
 
-        <Stack direction="row" alignItems="center" spacing={1}>
+        <Stack
+          direction="row"
+          spacing={1}
+          sx={{
+            alignItems: "center",
+          }}
+        >
           {summary.failed > 0 && <StatusBadge paletteKey="error" label={`${summary.failed} failed`} size="small" />}
           {summary.degraded > 0 && <StatusBadge paletteKey="warning" label={`${summary.degraded} degraded`} size="small" />}
           {summary.passed > 0 && <StatusBadge paletteKey="success" label={`${summary.passed} passed`} size="small" />}
@@ -83,7 +97,15 @@ export function GuardrailSummaryBar({ invocations, selectedSpanId, onJumpToSpan 
           </Stack>
 
           {filtered.length === 0 ? (
-            <Typography variant="caption" color="text.secondary" sx={{ display: "block", px: 1.5, py: 1 }}>
+            <Typography
+              variant="caption"
+              sx={{
+                color: "text.secondary",
+                display: "block",
+                px: 1.5,
+                py: 1,
+              }}
+            >
               No {filter} guardrails in this trace.
             </Typography>
           ) : (

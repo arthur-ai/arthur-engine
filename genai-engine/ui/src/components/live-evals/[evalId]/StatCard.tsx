@@ -19,17 +19,42 @@ const colorMap = {
 export const StatCard = ({ icon, label, value, subValue, color = "default" }: StatCardProps) => {
   return (
     <Paper variant="outlined" sx={{ p: 2.5, flex: 1, minWidth: 160 }}>
-      <Stack direction="row" spacing={1.5} alignItems="flex-start">
+      <Stack
+        direction="row"
+        spacing={1.5}
+        sx={{
+          alignItems: "flex-start",
+        }}
+      >
         <Box sx={{ color: colorMap[color], mt: 0.5 }}>{icon}</Box>
         <Stack spacing={0.5}>
-          <Typography variant="caption" color="text.secondary" sx={{ textTransform: "uppercase", letterSpacing: 0.5, fontSize: "0.65rem" }}>
+          <Typography
+            variant="caption"
+            sx={{
+              color: "text.secondary",
+              textTransform: "uppercase",
+              letterSpacing: 0.5,
+              fontSize: "0.65rem",
+            }}
+          >
             {label}
           </Typography>
-          <Typography variant="h5" fontWeight={600} color={colorMap[color]}>
+          <Typography
+            variant="h5"
+            color={colorMap[color]}
+            sx={{
+              fontWeight: 600,
+            }}
+          >
             {value}
           </Typography>
           {subValue && (
-            <Typography variant="caption" color="text.secondary">
+            <Typography
+              variant="caption"
+              sx={{
+                color: "text.secondary",
+              }}
+            >
               {subValue}
             </Typography>
           )}

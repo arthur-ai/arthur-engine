@@ -11,7 +11,6 @@ from datetime import datetime, timezone
 from typing import Any, Optional
 
 import pytest
-import yaml
 from arthur_common.models.agent_governance_schemas import (
     CloudAgentCreationSource,
     RunsOn,
@@ -55,6 +54,7 @@ from job_executors.discovery_scan import (
     ReportsDeniedScopes,
     failure_code,
 )
+from tests.fakes.catalog import agent, document
 
 LOG = logging.getLogger("discovery-test")
 PROJECT = "demo-project"
@@ -67,20 +67,14 @@ APP_SA = f"demo-app@{PROJECT}.iam.gserviceaccount.com"
 DEFAULT_SA = f"{NUMBER}-compute@developer.gserviceaccount.com"
 NODE_SA = f"demo-nodes@{PROJECT}.iam.gserviceaccount.com"
 UPDATED = "2026-09-01T12:00:00.123456789Z"
-CATALOG = yaml.safe_dump(
-    {
-        "version": 2,
-        "classifications": ["Coding agent"],
-        "agents": [
-            {
-                "id": "goose",
-                "name": "goose",
-                "classification": "Coding agent",
-                "platforms": ["darwin", "linux"],
-                "images": ["ghcr.io/block/goose"],
-            },
-        ],
-    },
+CATALOG = document(
+    agent(
+        "goose",
+        "goose",
+        "Coding agent",
+        platforms=["darwin", "linux"],
+        images=["ghcr.io/block/goose"],
+    ),
 )
 GOOSE = "ghcr.io/block/goose:1.2@sha256:" + "a" * 64
 PLAIN = "us-docker.pkg.dev/demo-project/apps/web:7"
@@ -647,7 +641,7 @@ def test_select_workloads_is_a_pure_join_on_the_service_account() -> None:
         service_accounts=(APP_SA,),
         last_seen=None,
     )
-    matcher = Matcher.from_source(catalog_yaml=CATALOG)
+    matcher = Matcher.from_source(catalog_json=CATALOG)
 
     assert select_workloads([workload], matcher) == []
     (selected,) = select_workloads(

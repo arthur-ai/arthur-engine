@@ -1,0 +1,156 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ai-detection-spec:schema:catalog:0.1",
+  "title": "ai-detection-spec: catalog",
+  "description": "A catalog of AI agents and how to recognise them on an endpoint. SPEC.md section 4.",
+  "type": "object",
+  "required": ["format", "platforms", "platform_groups", "classifications", "routes", "agents"],
+  "additionalProperties": false,
+  "properties": {
+    "format": {"type": "string", "pattern": "^ai-detection-spec/0\\.1$"},
+    "platforms": {
+      "type": "array", "minItems": 1, "uniqueItems": true,
+      "items": {"$ref": "#/$defs/name"}
+    },
+    "platform_groups": {
+      "type": "object",
+      "propertyNames": {"$ref": "#/$defs/name"},
+      "additionalProperties": {
+        "type": "array", "minItems": 1, "uniqueItems": true,
+        "items": {"$ref": "#/$defs/name"}
+      }
+    },
+    "classifications": {
+      "type": "array", "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "definition"],
+        "additionalProperties": false,
+        "properties": {
+          "name": {"type": "string", "minLength": 1},
+          "definition": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "routes": {
+      "type": "object", "minProperties": 1,
+      "propertyNames": {"pattern": "^[a-z][a-z0-9_]*$"},
+      "additionalProperties": {"$ref": "#/$defs/route"}
+    },
+    "agents": {"type": "array", "items": {"$ref": "#/$defs/agent"}},
+    "removed": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "what_it_is"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {"$ref": "#/$defs/agent_id"},
+          "what_it_is": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "source": {
+      "type": "object",
+      "description": "Where the document was produced from.",
+      "additionalProperties": {"type": "string"}
+    }
+  },
+  "$defs": {
+    "name": {"type": "string", "pattern": "^[a-z][a-z0-9]*$"},
+    "agent_id": {"type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"},
+    "match_mode": {
+      "description": "SPEC.md 6.4. The one declaration other implementations read.",
+      "enum": ["exact", "prefix", "exact-normalised", "home-dir", "home-prefix", "tool-dir"]
+    },
+    "route": {
+      "type": "object",
+      "required": ["kind", "match", "platform", "bindings"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {"$ref": "#/$defs/name"},
+        "match": {"$ref": "#/$defs/match_mode"},
+        "platform": {"$ref": "#/$defs/name"},
+        "bindings": {
+          "type": "object", "minProperties": 1,
+          "properties": {"osquery": {"$ref": "#/$defs/osquery_binding"}},
+          "additionalProperties": {"type": "object"}
+        },
+        "values_from": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+        "live": {"type": "boolean"},
+        "retired": {"type": "boolean"},
+        "value_pattern": {"type": "string", "minLength": 1},
+        "purl": {"type": "string", "pattern": "^[a-z][a-z0-9.+-]*$",
+                 "description": "The package-url type of this route's identifiers (SPEC.md 4.3)."}
+      }
+    },
+    "osquery_binding": {
+      "type": "object",
+      "required": ["table", "min_osquery"],
+      "additionalProperties": false,
+      "properties": {
+        "table": {"type": "string", "pattern": "^[a-z_][a-z0-9_]*$"},
+        "min_osquery": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"}
+      }
+    },
+    "agent": {
+      "type": "object",
+      "required": ["id", "name", "classification", "platforms", "identifiers"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {"$ref": "#/$defs/agent_id"},
+        "name": {"type": "string", "minLength": 1},
+        "classification": {"type": "string", "minLength": 1},
+        "platforms": {
+          "type": "array", "minItems": 1, "uniqueItems": true,
+          "items": {"$ref": "#/$defs/name"}
+        },
+        "identifiers": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/identifier"}}
+      }
+    },
+    "identifier": {
+      "type": "object",
+      "required": ["route", "value", "status"],
+      "additionalProperties": false,
+      "properties": {
+        "route": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+        "value": {"type": "string", "minLength": 1},
+        "purl": {"type": "string", "pattern": "^pkg:[a-z][a-z0-9.+-]*/[^@?#]+$",
+                 "description": "The package URL this identifier names, with no version."},
+        "status": {"enum": ["current", "superseded"]},
+        "proof": {"type": "array", "items": {"$ref": "#/$defs/observation"}},
+        "superseded": {"$ref": "#/$defs/superseded"}
+      },
+      "if": {"properties": {"status": {"const": "superseded"}}},
+      "then": {"required": ["superseded"]},
+      "else": {"not": {"required": ["superseded"]}}
+    },
+    "observation": {
+      "description": "SPEC.md 7.2. What produced the identifier.",
+      "type": "object",
+      "required": ["binding", "scenario", "platform", "run"],
+      "additionalProperties": false,
+      "properties": {
+        "binding": {"$ref": "#/$defs/name"},
+        "scenario": {"type": "string", "minLength": 1},
+        "platform": {"$ref": "#/$defs/name"},
+        "run": {"type": "string", "minLength": 1},
+        "os": {"type": "string"},
+        "arch": {"type": "string"},
+        "agent_version": {"type": "string"}
+      }
+    },
+    "superseded": {
+      "description": "SPEC.md 7.2. The last proof of an identifier the current release no longer produces.",
+      "type": "object",
+      "required": ["last_version", "last_proved", "by", "run"],
+      "additionalProperties": false,
+      "properties": {
+        "last_version": {"type": "string"},
+        "last_proved": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
+        "by": {"type": "string", "minLength": 1},
+        "run": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

@@ -33,8 +33,17 @@ function EvalChip({ evalItem, status }: { evalItem: EvalExecution; status: TestC
   return (
     <Tooltip
       title={
-        <Stack gap={0.5}>
-          <Typography variant="caption" fontWeight={600}>
+        <Stack
+          sx={{
+            gap: 0.5,
+          }}
+        >
+          <Typography
+            variant="caption"
+            sx={{
+              fontWeight: 600,
+            }}
+          >
             {label}: {pass ? "Pass" : "Fail"} (score {evalItem.eval_results.score})
           </Typography>
           {evalItem.eval_results.explanation && <Typography variant="caption">{evalItem.eval_results.explanation}</Typography>}
@@ -50,14 +59,25 @@ function EvalChip({ evalItem, status }: { evalItem: EvalExecution; status: TestC
 function EvalsCell({ evals, status }: { evals: EvalExecution[]; status: TestCaseStatus }) {
   if (evals.length === 0) {
     return (
-      <Typography variant="body2" color="text.secondary">
+      <Typography
+        variant="body2"
+        sx={{
+          color: "text.secondary",
+        }}
+      >
         N/A
       </Typography>
     );
   }
 
   return (
-    <Stack direction="row" gap={0.5} flexWrap="wrap">
+    <Stack
+      direction="row"
+      sx={{
+        gap: 0.5,
+        flexWrap: "wrap",
+      }}
+    >
       {evals.map((evalItem) => (
         <EvalChip key={`${evalItem.eval_name}-${evalItem.eval_version}`} evalItem={evalItem} status={status} />
       ))}

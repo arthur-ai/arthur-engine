@@ -151,7 +151,7 @@ python3 -m venv .venv
 | **Headers** | `Authorization` → `Bearer <WRAPPER_API_KEY>`; `Content-Type` → `application/json` |
 | **Config** | `{}` |
 
-<Image align="center" caption="Arthur AI guardrail configuration in TrueFoundry (input validate)" src="../images/truefoundry-testing.avif" />
+<Image align="center" caption="Arthur AI guardrail configuration in TrueFoundry (input validate)" src="truefoundry-testing.avif" />
 
 **Output validate:**
 

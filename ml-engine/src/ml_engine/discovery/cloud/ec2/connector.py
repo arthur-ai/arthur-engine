@@ -286,7 +286,7 @@ class Ec2Connector:
         """`logger` is the JOB's, so what this reports reaches the Platform job log."""
         settings = settings_from(source_fields)
         session = self._session_for(credentials, source_fields)
-        matcher = Matcher.from_source(catalog_yaml=config.query or None, logger=logger)
+        matcher = Matcher.from_source(catalog_json=config.query or None, logger=logger)
         own = Ec2Client(self._clients_for(session), logger)
 
         # Tag pairs are their own ids: nothing renames a tag out from under a scan.
@@ -360,7 +360,14 @@ class Ec2Connector:
             )
 
         carried: set[str] = set()
-        reader = VmInventoryReader(coverage, matcher, VENDOR, since, logger)
+        reader = VmInventoryReader(
+            coverage,
+            matcher,
+            VENDOR,
+            since,
+            logger,
+            clock=self._clock,
+        )
         scanned = 0
 
         for account, client in targets:

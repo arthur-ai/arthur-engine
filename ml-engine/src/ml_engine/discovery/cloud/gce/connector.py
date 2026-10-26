@@ -237,7 +237,7 @@ class ComputeEngineConnector:
             allow_adc_env_var=ALLOW_ADC_ENV_VAR,
             scopes=settings.scopes,
         )
-        matcher = Matcher.from_source(catalog_yaml=config.query or None, logger=logger)
+        matcher = Matcher.from_source(catalog_json=config.query or None, logger=logger)
         client = ComputeEngineClient(
             self._session_for(google_credentials, settings.scopes),
             logger,
@@ -298,7 +298,14 @@ class ComputeEngineConnector:
             )
 
         carried: set[str] = set()
-        reader = VmInventoryReader(coverage, matcher, VENDOR, since, logger)
+        reader = VmInventoryReader(
+            coverage,
+            matcher,
+            VENDOR,
+            since,
+            logger,
+            clock=self._clock,
+        )
         # Each project's metadata, or why it could not be read: asked once per project.
         project_flags: dict[
             str,

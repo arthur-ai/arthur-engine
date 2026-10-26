@@ -211,7 +211,13 @@ export const FilterModal = () => {
                     <Add />
                   </IconButton>
                 </Stack>
-                <Stack direction="row" flexWrap="wrap" gap={1}>
+                <Stack
+                  direction="row"
+                  sx={{
+                    flexWrap: "wrap",
+                    gap: 1,
+                  }}
+                >
                   {filterState.continuousEvalIds.map((id) => (
                     <Chip key={id} label={id} size="small" onDelete={() => handleRemoveContinuousEvalId(id)} deleteIcon={<Close />} />
                   ))}
@@ -274,7 +280,13 @@ export const FilterModal = () => {
               backgroundColor: "background.paper",
             }}
           >
-            <Stack direction="row" spacing={2} justifyContent="flex-end">
+            <Stack
+              direction="row"
+              spacing={2}
+              sx={{
+                justifyContent: "flex-end",
+              }}
+            >
               <Button variant="outlined" onClick={handleClearFilters} disabled={!hasActiveFilters}>
                 Clear
               </Button>

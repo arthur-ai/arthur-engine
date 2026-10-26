@@ -124,20 +124,47 @@ Full runbook: [gce.md](mdm/gce.md). The OS policy targets Debian 12 and Ubuntu 2
 ## EC2 instances
 
 Full runbook: [ec2.md](mdm/ec2.md). Instances must be managed by SSM and run Amazon Linux 2023
-or Ubuntu 24.04.
+or Ubuntu 24.04. Amazon Linux 2 installs too, but is not yet run on an instance (the
+[runbook's](mdm/ec2.md) Target row).
 
-1. **Pin the files.** Pin a commit of this repository and record the checksums of the five
-   files it installs ([section 01](mdm/ec2.md#01--pin-the-files--terminal)).
-2. **Create the install document and its association.** They install osquery, the collector
-   and its timer on every SSM-managed Linux instance in the region
-   ([section 02](mdm/ec2.md#02--the-install-association--terminal)).
-3. **Make sure custom inventory is gathered.** An instance runs only one inventory
-   association. If one already exists, update it rather than adding a second
+1. **Check for an inventory association** in each region. An instance runs only one. Where one
+   exists, you turn custom inventory on in it instead of creating a second, and deploy with
+   `CreateInventoryAssociation=false`
    ([section 03](mdm/ec2.md#03--the-inventory-association--terminal)).
+2. **Render the template** at a release tag of this repository. It pins every file the
+   instances download to its checksum
+   ([section 01](mdm/ec2.md#01--render-the-template--terminal)):
+
+   ```bash
+   tools/render-cfn-template.sh REF > arthur-ai-discovery.cfn.yaml
+   ```
+
+3. **Deploy it.** For one account, deploy a stack in each region
+   ([section 02](mdm/ec2.md#02--deploy-the-stack--terminal)):
+
+   ```bash
+   aws cloudformation deploy --region REGION --stack-name arthur-ai-discovery \
+     --template-file arthur-ai-discovery.cfn.yaml --capabilities CAPABILITY_NAMED_IAM \
+     --parameter-overrides CreateInventoryAssociation=CREATE_INVENTORY \
+         ArthurPrincipalArn=ARTHUR_PRINCIPAL_ARN ExternalId=EXTERNAL_ID MemberRoleRegion=ROLE_REGION
+   ```
+
+   The placeholders:
+   - `CREATE_INVENTORY` is `true` where step 1 found no inventory association, and `false` where
+     it found one.
+   - `ROLE_REGION` is one of the regions you deploy to. Only that region's stack creates the role
+     Arthur assumes, so with any other region there is no role and no `MemberRoleArn`.
+
+   The stack installs osquery, the collector and its timer on every SSM-managed Linux instance in
+   the region.
+
+   For an organization, deploy it as a StackSet to the member accounts instead. A StackSet
+   never reaches the management account, so deploy a stack in each of its regions as above
+   ([section 09](mdm/ec2.md#09--across-the-organization--terminal)).
 4. **Every managed Linux instance is targeted.** Both associations target every instance SSM
    manages in the region, and the install skips Windows. No tag is needed, and there is no
    exclusion tag: discovery is for what nobody opted in. To pilot on a few instances first,
-   target their instance ids ([section 04](mdm/ec2.md#04--scope-and-roll-out--terminal)).
+   set `TargetInstanceIds` ([section 04](mdm/ec2.md#04--scope-and-roll-out--terminal)).
 5. **Check one instance.** Wait for the timer's first run and the next inventory upload
    ([section 05](mdm/ec2.md#05--prove-it-on-one-instance--terminal)):
 
@@ -146,11 +173,17 @@ or Ubuntu 24.04.
      --type-name Custom:ArthurAIDiscovery --query 'Entries[].[Key,Part,Parts]' --output text
    ```
 
-6. **Connect Arthur.** Grant a credential the three read-only actions listed in
-   [section 07](mdm/ec2.md#07--access-for-the-arthur-collector). Then add an EC2 discovery
-   source with that credential and your regions. To scan every account in the organization
-   instead, deploy the member role to each account, give the credential the permissions in
-   section 07's *Every account in the organization*, and set `accounts` to `all`.
+6. **Connect Arthur.** Add an EC2 discovery source with these settings
+   ([section 07](mdm/ec2.md#07--access-for-the-arthur-collector)):
+   - the credential of `ArthurPrincipalArn`: an IAM user's access key, or for a role such as the
+     engine's IRSA role, the engine's own credentials with
+     `ARTHUR_ENGINE_AWS_EC2_ALLOW_DEFAULT_CREDENTIALS=true`
+   - `role_arn` set to the stack's `MemberRoleArn` output
+   - `external_id` set to `ExternalId`
+   - your regions
+
+   For the organization, give the credential the policy in section 07's *Every account in the
+   organization*. Then set `accounts` to `all` and leave `role_arn` unset.
 
 ## Next
 

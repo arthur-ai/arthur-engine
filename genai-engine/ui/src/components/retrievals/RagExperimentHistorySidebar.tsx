@@ -91,13 +91,28 @@ const ExperimentItem: React.FC<ExperimentItemProps> = ({ experiment, isExpanded,
             }
             secondary={
               <Box sx={{ display: "flex", alignItems: "center", gap: 1, mt: 0.5 }}>
-                <Typography variant="caption" color="text.secondary">
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: "text.secondary",
+                  }}
+                >
                   {formatRelativeTime(experiment.created_at, timezone)}
                 </Typography>
-                <Typography variant="caption" color="text.secondary">
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: "text.secondary",
+                  }}
+                >
                   •
                 </Typography>
-                <Typography variant="caption" color="text.secondary">
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: "text.secondary",
+                  }}
+                >
                   {experiment.rag_configs?.length || 0} configs
                 </Typography>
               </Box>
@@ -112,10 +127,20 @@ const ExperimentItem: React.FC<ExperimentItemProps> = ({ experiment, isExpanded,
           {isRunning && (
             <Box sx={{ mb: 2 }}>
               <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
-                <Typography variant="caption" color="text.secondary">
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: "text.secondary",
+                  }}
+                >
                   Progress
                 </Typography>
-                <Typography variant="caption" color="text.secondary">
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: "text.secondary",
+                  }}
+                >
                   {experiment.completed_rows} / {experiment.total_rows} rows
                 </Typography>
               </Box>
@@ -126,7 +151,12 @@ const ExperimentItem: React.FC<ExperimentItemProps> = ({ experiment, isExpanded,
           {/* Experiment details */}
           <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1, mb: 2 }}>
             <Box>
-              <Typography variant="caption" color="text.secondary">
+              <Typography
+                variant="caption"
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
                 Dataset
               </Typography>
               <Typography variant="body2" sx={{ fontWeight: 500 }}>
@@ -134,7 +164,12 @@ const ExperimentItem: React.FC<ExperimentItemProps> = ({ experiment, isExpanded,
               </Typography>
             </Box>
             <Box>
-              <Typography variant="caption" color="text.secondary">
+              <Typography
+                variant="caption"
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
                 Total Rows
               </Typography>
               <Typography variant="body2" sx={{ fontWeight: 500 }}>
@@ -143,7 +178,12 @@ const ExperimentItem: React.FC<ExperimentItemProps> = ({ experiment, isExpanded,
             </Box>
             {experiment.total_cost && (
               <Box>
-                <Typography variant="caption" color="text.secondary">
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: "text.secondary",
+                  }}
+                >
                   Total Cost
                 </Typography>
                 <Typography variant="body2" sx={{ fontWeight: 500 }}>
@@ -156,7 +196,14 @@ const ExperimentItem: React.FC<ExperimentItemProps> = ({ experiment, isExpanded,
           {/* RAG Configs */}
           {experiment.rag_configs && experiment.rag_configs.length > 0 && (
             <Box sx={{ mb: 2 }}>
-              <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
+              <Typography
+                variant="caption"
+                sx={{
+                  color: "text.secondary",
+                  display: "block",
+                  mb: 0.5,
+                }}
+              >
                 RAG Configurations
               </Typography>
               <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
@@ -248,7 +295,12 @@ export const RagExperimentHistorySidebar: React.FC<RagExperimentHistorySidebarPr
       {/* Content */}
       {!notebookId ? (
         <Box sx={{ p: 3, textAlign: "center" }}>
-          <Typography variant="body2" color="text.secondary">
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+            }}
+          >
             Save your notebook to track experiment history.
           </Typography>
         </Box>
@@ -261,7 +313,12 @@ export const RagExperimentHistorySidebar: React.FC<RagExperimentHistorySidebarPr
           <Typography variant="body1" sx={{ mb: 1 }}>
             No experiments yet
           </Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+            }}
+          >
             Click "Run Experiment" to create your first experiment from this notebook.
           </Typography>
         </Box>
@@ -295,7 +352,12 @@ export const RagExperimentHistorySidebar: React.FC<RagExperimentHistorySidebarPr
           }}
         >
           <CircularProgress size={16} />
-          <Typography variant="caption" color="primary.main">
+          <Typography
+            variant="caption"
+            sx={{
+              color: "primary.main",
+            }}
+          >
             Experiment in progress...
           </Typography>
         </Box>
