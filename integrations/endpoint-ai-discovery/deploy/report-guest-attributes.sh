@@ -26,13 +26,6 @@ URL="${ARTHUR_GUEST_ATTRIBUTES_URL:-http://metadata.google.internal/computeMetad
 # The unit sets TMPDIR under /var/lib/arthur, because a hardened image mounts /tmp and /var/tmp
 # noexec and the collector runs what it unpacks.
 [ -z "${TMPDIR:-}" ] || mkdir -p -m 700 "$TMPDIR" || { echo "arthur: cannot create $TMPDIR" >&2; exit 1; }
-# A collector built on osquery-ai-discovery before v0.14.0 left an empty osquery-<n>
-# directory in TMPDIR on every osqueryi exit, and no temp cleaner reads the unit's TMPDIR.
-# Only there, only that name, only empty, and never TMPDIR itself: in a shared TMPDIR a
-# running osqueryi's directory is empty too.
-case "${TMPDIR:-}" in
-  "$OUT"/*) find "$TMPDIR" -mindepth 1 -maxdepth 1 -type d -name 'osquery-*' -empty -delete 2>/dev/null ;;
-esac
 work="$(mktemp -d "${TMPDIR:-/tmp}/arthur-report.XXXXXX")" || {
   echo "arthur: cannot create a working directory" >&2; exit 1; }
 # A signal ENDS the run. Trapping it only to clean up would let the script carry on with its

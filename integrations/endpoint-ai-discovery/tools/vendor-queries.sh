@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Vendor osquery-ai-discovery's built artifacts at a pinned ref.
+# Vendor ai-detection-spec's osquery binding -- its built artifacts -- at a pinned ref.
 #
-#     tools/vendor-queries.sh v0.2.0
+#     tools/vendor-queries.sh v0.15.0
 #     tools/vendor-queries.sh 98eaeca        # a SHA, if no tag carries what you need
 #
 # WHY VENDOR RATHER THAN SUBMODULE OR FETCH-AT-BUILD. A vendored copy gives reviewable
@@ -9,33 +9,34 @@
 # sees it. A submodule adds clone and CI friction and is forgotten in exactly the
 # situations that matter; fetch-at-build makes an offline build stop working.
 #
-# WHAT COMES ACROSS, AND WHERE IT GOES. Both halves ride the same ref, because a catalog
-# that matched a different revision of the queries is a silent wrong answer:
+# WHAT COMES ACROSS, AND WHERE IT GOES. Upstream keeps the osquery binding under osquery/;
+# it lands here flattened, because tools/bundle.py packs the tree it sits in:
 #
-#   bin/      the runner, the Docker guard and the wall-clock bound. Deployed to Macs.
-#   dist/     the queries. Deployed to Macs inside the collector script.
-#   catalog/  NOT vendored here any more. The signatures are the collector's, and the
-#             collector is ml-engine/src/ml_engine/discovery/, which vendors them into
-#             its own package because that is what ships in its wheel. A copy here had
-#             no consumer once the collector moved: every reference to it in this tree
-#             is a guard asserting it must NEVER reach a Mac.
-#   tools/bundle.py   the self-extracting bundler, ONE NAMED FILE and not the directory.
-#             It runs HERE, at build time, and tools/build-collector.py hands it the
-#             Arthur driver. The rest of upstream's tools/ is maintainer tooling for that
-#             repo -- catalog validation, coverage reports -- which this repo has no use
-#             for and which would drag PyYAML behind it.
+#   osquery/bin/   -> bin/    the runner, the Docker guard and the wall-clock bound.
+#                             Deployed to every endpoint.
+#   osquery/dist/  -> dist/   the queries. Deployed inside the collector script.
+#   osquery/tools/bundle.py -> tools/bundle.py   the self-extracting bundler, ONE NAMED
+#                             FILE and not the directory. It runs HERE, at build time, and
+#                             tools/build-collector.py hands it the Arthur driver. The rest
+#                             of upstream's tools is maintainer tooling for that repo.
 #
-# The upstream tree is verified before anything is copied: `tools/build.py --check` must
-# pass at that ref, or the artifacts do not match the queries that produced them and this
-# repo would vendor a lie.
+# NOT the catalog, and NOT bin/classify, the matcher at the top of upstream's tree. Both are
+# the collector's, and the collector is ml-engine/src/ml_engine/discovery/, which vendors
+# them into its own package because that is what ships in its wheel. Both halves must ride
+# the same ref -- a catalog that matched a different revision of the queries is a silent
+# wrong answer -- and ml-engine's test_vendor_parity.py asserts that they do.
+#
+# The upstream tree is verified before anything is copied: `osquery/tools/build.py --check`
+# must pass at that ref, or the artifacts do not match the queries that produced them and
+# this repo would vendor a lie.
 set -uo pipefail
 
-REPO="${VENDOR_REPO:-https://github.com/arthur-ai/osquery-ai-discovery.git}"
+REPO="${VENDOR_REPO:-https://github.com/arthur-ai/ai-detection-spec.git}"
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-DEST="$HERE/vendor/osquery-ai-discovery"
+DEST="$HERE/vendor/ai-detection-spec"
 
 REF="${1:-}"
-[ -n "$REF" ] || { sed -n '2,10p' "$0" | sed 's/^# \{0,1\}//'; exit 1; }
+[ -n "$REF" ] || { sed -n '2,5p' "$0" | sed 's/^# \{0,1\}//'; exit 1; }
 
 work="$(mktemp -d "${TMPDIR:-/tmp}/vendor.XXXXXX")" || exit 1
 trap 'rm -rf "$work"' EXIT
@@ -54,25 +55,24 @@ else
   kind="commit (PROVISIONAL -- pin a tag once one carries this)"
 fi
 
+# THE BINDING MUST BE WHERE THIS SCRIPT COPIES FROM, AND A REF WITHOUT IT IS NAMED AS THE
+# CAUSE. v0.15.0 moved the scanner under osquery/ and renamed the bundler's driver interface
+# to AI_DETECTION_SPEC_ROOT, which tools/build-collector.py's driver reads. An older ref has
+# neither, so vendoring one would fail later, as an import error about a path or a driver that
+# exits 1 on every endpoint.
+for p in osquery/bin osquery/dist osquery/tools/bundle.py osquery/tools/build.py; do
+  [ -e "$work/src/$p" ] || {
+    echo "vendor: $REF has no $p. This repo vendors the osquery binding as" >&2
+    echo "        ai-detection-spec lays it out, so it cannot vendor a ref older than v0.15.0." >&2
+    exit 1; }
+done
+
 # THE UPSTREAM GATE. dist/ is generated from queries/, and a stale dist/ at that ref means
 # the artifacts do not match the SQL. Catching it here is the difference between vendoring
 # a mismatch and discovering it on a fleet.
-( cd "$work/src" && python3 tools/build.py --check >/dev/null ) || {
-  echo "vendor: tools/build.py --check FAILS at $REF -- dist/ does not match queries/." >&2
+( cd "$work/src" && python3 osquery/tools/build.py --check >/dev/null ) || {
+  echo "vendor: osquery/tools/build.py --check FAILS at $REF -- dist/ does not match queries/." >&2
   echo "        Refusing to vendor artifacts that do not match the SQL that made them." >&2
-  exit 1; }
-
-for d in bin dist; do
-  [ -d "$work/src/$d" ] || { echo "vendor: $REF has no $d/" >&2; exit 1; }
-done
-
-# THE BUNDLER IS REQUIRED, AND A REF WITHOUT ONE IS NAMED AS THE CAUSE. dist/collect.sh is
-# built by it now -- this repo stopped carrying its own copy of the extraction preamble --
-# so vendoring a ref that predates it would fail later, in build-collector.py, as an import
-# error about a path. v0.6.0 is the first release that carries it.
-[ -f "$work/src/tools/bundle.py" ] || {
-  echo "vendor: $REF has no tools/bundle.py. dist/collect.sh is built by upstream's" >&2
-  echo "        bundler, so this repo cannot vendor a ref older than v0.6.0." >&2
   exit 1; }
 
 # FROM HERE THE DESTINATION IS GONE, SO A FAILED COPY MUST NOT REACH THE MANIFEST. A
@@ -82,10 +82,10 @@ fatal() { echo "vendor: $1" >&2; echo "        $DEST is now incomplete; re-run t
 
 rm -rf "$DEST" || fatal "could not clear the destination"
 mkdir -p "$DEST" || fatal "could not create the destination"
-cp -R "$work/src/bin" "$DEST/bin" || fatal "could not copy bin/"
-cp -R "$work/src/dist" "$DEST/dist" || fatal "could not copy dist/"
+cp -R "$work/src/osquery/bin" "$DEST/bin" || fatal "could not copy osquery/bin/"
+cp -R "$work/src/osquery/dist" "$DEST/dist" || fatal "could not copy osquery/dist/"
 mkdir -p "$DEST/tools" || fatal "could not create tools/"
-cp "$work/src/tools/bundle.py" "$DEST/tools/bundle.py" || fatal "could not copy bundle.py"
+cp "$work/src/osquery/tools/bundle.py" "$DEST/tools/bundle.py" || fatal "could not copy bundle.py"
 chmod +x "$DEST"/bin/* 2>/dev/null
 
 # Arthur-specific deployment glue must not come across. Nothing upstream ships it today;
@@ -108,8 +108,9 @@ at     $(date -u +%Y-%m-%dT%H:%M:%SZ)
 EOF
 
 echo
-echo "vendored into vendor/osquery-ai-discovery/"
+echo "vendored into vendor/ai-detection-spec/"
 sed 's/^/  /' "$DEST/VERSION"
 echo "  files: $(find "$DEST" -type f | wc -l | tr -d ' ')"
 echo
 echo "next: tools/build-collector.py   (rebuilds the deployable around these)"
+echo "      and re-vendor ml-engine/src/ml_engine/discovery/_vendor/ at the same ref"

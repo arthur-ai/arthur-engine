@@ -1,34 +1,24 @@
 import {
   BucketProvider,
-  CopyableChip as SharedCopyableChip,
+  buildThresholdsFromSample,
   createSpanLevelColumns,
-  DurationCellWithBucket,
-  type ColumnDependencies as SharedColumnDependencies,
-  TextOperators,
   TracesTable,
-  TypeChip as SharedTypeChip,
+  useTraceColumnDependencies,
 } from "@arthur/shared-components";
-import { Search } from "@mui/icons-material";
-import { Alert, Box, Button, Paper, Stack, TextField } from "@mui/material";
+import { Alert, Box, Stack } from "@mui/material";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { SortingState } from "@tanstack/react-table";
 import type { MRT_ColumnDef } from "material-react-table";
 import { memo, useCallback, useMemo, useState } from "react";
 
-import { TokenCostTooltip, TokenCountTooltip } from "../../data/common";
 import { useDrawerTarget } from "../../hooks/useDrawerTarget";
 import { useSyncFiltersToUrl } from "../../hooks/useSyncFiltersToUrl";
 import { useFilterStore } from "../../stores/filter.store";
 import { usePaginationContext } from "../../stores/pagination-context";
-import { buildThresholdsFromSample } from "../../utils/duration";
 import { DataContentGate } from "../DataContentGate";
-import { SpanStatusBadge } from "../span-status-badge";
-import { isValidStatusCode } from "../StatusCode";
-import { TraceContentCell } from "../TraceContentCell";
 
-import { TracingFilterModal } from "./components/TracingFilterModal";
+import { TraceFiltersBar } from "./components/TraceFiltersBar";
 
-import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useApi } from "@/hooks/useApi";
 import { useMRTPagination } from "@/hooks/useMRTPagination";
 import { useTask } from "@/hooks/useTask";
@@ -37,7 +27,6 @@ import { FETCH_SIZE } from "@/lib/constants";
 import { queryKeys } from "@/lib/queryKeys";
 import { track, trackDynamic } from "@/services/analytics";
 import { getFilteredSpans } from "@/services/tracing";
-import { formatDateInTimezone } from "@/utils/formatters";
 
 const DEFAULT_DATA: SpanMetadataResponse[] = [];
 
@@ -55,9 +44,7 @@ export const SpanLevel = memo(({ welcomeDismissed }: SpanLevelProps) => {
   const api = useApi()!;
   const { task } = useTask();
   const [, setDrawerTarget] = useDrawerTarget();
-  const { timezone, use24Hour } = useDisplaySettings();
   const { pagination, props } = useMRTPagination({ initialPageSize: FETCH_SIZE });
-  const [searchInput, setSearchInput] = useState("");
 
   const filters = useFilterStore((state) => state.filters);
   const timeRange = useFilterStore((state) => state.timeRange);
@@ -111,46 +98,15 @@ export const SpanLevel = memo(({ welcomeDismissed }: SpanLevelProps) => {
     [data?.spans, setContext, setDrawerTarget, task?.id]
   );
 
+  const columnDependencies = useTraceColumnDependencies({ onTrack: trackDynamic });
+
   const columns = useMemo(() => {
-    const deps: SharedColumnDependencies = {
-      formatDate: (v) => formatDateInTimezone(v, timezone, { hour12: !use24Hour }),
-      formatCurrency: () => "",
-      onTrack: trackDynamic,
-      Chip: SharedCopyableChip,
-      DurationCell: DurationCellWithBucket,
-      TraceContentCell,
-      AnnotationCell: () => null,
-      SpanStatusBadge: SpanStatusBadge as SharedColumnDependencies["SpanStatusBadge"],
-      TypeChip: SharedTypeChip,
-      TokenCountTooltip,
-      TokenCostTooltip,
-      isValidStatusCode,
-    };
-    const raw = createSpanLevelColumns(deps) as MRT_ColumnDef<SpanMetadataResponse, unknown>[];
+    const raw = createSpanLevelColumns(columnDependencies) as MRT_ColumnDef<SpanMetadataResponse, unknown>[];
     return raw.map((col) => {
       const colId = (col as { id?: string }).id ?? (col as { accessorKey?: string }).accessorKey ?? "";
       return { ...col, enableSorting: colId in SORTABLE_COLUMN_MAP };
     });
-  }, [timezone, use24Hour]);
-
-  const setFilters = useFilterStore((state) => state.setFilters);
-
-  const handleSearch = useCallback(() => {
-    if (searchInput.trim()) {
-      const existingFilters = filters.filter((f) => f.name !== "span_name");
-      setFilters([
-        ...existingFilters,
-        {
-          name: "span_name",
-          operator: TextOperators.CONTAINS,
-          value: searchInput.trim(),
-        },
-      ]);
-    } else {
-      // Clear the span_name filter if search is empty
-      setFilters(filters.filter((f) => f.name !== "span_name"));
-    }
-  }, [searchInput, filters, setFilters]);
+  }, [columnDependencies]);
 
   const thresholds = useMemo(() => buildThresholdsFromSample(data?.spans?.map((span) => span.duration_ms) ?? []), [data?.spans]);
 
@@ -174,34 +130,7 @@ export const SpanLevel = memo(({ welcomeDismissed }: SpanLevelProps) => {
         dataType="spans"
       >
         {/* Search bar and filter button */}
-        {(hasData || hasActiveFilters || error) && (
-          <Paper variant="outlined" sx={{ p: 2 }}>
-            <Stack
-              direction="row"
-              spacing={2}
-              sx={{
-                alignItems: "center",
-              }}
-            >
-              <TextField
-                size="small"
-                placeholder="Search by span name"
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    handleSearch();
-                  }
-                }}
-                sx={{ width: 300 }}
-              />
-              <Button variant="outlined" startIcon={<Search />} onClick={handleSearch}>
-                Search
-              </Button>
-              <TracingFilterModal />
-            </Stack>
-          </Paper>
-        )}
+        {(hasData || hasActiveFilters || error) && <TraceFiltersBar />}
 
         {error && (
           <Box sx={{ p: 2 }}>

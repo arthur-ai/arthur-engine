@@ -31,6 +31,10 @@ Parameters:
     AllowedValues:
       - 'internet-facing'
       - 'internal'
+  GenaiEngineLoadBalancerSSLPolicy:
+    Description: 'The SSL/TLS security policy for the HTTPS listener. Defaults to a FIPS-compliant TLS 1.2+ policy (SOC2 aws-application-loadbalancer-enforces-fips-tls).'
+    Type: String
+    Default: 'ELBSecurityPolicy-TLS13-1-2-FIPS-2023-04'
   GenaiEngineVPCId:
     Type: String
     Description: 'GenAI Engine VPC ID'
@@ -80,7 +84,7 @@ Resources:
       LoadBalancerArn: !Ref GenaiEngineLoadBalancer
       Port: 443
       Protocol: 'HTTPS'
-      SslPolicy: 'ELBSecurityPolicy-TLS13-1-2-Res-2021-06'
+      SslPolicy: !Ref GenaiEngineLoadBalancerSSLPolicy
       Certificates:
         - CertificateArn: !Ref GenaiEngineLoadBalancerCertificateARN
       DefaultActions:

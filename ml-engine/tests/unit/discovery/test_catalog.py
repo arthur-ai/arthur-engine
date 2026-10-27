@@ -14,36 +14,28 @@ import pathlib
 from typing import Any
 
 import pytest
-import yaml
 
-from discovery.catalog import Matcher, is_gap
+from discovery.catalog import Matcher
+from tests.fakes.catalog import agent, document
 
 COLLECTOR_OUTPUT = pathlib.Path("/var/lib/arthur")
 
 # A catalog small enough to reason about, in the real schema. One agent deliberately
 # claims two routes, because that is the case the grain decision turns on.
-CATALOG = yaml.safe_dump(
-    {
-        "version": 2,
-        "classifications": ["Coding agent"],
-        "agents": [
-            {
-                "id": "codex-cli",
-                "name": "Codex CLI",
-                "classification": "Coding agent",
-                "platforms": ["darwin"],
-                "npm": ["@openai/codex"],
-                "binaries": ["~/.local/bin/codex"],
-            },
-            {
-                "id": "claude-desktop",
-                "name": "Claude Desktop",
-                "classification": "Coding agent",
-                "platforms": ["darwin"],
-                "bundle_ids": ["com.anthropic.claudefordesktop"],
-            },
-        ],
-    },
+CATALOG = document(
+    agent(
+        "codex-cli",
+        "Codex CLI",
+        "Coding agent",
+        npm=["@openai/codex"],
+        binaries=["~/.local/bin/codex"],
+    ),
+    agent(
+        "claude-desktop",
+        "Claude Desktop",
+        "Coding agent",
+        bundle_ids=["com.anthropic.claudefordesktop"],
+    ),
 )
 
 
@@ -59,7 +51,7 @@ def scan(branch: str, extra: str = "ok", ver: str = "1790100381") -> dict[str, s
 
 @pytest.fixture
 def matcher() -> Matcher:
-    return Matcher.from_source(catalog_yaml=CATALOG)
+    return Matcher.from_source(catalog_json=CATALOG)
 
 
 # --- the floor ---------------------------------------------------------------------
@@ -70,13 +62,14 @@ def test_floor_catalog_is_the_vendored_one() -> None:
     assert m.agent_count == 42
     # Upstream's own catalog_sha, computed over file bytes. If this changes, the vendor
     # tree moved and every record's recorded catalog version moved with it.
-    assert m.catalog_sha == "5ed72c475327"
+    assert m.catalog_sha == "df9eede4b2ff"
 
 
 def test_a_catalog_built_from_a_mapping_marks_its_hash_as_not_upstreams() -> None:
-    assert Matcher({"version": 2, "agents": []}, {"routes": {}}).catalog_sha.startswith(
-        "norm:",
-    )
+    assert Matcher(
+        {"version": 3, "agents": []},
+        {"platforms": ["darwin"], "routes": {}},
+    ).catalog_sha.startswith("norm:")
 
 
 def test_config_supplied_catalog_replaces_the_floor(matcher: Matcher) -> None:
@@ -135,7 +128,7 @@ def test_an_install_record_speaks_before_a_path(matcher: Matcher) -> None:
 
 
 def test_a_running_row_does_not_speak_for_an_installed_agent(matcher: Matcher) -> None:
-    """`proc` is declared before `npm` in routes.yaml, but a process row carries no version
+    """`proc` is declared before `npm` in the catalog's routes, but a process row carries no version
     and names an executable, not an install. Presence speaks; liveness stays evidence.
     """
     result = matcher.match(
@@ -205,23 +198,16 @@ def test_a_bundle_without_a_version_still_speaks_before_its_cask() -> None:
 def test_a_current_identifier_speaks_before_one_the_vendor_replaced() -> None:
     """The matcher hands upstream which rows matched a superseded identifier. Without the
     flags, evidence order would let the replaced generation describe the finding."""
-    catalog = yaml.safe_dump(
-        {
-            "version": 2,
-            "classifications": ["Personal agent"],
-            "agents": [
-                {
-                    "id": "openclaw",
-                    "name": "OpenClaw",
-                    "classification": "Personal agent",
-                    "platforms": ["darwin"],
-                    "npm": ["openclaw", "moltbot"],
-                    "superseded": [{"route": "npm", "value": "moltbot"}],
-                },
-            ],
-        },
+    catalog = document(
+        agent(
+            "openclaw",
+            "OpenClaw",
+            "Personal agent",
+            superseded=[("npm", "moltbot")],
+            npm=["openclaw", "moltbot"],
+        ),
     )
-    result = Matcher.from_source(catalog_yaml=catalog).match(
+    result = Matcher.from_source(catalog_json=catalog).match(
         [
             row(
                 "npm",
@@ -252,7 +238,7 @@ def test_a_version_that_is_not_text_is_reported_as_text(matcher: Matcher) -> Non
 
 def test_an_apt_install_keeps_its_version_once_the_agent_has_run() -> None:
     """dpkg's row off a real apt install on Ubuntu 22.04, beside the state directory the
-    first run creates. `file` is declared ahead of `deb` in routes.yaml, and ranked by that
+    first run creates. `file` is declared ahead of `deb` in the routes, and ranked by that
     alone the record lost its version and changed address on the user's first run."""
     result = Matcher.from_source().match(
         [
@@ -267,33 +253,33 @@ def test_an_apt_install_keeps_its_version_once_the_agent_has_run() -> None:
     assert finding.install_path is None
 
 
-_CLAUDE_IN_CHROME = yaml.safe_dump(
-    {
-        "version": 2,
-        "classifications": ["Browser agent"],
-        "agents": [
-            {
-                "id": "claude-in-chrome",
-                "name": "Claude in Chrome",
-                "classification": "Browser agent",
-                "platforms": ["darwin"],
-                "extension_ids": ["fcoeoabgfenejglbffodgkkbkcdhcgfn"],
-            },
-        ],
-    },
+_CLAUDE_IN_CHROME = document(
+    agent(
+        "claude-in-chrome",
+        "Claude in Chrome",
+        "Browser agent",
+        extension_ids=["fcoeoabgfenejglbffodgkkbkcdhcgfn"],
+    ),
 )
 
 
 def test_the_copy_the_browser_loads_speaks_before_a_leftover() -> None:
     """A profile keeps old version directories, and browser.sql marks each one Chrome never
-    loads `unreferenced`. Read off a real profile: seven leftovers listed before the copy
-    Chrome loads, so the first row reported a version that was not running."""
+    loads `unreferenced`, after the browser in `extra`. Read off a real profile: seven
+    leftovers listed before the copy Chrome loads, so the first row reported a version that
+    was not running."""
     ext = "fcoeoabgfenejglbffodgkkbkcdhcgfn"
-    result = Matcher.from_source(catalog_yaml=_CLAUDE_IN_CHROME).match(
+    result = Matcher.from_source(catalog_json=_CLAUDE_IN_CHROME).match(
         [
-            row("ext", ext, ver="1.0.94", perms="tabs, storage,unreferenced"),
-            row("ext", ext, ver="1.0.97", perms="tabs, storage,unreferenced"),
-            row("ext", ext, ver="1.0.91", perms="tabs, storage, debugger"),
+            row("ext", ext, ver="1.0.94", extra="chrome,unreferenced", perms="tabs"),
+            row("ext", ext, ver="1.0.97", extra="chrome,unreferenced", perms="tabs"),
+            row(
+                "ext",
+                ext,
+                ver="1.0.91",
+                extra="chrome",
+                perms="tabs, storage, debugger",
+            ),
         ],
     )
     finding = result.findings[0]
@@ -304,10 +290,10 @@ def test_the_copy_the_browser_loads_speaks_before_a_leftover() -> None:
 
 def test_a_leftover_still_speaks_when_no_copy_is_loaded() -> None:
     ext = "fcoeoabgfenejglbffodgkkbkcdhcgfn"
-    result = Matcher.from_source(catalog_yaml=_CLAUDE_IN_CHROME).match(
+    result = Matcher.from_source(catalog_json=_CLAUDE_IN_CHROME).match(
         [
-            row("ext", ext, ver="1.0.94", perms="tabs,unreferenced"),
-            row("ext", ext, ver="1.0.97", perms="tabs,unreferenced"),
+            row("ext", ext, ver="1.0.94", extra="chrome,unreferenced", perms="tabs"),
+            row("ext", ext, ver="1.0.97", extra="chrome,unreferenced", perms="tabs"),
         ],
     )
     assert result.findings[0].version == "1.0.94"
@@ -320,36 +306,20 @@ def test_permissions_split_into_a_tuple(matcher: Matcher) -> None:
     assert result.findings[0].permissions == ("tabs", "<all_urls>")
 
 
-@pytest.mark.parametrize(
-    "perms",
-    [
-        "tabs,<all_urls>,unreferenced",
-        "tabs,<all_urls>,sideloaded:9f2c4e",
-        # osquery's own spelling: permissions joined with ", ", browser.sql's tokens with ","
-        "tabs, <all_urls>,sideloaded:9f2c4e",
-    ],
-)
-def test_extension_provenance_is_not_a_permission(perms: str) -> None:
-    """browser.sql appends `unreferenced` or `sideloaded:<sha256>` to an extension's
-    `perms`. Neither is a permission; upstream's split_perms() says which tokens they are.
+@pytest.mark.parametrize("mark", ["unreferenced", "sideloaded:9f2c4e"])
+def test_extension_provenance_is_not_a_permission(mark: str) -> None:
+    """browser.sql marks an extension `unreferenced` or `sideloaded:<sha256>` after the
+    browser in `extra`, and `perms` holds only permissions, joined by osquery with ", ".
     """
-    catalog = yaml.safe_dump(
-        {
-            "version": 2,
-            "classifications": ["Browser agent"],
-            "agents": [
-                {
-                    "id": "claude-in-chrome",
-                    "name": "Claude in Chrome",
-                    "classification": "Browser agent",
-                    "platforms": ["darwin"],
-                    "extension_ids": ["fcoeoabgfenejglbffodgkkbkcdhcgfn"],
-                },
-            ],
-        },
-    )
-    result = Matcher.from_source(catalog_yaml=catalog).match(
-        [row("ext", "fcoeoabgfenejglbffodgkkbkcdhcgfn", perms=perms)],
+    result = Matcher.from_source(catalog_json=_CLAUDE_IN_CHROME).match(
+        [
+            row(
+                "ext",
+                "fcoeoabgfenejglbffodgkkbkcdhcgfn",
+                extra=f"chrome,{mark}",
+                perms="tabs, <all_urls>",
+            ),
+        ],
     )
     assert result.findings[0].permissions == ("tabs", "<all_urls>")
 
@@ -400,7 +370,6 @@ def test_a_branch_that_could_not_look_reads_as_a_gap(
 ) -> None:
     result = matcher.match([scan("containers", extra=extra)])
     assert len(result.gaps) == 1
-    assert is_gap(result.gaps[0])
     assert not result.complete, "findings are partial while a branch went unread"
 
 
@@ -425,9 +394,8 @@ def test_a_runtime_that_is_present_but_unread_is_still_a_gap(matcher: Matcher) -
 
 
 def test_an_absence_is_not_counted_as_a_dropped_row(matcher: Matcher) -> None:
-    """The arithmetic reconciles rows against every bucket. A subtraction that forgot
-    absences would read them as rows the matcher lost, which is the alarm that says a
-    route is missing from routes.yaml."""
+    """Absences are a bucket of their own. Counted as rows the matcher lost, they would
+    raise the alarm that says a route is missing from the catalog."""
     result = matcher.match(
         [
             scan("apps"),
@@ -457,8 +425,9 @@ def test_scanned_at_is_none_when_no_branch_dated_itself(matcher: Matcher) -> Non
 
 
 def test_a_kind_absent_from_the_registry_is_counted_not_lost(matcher: Matcher) -> None:
-    """Upstream discards these without counting them. That is the historical `ext` bug:
-    rows collected correctly, never surfaced, for months, while row counts stayed right.
+    """A row whose kind no route declares can never match, and is neither matched nor
+    unmatched. That is the historical `ext` bug: rows collected correctly, never surfaced,
+    for months, while row counts stayed right.
     """
     result = matcher.match([row("wormhole", "something"), row("npm", "@openai/codex")])
     assert result.dropped == 1
@@ -480,13 +449,40 @@ def test_arithmetic_reconciles_when_nothing_is_dropped(matcher: Matcher) -> None
     assert result.dropped == 0
 
 
-def test_version_skew_warns_rather_than_refusing(
-    caplog: pytest.LogCaptureFixture,
-) -> None:
-    """Refusing would read downstream as a clean fleet, which is the error to avoid."""
-    newer = yaml.safe_dump({"version": 99, "agents": []})
-    Matcher.from_source(catalog_yaml=newer)
-    assert "Matching what it can" in caplog.text
+def test_a_catalog_that_is_not_a_document_is_refused() -> None:
+    """The authoring form a release builds its document from is not read here."""
+    with pytest.raises(ValueError, match="not JSON"):
+        Matcher.from_source(catalog_json="version: 3\nagents: []\n")
+    with pytest.raises(ValueError, match="names no `format`"):
+        Matcher.from_source(catalog_json=json.dumps({"version": 3, "agents": []}))
+
+
+def test_a_catalog_document_the_schema_refuses_is_refused() -> None:
+    """Validated before it is read (SPEC.md 4), so a document missing a member fails the
+    scan, naming the member, rather than matching what is left."""
+    document = json.loads(CATALOG)
+    del document["classifications"]
+    with pytest.raises(ValueError, match="classifications"):
+        Matcher.from_source(catalog_json=json.dumps(document))
+
+
+def test_a_duplicate_key_in_a_catalog_document_is_refused() -> None:
+    text = CATALOG.replace(
+        '"format": "ai-detection-spec/0.1"',
+        '"format": "ai-detection-spec/0.1", "format": "ai-detection-spec/0.1"',
+    )
+    with pytest.raises(ValueError, match="duplicate key 'format'"):
+        Matcher.from_source(catalog_json=text)
+
+
+def test_an_identifier_on_a_route_that_borrows_another_is_refused() -> None:
+    """`running_apps` matches `bundle_ids` identifiers and has none of its own, so one
+    placed on it would match nothing, in silence (SPEC.md 4.4 rule 1)."""
+    bad = document(
+        agent("x", "X", "Coding agent", running_apps=["com.example.agent"]),
+    )
+    with pytest.raises(ValueError, match="running_apps"):
+        Matcher.from_source(catalog_json=bad)
 
 
 # --- against what actually ships ---------------------------------------------------
@@ -507,79 +503,21 @@ def test_real_payload_reconciles_and_collapses_routes() -> None:
     result = Matcher.from_source().match(rows)
 
     evidence = sum(len(f.evidence) for f in result.findings)
+    # Every bucket, so a Mac without Docker -- an `absent` marker -- reconciles too.
     assert (
-        evidence + result.unmatched + len(result.gaps) + len(result.scans)
+        evidence
+        + result.unmatched
+        + len(result.gaps)
+        + len(result.scans)
+        + len(result.absences)
+        + result.dropped
         == result.rows_total
     )
-    assert result.dropped == 0, "a route is missing from the vendored routes.yaml"
+    assert result.dropped == 0, "a route is missing from the vendored catalog"
     assert result.findings, "this Mac is known to carry agents"
     # The grain actually collapsing something, on real evidence rather than a fixture.
     assert evidence > len(result.findings)
     assert result.scanned_at is not None
-
-
-class TestLoadTimeValidation:
-    """A malformed catalog fails once, at load, not once per device.
-
-    The vendored matcher reaches for these keys directly and rebuilds its index inside
-    classify(), which runs per Mac -- so without this a bad config raises KeyError on
-    every device in the fleet, each time as a scan failure naming a key rather than a
-    config naming itself.
-    """
-
-    @pytest.mark.parametrize(
-        "catalog,expected",
-        [
-            ({"version": 2}, "no 'agents' list"),
-            (
-                {"version": 2, "agents": [{"name": "x", "classification": "c"}]},
-                "index 0",
-            ),
-            (
-                {"version": 2, "agents": [{"id": "aider", "classification": "c"}]},
-                "aider has no 'name'",
-            ),
-            ({"version": 2, "agents": ["not-a-mapping"]}, "not a mapping"),
-        ],
-    )
-    def test_a_malformed_catalog_is_refused_with_the_entry_named(
-        self,
-        catalog: dict,
-        expected: str,
-    ) -> None:
-        """The message names the agent id when there is one, else its index."""
-        with pytest.raises(ValueError, match=expected):
-            Matcher.from_source(catalog_yaml=yaml.safe_dump(catalog))
-
-    @pytest.mark.parametrize(
-        "routes,expected",
-        [
-            ({"routes": {}}, "no 'platforms' list"),
-            ({"platforms": ["darwin"]}, "no 'routes' mapping"),
-            (
-                {"platforms": ["darwin"], "routes": {"npm": {"kind": "npm"}}},
-                "route npm has no 'match'",
-            ),
-            (
-                {"platforms": ["darwin"], "routes": {"npm": {"match": "exact"}}},
-                "route npm has no 'kind'",
-            ),
-        ],
-    )
-    def test_malformed_routes_are_refused_with_the_route_named(
-        self,
-        routes: dict,
-        expected: str,
-    ) -> None:
-        with pytest.raises(ValueError, match=expected):
-            Matcher.from_source(
-                catalog_yaml=CATALOG,
-                routes_yaml=yaml.safe_dump(routes),
-            )
-
-    def test_the_vendored_floor_passes_its_own_validation(self) -> None:
-        """The guard must not have made the shipped catalog unloadable."""
-        assert Matcher.from_source().agent_count == 42
 
 
 class TestCatalogHashUsesFileBytes:
@@ -587,7 +525,7 @@ class TestCatalogHashUsesFileBytes:
     number -- which is sha256 over the file's BYTES."""
 
     def test_the_floor_still_matches_upstreams_value(self) -> None:
-        assert Matcher.from_source().catalog_sha == "5ed72c475327"
+        assert Matcher.from_source().catalog_sha == "df9eede4b2ff"
 
     def test_crlf_does_not_change_the_hash_the_way_read_text_would(
         self,
@@ -598,10 +536,11 @@ class TestCatalogHashUsesFileBytes:
         that is stable, plausible, and not the one upstream computed."""
         import hashlib
 
-        crlf = CATALOG.replace("\n", "\r\n")
+        lf = json.dumps(json.loads(CATALOG), indent=1)
+        crlf = lf.replace("\n", "\r\n")
         expected = hashlib.sha256(crlf.encode()).hexdigest()[:12]
-        assert Matcher.from_source(catalog_yaml=crlf).catalog_sha == expected
-        assert expected != hashlib.sha256(CATALOG.encode()).hexdigest()[:12]
+        assert Matcher.from_source(catalog_json=crlf).catalog_sha == expected
+        assert expected != hashlib.sha256(lf.encode()).hexdigest()[:12]
 
 
 class TestScanTimestamps:
@@ -611,164 +550,10 @@ class TestScanTimestamps:
     def test_an_unparseable_ver_is_ignored_rather_than_raising(self, ver: str) -> None:
         """`str.isdigit()` is true for characters `int()` refuses -- "²" among them -- so
         the check has to be the conversion itself."""
-        m = Matcher.from_source(catalog_yaml=CATALOG)
+        m = Matcher.from_source(catalog_json=CATALOG)
         assert m.match([scan("apps", ver=ver)]).scanned_at is None
 
     def test_a_usable_ver_still_wins(self) -> None:
-        m = Matcher.from_source(catalog_yaml=CATALOG)
+        m = Matcher.from_source(catalog_json=CATALOG)
         result = m.match([scan("apps", ver="²"), scan("browser", ver="1790100381")])
         assert result.scanned_at == 1790100381
-
-
-class TestCatalogShapes:
-    """A source config is typed by a person, so these are live risks."""
-
-    def test_a_duplicate_key_is_refused_rather_than_silently_losing_one(self) -> None:
-        """yaml.safe_load keeps the last occurrence. An agent carrying `npm:` twice would
-        lose its first list, and the fleet would report a missed agent as absent."""
-        dupe = (
-            "version: 2\n"
-            "agents:\n"
-            "  - id: codex-cli\n"
-            "    name: Codex CLI\n"
-            "    classification: Coding agent\n"
-            "    platforms: [darwin]\n"
-            "    npm: ['@openai/codex']\n"
-            "    npm: ['@openai/other']\n"
-        )
-        with pytest.raises(ValueError, match="duplicate key"):
-            Matcher.from_source(catalog_yaml=dupe)
-
-    def test_a_scalar_where_a_list_belongs_is_refused(self) -> None:
-        """The vendored matcher indexes a string CHARACTER BY CHARACTER, so
-        `npm: openclaw` becomes seven one-letter identifiers -- wrong without erroring.
-        """
-        scalar = yaml.safe_dump(
-            {
-                "version": 2,
-                "classifications": ["Coding agent"],
-                "agents": [
-                    {
-                        "id": "openclaw",
-                        "name": "OpenClaw",
-                        "classification": "Coding agent",
-                        "platforms": ["darwin"],
-                        "npm": "openclaw",
-                    },
-                ],
-            },
-        )
-        with pytest.raises(ValueError, match="list of strings"):
-            Matcher.from_source(catalog_yaml=scalar)
-
-    def test_an_unknown_route_on_an_agent_is_refused(self) -> None:
-        bad = yaml.safe_dump(
-            {
-                "version": 2,
-                "classifications": ["Coding agent"],
-                "agents": [
-                    {
-                        "id": "x",
-                        "name": "X",
-                        "classification": "Coding agent",
-                        "platforms": ["darwin"],
-                        "not_a_route": ["v"],
-                    },
-                ],
-            },
-        )
-        with pytest.raises(ValueError, match="unknown route"):
-            Matcher.from_source(catalog_yaml=bad)
-
-    def test_a_value_under_a_route_that_borrows_another_is_refused(self) -> None:
-        """`running_apps` matches `bundle_ids` values (`values_from` in routes.yaml) and never
-        reads its own key, so a value listed under it would match nothing, in silence.
-        """
-        bad = yaml.safe_dump(
-            {
-                "version": 2,
-                "classifications": ["Coding agent"],
-                "agents": [
-                    {
-                        "id": "x",
-                        "name": "X",
-                        "classification": "Coding agent",
-                        "platforms": ["darwin"],
-                        "running_apps": ["com.example.agent"],
-                    },
-                ],
-            },
-        )
-        with pytest.raises(ValueError, match="bundle_ids"):
-            Matcher.from_source(catalog_yaml=bad)
-
-    def test_an_unhandled_match_mode_is_refused_at_load(self) -> None:
-        """build_index raises KeyError on a mode it does not branch on -- once per device
-        rather than once at load."""
-        routes = yaml.safe_dump(
-            {
-                "version": 1,
-                "platforms": ["darwin"],
-                "routes": {"npm": {"kind": "npm", "match": "fuzzy"}},
-            },
-        )
-        with pytest.raises(ValueError, match="match mode"):
-            Matcher.from_source(catalog_yaml=CATALOG, routes_yaml=routes)
-
-    def test_a_superseded_entry_without_its_key_is_refused(self) -> None:
-        bad = yaml.safe_dump(
-            {
-                "version": 2,
-                "classifications": ["Coding agent"],
-                "agents": [
-                    {
-                        "id": "x",
-                        "name": "X",
-                        "classification": "Coding agent",
-                        "platforms": ["darwin"],
-                        "superseded": [{"route": "npm"}],
-                    },
-                ],
-            },
-        )
-        with pytest.raises(ValueError, match="superseded"):
-            Matcher.from_source(catalog_yaml=bad)
-
-    def test_the_shipped_floor_still_loads(self) -> None:
-        assert Matcher.from_source().agent_count == 42
-
-    def test_a_catalog_sharing_fields_through_an_anchor_still_loads(self) -> None:
-        """`<<` carries a tag PyYAML has no constructor for -- construct_mapping flattens
-        it -- so the duplicate check has to skip it rather than construct it. Otherwise
-        every catalog using an anchor fails to load while yaml.safe_load accepts it."""
-        shared = (
-            "version: 2\n"
-            "classifications: [Coding agent]\n"
-            "_base: &base\n"
-            "  classification: Coding agent\n"
-            "  platforms: [darwin]\n"
-            "agents:\n"
-            "  - id: codex-cli\n"
-            "    name: Codex CLI\n"
-            "    <<: *base\n"
-            "    npm: ['@openai/codex']\n"
-        )
-        m = Matcher.from_source(catalog_yaml=shared)
-        assert m.agent_count == 1
-        result = m.match([row("npm", "@openai/codex")])
-        assert [f.agent_id for f in result.findings] == ["codex-cli"]
-
-    def test_a_merge_key_does_not_disable_duplicate_detection(self) -> None:
-        """The skip must be for the merge tag alone, not for the check."""
-        dupe = (
-            "version: 2\n"
-            "_base: &base {classification: Coding agent, platforms: [darwin]}\n"
-            "agents:\n"
-            "  - id: x\n"
-            "    name: X\n"
-            "    <<: *base\n"
-            "    npm: ['a']\n"
-            "    npm: ['b']\n"
-        )
-        with pytest.raises(ValueError, match="duplicate key"):
-            Matcher.from_source(catalog_yaml=dupe)
