@@ -1,3 +1,4 @@
+import { CopyableChip } from "@arthur/shared-components";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import VisibilityIcon from "@mui/icons-material/Visibility";
@@ -6,7 +7,6 @@ import React, { useEffect, useRef } from "react";
 
 import { DatasetTableCell } from "./DatasetTableCell";
 
-import { CopyableChip } from "@/components/common/CopyableChip";
 import { SourceTraceLink } from "@/components/common/SourceTraceLink";
 import { DatasetVersionRowResponse } from "@/lib/api-client/api-client";
 

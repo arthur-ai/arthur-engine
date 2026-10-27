@@ -1,10 +1,10 @@
+import { CopyableChip } from "@arthur/shared-components";
 import { Chip, Link as MuiLink, Tooltip, Typography } from "@mui/material";
 import { createColumnHelper } from "@tanstack/react-table";
 import { Link } from "react-router";
 
 import { LiveEvalActions } from "../components/actions";
 
-import { CopyableChip } from "@/components/common";
 import type { ContinuousEvalResponse } from "@/lib/api-client/api-client";
 import { formatDateInTimezone } from "@/utils/formatters";
 

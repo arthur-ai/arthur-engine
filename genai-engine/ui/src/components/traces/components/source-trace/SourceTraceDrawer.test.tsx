@@ -22,10 +22,6 @@ vi.mock("@/components/common", () => ({
   CopyableChip: ({ label }: { label: string }) => <span>{label}</span>,
 }));
 
-vi.mock("@/components/traces/utils/spans", () => ({
-  flattenSpans: (spans: TestSpan[]): TestSpan[] => spans.flatMap((span) => [span, ...flatten(span.children ?? [])]),
-}));
-
 function flatten(spans: TestSpan[]): TestSpan[] {
   return spans.flatMap((span) => [span, ...flatten(span.children ?? [])]);
 }

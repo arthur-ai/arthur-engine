@@ -1,10 +1,9 @@
+import { type IncomingFilter, Operators } from "@arthur/shared-components";
 import { FilterList } from "@mui/icons-material";
 import { Box, Button, Paper, Popover, Stack } from "@mui/material";
 import { useEffect, useRef, useState } from "react";
 
 import { useFilterStore } from "../../../stores/filter.store";
-import type { IncomingFilter } from "../../filtering/mapper";
-import { Operators } from "../../filtering/types";
 
 import { ChipListField } from "./ChipListField";
 

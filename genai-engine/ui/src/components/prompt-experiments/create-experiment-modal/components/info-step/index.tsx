@@ -1,3 +1,4 @@
+import { withForm } from "@arthur/shared-components";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
@@ -13,7 +14,6 @@ import { useEvals } from "@/components/evaluators/hooks/useEvals";
 import { useEvalVersions } from "@/components/evaluators/hooks/useEvalVersions";
 import { usePrompts } from "@/components/prompts-management/hooks/usePrompts";
 import { usePromptVersions } from "@/components/prompts-management/hooks/usePromptVersions";
-import { withForm } from "@/components/traces/components/filtering/hooks/form";
 import { TOUR_IDS } from "@/features/task-tour/selectors";
 import { useDatasets } from "@/hooks/useDatasets";
 import { useDatasetVersionData } from "@/hooks/useDatasetVersionData";

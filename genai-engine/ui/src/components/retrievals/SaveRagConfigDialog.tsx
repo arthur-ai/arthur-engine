@@ -1,3 +1,4 @@
+import { useSnackbar } from "@arthur/shared-components";
 import Alert from "@mui/material/Alert";
 import Autocomplete from "@mui/material/Autocomplete";
 import Button from "@mui/material/Button";
@@ -19,7 +20,6 @@ import { useCreateRagConfig } from "@/hooks/rag-search-settings/useCreateRagConf
 import { useCreateRagVersion } from "@/hooks/rag-search-settings/useCreateRagVersion";
 import { useRagSearchSettings } from "@/hooks/rag-search-settings/useRagSearchSettings";
 import { useUpdateRagConfig } from "@/hooks/rag-search-settings/useUpdateRagConfig";
-import useSnackbar from "@/hooks/useSnackbar";
 import type { RagProviderCollectionResponse } from "@/lib/api-client/api-client";
 
 interface SaveRagConfigDialogProps {

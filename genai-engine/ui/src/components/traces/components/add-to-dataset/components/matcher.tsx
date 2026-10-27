@@ -1,10 +1,10 @@
+import { withFieldGroup } from "@arthur/shared-components";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutlineOutlined";
 import ErrorOutlineIcon from "@mui/icons-material/ErrorOutlineOutlined";
 import { Box, Stack, Tooltip, Typography } from "@mui/material";
 import { alpha, Theme } from "@mui/material/styles";
 import { useStore } from "@tanstack/react-form";
 
-import { withFieldGroup } from "../../filtering/hooks/form";
 import { hasSelectedTransform, resolveSchemaColumns } from "../form/shared";
 import { MatchStatus, useMatchingVariables } from "../hooks/useMatchingVariables";
 

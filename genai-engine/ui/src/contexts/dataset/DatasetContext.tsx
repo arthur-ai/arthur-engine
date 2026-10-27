@@ -1,3 +1,4 @@
+import { useSnackbar } from "@arthur/shared-components";
 import { Alert, Snackbar } from "@mui/material";
 import React, { createContext, useEffect, useReducer } from "react";
 
@@ -10,7 +11,6 @@ import { useDatasetQueries } from "./useDatasetQueries";
 
 import { SEARCH_DEBOUNCE_MS } from "@/constants/datasetConstants";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
-import useSnackbar from "@/hooks/useSnackbar";
 import type { ColumnDefaults } from "@/types/dataset";
 
 export const DatasetContext = createContext<DatasetContextValue | null>(null);
