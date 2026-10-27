@@ -466,7 +466,7 @@ Parameters:
   MLEngineTaskRoleAssumableRoleArns:
     Type: CommaDelimitedList
     Default: ''
-    Description: '(Optional) Comma-separated IAM role ARNs the provisioned ML Engine task role may assume, such as the role_arn of an AWS discovery source that uses the engine''s own credentials. Not applied to a Bring-Your-Own task role.'
+    Description: '(Optional) Comma-separated IAM role ARNs the provisioned ML Engine task role may assume as an AWS discovery source that uses the engine''s own credentials, such as the source''s role_arn. Not applied to a Bring-Your-Own task role.'
     AllowedPattern: '(arn:aws:iam::[0-9]{12}:role/.+)?'
     ConstraintDescription: 'Each entry must be an IAM role ARN (arn:aws:iam::<account-id>:role/<name>).'
   MLEngineBYOAppSecurityGroupIDs:
@@ -912,7 +912,7 @@ Metadata:
       MLEngineAwsDiscoveryAllowDefaultCredentials:
         default: 'AWS Discovery Sources May Use the ML Engine Task Role'
       MLEngineTaskRoleAssumableRoleArns:
-        default: 'IAM Roles the ML Engine Task Role May Assume'
+        default: 'IAM Roles AWS Discovery Sources May Assume'
 Conditions:
   ContainerRepositoryCredentialRequired:
     !Not [ !Equals [ !Ref ContainerRepositoryUsername, '' ] ]
