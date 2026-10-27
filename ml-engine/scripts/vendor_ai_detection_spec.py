@@ -46,6 +46,8 @@ ENDPOINT_STAMP = (
     / "VERSION"
 )
 GITHUB = "https://github.com/"
+# Per call. The largest is the asset download; the rest are single API requests.
+GH_TIMEOUT = 120
 
 # vendored name -> (release asset, the file at the tag it must equal, if any)
 FROM_RELEASE = {
@@ -66,9 +68,16 @@ def fail(message: str) -> NoReturn:
 
 def gh(*args: str) -> bytes:
     try:
-        return subprocess.run(["gh", *args], capture_output=True, check=True).stdout
+        return subprocess.run(
+            ["gh", *args],
+            capture_output=True,
+            check=True,
+            timeout=GH_TIMEOUT,
+        ).stdout
     except FileNotFoundError:
         fail("needs the GitHub CLI, gh")
+    except subprocess.TimeoutExpired:
+        fail(f"gh {' '.join(args)}: no answer after {GH_TIMEOUT}s")
     except subprocess.CalledProcessError as e:
         fail(f"gh {' '.join(args)}: {e.stderr.decode().strip()}")
 
@@ -90,7 +99,11 @@ def endpoint_stamp() -> tuple[dict[str, str], bytes]:
 
 
 def fetch(repo: str, tag: str, commit: str) -> dict[str, bytes]:
-    release = json.loads(gh("release", "view", tag, "-R", repo, "--json", "assets"))
+    release = json.loads(
+        gh("release", "view", tag, "-R", repo, "--json", "assets,isDraft"),
+    )
+    if release["isDraft"]:
+        fail(f"release {tag} is a draft. Publish it, then vendor.")
     digests = {a["name"]: a["digest"] for a in release["assets"]}
     assets = [asset for asset, _ in FROM_RELEASE.values()]
     missing = [a for a in assets if not digests.get(a)]
