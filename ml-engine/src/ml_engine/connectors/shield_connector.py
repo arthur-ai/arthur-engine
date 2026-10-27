@@ -1,5 +1,6 @@
 import json
 from abc import ABC, abstractmethod
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from logging import Logger
 from typing import Any, Optional
@@ -83,6 +84,13 @@ from tools.agentic_filters import (
     validate_filters,
 )
 from tools.api_client_type_converters import ShieldClientTypeConverter
+
+# list_datasets fetches trace/inference stats for every task; bound the fan-out so a large engine
+# doesn't open hundreds of requests at once.
+MAX_TASK_STATS_WORKERS = 10
+# (connect, read). The generated client defaults to no timeout, so one stalled stats request
+# would hold up the whole listing.
+TASK_STATS_TIMEOUT_SECONDS = (5.0, 30.0)
 
 
 class ShieldBaseConnector(Connector, ABC):
@@ -300,13 +308,14 @@ class ShieldBaseConnector(Connector, ABC):
                 page_size=page_size,
                 page=page,
             )
-            for task in resp.tasks:
-                trace_count, last_trace_at = self._task_trace_stats(task.id)
-                inference_count, last_inference_at = self._task_inference_stats(
-                    task.id,
+            with ThreadPoolExecutor(max_workers=MAX_TASK_STATS_WORKERS) as executor:
+                task_stats = list(
+                    executor.map(self._task_stats, [task.id for task in resp.tasks]),
                 )
-                activity = [t for t in (last_trace_at, last_inference_at) if t]
-                last_activity_at = max(activity) if activity else None
+            for task, (trace_count, inference_count, last_activity_at) in zip(
+                resp.tasks,
+                task_stats,
+            ):
                 # Post-consolidation every task exposes both datasets:
                 # trace/evals + inferences/guardrails, same task_id locator.
                 # Both carry the task's stats.
@@ -338,6 +347,16 @@ class ShieldBaseConnector(Connector, ABC):
             page += 1
         return datasets
 
+    def _task_stats(
+        self,
+        task_id: str,
+    ) -> tuple[int | None, int | None, datetime | None]:
+        """Trace count, inference count and latest trace/inference timestamp for a task."""
+        trace_count, last_trace_at = self._task_trace_stats(task_id)
+        inference_count, last_inference_at = self._task_inference_stats(task_id)
+        activity = [t for t in (last_trace_at, last_inference_at) if t]
+        return trace_count, inference_count, max(activity) if activity else None
+
     def _task_trace_stats(self, task_id: str) -> tuple[int | None, datetime | None]:
         """Number of traces in the task and when the latest one started. A failure returns (None, None)
         so one task can't fail the whole listing."""
@@ -347,6 +366,7 @@ class ShieldBaseConnector(Connector, ABC):
                 sort_by=TraceSortBy.START_TIME,
                 sort=PaginationSortMethod.DESC,
                 page_size=1,
+                _request_timeout=TASK_STATS_TIMEOUT_SECONDS,
             )
         except Exception as e:
             self.logger.warning(
@@ -374,6 +394,7 @@ class ShieldBaseConnector(Connector, ABC):
                 sort=PaginationSortMethod.DESC,
                 page_size=1,
                 include_count=True,
+                _request_timeout=TASK_STATS_TIMEOUT_SECONDS,
             )
         except Exception as e:
             self.logger.warning(

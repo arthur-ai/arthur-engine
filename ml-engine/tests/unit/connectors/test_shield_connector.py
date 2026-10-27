@@ -905,12 +905,12 @@ def test_list_datasets_emits_both_datasets_per_task():
         # the inference is newer than the trace
         assert dataset.last_activity_at == latest_inference_created
 
-    list_traces.assert_called_once()
-    assert list_traces.call_args.kwargs["task_ids"] == [task.id]
-    assert list_traces.call_args.kwargs["page_size"] == 1
-    query_inferences.assert_called_once()
-    assert query_inferences.call_args.kwargs["task_ids"] == [task.id]
-    assert query_inferences.call_args.kwargs["page_size"] == 1
+    for stats_call in (list_traces, query_inferences):
+        stats_call.assert_called_once()
+        assert stats_call.call_args.kwargs["task_ids"] == [task.id]
+        assert stats_call.call_args.kwargs["page_size"] == 1
+        # a stalled stats request must not hang the listing
+        assert stats_call.call_args.kwargs["_request_timeout"] is not None
 
 
 def test_list_datasets_leaves_record_stats_empty_on_failure():
