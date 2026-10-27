@@ -5,7 +5,7 @@ import uuid
 from copy import deepcopy
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 from urllib import parse
 from uuid import uuid4
 
@@ -25,7 +25,6 @@ from arthur_common.models.connectors import ConnectorPaginationOptions
 from arthur_common.models.enums import ModelProblemType
 from arthur_common.models.request_schemas import NewRuleRequest
 from pydantic import ValidationError
-from unittest.mock import Mock
 
 from config.config import Config
 from connectors.shield_connector import (

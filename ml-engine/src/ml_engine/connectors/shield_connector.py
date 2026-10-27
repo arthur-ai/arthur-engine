@@ -35,11 +35,16 @@ from arthur_common.models.request_schemas import (
 from arthur_common.models.request_schemas import (
     NewMetricRequest as ArthurCommonNewMetricRequest,
 )
-from arthur_common.models.request_schemas import NewRuleRequest
+from arthur_common.models.request_schemas import (
+    NewRuleRequest,
+)
 from arthur_common.models.response_schemas import (
     MetricResponse as ArthurCommonMetricResponse,
 )
-from arthur_common.models.response_schemas import RuleResponse, TaskResponse
+from arthur_common.models.response_schemas import (
+    RuleResponse,
+    TaskResponse,
+)
 from genai_client import AgentMetadata as GenaiAgentMetadata
 from genai_client import (
     ApiClient,
