@@ -5,6 +5,12 @@ destination has, `HttpSink` for batching, retries and scrubbing -- and supplies 
 how it frames a batch and which of its settings are secret, and, if its 2xx can still
 refuse events, how to read one.
 
+A 2XX CAN SPEAK FOR EACH EVENT. A destination that reports per event, as
+Elasticsearch's bulk API does, can refuse one event for what it holds, which is final
+and returned rather than raised, so one bad record does not hold back the rest of the
+scan; or ask for some to be sent again, as a 429 asks for a whole request, and those
+alone are re-sent within the same attempts, since the ones it took would be kept twice.
+
 A DESTINATION'S SECRETS NEVER LEAVE IN AN ERROR. `HttpSink` scrubs what its subclass
 declares, plus the URL's password, path and query, which is where a webhook's own
 secret usually lives, and names the destination by host alone.
@@ -25,6 +31,7 @@ import logging
 import ssl
 import threading
 import time
+from dataclasses import dataclass, replace
 from typing import Any, Callable, ClassVar, Optional, Sequence
 from urllib.parse import urlsplit
 
@@ -34,7 +41,7 @@ from pydantic import Field, field_validator, model_validator
 from discovery.siem.tls import TLSVerification, normalize_pem, tls_session
 from log_redaction import redact_secrets
 from standalone.config_values import FileText, StrictModel
-from standalone.sinks.common import Event, Sink, SinkDeliveryError
+from standalone.sinks.common import Event, RefusedEvent, Sink, SinkDeliveryError
 
 DELIVERY_ATTEMPTS = 3
 # What a retry can fix. Anything else -- a bad token, a payload the destination will
@@ -46,6 +53,18 @@ MAX_RETRY_DELAY_SECONDS = 30.0
 # How much of a refusal's body the error keeps: enough for HEC's `{"text": "Invalid
 # token", "code": 4}`, not enough for a proxy's whole HTML error page.
 ERROR_BODY_CHARS = 300
+
+
+@dataclass(frozen=True)
+class EventResults:
+    """What a 2xx said about the events of the request it answered, by position in it.
+
+    An event in neither was taken.
+    """
+
+    refused: Sequence[RefusedEvent] = ()
+    # Refused for now, as a whole request is by a 429: re-sent on the next attempt.
+    retry: Sequence[RefusedEvent] = ()
 
 
 def require_url(url: str, allow_http: bool) -> str:
@@ -167,15 +186,16 @@ class HttpSink:
         """The request body and headers for one batch."""
         raise NotImplementedError
 
-    def _check_accepted(
+    def _read_accepted(
         self, response: requests.Response, batch: Sequence[Event]
-    ) -> None:
-        """Raise `SinkDeliveryError` if a 2xx answer still refused events.
+    ) -> EventResults:
+        """What a 2xx answer says about each event of the request it answered.
 
-        Most destinations mean a 2xx; one that reports per event in the body, as
-        Elasticsearch's bulk API does, reads it here. Not retried: what it refused, a
-        re-send would be refused again, and what it took would be indexed twice.
+        Most destinations mean a 2xx: every event was taken. One that reports per event
+        in the body, as Elasticsearch's bulk API does, reads it here, and raises
+        `SinkDeliveryError` for a body it cannot read.
         """
+        return EventResults()
 
     def secrets(self) -> tuple[str, ...]:
         return self._secrets
@@ -183,20 +203,33 @@ class HttpSink:
     def close(self) -> None:
         self._session.close()
 
-    def send(self, events: Sequence[Event]) -> None:
+    def send(self, events: Sequence[Event]) -> list[RefusedEvent]:
         """Deliver every event, a batch per request, in order.
 
         A batch that cannot be delivered raises, and the batches before it stay
         delivered: a destination has no transaction to roll them back into, and
-        re-sending the scan's batches on the next interval is harmless.
+        re-sending the scan's batches on the next interval is harmless. An event the
+        destination refuses on its own does not stop the batches after it; it is
+        returned.
         """
+        refused: list[RefusedEvent] = []
         for start in range(0, len(events), self._batch_size):
-            self._post(events[start : start + self._batch_size])
+            refused.extend(
+                replace(r, position=start + r.position)
+                for r in self._post(events[start : start + self._batch_size])
+            )
+        return refused
 
-    def _post(self, batch: Sequence[Event]) -> None:
-        body, headers = self._encode(batch)
+    def _post(self, batch: Sequence[Event]) -> list[RefusedEvent]:
+        """Deliver one batch, and return what it refused, by position in it."""
+        # Positions in `batch` still to deliver. A retry after a 2xx re-sends only the
+        # events it asked for: those it already took would be kept twice.
+        pending = list(range(len(batch)))
+        refused: list[RefusedEvent] = []
         for attempt in range(1, DELIVERY_ATTEMPTS + 1):
             last = attempt == DELIVERY_ATTEMPTS
+            sending = [batch[p] for p in pending]
+            body, headers = self._encode(sending)
             try:
                 with self._session_lock:
                     response = self._session.post(
@@ -231,9 +264,31 @@ class HttpSink:
                 # Not `response.ok`, which is anything under 400: with redirects off, a
                 # 3xx means the events went nowhere.
                 if 200 <= status < 300:
-                    self._check_accepted(response, batch)
-                    return
-                if status not in RETRY_STATUSES or last:
+                    results = self._read_accepted(response, sending)
+                    refused.extend(
+                        replace(r, position=pending[r.position])
+                        for r in results.refused
+                    )
+                    if not results.retry:
+                        return refused
+                    first = results.retry[0]
+                    if last:
+                        kept = (
+                            ", and kept the rest"
+                            if len(results.retry) < len(sending)
+                            else ""
+                        )
+                        raise SinkDeliveryError(
+                            self._redact(
+                                f"{self.kind} at {self._host} still refused "
+                                f"{len(results.retry)} of {len(sending)} event(s) after "
+                                f"{attempt} attempt(s){kept}: "
+                                f"{first.reason}: {first.detail}",
+                            ),
+                        )
+                    pending = [pending[r.position] for r in results.retry]
+                    reason, delay = first.reason, self._backoff(attempt)
+                elif status not in RETRY_STATUSES or last:
                     hint = (
                         " (a redirect, which is not followed: set url to the address it "
                         "points at)"
@@ -242,19 +297,22 @@ class HttpSink:
                     )
                     raise SinkDeliveryError(
                         self._redact(
-                            f"{self.kind} at {self._host} refused {len(batch)} "
+                            f"{self.kind} at {self._host} refused {len(sending)} "
                             f"event(s) with HTTP {status}{hint}: "
                             f"{response.text[:ERROR_BODY_CHARS]}",
                         ),
                         status_code=status,
                     )
-                reason = f"HTTP {status}"
-                delay = self._retry_after(response) or self._backoff(attempt)
+                else:
+                    reason = f"HTTP {status}"
+                    delay = self._retry_after(response) or self._backoff(attempt)
             self._log.warning(
-                f"Could not deliver {len(batch)} event(s) to {self.kind} at "
+                f"Could not deliver {len(pending)} event(s) to {self.kind} at "
                 f"{self._host} ({reason}); retrying in {delay:g}s",
             )
             self._sleep(delay)
+        # Unreachable: the last attempt returns or raises.
+        raise AssertionError("delivery attempts exhausted")
 
     def _redact(self, text: str) -> str:
         return redact_secrets(text, self._secrets)

@@ -723,10 +723,19 @@ POST /_security/api_key
 }
 ```
 
-`_bulk` answers 200 even when it refuses documents, so the engine reads the answer: a
-batch with any document refused fails with the first refusal's reason (a mapping
-conflict, say), and the documents before and after it in the batch stay indexed. That
-failure is not retried, since a re-send would index the accepted documents twice.
+`_bulk` answers 200 even when it refuses documents, so the engine reads the answer for
+each document:
+
+- **Refused for what it holds** (a field the index's mapping cannot take, a `pipeline`
+  that fails on it): the agent is reported in the scan outcome's `failed_records`, with
+  Elasticsearch's error type as `reason` and its message as `detail`, and the rest of
+  the scan carries on. It is not sent again; a re-send would be refused the same way.
+- **Refused with 429 or 503** (the cluster shedding load): only those documents are sent
+  again, within the same three attempts as a failed request. Still refused after the
+  last, they fail the scan as an unreachable destination would.
+
+An answer that is not a bulk response with one result per document sent, as from a proxy
+answering for the cluster, fails the batch.
 
 #### `webhook` — any HTTPS endpoint
 
@@ -776,6 +785,8 @@ working is visible where its agents are:
     "succeeded": true,
     "records_published": 12,
     "batches_published": 1,
+    "records_failed": 0,
+    "failed_records": [],
     "error": null,
     "error_code": null,
     "started_at": "…",
@@ -784,6 +795,11 @@ working is visible where its agents are:
   }
 }
 ```
+
+`failed_records` lists each agent the destination refused on its own, as
+`{"external_id": "…", "reason": "document_parsing_exception", "detail": "…"}`, while
+the rest of the scan's agents were delivered. Only a destination that answers per event
+(`elasticsearch`) refuses one this way.
 
 `error_code` is one of `invalid_job`, `unsupported_vendor`, `not_configured`,
 `credentials_unavailable`, `authentication_failed`, `permission_denied`,

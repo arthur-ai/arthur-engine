@@ -8,21 +8,31 @@ write with no setup on the cluster.
 
 A 200 IS NOT DELIVERY. `_bulk` answers 200 when it refused every document in the batch,
 and says so per document in the body, so the body is read before a batch counts as sent.
+A document refused for what it holds -- a field the index's mapping cannot take, a
+pipeline that fails on it -- is refused again on every re-send, so it is handed back as
+a failed record and the scan goes on without it. A document refused with 429 or 503 is
+the cluster shedding load, and only those documents are sent again, as Elasticsearch's
+own clients do.
 """
 
 import base64
 import json
 import logging
 import time
-from typing import Callable, Literal, Optional, Sequence
-from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+from typing import Any, Callable, Literal, Optional, Sequence
+from urllib.parse import urlencode, urlsplit, urlunsplit
 
 import requests
 from pydantic import field_validator, model_validator
 
 from standalone.config_values import Secret
-from standalone.sinks.common import Event, Sink, SinkDeliveryError
-from standalone.sinks.http import ERROR_BODY_CHARS, HttpDestination, HttpSink
+from standalone.sinks.common import Event, RefusedEvent, Sink, SinkDeliveryError
+from standalone.sinks.http import (
+    ERROR_BODY_CHARS,
+    EventResults,
+    HttpDestination,
+    HttpSink,
+)
 
 DEFAULT_INDEX = "logs-arthur.discovery-default"
 # What the answer is read for. The rest -- each document's id, index, version, shard
@@ -30,6 +40,9 @@ DEFAULT_INDEX = "logs-arthur.discovery-default"
 BULK_FILTER_PATH = "errors,items.*.status,items.*.error"
 # Characters Elasticsearch refuses anywhere in an index name.
 INDEX_FORBIDDEN = set('\\/*?"<>| ,#:')
+# A document's status when the cluster is shedding load rather than refusing it: an
+# indexing queue that is full, a shard that is not yet available.
+ITEM_RETRY_STATUSES = frozenset({429, 503})
 
 
 class ElasticsearchDestination(HttpDestination):
@@ -49,14 +62,15 @@ class ElasticsearchDestination(HttpDestination):
     def _index_name(cls, value: str) -> str:
         # Refused here, naming the setting, rather than by every delivery.
         if (
-            not value
+            value in ("", ".", "..")
             or value != value.lower()
             or value[0] in "-_+"
             or INDEX_FORBIDDEN & set(value)
         ):
             raise ValueError(
-                "must be lowercase, must not start with -, _ or +, and must not "
-                f"contain any of {''.join(sorted(INDEX_FORBIDDEN))!r}",
+                "must be lowercase, must not be . or .., must not start with -, _ "
+                f"or +, and must not contain any of "
+                f"{''.join(sorted(INDEX_FORBIDDEN))!r}",
             )
         return value
 
@@ -120,49 +134,64 @@ class ElasticsearchSink(HttpSink):
             "Content-Type": "application/x-ndjson",
         }
 
-    def _check_accepted(
+    def _read_accepted(
         self, response: requests.Response, batch: Sequence[Event]
-    ) -> None:
-        try:
-            body = response.json()
-        except ValueError:
-            body = None
-        if not isinstance(body, dict) or "errors" not in body:
+    ) -> EventResults:
+        results = _bulk_results(response, len(batch))
+        if results is None:
             # A proxy in front of the cluster answering for it: nothing says the
             # documents were indexed.
             raise SinkDeliveryError(
                 self._redact(
                     f"{self.kind} at {self._host} answered HTTP "
                     f"{response.status_code} with something other than a bulk "
-                    f"response: {response.text[:ERROR_BODY_CHARS]}",
+                    f"response for {len(batch)} event(s): "
+                    f"{response.text[:ERROR_BODY_CHARS]}",
                 ),
                 status_code=response.status_code,
             )
-        if not body["errors"]:
-            return
-        refused = [
-            result
-            for item in body.get("items", [])
-            for result in item.values()
-            if isinstance(result, dict) and result.get("error")
-        ]
-        first = refused[0] if refused else {}
-        error = first.get("error") or {}
-        reason = (
-            f"{error.get('type')}: {error.get('reason')}"
-            if isinstance(error, dict)
-            else str(error)
-        )
-        indexed = ", and indexed the rest" if 0 < len(refused) < len(batch) else ""
-        raise SinkDeliveryError(
-            self._redact(
-                f"{self.kind} at {self._host} refused {len(refused) or 'some'} of "
-                f"{len(batch)} event(s) in a bulk request{indexed}. "
-                f"First refusal, HTTP {first.get('status')}: "
-                f"{reason[:ERROR_BODY_CHARS]}",
-            ),
-            status_code=first.get("status"),
-        )
+        refused: list[RefusedEvent] = []
+        retry: list[RefusedEvent] = []
+        for position, result in enumerate(results):
+            status, error = result["status"], result.get("error")
+            if 200 <= status < 300 and not error:
+                continue
+            if isinstance(error, dict):
+                reason = str(error.get("type") or f"http_{status}")
+                detail = str(error.get("reason") or "")
+            else:
+                reason, detail = f"http_{status}", str(error or "")
+            # Scrubbed before it is cut, so no part of a secret is left behind.
+            detail = self._redact(detail)[:ERROR_BODY_CHARS]
+            refusal = RefusedEvent(position=position, reason=reason, detail=detail)
+            (retry if status in ITEM_RETRY_STATUSES else refused).append(refusal)
+        return EventResults(refused=refused, retry=retry)
+
+
+def _bulk_results(response: requests.Response, count: int) -> Optional[list[Any]]:
+    """Each document's result, in the order they were sent, or None for a body that
+    is not a bulk response for `count` documents.
+
+    Matched to the documents by position, which is the order `_bulk` answers in, so a
+    body with a different count is refused rather than read against the wrong events.
+    """
+    try:
+        body = response.json()
+    except ValueError:
+        return None
+    items = body.get("items") if isinstance(body, dict) else None
+    if not isinstance(items, list) or len(items) != count:
+        return None
+    results = []
+    for item in items:
+        # One key, the action: {"create": {"status": 201}}.
+        if not isinstance(item, dict) or len(item) != 1:
+            return None
+        (result,) = item.values()
+        if not isinstance(result, dict) or not isinstance(result.get("status"), int):
+            return None
+        results.append(result)
+    return results
 
 
 def _bulk_url(url: str, pipeline: Optional[str]) -> str:
@@ -175,11 +204,13 @@ def _bulk_url(url: str, pipeline: Optional[str]) -> str:
     path = parts.path.rstrip("/")
     if not path.endswith("/_bulk"):
         path += "/_bulk"
-    query = parse_qsl(parts.query)
-    query.append(("filter_path", BULK_FILTER_PATH))
+    extra = [("filter_path", BULK_FILTER_PATH)]
     if pipeline:
-        query.append(("pipeline", pipeline))
-    return urlunsplit(parts._replace(path=path, query=urlencode(query)))
+        extra.append(("pipeline", pipeline))
+    # Appended to the configured query rather than re-encoding it, which would change
+    # how a secret in it is spelt and so slip it past the scrubbing of errors.
+    query = "&".join(filter(None, [parts.query, urlencode(extra)]))
+    return urlunsplit(parts._replace(path=path, query=query))
 
 
 def _encoded(api_key: str) -> str:
