@@ -22,6 +22,8 @@ from dataclasses import dataclass
 from types import ModuleType
 from typing import Any, Mapping, Optional, Sequence
 
+from job_executors.discovery_scan import DiscoveryConfigurationError
+
 _VENDOR = pathlib.Path(__file__).resolve().parent / "_vendor"
 
 # The floor: the catalog document the vendored release attaches. A Discovery Source Config
@@ -41,7 +43,7 @@ def _no_duplicate_pairs(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     out: dict[str, Any] = {}
     for key, value in pairs:
         if key in out:
-            raise ValueError(f"duplicate key {key!r}")
+            raise DiscoveryConfigurationError(f"duplicate key {key!r}")
         out[key] = value
     return out
 
@@ -188,14 +190,17 @@ class Matcher:
         an image rebuild and works on an engine with no route to the internet. The catalog is
         an ai-detection-spec catalog document (SPEC.md 4), such as the catalog.json a release
         attaches, and it carries its own routes.
+
+        A catalog it refuses is a DiscoveryConfigurationError: the source's catalog is the
+        config's to fix, and a plain ValueError reaches the Platform as the vendor's error.
         """
         source = catalog_json.encode() if catalog_json else _FLOOR.read_bytes()
         try:
             doc = json.loads(source, object_pairs_hook=_no_duplicate_pairs)
         except json.JSONDecodeError as exc:
-            raise ValueError(f"catalog is not JSON: {exc}") from exc
+            raise DiscoveryConfigurationError(f"catalog is not JSON: {exc}") from exc
         if not isinstance(doc, dict) or "format" not in doc:
-            raise ValueError(
+            raise DiscoveryConfigurationError(
                 "catalog is not a catalog document: it names no `format`. This engine reads "
                 "ai-detection-spec catalog documents, such as the catalog.json a release "
                 "attaches",
@@ -318,7 +323,7 @@ def _from_document(doc: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]
     an identifier it could not index (SPEC.md 4, 6 and 10). That is every check the matcher
     needs, made once at load: a catalog that reached the matcher malformed would fail on every
     device instead, naming a key rather than the entry that is wrong. It refuses by exiting,
-    as a command line does; here a refusal is a ValueError.
+    as a command line does; here a refusal is a DiscoveryConfigurationError.
     """
     try:
         catalog, routes = _matcher.from_document(
@@ -327,7 +332,7 @@ def _from_document(doc: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]
             schema=_CATALOG_SCHEMA,
         )
     except SystemExit as exc:
-        raise ValueError(str(exc.code)) from None
+        raise DiscoveryConfigurationError(str(exc.code)) from None
     return catalog, routes
 
 
