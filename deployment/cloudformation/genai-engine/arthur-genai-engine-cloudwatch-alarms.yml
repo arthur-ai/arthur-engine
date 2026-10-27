@@ -67,12 +67,23 @@ Parameters:
     Type: Number
     Default: 1099511627776
     Description: 'Alarm is triggered when the GenAI Engine Aurora cluster VolumeBytesUsed exceeds this many bytes. Default 1 TiB. Aurora storage auto-grows, so this is a runaway-growth / cost watch, not a free-space watch.'
+  GenaiEngineTaskScalingLambdaName:
+    Type: String
+    Default: 'None'
+    Description: 'Name of the GenAI Engine task-scaling Lambda (GPU deployments only). Defaults to "None" for CPU deployments, which have no such Lambda and skip the alarm.'
+  GenaiEngineTaskScalingLambdaErrorsAlarmThreshold:
+    Type: Number
+    Default: 1
+    Description: 'Alarm is triggered when the GenAI Engine task-scaling Lambda records this many errors in a 5-minute period'
 
 Conditions:
   # Aurora Serverless v2 is only provisioned when the deployment is not bring-your-own-DB,
   # in which case CoreRDSStack emits the cluster identifier (otherwise "None"). Skip the RDS
   # alarms for BYO-DB deployments so we never create an alarm on a metric that has no data.
   HasProvisionedRDS: !Not [ !Equals [ !Ref GenaiEngineRDSClusterIdentifier, 'None' ] ]
+  # The task-scaling Lambda only exists in GPU deployments (arthur-genai-engine-ecs-gpu.yml), which
+  # pass its name through; CPU deployments leave the default "None" and get no Lambda alarm.
+  HasTaskScalingLambda: !Not [ !Equals [ !Ref GenaiEngineTaskScalingLambdaName, 'None' ] ]
 
 Resources:
   ArthurGenaiEngineLoadBalancerHealthyHostCount:
@@ -262,3 +273,30 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       TreatMissingData: notBreaching
       Unit: Bytes
+  # Errors alarm for the GenAI Engine task-scaling Lambda that this deployment creates (GPU only).
+  # Scoped to that one function so a customer deployment never gets an alarm on Lambdas it does not
+  # own. Satisfies the Vanta serverless-function-error-rate-monitored-aws test for this function.
+  # Errors is published on invocation, so TreatMissingData=notBreaching keeps the alarm at OK while
+  # idle and fires only when the Lambda actually errors.
+  ArthurGenaiEngineTaskScalingLambdaErrors:
+    Type: AWS::CloudWatch::Alarm
+    Condition: HasTaskScalingLambda
+    Properties:
+      AlarmName: !Sub "[${ArthurResourceNamespace}${ArthurResourceNameSuffix}] genai-engine-task-scaling-lambda-errors-alarm"
+      AlarmDescription: !Sub "Alarm when the GenAI Engine task-scaling Lambda ${GenaiEngineTaskScalingLambdaName} records ${GenaiEngineTaskScalingLambdaErrorsAlarmThreshold} or more errors in a 5-minute period"
+      ActionsEnabled: true
+      AlarmActions:
+        - !Ref AlarmSNSTopicArn
+      MetricName: Errors
+      Namespace: AWS/Lambda
+      Statistic: Sum
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref GenaiEngineTaskScalingLambdaName
+      Period: 300
+      EvaluationPeriods: 1
+      DatapointsToAlarm: 1
+      Threshold: !Ref GenaiEngineTaskScalingLambdaErrorsAlarmThreshold
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      Unit: Count
