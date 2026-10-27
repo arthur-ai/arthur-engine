@@ -16,6 +16,11 @@ from typing import Any
 import pytest
 
 from discovery.catalog import Matcher
+from job_executors.discovery_scan import (
+    DiscoveryConfigurationError,
+    DiscoveryErrorCode,
+    failure_code,
+)
 from tests.fakes.catalog import agent, document
 
 COLLECTOR_OUTPUT = pathlib.Path("/var/lib/arthur")
@@ -473,6 +478,30 @@ def test_a_duplicate_key_in_a_catalog_document_is_refused() -> None:
     )
     with pytest.raises(ValueError, match="duplicate key 'format'"):
         Matcher.from_source(catalog_json=text)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "version: 3\nagents: []\n",
+        json.dumps({"version": 3, "agents": []}),
+        CATALOG.replace('"classifications"', '"classification"'),
+        CATALOG.replace(
+            '"format": "ai-detection-spec/0.2"',
+            '"format": "ai-detection-spec/0.2", "format": "ai-detection-spec/0.2"',
+        ),
+        # The catalog.json v0.15.0 attached. A source config pasted from it is refused on
+        # every scan once the engine moves to 0.2, and only the config can fix that.
+        CATALOG.replace('"ai-detection-spec/0.2"', '"ai-detection-spec/0.1"'),
+    ],
+    ids=["not-json", "no-format", "schema", "duplicate-key", "previous-format"],
+)
+def test_a_refused_catalog_fails_the_scan_as_the_configs_to_fix(text: str) -> None:
+    """A plain ValueError reaches the Platform as PROVIDER_ERROR, the vendor's fault, and
+    the admin is sent to Jamf or AWS for a catalog only they can replace."""
+    with pytest.raises(DiscoveryConfigurationError) as refused:
+        Matcher.from_source(catalog_json=text)
+    assert failure_code(refused.value) == DiscoveryErrorCode.NOT_CONFIGURED
 
 
 def test_an_identifier_on_a_route_that_borrows_another_is_refused() -> None:
