@@ -11,5 +11,5 @@ signature is a config change rather than an image rebuild; this is what an uncon
 source falls back to. `catalog.schema.json` validates every catalog document before it is
 read, and `evidence.schema.json` is the row contract the envelope reads by.
 
-Do not edit any of them by hand -- re-vendor.
+Do not edit any of them by hand -- re-vendor with scripts/vendor_ai_detection_spec.py.
 """

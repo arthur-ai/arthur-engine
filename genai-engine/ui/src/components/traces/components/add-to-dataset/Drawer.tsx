@@ -1,3 +1,4 @@
+import { flattenSpans, useAppForm } from "@arthur/shared-components";
 import AddIcon from "@mui/icons-material/Add";
 import {
   Autocomplete,
@@ -19,9 +20,6 @@ import { AxiosError } from "axios";
 import { useSnackbar } from "notistack";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
-
-import { flattenSpans } from "../../utils/spans";
-import { useAppForm } from "../filtering/hooks/form";
 
 import { AddColumnDialog } from "./AddColumnDialog";
 import { Matcher } from "./components/matcher";

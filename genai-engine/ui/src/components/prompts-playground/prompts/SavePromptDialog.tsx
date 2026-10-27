@@ -1,3 +1,4 @@
+import { useSnackbar } from "@arthur/shared-components";
 import Alert from "@mui/material/Alert";
 import Button from "@mui/material/Button";
 import Dialog from "@mui/material/Dialog";
@@ -16,7 +17,6 @@ import { getPromptSaveableFields } from "../utils/promptSaveState";
 import { toBackendPromptBaseConfig } from "../utils/toBackendPrompt";
 
 import { useApi } from "@/hooks/useApi";
-import useSnackbar from "@/hooks/useSnackbar";
 import { useTask } from "@/hooks/useTask";
 import { AgenticPrompt } from "@/lib/api-client/api-client";
 import { track } from "@/services/analytics";

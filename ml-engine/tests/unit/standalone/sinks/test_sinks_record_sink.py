@@ -13,6 +13,7 @@ from job_executors.discovery_scan import (
     DeviceCoverage,
     DiscoveryErrorCode,
     DiscoveryScanOutcome,
+    FailedDiscoveryRecord,
     UnreadableDevice,
     run_source_scan,
 )
@@ -21,6 +22,7 @@ from standalone.sinks.common import (
     DISCOVERED_AGENT_EVENT,
     EVENT_SCHEMA_VERSION,
     SCAN_OUTCOME_EVENT,
+    RefusedEvent,
     SinkDeliveryError,
     scan_outcome_event,
 )
@@ -65,16 +67,23 @@ def outcome(**overrides: Any) -> DiscoveryScanOutcome:
 
 
 class RecordingSink:
-    """Implements `Sink`, failing the send at the given index if asked."""
+    """Implements `Sink`, failing the send at the given index, or refusing the given
+    events one by one, if asked."""
 
-    def __init__(self, fail_on_call: Optional[int] = None) -> None:
+    def __init__(
+        self,
+        fail_on_call: Optional[int] = None,
+        refuse: Sequence[RefusedEvent] = (),
+    ) -> None:
         self.sent: list[list[dict[str, Any]]] = []
         self._fail_on_call = fail_on_call
+        self._refuse = refuse
 
-    def send(self, events: Sequence[dict[str, Any]]) -> None:
+    def send(self, events: Sequence[dict[str, Any]]) -> Sequence[RefusedEvent]:
         if self._fail_on_call == len(self.sent):
             raise SinkDeliveryError(f"refused (Splunk {TOKEN})")
         self.sent.append(list(events))
+        return self._refuse
 
     def secrets(self) -> tuple[str, ...]:
         return (TOKEN,)
@@ -117,6 +126,54 @@ def test_unset_record_columns_are_left_out_rather_than_sent_as_null() -> None:
 
     agent = sink.sent[0][0]["agent"]
     assert "tools" not in agent and "llm_models" not in agent
+
+
+def test_an_event_the_destination_refuses_is_a_failed_record() -> None:
+    """Reported by the agent it was, and the batch's other records still count."""
+    sink = RecordingSink(
+        refuse=[RefusedEvent(1, "document_parsing_exception", "field [agent.name]")],
+    )
+
+    result = StandaloneRecordSink(sink, "s").publish(
+        "",
+        "",
+        config(),
+        [record("a"), record("b"), record("c")],
+    )
+
+    assert result.accepted == 2
+    assert result.failed == (
+        FailedDiscoveryRecord(
+            external_id="b",
+            reason="document_parsing_exception",
+            detail="field [agent.name]",
+        ),
+    )
+
+
+def test_a_refused_record_does_not_stop_the_scan() -> None:
+    """End to end through the shared scan loop: the refusal is on the outcome, the
+    batches after it are still sent, and the scan succeeds."""
+    scanned = outcome()
+    sink = RecordingSink(refuse=[RefusedEvent(0, "document_parsing_exception", "x")])
+
+    run_source_scan(
+        config=config(),
+        lookback_hours=24,
+        workspace_id="",
+        data_plane_id="",
+        outcome=scanned,
+        connector=TwoBatchConnector(),
+        sink=StandaloneRecordSink(sink, "corp-macs"),
+        logger=LOG,
+        credentials={},
+        source_fields={},
+    )
+
+    assert len(sink.sent) == 2
+    assert scanned.error_code is None
+    assert [f.external_id for f in scanned.failed_records] == ["a", "c"]
+    assert scanned.records_published == 1
 
 
 def test_an_empty_batch_sends_nothing() -> None:

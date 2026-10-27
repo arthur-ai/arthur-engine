@@ -128,10 +128,13 @@ window misses nothing.
 #### `gcp_containers` — Cloud Run and GKE workloads
 
 Lists every Cloud Run service, Cloud Run job and GKE workload in the projects, and
-reports a workload when one of its images is an agent's in the catalog (`images:`), or
-every workload when `report_all_workloads` is true. Each record names the GCP service
-account the workload runs as, so it can be joined with the callers in Vertex AI's audit
-log.
+reports a workload when one of its images is an agent's in the catalog (`images:`), when
+it runs as a service account that called a Vertex AI model in the lookback (read off the
+project's Data Access audit log by the scan itself), or every workload when
+`report_all_workloads` is true. Each record names the GCP service account the workload
+runs as, with `shared by N workloads` when several run as it (a match through a shared
+account cannot tell them apart), and lists the models that account called as
+`llm_models`.
 
 | Field | Secret | Required | Notes |
 |---|---|---|---|
@@ -144,18 +147,141 @@ The service account needs `roles/run.viewer` and `roles/container.viewer`. The s
 grants the Kubernetes reads too (`container.deployments.list`, `container.pods.list`,
 `container.serviceAccounts.list` and the rest), because GKE authorises a Google identity's
 Kubernetes calls against its IAM roles as well as RBAC; it does not grant reading
-Secrets. `query` is the catalog, as for Jamf; `query_language: none`.
+Secrets. Selecting by AI caller also needs `roles/logging.privateLogViewer` and Data
+Access audit logs on for `aiplatform.googleapis.com`; without them that project's
+workloads are selected by catalog image (or `report_all_workloads`) only. `query` is the
+catalog, as for Jamf; `query_language: none`.
 
 A GKE workload is its controller -- Deployment, StatefulSet, DaemonSet, CronJob -- or a
-Job or Pod nothing owns; `kube-system`, `kube-public`, `kube-node-lease` and the `gke-`
-and `gmp-` namespaces are left out. The engine must be able to reach each cluster's
-endpoint; a cluster it cannot reach is logged and the rest of the scan goes on, as is a
-project where an API is off or refused. Two refusals do end the scan: a credential
+Job or Pod no listed workload owns (a CronJob's Jobs, and the pods of a Deployment's
+ReplicaSet, a StatefulSet, DaemonSet or Job, fold into their owner; an operator's, such
+as a Ray cluster's pods or an Argo Rollout's, are their own; if ReplicaSets cannot be
+read, every ReplicaSet's pods fold); `kube-system`, `kube-public`, `kube-node-lease` and the `gke-`
+and `gmp-` namespaces are left out. A pod without Workload Identity calls Google as its
+node pool's service account, which every pod on the node shares, so that account is
+labelled `node account` and an AI call from it does not select the workload; only the
+workload's own (Workload Identity) account does. The engine must be able to reach each cluster's
+endpoint; a cluster it cannot reach is logged, reported on the run as a denied scope,
+and the rest of the scan goes on, as is a project where an API, or its audit log, is off
+or refused. Two refusals do end the scan: a credential
 refused outright (HTTP 401) stops it at once, and a scan that could list nothing at all
 fails with the first refusal's status, so a key with no access reads as denied rather
 than as a project without workloads.
 
-The lookback window is not applied: every scan lists every workload.
+The lookback window bounds only the audit-log read of AI callers (30 days for a zero
+lookback): every scan lists every workload.
+
+#### `vercel_ai` — Vercel
+
+Lists one team's projects and reports each project that looks like it calls an LLM or
+runs an AI agent.
+
+| Field | Secret | Required | Notes |
+|---|---|---|---|
+| `team_id` | no | yes | The team's ID (`team_...`), from the team's Settings > General |
+| `access_token` | yes | yes | A Vercel access token scoped to that team |
+| `include_projects` | no | no | Comma-separated project names or IDs to limit the scan to; empty scans every project |
+| `read_deployment_sources` | no | no | `true` to read the `package.json` of each project's latest production deployment (CLI, API and v0 deployments only). `false` or absent leaves code unread; any other value fails the scan as not configured |
+
+Use `query: ""` and `query_language: none`.
+
+**Lookback.** The project list is an inventory, so it ignores `lookback_window_seconds`:
+every scan reports every flagged project, however long ago it was deployed. Agent Runs
+and the Observability Plus metrics are activity, so they are the exception: they read
+the lookback window, capped at 30 days (what Observability Plus keeps), and a window of
+`0` reads the full 30 days. A short window therefore misses a project whose only signal
+is traffic or runs outside it.
+
+Vercel has no agent resource, so this is a heuristic. A project is reported when any of
+these fires for it:
+
+| Signal | What it is | Endpoint |
+|---|---|---|
+| Environment variable | One of the project's variables is named exactly as an LLM provider key (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `AI_GATEWAY_API_KEY` and the other names in `LLM_PROVIDER_ENV_KEYS`), for any target | `GET /v10/projects/{id}/env` |
+| Shared variable | A team-shared variable with one of those names is linked to the project | `GET /v1/env` |
+| AI integration | A Vercel Marketplace integration tagged AI or Agents by Vercel, or a known AI provider (OpenAI, xAI, Groq, ...), is installed with access to the project | `GET /v1/integrations/configurations?view=account` |
+| Agent Runs | Vercel lists the project among the team's projects with production Agent Runs | `GET https://vercel.com/api/observability/agent-runs?teamSlug=...&view=team&environment=production` (**undocumented**) |
+| AI Gateway | Observability Plus counts AI Gateway requests from the project (`vercel.ai_gateway_request.count` by `project_name`, `ai_model`, `auth_method`) | `POST /v2/observability/query` |
+| LLM API host | Observability Plus counts the project's requests to an LLM provider's API: `api.openai.com`, `api.anthropic.com`, `bedrock-runtime.*.amazonaws.com`, `ai-gateway.vercel.sh`, `generativelanguage.googleapis.com`, `aiplatform.googleapis.com` and `*-aiplatform.googleapis.com`, `*.openai.azure.com`, `api.groq.com`, `api.mistral.ai` (`vercel.external_api_request.count` by `project_name`, `request_hostname`) | `POST /v2/observability/query` |
+| Package | Opt-in. The latest production deployment's `src/package.json` (or root `package.json`) depends on `ai`, `@ai-sdk/*`, `openai`, `@anthropic-ai/*`, `@aws-sdk/client-bedrock*`, `langchain`, `@mastra/*` or `eve` | `GET /v6/deployments/{id}/files`, `GET /v8/deployments/{id}/files/{fileId}` |
+
+Variable names are matched exactly, so a key under another name (`LLM_TOKEN`) is not
+seen by name; there is deliberately no `*_TOKEN` guess. Such a project, one that calls
+the AI Gateway with its deployment's OIDC token (no key at all), or one that loads its
+key from a secrets manager is found by its traffic when the team has Observability Plus,
+by Agent Runs, or by its `package.json` when `read_deployment_sources` is on. A key set
+only for `preview` or `development` still flags the project: the code that reads it is
+in the project either way. The evidence says which targets it is set for.
+
+**One LLM call is not an agent, and only Agent Runs says "agent".** A single-call
+summarizer with `OPENAI_API_KEY` is flagged exactly like an agent with tools. To let a
+reviewer tell them apart, the scan logs one line per flagged project naming every
+signal that fired: `Vercel project prj_... flagged by: environment variable(s)
+OPENAI_API_KEY (production, preview); Agent Runs (12 production run(s)); AI Gateway
+requests (models openai/gpt-5; auth oidc); ...`. Only names are logged: variable names
+and targets, integration slugs, package names, model names, hosts. The record contract
+has no field for evidence yet, so it is in the job log, not on the record. The AI
+Gateway's model names are on the record as `llm_models`.
+
+What is read, all reads:
+
+- `GET /v10/projects`: project IDs, names, deployment/update times and the production
+  deployment's ID and `meta` (to tell a Git deployment).
+- `GET /v10/projects/{id}/env` and `GET /v1/env`: environment variable **names** (and
+  their type and target, and for a shared one its linked projects). Values are never
+  requested decrypted and are discarded as soon as the answer arrives; they are never
+  logged, stored or sent to the destination. The single-variable endpoints, which
+  decrypt, are never called.
+- `GET /v1/integrations/configurations?view=account`: which integrations are installed
+  and which projects they can access.
+- `GET /v2/teams/{teamId}`: the team's slug, which Agent Runs is addressed by. If it
+  cannot be read, Agent Runs is asked with the team ID, as the Vercel CLI does.
+- Agent Runs, on `vercel.com` rather than `api.vercel.com`. **This endpoint is not
+  documented by Vercel and may change**: it is what `vercel agent-runs projects` calls
+  (Vercel CLI 65.2.0), and works with a token on any plan. It carries `teamSlug`, not
+  `teamId`.
+- `POST /v2/observability/query`, twice, scoped to the team (`{"type": "owner",
+  "ownerId": <team_id>}`). It needs **Observability Plus**; Pro alone answers 402.
+- Only with `read_deployment_sources: true`: one deployment's file tree and one file
+  from it, `package.json`, per project. Vercel keeps a file tree only for deployments
+  made with the CLI, the API or v0; a Git deployment is skipped, by its `meta` when that
+  names a commit and otherwise by Vercel's 404 ("File tree not found"). Only the
+  dependency names are kept; nothing else in the file is logged or stored, and a file
+  over 512 KiB is not read.
+
+Every call except Agent Runs carries `teamId`. Nothing is written.
+
+**What can fail a scan.** Only the inventory. The project list failing fails the scan:
+a 404 is a `team_id` that does not exist (not configured); a 403 is a token that is
+invalid, expired or revoked (Vercel answers a bad token with 403, not 401) or that
+cannot see the team. If one project's variables answer 403, 404 or 5xx (after retries),
+they are skipped with a warning naming the project's ID and the status; the project is
+still reported if another signal flagged it, and skipped otherwise. A 401 fails the
+scan, and so does an integrations failure other than 403. If a call fails part way, the
+records found before it are published and the scan then fails with Vercel's error.
+
+None of the other signals can fail a scan. A 402 from observability is logged once as
+"Observability Plus not enabled"; a 403, a 404, an unexpected answer or an unreachable
+host on shared variables, Agent Runs, observability or deployment files is one warning
+naming the call and the status, and the scan goes on without that signal. The summary
+line `Vercel signals read: ...` says which signals were read for every scan.
+
+Each record's address is the team ID, the scope `global` (Vercel has no region) and the
+project ID, which is also its `external_id`. `last_seen` is the latest of the project's
+update time and its deployments' times, so a project redeployed without a settings
+change still reads as active.
+
+Least privilege: Vercel tokens have no read-only scope; a token carries the permissions
+of the user who created it, within the team chosen as its scope. Create it from a
+dedicated team member, scope it to the one team, and give it an expiration. Which role
+is enough depends on the plan: on Enterprise, Enterprise Viewer can read everything the
+scan calls; on Pro, a Pro Viewer can read projects and deployments, but Vercel's role
+docs say it cannot see observability data or team settings, so Observability Plus
+signals (and possibly team-shared variables) need a Member or Owner token. Neither
+viewer role has yet been verified against a live team. Production variables the token's user cannot see are counted in the scan log
+(`hiddenProductionEnvCount`) rather than silently missed. Leave `read_deployment_sources`
+off unless reading deployed code is acceptable: the token can read it either way, and
+the field is what keeps the scan from doing so.
 
 #### `wiz` — Wiz
 
@@ -371,7 +497,10 @@ arthur-client includes the `wiz` vendor.
 
 #### `jamf_pro` — Jamf Pro (managed Macs)
 
-Reads the agent inventory Arthur's endpoint collector writes to each Mac.
+Reads the agent inventory Arthur's endpoint collector writes to each Mac. Deploying the
+collector is [the Jamf Pro runbook](../../integrations/endpoint-ai-discovery/docs/mdm/jamf-pro.md),
+and [its section 09](../../integrations/endpoint-ai-discovery/docs/mdm/jamf-pro.md#09--access-for-the-arthur-collector--jamf-pro)
+creates the API client for these fields.
 
 | Field | Secret | Required | Notes |
 |---|---|---|---|
@@ -381,11 +510,21 @@ Reads the agent inventory Arthur's endpoint collector writes to each Mac.
 | `include_groups` | no | no | Comma-separated computer group names to limit the scan to |
 | `exclude_groups` | no | no | Comma-separated computer group names to leave out |
 
+The lookback is applied to each Mac's last inventory submission (`general.reportDate`): a
+Mac that has not submitted inside it is neither read nor counted, and a window of `0` reads
+every Mac.
+
 `query` is the agent catalog; leave it `""` to use the one the engine ships with. A catalog
 of your own is an [ai-detection-spec](https://github.com/arthur-ai/ai-detection-spec) catalog
-document (`format: ai-detection-spec/0.1`), such as the `catalog.json` a release attaches. It
+document (`format: ai-detection-spec/0.2`), such as the `catalog.json` a release attaches. It
 is validated against the spec's schema, and the scan refuses one that fails.
-Use `query_language: none`. Jamf scans stop early on shutdown and report as cancelled.
+
+**A catalog of your own pins the engine's version.** The engine reads one `format` and
+refuses any other, so when an upgrade moves the format, every scan with a catalog from the
+previous release fails as `not_configured` until the catalog is replaced. Replace it with
+the `catalog.json` attached to the release the engine vendors (named in
+`src/ml_engine/discovery/_vendor/VERSION`), or set `query` to `""`, which every version
+reads. Use `query_language: none`. Jamf scans stop early on shutdown and report as cancelled.
 
 #### `local` — one machine's scan, from a folder
 
@@ -544,9 +683,76 @@ read over the lookback, or the last seven days when it is `0`, for `Converse`,
 IAM user) that called one becomes a record per region, named for the models it called,
 with external id `{account}/{region}/iam_role/{role ARN}`. IAM Identity Center (SSO)
 roles and the root user are people: their calls are counted in the job log, not
-reported. A part AWS refuses in a region, or a region AgentCore does not run in, is a
+reported. So is a call IAM refused (CloudTrail logs it with an `AccessDenied` `errorCode` and
+no model): a role whose every call was refused has called no model and gets no record. A
+call that was allowed and then failed in the model is still counted as that role's call. A
+part AWS refuses in a region, or a region AgentCore does not run in, is a
 warning and the rest of the scan goes on; a refused credential, or every part refused,
 fails the scan.
+
+#### `aws_containers` — ECS and EKS workloads
+
+Lists every ECS service, every ECS task no service owns, and every EKS workload in the
+regions of one account, and reports a workload when one of its images is an agent's in
+the catalog (`images:`), when it runs as an IAM role CloudTrail shows calling a Bedrock
+model, or every workload when `report_all_workloads` is true. Each record names the role
+the workload runs as.
+
+| Field | Secret | Required | Notes |
+|---|---|---|---|
+| `regions` | no | yes | Comma-separated regions, such as `us-east-1,us-west-2`. Both ECS and EKS are listed in each, and CloudTrail is read in each when `read_cloudtrail` is on |
+| `read_cloudtrail` | no | no | `true` (default) or `false`: read the roles that call Bedrock models, so a workload running as one is reported |
+| `report_all_workloads` | no | no | `true` to report every workload, not only catalog matches and AI-calling roles. Defaults to `false` |
+| `access_key_id` | yes | no | As for `aws_ec2`; without one, the engine uses its own AWS credentials only if `ARTHUR_ENGINE_AWS_CONTAINERS_ALLOW_DEFAULT_CREDENTIALS=true` is set |
+| `secret_access_key` | yes | no | Set with `access_key_id`, or neither |
+| `role_arn` | no | no | A role those credentials assume, as session `arthur-ai-discovery` |
+| `external_id` | no | no | The external ID the role's trust policy requires; only with `role_arn` |
+
+The credential needs, all read-only:
+
+- ECS: `ecs:ListClusters`, `ecs:ListServices`, `ecs:DescribeServices`, `ecs:ListTasks`,
+  `ecs:DescribeTasks`, `ecs:DescribeTaskDefinition`; for tasks on EC2 with no task role,
+  `ecs:DescribeContainerInstances`, `ec2:DescribeInstances` and `iam:GetInstanceProfile`.
+- EKS: `eks:ListClusters`, `eks:DescribeCluster`, `eks:ListNodegroups`,
+  `eks:DescribeNodegroup`, `eks:ListPodIdentityAssociations`,
+  `eks:DescribePodIdentityAssociation`, `eks:ListFargateProfiles`,
+  `eks:DescribeFargateProfile`, and on each cluster an access entry for the
+  credential's IAM principal with the `AmazonEKSViewPolicy` access policy at cluster
+  scope (`aws eks create-access-entry`, then `aws eks associate-access-policy ...
+  --access-scope type=cluster`). A cluster still on `CONFIG_MAP` authentication needs the
+  principal mapped in `aws-auth` to a group bound to the `view` ClusterRole instead.
+- CloudTrail: `cloudtrail:LookupEvents`, when `read_cloudtrail` is on.
+
+`DescribeTaskDefinition` and the Kubernetes listings return containers' environment
+variables; the connector reads only images, roles, names and timestamps off them. `query`
+is the catalog, as for Jamf; `query_language: none`.
+
+A workload is an ECS service (its tasks are folded in by their `service:` group), the
+tasks no service owns that share a `group` (`family:<task definition family>` unless
+whoever ran them set one), or an EKS controller -- Deployment, StatefulSet, DaemonSet,
+CronJob, even one an operator's custom resource owns -- or a Job or Pod nothing owns; `kube-system`, `kube-public`, `kube-node-lease`,
+`aws-observability` and the `amazon-` namespaces are left out. ECS lists a stopped task
+for about an hour, so a task group is seen only while one of its tasks runs or has just
+run.
+
+The role is the task role on ECS, never the execution role. On EKS it is the IRSA
+annotation (`eks.amazonaws.com/role-arn`) on the pod's service account, else the role an
+EKS Pod Identity association binds to it, else the managed node groups' node roles. An
+EC2 task with no task role runs as its container instance's role. A node's or instance's
+role is shared by everything on it, and the name says so, as it says how many of the
+scan's workloads share a role. CloudTrail is read over the lookback, or the last seven
+days when it is `0`; a call IAM refused is not a call, as in `aws_bedrock`, so a role
+whose every call was refused selects nothing. A pod a Fargate profile selects has no
+node role; nodes outside managed node groups (self-managed, Karpenter, Auto Mode) are
+not listed by EKS, so their roles are not reported.
+
+An account-region whose ECS or EKS listing is refused, and a cluster whose Kubernetes API
+answers 401 or 403 or cannot be reached (a private endpoint the engine is outside of), is
+a denied scope on the run, and the rest of the scan goes on. EKS answers 401 to an IAM
+principal with no access entry on that cluster, so that is the cluster's refusal, not the
+credential's. A refused AWS credential ends the scan, and so does a scan refused every
+ECS and EKS listing, even when CloudTrail could be read: a source that listed no
+container reads as denied, not as an account without workloads.
 
 #### `splunk_enterprise` — Splunk Enterprise
 
@@ -693,6 +899,57 @@ status — point `url` at the address it redirects to.
 Point `url` at the `/services/collector/event` endpoint. Each event's HEC `time` is when
 it was observed. Indexer acknowledgement is not used: a 200 means HEC accepted the batch.
 
+#### `elasticsearch` — Elasticsearch and Elastic Security
+
+| Key | Default | |
+|---|---|---|
+| `api_key` | | API key (secret): the `encoded` value from `POST /_security/api_key`, or `id:api_key` |
+| `username`, `password` | | Basic auth instead of `api_key`; `password` is a secret. Set one or the other |
+| `index` | `logs-arthur.discovery-default` | An index, alias or data stream |
+| `pipeline` | | An ingest pipeline to run each document through |
+
+Point `url` at the cluster (`https://host:9243`, with a path for one behind a gateway);
+the engine sends to its `_bulk` endpoint. Each document is the event with `@timestamp`
+set to when it was observed, written with `create`. The default index matches
+Elasticsearch's built-in `logs-*-*` template, so the data stream is created on the first
+write with no setup; it then shows up in Elastic Security wherever `logs-*` is searched.
+
+The credentials need `create_doc` on the index, and `auto_configure` too if the engine's
+first write is what creates the data stream:
+
+```json
+POST /_security/api_key
+{
+  "name": "arthur-discovery",
+  "role_descriptors": {
+    "arthur-discovery": {
+      "indices": [{"names": ["logs-arthur.discovery-*"], "privileges": ["create_doc", "auto_configure"]}]
+    }
+  }
+}
+```
+
+`_bulk` answers 200 even when it refuses documents, so the engine reads the answer for
+each document:
+
+- **Refused for what it holds** (a field the index's mapping cannot take, a `pipeline`
+  that fails on it): the agent is reported in the scan outcome's `failed_records`, with
+  Elasticsearch's error type as `reason` and its message as `detail`, and the rest of
+  the scan carries on. It is not sent again; a re-send would be refused the same way.
+- **Refused with 429 or 503** (the cluster shedding load): only those documents are sent
+  again, within the same three attempts as a failed request. Still refused after the
+  last, they fail the scan as an unreachable destination would.
+- **Refused with 401, 403 or 404** (credentials that cannot write to `index`, or an
+  index that does not exist and may not be created): the scan fails with
+  `publication_failed`, since every document names the same index.
+
+A `pipeline` that does not exist is refused per document as a plain 400, so it shows up
+as every agent in `failed_records` with `reason: illegal_argument_exception`, rather
+than as a failed scan.
+
+An answer that is not a bulk response with one result per document sent, as from a proxy
+answering for the cluster, fails the batch.
+
 #### `webhook` — any HTTPS endpoint
 
 | Key | Default | |
@@ -741,6 +998,8 @@ working is visible where its agents are:
     "succeeded": true,
     "records_published": 12,
     "batches_published": 1,
+    "records_failed": 0,
+    "failed_records": [],
     "error": null,
     "error_code": null,
     "started_at": "…",
@@ -749,6 +1008,11 @@ working is visible where its agents are:
   }
 }
 ```
+
+`failed_records` lists each agent the destination refused on its own, as
+`{"external_id": "…", "reason": "document_parsing_exception", "detail": "…"}`, while
+the rest of the scan's agents were delivered. Only a destination that answers per event
+(`elasticsearch`) refuses one this way.
 
 `error_code` is one of `invalid_job`, `unsupported_vendor`, `not_configured`,
 `credentials_unavailable`, `authentication_failed`, `permission_denied`,

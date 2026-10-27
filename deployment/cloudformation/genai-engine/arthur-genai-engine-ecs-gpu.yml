@@ -696,3 +696,6 @@ Outputs:
   GenaiEngineTaskScalingLambdaArn:
     Description: 'ARN of the Lambda function that scales GenAI Engine ECS tasks'
     Value: !GetAtt GenaiEngineTaskScalingLambda.Arn
+  GenaiEngineTaskScalingLambdaNameOutput:
+    Description: 'Name of the Lambda function that scales GenAI Engine ECS tasks (for the alarms stack)'
+    Value: !Ref GenaiEngineTaskScalingLambda

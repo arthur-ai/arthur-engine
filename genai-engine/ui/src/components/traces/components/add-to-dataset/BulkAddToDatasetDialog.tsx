@@ -1,7 +1,6 @@
+import { useAppForm } from "@arthur/shared-components";
 import { Autocomplete, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Stack, TextField } from "@mui/material";
 import { useStore } from "@tanstack/react-form";
-
-import { useAppForm } from "../filtering/hooks/form";
 
 import { Matcher } from "./components/matcher";
 import { TransformSelector } from "./components/transform-selector";

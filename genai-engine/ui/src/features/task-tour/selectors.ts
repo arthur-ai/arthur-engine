@@ -1,4 +1,4 @@
-import type { HTMLAttributes } from "react";
+import type { DivSlotProps } from "@arthur/shared-components";
 
 /**
  * Single source of truth for every `data-tour-id` the task tour points at.
@@ -139,12 +139,12 @@ export function tourSelector(id: TourId) {
 }
 
 /**
- * `data-tour-id` props for a portaled MUI surface (`slotProps.paper` / `root`).
- * Centralizes the `as HTMLAttributes<HTMLDivElement>` cast that `data-*` keys
- * require (they aren't in MUI's typed slot props) — a wrong slot/element
- * generic otherwise compiles but silently fails to anchor at runtime. Spread
- * alongside any other paper props: `paper: { ...tourDataAttr(id), sx }`.
+ * `data-tour-id` props for a portaled MUI surface (`slotProps.paper` / `root`)
+ * or a shared-components slot. Typed as `DivSlotProps` because `data-*` keys
+ * aren't in MUI's typed slot props — a wrong slot/element generic otherwise
+ * compiles but silently fails to anchor at runtime. Spread alongside any other
+ * paper props: `paper: { ...tourDataAttr(id), sx }`.
  */
-export function tourDataAttr(id: TourId): HTMLAttributes<HTMLDivElement> {
-  return { "data-tour-id": id } as HTMLAttributes<HTMLDivElement>;
+export function tourDataAttr(id: TourId): DivSlotProps {
+  return { "data-tour-id": id };
 }

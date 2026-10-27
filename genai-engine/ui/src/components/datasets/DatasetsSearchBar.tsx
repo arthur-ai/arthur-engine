@@ -1,6 +1,5 @@
+import { SearchBar } from "@arthur/shared-components";
 import React from "react";
-
-import { SearchBar } from "@/components/common/SearchBar";
 
 interface DatasetsSearchBarProps {
   value: string;

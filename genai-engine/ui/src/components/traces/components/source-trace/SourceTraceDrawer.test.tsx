@@ -22,15 +22,12 @@ vi.mock("@/components/common", () => ({
   CopyableChip: ({ label }: { label: string }) => <span>{label}</span>,
 }));
 
-vi.mock("@/components/traces/utils/spans", () => ({
-  flattenSpans: (spans: TestSpan[]): TestSpan[] => spans.flatMap((span) => [span, ...flatten(span.children ?? [])]),
-}));
-
 function flatten(spans: TestSpan[]): TestSpan[] {
   return spans.flatMap((span) => [span, ...flatten(span.children ?? [])]);
 }
 
-vi.mock("@/components/traces/components/SpanTree", () => ({
+vi.mock("@arthur/shared-components", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@arthur/shared-components")>()),
   SpanTree: ({
     selectedSpanId,
     onSelectSpan,
@@ -48,9 +45,6 @@ vi.mock("@/components/traces/components/SpanTree", () => ({
       ))}
     </div>
   ),
-}));
-
-vi.mock("@/components/traces/components/SpanDetails", () => ({
   SpanDetails: ({ span, children }: { span: TestSpan; children: React.ReactNode }) => (
     <div data-testid="span-details" data-span-id={span.span_id}>
       {children}
@@ -59,9 +53,6 @@ vi.mock("@/components/traces/components/SpanDetails", () => ({
   SpanDetailsHeader: () => null,
   SpanDetailsWidgets: () => null,
   SpanDetailsPanels: () => null,
-}));
-
-vi.mock("@/components/traces/data/details-strategy", () => ({
   getSpanDetailsStrategy: () => ({ panels: [], tabs: [], widgets: [] }),
 }));
 

@@ -1,7 +1,7 @@
+import { Highlight } from "@arthur/shared-components";
 import { Stack, Typography, Paper, Skeleton } from "@mui/material";
 
 import { useAgentExperiment } from "@/components/agent-experiments/hooks/useAgentExperiment";
-import { Highlight } from "@/components/common/Highlight";
 
 type Props = {
   experimentId: string;
