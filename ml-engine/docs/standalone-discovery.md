@@ -259,8 +259,12 @@ change still reads as active.
 
 Least privilege: Vercel tokens have no read-only scope; a token carries the permissions
 of the user who created it, within the team chosen as its scope. Create it from a
-dedicated team member with the Viewer role, scope it to the one team, and give it an
-expiration. Viewer has not yet been verified against a live team. Production variables the token's user cannot see are counted in the scan log
+dedicated team member, scope it to the one team, and give it an expiration. Which role
+is enough depends on the plan: on Enterprise, Enterprise Viewer can read everything the
+scan calls; on Pro, a Pro Viewer can read projects and deployments, but Vercel's role
+docs say it cannot see observability data or team settings, so Observability Plus
+signals (and possibly team-shared variables) need a Member or Owner token. Neither
+viewer role has yet been verified against a live team. Production variables the token's user cannot see are counted in the scan log
 (`hiddenProductionEnvCount`) rather than silently missed. Leave `read_deployment_sources`
 off unless reading deployed code is acceptable: the token can read it either way, and
 the field is what keeps the scan from doing so.

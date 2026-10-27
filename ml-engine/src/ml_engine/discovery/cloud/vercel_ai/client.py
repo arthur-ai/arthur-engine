@@ -46,9 +46,12 @@ method.
 
 Authenticated with a Vercel access token, `Authorization: Bearer <token>`. Vercel
 tokens carry the permissions of the user who created them within the team chosen at
-creation; there is no read-only token scope, so least privilege is a token created by a
-member with the Viewer role on the team. Viewer is not yet verified against a live team
-(see docs/standalone-discovery.md).
+creation; there is no read-only token scope, so least privilege depends on the plan. On
+Enterprise, a member with the Enterprise Viewer role can read everything this client
+calls. On Pro, Vercel's role docs say a Pro Viewer can read projects and deployments but
+not observability data or team settings, so the Observability Plus query (and possibly
+the team's shared variables) needs a Member or Owner token. Neither viewer role is yet
+verified against a live team (see docs/standalone-discovery.md).
 """
 
 import base64
@@ -341,8 +344,8 @@ class VercelClient:
                     ". Vercel refused the access_token for this team: the token is "
                     "invalid, expired or revoked (Vercel answers 403, not 401, for a "
                     "bad token), or it cannot see team_id because it was created for a "
-                    "different team or its user is not a member (the Viewer role is "
-                    "enough). Create a new token under Account Settings > Tokens, "
+                    "different team or its user is not a member (a viewer role is enough "
+                    "to list projects). Create a new token under Account Settings > Tokens, "
                     "scoped to the team"
                 ),
             )
@@ -360,7 +363,7 @@ class VercelClient:
                 path,
                 forbidden=(
                     ". The token can list this project but not read its environment "
-                    "variables: its user needs the Viewer role on the team"
+                    "variables: its user needs a team role that can view this project"
                 ),
             )
         return _env_from(resp, path)

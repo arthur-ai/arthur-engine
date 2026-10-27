@@ -922,7 +922,7 @@ def env_failure_is_partial(status: Optional[int]) -> bool:
 
 
 _PARTIAL_HINTS = {
-    403: " (its user needs the Viewer role on the team)",
+    403: " (its user needs a team role that can view this project)",
     404: " (probably deleted during the scan)",
 }
 
