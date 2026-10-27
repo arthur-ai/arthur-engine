@@ -39,6 +39,18 @@ DEST="$HERE/vendor/ai-detection-spec"
 REF="${1:-}"
 [ -n "$REF" ] || { sed -n '2,5p' "$0" | sed 's/^# \{0,1\}//'; exit 1; }
 
+# THE OTHER HALF COMES FROM GITHUB. ml-engine/scripts/vendor_ai_detection_spec.py reads the
+# repo from the VERSION written below and takes the catalog and matcher from that repo's
+# release at this ref. A repo it cannot fetch from leaves the two trees at different refs,
+# so refuse it here, before anything is cloned or cleared.
+case "$REPO" in
+  https://github.com/*) ;;
+  *)
+    echo "vendor: $REPO is not an https://github.com/ URL, which ml-engine needs to fetch the" >&2
+    echo "        catalog and matcher from the same release. Set VENDOR_REPO to that form, or unset it." >&2
+    exit 1 ;;
+esac
+
 work="$(mktemp -d "${TMPDIR:-/tmp}/vendor.XXXXXX")" || exit 1
 trap 'rm -rf "$work"' EXIT
 
