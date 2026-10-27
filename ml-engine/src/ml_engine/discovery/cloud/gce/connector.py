@@ -237,7 +237,7 @@ class ComputeEngineConnector:
             allow_adc_env_var=ALLOW_ADC_ENV_VAR,
             scopes=settings.scopes,
         )
-        matcher = Matcher.from_source(catalog_yaml=config.query or None, logger=logger)
+        matcher = Matcher.from_source(catalog_json=config.query or None, logger=logger)
         client = ComputeEngineClient(
             self._session_for(google_credentials, settings.scopes),
             logger,

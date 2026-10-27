@@ -2,6 +2,9 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 10/26/2026
+- **CHANGE** for **URL**: /api/v1/traces  added the optional property `traces/items/ingest_bytes` to the response with the `200` status
+
 # 10/20/2026
 - **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  added the new `updates` enum value to the `config/anyOf[subschema #1: LLMBaseConfigSettings]/thinking/anyOf[subschema #1: AnthropicThinkingParam]/display` response property for the response status `200`
 - **CHANGE** in API GET /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/tags/{tag}

@@ -3,10 +3,10 @@
 # can gate on it.
 #
 # This repo owns the deployable and nothing else. The queries, the runner, the Docker guard
-# and the wall-clock bound live in osquery-ai-discovery and are vendored at a pinned ref;
-# their regression suite is upstream's — `test/lint.sh`, `test/docker_states.sh` and
-# thirteen VM scenarios at the vendored ref, run by upstream CI. Duplicating any of it here
-# is how the two drift apart.
+# and the wall-clock bound are ai-detection-spec's osquery binding, vendored at a pinned ref;
+# their regression suite is upstream's — `osquery/test/lint.sh`,
+# `osquery/test/docker_states.sh` and the VM and container scenarios under `test/` at the
+# vendored ref, run by upstream CI. Duplicating any of it here is how the two drift apart.
 #
 # So what is checked here is the seam: that nothing outside vendor/ implements discovery,
 # that the built collector carries the vendored tree, and that the framing this repo owns
@@ -29,7 +29,7 @@ root = sys.argv[1]
 # THE TABLES ARE READ OFF THE VENDORED PACK, not listed here: a hand list covers only the
 # tables someone remembered to name, and a vendor bump adds more. CTE names are declared
 # `name AS (` and dropped. A pack this cannot read FAILS, rather than shrinking the scan.
-pack_path = os.path.join("vendor", "osquery-ai-discovery", "dist", "ai-discovery.conf")
+pack_path = os.path.join("vendor", "ai-detection-spec", "dist", "ai-detection-spec.conf")
 tables = set()
 try:
     for q in json.load(open(os.path.join(root, pack_path)))["queries"].values():
@@ -83,10 +83,10 @@ for dirpath, dirnames, filenames in os.walk(root):
 for b in sorted(set(bad)):
     print(f"FAIL: {b}")
 if bad:
-    print("       The only osquery implementation is vendor/osquery-ai-discovery/. "
+    print("       The only osquery implementation is vendor/ai-detection-spec/. "
           "Re-vendor with tools/vendor-queries.sh; do not write queries here.")
     sys.exit(1)
-print("ok: no osquery implementation outside vendor/osquery-ai-discovery/")
+print("ok: no osquery implementation outside vendor/ai-detection-spec/")
 ONE
 
 # --- the shell this repo ships -----------------------------------------------------------
@@ -102,8 +102,8 @@ done
 # The ref stamp names a release; only this says the files still match it. A formatter
 # reaching into vendor/ leaves the tag right and the bytes wrong, and tools/bundle.py is
 # what BUILDS the deployable. Regenerate with tools/vendor-queries.sh.
-if [ -f "$ROOT/vendor/osquery-ai-discovery/SHA256SUMS" ]; then
-  if ( cd "$ROOT/vendor/osquery-ai-discovery" && shasum -a 256 --quiet --check SHA256SUMS >/dev/null 2>&1 ); then
+if [ -f "$ROOT/vendor/ai-detection-spec/SHA256SUMS" ]; then
+  if ( cd "$ROOT/vendor/ai-detection-spec" && shasum -a 256 --quiet --check SHA256SUMS >/dev/null 2>&1 ); then
     echo "vendor tree: ok, every file matches the manifest written when it was vendored"
   else
     echo "FAIL: a vendored file differs from the manifest:"
@@ -111,7 +111,7 @@ if [ -f "$ROOT/vendor/osquery-ai-discovery/SHA256SUMS" ]; then
     # propagates through the pipe, the subshell is a bare command in an else body, and
     # `set -e` would abort here -- taking the remediation line, `fail=1`, and every
     # remaining check in this file with it.
-    ( cd "$ROOT/vendor/osquery-ai-discovery" && shasum -a 256 --check SHA256SUMS 2>&1 | grep -v ': OK$' | sed 's/^/      /' ) || true
+    ( cd "$ROOT/vendor/ai-detection-spec" && shasum -a 256 --check SHA256SUMS 2>&1 | grep -v ': OK$' | sed 's/^/      /' ) || true
     echo "      The tree must be verbatim. Restore it, or re-vendor to adopt the change."
     fail=1
   fi
@@ -119,7 +119,7 @@ if [ -f "$ROOT/vendor/osquery-ai-discovery/SHA256SUMS" ]; then
   # AND THAT THE MANIFEST COVERS EVERY FILE. `shasum --check` reads the manifest, so a
   # file ADDED to the tree passes it by not being mentioned -- and the build packs bin/
   # and dist/ into dist/collect.sh, so an extra one there ships to every Mac.
-  extra="$( cd "$ROOT/vendor/osquery-ai-discovery" && \
+  extra="$( cd "$ROOT/vendor/ai-detection-spec" && \
     comm -23 <(find . -type f ! -name VERSION ! -name SHA256SUMS | sort) \
              <(sed 's/^[0-9a-f]*  //' SHA256SUMS | sort) || true )"
   if [ -n "$extra" ]; then
@@ -131,7 +131,7 @@ if [ -f "$ROOT/vendor/osquery-ai-discovery/SHA256SUMS" ]; then
     echo "vendor tree: ok, the manifest lists every file present"
   fi
 else
-  echo "FAIL: vendor/osquery-ai-discovery/SHA256SUMS is missing; re-vendor to write it"
+  echo "FAIL: vendor/ai-detection-spec/SHA256SUMS is missing; re-vendor to write it"
   fail=1
 fi
 
@@ -139,8 +139,8 @@ fi
 # Both can rot silently: a vendored tree edited by hand, and a dist/collect.sh built before
 # the last vendor. Not conditional on vendor/ existing -- without it there is no discovery
 # implementation in this repo at all, which is a failure and not a reason to skip.
-[ -d "$ROOT/vendor/osquery-ai-discovery" ] || {
-  echo "FAIL: no vendor/osquery-ai-discovery/ -- run tools/vendor-queries.sh <ref>"
+[ -d "$ROOT/vendor/ai-detection-spec" ] || {
+  echo "FAIL: no vendor/ai-detection-spec/ -- run tools/vendor-queries.sh <ref>"
   echo "lint: FAIL"; exit 1; }
 
 # THE VENDORED TREE IS NOT WRITTEN TO, INCLUDING BY US. tools/vendor-queries.sh removes and
@@ -162,7 +162,7 @@ python3 "$ROOT/tools/build-collector.py" --check || fail=1
 python3 - "$ROOT" <<'VENDOR' || fail=1
 import os, plistlib, re, subprocess, sys
 root = sys.argv[1]
-v = os.path.join(root, "vendor", "osquery-ai-discovery")
+v = os.path.join(root, "vendor", "ai-detection-spec")
 
 # The catalog is vendored FOR THE COLLECTOR and must never reach a Mac. The payload list is
 # checked by build-collector.py; this checks the built artifact, which is what deploys.
@@ -190,7 +190,7 @@ for name in ("collect.sh", "collect-linux.sh"):
 
     # Everything that EXECUTES on a Mac: upstream's wrapper plus our driver, with the base64
     # body left out. Scanning the body would be scanning an alphabet -- it can spell anything.
-    _mark = "AI_DISCOVERY_PAYLOAD_EOF"
+    _mark = "AI_DETECTION_SPEC_PAYLOAD_EOF"
     _head, _, _rest = text.partition(f"<<'{_mark}'\n")
     _, _, _tail = _rest.partition(f"\n{_mark}\n")
     shipped = _head + _tail + "\n" + driver
@@ -207,7 +207,7 @@ for name in ("collect.sh", "collect-linux.sh"):
     # same thing at v0.6.0. Two implementations of one mechanism is the failure this repo is
     # organised around, and the local one is gone -- asserted, because it is exactly the kind
     # of thing that grows back the next time the bundler is inconvenient.
-    if "GENERATED by tools/bundle.py from osquery-ai-discovery" not in text:
+    if "GENERATED by osquery/tools/bundle.py from ai-detection-spec" not in text:
         print(f"FAIL: dist/{name} was not built by the vendored bundler. The extraction "
               "half is upstream's; see tools/build-collector.py."); sys.exit(1)
     bc = open(os.path.join(root, "tools", "build-collector.py")).read()
@@ -218,13 +218,26 @@ for name in ("collect.sh", "collect-linux.sh"):
     # Behind build-collector.py's ENDPOINT_FILES, which admits payload files by name: no
     # catalog file is named anywhere in what deploys. dist/signatures.sql is catalog-derived
     # and admitted there by name; the --names guard below is what keeps it unread.
-    for forbidden in ("agents.yaml", "routes.yaml", "catalog/"):
+    for forbidden in ("agents.yaml", "routes.yaml", "catalog.json", "catalog/"):
         if forbidden in text:
             print(f"FAIL: dist/{name} mentions {forbidden!r} -- the endpoint holds no "
                   f"catalog. See docs/architecture.md."); sys.exit(1)
-    if text.count("AI_DISCOVERY_PAYLOAD_EOF") != 2:
+    if text.count(_mark) != 2:
         print(f"FAIL: dist/{name} has a nested payload marker -- it may be embedding a "
               "previous copy of itself"); sys.exit(1)
+
+    # THE WRAPPER NAMES THE EXTRACTED TREE AND THE DRIVER READS THAT NAME. Upstream chooses
+    # it, so a bump can rename it, and a driver reading any other finds it unset and exits 1
+    # on every endpoint. Read off the wrapper, so the invocations below are found by the name
+    # the wrapper actually sets.
+    rootm = re.search(r'^([A-Z_]+)="\$work" "\$work/driver"', _tail, re.M)
+    if not rootm:
+        print(f"FAIL: dist/{name}: cannot find where the wrapper runs the driver, so nothing "
+              f"below can tell which variable names the extracted tree."); sys.exit(1)
+    root_var = rootm.group(1)
+    if f'"${root_var}/' not in driver_code:
+        print(f"FAIL: dist/{name}: the wrapper sets {root_var}, and the driver never reads it. "
+              f"Upstream renamed it; follow the rename in tools/build-collector.py's DRIVER."); sys.exit(1)
 
     # THE COLLECTOR CALLS A VENDORED PROGRAM, AND UPSTREAM MAY DROP A FLAG -- a bump would
     # then ship a collector whose only real work exits 1 on every Mac. Every flag the
@@ -237,7 +250,7 @@ for name in ("collect.sh", "collect-linux.sh"):
     # EVERY invocation in the driver's code -- the scan and the JSON check both call it -- each
     # read to its last continued line.
     cmd = []
-    for at in [m.start() for m in re.finditer(re.escape('"$AI_DISCOVERY_ROOT/bin/discover"'),
+    for at in [m.start() for m in re.finditer(re.escape(f'"${root_var}/bin/discover"'),
                                               driver_code)]:
         for line in driver_code[at:].splitlines():
             cmd.append(line)
@@ -366,7 +379,7 @@ for name in ("collect.sh", "collect-linux.sh"):
 # loud is the only thing that stops it becoming permanent by inattention.
 version = os.path.join(v, "VERSION")
 if not os.path.exists(version):
-    print("FAIL: vendor/osquery-ai-discovery/VERSION missing. Run tools/vendor-queries.sh.")
+    print("FAIL: vendor/ai-detection-spec/VERSION missing. Run tools/vendor-queries.sh.")
     sys.exit(1)
 info = dict(l.split(None, 1) for l in open(version).read().splitlines() if l.strip())
 print(f"vendor: ok, ref {info.get('ref','?').strip()} ({info.get('kind','?').strip()})")

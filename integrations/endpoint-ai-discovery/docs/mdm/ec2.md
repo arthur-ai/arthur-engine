@@ -1,6 +1,6 @@
 # AI Inventory on EC2 instances
 
-Deploying the `osquery-ai-discovery` endpoint to Linux instances on AWS: a systemd timer runs
+Deploying the `ai-detection-spec` endpoint collector to Linux instances on AWS: a systemd timer runs
 the collector, and a reporter writes what it wrote as the instance's **SSM custom inventory**,
 which the SSM Agent uploads and the SSM API serves to Arthur. Nothing connects to the instance,
 and the instance connects to nothing it does not already reach.

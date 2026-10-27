@@ -1,24 +1,19 @@
-"""One file is vendored twice, and the two copies must be the same upstream.
+"""Two trees vendor one upstream, and must vendor it at one ref.
 
-The catalog is NOT one of them any more. It was vendored into the endpoint tree when
-the collector was going to live there; the collector is here now, so that copy had no
-consumer left -- every reference to it in the endpoint tree is a guard asserting it must
-never reach a Mac, which upstream's own bundler enforces anyway
-(`FORBIDDEN = ("catalog/", "agents.yaml", "routes.yaml", "bin/classify")`).
+The endpoint vendors ai-detection-spec's osquery binding: the queries and the runner a fleet
+runs. ml-engine vendors the matcher and the catalog the collector matches with, because it
+packages from `packages = ["src/ml_engine"]`, so anything the connector imports at runtime
+has to live inside that directory. The two share no file. They must still come from one
+release: the row layouts move with it, and a matcher reading rows of another layout
+publishes wrong values without anything failing.
 
-What is still duplicated is `bin/classify`, because the endpoint vendors `bin/` as the
-unit upstream ships and its runbook documents running the matcher by hand against a
-payload. ml-engine cannot share that copy: it packages from `packages = ["src/ml_engine"]`,
-so anything the connector imports at runtime has to live inside that directory.
-
-Two copies of one upstream file is the arrangement that drifts silently -- it is the
-failure that deleted a hand-written second implementation from the endpoint tree, where
-every test passed because the tests tested the copy. So the ref is asserted instead.
+Neither half belongs in the other tree. Upstream's own bundler refuses to pack the catalog or
+the matcher (`FORBIDDEN = ("catalog/", "agents.yaml", "routes.yaml", "catalog.json",
+"bin/classify")`), and a copy beside the deployable is a second one that two people can edit.
 
 Skipped when the integration is absent, so ml-engine remains testable on its own.
 """
 
-import hashlib
 import pathlib
 
 import pytest
@@ -35,7 +30,7 @@ ENDPOINT_VENDOR = (
     / "integrations"
     / "endpoint-ai-discovery"
     / "vendor"
-    / "osquery-ai-discovery"
+    / "ai-detection-spec"
 )
 
 needs_endpoint = pytest.mark.skipif(
@@ -55,10 +50,10 @@ def _stamp(path: pathlib.Path) -> dict[str, str]:
 
 
 @needs_endpoint
-def test_the_endpoint_tree_no_longer_vendors_a_second_catalog() -> None:
-    """The signatures are the collector's. A copy beside the deployable is a second
-    catalog that nothing reads and that two people can edit."""
-    assert not (ENDPOINT_VENDOR / "catalog").exists()
+@pytest.mark.parametrize("path", ["catalog", "bin/classify"])
+def test_the_endpoint_tree_vendors_no_catalog_and_no_matcher(path: str) -> None:
+    """Both are the collector's. The endpoint enumerates and matches nothing."""
+    assert not (ENDPOINT_VENDOR / path).exists()
 
 
 @needs_endpoint
@@ -71,19 +66,4 @@ def test_both_copies_name_the_same_upstream_ref() -> None:
         f"_vendor/SHA256SUMS."
     )
     assert ml["ref"] == endpoint["ref"]
-
-
-@needs_endpoint
-@pytest.mark.parametrize("ml_name,endpoint_name", [("classify.py", "bin/classify")])
-def test_shared_files_are_byte_identical(ml_name: str, endpoint_name: str) -> None:
-    """Same ref is necessary but not sufficient: assert the bytes too.
-
-    `classify.py` is `bin/classify` renamed, which is the only change the vendoring is
-    allowed to make. A formatter that reached one copy and not the other would leave the
-    refs agreeing and the behaviour diverging, which is the harder failure to see.
-    """
-    mine = hashlib.sha256((ML_VENDOR / ml_name).read_bytes()).hexdigest()
-    theirs = hashlib.sha256((ENDPOINT_VENDOR / endpoint_name).read_bytes()).hexdigest()
-    assert (
-        mine == theirs
-    ), f"{ml_name} and {endpoint_name} differ at the same vendored ref"
+    assert ml["repo"] == endpoint["repo"]

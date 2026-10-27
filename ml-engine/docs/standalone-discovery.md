@@ -128,10 +128,13 @@ window misses nothing.
 #### `gcp_containers` — Cloud Run and GKE workloads
 
 Lists every Cloud Run service, Cloud Run job and GKE workload in the projects, and
-reports a workload when one of its images is an agent's in the catalog (`images:`), or
-every workload when `report_all_workloads` is true. Each record names the GCP service
-account the workload runs as, so it can be joined with the callers in Vertex AI's audit
-log.
+reports a workload when one of its images is an agent's in the catalog (`images:`), when
+it runs as a service account that called a Vertex AI model in the lookback (read off the
+project's Data Access audit log by the scan itself), or every workload when
+`report_all_workloads` is true. Each record names the GCP service account the workload
+runs as, with `shared by N workloads` when several run as it (a match through a shared
+account cannot tell them apart), and lists the models that account called as
+`llm_models`.
 
 | Field | Secret | Required | Notes |
 |---|---|---|---|
@@ -144,18 +147,29 @@ The service account needs `roles/run.viewer` and `roles/container.viewer`. The s
 grants the Kubernetes reads too (`container.deployments.list`, `container.pods.list`,
 `container.serviceAccounts.list` and the rest), because GKE authorises a Google identity's
 Kubernetes calls against its IAM roles as well as RBAC; it does not grant reading
-Secrets. `query` is the catalog, as for Jamf; `query_language: none`.
+Secrets. Selecting by AI caller also needs `roles/logging.privateLogViewer` and Data
+Access audit logs on for `aiplatform.googleapis.com`; without them that project's
+workloads are selected by catalog image (or `report_all_workloads`) only. `query` is the
+catalog, as for Jamf; `query_language: none`.
 
 A GKE workload is its controller -- Deployment, StatefulSet, DaemonSet, CronJob -- or a
-Job or Pod nothing owns; `kube-system`, `kube-public`, `kube-node-lease` and the `gke-`
-and `gmp-` namespaces are left out. The engine must be able to reach each cluster's
-endpoint; a cluster it cannot reach is logged and the rest of the scan goes on, as is a
-project where an API is off or refused. Two refusals do end the scan: a credential
+Job or Pod no listed workload owns (a CronJob's Jobs, and the pods of a Deployment's
+ReplicaSet, a StatefulSet, DaemonSet or Job, fold into their owner; an operator's, such
+as a Ray cluster's pods or an Argo Rollout's, are their own; if ReplicaSets cannot be
+read, every ReplicaSet's pods fold); `kube-system`, `kube-public`, `kube-node-lease` and the `gke-`
+and `gmp-` namespaces are left out. A pod without Workload Identity calls Google as its
+node pool's service account, which every pod on the node shares, so that account is
+labelled `node account` and an AI call from it does not select the workload; only the
+workload's own (Workload Identity) account does. The engine must be able to reach each cluster's
+endpoint; a cluster it cannot reach is logged, reported on the run as a denied scope,
+and the rest of the scan goes on, as is a project where an API, or its audit log, is off
+or refused. Two refusals do end the scan: a credential
 refused outright (HTTP 401) stops it at once, and a scan that could list nothing at all
 fails with the first refusal's status, so a key with no access reads as denied rather
 than as a project without workloads.
 
-The lookback window is not applied: every scan lists every workload.
+The lookback window bounds only the audit-log read of AI callers (30 days for a zero
+lookback): every scan lists every workload.
 
 #### `wiz` — Wiz
 
@@ -381,8 +395,73 @@ Reads the agent inventory Arthur's endpoint collector writes to each Mac.
 | `include_groups` | no | no | Comma-separated computer group names to limit the scan to |
 | `exclude_groups` | no | no | Comma-separated computer group names to leave out |
 
-`query` is the agent catalog YAML; leave it `""` to use the one the engine ships with.
+`query` is the agent catalog; leave it `""` to use the one the engine ships with. A catalog
+of your own is an [ai-detection-spec](https://github.com/arthur-ai/ai-detection-spec) catalog
+document (`format: ai-detection-spec/0.1`), such as the `catalog.json` a release attaches. It
+is validated against the spec's schema, and the scan refuses one that fails.
 Use `query_language: none`. Jamf scans stop early on shutdown and report as cancelled.
+
+#### `local` — one machine's scan, from a folder
+
+Reads the scan Arthur's endpoint collector wrote into a folder, and reports each agent on
+that machine. It exists so someone can try discovery on their own laptop without an MDM
+or a cloud: run the collector on the machine, mount its folder into the engine, and the
+engine matches and sends what it found. **Standalone only**: the Platform has no such
+vendor, and a Platform-dispatched engine never runs it.
+
+| Field | Secret | Required | Notes |
+|---|---|---|---|
+| `inventory_dir` | no | yes | The folder, as an absolute path inside the engine, e.g. where it is mounted into the container |
+
+```yaml
+sources:
+  - name: this-machine
+    vendor: local
+    fields:
+      - {key: inventory_dir, value: /etc/deckard/local-scan}
+    configs:
+      - name: inventory
+        query: ""
+        query_language: none
+        lookback_window_seconds: 604800   # publish a scan up to 7 days old
+```
+
+`query` is the agent catalog, as for Jamf; `""` uses the one the engine ships with.
+
+**What fills the folder.** Two files, both readable by the engine's user (UID `65532` in
+the image):
+
+| File | Written by | Holds |
+|---|---|---|
+| `inventory.json` | the collector, run with `ARTHUR_OUT_DIR` set to the folder: [`dist/collect.sh`](../../integrations/endpoint-ai-discovery/dist/collect.sh) on macOS, [`dist/collect-linux.sh`](../../integrations/endpoint-ai-discovery/dist/collect-linux.sh) on Linux. It needs [osquery](https://osquery.io/downloads) on the machine, and not root: run as a user, it sees what that user can read | the scan's rows |
+| `machine.json` | whatever ran the collector | who the machine is, below |
+
+The collector also writes `status.txt` and `inventory.ea` there; neither is read.
+
+`machine.json` names the machine, because an engine in a container cannot see the host's
+own id or hostname:
+
+```json
+{"device_id": "8915B3AB-AFBD-55AA-B7B4-2442BEC733A9", "hostname": "my-laptop", "platform": "darwin"}
+```
+
+| Key | Required | |
+|---|---|---|
+| `device_id` | yes | The left half of every `external_id`, so it must not change while the machine does: the platform UUID on macOS (`ioreg -rd1 -c IOPlatformExpertDevice`, `IOPlatformUUID`), `/etc/machine-id` on Linux. Never the hostname |
+| `hostname` | no | Reported as each agent's `host_name` |
+| `platform` | no | `darwin` or `linux` |
+| `os_version` | no | Reported as each agent's `os_version` |
+
+**Freshness.** The engine re-reads the folder every interval; it changes only when the
+collector runs again. A collector run that fails leaves the previous scan in place, so
+the folder never says whether the latest run worked -- check the collector's exit status
+for that. Records are dated by when the machine was scanned, never by when the folder was
+read. With a lookback, a scan older than it is not published: the scan fails saying how
+old it is, and its outcome counts the machine as `not-reported-in-window`. A lookback of
+`0` publishes the folder's scan however old it is.
+
+An empty folder, a missing or incomplete `machine.json`, or an `inventory.json` that does
+not decode fails the scan with the reason, rather than reporting a machine without agents.
 
 #### `gcp_compute_engine` — Compute Engine VMs
 
@@ -479,9 +558,76 @@ read over the lookback, or the last seven days when it is `0`, for `Converse`,
 IAM user) that called one becomes a record per region, named for the models it called,
 with external id `{account}/{region}/iam_role/{role ARN}`. IAM Identity Center (SSO)
 roles and the root user are people: their calls are counted in the job log, not
-reported. A part AWS refuses in a region, or a region AgentCore does not run in, is a
+reported. So is a call IAM refused (CloudTrail logs it with an `AccessDenied` `errorCode` and
+no model): a role whose every call was refused has called no model and gets no record. A
+call that was allowed and then failed in the model is still counted as that role's call. A
+part AWS refuses in a region, or a region AgentCore does not run in, is a
 warning and the rest of the scan goes on; a refused credential, or every part refused,
 fails the scan.
+
+#### `aws_containers` — ECS and EKS workloads
+
+Lists every ECS service, every ECS task no service owns, and every EKS workload in the
+regions of one account, and reports a workload when one of its images is an agent's in
+the catalog (`images:`), when it runs as an IAM role CloudTrail shows calling a Bedrock
+model, or every workload when `report_all_workloads` is true. Each record names the role
+the workload runs as.
+
+| Field | Secret | Required | Notes |
+|---|---|---|---|
+| `regions` | no | yes | Comma-separated regions, such as `us-east-1,us-west-2`. Both ECS and EKS are listed in each, and CloudTrail is read in each when `read_cloudtrail` is on |
+| `read_cloudtrail` | no | no | `true` (default) or `false`: read the roles that call Bedrock models, so a workload running as one is reported |
+| `report_all_workloads` | no | no | `true` to report every workload, not only catalog matches and AI-calling roles. Defaults to `false` |
+| `access_key_id` | yes | no | As for `aws_ec2`; without one, the engine uses its own AWS credentials only if `ARTHUR_ENGINE_AWS_CONTAINERS_ALLOW_DEFAULT_CREDENTIALS=true` is set |
+| `secret_access_key` | yes | no | Set with `access_key_id`, or neither |
+| `role_arn` | no | no | A role those credentials assume, as session `arthur-ai-discovery` |
+| `external_id` | no | no | The external ID the role's trust policy requires; only with `role_arn` |
+
+The credential needs, all read-only:
+
+- ECS: `ecs:ListClusters`, `ecs:ListServices`, `ecs:DescribeServices`, `ecs:ListTasks`,
+  `ecs:DescribeTasks`, `ecs:DescribeTaskDefinition`; for tasks on EC2 with no task role,
+  `ecs:DescribeContainerInstances`, `ec2:DescribeInstances` and `iam:GetInstanceProfile`.
+- EKS: `eks:ListClusters`, `eks:DescribeCluster`, `eks:ListNodegroups`,
+  `eks:DescribeNodegroup`, `eks:ListPodIdentityAssociations`,
+  `eks:DescribePodIdentityAssociation`, `eks:ListFargateProfiles`,
+  `eks:DescribeFargateProfile`, and on each cluster an access entry for the
+  credential's IAM principal with the `AmazonEKSViewPolicy` access policy at cluster
+  scope (`aws eks create-access-entry`, then `aws eks associate-access-policy ...
+  --access-scope type=cluster`). A cluster still on `CONFIG_MAP` authentication needs the
+  principal mapped in `aws-auth` to a group bound to the `view` ClusterRole instead.
+- CloudTrail: `cloudtrail:LookupEvents`, when `read_cloudtrail` is on.
+
+`DescribeTaskDefinition` and the Kubernetes listings return containers' environment
+variables; the connector reads only images, roles, names and timestamps off them. `query`
+is the catalog, as for Jamf; `query_language: none`.
+
+A workload is an ECS service (its tasks are folded in by their `service:` group), the
+tasks no service owns that share a `group` (`family:<task definition family>` unless
+whoever ran them set one), or an EKS controller -- Deployment, StatefulSet, DaemonSet,
+CronJob, even one an operator's custom resource owns -- or a Job or Pod nothing owns; `kube-system`, `kube-public`, `kube-node-lease`,
+`aws-observability` and the `amazon-` namespaces are left out. ECS lists a stopped task
+for about an hour, so a task group is seen only while one of its tasks runs or has just
+run.
+
+The role is the task role on ECS, never the execution role. On EKS it is the IRSA
+annotation (`eks.amazonaws.com/role-arn`) on the pod's service account, else the role an
+EKS Pod Identity association binds to it, else the managed node groups' node roles. An
+EC2 task with no task role runs as its container instance's role. A node's or instance's
+role is shared by everything on it, and the name says so, as it says how many of the
+scan's workloads share a role. CloudTrail is read over the lookback, or the last seven
+days when it is `0`; a call IAM refused is not a call, as in `aws_bedrock`, so a role
+whose every call was refused selects nothing. A pod a Fargate profile selects has no
+node role; nodes outside managed node groups (self-managed, Karpenter, Auto Mode) are
+not listed by EKS, so their roles are not reported.
+
+An account-region whose ECS or EKS listing is refused, and a cluster whose Kubernetes API
+answers 401 or 403 or cannot be reached (a private endpoint the engine is outside of), is
+a denied scope on the run, and the rest of the scan goes on. EKS answers 401 to an IAM
+principal with no access entry on that cluster, so that is the cluster's refusal, not the
+credential's. A refused AWS credential ends the scan, and so does a scan refused every
+ECS and EKS listing, even when CloudTrail could be read: a source that listed no
+container reads as denied, not as an account without workloads.
 
 #### `splunk_enterprise` — Splunk Enterprise
 
@@ -699,7 +845,7 @@ succeeded with denied scopes is a scan that did not see all of its scope, which 
 destination should alert on. The list is empty for a source whose scope is one thing,
 which fails the scan instead.
 
-A source that reads machines (`jamf_pro`, `gcp_compute_engine`, `aws_ec2`) adds
+A source that reads machines (`jamf_pro`, `gcp_compute_engine`, `aws_ec2`, `local`) adds
 `device_coverage` to the outcome: how many machines it read, decoded and could not read,
 the unreadable ones by reason, and **each unreadable machine by identity**, which is the
 finding a destination should alert on, since a machine the scan cannot see is where

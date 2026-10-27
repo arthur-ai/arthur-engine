@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.1050"
+        "version": "2.1.1061"
     },
     "paths": {
         "/api/v2/engine-config": {
@@ -33385,6 +33385,18 @@
                         "type": "integer",
                         "title": "Span Count",
                         "description": "Number of spans in this trace"
+                    },
+                    "ingest_bytes": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Ingest Bytes",
+                        "description": "OTLP payload bytes received for this trace's spans on the trace ingestion endpoints. Absent for traces ingested before it was recorded, or that didn't arrive through those endpoints."
                     },
                     "duration_ms": {
                         "type": "number",

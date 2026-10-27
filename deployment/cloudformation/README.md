@@ -82,6 +82,19 @@ Please refer to the IAM details described in the CloudFormation template:
 * `https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/<version_number>/genai-engine/arthur-genai-engine-iam.yml`
 * `https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/<version_number>/ml-engine/arthur-ml-engine-iam.yml`
 
+### How do I let AWS discovery sources use the ML Engine's own IAM role?
+
+An AWS discovery source (`aws_ec2`, `aws_bedrock`, `aws_containers`, `aws_network`) with no access key uses
+the ML Engine task role only when `MLEngineAwsDiscoveryAllowDefaultCredentials` is `true`. The provisioned
+task role has no AWS permissions of its own, so give the source a `role_arn`, such as a hub role that reads
+every account in an organization, and list that ARN in `MLEngineTaskRoleAssumableRoleArns` so the task role
+may assume it; the role's trust policy must also trust the task role. The grant only covers the session
+names the discovery connectors assume roles with, so another connector that assumes a `role_arn` with the
+task role, such as an S3 connector, cannot use it. A bring-your-own task role is not changed: grant it
+`sts:AssumeRole` yourself, with the same `sts:RoleSessionName` condition as
+[arthur-ml-engine-iam.yml](ml-engine/arthur-ml-engine-iam.yml). The source fields are in
+[standalone-discovery.md](../../ml-engine/docs/standalone-discovery.md).
+
 ### How do I configure my bring-your-own security groups?
 
 Please refer to the security group details described in the CloudFormation templates:

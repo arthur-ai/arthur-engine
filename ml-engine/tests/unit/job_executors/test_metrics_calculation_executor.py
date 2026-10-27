@@ -6,6 +6,7 @@ from typing import Optional, Type
 from unittest.mock import Mock, patch
 from uuid import UUID, uuid4
 
+import duckdb
 import pytest
 import pytz
 from arthur_client.api_bindings import (
@@ -27,6 +28,13 @@ from arthur_client.api_bindings import (
     PostJobBatch,
 )
 from arthur_common.aggregations import AggregationFunction
+from arthur_common.aggregations.functions.agentic_aggregations import (
+    AgenticIngestBytesAggregation,
+)
+from arthur_common.aggregations.functions.ingest_bytes import (
+    DatasetIngestBytesAggregationFunction,
+)
+from arthur_common.models.enums import ModelProblemType
 from arthur_common.models.metrics import (
     DatasetReference,
     NumericMetric,
@@ -42,8 +50,12 @@ from mock_data.mock_data_generator import random_model
 
 from dataset_loader import DatasetLoader
 from job_executors.metrics_calculation_executor import (
+    InternalAggregationKind,
+    InternalAggregationSpec,
     MetricsCalculationExecutor,
     _create_alert_check_job,
+    consumption_aggregation_spec,
+    with_consumption_aggregation_specs,
 )
 from metric_calculators.default_metric_calculator import DefaultMetricCalculator
 
@@ -696,3 +708,182 @@ def test_process_agg_args_nested_columns(mock_bigquery_client) -> None:
     # This should not raise an error
     init_args, aggregate_args = metrics_calculator.process_agg_args([dataset])
     result = metrics_calculator.aggregate(init_args, aggregate_args)
+
+
+# ============================================================================
+# Consumption (ingest volume) aggregations (UP-5094)
+# ============================================================================
+
+
+def _dataset_with(**overrides) -> Dataset:
+    dataset = Dataset.model_validate(copy.deepcopy(MOCK_BQ_DATASET))
+    return dataset.model_copy(update={"id": str(uuid4()), **overrides})
+
+
+def _spec_ids(specs) -> list[str]:
+    return [str(spec.aggregation_id) for spec in specs]
+
+
+def test_consumption_aggregation_spec_per_dataset_kind():
+    ml_dataset = _dataset_with()
+    agentic = _dataset_with(model_problem_type=ModelProblemType.AGENTIC_TRACE)
+    shield = _dataset_with(model_problem_type=ModelProblemType.ARTHUR_SHIELD)
+    static = _dataset_with(is_static=True)
+
+    ml_spec = consumption_aggregation_spec(ml_dataset)
+    assert ml_spec.aggregation_id == str(DatasetIngestBytesAggregationFunction.id())
+    timestamp_col_id = next(
+        col.id
+        for col in ml_dataset.dataset_schema.columns
+        if col.source_name == "timestamp"
+    )
+    assert {arg.arg_key: arg.arg_value for arg in ml_spec.aggregation_args} == {
+        "dataset": ml_dataset.id,
+        "timestamp_col": str(timestamp_col_id),
+    }
+
+    agentic_spec = consumption_aggregation_spec(agentic)
+    assert agentic_spec.aggregation_id == str(AgenticIngestBytesAggregation.id())
+    assert [(a.arg_key, a.arg_value) for a in agentic_spec.aggregation_args] == [
+        ("dataset", agentic.id),
+    ]
+
+    assert consumption_aggregation_spec(shield) is None
+    assert consumption_aggregation_spec(static) is None
+
+
+def test_with_consumption_aggregation_specs_replaces_configured_ones():
+    """Configured consumption specs are dropped (they may sit on the wrong dataset)
+    and exactly one built-in spec per applicable dataset is added."""
+    ml_dataset = _dataset_with()
+    shield = _dataset_with(model_problem_type=ModelProblemType.ARTHUR_SHIELD)
+    inference_count = InternalAggregationSpec(
+        internal_aggregation_kind=InternalAggregationKind.DEFAULT,
+        aggregation_id="00000000-0000-0000-0000-00000000000a",
+        aggregation_init_args=[],
+        aggregation_args=[MetricsArgSpec(arg_key="dataset", arg_value=ml_dataset.id)],
+    )
+    misplaced = InternalAggregationSpec(
+        internal_aggregation_kind=InternalAggregationKind.DEFAULT,
+        aggregation_id=str(DatasetIngestBytesAggregationFunction.id()),
+        aggregation_init_args=[],
+        aggregation_args=[MetricsArgSpec(arg_key="dataset", arg_value=shield.id)],
+    )
+
+    specs = with_consumption_aggregation_specs(
+        [inference_count, misplaced],
+        [ml_dataset, shield],
+    )
+
+    assert _spec_ids(specs) == [
+        inference_count.aggregation_id,
+        str(DatasetIngestBytesAggregationFunction.id()),
+    ]
+    assert specs[1].aggregation_args[0].arg_value == ml_dataset.id
+    # idempotent: running it on its own output changes nothing
+    assert _spec_ids(
+        with_consumption_aggregation_specs(specs, [ml_dataset, shield]),
+    ) == _spec_ids(specs)
+
+
+def _consumption_executor(model_specs, dataset):
+    models_client = Mock()
+    model = Mock()
+    model.id = "consumption-model-id"
+    model.project_id = "consumption-project-id"
+    model.model_problem_types = []
+    model.datasets = [Mock(dataset_id=dataset.id)]
+    model.metric_config = Mock(aggregation_specs=model_specs)
+    models_client.get_model.return_value = model
+    datasets_client = Mock()
+    datasets_client.get_dataset.return_value = dataset
+    metrics_client = Mock()
+    metrics_client.post_model_metrics_version.return_value = Mock(version_num=1)
+    jobs_client = Mock()
+    jobs_client.post_submit_jobs_batch.return_value = Mock(jobs=[])
+    executor = MetricsCalculationExecutor(
+        models_client=models_client,
+        datasets_client=datasets_client,
+        metrics_client=metrics_client,
+        jobs_client=jobs_client,
+        policies_client=Mock(),
+        custom_aggregations_client=Mock(),
+        custom_aggregation_tests_client=Mock(),
+        connector_constructor=Mock(),
+        logger=logger,
+    )
+    return executor, metrics_client
+
+
+def _job_spec(dataset, start, end):
+    return MetricsCalculationJobSpec(
+        aggregation_specs=[],
+        dataset_ids=[dataset.id],
+        start_timestamp=start,
+        end_timestamp=end,
+        scope_model_id="consumption-model-id",
+    )
+
+
+def test_metrics_run_reports_ml_ingest_bytes_even_when_not_configured():
+    start = datetime(2024, 1, 1).astimezone(pytz.timezone("UTC"))
+    rows = [
+        {
+            "id": str(uuid4()),
+            "name": f"Test{i}",
+            "timestamp": (start + timedelta(minutes=i)).isoformat(),
+            "description": "x" * i,
+            "numeric_col": i,
+        }
+        for i in range(3)
+    ]
+    dataset = Dataset.model_validate(MOCK_BQ_DATASET)
+    connector = Mock()
+    connector.read.return_value = rows
+    connector_constructor = Mock()
+    connector_constructor.get_connector_from_spec.return_value = connector
+    datasets_client = Mock()
+    datasets_client.get_dataset.return_value = dataset
+    conn, _ = DatasetLoader(
+        connector_constructor=connector_constructor,
+        datasets_client=datasets_client,
+        logger=logger,
+    ).load_datasets(
+        dataset_ids=[dataset.id],
+        start_time=start - timedelta(seconds=5),
+        end_time=start + timedelta(hours=1),
+        filters=None,
+        pagination_options=None,
+    )
+    executor, metrics_client = _consumption_executor([], dataset)
+
+    with patch.object(executor, "_load_data", return_value=(conn, set())):
+        executor.execute(Mock(schedule_id=None), _job_spec(dataset, start, start + timedelta(hours=1)))
+
+    upload = metrics_client.post_model_metrics_by_version.call_args.kwargs["metrics_upload"]
+    ingest = [m.actual_instance for m in upload.metrics if m.actual_instance.name == "ingest_bytes"]
+    assert len(ingest) == 1
+    series = ingest[0].numeric_series
+    dimensions = {d.name: d.value for d in series[0].dimensions}
+    assert dimensions["source"] == "ml_datasets"
+    assert dimensions["dataset_id"] == str(dataset.id)
+    assert sum(point.value for s in series for point in s.values) > 0
+
+
+def test_consumption_failure_does_not_fail_the_metrics_job(caplog):
+    """An agentic dataset whose loaded table has no ingest_bytes column (e.g. the
+    Platform hasn't migrated its schema yet) logs a warning, and the job succeeds."""
+    start = datetime(2024, 1, 1).astimezone(pytz.timezone("UTC"))
+    dataset = _dataset_with(model_problem_type=ModelProblemType.AGENTIC_TRACE)
+    conn = duckdb.connect()
+    executor, metrics_client = _consumption_executor([], dataset)
+
+    with patch.object(executor, "_load_data", return_value=(conn, set())):
+        executor.execute(Mock(schedule_id=None), _job_spec(dataset, start, start + timedelta(hours=1)))
+
+    metrics_client.post_model_metrics_by_version.assert_called_once()
+    assert any(
+        rec.levelname == "WARNING"
+        and str(AgenticIngestBytesAggregation.id()) in rec.message
+        for rec in caplog.records
+    )
