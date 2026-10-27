@@ -126,5 +126,10 @@ sed 's/^/  /' "$DEST/VERSION"
 echo "  files: $(find "$DEST" -type f | wc -l | tr -d ' ')"
 echo
 echo "next: tools/build-collector.py   (rebuilds the deployable around these)"
-echo "      then, in ml-engine/: uv run python scripts/vendor_ai_detection_spec.py"
-echo "                           (the catalog and matcher, at this same ref)"
+if [ "$kind" = tag ]; then
+  echo "      then, in ml-engine/: uv run python scripts/vendor_ai_detection_spec.py"
+  echo "                           (the catalog and matcher, at this same tag)"
+else
+  echo "      the catalog and matcher cannot follow a bare commit: ml-engine vendors them from a"
+  echo "      tag's release. ml-engine's test_vendor_parity.py fails until a tag is pinned here."
+fi
