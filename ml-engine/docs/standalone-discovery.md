@@ -171,6 +171,118 @@ than as a project without workloads.
 The lookback window bounds only the audit-log read of AI callers (30 days for a zero
 lookback): every scan lists every workload.
 
+#### `vercel_ai` — Vercel
+
+Lists one team's projects and reports each project that looks like it calls an LLM or
+runs an AI agent.
+
+| Field | Secret | Required | Notes |
+|---|---|---|---|
+| `team_id` | no | yes | The team's ID (`team_...`), from the team's Settings > General |
+| `access_token` | yes | yes | A Vercel access token scoped to that team |
+| `include_projects` | no | no | Comma-separated project names or IDs to limit the scan to; empty scans every project |
+| `read_deployment_sources` | no | no | `true` to read the `package.json` of each project's latest production deployment (CLI, API and v0 deployments only). `false` or absent leaves code unread; any other value fails the scan as not configured |
+
+Use `query: ""` and `query_language: none`.
+
+**Lookback.** The project list is an inventory, so it ignores `lookback_window_seconds`:
+every scan reports every flagged project, however long ago it was deployed. Agent Runs
+and the Observability Plus metrics are activity, so they are the exception: they read
+the lookback window, capped at 30 days (what Observability Plus keeps), and a window of
+`0` reads the full 30 days. A short window therefore misses a project whose only signal
+is traffic or runs outside it.
+
+Vercel has no agent resource, so this is a heuristic. A project is reported when any of
+these fires for it:
+
+| Signal | What it is | Endpoint |
+|---|---|---|
+| Environment variable | One of the project's variables is named exactly as an LLM provider key (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `AI_GATEWAY_API_KEY` and the other names in `LLM_PROVIDER_ENV_KEYS`), for any target | `GET /v10/projects/{id}/env` |
+| Shared variable | A team-shared variable with one of those names is linked to the project | `GET /v1/env` |
+| AI integration | A Vercel Marketplace integration tagged AI or Agents by Vercel, or a known AI provider (OpenAI, xAI, Groq, ...), is installed with access to the project | `GET /v1/integrations/configurations?view=account` |
+| Agent Runs | Vercel lists the project among the team's projects with production Agent Runs | `GET https://vercel.com/api/observability/agent-runs?teamSlug=...&view=team&environment=production` (**undocumented**) |
+| AI Gateway | Observability Plus counts AI Gateway requests from the project (`vercel.ai_gateway_request.count` by `project_name`, `ai_model`, `auth_method`) | `POST /v2/observability/query` |
+| LLM API host | Observability Plus counts the project's requests to an LLM provider's API: `api.openai.com`, `api.anthropic.com`, `bedrock-runtime.*.amazonaws.com`, `ai-gateway.vercel.sh`, `generativelanguage.googleapis.com`, `aiplatform.googleapis.com` and `*-aiplatform.googleapis.com`, `*.openai.azure.com`, `api.groq.com`, `api.mistral.ai` (`vercel.external_api_request.count` by `project_name`, `request_hostname`) | `POST /v2/observability/query` |
+| Package | Opt-in. The latest production deployment's `src/package.json` (or root `package.json`) depends on `ai`, `@ai-sdk/*`, `openai`, `@anthropic-ai/*`, `@aws-sdk/client-bedrock*`, `langchain`, `@mastra/*` or `eve` | `GET /v6/deployments/{id}/files`, `GET /v8/deployments/{id}/files/{fileId}` |
+
+Variable names are matched exactly, so a key under another name (`LLM_TOKEN`) is not
+seen by name; there is deliberately no `*_TOKEN` guess. Such a project, one that calls
+the AI Gateway with its deployment's OIDC token (no key at all), or one that loads its
+key from a secrets manager is found by its traffic when the team has Observability Plus,
+by Agent Runs, or by its `package.json` when `read_deployment_sources` is on. A key set
+only for `preview` or `development` still flags the project: the code that reads it is
+in the project either way. The evidence says which targets it is set for.
+
+**One LLM call is not an agent, and only Agent Runs says "agent".** A single-call
+summarizer with `OPENAI_API_KEY` is flagged exactly like an agent with tools. To let a
+reviewer tell them apart, the scan logs one line per flagged project naming every
+signal that fired: `Vercel project prj_... flagged by: environment variable(s)
+OPENAI_API_KEY (production, preview); Agent Runs (12 production run(s)); AI Gateway
+requests (models openai/gpt-5; auth oidc); ...`. Only names are logged: variable names
+and targets, integration slugs, package names, model names, hosts. The record contract
+has no field for evidence yet, so it is in the job log, not on the record. The AI
+Gateway's model names are on the record as `llm_models`.
+
+What is read, all reads:
+
+- `GET /v10/projects`: project IDs, names, deployment/update times and the production
+  deployment's ID and `meta` (to tell a Git deployment).
+- `GET /v10/projects/{id}/env` and `GET /v1/env`: environment variable **names** (and
+  their type and target, and for a shared one its linked projects). Values are never
+  requested decrypted and are discarded as soon as the answer arrives; they are never
+  logged, stored or sent to the destination. The single-variable endpoints, which
+  decrypt, are never called.
+- `GET /v1/integrations/configurations?view=account`: which integrations are installed
+  and which projects they can access.
+- `GET /v2/teams/{teamId}`: the team's slug, which Agent Runs is addressed by. If it
+  cannot be read, Agent Runs is asked with the team ID, as the Vercel CLI does.
+- Agent Runs, on `vercel.com` rather than `api.vercel.com`. **This endpoint is not
+  documented by Vercel and may change**: it is what `vercel agent-runs projects` calls
+  (Vercel CLI 65.2.0), and works with a token on any plan. It carries `teamSlug`, not
+  `teamId`.
+- `POST /v2/observability/query`, twice, scoped to the team (`{"type": "owner",
+  "ownerId": <team_id>}`). It needs **Observability Plus**; Pro alone answers 402.
+- Only with `read_deployment_sources: true`: one deployment's file tree and one file
+  from it, `package.json`, per project. Vercel keeps a file tree only for deployments
+  made with the CLI, the API or v0; a Git deployment is skipped, by its `meta` when that
+  names a commit and otherwise by Vercel's 404 ("File tree not found"). Only the
+  dependency names are kept; nothing else in the file is logged or stored, and a file
+  over 512 KiB is not read.
+
+Every call except Agent Runs carries `teamId`. Nothing is written.
+
+**What can fail a scan.** Only the inventory. The project list failing fails the scan:
+a 404 is a `team_id` that does not exist (not configured); a 403 is a token that is
+invalid, expired or revoked (Vercel answers a bad token with 403, not 401) or that
+cannot see the team. If one project's variables answer 403, 404 or 5xx (after retries),
+they are skipped with a warning naming the project's ID and the status; the project is
+still reported if another signal flagged it, and skipped otherwise. A 401 fails the
+scan, and so does an integrations failure other than 403. If a call fails part way, the
+records found before it are published and the scan then fails with Vercel's error.
+
+None of the other signals can fail a scan. A 402 from observability is logged once as
+"Observability Plus not enabled"; a 403, a 404, an unexpected answer or an unreachable
+host on shared variables, Agent Runs, observability or deployment files is one warning
+naming the call and the status, and the scan goes on without that signal. The summary
+line `Vercel signals read: ...` says which signals were read for every scan.
+
+Each record's address is the team ID, the scope `global` (Vercel has no region) and the
+project ID, which is also its `external_id`. `last_seen` is the latest of the project's
+update time and its deployments' times, so a project redeployed without a settings
+change still reads as active.
+
+Least privilege: Vercel tokens have no read-only scope; a token carries the permissions
+of the user who created it, within the team chosen as its scope. Create it from a
+dedicated team member, scope it to the one team, and give it an expiration. Which role
+is enough depends on the plan: on Enterprise, Enterprise Viewer can read everything the
+scan calls; on Pro, a Pro Viewer can read projects and deployments, but Vercel's role
+docs say it cannot see observability data or team settings, so Observability Plus
+signals (and possibly team-shared variables) need a Member or Owner token. Neither
+viewer role has yet been verified against a live team. Production variables the token's user cannot see are counted in the scan log
+(`hiddenProductionEnvCount`) rather than silently missed. Leave `read_deployment_sources`
+off unless reading deployed code is acceptable: the token can read it either way, and
+the field is what keeps the scan from doing so.
+
 #### `wiz` — Wiz
 
 Reads two inventories from one Wiz tenant, across every cloud account the tenant has
