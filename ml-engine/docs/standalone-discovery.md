@@ -397,7 +397,7 @@ Reads the agent inventory Arthur's endpoint collector writes to each Mac.
 
 `query` is the agent catalog; leave it `""` to use the one the engine ships with. A catalog
 of your own is an [ai-detection-spec](https://github.com/arthur-ai/ai-detection-spec) catalog
-document (`format: ai-detection-spec/0.1`), such as the `catalog.json` a release attaches. It
+document (`format: ai-detection-spec/0.2`), such as the `catalog.json` a release attaches. It
 is validated against the spec's schema, and the scan refuses one that fails.
 Use `query_language: none`. Jamf scans stop early on shutdown and report as cancelled.
 

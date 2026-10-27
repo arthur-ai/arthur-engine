@@ -62,7 +62,7 @@ def test_floor_catalog_is_the_vendored_one() -> None:
     assert m.agent_count == 42
     # Upstream's own catalog_sha, computed over file bytes. If this changes, the vendor
     # tree moved and every record's recorded catalog version moved with it.
-    assert m.catalog_sha == "df9eede4b2ff"
+    assert m.catalog_sha == "4864f6a03d02"
 
 
 def test_a_catalog_built_from_a_mapping_marks_its_hash_as_not_upstreams() -> None:
@@ -468,8 +468,8 @@ def test_a_catalog_document_the_schema_refuses_is_refused() -> None:
 
 def test_a_duplicate_key_in_a_catalog_document_is_refused() -> None:
     text = CATALOG.replace(
-        '"format": "ai-detection-spec/0.1"',
-        '"format": "ai-detection-spec/0.1", "format": "ai-detection-spec/0.1"',
+        '"format": "ai-detection-spec/0.2"',
+        '"format": "ai-detection-spec/0.2", "format": "ai-detection-spec/0.2"',
     )
     with pytest.raises(ValueError, match="duplicate key 'format'"):
         Matcher.from_source(catalog_json=text)
@@ -525,7 +525,7 @@ class TestCatalogHashUsesFileBytes:
     number -- which is sha256 over the file's BYTES."""
 
     def test_the_floor_still_matches_upstreams_value(self) -> None:
-        assert Matcher.from_source().catalog_sha == "df9eede4b2ff"
+        assert Matcher.from_source().catalog_sha == "4864f6a03d02"
 
     def test_crlf_does_not_change_the_hash_the_way_read_text_would(
         self,
