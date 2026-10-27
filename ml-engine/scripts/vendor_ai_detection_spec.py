@@ -162,11 +162,16 @@ def main() -> None:
         )
 
     files = {**fetch(repo, tag, commit), "VERSION": raw_stamp}
-    for name in MANIFEST_ORDER:
-        (DEST / name).write_bytes(files[name])
-    os.chmod(DEST / "classify.py", 0o755)
-    manifest = "".join(f"{sha256(files[n])}  {n}\n" for n in MANIFEST_ORDER)
-    (DEST / "SHA256SUMS").write_text(manifest)
+    # The manifest goes last. A write that fails partway leaves the old manifest over a
+    # mixed tree, which test_vendor_tree.py refuses, rather than a new one certifying it.
+    try:
+        for name in MANIFEST_ORDER:
+            (DEST / name).write_bytes(files[name])
+        os.chmod(DEST / "classify.py", 0o755)
+        manifest = "".join(f"{sha256(files[n])}  {n}\n" for n in MANIFEST_ORDER)
+        (DEST / "SHA256SUMS").write_text(manifest)
+    except OSError as e:
+        fail(f"{e}. {DEST} is now incomplete; re-run this script.")
 
     # The floor must load through the engine's own Matcher: the vendored reader, schema
     # and catalog, together.
