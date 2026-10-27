@@ -56,6 +56,14 @@ destination:
   # ca_certificate: {file: splunk-ca.pem}
   # batch_size: 100
 
+# Or Elasticsearch / Elastic Security, through its _bulk API:
+# destination:
+#   type: elasticsearch
+#   url: https://my-deployment.es.us-central1.gcp.cloud.es.io:9243   # the cluster
+#   api_key: ${ELASTIC_API_KEY}    # or username + password
+#   # index: logs-arthur.discovery-default   # the default: a data stream, no setup
+#   # pipeline: arthur-to-ecs                # an ingest pipeline to run documents through
+
 # Or any HTTPS endpoint that takes a JSON array of events:
 # destination:
 #   type: webhook

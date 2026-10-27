@@ -2,7 +2,7 @@
 
 Job-based evaluation engine (Python 3.13). Polls the Arthur Platform for jobs, loads data through source connectors (S3, GCS, BigQuery, Snowflake, ODBC databases), and computes metrics. Flow: `job_agent.py` (polling) → `job_runner.py` (thread/process runners) → `job_executor.py` → `job_executors/*`.
 
-Second mode: with `ML_ENGINE_DISCOVERY_CONFIG` set, `job_agent.main` runs standalone agent discovery instead — no Platform, no GenAI Engine. Flow: `standalone/discovery_config.py` (file) → `standalone/agent.py` (interval scheduler) → `standalone/scan.py` → the shared `run_source_scan` → `standalone/sinks/*` (Splunk HEC, webhook). See [docs/standalone-discovery.md](docs/standalone-discovery.md).
+Second mode: with `ML_ENGINE_DISCOVERY_CONFIG` set, `job_agent.main` runs standalone agent discovery instead — no Platform, no GenAI Engine. Flow: `standalone/discovery_config.py` (file) → `standalone/agent.py` (interval scheduler) → `standalone/scan.py` → the shared `run_source_scan` → `standalone/sinks/*` (Splunk HEC, Elasticsearch, webhook). See [docs/standalone-discovery.md](docs/standalone-discovery.md).
 
 ## Commands
 
