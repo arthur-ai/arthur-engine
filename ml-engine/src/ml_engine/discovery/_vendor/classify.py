@@ -79,7 +79,9 @@ def from_document(doc, where="the catalog", schema=CATALOG_SCHEMA):
     skips only the JSON Schema step, for the rendered-SQL tests, which run without jsonschema.
     """
     fmt = doc.get("format") if isinstance(doc, dict) else None
-    if fmt not in FORMATS:
+    # A string before `in`, which hashes: a list or an object there raised TypeError, a
+    # crash where the spec asks for a refusal, and before the schema could refuse it.
+    if not isinstance(fmt, str) or fmt not in FORMATS:
         sys.exit(f"classify: {where} is format {fmt!r}, and this matcher reads "
                  f"{', '.join(sorted(FORMATS))}. Refusing it rather than matching nothing "
                  f"(SPEC.md 10).")
