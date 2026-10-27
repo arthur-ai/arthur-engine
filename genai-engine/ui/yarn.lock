@@ -341,18 +341,19 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@arthur/shared-components@npm:^4.3.0":
-  version: 4.3.0
-  resolution: "@arthur/shared-components@npm:4.3.0::__archiveUrl=https%3A%2F%2Fgitlab.com%2Fapi%2Fv4%2Fprojects%2F54848372%2Fpackages%2Fnpm%2F%40arthur%2Fshared-components%2F-%2F%40arthur%2Fshared-components-4.3.0.tgz"
+"@arthur/shared-components@npm:^4.5.0":
+  version: 4.5.0
+  resolution: "@arthur/shared-components@npm:4.5.0::__archiveUrl=https%3A%2F%2Fgitlab.com%2Fapi%2Fv4%2Fprojects%2F54848372%2Fpackages%2Fnpm%2F%40arthur%2Fshared-components%2F-%2F%40arthur%2Fshared-components-4.5.0.tgz"
   dependencies:
-    "@arizeai/openinference-semantic-conventions": "npm:2.14.0"
-    "@arthur/shield-types": "npm:^4.3.0"
-    "@arthur/unify-types": "npm:^4.3.0"
+    "@arizeai/openinference-semantic-conventions": "npm:2.15.0"
+    "@arthur/shield-types": "npm:^4.5.0"
+    "@arthur/unify-types": "npm:^4.5.0"
     "@floating-ui/react": "npm:0.27.20"
+    "@tanstack/form-core": "npm:1.33.5"
     "@tanstack/react-form": "npm:1.33.5"
     "@tanstack/react-query": "npm:5.104.5"
     "@tanstack/react-query-devtools": "npm:5.104.5"
-    "@tanstack/react-table": "npm:8.20.6"
+    "@tanstack/react-table": "npm:8.21.3"
     clsx: "npm:2.1.1"
     dayjs: "npm:1.11.23"
     material-react-table: "npm:3.2.1"
@@ -379,25 +380,25 @@ __metadata:
     react-dom: ^18.0.0 || ^19.0.0
     react-error-boundary: ^6.1.6
     react-router: ^8.5.0
-  checksum: 10c0/ac9641d3829c1f123861994ac91c83a85a56f002f7a1bbdcce6b656db615ee9eadcf304f18da806900e06e41ffe5b0090300a7b85f6e19a74d28339ac066920c
+  checksum: 10c0/5bef92d8ee16e3f1dc04d3b438759ccce13266218a85a005f0944d0279d26b6605accdfc97a65f65db0377c2f57894bbae6ab2a610bf5e3e392eecc7f0df5580
   languageName: node
   linkType: hard
 
-"@arthur/shield-types@npm:^4.3.0":
-  version: 4.3.0
-  resolution: "@arthur/shield-types@npm:4.3.0::__archiveUrl=https%3A%2F%2Fgitlab.com%2Fapi%2Fv4%2Fprojects%2F54848372%2Fpackages%2Fnpm%2F%40arthur%2Fshield-types%2F-%2F%40arthur%2Fshield-types-4.3.0.tgz"
+"@arthur/shield-types@npm:^4.5.0":
+  version: 4.5.0
+  resolution: "@arthur/shield-types@npm:4.5.0::__archiveUrl=https%3A%2F%2Fgitlab.com%2Fapi%2Fv4%2Fprojects%2F54848372%2Fpackages%2Fnpm%2F%40arthur%2Fshield-types%2F-%2F%40arthur%2Fshield-types-4.5.0.tgz"
   dependencies:
     react: "npm:^19.3.1"
-  checksum: 10c0/c5cbcbf11b1205bfdc369f928f31afabddf6c733837d048a0799015ae4d5e203a932642ed3ad02a66ca32f60ce2880542a5a58b801896d962d850abcc12203e4
+  checksum: 10c0/86083dbbb864ccf6351f331191d9dd10bface0e79f630de412eccf6fe0b077642309ce0d0e5c61e563e16d2bda2d4b3268ad8b97ae7749748af8a38d95fc891f
   languageName: node
   linkType: hard
 
-"@arthur/unify-types@npm:^4.3.0":
-  version: 4.3.0
-  resolution: "@arthur/unify-types@npm:4.3.0::__archiveUrl=https%3A%2F%2Fgitlab.com%2Fapi%2Fv4%2Fprojects%2F54848372%2Fpackages%2Fnpm%2F%40arthur%2Funify-types%2F-%2F%40arthur%2Funify-types-4.3.0.tgz"
+"@arthur/unify-types@npm:^4.5.0":
+  version: 4.5.0
+  resolution: "@arthur/unify-types@npm:4.5.0::__archiveUrl=https%3A%2F%2Fgitlab.com%2Fapi%2Fv4%2Fprojects%2F54848372%2Fpackages%2Fnpm%2F%40arthur%2Funify-types%2F-%2F%40arthur%2Funify-types-4.5.0.tgz"
   dependencies:
     react: "npm:19.3.1"
-  checksum: 10c0/0d4fd779ebac70171133c0e1afca10ec81b664386d18b72f2972dfa93b367a5b40c5e8e4fd280e0076ba6807123e6af257dfa2fb54585eb5517aef99f210d653
+  checksum: 10c0/298cdfba92288fa75fc6af81ee58b44547c3624bc38f49e543b4951c221027f85cfc6feb9c8ba92a9e1c36550aa3de62e6d276685139344a226d5bda427439b9
   languageName: node
   linkType: hard
 
@@ -8623,7 +8624,7 @@ __metadata:
     "@amplitude/experiment-js-client": "npm:^1.21.1"
     "@amplitude/plugin-session-replay-browser": "npm:^1.33.6"
     "@arizeai/openinference-semantic-conventions": "npm:2.14.0"
-    "@arthur/shared-components": "npm:^4.3.0"
+    "@arthur/shared-components": "npm:^4.5.0"
     "@base-ui/react": "npm:1.9.0"
     "@dnd-kit/core": "npm:6.3.1"
     "@dnd-kit/sortable": "npm:10.0.0"

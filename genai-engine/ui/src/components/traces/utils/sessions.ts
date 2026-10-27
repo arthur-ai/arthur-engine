@@ -1,7 +1,6 @@
-import { flattenSpans } from "./spans";
+import { flattenSpans, getCost, getTokens } from "@arthur/shared-components";
 
 import { SessionTracesResponse } from "@/lib/api-client/api-client";
-import { getCost, getTokens } from "@/utils/llm";
 
 export function getSessionTotals(session: SessionTracesResponse) {
   const traces = session.traces;

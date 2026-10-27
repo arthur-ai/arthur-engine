@@ -1,4 +1,5 @@
 import { OpenInferenceSpanKind } from "@arizeai/openinference-semantic-conventions";
+import { getSpanInput, getSpanModel, getSpanOutput, getSpanType, TypeChip, withForm } from "@arthur/shared-components";
 import { Popover } from "@base-ui/react/popover";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowRightIcon from "@mui/icons-material/ArrowRight";
@@ -8,13 +9,9 @@ import { Breadcrumbs, Button, Chip, Divider, IconButton, List, ListItemButton, P
 import { useField, useStore } from "@tanstack/react-form";
 import { useMemo, useState } from "react";
 
-import { getSpanInput, getSpanModel, getSpanOutput, getSpanType } from "../../utils/spans";
-import { withForm } from "../filtering/hooks/form";
-
 import { addToDatasetFormOptions } from "./form/shared";
 import { useSpanSelector } from "./hooks/useSpanSelector";
 
-import { TypeChip } from "@/components/common/span/TypeChip";
 import { NestedSpanWithMetricsResponse } from "@/lib/api";
 import { truncateText } from "@/utils/formatters";
 

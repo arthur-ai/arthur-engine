@@ -1,3 +1,4 @@
+import { useSnackbar } from "@arthur/shared-components";
 import CheckCircleOutlinedIcon from "@mui/icons-material/CheckCircleOutlined";
 import ClearOutlinedIcon from "@mui/icons-material/ClearOutlined";
 import CloseIcon from "@mui/icons-material/Close";
@@ -29,7 +30,6 @@ import { usePromptContext } from "../PromptsPlaygroundContext";
 import { UpdateDatasetRowModal } from "@/components/common/UpdateDatasetRowModal";
 import { EvalInputsDialog } from "@/components/prompt-experiments/PromptResultDetailModal";
 import { useExperimentTestCases } from "@/hooks/usePromptExperiments";
-import useSnackbar from "@/hooks/useSnackbar";
 import type { EvalExecution, EvalRefOutput, PromptResult, TestCase } from "@/lib/api-client/api-client";
 import { getStatusChipSx } from "@/utils/statusChipStyles";
 

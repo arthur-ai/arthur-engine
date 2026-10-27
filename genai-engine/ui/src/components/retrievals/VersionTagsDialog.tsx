@@ -1,3 +1,4 @@
+import { useSnackbar } from "@arthur/shared-components";
 import Alert from "@mui/material/Alert";
 import Autocomplete from "@mui/material/Autocomplete";
 import Button from "@mui/material/Button";
@@ -11,7 +12,6 @@ import TextField from "@mui/material/TextField";
 import React, { useState, useEffect } from "react";
 
 import { useUpdateVersionTags } from "@/hooks/rag-search-settings/useUpdateVersionTags";
-import useSnackbar from "@/hooks/useSnackbar";
 import { COMMON_TAGS } from "@/lib/constants";
 
 interface VersionTagsDialogProps {

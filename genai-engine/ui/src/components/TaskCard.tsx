@@ -1,3 +1,4 @@
+import { CopyableChip } from "@arthur/shared-components";
 import ArchiveOutlinedIcon from "@mui/icons-material/ArchiveOutlined";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import CheckIcon from "@mui/icons-material/Check";
@@ -12,8 +13,6 @@ import { alpha } from "@mui/material/styles";
 import { keyframes } from "@mui/system";
 import React, { useState } from "react";
 import { useNavigate } from "react-router";
-
-import { CopyableChip } from "./common";
 
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useApi } from "@/hooks/useApi";

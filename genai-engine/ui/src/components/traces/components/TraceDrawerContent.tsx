@@ -1,4 +1,4 @@
-import { type TraceDrawerBodySlotProps, TraceDrawerView } from "@arthur/shared-components";
+import { flattenSpans, type TraceDrawerBodySlotProps, TraceDrawerView } from "@arthur/shared-components";
 import { Skeleton } from "@mui/material";
 import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
@@ -11,7 +11,6 @@ import { useSelection } from "../hooks/useSelection";
 import { useTraceDrawerAnnotationActions } from "../hooks/useTraceAnnotationActions";
 import { useTraceFeedback } from "../hooks/useTraceFeedback";
 import { usePaginationContext } from "../stores/pagination-context";
-import { flattenSpans } from "../utils/spans";
 
 import { AddToDatasetDrawer } from "./add-to-dataset/Drawer";
 import { ContinuousEvalDrawer } from "./continuous-eval/ContinuousEvalDrawer";

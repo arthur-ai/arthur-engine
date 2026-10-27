@@ -1,9 +1,16 @@
 import {
   createSessionLevelColumns,
   createTraceLevelColumns,
+  filterFields,
+  FilterRow,
+  IncomingFilter,
+  Operators,
+  Tabs,
+  type TimeRange,
   TimeRangeSelect,
   TokenCostTooltip,
   TokenCountTooltip,
+  TRACE_FIELDS,
   TracesEmptyState,
   TracesTable,
   useTraceColumnDependencies,
@@ -12,17 +19,10 @@ import { Box, Paper, Skeleton, Stack, Typography } from "@mui/material";
 import { useQuery } from "@tanstack/react-query";
 import { Suspense, useCallback, useMemo } from "react";
 
-import type { TimeRange } from "../../constants";
 import { useDrawerTarget } from "../../hooks/useDrawerTarget";
 import { useAnnotationCellOptions } from "../../hooks/useTraceAnnotationActions";
 import { FilterStoreProvider, useFilterStore } from "../../stores/filter.store";
-import { filterFields } from "../filtering/fields";
-import { FilterRow } from "../filtering/FilterRow";
-import { IncomingFilter } from "../filtering/mapper";
-import { TRACE_FIELDS } from "../filtering/trace-fields";
-import { Operators } from "../filtering/types";
 
-import { Tabs } from "@/components/ui/Tabs";
 import { useApi } from "@/hooks/useApi";
 import { useMRTPagination } from "@/hooks/useMRTPagination";
 import { SessionMetadataResponse, TraceMetadataResponse, TraceUserMetadataResponse } from "@/lib/api-client/api-client";

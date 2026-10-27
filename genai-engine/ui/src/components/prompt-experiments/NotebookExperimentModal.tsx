@@ -1,3 +1,4 @@
+import { useSnackbar } from "@arthur/shared-components";
 import AddIcon from "@mui/icons-material/Add";
 import CloseIcon from "@mui/icons-material/Close";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
@@ -31,7 +32,6 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router";
 
 import { useApi } from "@/hooks/useApi";
-import useSnackbar from "@/hooks/useSnackbar";
 import type {
   LLMGetAllMetadataResponse,
   AgenticPromptVersionResponse,

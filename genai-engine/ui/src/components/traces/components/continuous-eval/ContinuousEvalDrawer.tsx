@@ -1,5 +1,13 @@
 import { OpenInferenceSpanKind } from "@arizeai/openinference-semantic-conventions";
-import { getSpanDetailsStrategy, SpanDetails, SpanDetailsHeader, SpanDetailsPanels, SpanDetailsWidgets, SpanTree } from "@arthur/shared-components";
+import {
+  flattenSpans,
+  getSpanDetailsStrategy,
+  SpanDetails,
+  SpanDetailsHeader,
+  SpanDetailsPanels,
+  SpanDetailsWidgets,
+  SpanTree,
+} from "@arthur/shared-components";
 import CloseIcon from "@mui/icons-material/Close";
 import { Box, Button, Drawer, IconButton, Stack, Tooltip, Typography } from "@mui/material";
 import { CircularProgress } from "@mui/material";
@@ -10,7 +18,6 @@ import { useNavigate } from "react-router";
 
 import { AttributePickerTree } from "@/components/live-evals/new/AttributePickerTree";
 import { ContinuousEvalStepper, type PickerState } from "@/components/live-evals/new/ContinuousEvalStepper";
-import { flattenSpans } from "@/components/traces/utils/spans";
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
 import type { NestedSpanWithMetricsResponse } from "@/lib/api-client/api-client";
