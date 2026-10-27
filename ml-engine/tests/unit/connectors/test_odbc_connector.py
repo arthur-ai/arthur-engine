@@ -282,6 +282,38 @@ class TestODBCConnectorInitialization:
         assert "ODBC Driver 18 for SQL Server" in call_args
         assert "mssql+pyodbc:///?odbc_connect=" in call_args
 
+    @pytest.mark.parametrize(
+        ("configured_driver", "expects_driver_17_defaults"),
+        [
+            ("ODBC Driver 17 for SQL Server", True),
+            ("ODBC Driver 18 for SQL Server", False),
+        ],
+    )
+    @patch("ml_engine.connectors.odbc_connector.create_engine")
+    def test_driver_17_runs_on_driver_18_with_driver_17_encryption_defaults(
+        self,
+        mock_create_engine,
+        configured_driver,
+        expects_driver_17_defaults,
+    ):
+        """The image ships Driver 18 only; a Driver 17 connector keeps 17's encryption defaults."""
+        from ml_engine.connectors.odbc_connector import ODBCConnector
+
+        spec_data = MOCK_ODBC_CONNECTOR_SPEC.copy()
+        spec_data["fields"] = [
+            {**f, "value": configured_driver} if f["key"] == "driver" else f
+            for f in MOCK_ODBC_CONNECTOR_SPEC["fields"]
+        ]
+        ODBCConnector(ConnectorSpec.model_validate(spec_data), logger)
+
+        call_args = mock_create_engine.call_args[0][0]
+        assert "DRIVER={ODBC Driver 18 for SQL Server};" in call_args
+        assert "Driver 17" not in call_args
+        assert ("Encrypt=no;" in call_args) is expects_driver_17_defaults
+        assert (
+            "TrustServerCertificate=yes;" in call_args
+        ) is expects_driver_17_defaults
+
     @patch("ml_engine.connectors.odbc_connector.create_engine")
     def test_connector_initialization_driver_default(self, mock_create_engine):
         """Test connector initialization uses default driver when not specified."""

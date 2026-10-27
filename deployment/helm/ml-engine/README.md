@@ -21,6 +21,7 @@ The chart is tested on AWS Elastic Kubernetes Service (EKS) version 1.31.
   * Memory: 16 GiB
   * CPU: 4 cores
   * Metrics server
+* Node architecture: ML Engine images built since multi-arch support was added run on `linux/amd64` and `linux/arm64` nodes alike, with the same components on both. Older tags are `linux/amd64` only. Check a tag before installing on arm64 nodes: `docker buildx imagetools inspect arthurplatform/ml-engine:<version>` lists `linux/arm64` when it is supported. With an amd64-only tag on a cluster that has arm64 nodes, set `mlEnginePodNodeSelector: {kubernetes.io/arch: amd64}`.
 
 ### Container Image Repository Access
 * There must be a network route available to connect to Docker Hub
@@ -33,10 +34,12 @@ By default the chart pulls the ML Engine image from Docker Hub (`arthurplatform/
 1. **Mirror the image** into your registry. The tag is used verbatim, so you can keep the upstream version or re-tag it as you like:
 
     ```bash
-    docker pull arthurplatform/ml-engine:<version>
-    docker tag  arthurplatform/ml-engine:<version> <your-registry>/<path>/ml-engine:<tag>
-    docker push <your-registry>/<path>/ml-engine:<tag>
+    docker buildx imagetools create \
+      --tag <your-registry>/<path>/ml-engine:<tag> \
+      arthurplatform/ml-engine:<version>
     ```
+
+    This copies every architecture the image is published for, registry to registry, without pulling it. Avoid `docker pull` / `docker tag` / `docker push`: `docker pull` fetches only your workstation's architecture, so from an Apple Silicon Mac the mirror would hold only `linux/arm64` and amd64 nodes could not run it.
 
 2. **Create an image pull secret** — only if your registry requires authentication. This must be a standard Kubernetes `docker-registry` secret (type `kubernetes.io/dockerconfigjson`); the chart references it as a pod `imagePullSecrets` entry. Point `--docker-server` at your registry host:
 
