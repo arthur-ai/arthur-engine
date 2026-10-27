@@ -467,8 +467,8 @@ Parameters:
     Type: CommaDelimitedList
     Default: ''
     Description: '(Optional) Comma-separated IAM role ARNs the provisioned ML Engine task role may assume as an AWS discovery source that uses the engine''s own credentials, such as the source''s role_arn. Not applied to a Bring-Your-Own task role.'
-    AllowedPattern: '(arn:aws:iam::[0-9]{12}:role/.+)?'
-    ConstraintDescription: 'Each entry must be an IAM role ARN (arn:aws:iam::<account-id>:role/<name>).'
+    AllowedPattern: '(arn:aws:iam::[0-9]{12}:role/[A-Za-z0-9+=.@_/-]+)?'
+    ConstraintDescription: 'Each entry must be a single IAM role ARN (arn:aws:iam::<account-id>:role/<name>), without wildcards.'
   MLEngineBYOAppSecurityGroupIDs:
     Type: CommaDelimitedList
     Description: '(Optional) Security group ID to use for Arthur ML Engine application. If not specified, one will be provisioned.'

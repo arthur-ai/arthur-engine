@@ -34,7 +34,7 @@ Parameters:
     Description: '(Optional) IAM role ARNs the provisioned ML Engine task role may assume as an AWS discovery source that uses the engine''s own credentials, such as the source''s role_arn'
     Type: CommaDelimitedList
     Default: ''
-    AllowedPattern: '(arn:aws:iam::[0-9]{12}:role/.+)?'
+    AllowedPattern: '(arn:aws:iam::[0-9]{12}:role/[A-Za-z0-9+=.@_/-]+)?'
 
 Conditions:
   CreateMLEngineTaskRole: !Equals [ !Ref MLEngineBYOTaskRoleIAMArn, '' ]
