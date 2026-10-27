@@ -670,8 +670,8 @@ if os.path.exists(client):
     if granted != called:
         print(f"FAIL: {TEMPLATE}'s member role grants {sorted(granted)}, but the ML Engine "
               f"calls {sorted(called)}"); sys.exit(1)
-    connector = open(os.path.join(os.path.dirname(client), "connector.py")).read()
-    default_role = (re.search(r'^DEFAULT_MEMBER_ROLE_NAME = "([^"]+)"$', connector, re.M) or [None, None])[1]
+    organization = open(os.path.join(os.path.dirname(client), "..", "..", "aws_organization.py")).read()
+    default_role = (re.search(r'^DEFAULT_MEMBER_ROLE_NAME = "([^"]+)"$', organization, re.M) or [None, None])[1]
     if role_name != default_role:
         print(f"FAIL: {TEMPLATE} names the member role {role_name}, but the source's "
               f"member_role_name defaults to {default_role}"); sys.exit(1)
