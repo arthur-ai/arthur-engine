@@ -1,13 +1,13 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:ai-detection-spec:schema:catalog:0.1",
+  "$id": "urn:ai-detection-spec:schema:catalog:0.2",
   "title": "ai-detection-spec: catalog",
   "description": "A catalog of AI agents and how to recognise them on an endpoint. SPEC.md section 4.",
   "type": "object",
   "required": ["format", "platforms", "platform_groups", "classifications", "routes", "agents"],
   "additionalProperties": false,
   "properties": {
-    "format": {"type": "string", "pattern": "^ai-detection-spec/0\\.1$"},
+    "format": {"type": "string", "pattern": "^ai-detection-spec/0\\.2$"},
     "platforms": {
       "type": "array", "minItems": 1, "uniqueItems": true,
       "items": {"$ref": "#/$defs/name"}

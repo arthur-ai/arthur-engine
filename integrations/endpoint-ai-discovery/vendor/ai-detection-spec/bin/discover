@@ -41,8 +41,9 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 case "$(uname -s)" in
   Darwin) PLATFORM=darwin ;;
   Linux)  PLATFORM=linux ;;
-  *) echo "discover: unsupported platform $(uname -s). This repo ships darwin and linux;" \
-          "Windows is a separate implementation, not a port." >&2; exit 1 ;;
+  *) echo "discover: unsupported platform $(uname -s). This script serves darwin and linux;" \
+          "on Windows, run dist/discovery-windows.sql with osqueryi, or the pack in osqueryd" \
+          "(README.md, Running it on a fleet)." >&2; exit 1 ;;
 esac
 BASE="${DISCOVER_BASE:-$ROOT/dist/discovery-$PLATFORM.sql}"
 DEEP_SCAN=0

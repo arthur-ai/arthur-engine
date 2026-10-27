@@ -221,7 +221,7 @@ version of the arthur-client into the Docker image.
 ## Standalone Agent Discovery
 The ML Engine can also run without the Arthur Platform: pointed at a config file with
 `ML_ENGINE_DISCOVERY_CONFIG`, it scans the discovery sources the file names on an interval
-and sends the agents it finds to a SIEM (Splunk HEC) or webhook. See
+and sends the agents it finds to a SIEM (Splunk HEC, Elasticsearch) or webhook. See
 [docs/standalone-discovery.md](docs/standalone-discovery.md) for the config file and what the
 destination receives, and
 [deployment/docker-compose/ml-engine-standalone-discovery](../deployment/docker-compose/ml-engine-standalone-discovery/README.md)

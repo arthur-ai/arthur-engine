@@ -497,7 +497,10 @@ arthur-client includes the `wiz` vendor.
 
 #### `jamf_pro` — Jamf Pro (managed Macs)
 
-Reads the agent inventory Arthur's endpoint collector writes to each Mac.
+Reads the agent inventory Arthur's endpoint collector writes to each Mac. Deploying the
+collector is [the Jamf Pro runbook](../../integrations/endpoint-ai-discovery/docs/mdm/jamf-pro.md),
+and [its section 09](../../integrations/endpoint-ai-discovery/docs/mdm/jamf-pro.md#09--access-for-the-arthur-collector--jamf-pro)
+creates the API client for these fields.
 
 | Field | Secret | Required | Notes |
 |---|---|---|---|
@@ -507,11 +510,21 @@ Reads the agent inventory Arthur's endpoint collector writes to each Mac.
 | `include_groups` | no | no | Comma-separated computer group names to limit the scan to |
 | `exclude_groups` | no | no | Comma-separated computer group names to leave out |
 
+The lookback is applied to each Mac's last inventory submission (`general.reportDate`): a
+Mac that has not submitted inside it is neither read nor counted, and a window of `0` reads
+every Mac.
+
 `query` is the agent catalog; leave it `""` to use the one the engine ships with. A catalog
 of your own is an [ai-detection-spec](https://github.com/arthur-ai/ai-detection-spec) catalog
-document (`format: ai-detection-spec/0.1`), such as the `catalog.json` a release attaches. It
+document (`format: ai-detection-spec/0.2`), such as the `catalog.json` a release attaches. It
 is validated against the spec's schema, and the scan refuses one that fails.
-Use `query_language: none`. Jamf scans stop early on shutdown and report as cancelled.
+
+**A catalog of your own pins the engine's version.** The engine reads one `format` and
+refuses any other, so when an upgrade moves the format, every scan with a catalog from the
+previous release fails as `not_configured` until the catalog is replaced. Replace it with
+the `catalog.json` attached to the release the engine vendors (named in
+`src/ml_engine/discovery/_vendor/VERSION`), or set `query` to `""`, which every version
+reads. Use `query_language: none`. Jamf scans stop early on shutdown and report as cancelled.
 
 #### `local` — one machine's scan, from a folder
 
@@ -886,6 +899,57 @@ status — point `url` at the address it redirects to.
 Point `url` at the `/services/collector/event` endpoint. Each event's HEC `time` is when
 it was observed. Indexer acknowledgement is not used: a 200 means HEC accepted the batch.
 
+#### `elasticsearch` — Elasticsearch and Elastic Security
+
+| Key | Default | |
+|---|---|---|
+| `api_key` | | API key (secret): the `encoded` value from `POST /_security/api_key`, or `id:api_key` |
+| `username`, `password` | | Basic auth instead of `api_key`; `password` is a secret. Set one or the other |
+| `index` | `logs-arthur.discovery-default` | An index, alias or data stream |
+| `pipeline` | | An ingest pipeline to run each document through |
+
+Point `url` at the cluster (`https://host:9243`, with a path for one behind a gateway);
+the engine sends to its `_bulk` endpoint. Each document is the event with `@timestamp`
+set to when it was observed, written with `create`. The default index matches
+Elasticsearch's built-in `logs-*-*` template, so the data stream is created on the first
+write with no setup; it then shows up in Elastic Security wherever `logs-*` is searched.
+
+The credentials need `create_doc` on the index, and `auto_configure` too if the engine's
+first write is what creates the data stream:
+
+```json
+POST /_security/api_key
+{
+  "name": "arthur-discovery",
+  "role_descriptors": {
+    "arthur-discovery": {
+      "indices": [{"names": ["logs-arthur.discovery-*"], "privileges": ["create_doc", "auto_configure"]}]
+    }
+  }
+}
+```
+
+`_bulk` answers 200 even when it refuses documents, so the engine reads the answer for
+each document:
+
+- **Refused for what it holds** (a field the index's mapping cannot take, a `pipeline`
+  that fails on it): the agent is reported in the scan outcome's `failed_records`, with
+  Elasticsearch's error type as `reason` and its message as `detail`, and the rest of
+  the scan carries on. It is not sent again; a re-send would be refused the same way.
+- **Refused with 429 or 503** (the cluster shedding load): only those documents are sent
+  again, within the same three attempts as a failed request. Still refused after the
+  last, they fail the scan as an unreachable destination would.
+- **Refused with 401, 403 or 404** (credentials that cannot write to `index`, or an
+  index that does not exist and may not be created): the scan fails with
+  `publication_failed`, since every document names the same index.
+
+A `pipeline` that does not exist is refused per document as a plain 400, so it shows up
+as every agent in `failed_records` with `reason: illegal_argument_exception`, rather
+than as a failed scan.
+
+An answer that is not a bulk response with one result per document sent, as from a proxy
+answering for the cluster, fails the batch.
+
 #### `webhook` — any HTTPS endpoint
 
 | Key | Default | |
@@ -934,6 +998,8 @@ working is visible where its agents are:
     "succeeded": true,
     "records_published": 12,
     "batches_published": 1,
+    "records_failed": 0,
+    "failed_records": [],
     "error": null,
     "error_code": null,
     "started_at": "…",
@@ -942,6 +1008,11 @@ working is visible where its agents are:
   }
 }
 ```
+
+`failed_records` lists each agent the destination refused on its own, as
+`{"external_id": "…", "reason": "document_parsing_exception", "detail": "…"}`, while
+the rest of the scan's agents were delivered. Only a destination that answers per event
+(`elasticsearch`) refuses one this way.
 
 `error_code` is one of `invalid_job`, `unsupported_vendor`, `not_configured`,
 `credentials_unavailable`, `authentication_failed`, `permission_denied`,

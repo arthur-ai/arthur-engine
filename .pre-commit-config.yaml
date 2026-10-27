@@ -111,14 +111,14 @@ repos:
         files: ^ml-engine/src/
       - id: ml-engine-mypy-check
         name: "ml-engine: mypy type checking"
-        # --group linters: see the genai-engine mypy hook above. scripts/jamf_smoke.py drives
-        # the shipped connector and no test imports it, so only this notices when an
-        # interface it calls changes.
-        entry: uv run --directory ml-engine --frozen --group linters mypy src/ml_engine scripts/jamf_smoke.py
+        # --group linters: see the genai-engine mypy hook above. scripts/jamf_smoke.py and
+        # scripts/vendor_ai_detection_spec.py drive shipped code and no test imports either,
+        # so only this notices when an interface they call changes.
+        entry: uv run --directory ml-engine --frozen --group linters mypy src/ml_engine scripts/jamf_smoke.py scripts/vendor_ai_detection_spec.py
         language: system
         types: [python]
         pass_filenames: false
-        files: ^ml-engine/(src/|scripts/jamf_smoke\.py$)
+        files: ^ml-engine/(src/|scripts/(jamf_smoke|vendor_ai_detection_spec)\.py$)
       - id: arthur-observability-sdk-pytest-check
         name: "arthur-observability-sdk: pytest unit tests"
         entry: uv run --directory arthur-observability-sdk/python pytest tests -m "unit_tests"

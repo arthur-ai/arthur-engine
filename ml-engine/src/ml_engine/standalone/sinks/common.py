@@ -6,6 +6,7 @@ produced it, alongside the record or outcome itself. The two builders below are 
 whole event contract; a sink target only frames and delivers what it is given.
 """
 
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Optional, Protocol, Sequence
 
@@ -35,6 +36,23 @@ class SinkDeliveryError(Exception):
         self.status_code = status_code
 
 
+@dataclass(frozen=True)
+class RefusedEvent:
+    """One event the destination took the request for but would not keep.
+
+    Final, as a `FailedDiscoveryRecord` is: the destination refused this event for what
+    it holds -- a field its mapping cannot take, a pipeline that fails on it -- so a
+    re-send is refused the same way, and the rest of the scan goes on without it.
+    """
+
+    # Where the event was in what `send` was handed.
+    position: int
+    # The destination's own name for the refusal, e.g. "document_parsing_exception".
+    reason: str
+    # Scrubbed of the destination's secrets by the sink that reports it.
+    detail: str
+
+
 class Sink(Protocol):
     """Delivers events to one destination. What a sink target implements.
 
@@ -42,8 +60,13 @@ class Sink(Protocol):
     to call from several scans' threads at once. Closed when the engine stops.
     """
 
-    def send(self, events: Sequence[Event]) -> None:
-        """Deliver every event, or raise `SinkDeliveryError`."""
+    def send(self, events: Sequence[Event]) -> Sequence[RefusedEvent]:
+        """Deliver every event, and return those the destination refused one by one.
+
+        Raises `SinkDeliveryError` when a request itself fails: a refusal of the whole
+        batch says nothing about any one event, and a destination that is down is the
+        scan's failure, not its records'.
+        """
         ...
 
     def secrets(self) -> tuple[str, ...]:

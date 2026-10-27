@@ -22,6 +22,7 @@ from standalone.discovery_config import (
     load_config,
     standalone_config_path,
 )
+from standalone.sinks.siem.elasticsearch import ElasticsearchDestination
 from standalone.sinks.siem.splunk_hec import SplunkHecDestination
 from standalone.sinks.webhook import WebhookDestination
 
@@ -503,6 +504,29 @@ def test_a_misspelt_destination_key_is_refused(tmp_path: Path) -> None:
     assert "tokne" in message and "token" in message
 
 
+def test_an_elasticsearch_destination_reads_its_key_from_a_file(
+    tmp_path: Path,
+) -> None:
+    write(tmp_path, "es-api-key-value-0005\n", "secrets/es-key")
+    text = minimal(
+        destination=textwrap.dedent(
+            """\
+            destination:
+              type: elasticsearch
+              url: https://es.example.com:9243
+              api_key: {file: secrets/es-key}
+            """,
+        ),
+    )
+
+    config = load_config(write(tmp_path, text))
+
+    assert config is not None
+    assert isinstance(config.destination, ElasticsearchDestination)
+    assert config.destination.api_key is not None
+    assert config.destination.api_key.get_secret_value() == "es-api-key-value-0005"
+
+
 @pytest.mark.parametrize("allow", [False, True])
 def test_http_destination_needs_an_explicit_opt_in(
     tmp_path: Path,
@@ -678,3 +702,26 @@ def test_a_vendor_the_platform_added_after_the_first_release_loads(
     )
     config = load_config(write(tmp_path, minimal(sources=sources)))
     assert [s.vendor for s in config.sources] == [vendor]
+
+
+def test_an_elasticsearch_credential_error_never_quotes_the_password(
+    tmp_path: Path,
+) -> None:
+    text = minimal(
+        destination=textwrap.dedent(
+            """\
+            destination:
+              type: elasticsearch
+              url: https://es.example.com:9243
+              api_key: es-api-key-value-0005
+              username: arthur
+              password: es-passw0rd-value-0003
+            """,
+        ),
+    )
+
+    message = load_error(tmp_path, text)
+
+    assert "not both" in message
+    assert "es-passw0rd-value-0003" not in message
+    assert "es-api-key-value-0005" not in message

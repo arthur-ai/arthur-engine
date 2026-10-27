@@ -20,10 +20,11 @@ from typing import Annotated, Union
 
 from pydantic import Field
 
+from standalone.sinks.siem.elasticsearch import ElasticsearchDestination
 from standalone.sinks.siem.splunk_hec import SplunkHecDestination
 from standalone.sinks.webhook import WebhookDestination
 
 Destination = Annotated[
-    Union[SplunkHecDestination, WebhookDestination],
+    Union[ElasticsearchDestination, SplunkHecDestination, WebhookDestination],
     Field(discriminator="type"),
 ]
