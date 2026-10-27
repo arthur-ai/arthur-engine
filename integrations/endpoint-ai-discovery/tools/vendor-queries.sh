@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Vendor ai-detection-spec's osquery binding -- its built artifacts -- at a pinned ref.
 #
-#     tools/vendor-queries.sh v0.15.0
+#     tools/vendor-queries.sh v0.16.1
 #     tools/vendor-queries.sh 98eaeca        # a SHA, if no tag carries what you need
 #
 # WHY VENDOR RATHER THAN SUBMODULE OR FETCH-AT-BUILD. A vendored copy gives reviewable
