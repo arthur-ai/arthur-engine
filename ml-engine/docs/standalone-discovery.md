@@ -733,6 +733,13 @@ each document:
 - **Refused with 429 or 503** (the cluster shedding load): only those documents are sent
   again, within the same three attempts as a failed request. Still refused after the
   last, they fail the scan as an unreachable destination would.
+- **Refused with 401, 403 or 404** (credentials that cannot write to `index`, or an
+  index that does not exist and may not be created): the scan fails with
+  `publication_failed`, since every document names the same index.
+
+A `pipeline` that does not exist is refused per document as a plain 400, so it shows up
+as every agent in `failed_records` with `reason: illegal_argument_exception`, rather
+than as a failed scan.
 
 An answer that is not a bulk response with one result per document sent, as from a proxy
 answering for the cluster, fails the batch.

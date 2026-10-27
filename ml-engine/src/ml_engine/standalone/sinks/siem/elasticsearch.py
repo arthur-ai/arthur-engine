@@ -12,7 +12,8 @@ A document refused for what it holds -- a field the index's mapping cannot take,
 pipeline that fails on it -- is refused again on every re-send, so it is handed back as
 a failed record and the scan goes on without it. A document refused with 429 or 503 is
 the cluster shedding load, and only those documents are sent again, as Elasticsearch's
-own clients do.
+own clients do. One refused with 401, 403 or 404 is the destination misconfigured --
+every document names the same index -- and fails the batch as a refused request would.
 """
 
 import base64
@@ -43,6 +44,13 @@ INDEX_FORBIDDEN = set('\\/*?"<>| ,#:')
 # A document's status when the cluster is shedding load rather than refusing it: an
 # indexing queue that is full, a shard that is not yet available.
 ITEM_RETRY_STATUSES = frozenset({429, 503})
+# A document's status when the destination, not the document, is what is wrong:
+# credentials that cannot write to the index, an index that does not exist and may not
+# be created. Every document names the same index, so these fail the batch rather than
+# reporting each agent as a failed record of a scan that otherwise succeeded. Observed
+# per document inside a 200 (Elasticsearch 8.15): `403 security_exception` for a key
+# without `create_doc`, `404 index_not_found_exception` with auto-create off.
+ITEM_DESTINATION_STATUSES = frozenset({401, 403, 404})
 
 
 class ElasticsearchDestination(HttpDestination):
@@ -114,6 +122,7 @@ class ElasticsearchSink(HttpSink):
             ).decode()
             self._authorization = f"Basic {credential}"
             self._credentials = (password, credential)
+        self._index = destination.index
         self._action = json.dumps({"create": {"_index": destination.index}})
         super().__init__(destination, logger, session, sleep)
         self._url = _bulk_url(destination.url, destination.pipeline)
@@ -163,6 +172,12 @@ class ElasticsearchSink(HttpSink):
                 reason, detail = f"http_{status}", str(error or "")
             # Scrubbed before it is cut, so no part of a secret is left behind.
             detail = self._redact(detail)[:ERROR_BODY_CHARS]
+            if status in ITEM_DESTINATION_STATUSES:
+                raise SinkDeliveryError(
+                    f"{self.kind} at {self._host} refused writing to index "
+                    f"{self._index!r} with HTTP {status}: {reason}: {detail}",
+                    status_code=status,
+                )
             refusal = RefusedEvent(position=position, reason=reason, detail=detail)
             (retry if status in ITEM_RETRY_STATUSES else refused).append(refusal)
         return EventResults(refused=refused, retry=retry)

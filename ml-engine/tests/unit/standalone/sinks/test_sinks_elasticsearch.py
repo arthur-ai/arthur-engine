@@ -159,6 +159,12 @@ def bulk(*statuses: int) -> dict[str, Any]:
     """A filtered `_bulk` answer, one result per status, an error on each non-2xx."""
     errors = {
         400: ("document_parsing_exception", "failed to parse field [agent.name]"),
+        401: ("security_exception", "missing authentication credentials"),
+        403: (
+            "security_exception",
+            "action [indices:admin/auto_create] is unauthorized",
+        ),
+        404: ("index_not_found_exception", "no such index [ai-inventory]"),
         429: ("es_rejected_execution_exception", "rejected execution of write"),
         503: ("unavailable_shards_exception", "primary shard is not active"),
     }
@@ -189,6 +195,25 @@ def test_a_document_refused_for_what_it_holds_is_returned_not_raised(
     ]
     assert refused[0].detail == "failed to parse field [agent.name]"
     assert len(mock.calls) == 2
+
+
+@pytest.mark.parametrize("status", [401, 403, 404])
+def test_a_document_refused_for_the_index_fails_the_batch(
+    mock: responses.RequestsMock,
+    status: int,
+) -> None:
+    """Credentials that cannot write, or an index that is not there, refuse every
+    document alike: the destination is wrong, not the agents, so the scan fails rather
+    than reporting each as a failed record of a scan that succeeded."""
+    mock.add(responses.POST, BULK, json=bulk(status, status))
+
+    with pytest.raises(SinkDeliveryError) as e:
+        ElasticsearchSink(es(index="ai-inventory"), LOG).send([event(1), event(2)])
+
+    assert e.value.status_code == status
+    assert "refused writing to index 'ai-inventory'" in str(e.value)
+    assert f"HTTP {status}" in str(e.value)
+    assert len(mock.calls) == 1
 
 
 @pytest.mark.parametrize("status", [429, 503])
