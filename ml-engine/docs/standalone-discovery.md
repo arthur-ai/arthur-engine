@@ -497,7 +497,10 @@ arthur-client includes the `wiz` vendor.
 
 #### `jamf_pro` — Jamf Pro (managed Macs)
 
-Reads the agent inventory Arthur's endpoint collector writes to each Mac.
+Reads the agent inventory Arthur's endpoint collector writes to each Mac. Deploying the
+collector is [the Jamf Pro runbook](../../integrations/endpoint-ai-discovery/docs/mdm/jamf-pro.md),
+and [its section 09](../../integrations/endpoint-ai-discovery/docs/mdm/jamf-pro.md#09--access-for-the-arthur-collector--jamf-pro)
+creates the API client for these fields.
 
 | Field | Secret | Required | Notes |
 |---|---|---|---|
@@ -506,6 +509,10 @@ Reads the agent inventory Arthur's endpoint collector writes to each Mac.
 | `client_secret` | yes | yes | Jamf API client |
 | `include_groups` | no | no | Comma-separated computer group names to limit the scan to |
 | `exclude_groups` | no | no | Comma-separated computer group names to leave out |
+
+The lookback is applied to each Mac's last inventory submission (`general.reportDate`): a
+Mac that has not submitted inside it is neither read nor counted, and a window of `0` reads
+every Mac.
 
 `query` is the agent catalog; leave it `""` to use the one the engine ships with. A catalog
 of your own is an [ai-detection-spec](https://github.com/arthur-ai/ai-detection-spec) catalog
