@@ -1,6 +1,6 @@
 import json
 from abc import ABC, abstractmethod
-from datetime import datetime
+from datetime import datetime, timezone
 from logging import Logger
 from typing import Any, Optional
 from urllib.parse import urlparse
@@ -48,6 +48,7 @@ from genai_client import (
     ContinuousEvalsApi,
     InferencesApi,
     LLMEvalsApi,
+    PaginationSortMethod,
     QueryInferencesResponse,
     SpansApi,
     TasksApi,
@@ -68,6 +69,7 @@ from genai_client.models import (
     NewTaskRequest,
     RuleType,
     SearchTasksRequest,
+    TraceSortBy,
     UpdateRuleRequest,
 )
 from pydantic import ValidationError
@@ -299,8 +301,15 @@ class ShieldBaseConnector(Connector, ABC):
                 page=page,
             )
             for task in resp.tasks:
+                trace_count, last_trace_at = self._task_trace_stats(task.id)
+                inference_count, last_inference_at = self._task_inference_stats(
+                    task.id,
+                )
+                activity = [t for t in (last_trace_at, last_inference_at) if t]
+                last_activity_at = max(activity) if activity else None
                 # Post-consolidation every task exposes both datasets:
                 # trace/evals + inferences/guardrails, same task_id locator.
+                # Both carry the task's stats.
                 for name_suffix, model_problem_type in (
                     ("traces", ModelProblemType.AGENTIC_TRACE),
                     ("guardrails", ModelProblemType.ARTHUR_SHIELD),
@@ -317,6 +326,9 @@ class ShieldBaseConnector(Connector, ABC):
                                 ],
                             ),
                             model_problem_type=model_problem_type,
+                            trace_count=trace_count,
+                            inference_count=inference_count,
+                            last_activity_at=last_activity_at,
                         ),
                     )
 
@@ -325,6 +337,57 @@ class ShieldBaseConnector(Connector, ABC):
 
             page += 1
         return datasets
+
+    def _task_trace_stats(self, task_id: str) -> tuple[int | None, datetime | None]:
+        """Number of traces in the task and when the latest one started. A failure returns (None, None)
+        so one task can't fail the whole listing."""
+        try:
+            traces = self.list_trace_metadata(
+                task_ids=[task_id],
+                sort_by=TraceSortBy.START_TIME,
+                sort=PaginationSortMethod.DESC,
+                page_size=1,
+            )
+        except Exception as e:
+            self.logger.warning(
+                f"Failed to fetch trace stats for task {task_id}",
+                exc_info=e,
+            )
+            return None, None
+        if not traces.traces:
+            return traces.count, None
+        latest = traces.traces[0].start_time
+        # engine trace timestamps are UTC
+        if latest.tzinfo is None:
+            latest = latest.replace(tzinfo=timezone.utc)
+        return traces.count, latest
+
+    def _task_inference_stats(
+        self,
+        task_id: str,
+    ) -> tuple[int | None, datetime | None]:
+        """Number of inferences in the task and when the latest one was created. A failure returns (None, None)
+        so one task can't fail the whole listing."""
+        try:
+            inferences = self.query_inferences(
+                task_ids=[task_id],
+                sort=PaginationSortMethod.DESC,
+                page_size=1,
+                include_count=True,
+            )
+        except Exception as e:
+            self.logger.warning(
+                f"Failed to fetch inference stats for task {task_id}",
+                exc_info=e,
+            )
+            return None, None
+        if not inferences.inferences:
+            return inferences.count, None
+        # engine serializes inference created_at as epoch milliseconds
+        return inferences.count, datetime.fromtimestamp(
+            inferences.inferences[0].created_at / 1000,
+            tz=timezone.utc,
+        )
 
     def create_task(
         self,

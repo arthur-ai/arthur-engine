@@ -849,7 +849,8 @@ def test_shield_read_raises_for_static_dataset():
 
 def test_list_datasets_emits_both_datasets_per_task():
     """Post-consolidation every task exposes a trace/evals dataset
-    AND a guardrails dataset, regardless of the deprecated is_agentic flag."""
+    AND a guardrails dataset, regardless of the deprecated is_agentic flag.
+    Both carry the task's trace count, inference count and latest activity."""
 
     spec = ConnectorSpec.model_validate(mock_shield_connector_spec(MOCK_SHIELD_HOST))
     conn = ShieldConnector(spec, logger)
@@ -859,10 +860,32 @@ def test_list_datasets_emits_both_datasets_per_task():
     task.name = "my task"
     search_response = Mock()
     search_response.tasks = [task]
-    with patch.object(
-        conn,
-        "_tasks_client",
-    ) as tasks_client:
+
+    latest_trace_start = datetime(2026, 10, 1, 12, 0)
+    traces_response = Mock()
+    traces_response.count = 7
+    traces_response.traces = [Mock(start_time=latest_trace_start)]
+
+    latest_inference_created = datetime(2026, 10, 2, 8, 30, tzinfo=timezone.utc)
+    inferences_response = Mock()
+    inferences_response.count = 3
+    inferences_response.inferences = [
+        Mock(created_at=int(latest_inference_created.timestamp() * 1000)),
+    ]
+
+    with (
+        patch.object(conn, "_tasks_client") as tasks_client,
+        patch.object(
+            conn,
+            "list_trace_metadata",
+            return_value=traces_response,
+        ) as list_traces,
+        patch.object(
+            conn,
+            "query_inferences",
+            return_value=inferences_response,
+        ) as query_inferences,
+    ):
         tasks_client.search_tasks_api_v2_tasks_search_post.return_value = (
             search_response
         )
@@ -876,3 +899,53 @@ def test_list_datasets_emits_both_datasets_per_task():
     }
     for dataset in available:
         assert dataset.dataset_locator.fields[0].value == task.id
+
+    for dataset in available:
+        assert dataset.trace_count == 7
+        assert dataset.inference_count == 3
+        # the inference is newer than the trace
+        assert dataset.last_activity_at == latest_inference_created
+
+    list_traces.assert_called_once()
+    assert list_traces.call_args.kwargs["task_ids"] == [task.id]
+    assert list_traces.call_args.kwargs["page_size"] == 1
+    query_inferences.assert_called_once()
+    assert query_inferences.call_args.kwargs["task_ids"] == [task.id]
+    assert query_inferences.call_args.kwargs["page_size"] == 1
+
+
+def test_list_datasets_leaves_record_stats_empty_on_failure():
+    """A task whose trace stats can't be fetched still lists, with the inference stats it could fetch."""
+
+    spec = ConnectorSpec.model_validate(mock_shield_connector_spec(MOCK_SHIELD_HOST))
+    conn = ShieldConnector(spec, logger)
+
+    task = Mock()
+    task.id = str(uuid4())
+    task.name = "my task"
+    search_response = Mock()
+    search_response.tasks = [task]
+
+    empty_inferences = Mock()
+    empty_inferences.count = 0
+    empty_inferences.inferences = []
+
+    with (
+        patch.object(conn, "_tasks_client") as tasks_client,
+        patch.object(
+            conn,
+            "list_trace_metadata",
+            side_effect=RuntimeError("engine unavailable"),
+        ),
+        patch.object(conn, "query_inferences", return_value=empty_inferences),
+    ):
+        tasks_client.search_tasks_api_v2_tasks_search_post.return_value = (
+            search_response
+        )
+        result = conn.list_datasets()
+
+    assert len(result.available_datasets) == 2
+    for dataset in result.available_datasets:
+        assert dataset.trace_count is None
+        assert dataset.inference_count == 0
+        assert dataset.last_activity_at is None
