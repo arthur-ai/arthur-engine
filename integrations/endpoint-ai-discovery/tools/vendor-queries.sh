@@ -24,7 +24,8 @@
 # the collector's, and the collector is ml-engine/src/ml_engine/discovery/, which vendors
 # them into its own package because that is what ships in its wheel. Both halves must ride
 # the same ref -- a catalog that matched a different revision of the queries is a silent
-# wrong answer -- and ml-engine's test_vendor_parity.py asserts that they do.
+# wrong answer -- so ml-engine/scripts/vendor_ai_detection_spec.py reads the ref from the
+# VERSION this writes, and ml-engine's test_vendor_parity.py asserts that they match.
 #
 # The upstream tree is verified before anything is copied: `osquery/tools/build.py --check`
 # must pass at that ref, or the artifacts do not match the queries that produced them and
@@ -113,4 +114,5 @@ sed 's/^/  /' "$DEST/VERSION"
 echo "  files: $(find "$DEST" -type f | wc -l | tr -d ' ')"
 echo
 echo "next: tools/build-collector.py   (rebuilds the deployable around these)"
-echo "      and re-vendor ml-engine/src/ml_engine/discovery/_vendor/ at the same ref"
+echo "      then, in ml-engine/: uv run python scripts/vendor_ai_detection_spec.py"
+echo "                           (the catalog and matcher, at this same ref)"

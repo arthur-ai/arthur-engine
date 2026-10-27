@@ -125,7 +125,7 @@ jobs:
         id: mypy
         continue-on-error: true
         run: |
-          uv run --no-sync --directory ml-engine mypy src/ml_engine scripts/jamf_smoke.py
+          uv run --no-sync --directory ml-engine mypy src/ml_engine scripts/jamf_smoke.py scripts/vendor_ai_detection_spec.py
       - name: Check linter results
         if: steps.isort.outcome == 'failure' || steps.autoflake.outcome == 'failure' || steps.black.outcome == 'failure' || steps.mypy.outcome == 'failure'
         run: |
