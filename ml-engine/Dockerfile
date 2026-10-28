@@ -13,7 +13,7 @@ FROM python:3.13-slim-bookworm AS install
 # (libssl3, libc6, libexpat1, ...). These libraries live in /usr/lib and are
 # copied into the distroless final image below, so upgrading here patches the
 # shared objects that actually ship.
-RUN pip install uv==0.12.0 && \
+RUN pip install uv==0.13.6 && \
     apt-get update && \
     apt-get upgrade -y && \
     apt-get install -y wget curl gnupg apt-transport-https && \
