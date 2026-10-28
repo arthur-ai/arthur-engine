@@ -75,7 +75,10 @@ dependencies = [
   "sentencepiece==0.2.2",
   "gliner==0.2.29",
   "openinference-semantic-conventions>=0.1.12,<0.2",
-  "litellm==1.106.2",
+  # The [mcp] extra is required, not optional: since 1.106.0 litellm imports `mcp` on every
+  # completion() that passes tools, so without it every tool-calling feature returns a 500
+  # (UP-5288). Drop the extra once litellm makes that import lazy.
+  "litellm[mcp]==1.106.2",
   "jinja2>=3.1.6,<4",
   "python-benedict>=0.40,<0.41",
   "weaviate-client>=4.17.0,<5",

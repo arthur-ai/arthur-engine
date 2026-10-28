@@ -114,6 +114,66 @@ def test_llm_client_completion_response_format(
 
 
 # ---------------------------------------------------------------------------
+# completion / acompletion with tools — run LiteLLM for real (via its built-in
+# mock_response) instead of patching it out.
+#
+# Regression coverage for UP-5288: whenever `tools` is passed, LiteLLM imports
+# its MCP gateway handler, which since 1.106.0 needs the `mcp` package from the
+# litellm[mcp] extra. Every tool-calling feature (AI Assistant, playground,
+# experiments) 500'd while the mocked tests above stayed green.
+# ---------------------------------------------------------------------------
+
+_FUNCTION_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "get_weather",
+        "parameters": {"type": "object", "properties": {}},
+    },
+}
+
+
+@pytest.mark.unit_tests
+@patch("clients.llm.llm_client.record_org_token_usage")
+@patch("clients.llm.llm_client.enforce_token_quota")
+def test_llm_client_completion_with_tools(
+    mock_enforce_token_quota,
+    mock_record_org_token_usage,
+):
+    llm_client = LLMClient(provider=ModelProvider.OPENAI, api_key="test-key")
+
+    response = llm_client.completion(
+        model="openai/gpt-4o-mini",
+        messages=[{"role": "user", "content": "Hello"}],
+        tools=[_FUNCTION_TOOL],
+        mock_response="Test response",
+        org_id=DEFAULT_ORG_ID,
+    )
+
+    assert response.response.choices[0].message.get("content") == "Test response"
+
+
+@pytest.mark.unit_tests
+@pytest.mark.asyncio
+@patch("clients.llm.llm_client.record_org_token_usage")
+@patch("clients.llm.llm_client.enforce_token_quota")
+async def test_llm_client_acompletion_with_tools(
+    mock_enforce_token_quota,
+    mock_record_org_token_usage,
+):
+    llm_client = LLMClient(provider=ModelProvider.OPENAI, api_key="test-key")
+
+    response = await llm_client.acompletion(
+        model="openai/gpt-4o-mini",
+        messages=[{"role": "user", "content": "Hello"}],
+        tools=[_FUNCTION_TOOL],
+        mock_response="Test response",
+        org_id=DEFAULT_ORG_ID,
+    )
+
+    assert response.choices[0].message.get("content") == "Test response"
+
+
+# ---------------------------------------------------------------------------
 # acount_tokens — verify provider-specific kwargs are forwarded to LiteLLM.
 #
 # Regression coverage for the fix in src/clients/llm/llm_client.py that routes
