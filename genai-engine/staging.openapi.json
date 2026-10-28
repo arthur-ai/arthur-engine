@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.1075"
+        "version": "2.1.1076"
     },
     "paths": {
         "/api/v2/engine-config": {
@@ -19331,7 +19331,7 @@
                                 "const": "empty"
                             }
                         ],
-                        "title": "Model Provider",
+                        "title": "Agentic Prompt Model Provider",
                         "description": "Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure'). The sentinel value 'empty' indicates the system default placeholder has not been configured."
                     },
                     "version": {
@@ -32624,7 +32624,7 @@
                                 "const": "empty"
                             }
                         ],
-                        "title": "Model Provider",
+                        "title": "Synthetic Data Prompt Model Provider",
                         "description": "Model provider stored in the SDG system prompt. The sentinel 'empty' indicates the prompt has not yet been configured."
                     },
                     "model_name": {
