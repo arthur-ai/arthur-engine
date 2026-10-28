@@ -1,6 +1,6 @@
 [project]
 name = "arthur-genai-engine"
-version = "2.1.1050"
+version = "2.1.1070"
 description = ""
 authors = [{ name = "Arthur", email = "engineering@arthur.ai" }]
 readme = "README.md"
@@ -37,7 +37,7 @@ dependencies = [
   "pyjwt==2.15.1",
   "azure-storage-blob==12.31.0",
   "itsdangerous==2.2.0",
-  "newrelic==13.6.1",
+  "newrelic==14.0.0",
   # Held below 9.0: litellm 1.106.0 requires importlib-metadata>=8.0.0,<9.0. See the
   # importlib-metadata rule in /renovate.json. Raise once litellm widens its ceiling.
   "importlib-metadata==8.9.0",
@@ -79,7 +79,7 @@ dependencies = [
   "jinja2>=3.1.6,<4",
   "python-benedict>=0.40,<0.41",
   "weaviate-client>=4.17.0,<5",
-  "arthur-common==2.4.99",
+  "arthur-common==2.4.101",
   "google-auth>=2.48.0,<3",
   "google-cloud-aiplatform>=1.38",
   "google-cloud-trace>=1.11.0,<2",

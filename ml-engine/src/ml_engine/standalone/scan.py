@@ -18,7 +18,7 @@ import logging
 import uuid
 from typing import Callable
 
-from discovery import source_connectors
+from discovery import standalone_connectors
 from job_executors.discovery_scan import (
     AcceptsStopCheck,
     DiscoveryErrorCode,
@@ -55,11 +55,17 @@ class StandaloneOutcomeReporter:
 
     def report(self, outcome: DiscoveryScanOutcome) -> None:
         try:
-            self._sink.send([scan_outcome_event(outcome, self._source_name)])
+            refused = self._sink.send([scan_outcome_event(outcome, self._source_name)])
         except Exception as e:
             self._log.error(
                 f"Could not send this scan's outcome to the destination; the outcome "
                 f"logged above is the record of it: {e}",
+            )
+            return
+        for r in refused:
+            self._log.error(
+                f"The destination refused this scan's outcome; the outcome logged "
+                f"above is the record of it: {r.reason}: {r.detail}",
             )
 
 
@@ -155,7 +161,7 @@ def _connector(
     scan: ResolvedScan,
     should_stop: Callable[[], bool],
 ) -> DiscoverySourceConnector:
-    factory = source_connectors().get(scan.config.vendor)
+    factory = standalone_connectors().get(scan.config.vendor)
     if factory is None:
         # Checked when the config was loaded; kept so a scan names the reason anyway.
         raise UnsupportedDiscoveryVendorError(

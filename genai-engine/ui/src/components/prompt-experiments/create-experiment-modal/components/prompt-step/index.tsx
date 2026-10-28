@@ -1,9 +1,9 @@
+import { withForm } from "@arthur/shared-components";
 import { Box, Button, DialogActions, DialogContent, FormControl, FormHelperText, InputLabel, MenuItem, Select } from "@mui/material";
 import { useStore } from "@tanstack/react-form";
 
 import { createExperimentModalFormOpts } from "../../form";
 
-import { withForm } from "@/components/traces/components/filtering/hooks/form";
 import { TOUR_IDS } from "@/features/task-tour/selectors";
 import { useDatasetVersionData } from "@/hooks/useDatasetVersionData";
 

@@ -1,28 +1,24 @@
-import { type GetSpanDetailsStrategy, type TraceDrawerBodySlotProps, TraceDrawerBody } from "@arthur/shared-components";
+import { flattenSpans, type TraceDrawerBodySlotProps, TraceDrawerView } from "@arthur/shared-components";
 import { Skeleton } from "@mui/material";
 import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
 import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
-import { useCallback, useEffect, useEffectEvent, useMemo, useState, type RefObject } from "react";
+import { useCallback, useEffect, useEffectEvent, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 
-import { getSpanDetailsStrategy } from "../data/details-strategy";
 import { useDrawerTarget } from "../hooks/useDrawerTarget";
 import { useSelection } from "../hooks/useSelection";
+import { useTraceDrawerAnnotationActions } from "../hooks/useTraceAnnotationActions";
+import { useTraceFeedback } from "../hooks/useTraceFeedback";
 import { usePaginationContext } from "../stores/pagination-context";
-import { extractGuardrailInvocations } from "../utils/guardrails";
-import { flattenSpans } from "../utils/spans";
 
 import { AddToDatasetDrawer } from "./add-to-dataset/Drawer";
 import { ContinuousEvalDrawer } from "./continuous-eval/ContinuousEvalDrawer";
-import { GuardrailSummaryBar } from "./guardrail-bar/GuardrailSummaryBar";
-import { TraceDrawerAnnotationBar } from "./TraceDrawerAnnotationBar";
 
 import { TOUR_IDS } from "@/features/task-tour/selectors";
 import { dispatchTourEvent, TASK_TOUR_EVENTS } from "@/features/task-tour/tourEvents";
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
-import type { AgenticAnnotationResponse } from "@/lib/api-client/api-client";
 import { queryKeys } from "@/lib/queryKeys";
 import { track } from "@/services/analytics";
 import { computeTraceMetrics, getTrace } from "@/services/tracing";
@@ -41,6 +37,8 @@ export const TraceDrawerContent = ({ id }: Props) => {
   const [current, setDrawerTarget] = useDrawerTarget();
   const navigate = useNavigate();
   const paginationContext = usePaginationContext((state) => state.context);
+  const feedback = useTraceFeedback(id);
+  const annotationActions = useTraceDrawerAnnotationActions();
 
   // eslint-disable-next-line @tanstack/query/exhaustive-deps
   const { data: trace } = useSuspenseQuery({
@@ -62,7 +60,7 @@ export const TraceDrawerContent = ({ id }: Props) => {
       });
     },
     onSuccess: (data) => {
-      queryClient.setQueryData(["trace", id], data);
+      queryClient.setQueryData(queryKeys.traces.byId(id), data);
       track("tracing/refresh_metrics_result", {
         level: "trace",
         trace_id: id,
@@ -83,8 +81,6 @@ export const TraceDrawerContent = ({ id }: Props) => {
 
   // Flatten nested spans recursively
   const flatSpans = useMemo(() => flattenSpans(trace?.root_spans ?? []), [trace]);
-
-  const guardrailInvocations = useMemo(() => extractGuardrailInvocations(trace?.root_spans ?? []), [trace]);
 
   const rootSpan = trace?.root_spans?.[0];
 
@@ -136,26 +132,7 @@ export const TraceDrawerContent = ({ id }: Props) => {
     [select]
   );
 
-  const handleJumpToSpan = useCallback(
-    (spanId: string, containerRef: RefObject<HTMLDivElement | null>) => {
-      handleSelectSpan(spanId);
-      // The span tree is rendered inside the compiled drawer body: selecting a
-      // span marks its row with `data-selected` but does not scroll it into
-      // view. Best-effort scroll after the selection re-render, scoped to the
-      // spans column via its tour-id anchor.
-      requestAnimationFrame(() => {
-        const spansColumn = containerRef.current?.querySelector(`[data-tour-id="${TOUR_IDS.traceDrawerSpans}"]`);
-        spansColumn?.querySelector("[data-selected]")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-      });
-    },
-    [handleSelectSpan]
-  );
-
-  // Task-tour anchors. `TraceDrawerBody`'s `slotProps` spreads each entry onto
-  // a wrapping `<div>` inside the drawer, so we can attach `data-tour-id`
-  // without resorting to opaque DOM wrappers. There is no `actions` slot — the
-  // Trace Actions dropdown is resolved by its button label in
-  // `TracesTargetWidget` instead.
+  // There is no `actions` slot: the tour finds the Trace Actions dropdown by its button label in `TracesTargetWidget`.
   const tourSlotProps = useMemo<TraceDrawerBodySlotProps>(
     () => ({
       root: { "data-tour-id": TOUR_IDS.traceDrawerAddToDataset },
@@ -170,7 +147,7 @@ export const TraceDrawerContent = ({ id }: Props) => {
   if (!trace) return null;
 
   return (
-    <TraceDrawerBody
+    <TraceDrawerView
       trace={trace}
       traceId={id}
       selectedSpanId={selectedSpanId}
@@ -191,23 +168,14 @@ export const TraceDrawerContent = ({ id }: Props) => {
       paginationContext={paginationContext}
       onNavigate={(target, navId) => setDrawerTarget({ target, id: navId })}
       slotProps={tourSlotProps}
-      renderAnnotationBar={({ annotations, traceId: tid, containerRef }) => (
-        <TraceDrawerAnnotationBar annotations={(annotations ?? []) as AgenticAnnotationResponse[]} traceId={tid} containerRef={containerRef} />
-      )}
-      renderBelowAnnotationBar={({ containerRef }) => (
-        <GuardrailSummaryBar
-          invocations={guardrailInvocations}
-          selectedSpanId={selectedSpanId}
-          onJumpToSpan={(spanId) => handleJumpToSpan(spanId, containerRef)}
-        />
-      )}
+      feedback={feedback}
+      {...annotationActions}
       renderAfterDrawer={() => (
         <>
           <AddToDatasetDrawer traceId={id} open={addToDatasetOpen} onClose={() => setAddToDatasetOpen(false)} />
           <ContinuousEvalDrawer traceId={id} open={continuousEvalOpen} onClose={() => setContinuousEvalOpen(false)} />
         </>
       )}
-      getSpanDetailsStrategy={getSpanDetailsStrategy as GetSpanDetailsStrategy}
     />
   );
 };

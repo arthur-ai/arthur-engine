@@ -1,3 +1,4 @@
+import { withForm } from "@arthur/shared-components";
 import AddIcon from "@mui/icons-material/Add";
 import CircleNotificationsOutlinedIcon from "@mui/icons-material/CircleNotificationsOutlined";
 import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
@@ -7,8 +8,6 @@ import { Link } from "@mui/material";
 import { useField, useStore } from "@tanstack/react-form";
 import { useEffect, useRef } from "react";
 import { Link as RouterLink } from "react-router";
-
-import { withForm } from "../filtering/hooks/form";
 
 import { FillFromObjectButton } from "./FillFromObjectButton";
 import { addToDatasetFormOptions, Column, hasSelectedTransform } from "./form/shared";

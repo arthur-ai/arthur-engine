@@ -4,12 +4,12 @@ Lists every Cloud Run service, Cloud Run job and GKE workload in the configured 
 and reports the ones that are, or may be, agents. A container runtime lists every
 workload, not only agents, so a workload is reported when:
 
-- one of its images is an agent's in the catalog (`images:` in the vendored
-  `agents.yaml`, or the source config's own catalog), matched by the vendored
-  matcher's container route; or
-- it runs as a GCP service account in the scan's set of AI-calling service accounts --
-  the callers a Vertex AI audit-log read names. `workloads.select_workloads` takes that
-  set as a parameter so the two sources can be joined there; nothing fills it yet; or
+- one of its images is an agent's in the catalog (an `images` identifier in the
+  vendored catalog, or the source config's own), matched by the vendored matcher's
+  container route; or
+- it runs as a GCP service account that called a Vertex AI model in the lookback --
+  read off each project's Data Access audit log by this scan itself, with the same
+  reader and fold `gcp_vertex` uses, so no other source or job has to supply it; or
 - the source sets `report_all_workloads`, which reports every workload so each one's
   service account is in the record for that join to use.
 
@@ -26,15 +26,22 @@ what `service.name` they emit.
 
 THE SERVICE ACCOUNT IS IN THE NAME. `AgentObservations` has no field for the identity a
 workload runs as (`permissions` is what the agent may do, `assigned_user` is a person),
-so the record's name carries it: `<workload> (runs as <account>, ...)`. See
+so the record's name carries it: `<workload> (runs as <account>, ...)`, with
+`shared by N workloads` when several of the scan's workloads run as it. See
 `workloads.py` for which account that is on each runtime.
 
-THE LOOKBACK IS IGNORED. These are inventories, not logs: every scan lists every
-workload as it is now.
+THE LOOKBACK BOUNDS ONLY THE CALLERS. The workloads are an inventory, not a log: every
+scan lists every workload as it is now. The audit-log read that names the AI-calling
+service accounts covers the scan's lookback (30 days for a zero lookback, as in
+`gcp_vertex`), and their models become the record's `llm_models`. Reading it needs
+`roles/logging.privateLogViewer` and Data Access audit logs on for
+`aiplatform.googleapis.com`; a refused read is a denied scope, and that project's
+workloads are selected by catalog image (or `report_all_workloads`) only.
 
-ONE REFUSED API IS A WARNING. A project with the GKE API off, a role without
-`run.jobs.list`, a cluster whose endpoint this engine cannot reach: each is logged and
-the rest of the scan goes on. Only when nothing at all could be listed does the scan
+ONE REFUSED API IS A DENIED SCOPE. A project with the GKE API off, a role without
+`run.jobs.list`, a cluster whose endpoint this engine cannot reach: each is logged,
+reported as a denied scope on the run (`ReportsDeniedScopes`), and the rest of the scan
+goes on. Only when nothing at all could be listed does the scan
 fail, with the first refusal's status, so a key with no access reads as denied rather
 than as a project without workloads. A refused credential ends the scan at once.
 
@@ -46,6 +53,7 @@ stop check that fires mid-scan yields what was collected.
 
 import logging
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Callable, ClassVar, Iterator, Mapping, Optional, Sequence
 
 import google.auth
@@ -55,17 +63,23 @@ from arthur_common.models.agent_discovery_schemas import DiscoveredAgentRecord
 from arthur_common.models.agent_governance_schemas import (
     AgentObservations,
     CloudAgentCreationSource,
+    LLMModel,
     RunsOn,
     SourceAddress,
 )
 from google.auth.credentials import Credentials
-from google.auth.exceptions import DefaultCredentialsError
+from google.auth.exceptions import (
+    DefaultCredentialsError,
+    GoogleAuthError,
+    RefreshError,
+)
 from google.auth.transport.requests import AuthorizedSession
 
 from discovery.catalog import Matcher
 from discovery.cloud.gcp_containers.client import (
     GcpContainersClient,
     GcpContainersError,
+    KubernetesApi,
     ScanStopped,
 )
 from discovery.cloud.gcp_containers.workloads import (
@@ -81,13 +95,29 @@ from discovery.cloud.gcp_containers.workloads import (
     select_workloads,
     workload_identity_annotations,
 )
+from discovery.cloud.gcp_vertex.audit import (
+    AuditCounts,
+    AuditReadError,
+    Caller,
+    EntryReader,
+    audit_filter,
+    fold,
+    read_entries,
+    since_for,
+)
 from discovery.endpoint.scope import parse_group_names
 from discovery.gcp_credentials import (
     GCP_PROJECT_ID,
     SERVICE_ACCOUNT_KEY_FIELD,
+    mark_refused_credential,
     service_account_credentials,
 )
-from job_executors.discovery_scan import DiscoveryConfigurationError
+from job_executors.discovery_scan import (
+    DENIED_PERMISSION,
+    DENIED_UNREACHABLE,
+    DeniedScope,
+    DiscoveryConfigurationError,
+)
 
 VENDOR = "gcp_containers"
 
@@ -130,23 +160,32 @@ def authorized_session(credentials: Optional[Credentials]) -> requests.Session:
 
 
 class _Reads:
-    """Which listings failed, so a scan that read nothing can say why."""
+    """Which listings failed, so a scan that read nothing can say why, and which parts
+    of the scope they were, so the run can report them."""
 
     def __init__(self, logger: logging.Logger) -> None:
         self._log = logger
         self.succeeded = 0
         self.failures: list[GcpContainersError] = []
+        self.denied: list[DeniedScope] = []
 
-    def failed(self, what: str, e: GcpContainersError) -> None:
+    def failed(self, what: str, scope: str, e: GcpContainersError) -> None:
         if e.status_code == 401:
             raise e
         self._log.warning("%s not listed (%s); missing from this scan", what, e)
         self.failures.append(e)
+        self.deny(
+            scope, DENIED_PERMISSION if e.status_code == 403 else DENIED_UNREACHABLE
+        )
+
+    def deny(self, scope: str, reason: str) -> None:
+        if all(d.scope != scope for d in self.denied):
+            self.denied.append(DeniedScope(scope, reason))
 
 
 class GcpContainersConnector:
-    """Implements `job_executors.discovery_scan.DiscoverySourceConnector` and
-    `AcceptsStopCheck`.
+    """Implements `job_executors.discovery_scan.DiscoverySourceConnector`,
+    `ReportsDeniedScopes` and `AcceptsStopCheck`.
 
     Built fresh for every scan -- see `DiscoveryConnectorFactory` -- so it may hold
     that scan's stop check.
@@ -161,10 +200,18 @@ class GcpContainersConnector:
             requests.Session,
         ] = authorized_session,
         ai_service_accounts: frozenset[str] = frozenset(),
+        audit_reader: Optional[EntryReader] = None,
     ) -> None:
         self._session_for = session_for
         self._ai_service_accounts = ai_service_accounts
+        # None reads the module's `read_entries` at scan time, so a test can stub it.
+        self._audit_reader = audit_reader
         self._should_stop: Callable[[], bool] = lambda: False
+        self._denied: Sequence[DeniedScope] = ()
+
+    def denied_scopes(self) -> Sequence[DeniedScope]:
+        """The parts of the scope this scan was refused; asked once it ends."""
+        return tuple(self._denied)
 
     def stop_when(self, should_stop: Callable[[], bool]) -> None:
         """Asked before every call, so a stop never waits on another listing."""
@@ -178,7 +225,8 @@ class GcpContainersConnector:
         source_fields: Mapping[str, str],
         logger: logging.Logger,
     ) -> Iterator[Sequence[DiscoveredAgentRecord]]:
-        """`logger` is the JOB's. `lookback_hours` is not applied: see the module."""
+        """`logger` is the JOB's. `lookback_hours` bounds the audit-log read of
+        AI-calling service accounts only: see the module."""
         settings = settings_from(source_fields)
         google_credentials = service_account_credentials(
             credentials,
@@ -186,7 +234,7 @@ class GcpContainersConnector:
             allow_adc_env_var=ALLOW_ADC_ENV_VAR,
             scopes=[CLOUD_PLATFORM_SCOPE],
         )
-        matcher = Matcher.from_source(catalog_yaml=config.query or None, logger=logger)
+        matcher = Matcher.from_source(catalog_json=config.query or None, logger=logger)
         client = GcpContainersClient(
             self._session_for(google_credentials),
             logger,
@@ -194,8 +242,8 @@ class GcpContainersConnector:
         )
         logger.info(
             "Cloud Run and GKE scan starting against project(s) %s, catalog %s, "
-            "using %s; reporting %s. Every workload is listed; the lookback is not "
-            "applied.",
+            "using %s; reporting %s. Every workload is listed; the lookback bounds only "
+            "the audit-log read of AI callers.",
             ", ".join(settings.project_ids),
             matcher.catalog_sha,
             (
@@ -212,6 +260,7 @@ class GcpContainersConnector:
         )
 
         reads = _Reads(logger)
+        self._denied = reads.denied
         workloads: list[Workload] = []
         stopped = False
         try:
@@ -240,13 +289,25 @@ class GcpContainersConnector:
             except ScanStopped:
                 stopped = True
 
+        callers: dict[str, set[str]] = {}
+        if not stopped:
+            callers = self._ai_callers(
+                settings.project_ids,
+                google_credentials,
+                lookback_hours,
+                reads,
+                logger,
+            )
         selected = select_workloads(
             workloads,
             matcher,
-            self._ai_service_accounts,
+            self._ai_service_accounts | frozenset(callers),
             settings.report_all_workloads,
         )
-        records = [r for r in (record_for(s, logger) for s in selected) if r]
+        sharing = accounts_shared(workloads)
+        records = [
+            r for r in (record_for(s, logger, callers, sharing) for s in selected) if r
+        ]
         _log_summary(workloads, selected, records, logger)
 
         for start in range(0, len(records), BATCH_SIZE):
@@ -256,6 +317,93 @@ class GcpContainersConnector:
             # Nothing at all could be listed: a key with no access, not an empty
             # estate. The first refusal carries the status failure_code reads.
             raise reads.failures[0]
+
+    def _ai_callers(
+        self,
+        projects: Sequence[str],
+        credentials: Optional[Credentials],
+        lookback_hours: int,
+        reads: _Reads,
+        logger: logging.Logger,
+    ) -> dict[str, set[str]]:
+        """Each service account that called a Vertex AI model in the lookback, with
+        the models it called, read off every project's Data Access audit log."""
+        since = since_for(lookback_hours, datetime.now(timezone.utc))
+        models: dict[str, set[str]] = {}
+        for project in projects:
+            if self._should_stop():
+                break
+            counts = AuditCounts()
+            try:
+                reader = self._audit_reader or read_entries
+                found: dict[tuple[str, str], Caller] = fold(
+                    reader(project, audit_filter(project, since), credentials),
+                    counts,
+                )
+            except AuditReadError as e:
+                if e.status_code == 401:
+                    # A refused credential ends the scan, as it does for a listing.
+                    raise GcpContainersError(
+                        f"Vertex AI audit log read for project {project} was "
+                        f"refused the credential: {e}",
+                        status_code=401,
+                    ) from e
+                reads.deny(
+                    f"projects/{project}/vertex-ai-audit-log",
+                    (DENIED_PERMISSION if e.status_code == 403 else DENIED_UNREACHABLE),
+                )
+                logger.warning(
+                    "Vertex AI audit log not read for project %s (HTTP %s), so its "
+                    "AI-calling service accounts are unknown and its workloads are "
+                    "selected by catalog image only.%s",
+                    project,
+                    e.status_code,
+                    _audit_read_hint(e.status_code),
+                )
+                continue
+            except RefreshError as e:
+                # No token could be minted for the read. A refused credential ends the
+                # scan as it does for a listing; see discovery.gcp_credentials.
+                mark_refused_credential(e)
+                if getattr(e, "status_code", None) == 401:
+                    raise GcpContainersError(
+                        f"Vertex AI audit log read for project {project} was "
+                        f"refused the credential: {e}",
+                        status_code=401,
+                    ) from e
+                reads.deny(
+                    f"projects/{project}/vertex-ai-audit-log", DENIED_UNREACHABLE
+                )
+                logger.warning(
+                    "Vertex AI audit log not read for project %s (%s); its workloads "
+                    "are selected by catalog image only.",
+                    project,
+                    type(e).__name__,
+                )
+                continue
+            except (requests.RequestException, GoogleAuthError, ValueError) as e:
+                reads.deny(
+                    f"projects/{project}/vertex-ai-audit-log", DENIED_UNREACHABLE
+                )
+                logger.warning(
+                    "Vertex AI audit log not read for project %s (%s); its workloads "
+                    "are selected by catalog image only.",
+                    project,
+                    type(e).__name__,
+                )
+                continue
+            for caller in found.values():
+                models.setdefault(caller.email.lower(), set()).update(caller.models)
+            logger.info(
+                "Vertex AI audit log for %s: %s model call(s) from %s service "
+                "account(s) since %s%s",
+                project,
+                counts.calls,
+                len({c.email for c in found.values()}),
+                since.isoformat(),
+                "; capped, older calls not read" if counts.capped else "",
+            )
+        return models
 
 
 def _cloud_run(
@@ -271,14 +419,22 @@ def _cloud_run(
         reads.succeeded += 1
         out.extend(_cloud_run_workloads(project, services, CLOUD_RUN_SERVICE, logger))
     except GcpContainersError as e:
-        reads.failed(f"Cloud Run services in project {project}", e)
+        reads.failed(
+            f"Cloud Run services in project {project}",
+            f"projects/{project}/cloud-run-services",
+            e,
+        )
 
     regions = settings.regions
     if not regions:
         try:
             regions = tuple(client.cloud_run_regions(project))
         except GcpContainersError as e:
-            reads.failed(f"Cloud Run regions (for jobs) in project {project}", e)
+            reads.failed(
+                f"Cloud Run regions (for jobs) in project {project}",
+                f"projects/{project}/cloud-run-jobs",
+                e,
+            )
             return out
     for region in regions:
         try:
@@ -286,7 +442,11 @@ def _cloud_run(
             reads.succeeded += 1
             out.extend(_cloud_run_workloads(project, jobs, CLOUD_RUN_JOB, logger))
         except GcpContainersError as e:
-            reads.failed(f"Cloud Run jobs in {project}/{region}", e)
+            reads.failed(
+                f"Cloud Run jobs in {project}/{region}",
+                f"projects/{project}/locations/{region}/cloud-run-jobs",
+                e,
+            )
     return out
 
 
@@ -320,7 +480,9 @@ def _gke(
         clusters = client.gke_clusters(project)
         reads.succeeded += 1
     except GcpContainersError as e:
-        reads.failed(f"GKE clusters in project {project}", e)
+        reads.failed(
+            f"GKE clusters in project {project}", f"projects/{project}/gke-clusters", e
+        )
         return []
 
     out: list[Workload] = []
@@ -337,6 +499,7 @@ def _gke(
                     if identity.workload_identity
                     else {}
                 )
+                replicasets = _deployment_replicasets(kube, label, logger)
                 found: list[Workload] = []
                 for path, kind, asset_kind in K8S_KINDS:
                     for raw in kube.items(path):
@@ -348,6 +511,7 @@ def _gke(
                             kind,
                             asset_kind,
                             raw,
+                            replicasets,
                         )
                         if workload is not None:
                             found.append(workload)
@@ -356,8 +520,44 @@ def _gke(
             out.extend(found)
             reads.succeeded += 1
         except GcpContainersError as e:
-            reads.failed(f"Workloads in {label}", e)
+            reads.failed(
+                f"Workloads in {label}",
+                f"projects/{project}/locations/{cluster.get('location')}"
+                f"/clusters/{cluster.get('name')}",
+                e,
+            )
     return out
+
+
+def _deployment_replicasets(
+    kube: KubernetesApi,
+    label: str,
+    logger: logging.Logger,
+) -> Optional[frozenset[tuple[str, str]]]:
+    """(namespace, name) of each ReplicaSet a Deployment owns, or None when they cannot
+    be read, which folds every ReplicaSet's pods as before."""
+    try:
+        return frozenset(
+            (
+                str((rs.get("metadata") or {}).get("namespace") or ""),
+                str((rs.get("metadata") or {}).get("name") or ""),
+            )
+            for rs in kube.items("/apis/apps/v1/replicasets")
+            if any(
+                o.get("kind") == "Deployment"
+                for o in (rs.get("metadata") or {}).get("ownerReferences") or []
+            )
+        )
+    except GcpContainersError as e:
+        if e.status_code == 401:
+            raise
+        logger.warning(
+            "ReplicaSets of %s not read (%s); pods of a ReplicaSet a custom controller "
+            "owns are folded into it and not reported",
+            label,
+            e,
+        )
+        return None
 
 
 def _default_account(
@@ -381,11 +581,26 @@ def _default_account(
     return f"{number}-compute@developer.gserviceaccount.com"
 
 
+def _audit_read_hint(status_code: int) -> str:
+    """What a refused or failed audit-log read most likely needs, by its status."""
+    if status_code == 403:
+        return " Reading it needs roles/logging.privateLogViewer on the project."
+    if status_code == 404:
+        return " The project was not found; check the project ID."
+    return ""
+
+
 def record_for(
     selected: SelectedWorkload,
     logger: logging.Logger,
+    caller_models: Optional[Mapping[str, set[str]]] = None,
+    sharing: Optional[Mapping[str, int]] = None,
 ) -> Optional[DiscoveredAgentRecord]:
-    """One reported workload's record, or None when it has no time to date it by."""
+    """One reported workload's record, or None when it has no time to date it by.
+
+    `caller_models` maps an AI-calling service account to the models it called; a
+    workload that runs as one carries those models as its `llm_models`.
+    """
     workload = selected.workload
     if workload.last_seen is None:
         logger.warning(
@@ -398,10 +613,18 @@ def record_for(
         (f.classification for f in selected.findings if f.classification),
         None,
     )
+    models = sorted(
+        {
+            m
+            for account in selected.matched_service_accounts
+            for m in (caller_models or {}).get(account.lower(), set())
+        }
+    )
     return DiscoveredAgentRecord(
         external_id=workload.external_id,
-        name=display_name(selected),
+        name=display_name(selected, sharing),
         last_seen=workload.last_seen,
+        llm_models=[LLMModel(name=m) for m in models],
         runs_on=RunsOn.GCP,
         creation_source=CloudAgentCreationSource(
             vendor=VENDOR,
@@ -421,14 +644,41 @@ def record_for(
     )
 
 
-def display_name(selected: SelectedWorkload) -> str:
-    """`<workload> [<catalog agents>] (runs as <accounts>)`; see the module docstring."""
+def accounts_shared(workloads: Sequence[Workload]) -> dict[str, int]:
+    """How many of the scan's workloads run as each service account (lower-cased)."""
+    counts: dict[str, int] = {}
+    for workload in workloads:
+        for account in {a.lower() for a in workload.service_accounts}:
+            counts[account] = counts.get(account, 0) + 1
+    return counts
+
+
+def display_name(
+    selected: SelectedWorkload,
+    sharing: Optional[Mapping[str, int]] = None,
+) -> str:
+    """`<workload> [<catalog agents>] (runs as <account>[, node account][, shared by N
+    workloads])`.
+
+    A node's account is marked, since every pod on the node calls Google as it. An
+    account several workloads run as -- a node's account, one account for many jobs --
+    says so, because a join on it (the audit log's callers) cannot tell those workloads
+    apart: a match through it is weak.
+    """
     workload = selected.workload
     name = workload.name
     if selected.findings:
         name += f" [{', '.join(f.name for f in selected.findings)}]"
     if workload.service_accounts:
-        name += f" (runs as {', '.join(workload.service_accounts)})"
+        shared = max(
+            (sharing or {}).get(a.lower(), 1) for a in workload.service_accounts
+        )
+        node = set(workload.node_service_accounts)
+        accounts = ", ".join(
+            f"{a}, node account" if a in node else a for a in workload.service_accounts
+        )
+        suffix = f", shared by {shared} workloads" if shared > 1 else ""
+        name += f" (runs as {accounts}{suffix})"
     return name
 
 

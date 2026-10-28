@@ -198,7 +198,7 @@ class SpanQueryService:
         filters: TraceQuerySchema,
     ) -> Select[Tuple[DatabaseTraceMetadata]]:
         """
-        Build a single query that combines all filtering logic using JOINs.
+        Build a single query that combines all trace-level and span-level filtering logic.
         This implements the trace-based filtering pattern from the TDD.
         """
         # Validate filter compatibility first
@@ -218,11 +218,10 @@ class SpanQueryService:
         # Apply trace-level filters (fast indexed operations)
         query = self._apply_trace_level_filters(query, filters)
 
-        # Apply span-level filters using optimized JOINs and EXISTS
         if self.filter_service.has_span_level_filters(filters):
-            query = self._apply_span_level_filters_with_joins(query, filters)
+            query = self._apply_span_level_filters_with_exists(query, filters)
 
-        # Prevent duplicate rows from JOINs
+        # Prevent duplicate rows from the annotation JOIN
         query = query.distinct()
 
         return query
@@ -368,24 +367,40 @@ class SpanQueryService:
 
         return query
 
-    def _apply_span_level_filters_with_joins(
+    def _trace_has_span(
+        self,
+        filters: TraceQuerySchema,
+        *conditions: ColumnElement[bool],
+    ) -> ColumnElement[bool]:
+        """EXISTS clause matching traces that contain a span satisfying all conditions."""
+        return exists(
+            select(1)
+            .select_from(DatabaseSpan)
+            .where(
+                DatabaseSpan.trace_id == DatabaseTraceMetadata.trace_id,
+                DatabaseSpan.task_id.in_(filters.task_ids),
+                *conditions,
+            )
+            # Explicit so spans is never auto-correlated away when the outer
+            # query also selects from it
+            .correlate(DatabaseTraceMetadata),
+        )
+
+    def _apply_span_level_filters_with_exists(
         self,
         query: Select[Tuple[DatabaseTraceMetadata]],
         filters: TraceQuerySchema,
     ) -> Select[Tuple[DatabaseTraceMetadata]]:
         """
-        Apply span-level filters using optimized JOINs for simple filters and EXISTS for metrics.
+        Apply span-level filters as EXISTS clauses so each trace appears at most once.
 
-        Strategy:
-        - Simple span filters (tool_name, span_types): Use JOINs
-        - Metric filters: Use EXISTS clauses
-        - Multiple span types: Use OR logic with proper grouping
-        - Span name filters: Applied via EXISTS clause to work with trace-based queries
+        Each filter matches traces containing at least one span that satisfies it:
+        - Span name, span ID and status filters: one EXISTS each
+        - Span types: one EXISTS with OR logic across types, each grouped with its type-specific filters
+        - Metric filters: EXISTS clauses joining spans with metric results
         """
         span_types = self.filter_service.auto_detect_span_types(filters)
 
-        # Apply span name filters even when no span_types are detected
-        # Use EXISTS clause to filter traces that contain matching spans
         span_name_conditions = []
         if filters.span_name:
             # EQUALS operator does exact match
@@ -397,63 +412,36 @@ class SpanQueryService:
             )
 
         if span_name_conditions:
-            # Use EXISTS to find traces containing spans with matching names
-            # Combine multiple span_name conditions with AND (both must match)
-            span_name_exists = exists(
-                select(1)
-                .select_from(DatabaseSpan)
-                .where(
-                    and_(
-                        DatabaseSpan.trace_id == DatabaseTraceMetadata.trace_id,
-                        DatabaseSpan.task_id.in_(filters.task_ids),
-                        *span_name_conditions,  # AND all conditions together
-                    ),
-                ),
-            )
-            query = query.where(span_name_exists)
+            # Both span name conditions must match the same span
+            query = query.where(self._trace_has_span(filters, *span_name_conditions))
 
-        # Apply span_ids filter even when no span_types are detected
-        # Use EXISTS clause to filter traces that contain spans with matching IDs
         if filters.span_ids:
-            span_ids_exists = exists(
-                select(1)
-                .select_from(DatabaseSpan)
-                .where(
-                    and_(
-                        DatabaseSpan.trace_id == DatabaseTraceMetadata.trace_id,
-                        DatabaseSpan.task_id.in_(filters.task_ids),
-                        DatabaseSpan.span_id.in_(filters.span_ids),
-                    ),
+            query = query.where(
+                self._trace_has_span(
+                    filters,
+                    DatabaseSpan.span_id.in_(filters.span_ids),
                 ),
             )
-            query = query.where(span_ids_exists)
 
-        # Apply status_code filter even when no span_types are detected
-        # Use EXISTS clause to filter traces that contain spans with matching status codes
         if filters.status_code:
-            status_code_exists = exists(
-                select(1)
-                .select_from(DatabaseSpan)
-                .where(
-                    and_(
-                        DatabaseSpan.trace_id == DatabaseTraceMetadata.trace_id,
-                        DatabaseSpan.task_id.in_(filters.task_ids),
-                        DatabaseSpan.status_code.in_(filters.status_code),
-                    ),
+            query = query.where(
+                self._trace_has_span(
+                    filters,
+                    DatabaseSpan.status_code.in_(filters.status_code),
                 ),
             )
-            query = query.where(status_code_exists)
 
         if not span_types:
             return query
 
-        # Handle single vs multiple span types differently for optimization
-        if len(span_types) == 1:
-            query = self._apply_single_span_type_filters(query, filters, span_types[0])
-        else:
-            query = self._apply_multiple_span_types_filters(query, filters, span_types)
+        span_type_conditions = (
+            self.filter_service.build_multiple_span_types_or_conditions(
+                span_types,
+                filters,
+            )
+        )
+        query = query.where(self._trace_has_span(filters, or_(*span_type_conditions)))
 
-        # Apply metric filters using EXISTS (works for both single and multiple span types)
         if self.filter_service.has_llm_metric_filters(filters):
             metric_exists_conditions = (
                 self.filter_service.build_all_metric_exists_conditions(
@@ -463,63 +451,6 @@ class SpanQueryService:
             )
             if metric_exists_conditions:
                 query = query.where(and_(*metric_exists_conditions))
-
-        return query
-
-    def _apply_single_span_type_filters(
-        self,
-        query: Select[Tuple[Any]],
-        filters: TraceQuerySchema,
-        span_type: str,
-    ) -> Select[Tuple[Any]]:
-        """Apply filters for a single span type using JOINs for better performance."""
-        # Join with spans for direct filtering
-        query = query.join(
-            DatabaseSpan,
-            and_(
-                DatabaseTraceMetadata.trace_id == DatabaseSpan.trace_id,
-                DatabaseSpan.task_id.in_(filters.task_ids),
-            ),
-        )
-
-        # Build span conditions using filter service
-        span_conditions = self.filter_service.build_single_span_type_conditions(
-            span_type,
-            filters,
-        )
-
-        if span_conditions:
-            query = query.where(and_(*span_conditions))
-
-        return query
-
-    def _apply_multiple_span_types_filters(
-        self,
-        query: Select[Tuple[Any]],
-        filters: TraceQuerySchema,
-        span_types: List[str],
-    ) -> Select[Tuple[Any]]:
-        """Apply filters for multiple span types using EXISTS clauses."""
-        # For multiple span types, use EXISTS with OR logic
-        or_conditions = self.filter_service.build_multiple_span_types_or_conditions(
-            span_types,
-            filters,
-        )
-
-        if or_conditions:
-            # Create EXISTS clause with OR conditions
-            exists_condition = exists(
-                select(1)
-                .select_from(DatabaseSpan)
-                .where(
-                    and_(
-                        DatabaseSpan.trace_id == DatabaseTraceMetadata.trace_id,
-                        DatabaseSpan.task_id.in_(filters.task_ids),
-                        or_(*or_conditions),  # OR across span types
-                    ),
-                ),
-            )
-            query = query.where(exists_condition)
 
         return query
 

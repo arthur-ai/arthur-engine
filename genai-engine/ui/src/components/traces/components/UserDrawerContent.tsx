@@ -1,7 +1,6 @@
+import { TIME_RANGES, type TimeRange } from "@arthur/shared-components";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { useState } from "react";
-
-import { TIME_RANGES, type TimeRange } from "../constants";
 
 import { UserDrawerBody } from "./drawer/UserDrawerBody";
 

@@ -47,6 +47,43 @@ Parameters:
     Type: Number
     Default: 87
     Description: 'Alarm is triggered when Arthur GenAI Engine service uses this percentage of memory in a minute'
+  GenaiEngineRDSClusterIdentifier:
+    Type: String
+    Default: 'None'
+    Description: 'The GenAI Engine Aurora cluster identifier (e.g. arthur-db-cluster). Defaults to "None" for bring-your-own-DB deployments, which skips the RDS alarms.'
+  GenaiEngineRDSHighCPUAlarmThreshold:
+    Type: Number
+    Default: 90
+    Description: 'Alarm is triggered when the GenAI Engine Aurora WRITER instance CPU utilization exceeds this percentage'
+  GenaiEngineRDSLowFreeableMemoryAlarmThreshold:
+    Type: Number
+    Default: 268435456
+    Description: 'Alarm is triggered when the GenAI Engine Aurora WRITER instance FreeableMemory drops below this many bytes. Default 256 MiB; tune per deployment max ACU.'
+  GenaiEngineRDSHighDiskQueueDepthAlarmThreshold:
+    Type: Number
+    Default: 64
+    Description: 'Alarm is triggered when the GenAI Engine Aurora WRITER instance DiskQueueDepth exceeds this value'
+  GenaiEngineRDSHighVolumeBytesUsedAlarmThreshold:
+    Type: Number
+    Default: 1099511627776
+    Description: 'Alarm is triggered when the GenAI Engine Aurora cluster VolumeBytesUsed exceeds this many bytes. Default 1 TiB. Aurora storage auto-grows, so this is a runaway-growth / cost watch, not a free-space watch.'
+  GenaiEngineTaskScalingLambdaName:
+    Type: String
+    Default: 'None'
+    Description: 'Name of the GenAI Engine task-scaling Lambda (GPU deployments only). Defaults to "None" for CPU deployments, which have no such Lambda and skip the alarm.'
+  GenaiEngineTaskScalingLambdaErrorsAlarmThreshold:
+    Type: Number
+    Default: 1
+    Description: 'Alarm is triggered when the GenAI Engine task-scaling Lambda records this many errors in a 5-minute period'
+
+Conditions:
+  # Aurora Serverless v2 is only provisioned when the deployment is not bring-your-own-DB,
+  # in which case CoreRDSStack emits the cluster identifier (otherwise "None"). Skip the RDS
+  # alarms for BYO-DB deployments so we never create an alarm on a metric that has no data.
+  HasProvisionedRDS: !Not [ !Equals [ !Ref GenaiEngineRDSClusterIdentifier, 'None' ] ]
+  # The task-scaling Lambda only exists in GPU deployments (arthur-genai-engine-ecs-gpu.yml), which
+  # pass its name through; CPU deployments leave the default "None" and get no Lambda alarm.
+  HasTaskScalingLambda: !Not [ !Equals [ !Ref GenaiEngineTaskScalingLambdaName, 'None' ] ]
 
 Resources:
   ArthurGenaiEngineLoadBalancerHealthyHostCount:
@@ -134,3 +171,132 @@ Resources:
       DatapointsToAlarm: 1
       Threshold: !Ref GenaiEngineECSMemoryAlarmThreshold
       ComparisonOperator: GreaterThanOrEqualToThreshold
+  # GenAI Engine Aurora (RDS) alarms. CPU/FreeableMemory/DiskQueueDepth are dimensioned on
+  # DBClusterIdentifier + Role=WRITER (the instance-level metrics Vanta accepts). VolumeBytesUsed
+  # is cluster-level (DBClusterIdentifier only, no Role dimension). These mirror the scope alarms
+  # stack (arthur-scope !2032) and clear the Vanta SQL-database CPU/memory/IO/storage tests.
+  # Storage note: Vanta's storage-space test only accepts FreeStorageSpace / FreeLocalStorage /
+  # AuroraVolumeBytesLeftTotal, none of which Aurora Serverless v2 (db.serverless) emits, so an
+  # alarm on those would never have data. The engine DB has a Vanta exception on that test; we
+  # still add a real alarm on VolumeBytesUsed (which IS emitted) to watch storage growth.
+  ArthurGenaiEngineRDSCPU:
+    Type: AWS::CloudWatch::Alarm
+    Condition: HasProvisionedRDS
+    Properties:
+      AlarmName: !Sub "[${ArthurResourceNamespace}${ArthurResourceNameSuffix}] genai-engine-rds-cpu-alarm"
+      AlarmDescription: !Sub "Alarm when the GenAI Engine Aurora WRITER instance of cluster ${GenaiEngineRDSClusterIdentifier} CPU utilization exceeds ${GenaiEngineRDSHighCPUAlarmThreshold}%"
+      ActionsEnabled: true
+      AlarmActions:
+        - !Ref AlarmSNSTopicArn
+      MetricName: CPUUtilization
+      Namespace: AWS/RDS
+      Statistic: Average
+      Dimensions:
+        - Name: DBClusterIdentifier
+          Value: !Ref GenaiEngineRDSClusterIdentifier
+        - Name: Role
+          Value: WRITER
+      Period: 300
+      EvaluationPeriods: 3
+      DatapointsToAlarm: 3
+      Threshold: !Ref GenaiEngineRDSHighCPUAlarmThreshold
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      Unit: Percent
+  ArthurGenaiEngineRDSFreeableMemory:
+    Type: AWS::CloudWatch::Alarm
+    Condition: HasProvisionedRDS
+    Properties:
+      AlarmName: !Sub "[${ArthurResourceNamespace}${ArthurResourceNameSuffix}] genai-engine-rds-freeable-memory-alarm"
+      AlarmDescription: !Sub "Alarm when the GenAI Engine Aurora WRITER instance of cluster ${GenaiEngineRDSClusterIdentifier} FreeableMemory drops below ${GenaiEngineRDSLowFreeableMemoryAlarmThreshold} bytes"
+      ActionsEnabled: true
+      AlarmActions:
+        - !Ref AlarmSNSTopicArn
+      MetricName: FreeableMemory
+      Namespace: AWS/RDS
+      Statistic: Average
+      Dimensions:
+        - Name: DBClusterIdentifier
+          Value: !Ref GenaiEngineRDSClusterIdentifier
+        - Name: Role
+          Value: WRITER
+      Period: 300
+      EvaluationPeriods: 3
+      DatapointsToAlarm: 3
+      Threshold: !Ref GenaiEngineRDSLowFreeableMemoryAlarmThreshold
+      ComparisonOperator: LessThanThreshold
+      TreatMissingData: notBreaching
+      Unit: Bytes
+  ArthurGenaiEngineRDSDiskQueueDepth:
+    Type: AWS::CloudWatch::Alarm
+    Condition: HasProvisionedRDS
+    Properties:
+      AlarmName: !Sub "[${ArthurResourceNamespace}${ArthurResourceNameSuffix}] genai-engine-rds-disk-queue-depth-alarm"
+      AlarmDescription: !Sub "Alarm when the GenAI Engine Aurora WRITER instance of cluster ${GenaiEngineRDSClusterIdentifier} DiskQueueDepth exceeds ${GenaiEngineRDSHighDiskQueueDepthAlarmThreshold}"
+      ActionsEnabled: true
+      AlarmActions:
+        - !Ref AlarmSNSTopicArn
+      MetricName: DiskQueueDepth
+      Namespace: AWS/RDS
+      Statistic: Average
+      Dimensions:
+        - Name: DBClusterIdentifier
+          Value: !Ref GenaiEngineRDSClusterIdentifier
+        - Name: Role
+          Value: WRITER
+      Period: 300
+      EvaluationPeriods: 3
+      DatapointsToAlarm: 3
+      Threshold: !Ref GenaiEngineRDSHighDiskQueueDepthAlarmThreshold
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      Unit: Count
+  ArthurGenaiEngineRDSVolumeBytesUsed:
+    Type: AWS::CloudWatch::Alarm
+    Condition: HasProvisionedRDS
+    Properties:
+      AlarmName: !Sub "[${ArthurResourceNamespace}${ArthurResourceNameSuffix}] genai-engine-rds-volume-bytes-used-alarm"
+      AlarmDescription: !Sub "Alarm when the GenAI Engine Aurora cluster ${GenaiEngineRDSClusterIdentifier} VolumeBytesUsed exceeds ${GenaiEngineRDSHighVolumeBytesUsedAlarmThreshold} bytes (storage auto-grows; this watches for runaway growth)"
+      ActionsEnabled: true
+      AlarmActions:
+        - !Ref AlarmSNSTopicArn
+      MetricName: VolumeBytesUsed
+      Namespace: AWS/RDS
+      Statistic: Average
+      Dimensions:
+        - Name: DBClusterIdentifier
+          Value: !Ref GenaiEngineRDSClusterIdentifier
+      Period: 300
+      EvaluationPeriods: 3
+      DatapointsToAlarm: 3
+      Threshold: !Ref GenaiEngineRDSHighVolumeBytesUsedAlarmThreshold
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      Unit: Bytes
+  # Errors alarm for the GenAI Engine task-scaling Lambda that this deployment creates (GPU only).
+  # Scoped to that one function so a customer deployment never gets an alarm on Lambdas it does not
+  # own. Satisfies the Vanta serverless-function-error-rate-monitored-aws test for this function.
+  # Errors is published on invocation, so TreatMissingData=notBreaching keeps the alarm at OK while
+  # idle and fires only when the Lambda actually errors.
+  ArthurGenaiEngineTaskScalingLambdaErrors:
+    Type: AWS::CloudWatch::Alarm
+    Condition: HasTaskScalingLambda
+    Properties:
+      AlarmName: !Sub "[${ArthurResourceNamespace}${ArthurResourceNameSuffix}] genai-engine-task-scaling-lambda-errors-alarm"
+      AlarmDescription: !Sub "Alarm when the GenAI Engine task-scaling Lambda ${GenaiEngineTaskScalingLambdaName} records ${GenaiEngineTaskScalingLambdaErrorsAlarmThreshold} or more errors in a 5-minute period"
+      ActionsEnabled: true
+      AlarmActions:
+        - !Ref AlarmSNSTopicArn
+      MetricName: Errors
+      Namespace: AWS/Lambda
+      Statistic: Sum
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref GenaiEngineTaskScalingLambdaName
+      Period: 300
+      EvaluationPeriods: 1
+      DatapointsToAlarm: 1
+      Threshold: !Ref GenaiEngineTaskScalingLambdaErrorsAlarmThreshold
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      Unit: Count
