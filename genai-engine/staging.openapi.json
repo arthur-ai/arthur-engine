@@ -19284,7 +19284,7 @@
                                 "const": "empty"
                             }
                         ],
-                        "title": "Model Provider",
+                        "title": "Agentic Prompt Model Provider",
                         "description": "Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure'). The sentinel value 'empty' indicates the system default placeholder has not been configured."
                     },
                     "version": {
@@ -32505,7 +32505,7 @@
                                 "const": "empty"
                             }
                         ],
-                        "title": "Model Provider",
+                        "title": "Synthetic Data Prompt Model Provider",
                         "description": "Model provider stored in the SDG system prompt. The sentinel 'empty' indicates the prompt has not yet been configured."
                     },
                     "model_name": {
