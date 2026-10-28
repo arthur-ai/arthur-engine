@@ -19698,6 +19698,35 @@
                 "title": "AgenticTestCaseListResponse",
                 "description": "Paginated list of agentic test cases"
             },
+            "AnthropicThinkingBlockBinding-Input": {
+                "properties": {
+                    "prefix_mismatch_behavior": {
+                        "type": "string",
+                        "enum": [
+                            "error",
+                            "drop_block"
+                        ],
+                        "title": "Prefix Mismatch Behavior"
+                    }
+                },
+                "type": "object",
+                "title": "AnthropicThinkingBlockBinding"
+            },
+            "AnthropicThinkingBlockBinding-Output": {
+                "properties": {
+                    "prefix_mismatch_behavior": {
+                        "type": "string",
+                        "enum": [
+                            "error",
+                            "drop_block"
+                        ],
+                        "title": "Prefix Mismatch Behavior"
+                    }
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "title": "AnthropicThinkingBlockBinding"
+            },
             "AnthropicThinkingParam-Input": {
                 "properties": {
                     "type": {
@@ -19721,6 +19750,9 @@
                             "updates"
                         ],
                         "title": "Display"
+                    },
+                    "block_binding": {
+                        "$ref": "#/components/schemas/AnthropicThinkingBlockBinding-Input"
                     }
                 },
                 "type": "object",
@@ -19749,6 +19781,9 @@
                             "updates"
                         ],
                         "title": "Display"
+                    },
+                    "block_binding": {
+                        "$ref": "#/components/schemas/AnthropicThinkingBlockBinding-Output"
                     }
                 },
                 "additionalProperties": false,
