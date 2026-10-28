@@ -172,6 +172,38 @@ def test_trace_metadata_filtering_by_span_types(
 
 
 @pytest.mark.unit_tests
+@pytest.mark.parametrize(
+    "filters,expected_trace_ids",
+    [
+        (
+            {"span_types": ["LLM"], "span_name_contains": "chat"},
+            {"api_trace1", "api_trace2"},
+        ),
+        # Span-level filters match independently: api_trace1 has an LLM span and a separate span named "Chain"
+        ({"span_types": ["LLM"], "span_name": "Chain"}, {"api_trace1"}),
+        ({"span_types": ["LLM", "CHAIN"], "span_name": "Chain"}, {"api_trace1"}),
+        ({"span_types": ["AGENT"], "status_code": ["Ok"]}, {"api_trace3"}),
+        ({"span_types": ["LLM"], "span_ids": ["api_span3"]}, {"api_trace2"}),
+        ({"tool_name": "test_tool", "status_code": ["Ok"]}, {"api_trace4"}),
+    ],
+)
+def test_trace_metadata_filtering_by_span_types_combined_with_span_filters(
+    client: GenaiEngineTestClientBase,
+    comprehensive_test_data,
+    filters,
+    expected_trace_ids,
+):
+    """Test span type filters combined with other span-level filters."""
+    status_code, data = client.trace_api_list_traces_metadata(
+        task_ids=["api_task1", "api_task2"],
+        **filters,
+    )
+    assert status_code == 200
+    assert data.count == len(expected_trace_ids)
+    assert {trace.trace_id for trace in data.traces} == expected_trace_ids
+
+
+@pytest.mark.unit_tests
 def test_trace_metadata_filtering_by_time_range(
     client: GenaiEngineTestClientBase,
     comprehensive_test_data,

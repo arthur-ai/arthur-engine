@@ -1,10 +1,8 @@
+import { type IncomingFilter, TimeRange } from "@arthur/shared-components";
 // filterStore.ts
 import { createContext, use, useEffect, useState } from "react";
 import { create, StoreApi, UseBoundStore } from "zustand";
 import { devtools, subscribeWithSelector } from "zustand/middleware";
-
-import type { IncomingFilter } from "../components/filtering/mapper";
-import { TimeRange } from "../constants";
 
 export interface FilterState {
   filters: IncomingFilter[];

@@ -1,14 +1,11 @@
+import { getSpanInput, getSpanOutput, Highlight, Tabs, tryFormatJson } from "@arthur/shared-components";
 import { Box, Paper, Stack, Typography } from "@mui/material";
 
 import { useDrawerTarget } from "../../hooks/useDrawerTarget";
-import { getSpanInput, getSpanOutput } from "../../utils/spans";
 
-import { Highlight } from "@/components/common/Highlight";
-import { Tabs } from "@/components/ui/Tabs";
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { TraceResponse } from "@/lib/api";
 import { formatDateInTimezone } from "@/utils/formatters";
-import { tryFormatJson } from "@/utils/llm";
 
 type Props = {
   trace: TraceResponse;

@@ -7,7 +7,7 @@ of the design: **the endpoint enumerates, and the collector classifies.**
 
 | | Repo | Holds | Must not hold |
 |---|---|---|---|
-| Queries and catalog | [`osquery-ai-discovery`](https://github.com/arthur-ai/osquery-ai-discovery) (public, MIT) | the SQL, the runner, the Docker health guard, the wall-clock bound, and the agent catalog | anything specific to Arthur or to a carrier |
+| Queries and catalog | [`ai-detection-spec`](https://github.com/arthur-ai/ai-detection-spec) (public, Apache-2.0) | the specification, its osquery binding (the SQL, the runner, the Docker health guard, the wall-clock bound), the agent catalog and the reference matcher | anything specific to Arthur or to a carrier |
 | Deployable | `integrations/endpoint-ai-discovery/` (this tree) | the build, the `arthur1.` wire format, the size budget, and the Jamf, Compute Engine and EC2 transports | a copy of the queries, the catalog, or any matching |
 | Collector | `ml-engine/src/ml_engine/discovery/` | matching, the catalog it matches against (vendored at the same upstream ref), and the records it emits | a copy of the queries |
 | Policies | arthur-platform | what to do about a finding | anything about collection |
@@ -22,8 +22,8 @@ ever passes `--names`. `tools/build-collector.py` admits payload files by name, 
 catalog-derived file reaches an endpoint unvetted.
 
 The catalog covers agents only. Model runners, the MCP SDK, LLM gateways and container
-runtimes do not act on a user's behalf, so they are out of scope. Upstream's
-`catalog/agents.yaml` records each exclusion and its reason.
+runtimes do not act on a user's behalf, so they are out of scope. The catalog's `removed`
+list records each exclusion and its reason.
 
 **One driver, two builds.** Upstream's macOS and Linux queries use different tables, so this
 tree builds one collector per platform around the same driver:
@@ -36,9 +36,9 @@ Each refuses to run on the other platform and names the reason.
 ## End-to-end flow
 
 ```
-  osquery-ai-discovery (public)        queries, runner, catalog
+  ai-detection-spec (public)           spec, queries, runner, catalog, matcher
           │
-          │  vendored at a pinned tag: dist/ into this tree, catalog/ into ml-engine
+          │  vendored at a pinned tag: osquery/ into this tree, catalog.json and bin/classify into ml-engine
           ▼
   the machine                          dist/collect.sh or collect-linux.sh, on a schedule
     /var/lib/arthur/inventory.ea       the evidence: arthur1.<base64(gzip(json))>
@@ -66,16 +66,24 @@ carrier's API, and nothing listens for inbound connections.
 
 ### The row
 
-Every branch emits rows with the same six columns, in this order:
+A row is an evidence row as ai-detection-spec defines it
+([SPEC.md §5.1](https://github.com/arthur-ai/ai-detection-spec/blob/main/SPEC.md#51-evidence-rows)).
+Every branch emits all six members the spec names:
 
 ```
 kind, id, ver, loc, extra, perms
 ```
 
+The collector reads rows as the spec does. `kind` and `id` are required, a member a row omits
+reads as empty, and a row the spec's schema refuses fails the whole device. A member the spec
+does not name must still hold a string, as every member must. It is then ignored and goes no
+further than the reader, so a collector that started writing what it read would put none of
+it in a record or a log. The reader logs the member's name, never its value.
+
 `kind` says what the row is: `app`, `npm`, `ext`, `image`, and so on. The set of kinds, and what
 each one claims, is upstream's. See upstream's
-[`docs/agents.md`](https://github.com/arthur-ai/osquery-ai-discovery/blob/main/docs/agents.md)
-and [`docs/containers.md`](https://github.com/arthur-ai/osquery-ai-discovery/blob/main/docs/containers.md).
+[`docs/agents.md`](https://github.com/arthur-ai/ai-detection-spec/blob/main/docs/agents.md)
+and [`osquery/docs/containers.md`](https://github.com/arthur-ai/ai-detection-spec/blob/main/osquery/docs/containers.md).
 Every kind counts against the size budget, because the deployed run executes every branch.
 
 ### The payload
@@ -97,7 +105,7 @@ Every payload carries one dated scan row per branch:
 `cat` a file cannot read the file's mtime, and a redeploy resets the mtime anyway. `extra` is
 the branch's outcome, which the status line repeats as `branch=outcome`. That vocabulary is
 upstream's
-([`deployment.md`](https://github.com/arthur-ai/osquery-ai-discovery/blob/main/docs/deployment.md#statustxt-whose-vocabulary-is-a-contract)).
+([`deployment.md`](https://github.com/arthur-ai/ai-detection-spec/blob/main/osquery/docs/deployment.md#statustxt)).
 It is a contract: Smart Groups match on these strings, and the collector branches on them.
 
 The carriers in this tree add tokens to the status line:
@@ -234,7 +242,7 @@ Every failure reports a reason, and no path may report "nothing" without saying 
 - **A branch that cannot look** writes a dated scan row that says so, such as `unhealthy:000`,
   `timeout:6` or `error`, rather than dropping its rows silently. How upstream bounds and
   guards each branch is its
-  [`containers.md`](https://github.com/arthur-ai/osquery-ai-discovery/blob/main/docs/containers.md).
+  [`containers.md`](https://github.com/arthur-ai/ai-detection-spec/blob/main/osquery/docs/containers.md).
 - **An oversize payload** writes `ERROR:oversize:<bytes>`, never a truncated value or nothing.
 - **A scan that cannot run** keeps the last good payload and fails the run, so the Jamf Policy
   or the systemd unit reads as failed. Erasing good evidence to signal a fault would report a
@@ -254,11 +262,14 @@ Every failure reports a reason, and no path may report "nothing" without saying 
 | SSM custom inventory value cap | **exactly 4,096 characters** | **Measured** 2026-10-16 on Amazon Linux 2023. The agent refuses 4,097 *silently*: it logs to `/var/log/amazon/ssm/errors.log`, skips the file, and reports the association as `Success` |
 | SSM custom inventory per type | no cap at the budget | **Measured** 2026-10-16: AWS's quotas page says 200 KB, yet 262,144 and 614,400 characters each uploaded and read back intact |
 | SSM inventory per node per day | **5,000 KB, enforced** | **Measured** 2026-10-16: the upload that crosses it fails with `TotalSizeLimitExceededException`, and the previous values are still served |
+| A Linux-only association on Windows | **Skipped**, not failed | **Measured** 2026-10-23, SSM Agent 3.3.5390.0 on Windows Server 2022. State Manager counted the instance `Skipped`, `InvalidPlatform`, under the template's document with its `platformType` precondition and under `AWS-RunShellScript` alike, so it never counts toward `MaxErrors`. Run Command's history lists the same invocation as `Failed` |
+| The EC2 install on Amazon Linux 2 | **in a container only** | **Measured** 2026-10-23 in `amazonlinux:2`, aarch64. The install script's yum branch installed osquery 5.24.0, and every pinned fetch landed. `test/run-collector.sh` and `test/run-ssm-inventory.sh` pass there, under bash 4.2.46. Its systemd 219 accepts `systemctl enable --now`. Not run on an instance |
+| A pin bump through CloudFormation | **runs the install at once** | **Measured** 2026-10-23. `update-stack-set` added document version 2 as the default and updated the association's `baseUrl`. The association ran at once on every instance. No file's sha256 changed, and the timer was not restarted |
 | Size budget | 256 KB framed | **Our choice** on Jamf. On Compute Engine it is the platform's own cap, so it must not rise; `test/lint.sh` enforces this. The budget keeps our loud failure (`ERROR:oversize`) ahead of any carrier's unobserved one. At ~26 framed bytes per row it fires near 10,000 rows, about 11× the Mac measured below |
 | Jamf inventory cadence | at most once a day per device | **Documented by Jamf.** This limits discovery latency to ~24h |
 | Jamf API concurrency | 5 concurrent connections | **Documented by Jamf.** There is no hard rate limit, but exceeding it degrades Jamf Pro |
 | Webhook delivery | **undocumented** | Neither Jamf's admin docs nor its developer docs give a retry policy, delivery guarantee, timeout or dead-letter queue |
-| Collector ingress | none | Nothing listens. Built on the vendored `bin/classify`, the collector also sends usage telemetry by default (upstream's `docs/telemetry.md`). The endpoint sends nothing |
+| Collector ingress | none | Nothing listens. The collector calls the vendored `bin/classify` as a library, which sends no usage telemetry; only its command line does (upstream's `docs/telemetry.md`). The endpoint sends nothing |
 
 Measured payloads with osquery 5.23.1, run cold:
 
@@ -291,6 +302,7 @@ whichever way they travel.
 | SSM custom inventory carries EC2, in parts that each carry the whole value's sha256 | The agent uploads with the instance's own SSM permissions. The alternatives all fall short: instance tags hold 256 characters and need a credential to write; Parameter Store holds 4–8 KB and needs one too; Run Command output stops at 24,000 characters and needs `ssm:SendCommand` |
 | A reporter wraps the collector on Linux, one per cloud | The collector names no carrier. The reporter is the carrier half, as the Extension Attribute is on Jamf, and it can name a failed run because it saw it |
 | One unit file for both clouds; a drop-in picks EC2's reporter | The collector, schedule and hardening are the same on both clouds, so a second unit would be a drifting copy. The drop-in clears `ExecStart` before setting it, which `test/lint.sh` checks |
+| EC2 deploys from one CloudFormation template, as a stack or an organization StackSet; no Terraform module | A service-managed StackSet reaches every account in an OU, including accounts that join it later. A Terraform AWS provider reaches one account, so a module would cover only the accounts named when it was applied. The template is the only copy of the install script: the runbook renders it, and CI lints it and runs it |
 | Queries vendored at a pinned tag | Diffs are reviewable, the build works offline, and the version is visible in the tree. A submodule adds friction to cloning and CI; fetching at build time needs network in CI |
 
 ## Open questions

@@ -1,3 +1,4 @@
+import { useAppForm } from "@arthur/shared-components";
 import { Box, CircularProgress, Dialog, DialogTitle, Step, StepLabel, Stepper } from "@mui/material";
 import { ThemeProvider, useTheme } from "@mui/material/styles";
 import { useStore } from "@tanstack/react-form";
@@ -13,7 +14,6 @@ import { createExperimentDropdownTheme } from "./tourDropdownTheme";
 import { DeepPartial, deepMerge, formDataToRequest, templateToFormData } from "./utils";
 
 import { ConfirmationModal } from "@/components/common/ConfirmationModal";
-import { useAppForm } from "@/components/traces/components/filtering/hooks/form";
 import { TOUR_IDS, tourDataAttr } from "@/features/task-tour/selectors";
 import { dispatchTourEvent, refreshTaskTourTarget, TASK_TOUR_EVENTS } from "@/features/task-tour/tourActions";
 import { useCreateExperiment, usePromptExperiment } from "@/hooks/usePromptExperiments";

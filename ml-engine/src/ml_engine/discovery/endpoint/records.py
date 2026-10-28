@@ -9,7 +9,7 @@ import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Optional, Union
+from typing import Any, Mapping, Optional, Sequence, Union
 
 from arthur_common.models.agent_discovery_schemas import DiscoveredAgentRecord
 from arthur_common.models.agent_governance_schemas import (
@@ -160,6 +160,44 @@ def records_for(
         )
         return DeviceRead(unreadable=UnreadableReason(envelope.outcome.value))
 
+    return records_from_rows(
+        device,
+        envelope.rows,
+        matcher,
+        vendor,
+        log,
+        source_type=source_type,
+        ignored=envelope.ignored,
+    )
+
+
+def records_from_rows(
+    device: ManagedDevice,
+    rows: Sequence[Mapping[str, Any]],
+    matcher: Matcher,
+    vendor: str,
+    logger: Optional[logging.Logger] = None,
+    source_type: InventorySource = EndpointAgentCreationSource,
+    ignored: Sequence[str] = (),
+) -> DeviceRead:
+    """One device's records from a payload already decoded: `records_for` past the
+    carrier.
+
+    For a source that reads the runner's rows itself rather than through a carrier's
+    attribute, so there is no value to find and no frame to remove -- the rows are
+    matched, dated and addressed exactly as a carried payload's are. `ignored` is the
+    envelope's: the members its rows carried that the spec does not name.
+    """
+    log = logger or logging.getLogger(__name__)
+    if ignored:
+        # Our collector writes only the members the spec names, so one more means it has
+        # started writing something else. Named, never its value.
+        log.warning(
+            "%s: the payload's rows carry member(s) the spec does not name, ignored "
+            "unread: %s",
+            device.device_key,
+            ", ".join(ignored),
+        )
     if not device.device_key.strip():
         # external_id is f"{device_key}:{agent_id}", so a blank half reads as
         # ":codex-cli" -- not blank, so every later guard passes it, while collapsing
@@ -170,11 +208,11 @@ def records_for(
         )
         return DeviceRead(unreadable=UnreadableReason.NO_DEVICE_ID)
 
-    result = matcher.match(envelope.rows)
+    result = matcher.match(rows)
 
     if result.dropped:
         log.warning(
-            "%s: %s row(s) dropped by the matcher; a route is missing from routes.yaml",
+            "%s: %s row(s) dropped by the matcher; a route is missing from the catalog",
             device.device_key,
             result.dropped,
         )
@@ -246,8 +284,9 @@ def _source_for(
             resource_id=finding.primary_id,
         ),
         observations=AgentObservations(
-            # Already only where the row's kind carries one: an image's `loc` is a digest
-            # and a container's `ver` its state, and upstream's matcher says which is which.
+            # Already only where the row carries one: upstream's matcher takes `ver` as a
+            # version wherever it is set, and `loc` as a path only on the kinds whose `loc`
+            # is one -- an image's is a digest.
             install_path=finding.install_path,
             version=finding.version,
             permissions=list(finding.permissions),

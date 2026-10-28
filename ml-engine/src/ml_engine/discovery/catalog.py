@@ -5,69 +5,47 @@ every application, formula and extension on it, and holds no catalog. That split
 lets a new signature re-match evidence already collected instead of triggering a fleet
 re-scan.
 
-Upstream's `bin/classify` is called, not reimplemented -- its own docstring says any
-implementation that disagrees with it is wrong. Measured at 0.61 ms for an 875-row
-payload, so 10,000 Macs cost about six seconds. Calling it as a library also sends no
-telemetry: upstream raises its Amplitude event in `main()`, not in the matcher.
+Upstream's `bin/classify` is called, not reimplemented: it is ai-detection-spec's reference
+matcher, held to the spec's conformance vectors, and a second implementation here would answer
+differently without anything failing. Measured at 0.61 ms for an 875-row payload, so 10,000
+Macs cost about six seconds. Calling it as a library also sends no telemetry: upstream raises
+its Amplitude event in `main()`, not in the matcher.
 """
 
 import hashlib
 import importlib.machinery
 import importlib.util
+import json
 import logging
 import pathlib
 from dataclasses import dataclass
 from types import ModuleType
 from typing import Any, Mapping, Optional, Sequence
 
-import yaml
+from job_executors.discovery_scan import DiscoveryConfigurationError
 
 _VENDOR = pathlib.Path(__file__).resolve().parent / "_vendor"
 
-# The floor. A Discovery Source Config carries the catalog that actually runs, so these
-# are only what an unconfigured source falls back to.
-_FLOOR_CATALOG = _VENDOR / "agents.yaml"
-_FLOOR_ROUTES = _VENDOR / "routes.yaml"
+# The floor: the catalog document the vendored release attaches. A Discovery Source Config
+# carries the catalog that actually runs, so this is only what an unconfigured source falls
+# back to.
+_FLOOR = _VENDOR / "catalog.json"
+# What a catalog document is validated against before it is read (SPEC.md 4).
+_CATALOG_SCHEMA = _VENDOR / "catalog.schema.json"
 
 
-# A YAML loader that refuses duplicate mapping keys. `yaml.safe_load` keeps the last
-# occurrence silently, so an agent carrying `npm:` twice loses its first list -- and the
-# fleet then reports a missed agent as absent, which is the failure this module exists to
-# prevent. A source config is typed by a person, so this is a live risk rather than a
-# theoretical one.
-class _StrictLoader(yaml.SafeLoader):  # type: ignore[misc]
-    pass
-
-
-# `<<` carries a tag PyYAML has no constructor for -- `construct_mapping` flattens it
-# instead -- so it must be skipped here rather than constructed. Without this, every
-# catalog that shares fields through an anchor fails to load while `yaml.safe_load`
-# accepts it, and the scan dies before matching starts.
-_MERGE_TAG = "tag:yaml.org,2002:merge"
-
-
-def _no_duplicate_keys(loader: "_StrictLoader", node: Any) -> dict[Any, Any]:
-    seen = set()
-    for key_node, _ in node.value:
-        if key_node.tag == _MERGE_TAG:
-            continue
-        key = loader.construct_object(key_node, deep=True)
-        if key in seen:
-            raise ValueError(
-                f"duplicate key {key!r} at line {key_node.start_mark.line + 1}",
-            )
-        seen.add(key)
-    return loader.construct_mapping(node, deep=True)  # type: ignore[no-any-return]
-
-
-_StrictLoader.add_constructor(
-    yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
-    _no_duplicate_keys,
-)
-
-
-_GAP_KIND = "scan"
-_SCAN_OK = "ok"
+def _no_duplicate_pairs(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    """Refuse a duplicate key. `json.loads` keeps the last occurrence silently, so an agent
+    carrying `identifiers` twice loses its first list -- and the fleet then reports a missed
+    agent as absent, which is the failure this module exists to prevent. A source config is
+    typed by a person, so this is a live risk rather than a theoretical one.
+    """
+    out: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in out:
+            raise DiscoveryConfigurationError(f"duplicate key {key!r}")
+        out[key] = value
+    return out
 
 
 def _load_matcher() -> ModuleType:
@@ -77,7 +55,7 @@ def _load_matcher() -> ModuleType:
     renaming it to `.py` is the only change the vendoring makes.
     """
     loader = importlib.machinery.SourceFileLoader(
-        "_ai_discovery_classify",
+        "_ai_detection_spec_classify",
         str(_VENDOR / "classify.py"),
     )
     spec = importlib.util.spec_from_loader(loader.name, loader)
@@ -101,6 +79,11 @@ class Finding:
     once -- Codex CLI as an npm package and a CLI shim, Claude Desktop as a bundle id and
     a native-messaging host -- and a per-route finding reports one install several times.
     Measured on a developer Mac: 10 agents across 20 evidence rows.
+
+    `running`, `superseded` and `only_superseded` are what SPEC.md 6.6 has a matcher report:
+    whether a live route proved the agent, the ids of the rows an identifier the vendor has
+    replaced matched, and whether every row was one. AgentObservations carries none of them
+    yet.
     """
 
     agent_id: str
@@ -112,6 +95,9 @@ class Finding:
     version: Optional[str]
     install_path: Optional[str]
     permissions: tuple[str, ...]
+    running: bool
+    superseded: tuple[str, ...]
+    only_superseded: bool
 
     @property
     def kinds(self) -> tuple[str, ...]:
@@ -187,44 +173,40 @@ class Matcher:
         self._catalog_source = catalog_source
         self._log = logger or logging.getLogger(__name__)
         self._kind_rank = _matcher.kind_rank(self._routes)
-
-        version = self._catalog.get("version")
-        if isinstance(version, int) and version > _matcher.CATALOG_VERSION:
-            # Refusing would read downstream as a clean fleet.
-            self._log.warning(
-                "catalog is version %s; the vendored matcher understands %s. "
-                "Matching what it can -- newer routes arrive as unmatched rows.",
-                version,
-                _matcher.CATALOG_VERSION,
-            )
+        # Which kinds say an agent is running rather than installed: declared per route, and
+        # passed to upstream's describe(), which otherwise reads a routes.yaml beside itself
+        # that this package does not ship.
+        self._live_kinds = _matcher.Registry(self._routes).live_kinds
 
     @classmethod
     def from_source(
         cls,
-        catalog_yaml: Optional[str] = None,
-        routes_yaml: Optional[str] = None,
+        catalog_json: Optional[str] = None,
         logger: Optional[logging.Logger] = None,
     ) -> "Matcher":
-        """Build from config-supplied YAML, falling back to the vendored floor.
+        """Build from a config-supplied catalog document, falling back to the vendored floor.
 
         Signatures ride in the source config, so adding one is a config change rather than
-        an image rebuild and works on an engine with no route to the internet.
+        an image rebuild and works on an engine with no route to the internet. The catalog is
+        an ai-detection-spec catalog document (SPEC.md 4), such as the catalog.json a release
+        attaches, and it carries its own routes.
+
+        A catalog it refuses is a DiscoveryConfigurationError: the source's catalog is the
+        config's to fix, and a plain ValueError reaches the Platform as the vendor's error.
         """
-        catalog_bytes = (
-            catalog_yaml.encode() if catalog_yaml else _FLOOR_CATALOG.read_bytes()
-        )
-        routes_bytes = (
-            routes_yaml.encode() if routes_yaml else _FLOOR_ROUTES.read_bytes()
-        )
+        source = catalog_json.encode() if catalog_json else _FLOOR.read_bytes()
         try:
-            catalog = yaml.load(catalog_bytes.decode("utf-8"), Loader=_StrictLoader)
-            routes = yaml.load(routes_bytes.decode("utf-8"), Loader=_StrictLoader)
-        except yaml.YAMLError as exc:
-            raise ValueError(f"catalog or routes is not valid YAML: {exc}") from exc
-        if not isinstance(catalog, dict) or not isinstance(routes, dict):
-            raise ValueError("catalog and routes must each parse to a YAML mapping")
-        _validate(catalog, routes)
-        return cls(catalog, routes, logger, catalog_source=catalog_bytes)
+            doc = json.loads(source, object_pairs_hook=_no_duplicate_pairs)
+        except json.JSONDecodeError as exc:
+            raise DiscoveryConfigurationError(f"catalog is not JSON: {exc}") from exc
+        if not isinstance(doc, dict) or "format" not in doc:
+            raise DiscoveryConfigurationError(
+                "catalog is not a catalog document: it names no `format`. This engine reads "
+                "ai-detection-spec catalog documents, such as the catalog.json a release "
+                "attaches",
+            )
+        catalog, routes = _from_document(doc)
+        return cls(catalog, routes, logger, catalog_source=source)
 
     @property
     def catalog_sha(self) -> str:
@@ -242,7 +224,7 @@ class Matcher:
             # Built from a mapping with no source text. Still stable and still useful
             # for spotting drift between runs, but it is not upstream's number, so it
             # is marked rather than passed off as one.
-            blob = yaml.safe_dump(self._catalog, sort_keys=True).encode()
+            blob = json.dumps(self._catalog, sort_keys=True).encode()
             return "norm:" + hashlib.sha256(blob).hexdigest()[:12]
         return hashlib.sha256(self._catalog_source).hexdigest()[:12]
 
@@ -253,15 +235,13 @@ class Matcher:
     def match(self, rows: Sequence[Mapping[str, Any]]) -> MatchResult:
         """Classify one device's payload.
 
-        Reconciles its own arithmetic: upstream drops a row whose `kind` is not in the
-        route registry -- neither matched nor unmatched, just gone. That shipped once,
-        browser-extension rows invisible for months while row counts stayed right.
+        Counts what upstream drops: a row whose `kind` is in no route can never match, and is
+        neither matched nor unmatched. That shipped once, browser-extension rows invisible for
+        months while row counts stayed right.
         """
         raw = [dict(r) for r in rows]
-        findings_by_agent, unmatched, gaps, scans, absences = _matcher.classify(
-            raw,
-            self._catalog,
-            self._routes,
+        findings_by_agent, unmatched, gaps, scans, absences, dropped_rows = (
+            _matcher.classify(raw, self._catalog, self._routes)
         )
 
         findings = tuple(
@@ -274,20 +254,11 @@ class Matcher:
             ),
         )
 
-        evidence_rows = sum(len(f.evidence) for f in findings)
-        dropped = max(
-            0,
-            len(raw)
-            - evidence_rows
-            - len(unmatched)
-            - len(gaps)
-            - len(scans)
-            - len(absences),
-        )
+        dropped = len(dropped_rows)
         if dropped:
             self._log.warning(
                 "%s row(s) carried a kind absent from the route registry and were dropped by the "
-                "matcher; a route is missing from routes.yaml",
+                "matcher; a route is missing from the catalog",
                 dropped,
             )
 
@@ -309,24 +280,23 @@ class Matcher:
         rows = [dict(row) for _hit, row in evidence]
         meta = dict(evidence[0][0])
 
-        # Upstream names the row that speaks for a finding, and gives its version and path
-        # only where that row's kind carries one -- the rule every consumer of the matcher
+        # Upstream names the row that speaks for a finding, and gives its version, and its
+        # path where that row's kind carries one -- the rule every consumer of the matcher
         # shares, rather than one this collector keeps beside it. The flags say which rows
         # matched an identifier the vendor has replaced.
-        described = _matcher.describe(
-            rows,
-            self._kind_rank,
-            [bool(hit.get("superseded")) for hit, _row in evidence],
-        )
+        flags = [bool(hit.get("superseded")) for hit, _row in evidence]
+        described = _matcher.describe(rows, self._kind_rank, flags, self._live_kinds)
         primary = rows[described["primary"]]
         # As text whatever the row held: the record's fields are strict strings, and match()
         # takes rows that never passed the envelope's checks.
         version, path = described.get("version"), described.get("path")
 
-        # Upstream's split, because `perms` can end in a provenance token that is not a
-        # permission, and a list of those tokens copied here would miss the next one. The
-        # token itself goes nowhere yet: AgentObservations has no field for provenance.
-        permissions, _provenance = _matcher.split_perms(str(primary.get("perms") or ""))
+        # Permissions only: an extension's provenance token rides in `extra`, and goes nowhere
+        # yet -- AgentObservations has no field for it. osquery joins with ", ", so each part
+        # is stripped, or " storage" would be a different permission from "storage".
+        permissions = tuple(
+            p.strip() for p in str(primary.get("perms") or "").split(",") if p.strip()
+        )
         return Finding(
             agent_id=agent_id,
             name=str(meta.get("name") or agent_id),
@@ -337,94 +307,33 @@ class Matcher:
             version=None if version is None else str(version),
             install_path=None if path is None else str(path),
             permissions=permissions,
+            running=any(row.get("kind") in self._live_kinds for row in rows),
+            superseded=tuple(
+                str(row.get("id") or "") for row, flag in zip(rows, flags) if flag
+            ),
+            only_superseded=all(flags),
         )
 
 
-# Derived from the vendored registry rather than hand-listed, so a mode upstream adds is
-# accepted as soon as it is vendored.
-_MATCH_MODES: frozenset[str] = frozenset(
-    str(r["match"])
-    for r in (yaml.safe_load(_FLOOR_ROUTES.read_text()).get("routes") or {}).values()
-    if isinstance(r, dict) and r.get("match")
-)
+def _from_document(doc: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+    """A catalog document as the catalog and route registry the matcher works in.
 
-
-def _validate(catalog: Mapping[str, Any], routes: Mapping[str, Any]) -> None:
-    """Fail a malformed catalog once, at load, rather than once per device.
-
-    The matcher reaches for these keys directly and rebuilds its index inside `classify()`,
-    which runs per device -- so without this, a bad config raises KeyError on every Mac in
-    the fleet, each time naming a key rather than the config entry that is wrong.
+    Read by upstream's own reader, so no second reading of a document exists. It validates
+    the document against the vendored schema, and refuses whole a format it does not read or
+    an identifier it could not index (SPEC.md 4, 6 and 10). That is every check the matcher
+    needs, made once at load: a catalog that reached the matcher malformed would fail on every
+    device instead, naming a key rather than the entry that is wrong. It refuses by exiting,
+    as a command line does; here a refusal is a DiscoveryConfigurationError.
     """
-    agents = catalog.get("agents")
-    if not isinstance(agents, list):
-        raise ValueError("catalog has no 'agents' list")
-    for i, agent in enumerate(agents):
-        if not isinstance(agent, dict):
-            raise ValueError(f"catalog agent at index {i} is not a mapping")
-        for key in ("id", "name", "classification"):
-            if not agent.get(key):
-                where = agent.get("id") or f"index {i}"
-                raise ValueError(f"catalog agent {where} has no '{key}'")
-
-    if not isinstance(routes.get("platforms"), list):
-        raise ValueError("routes has no 'platforms' list")
-    declared = routes.get("routes")
-    if not isinstance(declared, dict):
-        raise ValueError("routes has no 'routes' mapping")
-    for name, spec in declared.items():
-        if not isinstance(spec, dict):
-            raise ValueError(f"route {name} is not a mapping")
-        for key in ("kind", "match"):
-            if not spec.get(key):
-                raise ValueError(f"route {name} has no '{key}'")
-        if spec["match"] not in _MATCH_MODES:
-            # build_index raises KeyError on a mode it does not branch on, once per
-            # device rather than once at load.
-            raise ValueError(
-                f"route {name} has match mode {spec['match']!r}; the vendored matcher "
-                f"handles {sorted(_MATCH_MODES)}",
-            )
-
-    # Every route list an agent declares must be a list of strings. A scalar is indexed
-    # CHARACTER BY CHARACTER by the vendored matcher, so `npm: openclaw` silently becomes
-    # seven one-letter identifiers rather than one name -- wrong without being an error.
-    route_names = set((routes.get("routes") or {}))
-    reserved = {"id", "name", "classification", "platforms", "superseded"}
-    for i, agent in enumerate(agents):
-        for key, value in agent.items():
-            if key in reserved:
-                continue
-            if key not in route_names:
-                raise ValueError(
-                    f"catalog agent {agent.get('id') or i} declares unknown route {key!r}",
-                )
-            # A `values_from` route indexes another route's values and never reads its own
-            # key, so a value listed under it would match nothing, in silence.
-            borrowed = (declared.get(key) or {}).get("values_from")
-            if borrowed:
-                raise ValueError(
-                    f"catalog agent {agent.get('id') or i} lists values under {key!r}, which "
-                    f"matches {borrowed!r} values and reads none of its own; list them under "
-                    f"{borrowed!r}",
-                )
-            if not isinstance(value, list) or not all(
-                isinstance(v, str) for v in value
-            ):
-                raise ValueError(
-                    f"catalog agent {agent.get('id') or i} route {key!r} must be a list of "
-                    f"strings",
-                )
-        for j, sup in enumerate(agent.get("superseded") or []):
-            if (
-                not isinstance(sup, dict)
-                or not sup.get("route")
-                or not sup.get("value")
-            ):
-                raise ValueError(
-                    f"catalog agent {agent.get('id') or i} superseded[{j}] needs 'route' "
-                    f"and 'value'",
-                )
+    try:
+        catalog, routes = _matcher.from_document(
+            doc,
+            "the catalog document",
+            schema=_CATALOG_SCHEMA,
+        )
+    except SystemExit as exc:
+        raise DiscoveryConfigurationError(str(exc.code)) from None
+    return catalog, routes
 
 
 def _epoch(value: Any) -> Optional[int]:
@@ -437,8 +346,3 @@ def _epoch(value: Any) -> Optional[int]:
         return int(str(value))
     except (TypeError, ValueError):
         return None
-
-
-def is_gap(row: Mapping[str, Any]) -> bool:
-    """A scan row saying a branch could not look, as opposed to one saying it did."""
-    return row.get("kind") == _GAP_KIND and row.get("extra") != _SCAN_OK

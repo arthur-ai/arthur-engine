@@ -1,8 +1,7 @@
+import { columnNameSchema } from "@arthur/shared-components";
 import { Dialog, DialogTitle, DialogContent, DialogActions, TextField, Button, Stack } from "@mui/material";
 import { useState } from "react";
 import { z } from "zod";
-
-import { columnNameSchema } from "@/schemas/datasetSchemas";
 
 interface AddColumnDialogProps {
   open: boolean;

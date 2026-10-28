@@ -1,3 +1,4 @@
+import { useSnackbar } from "@arthur/shared-components";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import Alert from "@mui/material/Alert";
@@ -20,7 +21,6 @@ import { VersionTagsDialog } from "./VersionTagsDialog";
 
 import { useDeleteRagVersion } from "@/hooks/rag-search-settings/useDeleteRagVersion";
 import { useRagConfigVersions } from "@/hooks/rag-search-settings/useRagConfigVersions";
-import useSnackbar from "@/hooks/useSnackbar";
 import type { RagSearchSettingConfigurationResponse } from "@/lib/api-client/api-client";
 
 interface ConfigVersionsDrawerProps {

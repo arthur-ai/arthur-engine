@@ -361,14 +361,15 @@ def main() -> int:
     )
 
     if carrying:
-        matcher = Matcher.from_source(catalog_yaml=None, logger=log)
+        matcher = Matcher.from_source(catalog_json=None, logger=log)
         print(f"  catalog {matcher.catalog_sha}, {matcher.agent_count} agent(s)")
         decoded = 0
         for device in carrying:
-            records = records_for(device, matcher, "jamf_pro", log)
-            if records is None:
+            read = records_for(device, matcher, "jamf_pro", log)
+            if read.unreadable is not None:
                 continue
             decoded += 1
+            records = read.records
             print(
                 f"  {device.device_key[:8]}...: {len(records)} record(s)"
                 + (

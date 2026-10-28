@@ -1,25 +1,28 @@
-import { TracesTable } from "@arthur/shared-components";
+import {
+  createSessionLevelColumns,
+  createTraceLevelColumns,
+  filterFields,
+  FilterRow,
+  IncomingFilter,
+  Operators,
+  Tabs,
+  type TimeRange,
+  TimeRangeSelect,
+  TokenCostTooltip,
+  TokenCountTooltip,
+  TRACE_FIELDS,
+  TracesEmptyState,
+  TracesTable,
+  useTraceColumnDependencies,
+} from "@arthur/shared-components";
 import { Box, Paper, Skeleton, Stack, Typography } from "@mui/material";
 import { useQuery } from "@tanstack/react-query";
 import { Suspense, useCallback, useMemo } from "react";
 
-import type { TimeRange } from "../../constants";
-import { TokenCostTooltip, TokenCountTooltip } from "../../data/common";
-import { createSessionLevelColumns } from "../../data/create-session-level-columns";
-import { createTraceLevelColumns } from "../../data/create-trace-level-columns";
 import { useDrawerTarget } from "../../hooks/useDrawerTarget";
+import { useAnnotationCellOptions } from "../../hooks/useTraceAnnotationActions";
 import { FilterStoreProvider, useFilterStore } from "../../stores/filter.store";
-import { filterFields } from "../filtering/fields";
-import { FilterRow } from "../filtering/FilterRow";
-import { IncomingFilter } from "../filtering/mapper";
-import { TRACE_FIELDS } from "../filtering/trace-fields";
-import { Operators } from "../filtering/types";
-import { TimeRangeSelect } from "../TimeRangeSelect";
-import { TracesEmptyState } from "../TracesEmptyState";
 
-import { CopyableChip } from "@/components/common";
-import { Tabs } from "@/components/ui/Tabs";
-import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useApi } from "@/hooks/useApi";
 import { useMRTPagination } from "@/hooks/useMRTPagination";
 import { SessionMetadataResponse, TraceMetadataResponse, TraceUserMetadataResponse } from "@/lib/api-client/api-client";
@@ -27,7 +30,6 @@ import { FETCH_SIZE } from "@/lib/constants";
 import { queryKeys } from "@/lib/queryKeys";
 import { trackDynamic } from "@/services/analytics";
 import { getFilteredSessions, getFilteredTraces } from "@/services/tracing";
-import { formatDateInTimezone } from "@/utils/formatters";
 
 type UserDrawerBodyProps = {
   user: TraceUserMetadataResponse;
@@ -148,7 +150,8 @@ type UserTableProps = {
 const UserTracesTable = ({ ids, taskId, onRowClick }: UserTableProps) => {
   const api = useApi()!;
   const [, setDrawerTarget] = useDrawerTarget();
-  const { timezone, use24Hour } = useDisplaySettings();
+  const annotationCell = useAnnotationCellOptions();
+  const columnDependencies = useTraceColumnDependencies({ onTrack: trackDynamic, annotationCell });
 
   const { pagination, props } = useMRTPagination({ initialPageSize: FETCH_SIZE });
 
@@ -171,23 +174,7 @@ const UserTracesTable = ({ ids, taskId, onRowClick }: UserTableProps) => {
     queryFn: () => getFilteredTraces(api, params),
   });
 
-  const columns = useMemo(
-    () =>
-      createTraceLevelColumns({
-        formatDate: (v) => formatDateInTimezone(v, timezone, { hour12: !use24Hour }),
-        formatCurrency: () => "",
-        onTrack: trackDynamic,
-        Chip: CopyableChip,
-        DurationCell: () => null,
-        TraceContentCell: () => null,
-        AnnotationCell: () => null,
-        SpanStatusBadge: () => null,
-        TypeChip: () => null,
-        TokenCountTooltip,
-        TokenCostTooltip,
-      }),
-    [timezone, use24Hour]
-  );
+  const columns = useMemo(() => createTraceLevelColumns(columnDependencies), [columnDependencies]);
 
   const setFilters = useFilterStore((state) => state.setFilters);
 
@@ -258,7 +245,7 @@ const UserTracesTable = ({ ids, taskId, onRowClick }: UserTableProps) => {
 const UserSessionsTable = ({ ids, taskId, onRowClick }: UserTableProps) => {
   const api = useApi()!;
   const [, setDrawerTarget] = useDrawerTarget();
-  const { timezone, use24Hour } = useDisplaySettings();
+  const columnDependencies = useTraceColumnDependencies({ onTrack: trackDynamic });
   const { pagination, props } = useMRTPagination({ initialPageSize: FETCH_SIZE });
 
   const timeRange = useFilterStore((state) => state.timeRange);
@@ -279,23 +266,7 @@ const UserSessionsTable = ({ ids, taskId, onRowClick }: UserTableProps) => {
     queryFn: () => getFilteredSessions(api, params),
   });
 
-  const columns = useMemo(
-    () =>
-      createSessionLevelColumns({
-        formatDate: (v) => formatDateInTimezone(v, timezone, { hour12: !use24Hour }),
-        formatCurrency: () => "",
-        onTrack: trackDynamic,
-        Chip: CopyableChip,
-        DurationCell: () => null,
-        TraceContentCell: () => null,
-        AnnotationCell: () => null,
-        SpanStatusBadge: () => null,
-        TypeChip: () => null,
-        TokenCountTooltip,
-        TokenCostTooltip,
-      }),
-    [timezone, use24Hour]
-  );
+  const columns = useMemo(() => createSessionLevelColumns(columnDependencies), [columnDependencies]);
 
   const handleRowClick = (row: SessionMetadataResponse) => {
     if (onRowClick) {
