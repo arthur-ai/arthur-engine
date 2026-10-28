@@ -38,8 +38,8 @@ __location__ = os.path.dirname(os.path.abspath(__file__))
 
 tracer = trace.get_tracer(__name__)
 
-TOXICITY_TOKENIZER: PreTrainedTokenizerBase | None
-TOXICITY_MODEL: AutoModelForSequenceClassification | None
+TOXICITY_TOKENIZER: PreTrainedTokenizerBase | None = None
+TOXICITY_MODEL: AutoModelForSequenceClassification | None = None
 
 HARMFUL_REQUEST_MAX_CHUNK_SIZE = int(
     get_env_var(
@@ -89,9 +89,9 @@ class ToxicityScorer(RuleScorer):
         global TOXICITY_TOKENIZER
         global TOXICITY_MODEL
         if TOXICITY_TOKENIZER is None:
-            get_toxicity_tokenizer()
+            TOXICITY_TOKENIZER = get_toxicity_tokenizer()
         if TOXICITY_MODEL is None:
-            get_toxicity_model()
+            TOXICITY_MODEL = get_toxicity_model()
         self.model = get_toxicity_classifier(TOXICITY_MODEL, TOXICITY_TOKENIZER)
         logger.info("Model and tokenizer downloaded and classifier initialized.")
 
