@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from arthur_common.models.enums import RuleScope
+from arthur_common.models.enums import RuleResultEnum, RuleScope
 from arthur_common.models.request_schemas import (
     PromptValidationRequest,
     ResponseValidationRequest,
@@ -25,6 +25,7 @@ from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import (
     PromptRuleResult,
     Rule,
+    RuleEngineResult,
     User,
     ValidationRequest,
 )
@@ -236,6 +237,9 @@ def validate_response_endpoint(
         "rule-management API. `type` is a `RuleType` enum value: `PromptInjectionRule`, "
         "`ToxicityRule`, `PIIDataRule`, `ModelHallucinationRuleV2`, `RegexRule`, "
         "`KeywordRule`, `ModelSensitiveDataRule`.\n\n"
+        "`apply_to_prompt` and `apply_to_response` decide which of `prompt` and "
+        "`response` a check scores; a check that applies to both fails if either "
+        "one violates it.\n\n"
         "Hallucination requires `response` + `context`; if `context` is missing the rule "
         "engine returns a `Skipped` result. A check may return result=`Model Not "
         "Available` if its underlying model has not finished loading; callers should "
@@ -252,14 +256,120 @@ def stateless_validate(
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ) -> BuiltinValidationResponse:
     rules = [Rule._from_request_model(c, RuleScope.DEFAULT) for c in body.checks]
-    request = ValidationRequest(
-        prompt=body.prompt,
-        response=body.response,
-        context=body.context,
+    engine_results = _evaluate_prompt_and_response(
+        RuleEngine(scorer_client),
+        body,
+        rules,
     )
-    engine_results = RuleEngine(scorer_client).evaluate(request, rules)
     results = [
         PromptRuleResult._from_rule_engine_model(r)._to_response_model()
         for r in engine_results
     ]
     return BuiltinValidationResponse(results=results)
+
+
+# When one side fails and the other passes, the rule fails. A side the rule
+# could not score (model unavailable) outranks a pass, and a pass outranks a
+# side that skipped the rule because it had nothing to score.
+_RESULT_PRECEDENCE = [
+    RuleResultEnum.FAIL,
+    RuleResultEnum.UNAVAILABLE,
+    RuleResultEnum.MODEL_NOT_AVAILABLE,
+    RuleResultEnum.PARTIALLY_UNAVAILABLE,
+    RuleResultEnum.PASS,
+    RuleResultEnum.SKIPPED,
+]
+
+_MERGED_DETAIL_LISTS = [
+    "keywords",
+    "regex_matches",
+    "pii_entities",
+    "pii_results",
+    "claims",
+]
+
+
+def _evaluate_prompt_and_response(
+    engine: RuleEngine,
+    body: BuiltinValidationRequest,
+    rules: list[Rule],
+) -> list[RuleEngineResult]:
+    """Scores the prompt and the response separately, like validate_prompt and
+    validate_response do for a task, then merges each rule's results.
+
+    The rule engine scores one text per request (the response when present,
+    otherwise the prompt), so a single combined request would never look at
+    the prompt once a response is given.
+    """
+    side_requests: list[tuple[ValidationRequest, list[Rule]]] = []
+    if body.prompt:
+        side_requests.append(
+            (
+                ValidationRequest(prompt=body.prompt, context=body.context),
+                [r for r in rules if r.prompt_enabled],
+            ),
+        )
+    if body.response:
+        side_requests.append(
+            (
+                ValidationRequest(
+                    prompt=body.prompt,
+                    response=body.response,
+                    context=body.context,
+                ),
+                [r for r in rules if r.response_enabled],
+            ),
+        )
+
+    results_by_rule: dict[str, list[RuleEngineResult]] = {r.id: [] for r in rules}
+    for request, side_rules in side_requests:
+        for result in engine.evaluate(request, side_rules):
+            results_by_rule[result.rule.id].append(result)
+
+    # A rule scoped only to a side that was not provided keeps the previous
+    # behavior: it is scored against the request as given.
+    unscored = [r for r in rules if not results_by_rule[r.id]]
+    if unscored:
+        request = ValidationRequest(
+            prompt=body.prompt,
+            response=body.response,
+            context=body.context,
+        )
+        for result in engine.evaluate(request, unscored):
+            results_by_rule[result.rule.id].append(result)
+
+    return [_merge_side_results(results_by_rule[r.id]) for r in rules]
+
+
+def _merge_side_results(results: list[RuleEngineResult]) -> RuleEngineResult:
+    if len(results) == 1:
+        return results[0]
+
+    deciding = min(
+        results,
+        key=lambda r: _RESULT_PRECEDENCE.index(r.rule_score_result.result),
+    )
+    score = deciding.rule_score_result.model_copy(deep=True)
+    same_result = [
+        r.rule_score_result
+        for r in results
+        if r.rule_score_result.result == score.result
+    ]
+    if score.details is not None and len(same_result) > 1:
+        for field in _MERGED_DETAIL_LISTS:
+            merged = []
+            for other in same_result:
+                for item in getattr(other.details, field, None) or []:
+                    if item not in merged:
+                        merged.append(item)
+            if getattr(score.details, field) is not None or merged:
+                setattr(score.details, field, merged)
+    score.prompt_tokens = sum(r.rule_score_result.prompt_tokens for r in results)
+    score.completion_tokens = sum(
+        r.rule_score_result.completion_tokens for r in results
+    )
+    return RuleEngineResult(
+        rule_score_result=score,
+        rule=deciding.rule,
+        latency_ms=sum(r.latency_ms for r in results),
+    )
