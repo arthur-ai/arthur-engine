@@ -39,7 +39,7 @@ dependencies = [
   "types-requests==2.33.0.20261006",
   "psutil==7.2.2",
   "pyarrow==25.0.1",
-  "arthur-common==2.4.101",
+  "arthur-common==2.4.102",
   "gunicorn>=26,<27",
   # Held below 2.1: snowflake-sqlalchemy subclasses sqlalchemy.orm.context.ORMSelectCompileState,
   # which SQLAlchemy 2.1 made private, so it fails at import. See the sqlalchemy rule in /renovate.json.
