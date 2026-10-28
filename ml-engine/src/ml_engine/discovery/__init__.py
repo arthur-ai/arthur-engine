@@ -17,8 +17,9 @@ an unsupported source and is reported per job rather than per engine.
 
 Adding an MDM is one more entry here and one more package under `discovery.endpoint`;
 adding a SIEM is the same under `discovery.siem`, a cloud provider product under
-`discovery.cloud`, and a network log source under `discovery.network`. A package goes
-where its vendor's source class is, which is also the record type it emits.
+`discovery.cloud`, and a network log source or an AI gateway under `discovery.network`.
+A package goes where its vendor's source class is, which is also the record type it
+emits.
 
 A connector a standalone engine can run and a Platform job cannot goes in
 `standalone_connectors()` instead: the Platform has no vendor for it, and its executors
@@ -53,6 +54,8 @@ from discovery.network.cloudwatch_logs.connector import VENDOR as CLOUDWATCH_LOG
 from discovery.network.cloudwatch_logs.connector import CloudWatchLogsConnector
 from discovery.network.gcp_logging.connector import VENDOR as GCP_NETWORK_VENDOR
 from discovery.network.gcp_logging.connector import GcpNetworkConnector
+from discovery.network.litellm.connector import VENDOR as LITELLM_VENDOR
+from discovery.network.litellm.connector import LiteLLMConnector
 from discovery.siem.elastic_security.connector import VENDOR as ELASTIC_SECURITY_VENDOR
 from discovery.siem.elastic_security.connector import ElasticSecurityConnector
 from discovery.siem.splunk.connector import VENDOR as SPLUNK_VENDOR
@@ -80,6 +83,7 @@ def source_connectors() -> dict[str, DiscoveryConnectorFactory]:
         VERCEL_AI_VENDOR: VercelConnector,
         CLOUDWATCH_LOGS_VENDOR: CloudWatchLogsConnector,
         GCP_NETWORK_VENDOR: GcpNetworkConnector,
+        LITELLM_VENDOR: LiteLLMConnector,
     }
 
 
@@ -125,4 +129,6 @@ __all__ = [
     "CLOUDWATCH_LOGS_VENDOR",
     "GcpNetworkConnector",
     "GCP_NETWORK_VENDOR",
+    "LiteLLMConnector",
+    "LITELLM_VENDOR",
 ]

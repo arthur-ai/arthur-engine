@@ -32,7 +32,11 @@ from arthur_client.api_bindings import (
     RejectedAgent,
     ToxicityConfig,
 )
-from arthur_common.models.agent_governance_schemas import CREATION_SOURCE_TYPE_BY_CLASS
+from arthur_common.models.agent_governance_schemas import (
+    CREATION_SOURCE_TYPE_BY_CLASS,
+    IdentityBasis,
+    NetworkCallerKind,
+)
 from genai_client import (
     ApiClient,
     Configuration,
@@ -429,6 +433,10 @@ def source_evidence(
     evidence = [
         record for record in records if str(record["source_id"]) == discovery_source_id
     ]
+    for record in evidence:
+        basis = _identity_basis(record["creation_source"], task_creation_source)
+        if basis is not None:
+            record["creation_source"]["identity_basis"] = basis
 
     # What the source observed is carried by the record the task was created from, so
     # only that record's evidence can say it.
@@ -450,6 +458,39 @@ _CREATION_SOURCE_TYPES: dict[str, str] = {
     source_class.value: type_tag
     for source_class, type_tag in CREATION_SOURCE_TYPE_BY_CLASS.items()
 }
+
+# What a gateway caller record of each kind rests on when the kind alone says. An agent
+# id may be registered or only claimed, which only the record itself said.
+_BASIS_OF_CALLER_KIND = {
+    NetworkCallerKind.VIRTUAL_KEY.value: IdentityBasis.CREDENTIAL.value,
+    NetworkCallerKind.CONSUMER.value: IdentityBasis.CREDENTIAL.value,
+    NetworkCallerKind.CLIENT_ADDRESS.value: IdentityBasis.CLIENT_ADDRESS.value,
+}
+_CALLER_KINDS = frozenset(_BASIS_OF_CALLER_KIND) | {NetworkCallerKind.AGENT_ID.value}
+
+
+def _identity_basis(
+    creation_source: dict[str, Any],
+    task_creation_source: dict[str, Any],
+) -> Optional[str]:
+    """A gateway caller record's identity basis, which provenance does not carry and
+    the Platform requires on one.
+
+    The task's own creation source says it when it is this record. Otherwise the kind
+    does, and an agent id falls back to `claimed_agent`, which never claims more than
+    the record could.
+    """
+    kind = (creation_source.get("address") or {}).get("resource_kind")
+    if kind not in _CALLER_KINDS:
+        return None
+    task_basis = task_creation_source.get("identity_basis")
+    if task_basis and _same_place(
+        creation_source, task_creation_source, _IDENTITY_FIELDS
+    ):
+        # The generated client's enum member: str() of one is its qualified name.
+        return str(getattr(task_basis, "value", task_basis))
+    return _BASIS_OF_CALLER_KIND.get(kind, IdentityBasis.CLAIMED_AGENT.value)
+
 
 # Address fields that say which record an entry is, most specific last. Never the
 # query, which a source config can have edited since the task was created.
