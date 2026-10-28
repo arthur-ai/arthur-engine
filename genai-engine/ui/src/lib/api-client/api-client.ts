@@ -719,7 +719,7 @@ export interface AgenticPrompt {
    */
   model_name: string;
   /**
-   * Model Provider
+   * Agentic Prompt Model Provider
    * Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure'). The sentinel value 'empty' indicates the system default placeholder has not been configured.
    */
   model_provider: ModelProvider | "empty";
@@ -11211,7 +11211,7 @@ export interface SyntheticDataPromptStatus {
    */
   model_name: string;
   /**
-   * Model Provider
+   * Synthetic Data Prompt Model Provider
    * Model provider stored in the SDG system prompt. The sentinel 'empty' indicates the prompt has not yet been configured.
    */
   model_provider: ModelProvider | "empty";

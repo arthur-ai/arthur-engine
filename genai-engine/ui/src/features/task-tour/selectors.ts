@@ -1,4 +1,4 @@
-import type { DivSlotProps } from "@arthur/shared-components";
+import type { DivSlotProps } from "@arthur/shared-components/traces";
 
 /**
  * Single source of truth for every `data-tour-id` the task tour points at.

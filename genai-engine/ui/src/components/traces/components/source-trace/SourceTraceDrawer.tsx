@@ -1,6 +1,6 @@
 import { OpenInferenceSpanKind } from "@arizeai/openinference-semantic-conventions";
+import { CopyableChip } from "@arthur/shared-components";
 import {
-  CopyableChip,
   flattenSpans,
   getSpanDetailsStrategy,
   SpanDetails,
@@ -8,7 +8,7 @@ import {
   SpanDetailsPanels,
   SpanDetailsWidgets,
   SpanTree,
-} from "@arthur/shared-components";
+} from "@arthur/shared-components/traces";
 import CloseIcon from "@mui/icons-material/Close";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import { Box, Button, CircularProgress, Drawer, IconButton, Stack, Tooltip, Typography } from "@mui/material";

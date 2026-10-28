@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.1070"
+        "version": "2.1.1078"
     },
     "paths": {
         "/api/v2/engine-config": {
@@ -777,6 +777,53 @@
                         }
                     }
                 }
+            }
+        },
+        "/api/v2/inferences/overview": {
+            "post": {
+                "tags": [
+                    "Inferences"
+                ],
+                "summary": "Get Inferences Overview",
+                "description": "Inference count and most recent inference time for each of the given tasks. Includes archived tasks.",
+                "operationId": "get_inferences_overview_api_v2_inferences_overview_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/InferenceOverviewRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/InferenceOverviewListResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ]
             }
         },
         "/api/v2/default_rules": {
@@ -19284,7 +19331,7 @@
                                 "const": "empty"
                             }
                         ],
-                        "title": "Model Provider",
+                        "title": "Agentic Prompt Model Provider",
                         "description": "Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure'). The sentinel value 'empty' indicates the system default placeholder has not been configured."
                     },
                     "version": {
@@ -19698,6 +19745,35 @@
                 "title": "AgenticTestCaseListResponse",
                 "description": "Paginated list of agentic test cases"
             },
+            "AnthropicThinkingBlockBinding-Input": {
+                "properties": {
+                    "prefix_mismatch_behavior": {
+                        "type": "string",
+                        "enum": [
+                            "error",
+                            "drop_block"
+                        ],
+                        "title": "Prefix Mismatch Behavior"
+                    }
+                },
+                "type": "object",
+                "title": "AnthropicThinkingBlockBinding"
+            },
+            "AnthropicThinkingBlockBinding-Output": {
+                "properties": {
+                    "prefix_mismatch_behavior": {
+                        "type": "string",
+                        "enum": [
+                            "error",
+                            "drop_block"
+                        ],
+                        "title": "Prefix Mismatch Behavior"
+                    }
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "title": "AnthropicThinkingBlockBinding"
+            },
             "AnthropicThinkingParam-Input": {
                 "properties": {
                     "type": {
@@ -19721,6 +19797,9 @@
                             "updates"
                         ],
                         "title": "Display"
+                    },
+                    "block_binding": {
+                        "$ref": "#/components/schemas/AnthropicThinkingBlockBinding-Input"
                     }
                 },
                 "type": "object",
@@ -19749,6 +19828,9 @@
                             "updates"
                         ],
                         "title": "Display"
+                    },
+                    "block_binding": {
+                        "$ref": "#/components/schemas/AnthropicThinkingBlockBinding-Output"
                     }
                 },
                 "additionalProperties": false,
@@ -24104,6 +24186,78 @@
                     "prompt_results"
                 ],
                 "title": "InferenceFeedbackTarget"
+            },
+            "InferenceOverviewListResponse": {
+                "properties": {
+                    "overviews": {
+                        "items": {
+                            "$ref": "#/components/schemas/InferenceOverviewResponse"
+                        },
+                        "type": "array",
+                        "title": "Overviews",
+                        "description": "One inference overview per requested task"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "overviews"
+                ],
+                "title": "InferenceOverviewListResponse",
+                "description": "Response for list of inference overviews"
+            },
+            "InferenceOverviewRequest": {
+                "properties": {
+                    "task_ids": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "maxItems": 1000,
+                        "minItems": 1,
+                        "title": "Task Ids",
+                        "description": "Task IDs to get the inference overview for"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "task_ids"
+                ],
+                "title": "InferenceOverviewRequest",
+                "description": "Request schema for getting inference counts and latest activity for a batch of tasks"
+            },
+            "InferenceOverviewResponse": {
+                "properties": {
+                    "task_id": {
+                        "type": "string",
+                        "title": "Task Id",
+                        "description": "Task ID"
+                    },
+                    "inference_count": {
+                        "type": "integer",
+                        "title": "Inference Count",
+                        "description": "Number of inferences"
+                    },
+                    "last_inference_at": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Last Inference At",
+                        "description": "Creation time of the most recent inference, or null if the task has none"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "task_id",
+                    "inference_count"
+                ],
+                "title": "InferenceOverviewResponse",
+                "description": "Inference count and latest inference time for a task"
             },
             "InputAudio": {
                 "properties": {
@@ -32470,7 +32624,7 @@
                                 "const": "empty"
                             }
                         ],
-                        "title": "Model Provider",
+                        "title": "Synthetic Data Prompt Model Provider",
                         "description": "Model provider stored in the SDG system prompt. The sentinel 'empty' indicates the prompt has not yet been configured."
                     },
                     "model_name": {

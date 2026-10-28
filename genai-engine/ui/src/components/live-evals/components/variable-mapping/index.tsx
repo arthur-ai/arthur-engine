@@ -1,4 +1,4 @@
-import { withFieldGroup } from "@arthur/shared-components";
+import { withFieldGroup } from "@arthur/shared-components/traces";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import { Alert, Autocomplete, Box, Card, CardContent, Chip, CircularProgress, Stack, TextField, Tooltip, Typography } from "@mui/material";
 import { useStore } from "@tanstack/react-form";

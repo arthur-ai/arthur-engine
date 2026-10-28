@@ -1,4 +1,4 @@
-import { withForm } from "@arthur/shared-components";
+import { withForm } from "@arthur/shared-components/traces";
 import { useStore } from "@tanstack/react-form";
 import { useEffect, useRef } from "react";
 

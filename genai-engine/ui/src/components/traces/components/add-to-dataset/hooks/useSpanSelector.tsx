@@ -1,4 +1,4 @@
-import { getNestedValue } from "@arthur/shared-components";
+import { getNestedValue } from "@arthur/shared-components/traces";
 import { useMemo, useState } from "react";
 
 import { getNestedValueWildcard } from "../../../utils/spans";

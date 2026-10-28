@@ -1,4 +1,4 @@
-import { AnnotationCell } from "@arthur/shared-components";
+import { AnnotationCell } from "@arthur/shared-components/traces";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";

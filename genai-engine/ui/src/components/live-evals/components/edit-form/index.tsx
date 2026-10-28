@@ -1,4 +1,5 @@
-import { CopyableChip, useAppForm } from "@arthur/shared-components";
+import { CopyableChip } from "@arthur/shared-components";
+import { useAppForm } from "@arthur/shared-components/traces";
 import {
   Alert,
   Button,

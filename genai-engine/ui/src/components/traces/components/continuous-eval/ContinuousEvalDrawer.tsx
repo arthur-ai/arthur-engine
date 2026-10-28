@@ -7,7 +7,7 @@ import {
   SpanDetailsPanels,
   SpanDetailsWidgets,
   SpanTree,
-} from "@arthur/shared-components";
+} from "@arthur/shared-components/traces";
 import CloseIcon from "@mui/icons-material/Close";
 import { Box, Button, Drawer, IconButton, Stack, Tooltip, Typography } from "@mui/material";
 import { CircularProgress } from "@mui/material";

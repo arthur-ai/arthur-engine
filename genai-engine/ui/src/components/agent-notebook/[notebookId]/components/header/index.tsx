@@ -1,4 +1,4 @@
-import { withForm } from "@arthur/shared-components";
+import { withForm } from "@arthur/shared-components/traces";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import FileDownloadIcon from "@mui/icons-material/FileDownload";
 import SaveIcon from "@mui/icons-material/Save";

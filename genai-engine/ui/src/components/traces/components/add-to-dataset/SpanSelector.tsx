@@ -1,5 +1,6 @@
 import { OpenInferenceSpanKind } from "@arizeai/openinference-semantic-conventions";
-import { getSpanInput, getSpanModel, getSpanOutput, getSpanType, TypeChip, withForm } from "@arthur/shared-components";
+import { TypeChip } from "@arthur/shared-components";
+import { getSpanInput, getSpanModel, getSpanOutput, getSpanType, withForm } from "@arthur/shared-components/traces";
 import { Popover } from "@base-ui/react/popover";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowRightIcon from "@mui/icons-material/ArrowRight";

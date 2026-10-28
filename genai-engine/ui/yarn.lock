@@ -341,13 +341,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@arthur/shared-components@npm:^4.5.0":
-  version: 4.5.0
-  resolution: "@arthur/shared-components@npm:4.5.0::__archiveUrl=https%3A%2F%2Fgitlab.com%2Fapi%2Fv4%2Fprojects%2F54848372%2Fpackages%2Fnpm%2F%40arthur%2Fshared-components%2F-%2F%40arthur%2Fshared-components-4.5.0.tgz"
+"@arthur/shared-components@npm:^4.6.1":
+  version: 4.6.1
+  resolution: "@arthur/shared-components@npm:4.6.1::__archiveUrl=https%3A%2F%2Fgitlab.com%2Fapi%2Fv4%2Fprojects%2F54848372%2Fpackages%2Fnpm%2F%40arthur%2Fshared-components%2F-%2F%40arthur%2Fshared-components-4.6.1.tgz"
   dependencies:
     "@arizeai/openinference-semantic-conventions": "npm:2.15.0"
-    "@arthur/shield-types": "npm:^4.5.0"
-    "@arthur/unify-types": "npm:^4.5.0"
+    "@arthur/shield-types": "npm:^4.6.1"
+    "@arthur/unify-types": "npm:^4.6.1"
     "@floating-ui/react": "npm:0.27.20"
     "@tanstack/form-core": "npm:1.33.5"
     "@tanstack/react-form": "npm:1.33.5"
@@ -380,25 +380,25 @@ __metadata:
     react-dom: ^18.0.0 || ^19.0.0
     react-error-boundary: ^6.1.6
     react-router: ^8.5.0
-  checksum: 10c0/5bef92d8ee16e3f1dc04d3b438759ccce13266218a85a005f0944d0279d26b6605accdfc97a65f65db0377c2f57894bbae6ab2a610bf5e3e392eecc7f0df5580
+  checksum: 10c0/7791aec0b6db32ad025eb4e55af9225e3e57638744a8a8946d769be68d79046c8cd2cc5eaa72b1b7b6b7b8de4698100584adeb889aaa589b980fa4b07dac9c70
   languageName: node
   linkType: hard
 
-"@arthur/shield-types@npm:^4.5.0":
-  version: 4.5.0
-  resolution: "@arthur/shield-types@npm:4.5.0::__archiveUrl=https%3A%2F%2Fgitlab.com%2Fapi%2Fv4%2Fprojects%2F54848372%2Fpackages%2Fnpm%2F%40arthur%2Fshield-types%2F-%2F%40arthur%2Fshield-types-4.5.0.tgz"
+"@arthur/shield-types@npm:^4.6.1":
+  version: 4.6.1
+  resolution: "@arthur/shield-types@npm:4.6.1::__archiveUrl=https%3A%2F%2Fgitlab.com%2Fapi%2Fv4%2Fprojects%2F54848372%2Fpackages%2Fnpm%2F%40arthur%2Fshield-types%2F-%2F%40arthur%2Fshield-types-4.6.1.tgz"
   dependencies:
     react: "npm:^19.3.1"
-  checksum: 10c0/86083dbbb864ccf6351f331191d9dd10bface0e79f630de412eccf6fe0b077642309ce0d0e5c61e563e16d2bda2d4b3268ad8b97ae7749748af8a38d95fc891f
+  checksum: 10c0/5304be3bed037191592449318e74aa0ecfd63b4a34512d72f826ed95905e756364486e2045b8134b0e197542dbe313d82cb3ebf703bc8f2901acbfca66ee7269
   languageName: node
   linkType: hard
 
-"@arthur/unify-types@npm:^4.5.0":
-  version: 4.5.0
-  resolution: "@arthur/unify-types@npm:4.5.0::__archiveUrl=https%3A%2F%2Fgitlab.com%2Fapi%2Fv4%2Fprojects%2F54848372%2Fpackages%2Fnpm%2F%40arthur%2Funify-types%2F-%2F%40arthur%2Funify-types-4.5.0.tgz"
+"@arthur/unify-types@npm:^4.6.1":
+  version: 4.6.1
+  resolution: "@arthur/unify-types@npm:4.6.1::__archiveUrl=https%3A%2F%2Fgitlab.com%2Fapi%2Fv4%2Fprojects%2F54848372%2Fpackages%2Fnpm%2F%40arthur%2Funify-types%2F-%2F%40arthur%2Funify-types-4.6.1.tgz"
   dependencies:
     react: "npm:19.3.1"
-  checksum: 10c0/298cdfba92288fa75fc6af81ee58b44547c3624bc38f49e543b4951c221027f85cfc6feb9c8ba92a9e1c36550aa3de62e6d276685139344a226d5bda427439b9
+  checksum: 10c0/96b704aae03946987366b9ca62be6f6bbcd534b4b152e2dde457c44db4c1ee67c0f03be2966f0490aabbed555c83cb32d64fc36a6472d4d1c9fac5723c0db662
   languageName: node
   linkType: hard
 
@@ -8624,7 +8624,7 @@ __metadata:
     "@amplitude/experiment-js-client": "npm:^1.21.1"
     "@amplitude/plugin-session-replay-browser": "npm:^1.33.6"
     "@arizeai/openinference-semantic-conventions": "npm:2.14.0"
-    "@arthur/shared-components": "npm:^4.5.0"
+    "@arthur/shared-components": "npm:^4.6.1"
     "@base-ui/react": "npm:1.9.0"
     "@dnd-kit/core": "npm:6.3.1"
     "@dnd-kit/sortable": "npm:10.0.0"

@@ -1,13 +1,13 @@
 [project]
 name = "arthur-genai-engine"
-version = "2.1.1070"
+version = "2.1.1078"
 description = ""
 authors = [{ name = "Arthur", email = "engineering@arthur.ai" }]
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
 
 dependencies = [
-  # Held at 2.x: litellm 1.106.0 requires openai<3.0.0. Renovate's openai v3 bump (#2134)
+  # Held at 2.x: litellm 1.106.2 requires openai<3.0.0. Renovate's openai v3 bump (#2134)
   # edited this pin without relocking, so uv.lock kept 2.54.0 and `uv lock` could not
   # re-resolve at all. Raise this only once litellm supports openai v3.
   "openai==2.54.0",
@@ -38,7 +38,7 @@ dependencies = [
   "azure-storage-blob==12.31.0",
   "itsdangerous==2.2.0",
   "newrelic==14.0.0",
-  # Held below 9.0: litellm 1.106.0 requires importlib-metadata>=8.0.0,<9.0. See the
+  # Held below 9.0: litellm 1.106.2 requires importlib-metadata>=8.0.0,<9.0. See the
   # importlib-metadata rule in /renovate.json. Raise once litellm widens its ceiling.
   "importlib-metadata==8.9.0",
   "opentelemetry-instrumentation-logging>=0.65b0,<0.66",
@@ -65,21 +65,24 @@ dependencies = [
   "spacy>=3.8.3",
   "date-spacy>=0.0.1,<0.1",
   "bert-score==0.3.13",
-  "langchain==1.4.3",
+  "langchain==1.4.7",
   "langchain-community==0.4.2",
-  "langchain-openai==1.6.7",
-  "langsmith==0.14.2",
+  "langchain-openai==1.7.2",
+  "langsmith==0.14.12",
   "msgpack==1.2.3",
   "cloudpickle==3.1.2",
   "amplitude-analytics>=1.1.5,<2",
   "sentencepiece==0.2.2",
   "gliner==0.2.29",
   "openinference-semantic-conventions>=0.1.12,<0.2",
-  "litellm==1.106.0",
+  # The [mcp] extra is required, not optional: since 1.106.0 litellm imports `mcp` on every
+  # completion() that passes tools, so without it every tool-calling feature returns a 500
+  # (UP-5288). Drop the extra once litellm makes that import lazy.
+  "litellm[mcp]==1.106.2",
   "jinja2>=3.1.6,<4",
   "python-benedict>=0.40,<0.41",
   "weaviate-client>=4.17.0,<5",
-  "arthur-common==2.4.101",
+  "arthur-common==2.4.102",
   "google-auth>=2.48.0,<3",
   "google-cloud-aiplatform>=1.38",
   "google-cloud-trace>=1.11.0,<2",

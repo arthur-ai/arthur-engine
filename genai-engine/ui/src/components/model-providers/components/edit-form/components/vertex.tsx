@@ -1,4 +1,4 @@
-import { withFieldGroup } from "@arthur/shared-components";
+import { withFieldGroup } from "@arthur/shared-components/traces";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 import { Button, Link, Stack, styled, TextField, Typography } from "@mui/material";
 import z from "zod";
