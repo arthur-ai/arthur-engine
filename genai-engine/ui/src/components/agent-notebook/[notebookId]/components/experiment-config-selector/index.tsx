@@ -1,4 +1,4 @@
-import { useAppForm, withForm } from "@arthur/shared-components";
+import { useAppForm, withForm } from "@arthur/shared-components/traces";
 import { Autocomplete, Button, DialogActions, DialogContent, DialogTitle, ListItem, Stack, TextField, Typography } from "@mui/material";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSnackbar } from "notistack";

@@ -1,4 +1,4 @@
-import { withFieldGroup } from "@arthur/shared-components";
+import { withFieldGroup } from "@arthur/shared-components/traces";
 import { Divider, Stack, TextField, ToggleButton, ToggleButtonGroup } from "@mui/material";
 import { useStore } from "@tanstack/react-form";
 import z from "zod";

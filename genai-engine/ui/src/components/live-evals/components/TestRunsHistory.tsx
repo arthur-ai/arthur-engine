@@ -1,4 +1,5 @@
-import { CopyableChip, TracesEmptyState } from "@arthur/shared-components";
+import { CopyableChip } from "@arthur/shared-components";
+import { TracesEmptyState } from "@arthur/shared-components/traces";
 import CloseIcon from "@mui/icons-material/Close";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutlineOutlined";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";

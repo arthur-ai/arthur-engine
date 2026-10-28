@@ -1,4 +1,4 @@
-import { createUserLevelColumns, TracesTable, useTraceColumnDependencies } from "@arthur/shared-components";
+import { createUserLevelColumns, TracesTable, useTraceColumnDependencies } from "@arthur/shared-components/traces";
 import { Alert, Box, Stack } from "@mui/material";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { SortingState } from "@tanstack/react-table";

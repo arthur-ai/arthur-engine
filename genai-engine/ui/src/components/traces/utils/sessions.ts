@@ -1,4 +1,5 @@
-import { flattenSpans, getCost, getTokens } from "@arthur/shared-components";
+import { getCost, getTokens } from "@arthur/shared-components";
+import { flattenSpans } from "@arthur/shared-components/traces";
 
 import { SessionTracesResponse } from "@/lib/api-client/api-client";
 

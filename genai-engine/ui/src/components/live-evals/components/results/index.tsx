@@ -1,4 +1,4 @@
-import { TextOperators, TracesEmptyState } from "@arthur/shared-components";
+import { TextOperators, TracesEmptyState } from "@arthur/shared-components/traces";
 import { Search } from "@mui/icons-material";
 import {
   Box,

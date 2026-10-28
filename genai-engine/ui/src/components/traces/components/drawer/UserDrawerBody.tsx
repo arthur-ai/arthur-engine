@@ -1,3 +1,4 @@
+import { Tabs, type TimeRange, TimeRangeSelect } from "@arthur/shared-components";
 import {
   createSessionLevelColumns,
   createTraceLevelColumns,
@@ -5,16 +6,13 @@ import {
   FilterRow,
   IncomingFilter,
   Operators,
-  Tabs,
-  type TimeRange,
-  TimeRangeSelect,
   TokenCostTooltip,
   TokenCountTooltip,
   TRACE_FIELDS,
   TracesEmptyState,
   TracesTable,
   useTraceColumnDependencies,
-} from "@arthur/shared-components";
+} from "@arthur/shared-components/traces";
 import { Box, Paper, Skeleton, Stack, Typography } from "@mui/material";
 import { useQuery } from "@tanstack/react-query";
 import { Suspense, useCallback, useMemo } from "react";
