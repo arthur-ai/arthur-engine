@@ -26,8 +26,8 @@ function flatten(spans: TestSpan[]): TestSpan[] {
   return spans.flatMap((span) => [span, ...flatten(span.children ?? [])]);
 }
 
-vi.mock("@arthur/shared-components", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@arthur/shared-components")>()),
+vi.mock("@arthur/shared-components/traces", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@arthur/shared-components/traces")>()),
   SpanTree: ({
     selectedSpanId,
     onSelectSpan,

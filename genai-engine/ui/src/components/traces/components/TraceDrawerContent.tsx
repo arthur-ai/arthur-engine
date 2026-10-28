@@ -1,4 +1,4 @@
-import { flattenSpans, type TraceDrawerBodySlotProps, TraceDrawerView } from "@arthur/shared-components";
+import { flattenSpans, type TraceDrawerBodySlotProps, TraceDrawerView } from "@arthur/shared-components/traces";
 import { Skeleton } from "@mui/material";
 import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";

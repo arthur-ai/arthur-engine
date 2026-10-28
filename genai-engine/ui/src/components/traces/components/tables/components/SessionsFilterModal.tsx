@@ -1,4 +1,4 @@
-import { type IncomingFilter, Operators } from "@arthur/shared-components";
+import { type IncomingFilter, Operators } from "@arthur/shared-components/traces";
 import { FilterList } from "@mui/icons-material";
 import { Box, Button, Paper, Popover, Stack } from "@mui/material";
 import { useEffect, useRef, useState } from "react";

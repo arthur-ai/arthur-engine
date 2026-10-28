@@ -1,4 +1,5 @@
-import { MustacheHighlightedTextField, useAppForm } from "@arthur/shared-components";
+import { MustacheHighlightedTextField } from "@arthur/shared-components";
+import { useAppForm } from "@arthur/shared-components/traces";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 import GpsFixedIcon from "@mui/icons-material/GpsFixed";

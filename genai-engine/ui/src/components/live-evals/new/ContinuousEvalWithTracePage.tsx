@@ -7,7 +7,7 @@ import {
   SpanDetailsPanels,
   SpanDetailsWidgets,
   SpanTree,
-} from "@arthur/shared-components";
+} from "@arthur/shared-components/traces";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { Box, IconButton, Stack, Tooltip, Typography } from "@mui/material";
 import { useSuspenseQuery } from "@tanstack/react-query";

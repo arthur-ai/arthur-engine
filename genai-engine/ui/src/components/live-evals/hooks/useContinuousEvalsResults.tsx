@@ -1,4 +1,4 @@
-import { IncomingFilter, Operators } from "@arthur/shared-components";
+import { IncomingFilter, Operators } from "@arthur/shared-components/traces";
 import { queryOptions, useQuery } from "@tanstack/react-query";
 
 import { useApi } from "@/hooks/useApi";

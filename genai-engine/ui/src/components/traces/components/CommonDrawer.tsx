@@ -1,4 +1,4 @@
-import { CommonDrawer as SharedCommonDrawer } from "@arthur/shared-components";
+import { CommonDrawer as SharedCommonDrawer } from "@arthur/shared-components/traces";
 import { capitalize } from "@mui/material";
 import { lazy } from "react";
 

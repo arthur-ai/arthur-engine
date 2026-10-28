@@ -1,4 +1,4 @@
-import { TracesEmptyState } from "@arthur/shared-components";
+import { TracesEmptyState } from "@arthur/shared-components/traces";
 import { Box, CircularProgress, Typography } from "@mui/material";
 import { useEffect } from "react";
 
