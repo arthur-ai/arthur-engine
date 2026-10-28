@@ -92,6 +92,11 @@ class ToxicityScorer(RuleScorer):
             TOXICITY_TOKENIZER = get_toxicity_tokenizer()
         if TOXICITY_MODEL is None:
             TOXICITY_MODEL = get_toxicity_model()
+        # score() needs these too; restore them before publishing the classifier
+        if self.toxicity_tokenizer is None:
+            self.toxicity_tokenizer = TOXICITY_TOKENIZER
+        if self.profanity_classifier is None:
+            self.profanity_classifier = get_profanity_classifier()
         self.model = get_toxicity_classifier(TOXICITY_MODEL, TOXICITY_TOKENIZER)
         logger.info("Model and tokenizer downloaded and classifier initialized.")
 

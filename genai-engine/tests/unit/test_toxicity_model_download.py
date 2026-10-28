@@ -20,10 +20,17 @@ def test_download_model_and_tokenizer_builds_classifier(monkeypatch):
         return classifier
 
     monkeypatch.setattr(toxicity, "get_toxicity_classifier", fake_classifier)
+    profanity = object()
+    monkeypatch.setattr(toxicity, "get_profanity_classifier", lambda: profanity)
     scorer = ToxicityScorer.__new__(ToxicityScorer)
     scorer.model = None
+    scorer.toxicity_tokenizer = None
+    scorer.profanity_classifier = None
 
     scorer._download_model_and_tokenizer()
 
     assert built_with["args"] == (model, tokenizer)
     assert scorer.model is classifier
+    # score() also needs the tokenizer (chunking) and the profanity classifier.
+    assert scorer.toxicity_tokenizer is tokenizer
+    assert scorer.profanity_classifier is profanity
