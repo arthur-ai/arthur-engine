@@ -3,9 +3,9 @@
   "@id": "https://arthur.ai/vex/arthur-engine",
   "author": "Arthur Security <security@arthur.ai>",
   "role": "Document Creator",
-  "timestamp": "2026-10-05T00:00:00.000000000-00:00",
-  "version": 15,
-  "_comment": "Scope: HIGH/CRITICAL findings that a container-image re-scan still reports for the genai-engine, ml-engine and genai-engine-models-* images AND that are not exploitable in our usage. Every statement here is 'not_affected' with a justification. Remediated CVEs are excluded by policy — fix, don't justify (security/README.md), so a CVE disappearing from this document means it was fixed, not dropped. Remediated and therefore absent: python3.11 is removed from every image (its dpkg metadata deleted); litellm/langsmith/msgpack/nltk/uv/pyasn1 are upgraded past their advisories; libexpat1 is at 2.5.0-1+deb12u4 in every image as of 2026-10-02, which fixes CVE-2026-45186, CVE-2025-59375, CVE-2026-25210 and CVE-2026-66046, so their statements were removed; models-gcs is rebuilt with perl-base 5.36.0-7+deb12u4 and libpcre2-8-0 10.42-1+deb12u2 as of 2026-10-05, which fix CVE-2026-42496, CVE-2026-42497, CVE-2026-48962, CVE-2026-8376, CVE-2026-13221, CVE-2026-57433, CVE-2026-57432 and CVE-2026-103111, so their statements were removed (perl CVE-2026-9538 is still unfixed in bookworm and keeps its statement); and as of 2026-07-30 the distroless OS-package findings (libc6, libssl3, libkrb5*, liblzma5) are fixed at the source — the build stages now mirror the base's /lib layout with their apt-upgraded libraries and rewrite /var/lib/dpkg/status.d to the versions actually installed, so the patched objects ship and scanners read true versions. Auditor note: the distroless base is not merged-/usr, so before that change `COPY /usr/lib` never reached the glibc and liblzma objects the base keeps in /lib. Images up to and including 2.1.754 shipped the base's unpatched glibc (2.36-9+deb12u13) and liblzma5 (5.4.1-1), and earlier revisions of this document incorrectly recorded those libc6 CVEs as fixed. The libssl3 and krb5 objects do live under /usr/lib and were genuinely patched throughout; only their dpkg metadata was stale. See genai-engine/dockerfile, ml-engine/Dockerfile, deployment/model-upload/Dockerfile and PR #2073. Audited 2026-08-18 against the per-image Trivy reports from the daily image-vuln-scan: (a) no remaining statement suppresses a finding that has an upstream fix \u2014 every one is unfixed at the installed version, so none is masking a bump we could take instead; (b) the python3.11 statements (CVE-2025-69534, CVE-2026-3644, CVE-2026-4224, CVE-2026-6100, CVE-2026-7210, CVE-2025-13836) were removed because the runtime-s3 and runtime-fs stages now delete the interpreter and its dpkg metadata outright, so the packages are absent and those statements matched nothing; (c) the document is scoped to HIGH/CRITICAL, so four statements were removed for falling below that line: CVE-2026-11822 and CVE-2026-11824 (libsqlite3-0) and CVE-2026-56131 and CVE-2026-56407 (libexpat1) were re-rated from HIGH to MEDIUM in the vulnerability database. Note what this does and does not mean: those four are NOT remediated. The packages are still installed at the same versions and Debian still ships no fix (it marks the sqlite pair <postponed> for bookworm); they simply sit under the scan's --severity HIGH,CRITICAL filter, so nothing reports them today. If any of them is ever re-rated back to HIGH it will surface as an untriaged finding and will need its justification restored -- the reasoning was sound, only the severity changed.",
+  "timestamp": "2026-10-28T00:00:00.000000000-00:00",
+  "version": 16,
+  "_comment": "Scope: HIGH/CRITICAL findings that a container-image re-scan still reports for the genai-engine, ml-engine and genai-engine-models-* images AND that are not exploitable in our usage. Every statement here is 'not_affected' with a justification. Remediated CVEs are excluded by policy — fix, don't justify (security/README.md), so a CVE disappearing from this document means it was fixed, not dropped. Remediated and therefore absent: python3.11 is removed from every image (its dpkg metadata deleted); litellm/langsmith/msgpack/nltk/uv/pyasn1 are upgraded past their advisories; libexpat1 is at 2.5.0-1+deb12u4 in every image as of 2026-10-02, which fixes CVE-2026-45186, CVE-2025-59375, CVE-2026-25210 and CVE-2026-66046, so their statements were removed; models-gcs is rebuilt with perl-base 5.36.0-7+deb12u4 and libpcre2-8-0 10.42-1+deb12u2 as of 2026-10-05, which fix CVE-2026-42496, CVE-2026-42497, CVE-2026-48962, CVE-2026-8376, CVE-2026-13221, CVE-2026-57433, CVE-2026-57432 and CVE-2026-103111, so their statements were removed (perl CVE-2026-9538 is still unfixed in bookworm and keeps its statement); and as of 2026-07-30 the distroless OS-package findings (libc6, libssl3, libkrb5*, liblzma5) are fixed at the source — the build stages now mirror the base's /lib layout with their apt-upgraded libraries and rewrite /var/lib/dpkg/status.d to the versions actually installed, so the patched objects ship and scanners read true versions. Auditor note: the distroless base is not merged-/usr, so before that change `COPY /usr/lib` never reached the glibc and liblzma objects the base keeps in /lib. Images up to and including 2.1.754 shipped the base's unpatched glibc (2.36-9+deb12u13) and liblzma5 (5.4.1-1), and earlier revisions of this document incorrectly recorded those libc6 CVEs as fixed. The libssl3 and krb5 objects do live under /usr/lib and were genuinely patched throughout; only their dpkg metadata was stale. See genai-engine/dockerfile, ml-engine/Dockerfile, deployment/model-upload/Dockerfile and PR #2073. Audited 2026-08-18 against the per-image Trivy reports from the daily image-vuln-scan: (a) no remaining statement suppresses a finding that has an upstream fix \u2014 every one is unfixed at the installed version, so none is masking a bump we could take instead; (b) the python3.11 statements (CVE-2025-69534, CVE-2026-3644, CVE-2026-4224, CVE-2026-6100, CVE-2026-7210, CVE-2025-13836) were removed because the runtime-s3 and runtime-fs stages now delete the interpreter and its dpkg metadata outright, so the packages are absent and those statements matched nothing; (c) the document is scoped to HIGH/CRITICAL, so four statements were removed for falling below that line: CVE-2026-11822 and CVE-2026-11824 (libsqlite3-0) and CVE-2026-56131 and CVE-2026-56407 (libexpat1) were re-rated from HIGH to MEDIUM in the vulnerability database. Note what this does and does not mean: those four are NOT remediated. The packages are still installed at the same versions and Debian still ships no fix (it marks the sqlite pair <postponed> for bookworm); they simply sit under the scan's --severity HIGH,CRITICAL filter, so nothing reports them today. If any of them is ever re-rated back to HIGH it will surface as an untriaged finding and will need its justification restored -- the reasoning was sound, only the severity changed. Updated 2026-10-28 against the daily Trivy reports for 2.1.1073-dev and an external scan of 2.1.980: CVE-2026-84782 (libssl3) was removed because bookworm-security now ships the fix in 3.0.22-1~deb12u2. genai-engine-cpu/gpu and ml-engine already carry it; the models images had been re-tagged rather than rebuilt and are rebuilt by this change. CVE-2026-81726 (nltk) was removed because nltk 3.10.4, now shipped, is the patched release: the maintainer advisory (nltk/nltk GHSA-8mgp-746c-j5xp) lists <=3.10.3 as affected and 3.10.4 as patched, and the fix commits it references (2a92b71, a44a7af, cbc9845; PRs #3757, #3759, #3813) are all contained in the v3.10.4 tag. Fixed rather than justified: aiohttp, Authlib, brotli, certifi, oauthlib, pillow, virtualenv and uv (0.13.6, GHSA-hq85-5cpj-mr62), plus filelock in the models images. Added: CVE-2026-112940 (filelock, capped below 4.0 by litellm), CVE-2026-72848 (langchain-community, no fix), CVE-2026-115506 (libexpat1, no fix) and CVE-2026-85091 (zlib1g, version not affected).",
   "statements": [
     {
       "_comment": "zlib1g: The overflow is in MiniZip (zlib contrib/minizip), which upstream states is not a supported part of zlib. Debian's zlib1g shared library does not build or export the MiniZip code (the vulnerable zipOpenNewFileInZip4_64 symbol is absent); Arthur links only the core inflate/deflate API. Owner: security@arthur.ai. Review by: 2026-12-27.",
@@ -244,79 +244,60 @@
       "timestamp": "2026-09-09T00:00:00Z"
     },
     {
-      "_comment": "nltk: CVE-2026-81726 covers NLTK model-artifact APIs that bypass path sanitization and touch files outside allowed roots. The advisory range is <= 3.10.3 with no patched release, so the pinned 3.10.3 (genai-engine/pyproject.toml) has no upgrade to take. The engine never calls those APIs: the only production use is genai-engine/src/utils/claim_parser.py, which constructs PunktSentenceTokenizer() with no arguments and calls .tokenize() on in-memory text — no model artifact is loaded from disk and no path, user-controlled or otherwise, is passed to nltk. nltk.download() appears only in tests (genai-engine/tests/unit/test_toxicity.py), which ship in no image. Owner: security@arthur.ai. Review by: 2027-03-09.",
-      "vulnerability": { "name": "CVE-2026-81726" },
+      "_comment": "filelock: CVE-2026-112940 lets an attacker with rename access to a non-sticky parent directory swap the SQLite database and side files that filelock's ReadWriteLock reopens by name, turning its writes into overwrite/unlink of attacker-chosen files. Fixed in filelock 4.2.1, but genai-engine and ml-engine cannot take it: litellm (pinned by both, and by arthur-common) requires filelock>=3.16.1,<4.0 through the latest release, 1.106.5, so both lockfiles resolve to 3.32.7. The models images are not affected — they do not depend on litellm and ship filelock 4.2.4. Only ReadWriteLock / AsyncReadWriteLock is vulnerable; the plain FileLock / SoftFileLock used by huggingface-hub, torch, transformers, tldextract and virtualenv is not. No package installed in either image and no Arthur code references ReadWriteLock (checked by grepping site-packages), and the images run as a single nonroot user with no other local principal to race the rename. Owner: security@arthur.ai. Review by: 2027-04-28, or as soon as litellm accepts filelock>=4.2.1.",
+      "vulnerability": { "name": "CVE-2026-112940" },
       "products": [
-        { "@id": "pkg:oci/genai-engine-cpu", "subcomponents": [ { "@id": "pkg:pypi/nltk" } ] },
-        { "@id": "pkg:oci/genai-engine-gpu", "subcomponents": [ { "@id": "pkg:pypi/nltk" } ] }
+        { "@id": "pkg:oci/genai-engine-cpu", "subcomponents": [ { "@id": "pkg:pypi/filelock" } ] },
+        { "@id": "pkg:oci/genai-engine-gpu", "subcomponents": [ { "@id": "pkg:pypi/filelock" } ] },
+        { "@id": "pkg:oci/ml-engine", "subcomponents": [ { "@id": "pkg:pypi/filelock" } ] }
       ],
       "status": "not_affected",
       "justification": "vulnerable_code_not_in_execute_path",
-      "impact_statement": "CVE-2026-81726 is reachable only through NLTK's model-artifact loading APIs. The engine's sole production use of nltk is a no-argument PunktSentenceTokenizer() whose .tokenize() is called on in-memory text (genai-engine/src/utils/claim_parser.py); no model artifact is loaded from disk and no filesystem path is passed to nltk. nltk.download() is confined to unit tests, which ship in no image. No patched release exists (the advisory covers all versions <= 3.10.3).",
-      "timestamp": "2026-09-09T00:00:00Z"
+      "impact_statement": "CVE-2026-112940 is confined to filelock's SQLite-backed ReadWriteLock. Nothing in these images uses it: Arthur code does not import filelock, and every installed dependency that does (huggingface-hub, torch, transformers, tldextract) uses the unaffected FileLock. Exploitation also requires a second local principal with rename access to the lock's parent directory, which the single-user images do not have. The fixed release (4.2.1) cannot be installed because litellm caps filelock below 4.0.",
+      "timestamp": "2026-10-28T00:00:00Z"
     },
     {
-      "_comment": "openssl: CVE-2026-84782 (OpenSSL advisory 2026-09-29) is an out-of-bounds read in the DTLS handshake retransmission logic, reported against libssl3 3.0.22-1~deb12u1 on every image (and the openssl CLI package on models-gcs). The Debian security tracker lists bookworm and bookworm-security as vulnerable; the fix (DSA-6531-1) is trixie-only, so there is no bookworm upgrade to take. DTLS is never used: nothing in the repo opens a datagram socket or a DTLS context, Python's ssl module does not expose DTLS at all, and every TLS consumer in the images (Python ssl / urllib3 / httpx, libpq for PostgreSQL, boto3 and google-cloud-storage) is TLS over TCP. Owner: security@arthur.ai. Review by: 2027-04-02, or as soon as bookworm-security ships a fixed openssl.",
-      "vulnerability": {
-        "name": "CVE-2026-84782"
-      },
+      "_comment": "langchain-community: CVE-2026-72848 is an SSRF in SitemapLoader.parse_sitemap, which applies restrict_to_same_domain to leaf <url> entries but not to nested <sitemap> entries, so an attacker-controlled sitemap can make the server fetch an internal URL. Reported against 0.4.2 (genai-engine/pyproject.toml). The advisory marks every release as affected with no patched version, so there is no upgrade to take. genai-engine never constructs SitemapLoader, WebBaseLoader or any langchain_community document loader (grep of genai-engine/src for SitemapLoader/sitemap finds nothing outside tokenizer vocabularies), so no sitemap is ever fetched or parsed. Owner: security@arthur.ai. Review by: 2027-04-28, or as soon as a fixed langchain-community is released.",
+      "vulnerability": { "name": "CVE-2026-72848" },
       "products": [
-        {
-          "@id": "pkg:oci/genai-engine-cpu",
-          "subcomponents": [
-            {
-              "@id": "pkg:deb/debian/libssl3"
-            }
-          ]
-        },
-        {
-          "@id": "pkg:oci/genai-engine-gpu",
-          "subcomponents": [
-            {
-              "@id": "pkg:deb/debian/libssl3"
-            }
-          ]
-        },
-        {
-          "@id": "pkg:oci/ml-engine",
-          "subcomponents": [
-            {
-              "@id": "pkg:deb/debian/libssl3"
-            }
-          ]
-        },
-        {
-          "@id": "pkg:oci/genai-engine-models-s3",
-          "subcomponents": [
-            {
-              "@id": "pkg:deb/debian/libssl3"
-            }
-          ]
-        },
-        {
-          "@id": "pkg:oci/genai-engine-models-fs",
-          "subcomponents": [
-            {
-              "@id": "pkg:deb/debian/libssl3"
-            }
-          ]
-        },
-        {
-          "@id": "pkg:oci/genai-engine-models-gcs",
-          "subcomponents": [
-            {
-              "@id": "pkg:deb/debian/libssl3"
-            },
-            {
-              "@id": "pkg:deb/debian/openssl"
-            }
-          ]
-        }
+        { "@id": "pkg:oci/genai-engine-cpu", "subcomponents": [ { "@id": "pkg:pypi/langchain-community" } ] },
+        { "@id": "pkg:oci/genai-engine-gpu", "subcomponents": [ { "@id": "pkg:pypi/langchain-community" } ] }
       ],
       "status": "not_affected",
       "justification": "vulnerable_code_not_in_execute_path",
-      "impact_statement": "CVE-2026-84782 is reachable only through OpenSSL's DTLS implementation. No process in these images uses DTLS: there is no datagram/DTLS code, Python's ssl module does not support DTLS, and every TLS connection (HTTP clients, PostgreSQL, S3/GCS) is TLS over TCP. Debian ships no bookworm fix at the installed 3.0.22-1~deb12u1.",
-      "timestamp": "2026-10-02T00:00:00Z"
+      "impact_statement": "CVE-2026-72848 is reachable only through langchain-community's SitemapLoader. The engine never instantiates SitemapLoader or any other langchain_community web document loader, so no sitemap is fetched and the missing domain check is never exercised. No patched release exists.",
+      "timestamp": "2026-10-28T00:00:00Z"
+    },
+    {
+      "_comment": "libexpat1: CVE-2026-115506 is a CPU-exhaustion DoS — expat's billion-laughs accounting (accountingDiffTolerated) trips too late, so a moderately sized XML document with a large DTD and nested entities costs tens of seconds of CPU per parse. Reported against 2.5.0-1+deb12u4 by an external scanner; the images now ship 2.5.0-1+deb12u5, and the advisory covers every libexpat through 2.9.0 with no fix, so there is no upgrade to take. No Arthur code parses XML (no xml.*, lxml, defusedxml, ElementTree or pyexpat use in genai-engine/src or ml-engine/src), and no API accepts XML input. The only XML parsed at runtime is cloud SDK response bodies (botocore for S3, Azure SDK) received over TLS from the provider's endpoint, which an attacker cannot author. Impact is bounded CPU on a single request, with no memory corruption or data exposure. models-gcs does not ship libexpat1. Owner: security@arthur.ai. Review by: 2027-04-28.",
+      "vulnerability": { "name": "CVE-2026-115506" },
+      "products": [
+        { "@id": "pkg:oci/genai-engine-cpu", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] },
+        { "@id": "pkg:oci/genai-engine-gpu", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] },
+        { "@id": "pkg:oci/ml-engine", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] },
+        { "@id": "pkg:oci/genai-engine-models-s3", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] },
+        { "@id": "pkg:oci/genai-engine-models-fs", "subcomponents": [ { "@id": "pkg:deb/debian/libexpat1" } ] }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_cannot_be_controlled_by_adversary",
+      "impact_statement": "CVE-2026-115506 requires the attacker to supply an XML document with a crafted DTD. No Arthur code or API parses XML; expat is reached only when cloud SDKs parse response bodies received over TLS from the provider's own endpoint, which an attacker cannot control. Impact would be bounded CPU per parse. No fixed libexpat release exists.",
+      "timestamp": "2026-10-28T00:00:00Z"
+    },
+    {
+      "_comment": "zlib1g: CVE-2026-85091 is a heap overflow in gz_vacate() during non-blocking gzwrite()/gzprintf(). The advisory scopes it to zlib 1.3.1.2 through 1.3.2, where the gz_vacate code path was introduced (OSV range starts at upstream commit 570720b). Every image ships Debian bookworm's zlib1g 1:1.2.13.dfsg-1, which predates that code, so the vulnerable function is not present. The scanner flags it only because Debian has not triaged bookworm, which is also why no fixed version is shown. Arthur does not call gzprintf/gzwrite in any case. Owner: security@arthur.ai. Review by: 2027-04-28.",
+      "vulnerability": { "name": "CVE-2026-85091" },
+      "products": [
+        { "@id": "pkg:oci/genai-engine-cpu", "subcomponents": [ { "@id": "pkg:deb/debian/zlib1g" } ] },
+        { "@id": "pkg:oci/genai-engine-gpu", "subcomponents": [ { "@id": "pkg:deb/debian/zlib1g" } ] },
+        { "@id": "pkg:oci/ml-engine", "subcomponents": [ { "@id": "pkg:deb/debian/zlib1g" } ] },
+        { "@id": "pkg:oci/genai-engine-models-s3", "subcomponents": [ { "@id": "pkg:deb/debian/zlib1g" } ] },
+        { "@id": "pkg:oci/genai-engine-models-fs", "subcomponents": [ { "@id": "pkg:deb/debian/zlib1g" } ] },
+        { "@id": "pkg:oci/genai-engine-models-gcs", "subcomponents": [ { "@id": "pkg:deb/debian/zlib1g" } ] }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "CVE-2026-85091 affects only zlib 1.3.1.2 through 1.3.2, in which the vulnerable gz_vacate() code was introduced. These images ship zlib 1.2.13 (Debian 1:1.2.13.dfsg-1), which does not contain that code.",
+      "timestamp": "2026-10-28T00:00:00Z"
     }
   ]
 }
