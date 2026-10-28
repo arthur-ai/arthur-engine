@@ -1,4 +1,5 @@
-import { Level, LEVELS, TIME_RANGES, TracesViewLayout } from "@arthur/shared-components";
+import { Level, LEVELS, TIME_RANGES } from "@arthur/shared-components";
+import { TracesViewLayout } from "@arthur/shared-components/traces";
 import { parseAsStringLiteral, useQueryState } from "nuqs";
 import React, { Activity, memo } from "react";
 import { useParams } from "react-router";

@@ -1,3 +1,4 @@
+import { useSnackbar } from "@arthur/shared-components";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import CloseIcon from "@mui/icons-material/Close";
@@ -40,7 +41,6 @@ import { SourceTraceDrawer } from "@/components/traces/components/source-trace/S
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useDatasetRow } from "@/hooks/useDatasetRow";
 import { useExperimentTestCases } from "@/hooks/usePromptExperiments";
-import useSnackbar from "@/hooks/useSnackbar";
 import type { TestCase, EvalExecution, ExperimentStatus } from "@/lib/api-client/api-client";
 import { track } from "@/services/analytics";
 import { formatCurrency } from "@/utils/formatters";

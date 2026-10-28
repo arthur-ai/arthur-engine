@@ -1,4 +1,5 @@
-import { useAppForm } from "@arthur/shared-components";
+import { CopyableChip } from "@arthur/shared-components";
+import { useAppForm } from "@arthur/shared-components/traces";
 import {
   Alert,
   Button,
@@ -22,7 +23,6 @@ import { useUpdateContinuousEval } from "../../hooks/useUpdateContinuousEval";
 import { DetailsFieldGroup, EvaluatorSelector, TransformSelector } from "../../new";
 import { VariableMappingSection } from "../variable-mapping";
 
-import { CopyableChip } from "@/components/common";
 import { useMLEval } from "@/components/evaluators/hooks/useEval";
 import { useTransforms } from "@/components/transforms/hooks/useTransforms";
 import type { ContinuousEvalResponse, ContinuousEvalTransformVariableMappingRequest } from "@/lib/api-client/api-client";

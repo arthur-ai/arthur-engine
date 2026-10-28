@@ -1,5 +1,5 @@
 import { EvaluatorsSelectorUI } from "@arthur/shared-components";
-import { withFieldGroup } from "@arthur/shared-components";
+import { withFieldGroup } from "@arthur/shared-components/traces";
 import { useStore } from "@tanstack/react-form";
 import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";

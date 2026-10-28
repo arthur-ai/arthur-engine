@@ -1,8 +1,8 @@
+import { useSnackbar } from "@arthur/shared-components";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Portal, Snackbar, Typography } from "@mui/material";
 import React from "react";
 
-import useSnackbar from "@/hooks/useSnackbar";
 import { track } from "@/services/analytics";
 import { formatFullValue } from "@/utils/datasetFormatters";
 

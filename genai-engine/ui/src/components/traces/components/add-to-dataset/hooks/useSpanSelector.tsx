@@ -1,6 +1,7 @@
+import { getNestedValue } from "@arthur/shared-components/traces";
 import { useMemo, useState } from "react";
 
-import { getNestedValue, getNestedValueWildcard } from "../../../utils/spans";
+import { getNestedValueWildcard } from "../../../utils/spans";
 
 import { NestedSpanWithMetricsResponse } from "@/lib/api";
 

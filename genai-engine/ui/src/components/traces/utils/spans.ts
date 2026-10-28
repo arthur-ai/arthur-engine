@@ -1,17 +1,4 @@
-import { getNestedValue } from "@arthur/shared-components";
-
-export {
-  getNestedValue,
-  getSpanInput,
-  getSpanOutput,
-  getSpanInputMimeType,
-  getSpanDuration,
-  flattenSpans,
-  getSpanModel,
-  getSpanType,
-  getSpanIcon,
-  isSpanOfType,
-} from "@arthur/shared-components";
+import { getNestedValue } from "@arthur/shared-components/traces";
 
 /**
  * Like getNestedValue but supports '*' as a wildcard segment.

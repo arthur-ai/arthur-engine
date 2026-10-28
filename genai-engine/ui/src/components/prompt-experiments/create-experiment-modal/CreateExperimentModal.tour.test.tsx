@@ -72,7 +72,7 @@ vi.mock("@tanstack/react-form", async () => {
   };
 });
 
-vi.mock("@/components/traces/components/filtering/hooks/form", async () => {
+vi.mock("@arthur/shared-components/traces", async (importOriginal) => {
   const React = await vi.importActual<typeof import("react")>("react");
 
   function cloneValues(values: CreateExperimentModalFormValues): CreateExperimentModalFormValues {
@@ -108,6 +108,7 @@ vi.mock("@/components/traces/components/filtering/hooks/form", async () => {
   }
 
   return {
+    ...(await importOriginal<typeof import("@arthur/shared-components/traces")>()),
     useAppForm: (options: {
       defaultValues: CreateExperimentModalFormValues;
       onSubmit?: (args: {

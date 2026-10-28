@@ -1,9 +1,9 @@
+import { CopyableChip } from "@arthur/shared-components";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import { Chip, IconButton, Tooltip, Typography } from "@mui/material";
 import { createMRTColumnHelper } from "material-react-table";
 import { Link } from "react-router";
 
-import { CopyableChip } from "@/components/common";
 import { serializeDrawerTarget } from "@/components/traces/hooks/useDrawerTarget";
 import { AgenticAnnotationResponse } from "@/lib/api-client/api-client";
 import { formatCurrency, formatDateInTimezone } from "@/utils/formatters";

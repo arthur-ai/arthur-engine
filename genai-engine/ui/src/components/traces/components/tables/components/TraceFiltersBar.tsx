@@ -1,4 +1,4 @@
-import { type ContinuousEvalNameOptions, TextOperators, TracesFilterBar } from "@arthur/shared-components";
+import { type ContinuousEvalNameOptions, TextOperators, TracesFilterBar } from "@arthur/shared-components/traces";
 import { useMemo, useState } from "react";
 
 import { useFilterStore } from "../../../stores/filter.store";

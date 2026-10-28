@@ -1,4 +1,4 @@
-import { TextOperators } from "@arthur/shared-components";
+import { TextOperators } from "@arthur/shared-components/traces";
 import { Search } from "@mui/icons-material";
 import AddIcon from "@mui/icons-material/Add";
 import LiveTvOutlinedIcon from "@mui/icons-material/LiveTvOutlined";

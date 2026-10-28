@@ -29,18 +29,17 @@ vi.mock("react-router", () => ({
   useNavigate: () => vi.fn(),
 }));
 
-vi.mock("../../utils/spans", () => ({
-  flattenSpans: () => [],
-}));
-
-vi.mock("@tanstack/react-form", () => ({
+vi.mock("@tanstack/react-form", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@tanstack/react-form")>()),
   useStore: (_store: unknown, selector: (state: { values: typeof formState.values }) => unknown) => selector({ values: formState.values }),
   // Identity is enough for ./form/shared's addToDatasetFormOptions, letting the
   // real module (sentinels, resolveSchemaColumns) be used unmocked.
   formOptions: <T,>(options: T) => options,
 }));
 
-vi.mock("../filtering/hooks/form", () => ({
+vi.mock("@arthur/shared-components/traces", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@arthur/shared-components/traces")>()),
+  flattenSpans: () => [],
   useAppForm: () => ({
     store: {},
     state: {

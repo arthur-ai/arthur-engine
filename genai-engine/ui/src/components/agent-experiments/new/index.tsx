@@ -1,4 +1,4 @@
-import { useAppForm, withForm } from "@arthur/shared-components";
+import { useAppForm, withForm } from "@arthur/shared-components/traces";
 import { Box, Button, CircularProgress, Divider, Stack, TextField, Typography } from "@mui/material";
 import { useSnackbar } from "notistack";
 import { useRef } from "react";

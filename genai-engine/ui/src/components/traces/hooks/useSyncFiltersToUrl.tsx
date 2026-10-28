@@ -1,8 +1,8 @@
+import { type IncomingFilter } from "@arthur/shared-components/traces";
 import { parseAsJson, useQueryState } from "nuqs";
 import { useEffect, useRef } from "react";
 import { z } from "zod";
 
-import type { IncomingFilter } from "../components/filtering/mapper";
 import { useFilterStore } from "../stores/filter.store";
 
 import { track } from "@/services/analytics";
