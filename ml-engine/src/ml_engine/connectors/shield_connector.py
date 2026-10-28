@@ -461,10 +461,9 @@ class ShieldBaseConnector(Connector, ABC):
                 url,
                 _request_timeout=TASK_STATS_TIMEOUT_SECONDS,
             )
-            resp.read()
             if resp.status != 200:
                 raise ValueError(f"/health returned {resp.status}")
-            build_version = json.loads(resp.data)["build_version"]
+            build_version = json.loads(resp.response.data)["build_version"]
             return tuple(int(part) for part in build_version.split("."))
         except Exception as e:
             self.logger.warning(

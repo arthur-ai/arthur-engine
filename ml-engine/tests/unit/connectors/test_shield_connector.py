@@ -848,7 +848,7 @@ def test_shield_read_raises_for_static_dataset():
 
 def mock_health(build_version: str) -> Mock:
     body = json.dumps({"message": "ok", "build_version": build_version}).encode()
-    return Mock(status=200, data=body, read=Mock(return_value=body))
+    return Mock(status=200, response=Mock(data=body))
 
 
 def mock_task(name: str) -> Mock:
@@ -948,8 +948,8 @@ def test_list_datasets_emits_both_datasets_per_task():
     "health",
     [
         mock_health("2.1.1073"),
-        Mock(status=404, read=Mock(return_value=b"")),
-        Mock(status=200, read=Mock(return_value=b"{}")),
+        Mock(status=404, response=Mock(data=b"")),
+        Mock(status=200, response=Mock(data=b"{}")),
     ],
     ids=["older engine", "no health endpoint", "no build version"],
 )
@@ -964,7 +964,6 @@ def test_list_datasets_queries_inference_stats_per_task_without_overview(
 
     tasks = [mock_task(f"task {i}") for i in range(2)]
     latest_inference_created = datetime(2026, 10, 2, 8, 30, tzinfo=timezone.utc)
-    health.data = health.read.return_value
 
     with (
         patch.object(conn, "_tasks_client") as tasks_client,
