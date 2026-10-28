@@ -1050,6 +1050,25 @@ class TraceOverviewListResponse(BaseModel):
     count: int = Field(description="Total number of trace overviews")
 
 
+class InferenceOverviewResponse(BaseModel):
+    """Inference count and latest inference time for a task"""
+
+    task_id: str = Field(description="Task ID")
+    inference_count: int = Field(description="Number of inferences")
+    last_inference_at: Optional[datetime] = Field(
+        default=None,
+        description="Creation time of the most recent inference, or null if the task has none",
+    )
+
+
+class InferenceOverviewListResponse(BaseModel):
+    """Response for list of inference overviews"""
+
+    overviews: list[InferenceOverviewResponse] = Field(
+        description="One inference overview per requested task",
+    )
+
+
 class TraceTimeSeriesPoint(BaseModel):
     """Metrics for a single time bucket, one per Analyze-page chart series."""
 

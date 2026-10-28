@@ -1,6 +1,7 @@
 import json
+import time
 from abc import ABC, abstractmethod
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, wait
 from datetime import datetime, timezone
 from logging import Logger
 from typing import Any, Optional
@@ -65,12 +66,13 @@ from genai_client.exceptions import (
 from genai_client.models import (
     ApiKeyResponse,
     APIKeysRolesEnum,
+    InferenceOverviewRequest,
     LLMGetAllMetadataListResponse,
     NewApiKeyRequest,
     NewTaskRequest,
     RuleType,
     SearchTasksRequest,
-    TraceSortBy,
+    TraceOverviewRequest,
     UpdateRuleRequest,
 )
 from pydantic import ValidationError
@@ -85,12 +87,18 @@ from tools.agentic_filters import (
 )
 from tools.api_client_type_converters import ShieldClientTypeConverter
 
-# list_datasets fetches trace/inference stats for every task; bound the fan-out so a large engine
-# doesn't open hundreds of requests at once.
+# Engines without /inferences/overview get inference stats one request per task; bound the
+# fan-out so a large engine doesn't open hundreds of requests at once.
 MAX_TASK_STATS_WORKERS = 10
 # (connect, read). The generated client defaults to no timeout, so one stalled stats request
 # would hold up the whole listing.
-TASK_STATS_TIMEOUT_SECONDS = (5.0, 30.0)
+TASK_STATS_TIMEOUT_SECONDS = (5.0, 10.0)
+# Stats are best-effort: once this is spent, the remaining tasks list without them.
+TASK_STATS_BUDGET_SECONDS = 60.0
+# First engine release with POST /api/v2/inferences/overview; older engines get one inference query per task.
+INFERENCE_OVERVIEW_MIN_ENGINE_VERSION = (2, 1, 1074)
+# The trace overview endpoint requires a window; this one covers every trace.
+TRACE_OVERVIEW_START = datetime(1970, 1, 1, tzinfo=timezone.utc)
 
 
 class ShieldBaseConnector(Connector, ABC):
@@ -116,6 +124,20 @@ class ShieldBaseConnector(Connector, ABC):
         self._evals_client = LLMEvalsApi(api_client=self._genai_client)
         self._cont_evals_client = ContinuousEvalsApi(api_client=self._genai_client)
         self._transforms_client = TransformsApi(api_client=self._genai_client)
+        # list_datasets stats are best-effort; urllib3's default 3 retries would quadruple a stalled request
+        self._stats_genai_client = ApiClient(
+            configuration=Configuration(
+                host=shield_api_config.host,
+                access_token=api_key,
+                retries=0,
+            ),
+        )
+        self._stats_inferences_client = InferencesApi(
+            api_client=self._stats_genai_client,
+        )
+        self._stats_traces_client = TracesApi(api_client=self._stats_genai_client)
+        # set from the engine version on first use
+        self._inference_overview_supported: bool | None = None
 
     @staticmethod
     def _strip_and_validate_endpoint(endpoint: str) -> str:
@@ -299,6 +321,8 @@ class ShieldBaseConnector(Connector, ABC):
     def list_datasets(self) -> PutAvailableDatasets:
         page_size, page = 250, 0
         datasets: PutAvailableDatasets = PutAvailableDatasets(available_datasets=[])
+        stats_deadline = time.monotonic() + TASK_STATS_BUDGET_SECONDS
+        stats_failures: list[Exception] = []
         while True:
             resp = self._tasks_client.search_tasks_api_v2_tasks_search_post(
                 search_tasks_request=SearchTasksRequest(
@@ -308,14 +332,21 @@ class ShieldBaseConnector(Connector, ABC):
                 page_size=page_size,
                 page=page,
             )
-            with ThreadPoolExecutor(max_workers=MAX_TASK_STATS_WORKERS) as executor:
-                task_stats = list(
-                    executor.map(self._task_stats, [task.id for task in resp.tasks]),
+            task_ids = [task.id for task in resp.tasks]
+            trace_stats = self._trace_stats(task_ids, stats_deadline, stats_failures)
+            inference_stats = self._inference_stats(
+                task_ids,
+                stats_deadline,
+                stats_failures,
+            )
+            for task in resp.tasks:
+                trace_count, last_trace_at = trace_stats.get(task.id, (None, None))
+                inference_count, last_inference_at = inference_stats.get(
+                    task.id,
+                    (None, None),
                 )
-            for task, (trace_count, inference_count, last_activity_at) in zip(
-                resp.tasks,
-                task_stats,
-            ):
+                activity = [t for t in (last_trace_at, last_inference_at) if t]
+                last_activity_at = max(activity) if activity else None
                 # Post-consolidation every task exposes both datasets:
                 # trace/evals + inferences/guardrails, same task_id locator.
                 # Both carry the task's stats.
@@ -345,63 +376,167 @@ class ShieldBaseConnector(Connector, ABC):
                 break
 
             page += 1
+
+        if stats_failures:
+            self.logger.warning(
+                f"Listed datasets without some trace/inference stats: {len(stats_failures)} "
+                "stats lookups failed or ran out of time",
+                exc_info=stats_failures[0],
+            )
         return datasets
 
-    def _task_stats(
+    def _trace_stats(
         self,
-        task_id: str,
-    ) -> tuple[int | None, int | None, datetime | None]:
-        """Trace count, inference count and latest trace/inference timestamp for a task."""
-        trace_count, last_trace_at = self._task_trace_stats(task_id)
-        inference_count, last_inference_at = self._task_inference_stats(task_id)
-        activity = [t for t in (last_trace_at, last_inference_at) if t]
-        return trace_count, inference_count, max(activity) if activity else None
-
-    def _task_trace_stats(self, task_id: str) -> tuple[int | None, datetime | None]:
-        """Number of traces in the task and when the latest one started. A failure returns (None, None)
-        so one task can't fail the whole listing."""
+        task_ids: list[str],
+        deadline: float,
+        failures: list[Exception],
+    ) -> dict[str, tuple[int | None, datetime | None]]:
+        """Trace count and latest trace end time per task, from one overview request. Tasks the
+        engine doesn't return, and every task when the request fails, are left out."""
+        if not task_ids:
+            return {}
+        if time.monotonic() >= deadline:
+            failures.append(TimeoutError("trace stats skipped: stats budget spent"))
+            return {}
         try:
-            traces = self.list_trace_metadata(
-                task_ids=[task_id],
-                sort_by=TraceSortBy.START_TIME,
-                sort=PaginationSortMethod.DESC,
-                page_size=1,
+            overview = self._stats_traces_client.get_traces_overview_api_v1_traces_overview_post(
+                TraceOverviewRequest(
+                    task_ids=task_ids,
+                    start_time=TRACE_OVERVIEW_START,
+                    end_time=datetime.now(timezone.utc),
+                ),
                 _request_timeout=TASK_STATS_TIMEOUT_SECONDS,
             )
         except Exception as e:
+            failures.append(e)
+            return {}
+        stats: dict[str, tuple[int | None, datetime | None]] = {}
+        for task_overview in overview.overviews:
+            last_active = task_overview.last_active
+            # engine trace timestamps are UTC
+            if last_active is not None and last_active.tzinfo is None:
+                last_active = last_active.replace(tzinfo=timezone.utc)
+            stats[task_overview.task_id] = (task_overview.trace_count, last_active)
+        return stats
+
+    def _inference_stats(
+        self,
+        task_ids: list[str],
+        deadline: float,
+        failures: list[Exception],
+    ) -> dict[str, tuple[int | None, datetime | None]]:
+        """Inference count and latest inference time per task, from one overview request, or one
+        request per task on engines without it. Tasks that fail or miss the deadline are left out.
+        """
+        if not task_ids:
+            return {}
+        if time.monotonic() >= deadline:
+            failures.append(TimeoutError("inference stats skipped: stats budget spent"))
+            return {}
+        if not self._engine_has_inference_overview():
+            return self._per_task_inference_stats(task_ids, deadline, failures)
+        try:
+            return self._batched_inference_stats(task_ids)
+        except Exception as e:
+            failures.append(e)
+            return {}
+
+    def _engine_has_inference_overview(self) -> bool:
+        """Whether the engine's version ships /inferences/overview. Checked once per connector; an
+        engine whose version can't be read gets the per-task path, which every version supports.
+        """
+        if self._inference_overview_supported is None:
+            version = self._engine_version()
+            self._inference_overview_supported = (
+                version is not None and version >= INFERENCE_OVERVIEW_MIN_ENGINE_VERSION
+            )
+        return self._inference_overview_supported
+
+    def _engine_version(self) -> tuple[int, ...] | None:
+        # /health is excluded from the engine's OpenAPI schema, so the generated client has no method for it
+        try:
+            url = f"{self._stats_genai_client.configuration.host}/health"
+            resp = self._stats_genai_client.call_api(
+                "GET",
+                url,
+                _request_timeout=TASK_STATS_TIMEOUT_SECONDS,
+            )
+            resp.read()
+            if resp.status != 200:
+                raise ValueError(f"/health returned {resp.status}")
+            build_version = json.loads(resp.data)["build_version"]
+            return tuple(int(part) for part in build_version.split("."))
+        except Exception as e:
             self.logger.warning(
-                f"Failed to fetch trace stats for task {task_id}",
+                "Couldn't read the engine version; fetching inference stats per task",
                 exc_info=e,
             )
-            return None, None
-        if not traces.traces:
-            return traces.count, None
-        latest = traces.traces[0].start_time
-        # engine trace timestamps are UTC
-        if latest.tzinfo is None:
-            latest = latest.replace(tzinfo=timezone.utc)
-        return traces.count, latest
+            return None
+
+    def _batched_inference_stats(
+        self,
+        task_ids: list[str],
+    ) -> dict[str, tuple[int | None, datetime | None]]:
+        overview = self._stats_inferences_client.get_inferences_overview_api_v2_inferences_overview_post(
+            InferenceOverviewRequest(task_ids=task_ids),
+            _request_timeout=TASK_STATS_TIMEOUT_SECONDS,
+        )
+        return {
+            task_overview.task_id: (
+                task_overview.inference_count,
+                task_overview.last_inference_at,
+            )
+            for task_overview in overview.overviews
+        }
+
+    def _per_task_inference_stats(
+        self,
+        task_ids: list[str],
+        deadline: float,
+        failures: list[Exception],
+    ) -> dict[str, tuple[int | None, datetime | None]]:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            failures.append(TimeoutError("inference stats skipped: stats budget spent"))
+            return {}
+        executor = ThreadPoolExecutor(max_workers=MAX_TASK_STATS_WORKERS)
+        futures = {
+            executor.submit(self._task_inference_stats, task_id): task_id
+            for task_id in task_ids
+        }
+        try:
+            done, not_done = wait(futures, timeout=remaining)
+        finally:
+            # don't block on stragglers past the budget; each ends within its request timeout
+            executor.shutdown(wait=False, cancel_futures=True)
+        if not_done:
+            failures.append(
+                TimeoutError(
+                    f"inference stats for {len(not_done)} tasks ran past the stats budget",
+                ),
+            )
+        stats: dict[str, tuple[int | None, datetime | None]] = {}
+        for future in done:
+            try:
+                stats[futures[future]] = future.result()
+            except Exception as e:
+                failures.append(e)
+        return stats
 
     def _task_inference_stats(
         self,
         task_id: str,
     ) -> tuple[int | None, datetime | None]:
-        """Number of inferences in the task and when the latest one was created. A failure returns (None, None)
-        so one task can't fail the whole listing."""
-        try:
-            inferences = self.query_inferences(
-                task_ids=[task_id],
+        """Number of inferences in the task and when the latest one was created."""
+        inferences = (
+            self._stats_inferences_client.query_inferences_api_v2_inferences_query_get(
+                task_ids=[task_id],  # type: ignore[arg-type, unused-ignore]
                 sort=PaginationSortMethod.DESC,
                 page_size=1,
                 include_count=True,
                 _request_timeout=TASK_STATS_TIMEOUT_SECONDS,
             )
-        except Exception as e:
-            self.logger.warning(
-                f"Failed to fetch inference stats for task {task_id}",
-                exc_info=e,
-            )
-            return None, None
+        )
         if not inferences.inferences:
             return inferences.count, None
         # engine serializes inference created_at as epoch milliseconds
