@@ -96,7 +96,7 @@ TASK_STATS_TIMEOUT_SECONDS = (5.0, 10.0)
 # Stats are best-effort: once this is spent, the remaining tasks list without them.
 TASK_STATS_BUDGET_SECONDS = 60.0
 # First engine release with POST /api/v2/inferences/overview; older engines get one inference query per task.
-INFERENCE_OVERVIEW_MIN_ENGINE_VERSION = (2, 1, 1074)
+INFERENCE_OVERVIEW_MIN_ENGINE_VERSION = (2, 1, 1075)
 # The trace overview endpoint requires a window; this one covers every trace.
 TRACE_OVERVIEW_START = datetime(1970, 1, 1, tzinfo=timezone.utc)
 

@@ -901,7 +901,7 @@ def test_list_datasets_emits_both_datasets_per_task():
         patch.object(
             conn._stats_genai_client,
             "call_api",
-            return_value=mock_health("2.1.1074"),
+            return_value=mock_health("2.1.1075"),
         ),
     ):
         tasks_client.search_tasks_api_v2_tasks_search_post.return_value = Mock(
@@ -947,7 +947,7 @@ def test_list_datasets_emits_both_datasets_per_task():
 @pytest.mark.parametrize(
     "health",
     [
-        mock_health("2.1.1073"),
+        mock_health("2.1.1074"),
         Mock(status=404, response=Mock(data=b"")),
         Mock(status=200, response=Mock(data=b"{}")),
     ],
@@ -1025,7 +1025,7 @@ def test_list_datasets_leaves_record_stats_empty_on_failure():
         patch.object(
             conn._stats_genai_client,
             "call_api",
-            return_value=mock_health("2.1.1074"),
+            return_value=mock_health("2.1.1075"),
         ),
         patch.object(conn, "logger") as conn_logger,
     ):
