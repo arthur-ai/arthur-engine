@@ -939,8 +939,10 @@ class SyntheticDataGenerationResponse(BaseModel):
 class SyntheticDataPromptStatus(BaseModel):
     model_config = {"use_enum_values": True}
 
+    # Distinct title for the same reason as AgenticPrompt.model_provider.
     model_provider: Union[ModelProvider, Literal["empty"]] = Field(
         ...,
+        title="Synthetic Data Prompt Model Provider",
         description="Model provider stored in the SDG system prompt. "
         "The sentinel 'empty' indicates the prompt has not yet been configured.",
     )
