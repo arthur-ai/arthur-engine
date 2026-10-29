@@ -8,7 +8,7 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "2026-10-25T21:40:38.978791497Z"
+exclude-newer = "2026-10-26T18:15:03.205059409Z"
 exclude-newer-span = "P3D"
 
 [options.exclude-newer-package]
@@ -152,7 +152,7 @@ wheels = [
 
 [[package]]
 name = "arthur-client"
-version = "1.4.2939"
+version = "1.4.2949"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "authlib" },
@@ -164,9 +164,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/90/4d/0dc890316eff8d754763f52a091467f152543a88618bd11af0b308003445/arthur_client-1.4.2939.tar.gz", hash = "sha256:b23cd04294cc1839ffb0fd12e127072f7191db246dc53d6d71a83189a48d0a14", size = 594133, upload-time = "2026-10-28T15:17:34.818Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/d1/c3/c0573678c2177141e18b7be235514b2c2d1fcb223a266ed05c1c648f7b01/arthur_client-1.4.2949.tar.gz", hash = "sha256:caf7c7325d38d41b1afc1360a778ff9fa86577bc37ee2beebff48bd9ba213d87", size = 594163, upload-time = "2026-10-29T18:10:16.838Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/85/89/8c9a276e5f998afbc17b5e42a0382e34805658135498e383d4d7088c81b7/arthur_client-1.4.2939-py3-none-any.whl", hash = "sha256:762beca61372789d1000306f5210656f403830e115488cde6d7a6079d701d4b4", size = 2006670, upload-time = "2026-10-28T15:17:32.685Z" },
+    { url = "https://files.pythonhosted.org/packages/fb/f8/184357a027c2ed3b6f52db04c7ceaed7b50cf04b615b5d5be4ef362cdace/arthur_client-1.4.2949-py3-none-any.whl", hash = "sha256:769e9437861c4346b71271d2b3be1cc4469ff78b24451bb418a9326afe619cc4", size = 2006694, upload-time = "2026-10-29T18:10:15.131Z" },
 ]
 
 [[package]]
@@ -1598,7 +1598,7 @@ linters = [
 [package.metadata]
 requires-dist = [
     { name = "adlfs", specifier = "==2026.8.0" },
-    { name = "arthur-client", specifier = "==1.4.2939" },
+    { name = "arthur-client", specifier = "==1.4.2949" },
     { name = "arthur-common", specifier = "==2.4.102" },
     { name = "boto3", specifier = ">=1.43,<2" },
     { name = "croniter", specifier = "==6.2.4" },

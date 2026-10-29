@@ -319,6 +319,81 @@ def test_a_network_source_entry_crosses_to_the_platform() -> None:
     assert source.source_class.value == "network"
 
 
+def _gateway_entry(kind: str, resource_id: str) -> dict[str, object]:
+    return {
+        **_entry(resource_id, external_id=f"litellm:gw:{kind}:{resource_id}"),
+        "source_class": "network",
+        "vendor": "litellm",
+        "address": {
+            "instance": "gw.example.com",
+            "resource_kind": kind,
+            "resource_id": resource_id,
+        },
+    }
+
+
+def test_gateway_caller_evidence_carries_the_identity_basis_the_platform_requires() -> (
+    None
+):
+    """Provenance has no identity_basis. The task's own record takes it from the task's
+    creation source; any other caller record from its kind, an agent id falling back to
+    the weaker claimed_agent."""
+    task = _task(
+        "t1",
+        sources=[
+            _gateway_entry("agent_id", "agt-1"),
+            _gateway_entry("virtual_key", "a" * 64),
+            _gateway_entry("agent_id", "agt-2"),
+        ],
+    ).to_dict()
+    task["creation_source"] = {
+        "type": "NETWORK",
+        "vendor": "litellm",
+        "identity_basis": "registered_agent",
+        "address": {
+            "instance": "gw.example.com",
+            "resource_kind": "agent_id",
+            "resource_id": "agt-1",
+        },
+        "observations": {"host_group": "platform"},
+    }
+    agent = enriched_task_to_agent(
+        EnrichedTaskResponse.from_dict(task), DATA_PLANE_ID, SOURCE_ID
+    )
+
+    basis = {
+        record.creation_source.actual_instance.address.resource_id: (
+            record.creation_source.actual_instance.identity_basis.value
+        )
+        for record in agent.evidence
+    }
+    assert basis == {
+        "agt-1": "registered_agent",
+        "a" * 64: "credential",
+        "agt-2": "claimed_agent",
+    }
+
+
+def test_network_host_evidence_carries_no_identity_basis() -> None:
+    network = {
+        **_entry("i-0abc", external_id="aws_network:i-0abc"),
+        "source_class": "network",
+        "vendor": "aws_network",
+        "address": {
+            "instance": "i-0abc",
+            "scope": "111122223333/us-east-1",
+            "resource_kind": "instance",
+            "resource_id": "i-0abc",
+        },
+    }
+    agent = enriched_task_to_agent(
+        _task("t1", sources=[network]), DATA_PLANE_ID, SOURCE_ID
+    )
+
+    [record] = agent.evidence
+    assert record.creation_source.actual_instance.identity_basis is None
+
+
 def test_the_fetch_job_uploads_provenance(tasks_api: MagicMock) -> None:
     tasks_api.get_agent_tasks_api_v2_agent_tasks_get.side_effect = [[_task("t1")], []]
     agents_client = _agents_client()
