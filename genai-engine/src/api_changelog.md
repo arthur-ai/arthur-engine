@@ -3,6 +3,9 @@ The intention of this changelog is to document API changes as they happen to eff
 ---
 
 # 10/28/2026
+- **CHANGE** for **URL**: /api/v2/inferences/overview  endpoint added
+
+# 10/28/2026
 - **CHANGE** for **URL**: /api/v1/completions  added the new optional request property 'config/anyOf[subschema #1: LLMPromptRequestConfigSettings]/thinking/anyOf[subschema #1: AnthropicThinkingParam]/block_binding'
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  added the new optional request property 'config/anyOf[subschema #1: LLMRequestConfigSettings]/thinking/anyOf[subschema #1: AnthropicThinkingParam]/block_binding'
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  added the optional property 'config/anyOf[subschema #1: LLMBaseConfigSettings]/thinking/anyOf[subschema #1: AnthropicThinkingParam]/block_binding' to the response with the '200' status

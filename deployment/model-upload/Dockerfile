@@ -30,7 +30,7 @@ ARG BACKEND
 ARG AIBOM_VERSION=unknown
 
 WORKDIR /app
-RUN pip install --no-cache-dir uv==0.12.0
+RUN pip install --no-cache-dir uv==0.13.6
 COPY pyproject.toml uv.lock* ./
 
 RUN uv export --frozen --no-emit-project --no-hashes -o /tmp/requirements.txt \
@@ -77,7 +77,7 @@ ARG BACKEND
 RUN apt-get update && apt-get upgrade -y && apt-get install -y libexpat1 && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-RUN pip install --no-cache-dir uv==0.12.0
+RUN pip install --no-cache-dir uv==0.13.6
 COPY pyproject.toml uv.lock* ./
 
 RUN if [ "$BACKEND" != "fs" ]; then \

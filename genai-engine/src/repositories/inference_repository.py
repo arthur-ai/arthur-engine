@@ -1,6 +1,6 @@
 import logging
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 
 from arthur_common.models.enums import PaginationSortMethod, RuleResultEnum, RuleType
@@ -38,6 +38,10 @@ from schemas.internal_schemas import (
     ResponseRuleResult,
     RuleEngineResult,
 )
+from schemas.response_schemas import (
+    InferenceOverviewListResponse,
+    InferenceOverviewResponse,
+)
 from utils.constants import DEFAULT_ORG_ID, SYSTEM_ORG_ID
 from utils.token_count import TokenCounter
 
@@ -46,7 +50,8 @@ tracer = trace.get_tracer(__name__)
 
 
 def _stamp_org_id_on_prompt(
-    db_prompt: Optional[DatabaseInferencePrompt], org_id: uuid.UUID
+    db_prompt: Optional[DatabaseInferencePrompt],
+    org_id: uuid.UUID,
 ) -> None:
     if db_prompt is None:
         return
@@ -57,7 +62,8 @@ def _stamp_org_id_on_prompt(
 
 
 def _stamp_org_id_on_response(
-    db_response: Optional[DatabaseInferenceResponse], org_id: uuid.UUID
+    db_response: Optional[DatabaseInferenceResponse],
+    org_id: uuid.UUID,
 ) -> None:
     if db_response is None:
         return
@@ -68,7 +74,8 @@ def _stamp_org_id_on_response(
 
 
 def _stamp_org_id_on_rule_details(
-    details: DatabaseRuleResultDetail, org_id: uuid.UUID
+    details: DatabaseRuleResultDetail,
+    org_id: uuid.UUID,
 ) -> None:
     details.org_id = org_id
     for c in details.claims or []:
@@ -103,7 +110,8 @@ class InferenceRepository:
         # to enforce scope for tenant callers. Admin (org_scope is None) skips.
         if org_scope is not None:
             q = q.join(
-                DatabaseTask, DatabaseTask.id == DatabaseInference.task_id
+                DatabaseTask,
+                DatabaseTask.id == DatabaseInference.task_id,
             ).filter(DatabaseTask.org_id == org_scope)
         inference = q.first()
         if not inference:
@@ -114,6 +122,44 @@ class InferenceRepository:
                 detail="Inference %s not found." % inference_id,
             )
         return inference
+
+    @tracer.start_as_current_span("get_inference_overview_for_tasks")
+    def get_inference_overview_for_tasks(
+        self,
+        task_ids: list[str],
+    ) -> InferenceOverviewListResponse:
+        """Inference count and latest inference time for each task, in one grouped query."""
+        rows = (
+            self.db_session.query(
+                DatabaseInference.task_id.label("task_id"),
+                func.count().label("inference_count"),
+                func.max(DatabaseInference.created_at).label("last_inference_at"),
+            )
+            .filter(DatabaseInference.task_id.in_(task_ids))
+            .group_by(DatabaseInference.task_id)
+            .all()
+        )
+        stats_by_task = {row.task_id: row for row in rows}
+
+        overviews = []
+        # one entry per requested task, so tasks with no inferences report zero
+        for task_id in dict.fromkeys(task_ids):
+            row = stats_by_task.get(task_id)
+            if row is None:
+                overviews.append(
+                    InferenceOverviewResponse(task_id=task_id, inference_count=0),
+                )
+                continue
+            overviews.append(
+                InferenceOverviewResponse(
+                    task_id=task_id,
+                    inference_count=row.inference_count,
+                    # created_at is naive server-local time; convert the same way the
+                    # inference query's epoch serialization does
+                    last_inference_at=row.last_inference_at.astimezone(timezone.utc),
+                ),
+            )
+        return InferenceOverviewListResponse(overviews=overviews)
 
     @tracer.start_as_current_span("query_inferences")
     def query_inferences(
@@ -142,7 +188,8 @@ class InferenceRepository:
         # join filter here so this repo method is safe to call from any caller.
         if org_scope is not None:
             stmt = stmt.join(
-                DatabaseTask, DatabaseTask.id == DatabaseInference.task_id
+                DatabaseTask,
+                DatabaseTask.id == DatabaseInference.task_id,
             ).filter(DatabaseTask.org_id == org_scope)
 
         # Rule types and rule results need this join as a prereq to their later joins
@@ -434,7 +481,7 @@ class InferenceRepository:
                 lookup_org_id(
                     self.db_session,
                     select(DatabaseTask.org_id).where(
-                        DatabaseTask.id == db_inference.task_id
+                        DatabaseTask.id == db_inference.task_id,
                     ),
                     default=DEFAULT_ORG_ID,
                 )
@@ -537,7 +584,8 @@ class InferenceRepository:
         )
         if org_scope is not None:
             q = q.join(
-                DatabaseTask, DatabaseTask.id == DatabaseInference.task_id
+                DatabaseTask,
+                DatabaseTask.id == DatabaseInference.task_id,
             ).filter(DatabaseTask.org_id == org_scope)
         inferences = q.order_by(DatabaseInference.updated_at.desc()).all()
         if not inferences:
