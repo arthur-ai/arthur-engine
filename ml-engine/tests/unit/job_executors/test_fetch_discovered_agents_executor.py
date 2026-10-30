@@ -393,7 +393,7 @@ def test_the_creation_record_keeps_its_observations_when_its_address_moves() -> 
 
     [record] = agent.evidence
     assert record.creation_source.actual_instance.observations.service_names == [
-        "svc-t1"
+        "svc-t1",
     ]
 
 
@@ -415,6 +415,29 @@ def test_observations_go_nowhere_when_the_creation_record_cannot_be_told() -> No
         record.creation_source.actual_instance.observations is None
         for record in agent.evidence
     )
+
+
+def test_a_corroboration_does_not_make_the_creation_record_ambiguous() -> None:
+    """A device's corroborations share its instance with the agent record they extend.
+    With the agent record's address moved, it is still the one record on the instance
+    that corroborates no other, so it keeps the observations."""
+    corroboration = "splunk-t1:binaries:~/.local/bin/codex"
+    task = _task(
+        "t1",
+        sources=[
+            _entry("another-route", external_id="splunk-t1"),
+            _entry("~/.local/bin/codex", external_id=corroboration),
+        ],
+    )
+
+    agent = enriched_task_to_agent(task, DATA_PLANE_ID, SOURCE_ID)
+
+    observed = {
+        record.external_id: record.creation_source.actual_instance.observations
+        for record in agent.evidence
+    }
+    assert observed["splunk-t1"].service_names == ["svc-t1"]
+    assert observed[corroboration] is None
 
 
 def test_another_sources_creation_record_keeps_its_observations_to_itself() -> None:
@@ -455,7 +478,7 @@ def test_the_creation_source_entry_does_not_stand_in_for_a_record() -> None:
 
     [record] = agent.evidence
     assert record.creation_source.actual_instance.observations.service_names == [
-        "svc-t1"
+        "svc-t1",
     ]
 
 

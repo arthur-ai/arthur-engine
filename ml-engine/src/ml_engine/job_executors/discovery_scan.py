@@ -41,7 +41,11 @@ from arthur_client.api_bindings import (
     DiscoverySourceConfigSpec,
     OutputColumnCheckResult,
 )
-from arthur_common.models.agent_discovery_schemas import DiscoveryOutputRecord
+from arthur_common.models.agent_discovery_schemas import (
+    DiscoveredAgentRecord,
+    DiscoveryOutputRecord,
+)
+from pydantic import Field
 
 from job_executors.discovery_output_contract import (
     OutputContractError,
@@ -326,12 +330,51 @@ class DiscoveryPublishResult:
     failed: Sequence[FailedDiscoveryRecord] = ()
 
 
+class CorroboratingRecord(DiscoveredAgentRecord):
+    """Further evidence for an agent another record in the same batch reports.
+
+    A task holds one provenance entry per (source, `external_id`), and the Platform
+    keeps one evidence row per entry, so an agent found through four routes on one
+    device needs four records to show four pieces of evidence. Each has its own
+    `external_id` and must join its agent's task, not mint a task of its own: rung 4 of
+    GenAI Engine's resolution ladder would turn one agent into four. The sink resolves
+    the record named by `corroborates` first and sends this one with that record's
+    `task_id`, which is rung 1.
+
+    `corroborates` never reaches the wire. A sink that does not resolve records onto
+    tasks has nothing to join this one to, and drops it rather than report the same
+    agent twice.
+    """
+
+    corroborates: str = Field(
+        exclude=True,
+        min_length=1,
+        description="`external_id` of the agent record this is evidence for, which "
+        "must come earlier in the same batch.",
+    )
+
+
+def corroboration_external_id(agent_external_id: str, route: str, value: str) -> str:
+    """A corroboration's `external_id`: its agent record's, extended by the catalog
+    identifier it reports. Extending rather than inventing is what lets a reader of
+    provenance, which has no `corroborates`, tell the agent record from its evidence."""
+    return f"{agent_external_id}:{route}:{value}"
+
+
+def is_corroboration(external_id: str, agent_external_id: str) -> bool:
+    """Whether `external_id` is a corroboration of the record `agent_external_id`."""
+    return external_id.startswith(f"{agent_external_id}:")
+
+
 class DiscoveryRecordSink(Protocol):
     """Where a batch of records goes once a connector has produced it.
 
     Publishing a discovery record means resolving it onto a task keyed on
     ``external_id`` (D-08). `discovery_record_sink.GenAIEngineRecordSink` implements it
     against that endpoint.
+
+    A `CorroboratingRecord` resolves only after the record it `corroborates`, onto that
+    record's task; one whose agent record failed is not sent.
 
     Accepted means every record that resolved, whether it created a task or joined one
     that already existed -- a source that reports the same twenty agents every scan

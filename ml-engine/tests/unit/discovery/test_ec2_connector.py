@@ -71,6 +71,7 @@ from job_executors.discovery_scan import (
     failure_code,
 )
 from tests.fakes.catalog import agent, document
+from tests.fakes.records import agent_records
 
 SCAN_AT = 1790100381
 LOG = logging.getLogger("discovery-test")
@@ -349,7 +350,7 @@ def scan(
         fields or FIELDS,
         LOG,
     )
-    return [record for batch in batches for record in batch]
+    return agent_records(batches)
 
 
 class FakeOrg:

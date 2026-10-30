@@ -25,6 +25,7 @@ from genai_client import TaskResolutionMethod as WireMethod
 
 from job_executors import discovery_record_sink as sink_module
 from job_executors.discovery_record_sink import GenAIEngineRecordSink
+from job_executors.discovery_scan import CorroboratingRecord
 
 SOURCE_ID = "44444444-4444-4444-4444-444444444444"
 
@@ -308,3 +309,117 @@ def test_the_reason_crosses_as_a_string_not_a_generated_enum(
     result = _sink().publish("ws", "dp", _config(), [_record()])
     assert isinstance(result.failed[0].reason, str)
     assert not isinstance(result.failed[0].reason, WireReason)
+
+
+# --- corroborations, which must join their agent's task --------------------------------
+
+
+def _corroboration(
+    route: str,
+    value: str,
+    corroborates: str = "m1:codex-cli",
+) -> CorroboratingRecord:
+    return CorroboratingRecord(
+        corroborates=corroborates,
+        external_id=f"{corroborates}:{route}:{value}",
+        name="Codex CLI",
+        last_seen=datetime(2026, 9, 17, 12, 0, tzinfo=timezone.utc),
+        creation_source=EndpointAgentCreationSource(
+            vendor="jamf_pro",
+            address=SourceAddress(
+                instance="m1",
+                resource_kind="file",
+                resource_id=value,
+            ),
+            observations=AgentObservations(host_name="mac-m1"),
+        ),
+    )
+
+
+def test_a_corroboration_goes_out_after_its_agent_record_naming_that_task(
+    tasks: FakeTasks,
+) -> None:
+    """Without the task id it would walk the ladder to rung 4 and mint a task of its own,
+    which turns one agent into one per route. Sent in the batch's order, it would go out
+    before its agent record had a task to name."""
+    result = _sink().publish(
+        "ws",
+        "dp",
+        _config(),
+        [
+            _corroboration("binaries", "~/.local/bin/codex"),
+            _record("m1:codex-cli"),
+        ],
+    )
+
+    first, second = (_body(r)["records"] for r in tasks.requests)
+    assert [r["external_id"] for r in first] == ["m1:codex-cli"]
+    assert first[0].get("task_id") is None
+    assert [r["external_id"] for r in second] == [
+        "m1:codex-cli:binaries:~/.local/bin/codex",
+    ]
+    assert second[0]["task_id"] == "task-m1:codex-cli"
+    assert result.accepted == 2
+
+
+def test_the_link_to_the_agent_record_is_never_handed_to_the_client() -> None:
+    """`corroborates` is this side's bookkeeping. The endpoint takes `task_id`, and a
+    field it does not declare is one more thing a regenerated client can refuse.
+
+    Asserted on the dump `_as_wire` converts, not on the request body: today's client
+    drops a field it does not know without a word, so the body would pass either way."""
+    dumped = _corroboration("npm", "@openai/codex").model_dump(
+        mode="json",
+        exclude_none=True,
+    )
+    assert "corroborates" not in dumped
+
+
+def test_a_corroboration_whose_agent_failed_is_not_sent(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """With no task to join it would mint one. Its agent's failure is already on the
+    run, so this one is counted in the log rather than reported a second time."""
+    fake = FakeTasks(
+        [
+            WireResponse(
+                resolved=[],
+                failed=[
+                    WireFailed(
+                        external_id="m1:codex-cli",
+                        task_id="ghost",
+                        reason=WireReason.TASK_NOT_FOUND,
+                        detail="gone",
+                    ),
+                ],
+            ),
+        ],
+    )
+    monkeypatch.setattr(sink_module, "ApiClient", lambda *a, **k: object())
+    monkeypatch.setattr(sink_module, "TasksApi", lambda client: fake)
+
+    with caplog.at_level(logging.WARNING):
+        result = _sink().publish(
+            "ws",
+            "dp",
+            _config(),
+            [_record(), _corroboration("binaries", "~/.local/bin/codex")],
+        )
+
+    assert len(fake.requests) == 1, "nothing to join, so no second request"
+    assert result.accepted == 0
+    assert [f.external_id for f in result.failed] == ["m1:codex-cli"]
+    assert "1 corroborating record(s) not sent" in caplog.text
+
+
+def test_corroborations_are_split_at_the_endpoint_limit_too(tasks: FakeTasks) -> None:
+    corroborations = [_corroboration("binaries", f"~/bin/{i}") for i in range(5)]
+    result = _sink(chunk_size=2).publish(
+        "ws",
+        "dp",
+        _config(),
+        [_record(), *corroborations],
+    )
+    assert [len(r.records) for r in tasks.requests] == [1, 2, 2, 1]
+    assert result.accepted == 6

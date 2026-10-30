@@ -20,7 +20,9 @@ import logging
 from typing import Any, List, Optional
 
 from arthur_client.api_bindings import Agent as ScopeAgent
-from arthur_client.api_bindings import AgentsV1Api
+from arthur_client.api_bindings import (
+    AgentsV1Api,
+)
 from arthur_client.api_bindings import Config as ScopeRuleConfig
 from arthur_client.api_bindings import (
     ExamplesConfig,
@@ -40,6 +42,7 @@ from genai_client import (
     TasksApi,
 )
 
+from job_executors.discovery_scan import is_corroboration
 from job_log_exporter import REPORT_AS_JOB_ERROR
 
 # Tasks per GET, and so agents per PUT. Well under GenAI Engine's own cap of 1,000:
@@ -469,12 +472,24 @@ def _creation_record(
     which changes when that route is uninstalled though the record does not. An
     ambiguous match names no record, since observations on the wrong one are worse than
     none.
+
+    A device's corroborations share its instance with the agent record they extend, so
+    they are left out of the count: they are that record's further evidence, never the
+    record the task was created from.
     """
     for fields in (_IDENTITY_FIELDS, _IDENTITY_FIELDS[:1]):
         matches = [
             record
             for record in evidence
             if _same_place(record["creation_source"], task_creation_source, fields)
+        ]
+        matches = [
+            record
+            for record in matches
+            if not any(
+                is_corroboration(record["external_id"], other["external_id"])
+                for other in matches
+            )
         ]
         if matches:
             return matches[0] if len(matches) == 1 else None

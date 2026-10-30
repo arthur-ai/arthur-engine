@@ -70,6 +70,24 @@ _matcher = _load_matcher()
 
 
 @dataclass(frozen=True)
+class IdentifierMatch:
+    """One catalog identifier that matched on a device, and the row that speaks for it.
+
+    Every row matches exactly one identifier, a (route, value) pair from the catalog, and
+    several rows can share one: five versions of Claude Code running from
+    ~/.local/share/claude/versions/, or one Chrome extension in four profiles. The
+    speaking row is picked among them by the same rule that picks a finding's primary.
+    """
+
+    route: str
+    value: str
+    kind: str
+    id: str
+    version: Optional[str]
+    path: Optional[str]
+
+
+@dataclass(frozen=True)
 class Finding:
     """One agent on one device, with every row that proved it.
 
@@ -82,12 +100,16 @@ class Finding:
     whether a live route proved the agent, the ids of the rows an identifier the vendor has
     replaced matched, and whether every row was one. AgentObservations carries none of them
     yet.
+
+    `identifiers` groups the same rows by the catalog identifier each matched, in the order
+    they first appear.
     """
 
     agent_id: str
     name: str
     classification: str
     evidence: tuple[dict[str, Any], ...]
+    identifiers: tuple[IdentifierMatch, ...]
     primary_kind: str
     primary_id: str
     version: Optional[str]
@@ -297,6 +319,7 @@ class Matcher:
             name=str(meta.get("name") or agent_id),
             classification=str(meta.get("classification") or ""),
             evidence=tuple(rows),
+            identifiers=self._identifiers(evidence, flags),
             primary_kind=str(primary.get("kind") or ""),
             primary_id=str(primary.get("id") or ""),
             version=None if version is None else str(version),
@@ -308,6 +331,40 @@ class Matcher:
             ),
             only_superseded=all(flags),
         )
+
+    def _identifiers(
+        self,
+        evidence: Sequence[tuple[Mapping[str, Any], Mapping[str, Any]]],
+        flags: Sequence[bool],
+    ) -> tuple[IdentifierMatch, ...]:
+        """Each identifier the rows matched, with its speaking row's version and path."""
+        groups: dict[tuple[str, str], list[int]] = {}
+        for i, (hit, _row) in enumerate(evidence):
+            key = (str(hit.get("route") or ""), str(hit.get("value") or ""))
+            groups.setdefault(key, []).append(i)
+
+        matches = []
+        for (route, value), members in groups.items():
+            rows = [dict(evidence[i][1]) for i in members]
+            described = _matcher.describe(
+                rows,
+                self._kind_rank,
+                [flags[i] for i in members],
+                self._live_kinds,
+            )
+            speaker = rows[described["primary"]]
+            version, path = described.get("version"), described.get("path")
+            matches.append(
+                IdentifierMatch(
+                    route=route,
+                    value=value,
+                    kind=str(speaker.get("kind") or ""),
+                    id=str(speaker.get("id") or ""),
+                    version=None if version is None else str(version),
+                    path=None if path is None else str(path),
+                ),
+            )
+        return tuple(matches)
 
 
 def _from_document(doc: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:

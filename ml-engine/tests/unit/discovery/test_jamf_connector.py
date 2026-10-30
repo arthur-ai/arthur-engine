@@ -33,11 +33,13 @@ from discovery.endpoint.jamf.connector import JamfConnector, _settings_from
 from discovery.endpoint.records import records_for
 from discovery.endpoint.scope import DeviceGroupError
 from job_executors.discovery_scan import (
+    CorroboratingRecord,
     DiscoveryConfigurationError,
     DiscoveryErrorCode,
     failure_code,
 )
 from tests.fakes.catalog import agent, document
+from tests.fakes.records import agent_records
 
 SCAN_AT = 1790100381
 LOG = logging.getLogger("discovery-test")
@@ -376,7 +378,8 @@ class FakeConfig:
         self.name = "acme jamf"
 
 
-def scan(fake: FakeJamf, monkeypatch: pytest.MonkeyPatch) -> list[Any]:
+def scan_all(fake: FakeJamf, monkeypatch: pytest.MonkeyPatch) -> list[Any]:
+    """Every record a scan yields, corroborations included."""
     monkeypatch.setattr(
         "discovery.endpoint.jamf.connector.JamfClient",
         lambda s, logger=None: client_for(fake),
@@ -385,7 +388,11 @@ def scan(fake: FakeJamf, monkeypatch: pytest.MonkeyPatch) -> list[Any]:
     return [r for batch in connector.scan(FakeConfig(CATALOG), 24, CREDS, FIELDS, LOG) for r in batch]  # type: ignore[arg-type]
 
 
-def test_a_healthy_mac_yields_one_record_per_agent(
+def scan(fake: FakeJamf, monkeypatch: pytest.MonkeyPatch) -> list[Any]:
+    return agent_records([scan_all(fake, monkeypatch)])
+
+
+def test_a_healthy_mac_yields_one_agent_record_and_a_corroboration_per_route(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     payload = frame(
@@ -395,10 +402,119 @@ def test_a_healthy_mac_yields_one_record_per_agent(
             scan_row("packages"),
         ],
     )
-    records = scan(FakeJamf([[computer("m1", payload)]]), monkeypatch)
-    assert len(records) == 1, "two routes, one agent, one record"
-    assert records[0].external_id == "m1:codex-cli"
-    assert records[0].name == "Codex CLI"
+    records = scan_all(FakeJamf([[computer("m1", payload)]]), monkeypatch)
+
+    agents = [r for r in records if not isinstance(r, CorroboratingRecord)]
+    assert [r.external_id for r in agents] == ["m1:codex-cli"], "two routes, one agent"
+    assert agents[0].name == "Codex CLI"
+    assert records[0] is agents[0], "the agent record leads, so it resolves first"
+    corroborations = [r for r in records if isinstance(r, CorroboratingRecord)]
+    assert {r.external_id for r in corroborations} == {
+        "m1:codex-cli:npm:@openai/codex",
+        "m1:codex-cli:binaries:~/.local/bin/codex",
+    }
+    assert {r.corroborates for r in corroborations} == {"m1:codex-cli"}
+
+
+CLAUDE_CODE = document(
+    agent(
+        "claude-code",
+        "Claude Code",
+        "Coding agent",
+        binaries=["~/.local/bin/claude"],
+        process_paths=["~/.local/share/claude/versions/"],
+        vscode_extensions=["anthropic.claude-code"],
+    ),
+)
+
+
+def scan_claude_code(
+    rows: list[dict[str, str]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> list[Any]:
+    fake = FakeJamf([[computer("m1", frame([*rows, scan_row("vscode")]))]])
+    monkeypatch.setattr(
+        "discovery.endpoint.jamf.connector.JamfClient",
+        lambda s, logger=None: client_for(fake),
+    )
+    connector = JamfConnector()
+    return [r for b in connector.scan(FakeConfig(CLAUDE_CODE), 24, CREDS, FIELDS, LOG) for r in b]  # type: ignore[arg-type]
+
+
+def test_every_identifier_is_evidence_and_an_extension_shows_its_editor_and_version(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The case that asked for this: a Mac carrying Claude Code three ways, where Scope
+    showed only the binary.
+
+    The extension is an install kind, so it is the PRIMARY row, and the agent record's
+    address is its id -- which names no editor and no version. Its corroboration's
+    address is the path, which names both, and is the only place on the Platform a
+    compromised build could be told from a clean one.
+    """
+    extension = "/Users/n/.cursor/extensions/anthropic.claude-code-2.1.313-darwin-arm64"
+    records = scan_claude_code(
+        [
+            row("file", "/Users/n/.local/bin/claude", loc="/Users/n/.local/bin/claude"),
+            row("proc", "/Users/n/.local/share/claude/versions/2.1.312"),
+            row("proc", "/Users/n/.local/share/claude/versions/2.1.314"),
+            row(
+                "vscodeext",
+                "anthropic.claude-code",
+                ver="2.1.313",
+                loc=extension,
+                extra="cursor",
+            ),
+        ],
+        monkeypatch,
+    )
+
+    agent_record, *rest = records
+    assert agent_record.external_id == "m1:claude-code"
+    assert agent_record.creation_source.address.resource_id == "anthropic.claude-code"
+
+    by_route = {r.external_id.split(":")[2]: r for r in rest}
+    assert sorted(by_route) == [
+        "binaries",
+        "process_paths",
+        "vscode_extensions",
+    ], "one per identifier: the two running versions share theirs"
+    assert all(isinstance(r, CorroboratingRecord) for r in rest)
+
+    ext = by_route["vscode_extensions"].creation_source
+    assert ext.address.instance == "m1"
+    assert ext.address.resource_kind == "vscodeext"
+    assert ext.address.resource_id == extension
+    assert ext.observations.version == "2.1.313"
+
+    binary = by_route["binaries"].creation_source.address
+    assert (binary.resource_kind, binary.resource_id) == (
+        "file",
+        "/Users/n/.local/bin/claude",
+    )
+    # proc carries no path in `loc`, so the address falls back to the row's id.
+    assert by_route["process_paths"].creation_source.address.resource_id.startswith(
+        "/Users/n/.local/share/claude/versions/",
+    )
+
+
+def test_an_upgrade_moves_the_address_of_a_corroboration_and_keeps_its_identity(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A running version's row id is its versioned path. A corroboration keyed on the
+    row would mint a mapping and a provenance entry per upgrade; keyed on the
+    identifier, its entry stays and its address moves. And none may share the agent
+    record's `external_id`, whose provenance entry it would overwrite."""
+    versions = "/Users/n/.local/share/claude/versions/"
+    before = scan_claude_code([row("proc", versions + "2.1.312")], monkeypatch)
+    after = scan_claude_code([row("proc", versions + "2.1.314")], monkeypatch)
+
+    ids = [r.external_id for r in before]
+    assert len(set(ids)) == len(ids)
+    assert ids == [r.external_id for r in after]
+    assert [r.creation_source.address.resource_id for r in after[1:]] == [
+        versions + "2.1.314",
+    ]
 
 
 def test_last_seen_is_the_scan_timestamp_not_the_poll(

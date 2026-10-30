@@ -24,9 +24,16 @@ from genai_client import (
     Configuration,
 )
 from genai_client import DiscoveredAgentRecord as WireRecord
-from genai_client import ResolveDiscoveredAgentsRequest, TasksApi
+from genai_client import (
+    ResolveDiscoveredAgentsRequest,
+    TasksApi,
+)
 
-from job_executors.discovery_scan import DiscoveryPublishResult, FailedDiscoveryRecord
+from job_executors.discovery_scan import (
+    CorroboratingRecord,
+    DiscoveryPublishResult,
+    FailedDiscoveryRecord,
+)
 
 # (connect, read). The generated client defaults to `_request_timeout=None`, which is
 # urllib3's wait-forever -- and a scan job is a thread in the runner, so a GenAI Engine
@@ -94,6 +101,12 @@ class GenAIEngineRecordSink:
         answer to a question already settled at authentication. The config's
         `discovery_source_id` is, because the endpoint records it in each resolved
         task's provenance, and that is how the fetch job finds the source's agents again.
+
+        TWO PASSES WHEN THE BATCH CORROBORATES. A `CorroboratingRecord` cannot name its
+        task until its agent record has one, so every other record resolves first and
+        each corroboration then goes out with its agent's `task_id`. One whose agent
+        record failed is not sent: it would mint a task of its own, and its agent's
+        failure is already reported.
         """
         if not records:
             # The request declares `min_length=1`, so an empty batch is a 422 rather
@@ -101,29 +114,26 @@ class GenAIEngineRecordSink:
             # connector that yields one anyway.
             return DiscoveryPublishResult(accepted=0)
 
-        accepted = 0
-        failed: list[FailedDiscoveryRecord] = []
+        agents = [r for r in records if not isinstance(r, CorroboratingRecord)]
+        corroborations = [r for r in records if isinstance(r, CorroboratingRecord)]
 
-        for start in range(0, len(records), self._chunk):
-            chunk = records[start : start + self._chunk]
-            response = (
-                self._tasks().resolve_discovered_agents_api_v2_agent_tasks_resolve_post(
-                    ResolveDiscoveredAgentsRequest(
-                        source_id=config.discovery_source_id,
-                        records=[_as_wire(r) for r in chunk],
-                    ),
-                    _request_timeout=self._timeout,
-                )
+        resolved, failed = self._resolve(config, agents)
+        task_ids = dict(resolved)
+        joining = [
+            c.model_copy(update={"task_id": task_ids[c.corroborates]})
+            for c in corroborations
+            if c.corroborates in task_ids
+        ]
+        if len(joining) < len(corroborations):
+            self._log.warning(
+                "Source config '%s': %s corroborating record(s) not sent, because the "
+                "agent record each corroborates did not resolve",
+                config.name,
+                len(corroborations) - len(joining),
             )
-            accepted += len(response.resolved)
-            failed.extend(
-                FailedDiscoveryRecord(
-                    external_id=f.external_id,
-                    reason=str(getattr(f.reason, "value", f.reason)),
-                    detail=f.detail,
-                )
-                for f in (response.failed or [])
-            )
+        joined, failed_joining = self._resolve(config, joining)
+        failed.extend(failed_joining)
+        accepted = len(resolved) + len(joined)
 
         if failed:
             # Reported once per batch rather than per record: a source misconfigured
@@ -138,6 +148,37 @@ class GenAIEngineRecordSink:
             )
 
         return DiscoveryPublishResult(accepted=accepted, failed=tuple(failed))
+
+    def _resolve(
+        self,
+        config: DiscoverySourceConfigSpec,
+        records: Sequence[DiscoveryOutputRecord],
+    ) -> tuple[list[tuple[str, str]], list[FailedDiscoveryRecord]]:
+        """Resolve `records` in chunks: (`external_id`, `task_id`) for each record that
+        resolved, and the records that did not. Sends nothing for an empty list."""
+        resolved: list[tuple[str, str]] = []
+        failed: list[FailedDiscoveryRecord] = []
+        for start in range(0, len(records), self._chunk):
+            chunk = records[start : start + self._chunk]
+            response = (
+                self._tasks().resolve_discovered_agents_api_v2_agent_tasks_resolve_post(
+                    ResolveDiscoveredAgentsRequest(
+                        source_id=config.discovery_source_id,
+                        records=[_as_wire(r) for r in chunk],
+                    ),
+                    _request_timeout=self._timeout,
+                )
+            )
+            resolved.extend((r.external_id, r.task_id) for r in response.resolved)
+            failed.extend(
+                FailedDiscoveryRecord(
+                    external_id=f.external_id,
+                    reason=str(getattr(f.reason, "value", f.reason)),
+                    detail=f.detail,
+                )
+                for f in (response.failed or [])
+            )
+        return resolved, failed
 
 
 def _as_wire(record: DiscoveryOutputRecord) -> WireRecord:
