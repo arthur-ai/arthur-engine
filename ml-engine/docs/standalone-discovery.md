@@ -558,7 +558,7 @@ the image):
 
 | File | Written by | Holds |
 |---|---|---|
-| `inventory.json` | the collector, run with `ARTHUR_OUT_DIR` set to the folder: [`dist/collect.sh`](../../integrations/endpoint-ai-discovery/dist/collect.sh) on macOS, [`dist/collect-linux.sh`](../../integrations/endpoint-ai-discovery/dist/collect-linux.sh) on Linux. It needs [osquery](https://osquery.io/downloads) on the machine, and not root: run as a user, it sees what that user can read | the scan's rows |
+| `inventory.json` | the collector, run with `ARTHUR_OUT_DIR` set to the folder: [`dist/collect.sh`](../../integrations/endpoint-ai-discovery/dist/collect.sh) on macOS, [`dist/collect-linux.sh`](../../integrations/endpoint-ai-discovery/dist/collect-linux.sh) on Linux. It needs [osquery](https://osquery.io/downloads) on the machine, and not root: run as a user, it sees what that user can read. Windows has no collector: there, the file is the output of upstream's [`discovery-windows.sql`](../../integrations/endpoint-ai-discovery/vendor/ai-detection-spec/dist/discovery-windows.sql) run through `osqueryi --json` (osquery 5.17.0 or later), kept as osqueryi writes it, in UTF-8 | the scan's rows |
 | `machine.json` | whatever ran the collector | who the machine is, below |
 
 The collector also writes `status.txt` and `inventory.ea` there; neither is read.
@@ -572,9 +572,9 @@ own id or hostname:
 
 | Key | Required | |
 |---|---|---|
-| `device_id` | yes | The left half of every `external_id`, so it must not change while the machine does: the platform UUID on macOS (`ioreg -rd1 -c IOPlatformExpertDevice`, `IOPlatformUUID`), `/etc/machine-id` on Linux. Never the hostname |
+| `device_id` | yes | The left half of every `external_id`, so it must not change while the machine does: the platform UUID on macOS (`ioreg -rd1 -c IOPlatformExpertDevice`, `IOPlatformUUID`), `/etc/machine-id` on Linux, `MachineGuid` under `HKLM\SOFTWARE\Microsoft\Cryptography` on Windows. Never the hostname |
 | `hostname` | no | Reported as each agent's `host_name` |
-| `platform` | no | `darwin` or `linux` |
+| `platform` | no | `darwin`, `linux` or `windows` |
 | `os_version` | no | Reported as each agent's `os_version` |
 
 **Freshness.** The engine re-reads the folder every interval; it changes only when the
