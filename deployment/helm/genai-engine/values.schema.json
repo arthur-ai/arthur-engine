@@ -567,12 +567,13 @@
                 }
             }
         },
-        "gcpDiscoveryConfig": {
+        "gcpCredentials": {
+            "description": "Google credentials for a Vertex AI model provider saved without a key file",
             "type": "object",
             "properties": {
                 "isEnabled": {
                     "type": "boolean",
-                    "description": "Enable GCP Vertex AI discovery configuration"
+                    "description": "Mount the GCP service account key and set the GOOGLE_* environment variables"
                 },
                 "googleCloudProject": {
                     "type": "string",
@@ -586,8 +587,29 @@
                     "type": "string",
                     "description": "Name of the K8s secret containing the GCP service account JSON key"
                 }
-            },
-            "required": ["isEnabled"]
+            }
+        },
+        "gcpDiscoveryConfig": {
+            "description": "Deprecated: use gcpCredentials. Still read when gcpCredentials is not set.",
+            "type": "object",
+            "properties": {
+                "isEnabled": {
+                    "type": "boolean",
+                    "description": "Deprecated alias of gcpCredentials.isEnabled"
+                },
+                "googleCloudProject": {
+                    "type": "string",
+                    "description": "Google Cloud project ID for Vertex AI integration"
+                },
+                "googleCloudLocation": {
+                    "type": "string",
+                    "description": "Google Cloud region/location"
+                },
+                "googleCredentialsSecretName": {
+                    "type": "string",
+                    "description": "Name of the K8s secret containing the GCP service account JSON key"
+                }
+            }
         }
     },
     "required": [
