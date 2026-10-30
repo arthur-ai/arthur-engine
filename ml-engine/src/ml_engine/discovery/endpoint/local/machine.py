@@ -9,8 +9,9 @@ host's identity beside the payload, and nothing here falls back to the engine's 
     {"device_id": "8915B3AB-...", "hostname": "my-laptop", "platform": "darwin"}
 
 `device_id` is required and is the left half of every `external_id`, so it must stay the
-same while the machine does: macOS's platform UUID, or Linux's `/etc/machine-id`. Never
-the hostname, which follows the network on a laptop. The rest is optional.
+same while the machine does: macOS's platform UUID, Linux's `/etc/machine-id`, or
+Windows' `MachineGuid`. Never the hostname, which follows the network on a laptop. The
+rest is optional.
 """
 
 import json
@@ -64,7 +65,7 @@ def read_machine(folder: Path) -> ManagedDevice:
     if not device_id:
         raise DiscoveryConfigurationError(
             f"{path} has no {DEVICE_ID_KEY}: the machine's stable id, its platform UUID "
-            f"on macOS or /etc/machine-id on Linux",
+            f"on macOS, /etc/machine-id on Linux, or MachineGuid on Windows",
         )
     return ManagedDevice(
         device_key=device_id,
@@ -86,7 +87,7 @@ def _string(doc: dict[str, Any], key: str, path: Path) -> Optional[str]:
 
 
 def _platform(value: Optional[str], path: Path) -> Optional[Platform]:
-    """darwin or linux, the two the collector is built for; absent is allowed, a
+    """darwin, linux or windows, the three a scan is built for; absent is allowed, a
     misspelling is not, since it would land the agent under no platform filter."""
     if value is None:
         return None
@@ -94,8 +95,8 @@ def _platform(value: Optional[str], path: Path) -> Optional[Platform]:
         platform = Platform(value.lower())
     except ValueError:
         platform = None
-    if platform not in (Platform.DARWIN, Platform.LINUX):
+    if platform not in (Platform.DARWIN, Platform.LINUX, Platform.WINDOWS):
         raise DiscoveryConfigurationError(
-            f"{path}: {PLATFORM_KEY} must be darwin or linux",
+            f"{path}: {PLATFORM_KEY} must be darwin, linux or windows",
         )
     return platform
