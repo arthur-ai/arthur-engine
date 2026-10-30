@@ -4512,11 +4512,47 @@
                     "Traces"
                 ],
                 "summary": "Receive Traces",
-                "description": "Receiver for OpenInference trace standard.",
+                "description": "Receiver for OpenInference trace standard. The body may be gzip-compressed (Content-Encoding: gzip).",
                 "operationId": "receive_traces_api_v1_traces_post",
                 "security": [
                     {
                         "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "content-encoding",
+                        "in": "header",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "Content-Encoding"
+                        }
+                    },
+                    {
+                        "name": "x-arthur-task",
+                        "in": "header",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Task for spans whose resource has no arthur.task attribute. For senders that can set headers but not resource attributes, such as the Claude Platform's OpenTelemetry export.",
+                            "title": "X-Arthur-Task"
+                        },
+                        "description": "Task for spans whose resource has no arthur.task attribute. For senders that can set headers but not resource attributes, such as the Claude Platform's OpenTelemetry export."
                     }
                 ],
                 "requestBody": {
@@ -4539,6 +4575,15 @@
                                 "schema": {}
                             }
                         }
+                    },
+                    "400": {
+                        "description": "The body is not a valid protobuf message, or not valid gzip."
+                    },
+                    "413": {
+                        "description": "A gzip body unpacks to more than 64 MiB."
+                    },
+                    "415": {
+                        "description": "Content-Encoding is neither gzip nor identity."
                     },
                     "422": {
                         "description": "Validation Error",

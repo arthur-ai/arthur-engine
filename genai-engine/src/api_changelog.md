@@ -23,6 +23,9 @@ The intention of this changelog is to document API changes as they happen to eff
 - **CHANGE** for **URL**: /api/v2/tasks/{task_id}/ml_evals/{eval_name}  added the optional property 'config/anyOf[subschema #1: LLMBaseConfigSettings]/thinking/anyOf[subschema #1: AnthropicThinkingParam]/block_binding' to the response with the '200' status
 
 # 10/26/2026
+- **CHANGE** for **URL**: /api/v1/traces  added the non-success response with the status `400`
+- **CHANGE** for **URL**: /api/v1/traces  added the non-success response with the status `413`
+- **CHANGE** for **URL**: /api/v1/traces  added the non-success response with the status `415`
 - **CHANGE** for **URL**: /api/v1/traces  added the optional property `traces/items/ingest_bytes` to the response with the `200` status
 
 # 10/20/2026
@@ -52,6 +55,10 @@ The intention of this changelog is to document API changes as they happen to eff
 - **CHANGE** for **URL**: /api/v2/agent-tasks/resolve  added `#/components/schemas/NetworkAgentCreationSource` to the `records/items/creation_source` request property `oneOf` list
 - **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions/{version_number}/generate-synthetic  added the new `updates` enum value to the request property `config/anyOf[subschema #1: LLMRequestConfigSettings]/thinking/anyOf[subschema #1: AnthropicThinkingParam]/display`
 - **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions/{version_number}/generate-synthetic/message  added the new `updates` enum value to the request property `config/anyOf[subschema #1: LLMRequestConfigSettings]/thinking/anyOf[subschema #1: AnthropicThinkingParam]/display`
+
+# 10/19/2026
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional `header` request parameter `content-encoding`
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional `header` request parameter `x-arthur-task`
 
 # 10/15/2026
 - **BREAKING CHANGE** for **URL**: /api/v1/agent-polling/execute-all  api path removed without deprecation
