@@ -40,11 +40,19 @@ from arthur_client.api_bindings import (
 )
 from arthur_client.api_bindings.exceptions import ForbiddenException
 from arthur_common.models.agent_discovery_schemas import DiscoveryOutputRecord
+from arthur_common.models.agent_governance_schemas import (
+    AgentObservations,
+    EndpointAgentCreationSource,
+    SourceAddress,
+)
 
 from discovery.endpoint.jamf.client import JamfError
 from discovery.endpoint.jamf.connector import JamfConnector
 from job_executors.discovery_output_contract import OutputContractError, check_columns
-from job_executors.discovery_scan import DiscoveryConfigurationError
+from job_executors.discovery_scan import (
+    CorroboratingRecord,
+    DiscoveryConfigurationError,
+)
 from job_executors.discovery_source_test_executor import (
     PREVIEW_DEADLINE_SECONDS,
     DiscoverySourceTestExecutor,
@@ -217,6 +225,34 @@ def test_returns_the_first_n_mapped_rows_and_stops_reading(job_log) -> None:
         "retrieve_discovery_source_credentials",
         "put_discovery_source_test_result",
     }
+
+
+def _corroboration(agent_external_id: str) -> CorroboratingRecord:
+    return CorroboratingRecord(
+        corroborates=agent_external_id,
+        external_id=f"{agent_external_id}:binaries:~/.local/bin/a",
+        name=f"agent-{agent_external_id}",
+        last_seen=datetime(2026, 9, 17, 12, 0, tzinfo=timezone.utc),
+        creation_source=EndpointAgentCreationSource(
+            vendor="jamf_pro",
+            address=SourceAddress(instance="m1", resource_id="~/.local/bin/a"),
+            observations=AgentObservations(),
+        ),
+    )
+
+
+def test_a_corroboration_is_not_a_row_of_its_own(job_log) -> None:
+    """A row per agent, as the sinks count them. A corroboration as a row would read as
+    the same agent again, and spend the limit on it."""
+    logger, _ = job_log
+    connector = FakeConnector(
+        batches=[[_record("a"), _corroboration("a"), _record("b"), _record("c")]],
+    )
+    client = _client()
+
+    _run(connector, _spec(preview_limit=2), client, logger)
+
+    assert [row["external_id"] for row in _delivered(client).rows] == ["a", "b"]
 
 
 def test_a_401_is_reachable_and_surfaces_the_vendors_error_redacted(job_log) -> None:
@@ -468,7 +504,7 @@ def test_a_status_written_into_the_outermost_message_is_still_read(job_log) -> N
     """Jamf's retries-exhausted error carries its last status only in its text."""
     logger, _ = job_log
     error = _VendorError(
-        "Jamf GET /api/v1/computers-inventory still failing after 3 attempts (HTTP 503)"
+        "Jamf GET /api/v1/computers-inventory still failing after 3 attempts (HTTP 503)",
     )
     client = _client()
 

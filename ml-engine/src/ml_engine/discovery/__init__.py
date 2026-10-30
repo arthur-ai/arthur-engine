@@ -88,9 +88,24 @@ def standalone_connectors() -> dict[str, DiscoveryConnectorFactory]:
     return {**source_connectors(), LOCAL_VENDOR: LocalConnector}
 
 
+def corroborating_vendors() -> frozenset[str]:
+    """Vendors whose agent records are followed by a `CorroboratingRecord` per catalog
+    identifier: those that read a machine's payload through `discovery.endpoint.records`.
+
+    Provenance does not keep `corroborates`, so a reader of it tells a corroboration
+    from its agent record by the `external_id` alone, which any vendor's could resemble.
+    It reads that shape only on these vendors' records. A connector that starts calling
+    `records_for` is added here.
+    """
+    return frozenset(
+        {JAMF_VENDOR, GCP_COMPUTE_ENGINE_VENDOR, AWS_EC2_VENDOR, LOCAL_VENDOR},
+    )
+
+
 __all__ = [
     "source_connectors",
     "standalone_connectors",
+    "corroborating_vendors",
     "LocalConnector",
     "LOCAL_VENDOR",
     "JamfConnector",

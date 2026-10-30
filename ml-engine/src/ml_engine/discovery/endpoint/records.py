@@ -329,6 +329,10 @@ def _corroborations(
     address and none of the observations, so the address is the only place this
     evidence's location can be read: an extension's path names its editor and version
     (~/.cursor/extensions/anthropic.claude-code-2.1.314), where its id names neither.
+
+    An identifier whose row has neither is left out. The evidence schema lets a row's id
+    be blank, and an address with no resource is one `SourceAddress` refuses, which
+    would end the scan at this device over one piece of evidence.
     """
     return [
         CorroboratingRecord(
@@ -362,6 +366,7 @@ def _corroborations(
             ),
         )
         for match in finding.identifiers
+        if (match.path or match.id).strip()
     ]
 
 

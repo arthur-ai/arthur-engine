@@ -517,6 +517,26 @@ def test_an_upgrade_moves_the_address_of_a_corroboration_and_keeps_its_identity(
     ]
 
 
+def test_an_identifier_whose_row_names_no_resource_is_left_out(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The evidence schema lets a row's id be blank, and a process matches on its `loc`
+    as well as its id. With no id, and a kind whose `loc` is no path, its identifier has
+    no address: it is left out rather than ending the scan at this Mac."""
+    records = scan_claude_code(
+        [
+            row("file", "/Users/n/.local/bin/claude", loc="/Users/n/.local/bin/claude"),
+            row("proc", "", loc="/Users/n/.local/share/claude/versions/2.1.314"),
+        ],
+        monkeypatch,
+    )
+
+    assert [r.external_id for r in records] == [
+        "m1:claude-code",
+        "m1:claude-code:binaries:~/.local/bin/claude",
+    ]
+
+
 def test_last_seen_is_the_scan_timestamp_not_the_poll(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

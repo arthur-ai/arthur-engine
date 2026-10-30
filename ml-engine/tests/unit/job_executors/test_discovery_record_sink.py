@@ -359,7 +359,7 @@ def test_a_corroboration_goes_out_after_its_agent_record_naming_that_task(
         "m1:codex-cli:binaries:~/.local/bin/codex",
     ]
     assert second[0]["task_id"] == "task-m1:codex-cli"
-    assert result.accepted == 2
+    assert result.accepted == 1, "the agent, not each piece of its evidence"
 
 
 def test_the_link_to_the_agent_record_is_never_handed_to_the_client() -> None:
@@ -411,6 +411,48 @@ def test_a_corroboration_whose_agent_failed_is_not_sent(
     assert result.accepted == 0
     assert [f.external_id for f in result.failed] == ["m1:codex-cli"]
     assert "1 corroborating record(s) not sent" in caplog.text
+    assert "1 of 1 record(s) could not be resolved" in caplog.text, "out of those sent"
+
+
+def test_a_corroboration_that_fails_on_its_own_is_reported(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Its agent resolved, so no other failure stands for it. It is in `failed`
+    though `accepted` never counts corroborations: nothing else would show it."""
+    corroboration = _corroboration("binaries", "~/.local/bin/codex")
+    fake = FakeTasks(
+        [
+            WireResponse(
+                resolved=[
+                    WireResolved(
+                        external_id="m1:codex-cli",
+                        task_id="t1",
+                        name="Codex CLI",
+                        resolved_by=WireMethod.EXTERNAL_ID,
+                    ),
+                ],
+                failed=[],
+            ),
+            WireResponse(
+                resolved=[],
+                failed=[
+                    WireFailed(
+                        external_id=corroboration.external_id,
+                        task_id="t1",
+                        reason=WireReason.TASK_NOT_FOUND,
+                        detail="deleted between the two requests",
+                    ),
+                ],
+            ),
+        ],
+    )
+    monkeypatch.setattr(sink_module, "ApiClient", lambda *a, **k: object())
+    monkeypatch.setattr(sink_module, "TasksApi", lambda client: fake)
+
+    result = _sink().publish("ws", "dp", _config(), [_record(), corroboration])
+
+    assert result.accepted == 1
+    assert [f.external_id for f in result.failed] == [corroboration.external_id]
 
 
 def test_corroborations_are_split_at_the_endpoint_limit_too(tasks: FakeTasks) -> None:
@@ -422,4 +464,4 @@ def test_corroborations_are_split_at_the_endpoint_limit_too(tasks: FakeTasks) ->
         [_record(), *corroborations],
     )
     assert [len(r.records) for r in tasks.requests] == [1, 2, 2, 1]
-    assert result.accepted == 6
+    assert result.accepted == 1

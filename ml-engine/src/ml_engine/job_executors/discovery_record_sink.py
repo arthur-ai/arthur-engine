@@ -107,6 +107,10 @@ class GenAIEngineRecordSink:
         each corroboration then goes out with its agent's `task_id`. One whose agent
         record failed is not sent: it would mint a task of its own, and its agent's
         failure is already reported.
+
+        `accepted` counts agent records alone, as `StandaloneRecordSink`'s does, so the
+        run's count does not grow with the evidence behind each agent. A corroboration
+        that fails on its own is in `failed`, since nothing else would report it.
         """
         if not records:
             # The request declares `min_length=1`, so an empty batch is a 422 rather
@@ -131,23 +135,23 @@ class GenAIEngineRecordSink:
                 config.name,
                 len(corroborations) - len(joining),
             )
-        joined, failed_joining = self._resolve(config, joining)
+        _, failed_joining = self._resolve(config, joining)
         failed.extend(failed_joining)
-        accepted = len(resolved) + len(joined)
 
         if failed:
             # Reported once per batch rather than per record: a source misconfigured
             # against a deleted task fails every record it produces, and one line each
-            # would bury the run's own outcome.
+            # would bury the run's own outcome. Out of what was sent, which leaves out
+            # the corroborations held back above.
             self._log.warning(
                 "Source config '%s': %s of %s record(s) could not be resolved (%s)",
                 config.name,
                 len(failed),
-                len(records),
+                len(agents) + len(joining),
                 ", ".join(sorted({f.reason for f in failed})),
             )
 
-        return DiscoveryPublishResult(accepted=accepted, failed=tuple(failed))
+        return DiscoveryPublishResult(accepted=len(resolved), failed=tuple(failed))
 
     def _resolve(
         self,

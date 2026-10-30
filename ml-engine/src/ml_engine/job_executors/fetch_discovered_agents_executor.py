@@ -42,7 +42,8 @@ from genai_client import (
     TasksApi,
 )
 
-from job_executors.discovery_scan import is_corroboration
+from discovery import corroborating_vendors
+from job_executors.discovery_scan import corroborated_candidates
 from job_log_exporter import REPORT_AS_JOB_ERROR
 
 # Tasks per GET, and so agents per PUT. Well under GenAI Engine's own cap of 1,000:
@@ -473,27 +474,37 @@ def _creation_record(
     ambiguous match names no record, since observations on the wrong one are worse than
     none.
 
-    A device's corroborations share its instance with the agent record they extend, so
-    they are left out of the count: they are that record's further evidence, never the
-    record the task was created from.
+    Corroborations are never candidates. One never creates a task, yet it shares its
+    agent record's instance, and once that record's address has moved off the route the
+    task was created from, the corroboration of that route still holds the task's
+    address.
     """
+    candidates = _agent_records(evidence)
     for fields in (_IDENTITY_FIELDS, _IDENTITY_FIELDS[:1]):
         matches = [
             record
-            for record in evidence
+            for record in candidates
             if _same_place(record["creation_source"], task_creation_source, fields)
-        ]
-        matches = [
-            record
-            for record in matches
-            if not any(
-                is_corroboration(record["external_id"], other["external_id"])
-                for other in matches
-            )
         ]
         if matches:
             return matches[0] if len(matches) == 1 else None
     return None
+
+
+def _agent_records(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """`records` less the corroborations: a record of a vendor that corroborates whose
+    `external_id` extends another of the same source's."""
+    named = {(record["source_id"], record["external_id"]) for record in records}
+    vendors = corroborating_vendors()
+    return [
+        record
+        for record in records
+        if record["creation_source"]["vendor"] not in vendors
+        or not any(
+            (record["source_id"], candidate) in named
+            for candidate in corroborated_candidates(record["external_id"])
+        )
+    ]
 
 
 def _same_place(

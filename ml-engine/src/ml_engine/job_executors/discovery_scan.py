@@ -324,7 +324,12 @@ class FailedDiscoveryRecord:
 
 @dataclass(frozen=True)
 class DiscoveryPublishResult:
-    """What GenAI Engine made of one batch: every record is in exactly one of the two."""
+    """What GenAI Engine made of one batch: every agent record is in exactly one of the two.
+
+    A `CorroboratingRecord` is further evidence for one of them rather than an agent, so
+    `accepted` never counts it, and `failed` holds it only when it failed on its own,
+    after its agent record resolved.
+    """
 
     accepted: int
     failed: Sequence[FailedDiscoveryRecord] = ()
@@ -361,9 +366,17 @@ def corroboration_external_id(agent_external_id: str, route: str, value: str) ->
     return f"{agent_external_id}:{route}:{value}"
 
 
-def is_corroboration(external_id: str, agent_external_id: str) -> bool:
-    """Whether `external_id` is a corroboration of the record `agent_external_id`."""
-    return external_id.startswith(f"{agent_external_id}:")
+def corroborated_candidates(external_id: str) -> list[str]:
+    """Each `external_id` that `corroboration_external_id` could have extended into this
+    one: every prefix a route and a value follow.
+
+    Only candidates. The shape proves nothing on its own -- a SIEM's `external_id` is
+    whatever its query returns, and a Wiz technology's is `<workload>:<technology>` --
+    so a reader takes it only from a vendor in `discovery.corroborating_vendors()`, and
+    only where a candidate is another record of the same source.
+    """
+    cuts = [i for i, char in enumerate(external_id) if char == ":"]
+    return [external_id[:cut] for cut in cuts[:-1]]
 
 
 class DiscoveryRecordSink(Protocol):
@@ -374,13 +387,15 @@ class DiscoveryRecordSink(Protocol):
     against that endpoint.
 
     A `CorroboratingRecord` resolves only after the record it `corroborates`, onto that
-    record's task; one whose agent record failed is not sent.
+    record's task; one whose agent record failed is not sent, and that failure stands for
+    it.
 
-    Accepted means every record that resolved, whether it created a task or joined one
-    that already existed -- a source that reports the same twenty agents every scan
-    contributes twenty each time. The count says how much of what the source produced
-    survived the trip, not how many agents are new, and nothing downstream should
-    present it as a count of new agents.
+    Accepted means every agent record that resolved, whether it created a task or joined
+    one that already existed -- a source that reports the same twenty agents every scan
+    contributes twenty each time, however much evidence each one brings, and a sink that
+    drops corroborations counts the same as one that sends them. The count says how much
+    of what the source produced survived the trip, not how many agents are new, and
+    nothing downstream should present it as a count of new agents.
 
     A RECORD THAT FAILS DOES NOT FAIL ITS BATCH. GenAI Engine resolves the rest and
     reports the failure alongside them, and the sink hands both back. There is nothing
@@ -450,7 +465,8 @@ class DiscoveryScanOutcome:
     )
     finished_at: Optional[datetime] = None
     batches_published: int = 0
-    # Records the sink accepted, created and updated alike -- see DiscoveryRecordSink.
+    # Agent records the sink accepted, created and updated alike -- see
+    # DiscoveryRecordSink.
     records_published: int = 0
     # Records GenAI Engine could not resolve. They do not fail the run: the source
     # reported them and the rest of their batch landed, so the scan succeeded and these
