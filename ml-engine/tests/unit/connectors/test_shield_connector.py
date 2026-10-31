@@ -24,15 +24,15 @@ from arthur_client.api_bindings import (
 from arthur_common.models.connectors import ConnectorPaginationOptions
 from arthur_common.models.enums import ModelProblemType
 from arthur_common.models.request_schemas import NewRuleRequest
+from pydantic import ValidationError
+
+from config.config import Config
 from connectors.shield_connector import (
     EngineInternalConnector,
     ShieldBaseConnector,
     ShieldConnector,
 )
-from pydantic import ValidationError
 from tools.agentic_filters import SHIELD_SORT_DESC, SHIELD_SORT_FILTER
-
-from config.config import Config
 
 logger = logging.getLogger("job_logger")
 
@@ -506,14 +506,25 @@ def test_shield_task_and_rule_management(
                 "created_at": int(datetime.now(timezone.utc).timestamp()),
                 "deactivated_at": None,
                 "message": None,
+                "task_id": task.id,
             },
         ),
         method="POST",
         status=200,
     )
 
-    api_key_resp = conn.create_task_validation_key(task.id)
+    create_key = conn._api_keys_client.create_api_key_auth_api_keys_post
+    with patch.object(
+        conn._api_keys_client,
+        "create_api_key_auth_api_keys_post",
+        wraps=create_key,
+    ) as create_key_spy:
+        api_key_resp = conn.create_task_validation_key(task.id)
     assert api_key_resp.id == task_validation_key_id
+    # The key is requested for this task only, and the engine confirmed it.
+    request = create_key_spy.call_args.kwargs["new_api_key_request"]
+    assert request.task_id == task.id
+    assert api_key_resp.task_id == task.id
 
     # Mock task validation key deletion response
     urllib3_mock.add_response(

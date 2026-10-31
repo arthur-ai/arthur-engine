@@ -8,10 +8,12 @@ from typing import Optional
 import bcrypt
 from arthur_common.models.enums import APIKeysRolesEnum
 from fastapi import HTTPException
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from config.config import Config
 from db_models import DatabaseApiKey
+from db_models.task_models import DatabaseTask
 from schemas.internal_schemas import ApiKey
 
 logger = logging.getLogger(__name__)
@@ -27,6 +29,7 @@ class ApiKeyRepository:
         roles: list[APIKeysRolesEnum],
         org_id: Optional[uuid.UUID] = None,
         commit: bool = True,
+        task_id: Optional[str] = None,
     ) -> ApiKey:
         # Check the number of active keys
         active_keys_count = (
@@ -41,6 +44,24 @@ class ApiKeyRepository:
                 detail="Maximum number of active keys reached",
             )
 
+        if task_id is not None:
+            # A task-scoped key inherits the task's org, so it is never an admin
+            # key and every org-scope check applies to it as well.
+            task_org_id = self.db_session.execute(
+                select(DatabaseTask.org_id).where(DatabaseTask.id == task_id),
+            ).scalar_one_or_none()
+            if task_org_id is None:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Task {task_id} not found",
+                )
+            if org_id is not None and org_id != task_org_id:
+                raise HTTPException(
+                    status_code=400,
+                    detail="org_id does not match the task's organization",
+                )
+            org_id = task_org_id
+
         key = secrets.token_urlsafe(32)  # Generate a random API key
         key_hash = self.__get_key_hash(key)
 
@@ -50,6 +71,7 @@ class ApiKeyRepository:
             description=description,
             roles=[role.value for role in roles],
             org_id=org_id,
+            task_id=task_id,
         )
         self.db_session.add(db_api_key)
         if commit:

@@ -2,6 +2,14 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 10/30/2026
+- **CHANGE** for **URL**: /api/v2/inferences/overview  the `task_ids` request property's maxItems was unset from `1000`
+- **CHANGE** for **URL**: /auth/api_keys/  added the optional property `items/task_id` to the response with the `200` status
+- **CHANGE** for **URL**: /auth/api_keys/  added the new optional request property `task_id`
+- **CHANGE** for **URL**: /auth/api_keys/  added the optional property `task_id` to the response with the `200` status
+- **CHANGE** for **URL**: /auth/api_keys/deactivate/{api_key_id}  added the optional property `task_id` to the response with the `200` status
+- **CHANGE** for **URL**: /auth/api_keys/{api_key_id}  added the optional property `task_id` to the response with the `200` status
+
 # 10/28/2026
 - **CHANGE** for **URL**: /api/v2/inferences/overview  endpoint added
 

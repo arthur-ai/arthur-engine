@@ -36,12 +36,24 @@ class DatabaseApiKey(Base):
         ForeignKey("organizations.id"),
         nullable=True,
     )
+    # NULL = not limited to one task. Non-null = task-scoped key; org_id is then
+    # the task's org, so a task-scoped key is never an admin key.
+    task_id: Mapped[Optional[str]] = mapped_column(
+        String,
+        ForeignKey("tasks.id", ondelete="CASCADE"),
+        nullable=True,
+    )
 
     __table_args__ = (
         Index(
             "ix_api_keys_org_id",
             "org_id",
             postgresql_where=text("org_id IS NOT NULL"),
+        ),
+        Index(
+            "ix_api_keys_task_id",
+            "task_id",
+            postgresql_where=text("task_id IS NOT NULL"),
         ),
     )
 

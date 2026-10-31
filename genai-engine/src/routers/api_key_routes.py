@@ -2,8 +2,6 @@ import logging
 from uuid import UUID
 
 from arthur_common.models.enums import APIKeysRolesEnum
-from arthur_common.models.request_schemas import NewApiKeyRequest
-from arthur_common.models.response_schemas import ApiKeyResponse
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from starlette import status
@@ -16,6 +14,7 @@ from config.config import Config
 from dependencies import get_db_session
 from repositories.api_key_repository import ApiKeyRepository
 from routers.route_handler import GenaiEngineRoute
+from schemas.api_key_schemas import ApiKeyResponse, NewApiKeyRequest
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import User
 from utils import constants
@@ -24,6 +23,17 @@ from utils.users import permission_checker
 # TENANT-USER keys are only mintable via the public tenant signup flow (UP-4430);
 # admins reach this endpoint via API_KEY_WRITE and must not be able to create them.
 _ADMIN_FORBIDDEN_ROLES = frozenset([constants.TENANT_USER])
+
+# Roles that act across the whole org or deployment, so they cannot be limited
+# to one task. A task-scoped key may carry only the remaining roles.
+_TASK_SCOPE_FORBIDDEN_ROLES = frozenset(
+    [
+        constants.ORG_ADMIN,
+        constants.ORG_AUDITOR,
+        constants.DEFAULT_RULE_ADMIN,
+        constants.ADMIN_KEY,
+    ],
+)
 
 api_key_validator_creators = [APIKeyValidatorCreator(APIKeyValidatorType.MASTER)]
 multi_validator = MultiMethodValidator(api_key_validator_creators)
@@ -64,11 +74,23 @@ def create_api_key(
                 f"use the tenant signup flow."
             ),
         )
+    if new_api_key.task_id is not None:
+        org_wide = {
+            r.value
+            for r in (new_api_key.roles or [])
+            if r.value in _TASK_SCOPE_FORBIDDEN_ROLES
+        }
+        if org_wide:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Roles {sorted(org_wide)} cannot be scoped to a single task.",
+            )
     try:
         api_key_repo = ApiKeyRepository(db_session)
         api_key = api_key_repo.create_api_key(
             description=new_api_key.description,
             roles=new_api_key.roles or [],
+            task_id=str(new_api_key.task_id) if new_api_key.task_id else None,
         )
         return api_key._to_response_model(
             message="The provided key is only available for display now. "

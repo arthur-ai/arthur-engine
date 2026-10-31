@@ -34,7 +34,6 @@ from arthur_common.models.request_schemas import (
     SearchTasksRequest,
 )
 from arthur_common.models.response_schemas import (
-    ApiKeyResponse,
     ChatDefaultTaskResponse,
     ChatDocumentContext,
     ChatResponse,
@@ -73,6 +72,7 @@ from schemas.agent_discovery_schemas import (
     ResolveDiscoveredAgentsResponse,
 )
 from schemas.agentic_prompt_schemas import AgenticPrompt
+from schemas.api_key_schemas import ApiKeyResponse
 from schemas.enums import (
     RagAPIKeyAuthenticationProviderEnum,
     RagProviderAuthenticationMethodEnum,

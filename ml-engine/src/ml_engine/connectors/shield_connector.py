@@ -638,12 +638,22 @@ class ShieldBaseConnector(Connector, ABC):
             raise
 
     def create_task_validation_key(self, task_id: str) -> ApiKeyResponse:
+        # task_id binds the key to this task in the GenAI Engine, so a leaked key
+        # cannot write traces or validations into other tasks.
         api_key_resp = self._api_keys_client.create_api_key_auth_api_keys_post(
             new_api_key_request=NewApiKeyRequest(
                 description=f"Task Validation Key - {task_id}",
                 roles=[APIKeysRolesEnum.VALIDATION_MINUS_USER],
+                task_id=task_id,
             ),
         )
+        if api_key_resp.task_id != task_id:
+            # An engine that predates task-scoped keys ignores the field and mints
+            # a key that works for every task. Keep it working, but say so.
+            self.logger.warning(
+                f"GenAI Engine did not scope the validation key to task {task_id}; "
+                "upgrade the GenAI Engine to get task-scoped keys.",
+            )
         return api_key_resp
 
     def delete_task_validation_key(self, api_key_id: str) -> None:
