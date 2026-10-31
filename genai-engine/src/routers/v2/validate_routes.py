@@ -6,7 +6,7 @@ from arthur_common.models.request_schemas import (
     ResponseValidationRequest,
 )
 from arthur_common.models.response_schemas import HTTPError, ValidationResult
-from fastapi import APIRouter, Depends, Header
+from fastapi import APIRouter, Depends, Header, HTTPException
 from sqlalchemy.orm import Session
 
 from config.cache_config import cache_config
@@ -202,9 +202,19 @@ def validate_response_endpoint(
         # inference belongs to a task in the caller's org so a tenant can't
         # bind a foreign inference to their own task.
         if org_scope is not None:
-            InferenceRepository(db_session).get_inference(
+            inference = InferenceRepository(db_session).get_inference(
                 str(inference_id), org_scope=org_scope
             )
+            # A task-scoped key may only validate inferences of its own task.
+            if (
+                current_user is not None
+                and current_user.task_scope is not None
+                and str(inference.task_id) != str(task_id)
+            ):
+                raise HTTPException(
+                    status_code=404,
+                    detail="Inference %s not found." % inference_id,
+                )
         tasks_rules_repo = TasksRulesRepository(db_session)
         task_rules = tasks_rules_repo.get_task_rules_ids_cached(str(task_id))
         rules_repo = RuleRepository(db_session)

@@ -279,6 +279,23 @@ def enforce_query_org_scope(
                 org_task_ids &= {user.task_scope}
 
             located = _find_task_ids_holder(kwargs, query_param)
+            if located is None and user.task_scope is not None:
+                # A route that names a single task (e.g. `TraceTimeSeriesRequest.task_id`)
+                # must name the key's own task; a route naming no task at all is
+                # refused, so a task-scoped key never falls through unconstrained.
+                single = _find_task_ids_holder(kwargs, "task_id")
+                if single is None:
+                    raise HTTPException(
+                        status_code=403,
+                        detail="This API key is scoped to one task and cannot use this route.",
+                        headers={"full_stacktrace": "false"},
+                    )
+                if str(single[2]) != user.task_scope:
+                    raise HTTPException(
+                        status_code=404,
+                        detail="Task not found",
+                        headers={"full_stacktrace": "false"},
+                    )
             if located is None:
                 # The handler doesn't accept this field — nothing to constrain.
                 return await _call(func, *args, **kwargs)

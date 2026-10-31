@@ -268,6 +268,14 @@ class TraceIngestionService:
                 default=DEFAULT_ORG_ID,
             )
 
+            # A scoped key may not add spans to a trace another task already owns:
+            # trace metadata keeps its first task, so the spans would surface there.
+            foreign_traces = (
+                self._traces_owned_by_other_tasks(resource_span, task_scope)
+                if task_scope is not None
+                else set()
+            )
+
             # Per trace in this resource span, keyed by the span's raw traceId:
             # bytes received, stored spans, and whether any span was rejected.
             trace_bytes: dict[Any, int] = {}
@@ -288,6 +296,14 @@ class TraceIngestionService:
                             trace_bytes.get(trace_key, 0)
                             + span_ingest_bytes[span_index]
                         )
+
+                    if trace_key in foreign_traces:
+                        rejected_spans += 1
+                        rejected_reasons.append(
+                            "Rejected span: its trace belongs to a different task "
+                            "than this API key's.",
+                        )
+                        continue
 
                     try:
                         # Pass the resolved task ID and resource_id to the span processing
@@ -338,6 +354,36 @@ class TraceIngestionService:
             rejected_spans,
             rejected_reasons,
         )
+
+    def _traces_owned_by_other_tasks(
+        self,
+        resource_span: dict[str, Any],
+        task_id: str,
+    ) -> set[Any]:
+        """Raw traceIds in this resource span whose trace is already stored under
+        a task other than `task_id`."""
+        hex_by_raw: dict[Any, str] = {}
+        for scope_span in resource_span.get("scopeSpans", []):
+            for span_data in scope_span.get("spans", []):
+                raw = span_data.get("traceId") if isinstance(span_data, dict) else None
+                if not raw or raw in hex_by_raw:
+                    continue
+                try:
+                    hex_by_raw[raw] = trace_utils.convert_id_to_hex(raw)
+                except ValueError:
+                    # Malformed ids are rejected later by _process_span_data.
+                    continue
+        if not hex_by_raw:
+            return set()
+        owned_elsewhere = set(
+            self.db_session.execute(
+                select(DatabaseTraceMetadata.trace_id).where(
+                    DatabaseTraceMetadata.trace_id.in_(set(hex_by_raw.values())),
+                    DatabaseTraceMetadata.task_id != task_id,
+                ),
+            ).scalars(),
+        )
+        return {raw for raw, hex_id in hex_by_raw.items() if hex_id in owned_elsewhere}
 
     def _extract_task_id_from_resource_attributes(
         self,
