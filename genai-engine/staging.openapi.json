@@ -2531,7 +2531,7 @@
                     "Stateless Validation"
                 ],
                 "summary": "Stateless Validate",
-                "description": "Stateless validation of arbitrary input against inline rule specs. Does NOT persist results, does NOT create an inference, and is task-less. Intended for ad-hoc checks such as validating tool-call output before passing it back to an LLM.\n\nEach entry in `checks` is a `NewRuleRequest` \u2014 the same shape accepted by the rule-management API. `type` is a `RuleType` enum value: `PromptInjectionRule`, `ToxicityRule`, `PIIDataRule`, `ModelHallucinationRuleV2`, `RegexRule`, `KeywordRule`, `ModelSensitiveDataRule`.\n\nHallucination requires `response` + `context`; if `context` is missing the rule engine returns a `Skipped` result. A check may return result=`Model Not Available` if its underlying model has not finished loading; callers should treat this as transient and retry.",
+                "description": "Stateless validation of arbitrary input against inline rule specs. Does NOT persist results, does NOT create an inference, and is task-less. Intended for ad-hoc checks such as validating tool-call output before passing it back to an LLM.\n\nEach entry in `checks` is a `NewRuleRequest` \u2014 the same shape accepted by the rule-management API. `type` is a `RuleType` enum value: `PromptInjectionRule`, `ToxicityRule`, `PIIDataRule`, `ModelHallucinationRuleV2`, `RegexRule`, `KeywordRule`, `ModelSensitiveDataRule`.\n\n`apply_to_prompt` and `apply_to_response` decide which of `prompt` and `response` a check scores; a check that applies to both fails if either one violates it.\n\nHallucination requires `response` + `context`; if `context` is missing the rule engine returns a `Skipped` result. A check may return result=`Model Not Available` if its underlying model has not finished loading; callers should treat this as transient and retry.",
                 "operationId": "stateless_validate_api_v2_validate_post",
                 "requestBody": {
                     "content": {
@@ -18061,6 +18061,49 @@
                 ],
                 "title": "APIKeysRolesEnum"
             },
+            "Actor": {
+                "properties": {
+                    "kind": {
+                        "$ref": "#/components/schemas/ActorKind",
+                        "description": "How the actor authenticated."
+                    },
+                    "id": {
+                        "type": "string",
+                        "title": "Id",
+                        "description": "Stable identifier: the identity provider subject for users, the API key id for API keys, 'master-key' for the admin key, and the named person for on-behalf-of requests."
+                    },
+                    "name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Name",
+                        "description": "Human-readable label: the user's email, the API key description, or the on-behalf-of person."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "kind",
+                    "id"
+                ],
+                "title": "Actor",
+                "description": "The principal that created or changed a resource."
+            },
+            "ActorKind": {
+                "type": "string",
+                "enum": [
+                    "user",
+                    "api_key",
+                    "master_key",
+                    "on_behalf_of_user"
+                ],
+                "title": "ActorKind",
+                "description": "Who made a change: the kind of credential the request was authenticated with."
+            },
             "AgentCreationSource": {
                 "oneOf": [
                     {
@@ -19400,6 +19443,17 @@
                         ],
                         "title": "Deleted At",
                         "description": "Time that this prompt was deleted"
+                    },
+                    "created_by": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/Actor"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Who created this version. None when it was not recorded."
                     }
                 },
                 "type": "object",
@@ -19567,6 +19621,17 @@
                         "type": "array",
                         "title": "Tags",
                         "description": "List of tags for the llm asset"
+                    },
+                    "created_by": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/Actor"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Who created this version. None when it was not recorded."
                     },
                     "num_messages": {
                         "type": "integer",
@@ -24212,7 +24277,6 @@
                             "type": "string"
                         },
                         "type": "array",
-                        "maxItems": 1000,
                         "minItems": 1,
                         "title": "Task Ids",
                         "description": "Task IDs to get the inference overview for"
@@ -25542,6 +25606,17 @@
                         "type": "array",
                         "title": "Tags",
                         "description": "List of tags for the llm asset"
+                    },
+                    "created_by": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/Actor"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Who created this version. None when it was not recorded."
                     }
                 },
                 "type": "object",
@@ -34197,6 +34272,17 @@
                         "format": "date-time",
                         "title": "Created At",
                         "description": "Timestamp when this version was created."
+                    },
+                    "created_by": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/Actor"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Who created this version. None when it was not recorded."
                     }
                 },
                 "type": "object",

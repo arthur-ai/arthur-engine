@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from db_models import DatabaseRule
 from db_models.task_models import DatabaseTask, DatabaseTaskToRules
+from schemas.actor_schemas import Actor, created_by_columns
 from schemas.internal_schemas import Rule
 from utils import constants
 
@@ -82,8 +83,10 @@ class RuleRepository:
         rules = [Rule._from_database_model(op) for op in results]
         return rules, count
 
-    def create_rule(self, rule: Rule) -> Rule:
+    def create_rule(self, rule: Rule, created_by: Optional[Actor] = None) -> Rule:
         created_rule_db = rule._to_database_model()
+        for column, value in created_by_columns(created_by).items():
+            setattr(created_rule_db, column, value)
         self.db_session.add(created_rule_db)
         self.db_session.commit()
 

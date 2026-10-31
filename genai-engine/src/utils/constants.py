@@ -226,6 +226,9 @@ ORG_AUDITOR: str = "ORG-AUDITOR"
 ADMIN_KEY: str = "ADMIN-KEY"
 TENANT_USER: str = "TENANT-USER"
 
+# Header the admin key uses to name the person it is acting for.
+ON_BEHALF_OF_HEADER = "X-Arthur-On-Behalf-Of"
+
 LEGACY_KEYCLOAK_ROLES: dict[str, str] = {
     "genai_engine_admin_user": TASK_ADMIN,
 }

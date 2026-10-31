@@ -24,7 +24,7 @@ from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import ApplicationConfiguration, Rule, User
-from utils.users import permission_checker
+from utils.users import actor_of, permission_checker
 from utils.utils import common_pagination_parameters
 
 rule_management_routes = APIRouter(
@@ -69,7 +69,7 @@ def create_default_rule(
             application_config,
         )
         rule = Rule._from_request_model(request, scope=RuleScope.DEFAULT)
-        rule = rules_repo.create_rule(rule)
+        rule = rules_repo.create_rule(rule, created_by=actor_of(current_user))
         tasks_repo.update_all_tasks_add_default_rule(rule)
         send_telemetry_event_for_default_rule_create_completed(rule.type)
         return rule._to_response_model()

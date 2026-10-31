@@ -39,7 +39,7 @@ from schemas.response_schemas import (
     LLMGetAllMetadataListResponse,
 )
 from utils.url_encoding import decode_path_param
-from utils.users import enforce_org_scope, permission_checker
+from utils.users import actor_of, enforce_org_scope, permission_checker
 from utils.utils import common_pagination_parameters
 
 logger = logging.getLogger(__name__)
@@ -219,6 +219,7 @@ def save_llm_eval(
             task.id,
             eval_name,
             eval_config,
+            created_by=actor_of(current_user),
         )
     except jinja2.exceptions.TemplateSyntaxError as e:
         raise HTTPException(

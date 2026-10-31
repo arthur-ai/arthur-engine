@@ -3,6 +3,8 @@ from typing import Literal, Optional
 from arthur_common.models.audit_log_schemas import AuditLog
 from pydantic import BaseModel, Field
 
+from schemas.enums import ActorKind
+
 
 class RouteInfo(BaseModel):
     resource_name: str
@@ -55,7 +57,27 @@ class ModelInvocation(BaseModel):
     )
 
 
-class ExtendedAuditLog(AuditLog):
+class AttributedAuditLog(AuditLog):
+    """V1 audit event plus how the caller authenticated.
+
+    Both fields are optional and omitted when unset, so V1 consumers that ignore
+    unknown keys see no change. ``user_id`` keeps its V1 meaning (API key id,
+    'master-key', or the identity provider subject).
+    """
+
+    actor_kind: Optional[ActorKind] = Field(
+        default=None,
+        description="How the caller authenticated: user, api_key, master_key, or "
+        "on_behalf_of_user.",
+    )
+    on_behalf_of: Optional[str] = Field(
+        default=None,
+        description="For the admin key, the person the control plane said it was "
+        "acting for (X-Arthur-On-Behalf-Of).",
+    )
+
+
+class ExtendedAuditLog(AttributedAuditLog):
     """Audit event extended with the model invocations made while serving the request.
 
     Emitted in place of the base ``AuditLog`` (V1) only when

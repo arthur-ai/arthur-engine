@@ -56,7 +56,12 @@ from services.task.discovery_task_resolution_service import (
 )
 from utils import constants
 from utils.constants import DEFAULT_ORG_ID
-from utils.users import enforce_org_scope, enforce_query_org_scope, permission_checker
+from utils.users import (
+    actor_of,
+    enforce_org_scope,
+    enforce_query_org_scope,
+    permission_checker,
+)
 from utils.utils import common_pagination_parameters, public_endpoint
 
 # Most tasks one GET /agent-tasks page returns, and the default: every task in it is
@@ -538,6 +543,7 @@ def create_task_rule(
 
     new_rule = rule_repo.create_rule(
         Rule._from_request_model(request, scope=RuleScope.TASK),
+        created_by=actor_of(current_user),
     )
     task_repo.link_rule_to_task(task.id, new_rule.id, new_rule.type)
 

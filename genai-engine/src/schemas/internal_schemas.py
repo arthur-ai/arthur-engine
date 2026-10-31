@@ -143,6 +143,7 @@ from db_models.rag_provider_models import (
     DatabaseRagSearchVersionTag,
 )
 from db_models.transform_models import DatabaseTraceTransform
+from schemas.actor_schemas import Actor
 from schemas.agentic_experiment_schemas import (
     AgenticEvalRef,
     AgenticExperimentSummary,
@@ -158,6 +159,7 @@ from schemas.agentic_notebook_schemas import (
 from schemas.base_experiment_schemas import DatasetRef, EvalRef, ExperimentStatus
 from schemas.common_schemas import NewDatasetVersionRowColumnItemRequest
 from schemas.enums import (
+    ActorKind,
     ApplicationConfigurations,
     DocumentStorageEnvironment,
     RagAPIKeyAuthenticationProviderEnum,
@@ -1866,6 +1868,12 @@ class User(BaseModel):
     # Set from api_key.org_id on the API-key auth path. None for JWT users
     # and for admin API keys (org_id IS NULL). Drives request.state.org_scope.
     org_scope: Optional[uuid.UUID] = None
+    # How this caller authenticated, and for the admin key, the person the
+    # control plane says it is acting for. Together they become the Actor
+    # recorded on versions and audit entries.
+    kind: ActorKind = ActorKind.USER
+    display_name: Optional[str] = None
+    on_behalf_of: Optional[str] = None
 
     @staticmethod
     def _from_database_model(user: DatabaseUser) -> "User":
@@ -1897,6 +1905,17 @@ class User(BaseModel):
 
     def get_role_names_set(self) -> set[str]:
         return set([role.name.upper() for role in self.roles])
+
+    def to_actor(self) -> Actor:
+        if self.kind == ActorKind.MASTER_KEY and self.on_behalf_of:
+            return Actor(
+                kind=ActorKind.ON_BEHALF_OF_USER,
+                id=self.on_behalf_of,
+                name=self.on_behalf_of,
+            )
+        if self.kind == ActorKind.USER:
+            return Actor(kind=self.kind, id=self.id, name=self.email or None)
+        return Actor(kind=self.kind, id=self.id, name=self.display_name)
 
 
 class DocumentStorageConfiguration(BaseModel):
@@ -2068,6 +2087,8 @@ class ApiKey(BaseModel):
                 for role in self.roles
             ],
             org_scope=self.org_id,
+            kind=ActorKind.API_KEY,
+            display_name=self.description,
         )
 
 

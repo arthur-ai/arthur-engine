@@ -44,7 +44,7 @@ from schemas.response_schemas import (
 from services.prompt.chat_completion_service import ChatCompletionService
 from utils import constants
 from utils.url_encoding import decode_path_param
-from utils.users import enforce_org_scope, permission_checker
+from utils.users import actor_of, enforce_org_scope, permission_checker
 from utils.utils import common_pagination_parameters
 
 agentic_prompt_routes = APIRouter(
@@ -575,7 +575,12 @@ def save_agentic_prompt(
 ) -> AgenticPrompt:
     try:
         agentic_prompt_service = AgenticPromptRepository(db_session)
-        return agentic_prompt_service.save_llm_item(task.id, prompt_name, prompt_config)
+        return agentic_prompt_service.save_llm_item(
+            task.id,
+            prompt_name,
+            prompt_config,
+            created_by=actor_of(current_user),
+        )
     except jinja2.exceptions.TemplateSyntaxError as e:
         # Handle Jinja2 template syntax errors with a helpful message
         error_msg = f"Invalid Jinja2 template syntax in prompt messages: {str(e)}"

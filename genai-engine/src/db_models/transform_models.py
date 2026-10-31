@@ -13,7 +13,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Mapped, mapped_column
 
-from db_models.base import Base
+from db_models.base import Base, HasCreatedBy
 
 if TYPE_CHECKING:
     pass
@@ -38,7 +38,7 @@ class DatabaseTraceTransform(Base):
     updated_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.now)
 
 
-class DatabaseTraceTransformVersion(Base):
+class DatabaseTraceTransformVersion(HasCreatedBy, Base):
     """Immutable version snapshot for a trace transform configuration."""
 
     __tablename__ = "transform_versions"
