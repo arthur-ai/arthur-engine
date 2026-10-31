@@ -47,7 +47,6 @@ from arthur_common.models.request_schemas import (
 from arthur_common.models.response_schemas import (
     AgenticAnnotationResponse,
     AgentMetadataResponse,
-    ApiKeyResponse,
     BaseDetailsResponse,
     ChatDocumentContext,
     ExternalDocument,
@@ -155,6 +154,7 @@ from schemas.agentic_notebook_schemas import (
     AgenticNotebookSummary,
     CreateAgenticNotebookRequest,
 )
+from schemas.api_key_schemas import ApiKeyResponse
 from schemas.base_experiment_schemas import DatasetRef, EvalRef, ExperimentStatus
 from schemas.common_schemas import NewDatasetVersionRowColumnItemRequest
 from schemas.enums import (
@@ -1863,6 +1863,9 @@ class User(BaseModel):
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     roles: list[AuthUserRole]
+    # Set from api_key.task_id on the API-key auth path. When set, the caller
+    # may only use routes that check the task, and only for this task.
+    task_scope: Optional[str] = None
     # Set from api_key.org_id on the API-key auth path. None for JWT users
     # and for admin API keys (org_id IS NULL). Drives request.state.org_scope.
     org_scope: Optional[uuid.UUID] = None
@@ -2030,6 +2033,8 @@ class ApiKey(BaseModel):
     roles: list[str] = [constants.TASK_ADMIN]
     # NULL = admin (cross-org). Non-null = tenant scoped to that org.
     org_id: Optional[uuid.UUID] = None
+    # NULL = any task the org scope allows. Non-null = this one task only.
+    task_id: Optional[str] = None
 
     @staticmethod
     def _from_database_model(api_key: DatabaseApiKey) -> "ApiKey":
@@ -2042,6 +2047,7 @@ class ApiKey(BaseModel):
             deactivated_at=api_key.deactivated_at,
             roles=api_key.roles,
             org_id=api_key.org_id,
+            task_id=api_key.task_id,
         )
 
     def _to_response_model(self, message: str = "") -> ApiKeyResponse:
@@ -2054,6 +2060,7 @@ class ApiKey(BaseModel):
             deactivated_at=self.deactivated_at,
             message=message,
             roles=self.roles,
+            task_id=self.task_id,
         )
 
     def set_key(self, key: str) -> None:
@@ -2068,6 +2075,7 @@ class ApiKey(BaseModel):
                 for role in self.roles
             ],
             org_scope=self.org_id,
+            task_scope=self.task_id,
         )
 
 

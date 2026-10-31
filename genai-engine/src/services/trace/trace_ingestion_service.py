@@ -1,7 +1,7 @@
 import logging
 import uuid
 from datetime import datetime
-from typing import Any, Callable, TypedDict, cast
+from typing import Any, Callable, Optional, TypedDict, cast
 
 from google.protobuf.json_format import MessageToDict
 from google.protobuf.message import DecodeError
@@ -91,8 +91,14 @@ class TraceIngestionService:
         trace_data: bytes,
         commit: bool = True,
         count_ingest_bytes: bool = False,
+        task_scope: Optional[str] = None,
     ) -> tuple[list[DatabaseSpan], tuple[int, int, int, list[str]]]:
         """Process trace data from protobuf format and return statistics.
+
+        With task_scope (the caller's key is scoped to one task), every span lands
+        in that task: a resource with no arthur.task attribute goes to it, and a
+        resource naming any other task is rejected. Service-name mapping and task
+        auto-creation are skipped.
 
         With count_ingest_bytes, each span records its share of len(trace_data), the
         request body as received, and the shares add up to it exactly unless every
@@ -110,6 +116,7 @@ class TraceIngestionService:
         spans_data, stats = self._extract_and_process_spans(
             json_traces,
             span_ingest_bytes,
+            task_scope,
         )
 
         if spans_data:
@@ -179,6 +186,7 @@ class TraceIngestionService:
         self,
         json_traces: dict[str, Any],
         span_ingest_bytes: list[int] | None = None,
+        task_scope: Optional[str] = None,
     ) -> tuple[list[DatabaseSpan], tuple[int, int, int, list[str]]]:
         """Extract and process spans from JSON trace data.
 
@@ -196,6 +204,25 @@ class TraceIngestionService:
             resource_task_id = self._extract_task_id_from_resource_attributes(
                 resource_span,
             )
+
+            if (
+                task_scope is not None
+                and resource_task_id is not None
+                and resource_task_id != task_scope
+            ):
+                # Count every span in the rejected resource so the span indexes
+                # into span_ingest_bytes stay aligned for the resources after it.
+                span_count = sum(
+                    len(scope_span.get("spans", []))
+                    for scope_span in resource_span.get("scopeSpans", [])
+                )
+                total_spans += span_count
+                rejected_spans += span_count
+                rejected_reasons.append(
+                    f"Rejected {span_count} spans for task {resource_task_id}: "
+                    "this API key is scoped to a different task.",
+                )
+                continue
 
             # Extract all resource attributes
             resource_attributes = self._extract_all_resource_attributes(resource_span)
@@ -217,10 +244,14 @@ class TraceIngestionService:
 
             # Resolve task_id using priority hierarchy
             # This ensures all traces have a task_id (no NULL values)
-            resolved_task_id = self._resolve_task_id(
-                explicit_task_id=resource_task_id,
-                service_name=service_name,
-                resource_attributes=resource_attributes,
+            resolved_task_id = (
+                task_scope
+                if task_scope is not None
+                else self._resolve_task_id(
+                    explicit_task_id=resource_task_id,
+                    service_name=service_name,
+                    resource_attributes=resource_attributes,
+                )
             )
 
             logger.debug(f"Resolved task_id: {resolved_task_id}")
@@ -235,6 +266,14 @@ class TraceIngestionService:
                 self.db_session,
                 select(DatabaseTask.org_id).where(DatabaseTask.id == resolved_task_id),
                 default=DEFAULT_ORG_ID,
+            )
+
+            # A scoped key may not add spans to a trace another task already owns:
+            # trace metadata keeps its first task, so the spans would surface there.
+            foreign_traces = (
+                self._traces_owned_by_other_tasks(resource_span, task_scope)
+                if task_scope is not None
+                else set()
             )
 
             # Per trace in this resource span, keyed by the span's raw traceId:
@@ -257,6 +296,14 @@ class TraceIngestionService:
                             trace_bytes.get(trace_key, 0)
                             + span_ingest_bytes[span_index]
                         )
+
+                    if trace_key in foreign_traces:
+                        rejected_spans += 1
+                        rejected_reasons.append(
+                            "Rejected span: its trace belongs to a different task "
+                            "than this API key's.",
+                        )
+                        continue
 
                     try:
                         # Pass the resolved task ID and resource_id to the span processing
@@ -307,6 +354,36 @@ class TraceIngestionService:
             rejected_spans,
             rejected_reasons,
         )
+
+    def _traces_owned_by_other_tasks(
+        self,
+        resource_span: dict[str, Any],
+        task_id: str,
+    ) -> set[Any]:
+        """Raw traceIds in this resource span whose trace is already stored under
+        a task other than `task_id`."""
+        hex_by_raw: dict[Any, str] = {}
+        for scope_span in resource_span.get("scopeSpans", []):
+            for span_data in scope_span.get("spans", []):
+                raw = span_data.get("traceId") if isinstance(span_data, dict) else None
+                if not raw or raw in hex_by_raw:
+                    continue
+                try:
+                    hex_by_raw[raw] = trace_utils.convert_id_to_hex(raw)
+                except ValueError:
+                    # Malformed ids are rejected later by _process_span_data.
+                    continue
+        if not hex_by_raw:
+            return set()
+        owned_elsewhere = set(
+            self.db_session.execute(
+                select(DatabaseTraceMetadata.trace_id).where(
+                    DatabaseTraceMetadata.trace_id.in_(set(hex_by_raw.values())),
+                    DatabaseTraceMetadata.task_id != task_id,
+                ),
+            ).scalars(),
+        )
+        return {raw for raw, hex_id in hex_by_raw.items() if hex_id in owned_elsewhere}
 
     def _extract_task_id_from_resource_attributes(
         self,
