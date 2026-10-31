@@ -35,9 +35,10 @@ def routes():
 @pytest.mark.unit_tests
 def test_every_route_has_a_permission_set(routes):
     unguarded = permission_matrix.unguarded_routes(routes)
-    assert not unguarded, (
-        "Routes without a permission set or @public_endpoint:\n"
-        + "\n".join(f"  {r.method} {r.path}" for r in unguarded)
+    assert (
+        not unguarded
+    ), "Routes without a permission set or @public_endpoint:\n" + "\n".join(
+        f"  {r.method} {r.path}" for r in unguarded
     )
 
 
