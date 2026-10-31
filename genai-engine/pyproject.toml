@@ -94,6 +94,7 @@ dependencies = [
 serve = "src.server:start"
 generate_changelog = "changelog:main"
 routes_security_check = "routes_security_check:main"
+permission_matrix = "permission_matrix:main"
 
 [dependency-groups]
 dev = [
