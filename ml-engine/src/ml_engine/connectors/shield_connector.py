@@ -77,6 +77,7 @@ from genai_client.models import (
 )
 from pydantic import ValidationError
 
+from acting_user import ACTING_USER, ON_BEHALF_OF_HEADER
 from config.config import Config
 from connectors.connector import Connector
 from tools.agentic_filters import (
@@ -866,6 +867,11 @@ class EngineInternalConnector(ShieldBaseConnector):
             connector_config=connector_config,
             logger=logger,
         )
+        # This connector uses the deployment's admin key, so the engine would
+        # record every change as the admin key. Name the Platform user the job
+        # runs for instead; the engine honours this header only for that key.
+        if acting_user := ACTING_USER.get():
+            self._genai_client.default_headers[ON_BEHALF_OF_HEADER] = acting_user
 
     @property
     def shield_external_host(self) -> str:
