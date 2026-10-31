@@ -88,7 +88,18 @@ def collect_routes() -> list[RouteInfo]:
     import server
     from utils.routes import iter_api_routes
 
-    app = server.get_test_app()
+    # Building the app with audit logging on would attach another handler to the
+    # process-wide "audit" logger, so every later audit entry would be written
+    # twice. The route list does not depend on it.
+    previous = os.environ.get("AUDIT_LOG_ENABLED")
+    os.environ["AUDIT_LOG_ENABLED"] = "false"
+    try:
+        app = server.get_test_app()
+    finally:
+        if previous is None:
+            del os.environ["AUDIT_LOG_ENABLED"]
+        else:
+            os.environ["AUDIT_LOG_ENABLED"] = previous
     routes: list[RouteInfo] = []
     for route in iter_api_routes(app):
         perms = _required_permissions(route.endpoint)
