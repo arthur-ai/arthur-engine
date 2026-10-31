@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 from db_models.llm_eval_models import DatabaseLLMEval, DatabaseLLMEvalVersionTag
 from repositories.base_llm_repository import BaseLLMRepository
 from repositories.model_provider_repository import ModelProviderRepository
+from schemas.actor_schemas import Actor, actor_from_columns
 from schemas.agentic_prompt_schemas import AgenticPrompt
 from schemas.enums import EvalKind
 from schemas.llm_eval_schemas import Eval, ReasonedScore
@@ -92,6 +93,11 @@ class LLMEvalsRepository(
             ),
             model_name=db_item.model_name,
             tags=tags,
+            created_by=actor_from_columns(
+                db_item.created_by_kind,
+                db_item.created_by_id,
+                db_item.created_by_name,
+            ),
         )
 
     def _clear_db_item_data(self, db_item: DatabaseLLMEval) -> None:
@@ -161,12 +167,19 @@ class LLMEvalsRepository(
         item_name: str,
         item: CreateEvalRequest,
         commit: bool = True,
+        created_by: Optional[Actor] = None,
     ) -> Eval:
         if item.model_name == "":
             raise ValueError("Model name cannot be empty.")
         return cast(
             Eval,
-            super().save_llm_item(task_id, item_name, item, commit=commit),
+            super().save_llm_item(
+                task_id,
+                item_name,
+                item,
+                commit=commit,
+                created_by=created_by,
+            ),
         )
 
     def run_llm_eval(

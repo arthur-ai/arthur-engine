@@ -5,7 +5,9 @@ import pytest
 from config.config import Config
 from monitoring.audit_log_middleware import ENDPOINT_OVERRIDES, AuditLogMiddleware
 from schemas.audit_log_schemas import RouteInfo
-from tests.clients.base_test_client import GenaiEngineTestClientBase
+from schemas.enums import ActorKind
+from tests.clients.base_test_client import MASTER_API_KEY, GenaiEngineTestClientBase
+from utils.constants import ON_BEHALF_OF_HEADER
 
 from .helpers import get_audit_logs_with_ids, read_audit_entries
 
@@ -82,6 +84,36 @@ def test_audit_log_middleware(client: GenaiEngineTestClientBase):
 
     # Cleanup
     client.delete_task(task_id)
+
+
+@pytest.mark.unit_tests
+@pytest.mark.skipif(not Config.audit_log_enabled(), reason="Audit logging is disabled")
+def test_audit_log_records_actor_kind(client: GenaiEngineTestClientBase):
+    """Each entry says how the caller authenticated, and for the admin key, the
+    person named in the on-behalf-of header."""
+    status_code, task = client.create_task(name="audit actor task")
+    assert status_code == 200
+
+    response = client.base_client.get(
+        f"/api/v2/tasks/{task.id}",
+        headers={
+            "Authorization": f"Bearer {MASTER_API_KEY}",
+            ON_BEHALF_OF_HEADER: "alice@example.com",
+        },
+    )
+    assert response.status_code == 200
+
+    entries = get_audit_logs_with_ids(read_audit_entries(), {task.id})
+    create_entry = next(e for e in entries if e.request_method.value == "post")
+    get_entry = next(e for e in entries if e.request_method.value == "get")
+
+    assert create_entry.actor_kind == ActorKind.API_KEY
+    assert create_entry.on_behalf_of is None
+    assert get_entry.user_id == "master-key"
+    assert get_entry.actor_kind == ActorKind.ON_BEHALF_OF_USER
+    assert get_entry.on_behalf_of == "alice@example.com"
+
+    client.delete_task(task.id)
 
 
 @pytest.mark.unit_tests

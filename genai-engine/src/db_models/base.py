@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Any, Optional
 
 import sqlalchemy.types as types
-from sqlalchemy import TIMESTAMP, Boolean
+from sqlalchemy import TIMESTAMP, Boolean, String
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 from utils import constants
@@ -45,3 +45,15 @@ class SoftDeletedModel(object):
         nullable=True,
         default=None,
     )
+
+
+class HasCreatedBy(object):
+    """Mixin recording who created a row, for immutable version tables.
+
+    NULL on rows created before authorship was recorded, and on rows the engine
+    creates itself (system and demo tasks).
+    """
+
+    created_by_kind: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    created_by_id: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    created_by_name: Mapped[Optional[str]] = mapped_column(String, nullable=True)

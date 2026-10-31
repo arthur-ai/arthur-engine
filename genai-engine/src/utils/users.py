@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from custom_types.custom_types import FunctionT
 from db_models.task_models import DatabaseTask
+from schemas.actor_schemas import Actor
 from schemas.internal_schemas import Task, User
 
 
@@ -70,6 +71,11 @@ def permission_checker(permissions: frozenset[str]) -> Callable[[FunctionT], Fun
         return cast(FunctionT, wrapper)
 
     return auth_required
+
+
+def actor_of(user: User | None) -> Actor | None:
+    """The Actor to record as the author of a change made by this caller."""
+    return user.to_actor() if user else None
 
 
 def _is_admin(user: User | None) -> bool:

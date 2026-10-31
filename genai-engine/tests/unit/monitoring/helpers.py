@@ -4,7 +4,7 @@ from typing import Set
 
 from arthur_common.models.audit_log_schemas import AuditLog
 
-from schemas.audit_log_schemas import ExtendedAuditLog
+from schemas.audit_log_schemas import AttributedAuditLog, ExtendedAuditLog
 from tests.clients.base_test_client import TEST_AUDIT_LOG_DIR
 
 AUDIT_LOG_FILE = os.path.join(TEST_AUDIT_LOG_DIR, "audit.log")
@@ -16,7 +16,7 @@ def _parse_entry(data: dict) -> AuditLog:
     # is a superset of the V1 fields, so callers can treat every entry uniformly.
     if data.get("audit_log_meta_version") == "ArthurAuditLogEventV2":
         return ExtendedAuditLog.model_validate(data)
-    return AuditLog.model_validate(data)
+    return AttributedAuditLog.model_validate(data)
 
 
 def read_audit_entries() -> list[AuditLog]:

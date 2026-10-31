@@ -17,14 +17,14 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from db_models.base import Base
+from db_models.base import Base, HasCreatedBy
 from schemas.enums import EvalKind
 
 if TYPE_CHECKING:
     from db_models.task_models import DatabaseTask
 
 
-class DatabaseLLMEval(Base):
+class DatabaseLLMEval(HasCreatedBy, Base):
     """Database model for storing llm evals associated with tasks"""
 
     __tablename__ = "llm_evals"

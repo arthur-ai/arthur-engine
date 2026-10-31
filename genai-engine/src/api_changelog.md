@@ -2,6 +2,18 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 10/30/2026
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions  added the optional property `versions/items/created_by` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  added the optional property `created_by` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions  added the optional property `versions/items/created_by` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/tags/{tag}  added the optional property `created_by` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  added the optional property `created_by` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  added the optional property `created_by` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/tags  added the optional property `created_by` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions  added the optional property `versions/items/created_by` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions/{version_id}  added the optional property `created_by` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v2/inferences/overview  the `task_ids` request property's maxItems was unset from `1000`
+
 # 10/28/2026
 - **CHANGE** for **URL**: /api/v2/inferences/overview  endpoint added
 

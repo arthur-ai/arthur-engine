@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Dict, List
+from typing import Dict, List, Optional
 from uuid import UUID, uuid4
 
 from arthur_common.models.common_schemas import PaginationParameters
@@ -19,6 +19,7 @@ from db_models.transform_models import (
     DatabaseTraceTransform,
     DatabaseTraceTransformVersion,
 )
+from schemas.actor_schemas import Actor, actor_from_columns, created_by_columns
 from schemas.internal_schemas import TraceTransform
 from schemas.request_schemas import (
     NewTraceTransformRequest,
@@ -178,6 +179,7 @@ class TraceTransformRepository:
         self,
         db_transform: DatabaseTraceTransform,
         definition: TraceTransformDefinition,
+        created_by: Optional[Actor] = None,
     ) -> DatabaseTraceTransformVersion:
         """Create an immutable version snapshot for the given transform."""
         # Lock the parent transform row to serialize concurrent version creation
@@ -202,6 +204,7 @@ class TraceTransformRepository:
             version_number=next_version_number,
             definition=definition.model_dump(),
             created_at=datetime.now(),
+            **created_by_columns(created_by),
         )
         self.db_session.add(version)
         self.db_session.flush()
@@ -212,6 +215,7 @@ class TraceTransformRepository:
         task_id: str,
         transform: NewTraceTransformRequest,
         commit: bool = True,
+        created_by: Optional[Actor] = None,
     ) -> TraceTransform:
         trace_transform = TraceTransform.from_request_model(task_id, transform)
         db_transform = trace_transform.to_db_model()
@@ -219,7 +223,7 @@ class TraceTransformRepository:
         try:
             self.db_session.add(db_transform)
             self.db_session.flush()
-            self._create_version(db_transform, transform.definition)
+            self._create_version(db_transform, transform.definition, created_by)
             if commit:
                 self.db_session.commit()
                 self.db_session.refresh(db_transform)
@@ -238,6 +242,7 @@ class TraceTransformRepository:
         transform_id: UUID,
         transform: TraceTransformUpdateRequest,
         org_scope: UUID | None = None,
+        created_by: Optional[Actor] = None,
     ) -> TraceTransform:
         db_transform = self._get_db_transform_by_id(transform_id, org_scope=org_scope)
 
@@ -265,7 +270,7 @@ class TraceTransformRepository:
                 # Name/description-only change — snapshot current definition
                 new_definition = self._get_latest_definition(db_transform.id)
             db_transform.updated_at = datetime.now()
-            self._create_version(db_transform, new_definition)
+            self._create_version(db_transform, new_definition, created_by)
             self.db_session.commit()
             self.db_session.refresh(db_transform)
 
@@ -286,6 +291,11 @@ class TraceTransformRepository:
                 version_number=v.version_number,
                 definition=TraceTransformDefinition.model_validate(v.definition),
                 created_at=v.created_at,
+                created_by=actor_from_columns(
+                    v.created_by_kind,
+                    v.created_by_id,
+                    v.created_by_name,
+                ),
             )
             for v in db_versions
         ]
@@ -319,6 +329,11 @@ class TraceTransformRepository:
             version_number=db_version.version_number,
             definition=TraceTransformDefinition.model_validate(db_version.definition),
             created_at=db_version.created_at,
+            created_by=actor_from_columns(
+                db_version.created_by_kind,
+                db_version.created_by_id,
+                db_version.created_by_name,
+            ),
         )
 
     def get_transform_dependents(self, transform_id: UUID) -> TransformDependents:

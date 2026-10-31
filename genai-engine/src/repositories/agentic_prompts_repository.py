@@ -1,6 +1,6 @@
 import copy
 import uuid
-from typing import List, Type, cast
+from typing import List, Optional, Type, cast
 
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -12,6 +12,7 @@ from db_models.agentic_prompt_models import (
 )
 from repositories.base_llm_repository import BaseLLMRepository
 from repositories.model_provider_repository import ModelProviderRepository
+from schemas.actor_schemas import Actor, actor_from_columns
 from schemas.agentic_prompt_schemas import AgenticPrompt
 from schemas.request_schemas import (
     CompletionRequest,
@@ -60,6 +61,11 @@ class AgenticPromptRepository(
             config=db_prompt.config,
             created_at=db_prompt.created_at,
             deleted_at=db_prompt.deleted_at,
+            created_by=actor_from_columns(
+                db_prompt.created_by_kind,
+                db_prompt.created_by_id,
+                db_prompt.created_by_name,
+            ),
         )
 
     def _extract_variables_from_item(
@@ -90,6 +96,11 @@ class AgenticPromptRepository(
             num_messages=num_messages,
             num_tools=num_tools,
             tags=tags or [],
+            created_by=actor_from_columns(
+                db_item.created_by_kind,
+                db_item.created_by_id,
+                db_item.created_by_name,
+            ),
         )
 
     def _clear_db_item_data(self, db_item: DatabaseAgenticPrompt) -> None:
@@ -104,12 +115,19 @@ class AgenticPromptRepository(
         item_name: str,
         item: CreateAgenticPromptRequest,
         commit: bool = True,
+        created_by: Optional[Actor] = None,
     ) -> AgenticPrompt:
         if item.model_name == "":
             raise ValueError("Model name cannot be empty.")
         return cast(
             AgenticPrompt,
-            super().save_llm_item(task_id, item_name, item, commit=commit),
+            super().save_llm_item(
+                task_id,
+                item_name,
+                item,
+                commit=commit,
+                created_by=created_by,
+            ),
         )
 
     async def run_unsaved_prompt(
