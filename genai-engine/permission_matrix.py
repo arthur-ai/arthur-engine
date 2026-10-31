@@ -88,24 +88,32 @@ def collect_routes() -> list[RouteInfo]:
     import server
     from utils.routes import iter_api_routes
 
-    # Building the app with audit logging on would attach another handler to the
-    # process-wide "audit" logger, so every later audit entry would be written
-    # twice. The route list does not depend on it.
-    previous = os.environ.get("AUDIT_LOG_ENABLED")
-    os.environ["AUDIT_LOG_ENABLED"] = "false"
+    # Build the app with fixed settings so the matrix does not depend on the
+    # caller's environment:
+    # - API-only mode at its default ("enabled"), which decides whether GET / exists;
+    # - audit logging off: building the app with it on attaches another handler to
+    #   the process-wide "audit" logger, so every later audit entry would be
+    #   written twice. It does not change the routes.
+    pinned = {
+        "GENAI_ENGINE_API_ONLY_MODE_ENABLED": "enabled",
+        "AUDIT_LOG_ENABLED": "false",
+    }
+    previous = {name: os.environ.get(name) for name in pinned}
+    os.environ.update(pinned)
     try:
         app = server.get_test_app()
     finally:
-        if previous is None:
-            del os.environ["AUDIT_LOG_ENABLED"]
-        else:
-            os.environ["AUDIT_LOG_ENABLED"] = previous
+        for name, value in previous.items():
+            if value is None:
+                del os.environ[name]
+            else:
+                os.environ[name] = value
     routes: list[RouteInfo] = []
     for route in iter_api_routes(app):
         perms = _required_permissions(route.endpoint)
+        # FastAPI registers only the methods a route declares (no implicit HEAD
+        # or OPTIONS), so every method here was registered on purpose.
         for method in sorted(route.methods or []):
-            if method in {"HEAD", "OPTIONS"}:
-                continue
             if perms:
                 access = "roles"
             elif _is_public(route.endpoint):
