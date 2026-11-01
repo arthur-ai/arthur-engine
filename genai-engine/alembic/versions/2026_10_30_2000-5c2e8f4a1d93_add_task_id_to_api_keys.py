@@ -1,7 +1,7 @@
 """add task_id to api_keys
 
 Revision ID: 5c2e8f4a1d93
-Revises: 8b1d4f6a2c37
+Revises: e5a9c3b71f04
 Create Date: 2026-10-30 20:00:00.000000
 
 Lets an API key be scoped to one task. NULL keeps every existing key's behaviour;
@@ -14,7 +14,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "5c2e8f4a1d93"
-down_revision = "8b1d4f6a2c37"
+down_revision = "e5a9c3b71f04"
 branch_labels = None
 depends_on = None
 
