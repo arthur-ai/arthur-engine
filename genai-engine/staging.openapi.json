@@ -2531,7 +2531,7 @@
                     "Stateless Validation"
                 ],
                 "summary": "Stateless Validate",
-                "description": "Stateless validation of arbitrary input against inline rule specs. Does NOT persist results, does NOT create an inference, and is task-less. Intended for ad-hoc checks such as validating tool-call output before passing it back to an LLM.\n\nEach entry in `checks` is a `NewRuleRequest` \u2014 the same shape accepted by the rule-management API. `type` is a `RuleType` enum value: `PromptInjectionRule`, `ToxicityRule`, `PIIDataRule`, `ModelHallucinationRuleV2`, `RegexRule`, `KeywordRule`, `ModelSensitiveDataRule`.\n\nHallucination requires `response` + `context`; if `context` is missing the rule engine returns a `Skipped` result. A check may return result=`Model Not Available` if its underlying model has not finished loading; callers should treat this as transient and retry.",
+                "description": "Stateless validation of arbitrary input against inline rule specs. Does NOT persist results, does NOT create an inference, and is task-less. Intended for ad-hoc checks such as validating tool-call output before passing it back to an LLM.\n\nEach entry in `checks` is a `NewRuleRequest` \u2014 the same shape accepted by the rule-management API. `type` is a `RuleType` enum value: `PromptInjectionRule`, `ToxicityRule`, `PIIDataRule`, `ModelHallucinationRuleV2`, `RegexRule`, `KeywordRule`, `ModelSensitiveDataRule`.\n\n`apply_to_prompt` and `apply_to_response` decide which of `prompt` and `response` a check scores; a check that applies to both fails if either one violates it.\n\nHallucination requires `response` + `context`; if `context` is missing the rule engine returns a `Skipped` result. A check may return result=`Model Not Available` if its underlying model has not finished loading; callers should treat this as transient and retry.",
                 "operationId": "stateless_validate_api_v2_validate_post",
                 "requestBody": {
                     "content": {
@@ -18189,6 +18189,18 @@
                         "title": "Version",
                         "description": "Version read statically, never by executing the discovered binary."
                     },
+                    "previous_version": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Previous Version",
+                        "description": "The version this record reported before its latest change, so an upgrade or a downgrade reads off the record itself. Kept across scans by GenAI Engine, which sets it when a report carries a version other than the one it holds; a source never fills it, and a discovered record carrying one is refused. Absent until the version first changes. See ENGINE_KEPT_OBSERVATIONS."
+                    },
                     "host_name": {
                         "anyOf": [
                             {
@@ -24212,7 +24224,6 @@
                             "type": "string"
                         },
                         "type": "array",
-                        "maxItems": 1000,
                         "minItems": 1,
                         "title": "Task Ids",
                         "description": "Task IDs to get the inference overview for"
@@ -28701,6 +28712,17 @@
                             }
                         ],
                         "description": "Where upstream this came from -- the same type the creation source carries, so a record and its task address the system identically. Absent for OTEL and manual agents."
+                    },
+                    "observations": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/AgentObservations"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "What the source saw of this record at its latest report, with `previous_version` kept across reports. The task's creation source holds what the first report saw and is never rewritten, so a record's current version is read here. Absent from entries recorded before it was stored."
                     },
                     "last_seen": {
                         "anyOf": [
