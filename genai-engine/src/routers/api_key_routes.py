@@ -90,6 +90,8 @@ def create_api_key(
         api_key = api_key_repo.create_api_key(
             description=new_api_key.description,
             roles=new_api_key.roles or [],
+            # An org-scoped caller can only mint keys inside its own org.
+            org_id=current_user.org_scope if current_user else None,
             task_id=str(new_api_key.task_id) if new_api_key.task_id else None,
         )
         return api_key._to_response_model(

@@ -11,8 +11,12 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 
 import pytest
+from arthur_common.models.enums import APIKeysRolesEnum
+from fastapi import HTTPException
 
 from db_models import DatabaseSpan, DatabaseTraceMetadata
+from repositories.api_key_repository import ApiKeyRepository
+from repositories.organizations_repository import OrganizationsRepository
 from tests.clients.base_test_client import (
     MASTER_KEY_AUTHORIZED_HEADERS,
     GenaiEngineTestClientBase,
@@ -339,3 +343,29 @@ def test_scoped_key_cannot_validate_another_tasks_inference(created: _Created):
         headers=headers,
     )
     assert response.status_code == 404
+
+
+@pytest.mark.unit_tests
+def test_key_for_another_orgs_task_is_404(created: _Created):
+    """`create_api_key` refuses a task outside the caller's org with the same 404
+    as a missing task. The route passes the caller's org_scope; today only the
+    master key and JWT users (both org_scope None) reach it, so this is checked
+    at the repository."""
+    own, _ = _two_tasks(created)
+    db_session = override_get_db_session()
+    try:
+        org = OrganizationsRepository(db_session).create_organization(
+            name=f"scoped_keys_other_{uuid.uuid4().hex}",
+        )
+        with pytest.raises(HTTPException) as error:
+            ApiKeyRepository(db_session).create_api_key(
+                description="cross-org",
+                roles=[APIKeysRolesEnum.VALIDATION_USER],
+                org_id=org.id,
+                task_id=own,
+            )
+        assert error.value.status_code == 404
+        db_session.delete(org)
+        db_session.commit()
+    finally:
+        db_session.close()

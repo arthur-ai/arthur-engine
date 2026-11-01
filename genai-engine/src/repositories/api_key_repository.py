@@ -56,9 +56,10 @@ class ApiKeyRepository:
                     detail=f"Task {task_id} not found",
                 )
             if org_id is not None and org_id != task_org_id:
+                # Same 404 as a missing task: no enumeration of other orgs' tasks.
                 raise HTTPException(
-                    status_code=400,
-                    detail="org_id does not match the task's organization",
+                    status_code=404,
+                    detail=f"Task {task_id} not found",
                 )
             org_id = task_org_id
 
