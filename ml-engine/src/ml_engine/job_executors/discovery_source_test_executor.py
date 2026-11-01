@@ -43,6 +43,7 @@ from discovery import source_connectors
 from job_executors.discovery_output_contract import OutputContractError, check_batch
 from job_executors.discovery_scan import (
     AcceptsStopCheck,
+    CorroboratingRecord,
     DiscoveryConfigurationError,
     DiscoveryConnectorFactory,
 )
@@ -235,7 +236,14 @@ class _PreviewRun:
                         DiscoverySourceReachability.REACHABLE,
                         str(contract_error),
                     )
-                self._take(_mapped_row(record) for record in batch)
+                # A row per agent, as the sinks count them: a corroboration is one more
+                # piece of its agent's evidence, and as a row of its own it would read
+                # as the same agent again and spend the preview's limit on it.
+                self._take(
+                    _mapped_row(record)
+                    for record in batch
+                    if not isinstance(record, CorroboratingRecord)
+                )
                 if self.truncated or self._past_deadline():
                     break
         except OutputContractError as contract_error:
