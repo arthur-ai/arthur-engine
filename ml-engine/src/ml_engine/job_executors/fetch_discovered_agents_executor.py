@@ -395,8 +395,11 @@ def source_evidence(
     the Platform derives it from the sightings it receives, and `visibility` is graded
     there too, so the value sent only satisfies the schema.
 
-    The task's observations belong to the record it was created from, which may be
-    another source's: that record is picked among every source's records, and the
+    Each record carries what its latest report saw -- its version, and the version
+    before that one changed -- as its entry serves them. An entry stored before GenAI
+    Engine kept them serves none, and then the task's creation source is the only place
+    they can be read: what the record the task was created from saw when it was. That
+    record may be another source's: it is picked among every source's records, and the
     observations go on it only if it is one of this source's.
     """
     task_creation_source = task_dict.get("creation_source") or {}
@@ -416,13 +419,16 @@ def source_evidence(
             or last_seen is None
         ):
             continue
+        creation_source = {
+            "type": creation_type,
+            "vendor": entry.get("vendor"),
+            "address": entry.get("address"),
+        }
+        if entry.get("observations"):
+            creation_source["observations"] = entry["observations"]
         records.append(
             {
-                "creation_source": {
-                    "type": creation_type,
-                    "vendor": entry.get("vendor"),
-                    "address": entry.get("address"),
-                },
+                "creation_source": creation_source,
                 "external_id": external_id,
                 "visibility": "limited",
                 "last_seen": last_seen,
@@ -438,13 +444,15 @@ def source_evidence(
         if basis is not None:
             record["creation_source"]["identity_basis"] = basis
 
-    # What the source observed is carried by the record the task was created from, so
-    # only that record's evidence can say it.
+    # The creation source's observations stand in only where the entry served none: they
+    # are what the first report saw, and the record the task was created from is the
+    # only one they speak for.
     observations = task_creation_source.get("observations")
     origin = _creation_record(records, task_creation_source)
     if (
         observations is not None
         and origin is not None
+        and "observations" not in origin["creation_source"]
         and any(record is origin for record in evidence)
     ):
         origin["creation_source"]["observations"] = observations
@@ -485,7 +493,9 @@ def _identity_basis(
         return None
     task_basis = task_creation_source.get("identity_basis")
     if task_basis and _same_place(
-        creation_source, task_creation_source, _IDENTITY_FIELDS
+        creation_source,
+        task_creation_source,
+        _IDENTITY_FIELDS,
     ):
         # The generated client's enum member: str() of one is its qualified name.
         return str(getattr(task_basis, "value", task_basis))

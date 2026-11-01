@@ -1,10 +1,11 @@
 import logging
 from collections import defaultdict
 from datetime import datetime, timezone
-from typing import Iterable, NamedTuple, Optional
+from typing import Any, Iterable, NamedTuple, Optional
 from uuid import UUID
 
 from arthur_common.models.agent_governance_schemas import (
+    AgentObservations,
     Platform,
     ProvenanceSource,
     RunsOn,
@@ -16,6 +17,7 @@ from sqlalchemy import (
     func,
     literal,
     select,
+    tuple_,
 )
 from sqlalchemy.dialects.postgresql import Insert as PGInsertType
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -27,7 +29,7 @@ from db_models import DatabaseTaskProvenanceSource
 
 logger = logging.getLogger(__name__)
 
-# Task IDs per IN clause when reading provenance in bulk.
+# Task IDs, or record keys, per IN clause when reading provenance in bulk.
 _LOOKUP_CHUNK_SIZE = 500
 
 
@@ -94,6 +96,49 @@ def _runs_on_kept(
     )
 
 
+def _observations_to_keep(
+    reported: Optional[AgentObservations],
+    reported_seen: Optional[datetime],
+    held: Optional[dict[str, Any]],
+    held_seen: Optional[datetime],
+) -> Optional[dict[str, Any]]:
+    """The observations a report leaves on its row, as the JSON stored there.
+
+    The report's own, but for `previous_version`, which no report carries: a version
+    other than the one held moves the held one there, and any other report leaves the
+    held `previous_version` in place, so the row keeps the version before its latest
+    change however many scans report the same one since. A report with no version keeps
+    the held one, since silence is not a new answer.
+
+    A report of a sighting older than the held one -- a batch arriving out of order --
+    changes nothing, or an upgrade would read as a downgrade.
+    """
+    if reported is None or (
+        held is not None
+        and held_seen is not None
+        and reported_seen is not None
+        and reported_seen < held_seen
+    ):
+        return held
+    observed = reported.model_dump(
+        mode="json",
+        exclude_none=True,
+        exclude={"previous_version"},
+    )
+    held_version = (held or {}).get("version")
+    previous = (held or {}).get("previous_version")
+    version = observed.get("version")
+    if version is None:
+        version = held_version
+    elif held_version is not None and version != held_version:
+        previous = held_version
+    if version is not None:
+        observed["version"] = version
+    if previous is not None:
+        observed["previous_version"] = previous
+    return observed
+
+
 class ProvenanceReport(NamedTuple):
     """One resolved record, as `record_reports` stores it."""
 
@@ -132,7 +177,9 @@ class TaskProvenanceRepository:
         incoming values, so a batch that arrives out of order cannot move it backwards.
         Nor are `runs_on` and `platform`: a report that says nothing about them keeps
         what an earlier one said, since silence is not a new answer -- and a `runs_on`
-        of UNKNOWN says nothing either.
+        of UNKNOWN says nothing either. Nor are `observations`, which keep the version
+        before the latest change as `previous_version`, and so are read before they are
+        written; see `_observations_to_keep`.
 
         Args:
             reports: One per resolved record. Every entry must carry a `source_id` -- a
@@ -143,6 +190,12 @@ class TaskProvenanceRepository:
             reported_at: When the scan handed the batch over. Defaults to now.
         """
         now = utc_naive(reported_at or datetime.now(timezone.utc))
+        reports = list(reports)
+        held = self._held_observations(
+            (report.entry.source_id, report.external_id)
+            for report in reports
+            if report.entry.source_id is not None
+        )
         rows: dict[tuple[UUID, str], dict[str, object]] = {}
         latest_seen: dict[tuple[UUID, str], Optional[datetime]] = {}
         kept_runs_on: dict[tuple[UUID, str], Optional[RunsOn]] = {}
@@ -154,10 +207,16 @@ class TaskProvenanceRepository:
                     "report must name the source that made it",
                 )
             key = (entry.source_id, external_id)
-            latest_seen[key] = _latest(
-                latest_seen.get(key),
-                utc_naive(entry.last_seen) if entry.last_seen else None,
+            reported_seen = utc_naive(entry.last_seen) if entry.last_seen else None
+            held_observations, held_seen = held.get(key, (None, None))
+            observations = _observations_to_keep(
+                entry.observations,
+                reported_seen,
+                held_observations,
+                held_seen,
             )
+            held[key] = (observations, _latest(held_seen, reported_seen))
+            latest_seen[key] = _latest(latest_seen.get(key), reported_seen)
             kept_runs_on[key] = _runs_on_to_keep(runs_on, kept_runs_on.get(key))
             kept_platform[key] = (
                 platform if platform is not None else kept_platform.get(key)
@@ -171,6 +230,7 @@ class TaskProvenanceRepository:
                 "address": (
                     entry.address.model_dump(mode="json") if entry.address else None
                 ),
+                "observations": observations,
                 "first_reported_at": now,
                 "last_reported_at": now,
                 "last_seen": latest_seen[key],
@@ -200,6 +260,7 @@ class TaskProvenanceRepository:
                 "source_class": stmt.excluded.source_class,
                 "vendor": stmt.excluded.vendor,
                 "address": stmt.excluded.address,
+                "observations": stmt.excluded.observations,
                 "last_reported_at": stmt.excluded.last_reported_at,
                 "last_seen": _later_of(
                     DatabaseTaskProvenanceSource.last_seen,
@@ -220,6 +281,39 @@ class TaskProvenanceRepository:
         self.db_session.commit()
 
         logger.debug(f"Recorded provenance for {len(values)} discovered record(s)")
+
+    def _held_observations(
+        self,
+        keys: Iterable[tuple[UUID, str]],
+    ) -> dict[tuple[UUID, str], tuple[Optional[dict[str, Any]], Optional[datetime]]]:
+        """The stored observations and `last_seen` of each key that already has a row."""
+        wanted = list(dict.fromkeys(keys))
+        held: dict[
+            tuple[UUID, str],
+            tuple[Optional[dict[str, Any]], Optional[datetime]],
+        ] = {}
+        for start in range(0, len(wanted), _LOOKUP_CHUNK_SIZE):
+            chunk = wanted[start : start + _LOOKUP_CHUNK_SIZE]
+            for (
+                source_id,
+                external_id,
+                observations,
+                last_seen,
+            ) in self.db_session.execute(
+                select(
+                    DatabaseTaskProvenanceSource.source_id,
+                    DatabaseTaskProvenanceSource.external_id,
+                    DatabaseTaskProvenanceSource.observations,
+                    DatabaseTaskProvenanceSource.last_seen,
+                ).where(
+                    tuple_(
+                        DatabaseTaskProvenanceSource.source_id,
+                        DatabaseTaskProvenanceSource.external_id,
+                    ).in_(chunk),
+                ),
+            ):
+                held[(source_id, external_id)] = (observations, last_seen)
+        return held
 
     def get_by_task_ids(
         self,
