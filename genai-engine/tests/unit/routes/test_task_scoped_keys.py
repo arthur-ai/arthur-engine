@@ -354,18 +354,21 @@ def test_key_for_another_orgs_task_is_404(created: _Created):
     own, _ = _two_tasks(created)
     db_session = override_get_db_session()
     try:
+        # Nothing is committed: the rollback below removes the org even when
+        # an assertion fails.
         org = OrganizationsRepository(db_session).create_organization(
             name=f"scoped_keys_other_{uuid.uuid4().hex}",
+            commit=False,
         )
         with pytest.raises(HTTPException) as error:
             ApiKeyRepository(db_session).create_api_key(
                 description="cross-org",
                 roles=[APIKeysRolesEnum.VALIDATION_USER],
                 org_id=org.id,
+                commit=False,
                 task_id=own,
             )
         assert error.value.status_code == 404
-        db_session.delete(org)
-        db_session.commit()
     finally:
+        db_session.rollback()
         db_session.close()
