@@ -520,6 +520,8 @@ def test_each_record_carries_what_its_latest_report_saw() -> None:
         for record in agent.evidence
     }
     assert observed["splunk-t1"].version == "2.1.314"
+    assert observed["splunk-t1"].previous_version == "2.1.312", "kept by GenAI Engine"
+    assert observed["splunk-rec-2"].previous_version is None
     assert not observed["splunk-t1"].service_names, "not the creation source's"
     assert observed["splunk-rec-2"].version == "1.0"
 
