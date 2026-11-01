@@ -479,6 +479,41 @@ def test_an_out_of_order_report_does_not_read_as_a_downgrade(
 
 
 @pytest.mark.unit_tests
+def test_an_older_report_does_not_fill_a_row_stored_without_observations(
+    resolver,
+    db_session,
+    tracked_tasks,
+):
+    """A row stored before observations were kept has a sighting but nothing observed.
+    A report older than that sighting must leave it empty rather than fill it with a
+    version the row has moved past; the next newer report fills it."""
+    source_id = uuid.uuid4()
+    external_id = f"{_run_id()}-claude-code"
+    [resolved] = resolver.resolve_records(
+        [_versioned_record(external_id, "2.1.314", LAST_SEEN + timedelta(days=1))],
+        source_id=source_id,
+    ).resolved
+    tracked_tasks.append(resolved.task_id)
+    [row] = _rows(db_session, resolved.task_id)
+    row.observations = None
+    db_session.commit()
+
+    resolver.resolve_records(
+        [_versioned_record(external_id, "2.1.312", LAST_SEEN)],
+        source_id=source_id,
+    )
+    [row] = _rows(db_session, resolved.task_id)
+    assert row.observations is None
+
+    resolver.resolve_records(
+        [_versioned_record(external_id, "2.1.316", LAST_SEEN + timedelta(days=2))],
+        source_id=source_id,
+    )
+    [row] = _rows(db_session, resolved.task_id)
+    assert row.observations["version"] == "2.1.316"
+
+
+@pytest.mark.unit_tests
 def test_a_version_change_within_one_batch_is_kept(
     provenance_repo,
     resolver,
