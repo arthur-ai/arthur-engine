@@ -13,6 +13,19 @@ The intention of this changelog is to document API changes as they happen to eff
 - **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions  added the optional property `versions/items/created_by` to the response with the `200` status
 - **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions/{version_id}  added the optional property `created_by` to the response with the `200` status
 - **CHANGE** for **URL**: /api/v2/inferences/overview  the `task_ids` request property's maxItems was unset from `1000`
+# 10/31/2026
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property '/items/creation_source/anyOf[subschema #1: AgentCreationSource]/oneOf[subschema #1: GCPAgentCreationSource]/observations/previous_version' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property '/items/creation_source/anyOf[subschema #1: AgentCreationSource]/oneOf[subschema #2: OTELAgentCreationSource]/observations/previous_version' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property '/items/creation_source/anyOf[subschema #1: AgentCreationSource]/oneOf[subschema #3: ManualAgentCreationSource]/observations/previous_version' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property '/items/creation_source/anyOf[subschema #1: AgentCreationSource]/oneOf[subschema #4: CloudAgentCreationSource]/observations/previous_version' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property '/items/creation_source/anyOf[subschema #1: AgentCreationSource]/oneOf[subschema #5: SIEMAgentCreationSource]/observations/previous_version' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property '/items/creation_source/anyOf[subschema #1: AgentCreationSource]/oneOf[subschema #6: EndpointAgentCreationSource]/observations/previous_version' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property '/items/creation_source/anyOf[subschema #1: AgentCreationSource]/oneOf[subschema #7: NetworkAgentCreationSource]/observations/previous_version' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property '/items/provenance/anyOf[subschema #1: Provenance]/sources/items/observations' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks/resolve  added the new optional request property 'records/items/creation_source/oneOf[subschema #1: CloudAgentCreationSource]/observations/previous_version'
+- **CHANGE** for **URL**: /api/v2/agent-tasks/resolve  added the new optional request property 'records/items/creation_source/oneOf[subschema #2: SIEMAgentCreationSource]/observations/previous_version'
+- **CHANGE** for **URL**: /api/v2/agent-tasks/resolve  added the new optional request property 'records/items/creation_source/oneOf[subschema #3: EndpointAgentCreationSource]/observations/previous_version'
+- **CHANGE** for **URL**: /api/v2/agent-tasks/resolve  added the new optional request property 'records/items/creation_source/oneOf[subschema #4: NetworkAgentCreationSource]/observations/previous_version'
 
 # 10/28/2026
 - **CHANGE** for **URL**: /api/v2/inferences/overview  endpoint added

@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.1080"
+        "version": "2.1.1081"
     },
     "paths": {
         "/api/v2/engine-config": {
@@ -18232,6 +18232,18 @@
                         "title": "Version",
                         "description": "Version read statically, never by executing the discovered binary."
                     },
+                    "previous_version": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Previous Version",
+                        "description": "The version this record reported before its latest change, so an upgrade or a downgrade reads off the record itself. Kept across scans by GenAI Engine, which sets it when a report carries a version other than the one it holds; a source never fills it, and a discovered record carrying one is refused. Absent until the version first changes. See ENGINE_KEPT_OBSERVATIONS."
+                    },
                     "host_name": {
                         "anyOf": [
                             {
@@ -28776,6 +28788,17 @@
                             }
                         ],
                         "description": "Where upstream this came from -- the same type the creation source carries, so a record and its task address the system identically. Absent for OTEL and manual agents."
+                    },
+                    "observations": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/AgentObservations"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "What the source saw of this record at its latest report, with `previous_version` kept across reports. The task's creation source holds what the first report saw and is never rewritten, so a record's current version is read here. Absent from entries recorded before it was stored."
                     },
                     "last_seen": {
                         "anyOf": [
