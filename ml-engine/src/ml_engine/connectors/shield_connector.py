@@ -871,7 +871,8 @@ class EngineInternalConnector(ShieldBaseConnector):
         # record every change as the admin key. Name the Platform user the job
         # runs for instead; the engine honours this header only for that key.
         if acting_user := ACTING_USER.get():
-            self._genai_client.default_headers[ON_BEHALF_OF_HEADER] = acting_user
+            for client in (self._genai_client, self._stats_genai_client):
+                client.default_headers[ON_BEHALF_OF_HEADER] = acting_user
 
     @property
     def shield_external_host(self) -> str:

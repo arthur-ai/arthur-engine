@@ -33,9 +33,9 @@ def test_internal_connector_names_the_acting_user() -> None:
         )
     finally:
         ACTING_USER.reset(token)
-    assert (
-        conn._genai_client.default_headers[ON_BEHALF_OF_HEADER] == "alice@example.com"
-    )
+    # Both clients: stats calls (e.g. list_datasets) go through the stats client.
+    for client in (conn._genai_client, conn._stats_genai_client):
+        assert client.default_headers[ON_BEHALF_OF_HEADER] == "alice@example.com"
 
 
 def test_internal_connector_sends_nothing_for_scheduled_jobs() -> None:
@@ -43,7 +43,8 @@ def test_internal_connector_sends_nothing_for_scheduled_jobs() -> None:
         ConnectorSpec.model_validate(mock_engine_internal_connector_spec()),
         logger,
     )
-    assert ON_BEHALF_OF_HEADER not in conn._genai_client.default_headers
+    for client in (conn._genai_client, conn._stats_genai_client):
+        assert ON_BEHALF_OF_HEADER not in client.default_headers
 
 
 def test_customer_engine_connector_never_sends_the_header() -> None:
