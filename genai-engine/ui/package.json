@@ -5,7 +5,7 @@
   "type": "module",
   "packageManager": "yarn@4.18.1",
   "resolutions": {
-    "@arizeai/openinference-semantic-conventions": "2.14.0",
+    "@arizeai/openinference-semantic-conventions": "2.15.0",
     "pdfjs-dist": "6.4.299"
   },
   "scripts": {
@@ -26,7 +26,7 @@
     "@amplitude/analytics-browser": "2.48.1",
     "@amplitude/experiment-js-client": "^1.21.1",
     "@amplitude/plugin-session-replay-browser": "^1.33.6",
-    "@arizeai/openinference-semantic-conventions": "2.14.0",
+    "@arizeai/openinference-semantic-conventions": "2.15.0",
     "@arthur/shared-components": "^4.6.1",
     "@base-ui/react": "1.9.0",
     "@dnd-kit/core": "6.3.1",
@@ -44,10 +44,10 @@
     "@mui/x-date-pickers": "9.15.0",
     "@tanstack/react-form": "1.33.5",
     "@tanstack/react-pacer": "0.24.1",
-    "@tanstack/react-query": "5.104.5",
-    "@tanstack/react-query-devtools": "5.104.5",
+    "@tanstack/react-query": "5.105.0",
+    "@tanstack/react-query-devtools": "5.105.0",
     "@tanstack/react-table": "8.21.3",
-    "axios": "1.20.0",
+    "axios": "1.21.0",
     "dayjs": "1.11.23",
     "html-to-image": "^1.11.13",
     "material-react-table": "3.2.1",
@@ -76,7 +76,7 @@
   "devDependencies": {
     "@eslint/js": "10.0.1",
     "@tailwindcss/vite": "4.3.3",
-    "@tanstack/eslint-plugin-query": "5.104.5",
+    "@tanstack/eslint-plugin-query": "5.105.0",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/react": "^16.3.2",
     "@total-typescript/ts-reset": "0.6.1",
@@ -95,12 +95,12 @@
     "prettier": "3.9.10",
     "swagger-typescript-api": "^13.12.6",
     "typescript": "6.0.3",
-    "typescript-eslint": "8.72.0",
+    "typescript-eslint": "8.72.1",
     "vite": "8.3.5",
     "vite-plugin-node-polyfills": "^0.28.0",
     "vitest": "5.0.5"
   },
   "optionalDependencies": {
-    "@rollup/rollup-linux-x64-gnu": "4.64.12"
+    "@rollup/rollup-linux-x64-gnu": "4.66.0"
   }
 }
