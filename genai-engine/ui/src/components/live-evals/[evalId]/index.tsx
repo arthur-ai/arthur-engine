@@ -1,4 +1,5 @@
-import { Operators, TracesEmptyState } from "@arthur/shared-components";
+import { CopyableChip } from "@arthur/shared-components";
+import { Operators, TracesEmptyState } from "@arthur/shared-components/traces";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import ScienceOutlinedIcon from "@mui/icons-material/ScienceOutlined";
@@ -41,7 +42,6 @@ import { continuousEvalsResultsQueryOptions } from "../hooks/useContinuousEvalsR
 
 import { createColumns } from "./columns";
 
-import { CopyableChip } from "@/components/common";
 import { getContentHeight } from "@/constants/layout";
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useTransform } from "@/hooks/transforms/useTransform";

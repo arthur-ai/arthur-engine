@@ -1742,6 +1742,8 @@ def test_the_record_schema_has_no_field_for_what_is_never_collected() -> None:
     assert set(AgentObservations.model_fields) == {
         "install_path",
         "version",
+        # kept across reports by GenAI Engine; a connector never fills it
+        "previous_version",
         "host_name",
         "host_group",
         "os_version",

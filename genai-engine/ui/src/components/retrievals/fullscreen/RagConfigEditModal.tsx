@@ -1,3 +1,4 @@
+import { useSnackbar } from "@arthur/shared-components";
 import Alert from "@mui/material/Alert";
 import Autocomplete from "@mui/material/Autocomplete";
 import Box from "@mui/material/Box";
@@ -20,7 +21,6 @@ import { buildApiSearchSettings, getMethodFromApiKind, mapApiSettingsToLocal } f
 
 import { useRagCollections } from "@/hooks/rag/useRagCollections";
 import { useCreateRagVersion } from "@/hooks/rag-search-settings/useCreateRagVersion";
-import useSnackbar from "@/hooks/useSnackbar";
 import type { RagProviderCollectionResponse } from "@/lib/api-client/api-client";
 
 interface RagConfigEditModalProps {

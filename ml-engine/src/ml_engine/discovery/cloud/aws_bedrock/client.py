@@ -75,6 +75,12 @@ _REFUSED_CODES = frozenset(
 _DENIED_CODES = frozenset(
     {"AccessDenied", "AccessDeniedException", "OptInRequired", "UnauthorizedOperation"},
 )
+# The `errorCode`s CloudTrail gives a model call IAM refused before Bedrock ran it. Any
+# other code (`ModelErrorException`, `ThrottlingException`, `ValidationException`) is a
+# call the identity was allowed to make that then failed, so it is still a call.
+REFUSED_CALL_CODES = frozenset(
+    {"AccessDenied", "AccessDeniedException", "UnauthorizedOperation"},
+)
 _THROTTLED_CODES = frozenset(
     {"ThrottlingException", "Throttling", "TooManyRequestsException"},
 )
@@ -114,6 +120,14 @@ class ModelCall:
     caller_type: str
     model_id: Optional[str]
     event_time: datetime
+    error_code: Optional[str] = None
+    """CloudTrail's `errorCode`, set when the call failed for any reason."""
+
+    @property
+    def refused(self) -> bool:
+        """Whether IAM refused the call, so no model was called. A call that failed
+        in the model or was throttled was allowed, and is still a call."""
+        return self.error_code in REFUSED_CALL_CODES
 
 
 ClientFactory = Callable[[str, str], Any]
@@ -341,6 +355,7 @@ def _model_call(raw: Mapping[str, Any]) -> Optional[ModelCall]:
         caller_type=str(who.get("type") or ""),
         model_id=str(model) if model else None,
         event_time=when,
+        error_code=str(detail.get("errorCode") or "") or None,
     )
 
 

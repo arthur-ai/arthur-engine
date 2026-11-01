@@ -27,6 +27,13 @@ A caller is per region because a role calling models in two regions is two deplo
 of the workload, as two agents in two regions are; the account is in its ARN already,
 and in the external id so the id reads alone.
 
+A REFUSED CALL IS NOT A CALLER. CloudTrail logs a model call IAM refused, with an
+`AccessDenied` `errorCode` and no model, under the identity that tried. An identity whose every call
+was refused has called no model, so it is not reported; its refused calls are counted in
+the log, beside people's. Vertex AI writes no audit entry for a refused call, so the two
+clouds agree on what a caller is. A call that was allowed and then failed -- an error in
+the model, a throttle -- is still that identity's call, with its model.
+
 A PERSON IS NOT AN AGENT. An AWS IAM Identity Center (SSO) role is assumed by a person
 at a console or a CLI, so its calls are counted and logged, never reported; so is the
 root user's. Only workload identities become records.
@@ -318,8 +325,15 @@ class _Scan:
             region,
             self._client.model_calls(region, start, end),
         )
-        callers, people, events = aggregate(calls)
+        callers, people, events, denied = aggregate(calls)
         self.counts["model_call_events"] += events
+        if denied:
+            self.counts["denied_calls"] += denied
+            self._log.info(
+                "Bedrock in %s: %s refused model call(s) counted, not reported",
+                region,
+                denied,
+            )
         if people:
             self.people.update(people)
             self._log.info(
@@ -366,13 +380,14 @@ class _Scan:
     def log_summary(self, settings: BedrockSettings) -> None:
         self._log.info(
             "Bedrock scan found %s agent(s), %s runtime(s) and %s model-calling "
-            "role(s) and user(s) from %s model call event(s); %s call(s) by people not "
-            "reported; %s resource(s) skipped; %s part(s) refused",
+            "role(s) and user(s) from %s model call event(s); %s call(s) by people and "
+            "%s refused call(s) not reported; %s resource(s) skipped; %s part(s) refused",
             self.counts[BEDROCK_AGENT],
             self.counts[AGENT_RUNTIME],
             self.counts[IAM_ROLE] + self.counts[IAM_USER],
             self.counts["model_call_events"],
             sum(self.people.values()),
+            self.counts["denied_calls"],
             self.skipped,
             len(self.refused),
         )
@@ -380,13 +395,19 @@ class _Scan:
 
 def aggregate(
     calls: Iterator[ModelCall],
-) -> tuple[list[_Caller], Counter[str], int]:
-    """(workload callers, people's calls by kind, events read) from one region's calls."""
+) -> tuple[list[_Caller], Counter[str], int, int]:
+    """(workload callers, people's allowed calls by kind, events read, refused calls)
+    from one region's calls. A refused call is counted as refused whoever made it,
+    a person included, and is never a caller."""
     callers: dict[str, _Caller] = {}
     people: Counter[str] = Counter()
     events = 0
+    denied = 0
     for call in calls:
         events += 1
+        if call.refused:
+            denied += 1
+            continue
         person = _person(call)
         if person is not None:
             people[person] += 1
@@ -398,7 +419,7 @@ def aggregate(
             caller.models.add(call.model_id)
         if caller.last_seen is None or call.event_time > caller.last_seen:
             caller.last_seen = call.event_time
-    return sorted(callers.values(), key=lambda c: c.arn), people, events
+    return sorted(callers.values(), key=lambda c: c.arn), people, events, denied
 
 
 def _person(call: ModelCall) -> Optional[str]:

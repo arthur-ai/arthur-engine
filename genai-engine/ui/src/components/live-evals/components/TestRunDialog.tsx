@@ -1,3 +1,4 @@
+import { CopyableChip } from "@arthur/shared-components";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutlineOutlined";
 import ErrorOutlineIcon from "@mui/icons-material/ErrorOutlineOutlined";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
@@ -23,7 +24,6 @@ import { Link } from "react-router";
 
 import { useCreateTestRun, useTestRun, useTestRunResults } from "../hooks/useTestRun";
 
-import { CopyableChip } from "@/components/common";
 import { Details } from "@/components/live-evals/components/results/components/details";
 import { serializeDrawerTarget } from "@/components/traces/hooks/useDrawerTarget";
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";

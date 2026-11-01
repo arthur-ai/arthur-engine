@@ -1,3 +1,4 @@
+import { useSnackbar } from "@arthur/shared-components";
 import { Add, Storage } from "@mui/icons-material";
 import Alert from "@mui/material/Alert";
 import Autocomplete from "@mui/material/Autocomplete";
@@ -27,7 +28,6 @@ import { RagProviderFormModal } from "@/components/rag/RagProviderFormModal";
 import { useRagCollections } from "@/hooks/rag/useRagCollections";
 import { useRagProviders } from "@/hooks/rag/useRagProviders";
 import { useCreateRagConfig } from "@/hooks/rag-search-settings/useCreateRagConfig";
-import useSnackbar from "@/hooks/useSnackbar";
 import type { RagProviderCollectionResponse } from "@/lib/api-client/api-client";
 
 interface CreateRagConfigurationModalProps {

@@ -55,11 +55,17 @@ class StandaloneOutcomeReporter:
 
     def report(self, outcome: DiscoveryScanOutcome) -> None:
         try:
-            self._sink.send([scan_outcome_event(outcome, self._source_name)])
+            refused = self._sink.send([scan_outcome_event(outcome, self._source_name)])
         except Exception as e:
             self._log.error(
                 f"Could not send this scan's outcome to the destination; the outcome "
                 f"logged above is the record of it: {e}",
+            )
+            return
+        for r in refused:
+            self._log.error(
+                f"The destination refused this scan's outcome; the outcome logged "
+                f"above is the record of it: {r.reason}: {r.detail}",
             )
 
 

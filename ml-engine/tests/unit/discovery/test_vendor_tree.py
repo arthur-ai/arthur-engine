@@ -49,7 +49,7 @@ def test_vendored_file_is_unmodified(name: str) -> None:
     actual = hashlib.sha256((VENDOR / name).read_bytes()).hexdigest()
     assert actual == _manifest()[name], (
         f"{name} differs from the vendored upstream release. If a formatter rewrote it, "
-        f"restore it and add an exclusion; if you meant to re-vendor, regenerate SHA256SUMS."
+        f"restore it and add an exclusion; to re-vendor, run scripts/vendor_ai_detection_spec.py."
     )
 
 

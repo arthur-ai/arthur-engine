@@ -1,5 +1,5 @@
 import { VariableChip } from "@arthur/shared-components";
-import { withForm } from "@arthur/shared-components";
+import { withForm } from "@arthur/shared-components/traces";
 import { Box, Divider, Stack, TextField } from "@mui/material";
 import { Paper, Typography } from "@mui/material";
 import { useStore } from "@tanstack/react-form";

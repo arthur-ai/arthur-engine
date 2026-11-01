@@ -1,13 +1,13 @@
+import { getNestedValue, withFieldGroup } from "@arthur/shared-components/traces";
 import { Autocomplete, Box, Stack, TextField, Typography } from "@mui/material";
 import { alpha, Theme } from "@mui/material/styles";
 import { useStore } from "@tanstack/react-form";
 
-import { withFieldGroup } from "../../filtering/hooks/form";
 import { addToDatasetFormOptions, resolveSchemaColumns } from "../form/shared";
 import { useExecuteTransform } from "../hooks/useExecuteTransform";
 import { MatchStatus, useMatchingVariables } from "../hooks/useMatchingVariables";
 
-import { getNestedValue, getNestedValueWildcard } from "@/components/traces/utils/spans";
+import { getNestedValueWildcard } from "@/components/traces/utils/spans";
 import { useTransformVersions } from "@/components/transforms/hooks/useTransformVersions";
 import { useTransforms } from "@/hooks/transforms/useTransforms";
 import { useDatasetLatestVersion } from "@/hooks/useDatasetLatestVersion";

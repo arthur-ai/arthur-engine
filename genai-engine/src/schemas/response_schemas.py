@@ -193,6 +193,12 @@ class TraceMetadataResponse(TokenCountCostSchema):
     start_time: datetime = Field(description="Start time of the earliest span")
     end_time: datetime = Field(description="End time of the latest span")
     span_count: int = Field(description="Number of spans in this trace")
+    ingest_bytes: Optional[int] = Field(
+        None,
+        description="OTLP payload bytes received for this trace's spans on the "
+        "trace ingestion endpoints. Absent for traces ingested before it was "
+        "recorded, or that didn't arrive through those endpoints.",
+    )
     duration_ms: float = Field(description="Total trace duration in milliseconds")
     created_at: datetime = Field(description="When the trace was first created")
     updated_at: datetime = Field(description="When the trace was last updated")
@@ -933,8 +939,10 @@ class SyntheticDataGenerationResponse(BaseModel):
 class SyntheticDataPromptStatus(BaseModel):
     model_config = {"use_enum_values": True}
 
+    # Distinct title for the same reason as AgenticPrompt.model_provider.
     model_provider: Union[ModelProvider, Literal["empty"]] = Field(
         ...,
+        title="Synthetic Data Prompt Model Provider",
         description="Model provider stored in the SDG system prompt. "
         "The sentinel 'empty' indicates the prompt has not yet been configured.",
     )
@@ -1042,6 +1050,25 @@ class TraceOverviewListResponse(BaseModel):
         description="List of trace overviews",
     )
     count: int = Field(description="Total number of trace overviews")
+
+
+class InferenceOverviewResponse(BaseModel):
+    """Inference count and latest inference time for a task"""
+
+    task_id: str = Field(description="Task ID")
+    inference_count: int = Field(description="Number of inferences")
+    last_inference_at: Optional[datetime] = Field(
+        default=None,
+        description="Creation time of the most recent inference, or null if the task has none",
+    )
+
+
+class InferenceOverviewListResponse(BaseModel):
+    """Response for list of inference overviews"""
+
+    overviews: list[InferenceOverviewResponse] = Field(
+        description="One inference overview per requested task",
+    )
 
 
 class TraceTimeSeriesPoint(BaseModel):

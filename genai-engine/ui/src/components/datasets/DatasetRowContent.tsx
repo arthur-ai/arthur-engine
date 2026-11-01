@@ -1,8 +1,8 @@
+import { CopyableChip } from "@arthur/shared-components";
 import { Box, Link, Stack, Typography } from "@mui/material";
 import React from "react";
 import { Link as RouterLink } from "react-router";
 
-import { CopyableChip } from "@/components/common/CopyableChip";
 import { SourceTraceLink } from "@/components/common/SourceTraceLink";
 import type { DatasetVersionRowResponse } from "@/lib/api-client/api-client";
 import { track } from "@/services/analytics";

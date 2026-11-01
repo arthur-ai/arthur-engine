@@ -1,9 +1,9 @@
+import { CopyableChip } from "@arthur/shared-components";
 import { Typography } from "@mui/material";
 import { createMRTColumnHelper } from "material-react-table";
 
 import { StatusBadge } from "../components/status-badge";
 
-import { CopyableChip } from "@/components/common";
 import { AgenticExperimentSummary } from "@/lib/api-client/api-client";
 import { formatCurrency } from "@/utils/formatters";
 

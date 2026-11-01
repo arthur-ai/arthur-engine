@@ -29,9 +29,10 @@ def _entry(
     resource_id: str,
     source_id: str = SOURCE_ID,
     external_id: str | None = None,
+    observations: dict[str, object] | None = None,
 ) -> dict[str, object]:
     """A provenance entry as GenAI Engine serves it: one source's report of one record."""
-    return {
+    entry: dict[str, object] = {
         "source_class": "siem",
         "source_id": source_id,
         "vendor": "splunk_enterprise",
@@ -40,6 +41,9 @@ def _entry(
         "last_scanned": LAST_SCANNED.isoformat(),
         "external_id": external_id,
     }
+    if observations is not None:
+        entry["observations"] = observations
+    return entry
 
 
 def _device_entry(
@@ -366,6 +370,85 @@ def test_a_network_source_entry_crosses_to_the_platform() -> None:
     assert source.source_class.value == "network"
 
 
+def _gateway_entry(kind: str, resource_id: str) -> dict[str, object]:
+    return {
+        **_entry(resource_id, external_id=f"litellm:gw:{kind}:{resource_id}"),
+        "source_class": "network",
+        "vendor": "litellm",
+        "address": {
+            "instance": "gw.example.com",
+            "resource_kind": kind,
+            "resource_id": resource_id,
+        },
+    }
+
+
+def test_gateway_caller_evidence_carries_the_identity_basis_the_platform_requires() -> (
+    None
+):
+    """Provenance has no identity_basis. The task's own record takes it from the task's
+    creation source; any other caller record from its kind, an agent id falling back to
+    the weaker claimed_agent."""
+    task = _task(
+        "t1",
+        sources=[
+            _gateway_entry("agent_id", "agt-1"),
+            _gateway_entry("virtual_key", "a" * 64),
+            _gateway_entry("agent_id", "agt-2"),
+        ],
+    ).to_dict()
+    task["creation_source"] = {
+        "type": "NETWORK",
+        "vendor": "litellm",
+        "identity_basis": "registered_agent",
+        "address": {
+            "instance": "gw.example.com",
+            "resource_kind": "agent_id",
+            "resource_id": "agt-1",
+        },
+        "observations": {"host_group": "platform"},
+    }
+    agent = enriched_task_to_agent(
+        EnrichedTaskResponse.from_dict(task),
+        DATA_PLANE_ID,
+        SOURCE_ID,
+    )
+
+    basis = {
+        record.creation_source.actual_instance.address.resource_id: (
+            record.creation_source.actual_instance.identity_basis.value
+        )
+        for record in agent.evidence
+    }
+    assert basis == {
+        "agt-1": "registered_agent",
+        "a" * 64: "credential",
+        "agt-2": "claimed_agent",
+    }
+
+
+def test_network_host_evidence_carries_no_identity_basis() -> None:
+    network = {
+        **_entry("i-0abc", external_id="aws_network:i-0abc"),
+        "source_class": "network",
+        "vendor": "aws_network",
+        "address": {
+            "instance": "i-0abc",
+            "scope": "111122223333/us-east-1",
+            "resource_kind": "instance",
+            "resource_id": "i-0abc",
+        },
+    }
+    agent = enriched_task_to_agent(
+        _task("t1", sources=[network]),
+        DATA_PLANE_ID,
+        SOURCE_ID,
+    )
+
+    [record] = agent.evidence
+    assert record.creation_source.actual_instance.identity_basis is None
+
+
 def test_the_fetch_job_uploads_provenance(tasks_api: MagicMock) -> None:
     tasks_api.get_agent_tasks_api_v2_agent_tasks_get.side_effect = [[_task("t1")], []]
     agents_client = _agents_client()
@@ -408,6 +491,37 @@ def test_each_record_the_source_reported_becomes_its_evidence() -> None:
     assert source.type == "SIEM"
     assert source.vendor == "splunk_enterprise"
     assert source.address.resource_id == "rec-2"
+
+
+def test_each_record_carries_what_its_latest_report_saw() -> None:
+    """Every record, not only the one the task was created from, and its latest report
+    rather than the first: the creation source is never rewritten, so its observations
+    give way wherever the entry serves its own."""
+    task = _task(
+        "t1",
+        sources=[
+            _entry(
+                "t1",
+                external_id="splunk-t1",
+                observations={"version": "2.1.314", "previous_version": "2.1.312"},
+            ),
+            _entry(
+                "rec-2",
+                external_id="splunk-rec-2",
+                observations={"version": "1.0"},
+            ),
+        ],
+    )
+
+    agent = enriched_task_to_agent(task, DATA_PLANE_ID, SOURCE_ID)
+
+    observed = {
+        record.external_id: record.creation_source.actual_instance.observations
+        for record in agent.evidence
+    }
+    assert observed["splunk-t1"].version == "2.1.314"
+    assert not observed["splunk-t1"].service_names, "not the creation source's"
+    assert observed["splunk-rec-2"].version == "1.0"
 
 
 def test_only_the_record_the_task_came_from_carries_its_observations() -> None:

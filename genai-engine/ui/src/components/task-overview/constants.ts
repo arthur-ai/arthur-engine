@@ -1,4 +1,4 @@
-import { getLocaleForCurrency } from "@/utils/currencyLocales";
+import { getLocaleForCurrency } from "@arthur/shared-components";
 
 export const METRIC_COLORS = {
   traces: { main: "#3B82F6", light: "#EFF6FF", dark: "rgba(59,130,246,0.12)", border: "#BFDBFE", darkBorder: "rgba(59,130,246,0.3)" },

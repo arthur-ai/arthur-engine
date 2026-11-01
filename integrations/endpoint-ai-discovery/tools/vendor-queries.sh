@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Vendor ai-detection-spec's osquery binding -- its built artifacts -- at a pinned ref.
 #
-#     tools/vendor-queries.sh v0.15.0
+#     tools/vendor-queries.sh v0.16.2
 #     tools/vendor-queries.sh 98eaeca        # a SHA, if no tag carries what you need
 #
 # WHY VENDOR RATHER THAN SUBMODULE OR FETCH-AT-BUILD. A vendored copy gives reviewable
@@ -24,7 +24,8 @@
 # the collector's, and the collector is ml-engine/src/ml_engine/discovery/, which vendors
 # them into its own package because that is what ships in its wheel. Both halves must ride
 # the same ref -- a catalog that matched a different revision of the queries is a silent
-# wrong answer -- and ml-engine's test_vendor_parity.py asserts that they do.
+# wrong answer -- so ml-engine/scripts/vendor_ai_detection_spec.py reads the ref from the
+# VERSION this writes, and ml-engine's test_vendor_parity.py asserts that they match.
 #
 # The upstream tree is verified before anything is copied: `osquery/tools/build.py --check`
 # must pass at that ref, or the artifacts do not match the queries that produced them and
@@ -37,6 +38,18 @@ DEST="$HERE/vendor/ai-detection-spec"
 
 REF="${1:-}"
 [ -n "$REF" ] || { sed -n '2,5p' "$0" | sed 's/^# \{0,1\}//'; exit 1; }
+
+# THE OTHER HALF COMES FROM GITHUB. ml-engine/scripts/vendor_ai_detection_spec.py reads the
+# repo from the VERSION written below and takes the catalog and matcher from that repo's
+# release at this ref. A repo it cannot fetch from leaves the two trees at different refs,
+# so refuse it here, before anything is cloned or cleared.
+case "$REPO" in
+  https://github.com/*) ;;
+  *)
+    echo "vendor: $REPO is not an https://github.com/ URL, which ml-engine needs to fetch the" >&2
+    echo "        catalog and matcher from the same release. Set VENDOR_REPO to that form, or unset it." >&2
+    exit 1 ;;
+esac
 
 work="$(mktemp -d "${TMPDIR:-/tmp}/vendor.XXXXXX")" || exit 1
 trap 'rm -rf "$work"' EXIT
@@ -113,4 +126,10 @@ sed 's/^/  /' "$DEST/VERSION"
 echo "  files: $(find "$DEST" -type f | wc -l | tr -d ' ')"
 echo
 echo "next: tools/build-collector.py   (rebuilds the deployable around these)"
-echo "      and re-vendor ml-engine/src/ml_engine/discovery/_vendor/ at the same ref"
+if [ "$kind" = tag ]; then
+  echo "      then, in ml-engine/: uv run python scripts/vendor_ai_detection_spec.py"
+  echo "                           (the catalog and matcher, at this same tag)"
+else
+  echo "      the catalog and matcher cannot follow a bare commit: ml-engine vendors them from a"
+  echo "      tag's release. ml-engine's test_vendor_parity.py fails until a tag is pinned here."
+fi

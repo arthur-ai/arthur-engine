@@ -79,6 +79,14 @@ class DatabaseTaskProvenanceSource(Base):
         JSON().with_variant(postgresql.JSONB, "postgresql"),
         nullable=True,
     )
+    # The record's `AgentObservations`, as JSON: what the latest report saw of it, since
+    # the task's creation source keeps only what the first one saw. `previous_version`
+    # is the one field no report carries -- `record_reports` keeps the version before
+    # the latest change there. Null for rows written before these were stored.
+    observations: Mapped[Optional[Any]] = mapped_column(
+        JSON().with_variant(postgresql.JSONB, "postgresql"),
+        nullable=True,
+    )
     # UTC, naive, and the engine's clock rather than the source's: these say when a scan
     # handed the record over, which is what the fetch job windows on. When the source
     # itself saw the agent is `last_seen`, below.

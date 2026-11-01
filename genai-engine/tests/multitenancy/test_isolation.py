@@ -556,6 +556,16 @@ PATTERN_D_CASES = [
         ),
     ),
     IsolationCase(
+        name="POST /api/v2/inferences/overview task_ids=[T1a, T2a]",
+        pattern="D",
+        expected=403,
+        invoke=lambda c, h, w: c.post(
+            "/api/v2/inferences/overview",
+            json={"task_ids": [w.t1a.id, w.t2a.id]},
+            headers=h,
+        ),
+    ),
+    IsolationCase(
         name="GET /api/v2/inferences/query?task_ids=[T1a, T2a]",
         pattern="D",
         expected=403,

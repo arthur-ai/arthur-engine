@@ -23,7 +23,10 @@ class AgenticPrompt(BaseModel):
     model_name: str = Field(
         description="Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet')",
     )
+    # A distinct title keeps openapi-generator from naming this inline anyOf
+    # "ModelProvider", which overwrites the ModelProvider enum in generated clients.
     model_provider: Union[ModelProvider, Literal["empty"]] = Field(
+        title="Agentic Prompt Model Provider",
         description="Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure'). "
         f"The sentinel value '{EMPTY_MODEL_PROVIDER}' indicates the system default placeholder has not been configured.",
     )

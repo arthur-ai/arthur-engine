@@ -1,3 +1,4 @@
+import { withForm } from "@arthur/shared-components/traces";
 import {
   Autocomplete,
   Box,
@@ -18,7 +19,6 @@ import { useState } from "react";
 import { createExperimentModalFormOpts } from "../../form";
 import { EvalInstructions } from "../eval-instructions";
 
-import { withForm } from "@/components/traces/components/filtering/hooks/form";
 import { TOUR_IDS } from "@/features/task-tour/selectors";
 import { useDatasetVersionData } from "@/hooks/useDatasetVersionData";
 

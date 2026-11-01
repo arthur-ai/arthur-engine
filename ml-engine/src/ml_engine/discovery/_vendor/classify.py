@@ -31,8 +31,10 @@ CATALOG_SCHEMA = ROOT / "schema" / "catalog.schema.json"
 # WHAT THIS MATCHER READS. A catalog document names its version in `format`, the authoring
 # form in `version`, and either one this matcher does not read is refused (SPEC.md 10): an
 # error the operator sees, never a catalog matched in part.
-FORMATS = frozenset({"ai-detection-spec/0.1"})
-CATALOG_VERSION = 3
+FORMATS = frozenset({"ai-detection-spec/0.2"})
+# Bumped with the format when matching changes: a matcher that predates Windows home roots
+# would read this catalog and report every Windows path unmatched.
+CATALOG_VERSION = 4
 
 
 def _yaml(path):
@@ -47,7 +49,7 @@ def _yaml(path):
         import yaml
     except ImportError:
         sys.exit("PyYAML is required to read the catalog: pip install pyyaml")
-    return yaml.safe_load(pathlib.Path(path).read_text())
+    return yaml.safe_load(pathlib.Path(path).read_text(encoding="utf-8"))
 
 
 def read_catalog(path, routes_path=DEFAULT_ROUTES):
@@ -60,7 +62,7 @@ def read_catalog(path, routes_path=DEFAULT_ROUTES):
     JSON is parsed without PyYAML, so a catalog document needs only jsonschema.
     """
     try:
-        doc = json.loads(pathlib.Path(path).read_text())
+        doc = json.loads(pathlib.Path(path).read_text(encoding="utf-8"))
     except ValueError:
         doc = _yaml(path)
     if isinstance(doc, dict) and "format" in doc:
@@ -77,7 +79,9 @@ def from_document(doc, where="the catalog", schema=CATALOG_SCHEMA):
     skips only the JSON Schema step, for the rendered-SQL tests, which run without jsonschema.
     """
     fmt = doc.get("format") if isinstance(doc, dict) else None
-    if fmt not in FORMATS:
+    # A string before `in`, which hashes: a list or an object there raised TypeError, a
+    # crash where the spec asks for a refusal, and before the schema could refuse it.
+    if not isinstance(fmt, str) or fmt not in FORMATS:
         sys.exit(f"classify: {where} is format {fmt!r}, and this matcher reads "
                  f"{', '.join(sorted(FORMATS))}. Refusing it rather than matching nothing "
                  f"(SPEC.md 10).")
@@ -127,7 +131,7 @@ def schema_errors(doc, schema):
         sys.exit("classify: a catalog document is validated before it is read (SPEC.md 4), "
                  "and that needs jsonschema: pip install jsonschema")
     try:
-        loaded = json.loads(pathlib.Path(schema).read_text())
+        loaded = json.loads(pathlib.Path(schema).read_text(encoding="utf-8"))
     except OSError:
         sys.exit(f"classify: a catalog document is validated against {schema}, which is "
                  f"missing. A release attaches catalog.schema.json: put it in schema/, "
@@ -194,7 +198,7 @@ class Registry:
         self.values_from = {n: r["values_from"] for n, r in self.routes.items()
                             if r.get("values_from")}
         # kind -> the routes reachable through the GENERIC loop. `tool-dir` routes are
-        # excluded on purpose: pypi evidence arrives as kind='file' through the TOOL_DIR
+        # excluded on purpose: pypi evidence arrives as kind='file' through the TOOL_DIRS
         # bridge, and listing it here as well is what let a PyPI-only signature claim an
         # npm package of the same name -- npm's `mcp` is Mintlify's, and it was reported
         # as the MCP SDK until the two were split.
@@ -242,17 +246,31 @@ class Registry:
 #
 # bin/classify runs OFF the machine, over a payload that a fleet collector may have
 # merged from many hosts, so there is no such thing as "the platform" here: a single
-# input can legitimately carry /Users/dana/.claude and /home/dana/.claude. An earlier
-# design took a platform argument, which would have made a mixed payload match only half
-# of itself and reported the rest as unmatched.
+# input can legitimately carry /Users/dana/.claude, /home/dana/.claude and
+# C:\Users\dana\.claude. An earlier design took a platform argument, which would have made
+# a mixed payload match only half of itself and reported the rest as unmatched.
 #
-# One alternation rather than one pattern per platform, because path routes are compared
-# against every candidate row -- docs/signature-lifecycle.md's scaling note -- so a
-# per-platform list would multiply the glob count by three for no gain.
+# One pattern per value, alternating over every root, rather than one per platform,
+# because path routes are compared against every candidate row --
+# docs/signature-lifecycle.md's scaling note.
+#
+# EACH ROOT HAS ITS OWN SEPARATORS (SPEC.md 6.4.7), so each entry is (root, separator, one
+# path component): `/` under a POSIX root, where `\` is an ordinary filename character, and
+# either under a Windows root, which accepts both. So `/home/u\.claude` is not `~/.claude`
+# and `C:\Users\u/.claude` is. The drive is any letter in either case, because it carries
+# no identity; `Users` is compared as written, like everything else (SPEC.md 6.4).
 #
 # /root gets its own alternative: root's home is not under /home, and a `[^/]+`
 # component cannot reach it. Verified against `users.directory` on Ubuntu and Fedora.
-HOME_ROOTS = r"(?:/Users/[^/]+/|/home/[^/]+/|/root/)"
+ROOT_KINDS = (
+    (r"(?:/Users/[^/]+/|/home/[^/]+/|/root/)", "/", r"[^/]+"),
+    (r"[A-Za-z]:[\\/]Users[\\/][^\\/]+[\\/]", r"[\\/]", r"[^\\/]+"),
+)
+
+
+def _under(root, sep, rel):
+    """`rel`, a `/`-separated path below a home (SPEC.md 4.4 rule 4), as a regex below `root`."""
+    return root + sep.join(re.escape(part) for part in rel.split("/"))
 
 
 # THE MATCH MODES. The spec declares them in schema/catalog.schema.json; this is a copy,
@@ -280,12 +298,15 @@ def home_pattern(value, mode):
     """
     # `\Z`, NOT `$`: Python's `$` also matches before a final newline, which neither the
     # format nor osquery's regex_match does. osquery/tools/render_match.py writes it as `$`.
-    body = re.escape(value[2:])                      # strip the leading '~/'
+    rel = value[2:]                                  # strip the leading '~/'
     if mode == "home-dir":
-        return re.compile("^" + HOME_ROOTS + body + r"/?\Z")
+        alts = (_under(root, sep, rel) + sep + "?" for root, sep, _ in ROOT_KINDS)
+        return re.compile("^(?:" + "|".join(alts) + r")\Z")
     # A group rather than a lookahead: osquery/dist/signatures.sql hands this pattern to osquery's
     # regex_match, and a pattern it cannot compile aborts the whole statement.
-    return re.compile("^" + HOME_ROOTS + body + ("" if value.endswith("/") else r"(?:/|\Z)"))
+    alts = (_under(root, sep, rel) + ("" if value.endswith("/") else "(?:" + sep + r"|\Z)")
+            for root, sep, _ in ROOT_KINDS)
+    return re.compile("^(?:" + "|".join(alts) + ")")
 
 
 def build_index(catalog, registry):
@@ -449,11 +470,31 @@ def image_repos(tags):
 # Caught by 25-python-agents asserting on the classifier rather than on row counts. The
 # count-based version passed throughout, because the row was present the whole time.
 #
-# HOME_ROOTS rather than a hardcoded /Users/, so a uv tool install under /home/dana or
-# /root resolves the same way. That was one of three hand copies of the same prefix; the
-# other two were this file's path globs and tools/agent_status.py's replay.
-TOOL_DIR = re.compile(
-    "^" + HOME_ROOTS + r"\.local/(?:pipx/venvs|share/uv/tools)/([^/]+)/?\Z")
+# ROOT_KINDS rather than a hardcoded /Users/, so a uv tool install under /home/dana, /root
+# or C:\Users\dana resolves the same way. That was one of three hand copies of the same
+# prefix; the other two were this file's path globs and tools/agent_status.py's replay.
+#
+# The layouts are written once, here; tools/validate_catalog.py reads them for overlaps.
+# The AppData pair is where pipx and uv put a tool on Windows by default, read off
+# windows-2025 (survey runs 40393754308 and 40396366136: `pipx environment`, `uv tool dir`).
+TOOL_LAYOUTS = ("~/.local/pipx/venvs/", "~/.local/share/uv/tools/",
+                "~/AppData/Local/pipx/pipx/venvs/", "~/AppData/Roaming/uv/tools/")
+# ONE PATTERN PER KIND OF ROOT, each capturing the name as group 1. Not one alternation: a
+# group number cannot be shared across branches, and the rendered SQL reads group 1.
+TOOL_DIRS = tuple(
+    re.compile("^" + root + "(?:" + "|".join(_under("", sep, lay[2:]) for lay in TOOL_LAYOUTS)
+               + ")(" + part + ")" + sep + r"?\Z")
+    for root, sep, part in ROOT_KINDS)
+
+
+def tool_names(*paths):
+    """The package each path names as a pipx or uv tool directory, in the order given."""
+    for path in paths:
+        for pattern in TOOL_DIRS:
+            m = pattern.match(path)
+            if m:
+                yield m.group(1)
+                break
 
 
 
@@ -485,10 +526,11 @@ def provenance(row):
 #   INSTALL_KINDS  read from an install record -- a package database, a bundle, a manifest
 #   PATH_KINDS     `loc` is where the agent is installed. Not `proc`, whose `loc` may be the
 #                  interpreter running it, nor `image`, `container` or `ilabel`, whose `loc`
-#                  is an id
-INSTALL_KINDS = frozenset({"app", "brew", "deb", "ext", "jbplugin", "npm", "rpm", "vscodeext"})
-PATH_KINDS = frozenset({"app", "brew", "daemon", "desktop", "ext", "file", "jbplugin", "nmh",
-                        "npm", "port", "unit", "vscodeext"})
+#                  is an id, nor `uninstall`, whose `loc` is a registry key
+INSTALL_KINDS = frozenset({"app", "brew", "deb", "ext", "jbplugin", "msix", "npm", "rpm",
+                           "uninstall", "vscodeext"})
+PATH_KINDS = frozenset({"app", "brew", "daemon", "desktop", "ext", "file", "jbplugin", "msix",
+                        "nmh", "npm", "port", "unit", "vscodeext"})
 
 
 def kind_rank(routes):
@@ -619,8 +661,7 @@ def classify(rows, catalog, routes=None):
         # each yield a name (SPEC.md 6.4.6); taking only the first that parsed missed a row
         # whose `id` named another directory.
         if kind in tool_kinds:
-            for tool in (TOOL_DIR.match(ident), TOOL_DIR.match(loc)):
-                name = tool and tool.group(1)
+            for name in tool_names(ident, loc):
                 hit = next((exact[(r, name)] for r in registry.bridged() if (r, name) in exact),
                            None)
                 if hit:
@@ -841,8 +882,8 @@ def _payload_platform(kinds, kind_platforms):
 
     Those are different machines and routinely different systems: an analyst on a Mac
     reads a Linux fleet's rows. Only a kind exclusive to one platform is evidence; `file`
-    and `npm` are posix and say nothing. A payload merged from both is a real and
-    supported state, so it gets its own word rather than being forced into one.
+    and `npm` come from every platform and say nothing. A payload merged from several is a
+    real and supported state, so it gets its own word rather than being forced into one.
     """
     seen = {p for k in kinds for p in kind_platforms.get(k, ())
             if len(kind_platforms.get(k, ())) == 1}
@@ -1014,7 +1055,8 @@ def _run(state, started):
     state["check"] = args.telemetry_check
 
     state["phase"] = "read"
-    raw = pathlib.Path(args.input).read_text() if args.input else sys.stdin.read()
+    raw = (pathlib.Path(args.input).read_text(encoding="utf-8") if args.input
+           else sys.stdin.read())
     rows = json.loads(raw)
 
     # Its own phase, so a refused catalog is counted as one rather than as a crash anywhere.

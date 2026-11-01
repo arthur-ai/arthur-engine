@@ -64,11 +64,12 @@ class RecordingSink:
         self._fail_after = fail_after
         self._calls = 0
 
-    def send(self, events: Sequence[dict[str, Any]]) -> None:
+    def send(self, events: Sequence[dict[str, Any]]) -> tuple[()]:
         self._calls += 1
         if self._fail_after is not None and self._calls > self._fail_after:
             raise SinkDeliveryError("destination unavailable")
         self.sent.extend(events)
+        return ()
 
     def secrets(self) -> tuple[str, ...]:
         return (SINK_SECRET,)

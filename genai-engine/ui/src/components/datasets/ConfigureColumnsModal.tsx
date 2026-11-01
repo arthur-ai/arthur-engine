@@ -1,3 +1,4 @@
+import { columnNameSchema } from "@arthur/shared-components";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
@@ -23,7 +24,6 @@ import { z } from "zod";
 import { DefaultValueSelector } from "./DefaultValueSelector";
 
 import { TOUR_IDS, tourDataAttr } from "@/features/task-tour/selectors";
-import { columnNameSchema } from "@/schemas/datasetSchemas";
 import { track } from "@/services/analytics";
 import type { ColumnDefaultConfig, ColumnDefaults } from "@/types/dataset";
 

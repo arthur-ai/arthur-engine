@@ -1,3 +1,4 @@
+import { useSnackbar } from "@arthur/shared-components";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import CloseIcon from "@mui/icons-material/Close";
@@ -10,7 +11,6 @@ import { MessageDisplay, VariableTile } from "./PromptResultComponents";
 
 import { UpdateDatasetRowModal } from "@/components/common/UpdateDatasetRowModal";
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
-import useSnackbar from "@/hooks/useSnackbar";
 import type { InputVariable, EvalExecution, PromptOutput } from "@/lib/api-client/api-client";
 import { formatCurrency } from "@/utils/formatters";
 

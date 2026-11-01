@@ -1,3 +1,4 @@
+import { SearchBar } from "@arthur/shared-components";
 import AddIcon from "@mui/icons-material/Add";
 import CloseIcon from "@mui/icons-material/Close";
 import InventoryIcon from "@mui/icons-material/Inventory";
@@ -26,7 +27,6 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import { useNavigate } from "react-router";
 
 import { ArthurLogo } from "./common/ArthurLogo";
-import { SearchBar } from "./common/SearchBar";
 import { CreateTaskForm } from "./CreateTaskForm";
 import { TaskCard } from "./TaskCard";
 

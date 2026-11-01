@@ -1,3 +1,4 @@
+import { useSnackbar } from "@arthur/shared-components";
 import Alert from "@mui/material/Alert";
 import Autocomplete from "@mui/material/Autocomplete";
 import Box from "@mui/material/Box";
@@ -14,7 +15,6 @@ import toFrontendPrompt from "../utils/toFrontendPrompt";
 import VersionSelector from "./VersionSelector";
 
 import { useApi } from "@/hooks/useApi";
-import useSnackbar from "@/hooks/useSnackbar";
 import { useTask } from "@/hooks/useTask";
 import { ModelProvider, LLMGetAllMetadataResponse } from "@/lib/api-client/api-client";
 import { track } from "@/services/analytics";

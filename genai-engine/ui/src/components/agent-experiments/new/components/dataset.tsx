@@ -1,4 +1,4 @@
-import { withFieldGroup } from "@arthur/shared-components";
+import { withFieldGroup } from "@arthur/shared-components/traces";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { Autocomplete, Button, Divider, IconButton, Paper, Stack, TextField, Typography } from "@mui/material";

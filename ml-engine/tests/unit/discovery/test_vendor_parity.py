@@ -62,8 +62,8 @@ def test_both_copies_name_the_same_upstream_ref() -> None:
     ml, endpoint = _stamp(ML_VENDOR), _stamp(ENDPOINT_VENDOR)
     assert ml["sha"] == endpoint["sha"], (
         f"ml-engine vendors {ml['ref']} ({ml['sha'][:12]}) but the endpoint vendors "
-        f"{endpoint['ref']} ({endpoint['sha'][:12]}). Re-vendor both, then regenerate "
-        f"_vendor/SHA256SUMS."
+        f"{endpoint['ref']} ({endpoint['sha'][:12]}). Vendor the endpoint at the ref you "
+        f"want, then run scripts/vendor_ai_detection_spec.py."
     )
     assert ml["ref"] == endpoint["ref"]
     assert ml["repo"] == endpoint["repo"]

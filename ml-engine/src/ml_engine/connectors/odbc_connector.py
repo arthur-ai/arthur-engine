@@ -47,6 +47,15 @@ from sqlalchemy.sql.elements import BinaryExpression
 from connectors.connector import Connector
 from tools.schema_interpreters import primary_timestamp_col_name
 
+# The image ships ODBC Driver 18 only (Microsoft publishes Driver 17 for amd64 alone),
+# so a connector configured for Driver 17 runs on 18 with 17's encryption defaults.
+# Driver 18 defaults to Encrypt=yes and validates the server certificate; Driver 17
+# encrypted only when the server forced it, and then without validating. Encrypt=no
+# alone does not reproduce that: Driver 18 still validates when the server forces
+# encryption, so a self-signed server that works on 17 would fail.
+ODBC_DRIVER_18 = "ODBC Driver 18 for SQL Server"
+DRIVER_17_ENCRYPTION_DEFAULTS = ("Encrypt=no", "TrustServerCertificate=yes")
+
 
 class ODBCConnector(Connector):
     """
@@ -55,6 +64,7 @@ class ODBCConnector(Connector):
     """
 
     def __init__(self, connector_config: ConnectorSpec, logger: Logger) -> None:
+        self.logger = logger
         connector_fields = {f.key: f.value for f in connector_config.fields}
 
         self.host: str = connector_fields[ODBC_CONNECTOR_HOST_FIELD]
@@ -78,7 +88,6 @@ class ODBCConnector(Connector):
             pool_pre_ping=True,
         )
         self.metadata = MetaData()
-        self.logger = logger
 
     def _build_engine_url(
         self,
@@ -190,12 +199,17 @@ class ODBCConnector(Connector):
         if self.driver:
             driver_lower = self.driver.lower()
             if "17" in driver_lower:
-                driver = "ODBC Driver 17 for SQL Server"
+                self.logger.info(
+                    f"Connector asks for '{self.driver}'; connecting with "
+                    f"{ODBC_DRIVER_18} and Driver 17's encryption defaults "
+                    f"({';'.join(DRIVER_17_ENCRYPTION_DEFAULTS)})",
+                )
+                parts.append(f"DRIVER={{{ODBC_DRIVER_18}}}")
+                parts.extend(DRIVER_17_ENCRYPTION_DEFAULTS)
             elif "18" in driver_lower:
-                driver = "ODBC Driver 18 for SQL Server"
+                parts.append(f"DRIVER={{{ODBC_DRIVER_18}}}")
             else:
-                driver = self.driver
-            parts.append(f"DRIVER={{{driver}}}")
+                parts.append(f"DRIVER={{{self.driver}}}")
 
         if self.host:
             if self.port:

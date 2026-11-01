@@ -1,16 +1,15 @@
 import {
+  capitalize,
+  DATE_FORMAT_12H_TIMEZONE,
+  DATE_FORMAT_24H_TIMEZONE,
+  DATE_FORMAT_24H_UTC,
   formatDate,
   formatDurationMs,
   formatTimestampDuration as formatTimestampDurationShared,
   formatUTCTimestamp,
-  capitalize,
+  getLocaleForCurrency,
   truncateText,
-  DATE_FORMAT_24H_TIMEZONE,
-  DATE_FORMAT_12H_TIMEZONE,
-  DATE_FORMAT_24H_UTC,
 } from "@arthur/shared-components";
-
-import { getLocaleForCurrency } from "./currencyLocales";
 
 /**
  * Default: formatDate, formatUTCTimestamp, formatDurationMs, formatTimestampDuration, capitalize,

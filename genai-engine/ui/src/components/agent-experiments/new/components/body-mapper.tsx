@@ -1,4 +1,4 @@
-import { withFieldGroup } from "@arthur/shared-components";
+import { withFieldGroup } from "@arthur/shared-components/traces";
 import { Autocomplete, Divider, MenuItem, Paper, Stack, TextField, Typography } from "@mui/material";
 import { useStore } from "@tanstack/react-form";
 

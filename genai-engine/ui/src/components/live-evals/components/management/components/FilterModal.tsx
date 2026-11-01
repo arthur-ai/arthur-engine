@@ -1,5 +1,5 @@
-import type { IncomingFilter } from "@arthur/shared-components";
-import { EnumOperators, Operators, TextOperators } from "@arthur/shared-components";
+import type { IncomingFilter } from "@arthur/shared-components/traces";
+import { EnumOperators, Operators, TextOperators } from "@arthur/shared-components/traces";
 import { Add, Close, FilterList } from "@mui/icons-material";
 import { Autocomplete, Box, Button, Chip, IconButton, Paper, Popover, Stack, TextField, Typography } from "@mui/material";
 import { DatePicker } from "@mui/x-date-pickers";

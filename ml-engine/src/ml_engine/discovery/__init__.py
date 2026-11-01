@@ -17,8 +17,9 @@ an unsupported source and is reported per job rather than per engine.
 
 Adding an MDM is one more entry here and one more package under `discovery.endpoint`;
 adding a SIEM is the same under `discovery.siem`, a cloud provider product under
-`discovery.cloud`, and a network log source under `discovery.network`. A package goes
-where its vendor's source class is, which is also the record type it emits.
+`discovery.cloud`, and a network log source or an AI gateway under `discovery.network`.
+A package goes where its vendor's source class is, which is also the record type it
+emits.
 
 A connector a standalone engine can run and a Platform job cannot goes in
 `standalone_connectors()` instead: the Platform has no vendor for it, and its executors
@@ -31,6 +32,8 @@ with what such clouds share among themselves in `discovery.cloud.vm_inventory`.
 
 from discovery.cloud.aws_bedrock.connector import VENDOR as AWS_BEDROCK_VENDOR
 from discovery.cloud.aws_bedrock.connector import BedrockConnector
+from discovery.cloud.aws_containers.connector import VENDOR as AWS_CONTAINERS_VENDOR
+from discovery.cloud.aws_containers.connector import AwsContainersConnector
 from discovery.cloud.ec2.connector import VENDOR as AWS_EC2_VENDOR
 from discovery.cloud.ec2.connector import Ec2Connector
 from discovery.cloud.gce.connector import VENDOR as GCP_COMPUTE_ENGINE_VENDOR
@@ -39,6 +42,8 @@ from discovery.cloud.gcp_containers.connector import VENDOR as GCP_CONTAINERS_VE
 from discovery.cloud.gcp_containers.connector import GcpContainersConnector
 from discovery.cloud.gcp_vertex.connector import VENDOR as GCP_VERTEX_VENDOR
 from discovery.cloud.gcp_vertex.connector import VertexAgentEngineConnector
+from discovery.cloud.vercel_ai.connector import VENDOR as VERCEL_AI_VENDOR
+from discovery.cloud.vercel_ai.connector import VercelConnector
 from discovery.cloud.wiz.connector import VENDOR as WIZ_VENDOR
 from discovery.cloud.wiz.connector import WizConnector
 from discovery.endpoint.jamf.connector import VENDOR as JAMF_VENDOR
@@ -49,6 +54,8 @@ from discovery.network.cloudwatch_logs.connector import VENDOR as CLOUDWATCH_LOG
 from discovery.network.cloudwatch_logs.connector import CloudWatchLogsConnector
 from discovery.network.gcp_logging.connector import VENDOR as GCP_NETWORK_VENDOR
 from discovery.network.gcp_logging.connector import GcpNetworkConnector
+from discovery.network.litellm.connector import VENDOR as LITELLM_VENDOR
+from discovery.network.litellm.connector import LiteLLMConnector
 from discovery.siem.elastic_security.connector import VENDOR as ELASTIC_SECURITY_VENDOR
 from discovery.siem.elastic_security.connector import ElasticSecurityConnector
 from discovery.siem.splunk.connector import VENDOR as SPLUNK_VENDOR
@@ -67,13 +74,16 @@ def source_connectors() -> dict[str, DiscoveryConnectorFactory]:
         GCP_COMPUTE_ENGINE_VENDOR: ComputeEngineConnector,
         AWS_EC2_VENDOR: Ec2Connector,
         AWS_BEDROCK_VENDOR: BedrockConnector,
+        AWS_CONTAINERS_VENDOR: AwsContainersConnector,
         GCP_VERTEX_VENDOR: VertexAgentEngineConnector,
         GCP_CONTAINERS_VENDOR: GcpContainersConnector,
         WIZ_VENDOR: WizConnector,
         SPLUNK_VENDOR: SplunkConnector,
         ELASTIC_SECURITY_VENDOR: ElasticSecurityConnector,
+        VERCEL_AI_VENDOR: VercelConnector,
         CLOUDWATCH_LOGS_VENDOR: CloudWatchLogsConnector,
         GCP_NETWORK_VENDOR: GcpNetworkConnector,
+        LITELLM_VENDOR: LiteLLMConnector,
     }
 
 
@@ -116,6 +126,8 @@ __all__ = [
     "AWS_EC2_VENDOR",
     "BedrockConnector",
     "AWS_BEDROCK_VENDOR",
+    "AwsContainersConnector",
+    "AWS_CONTAINERS_VENDOR",
     "VertexAgentEngineConnector",
     "GCP_VERTEX_VENDOR",
     "GcpContainersConnector",
@@ -126,8 +138,12 @@ __all__ = [
     "SPLUNK_VENDOR",
     "ElasticSecurityConnector",
     "ELASTIC_SECURITY_VENDOR",
+    "VercelConnector",
+    "VERCEL_AI_VENDOR",
     "CloudWatchLogsConnector",
     "CLOUDWATCH_LOGS_VENDOR",
     "GcpNetworkConnector",
     "GCP_NETWORK_VENDOR",
+    "LiteLLMConnector",
+    "LITELLM_VENDOR",
 ]

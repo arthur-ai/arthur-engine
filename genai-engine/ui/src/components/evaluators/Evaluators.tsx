@@ -1,3 +1,4 @@
+import { SearchBar } from "@arthur/shared-components";
 import AddIcon from "@mui/icons-material/Add";
 import BalanceOutlinedIcon from "@mui/icons-material/BalanceOutlined";
 import Alert from "@mui/material/Alert";
@@ -19,7 +20,6 @@ import { useDeleteEvalMutation } from "./hooks/useDeleteEvalMutation";
 import { useDeleteMLEvalMutation } from "./hooks/useDeleteMLEvalMutation";
 import { useEvals } from "./hooks/useEvals";
 
-import { SearchBar } from "@/components/common/SearchBar";
 import { useCreateMlEvalMutation } from "@/components/ml-evaluators/hooks/useCreateMlEvalMutation";
 import MLEvalFormModal from "@/components/ml-evaluators/MLEvalFormModal";
 import { getContentHeight } from "@/constants/layout";

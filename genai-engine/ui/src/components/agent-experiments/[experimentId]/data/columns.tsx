@@ -1,8 +1,8 @@
+import { CopyableChip } from "@arthur/shared-components";
 import { Chip, Stack, Tooltip, Typography } from "@mui/material";
 import { createMRTColumnHelper } from "material-react-table";
 
 import { StatusBadge } from "@/components/agent-experiments/components/status-badge";
-import { CopyableChip } from "@/components/common";
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import type { AgenticTestCase, EvalExecution, TestCaseStatus } from "@/lib/api-client/api-client";
 import { isEvalPass } from "@/utils/evals";

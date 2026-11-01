@@ -1,4 +1,4 @@
-import { useAppForm } from "@arthur/shared-components";
+import { useAppForm } from "@arthur/shared-components/traces";
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, Divider, FormControlLabel, Stack, Switch, Typography } from "@mui/material";
 import { useStore } from "@tanstack/react-form";
 import { useSnackbar } from "notistack";

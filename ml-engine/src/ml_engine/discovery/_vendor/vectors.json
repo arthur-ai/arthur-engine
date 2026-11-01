@@ -1,5 +1,5 @@
 {
-  "format": "ai-detection-spec/0.1",
+  "format": "ai-detection-spec/0.2",
   "vectors": [
     {
       "id": "exact",
@@ -7,7 +7,7 @@
       "mode": "exact",
       "description": "exact compares the whole id, case-sensitively",
       "catalog": {
-        "format": "ai-detection-spec/0.1",
+        "format": "ai-detection-spec/0.2",
         "platforms": ["darwin", "linux", "windows"],
         "platform_groups": {"posix": ["darwin", "linux"]},
         "classifications": [
@@ -52,7 +52,7 @@
       "mode": "prefix",
       "description": "prefix matches an id that starts with the value, case-sensitively",
       "catalog": {
-        "format": "ai-detection-spec/0.1",
+        "format": "ai-detection-spec/0.2",
         "platforms": ["darwin", "linux", "windows"],
         "platform_groups": {"posix": ["darwin", "linux"]},
         "classifications": [
@@ -99,7 +99,7 @@
       "mode": "exact-normalised",
       "description": "an image row names several tags; each is normalised and compared exactly",
       "catalog": {
-        "format": "ai-detection-spec/0.1",
+        "format": "ai-detection-spec/0.2",
         "platforms": ["darwin", "linux", "windows"],
         "platform_groups": {"posix": ["darwin", "linux"]},
         "classifications": [
@@ -162,7 +162,7 @@
       "mode": "home-dir",
       "description": "home-dir matches the directory itself under any home root, and nothing below or beside it",
       "catalog": {
-        "format": "ai-detection-spec/0.1",
+        "format": "ai-detection-spec/0.2",
         "platforms": ["darwin", "linux", "windows"],
         "platform_groups": {"posix": ["darwin", "linux"]},
         "classifications": [
@@ -196,13 +196,18 @@
         {"kind": "file", "id": "/opt/u/.agent/", "loc": "/opt/u/.agent/"},
         {"kind": "file", "id": "/root/.agent/", "loc": "/root/.agent/"},
         {"kind": "file", "id": "/home/u/.agent/sub", "loc": "/home/u/.agent/sub"},
-        {"kind": "file", "id": "/home/u/.agent\n", "loc": "/home/u/.agent\n"}
+        {"kind": "file", "id": "/home/u/.agent\n", "loc": "/home/u/.agent\n"},
+        {"kind": "file", "id": "C:\\Users\\u\\.agent\\", "loc": "C:\\Users\\u\\.agent\\"},
+        {"kind": "file", "id": "C:\\Users\\u\\.agent", "loc": "C:\\Users\\u\\.agent"},
+        {"kind": "file", "id": "C:\\Users\\u\\.agentfoo\\", "loc": "C:\\Users\\u\\.agentfoo\\"},
+        {"kind": "file", "id": "C:\\Users\\u\\.agent\\sub", "loc": "C:\\Users\\u\\.agent\\sub"},
+        {"kind": "file", "id": "/Users/u/.agent\\", "loc": "/Users/u/.agent\\"}
       ],
       "expect": {
-        "matches": ["a", "a", null, null, "a", null, null],
-        "unmatched": [2, 3, 5, 6],
+        "matches": ["a", "a", null, null, "a", null, null, "a", "a", null, null, null],
+        "unmatched": [2, 3, 5, 6, 9, 10, 11],
         "dropped": [],
-        "findings": {"a": {"evidence": [0, 1, 4]}}
+        "findings": {"a": {"evidence": [0, 1, 4, 7, 8]}}
       }
     },
     {
@@ -211,7 +216,7 @@
       "mode": "home-prefix",
       "description": "home-prefix matches the path and what is under it, never a name that starts with it",
       "catalog": {
-        "format": "ai-detection-spec/0.1",
+        "format": "ai-detection-spec/0.2",
         "platforms": ["darwin", "linux", "windows"],
         "platform_groups": {"posix": ["darwin", "linux"]},
         "classifications": [
@@ -263,13 +268,40 @@
           "loc": "/Users/u/.versions/agent/1.2.3"
         },
         {"kind": "file", "id": "/Users/u/.versions/agentx", "loc": "/Users/u/.versions/agentx"},
-        {"kind": "file", "id": "/home/u/.local/bin/tool\n", "loc": "/home/u/.local/bin/tool\n"}
+        {"kind": "file", "id": "/home/u/.local/bin/tool\n", "loc": "/home/u/.local/bin/tool\n"},
+        {
+          "kind": "file",
+          "id": "C:\\Users\\u\\.local\\bin\\tool",
+          "loc": "C:\\Users\\u\\.local\\bin\\tool"
+        },
+        {
+          "kind": "file",
+          "id": "C:\\Users\\u\\.local\\bin\\tool\\x",
+          "loc": "C:\\Users\\u\\.local\\bin\\tool\\x"
+        },
+        {
+          "kind": "file",
+          "id": "C:\\Users\\u\\.local\\bin\\tool-helper",
+          "loc": "C:\\Users\\u\\.local\\bin\\tool-helper"
+        },
+        {
+          "kind": "file",
+          "id": "C:/Users/u/.versions/agent/1.2.3",
+          "loc": "C:/Users/u/.versions/agent/1.2.3"
+        },
+        {
+          "kind": "file",
+          "id": "C:\\Users\\u\\.versions\\agentx",
+          "loc": "C:\\Users\\u\\.versions\\agentx"
+        },
+        {"kind": "file", "id": "/home/u/.local/bin\\tool", "loc": "/home/u/.local/bin\\tool"},
+        {"kind": "file", "id": "x\n/home/u/.local/bin/tool", "loc": "x\n/home/u/.local/bin/tool"}
       ],
       "expect": {
-        "matches": ["a", "a", null, "b", null, null],
-        "unmatched": [2, 4, 5],
+        "matches": ["a", "a", null, "b", null, null, "a", "a", null, "b", null, null, null],
+        "unmatched": [2, 4, 5, 8, 10, 11, 12],
         "dropped": [],
-        "findings": {"a": {"evidence": [0, 1]}, "b": {"evidence": [3]}}
+        "findings": {"a": {"evidence": [0, 1, 6, 7]}, "b": {"evidence": [3, 9]}}
       }
     },
     {
@@ -278,7 +310,7 @@
       "mode": "tool-dir",
       "description": "a pipx or uv directory names its distribution, and only a tool-dir route reads that name",
       "catalog": {
-        "format": "ai-detection-spec/0.1",
+        "format": "ai-detection-spec/0.2",
         "platforms": ["darwin", "linux", "windows"],
         "platform_groups": {"posix": ["darwin", "linux"]},
         "classifications": [
@@ -353,22 +385,68 @@
           "kind": "file",
           "id": "/home/u/.local/pipx/venvs/agent-chat/\n",
           "loc": "/home/u/.local/pipx/venvs/agent-chat/\n"
+        },
+        {
+          "kind": "file",
+          "id": "C:\\Users\\u\\.local\\pipx\\venvs\\agent-chat\\",
+          "loc": "C:\\Users\\u\\.local\\pipx\\venvs\\agent-chat\\"
+        },
+        {
+          "kind": "file",
+          "id": "C:\\Users\\u\\.local\\share\\uv\\tools\\agent-chat\\bin\\agent",
+          "loc": "C:\\Users\\u\\.local\\share\\uv\\tools\\agent-chat\\bin\\agent"
+        },
+        {
+          "kind": "file",
+          "id": "C:\\Users\\u\\.local\\share\\uv\\tools\\other-tool\\",
+          "loc": "C:\\Users\\u\\.local\\share\\uv\\tools\\other-tool\\"
+        },
+        {
+          "kind": "file",
+          "id": "/home/u/.local/pipx/venvs/agent-chat\\",
+          "loc": "/home/u/.local/pipx/venvs/agent-chat\\"
+        },
+        {
+          "kind": "file",
+          "id": "C:\\Users\\u\\AppData\\Local\\pipx\\pipx\\venvs\\agent-chat\\",
+          "loc": "C:\\Users\\u\\AppData\\Local\\pipx\\pipx\\venvs\\agent-chat\\"
+        },
+        {
+          "kind": "file",
+          "id": "C:\\Users\\u\\AppData\\Roaming\\uv\\tools\\agent-chat",
+          "loc": "C:\\Users\\u\\AppData\\Roaming\\uv\\tools\\agent-chat"
+        },
+        {
+          "kind": "file",
+          "id": "C:\\Users\\u\\AppData\\Roaming\\uv\\tools\\agent-chat\\Scripts",
+          "loc": "C:\\Users\\u\\AppData\\Roaming\\uv\\tools\\agent-chat\\Scripts"
+        },
+        {
+          "kind": "file",
+          "id": "C:\\Users\\u\\AppData\\Roaming\\uv\\agent-chat\\",
+          "loc": "C:\\Users\\u\\AppData\\Roaming\\uv\\agent-chat\\"
+        },
+        {
+          "kind": "file",
+          "id": "x\n/home/u/.local/pipx/venvs/agent-chat/",
+          "loc": "x\n/home/u/.local/pipx/venvs/agent-chat/"
         }
       ],
       "expect": {
-        "matches": ["a", "a", null, null, null, "a", null],
-        "unmatched": [2, 3, 4, 6],
+        "matches": ["a", "a", null, null, null, "a", null, "a", null, null, null, "a", "a", null,
+                    null, null],
+        "unmatched": [2, 3, 4, 6, 8, 9, 10, 13, 14, 15],
         "dropped": [],
-        "findings": {"a": {"evidence": [0, 1, 5]}}
+        "findings": {"a": {"evidence": [0, 1, 5, 7, 11, 12]}}
       }
     },
     {
       "id": "home-roots",
       "section": "6.4.7",
       "mode": "home-dir",
-      "description": "every home root is tried for every row, whatever the route's platform",
+      "description": "every home root is tried for every row, whatever the route's platform, each with its own separators",
       "catalog": {
-        "format": "ai-detection-spec/0.1",
+        "format": "ai-detection-spec/0.2",
         "platforms": ["darwin", "linux", "windows"],
         "platform_groups": {"posix": ["darwin", "linux"]},
         "classifications": [
@@ -400,13 +478,26 @@
         {"kind": "file", "id": "/home/u/.agent", "loc": "/home/u/.agent"},
         {"kind": "file", "id": "/root/.agent", "loc": "/root/.agent"},
         {"kind": "file", "id": "/home/.agent", "loc": "/home/.agent"},
-        {"kind": "file", "id": "/Users/u/v/.agent", "loc": "/Users/u/v/.agent"}
+        {"kind": "file", "id": "/Users/u/v/.agent", "loc": "/Users/u/v/.agent"},
+        {"kind": "file", "id": "C:\\Users\\u\\.agent", "loc": "C:\\Users\\u\\.agent"},
+        {"kind": "file", "id": "d:\\Users\\u\\.agent", "loc": "d:\\Users\\u\\.agent"},
+        {"kind": "file", "id": "C:/Users/u/.agent", "loc": "C:/Users/u/.agent"},
+        {"kind": "file", "id": "C:\\Users\\u/.agent", "loc": "C:\\Users\\u/.agent"},
+        {"kind": "file", "id": "C:\\Users\\.agent", "loc": "C:\\Users\\.agent"},
+        {"kind": "file", "id": "C:\\Users\\u\\v\\.agent", "loc": "C:\\Users\\u\\v\\.agent"},
+        {"kind": "file", "id": "C:\\users\\u\\.agent", "loc": "C:\\users\\u\\.agent"},
+        {"kind": "file", "id": "C:\\ProgramData\\.agent", "loc": "C:\\ProgramData\\.agent"},
+        {"kind": "file", "id": "CD:\\Users\\u\\.agent", "loc": "CD:\\Users\\u\\.agent"},
+        {"kind": "file", "id": "/home/u\\.agent", "loc": "/home/u\\.agent"},
+        {"kind": "file", "id": "x\n/home/u/.agent", "loc": "x\n/home/u/.agent"},
+        {"kind": "file", "id": "x\nC:\\Users\\u\\.agent", "loc": "x\nC:\\Users\\u\\.agent"}
       ],
       "expect": {
-        "matches": ["a", "a", "a", null, null],
-        "unmatched": [3, 4],
+        "matches": ["a", "a", "a", null, null, "a", "a", "a", "a", null, null, null, null, null, null,
+                    null, null],
+        "unmatched": [3, 4, 9, 10, 11, 12, 13, 14, 15, 16],
         "dropped": [],
-        "findings": {"a": {"evidence": [0, 1, 2]}}
+        "findings": {"a": {"evidence": [0, 1, 2, 5, 6, 7, 8]}}
       }
     },
     {
@@ -414,7 +505,7 @@
       "section": "6.4.8",
       "description": "a matcher stops with an error on a match mode it does not implement",
       "catalog": {
-        "format": "ai-detection-spec/0.1",
+        "format": "ai-detection-spec/0.2",
         "platforms": ["darwin", "linux", "windows"],
         "platform_groups": {"posix": ["darwin", "linux"]},
         "classifications": [
@@ -449,7 +540,7 @@
       "section": "6.4.8",
       "description": "an unknown mode stops the matcher even on a route no identifier uses",
       "catalog": {
-        "format": "ai-detection-spec/0.1",
+        "format": "ai-detection-spec/0.2",
         "platforms": ["darwin", "linux", "windows"],
         "platform_groups": {"posix": ["darwin", "linux"]},
         "classifications": [
@@ -490,7 +581,7 @@
       "section": "6.4.8",
       "description": "a mode that only starts like a home mode is unknown, not home-prefix",
       "catalog": {
-        "format": "ai-detection-spec/0.1",
+        "format": "ai-detection-spec/0.2",
         "platforms": ["darwin", "linux", "windows"],
         "platform_groups": {"posix": ["darwin", "linux"]},
         "classifications": [
@@ -525,7 +616,7 @@
       "section": "6.1",
       "description": "an undeclared kind is dropped; a declared kind nothing claims is unmatched, a retired route's kind included",
       "catalog": {
-        "format": "ai-detection-spec/0.1",
+        "format": "ai-detection-spec/0.2",
         "platforms": ["darwin", "linux", "windows"],
         "platform_groups": {"posix": ["darwin", "linux"]},
         "classifications": [
@@ -577,7 +668,7 @@
       "section": "6.2",
       "description": "a route's platform does not filter which rows it matches",
       "catalog": {
-        "format": "ai-detection-spec/0.1",
+        "format": "ai-detection-spec/0.2",
         "platforms": ["darwin", "linux", "windows"],
         "platform_groups": {"posix": ["darwin", "linux"]},
         "classifications": [
@@ -617,7 +708,7 @@
       "section": "6.3",
       "description": "a route reading another route's values matches them, and a live route marks the finding running",
       "catalog": {
-        "format": "ai-detection-spec/0.1",
+        "format": "ai-detection-spec/0.2",
         "platforms": ["darwin", "linux", "windows"],
         "platform_groups": {"posix": ["darwin", "linux"]},
         "classifications": [
@@ -676,7 +767,7 @@
       "section": "6.5",
       "description": "a row two of one agent's identifiers match is evidence once",
       "catalog": {
-        "format": "ai-detection-spec/0.1",
+        "format": "ai-detection-spec/0.2",
         "platforms": ["darwin", "linux", "windows"],
         "platform_groups": {"posix": ["darwin", "linux"]},
         "classifications": [
@@ -728,7 +819,7 @@
       "section": "6.6",
       "description": "a superseded identifier still finds its agent, and the finding says which rows it matched",
       "catalog": {
-        "format": "ai-detection-spec/0.1",
+        "format": "ai-detection-spec/0.2",
         "platforms": ["darwin", "linux", "windows"],
         "platform_groups": {"posix": ["darwin", "linux"]},
         "classifications": [
@@ -808,7 +899,7 @@
       "section": "6.7",
       "description": "scan markers are never evidence; they sort into scans, absences and gaps",
       "catalog": {
-        "format": "ai-detection-spec/0.1",
+        "format": "ai-detection-spec/0.2",
         "platforms": ["darwin", "linux", "windows"],
         "platform_groups": {"posix": ["darwin", "linux"]},
         "classifications": [
@@ -875,7 +966,7 @@
       "section": "10",
       "description": "a matcher refuses a catalog version it does not support; while the major version is 0, a minor version too",
       "catalog": {
-        "format": "ai-detection-spec/0.2",
+        "format": "ai-detection-spec/0.3",
         "platforms": ["darwin", "linux", "windows"],
         "platform_groups": {"posix": ["darwin", "linux"]},
         "classifications": [
@@ -907,14 +998,14 @@
         {"kind": "npm", "id": "@scope/tool-extra", "loc": ""},
         {"kind": "npm", "id": "@SCOPE/tool", "loc": ""}
       ],
-      "expect": {"error": "ai-detection-spec/0.2"}
+      "expect": {"error": "ai-detection-spec/0.3"}
     },
     {
       "id": "unindexed-route",
       "section": "6",
       "description": "a matcher refuses a catalog with an identifier on a route it does not declare",
       "catalog": {
-        "format": "ai-detection-spec/0.1",
+        "format": "ai-detection-spec/0.2",
         "platforms": ["darwin", "linux", "windows"],
         "platform_groups": {"posix": ["darwin", "linux"]},
         "classifications": [

@@ -325,10 +325,11 @@ def _corroborations(
     mapping and a provenance entry per upgrade. The identifier stays, and its entry
     holds the latest address.
 
-    THE ADDRESS IS THE PATH WHERE THE ROW'S KIND HAS ONE. A provenance entry keeps the
-    address and none of the observations, so the address is the only place this
-    evidence's location can be read: an extension's path names its editor and version
-    (~/.cursor/extensions/anthropic.claude-code-2.1.314), where its id names neither.
+    THE ADDRESS IS THE PATH WHERE THE ROW'S KIND HAS ONE. An extension's path names its
+    editor and version (~/.cursor/extensions/anthropic.claude-code-2.1.314), where its
+    id names neither. A provenance entry now keeps its record's observations too, the
+    install path and version among them, but an entry stored before GenAI Engine kept
+    them has only its address, so the address is still where its location reads.
 
     An identifier whose row has neither is left out. The evidence schema lets a row's id
     be blank, and an address with no resource is one `SourceAddress` refuses, which

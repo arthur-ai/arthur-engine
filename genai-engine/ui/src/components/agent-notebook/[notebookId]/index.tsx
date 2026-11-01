@@ -1,4 +1,4 @@
-import { useAppForm } from "@arthur/shared-components";
+import { useAppForm } from "@arthur/shared-components/traces";
 import { CircularProgress, Dialog, Stack } from "@mui/material";
 import { useSnackbar } from "notistack";
 import { useState } from "react";

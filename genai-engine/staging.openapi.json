@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.1053"
+        "version": "2.1.1081"
     },
     "paths": {
         "/api/v2/engine-config": {
@@ -777,6 +777,53 @@
                         }
                     }
                 }
+            }
+        },
+        "/api/v2/inferences/overview": {
+            "post": {
+                "tags": [
+                    "Inferences"
+                ],
+                "summary": "Get Inferences Overview",
+                "description": "Inference count and most recent inference time for each of the given tasks. Includes archived tasks.",
+                "operationId": "get_inferences_overview_api_v2_inferences_overview_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/InferenceOverviewRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/InferenceOverviewListResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ]
             }
         },
         "/api/v2/default_rules": {
@@ -2484,7 +2531,7 @@
                     "Stateless Validation"
                 ],
                 "summary": "Stateless Validate",
-                "description": "Stateless validation of arbitrary input against inline rule specs. Does NOT persist results, does NOT create an inference, and is task-less. Intended for ad-hoc checks such as validating tool-call output before passing it back to an LLM.\n\nEach entry in `checks` is a `NewRuleRequest` \u2014 the same shape accepted by the rule-management API. `type` is a `RuleType` enum value: `PromptInjectionRule`, `ToxicityRule`, `PIIDataRule`, `ModelHallucinationRuleV2`, `RegexRule`, `KeywordRule`, `ModelSensitiveDataRule`.\n\nHallucination requires `response` + `context`; if `context` is missing the rule engine returns a `Skipped` result. A check may return result=`Model Not Available` if its underlying model has not finished loading; callers should treat this as transient and retry.",
+                "description": "Stateless validation of arbitrary input against inline rule specs. Does NOT persist results, does NOT create an inference, and is task-less. Intended for ad-hoc checks such as validating tool-call output before passing it back to an LLM.\n\nEach entry in `checks` is a `NewRuleRequest` \u2014 the same shape accepted by the rule-management API. `type` is a `RuleType` enum value: `PromptInjectionRule`, `ToxicityRule`, `PIIDataRule`, `ModelHallucinationRuleV2`, `RegexRule`, `KeywordRule`, `ModelSensitiveDataRule`.\n\n`apply_to_prompt` and `apply_to_response` decide which of `prompt` and `response` a check scores; a check that applies to both fails if either one violates it.\n\nHallucination requires `response` + `context`; if `context` is missing the rule engine returns a `Skipped` result. A check may return result=`Model Not Available` if its underlying model has not finished loading; callers should treat this as transient and retry.",
                 "operationId": "stateless_validate_api_v2_validate_post",
                 "requestBody": {
                     "content": {
@@ -18142,6 +18189,18 @@
                         "title": "Version",
                         "description": "Version read statically, never by executing the discovered binary."
                     },
+                    "previous_version": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Previous Version",
+                        "description": "The version this record reported before its latest change, so an upgrade or a downgrade reads off the record itself. Kept across scans by GenAI Engine, which sets it when a report carries a version other than the one it holds; a source never fills it, and a discovered record carrying one is refused. Absent until the version first changes. See ENGINE_KEPT_OBSERVATIONS."
+                    },
                     "host_name": {
                         "anyOf": [
                             {
@@ -19284,7 +19343,7 @@
                                 "const": "empty"
                             }
                         ],
-                        "title": "Model Provider",
+                        "title": "Agentic Prompt Model Provider",
                         "description": "Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure'). The sentinel value 'empty' indicates the system default placeholder has not been configured."
                     },
                     "version": {
@@ -19698,6 +19757,35 @@
                 "title": "AgenticTestCaseListResponse",
                 "description": "Paginated list of agentic test cases"
             },
+            "AnthropicThinkingBlockBinding-Input": {
+                "properties": {
+                    "prefix_mismatch_behavior": {
+                        "type": "string",
+                        "enum": [
+                            "error",
+                            "drop_block"
+                        ],
+                        "title": "Prefix Mismatch Behavior"
+                    }
+                },
+                "type": "object",
+                "title": "AnthropicThinkingBlockBinding"
+            },
+            "AnthropicThinkingBlockBinding-Output": {
+                "properties": {
+                    "prefix_mismatch_behavior": {
+                        "type": "string",
+                        "enum": [
+                            "error",
+                            "drop_block"
+                        ],
+                        "title": "Prefix Mismatch Behavior"
+                    }
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "title": "AnthropicThinkingBlockBinding"
+            },
             "AnthropicThinkingParam-Input": {
                 "properties": {
                     "type": {
@@ -19721,6 +19809,9 @@
                             "updates"
                         ],
                         "title": "Display"
+                    },
+                    "block_binding": {
+                        "$ref": "#/components/schemas/AnthropicThinkingBlockBinding-Input"
                     }
                 },
                 "type": "object",
@@ -19749,6 +19840,9 @@
                             "updates"
                         ],
                         "title": "Display"
+                    },
+                    "block_binding": {
+                        "$ref": "#/components/schemas/AnthropicThinkingBlockBinding-Output"
                     }
                 },
                 "additionalProperties": false,
@@ -24104,6 +24198,77 @@
                     "prompt_results"
                 ],
                 "title": "InferenceFeedbackTarget"
+            },
+            "InferenceOverviewListResponse": {
+                "properties": {
+                    "overviews": {
+                        "items": {
+                            "$ref": "#/components/schemas/InferenceOverviewResponse"
+                        },
+                        "type": "array",
+                        "title": "Overviews",
+                        "description": "One inference overview per requested task"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "overviews"
+                ],
+                "title": "InferenceOverviewListResponse",
+                "description": "Response for list of inference overviews"
+            },
+            "InferenceOverviewRequest": {
+                "properties": {
+                    "task_ids": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "minItems": 1,
+                        "title": "Task Ids",
+                        "description": "Task IDs to get the inference overview for"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "task_ids"
+                ],
+                "title": "InferenceOverviewRequest",
+                "description": "Request schema for getting inference counts and latest activity for a batch of tasks"
+            },
+            "InferenceOverviewResponse": {
+                "properties": {
+                    "task_id": {
+                        "type": "string",
+                        "title": "Task Id",
+                        "description": "Task ID"
+                    },
+                    "inference_count": {
+                        "type": "integer",
+                        "title": "Inference Count",
+                        "description": "Number of inferences"
+                    },
+                    "last_inference_at": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Last Inference At",
+                        "description": "Creation time of the most recent inference, or null if the task has none"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "task_id",
+                    "inference_count"
+                ],
+                "title": "InferenceOverviewResponse",
+                "description": "Inference count and latest inference time for a task"
             },
             "InputAudio": {
                 "properties": {
@@ -28548,6 +28713,17 @@
                         ],
                         "description": "Where upstream this came from -- the same type the creation source carries, so a record and its task address the system identically. Absent for OTEL and manual agents."
                     },
+                    "observations": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/AgentObservations"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "What the source saw of this record at its latest report, with `previous_version` kept across reports. The task's creation source holds what the first report saw and is never rewritten, so a record's current version is read here. Absent from entries recorded before it was stored."
+                    },
                     "last_seen": {
                         "anyOf": [
                             {
@@ -32470,7 +32646,7 @@
                                 "const": "empty"
                             }
                         ],
-                        "title": "Model Provider",
+                        "title": "Synthetic Data Prompt Model Provider",
                         "description": "Model provider stored in the SDG system prompt. The sentinel 'empty' indicates the prompt has not yet been configured."
                     },
                     "model_name": {
@@ -33385,6 +33561,18 @@
                         "type": "integer",
                         "title": "Span Count",
                         "description": "Number of spans in this trace"
+                    },
+                    "ingest_bytes": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Ingest Bytes",
+                        "description": "OTLP payload bytes received for this trace's spans on the trace ingestion endpoints. Absent for traces ingested before it was recorded, or that didn't arrive through those endpoints."
                     },
                     "duration_ms": {
                         "type": "number",

@@ -16,6 +16,11 @@ from typing import Any
 import pytest
 
 from discovery.catalog import Matcher
+from job_executors.discovery_scan import (
+    DiscoveryConfigurationError,
+    DiscoveryErrorCode,
+    failure_code,
+)
 from tests.fakes.catalog import agent, document
 
 COLLECTOR_OUTPUT = pathlib.Path("/var/lib/arthur")
@@ -62,7 +67,7 @@ def test_floor_catalog_is_the_vendored_one() -> None:
     assert m.agent_count == 42
     # Upstream's own catalog_sha, computed over file bytes. If this changes, the vendor
     # tree moved and every record's recorded catalog version moved with it.
-    assert m.catalog_sha == "df9eede4b2ff"
+    assert m.catalog_sha == "a71733f7afd7"
 
 
 def test_a_catalog_built_from_a_mapping_marks_its_hash_as_not_upstreams() -> None:
@@ -468,11 +473,45 @@ def test_a_catalog_document_the_schema_refuses_is_refused() -> None:
 
 def test_a_duplicate_key_in_a_catalog_document_is_refused() -> None:
     text = CATALOG.replace(
-        '"format": "ai-detection-spec/0.1"',
-        '"format": "ai-detection-spec/0.1", "format": "ai-detection-spec/0.1"',
+        '"format": "ai-detection-spec/0.2"',
+        '"format": "ai-detection-spec/0.2", "format": "ai-detection-spec/0.2"',
     )
     with pytest.raises(ValueError, match="duplicate key 'format'"):
         Matcher.from_source(catalog_json=text)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "version: 3\nagents: []\n",
+        json.dumps({"version": 3, "agents": []}),
+        CATALOG.replace('"classifications"', '"classification"'),
+        CATALOG.replace(
+            '"format": "ai-detection-spec/0.2"',
+            '"format": "ai-detection-spec/0.2", "format": "ai-detection-spec/0.2"',
+        ),
+        # The catalog.json v0.15.0 attached. A source config pasted from it is refused on
+        # every scan once the engine moves to 0.2, and only the config can fix that.
+        CATALOG.replace('"ai-detection-spec/0.2"', '"ai-detection-spec/0.1"'),
+        # Upstream's reader hashed `format` before refusing it, so this raised TypeError
+        # until v0.16.2.
+        CATALOG.replace('"ai-detection-spec/0.2"', "[]"),
+    ],
+    ids=[
+        "not-json",
+        "no-format",
+        "schema",
+        "duplicate-key",
+        "previous-format",
+        "array-format",
+    ],
+)
+def test_a_refused_catalog_fails_the_scan_as_the_configs_to_fix(text: str) -> None:
+    """A plain ValueError reaches the Platform as PROVIDER_ERROR, the vendor's fault, and
+    the admin is sent to Jamf or AWS for a catalog only they can replace."""
+    with pytest.raises(DiscoveryConfigurationError) as refused:
+        Matcher.from_source(catalog_json=text)
+    assert failure_code(refused.value) == DiscoveryErrorCode.NOT_CONFIGURED
 
 
 def test_an_identifier_on_a_route_that_borrows_another_is_refused() -> None:
@@ -525,7 +564,7 @@ class TestCatalogHashUsesFileBytes:
     number -- which is sha256 over the file's BYTES."""
 
     def test_the_floor_still_matches_upstreams_value(self) -> None:
-        assert Matcher.from_source().catalog_sha == "df9eede4b2ff"
+        assert Matcher.from_source().catalog_sha == "a71733f7afd7"
 
     def test_crlf_does_not_change_the_hash_the_way_read_text_would(
         self,

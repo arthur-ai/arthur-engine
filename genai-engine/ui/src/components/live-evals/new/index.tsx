@@ -1,5 +1,5 @@
 import { MustacheHighlightedTextField } from "@arthur/shared-components";
-import { useAppForm, withFieldGroup } from "@arthur/shared-components";
+import { useAppForm, withFieldGroup } from "@arthur/shared-components/traces";
 import AddIcon from "@mui/icons-material/Add";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import {

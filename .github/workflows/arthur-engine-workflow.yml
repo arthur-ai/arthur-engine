@@ -125,7 +125,7 @@ jobs:
         id: mypy
         continue-on-error: true
         run: |
-          uv run --no-sync --directory ml-engine mypy src/ml_engine scripts/jamf_smoke.py
+          uv run --no-sync --directory ml-engine mypy src/ml_engine scripts/jamf_smoke.py scripts/vendor_ai_detection_spec.py
       - name: Check linter results
         if: steps.isort.outcome == 'failure' || steps.autoflake.outcome == 'failure' || steps.black.outcome == 'failure' || steps.mypy.outcome == 'failure'
         run: |
@@ -660,6 +660,8 @@ jobs:
           pip install 'openapi-generator-cli[jdk4py]==7.12'
           openapi-generator-cli generate -c ml-engine/scripts/openapitools.json
           sed -i 's/license = "NoLicense"/license = "Unlicense"/g' ./ml-engine/src/genai_client/pyproject.toml
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4.1.0
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4.1.0
       - name: Log in to Docker Hub
@@ -680,7 +682,7 @@ jobs:
             ${{ github.ref == 'refs/heads/main' && 'arthurplatform/ml-engine:latest' || '' }}
             ${{ github.ref == 'refs/heads/dev' && 'arthurplatform/ml-engine:latest-dev' || '' }}
           push: true
-          platforms: linux/amd64
+          platforms: linux/amd64,linux/arm64
           sbom: true
       # Advisory vulnerability scan + justification docs (must never fail the release build).
       - name: Scan image & generate justification docs

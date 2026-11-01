@@ -121,6 +121,7 @@ from schemas.response_schemas import (
     DatasetVersionResponse,
     DatasetVersionRowResponse,
     DemoTaskSignupResponse,
+    InferenceOverviewListResponse,
     ListContinuousEvalTestRunsResponse,
     ListDatasetVersionsResponse,
     ListRagSearchSettingConfigurationsResponse,
@@ -904,6 +905,25 @@ class GenaiEngineTestClientBase(httpx.Client):
                 QueryInferencesResponse.model_validate(resp.json())
                 if resp.status_code == 200
                 else None
+            ),
+        )
+
+    def get_inferences_overview(
+        self,
+        task_ids: list[str],
+    ) -> tuple[int, InferenceOverviewListResponse | str]:
+        resp = self.base_client.post(
+            "/api/v2/inferences/overview",
+            json={"task_ids": task_ids},
+            headers=self.authorized_user_api_key_headers,
+        )
+        log_response(resp)
+        return (
+            resp.status_code,
+            (
+                InferenceOverviewListResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.text
             ),
         )
 
@@ -2310,6 +2330,10 @@ class GenaiEngineTestClientBase(httpx.Client):
         sort: str | None = None,
         tool_name: str | None = None,
         span_types: list | None = None,
+        span_name: str | None = None,
+        span_name_contains: str | None = None,
+        span_ids: list[str] | None = None,
+        status_code: list[str] | None = None,
         user_ids: list[str] | None = None,
         annotation_score: int | None = None,
         annotation_type: str | None = None,
@@ -2360,6 +2384,14 @@ class GenaiEngineTestClientBase(httpx.Client):
             params["tool_name"] = tool_name
         if span_types is not None:
             params["span_types"] = span_types
+        if span_name is not None:
+            params["span_name"] = span_name
+        if span_name_contains is not None:
+            params["span_name_contains"] = span_name_contains
+        if span_ids is not None:
+            params["span_ids"] = span_ids
+        if status_code is not None:
+            params["status_code"] = status_code
         if annotation_score is not None:
             params["annotation_score"] = annotation_score
         if annotation_type is not None:

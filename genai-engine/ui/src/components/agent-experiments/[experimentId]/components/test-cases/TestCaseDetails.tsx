@@ -1,3 +1,4 @@
+import { CopyableChip, Highlight, tryFormatJson } from "@arthur/shared-components";
 import { Collapsible } from "@base-ui/react/collapsible";
 import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
@@ -5,15 +6,12 @@ import { Box, Chip, DialogContent, Link as MuiLink, Paper, Stack, Typography } f
 import { Link as RouterLink } from "react-router";
 
 import { StatusBadge } from "@/components/agent-experiments/components/status-badge";
-import { CopyableChip } from "@/components/common";
-import { Highlight } from "@/components/common/Highlight";
 import { serializeDrawerTarget } from "@/components/traces/hooks/useDrawerTarget";
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useTask } from "@/hooks/useTask";
 import type { AgenticTestCase, EvalExecution, InputVariable } from "@/lib/api-client/api-client";
 import { isEvalPass } from "@/utils/evals";
 import { formatCurrency } from "@/utils/formatters";
-import { tryFormatJson } from "@/utils/llm";
 
 type Props = {
   testCase: AgenticTestCase;

@@ -8,6 +8,7 @@ from arthur_common.models.enums import MetricType
 from sqlalchemy import (
     JSON,
     TIMESTAMP,
+    BigInteger,
     Boolean,
     Enum,
     Float,
@@ -67,6 +68,10 @@ class DatabaseTraceMetadata(Base):
     prompt_token_cost: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     completion_token_cost: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     total_token_cost: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    # OTLP payload bytes received for this trace's spans on the trace ingestion
+    # endpoints. NULL for traces ingested before it was recorded, and for traces
+    # that didn't arrive through those endpoints (internal, demo, GCP pull).
+    ingest_bytes: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
     input_content: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     output_content: Mapped[Optional[str]] = mapped_column(String, nullable=True)
 
@@ -251,6 +256,8 @@ class DatabaseSpan(Base):
     prompt_token_cost: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     completion_token_cost: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     total_token_cost: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    # This span's share of the OTLP request body it arrived in.
+    ingest_bytes: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP,

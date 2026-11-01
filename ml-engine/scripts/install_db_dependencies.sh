@@ -36,10 +36,6 @@ brew install \
     mysql-connector-c \
     unixodbc
 
-# Warn that Oracle Instant Client should be installed manually (Homebrew formula doesn't exist)
-echo "WARNING: Oracle Instant Client requires manual download due to license restrictions."
-echo "         As a result it is not installed by this script. Please refer to the README for installation instructions."
-
 # Install MSSQL ODBC driver for macOS
 echo "🗄️ Installing Microsoft ODBC Driver for SQL Server..."
 brew tap microsoft/mssql-release https://github.com/Microsoft/homebrew-mssql-release

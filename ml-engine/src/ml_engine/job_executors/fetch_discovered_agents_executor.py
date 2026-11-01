@@ -34,7 +34,11 @@ from arthur_client.api_bindings import (
     RejectedAgent,
     ToxicityConfig,
 )
-from arthur_common.models.agent_governance_schemas import CREATION_SOURCE_TYPE_BY_CLASS
+from arthur_common.models.agent_governance_schemas import (
+    CREATION_SOURCE_TYPE_BY_CLASS,
+    IdentityBasis,
+    NetworkCallerKind,
+)
 from genai_client import (
     ApiClient,
     Configuration,
@@ -395,8 +399,11 @@ def source_evidence(
     the Platform derives it from the sightings it receives, and `visibility` is graded
     there too, so the value sent only satisfies the schema.
 
-    The task's observations belong to the record it was created from, which may be
-    another source's: that record is picked among every source's records, and the
+    Each record carries what its latest report saw -- its version, and the version
+    before that one changed -- as its entry serves them. An entry stored before GenAI
+    Engine kept them serves none, and then the task's creation source is the only place
+    they can be read: what the record the task was created from saw when it was. That
+    record may be another source's: it is picked among every source's records, and the
     observations go on it only if it is one of this source's.
     """
     task_creation_source = task_dict.get("creation_source") or {}
@@ -416,13 +423,16 @@ def source_evidence(
             or last_seen is None
         ):
             continue
+        creation_source = {
+            "type": creation_type,
+            "vendor": entry.get("vendor"),
+            "address": entry.get("address"),
+        }
+        if entry.get("observations"):
+            creation_source["observations"] = entry["observations"]
         records.append(
             {
-                "creation_source": {
-                    "type": creation_type,
-                    "vendor": entry.get("vendor"),
-                    "address": entry.get("address"),
-                },
+                "creation_source": creation_source,
                 "external_id": external_id,
                 "visibility": "limited",
                 "last_seen": last_seen,
@@ -433,14 +443,20 @@ def source_evidence(
     evidence = [
         record for record in records if str(record["source_id"]) == discovery_source_id
     ]
+    for record in evidence:
+        basis = _identity_basis(record["creation_source"], task_creation_source)
+        if basis is not None:
+            record["creation_source"]["identity_basis"] = basis
 
-    # What the source observed is carried by the record the task was created from, so
-    # only that record's evidence can say it.
+    # The creation source's observations stand in only where the entry served none: they
+    # are what the first report saw, and the record the task was created from is the
+    # only one they speak for.
     observations = task_creation_source.get("observations")
     origin = _creation_record(records, task_creation_source)
     if (
         observations is not None
         and origin is not None
+        and "observations" not in origin["creation_source"]
         and any(record is origin for record in evidence)
     ):
         origin["creation_source"]["observations"] = observations
@@ -454,6 +470,41 @@ _CREATION_SOURCE_TYPES: dict[str, str] = {
     source_class.value: type_tag
     for source_class, type_tag in CREATION_SOURCE_TYPE_BY_CLASS.items()
 }
+
+# What a gateway caller record of each kind rests on when the kind alone says. An agent
+# id may be registered or only claimed, which only the record itself said.
+_BASIS_OF_CALLER_KIND = {
+    NetworkCallerKind.VIRTUAL_KEY.value: IdentityBasis.CREDENTIAL.value,
+    NetworkCallerKind.CONSUMER.value: IdentityBasis.CREDENTIAL.value,
+    NetworkCallerKind.CLIENT_ADDRESS.value: IdentityBasis.CLIENT_ADDRESS.value,
+}
+_CALLER_KINDS = frozenset(_BASIS_OF_CALLER_KIND) | {NetworkCallerKind.AGENT_ID.value}
+
+
+def _identity_basis(
+    creation_source: dict[str, Any],
+    task_creation_source: dict[str, Any],
+) -> Optional[str]:
+    """A gateway caller record's identity basis, which provenance does not carry and
+    the Platform requires on one.
+
+    The task's own creation source says it when it is this record. Otherwise the kind
+    does, and an agent id falls back to `claimed_agent`, which never claims more than
+    the record could.
+    """
+    kind = (creation_source.get("address") or {}).get("resource_kind")
+    if kind not in _CALLER_KINDS:
+        return None
+    task_basis = task_creation_source.get("identity_basis")
+    if task_basis and _same_place(
+        creation_source,
+        task_creation_source,
+        _IDENTITY_FIELDS,
+    ):
+        # The generated client's enum member: str() of one is its qualified name.
+        return str(getattr(task_basis, "value", task_basis))
+    return _BASIS_OF_CALLER_KIND.get(kind, IdentityBasis.CLAIMED_AGENT.value)
+
 
 # Address fields that say which record an entry is, most specific last. Never the
 # query, which a source config can have edited since the task was created.
