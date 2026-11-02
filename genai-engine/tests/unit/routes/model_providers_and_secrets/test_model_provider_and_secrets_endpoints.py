@@ -710,3 +710,77 @@ def test_model_whitelist_read_is_admin_only(
         assert models.available_models == ["gpt-5.4-nano"]
     finally:
         client.delete_model_provider("openai")
+
+
+@pytest.mark.unit_tests
+def test_model_provider_eval_defaults_lifecycle(client: GenaiEngineTestClientBase):
+    # Readable, and empty, before the provider is configured.
+    status_code, defaults = client.get_model_provider_eval_defaults("anthropic")
+    assert status_code == 200
+    assert defaults.provider == ModelProvider.ANTHROPIC
+    assert defaults.reasoning_effort is None
+    assert defaults.thinking is None
+
+    # Writing needs a configured provider.
+    status_code, _ = client.set_model_provider_eval_defaults(
+        "anthropic",
+        {"thinking": {"type": "disabled"}},
+    )
+    assert status_code == 400
+
+    assert client.set_model_provider("anthropic", {"api_key": "test-key"}) == 201
+    try:
+        status_code, _ = client.set_model_provider_eval_defaults(
+            "anthropic",
+            {"reasoning_effort": "low", "thinking": {"type": "disabled"}},
+        )
+        assert status_code == 204
+
+        _, defaults = client.get_model_provider_eval_defaults("anthropic")
+        assert defaults.reasoning_effort == "low"
+        assert defaults.thinking == {"type": "disabled"}
+
+        # Re-saving credentials keeps the defaults.
+        assert client.set_model_provider("anthropic", {"api_key": "new-key"}) == 201
+        _, defaults = client.get_model_provider_eval_defaults("anthropic")
+        assert defaults.thinking == {"type": "disabled"}
+
+        # Nulls clear them.
+        status_code, _ = client.set_model_provider_eval_defaults(
+            "anthropic",
+            {"reasoning_effort": None, "thinking": None},
+        )
+        assert status_code == 204
+        _, defaults = client.get_model_provider_eval_defaults("anthropic")
+        assert defaults.reasoning_effort is None
+        assert defaults.thinking is None
+    finally:
+        assert client.delete_model_provider("anthropic") == 204
+
+
+@pytest.mark.unit_tests
+@pytest.mark.parametrize(
+    "defaults,detail",
+    [
+        ({"reasoning_effort": "default"}, "reasoning_effort"),
+        ({"reasoning_effort": "extreme"}, "reasoning_effort"),
+        ({"thinking": {"type": "enabled"}}, "budget_tokens"),
+        ({"thinking": {"type": "enabled", "budget_tokens": 100}}, "budget_tokens"),
+        ({"thinking": {"type": "sometimes"}}, "thinking"),
+    ],
+)
+def test_model_provider_eval_defaults_validation(
+    client: GenaiEngineTestClientBase,
+    defaults,
+    detail,
+):
+    assert client.set_model_provider("anthropic", {"api_key": "test-key"}) == 201
+    try:
+        status_code, body = client.set_model_provider_eval_defaults(
+            "anthropic",
+            defaults,
+        )
+        assert status_code == 400
+        assert detail in str(body)
+    finally:
+        assert client.delete_model_provider("anthropic") == 204

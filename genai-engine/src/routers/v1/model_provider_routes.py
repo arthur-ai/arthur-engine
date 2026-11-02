@@ -19,9 +19,11 @@ from schemas.internal_schemas import (
 )
 from schemas.request_schemas import (
     PutModelProviderCredentials,
+    PutModelProviderEvalDefaults,
     PutModelProviderWhitelist,
 )
 from schemas.response_schemas import (
+    ModelProviderEvalDefaults,
     ModelProviderList,
     ModelProviderModelList,
     ModelProviderWhitelist,
@@ -249,4 +251,48 @@ def set_model_provider_whitelist(
             )
 
     repo.set_model_whitelist(provider, request.models)
+    return Response(status_code=HTTP_204_NO_CONTENT)
+
+
+@model_provider_routes.get(
+    "/model_providers/{provider}/eval_defaults",
+    summary="Get a provider's default reasoning settings for LLM evals.",
+    description=(
+        "Returns the reasoning_effort and thinking settings sent on LLM eval calls to "
+        "this provider when the eval's own config sets neither. Null fields send "
+        "nothing."
+    ),
+    tags=["Model Providers"],
+    response_model=ModelProviderEvalDefaults,
+)
+@permission_checker(permissions=PermissionLevelsEnum.MODEL_PROVIDER_READ.value)
+def get_model_provider_eval_defaults(
+    provider: ModelProvider,
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> ModelProviderEvalDefaults:
+    return ModelProviderRepository(db_session).get_eval_defaults(provider)
+
+
+@model_provider_routes.put(
+    "/model_providers/{provider}/eval_defaults",
+    summary="Set a provider's default reasoning settings for LLM evals.",
+    description=(
+        "Sets the reasoning_effort and thinking settings sent on LLM eval calls to "
+        "this provider when the eval's own config sets neither. An eval that sets "
+        "either one gets neither default. A default is skipped for models that don't "
+        "accept it. Applies to LLM evals only, not to prompts. Send nulls to clear."
+    ),
+    tags=["Model Providers"],
+    status_code=HTTP_204_NO_CONTENT,
+    responses={HTTP_204_NO_CONTENT: {"description": "Eval defaults updated."}},
+)
+@permission_checker(permissions=PermissionLevelsEnum.MODEL_PROVIDER_WRITE.value)
+def set_model_provider_eval_defaults(
+    provider: ModelProvider,
+    request: PutModelProviderEvalDefaults,
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> Response:
+    ModelProviderRepository(db_session).set_eval_defaults(provider, request)
     return Response(status_code=HTTP_204_NO_CONTENT)

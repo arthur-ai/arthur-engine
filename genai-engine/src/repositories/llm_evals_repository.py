@@ -140,6 +140,12 @@ class LLMEvalsRepository(
             else:
                 config_dict = llm_eval.config.model_dump(exclude_none=True)
 
+        self.model_provider_repo.apply_eval_defaults(
+            llm_eval.model_provider,
+            llm_eval.model_name,
+            config_dict,
+        )
+
         if response_format is not None:
             config_dict["response_format"] = response_format
 

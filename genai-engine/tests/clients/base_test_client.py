@@ -56,10 +56,8 @@ from arthur_common.models.response_schemas import (
     ValidationResult,
 )
 from arthur_common.models.task_eval_schemas import (
-    ContinuousEvalResponse,
     ContinuousEvalVariableMappingResponse,
     Eval,
-    ListContinuousEvalsResponse,
     ListTraceTransformsResponse,
     TraceTransformResponse,
 )
@@ -116,17 +114,20 @@ from schemas.response_schemas import (
     BulkAddTracesToDatasetResponse,
     ConnectionCheckResult,
     ContinuousEvalRerunResponse,
+    ContinuousEvalResponse,
     ContinuousEvalTestRunResponse,
     DatasetResponse,
     DatasetVersionResponse,
     DatasetVersionRowResponse,
     DemoTaskSignupResponse,
     InferenceOverviewListResponse,
+    ListContinuousEvalsResponse,
     ListContinuousEvalTestRunsResponse,
     ListDatasetVersionsResponse,
     ListRagSearchSettingConfigurationsResponse,
     ListRagSearchSettingConfigurationVersionsResponse,
     ListTraceTransformVersionsResponse,
+    ModelProviderEvalDefaults,
     ModelProviderModelList,
     ModelProviderWhitelist,
     RagProviderConfigurationResponse,
@@ -3404,6 +3405,48 @@ class GenaiEngineTestClientBase(httpx.Client):
         resp = self.base_client.put(
             f"/api/v1/model_providers/{provider}/model_whitelist",
             json={"models": models},
+            headers=headers or self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json() if resp.status_code != 204 else {},
+        )
+
+    def get_model_provider_eval_defaults(
+        self,
+        provider: str,
+        headers: dict | None = None,
+    ) -> tuple[int, ModelProviderEvalDefaults | None]:
+        """Read the provider's default reasoning settings for LLM evals."""
+        resp = self.base_client.get(
+            f"/api/v1/model_providers/{provider}/eval_defaults",
+            headers=headers or self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                ModelProviderEvalDefaults.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
+            ),
+        )
+
+    def set_model_provider_eval_defaults(
+        self,
+        provider: str,
+        defaults: dict[str, Any],
+        headers: dict | None = None,
+    ) -> tuple[int, dict]:
+        """Set the provider's default reasoning settings for LLM evals."""
+        resp = self.base_client.put(
+            f"/api/v1/model_providers/{provider}/eval_defaults",
+            json=defaults,
             headers=headers or self.authorized_user_api_key_headers,
         )
 
