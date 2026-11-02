@@ -1,8 +1,7 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
 from unittest.mock import MagicMock, patch
-from utils.constants import DEFAULT_ORG_ID
 
 import pytest
 from arthur_common.models.enums import AgenticAnnotationType, ContinuousEvalRunStatus
@@ -20,11 +19,15 @@ from services.continuous_eval import (
     initialize_continuous_eval_queue_service,
     shutdown_continuous_eval_queue_service,
 )
+from services.continuous_eval.continuous_eval_queue_service import (
+    runs_often_enough_to_cache,
+)
 from services.trace.span_normalization_service import SpanNormalizationService
 from tests.clients.base_test_client import (
     GenaiEngineTestClientBase,
     override_get_db_session,
 )
+from utils.constants import DEFAULT_ORG_ID
 
 
 def mock_get_db_session_generator():
@@ -1519,3 +1522,219 @@ def test_only_enabled_continuous_evals_are_enqueued(
 
     cleanup_model_provider(client)
     cleanup_test_data(test_data)
+
+
+CACHEABLE_RUBRIC = "Score 1 if the model name below is a real model, otherwise 0."
+
+
+@pytest.mark.unit_tests
+@pytest.mark.parametrize(
+    "other_run_ages_minutes,expect_breakpoint",
+    [
+        ([], False),
+        ([10], False),
+        ([1], True),
+    ],
+)
+@patch("clients.llm.llm_client.completion_cost", return_value=0.0)
+@patch("clients.llm.llm_client.litellm.completion")
+@patch(
+    "services.continuous_eval.continuous_eval_queue_service.get_db_session",
+    side_effect=mock_get_db_session_generator,
+)
+def test_continuous_eval_claude_breakpoint_needs_recent_runs(
+    mock_get_db_session,
+    mock_completion,
+    mock_completion_cost,
+    other_run_ages_minutes,
+    expect_breakpoint,
+    client: GenaiEngineTestClientBase,
+):
+    """A continuous eval only gets a Claude cache breakpoint when another run of it
+    was created in the last 5 minutes, so rarely-firing evals skip the write fee."""
+    test_data = setup_test_data()
+    mock_response = MagicMock(spec=ModelResponse)
+    mock_response.choices = [MagicMock()]
+    mock_response.choices[0].message = {"content": '{"reason": "ok", "score": 1}'}
+    mock_completion.return_value = mock_response
+
+    initialize_continuous_eval_queue_service(num_workers=1, override_execution_delay=0)
+    continuous_eval_queue_service = get_continuous_eval_queue_service()
+
+    status_code, agentic_task = client.create_task(
+        name="test_continuous_eval_claude_breakpoint_needs_recent_runs",
+        is_agentic=True,
+    )
+    assert status_code == 200
+    response = client.base_client.put(
+        "/api/v1/model_providers/anthropic",
+        json={"api_key": "test-key"},
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 201
+    status_code, _ = client.save_llm_eval(
+        task_id=agentic_task.id,
+        llm_eval_name="test_llm_eval",
+        llm_eval_data={
+            "model_name": "claude-sonnet-4-5",
+            "model_provider": "anthropic",
+            "instructions": CACHEABLE_RUBRIC + "\n\nModel name: {{model_name}}",
+        },
+    )
+    assert status_code == 200
+    status_code, transform = client.create_transform(
+        task_id=agentic_task.id,
+        name="test_transform",
+        description="Test transform description",
+        definition={
+            "variables": [
+                {
+                    "variable_name": "model_name",
+                    "span_name": "rag-retrieval-savedQueries",
+                    "attribute_path": "attributes.input.value.context",
+                },
+            ],
+        },
+    )
+    assert status_code == 200
+    status_code, continuous_eval = client.save_continuous_eval(
+        task_id=agentic_task.id,
+        continuous_eval_data={
+            "name": "test_continuous_eval",
+            "llm_eval_name": "test_llm_eval",
+            "llm_eval_version": 1,
+            "transform_id": str(transform.id),
+            "transform_variable_mapping": [
+                {"transform_variable": "model_name", "eval_variable": "model_name"},
+            ],
+        },
+    )
+    assert status_code == 200
+
+    other_runs = [
+        create_mock_annotation(
+            trace_id=test_data["trace_id"],
+            annotation_type=AgenticAnnotationType.CONTINUOUS_EVAL,
+            continuous_eval_id=continuous_eval.id,
+            run_status=ContinuousEvalRunStatus.PASSED,
+            created_at=datetime.now() - timedelta(minutes=age),
+        )
+        for age in other_run_ages_minutes
+    ]
+    annotation = create_mock_annotation(
+        trace_id=test_data["trace_id"],
+        annotation_type=AgenticAnnotationType.CONTINUOUS_EVAL,
+        continuous_eval_id=continuous_eval.id,
+        run_status=ContinuousEvalRunStatus.PENDING,
+    )
+
+    try:
+        continuous_eval_queue_service._execute_job(
+            ContinuousEvalJob(
+                annotation_id=annotation.id,
+                trace_id=test_data["trace_id"],
+                continuous_eval_id=continuous_eval.id,
+                task_id=agentic_task.id,
+                delay_seconds=0,
+            ),
+        )
+
+        user_content = mock_completion.call_args.kwargs["messages"][1]["content"]
+        if expect_breakpoint:
+            static_block, variable_block = user_content
+            assert static_block["text"] == CACHEABLE_RUBRIC + "\n\nModel name:"
+            assert static_block["cache_control"] == {"type": "ephemeral"}
+            assert "cache_control" not in variable_block
+        else:
+            assert (
+                user_content == CACHEABLE_RUBRIC + "\n\nModel name: User query context"
+            )
+    finally:
+        for run in [*other_runs, annotation]:
+            delete_mock_annotation(run.id)
+        assert client.delete_task(agentic_task.id) == 204
+        shutdown_continuous_eval_queue_service()
+        client.base_client.delete(
+            "/api/v1/model_providers/anthropic",
+            headers=client.authorized_user_api_key_headers,
+        )
+        cleanup_test_data(test_data)
+
+
+@pytest.mark.unit_tests
+def test_runs_often_enough_to_cache_counts_recent_runs_of_that_eval(
+    client: GenaiEngineTestClientBase,
+):
+    test_data = setup_test_data()
+    status_code, agentic_task = client.create_task(
+        name="test_runs_often_enough_to_cache",
+        is_agentic=True,
+    )
+    assert status_code == 200
+    status_code, _ = client.save_llm_eval(
+        task_id=agentic_task.id,
+        llm_eval_name="test_llm_eval",
+        llm_eval_data={
+            "model_name": "gpt-4o",
+            "model_provider": "openai",
+            "instructions": "Test instructions {{model_name}}",
+        },
+    )
+    assert status_code == 200
+    status_code, transform = client.create_transform(
+        task_id=agentic_task.id,
+        name="test_transform",
+        description="Test transform description",
+        definition={
+            "variables": [
+                {
+                    "variable_name": "model_name",
+                    "span_name": "rag-retrieval-savedQueries",
+                    "attribute_path": "attributes.input.value.context",
+                },
+            ],
+        },
+    )
+    assert status_code == 200
+    continuous_evals = []
+    for name in ("busy_continuous_eval", "other_continuous_eval"):
+        status_code, continuous_eval = client.save_continuous_eval(
+            task_id=agentic_task.id,
+            continuous_eval_data={
+                "name": name,
+                "llm_eval_name": "test_llm_eval",
+                "llm_eval_version": 1,
+                "transform_id": str(transform.id),
+                "transform_variable_mapping": [
+                    {"transform_variable": "model_name", "eval_variable": "model_name"},
+                ],
+            },
+        )
+        assert status_code == 200
+        continuous_evals.append(continuous_eval)
+    busy, other = continuous_evals
+
+    def add_run(continuous_eval_id, age_minutes):
+        return create_mock_annotation(
+            trace_id=test_data["trace_id"],
+            annotation_type=AgenticAnnotationType.CONTINUOUS_EVAL,
+            continuous_eval_id=continuous_eval_id,
+            run_status=ContinuousEvalRunStatus.PASSED,
+            created_at=datetime.now() - timedelta(minutes=age_minutes),
+        )
+
+    runs = [add_run(busy.id, 1), add_run(busy.id, 6), add_run(other.id, 1)]
+    db_session = override_get_db_session()
+    try:
+        # one recent run each: older runs and other evals' runs don't count
+        assert not runs_often_enough_to_cache(db_session, busy.id)
+        assert not runs_often_enough_to_cache(db_session, other.id)
+
+        runs.append(add_run(busy.id, 4))
+        assert runs_often_enough_to_cache(db_session, busy.id)
+        assert not runs_often_enough_to_cache(db_session, other.id)
+    finally:
+        for run in runs:
+            delete_mock_annotation(run.id)
+        assert client.delete_task(agentic_task.id) == 204
+        cleanup_test_data(test_data)

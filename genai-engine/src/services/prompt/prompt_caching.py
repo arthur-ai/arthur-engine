@@ -4,12 +4,16 @@ from typing import Any
 
 from arthur_common.models.llm_model_providers import ModelProvider
 from litellm import get_supported_openai_params
+from litellm.integrations.anthropic_cache_control_hook import (
+    supports_openai_prompt_cache_breakpoint,
+)
 from litellm.utils import supports_prompt_caching
 
 # Start of the first Jinja expression, statement or comment
 _JINJA_TAG_START = re.compile(r"\{[{%#]")
 
 _EPHEMERAL_CACHE_CONTROL = {"type": "ephemeral"}
+_OPENAI_EXPLICIT_CACHE_MODE = {"mode": "explicit"}
 
 
 def static_template_prefix(template: str) -> str:
@@ -41,19 +45,10 @@ def _uses_anthropic_cache_control(provider: ModelProvider, model_name: str) -> b
     return False
 
 
-def _accepts_prompt_cache_key(provider: ModelProvider, model_name: str) -> bool:
-    if provider not in (ModelProvider.OPENAI, ModelProvider.AZURE):
-        return False
-    supported = get_supported_openai_params(
-        model=model_name,
-        custom_llm_provider=provider,
-    )
-    return "prompt_cache_key" in (supported or [])
-
-
 def _mark_static_instructions_cacheable(
     messages: list[dict[str, Any]],
     instructions: str,
+    marker: dict[str, Any],
 ) -> None:
     """Split the rendered instructions message into a static block carrying a cache
     breakpoint and a block with the per-call remainder. The concatenated text is
@@ -77,11 +72,7 @@ def _mark_static_instructions_cacheable(
         return
 
     message["content"] = [
-        {
-            "type": "text",
-            "text": static_prefix,
-            "cache_control": dict(_EPHEMERAL_CACHE_CONTROL),
-        },
+        {"type": "text", "text": static_prefix, **marker},
         {"type": "text", "text": remainder},
     ]
 
@@ -93,17 +84,50 @@ def apply_eval_prompt_caching(
     model_name: str,
     instructions: str,
     cache_key: str,
+    add_cache_breakpoint: bool = True,
 ) -> None:
     """Make an LLM-judge eval request cacheable for the provider, in place.
 
-    Claude models get an explicit cache breakpoint after the static part of the
-    instructions. OpenAI caches identical prefixes automatically and gets a stable
-    `prompt_cache_key` so calls for the same eval route to the same cache.
+    Claude models, and OpenAI models that take explicit breakpoints (GPT-5.6 and
+    later), get a cache breakpoint after the static part of the instructions. A cache
+    write costs more than uncached input on both, so callers pass
+    `add_cache_breakpoint=False` for evals that run too rarely to read it back.
+    Older OpenAI models cache identical prefixes automatically with no write fee and
+    get a stable `prompt_cache_key` so calls for the same eval route to the same
+    cache, plus 24-hour retention where the model supports it.
     """
+    messages = completion_params.get("messages", [])
     if _uses_anthropic_cache_control(provider, model_name):
-        _mark_static_instructions_cacheable(
-            completion_params.get("messages", []),
-            instructions,
+        if add_cache_breakpoint:
+            _mark_static_instructions_cacheable(
+                messages,
+                instructions,
+                {"cache_control": dict(_EPHEMERAL_CACHE_CONTROL)},
+            )
+        return
+
+    if provider not in (ModelProvider.OPENAI, ModelProvider.AZURE):
+        return
+    supported = (
+        get_supported_openai_params(
+            model=model_name,
+            custom_llm_provider=provider,
         )
-    elif _accepts_prompt_cache_key(provider, model_name):
+        or []
+    )
+    if "prompt_cache_key" in supported:
         completion_params["prompt_cache_key"] = cache_key
+
+    if supports_openai_prompt_cache_breakpoint(model_name):
+        # These models otherwise cache implicitly at the last message, which would
+        # pay the write premium on the per-trace text of every call
+        completion_params["prompt_cache_options"] = dict(_OPENAI_EXPLICIT_CACHE_MODE)
+        if add_cache_breakpoint:
+            _mark_static_instructions_cacheable(
+                messages,
+                instructions,
+                {"prompt_cache_breakpoint": dict(_OPENAI_EXPLICIT_CACHE_MODE)},
+            )
+    elif "prompt_cache_retention" in supported:
+        # litellm drops a top-level prompt_cache_retention before the request is sent
+        completion_params.setdefault("extra_body", {})["prompt_cache_retention"] = "24h"

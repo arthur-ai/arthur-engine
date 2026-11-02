@@ -27,5 +27,6 @@ class BaseEvaluator(ABC):
         variable_mapping: List[ContinuousEvalTransformVariableMapping],
         resolved_variables: dict[str, str],
         org_id: uuid.UUID,
+        add_cache_breakpoint: bool = True,
     ) -> EvalRunResponse:
         raise NotImplementedError

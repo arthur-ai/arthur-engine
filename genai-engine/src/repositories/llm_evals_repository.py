@@ -180,6 +180,7 @@ class LLMEvalsRepository(
         org_id: uuid.UUID,
         version: str = "latest",
         completion_request: Optional[BaseCompletionRequest] = None,
+        add_cache_breakpoint: bool = True,
     ) -> EvalRunResponse:
         if not self.model_provider_repo:
             raise ValueError("Model provider repository not initialized")
@@ -244,6 +245,7 @@ class LLMEvalsRepository(
             model_name=llm_eval.model_name,
             instructions=llm_eval.instructions or "",
             cache_key=eval_prompt_cache_key(task_id, eval_name, llm_eval.version),
+            add_cache_breakpoint=add_cache_breakpoint,
         )
         llm_model_response = llm_client.completion(
             model=model,

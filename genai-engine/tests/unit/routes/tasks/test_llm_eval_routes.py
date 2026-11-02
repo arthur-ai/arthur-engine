@@ -1175,6 +1175,65 @@ def test_run_saved_llm_eval_success(
 
 
 @pytest.mark.unit_tests
+@patch("clients.llm.llm_client.completion_cost", return_value=0.0)
+@patch("clients.llm.llm_client.litellm.completion")
+def test_run_saved_llm_eval_keeps_claude_cache_breakpoint(
+    mock_completion,
+    mock_completion_cost,
+    client: GenaiEngineTestClientBase,
+):
+    """Manual runs come in bursts, so they keep the cache breakpoint without the
+    recent-run check continuous evals use"""
+    mock_response = MagicMock(spec=ModelResponse)
+    mock_response.choices = [MagicMock()]
+    mock_response.choices[0].message = {"content": '{"reason": "ok", "score": 1}'}
+    mock_completion.return_value = mock_response
+
+    status_code, task = client.create_task(
+        f"agentic_task_{random.random()}",
+        is_agentic=True,
+    )
+    assert status_code == 200
+    response = client.base_client.put(
+        "/api/v1/model_providers/anthropic",
+        json={"api_key": "test-key"},
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 201
+    rubric = "Assess the following answer based on ground truth."
+    response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/llm_evals/test_llm_eval",
+        json={
+            "model_name": "claude-sonnet-4-5",
+            "model_provider": "anthropic",
+            "instructions": rubric + "\n\nAnswer: {{answer}}",
+        },
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200
+
+    try:
+        response = client.base_client.post(
+            f"/api/v1/tasks/{task.id}/llm_evals/test_llm_eval/versions/latest/completions",
+            json={"variables": [{"name": "answer", "value": "Paris"}]},
+            headers=client.authorized_user_api_key_headers,
+        )
+        assert response.status_code == 200
+
+        static_block, variable_block = mock_completion.call_args.kwargs["messages"][1][
+            "content"
+        ]
+        assert static_block["text"] == rubric + "\n\nAnswer:"
+        assert static_block["cache_control"] == {"type": "ephemeral"}
+        assert variable_block["text"] == " Paris"
+    finally:
+        client.base_client.delete(
+            "/api/v1/model_providers/anthropic",
+            headers=client.authorized_user_api_key_headers,
+        )
+
+
+@pytest.mark.unit_tests
 def test_run_saved_llm_eval_not_found(client: GenaiEngineTestClientBase):
     """Test running a saved llm eval that doesn't exist"""
     # Create an agentic task

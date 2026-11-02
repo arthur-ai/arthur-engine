@@ -958,6 +958,7 @@ def _run_eval_and_capture_request(
     provider,
     model_name,
     instructions,
+    **run_kwargs,
 ):
     task_id = str(uuid4())
     eval_name = "cacheable_eval"
@@ -989,6 +990,7 @@ def _run_eval_and_capture_request(
                     VariableTemplateValue(name="answer", value="Paris"),
                 ],
             ),
+            **run_kwargs,
         )
     finally:
         llm_evals_repo.delete_llm_item(task_id, eval_name)
@@ -1060,6 +1062,68 @@ def test_run_llm_eval_sends_prompt_cache_key_for_openai(
         "cacheable_eval",
         1,
     )
+    assert request["extra_body"] == {"prompt_cache_retention": "24h"}
+    assert "prompt_cache_options" not in request
+    assert request["messages"][1]["content"] == rendered
+    assert "cache_control" not in str(request["messages"])
+
+
+@pytest.mark.unit_tests
+@patch("clients.llm.llm_client.completion_cost", return_value=0.0)
+@patch("clients.llm.llm_client.litellm.completion")
+def test_run_llm_eval_sends_explicit_breakpoint_for_openai_5_6_plus(
+    mock_completion,
+    mock_completion_cost,
+    llm_evals_repo,
+):
+    instructions = (
+        CACHEABLE_EVAL_RUBRIC + "\n\nContext: {{context}}\nAnswer: {{answer}}"
+    )
+
+    task_id, request, rendered = _run_eval_and_capture_request(
+        mock_completion,
+        llm_evals_repo,
+        ModelProvider.OPENAI,
+        "gpt-5.6",
+        instructions,
+    )
+
+    assert request["prompt_cache_options"] == {"mode": "explicit"}
+    assert request["prompt_cache_key"] == eval_prompt_cache_key(
+        task_id,
+        "cacheable_eval",
+        1,
+    )
+    assert "extra_body" not in request
+    static_block, variable_block = request["messages"][1]["content"]
+    assert static_block["text"] == CACHEABLE_EVAL_RUBRIC + "\n\nContext:"
+    assert static_block["prompt_cache_breakpoint"] == {"mode": "explicit"}
+    assert "prompt_cache_breakpoint" not in variable_block
+    assert static_block["text"] + variable_block["text"] == rendered
+    assert "cache_control" not in str(request["messages"])
+
+
+@pytest.mark.unit_tests
+@patch("clients.llm.llm_client.completion_cost", return_value=0.0)
+@patch("clients.llm.llm_client.litellm.completion")
+def test_run_llm_eval_without_cache_breakpoint_sends_plain_instructions(
+    mock_completion,
+    mock_completion_cost,
+    llm_evals_repo,
+):
+    instructions = (
+        CACHEABLE_EVAL_RUBRIC + "\n\nContext: {{context}}\nAnswer: {{answer}}"
+    )
+
+    _, request, rendered = _run_eval_and_capture_request(
+        mock_completion,
+        llm_evals_repo,
+        ModelProvider.ANTHROPIC,
+        "claude-sonnet-4-5",
+        instructions,
+        add_cache_breakpoint=False,
+    )
+
     assert request["messages"][1]["content"] == rendered
     assert "cache_control" not in str(request["messages"])
 
