@@ -59,6 +59,10 @@ class LLMTokenUsage(BaseModel):
         litellm folds OpenAI's prompt_tokens_details.cached_tokens and Anthropic's
         cache_read_input_tokens / cache_creation_input_tokens into prompt_tokens_details;
         the raw Anthropic attributes are the fallback when the details are absent.
+
+        prompt_tokens is total input including cache reads and writes for every provider:
+        Anthropic (direct, Bedrock invoke, Vertex) and Bedrock Converse report input tokens
+        net of the cache, and litellm adds the cache counts back before we see them.
         """
         usage = getattr(response, "usage", None)
         if usage is None:

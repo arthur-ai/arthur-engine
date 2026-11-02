@@ -1,7 +1,19 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import httpx
 import pytest
 from arthur_common.models.llm_model_providers import ModelProvider
+from litellm.litellm_core_utils.llm_response_utils.convert_dict_to_response import (
+    convert_to_model_response_object,
+)
+from litellm.llms.anthropic.chat.transformation import AnthropicConfig
+from litellm.llms.bedrock.chat.converse_transformation import AmazonConverseConfig
+from litellm.llms.bedrock.chat.invoke_transformations.anthropic_claude3_transformation import (
+    AmazonAnthropicClaudeConfig,
+)
+from litellm.llms.vertex_ai.vertex_ai_partner_models.anthropic.transformation import (
+    VertexAIAnthropicConfig,
+)
 from litellm.types.utils import ModelResponse, TokenCountResponse, Usage
 from pydantic import BaseModel, Field
 
@@ -402,3 +414,145 @@ def test_token_usage_missing_usage_is_null():
     assert LLMTokenUsage.from_response(None) == LLMTokenUsage()
     # Mocked responses without real usage must not leak mock values into the counts
     assert LLMTokenUsage.from_response(MagicMock(spec=ModelResponse)) == LLMTokenUsage()
+
+
+# Raw provider payloads, run through litellm's own response transformation below. Anthropic's
+# input_tokens and Bedrock Converse's inputTokens both exclude cache reads and writes; litellm
+# adds them back into prompt_tokens, so every provider stores total input tokens.
+_ANTHROPIC_MESSAGES_BODY = {
+    "id": "msg_1",
+    "type": "message",
+    "role": "assistant",
+    "model": "claude-sonnet-4-5",
+    "content": [{"type": "text", "text": "ok"}],
+    "stop_reason": "end_turn",
+    "usage": {
+        "input_tokens": 100,
+        "output_tokens": 20,
+        "cache_read_input_tokens": 900,
+        "cache_creation_input_tokens": 400,
+    },
+}
+
+_BEDROCK_CONVERSE_BODY = {
+    "output": {"message": {"role": "assistant", "content": [{"text": "ok"}]}},
+    "stopReason": "end_turn",
+    "usage": {
+        "inputTokens": 100,
+        "outputTokens": 20,
+        "totalTokens": 1420,
+        "cacheReadInputTokens": 900,
+        "cacheWriteInputTokens": 400,
+    },
+    "metrics": {"latencyMs": 1},
+}
+
+
+def _transform_provider_response(config, model: str, body: dict) -> ModelResponse:
+    return config.transform_response(
+        model=model,
+        raw_response=httpx.Response(
+            200,
+            json=body,
+            request=httpx.Request("POST", "https://provider.test"),
+        ),
+        model_response=ModelResponse(),
+        logging_obj=MagicMock(),
+        request_data={},
+        messages=[{"role": "user", "content": "hi"}],
+        optional_params={},
+        litellm_params={},
+        encoding=None,
+    )
+
+
+@pytest.mark.unit_tests
+@pytest.mark.parametrize(
+    "config,model,body",
+    [
+        (AnthropicConfig(), "claude-sonnet-4-5", _ANTHROPIC_MESSAGES_BODY),
+        (
+            AmazonConverseConfig(),
+            "anthropic.claude-sonnet-4-5-20250929-v1:0",
+            _BEDROCK_CONVERSE_BODY,
+        ),
+        (
+            AmazonAnthropicClaudeConfig(),
+            "anthropic.claude-sonnet-4-5-20250929-v1:0",
+            _ANTHROPIC_MESSAGES_BODY,
+        ),
+        (
+            VertexAIAnthropicConfig(),
+            "claude-sonnet-4-5@20250929",
+            _ANTHROPIC_MESSAGES_BODY,
+        ),
+    ],
+    ids=["anthropic", "bedrock_converse", "bedrock_invoke_claude", "vertex_ai_claude"],
+)
+def test_token_usage_prompt_tokens_include_cache_for_claude_providers(
+    config,
+    model,
+    body,
+):
+    response = _transform_provider_response(config, model, body)
+
+    assert LLMTokenUsage.from_response(response) == LLMTokenUsage(
+        prompt_tokens=1400,
+        completion_tokens=20,
+        cache_read_tokens=900,
+        cache_write_tokens=400,
+    )
+
+
+@pytest.mark.unit_tests
+def test_token_usage_bedrock_converse_without_cache_is_zero():
+    body = {
+        **_BEDROCK_CONVERSE_BODY,
+        "usage": {"inputTokens": 100, "outputTokens": 20, "totalTokens": 120},
+    }
+
+    response = _transform_provider_response(
+        AmazonConverseConfig(),
+        "anthropic.claude-sonnet-4-5-20250929-v1:0",
+        body,
+    )
+
+    assert LLMTokenUsage.from_response(response) == LLMTokenUsage(
+        prompt_tokens=100,
+        completion_tokens=20,
+        cache_read_tokens=0,
+        cache_write_tokens=0,
+    )
+
+
+@pytest.mark.unit_tests
+def test_token_usage_openai_prompt_tokens_already_include_cache():
+    response = convert_to_model_response_object(
+        response_object={
+            "id": "chatcmpl-1",
+            "object": "chat.completion",
+            "created": 1,
+            "model": "gpt-4o",
+            "choices": [
+                {
+                    "index": 0,
+                    "message": {"role": "assistant", "content": "ok"},
+                    "finish_reason": "stop",
+                },
+            ],
+            "usage": {
+                "prompt_tokens": 1200,
+                "completion_tokens": 40,
+                "total_tokens": 1240,
+                "prompt_tokens_details": {"cached_tokens": 1024},
+            },
+        },
+        model_response_object=ModelResponse(),
+    )
+
+    assert LLMTokenUsage.from_response(response) == LLMTokenUsage(
+        prompt_tokens=1200,
+        completion_tokens=40,
+        cache_read_tokens=1024,
+        cache_write_tokens=None,
+    )
