@@ -29,6 +29,10 @@ from schemas.response_schemas import (
     LLMVersionResponse,
 )
 from services.prompt.chat_completion_service import ChatCompletionService
+from services.prompt.prompt_caching import (
+    apply_eval_prompt_caching,
+    eval_prompt_cache_key,
+)
 
 llm_eval_system_instructions = """
 You are a helpful assistant that adheres exactly to the following instructions.
@@ -230,13 +234,21 @@ class LLMEvalsRepository(
             response_format=ReasonedScore,
         )
 
-        llm_model_response = (
-            self.chat_completion_service.run_chat_completion_raw_response(
-                agentic_prompt,
-                llm_client,
-                prompt_completion_request,
-                org_id=org_id,
-            )
+        model, completion_params = self.chat_completion_service._get_completion_params(
+            agentic_prompt,
+            prompt_completion_request,
+        )
+        apply_eval_prompt_caching(
+            completion_params,
+            provider=llm_eval.model_provider,
+            model_name=llm_eval.model_name,
+            instructions=llm_eval.instructions or "",
+            cache_key=eval_prompt_cache_key(task_id, eval_name, llm_eval.version),
+        )
+        llm_model_response = llm_client.completion(
+            model=model,
+            org_id=org_id,
+            **completion_params,
         )
 
         if llm_model_response.structured_output_response is None:
