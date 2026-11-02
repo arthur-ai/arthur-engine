@@ -714,6 +714,9 @@ def test_model_whitelist_read_is_admin_only(
 
 @pytest.mark.unit_tests
 def test_model_provider_eval_defaults_lifecycle(client: GenaiEngineTestClientBase):
+    # Other tests on this worker can leave anthropic configured; start clean.
+    assert client.delete_model_provider("anthropic") == 204
+
     # Readable, and empty, before the provider is configured.
     status_code, defaults = client.get_model_provider_eval_defaults("anthropic")
     assert status_code == 200
