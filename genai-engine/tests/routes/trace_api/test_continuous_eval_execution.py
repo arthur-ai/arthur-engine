@@ -2,7 +2,6 @@ import uuid
 from datetime import datetime
 from typing import Optional
 from unittest.mock import MagicMock, patch
-from utils.constants import DEFAULT_ORG_ID
 
 import pytest
 from arthur_common.models.enums import AgenticAnnotationType, ContinuousEvalRunStatus
@@ -25,6 +24,7 @@ from tests.clients.base_test_client import (
     GenaiEngineTestClientBase,
     override_get_db_session,
 )
+from utils.constants import DEFAULT_ORG_ID
 
 
 def mock_get_db_session_generator():
@@ -1519,3 +1519,260 @@ def test_only_enabled_continuous_evals_are_enqueued(
 
     cleanup_model_provider(client)
     cleanup_test_data(test_data)
+
+
+def setup_enabled_continuous_evals(
+    client: GenaiEngineTestClientBase,
+    task_id: str,
+    count: int = 2,
+) -> tuple:
+    """Create an llm eval, a transform, and `count` enabled continuous evals for a task."""
+    status_code, llm_eval = client.save_llm_eval(
+        task_id=task_id,
+        llm_eval_name="test_llm_eval",
+        llm_eval_data={
+            "model_name": "gpt-4o",
+            "model_provider": "openai",
+            "instructions": "Test instructions {{model_name}}",
+        },
+    )
+    assert status_code == 200
+
+    status_code, transform = client.create_transform(
+        task_id=task_id,
+        name="test_transform",
+        description="Test transform description",
+        definition={
+            "variables": [
+                {
+                    "variable_name": "model_name",
+                    "span_name": "rag-retrieval-savedQueries",
+                    "attribute_path": "attributes.input.value.context",
+                },
+            ],
+        },
+    )
+    assert status_code == 200
+
+    continuous_evals = []
+    for i in range(count):
+        status_code, continuous_eval = client.save_continuous_eval(
+            task_id=task_id,
+            continuous_eval_data={
+                "name": f"continuous_eval_{i}",
+                "llm_eval_name": llm_eval.name,
+                "llm_eval_version": llm_eval.version,
+                "transform_id": str(transform.id),
+                "transform_variable_mapping": [
+                    {
+                        "transform_variable": "model_name",
+                        "eval_variable": "model_name",
+                    },
+                ],
+                "enabled": True,
+            },
+        )
+        assert status_code == 200
+        continuous_evals.append(continuous_eval)
+
+    return llm_eval, transform, continuous_evals
+
+
+def cleanup_enabled_continuous_evals(
+    client: GenaiEngineTestClientBase,
+    task_id: str,
+    trace_id: str,
+    llm_eval,
+    transform,
+    continuous_evals,
+) -> None:
+    db_session = override_get_db_session()
+    db_session.query(DatabaseAgenticAnnotation).filter(
+        DatabaseAgenticAnnotation.trace_id == trace_id,
+    ).delete()
+    db_session.commit()
+    for continuous_eval in continuous_evals:
+        client.delete_continuous_eval(continuous_eval.id)
+    client.delete_transform(transform.id)
+    client.delete_llm_eval(task_id, llm_eval.name)
+
+
+def get_continuous_eval_annotations(trace_id: str) -> list[DatabaseAgenticAnnotation]:
+    return (
+        override_get_db_session()
+        .query(DatabaseAgenticAnnotation)
+        .filter(
+            DatabaseAgenticAnnotation.trace_id == trace_id,
+            DatabaseAgenticAnnotation.annotation_type
+            == AgenticAnnotationType.CONTINUOUS_EVAL.value,
+        )
+        .all()
+    )
+
+
+def get_root_spans(db_session, trace_id: str) -> list[DatabaseSpan]:
+    return (
+        db_session.query(DatabaseSpan)
+        .filter(DatabaseSpan.trace_id == trace_id)
+        .filter(DatabaseSpan.parent_span_id == None)
+        .all()
+    )
+
+
+@pytest.mark.unit_tests
+@patch(
+    "repositories.continuous_evals_repository.get_continuous_eval_queue_service",
+)
+def test_reingested_root_span_runs_each_continuous_eval_once(
+    mock_get_queue_service,
+    client: GenaiEngineTestClientBase,
+):
+    """Re-sending the same root spans must not create or enqueue a second run."""
+    mock_queue_service = MagicMock()
+    mock_get_queue_service.return_value = mock_queue_service
+
+    test_data = setup_test_data()
+    task_id = test_data["task_id"]
+    trace_id = test_data["trace_id"]
+    llm_eval, transform, continuous_evals = setup_enabled_continuous_evals(
+        client,
+        task_id,
+    )
+
+    try:
+        db_session = override_get_db_session()
+        root_spans = get_root_spans(db_session, trace_id)
+        repo = ContinuousEvalsRepository(db_session)
+
+        repo.enqueue_continuous_evals_for_root_spans(root_spans, delay_seconds=0)
+        repo.enqueue_continuous_evals_for_root_spans(root_spans, delay_seconds=0)
+
+        annotations = get_continuous_eval_annotations(trace_id)
+        assert sorted(a.continuous_eval_id for a in annotations) == sorted(
+            ce.id for ce in continuous_evals
+        )
+        assert all(
+            a.run_status == ContinuousEvalRunStatus.PENDING.value for a in annotations
+        )
+        assert mock_queue_service.enqueue.call_count == len(continuous_evals)
+        assert {
+            call.args[0].annotation_id
+            for call in mock_queue_service.enqueue.call_args_list
+        } == {a.id for a in annotations}
+    finally:
+        cleanup_enabled_continuous_evals(
+            client,
+            task_id,
+            trace_id,
+            llm_eval,
+            transform,
+            continuous_evals,
+        )
+        cleanup_test_data(test_data)
+
+
+@pytest.mark.unit_tests
+@patch(
+    "repositories.continuous_evals_repository.get_continuous_eval_queue_service",
+)
+def test_root_spans_in_separate_batches_run_each_continuous_eval_once(
+    mock_get_queue_service,
+    client: GenaiEngineTestClientBase,
+):
+    """A trace whose root spans arrive in separate batches runs each eval once."""
+    mock_queue_service = MagicMock()
+    mock_get_queue_service.return_value = mock_queue_service
+
+    test_data = setup_test_data()
+    task_id = test_data["task_id"]
+    trace_id = test_data["trace_id"]
+    llm_eval, transform, continuous_evals = setup_enabled_continuous_evals(
+        client,
+        task_id,
+    )
+
+    try:
+        db_session = override_get_db_session()
+        root_spans = get_root_spans(db_session, trace_id)
+        assert len(root_spans) == 2
+        repo = ContinuousEvalsRepository(db_session)
+
+        repo.enqueue_continuous_evals_for_root_spans([root_spans[0]], delay_seconds=0)
+        repo.enqueue_continuous_evals_for_root_spans([root_spans[1]], delay_seconds=0)
+
+        annotations = get_continuous_eval_annotations(trace_id)
+        assert len(annotations) == len(continuous_evals)
+        assert {a.continuous_eval_id for a in annotations} == {
+            ce.id for ce in continuous_evals
+        }
+        assert mock_queue_service.enqueue.call_count == len(continuous_evals)
+    finally:
+        cleanup_enabled_continuous_evals(
+            client,
+            task_id,
+            trace_id,
+            llm_eval,
+            transform,
+            continuous_evals,
+        )
+        cleanup_test_data(test_data)
+
+
+@pytest.mark.unit_tests
+@patch(
+    "repositories.continuous_evals_repository.get_continuous_eval_queue_service",
+)
+def test_rerun_reuses_annotation_and_reingest_still_dedupes(
+    mock_get_queue_service,
+    client: GenaiEngineTestClientBase,
+):
+    """A manual rerun requeues the existing annotation, and later ingests don't add runs."""
+    mock_queue_service = MagicMock()
+    mock_get_queue_service.return_value = mock_queue_service
+
+    test_data = setup_test_data()
+    task_id = test_data["task_id"]
+    trace_id = test_data["trace_id"]
+    llm_eval, transform, continuous_evals = setup_enabled_continuous_evals(
+        client,
+        task_id,
+        count=1,
+    )
+
+    try:
+        db_session = override_get_db_session()
+        root_spans = get_root_spans(db_session, trace_id)
+        repo = ContinuousEvalsRepository(db_session)
+        repo.enqueue_continuous_evals_for_root_spans(root_spans, delay_seconds=0)
+
+        (annotation,) = get_continuous_eval_annotations(trace_id)
+        db_session.query(DatabaseAgenticAnnotation).filter(
+            DatabaseAgenticAnnotation.id == annotation.id,
+        ).update({"run_status": ContinuousEvalRunStatus.FAILED.value})
+        db_session.commit()
+
+        status_code, rerun_response = client.rerun_continuous_eval(annotation.id)
+        assert status_code == 200
+        assert rerun_response.run_id == annotation.id
+
+        repo.enqueue_continuous_evals_for_root_spans(root_spans, delay_seconds=0)
+
+        (rerun_annotation,) = get_continuous_eval_annotations(trace_id)
+        assert rerun_annotation.id == annotation.id
+        assert rerun_annotation.run_status == ContinuousEvalRunStatus.PENDING.value
+        # Initial ingest + rerun; the second ingest enqueues nothing
+        assert mock_queue_service.enqueue.call_count == 2
+        assert all(
+            call.args[0].annotation_id == annotation.id
+            for call in mock_queue_service.enqueue.call_args_list
+        )
+    finally:
+        cleanup_enabled_continuous_evals(
+            client,
+            task_id,
+            trace_id,
+            llm_eval,
+            transform,
+            continuous_evals,
+        )
+        cleanup_test_data(test_data)

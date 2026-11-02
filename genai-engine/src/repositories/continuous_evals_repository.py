@@ -15,7 +15,7 @@ from sqlalchemy import asc, case, desc, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Query, Session
 
-from db_models import DatabaseSpan
+from db_models import DatabaseSpan, DatabaseTraceMetadata
 from db_models.agentic_annotation_models import DatabaseAgenticAnnotation
 from db_models.continuous_eval_test_run_models import DatabaseContinuousEvalTestRun
 from db_models.llm_eval_models import DatabaseContinuousEval
@@ -493,44 +493,77 @@ class ContinuousEvalsRepository:
             if not continuous_evals:
                 return
 
-            task_org_id = lookup_org_id(
-                self.db_session,
-                select(DatabaseTask.org_id).where(DatabaseTask.id == task_id),
+            # Serialize concurrent enqueues for this trace so the dedupe check below
+            # can't race. FOR NO KEY UPDATE doesn't block annotation FK inserts.
+            self.db_session.query(DatabaseTraceMetadata.trace_id).filter(
+                DatabaseTraceMetadata.trace_id == trace_id,
+            ).with_for_update(key_share=True).first()
+
+            # Root spans can arrive more than once (exporter retries, re-ingestion,
+            # roots split across batches), so run each continuous eval once per trace.
+            already_enqueued_eval_ids = set(
+                self.db_session.scalars(
+                    select(DatabaseAgenticAnnotation.continuous_eval_id)
+                    .where(
+                        DatabaseAgenticAnnotation.trace_id == trace_id,
+                        DatabaseAgenticAnnotation.annotation_type
+                        == AgenticAnnotationType.CONTINUOUS_EVAL.value,
+                        DatabaseAgenticAnnotation.test_run_id.is_(None),
+                    )
+                    .distinct(),
+                ),
             )
+            new_continuous_evals = [
+                continuous_eval
+                for continuous_eval in continuous_evals
+                if continuous_eval.id not in already_enqueued_eval_ids
+            ]
 
-            # Create pending annotations and enqueue jobs
-            for continuous_eval in continuous_evals:
-                annotation = DatabaseAgenticAnnotation(
-                    id=uuid.uuid4(),
-                    annotation_type=AgenticAnnotationType.CONTINUOUS_EVAL,
-                    trace_id=trace_id,
-                    continuous_eval_id=continuous_eval.id,
-                    run_status=ContinuousEvalRunStatus.PENDING,
-                    created_at=datetime.now(),
-                    updated_at=datetime.now(),
-                    org_id=task_org_id,
+            jobs = []
+            if new_continuous_evals:
+                task_org_id = lookup_org_id(
+                    self.db_session,
+                    select(DatabaseTask.org_id).where(DatabaseTask.id == task_id),
                 )
-                self.db_session.add(annotation)
-                if commit:
-                    self.db_session.commit()
-                    self.db_session.refresh(annotation)
-                else:
-                    self.db_session.flush()
 
-                # Enqueue job with 10s delay
-                job = ContinuousEvalJob(
-                    annotation_id=annotation.id,
-                    trace_id=trace_id,
-                    continuous_eval_id=continuous_eval.id,
-                    task_id=task_id,
-                    delay_seconds=delay_seconds,
-                )
+                for continuous_eval in new_continuous_evals:
+                    annotation = DatabaseAgenticAnnotation(
+                        id=uuid.uuid4(),
+                        annotation_type=AgenticAnnotationType.CONTINUOUS_EVAL,
+                        trace_id=trace_id,
+                        continuous_eval_id=continuous_eval.id,
+                        run_status=ContinuousEvalRunStatus.PENDING,
+                        created_at=datetime.now(),
+                        updated_at=datetime.now(),
+                        org_id=task_org_id,
+                    )
+                    self.db_session.add(annotation)
+                    jobs.append(
+                        ContinuousEvalJob(
+                            annotation_id=annotation.id,
+                            trace_id=trace_id,
+                            continuous_eval_id=continuous_eval.id,
+                            task_id=task_id,
+                            delay_seconds=delay_seconds,
+                        ),
+                    )
+
+            # Commit even when nothing was added so the trace lock is released
+            if commit:
+                self.db_session.commit()
+            else:
+                self.db_session.flush()
+
+            for job in jobs:
                 queue_service.enqueue(job)  # Ignore return value
 
             logger.info(
-                f"Enqueued {len(continuous_evals)} continuous eval jobs for trace {trace_id}",
+                f"Enqueued {len(jobs)} continuous eval jobs for trace {trace_id} "
+                f"({len(continuous_evals) - len(jobs)} already enqueued)",
             )
         except Exception as e:
+            if commit:
+                self.db_session.rollback()
             logger.error(
                 f"Error enqueueing continuous evals for trace {trace_id}: {e}",
                 exc_info=True,
