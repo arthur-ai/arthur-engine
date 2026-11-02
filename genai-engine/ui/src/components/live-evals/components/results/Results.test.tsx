@@ -28,7 +28,7 @@ vi.mock("nuqs", () => ({
   },
 }));
 
-vi.mock("@arthur/shared-components", () => ({
+vi.mock("@arthur/shared-components/traces", () => ({
   TextOperators: {
     CONTAINS: "contains",
   },

@@ -861,6 +861,39 @@ addresses, so with `vpc_flow_log_v2` only `extra_inference_hosts` ranges match. 
 identified by address is weaker evidence than an instance: Lambda functions, containers
 and pods share and reuse VPC addresses.
 
+#### `litellm` — LiteLLM proxy
+
+Reads the proxy's request log (`GET /spend/logs/v2`) over the lookback window and reports
+one record per caller seen in it. A key that sent nothing in the window is not a record.
+
+| Field | Secret | Required | Notes |
+|---|---|---|---|
+| `base_url` | no | yes | The proxy, e.g. `https://litellm.example.com:4000`; must be `https://` |
+| `api_key` | yes | yes | A key created for a user with the `proxy_admin_viewer` role. Not the master key |
+| `ca_certificate` | no | no | As for Splunk |
+| `tls_verification` | no | no | As for Splunk; `ca_only` needs `ca_certificate` |
+
+Use `query: ""` and `query_language: none`; a config's query is ignored. The lookback
+window is the time range of requests read; `0` reads everything the proxy retains. A
+scan reads at most 250,000 request log rows and says so when it stops there.
+
+Which caller a request is, strongest first:
+
+- a key bound to an agent (`agent_id` on the key): that agent, a registered agent;
+- an unbound key sending `X-LiteLLM-Agent-Id`: that agent id, a claimed agent. An id
+  bound to a different key is counted on the sending key's own record instead;
+- any other request: its key, by the proxy's hash of it, never the key or its alias.
+
+A request rejected for an invalid key is skipped and counted. A refused request (a model
+the key may not use) counts toward its key's `last_seen` but adds no model, and never
+makes a record of its own; neither does an MCP tool call, which adds its tool to its
+caller's record.
+
+The key needs `proxy_admin_viewer`: the scan first calls `GET /user/list`, which answers a
+key without the role 403, then `GET /key/list` for the keys' agent bindings. It calls no
+write route and reads no request or response bodies. The proxy writes its request log
+20-60 s after each request, so a scan right after traffic may not see it yet.
+
 ### Destination
 
 Exactly one. Every destination has:

@@ -5,7 +5,7 @@ import uuid
 from copy import deepcopy
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 from urllib import parse
 from uuid import uuid4
 
@@ -24,16 +24,15 @@ from arthur_client.api_bindings import (
 from arthur_common.models.connectors import ConnectorPaginationOptions
 from arthur_common.models.enums import ModelProblemType
 from arthur_common.models.request_schemas import NewRuleRequest
-from pydantic import ValidationError
-from unittest.mock import Mock
-
-from config.config import Config
 from connectors.shield_connector import (
     EngineInternalConnector,
     ShieldBaseConnector,
     ShieldConnector,
 )
+from pydantic import ValidationError
 from tools.agentic_filters import SHIELD_SORT_DESC, SHIELD_SORT_FILTER
+
+from config.config import Config
 
 logger = logging.getLogger("job_logger")
 
@@ -847,24 +846,76 @@ def test_shield_read_raises_for_static_dataset():
         conn.read(static_dataset, start_time=start, end_time=end)
 
 
+def mock_health(build_version: str) -> Mock:
+    body = json.dumps({"message": "ok", "build_version": build_version}).encode()
+    return Mock(status=200, response=Mock(data=body))
+
+
+def mock_task(name: str) -> Mock:
+    task = Mock()
+    task.id = str(uuid4())
+    task.name = name
+    return task
+
+
+def mock_trace_overview(task_id: str, trace_count: int, last_active: datetime) -> Mock:
+    task_overview = Mock(trace_count=trace_count, last_active=last_active)
+    task_overview.task_id = task_id
+    return Mock(overviews=[task_overview])
+
+
+def mock_inference_overview(
+    task_id: str,
+    inference_count: int,
+    last_inference_at: datetime | None,
+) -> Mock:
+    task_overview = Mock(
+        inference_count=inference_count,
+        last_inference_at=last_inference_at,
+    )
+    task_overview.task_id = task_id
+    return Mock(overviews=[task_overview])
+
+
+def mock_inferences(count: int, latest: datetime | None = None) -> Mock:
+    inferences = [Mock(created_at=int(latest.timestamp() * 1000))] if latest else []
+    return Mock(count=count, inferences=inferences)
+
+
 def test_list_datasets_emits_both_datasets_per_task():
     """Post-consolidation every task exposes a trace/evals dataset
-    AND a guardrails dataset, regardless of the deprecated is_agentic flag."""
+    AND a guardrails dataset, regardless of the deprecated is_agentic flag.
+    Both carry the task's trace count, inference count and latest activity."""
 
     spec = ConnectorSpec.model_validate(mock_shield_connector_spec(MOCK_SHIELD_HOST))
     conn = ShieldConnector(spec, logger)
 
-    task = Mock()
-    task.id = str(uuid4())
-    task.name = "my task"
-    search_response = Mock()
-    search_response.tasks = [task]
-    with patch.object(
-        conn,
-        "_tasks_client",
-    ) as tasks_client:
-        tasks_client.search_tasks_api_v2_tasks_search_post.return_value = (
-            search_response
+    task = mock_task("my task")
+    latest_trace_end = datetime(2026, 10, 1, 12, 0)
+    latest_inference_created = datetime(2026, 10, 2, 8, 30, tzinfo=timezone.utc)
+
+    with (
+        patch.object(conn, "_tasks_client") as tasks_client,
+        patch.object(conn, "_stats_traces_client") as traces_client,
+        patch.object(conn, "_stats_inferences_client") as inferences_client,
+        patch.object(
+            conn._stats_genai_client,
+            "call_api",
+            return_value=mock_health("2.1.1075"),
+        ),
+    ):
+        tasks_client.search_tasks_api_v2_tasks_search_post.return_value = Mock(
+            tasks=[task],
+        )
+        overview_call = traces_client.get_traces_overview_api_v1_traces_overview_post
+        overview_call.return_value = mock_trace_overview(task.id, 7, latest_trace_end)
+        inferences_call = (
+            inferences_client.get_inferences_overview_api_v2_inferences_overview_post
+        )
+        inferences_call.return_value = mock_inference_overview(
+            task.id,
+            3,
+            latest_inference_created,
         )
         result = conn.list_datasets()
 
@@ -876,3 +927,156 @@ def test_list_datasets_emits_both_datasets_per_task():
     }
     for dataset in available:
         assert dataset.dataset_locator.fields[0].value == task.id
+
+    for dataset in available:
+        assert dataset.trace_count == 7
+        assert dataset.inference_count == 3
+        # the inference is newer than the trace
+        assert dataset.last_activity_at == latest_inference_created
+
+    # one overview request each covers the page's traces and inferences
+    for stats_call in (overview_call, inferences_call):
+        stats_call.assert_called_once()
+        assert stats_call.call_args.args[0].task_ids == [task.id]
+    inferences_client.query_inferences_api_v2_inferences_query_get.assert_not_called()
+    # a stalled stats request must not hang the listing
+    for stats_call in (overview_call, inferences_call):
+        assert stats_call.call_args.kwargs["_request_timeout"] is not None
+
+
+@pytest.mark.parametrize(
+    "health",
+    [
+        mock_health("2.1.1074"),
+        Mock(status=404, response=Mock(data=b"")),
+        Mock(status=200, response=Mock(data=b"{}")),
+    ],
+    ids=["older engine", "no health endpoint", "no build version"],
+)
+def test_list_datasets_queries_inference_stats_per_task_without_overview(
+    health: Mock,
+):
+    """Engines older than /inferences/overview, or whose version can't be read, get one
+    inference query per task. The version is checked once per connector."""
+
+    spec = ConnectorSpec.model_validate(mock_shield_connector_spec(MOCK_SHIELD_HOST))
+    conn = ShieldConnector(spec, logger)
+
+    tasks = [mock_task(f"task {i}") for i in range(2)]
+    latest_inference_created = datetime(2026, 10, 2, 8, 30, tzinfo=timezone.utc)
+
+    with (
+        patch.object(conn, "_tasks_client") as tasks_client,
+        patch.object(conn, "_stats_traces_client") as traces_client,
+        patch.object(conn, "_stats_inferences_client") as inferences_client,
+        patch.object(
+            conn._stats_genai_client,
+            "call_api",
+            return_value=health,
+        ) as health_call,
+    ):
+        tasks_client.search_tasks_api_v2_tasks_search_post.return_value = Mock(
+            tasks=tasks,
+        )
+        traces_client.get_traces_overview_api_v1_traces_overview_post.return_value = (
+            Mock(overviews=[])
+        )
+        per_task_call = inferences_client.query_inferences_api_v2_inferences_query_get
+        per_task_call.return_value = mock_inferences(3, latest_inference_created)
+        result = conn.list_datasets()
+        conn.list_datasets()
+
+    for dataset in result.available_datasets:
+        assert dataset.inference_count == 3
+        assert dataset.last_activity_at == latest_inference_created
+    assert {
+        tuple(call.kwargs["task_ids"]) for call in per_task_call.call_args_list
+    } == {(task.id,) for task in tasks}
+    for call in per_task_call.call_args_list:
+        assert call.kwargs["page_size"] == 1
+        assert call.kwargs["_request_timeout"] is not None
+    inferences_client.get_inferences_overview_api_v2_inferences_overview_post.assert_not_called()
+    health_call.assert_called_once()
+    assert health_call.call_args.args[1] == f"{MOCK_SHIELD_HOST}/health"
+
+
+def test_list_datasets_stats_client_does_not_retry():
+    spec = ConnectorSpec.model_validate(mock_shield_connector_spec(MOCK_SHIELD_HOST))
+    conn = ShieldConnector(spec, logger)
+
+    assert conn._stats_genai_client.configuration.retries == 0
+    assert conn._stats_traces_client.api_client is conn._stats_genai_client
+    assert conn._stats_inferences_client.api_client is conn._stats_genai_client
+
+
+def test_list_datasets_leaves_record_stats_empty_on_failure():
+    """Tasks whose stats can't be fetched still list, with the stats that could be fetched,
+    and the failures are logged as one warning rather than one per task."""
+
+    spec = ConnectorSpec.model_validate(mock_shield_connector_spec(MOCK_SHIELD_HOST))
+    conn = ShieldConnector(spec, logger)
+
+    tasks = [mock_task(f"task {i}") for i in range(3)]
+
+    with (
+        patch.object(conn, "_tasks_client") as tasks_client,
+        patch.object(conn, "_stats_traces_client") as traces_client,
+        patch.object(conn, "_stats_inferences_client") as inferences_client,
+        patch.object(
+            conn._stats_genai_client,
+            "call_api",
+            return_value=mock_health("2.1.1075"),
+        ),
+        patch.object(conn, "logger") as conn_logger,
+    ):
+        tasks_client.search_tasks_api_v2_tasks_search_post.return_value = Mock(
+            tasks=tasks,
+        )
+        traces_client.get_traces_overview_api_v1_traces_overview_post.side_effect = (
+            RuntimeError("engine unavailable")
+        )
+        inferences_client.get_inferences_overview_api_v2_inferences_overview_post.side_effect = lambda request, **_: Mock(
+            overviews=[
+                Mock(task_id=task_id, inference_count=0, last_inference_at=None)
+                for task_id in request.task_ids
+            ],
+        )
+        result = conn.list_datasets()
+
+    assert len(result.available_datasets) == 6
+    for dataset in result.available_datasets:
+        assert dataset.trace_count is None
+        assert dataset.inference_count == 0
+        assert dataset.last_activity_at is None
+    conn_logger.warning.assert_called_once()
+
+
+def test_list_datasets_skips_stats_once_budget_is_spent():
+    """Stats are best-effort: past the budget the listing finishes without them."""
+
+    spec = ConnectorSpec.model_validate(mock_shield_connector_spec(MOCK_SHIELD_HOST))
+    conn = ShieldConnector(spec, logger)
+
+    task = mock_task("my task")
+
+    with (
+        patch("connectors.shield_connector.TASK_STATS_BUDGET_SECONDS", 0),
+        patch.object(conn, "_tasks_client") as tasks_client,
+        patch.object(conn, "_stats_traces_client") as traces_client,
+        patch.object(conn, "_stats_inferences_client") as inferences_client,
+        patch.object(conn, "logger") as conn_logger,
+    ):
+        tasks_client.search_tasks_api_v2_tasks_search_post.return_value = Mock(
+            tasks=[task],
+        )
+        result = conn.list_datasets()
+
+    assert len(result.available_datasets) == 2
+    for dataset in result.available_datasets:
+        assert dataset.trace_count is None
+        assert dataset.inference_count is None
+        assert dataset.last_activity_at is None
+    traces_client.get_traces_overview_api_v1_traces_overview_post.assert_not_called()
+    inferences_client.get_inferences_overview_api_v2_inferences_overview_post.assert_not_called()
+    inferences_client.query_inferences_api_v2_inferences_query_get.assert_not_called()
+    conn_logger.warning.assert_called_once()

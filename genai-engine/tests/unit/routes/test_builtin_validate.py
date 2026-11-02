@@ -11,6 +11,11 @@ from tests.clients.base_test_client import (
     GenaiEngineTestClientBase,
     override_get_db_session,
 )
+from tests.mocks.mock_scorer_client import (
+    MOCK_KEYWORD_FAILING_TEXT,
+    MOCK_KEYWORD_PASSING_TEXT,
+    MOCK_REGEX_PASSING_TEXT,
+)
 
 
 def _count_rows(model) -> int:
@@ -282,3 +287,119 @@ def test_stateless_validate_preserves_check_order_in_results(
     assert status_code == 200
     names = [r["name"] for r in body["results"]]
     assert names == ["tox", "pi", "pii"]
+
+
+def _keyword_matches(result: dict) -> list[str]:
+    return sorted(m["keyword"] for m in result["details"]["keyword_matches"])
+
+
+@pytest.mark.unit_tests
+@pytest.mark.parametrize(
+    "prompt,response",
+    [
+        (MOCK_KEYWORD_FAILING_TEXT, MOCK_KEYWORD_PASSING_TEXT),
+        (MOCK_KEYWORD_PASSING_TEXT, MOCK_KEYWORD_FAILING_TEXT),
+    ],
+    ids=["violation_in_prompt", "violation_in_response"],
+)
+def test_stateless_validate_keyword_checks_prompt_and_response(
+    client: GenaiEngineTestClientBase,
+    prompt: str,
+    response: str,
+):
+    status_code, body = client.builtin_validate(
+        prompt=prompt,
+        response=response,
+        checks=[
+            _check(
+                "k",
+                RuleType.KEYWORD,
+                apply_to_prompt=True,
+                apply_to_response=True,
+                config={"keywords": ["bananafish"]},
+            ),
+        ],
+    )
+    assert status_code == 200
+    assert body["results"][0]["result"] == RuleResultEnum.FAIL.value
+    assert _keyword_matches(body["results"][0]) == [MOCK_KEYWORD_FAILING_TEXT]
+
+
+@pytest.mark.unit_tests
+def test_stateless_validate_regex_checks_prompt_when_response_present(
+    client: GenaiEngineTestClientBase,
+):
+    status_code, body = client.builtin_validate(
+        prompt="My account number is 12345",
+        response=MOCK_REGEX_PASSING_TEXT,
+        checks=[
+            _check(
+                "r",
+                RuleType.REGEX,
+                apply_to_prompt=True,
+                apply_to_response=True,
+                config={"regex_patterns": ["\\d{5}"]},
+            ),
+        ],
+    )
+    assert status_code == 200
+    assert body["results"][0]["result"] == RuleResultEnum.FAIL.value
+
+
+@pytest.mark.unit_tests
+def test_stateless_validate_reports_keyword_matches_from_both_fields(
+    client: GenaiEngineTestClientBase,
+):
+    status_code, body = client.builtin_validate(
+        prompt=MOCK_KEYWORD_FAILING_TEXT,
+        response="Some other response.",
+        checks=[
+            _check(
+                "k",
+                RuleType.KEYWORD,
+                apply_to_prompt=True,
+                apply_to_response=True,
+                config={"keywords": ["bananafish"]},
+            ),
+        ],
+    )
+    assert status_code == 200
+    assert body["results"][0]["result"] == RuleResultEnum.FAIL.value
+    assert _keyword_matches(body["results"][0]) == [
+        "keyword-mock-fail-peter",
+        "keyword-mock-fail-sleep",
+        MOCK_KEYWORD_FAILING_TEXT,
+    ]
+
+
+@pytest.mark.unit_tests
+@pytest.mark.parametrize(
+    "apply_to_prompt,apply_to_response,prompt,response",
+    [
+        (True, False, MOCK_KEYWORD_PASSING_TEXT, MOCK_KEYWORD_FAILING_TEXT),
+        (False, True, MOCK_KEYWORD_FAILING_TEXT, MOCK_KEYWORD_PASSING_TEXT),
+    ],
+    ids=["prompt_only_rule", "response_only_rule"],
+)
+def test_stateless_validate_keyword_respects_rule_scope(
+    client: GenaiEngineTestClientBase,
+    apply_to_prompt: bool,
+    apply_to_response: bool,
+    prompt: str,
+    response: str,
+):
+    status_code, body = client.builtin_validate(
+        prompt=prompt,
+        response=response,
+        checks=[
+            _check(
+                "k",
+                RuleType.KEYWORD,
+                apply_to_prompt=apply_to_prompt,
+                apply_to_response=apply_to_response,
+                config={"keywords": ["bananafish"]},
+            ),
+        ],
+    )
+    assert status_code == 200
+    assert body["results"][0]["result"] == RuleResultEnum.PASS.value

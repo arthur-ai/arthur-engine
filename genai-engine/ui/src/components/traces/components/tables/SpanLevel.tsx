@@ -1,10 +1,5 @@
-import {
-  BucketProvider,
-  buildThresholdsFromSample,
-  createSpanLevelColumns,
-  TracesTable,
-  useTraceColumnDependencies,
-} from "@arthur/shared-components";
+import { buildThresholdsFromSample } from "@arthur/shared-components";
+import { BucketProvider, createSpanLevelColumns, TracesTable, useTraceColumnDependencies } from "@arthur/shared-components/traces";
 import { Alert, Box, Stack } from "@mui/material";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { SortingState } from "@tanstack/react-table";

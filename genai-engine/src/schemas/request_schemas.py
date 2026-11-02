@@ -1625,6 +1625,15 @@ class TraceOverviewRequest(BaseModel):
     )
 
 
+class InferenceOverviewRequest(BaseModel):
+    """Request schema for getting inference counts and latest activity for a batch of tasks"""
+
+    task_ids: List[str] = Field(
+        min_length=1,
+        description="Task IDs to get the inference overview for",
+    )
+
+
 class TraceTimeSeriesRequest(BaseModel):
     """Request schema for time-bucketed trace metrics for a single task.
 

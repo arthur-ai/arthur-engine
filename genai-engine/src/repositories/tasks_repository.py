@@ -6,6 +6,7 @@ from uuid import UUID
 
 from arthur_common.models.agent_governance_schemas import (
     AgentCreationSource,
+    AgentObservations,
     DataSource,
     DiscoveryAgentCreationSource,
     EnrichedAgentMetadata,
@@ -543,6 +544,13 @@ class TaskRepository:
                 vendor=row.vendor,
                 address=(
                     SourceAddress.model_validate(row.address) if row.address else None
+                ),
+                # The latest report's, with the version before its latest change: the
+                # creation source keeps only what the first report saw.
+                observations=(
+                    AgentObservations.model_validate(row.observations)
+                    if row.observations
+                    else None
                 ),
                 # Stored as naive UTC; served with its offset, so a consumer comparing
                 # it with its own clock cannot read it as local time.

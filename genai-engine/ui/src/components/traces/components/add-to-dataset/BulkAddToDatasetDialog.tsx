@@ -1,4 +1,4 @@
-import { useAppForm } from "@arthur/shared-components";
+import { useAppForm } from "@arthur/shared-components/traces";
 import { Autocomplete, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Stack, TextField } from "@mui/material";
 import { useStore } from "@tanstack/react-form";
 

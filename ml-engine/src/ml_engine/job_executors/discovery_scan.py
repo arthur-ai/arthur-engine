@@ -41,7 +41,11 @@ from arthur_client.api_bindings import (
     DiscoverySourceConfigSpec,
     OutputColumnCheckResult,
 )
-from arthur_common.models.agent_discovery_schemas import DiscoveryOutputRecord
+from arthur_common.models.agent_discovery_schemas import (
+    DiscoveredAgentRecord,
+    DiscoveryOutputRecord,
+)
+from pydantic import Field
 
 from job_executors.discovery_output_contract import (
     OutputContractError,
@@ -320,10 +324,59 @@ class FailedDiscoveryRecord:
 
 @dataclass(frozen=True)
 class DiscoveryPublishResult:
-    """What GenAI Engine made of one batch: every record is in exactly one of the two."""
+    """What GenAI Engine made of one batch: every agent record is in exactly one of the two.
+
+    A `CorroboratingRecord` is further evidence for one of them rather than an agent, so
+    `accepted` never counts it, and `failed` holds it only when it failed on its own,
+    after its agent record resolved.
+    """
 
     accepted: int
     failed: Sequence[FailedDiscoveryRecord] = ()
+
+
+class CorroboratingRecord(DiscoveredAgentRecord):
+    """Further evidence for an agent another record in the same batch reports.
+
+    A task holds one provenance entry per (source, `external_id`), and the Platform
+    keeps one evidence row per entry, so an agent found through four routes on one
+    device needs four records to show four pieces of evidence. Each has its own
+    `external_id` and must join its agent's task, not mint a task of its own: rung 4 of
+    GenAI Engine's resolution ladder would turn one agent into four. The sink resolves
+    the record named by `corroborates` first and sends this one with that record's
+    `task_id`, which is rung 1.
+
+    `corroborates` never reaches the wire. A sink that does not resolve records onto
+    tasks has nothing to join this one to, and drops it rather than report the same
+    agent twice.
+    """
+
+    corroborates: str = Field(
+        exclude=True,
+        min_length=1,
+        description="`external_id` of the agent record this is evidence for, which "
+        "must come earlier in the same batch.",
+    )
+
+
+def corroboration_external_id(agent_external_id: str, route: str, value: str) -> str:
+    """A corroboration's `external_id`: its agent record's, extended by the catalog
+    identifier it reports. Extending rather than inventing is what lets a reader of
+    provenance, which has no `corroborates`, tell the agent record from its evidence."""
+    return f"{agent_external_id}:{route}:{value}"
+
+
+def corroborated_candidates(external_id: str) -> list[str]:
+    """Each `external_id` that `corroboration_external_id` could have extended into this
+    one: every prefix a route and a value follow.
+
+    Only candidates. The shape proves nothing on its own -- a SIEM's `external_id` is
+    whatever its query returns, and a Wiz technology's is `<workload>:<technology>` --
+    so a reader takes it only from a vendor in `discovery.corroborating_vendors()`, and
+    only where a candidate is another record of the same source.
+    """
+    cuts = [i for i, char in enumerate(external_id) if char == ":"]
+    return [external_id[:cut] for cut in cuts[:-1]]
 
 
 class DiscoveryRecordSink(Protocol):
@@ -333,11 +386,16 @@ class DiscoveryRecordSink(Protocol):
     ``external_id`` (D-08). `discovery_record_sink.GenAIEngineRecordSink` implements it
     against that endpoint.
 
-    Accepted means every record that resolved, whether it created a task or joined one
-    that already existed -- a source that reports the same twenty agents every scan
-    contributes twenty each time. The count says how much of what the source produced
-    survived the trip, not how many agents are new, and nothing downstream should
-    present it as a count of new agents.
+    A `CorroboratingRecord` resolves only after the record it `corroborates`, onto that
+    record's task; one whose agent record failed is not sent, and that failure stands for
+    it.
+
+    Accepted means every agent record that resolved, whether it created a task or joined
+    one that already existed -- a source that reports the same twenty agents every scan
+    contributes twenty each time, however much evidence each one brings, and a sink that
+    drops corroborations counts the same as one that sends them. The count says how much
+    of what the source produced survived the trip, not how many agents are new, and
+    nothing downstream should present it as a count of new agents.
 
     A RECORD THAT FAILS DOES NOT FAIL ITS BATCH. GenAI Engine resolves the rest and
     reports the failure alongside them, and the sink hands both back. There is nothing
@@ -407,7 +465,8 @@ class DiscoveryScanOutcome:
     )
     finished_at: Optional[datetime] = None
     batches_published: int = 0
-    # Records the sink accepted, created and updated alike -- see DiscoveryRecordSink.
+    # Agent records the sink accepted, created and updated alike -- see
+    # DiscoveryRecordSink.
     records_published: int = 0
     # Records GenAI Engine could not resolve. They do not fail the run: the source
     # reported them and the rest of their batch landed, so the scan succeeded and these

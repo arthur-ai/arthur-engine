@@ -1,4 +1,5 @@
-import { type IncomingFilter, TimeRange } from "@arthur/shared-components";
+import { TimeRange } from "@arthur/shared-components";
+import { type IncomingFilter } from "@arthur/shared-components/traces";
 // filterStore.ts
 import { createContext, use, useEffect, useState } from "react";
 import { create, StoreApi, UseBoundStore } from "zustand";

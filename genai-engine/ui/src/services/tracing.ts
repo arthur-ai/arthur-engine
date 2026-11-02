@@ -1,4 +1,5 @@
-import { getStartDate, type IncomingFilter, mapFiltersToRequest, type TimeRange } from "@arthur/shared-components";
+import { getStartDate, type TimeRange } from "@arthur/shared-components";
+import { type IncomingFilter, mapFiltersToRequest } from "@arthur/shared-components/traces";
 
 import { Api } from "@/lib/api";
 import type { TraceSortBy } from "@/lib/api-client/api-client";

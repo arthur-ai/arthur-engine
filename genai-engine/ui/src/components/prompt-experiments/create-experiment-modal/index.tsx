@@ -1,4 +1,4 @@
-import { useAppForm } from "@arthur/shared-components";
+import { useAppForm } from "@arthur/shared-components/traces";
 import { Box, CircularProgress, Dialog, DialogTitle, Step, StepLabel, Stepper } from "@mui/material";
 import { ThemeProvider, useTheme } from "@mui/material/styles";
 import { useStore } from "@tanstack/react-form";

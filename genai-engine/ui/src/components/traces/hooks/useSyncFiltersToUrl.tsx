@@ -1,4 +1,4 @@
-import { type IncomingFilter } from "@arthur/shared-components";
+import { type IncomingFilter } from "@arthur/shared-components/traces";
 import { parseAsJson, useQueryState } from "nuqs";
 import { useEffect, useRef } from "react";
 import { z } from "zod";

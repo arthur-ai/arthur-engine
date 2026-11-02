@@ -1,12 +1,12 @@
+import { buildThresholdsFromSample } from "@arthur/shared-components";
 import {
   BucketProvider,
-  buildThresholdsFromSample,
   createTraceLevelColumns,
   TraceDisplaySettingsProvider,
   TracesTable,
   useTraceColumnDependencies,
   useTraceDisplaySettings,
-} from "@arthur/shared-components";
+} from "@arthur/shared-components/traces";
 import { Alert, Box, Stack } from "@mui/material";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { type OnChangeFn, type PaginationState, type RowSelectionState, SortingState } from "@tanstack/react-table";

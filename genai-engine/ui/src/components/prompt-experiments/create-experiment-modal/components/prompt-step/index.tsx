@@ -1,4 +1,4 @@
-import { withForm } from "@arthur/shared-components";
+import { withForm } from "@arthur/shared-components/traces";
 import { Box, Button, DialogActions, DialogContent, FormControl, FormHelperText, InputLabel, MenuItem, Select } from "@mui/material";
 import { useStore } from "@tanstack/react-form";
 

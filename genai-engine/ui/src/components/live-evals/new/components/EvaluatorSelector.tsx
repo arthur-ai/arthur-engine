@@ -1,4 +1,4 @@
-import { withFieldGroup } from "@arthur/shared-components";
+import { withFieldGroup } from "@arthur/shared-components/traces";
 import AddIcon from "@mui/icons-material/Add";
 import { Autocomplete, Box, Button, Chip, CircularProgress, Stack, TextField, Typography } from "@mui/material";
 import { useStore } from "@tanstack/react-form";

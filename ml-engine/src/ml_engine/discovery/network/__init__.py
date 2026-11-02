@@ -6,4 +6,7 @@ configurable extractor that pulls the two from a line (`extractor`), the destina
 that count as inference (`hosts`), and folding the matches into one record per source
 (`records`). Each vendor package holds only how its log lines are read. One package per
 vendor product.
+
+An AI gateway's request log (LiteLLM) names the caller instead of a host, and is folded
+into one record per caller by `gateway_records`.
 """

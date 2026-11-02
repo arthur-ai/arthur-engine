@@ -1,4 +1,4 @@
-import { withForm } from "@arthur/shared-components";
+import { withForm } from "@arthur/shared-components/traces";
 import {
   Autocomplete,
   Box,

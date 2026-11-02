@@ -1,4 +1,4 @@
-import { withForm } from "@arthur/shared-components";
+import { withForm } from "@arthur/shared-components/traces";
 import AddIcon from "@mui/icons-material/Add";
 import CircleNotificationsOutlinedIcon from "@mui/icons-material/CircleNotificationsOutlined";
 import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";

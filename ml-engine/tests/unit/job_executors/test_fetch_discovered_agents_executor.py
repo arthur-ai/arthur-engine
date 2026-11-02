@@ -29,13 +29,38 @@ def _entry(
     resource_id: str,
     source_id: str = SOURCE_ID,
     external_id: str | None = None,
+    observations: dict[str, object] | None = None,
 ) -> dict[str, object]:
     """A provenance entry as GenAI Engine serves it: one source's report of one record."""
-    return {
+    entry: dict[str, object] = {
         "source_class": "siem",
         "source_id": source_id,
         "vendor": "splunk_enterprise",
         "address": {"instance": "splunk.example.com", "resource_id": resource_id},
+        "last_seen": LAST_SEEN.isoformat(),
+        "last_scanned": LAST_SCANNED.isoformat(),
+        "external_id": external_id,
+    }
+    if observations is not None:
+        entry["observations"] = observations
+    return entry
+
+
+def _device_entry(
+    resource_kind: str,
+    resource_id: str,
+    external_id: str,
+) -> dict[str, object]:
+    """A Jamf Mac's provenance entry: its agent record's, or a corroboration's."""
+    return {
+        "source_class": "endpoint",
+        "source_id": SOURCE_ID,
+        "vendor": "jamf_pro",
+        "address": {
+            "instance": "m1",
+            "resource_kind": resource_kind,
+            "resource_id": resource_id,
+        },
         "last_seen": LAST_SEEN.isoformat(),
         "last_scanned": LAST_SCANNED.isoformat(),
         "external_id": external_id,
@@ -45,6 +70,8 @@ def _entry(
 def _task(
     task_id: str,
     sources: list[dict[str, object]] | None = None,
+    creation_source: dict[str, object] | None = None,
+    source_class: str = "siem",
 ) -> EnrichedTaskResponse:
     return EnrichedTaskResponse.from_dict(
         {
@@ -54,7 +81,8 @@ def _task(
             "updated_at": "2026-09-17T09:00:00Z",
             "is_autocreated": True,
             "num_spans": 0,
-            "creation_source": {
+            "creation_source": creation_source
+            or {
                 "type": "SIEM",
                 "vendor": "splunk_enterprise",
                 "address": {"instance": "splunk.example.com", "resource_id": task_id},
@@ -67,9 +95,32 @@ def _task(
                     else [_entry(task_id, external_id=f"splunk-{task_id}")]
                 ),
                 "runs_on": "unknown",
-                "source_classes": ["siem"],
+                "source_classes": [source_class],
             },
         },
+    )
+
+
+def _device_task(
+    sources: list[dict[str, object]],
+    resource_kind: str,
+    resource_id: str,
+) -> EnrichedTaskResponse:
+    """A task a Jamf Mac's agent record created, at the address that record had then."""
+    return _task(
+        "t1",
+        sources=sources,
+        creation_source={
+            "type": "ENDPOINT",
+            "vendor": "jamf_pro",
+            "address": {
+                "instance": "m1",
+                "resource_kind": resource_kind,
+                "resource_id": resource_id,
+            },
+            "observations": {"version": "2.1.314"},
+        },
+        source_class="endpoint",
     )
 
 
@@ -319,6 +370,85 @@ def test_a_network_source_entry_crosses_to_the_platform() -> None:
     assert source.source_class.value == "network"
 
 
+def _gateway_entry(kind: str, resource_id: str) -> dict[str, object]:
+    return {
+        **_entry(resource_id, external_id=f"litellm:gw:{kind}:{resource_id}"),
+        "source_class": "network",
+        "vendor": "litellm",
+        "address": {
+            "instance": "gw.example.com",
+            "resource_kind": kind,
+            "resource_id": resource_id,
+        },
+    }
+
+
+def test_gateway_caller_evidence_carries_the_identity_basis_the_platform_requires() -> (
+    None
+):
+    """Provenance has no identity_basis. The task's own record takes it from the task's
+    creation source; any other caller record from its kind, an agent id falling back to
+    the weaker claimed_agent."""
+    task = _task(
+        "t1",
+        sources=[
+            _gateway_entry("agent_id", "agt-1"),
+            _gateway_entry("virtual_key", "a" * 64),
+            _gateway_entry("agent_id", "agt-2"),
+        ],
+    ).to_dict()
+    task["creation_source"] = {
+        "type": "NETWORK",
+        "vendor": "litellm",
+        "identity_basis": "registered_agent",
+        "address": {
+            "instance": "gw.example.com",
+            "resource_kind": "agent_id",
+            "resource_id": "agt-1",
+        },
+        "observations": {"host_group": "platform"},
+    }
+    agent = enriched_task_to_agent(
+        EnrichedTaskResponse.from_dict(task),
+        DATA_PLANE_ID,
+        SOURCE_ID,
+    )
+
+    basis = {
+        record.creation_source.actual_instance.address.resource_id: (
+            record.creation_source.actual_instance.identity_basis.value
+        )
+        for record in agent.evidence
+    }
+    assert basis == {
+        "agt-1": "registered_agent",
+        "a" * 64: "credential",
+        "agt-2": "claimed_agent",
+    }
+
+
+def test_network_host_evidence_carries_no_identity_basis() -> None:
+    network = {
+        **_entry("i-0abc", external_id="aws_network:i-0abc"),
+        "source_class": "network",
+        "vendor": "aws_network",
+        "address": {
+            "instance": "i-0abc",
+            "scope": "111122223333/us-east-1",
+            "resource_kind": "instance",
+            "resource_id": "i-0abc",
+        },
+    }
+    agent = enriched_task_to_agent(
+        _task("t1", sources=[network]),
+        DATA_PLANE_ID,
+        SOURCE_ID,
+    )
+
+    [record] = agent.evidence
+    assert record.creation_source.actual_instance.identity_basis is None
+
+
 def test_the_fetch_job_uploads_provenance(tasks_api: MagicMock) -> None:
     tasks_api.get_agent_tasks_api_v2_agent_tasks_get.side_effect = [[_task("t1")], []]
     agents_client = _agents_client()
@@ -363,6 +493,39 @@ def test_each_record_the_source_reported_becomes_its_evidence() -> None:
     assert source.address.resource_id == "rec-2"
 
 
+def test_each_record_carries_what_its_latest_report_saw() -> None:
+    """Every record, not only the one the task was created from, and its latest report
+    rather than the first: the creation source is never rewritten, so its observations
+    give way wherever the entry serves its own."""
+    task = _task(
+        "t1",
+        sources=[
+            _entry(
+                "t1",
+                external_id="splunk-t1",
+                observations={"version": "2.1.314", "previous_version": "2.1.312"},
+            ),
+            _entry(
+                "rec-2",
+                external_id="splunk-rec-2",
+                observations={"version": "1.0"},
+            ),
+        ],
+    )
+
+    agent = enriched_task_to_agent(task, DATA_PLANE_ID, SOURCE_ID)
+
+    observed = {
+        record.external_id: record.creation_source.actual_instance.observations
+        for record in agent.evidence
+    }
+    assert observed["splunk-t1"].version == "2.1.314"
+    assert observed["splunk-t1"].previous_version == "2.1.312", "kept by GenAI Engine"
+    assert observed["splunk-rec-2"].previous_version is None
+    assert not observed["splunk-t1"].service_names, "not the creation source's"
+    assert observed["splunk-rec-2"].version == "1.0"
+
+
 def test_only_the_record_the_task_came_from_carries_its_observations() -> None:
     """Observations travel on the task's creation source, which is one record's."""
     task = _task(
@@ -393,7 +556,7 @@ def test_the_creation_record_keeps_its_observations_when_its_address_moves() -> 
 
     [record] = agent.evidence
     assert record.creation_source.actual_instance.observations.service_names == [
-        "svc-t1"
+        "svc-t1",
     ]
 
 
@@ -415,6 +578,93 @@ def test_observations_go_nowhere_when_the_creation_record_cannot_be_told() -> No
         record.creation_source.actual_instance.observations is None
         for record in agent.evidence
     )
+
+
+def _observed(task: EnrichedTaskResponse) -> dict[str, Any]:
+    agent = enriched_task_to_agent(task, DATA_PLANE_ID, SOURCE_ID)
+    return {
+        record.external_id: record.creation_source.actual_instance.observations
+        for record in agent.evidence
+    }
+
+
+def test_a_corroboration_does_not_make_the_creation_record_ambiguous() -> None:
+    """A device's corroborations share its instance with the agent record they extend.
+    With the agent record's address moved, it is still the one record on the instance
+    that corroborates no other, so it keeps the observations."""
+    corroboration = "m1:codex-cli:binaries:~/.local/bin/codex"
+    task = _device_task(
+        [
+            _device_entry("npm", "@openai/codex", "m1:codex-cli"),
+            _device_entry("file", "/Users/n/.local/bin/codex", corroboration),
+        ],
+        "deb",
+        "codex",
+    )
+
+    observed = _observed(task)
+
+    assert observed["m1:codex-cli"].version == "2.1.314"
+    assert observed[corroboration] is None
+
+
+def test_a_corroboration_holding_the_creation_address_is_not_its_record() -> None:
+    """The task was created when the binary was the Mac's only route, so its address is
+    the binary's. The extension has since become the primary route and the agent
+    record's address with it, which leaves the binary's corroboration as the one record
+    at the task's address. It is still not the record the task came from."""
+    binary = "/Users/n/.local/bin/claude"
+    corroboration = f"m1:claude-code:binaries:{binary}"
+    task = _device_task(
+        [
+            _device_entry("vscodeext", "anthropic.claude-code", "m1:claude-code"),
+            _device_entry("file", binary, corroboration),
+            _device_entry(
+                "vscodeext",
+                "/Users/n/.cursor/extensions/anthropic.claude-code-2.1.314",
+                "m1:claude-code:vscode_extensions:anthropic.claude-code",
+            ),
+        ],
+        "file",
+        binary,
+    )
+
+    observed = _observed(task)
+
+    assert observed["m1:claude-code"].version == "2.1.314"
+    assert observed[corroboration] is None
+
+
+def test_a_siem_record_whose_id_extends_another_s_is_not_a_corroboration() -> None:
+    """A SIEM's `external_id` is whatever its query returns, so one that happens to
+    extend another record's is a record in its own right -- here, the one the task was
+    created from."""
+    task = _task(
+        "t1",
+        sources=[
+            _entry("another-route", external_id="web01"),
+            _entry("t1", external_id="web01:langchain:prod"),
+        ],
+    )
+
+    observed = _observed(task)
+
+    assert observed["web01:langchain:prod"].service_names == ["svc-t1"]
+    assert observed["web01"] is None
+
+
+def test_siem_records_whose_ids_extend_one_another_stay_ambiguous() -> None:
+    """Neither at the creation source's address, so two records on the instance, and
+    neither may be ruled out as the other's evidence."""
+    task = _task(
+        "t1",
+        sources=[
+            _entry("route-2", external_id="web01"),
+            _entry("route-3", external_id="web01:langchain:prod"),
+        ],
+    )
+
+    assert all(observations is None for observations in _observed(task).values())
 
 
 def test_another_sources_creation_record_keeps_its_observations_to_itself() -> None:
@@ -455,7 +705,7 @@ def test_the_creation_source_entry_does_not_stand_in_for_a_record() -> None:
 
     [record] = agent.evidence
     assert record.creation_source.actual_instance.observations.service_names == [
-        "svc-t1"
+        "svc-t1",
     ]
 
 

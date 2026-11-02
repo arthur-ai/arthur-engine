@@ -37,8 +37,8 @@ vi.mock("@tanstack/react-form", async (importOriginal) => ({
   formOptions: <T,>(options: T) => options,
 }));
 
-vi.mock("@arthur/shared-components", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@arthur/shared-components")>()),
+vi.mock("@arthur/shared-components/traces", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@arthur/shared-components/traces")>()),
   flattenSpans: () => [],
   useAppForm: () => ({
     store: {},

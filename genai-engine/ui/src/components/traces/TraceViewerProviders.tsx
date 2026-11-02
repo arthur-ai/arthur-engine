@@ -1,4 +1,4 @@
-import { type CopyOutcome, TraceCopyFeedbackProvider, TraceDisplaySettingsProvider } from "@arthur/shared-components";
+import { type CopyOutcome, TraceCopyFeedbackProvider, TraceDisplaySettingsProvider } from "@arthur/shared-components/traces";
 import { useSnackbar } from "notistack";
 import { type ReactNode, useCallback, useMemo } from "react";
 

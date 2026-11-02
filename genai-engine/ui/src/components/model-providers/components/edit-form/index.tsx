@@ -1,4 +1,4 @@
-import { useAppForm } from "@arthur/shared-components";
+import { useAppForm } from "@arthur/shared-components/traces";
 import { Button, Dialog, DialogActions, DialogContent } from "@mui/material";
 import { useState } from "react";
 

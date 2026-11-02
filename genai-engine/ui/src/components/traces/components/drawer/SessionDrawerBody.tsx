@@ -1,4 +1,4 @@
-import { TokenCostTooltip, TokenCountTooltip } from "@arthur/shared-components";
+import { TokenCostTooltip, TokenCountTooltip } from "@arthur/shared-components/traces";
 import { Stack, Typography } from "@mui/material";
 
 import { getSessionTotals } from "../../utils/sessions";

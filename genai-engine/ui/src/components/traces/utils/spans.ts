@@ -1,4 +1,4 @@
-import { getNestedValue } from "@arthur/shared-components";
+import { getNestedValue } from "@arthur/shared-components/traces";
 
 /**
  * Like getNestedValue but supports '*' as a wildcard segment.

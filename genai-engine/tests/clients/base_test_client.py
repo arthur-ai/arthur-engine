@@ -121,6 +121,7 @@ from schemas.response_schemas import (
     DatasetVersionResponse,
     DatasetVersionRowResponse,
     DemoTaskSignupResponse,
+    InferenceOverviewListResponse,
     ListContinuousEvalTestRunsResponse,
     ListDatasetVersionsResponse,
     ListRagSearchSettingConfigurationsResponse,
@@ -904,6 +905,25 @@ class GenaiEngineTestClientBase(httpx.Client):
                 QueryInferencesResponse.model_validate(resp.json())
                 if resp.status_code == 200
                 else None
+            ),
+        )
+
+    def get_inferences_overview(
+        self,
+        task_ids: list[str],
+    ) -> tuple[int, InferenceOverviewListResponse | str]:
+        resp = self.base_client.post(
+            "/api/v2/inferences/overview",
+            json={"task_ids": task_ids},
+            headers=self.authorized_user_api_key_headers,
+        )
+        log_response(resp)
+        return (
+            resp.status_code,
+            (
+                InferenceOverviewListResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.text
             ),
         )
 

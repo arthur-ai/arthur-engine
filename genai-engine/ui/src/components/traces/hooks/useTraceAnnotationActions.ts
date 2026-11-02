@@ -1,4 +1,4 @@
-import type { AnnotationEvalActions, TraceColumnDependencyOptions, TraceDrawerAnnotationBarSlotProps } from "@arthur/shared-components";
+import type { AnnotationEvalActions, TraceColumnDependencyOptions, TraceDrawerAnnotationBarSlotProps } from "@arthur/shared-components/traces";
 import { useMemo } from "react";
 import { useNavigate } from "react-router";
 

@@ -1,4 +1,4 @@
-import type { FeedbackPanelHandlers, TraceFeedback } from "@arthur/shared-components";
+import type { FeedbackPanelHandlers, TraceFeedback } from "@arthur/shared-components/traces";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSnackbar } from "notistack";
 

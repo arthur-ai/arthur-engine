@@ -1,6 +1,6 @@
 [project]
 name = "arthur-genai-engine"
-version = "2.1.1071"
+version = "2.1.1084"
 description = ""
 authors = [{ name = "Arthur", email = "engineering@arthur.ai" }]
 readme = "README.md"
@@ -26,7 +26,7 @@ dependencies = [
   "sqlalchemy==2.0.55",
   "pgvector==0.5.1",
   "python-multipart==0.0.32",
-  "pypdf==6.21.2",
+  "pypdf==6.21.4",
   "httpx==0.28.1",
   # Held below 5.14.0: gliner 0.2.28 (the latest release) requires
   # transformers>=4.51.3,<5.14.0. See the transformers rule in /renovate.json.
@@ -75,11 +75,14 @@ dependencies = [
   "sentencepiece==0.2.2",
   "gliner==0.2.29",
   "openinference-semantic-conventions>=0.1.12,<0.2",
-  "litellm==1.106.2",
+  # The [mcp] extra is required, not optional: since 1.106.0 litellm imports `mcp` on every
+  # completion() that passes tools, so without it every tool-calling feature returns a 500
+  # (UP-5288). Drop the extra once litellm makes that import lazy.
+  "litellm[mcp]==1.106.2",
   "jinja2>=3.1.6,<4",
   "python-benedict>=0.40,<0.41",
   "weaviate-client>=4.17.0,<5",
-  "arthur-common==2.4.102",
+  "arthur-common==2.4.103",
   "google-auth>=2.48.0,<3",
   "google-cloud-aiplatform>=1.38",
   "google-cloud-trace>=1.11.0,<2",

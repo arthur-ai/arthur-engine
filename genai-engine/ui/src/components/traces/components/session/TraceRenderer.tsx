@@ -1,4 +1,5 @@
-import { getSpanInput, getSpanOutput, Highlight, Tabs, tryFormatJson } from "@arthur/shared-components";
+import { Highlight, Tabs, tryFormatJson } from "@arthur/shared-components";
+import { getSpanInput, getSpanOutput } from "@arthur/shared-components/traces";
 import { Box, Paper, Stack, Typography } from "@mui/material";
 
 import { useDrawerTarget } from "../../hooks/useDrawerTarget";
