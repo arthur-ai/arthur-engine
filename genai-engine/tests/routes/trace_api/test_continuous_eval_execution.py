@@ -1714,12 +1714,16 @@ def test_runs_often_enough_to_cache_counts_recent_runs_of_that_eval(
         continuous_evals.append(continuous_eval)
     busy, other = continuous_evals
 
-    def add_run(continuous_eval_id, age_minutes):
+    def add_run(
+        continuous_eval_id,
+        age_minutes,
+        run_status=ContinuousEvalRunStatus.PASSED,
+    ):
         return create_mock_annotation(
             trace_id=test_data["trace_id"],
             annotation_type=AgenticAnnotationType.CONTINUOUS_EVAL,
             continuous_eval_id=continuous_eval_id,
-            run_status=ContinuousEvalRunStatus.PASSED,
+            run_status=run_status,
             created_at=datetime.now() - timedelta(minutes=age_minutes),
         )
 
@@ -1730,7 +1734,12 @@ def test_runs_often_enough_to_cache_counts_recent_runs_of_that_eval(
         assert not runs_often_enough_to_cache(db_session, busy.id)
         assert not runs_often_enough_to_cache(db_session, other.id)
 
-        runs.append(add_run(busy.id, 4))
+        # skipped and errored runs made no LLM call
+        runs.append(add_run(other.id, 2, ContinuousEvalRunStatus.SKIPPED))
+        runs.append(add_run(other.id, 2, ContinuousEvalRunStatus.ERROR))
+        assert not runs_often_enough_to_cache(db_session, other.id)
+
+        runs.append(add_run(busy.id, 4, ContinuousEvalRunStatus.RUNNING))
         assert runs_often_enough_to_cache(db_session, busy.id)
         assert not runs_often_enough_to_cache(db_session, other.id)
     finally:

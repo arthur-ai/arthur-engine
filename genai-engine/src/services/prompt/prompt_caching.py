@@ -88,13 +88,13 @@ def apply_eval_prompt_caching(
 ) -> None:
     """Make an LLM-judge eval request cacheable for the provider, in place.
 
-    Claude models, and OpenAI models that take explicit breakpoints (GPT-5.6 and
-    later), get a cache breakpoint after the static part of the instructions. A cache
+    Claude models, and OpenAI (not Azure) models that take explicit breakpoints
+    (GPT-5.6 and later), get a cache breakpoint after the static part of the instructions. A cache
     write costs more than uncached input on both, so callers pass
     `add_cache_breakpoint=False` for evals that run too rarely to read it back.
-    Older OpenAI models cache identical prefixes automatically with no write fee and
-    get a stable `prompt_cache_key` so calls for the same eval route to the same
-    cache, plus 24-hour retention where the model supports it.
+    OpenAI and Azure OpenAI get a stable `prompt_cache_key` so calls for the same
+    eval route to the same cache. Older OpenAI models cache identical prefixes
+    automatically with no write fee and also get 24-hour retention where supported.
     """
     messages = completion_params.get("messages", [])
     if _uses_anthropic_cache_control(provider, model_name):
@@ -118,6 +118,10 @@ def apply_eval_prompt_caching(
     if "prompt_cache_key" in supported:
         completion_params["prompt_cache_key"] = cache_key
 
+    # Explicit cache mode and retention are only sent to OpenAI itself: litellm only
+    # applies its breakpoint dialect there, and Azure acceptance is unverified
+    if provider != ModelProvider.OPENAI:
+        return
     if supports_openai_prompt_cache_breakpoint(model_name):
         # These models otherwise cache implicitly at the last message, which would
         # pay the write premium on the per-trace text of every call

@@ -102,7 +102,6 @@ def test_claude_gets_breakpoint_on_static_block_only(provider, model_name):
     [
         (ModelProvider.OPENAI, "gpt-4.1"),
         (ModelProvider.OPENAI, "gpt-5.5"),
-        (ModelProvider.AZURE, "gpt-5.1"),
     ],
 )
 def test_pre_5_6_openai_gets_prompt_cache_key_and_retention(provider, model_name):
@@ -125,15 +124,16 @@ def test_pre_5_6_openai_gets_prompt_cache_key_and_retention(provider, model_name
 
 
 @pytest.mark.unit_tests
-def test_pre_5_6_openai_without_listed_retention_gets_key_only():
-    # litellm does not list prompt_cache_retention for gpt-4o on Azure
+@pytest.mark.parametrize("model_name", ["gpt-4o", "gpt-5.1", "gpt-5.6", "gpt-6-sol"])
+def test_azure_gets_prompt_cache_key_only(model_name):
+    # explicit cache mode and retention are unverified on Azure
     rendered = RUBRIC + "\n\nResponse: Paris"
     params = _params(rendered)
 
     apply_eval_prompt_caching(
         params,
         provider=ModelProvider.AZURE,
-        model_name="gpt-4o",
+        model_name=model_name,
         instructions=RUBRIC + "\n\nResponse: {{ response }}",
         cache_key="key",
     )
@@ -150,7 +150,6 @@ def test_pre_5_6_openai_without_listed_retention_gets_key_only():
         (ModelProvider.OPENAI, "gpt-6.1-sol"),
         # not in litellm's model map: detected by version
         (ModelProvider.OPENAI, "gpt-6.2"),
-        (ModelProvider.AZURE, "gpt-5.6"),
     ],
 )
 def test_openai_5_6_plus_gets_explicit_breakpoint_on_static_block_only(

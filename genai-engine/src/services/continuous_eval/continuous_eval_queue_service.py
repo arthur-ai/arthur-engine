@@ -29,6 +29,14 @@ from utils.transform_executor import execute_transform
 
 logger = logging.getLogger(__name__)
 
+# Statuses of runs that made, or are about to make, an LLM call
+_LLM_CALL_RUN_STATUSES = (
+    ContinuousEvalRunStatus.PENDING.value,
+    ContinuousEvalRunStatus.RUNNING.value,
+    ContinuousEvalRunStatus.PASSED.value,
+    ContinuousEvalRunStatus.FAILED.value,
+)
+
 # A prompt cache write costs 1.25x the uncached input price and lasts 5 minutes, so
 # a continuous eval only gets a cache breakpoint once it runs often enough to read
 # the cache back before it expires
@@ -41,16 +49,19 @@ def runs_often_enough_to_cache(
     continuous_eval_id: uuid.UUID,
 ) -> bool:
     """Whether the continuous eval has had enough runs created within the cache
-    lifetime, test runs included, for a cache write to be read back.
+    lifetime, test runs included, for a cache write to be read back. Skipped and
+    errored runs made no LLM call, so they don't count.
 
-    Counts at most CACHE_BREAKPOINT_MIN_RECENT_RUNS rows over the
-    (continuous_eval_id, created_at) index so busy evals stay cheap to check."""
+    Range-scans the (continuous_eval_id, created_at) index and stops at
+    CACHE_BREAKPOINT_MIN_RECENT_RUNS matching rows, so busy evals stay cheap to
+    check."""
     recent_runs = (
         db_session.query(DatabaseAgenticAnnotation.continuous_eval_id)
         .filter(
             DatabaseAgenticAnnotation.continuous_eval_id == continuous_eval_id,
             DatabaseAgenticAnnotation.created_at
             >= datetime.now() - CACHE_BREAKPOINT_WINDOW,
+            DatabaseAgenticAnnotation.run_status.in_(_LLM_CALL_RUN_STATUSES),
         )
         .limit(CACHE_BREAKPOINT_MIN_RECENT_RUNS)
         .count()
