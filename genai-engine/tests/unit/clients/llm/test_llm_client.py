@@ -2,10 +2,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from arthur_common.models.llm_model_providers import ModelProvider
-from litellm.types.utils import ModelResponse, TokenCountResponse
+from litellm.types.utils import ModelResponse, TokenCountResponse, Usage
 from pydantic import BaseModel, Field
 
-from clients.llm.llm_client import LLMClient, LLMModelResponse
+from clients.llm.llm_client import LLMClient, LLMModelResponse, LLMTokenUsage
 from utils.constants import DEFAULT_ORG_ID
 
 
@@ -331,3 +331,74 @@ async def test_acount_tokens_forwards_provider_credentials():
         assert kwargs["aws_access_key_id"] == "AKIAFAKE", case
         assert kwargs["aws_secret_access_key"] == "SECRET", case
         assert kwargs["aws_region_name"] == "us-east-1", case
+
+
+@pytest.mark.unit_tests
+def test_token_usage_from_openai_shaped_response():
+    response = ModelResponse(
+        usage=Usage(
+            prompt_tokens=1200,
+            completion_tokens=40,
+            total_tokens=1240,
+            prompt_tokens_details={"cached_tokens": 1024},
+        ),
+    )
+
+    usage = LLMTokenUsage.from_response(response)
+
+    assert usage == LLMTokenUsage(
+        prompt_tokens=1200,
+        completion_tokens=40,
+        cache_read_tokens=1024,
+        cache_write_tokens=None,
+    )
+
+
+@pytest.mark.unit_tests
+def test_token_usage_from_anthropic_shaped_response():
+    response = ModelResponse(
+        usage=Usage(
+            prompt_tokens=1500,
+            completion_tokens=60,
+            total_tokens=1560,
+            cache_read_input_tokens=900,
+            cache_creation_input_tokens=400,
+        ),
+    )
+
+    usage = LLMTokenUsage.from_response(response)
+
+    assert usage == LLMTokenUsage(
+        prompt_tokens=1500,
+        completion_tokens=60,
+        cache_read_tokens=900,
+        cache_write_tokens=400,
+    )
+
+
+@pytest.mark.unit_tests
+def test_token_usage_falls_back_to_raw_anthropic_fields():
+    response = MagicMock()
+    response.usage = MagicMock(
+        prompt_tokens=300,
+        completion_tokens=20,
+        prompt_tokens_details=None,
+        cache_read_input_tokens=0,
+        cache_creation_input_tokens=250,
+    )
+
+    usage = LLMTokenUsage.from_response(response)
+
+    assert usage.cache_read_tokens == 0
+    assert usage.cache_write_tokens == 250
+
+
+@pytest.mark.unit_tests
+def test_token_usage_missing_usage_is_null():
+    response = MagicMock(spec=ModelResponse)
+    response.usage = None
+
+    assert LLMTokenUsage.from_response(response) == LLMTokenUsage()
+    assert LLMTokenUsage.from_response(None) == LLMTokenUsage()
+    # Mocked responses without real usage must not leak mock values into the counts
+    assert LLMTokenUsage.from_response(MagicMock(spec=ModelResponse)) == LLMTokenUsage()

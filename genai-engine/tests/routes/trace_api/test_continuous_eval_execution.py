@@ -6,7 +6,7 @@ from utils.constants import DEFAULT_ORG_ID
 
 import pytest
 from arthur_common.models.enums import AgenticAnnotationType, ContinuousEvalRunStatus
-from litellm.types.utils import ModelResponse
+from litellm.types.utils import ModelResponse, Usage
 
 from db_models.agentic_annotation_models import DatabaseAgenticAnnotation
 from db_models.llm_eval_models import DatabaseContinuousEval
@@ -293,6 +293,12 @@ def test_continuous_eval_execution(
     mock_response.choices[0].message = {
         "content": '{"reason": "The model name is correct.", "score": 1}',
     }
+    mock_response.usage = Usage(
+        prompt_tokens=1200,
+        completion_tokens=40,
+        total_tokens=1240,
+        prompt_tokens_details={"cached_tokens": 1024},
+    )
     mock_completion.return_value = mock_response
     mock_completion_cost.return_value = 0.002345
 
@@ -380,6 +386,17 @@ def test_continuous_eval_execution(
     status_code, received_annotation = client.get_annotation_by_id(annotation.id)
     assert status_code == 200
     assert received_annotation.run_status == ContinuousEvalRunStatus.PASSED.value
+
+    db_annotation = (
+        override_get_db_session()
+        .query(DatabaseAgenticAnnotation)
+        .filter(DatabaseAgenticAnnotation.id == annotation.id)
+        .one()
+    )
+    assert db_annotation.prompt_tokens == 1200
+    assert db_annotation.completion_tokens == 40
+    assert db_annotation.cache_read_tokens == 1024
+    assert db_annotation.cache_write_tokens is None
 
     delete_mock_annotation(annotation.id)
 

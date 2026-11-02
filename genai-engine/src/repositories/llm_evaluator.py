@@ -60,4 +60,8 @@ class LLMEvaluator(BaseEvaluator):
             reason=llm_result.reason,
             score=bool(llm_result.score),
             cost=llm_result.cost,
+            prompt_tokens=llm_result.prompt_tokens,
+            completion_tokens=llm_result.completion_tokens,
+            cache_read_tokens=llm_result.cache_read_tokens,
+            cache_write_tokens=llm_result.cache_write_tokens,
         )

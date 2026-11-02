@@ -804,6 +804,22 @@ class EvalRunResponse(BaseModel):
     )
     score: int = Field(..., description="Score for this llm eval")
     cost: str = Field(..., description="Cost of this llm completion")
+    prompt_tokens: Optional[int] = Field(
+        default=None,
+        description="Prompt tokens for this llm completion, including any cached tokens",
+    )
+    completion_tokens: Optional[int] = Field(
+        default=None,
+        description="Completion tokens for this llm completion",
+    )
+    cache_read_tokens: Optional[int] = Field(
+        default=None,
+        description="Prompt tokens read from the provider's prompt cache",
+    )
+    cache_write_tokens: Optional[int] = Field(
+        default=None,
+        description="Prompt tokens written to the provider's prompt cache",
+    )
 
 
 class RenderedPromptResponse(BaseModel):

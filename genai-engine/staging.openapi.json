@@ -23086,6 +23086,54 @@
                         "type": "string",
                         "title": "Cost",
                         "description": "Cost of this llm completion"
+                    },
+                    "prompt_tokens": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Prompt Tokens",
+                        "description": "Prompt tokens for this llm completion, including any cached tokens"
+                    },
+                    "completion_tokens": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Completion Tokens",
+                        "description": "Completion tokens for this llm completion"
+                    },
+                    "cache_read_tokens": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Cache Read Tokens",
+                        "description": "Prompt tokens read from the provider's prompt cache"
+                    },
+                    "cache_write_tokens": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Cache Write Tokens",
+                        "description": "Prompt tokens written to the provider's prompt cache"
                     }
                 },
                 "type": "object",

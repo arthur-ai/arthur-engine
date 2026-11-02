@@ -3,7 +3,7 @@ from datetime import datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
-from litellm.types.utils import ModelResponse
+from litellm.types.utils import ModelResponse, Usage
 
 from schemas.internal_schemas import Task
 from tests.clients.base_test_client import GenaiEngineTestClientBase
@@ -1172,6 +1172,69 @@ def test_run_saved_llm_eval_success(
     )
     assert run_response["score"] == 1
     assert run_response["cost"] == "0.002345"
+    assert "prompt_tokens" not in run_response
+    assert "cache_read_tokens" not in run_response
+
+
+@pytest.mark.unit_tests
+@patch("clients.llm.llm_client.completion_cost")
+@patch("clients.llm.llm_client.litellm.completion")
+def test_run_saved_llm_eval_returns_token_usage(
+    mock_completion,
+    mock_completion_cost,
+    client: GenaiEngineTestClientBase,
+):
+    """Test running a saved llm eval returns prompt cache token counts"""
+    mock_response = MagicMock(spec=ModelResponse)
+    mock_response.choices = [MagicMock()]
+    mock_response.choices[0].message = {
+        "content": '{"reason": "Supported by the ground truth.", "score": 1}',
+    }
+    mock_response.usage = Usage(
+        prompt_tokens=1500,
+        completion_tokens=60,
+        total_tokens=1560,
+        cache_read_input_tokens=900,
+        cache_creation_input_tokens=400,
+    )
+    mock_completion.return_value = mock_response
+    mock_completion_cost.return_value = 0.001
+
+    task_name = f"agentic_task_{random.random()}"
+    status_code, task = client.create_task(task_name, is_agentic=True)
+    assert status_code == 200
+
+    response = client.base_client.put(
+        f"/api/v1/model_providers/openai",
+        json={"api_key": "test-key"},
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 201
+
+    eval_name = "test_llm_eval_token_usage"
+    response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}",
+        json={
+            "model_name": "gpt-4o",
+            "model_provider": "openai",
+            "instructions": "Assess the following answer based on ground truth",
+        },
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200
+
+    response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}/versions/latest/completions",
+        json={},
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200
+
+    run_response = response.json()
+    assert run_response["prompt_tokens"] == 1500
+    assert run_response["completion_tokens"] == 60
+    assert run_response["cache_read_tokens"] == 900
+    assert run_response["cache_write_tokens"] == 400
 
 
 @pytest.mark.unit_tests

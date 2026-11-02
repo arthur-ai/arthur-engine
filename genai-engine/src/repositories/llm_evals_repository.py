@@ -12,6 +12,7 @@ from litellm import supports_response_schema
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from clients.llm.llm_client import LLMTokenUsage
 from db_models.llm_eval_models import DatabaseLLMEval, DatabaseLLMEvalVersionTag
 from repositories.base_llm_repository import BaseLLMRepository
 from repositories.model_provider_repository import ModelProviderRepository
@@ -254,6 +255,7 @@ class LLMEvalsRepository(
             reason=llm_model_response.structured_output_response.reason,
             score=llm_model_response.structured_output_response.score,
             cost=llm_model_response.cost or "",
+            **LLMTokenUsage.from_response(llm_model_response.response).model_dump(),
         )
 
     def get_llm_item(

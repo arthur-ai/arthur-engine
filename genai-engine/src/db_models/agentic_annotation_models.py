@@ -56,6 +56,10 @@ class DatabaseAgenticAnnotation(Base):
         nullable=True,
     )
     cost: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    prompt_tokens: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    completion_tokens: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    cache_read_tokens: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    cache_write_tokens: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     run_status: Mapped[Optional[str]] = mapped_column(String, nullable=True)
 
     test_run_id: Mapped[Optional[uuid.UUID]] = mapped_column(

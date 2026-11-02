@@ -2,6 +2,12 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 11/02/2026
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/completions  added the optional property 'cache_read_tokens' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/completions  added the optional property 'cache_write_tokens' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/completions  added the optional property 'completion_tokens' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/completions  added the optional property 'prompt_tokens' to the response with the '200' status
+
 # 10/31/2026
 - **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property '/items/creation_source/anyOf[subschema #1: AgentCreationSource]/oneOf[subschema #1: GCPAgentCreationSource]/observations/previous_version' to the response with the '200' status
 - **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property '/items/creation_source/anyOf[subschema #1: AgentCreationSource]/oneOf[subschema #2: OTELAgentCreationSource]/observations/previous_version' to the response with the '200' status

@@ -8,6 +8,7 @@ from arthur_common.models.enums import AgenticAnnotationType, ContinuousEvalRunS
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
+from clients.llm.llm_client import LLMTokenUsage
 from db_models.agentic_annotation_models import DatabaseAgenticAnnotation
 from db_models.continuous_eval_test_run_models import DatabaseContinuousEvalTestRun
 from db_models.llm_eval_models import DatabaseContinuousEval
@@ -351,6 +352,12 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
                 annotation_score=int(eval_run_result.score),
                 annotation_description=eval_run_result.reason,
                 cost=float(eval_run_result.cost) if eval_run_result.cost else None,
+                token_usage=LLMTokenUsage(
+                    prompt_tokens=eval_run_result.prompt_tokens,
+                    completion_tokens=eval_run_result.completion_tokens,
+                    cache_read_tokens=eval_run_result.cache_read_tokens,
+                    cache_write_tokens=eval_run_result.cache_write_tokens,
+                ),
             )
 
         except Exception as e:
@@ -382,6 +389,7 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
         annotation_description: Optional[str] = None,
         input_variables: Optional[list[VariableTemplateValue]] = None,
         cost: Optional[float] = None,
+        token_usage: Optional[LLMTokenUsage] = None,
     ) -> None:
         """Update annotation with execution results."""
         db_annotation = (
@@ -407,6 +415,11 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
             ]
         if cost is not None:
             db_annotation.cost = cost
+        if token_usage is not None:
+            db_annotation.prompt_tokens = token_usage.prompt_tokens
+            db_annotation.completion_tokens = token_usage.completion_tokens
+            db_annotation.cache_read_tokens = token_usage.cache_read_tokens
+            db_annotation.cache_write_tokens = token_usage.cache_write_tokens
 
         db_session.commit()
         logger.debug(f"Updated annotation {annotation_id} to status {run_status}")

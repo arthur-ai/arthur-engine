@@ -40,6 +40,49 @@ class LLMModelResponse(BaseModel):
     cost: Optional[str] = Field(None, description="The cost of the model response")
 
 
+def _token_count(value: Any) -> Optional[int]:
+    if isinstance(value, int) and not isinstance(value, bool):
+        return value
+    return None
+
+
+class LLMTokenUsage(BaseModel):
+    prompt_tokens: Optional[int] = None
+    completion_tokens: Optional[int] = None
+    cache_read_tokens: Optional[int] = None
+    cache_write_tokens: Optional[int] = None
+
+    @staticmethod
+    def from_response(response: Any) -> "LLMTokenUsage":
+        """Read token counts off a litellm response, normalizing provider cache fields.
+
+        litellm folds OpenAI's prompt_tokens_details.cached_tokens and Anthropic's
+        cache_read_input_tokens / cache_creation_input_tokens into prompt_tokens_details;
+        the raw Anthropic attributes are the fallback when the details are absent.
+        """
+        usage = getattr(response, "usage", None)
+        if usage is None:
+            return LLMTokenUsage()
+        details = getattr(usage, "prompt_tokens_details", None)
+
+        cache_read = _token_count(getattr(details, "cached_tokens", None))
+        if cache_read is None:
+            cache_read = _token_count(getattr(usage, "cache_read_input_tokens", None))
+
+        cache_write = _token_count(getattr(details, "cache_write_tokens", None))
+        if cache_write is None:
+            cache_write = _token_count(
+                getattr(usage, "cache_creation_input_tokens", None),
+            )
+
+        return LLMTokenUsage(
+            prompt_tokens=_token_count(getattr(usage, "prompt_tokens", None)),
+            completion_tokens=_token_count(getattr(usage, "completion_tokens", None)),
+            cache_read_tokens=cache_read,
+            cache_write_tokens=cache_write,
+        )
+
+
 def supported_models() -> dict[str, list[str]]:
     models: dict[str, list[str]] = {}
     for model_name, cost_config in get_model_cost_map(url=model_cost_map_url).items():
