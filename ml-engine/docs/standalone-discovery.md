@@ -649,7 +649,8 @@ and the member role in each account holds the three actions plus `ec2:DescribeRe
 An account whose role cannot be assumed, a named region the account has not enabled, or a
 region it is refused, is a denied scope in the scan's outcome and the scan reads the rest;
 refused everywhere, the scan fails.
-`query` and `query_language` are as for Jamf, and so is stopping on shutdown.
+`query` is the catalog, as for Jamf; `query_language: none`. Stopping on shutdown is as
+for Jamf too.
 
 EC2 has no per-instance report date to filter on, so every scan lists every instance in
 the regions. The lookback is applied to the time on the collector's status line: an
@@ -860,6 +861,51 @@ VPC Flow Logs carry only addresses, and the large providers serve from shared CD
 addresses, so with `vpc_flow_log_v2` only `extra_inference_hosts` ranges match. A source
 identified by address is weaker evidence than an instance: Lambda functions, containers
 and pods share and reuse VPC addresses.
+
+#### `gcp_network` — GCP network logs (read from Cloud Logging)
+
+Reads one project's Cloud DNS query logs and VPC flow logs from Cloud Logging and reports
+each workload seen calling a host known to serve model inference (the same built-in list
+as `aws_network`), or one of the source's own hosts or ranges:
+
+- a Compute Engine VM, named by its own DNS lookups: one record per VM, scope
+  `<project>/<zone>`;
+- a Cloud Run service or job, named by the VPC flow records of its egress
+  (`src_serverless_details`): one record per service or job (`run/services/<service>`,
+  `run/jobs/<job>`), scope `<project>/<region>`. A job execution is folded into its job
+  when the region's jobs can be listed.
+
+A flow record names only an address, so it is labelled by the DNS answers in the same
+window: an address a lookup got for a known inference host is that host. An address that
+also answered for another host (Google's shared front ends answer for every
+`googleapis.com` host) cannot say which was called, and its flows are counted in the log,
+not reported. Only lookups that got an answer (`NOERROR`) are read.
+
+A GKE pod cannot be named: its lookups are made by the node and its egress is masqueraded
+to the node's address, so neither log names the pod. A GKE node appears as the VM it is.
+
+Both logs must be on, and neither is by default: Cloud DNS logging is a DNS server policy
+on the VPC network, and flow logs a setting on each subnet. Under Shared VPC both are
+written to the host project, so that is the project a source names.
+
+| Field | Secret | Required | Notes |
+|---|---|---|---|
+| `project_id` | no | yes | The project **ID** whose logs are read; the host project under Shared VPC |
+| `service_account_key` | yes | no | A service account JSON key. Without one, the engine uses Application Default Credentials only if `ARTHUR_ENGINE_GCP_NETWORK_ALLOW_ADC=true` is set |
+| `extra_inference_hosts` | no | no | As for `aws_network` |
+
+The service account needs `roles/logging.viewer` on the project, which reads both logs
+(`entries.list`). `roles/run.viewer` is optional: it lets the scan list Cloud Run jobs so
+an execution is folded into its job. Without it the listing is refused, the scan logs a
+warning, and the record is named by the execution.
+
+Use `query: ""` and `query_language: none`; a config's query is ignored. The lookback
+window is the time range read; `0` reads the last day, not everything the logs retain. A
+scan reads at most 200,000 entries from each log and warns when it stops there. Cloud
+Logging allows 60 `entries.list` requests a minute per project, shared with every other
+reader, so a 429 or a server error is retried with backoff; any other refusal or failure
+of a log read fails the scan with Google's status. A scan that sees no DNS lookups at all
+warns that Cloud DNS logging may be off.
 
 #### `litellm` — LiteLLM proxy
 
