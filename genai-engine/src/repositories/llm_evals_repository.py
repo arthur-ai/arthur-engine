@@ -7,8 +7,14 @@ from arthur_common.models.llm_model_providers import (
     MessageRole,
     ModelProvider,
     OpenAIMessage,
+    ReasoningEffortEnum,
 )
-from litellm import supports_response_schema
+from litellm import (
+    get_supported_openai_params,
+    supports_reasoning,
+    supports_response_schema,
+)
+from litellm.utils import supports_none_reasoning_effort
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -36,6 +42,28 @@ You are a helpful assistant that adheres exactly to the following instructions.
 You will be given a set of instructions and respond with a boolean score and a reason for your score.
 The detail for how and what you should score will be provided in the instructions.
 """
+
+
+def _reasons_by_default(model_name: str, model_provider: ModelProvider) -> bool:
+    # elsewhere (e.g. Claude) an effort turns on thinking that is otherwise off
+    if model_provider not in (ModelProvider.OPENAI, ModelProvider.AZURE):
+        return False
+    # chat variants only accept the medium effort
+    if "chat" in model_name:
+        return False
+    if not supports_reasoning(model=model_name, custom_llm_provider=model_provider):
+        return False
+    supported_params = get_supported_openai_params(
+        model=model_name,
+        custom_llm_provider=model_provider,
+    )
+    if not supported_params or "reasoning_effort" not in supported_params:
+        return False
+    # models that can switch reasoning off (gpt-5.1 onward) default to off
+    return not supports_none_reasoning_effort(
+        model=model_name,
+        custom_llm_provider=model_provider,
+    )
 
 
 class LLMEvalsRepository(
@@ -142,6 +170,13 @@ class LLMEvalsRepository(
 
         if response_format is not None:
             config_dict["response_format"] = response_format
+
+        # a pass/fail judgement rarely needs the provider's default (medium) effort
+        if "reasoning_effort" not in config_dict and _reasons_by_default(
+            llm_eval.model_name,
+            llm_eval.model_provider,
+        ):
+            config_dict["reasoning_effort"] = ReasoningEffortEnum.LOW
 
         return AgenticPrompt(
             name=llm_eval.name,

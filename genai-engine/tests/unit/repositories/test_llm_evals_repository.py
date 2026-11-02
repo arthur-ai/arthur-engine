@@ -10,6 +10,7 @@ from arthur_common.models.common_schemas import (
 from arthur_common.models.llm_model_providers import (
     LLMBaseConfigSettings,
     ModelProvider,
+    ReasoningEffortEnum,
 )
 from litellm.types.utils import ModelResponse
 from sqlalchemy.exc import IntegrityError
@@ -25,8 +26,6 @@ from schemas.request_schemas import (
     LLMGetVersionsFilterRequest,
     LLMRequestConfigSettings,
 )
-from utils.constants import DEFAULT_ORG_ID
-
 from schemas.response_schemas import (
     EvalRunResponse,
     LLMEvalsVersionListResponse,
@@ -34,6 +33,7 @@ from schemas.response_schemas import (
     LLMGetAllMetadataResponse,
 )
 from tests.clients.base_test_client import override_get_db_session
+from utils.constants import DEFAULT_ORG_ID
 
 
 @pytest.fixture
@@ -966,7 +966,12 @@ def test_run_deleted_llm_eval_spawns_error(
     )
 
     with pytest.raises(ValueError) as exc_info:
-        llm_evals_repo.run_llm_eval(task_id, eval_name, org_id=DEFAULT_ORG_ID, version="1")
+        llm_evals_repo.run_llm_eval(
+            task_id,
+            eval_name,
+            org_id=DEFAULT_ORG_ID,
+            version="1",
+        )
     assert f"Cannot run this llm eval because it was deleted on" in str(exc_info.value)
 
     llm_evals_repo.delete_llm_item(task_id, eval_name)
@@ -1000,7 +1005,12 @@ def test_run_saved_llm_eval_malformed_response_errors(
     )
 
     with pytest.raises(ValueError) as exc_info:
-        llm_evals_repo.run_llm_eval(task_id, eval_name, org_id=DEFAULT_ORG_ID, version="1")
+        llm_evals_repo.run_llm_eval(
+            task_id,
+            eval_name,
+            org_id=DEFAULT_ORG_ID,
+            version="1",
+        )
     assert (
         f"No structured output response from model {full_eval.model_name} with provider {full_eval.model_provider}"
         in str(exc_info.value)
@@ -1016,7 +1026,12 @@ def test_run_saved_llm_eval_malformed_response_errors(
     )
 
     with pytest.raises(TypeError) as exc_info:
-        llm_evals_repo.run_llm_eval(task_id, eval_name, org_id=DEFAULT_ORG_ID, version="1")
+        llm_evals_repo.run_llm_eval(
+            task_id,
+            eval_name,
+            org_id=DEFAULT_ORG_ID,
+            version="1",
+        )
     assert f"Structured output is not a ReasonedScore instance" in str(exc_info.value)
 
     llm_evals_repo.delete_llm_item(task_id, eval_name)
@@ -1596,3 +1611,98 @@ def test_get_all_llm_eval_metadata_with_tag_filter(llm_evals_repo):
     finally:
         llm_evals_repo.delete_llm_item(task_id, name_a)
         llm_evals_repo.delete_llm_item(task_id, name_b)
+
+
+def _eval_for_model(model_provider, model_name, config=None):
+    return Eval(
+        name="test_llm_eval",
+        model_name=model_name,
+        model_provider=model_provider,
+        instructions="test_instructions",
+        config=config,
+        version=1,
+        created_at=datetime.now(),
+    )
+
+
+@pytest.mark.unit_tests
+@pytest.mark.parametrize(
+    "model_provider,model_name",
+    [
+        (ModelProvider.OPENAI, "o3-mini"),
+        (ModelProvider.OPENAI, "gpt-5-mini"),
+        (ModelProvider.AZURE, "o4-mini"),
+    ],
+)
+def test_eval_reasoning_effort_defaults_to_low(
+    llm_evals_repo,
+    model_provider,
+    model_name,
+):
+    agentic_prompt = llm_evals_repo.from_llm_eval_to_agentic_prompt(
+        _eval_for_model(model_provider, model_name),
+    )
+
+    assert agentic_prompt.config.reasoning_effort == ReasoningEffortEnum.LOW
+    _, completion_params = (
+        llm_evals_repo.chat_completion_service._get_completion_params(
+            agentic_prompt,
+        )
+    )
+    assert completion_params["reasoning_effort"] == "low"
+
+
+@pytest.mark.unit_tests
+@pytest.mark.parametrize(
+    "reasoning_effort",
+    [ReasoningEffortEnum.HIGH, ReasoningEffortEnum.MINIMAL],
+)
+def test_eval_explicit_reasoning_effort_is_kept(llm_evals_repo, reasoning_effort):
+    agentic_prompt = llm_evals_repo.from_llm_eval_to_agentic_prompt(
+        _eval_for_model(
+            ModelProvider.OPENAI,
+            "o3-mini",
+            config=LLMBaseConfigSettings(reasoning_effort=reasoning_effort),
+        ),
+    )
+
+    assert agentic_prompt.config.reasoning_effort == reasoning_effort
+
+
+@pytest.mark.unit_tests
+@pytest.mark.parametrize(
+    "model_provider,model_name",
+    [
+        # not a reasoning model
+        (ModelProvider.OPENAI, "gpt-4o"),
+        (ModelProvider.AZURE, "my-custom-deployment"),
+        # reasoning is off unless an effort is sent
+        (ModelProvider.OPENAI, "gpt-5.1"),
+        (ModelProvider.ANTHROPIC, "claude-sonnet-4-5"),
+        (ModelProvider.BEDROCK, "anthropic.claude-sonnet-4-5-20250929-v1:0"),
+        # only accepts the medium effort
+        (ModelProvider.OPENAI, "gpt-5.1-chat-latest"),
+    ],
+)
+def test_eval_reasoning_effort_not_defaulted(
+    llm_evals_repo,
+    model_provider,
+    model_name,
+):
+    agentic_prompt = llm_evals_repo.from_llm_eval_to_agentic_prompt(
+        _eval_for_model(
+            model_provider,
+            model_name,
+            config=LLMBaseConfigSettings(temperature=0.5),
+        ),
+    )
+
+    assert agentic_prompt.config.reasoning_effort is None
+    assert agentic_prompt.config.thinking is None
+    _, completion_params = (
+        llm_evals_repo.chat_completion_service._get_completion_params(
+            agentic_prompt,
+        )
+    )
+    assert "reasoning_effort" not in completion_params
+    assert "thinking" not in completion_params
