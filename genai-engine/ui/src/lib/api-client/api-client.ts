@@ -931,27 +931,57 @@ export type AnnotateTraceApiV1TracesTraceIdAnnotationsPostData = AgenticAnnotati
 
 export type AnnotateTraceApiV1TracesTraceIdAnnotationsPostError = HTTPValidationError;
 
+/** AnthropicThinkingBlockBinding */
+export interface AnthropicThinkingBlockBindingInput {
+  /** Prefix Mismatch Behavior */
+  prefix_mismatch_behavior?: AnthropicThinkingBlockBindingInputPrefixMismatchBehaviorEnum;
+}
+
+/** Prefix Mismatch Behavior */
+export type AnthropicThinkingBlockBindingInputPrefixMismatchBehaviorEnum = "error" | "drop_block";
+
+/** AnthropicThinkingBlockBinding */
+export interface AnthropicThinkingBlockBindingOutput {
+  /** Prefix Mismatch Behavior */
+  prefix_mismatch_behavior?: AnthropicThinkingBlockBindingOutputPrefixMismatchBehaviorEnum;
+}
+
+/** Prefix Mismatch Behavior */
+export type AnthropicThinkingBlockBindingOutputPrefixMismatchBehaviorEnum = "error" | "drop_block";
+
 /** AnthropicThinkingParam */
 export interface AnthropicThinkingParamInput {
+  block_binding?: AnthropicThinkingBlockBindingInput;
   /** Budget Tokens */
   budget_tokens?: number;
+  /** Display */
+  display?: AnthropicThinkingParamInputDisplayEnum;
   /** Type */
   type?: AnthropicThinkingParamInputTypeEnum;
 }
 
+/** Display */
+export type AnthropicThinkingParamInputDisplayEnum = "summarized" | "omitted" | "updates";
+
 /** Type */
-export type AnthropicThinkingParamInputTypeEnum = "enabled" | "adaptive";
+export type AnthropicThinkingParamInputTypeEnum = "enabled" | "adaptive" | "disabled";
 
 /** AnthropicThinkingParam */
 export interface AnthropicThinkingParamOutput {
+  block_binding?: AnthropicThinkingBlockBindingOutput;
   /** Budget Tokens */
   budget_tokens?: number;
+  /** Display */
+  display?: AnthropicThinkingParamOutputDisplayEnum;
   /** Type */
   type?: AnthropicThinkingParamOutputTypeEnum;
 }
 
+/** Display */
+export type AnthropicThinkingParamOutputDisplayEnum = "summarized" | "omitted" | "updates";
+
 /** Type */
-export type AnthropicThinkingParamOutputTypeEnum = "enabled" | "adaptive";
+export type AnthropicThinkingParamOutputTypeEnum = "enabled" | "adaptive" | "disabled";
 
 /** ApiKeyRagAuthenticationConfigRequest */
 export interface ApiKeyRagAuthenticationConfigRequest {
@@ -1580,6 +1610,11 @@ export interface ContinuousEvalCreateRequest {
    */
   name: string;
   /**
+   * Sample Rate
+   * Fraction of traces to evaluate, in (0, 1]. Traces are picked by a hash of the trace ID, so evals with the same rate evaluate the same traces. Null evaluates every trace.
+   */
+  sample_rate?: number | null;
+  /**
    * Transform Id
    * ID of the transform to create the continuous eval for
    * @format uuid
@@ -1619,7 +1654,15 @@ export interface ContinuousEvalRerunResponse {
   trace_id: string;
 }
 
-/** ContinuousEvalResponse */
+/**
+ * ContinuousEvalResponse
+ * The continuous eval response, with its sample rate.
+ *
+ * Extends the shared model only until `arthur_common` carries `sample_rate` on
+ * `ContinuousEvalResponse` itself, at which point this subclass goes. Named the
+ * same so the OpenAPI component, and the generated clients built from it, keep
+ * their name either way.
+ */
 export interface ContinuousEvalResponse {
   /**
    * Created At
@@ -1664,6 +1707,11 @@ export interface ContinuousEvalResponse {
    * Name of the continuous eval.
    */
   name: string;
+  /**
+   * Sample Rate
+   * Fraction of traces evaluated, in (0, 1]. Null evaluates every trace.
+   */
+  sample_rate?: number | null;
   /**
    * Task Id
    * ID of the parent task.
@@ -3946,6 +3994,10 @@ export type GetLlmEvalByTagApiV1TasksTaskIdLlmEvalsEvalNameVersionsTagsTagGetDat
 export type GetLlmEvalByTagApiV1TasksTaskIdLlmEvalsEvalNameVersionsTagsTagGetError = HTTPValidationError;
 
 export type GetMeUsersMeGetData = MeResponse;
+
+export type GetModelProviderEvalDefaultsApiV1ModelProvidersProviderEvalDefaultsGetData = ModelProviderEvalDefaults;
+
+export type GetModelProviderEvalDefaultsApiV1ModelProvidersProviderEvalDefaultsGetError = HTTPValidationError;
 
 export type GetModelProviderWhitelistApiV1ModelProvidersProviderModelWhitelistGetData = ModelProviderWhitelist;
 
@@ -6804,6 +6856,16 @@ export type MetricType = "QueryRelevance" | "ResponseRelevance" | "ToolSelection
 /** ModelProvider */
 export type ModelProvider = "anthropic" | "openai" | "gemini" | "bedrock" | "vertex_ai" | "hosted_vllm" | "azure";
 
+/** ModelProviderEvalDefaults */
+export interface ModelProviderEvalDefaults {
+  /** Provider the defaults apply to */
+  provider: ModelProvider;
+  /** Reasoning effort sent on LLM eval calls whose eval config sets neither reasoning_effort nor thinking. Null sends nothing. */
+  reasoning_effort?: ReasoningEffortEnum | null;
+  /** Thinking setting sent on LLM eval calls whose eval config sets neither reasoning_effort nor thinking. Null sends nothing. */
+  thinking?: AnthropicThinkingParamOutput | null;
+}
+
 /** ModelProviderList */
 export interface ModelProviderList {
   /**
@@ -8177,6 +8239,14 @@ export interface PutModelProviderCredentials {
    * The vertex AI region to use
    */
   region?: string | null;
+}
+
+/** PutModelProviderEvalDefaults */
+export interface PutModelProviderEvalDefaults {
+  /** Reasoning effort sent on LLM eval calls whose eval config sets neither reasoning_effort nor thinking. Skipped for models that don't accept the value. Null sends nothing. */
+  reasoning_effort?: ReasoningEffortEnum | null;
+  /** Thinking setting sent on LLM eval calls whose eval config sets neither reasoning_effort nor thinking, e.g. {'type': 'disabled'} to turn Claude thinking off. Skipped for models that don't accept it. Null sends nothing. */
+  thinking?: AnthropicThinkingParamInput | null;
 }
 
 /** PutModelProviderWhitelist */
@@ -10752,6 +10822,10 @@ export type SetModelProviderApiV1ModelProvidersProviderPutData = any;
 
 export type SetModelProviderApiV1ModelProvidersProviderPutError = HTTPValidationError;
 
+export type SetModelProviderEvalDefaultsApiV1ModelProvidersProviderEvalDefaultsPutData = any;
+
+export type SetModelProviderEvalDefaultsApiV1ModelProvidersProviderEvalDefaultsPutError = HTTPValidationError;
+
 export type SetModelProviderWhitelistApiV1ModelProvidersProviderModelWhitelistPutData = any;
 
 export type SetModelProviderWhitelistApiV1ModelProvidersProviderModelWhitelistPutError = HTTPValidationError;
@@ -12571,6 +12645,11 @@ export interface UpdateContinuousEvalRequest {
    * Name of the continuous eval
    */
   name?: string | null;
+  /**
+   * Sample Rate
+   * Fraction of traces to evaluate, in (0, 1]. Omit to leave it unchanged; send null to evaluate every trace.
+   */
+  sample_rate?: number | null;
   /**
    * Transform Id
    * ID of the transform to create the continuous eval for
@@ -15708,6 +15787,27 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Returns the reasoning_effort and thinking settings sent on LLM eval calls to this provider when the eval's own config sets neither. Null fields send nothing.
+     *
+     * @tags Model Providers
+     * @name GetModelProviderEvalDefaultsApiV1ModelProvidersProviderEvalDefaultsGet
+     * @summary Get a provider's default reasoning settings for LLM evals.
+     * @request GET:/api/v1/model_providers/{provider}/eval_defaults
+     * @secure
+     */
+    getModelProviderEvalDefaultsApiV1ModelProvidersProviderEvalDefaultsGet: (provider: ModelProvider, params: RequestParams = {}) =>
+      this.request<
+        GetModelProviderEvalDefaultsApiV1ModelProvidersProviderEvalDefaultsGetData,
+        GetModelProviderEvalDefaultsApiV1ModelProvidersProviderEvalDefaultsGetError
+      >({
+        path: `/api/v1/model_providers/${provider}/eval_defaults`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Shows all model providers and if they're enabled.
      *
      * @tags Model Providers
@@ -17298,6 +17398,32 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         secure: true,
         type: ContentType.Json,
         format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Sets the reasoning_effort and thinking settings sent on LLM eval calls to this provider when the eval's own config sets neither. An eval that sets either one gets neither default. A default is skipped for models that don't accept it. Applies to LLM evals only, not to prompts. Send nulls to clear.
+     *
+     * @tags Model Providers
+     * @name SetModelProviderEvalDefaultsApiV1ModelProvidersProviderEvalDefaultsPut
+     * @summary Set a provider's default reasoning settings for LLM evals.
+     * @request PUT:/api/v1/model_providers/{provider}/eval_defaults
+     * @secure
+     */
+    setModelProviderEvalDefaultsApiV1ModelProvidersProviderEvalDefaultsPut: (
+      provider: ModelProvider,
+      data: PutModelProviderEvalDefaults,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        SetModelProviderEvalDefaultsApiV1ModelProvidersProviderEvalDefaultsPutData,
+        SetModelProviderEvalDefaultsApiV1ModelProvidersProviderEvalDefaultsPutError
+      >({
+        path: `/api/v1/model_providers/${provider}/eval_defaults`,
+        method: "PUT",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
         ...params,
       }),
 

@@ -50,8 +50,9 @@ class DatabaseSecretStorage(Base):
         default=None,
         nullable=True,
     )
-    # Reasoning settings applied to LLM eval calls whose eval config leaves them
-    # unset. NULL sends nothing extra.
+    # Non-secret provider setting, kept here beside model_whitelist because each
+    # provider is a row in this table. Reasoning settings applied to LLM eval
+    # calls whose eval config leaves them unset. NULL sends nothing extra.
     llm_eval_defaults: Mapped[Optional[Dict[str, Any]]] = mapped_column(
         JSON,
         default=None,

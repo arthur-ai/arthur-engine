@@ -17,6 +17,8 @@ import { isAxiosError } from "axios";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useEvaluatorTemplates } from "./hooks/useEvaluatorTemplates";
+import { applyReasoningSettings, EMPTY_REASONING_SETTINGS, reasoningSettingsError, reasoningSettingsFromConfig } from "./reasoningSettings";
+import ReasoningSettingsFields from "./ReasoningSettingsFields";
 import { EvalFormModalProps } from "./types";
 
 import { useApi } from "@/hooks/useApi";
@@ -31,6 +33,9 @@ const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormM
   const [instructions, setInstructions] = useState("");
   const [modelProvider, setModelProvider] = useState<ModelProvider | "">("");
   const [modelName, setModelName] = useState("");
+  const [reasoning, setReasoning] = useState(EMPTY_REASONING_SETTINGS);
+  // Config of the existing eval picked from the name list, carried into the new version.
+  const [baseConfig, setBaseConfig] = useState<Eval["config"]>(null);
   const [error, setError] = useState<string | null>(null);
   const [enabledProviders, setEnabledProviders] = useState<ModelProvider[]>([]);
   const [availableModels, setAvailableModels] = useState<Map<ModelProvider, string[]>>(new Map());
@@ -161,11 +166,18 @@ const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormM
       return;
     }
 
+    const reasoningError = reasoningSettingsError(reasoning, modelProvider, modelName);
+    if (reasoningError) {
+      setError(reasoningError);
+      return;
+    }
+
     try {
       const data: CreateEvalRequest = {
         instructions: instructions.trim(),
         model_provider: modelProvider as ModelProvider,
         model_name: modelName.trim(),
+        config: applyReasoningSettings(baseConfig, reasoning, modelProvider, modelName),
       };
 
       await onSubmit(evalName.trim(), data);
@@ -175,6 +187,8 @@ const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormM
       setInstructions("");
       setModelProvider(enabledProviders.length > 0 ? enabledProviders[0] : "");
       setModelName("");
+      setReasoning(EMPTY_REASONING_SETTINGS);
+      setBaseConfig(null);
       setError(null);
     } catch (err: unknown) {
       console.error("Failed to create eval:", err);
@@ -201,6 +215,8 @@ const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormM
       setInstructions("");
       setModelProvider(enabledProviders.length > 0 ? enabledProviders[0] : "");
       setModelName("");
+      setReasoning(EMPTY_REASONING_SETTINGS);
+      setBaseConfig(null);
       setError(null);
       onClose();
     }
@@ -237,6 +253,8 @@ const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormM
         setInstructions(evalData.instructions ?? "");
         setModelProvider(evalData.model_provider ?? "");
         setModelName(evalData.model_name ?? "");
+        setReasoning(reasoningSettingsFromConfig(evalData.config));
+        setBaseConfig(evalData.config ?? null);
       } catch (error) {
         console.error("Failed to fetch latest eval version:", error);
         // Don't show error to user, just fail silently
@@ -288,6 +306,8 @@ const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormM
         setInstructions("");
         setModelProvider(enabledProviders.length > 0 ? enabledProviders[0] : "");
         setModelName("");
+        setReasoning(EMPTY_REASONING_SETTINGS);
+        setBaseConfig(null);
         prevEvalNameRef.current = "";
         return;
       }
@@ -454,6 +474,8 @@ const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormM
                 />
               </FormControl>
             </Box>
+
+            <ReasoningSettingsFields value={reasoning} onChange={setReasoning} provider={modelProvider} modelName={modelName} disabled={isLoading} />
 
             {error && (
               <Alert severity="error" onClose={() => setError(null)}>

@@ -14,8 +14,11 @@ import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { applyReasoningSettings, reasoningSettingsError, reasoningSettingsFromConfig } from "./reasoningSettings";
+import ReasoningSettingsFields from "./ReasoningSettingsFields";
+
 import { useApi } from "@/hooks/useApi";
-import type { CreateEvalRequest, ModelProvider, ModelProviderResponse } from "@/lib/api-client/api-client";
+import type { CreateEvalRequest, Eval, ModelProvider, ModelProviderResponse } from "@/lib/api-client/api-client";
 
 interface EvalEditModalProps {
   open: boolean;
@@ -26,6 +29,8 @@ interface EvalEditModalProps {
   initialInstructions: string;
   initialModelProvider: ModelProvider;
   initialModelName: string;
+  // The eval's saved config. Its other settings are carried into the new version.
+  initialConfig?: Eval["config"];
 }
 
 const EvalEditModal = ({
@@ -37,11 +42,13 @@ const EvalEditModal = ({
   initialInstructions,
   initialModelProvider,
   initialModelName,
+  initialConfig,
 }: EvalEditModalProps) => {
   const apiClient = useApi();
   const [instructions, setInstructions] = useState(initialInstructions);
   const [modelProvider, setModelProvider] = useState<ModelProvider | "">(initialModelProvider);
   const [modelName, setModelName] = useState(initialModelName);
+  const [reasoning, setReasoning] = useState(() => reasoningSettingsFromConfig(initialConfig));
   const [error, setError] = useState<string | null>(null);
   const [enabledProviders, setEnabledProviders] = useState<ModelProvider[]>([]);
   const [availableModels, setAvailableModels] = useState<Map<ModelProvider, string[]>>(new Map());
@@ -53,7 +60,8 @@ const EvalEditModal = ({
     setInstructions(initialInstructions);
     setModelProvider(initialModelProvider);
     setModelName(initialModelName);
-  }, [initialInstructions, initialModelProvider, initialModelName]);
+    setReasoning(reasoningSettingsFromConfig(initialConfig));
+  }, [initialInstructions, initialModelProvider, initialModelName, initialConfig]);
 
   const fetchProviders = useCallback(async () => {
     if (hasFetchedProviders.current) {
@@ -143,11 +151,18 @@ const EvalEditModal = ({
       return;
     }
 
+    const reasoningError = reasoningSettingsError(reasoning, modelProvider, modelName);
+    if (reasoningError) {
+      setError(reasoningError);
+      return;
+    }
+
     try {
       const data: CreateEvalRequest = {
         instructions: instructions.trim(),
         model_provider: modelProvider as ModelProvider,
         model_name: modelName.trim(),
+        config: applyReasoningSettings(initialConfig, reasoning, modelProvider, modelName),
       };
 
       await onSubmit(data);
@@ -156,6 +171,7 @@ const EvalEditModal = ({
       setInstructions(initialInstructions);
       setModelProvider(initialModelProvider);
       setModelName(initialModelName);
+      setReasoning(reasoningSettingsFromConfig(initialConfig));
       setError(null);
     } catch (err) {
       console.error("Failed to update eval:", err);
@@ -185,6 +201,7 @@ const EvalEditModal = ({
       setInstructions(initialInstructions);
       setModelProvider(initialModelProvider);
       setModelName(initialModelName);
+      setReasoning(reasoningSettingsFromConfig(initialConfig));
       setError(null);
       onClose();
     }
@@ -300,6 +317,8 @@ const EvalEditModal = ({
                 />
               </FormControl>
             </Box>
+
+            <ReasoningSettingsFields value={reasoning} onChange={setReasoning} provider={modelProvider} modelName={modelName} disabled={isLoading} />
 
             {error && (
               <Alert severity="error" onClose={() => setError(null)}>
