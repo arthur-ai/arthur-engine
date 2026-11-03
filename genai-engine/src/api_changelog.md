@@ -12,7 +12,6 @@ The intention of this changelog is to document API changes as they happen to eff
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/tags  added the optional property `created_by` to the response with the `200` status
 - **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions  added the optional property `versions/items/created_by` to the response with the `200` status
 - **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions/{version_id}  added the optional property `created_by` to the response with the `200` status
-- **CHANGE** for **URL**: /api/v2/inferences/overview  the `task_ids` request property's maxItems was unset from `1000`
 # 11/03/2026
 - **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property '/items/creation_source/anyOf[subschema #1: AgentCreationSource]/oneOf[subschema #1: GCPAgentCreationSource]/observations/occurrences' to the response with the '200' status
 - **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property '/items/creation_source/anyOf[subschema #1: AgentCreationSource]/oneOf[subschema #2: OTELAgentCreationSource]/observations/occurrences' to the response with the '200' status
