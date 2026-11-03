@@ -1,9 +1,8 @@
-import uuid
 from datetime import datetime, timedelta
 from typing import Any, Optional
 
 from arthur_common.models.enums import AgenticAnnotationType, ContinuousEvalRunStatus
-from sqlalchemy import and_, case, func, or_
+from sqlalchemy import case, func, or_
 from sqlalchemy.orm import Session
 
 from db_models.agentic_annotation_models import DatabaseAgenticAnnotation

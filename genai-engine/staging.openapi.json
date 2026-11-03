@@ -16955,8 +16955,7 @@
                             "anyOf": [
                                 {
                                     "type": "number",
-                                    "maximum": 1.0,
-                                    "exclusiveMinimum": 0.0
+                                    "maximum": 1.0
                                 },
                                 {
                                     "type": "null"

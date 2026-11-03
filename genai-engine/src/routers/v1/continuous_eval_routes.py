@@ -35,6 +35,7 @@ from schemas.request_schemas import (
     ContinuousEvalRunResultsListFilterRequest,
     CreateTestRunRequest,
     UpdateContinuousEvalRequest,
+    validate_sample_rate,
 )
 from schemas.response_schemas import (
     AgenticAnnotationAnalyticsResponse,
@@ -690,10 +691,11 @@ def estimate_continuous_eval_spend(
     sample_rate: Annotated[
         Optional[float],
         Query(
-            gt=0.0,
             le=1.0,
             description="Fraction of traces to evaluate, in (0, 1]. Omit to evaluate every trace.",
         ),
+        # Not Query(gt=0): see validate_sample_rate.
+        AfterValidator(validate_sample_rate),
     ] = None,
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),

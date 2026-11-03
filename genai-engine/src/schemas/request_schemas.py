@@ -1172,7 +1172,7 @@ class ContinuousEvalTransformVariableMappingRequest(BaseModel):
     eval_variable: str = Field(description="Name of the eval variable")
 
 
-def _validate_sample_rate(value: Optional[float]) -> Optional[float]:
+def validate_sample_rate(value: Optional[float]) -> Optional[float]:
     # Checked here rather than with Field(gt=0): an exclusive bound renders as a
     # numeric exclusiveMinimum, which oasdiff (generate_changelog) can't parse.
     if value is not None and value <= 0.0:
@@ -1180,7 +1180,7 @@ def _validate_sample_rate(value: Optional[float]) -> Optional[float]:
     return value
 
 
-SampleRate = Annotated[Optional[float], AfterValidator(_validate_sample_rate)]
+SampleRate = Annotated[Optional[float], AfterValidator(validate_sample_rate)]
 
 
 class ContinuousEvalCreateRequest(BaseModel):
