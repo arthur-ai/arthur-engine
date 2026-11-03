@@ -16861,6 +16861,136 @@
                 }
             }
         },
+        "/api/v1/continuous_evals/{eval_id}/spend": {
+            "get": {
+                "tags": [
+                    "Continuous Evals"
+                ],
+                "summary": "Get recent and estimated daily spend for a continuous eval",
+                "description": "Returns the number and total cost of the eval's live runs in the last 24 hours, and an estimated daily cost: the task's traces per day over the last 7 days, times the eval's sample rate, times the average cost of its live runs that called the LLM (passed or failed) over the last 7 days. Test runs are not counted.",
+                "operationId": "get_continuous_eval_spend_api_v1_continuous_evals__eval_id__spend_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "eval_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Continuous Eval ID",
+                            "description": "The id of the continuous eval."
+                        },
+                        "description": "The id of the continuous eval."
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ContinuousEvalSpendResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/tasks/{task_id}/continuous_evals/spend_estimate": {
+            "get": {
+                "tags": [
+                    "Continuous Evals"
+                ],
+                "summary": "Estimate the daily spend of a new continuous eval",
+                "description": "Estimates the daily cost of a continuous eval that would run the given evaluator at the given sample rate: the task's traces per day over the last 7 days, times the sample rate, times the average cost of the live runs that called the LLM (passed or failed) over the last 7 days of the task's continuous evals using that evaluator.",
+                "operationId": "estimate_continuous_eval_spend_api_v1_tasks__task_id__continuous_evals_spend_estimate_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Task Id"
+                        }
+                    },
+                    {
+                        "name": "llm_eval_name",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "Name of the evaluator the continuous eval would run.",
+                            "title": "Llm Eval Name"
+                        },
+                        "description": "Name of the evaluator the continuous eval would run."
+                    },
+                    {
+                        "name": "sample_rate",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "number",
+                                    "maximum": 1.0
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Fraction of traces to evaluate, in (0, 1]. Omit to evaluate every trace.",
+                            "title": "Sample Rate"
+                        },
+                        "description": "Fraction of traces to evaluate, in (0, 1]. Omit to evaluate every trace."
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ContinuousEvalDailySpendEstimate"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/continuous_evals/{eval_id}/test_runs": {
             "post": {
                 "tags": [
@@ -21187,6 +21317,80 @@
                 "title": "ContinuousEvalCreateRequest",
                 "description": "Request schema for creating a continuous eval"
             },
+            "ContinuousEvalDailySpendEstimate": {
+                "properties": {
+                    "window_days": {
+                        "type": "integer",
+                        "title": "Window Days",
+                        "description": "Number of trailing days the traffic and the average run cost are measured over."
+                    },
+                    "trace_count": {
+                        "type": "integer",
+                        "title": "Trace Count",
+                        "description": "Traces the task received in the window, not counting agent experiment traces."
+                    },
+                    "traces_per_day": {
+                        "type": "number",
+                        "title": "Traces Per Day",
+                        "description": "trace_count divided by window_days."
+                    },
+                    "sample_rate": {
+                        "type": "number",
+                        "title": "Sample Rate",
+                        "description": "Fraction of traces the eval runs on. 1.0 when the eval has no sample rate set."
+                    },
+                    "run_count": {
+                        "type": "integer",
+                        "title": "Run Count",
+                        "description": "Live runs in the window that called the LLM (passed or failed), which the average is taken over."
+                    },
+                    "average_run_cost": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Average Run Cost",
+                        "description": "Mean cost of those runs. Null when there are none."
+                    },
+                    "estimated_daily_cost": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Estimated Daily Cost",
+                        "description": "Projected cost per day. Null when it cannot be estimated; unavailable_reason says why."
+                    },
+                    "unavailable_reason": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/SpendEstimateUnavailableReason"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Set when estimated_daily_cost is null: no_traces when the task received no traces in the window, no_runs when the evaluator has no live runs that called the LLM in the window."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "window_days",
+                    "trace_count",
+                    "traces_per_day",
+                    "sample_rate",
+                    "run_count"
+                ],
+                "title": "ContinuousEvalDailySpendEstimate",
+                "description": "Projected daily cost of a continuous eval at the task's recent traffic.\n\nestimated_daily_cost = traces_per_day * sample_rate * average_run_cost"
+            },
             "ContinuousEvalRerunResponse": {
                 "properties": {
                     "run_id": {
@@ -21348,6 +21552,39 @@
                     "error"
                 ],
                 "title": "ContinuousEvalRunStatus"
+            },
+            "ContinuousEvalSpendResponse": {
+                "properties": {
+                    "continuous_eval_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Continuous Eval Id",
+                        "description": "ID of the continuous eval."
+                    },
+                    "last_24h_run_count": {
+                        "type": "integer",
+                        "title": "Last 24H Run Count",
+                        "description": "Live runs created in the last 24 hours, in any status."
+                    },
+                    "last_24h_cost": {
+                        "type": "number",
+                        "title": "Last 24H Cost",
+                        "description": "Total cost of the live runs created in the last 24 hours."
+                    },
+                    "estimate": {
+                        "$ref": "#/components/schemas/ContinuousEvalDailySpendEstimate",
+                        "description": "Projected daily cost at the current sample rate."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "continuous_eval_id",
+                    "last_24h_run_count",
+                    "last_24h_cost",
+                    "estimate"
+                ],
+                "title": "ContinuousEvalSpendResponse",
+                "description": "Recent and projected spend of one continuous eval."
             },
             "ContinuousEvalTestRunResponse": {
                 "properties": {
@@ -32770,6 +33007,15 @@
                     "raw_data"
                 ],
                 "title": "SpanWithMetricsResponse"
+            },
+            "SpendEstimateUnavailableReason": {
+                "type": "string",
+                "enum": [
+                    "no_traces",
+                    "no_runs"
+                ],
+                "title": "SpendEstimateUnavailableReason",
+                "description": "Why a continuous eval daily spend estimate could not be computed."
             },
             "StatusCodeEnum": {
                 "type": "string",

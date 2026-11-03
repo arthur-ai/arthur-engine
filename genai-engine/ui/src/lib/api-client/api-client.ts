@@ -1639,6 +1639,52 @@ export interface ContinuousEvalCreateRequest {
  */
 export type ContinuousEvalCreateRequestEvalTypeEnum = "llm_eval" | "ml_eval";
 
+/**
+ * ContinuousEvalDailySpendEstimate
+ * Projected daily cost of a continuous eval at the task's recent traffic.
+ *
+ * estimated_daily_cost = traces_per_day * sample_rate * average_run_cost
+ */
+export interface ContinuousEvalDailySpendEstimate {
+  /**
+   * Average Run Cost
+   * Mean cost of those runs. Null when there are none.
+   */
+  average_run_cost?: number | null;
+  /**
+   * Estimated Daily Cost
+   * Projected cost per day. Null when it cannot be estimated; unavailable_reason says why.
+   */
+  estimated_daily_cost?: number | null;
+  /**
+   * Run Count
+   * Live runs in the window that called the LLM (passed or failed), which the average is taken over.
+   */
+  run_count: number;
+  /**
+   * Sample Rate
+   * Fraction of traces the eval runs on. 1.0 when the eval has no sample rate set.
+   */
+  sample_rate: number;
+  /**
+   * Trace Count
+   * Traces the task received in the window, not counting agent experiment traces.
+   */
+  trace_count: number;
+  /**
+   * Traces Per Day
+   * trace_count divided by window_days.
+   */
+  traces_per_day: number;
+  /** Set when estimated_daily_cost is null: no_traces when the task received no traces in the window, no_runs when the evaluator has no live runs that called the LLM in the window. */
+  unavailable_reason?: SpendEstimateUnavailableReason | null;
+  /**
+   * Window Days
+   * Number of trailing days the traffic and the average run cost are measured over.
+   */
+  window_days: number;
+}
+
 /** ContinuousEvalRerunResponse */
 export interface ContinuousEvalRerunResponse {
   /**
@@ -1743,6 +1789,31 @@ export interface ContinuousEvalResponse {
 
 /** ContinuousEvalRunStatus */
 export type ContinuousEvalRunStatus = "pending" | "passed" | "running" | "failed" | "skipped" | "error";
+
+/**
+ * ContinuousEvalSpendResponse
+ * Recent and projected spend of one continuous eval.
+ */
+export interface ContinuousEvalSpendResponse {
+  /**
+   * Last 24H Cost
+   * Total cost of the live runs created in the last 24 hours.
+   */
+  last_24h_cost: number;
+  /**
+   * Last 24H Run Count
+   * Live runs created in the last 24 hours, in any status.
+   */
+  last_24h_run_count: number;
+  /**
+   * Continuous Eval Id
+   * ID of the continuous eval.
+   * @format uuid
+   */
+  continuous_eval_id: string;
+  /** Projected daily cost at the current sample rate. */
+  estimate: ContinuousEvalDailySpendEstimate;
+}
 
 /** ContinuousEvalTestRunResponse */
 export interface ContinuousEvalTestRunResponse {
@@ -2767,6 +2838,28 @@ export interface EnrichedTaskResponse {
   updated_at: string;
 }
 
+export type EstimateContinuousEvalSpendApiV1TasksTaskIdContinuousEvalsSpendEstimateGetData = ContinuousEvalDailySpendEstimate;
+
+export type EstimateContinuousEvalSpendApiV1TasksTaskIdContinuousEvalsSpendEstimateGetError = HTTPValidationError;
+
+export interface EstimateContinuousEvalSpendApiV1TasksTaskIdContinuousEvalsSpendEstimateGetParams {
+  /**
+   * Llm Eval Name
+   * Name of the evaluator the continuous eval would run.
+   */
+  llm_eval_name: string;
+  /**
+   * Sample Rate
+   * Fraction of traces to evaluate, in (0, 1]. Omit to evaluate every trace.
+   */
+  sample_rate?: number | null;
+  /**
+   * Task Id
+   * @format uuid
+   */
+  taskId: string;
+}
+
 /** Eval */
 export interface Eval {
   /**
@@ -3767,6 +3860,10 @@ export type GetConfigurationApiV2ConfigurationGetData = ApplicationConfiguration
 export type GetContinuousEvalByIdApiV1ContinuousEvalsEvalIdGetData = ContinuousEvalResponse;
 
 export type GetContinuousEvalByIdApiV1ContinuousEvalsEvalIdGetError = HTTPValidationError;
+
+export type GetContinuousEvalSpendApiV1ContinuousEvalsEvalIdSpendGetData = ContinuousEvalSpendResponse;
+
+export type GetContinuousEvalSpendApiV1ContinuousEvalsEvalIdSpendGetError = HTTPValidationError;
 
 export type GetContinuousEvalVariablesAndMappingsApiV1TasksTaskIdContinuousEvalsTransformsTransformIdLlmEvalsEvalNameVersionsEvalVersionVariablesGetData =
   ContinuousEvalVariableMappingResponse;
@@ -11155,6 +11252,12 @@ export interface SpanWithMetricsResponse {
   user_id?: string | null;
 }
 
+/**
+ * SpendEstimateUnavailableReason
+ * Why a continuous eval daily spend estimate could not be computed.
+ */
+export type SpendEstimateUnavailableReason = "no_traces" | "no_runs";
+
 export type StatelessValidateApiV2ValidatePostData = BuiltinValidationResponse;
 
 export type StatelessValidateApiV2ValidatePostError = HTTPValidationError;
@@ -14979,6 +15082,31 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Estimates the daily cost of a continuous eval that would run the given evaluator at the given sample rate: the task's traces per day over the last 7 days, times the sample rate, times the average cost of the live runs that called the LLM (passed or failed) over the last 7 days of the task's continuous evals using that evaluator.
+     *
+     * @tags Continuous Evals
+     * @name EstimateContinuousEvalSpendApiV1TasksTaskIdContinuousEvalsSpendEstimateGet
+     * @summary Estimate the daily spend of a new continuous eval
+     * @request GET:/api/v1/tasks/{task_id}/continuous_evals/spend_estimate
+     * @secure
+     */
+    estimateContinuousEvalSpendApiV1TasksTaskIdContinuousEvalsSpendEstimateGet: (
+      { taskId, ...query }: EstimateContinuousEvalSpendApiV1TasksTaskIdContinuousEvalsSpendEstimateGetParams,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        EstimateContinuousEvalSpendApiV1TasksTaskIdContinuousEvalsSpendEstimateGetData,
+        EstimateContinuousEvalSpendApiV1TasksTaskIdContinuousEvalsSpendEstimateGetError
+      >({
+        path: `/api/v1/tasks/${taskId}/continuous_evals/spend_estimate`,
+        method: "GET",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Execute a RAG provider hybrid (keyword and vector similarity) search.
      *
      * @tags RAG Providers
@@ -15480,6 +15608,24 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     getContinuousEvalByIdApiV1ContinuousEvalsEvalIdGet: (evalId: string, params: RequestParams = {}) =>
       this.request<GetContinuousEvalByIdApiV1ContinuousEvalsEvalIdGetData, GetContinuousEvalByIdApiV1ContinuousEvalsEvalIdGetError>({
         path: `/api/v1/continuous_evals/${evalId}`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Returns the number and total cost of the eval's live runs in the last 24 hours, and an estimated daily cost: the task's traces per day over the last 7 days, times the eval's sample rate, times the average cost of its live runs that called the LLM (passed or failed) over the last 7 days. Test runs are not counted.
+     *
+     * @tags Continuous Evals
+     * @name GetContinuousEvalSpendApiV1ContinuousEvalsEvalIdSpendGet
+     * @summary Get recent and estimated daily spend for a continuous eval
+     * @request GET:/api/v1/continuous_evals/{eval_id}/spend
+     * @secure
+     */
+    getContinuousEvalSpendApiV1ContinuousEvalsEvalIdSpendGet: (evalId: string, params: RequestParams = {}) =>
+      this.request<GetContinuousEvalSpendApiV1ContinuousEvalsEvalIdSpendGetData, GetContinuousEvalSpendApiV1ContinuousEvalsEvalIdSpendGetError>({
+        path: `/api/v1/continuous_evals/${evalId}/spend`,
         method: "GET",
         secure: true,
         format: "json",
