@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-import { SpendCards, SpendEstimateText } from ".";
+import { ContinuousEvalSpendCards, SpendCards, SpendEstimateLine, SpendEstimateText } from ".";
 
 import type { ContinuousEvalDailySpendEstimate, ContinuousEvalSpendResponse } from "@/lib/api-client/api-client";
 
@@ -22,6 +22,19 @@ const spend: ContinuousEvalSpendResponse = {
   last_24h_cost: 0.06,
   estimate,
 };
+
+// Hoisted so the mock factory, which vitest lifts above the imports, can close over it.
+// The shape a partial-match replay returned for /spend and /spend_estimate.
+const malformed = vi.hoisted(() => ({ count: 3, page: 0, results: [] }));
+
+vi.mock("../../hooks/useContinuousEvalSpend", () => ({
+  useContinuousEvalSpend: () => ({ data: malformed, isLoading: false }),
+  useContinuousEvalSpendEstimate: () => ({ data: malformed, isFetching: false }),
+}));
+
+vi.mock("@/contexts/DisplaySettingsContext", () => ({
+  useDisplaySettings: () => ({ defaultCurrency: "USD" }),
+}));
 
 describe("SpendCards", () => {
   it("shows the last 24 hours and the daily estimate with its formula", () => {
@@ -72,5 +85,19 @@ describe("SpendEstimateText", () => {
     );
 
     expect(screen.getByText("No cost estimate yet. No traces in the last 7 days.")).toBeTruthy();
+  });
+});
+
+describe("malformed spend responses", () => {
+  it("renders no spend cards", () => {
+    const { container } = render(<ContinuousEvalSpendCards evalId="22222222-2222-4222-8222-222222222222" />);
+
+    expect(container.innerHTML).toBe("");
+  });
+
+  it("renders no estimate line", () => {
+    const { container } = render(<SpendEstimateLine taskId="task" llmEvalName="evaluator" samplePercent="50" />);
+
+    expect(container.innerHTML).toBe("");
   });
 });

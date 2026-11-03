@@ -6,7 +6,7 @@ import { StatCard } from "../../[evalId]/StatCard";
 import { useContinuousEvalSpend, useContinuousEvalSpendEstimate } from "../../hooks/useContinuousEvalSpend";
 import { percentToSampleRate, samplePercentSchema } from "../sample-rate";
 
-import { describeEstimateFormula, describeUnavailableEstimate, formatSpend } from "./spend";
+import { describeEstimateFormula, describeUnavailableEstimate, formatSpend, isSpendEstimate, isSpendResponse } from "./spend";
 
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
@@ -51,8 +51,8 @@ export const ContinuousEvalSpendCards = ({ evalId }: { evalId: string }) => {
       </Stack>
     );
   }
-  // Spend is supplementary: if it fails to load, the rest of the page still works.
-  if (!spend) return null;
+  // Spend is supplementary: if it fails to load or comes back malformed, the rest of the page still works.
+  if (!isSpendResponse(spend)) return null;
 
   return <SpendCards spend={spend} currency={defaultCurrency} />;
 };
@@ -95,5 +95,6 @@ export const SpendEstimateLine = ({ taskId, llmEvalName, samplePercent }: SpendE
   if (!estimate) {
     return isFetching ? <Skeleton variant="text" width={360} /> : null;
   }
+  if (!isSpendEstimate(estimate)) return null;
   return <SpendEstimateText estimate={estimate} currency={defaultCurrency} />;
 };
