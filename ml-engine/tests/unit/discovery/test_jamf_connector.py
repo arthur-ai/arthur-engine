@@ -1106,13 +1106,14 @@ def test_a_container_reports_no_version_and_no_path(
 @pytest.mark.parametrize(
     "kind,ident,loc,ver,install_path,version",
     [
-        # queries/jetbrains.sql: `loc` is the plugin's directory or jar, `ver` its version
+        # queries/jetbrains.sql: `loc` is the plugin's directory or jar, `ver` its version.
+        # The record writes the home directory as `~`, so no username travels in it.
         (
             "jbplugin",
             "example",
             "/Users/u/Library/Application Support/JetBrains/IntelliJIdea2025.2/plugins/example",
             "3.2.1",
-            "/Users/u/Library/Application Support/JetBrains/IntelliJIdea2025.2/plugins/example",
+            "~/Library/Application Support/JetBrains/IntelliJIdea2025.2/plugins/example",
             "3.2.1",
         ),
         # queries/running.sql: `loc` is the process executable, which for an npm agent
@@ -1741,6 +1742,10 @@ def test_the_record_schema_has_no_field_for_what_is_never_collected() -> None:
     }
     assert set(AgentObservations.model_fields) == {
         "install_path",
+        # each row that proved the record, as its kind, path and version: what
+        # `install_path` and `version` already carry for one row, with the home directory
+        # written as `~` the same way. Empty until the connector fills it.
+        "occurrences",
         "version",
         # kept across reports by GenAI Engine; a connector never fills it
         "previous_version",
