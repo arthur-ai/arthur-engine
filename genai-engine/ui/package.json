@@ -23,7 +23,7 @@
     "generate-api:clean": "rm -rf src/lib/api-client && yarn generate-api"
   },
   "dependencies": {
-    "@amplitude/analytics-browser": "2.48.1",
+    "@amplitude/analytics-browser": "2.49.0",
     "@amplitude/experiment-js-client": "^1.21.1",
     "@amplitude/plugin-session-replay-browser": "^1.33.6",
     "@arizeai/openinference-semantic-conventions": "2.15.0",
