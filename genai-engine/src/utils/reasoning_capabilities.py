@@ -18,8 +18,8 @@ is Claude: on Gemini litellm maps it to whether thoughts are returned, not to
 whether the model thinks.
 
 A model missing from litellm's cost map (an Azure deployment name, a vLLM
-model) is unknown: nothing is said about it and every setting is sent as
-configured.
+model) is unknown: nothing is said about it, an eval's own setting is sent as
+configured, and the provider eval defaults are not applied.
 """
 
 from dataclasses import dataclass

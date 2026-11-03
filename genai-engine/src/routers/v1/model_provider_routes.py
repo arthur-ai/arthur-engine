@@ -286,7 +286,9 @@ def get_model_provider_eval_defaults(
         "either one gets neither default. A default is skipped for models that don't "
         "accept it, and thinking 'disabled' or reasoning_effort 'none' is skipped for "
         "models that always think (e.g. Claude Sonnet 5.5), where it would have no "
-        "effect. Applies to LLM evals only, not to prompts. Send nulls to clear."
+        "effect. Both defaults are skipped for models litellm doesn't know (e.g. Azure "
+        "deployment names). Applies to LLM evals only, not to prompts. Send nulls to "
+        "clear."
     ),
     tags=["Model Providers"],
     status_code=HTTP_204_NO_CONTENT,
