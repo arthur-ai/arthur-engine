@@ -51,6 +51,7 @@ from schemas.enums import (
     TaskAnalyticsBucketSize,
 )
 from utils.constants import ALLOWED_TRACE_RETENTION_DAYS
+from utils.thinking_capabilities import always_on_thinking_error
 
 
 class DocumentStorageConfigurationUpdateRequest(BaseModel):
@@ -891,6 +892,19 @@ class CreateEvalRequest(BaseModel):
         default=None,
         description="LLM configurations for this eval (e.g. temperature, max_tokens, etc.)",
     )
+
+    @model_validator(mode="after")
+    def validate_reasoning_takes_effect(self) -> "CreateEvalRequest":
+        if self.config is not None:
+            error = always_on_thinking_error(
+                self.model_provider,
+                self.model_name,
+                self.config.reasoning_effort,
+                self.config.thinking,
+            )
+            if error:
+                raise ValueError(error)
+        return self
 
 
 class PIIEvalConfig(BaseModel):

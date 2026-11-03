@@ -281,7 +281,9 @@ def get_model_provider_eval_defaults(
         "Sets the reasoning_effort and thinking settings sent on LLM eval calls to "
         "this provider when the eval's own config sets neither. An eval that sets "
         "either one gets neither default. A default is skipped for models that don't "
-        "accept it. Applies to LLM evals only, not to prompts. Send nulls to clear."
+        "accept it, and thinking 'disabled' or reasoning_effort 'none' is skipped for "
+        "models that always think (e.g. Claude Sonnet 5.5), where it would have no "
+        "effect. Applies to LLM evals only, not to prompts. Send nulls to clear."
     ),
     tags=["Model Providers"],
     status_code=HTTP_204_NO_CONTENT,

@@ -79,3 +79,17 @@ describe("reasoningSettingsError", () => {
     expect(reasoningSettingsError({ ...on, budgetTokens: "" }, "openai", "gpt-5-mini")).toBeNull();
   });
 });
+
+describe("always-thinking models", () => {
+  it("rejects turning thinking off where the model always thinks", () => {
+    const off = { ...EMPTY_REASONING_SETTINGS, thinkingMode: "disabled" as const };
+    const none = { ...EMPTY_REASONING_SETTINGS, reasoningEffort: "none" as const };
+    expect(reasoningSettingsError(off, "anthropic", "claude-sonnet-5-5")).toMatch(/can't be turned off/);
+    expect(reasoningSettingsError(none, "anthropic", "claude-opus-5-5")).toMatch(/can't be turned off/);
+    expect(reasoningSettingsError(off, "bedrock", "us.anthropic.claude-fable-5-1")).toMatch(/can't be turned off/);
+    expect(reasoningSettingsError(off, "vertex_ai", "claude-opus-5-5@default")).toMatch(/can't be turned off/);
+    // Low takes effect there, and off still works on other Claude models.
+    expect(reasoningSettingsError({ ...EMPTY_REASONING_SETTINGS, reasoningEffort: "low" }, "anthropic", "claude-sonnet-5-5")).toBeNull();
+    expect(reasoningSettingsError(off, "anthropic", "claude-haiku-4-5")).toBeNull();
+  });
+});

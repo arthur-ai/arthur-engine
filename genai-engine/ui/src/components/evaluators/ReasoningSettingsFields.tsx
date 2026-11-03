@@ -1,3 +1,4 @@
+import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import FormControl from "@mui/material/FormControl";
 import FormLabel from "@mui/material/FormLabel";
@@ -5,9 +6,9 @@ import MenuItem from "@mui/material/MenuItem";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 
-import { reasoningSettingsError, type ReasoningSettings, type ThinkingMode } from "./reasoningSettings";
+import { ALWAYS_THINKING_HINT, reasoningSettingsError, type ReasoningSettings, type ThinkingMode } from "./reasoningSettings";
 
-import { MIN_THINKING_BUDGET_TOKENS, REASONING_EFFORT_OPTIONS, takesThinking } from "@/constants/reasoning";
+import { MIN_THINKING_BUDGET_TOKENS, REASONING_EFFORT_OPTIONS, takesThinking, thinkingAlwaysOn } from "@/constants/reasoning";
 import type { ModelProvider, ReasoningEffortEnum } from "@/lib/api-client/api-client";
 
 // "default" means the same as leaving the setting unset, and litellm rejects it
@@ -32,7 +33,11 @@ interface ReasoningSettingsFieldsProps {
 
 const ReasoningSettingsFields = ({ value, onChange, provider, modelName, disabled = false }: ReasoningSettingsFieldsProps) => {
   const showThinking = takesThinking(provider, modelName);
-  const budgetError = reasoningSettingsError(value, provider, modelName);
+  // On always-thinking models "none" and "Off" are kept visible but disabled, so a
+  // saved eval that has one still shows it, with the error explaining why.
+  const alwaysOn = thinkingAlwaysOn(modelName);
+  const settingsError = reasoningSettingsError(value, provider, modelName);
+  const budgetError = value.thinkingMode === "enabled" && settingsError !== ALWAYS_THINKING_HINT ? settingsError : null;
 
   return (
     <FormControl fullWidth>
@@ -59,7 +64,7 @@ const ReasoningSettingsFields = ({ value, onChange, provider, modelName, disable
             </Typography>
           </MenuItem>
           {EFFORT_CHOICES.map((effort) => (
-            <MenuItem key={effort} value={effort}>
+            <MenuItem key={effort} value={effort} disabled={alwaysOn && effort === "none"}>
               {effort}
             </MenuItem>
           ))}
@@ -82,7 +87,7 @@ const ReasoningSettingsFields = ({ value, onChange, provider, modelName, disable
               </Typography>
             </MenuItem>
             {THINKING_CHOICES.map((choice) => (
-              <MenuItem key={choice.value} value={choice.value}>
+              <MenuItem key={choice.value} value={choice.value} disabled={alwaysOn && choice.value === "disabled"}>
                 {choice.label}
               </MenuItem>
             ))}
@@ -106,8 +111,13 @@ const ReasoningSettingsFields = ({ value, onChange, provider, modelName, disable
       </Box>
       <Typography variant="caption" sx={{ color: "text.secondary", mt: 0.5 }}>
         Leave a setting on {UNSET_LABEL.toLowerCase()} to use the model provider&apos;s default for evals, or the model&apos;s own default if the
-        provider has none.{showThinking ? " Thinking off turns extended thinking off explicitly." : ""}
+        provider has none.{showThinking && !alwaysOn ? " Thinking off turns extended thinking off explicitly." : ""}
       </Typography>
+      {alwaysOn && (
+        <Alert severity={settingsError === ALWAYS_THINKING_HINT ? "error" : "info"} sx={{ mt: 1 }}>
+          {ALWAYS_THINKING_HINT}
+        </Alert>
+      )}
     </FormControl>
   );
 };

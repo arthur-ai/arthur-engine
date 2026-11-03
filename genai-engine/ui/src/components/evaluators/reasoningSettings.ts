@@ -1,4 +1,4 @@
-import { MIN_THINKING_BUDGET_TOKENS, takesThinking } from "@/constants/reasoning";
+import { MIN_THINKING_BUDGET_TOKENS, takesThinking, thinkingAlwaysOn } from "@/constants/reasoning";
 import type { AnthropicThinkingParamInput, Eval, LLMRequestConfigSettings, ModelProvider, ReasoningEffortEnum } from "@/lib/api-client/api-client";
 
 // "" leaves the setting out of the eval's config, so the provider's default (or
@@ -29,8 +29,15 @@ export const reasoningSettingsFromConfig = (config: Eval["config"]): ReasoningSe
   };
 };
 
+export const ALWAYS_THINKING_HINT =
+  "This model always thinks, so thinking can't be turned off. Use reasoning effort low to keep thinking to a minimum.";
+
 export const reasoningSettingsError = (settings: ReasoningSettings, provider: ModelProvider | "", modelName: string): string | null => {
-  if (!takesThinking(provider, modelName) || settings.thinkingMode !== "enabled") return null;
+  const thinkingShown = takesThinking(provider, modelName);
+  if (thinkingAlwaysOn(modelName) && (settings.reasoningEffort === "none" || (thinkingShown && settings.thinkingMode === "disabled"))) {
+    return ALWAYS_THINKING_HINT;
+  }
+  if (!thinkingShown || settings.thinkingMode !== "enabled") return null;
   const budget = Number(settings.budgetTokens);
   if (!Number.isInteger(budget) || budget < MIN_THINKING_BUDGET_TOKENS) {
     return `Thinking budget must be a whole number of at least ${MIN_THINKING_BUDGET_TOKENS} tokens.`;

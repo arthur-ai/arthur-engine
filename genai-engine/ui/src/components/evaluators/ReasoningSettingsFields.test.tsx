@@ -53,4 +53,18 @@ describe("ReasoningSettingsFields", () => {
     expect(screen.getByLabelText("Thinking budget (tokens)")).toBeTruthy();
     expect(screen.getByText(/at least 1024 tokens/)).toBeTruthy();
   });
+
+  it("disables thinking off and effort none for always-thinking models", () => {
+    render(<ReasoningSettingsFields value={EMPTY_REASONING_SETTINGS} onChange={vi.fn()} provider="anthropic" modelName="claude-sonnet-5-5" />);
+    expect(screen.getByText(/always thinks/)).toBeTruthy();
+
+    fireEvent.mouseDown(screen.getByRole("combobox", { name: "Thinking" }));
+    expect(within(screen.getByRole("listbox")).getByRole("option", { name: "Off" }).getAttribute("aria-disabled")).toBe("true");
+    fireEvent.keyDown(screen.getByRole("listbox"), { key: "Escape" });
+
+    fireEvent.mouseDown(screen.getByRole("combobox", { name: "Reasoning effort" }));
+    const listbox = screen.getAllByRole("listbox").at(-1)!;
+    expect(within(listbox).getByRole("option", { name: "none" }).getAttribute("aria-disabled")).toBe("true");
+    expect(within(listbox).getByRole("option", { name: "low" }).getAttribute("aria-disabled")).not.toBe("true");
+  });
 });

@@ -12,6 +12,7 @@ from arthur_common.models.llm_model_providers import (
     ModelProvider,
 )
 from litellm.types.utils import ModelResponse
+from pydantic import ValidationError
 from sqlalchemy.exc import IntegrityError
 
 from clients.llm.llm_client import LLMClient, LLMModelResponse
@@ -25,8 +26,6 @@ from schemas.request_schemas import (
     LLMGetVersionsFilterRequest,
     LLMRequestConfigSettings,
 )
-from utils.constants import DEFAULT_ORG_ID
-
 from schemas.response_schemas import (
     EvalRunResponse,
     LLMEvalsVersionListResponse,
@@ -34,6 +33,7 @@ from schemas.response_schemas import (
     LLMGetAllMetadataResponse,
 )
 from tests.clients.base_test_client import override_get_db_session
+from utils.constants import DEFAULT_ORG_ID
 
 
 @pytest.fixture
@@ -966,7 +966,9 @@ def test_run_deleted_llm_eval_spawns_error(
     )
 
     with pytest.raises(ValueError) as exc_info:
-        llm_evals_repo.run_llm_eval(task_id, eval_name, org_id=DEFAULT_ORG_ID, version="1")
+        llm_evals_repo.run_llm_eval(
+            task_id, eval_name, org_id=DEFAULT_ORG_ID, version="1"
+        )
     assert f"Cannot run this llm eval because it was deleted on" in str(exc_info.value)
 
     llm_evals_repo.delete_llm_item(task_id, eval_name)
@@ -1000,7 +1002,9 @@ def test_run_saved_llm_eval_malformed_response_errors(
     )
 
     with pytest.raises(ValueError) as exc_info:
-        llm_evals_repo.run_llm_eval(task_id, eval_name, org_id=DEFAULT_ORG_ID, version="1")
+        llm_evals_repo.run_llm_eval(
+            task_id, eval_name, org_id=DEFAULT_ORG_ID, version="1"
+        )
     assert (
         f"No structured output response from model {full_eval.model_name} with provider {full_eval.model_provider}"
         in str(exc_info.value)
@@ -1016,7 +1020,9 @@ def test_run_saved_llm_eval_malformed_response_errors(
     )
 
     with pytest.raises(TypeError) as exc_info:
-        llm_evals_repo.run_llm_eval(task_id, eval_name, org_id=DEFAULT_ORG_ID, version="1")
+        llm_evals_repo.run_llm_eval(
+            task_id, eval_name, org_id=DEFAULT_ORG_ID, version="1"
+        )
     assert f"Structured output is not a ReasonedScore instance" in str(exc_info.value)
 
     llm_evals_repo.delete_llm_item(task_id, eval_name)
@@ -1596,3 +1602,28 @@ def test_get_all_llm_eval_metadata_with_tag_filter(llm_evals_repo):
     finally:
         llm_evals_repo.delete_llm_item(task_id, name_a)
         llm_evals_repo.delete_llm_item(task_id, name_b)
+
+
+@pytest.mark.unit_tests
+@pytest.mark.parametrize(
+    "config",
+    [
+        {"thinking": {"type": "disabled"}},
+        {"reasoning_effort": "none"},
+    ],
+)
+def test_create_eval_rejects_thinking_off_for_always_thinking_models(config):
+    with pytest.raises(ValidationError, match="Thinking can't be turned off"):
+        CreateEvalRequest(
+            model_name="claude-sonnet-5-5",
+            model_provider="anthropic",
+            instructions="Is {{answer}} correct?",
+            config=config,
+        )
+    # The same settings are fine where they take effect.
+    CreateEvalRequest(
+        model_name="claude-haiku-4-5",
+        model_provider="anthropic",
+        instructions="Is {{answer}} correct?",
+        config=config,
+    )

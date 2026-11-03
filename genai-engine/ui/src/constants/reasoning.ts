@@ -12,3 +12,16 @@ export const takesThinking = (provider: ModelProvider | "", modelName: string): 
 
 // Anthropic's minimum thinking budget.
 export const MIN_THINKING_BUDGET_TOKENS = 1024;
+
+// Claude model families that always think. Mirrors litellm's `thinking_always_on`
+// flag (its model cost map, read by AnthropicModelInfo._is_always_on_thinking_model):
+// litellm drops thinking "disabled" and reasoning_effort "none" before sending to
+// these models, and the backend rejects both when an eval is saved. Matched as
+// substrings so Bedrock ("us.anthropic.claude-sonnet-5-5") and Vertex AI
+// ("claude-opus-5-5@default") ids match too. Add a family when litellm flags one.
+const ALWAYS_THINKING_MODEL_FAMILIES = ["claude-sonnet-5-5", "claude-opus-5-5", "claude-fable-5", "claude-mythos"];
+
+export const thinkingAlwaysOn = (modelName: string): boolean => {
+  const model = modelName.toLowerCase();
+  return ALWAYS_THINKING_MODEL_FAMILIES.some((family) => model.includes(family));
+};

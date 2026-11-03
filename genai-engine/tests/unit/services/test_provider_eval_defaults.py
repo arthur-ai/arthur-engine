@@ -121,6 +121,28 @@ def test_reasoning_effort_default_only_applies_where_supported(
 
 
 @pytest.mark.unit_tests
+@pytest.mark.parametrize(
+    "defaults,expected",
+    [
+        # Neither can turn thinking off on an always-thinking model, so neither is applied.
+        ({"thinking": {"type": "disabled"}}, {}),
+        ({"reasoning_effort": "none"}, {}),
+        ({"reasoning_effort": "none", "thinking": {"type": "disabled"}}, {}),
+        # low does take effect there.
+        ({"reasoning_effort": "low"}, {"reasoning_effort": ReasoningEffortEnum.LOW}),
+    ],
+)
+def test_off_defaults_skipped_for_always_thinking_models(defaults, expected):
+    config: dict[str, Any] = {}
+    apply_provider_eval_defaults(
+        config,
+        _defaults(ModelProvider.ANTHROPIC, **defaults),
+        "claude-sonnet-5-5",
+    )
+    assert config == expected
+
+
+@pytest.mark.unit_tests
 def test_thinking_default_skipped_for_models_without_it():
     config: dict[str, Any] = {}
     apply_provider_eval_defaults(

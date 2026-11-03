@@ -1723,3 +1723,28 @@ def test_soft_delete_llm_eval_deletes_tags_successfully(
         response.json()["detail"]
         == f"Tag 'test_tag' not found for task '{task.id}' and item '{eval_name}'."
     )
+
+
+@pytest.mark.unit_tests
+def test_save_llm_eval_rejects_thinking_off_for_always_thinking_model(
+    client: GenaiEngineTestClientBase,
+):
+    status_code, task = client.create_task(name="always_thinking_eval_task")
+    assert status_code == 200
+    try:
+        status_code, error = client.save_llm_eval(
+            task_id=task.id,
+            llm_eval_name="judge",
+            llm_eval_data={
+                "model_name": "claude-sonnet-5-5",
+                "model_provider": "anthropic",
+                "instructions": "Is {{answer}} correct?",
+                "config": {"thinking": {"type": "disabled"}},
+            },
+        )
+        assert status_code == 400
+        # The detail repr escapes the apostrophes, so match around them.
+        assert "be turned off for claude-sonnet-5-5" in error["detail"]
+        assert "Use reasoning_effort" in error["detail"]
+    finally:
+        client.delete_task(task.id)

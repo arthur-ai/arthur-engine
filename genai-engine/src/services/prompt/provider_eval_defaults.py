@@ -12,28 +12,31 @@ litellm raises on a setting the model doesn't take. A default is a provider-wide
 choice, so it is applied only to models litellm says accept it, and an eval on
 any other model runs as if no default were set. When litellm doesn't know the
 model it can't say, and the default is sent as configured.
+
+Some Claude models always think (litellm's thinking_always_on: the Sonnet 5.5,
+Opus 5.5, Fable 5 and Mythos 5 families). For them litellm drops
+thinking={"type": "disabled"} and reasoning_effort "none" before the request is
+sent, so neither turns thinking off. An eval that asks for either is rejected
+on save (utils.thinking_capabilities), and a provider default of either is not
+applied to those models.
 """
 
 import logging
 from typing import Any, Optional
 
 import litellm
-from arthur_common.models.llm_model_providers import ModelProvider
+from arthur_common.models.llm_model_providers import ModelProvider, ReasoningEffortEnum
 from litellm.router_utils.reasoning_effort_capability import (
     resolve_supported_reasoning_efforts,
 )
 
 from schemas.response_schemas import ModelProviderEvalDefaults
+from utils.thinking_capabilities import bare_model_name, thinking_always_on
 
 logger = logging.getLogger(__name__)
 
 REASONING_EFFORT_PARAM = "reasoning_effort"
 THINKING_PARAM = "thinking"
-
-
-def _bare_model_name(provider: ModelProvider, model_name: str) -> str:
-    prefix = f"{provider.value}/"
-    return model_name[len(prefix) :] if model_name.startswith(prefix) else model_name
 
 
 def _supported_params(provider: ModelProvider, model_name: str) -> Optional[set[str]]:
@@ -83,14 +86,21 @@ def apply_provider_eval_defaults(
         return
 
     provider = defaults.provider
-    model = _bare_model_name(provider, model_name)
+    model = bare_model_name(provider, model_name)
     supported = _supported_params(provider, model)
+    always_on = thinking_always_on(provider, model)
 
     if defaults.reasoning_effort is not None and (
         supported is None or REASONING_EFFORT_PARAM in supported
     ):
         levels = _supported_reasoning_efforts(provider, model)
-        if levels is None or defaults.reasoning_effort.value in levels:
+        if always_on and defaults.reasoning_effort == ReasoningEffortEnum.NONE:
+            logger.debug(
+                "Skipping provider default reasoning_effort=none for %s/%s, which always thinks",
+                provider.value,
+                model,
+            )
+        elif levels is None or defaults.reasoning_effort.value in levels:
             config[REASONING_EFFORT_PARAM] = defaults.reasoning_effort
         else:
             logger.debug(
@@ -104,4 +114,11 @@ def apply_provider_eval_defaults(
     if defaults.thinking is not None and (
         supported is None or THINKING_PARAM in supported
     ):
-        config[THINKING_PARAM] = dict(defaults.thinking)
+        if always_on and defaults.thinking.get("type") == "disabled":
+            logger.debug(
+                "Skipping provider default thinking=disabled for %s/%s, which always thinks",
+                provider.value,
+                model,
+            )
+        else:
+            config[THINKING_PARAM] = dict(defaults.thinking)
