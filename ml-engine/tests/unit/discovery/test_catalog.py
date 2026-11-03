@@ -108,6 +108,76 @@ def test_one_agent_through_two_routes_is_one_finding(matcher: Matcher) -> None:
     assert set(finding.kinds) == {"npm", "file"}
 
 
+_CLAUDE_CODE = document(
+    agent(
+        "claude-code",
+        "Claude Code",
+        "Coding agent",
+        binaries=["~/.local/bin/claude"],
+        process_paths=["~/.local/share/claude/versions/"],
+    ),
+)
+
+
+def test_every_row_is_an_occurrence_and_a_process_is_where_it_runs_from() -> None:
+    """describe() gives a process no install path, because an npm agent's runs from its
+    interpreter. An occurrence's path is where a process runs from, and that is what tells
+    the running versions apart. Each identifier lists its own rows."""
+    versions = "/Users/nori/.local/share/claude/versions/"
+    finding = (
+        Matcher.from_source(catalog_json=_CLAUDE_CODE)
+        .match(
+            [
+                row(
+                    "file",
+                    "/Users/nori/.local/bin/claude",
+                    loc="/Users/nori/.local/bin/claude",
+                ),
+                row("proc", versions + "2.1.312", loc=versions + "2.1.312"),
+                row("proc", versions + "2.1.314", loc=versions + "2.1.314"),
+            ],
+        )
+        .findings[0]
+    )
+
+    assert [(o.kind, o.path, o.version) for o in finding.occurrences] == [
+        ("file", "~/.local/bin/claude", None),
+        ("proc", "~/.local/share/claude/versions/2.1.312", None),
+        ("proc", "~/.local/share/claude/versions/2.1.314", None),
+    ]
+    by_route = {m.route: m for m in finding.identifiers}
+    assert [o.path for o in by_route["process_paths"].occurrences] == [
+        "~/.local/share/claude/versions/2.1.312",
+        "~/.local/share/claude/versions/2.1.314",
+    ]
+    assert [o.kind for o in by_route["binaries"].occurrences] == ["file"]
+
+
+def test_an_occurrence_takes_ver_as_its_version_and_only_a_place_as_its_path(
+    matcher: Matcher,
+) -> None:
+    """A version is `ver` wherever it is set, and a process's is never. Its executable can be
+    the interpreter, which is still what it runs from; but argv[0], left where the
+    executable could not be read, is a name and not a place."""
+    result = matcher.match(
+        [
+            row(
+                "npm",
+                "@openai/codex",
+                ver="0.5.0",
+                loc="/opt/homebrew/lib/node_modules",
+            ),
+            row("proc", "@openai/codex", loc="/opt/homebrew/bin/node"),
+            row("proc", "@openai/codex", loc="node"),
+        ],
+    )
+    assert [(o.kind, o.path, o.version) for o in result.findings[0].occurrences] == [
+        ("npm", "/opt/homebrew/lib/node_modules", "0.5.0"),
+        ("proc", "/opt/homebrew/bin/node", None),
+        ("proc", None, None),
+    ]
+
+
 def test_an_install_record_speaks_before_a_path(matcher: Matcher) -> None:
     """The npm row, read from a package manifest, describes the finding: its version and its
     install path. The rule is upstream's `primary()`; this holds the mapping to it."""
