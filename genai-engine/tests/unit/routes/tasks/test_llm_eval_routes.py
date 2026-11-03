@@ -1748,3 +1748,27 @@ def test_save_llm_eval_rejects_thinking_off_for_always_thinking_model(
         assert "Use reasoning_effort" in error["detail"]
     finally:
         client.delete_task(task.id)
+
+
+@pytest.mark.unit_tests
+def test_save_llm_eval_rejects_reasoning_effort_the_model_refuses(
+    client: GenaiEngineTestClientBase,
+):
+    status_code, task = client.create_task(name="refused_effort_eval_task")
+    assert status_code == 200
+    try:
+        status_code, error = client.save_llm_eval(
+            task_id=task.id,
+            llm_eval_name="judge",
+            llm_eval_data={
+                "model_name": "gpt-5-mini",
+                "model_provider": "openai",
+                "instructions": "Is {{answer}} correct?",
+                "config": {"reasoning_effort": "none"},
+            },
+        )
+        assert status_code == 400
+        assert "is not supported for gpt-5-mini" in error["detail"]
+        assert "Allowed values" in error["detail"]
+    finally:
+        client.delete_task(task.id)

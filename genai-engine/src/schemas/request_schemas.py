@@ -51,7 +51,7 @@ from schemas.enums import (
     TaskAnalyticsBucketSize,
 )
 from utils.constants import ALLOWED_TRACE_RETENTION_DAYS
-from utils.thinking_capabilities import always_on_thinking_error
+from utils.reasoning_capabilities import reasoning_settings_error
 
 
 class DocumentStorageConfigurationUpdateRequest(BaseModel):
@@ -896,7 +896,7 @@ class CreateEvalRequest(BaseModel):
     @model_validator(mode="after")
     def validate_reasoning_takes_effect(self) -> "CreateEvalRequest":
         if self.config is not None:
-            error = always_on_thinking_error(
+            error = reasoning_settings_error(
                 self.model_provider,
                 self.model_name,
                 self.config.reasoning_effort,

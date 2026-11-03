@@ -4009,6 +4009,19 @@ export type GetModelProvidersAvailableModelsApiV1ModelProvidersProviderAvailable
 
 export type GetModelProvidersAvailableModelsApiV1ModelProvidersProviderAvailableModelsGetError = HTTPValidationError;
 
+export type GetModelReasoningOptionsApiV1ModelProvidersProviderReasoningOptionsGetData = ModelReasoningOptions;
+
+export type GetModelReasoningOptionsApiV1ModelProvidersProviderReasoningOptionsGetError = HTTPValidationError;
+
+export interface GetModelReasoningOptionsApiV1ModelProvidersProviderReasoningOptionsGetParams {
+  /**
+   * Model Name
+   * Name of the model, as the eval stores it
+   */
+  model_name: string;
+  provider: ModelProvider;
+}
+
 export type GetNotebookApiV1NotebooksNotebookIdGetData = NotebookDetail;
 
 export type GetNotebookApiV1NotebooksNotebookIdGetError = HTTPValidationError;
@@ -6912,6 +6925,45 @@ export interface ModelProviderWhitelist {
    */
   whitelist: string[] | null;
 }
+
+/** ModelReasoningOptions */
+export interface ModelReasoningOptions {
+  /**
+   * Model Name
+   * Model the options apply to
+   */
+  model_name: string;
+  /** Provider of the model */
+  provider: ModelProvider;
+  /**
+   * Reasoning Efforts
+   * reasoning_effort values the model accepts; empty when it takes none. Null when litellm doesn't know the model, in which case any value is sent as is.
+   */
+  reasoning_efforts: ReasoningEffortEnum[] | null;
+  /** Thinking settings the model accepts */
+  thinking: ModelThinkingOptions;
+}
+
+/** ModelThinkingOptions */
+export interface ModelThinkingOptions {
+  /**
+   * Can Disable
+   * Whether thinking type 'disabled' turns thinking off. False for models that always think and for non-Claude models. Null when litellm doesn't know the model.
+   */
+  can_disable: boolean | null;
+  /**
+   * Supported
+   * Whether the model takes a thinking setting. Null when litellm doesn't know the model.
+   */
+  supported: boolean | null;
+  /**
+   * Thinking Types
+   * Thinking types the model accepts. Null when litellm doesn't know the model.
+   */
+  types: ModelThinkingOptionsTypesEnum[] | null;
+}
+
+export type ModelThinkingOptionsTypesEnum = "enabled" | "adaptive" | "disabled";
 
 /** _MultiTargetVectorJoin */
 export interface MultiTargetVectorJoin {
@@ -15868,6 +15920,31 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Returns the reasoning_effort values and thinking types litellm accepts for a model, the same rule LLM eval saves are checked against. Null fields mean litellm doesn't know the model, and any value is sent as is.
+     *
+     * @tags Model Providers
+     * @name GetModelReasoningOptionsApiV1ModelProvidersProviderReasoningOptionsGet
+     * @summary Get the reasoning settings a model accepts.
+     * @request GET:/api/v1/model_providers/{provider}/reasoning_options
+     * @secure
+     */
+    getModelReasoningOptionsApiV1ModelProvidersProviderReasoningOptionsGet: (
+      { provider, ...query }: GetModelReasoningOptionsApiV1ModelProvidersProviderReasoningOptionsGetParams,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        GetModelReasoningOptionsApiV1ModelProvidersProviderReasoningOptionsGetData,
+        GetModelReasoningOptionsApiV1ModelProvidersProviderReasoningOptionsGetError
+      >({
+        path: `/api/v1/model_providers/${provider}/reasoning_options`,
+        method: "GET",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Get detailed information about a notebook including state and experiment history
      *
      * @tags Notebooks
@@ -17402,7 +17479,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * @description Sets the reasoning_effort and thinking settings sent on LLM eval calls to this provider when the eval's own config sets neither. An eval that sets either one gets neither default. A default is skipped for models that don't accept it. Applies to LLM evals only, not to prompts. Send nulls to clear.
+     * @description Sets the reasoning_effort and thinking settings sent on LLM eval calls to this provider when the eval's own config sets neither. An eval that sets either one gets neither default. A default is skipped for models that don't accept it, and thinking 'disabled' or reasoning_effort 'none' is skipped for models that always think (e.g. Claude Sonnet 5.5), where it would have no effect. Applies to LLM evals only, not to prompts. Send nulls to clear.
      *
      * @tags Model Providers
      * @name SetModelProviderEvalDefaultsApiV1ModelProvidersProviderEvalDefaultsPut

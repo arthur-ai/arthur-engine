@@ -20,6 +20,7 @@ import { useEvaluatorTemplates } from "./hooks/useEvaluatorTemplates";
 import { applyReasoningSettings, EMPTY_REASONING_SETTINGS, reasoningSettingsError, reasoningSettingsFromConfig } from "./reasoningSettings";
 import ReasoningSettingsFields from "./ReasoningSettingsFields";
 import { EvalFormModalProps } from "./types";
+import { useModelReasoningOptions } from "./useModelReasoningOptions";
 
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
@@ -37,6 +38,7 @@ const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormM
   // Config of the existing eval picked from the name list, carried into the new version.
   const [baseConfig, setBaseConfig] = useState<Eval["config"]>(null);
   const [error, setError] = useState<string | null>(null);
+  const reasoningOptions = useModelReasoningOptions(modelProvider, modelName.trim());
   const [enabledProviders, setEnabledProviders] = useState<ModelProvider[]>([]);
   const [availableModels, setAvailableModels] = useState<Map<ModelProvider, string[]>>(new Map());
   const [existingEvalNames, setExistingEvalNames] = useState<string[]>([]);
@@ -166,7 +168,7 @@ const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormM
       return;
     }
 
-    const reasoningError = reasoningSettingsError(reasoning, modelProvider, modelName);
+    const reasoningError = reasoningSettingsError(reasoning, reasoningOptions);
     if (reasoningError) {
       setError(reasoningError);
       return;
@@ -177,7 +179,7 @@ const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormM
         instructions: instructions.trim(),
         model_provider: modelProvider as ModelProvider,
         model_name: modelName.trim(),
-        config: applyReasoningSettings(baseConfig, reasoning, modelProvider, modelName),
+        config: applyReasoningSettings(baseConfig, reasoning, reasoningOptions),
       };
 
       await onSubmit(evalName.trim(), data);
@@ -475,7 +477,13 @@ const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormM
               </FormControl>
             </Box>
 
-            <ReasoningSettingsFields value={reasoning} onChange={setReasoning} provider={modelProvider} modelName={modelName} disabled={isLoading} />
+            <ReasoningSettingsFields
+              value={reasoning}
+              onChange={setReasoning}
+              options={reasoningOptions}
+              modelChosen={modelProvider !== "" && modelName !== ""}
+              disabled={isLoading}
+            />
 
             {error && (
               <Alert severity="error" onClose={() => setError(null)}>

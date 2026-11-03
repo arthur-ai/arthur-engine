@@ -418,6 +418,38 @@ class ModelProviderEvalDefaults(BaseModel):
     )
 
 
+class ModelThinkingOptions(BaseModel):
+    supported: Optional[bool] = Field(
+        description="Whether the model takes a thinking setting. Null when litellm doesn't know the model.",
+    )
+    can_disable: Optional[bool] = Field(
+        description=(
+            "Whether thinking type 'disabled' turns thinking off. False for models "
+            "that always think and for non-Claude models. Null when litellm doesn't "
+            "know the model."
+        ),
+    )
+    types: Optional[List[Literal["enabled", "adaptive", "disabled"]]] = Field(
+        title="Thinking Types",
+        description="Thinking types the model accepts. Null when litellm doesn't know the model.",
+    )
+
+
+class ModelReasoningOptions(BaseModel):
+    provider: ModelProvider = Field(description="Provider of the model")
+    model_name: str = Field(description="Model the options apply to")
+    reasoning_efforts: Optional[List[ReasoningEffortEnum]] = Field(
+        description=(
+            "reasoning_effort values the model accepts; empty when it takes none. "
+            "Null when litellm doesn't know the model, in which case any value is "
+            "sent as is."
+        ),
+    )
+    thinking: ModelThinkingOptions = Field(
+        description="Thinking settings the model accepts"
+    )
+
+
 class ContinuousEvalResponse(CommonContinuousEvalResponse):
     """The continuous eval response, with its sample rate.
 

@@ -787,3 +787,69 @@ def test_model_provider_eval_defaults_validation(
         assert detail in str(body)
     finally:
         assert client.delete_model_provider("anthropic") == 204
+
+
+@pytest.mark.unit_tests
+@pytest.mark.parametrize(
+    "provider,model_name,expected",
+    [
+        (
+            "openai",
+            "gpt-5-mini",
+            {
+                "reasoning_efforts": ["minimal", "low", "medium", "high"],
+                "thinking": {"supported": False, "can_disable": False, "types": []},
+            },
+        ),
+        (
+            "anthropic",
+            "claude-sonnet-5-5",
+            {
+                "reasoning_efforts": ["minimal", "low", "medium", "high"],
+                "thinking": {
+                    "supported": True,
+                    "can_disable": False,
+                    "types": ["enabled", "adaptive"],
+                },
+            },
+        ),
+        (
+            "anthropic",
+            "claude-haiku-4-5",
+            {
+                "reasoning_efforts": None,
+                "thinking": {
+                    "supported": True,
+                    "can_disable": True,
+                    "types": ["enabled", "adaptive", "disabled"],
+                },
+            },
+        ),
+        (
+            "azure",
+            "my-prod-deployment",
+            {
+                "reasoning_efforts": None,
+                "thinking": {"supported": None, "can_disable": None, "types": None},
+            },
+        ),
+    ],
+)
+def test_model_reasoning_options(
+    client: GenaiEngineTestClientBase,
+    provider,
+    model_name,
+    expected,
+):
+    # Readable without the provider configured: it only asks litellm.
+    response = client.base_client.get(
+        f"/api/v1/model_providers/{provider}/reasoning_options",
+        params={"model_name": model_name},
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200
+    assert response.json() == {
+        "provider": provider,
+        "model_name": model_name,
+        **expected,
+    }

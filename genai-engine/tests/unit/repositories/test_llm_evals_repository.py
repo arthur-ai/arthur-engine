@@ -1627,3 +1627,31 @@ def test_create_eval_rejects_thinking_off_for_always_thinking_models(config):
         instructions="Is {{answer}} correct?",
         config=config,
     )
+
+
+@pytest.mark.unit_tests
+@pytest.mark.parametrize(
+    "model_name,reasoning_effort",
+    [("gpt-5-mini", "none"), ("gpt-5.1", "minimal"), ("gpt-4o-mini", "low")],
+)
+def test_create_eval_rejects_reasoning_effort_the_model_refuses(
+    model_name,
+    reasoning_effort,
+):
+    with pytest.raises(ValidationError, match="is not supported for"):
+        CreateEvalRequest(
+            model_name=model_name,
+            model_provider="openai",
+            instructions="Is {{answer}} correct?",
+            config={"reasoning_effort": reasoning_effort},
+        )
+
+
+@pytest.mark.unit_tests
+def test_create_eval_passes_reasoning_settings_for_unknown_models():
+    CreateEvalRequest(
+        model_name="my-prod-deployment",
+        model_provider="azure",
+        instructions="Is {{answer}} correct?",
+        config={"reasoning_effort": "none"},
+    )

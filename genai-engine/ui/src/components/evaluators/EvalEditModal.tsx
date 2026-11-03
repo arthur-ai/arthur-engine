@@ -16,6 +16,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import { applyReasoningSettings, reasoningSettingsError, reasoningSettingsFromConfig } from "./reasoningSettings";
 import ReasoningSettingsFields from "./ReasoningSettingsFields";
+import { useModelReasoningOptions } from "./useModelReasoningOptions";
 
 import { useApi } from "@/hooks/useApi";
 import type { CreateEvalRequest, Eval, ModelProvider, ModelProviderResponse } from "@/lib/api-client/api-client";
@@ -50,6 +51,7 @@ const EvalEditModal = ({
   const [modelName, setModelName] = useState(initialModelName);
   const [reasoning, setReasoning] = useState(() => reasoningSettingsFromConfig(initialConfig));
   const [error, setError] = useState<string | null>(null);
+  const reasoningOptions = useModelReasoningOptions(modelProvider, modelName.trim());
   const [enabledProviders, setEnabledProviders] = useState<ModelProvider[]>([]);
   const [availableModels, setAvailableModels] = useState<Map<ModelProvider, string[]>>(new Map());
   const hasFetchedProviders = useRef(false);
@@ -151,7 +153,7 @@ const EvalEditModal = ({
       return;
     }
 
-    const reasoningError = reasoningSettingsError(reasoning, modelProvider, modelName);
+    const reasoningError = reasoningSettingsError(reasoning, reasoningOptions);
     if (reasoningError) {
       setError(reasoningError);
       return;
@@ -162,7 +164,7 @@ const EvalEditModal = ({
         instructions: instructions.trim(),
         model_provider: modelProvider as ModelProvider,
         model_name: modelName.trim(),
-        config: applyReasoningSettings(initialConfig, reasoning, modelProvider, modelName),
+        config: applyReasoningSettings(initialConfig, reasoning, reasoningOptions),
       };
 
       await onSubmit(data);
@@ -318,7 +320,13 @@ const EvalEditModal = ({
               </FormControl>
             </Box>
 
-            <ReasoningSettingsFields value={reasoning} onChange={setReasoning} provider={modelProvider} modelName={modelName} disabled={isLoading} />
+            <ReasoningSettingsFields
+              value={reasoning}
+              onChange={setReasoning}
+              options={reasoningOptions}
+              modelChosen={modelProvider !== "" && modelName !== ""}
+              disabled={isLoading}
+            />
 
             {error && (
               <Alert severity="error" onClose={() => setError(null)}>

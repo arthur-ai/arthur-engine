@@ -2,7 +2,7 @@ import json
 import logging
 
 from arthur_common.models.llm_model_providers import ModelProvider
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session
 from starlette.status import HTTP_201_CREATED, HTTP_204_NO_CONTENT
 
@@ -27,7 +27,10 @@ from schemas.response_schemas import (
     ModelProviderList,
     ModelProviderModelList,
     ModelProviderWhitelist,
+    ModelReasoningOptions,
+    ModelThinkingOptions,
 )
+from utils.reasoning_capabilities import resolve_reasoning_options
 from utils.users import permission_checker
 
 logger = logging.getLogger(__name__)
@@ -298,3 +301,38 @@ def set_model_provider_eval_defaults(
 ) -> Response:
     ModelProviderRepository(db_session).set_eval_defaults(provider, request)
     return Response(status_code=HTTP_204_NO_CONTENT)
+
+
+@model_provider_routes.get(
+    "/model_providers/{provider}/reasoning_options",
+    summary="Get the reasoning settings a model accepts.",
+    description=(
+        "Returns the reasoning_effort values and thinking types litellm accepts for a "
+        "model, the same rule LLM eval saves are checked against. Null fields mean "
+        "litellm doesn't know the model, and any value is sent as is."
+    ),
+    tags=["Model Providers"],
+    response_model=ModelReasoningOptions,
+)
+@permission_checker(permissions=PermissionLevelsEnum.MODEL_PROVIDER_READ.value)
+def get_model_reasoning_options(
+    provider: ModelProvider,
+    model_name: str = Query(description="Name of the model, as the eval stores it"),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> ModelReasoningOptions:
+    options = resolve_reasoning_options(provider, model_name)
+    types = options.thinking_types
+    return ModelReasoningOptions.model_validate(
+        {
+            "provider": provider,
+            "model_name": model_name,
+            "reasoning_efforts": options.reasoning_efforts,
+            "thinking": ModelThinkingOptions.model_validate(
+                {
+                    "supported": options.thinking_supported,
+                    "can_disable": None if types is None else "disabled" in types,
+                    "types": types,
+                },
+            ),
+        },
+    )

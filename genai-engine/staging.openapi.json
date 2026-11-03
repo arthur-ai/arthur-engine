@@ -9815,7 +9815,7 @@
                     "Model Providers"
                 ],
                 "summary": "Set a provider's default reasoning settings for LLM evals.",
-                "description": "Sets the reasoning_effort and thinking settings sent on LLM eval calls to this provider when the eval's own config sets neither. An eval that sets either one gets neither default. A default is skipped for models that don't accept it. Applies to LLM evals only, not to prompts. Send nulls to clear.",
+                "description": "Sets the reasoning_effort and thinking settings sent on LLM eval calls to this provider when the eval's own config sets neither. An eval that sets either one gets neither default. A default is skipped for models that don't accept it, and thinking 'disabled' or reasoning_effort 'none' is skipped for models that always think (e.g. Claude Sonnet 5.5), where it would have no effect. Applies to LLM evals only, not to prompts. Send nulls to clear.",
                 "operationId": "set_model_provider_eval_defaults_api_v1_model_providers__provider__eval_defaults_put",
                 "security": [
                     {
@@ -9845,6 +9845,64 @@
                 "responses": {
                     "204": {
                         "description": "Eval defaults updated."
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/model_providers/{provider}/reasoning_options": {
+            "get": {
+                "tags": [
+                    "Model Providers"
+                ],
+                "summary": "Get the reasoning settings a model accepts.",
+                "description": "Returns the reasoning_effort values and thinking types litellm accepts for a model, the same rule LLM eval saves are checked against. Null fields mean litellm doesn't know the model, and any value is sent as is.",
+                "operationId": "get_model_reasoning_options_api_v1_model_providers__provider__reasoning_options_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "provider",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/ModelProvider"
+                        }
+                    },
+                    {
+                        "name": "model_name",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "Name of the model, as the eval stores it",
+                            "title": "Model Name"
+                        },
+                        "description": "Name of the model, as the eval stores it"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ModelReasoningOptions"
+                                }
+                            }
+                        }
                     },
                     "422": {
                         "description": "Validation Error",
@@ -26352,6 +26410,101 @@
                     "catalog"
                 ],
                 "title": "ModelProviderWhitelist"
+            },
+            "ModelReasoningOptions": {
+                "properties": {
+                    "provider": {
+                        "$ref": "#/components/schemas/ModelProvider",
+                        "description": "Provider of the model"
+                    },
+                    "model_name": {
+                        "type": "string",
+                        "title": "Model Name",
+                        "description": "Model the options apply to"
+                    },
+                    "reasoning_efforts": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/ReasoningEffortEnum"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Reasoning Efforts",
+                        "description": "reasoning_effort values the model accepts; empty when it takes none. Null when litellm doesn't know the model, in which case any value is sent as is."
+                    },
+                    "thinking": {
+                        "$ref": "#/components/schemas/ModelThinkingOptions",
+                        "description": "Thinking settings the model accepts"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "provider",
+                    "model_name",
+                    "reasoning_efforts",
+                    "thinking"
+                ],
+                "title": "ModelReasoningOptions"
+            },
+            "ModelThinkingOptions": {
+                "properties": {
+                    "supported": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Supported",
+                        "description": "Whether the model takes a thinking setting. Null when litellm doesn't know the model."
+                    },
+                    "can_disable": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Can Disable",
+                        "description": "Whether thinking type 'disabled' turns thinking off. False for models that always think and for non-Claude models. Null when litellm doesn't know the model."
+                    },
+                    "types": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string",
+                                    "enum": [
+                                        "enabled",
+                                        "adaptive",
+                                        "disabled"
+                                    ]
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Thinking Types",
+                        "description": "Thinking types the model accepts. Null when litellm doesn't know the model."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "supported",
+                    "can_disable",
+                    "types"
+                ],
+                "title": "ModelThinkingOptions"
             },
             "NestedSpanWithMetricsResponse": {
                 "properties": {
