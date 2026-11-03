@@ -11,8 +11,9 @@ reasoning_effort, gpt-5-mini refuses "none", gpt-5.1 refuses "minimal", Claude
 Sonnet 5.5 can't turn thinking off). A default is a provider-wide choice, so it
 is applied only to models that accept it, by the same rule the eval save check
 uses (utils.reasoning_capabilities), and an eval on any other model runs as if
-no default were set. When litellm doesn't know the model it can't say, and the
-default is sent as configured.
+no default were set. When litellm doesn't know the model (an Azure deployment
+name, a vLLM model) it can't say, and no default is applied, so a provider-wide
+default can't break an eval that ran fine without it.
 """
 
 import logging
@@ -22,6 +23,7 @@ from schemas.response_schemas import ModelProviderEvalDefaults
 from utils.reasoning_capabilities import (
     REASONING_EFFORT_PARAM,
     THINKING_PARAM,
+    UNKNOWN_REASONING_OPTIONS,
     effort_allowed,
     resolve_reasoning_options,
     thinking_allowed,
@@ -48,6 +50,13 @@ def apply_provider_eval_defaults(
         return
 
     options = resolve_reasoning_options(defaults.provider, model_name)
+    if options is UNKNOWN_REASONING_OPTIONS:
+        logger.debug(
+            "Skipping provider eval defaults for %s/%s, which litellm doesn't know",
+            defaults.provider.value,
+            model_name,
+        )
+        return
 
     if defaults.reasoning_effort is not None:
         if effort_allowed(options, defaults.reasoning_effort):

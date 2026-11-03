@@ -9815,7 +9815,7 @@
                     "Model Providers"
                 ],
                 "summary": "Set a provider's default reasoning settings for LLM evals.",
-                "description": "Sets the reasoning_effort and thinking settings sent on LLM eval calls to this provider when the eval's own config sets neither. An eval that sets either one gets neither default. A default is skipped for models that don't accept it, and thinking 'disabled' or reasoning_effort 'none' is skipped for models that always think (e.g. Claude Sonnet 5.5), where it would have no effect. Applies to LLM evals only, not to prompts. Send nulls to clear.",
+                "description": "Sets the reasoning_effort and thinking settings sent on LLM eval calls to this provider when the eval's own config sets neither. An eval that sets either one gets neither default. A default is skipped for models that don't accept it, and thinking 'disabled' or reasoning_effort 'none' is skipped for models that always think (e.g. Claude Sonnet 5.5), where it would have no effect. Both defaults are skipped for models litellm doesn't know (e.g. Azure deployment names). Applies to LLM evals only, not to prompts. Send nulls to clear.",
                 "operationId": "set_model_provider_eval_defaults_api_v1_model_providers__provider__eval_defaults_put",
                 "security": [
                     {

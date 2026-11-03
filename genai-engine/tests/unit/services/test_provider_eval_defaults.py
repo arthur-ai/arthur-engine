@@ -99,8 +99,8 @@ def test_eval_reasoning_setting_wins_over_both_defaults(eval_config):
         # A provider-prefixed model name resolves like the bare one.
         ("openai/gpt-4o-mini", "low", False),
         ("openai/gpt-5-mini", "minimal", True),
-        # litellm doesn't know this model, so the default is sent as configured.
-        ("my-fine-tune", "low", True),
+        # litellm doesn't know this model, so no default is applied.
+        ("my-fine-tune", "low", False),
     ],
 )
 def test_reasoning_effort_default_only_applies_where_supported(
@@ -140,6 +140,24 @@ def test_off_defaults_skipped_for_always_thinking_models(defaults, expected):
         "claude-sonnet-5-5",
     )
     assert config == expected
+
+
+@pytest.mark.unit_tests
+def test_defaults_skipped_for_models_litellm_does_not_know():
+    defaults = _defaults(
+        ModelProvider.AZURE,
+        reasoning_effort="low",
+        thinking={"type": "enabled", "budget_tokens": 2048},
+    )
+    # An Azure deployment name isn't in litellm's cost map, so neither default is sent.
+    config: dict[str, Any] = {"temperature": 0}
+    apply_provider_eval_defaults(config, defaults, "my-gpt-4o-deployment")
+    assert config == {"temperature": 0}
+
+    # A model litellm knows on the same provider still gets the effort default.
+    config = {"temperature": 0}
+    apply_provider_eval_defaults(config, defaults, "gpt-5-mini")
+    assert config == {"temperature": 0, "reasoning_effort": ReasoningEffortEnum.LOW}
 
 
 @pytest.mark.unit_tests
