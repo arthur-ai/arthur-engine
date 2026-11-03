@@ -14,6 +14,7 @@ from arthur_common.models.llm_model_providers import (
 )
 from jinja2.sandbox import SandboxedEnvironment
 from litellm.types.utils import ModelResponse
+from pydantic import ValidationError
 from sqlalchemy.exc import IntegrityError
 
 from clients.llm.llm_client import LLMClient, LLMModelResponse
@@ -1808,3 +1809,56 @@ def test_get_all_llm_eval_metadata_with_tag_filter(llm_evals_repo):
     finally:
         llm_evals_repo.delete_llm_item(task_id, name_a)
         llm_evals_repo.delete_llm_item(task_id, name_b)
+
+
+@pytest.mark.unit_tests
+@pytest.mark.parametrize(
+    "config",
+    [
+        {"thinking": {"type": "disabled"}},
+        {"reasoning_effort": "none"},
+    ],
+)
+def test_create_eval_rejects_thinking_off_for_always_thinking_models(config):
+    with pytest.raises(ValidationError, match="Thinking can't be turned off"):
+        CreateEvalRequest(
+            model_name="claude-sonnet-5-5",
+            model_provider="anthropic",
+            instructions="Is {{answer}} correct?",
+            config=config,
+        )
+    # The same settings are fine where they take effect.
+    CreateEvalRequest(
+        model_name="claude-haiku-4-5",
+        model_provider="anthropic",
+        instructions="Is {{answer}} correct?",
+        config=config,
+    )
+
+
+@pytest.mark.unit_tests
+@pytest.mark.parametrize(
+    "model_name,reasoning_effort",
+    [("gpt-5-mini", "none"), ("gpt-5.1", "minimal"), ("gpt-4o-mini", "low")],
+)
+def test_create_eval_rejects_reasoning_effort_the_model_refuses(
+    model_name,
+    reasoning_effort,
+):
+    with pytest.raises(ValidationError, match="is not supported for"):
+        CreateEvalRequest(
+            model_name=model_name,
+            model_provider="openai",
+            instructions="Is {{answer}} correct?",
+            config={"reasoning_effort": reasoning_effort},
+        )
+
+
+@pytest.mark.unit_tests
+def test_create_eval_passes_reasoning_settings_for_unknown_models():
+    CreateEvalRequest(
+        model_name="my-prod-deployment",
+        model_provider="azure",
+        instructions="Is {{answer}} correct?",
+        config={"reasoning_effort": "none"},
+    )

@@ -4,7 +4,11 @@ from typing import Any, Dict, List, Literal, Optional, Union
 from uuid import UUID
 
 from arthur_common.models.common_schemas import VariableTemplateValue
-from arthur_common.models.llm_model_providers import ModelProvider, OpenAIMessage
+from arthur_common.models.llm_model_providers import (
+    ModelProvider,
+    OpenAIMessage,
+    ReasoningEffortEnum,
+)
 from arthur_common.models.response_schemas import (
     AgenticAnnotationResponse,
     ExternalInference,
@@ -12,7 +16,11 @@ from arthur_common.models.response_schemas import (
     TokenCountCostSchema,
     TraceResponse,
 )
+from arthur_common.models.task_eval_schemas import (
+    ContinuousEvalResponse as CommonContinuousEvalResponse,
+)
 from arthur_common.models.task_eval_schemas import TraceTransformDefinition
+from litellm.types.llms.anthropic import AnthropicThinkingParam
 from litellm.types.utils import ChatCompletionMessageToolCall
 from pydantic import BaseModel, Field
 from pydantic_core import Url
@@ -390,6 +398,78 @@ class ModelProviderWhitelist(BaseModel):
     catalog: List[str] = Field(
         description="Every model the provider offers, ignoring the whitelist",
     )
+
+
+class ModelProviderEvalDefaults(BaseModel):
+    provider: ModelProvider = Field(description="Provider the defaults apply to")
+    reasoning_effort: Optional[ReasoningEffortEnum] = Field(
+        default=None,
+        description=(
+            "Reasoning effort sent on LLM eval calls whose eval config sets neither "
+            "reasoning_effort nor thinking. Null sends nothing."
+        ),
+    )
+    thinking: Optional[AnthropicThinkingParam] = Field(
+        default=None,
+        description=(
+            "Thinking setting sent on LLM eval calls whose eval config sets neither "
+            "reasoning_effort nor thinking. Null sends nothing."
+        ),
+    )
+
+
+class ModelThinkingOptions(BaseModel):
+    supported: Optional[bool] = Field(
+        description="Whether the model takes a thinking setting. Null when litellm doesn't know the model.",
+    )
+    can_disable: Optional[bool] = Field(
+        description=(
+            "Whether thinking type 'disabled' turns thinking off. False for models "
+            "that always think and for non-Claude models. Null when litellm doesn't "
+            "know the model."
+        ),
+    )
+    types: Optional[List[Literal["enabled", "adaptive", "disabled"]]] = Field(
+        title="Thinking Types",
+        description="Thinking types the model accepts. Null when litellm doesn't know the model.",
+    )
+
+
+class ModelReasoningOptions(BaseModel):
+    provider: ModelProvider = Field(description="Provider of the model")
+    model_name: str = Field(description="Model the options apply to")
+    reasoning_efforts: Optional[List[ReasoningEffortEnum]] = Field(
+        description=(
+            "reasoning_effort values the model accepts; empty when it takes none. "
+            "Null when litellm doesn't know the model, in which case any value is "
+            "sent as is."
+        ),
+    )
+    thinking: ModelThinkingOptions = Field(
+        description="Thinking settings the model accepts"
+    )
+
+
+class ContinuousEvalResponse(CommonContinuousEvalResponse):
+    """The continuous eval response, with its sample rate.
+
+    Extends the shared model only until `arthur_common` carries `sample_rate` on
+    `ContinuousEvalResponse` itself, at which point this subclass goes. Named the
+    same so the OpenAPI component, and the generated clients built from it, keep
+    their name either way.
+    """
+
+    sample_rate: Optional[float] = Field(
+        default=None,
+        description="Fraction of traces evaluated, in (0, 1]. Null evaluates every trace.",
+    )
+
+
+class ListContinuousEvalsResponse(BaseModel):
+    evals: List[ContinuousEvalResponse] = Field(
+        description="List of continuous evals.",
+    )
+    count: int = Field(description="Total number of evals")
 
 
 class ApiKeyRagAuthenticationConfigResponse(BaseModel):

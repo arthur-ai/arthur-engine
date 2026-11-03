@@ -5,9 +5,7 @@ from uuid import UUID
 from arthur_common.models.common_schemas import PaginationParameters
 from arthur_common.models.response_schemas import ListAgenticAnnotationsResponse
 from arthur_common.models.task_eval_schemas import (
-    ContinuousEvalResponse,
     ContinuousEvalVariableMappingResponse,
-    ListContinuousEvalsResponse,
 )
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from pydantic import AfterValidator
@@ -38,7 +36,9 @@ from schemas.request_schemas import (
 from schemas.response_schemas import (
     AgenticAnnotationAnalyticsResponse,
     ContinuousEvalRerunResponse,
+    ContinuousEvalResponse,
     ContinuousEvalTestRunResponse,
+    ListContinuousEvalsResponse,
     ListContinuousEvalTestRunsResponse,
 )
 from utils.url_encoding import decode_path_param

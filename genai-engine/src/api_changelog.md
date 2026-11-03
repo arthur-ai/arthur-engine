@@ -3,6 +3,7 @@ The intention of this changelog is to document API changes as they happen to eff
 ---
 
 # 11/03/2026
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}/reasoning_options  endpoint added
 - **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property '/items/creation_source/anyOf[subschema #1: AgentCreationSource]/oneOf[subschema #1: GCPAgentCreationSource]/observations/occurrences' to the response with the '200' status
 - **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property '/items/creation_source/anyOf[subschema #1: AgentCreationSource]/oneOf[subschema #2: OTELAgentCreationSource]/observations/occurrences' to the response with the '200' status
 - **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property '/items/creation_source/anyOf[subschema #1: AgentCreationSource]/oneOf[subschema #3: ManualAgentCreationSource]/observations/occurrences' to the response with the '200' status
@@ -15,6 +16,16 @@ The intention of this changelog is to document API changes as they happen to eff
 - **CHANGE** for **URL**: /api/v2/agent-tasks/resolve  added the new optional request property 'records/items/creation_source/oneOf[subschema #2: SIEMAgentCreationSource]/observations/occurrences'
 - **CHANGE** for **URL**: /api/v2/agent-tasks/resolve  added the new optional request property 'records/items/creation_source/oneOf[subschema #3: EndpointAgentCreationSource]/observations/occurrences'
 - **CHANGE** for **URL**: /api/v2/agent-tasks/resolve  added the new optional request property 'records/items/creation_source/oneOf[subschema #4: NetworkAgentCreationSource]/observations/occurrences'
+
+# 11/02/2026
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  added the optional property 'sample_rate' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  added the new optional request property 'sample_rate'
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  added the optional property 'sample_rate' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}/eval_defaults  endpoint added
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}/eval_defaults  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the optional property 'evals/items/sample_rate' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the new optional request property 'sample_rate'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the optional property 'sample_rate' to the response with the '200' status
 
 # 10/31/2026
 - **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property '/items/creation_source/anyOf[subschema #1: AgentCreationSource]/oneOf[subschema #1: GCPAgentCreationSource]/observations/previous_version' to the response with the '200' status

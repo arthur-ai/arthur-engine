@@ -9764,6 +9764,159 @@
                 }
             }
         },
+        "/api/v1/model_providers/{provider}/eval_defaults": {
+            "get": {
+                "tags": [
+                    "Model Providers"
+                ],
+                "summary": "Get a provider's default reasoning settings for LLM evals.",
+                "description": "Returns the reasoning_effort and thinking settings sent on LLM eval calls to this provider when the eval's own config sets neither. Null fields send nothing.",
+                "operationId": "get_model_provider_eval_defaults_api_v1_model_providers__provider__eval_defaults_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "provider",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/ModelProvider"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ModelProviderEvalDefaults"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "Model Providers"
+                ],
+                "summary": "Set a provider's default reasoning settings for LLM evals.",
+                "description": "Sets the reasoning_effort and thinking settings sent on LLM eval calls to this provider when the eval's own config sets neither. An eval that sets either one gets neither default. A default is skipped for models that don't accept it, and thinking 'disabled' or reasoning_effort 'none' is skipped for models that always think (e.g. Claude Sonnet 5.5), where it would have no effect. Both defaults are skipped for models litellm doesn't know (e.g. Azure deployment names). Applies to LLM evals only, not to prompts. Send nulls to clear.",
+                "operationId": "set_model_provider_eval_defaults_api_v1_model_providers__provider__eval_defaults_put",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "provider",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/ModelProvider"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PutModelProviderEvalDefaults"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "204": {
+                        "description": "Eval defaults updated."
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/model_providers/{provider}/reasoning_options": {
+            "get": {
+                "tags": [
+                    "Model Providers"
+                ],
+                "summary": "Get the reasoning settings a model accepts.",
+                "description": "Returns the reasoning_effort values and thinking types litellm accepts for a model, the same rule LLM eval saves are checked against. Null fields mean litellm doesn't know the model, and any value is sent as is.",
+                "operationId": "get_model_reasoning_options_api_v1_model_providers__provider__reasoning_options_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "provider",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/ModelProvider"
+                        }
+                    },
+                    {
+                        "name": "model_name",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "Name of the model, as the eval stores it",
+                            "title": "Model Name"
+                        },
+                        "description": "Name of the model, as the eval stores it"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ModelReasoningOptions"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/secrets/rotation": {
             "post": {
                 "tags": [
@@ -21009,6 +21162,19 @@
                         "title": "Enabled",
                         "description": "Whether to enable or disable a continuous eval. Defaults to True.",
                         "default": true
+                    },
+                    "sample_rate": {
+                        "anyOf": [
+                            {
+                                "type": "number",
+                                "maximum": 1.0
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Sample Rate",
+                        "description": "Fraction of traces to evaluate, in (0, 1]. Traces are picked by a hash of the trace ID, so evals with the same rate evaluate the same traces. Null evaluates every trace."
                     }
                 },
                 "type": "object",
@@ -21145,6 +21311,18 @@
                         "format": "date-time",
                         "title": "Updated At",
                         "description": "Timestamp representing the time the continuous eval was last updated."
+                    },
+                    "sample_rate": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Sample Rate",
+                        "description": "Fraction of traces evaluated, in (0, 1]. Null evaluates every trace."
                     }
                 },
                 "type": "object",
@@ -21156,7 +21334,8 @@
                     "created_at",
                     "updated_at"
                 ],
-                "title": "ContinuousEvalResponse"
+                "title": "ContinuousEvalResponse",
+                "description": "The continuous eval response, with its sample rate.\n\nExtends the shared model only until `arthur_common` carries `sample_rate` on\n`ContinuousEvalResponse` itself, at which point this subclass goes. Named the\nsame so the OpenAPI component, and the generated clients built from it, keep\ntheir name either way."
             },
             "ContinuousEvalRunStatus": {
                 "type": "string",
@@ -26153,6 +26332,41 @@
                 ],
                 "title": "ModelProvider"
             },
+            "ModelProviderEvalDefaults": {
+                "properties": {
+                    "provider": {
+                        "$ref": "#/components/schemas/ModelProvider",
+                        "description": "Provider the defaults apply to"
+                    },
+                    "reasoning_effort": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ReasoningEffortEnum"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Reasoning effort sent on LLM eval calls whose eval config sets neither reasoning_effort nor thinking. Null sends nothing."
+                    },
+                    "thinking": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/AnthropicThinkingParam-Output"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Thinking setting sent on LLM eval calls whose eval config sets neither reasoning_effort nor thinking. Null sends nothing."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "provider"
+                ],
+                "title": "ModelProviderEvalDefaults"
+            },
             "ModelProviderList": {
                 "properties": {
                     "providers": {
@@ -26248,6 +26462,101 @@
                     "catalog"
                 ],
                 "title": "ModelProviderWhitelist"
+            },
+            "ModelReasoningOptions": {
+                "properties": {
+                    "provider": {
+                        "$ref": "#/components/schemas/ModelProvider",
+                        "description": "Provider of the model"
+                    },
+                    "model_name": {
+                        "type": "string",
+                        "title": "Model Name",
+                        "description": "Model the options apply to"
+                    },
+                    "reasoning_efforts": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/ReasoningEffortEnum"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Reasoning Efforts",
+                        "description": "reasoning_effort values the model accepts; empty when it takes none. Null when litellm doesn't know the model, in which case any value is sent as is."
+                    },
+                    "thinking": {
+                        "$ref": "#/components/schemas/ModelThinkingOptions",
+                        "description": "Thinking settings the model accepts"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "provider",
+                    "model_name",
+                    "reasoning_efforts",
+                    "thinking"
+                ],
+                "title": "ModelReasoningOptions"
+            },
+            "ModelThinkingOptions": {
+                "properties": {
+                    "supported": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Supported",
+                        "description": "Whether the model takes a thinking setting. Null when litellm doesn't know the model."
+                    },
+                    "can_disable": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Can Disable",
+                        "description": "Whether thinking type 'disabled' turns thinking off. False for models that always think and for non-Claude models. Null when litellm doesn't know the model."
+                    },
+                    "types": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string",
+                                    "enum": [
+                                        "enabled",
+                                        "adaptive",
+                                        "disabled"
+                                    ]
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Thinking Types",
+                        "description": "Thinking types the model accepts. Null when litellm doesn't know the model."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "supported",
+                    "can_disable",
+                    "types"
+                ],
+                "title": "ModelThinkingOptions"
             },
             "NestedSpanWithMetricsResponse": {
                 "properties": {
@@ -28972,6 +29281,34 @@
                 },
                 "type": "object",
                 "title": "PutModelProviderCredentials"
+            },
+            "PutModelProviderEvalDefaults": {
+                "properties": {
+                    "reasoning_effort": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ReasoningEffortEnum"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Reasoning effort sent on LLM eval calls whose eval config sets neither reasoning_effort nor thinking. Skipped for models that don't accept the value. Null sends nothing."
+                    },
+                    "thinking": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/AnthropicThinkingParam-Input"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Thinking setting sent on LLM eval calls whose eval config sets neither reasoning_effort nor thinking, e.g. {'type': 'disabled'} to turn Claude thinking off. Skipped for models that don't accept it. Null sends nothing."
+                    }
+                },
+                "type": "object",
+                "title": "PutModelProviderEvalDefaults"
             },
             "PutModelProviderWhitelist": {
                 "properties": {
@@ -35011,6 +35348,19 @@
                         ],
                         "title": "Enabled",
                         "description": "Whether to enable or disable a continuous eval."
+                    },
+                    "sample_rate": {
+                        "anyOf": [
+                            {
+                                "type": "number",
+                                "maximum": 1.0
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Sample Rate",
+                        "description": "Fraction of traces to evaluate, in (0, 1]. Omit to leave it unchanged; send null to evaluate every trace."
                     }
                 },
                 "type": "object",

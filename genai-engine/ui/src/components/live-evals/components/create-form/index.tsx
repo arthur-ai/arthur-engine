@@ -9,6 +9,7 @@ import z from "zod";
 import { useContinuousEvalVariableMapping } from "../../hooks/useContinuousEvalVariableMapping";
 import { useCreateContinuousEval } from "../../hooks/useCreateContinuousEval";
 import { DetailsFieldGroup, EvaluatorSelector, TransformSelector } from "../../new";
+import { percentToSampleRate, SampleRateField, samplePercentSchema } from "../sample-rate";
 import { VariableMappingSection } from "../variable-mapping";
 
 import { useTransformVersions } from "@/components/transforms/hooks/useTransformVersions";
@@ -39,6 +40,7 @@ const CreateForm = ({ taskId, onClose }: { taskId: string; onClose: () => void }
       name: "",
       description: "",
       enabled: true,
+      samplePercent: "",
       evaluator: {
         name: null as string | null,
         version: null as string | null,
@@ -55,6 +57,7 @@ const CreateForm = ({ taskId, onClose }: { taskId: string; onClose: () => void }
         name: z.string().min(1, "Name is required"),
         description: z.string(),
         enabled: z.boolean(),
+        samplePercent: samplePercentSchema,
         evaluator: z.object({
           name: z.string().min(1, "Evaluator name is required"),
           version: z.string().min(1, "Evaluator version is required"),
@@ -75,6 +78,7 @@ const CreateForm = ({ taskId, onClose }: { taskId: string; onClose: () => void }
         name: z.string().min(1, "Name is required"),
         description: z.string(),
         enabled: z.boolean(),
+        samplePercent: samplePercentSchema,
         evaluator: z.object({
           name: z.string().min(1, "Evaluator name is required"),
           version: z.string().min(1, "Evaluator version is required"),
@@ -98,6 +102,7 @@ const CreateForm = ({ taskId, onClose }: { taskId: string; onClose: () => void }
         name: value.name,
         description: value.description?.trim() || undefined,
         enabled: value.enabled,
+        sample_rate: percentToSampleRate(value.samplePercent),
         eval_type: isML ? "ml_eval" : "llm_eval",
         llm_eval_name: value.evaluator.name!,
         llm_eval_version: value.evaluator.version ?? "latest",
@@ -212,6 +217,11 @@ const CreateForm = ({ taskId, onClose }: { taskId: string; onClose: () => void }
                   label="Enable continuous eval"
                   slotProps={{ typography: { color: "text.primary" } }}
                 />
+              )}
+            </form.Field>
+            <form.Field name="samplePercent">
+              {(field) => (
+                <SampleRateField value={field.state.value} onChange={field.handleChange} onBlur={field.handleBlur} errors={field.state.meta.errors} />
               )}
             </form.Field>
           </Stack>

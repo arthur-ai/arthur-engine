@@ -21,6 +21,7 @@ import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import z from "zod";
 
+import { percentToSampleRate, SampleRateField, samplePercentSchema } from "../components/sample-rate";
 import { VariableMappingSection } from "../components/variable-mapping";
 import { useContinuousEvalVariableMapping } from "../hooks/useContinuousEvalVariableMapping";
 import { useCreateContinuousEval } from "../hooks/useCreateContinuousEval";
@@ -95,6 +96,7 @@ const LiveEvalsNewForm = () => {
       name: "",
       description: "",
       enabled: true,
+      samplePercent: "",
       evaluator: initialEvaluator,
       transform: {
         transformId: null,
@@ -107,6 +109,7 @@ const LiveEvalsNewForm = () => {
         name: z.string().min(1, "Name is required"),
         description: z.string(),
         enabled: z.boolean(),
+        samplePercent: samplePercentSchema,
         evaluator: z.object({
           name: z.string().min(1, "Evaluator name is required"),
           version: z.string().min(1, "Evaluator version is required"),
@@ -127,6 +130,7 @@ const LiveEvalsNewForm = () => {
         name: z.string().min(1, "Name is required"),
         description: z.string(),
         enabled: z.boolean(),
+        samplePercent: samplePercentSchema,
         evaluator: z.object({
           name: z.string().min(1, "Evaluator name is required"),
           version: z.string().min(1, "Evaluator version is required"),
@@ -150,6 +154,7 @@ const LiveEvalsNewForm = () => {
         name: value.name,
         description: value.description?.trim() || undefined,
         enabled: value.enabled,
+        sample_rate: percentToSampleRate(value.samplePercent),
         eval_type: isML ? "ml_eval" : "llm_eval",
         llm_eval_name: value.evaluator.name!,
         llm_eval_version: value.evaluator.version ?? "latest",
@@ -290,6 +295,12 @@ const LiveEvalsNewForm = () => {
               label="Enable continuous eval"
               slotProps={{ typography: { color: "text.primary" } }}
             />
+          )}
+        </form.Field>
+
+        <form.Field name="samplePercent">
+          {(field) => (
+            <SampleRateField value={field.state.value} onChange={field.handleChange} onBlur={field.handleBlur} errors={field.state.meta.errors} />
           )}
         </form.Field>
 
