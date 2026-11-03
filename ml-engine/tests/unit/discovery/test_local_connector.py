@@ -38,6 +38,7 @@ from job_executors.discovery_scan import (
     failure_code,
 )
 from tests.fakes.catalog import agent, document
+from tests.fakes.records import agent_records
 
 SCAN_AT = 1790100381
 SCANNED = datetime.fromtimestamp(SCAN_AT, tz=timezone.utc)
@@ -111,7 +112,7 @@ def scan(
     connector = connector or LocalConnector()
     fields = {} if inventory_dir is None else {"inventory_dir": str(inventory_dir)}
     batches = connector.scan(config(query), lookback_hours, {}, fields, LOG)
-    return [record for batch in batches for record in batch]
+    return agent_records(batches)
 
 
 # --- Registration --------------------------------------------------------------------

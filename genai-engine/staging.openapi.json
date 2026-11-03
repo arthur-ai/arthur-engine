@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.1081"
+        "version": "2.1.1089"
     },
     "paths": {
         "/api/v2/engine-config": {
@@ -18218,7 +18218,16 @@
                             }
                         ],
                         "title": "Install Path",
-                        "description": "Install location, shaped to '~/...' rather than '/Users/<name>/...' so a username does not travel in a path."
+                        "description": "Install location, with a person's home directory written as '~' ('~/...' rather than '/Users/<name>/...') so a username does not travel in a path. Enforced here: a path under a home directory is rewritten whenever this model is validated, so also when a stored record is read back through it."
+                    },
+                    "occurrences": {
+                        "items": {
+                            "$ref": "#/components/schemas/AgentOccurrence"
+                        },
+                        "type": "array",
+                        "maxItems": 100,
+                        "title": "Occurrences",
+                        "description": "Every place on the host the source found the agent, each with its kind, path and version: every running version of a CLI, every browser profile an extension is in. `install_path` and `version` are the one occurrence that speaks for the record. Empty where the source sees no more than that one. Each place appears once: two users' copies of one path collapse into one occurrence once their home directories are written as '~'."
                     },
                     "version": {
                         "anyOf": [
@@ -18324,6 +18333,49 @@
                 "type": "object",
                 "title": "AgentObservations",
                 "description": "What a source could see about an agent. Shared across categories, all optional.\n\nAn absent field means the source cannot see it, not that collection failed. That\npromise is kept by each source declaring ``observable_fields()``, which is also\nwhat lets visibility be computed without a per-vendor branch in consumers."
+            },
+            "AgentOccurrence": {
+                "properties": {
+                    "kind": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Kind",
+                        "description": "What kind of row this is, in the vocabulary of `SourceAddress.resource_kind`: 'proc' for a running process, 'file', 'vscodeext', 'npm'. Free text, for the same reason."
+                    },
+                    "path": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Path",
+                        "description": "Where it is: the install location, or the executable a process runs from. A person's home directory is written as '~', as in `install_path`."
+                    },
+                    "version": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Version",
+                        "description": "Its version, where the row shows one. Read statically, never by executing the discovered binary."
+                    }
+                },
+                "type": "object",
+                "title": "AgentOccurrence",
+                "description": "One place a source found an agent on a host: an install, or a running process.\n\nA record names one agent on one host, but several rows can prove it at once: five\nversions of Claude Code running from ``~/.local/share/claude/versions/``, one Chrome\nextension in four profiles. ``install_path`` and ``version`` carry the one row that\nspeaks for the record; an occurrence is each of them."
             },
             "AgenticAnnotationAnalyticsResponse": {
                 "properties": {
@@ -22707,7 +22759,7 @@
                     "address"
                 ],
                 "title": "EndpointAgentCreationSource",
-                "description": "One agent observed on one managed endpoint.\n\nGrain is per (software, device): ``address.instance`` is the device and\n``address.resource_id`` the software, because the Discovery list shows a row per\nmachine.\n\nWhat it fills comes from three places: the collector's on-disk output, the MDM's\ndevice record, and the collector's catalog.\n\nWhere the collector's six output columns land, so none is unaccounted for:\n\n========  =============================================\ncolumn    carried as\n========  =============================================\nkind      ``address.resource_kind``\nid        ``address.resource_id``\nver       ``observations.version``\nloc       ``observations.install_path``\nperms     ``observations.permissions``\nextra     nothing -- see below\n========  =============================================\n\n``extra`` means a different thing per kind (browser type, image size, deb arch,\nunit state, listening address) and a field here means one thing for every source.\nThe listening address is the one value in it worth its own field eventually.\n\n``scan`` rows must never arrive: that kind marks a branch that could not look, not\nan agent that was found.\n\nA one-shot scan sees the machine, not behaviour over time. Anything needing\npersistent event capture -- outbound destinations, connection counts -- is out of\nreach until osqueryd runs with the audit subsystem, which would put code signing,\nnotarization and PPPC on the critical path."
+                "description": "One agent observed on one managed endpoint.\n\nGrain is per (software, device): ``address.instance`` is the device and\n``address.resource_id`` the software, because the Discovery list shows a row per\nmachine.\n\nWhat it fills comes from three places: the collector's on-disk output, the MDM's\ndevice record, and the collector's catalog.\n\nWhere the collector's six output columns land, so none is unaccounted for:\n\n========  =============================================\ncolumn    carried as\n========  =============================================\nkind      ``address.resource_kind``\nid        ``address.resource_id``\nver       ``observations.version``\nloc       ``observations.install_path``\nperms     ``observations.permissions``\nextra     nothing -- see below\n========  =============================================\n\n``extra`` means a different thing per kind (browser type, image size, deb arch,\nunit state, listening address) and a field here means one thing for every source.\nThe listening address is the one value in it worth its own field eventually.\n\nThe table describes the row that speaks for the record. Every row that proved it --\neach running version, each profile an extension is in -- is one of\n``observations.occurrences``, as its ``kind``, ``loc`` and ``ver``.\n\n``scan`` rows must never arrive: that kind marks a branch that could not look, not\nan agent that was found.\n\nA one-shot scan sees the machine, not behaviour over time. Anything needing\npersistent event capture -- outbound destinations, connection counts -- is out of\nreach until osqueryd runs with the audit subsystem, which would put code signing,\nnotarization and PPPC on the critical path."
             },
             "EngineConfigResponse": {
                 "properties": {

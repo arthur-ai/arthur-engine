@@ -8,8 +8,14 @@ from typing import Any, Iterator, Optional, Sequence, get_args
 import pytest
 from arthur_client.api_bindings import DiscoverySourceConfigSpec
 from arthur_common.models.agent_discovery_schemas import DiscoveryOutputRecord
+from arthur_common.models.agent_governance_schemas import (
+    AgentObservations,
+    EndpointAgentCreationSource,
+    SourceAddress,
+)
 
 from job_executors.discovery_scan import (
+    CorroboratingRecord,
     DeviceCoverage,
     DiscoveryErrorCode,
     DiscoveryScanOutcome,
@@ -182,6 +188,63 @@ def test_an_empty_batch_sends_nothing() -> None:
     result = StandaloneRecordSink(sink, "s").publish("", "", config(), [])
 
     assert result.accepted == 0 and sink.sent == []
+
+
+def test_a_corroboration_is_not_sent_as_an_agent_of_its_own() -> None:
+    """A standalone destination has no task to join it to, and an event per record
+    would report the agent once for each piece of its evidence."""
+    corroboration = CorroboratingRecord(
+        corroborates="a",
+        external_id="a:binaries:~/.local/bin/a",
+        name="agent-a",
+        last_seen=datetime(2026, 10, 7, 11, 0, tzinfo=timezone.utc),
+        creation_source=EndpointAgentCreationSource(
+            vendor="jamf_pro",
+            address=SourceAddress(instance="m1", resource_id="~/.local/bin/a"),
+            observations=AgentObservations(),
+        ),
+    )
+    sink = RecordingSink()
+
+    result = StandaloneRecordSink(sink, "s").publish(
+        "",
+        "",
+        config(),
+        [record("a"), corroboration],
+    )
+
+    assert result.accepted == 1
+    assert [e["agent"]["external_id"] for e in sink.sent[0]] == ["a"]
+
+
+def test_a_refusal_names_the_agent_it_was_sent_for_around_a_corroboration() -> None:
+    """A refusal's position is into the events sent, which leave the corroboration out,
+    so the event at position 1 is agent "b" -- not the record at position 1 of the
+    batch, which is the corroboration."""
+    corroboration = CorroboratingRecord(
+        corroborates="a",
+        external_id="a:binaries:~/.local/bin/a",
+        name="agent-a",
+        last_seen=datetime(2026, 10, 7, 11, 0, tzinfo=timezone.utc),
+        creation_source=EndpointAgentCreationSource(
+            vendor="jamf_pro",
+            address=SourceAddress(instance="m1", resource_id="~/.local/bin/a"),
+            observations=AgentObservations(),
+        ),
+    )
+    sink = RecordingSink(
+        refuse=[RefusedEvent(1, "document_parsing_exception", "field [agent.name]")],
+    )
+
+    result = StandaloneRecordSink(sink, "s").publish(
+        "",
+        "",
+        config(),
+        [record("a"), corroboration, record("b")],
+    )
+
+    assert [f.external_id for f in result.failed] == ["b"]
+    assert result.accepted == 1
 
 
 def test_the_outcome_event_carries_the_logged_payload() -> None:
