@@ -13,7 +13,11 @@ from typing import Callable, Sequence
 from arthur_client.api_bindings import DiscoverySourceConfigSpec
 from arthur_common.models.agent_discovery_schemas import DiscoveryOutputRecord
 
-from job_executors.discovery_scan import DiscoveryPublishResult, FailedDiscoveryRecord
+from job_executors.discovery_scan import (
+    CorroboratingRecord,
+    DiscoveryPublishResult,
+    FailedDiscoveryRecord,
+)
 from standalone.sinks.common import Sink, discovered_agent_event
 
 
@@ -51,25 +55,32 @@ class StandaloneRecordSink:
         did not complete a request; it may have split the batch into several, and those
         before the failing one stay delivered, but the run counts none of the batch, as
         it does for any record sink that raises, so its count is a lower bound.
+
+        A `CorroboratingRecord` is not sent. It exists to put a further piece of
+        evidence on its agent's task, and an event per record would report the agent
+        once for each.
         """
-        if not records:
+        agents = [r for r in records if not isinstance(r, CorroboratingRecord)]
+        if not agents:
             return DiscoveryPublishResult(accepted=0)
         observed_at = self._clock()
         refused = self._sink.send(
             [
                 discovered_agent_event(record, config, self._source_name, observed_at)
-                for record in records
+                for record in agents
             ],
         )
+        # A refusal's position is into the events sent, which leave corroborating
+        # records out, so it names one of `agents`, not of `records`.
         failed = tuple(
             FailedDiscoveryRecord(
-                external_id=records[r.position].external_id,
+                external_id=agents[r.position].external_id,
                 reason=r.reason,
                 detail=r.detail,
             )
             for r in refused
         )
         return DiscoveryPublishResult(
-            accepted=len(records) - len(failed),
+            accepted=len(agents) - len(failed),
             failed=failed,
         )
