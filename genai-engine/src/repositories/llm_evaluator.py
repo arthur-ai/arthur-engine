@@ -43,6 +43,7 @@ class LLMEvaluator(BaseEvaluator):
         variable_mapping: List[ContinuousEvalTransformVariableMapping],
         resolved_variables: dict[str, str],
         org_id: uuid.UUID,
+        add_cache_breakpoint: bool = True,
     ) -> EvalRunResponse:
         variables = [
             VariableTemplateValue(name=k, value=v)
@@ -55,6 +56,7 @@ class LLMEvaluator(BaseEvaluator):
             org_id=org_id,
             version=eval_version,
             completion_request=completion_request,
+            add_cache_breakpoint=add_cache_breakpoint,
         )
         return EvalRunResponse(
             reason=llm_result.reason,
