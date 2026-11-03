@@ -346,3 +346,10 @@ class EvalKind(str, Enum):
     PII_V1 = "pii_v1"
     TOXICITY = "toxicity"
     PROMPT_INJECTION = "prompt_injection"
+
+
+class SpendEstimateUnavailableReason(str, Enum):
+    """Why a continuous eval daily spend estimate could not be computed."""
+
+    NO_TRACES = "no_traces"
+    NO_RUNS = "no_runs"

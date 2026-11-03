@@ -113,8 +113,10 @@ from schemas.response_schemas import (
     AgenticAnnotationAnalyticsResponse,
     BulkAddTracesToDatasetResponse,
     ConnectionCheckResult,
+    ContinuousEvalDailySpendEstimate,
     ContinuousEvalRerunResponse,
     ContinuousEvalResponse,
+    ContinuousEvalSpendResponse,
     ContinuousEvalTestRunResponse,
     DatasetResponse,
     DatasetVersionResponse,
@@ -4505,6 +4507,54 @@ class GenaiEngineTestClientBase(httpx.Client):
             resp.status_code,
             (
                 AgenticAnnotationAnalyticsResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.json()
+            ),
+        )
+
+    def get_continuous_eval_spend(
+        self,
+        eval_id: str,
+    ) -> tuple[int, ContinuousEvalSpendResponse]:
+        """Get recent and estimated daily spend for a continuous eval."""
+        resp = self.base_client.get(
+            f"/api/v1/continuous_evals/{eval_id}/spend",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                ContinuousEvalSpendResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.json()
+            ),
+        )
+
+    def estimate_continuous_eval_spend(
+        self,
+        task_id: str,
+        llm_eval_name: str,
+        sample_rate: float | None = None,
+    ) -> tuple[int, ContinuousEvalDailySpendEstimate]:
+        """Estimate the daily spend of a new continuous eval."""
+        params: dict[str, str | float] = {"llm_eval_name": llm_eval_name}
+        if sample_rate is not None:
+            params["sample_rate"] = sample_rate
+        resp = self.base_client.get(
+            f"/api/v1/tasks/{task_id}/continuous_evals/spend_estimate",
+            params=params,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                ContinuousEvalDailySpendEstimate.model_validate(resp.json())
                 if resp.status_code == 200
                 else resp.json()
             ),

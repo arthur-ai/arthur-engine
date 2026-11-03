@@ -22,6 +22,7 @@ import { useNavigate, useSearchParams } from "react-router";
 import z from "zod";
 
 import { percentToSampleRate, SampleRateField, samplePercentSchema } from "../components/sample-rate";
+import { SpendEstimateLine } from "../components/spend";
 import { VariableMappingSection } from "../components/variable-mapping";
 import { useContinuousEvalVariableMapping } from "../hooks/useContinuousEvalVariableMapping";
 import { useCreateContinuousEval } from "../hooks/useCreateContinuousEval";
@@ -169,6 +170,7 @@ const LiveEvalsNewForm = () => {
 
   const evaluator = useStore(form.store, (state) => state.values.evaluator);
   const transform = useStore(form.store, (state) => state.values.transform);
+  const samplePercent = useStore(form.store, (state) => state.values.samplePercent);
 
   const isMLEval = evaluator.eval_type === "ml";
 
@@ -307,6 +309,8 @@ const LiveEvalsNewForm = () => {
         <Divider sx={{ my: 2 }} />
 
         <EvaluatorSelector taskId={task?.id ?? ""} form={form} fields="evaluator" onSelectionChange={handleSelectionChange} />
+
+        <SpendEstimateLine taskId={task?.id ?? ""} llmEvalName={evaluator.name} samplePercent={samplePercent} />
 
         {evaluatorData && (
           <Paper variant="outlined" sx={{ p: 2 }}>
