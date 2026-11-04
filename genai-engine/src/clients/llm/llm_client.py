@@ -24,6 +24,10 @@ from repositories.organizations_repository import (
 
 logger = logging.getLogger(__name__)
 
+# What calculate_cost returns when the provider or model has no pricing. Callers that
+# store cost (continuous evals) must treat it as unknown, not as a $0 call.
+COST_UNAVAILABLE = "0.00"
+
 
 class LLMModelResponse(BaseModel):
     # NOTE: We use arbitrary_types_allowed=True here to allow the response parameter to be the non-pydantic types ModelResponse/CustomStreamWrapper
@@ -207,19 +211,19 @@ class LLMClient:
         self,
         response: Optional[Union[ModelResponse, TextCompletionResponse]],
     ) -> str:
-        """Calculate the cost of an LLM response, returning '0.00' if cost data is unavailable."""
+        """Calculate the cost of an LLM response, returning COST_UNAVAILABLE if cost data is unavailable."""
         if response is None:
-            return "0.00"
+            return COST_UNAVAILABLE
         if self.provider == ModelProvider.VLLM:
             logger.warning("Cost calculation is not supported for the VLLM provider")
-            return "0.00"
+            return COST_UNAVAILABLE
         try:
             cost_float = completion_cost(response)
             return f"{cost_float:.6f}"
         except Exception:
             model_name = getattr(response, "model", "unknown")
             logger.warning(f"Cost calculation not available for model={model_name}")
-            return "0.00"
+            return COST_UNAVAILABLE
 
     async def acount_tokens(
         self,

@@ -1643,7 +1643,7 @@ export type ContinuousEvalCreateRequestEvalTypeEnum = "llm_eval" | "ml_eval";
  * ContinuousEvalDailySpendEstimate
  * Projected daily cost of a continuous eval at the task's recent traffic.
  *
- * estimated_daily_cost = traces_per_day * sample_rate * average_run_cost
+ * estimated_daily_cost = traces_per_day * sample_rate * judged_share * average_run_cost
  */
 export interface ContinuousEvalDailySpendEstimate {
   /**
@@ -1657,8 +1657,19 @@ export interface ContinuousEvalDailySpendEstimate {
    */
   estimated_daily_cost?: number | null;
   /**
+   * Judged Share
+   * Share of finished runs that called the LLM rather than being skipped or erroring first. 1.0 with no finished runs.
+   * @default 1
+   */
+  judged_share?: number;
+  /**
+   * Priced Since
+   * Set when the evaluator changed inside the window: the average only uses runs from this time on.
+   */
+  priced_since?: string | null;
+  /**
    * Run Count
-   * Live runs in the window that called the LLM (passed or failed), which the average is taken over.
+   * Live runs from the current evaluator that called the LLM (passed or failed) and have a cost, which the average is taken over.
    */
   run_count: number;
   /**
@@ -1679,27 +1690,16 @@ export interface ContinuousEvalDailySpendEstimate {
   /** Set when estimated_daily_cost is null: no_traces when the task received no traces in the window, no_runs when the evaluator has no live runs that called the LLM in the window. */
   unavailable_reason?: SpendEstimateUnavailableReason | null;
   /**
-   * Window Days
-   * Number of trailing days the traffic and the average run cost are measured over.
-   */
-  window_days: number;
-  /**
-   * Judged Share
-   * Share of finished runs that called the LLM rather than being skipped or erroring first. 1.0 with no finished runs.
-   * @default 1
-   */
-  judged_share?: number;
-  /**
    * Unpriced Run Count
    * Runs that called the LLM but have no cost (a model without a price), left out of the average.
    * @default 0
    */
   unpriced_run_count?: number;
   /**
-   * Priced Since
-   * Set when the evaluator changed inside the window: the average only uses runs from this time on.
+   * Window Days
+   * Number of trailing days the traffic and the average run cost are measured over.
    */
-  priced_since?: string | null;
+  window_days: number;
 }
 
 /** ContinuousEvalRerunResponse */
