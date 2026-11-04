@@ -24,12 +24,15 @@ _LLM_CALLING_RUN_STATUSES = (
     ContinuousEvalRunStatus.PASSED.value,
     ContinuousEvalRunStatus.FAILED.value,
 )
-# Runs that are done one way or another: called the LLM, or were skipped or
-# errored before it. Their split is the share of sampled traces that reach the judge.
+# Runs that are done one way or another: called the LLM, or were skipped before
+# it. Their split is the share of sampled traces that reach the judge. ERROR is
+# left out of both sides: it covers failures before the judge (missing variables)
+# and during it (quota, provider errors), so it says nothing about whether a
+# sampled trace would reach the judge, and counting it would lower the estimate
+# whenever the provider is failing.
 _FINISHED_RUN_STATUSES = (
     *_LLM_CALLING_RUN_STATUSES,
     ContinuousEvalRunStatus.SKIPPED.value,
-    ContinuousEvalRunStatus.ERROR.value,
 )
 # continuous_evals.eval_type of evals that call an LLM judge ("ml_eval" otherwise).
 _LLM_EVAL_TYPE = "llm_eval"
@@ -223,8 +226,8 @@ class ContinuousEvalSpendRepository:
             if run_count and priced.average_run_cost is not None
             else None
         )
-        # Sampled traces that are skipped (a missing span) or error before the judge
-        # cost nothing, so only the share that reaches it is priced.
+        # Sampled traces that are skipped (a missing span) cost nothing, so only the
+        # share that reaches the judge is priced.
         judged_share = (
             priced.judged_run_count / priced.finished_run_count
             if priced.finished_run_count

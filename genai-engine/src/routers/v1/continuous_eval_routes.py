@@ -680,7 +680,7 @@ def get_continuous_eval_spend(
     "at the given sample rate: the task's traces per day over the last 7 days, times the sample "
     "rate, times the share of finished runs that reached the LLM, times the average cost of the "
     "live runs that called the LLM (passed or failed) and have a recorded cost over the last 7 "
-    "days of the task's continuous evals using the evaluator's latest version, counting each "
+    "days of the task's continuous evals using that evaluator version (latest by default), counting each "
     "eval's runs since its evaluator last changed, or all its runs in the window if it never "
     "changed.",
     response_model=ContinuousEvalDailySpendEstimate,
@@ -693,6 +693,12 @@ def estimate_continuous_eval_spend(
         str,
         Query(description="Name of the evaluator the continuous eval would run."),
     ],
+    llm_eval_version: Annotated[
+        str,
+        Query(
+            description="Version of the evaluator the continuous eval would run: 'latest', a version number, an ISO datetime string, or a tag. Each version can use a different judge model.",
+        ),
+    ] = "latest",
     sample_rate: Annotated[
         Optional[float],
         Query(
@@ -711,7 +717,7 @@ def estimate_continuous_eval_spend(
         llm_eval = LLMEvalsRepository(db_session).get_llm_item(
             task.id,
             llm_eval_name,
-            "latest",
+            llm_eval_version,
         )
         return ContinuousEvalSpendRepository(
             db_session,

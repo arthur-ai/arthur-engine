@@ -1658,7 +1658,7 @@ export interface ContinuousEvalDailySpendEstimate {
   estimated_daily_cost?: number | null;
   /**
    * Judged Share
-   * Share of finished runs that called the LLM rather than being skipped or erroring first. 1.0 with no finished runs.
+   * Share of finished runs that called the LLM rather than being skipped. Errored runs are left out. 1.0 with no finished runs.
    * @default 1
    */
   judged_share?: number;
@@ -2865,6 +2865,12 @@ export interface EstimateContinuousEvalSpendApiV1TasksTaskIdContinuousEvalsSpend
    * Name of the evaluator the continuous eval would run.
    */
   llm_eval_name: string;
+  /**
+   * Llm Eval Version
+   * Version of the evaluator the continuous eval would run: 'latest', a version number, an ISO datetime string, or a tag. Each version can use a different judge model.
+   * @default "latest"
+   */
+  llm_eval_version?: string;
   /**
    * Sample Rate
    * Fraction of traces to evaluate, in (0, 1]. Omit to evaluate every trace.
@@ -15099,7 +15105,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * @description Estimates the daily cost of a continuous eval that would run the given evaluator at the given sample rate: the task's traces per day over the last 7 days, times the sample rate, times the share of finished runs that reached the LLM, times the average cost of the live runs that called the LLM (passed or failed) and have a recorded cost over the last 7 days of the task's continuous evals using the evaluator's latest version, counting each eval's runs since its evaluator last changed, or all its runs in the window if it never changed.
+     * @description Estimates the daily cost of a continuous eval that would run the given evaluator at the given sample rate: the task's traces per day over the last 7 days, times the sample rate, times the share of finished runs that reached the LLM, times the average cost of the live runs that called the LLM (passed or failed) and have a recorded cost over the last 7 days of the task's continuous evals using that evaluator version (latest by default), counting each eval's runs since its evaluator last changed, or all its runs in the window if it never changed.
      *
      * @tags Continuous Evals
      * @name EstimateContinuousEvalSpendApiV1TasksTaskIdContinuousEvalsSpendEstimateGet

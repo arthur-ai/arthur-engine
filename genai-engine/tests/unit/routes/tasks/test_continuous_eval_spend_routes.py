@@ -161,8 +161,8 @@ def test_continuous_eval_spend_last_24h_and_estimate(
             recent,
         )
         # Counted in the last 24h but not in the average: they never reached the LLM
-        # or have no cost yet. The errored and skipped runs also lower the share of
-        # sampled traces that reach the judge; the pending one isn't finished yet.
+        # or have no cost yet. The skipped run also lowers the share of sampled
+        # traces that reach the judge; the errored and pending ones don't count.
         _add_run(
             continuous_eval.id,
             trace_ids[2],
@@ -223,10 +223,10 @@ def test_continuous_eval_spend_last_24h_and_estimate(
         assert estimate.sample_rate == 0.5
         assert estimate.run_count == 3
         assert estimate.average_run_cost == pytest.approx(0.04)
-        # 3 of the 5 finished runs in the window reached the judge.
-        assert estimate.judged_share == pytest.approx(0.6)
-        # 2 traces/day * 0.5 sampled * 0.6 judged * $0.04
-        assert estimate.estimated_daily_cost == pytest.approx(0.024)
+        # 3 of the 4 finished runs in the window reached the judge.
+        assert estimate.judged_share == pytest.approx(0.75)
+        # 2 traces/day * 0.5 sampled * 0.75 judged * $0.04
+        assert estimate.estimated_daily_cost == pytest.approx(0.03)
         assert estimate.unavailable_reason is None
 
         # The create form estimate prices from the same evaluator's live runs.
@@ -238,8 +238,8 @@ def test_continuous_eval_spend_last_24h_and_estimate(
         assert status_code == 200
         assert form_estimate.sample_rate == 0.25
         assert form_estimate.run_count == 3
-        # 2 traces/day * 0.25 * 0.6 judged * $0.04
-        assert form_estimate.estimated_daily_cost == pytest.approx(0.012)
+        # 2 traces/day * 0.25 * 0.75 judged * $0.04
+        assert form_estimate.estimated_daily_cost == pytest.approx(0.015)
 
         # No sample rate means every trace.
         status_code, form_estimate = client.estimate_continuous_eval_spend(
@@ -248,7 +248,7 @@ def test_continuous_eval_spend_last_24h_and_estimate(
         )
         assert status_code == 200
         assert form_estimate.sample_rate == 1.0
-        assert form_estimate.estimated_daily_cost == pytest.approx(0.048)
+        assert form_estimate.estimated_daily_cost == pytest.approx(0.06)
     finally:
         _cleanup(client, task.id, [continuous_eval.id])
 
@@ -599,6 +599,24 @@ def test_spend_estimate_ignores_other_versions_and_ml_evals(
         assert estimate.run_count == 1
         assert estimate.average_run_cost == pytest.approx(0.01)
 
+        # Picking version 1 in the form prices from the version 1 eval instead.
+        status_code, estimate = client.estimate_continuous_eval_spend(
+            task.id,
+            llm_eval.name,
+            llm_eval_version="1",
+        )
+        assert status_code == 200
+        assert estimate.run_count == 1
+        assert estimate.average_run_cost == pytest.approx(0.10)
+
+        # A version the evaluator doesn't have is a 404.
+        status_code, _ = client.estimate_continuous_eval_spend(
+            task.id,
+            llm_eval.name,
+            llm_eval_version="9",
+        )
+        assert status_code == 404
+
         # Turn the version 1 eval into an ML eval: its finished runs have no cost.
         db_session = override_get_db_session()
         db_session.query(DatabaseContinuousEval).filter(
@@ -621,3 +639,51 @@ def test_spend_estimate_ignores_other_versions_and_ml_evals(
         )
     finally:
         _cleanup(client, task.id, [old_version_eval.id, latest_eval.id])
+
+
+@pytest.mark.unit_tests
+def test_spend_estimate_ignores_errored_runs_in_judged_share(
+    client: GenaiEngineTestClientBase,
+):
+    """Runs that error (out of credits, a provider outage) don't lower the share of
+    traces that reach the judge, so a bad day doesn't make the estimate look cheap."""
+    status_code, task = client.create_task(
+        name="test_spend_estimate_errors",
+        is_agentic=True,
+    )
+    assert status_code == 200
+    status_code, llm_eval = create_test_llm_eval(client, task.id, "erroring_eval")
+    assert status_code == 200
+    continuous_eval, _ = _create_continuous_eval(client, task.id, llm_eval.name, None)
+    try:
+        now = datetime.now()
+        # 70 traces in 7 days -> 10 traces/day.
+        trace_ids = _add_traces(task.id, [now - timedelta(hours=2)] * 70)
+        recent = now - timedelta(hours=1)
+        for trace_id in trace_ids[:8]:
+            _add_run(
+                continuous_eval.id,
+                trace_id,
+                ContinuousEvalRunStatus.ERROR,
+                None,
+                recent,
+            )
+        for trace_id in trace_ids[8:10]:
+            _add_run(
+                continuous_eval.id,
+                trace_id,
+                ContinuousEvalRunStatus.PASSED,
+                0.01,
+                recent,
+            )
+
+        status_code, estimate = client.estimate_continuous_eval_spend(
+            task.id,
+            llm_eval.name,
+        )
+        assert status_code == 200
+        assert estimate.judged_share == pytest.approx(1.0)
+        # 10 traces/day * 1.0 sampled * 1.0 judged * $0.01
+        assert estimate.estimated_daily_cost == pytest.approx(0.1)
+    finally:
+        _cleanup(client, task.id, [continuous_eval.id])

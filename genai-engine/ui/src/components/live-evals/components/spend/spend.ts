@@ -26,11 +26,16 @@ export const describeEstimateFormula = (estimate: ContinuousEvalDailySpendEstima
 export const describeUnavailableEstimate = (
   reason: SpendEstimateUnavailableReason | null | undefined,
   windowDays: number,
-  unpricedRunCount = 0
+  unpricedRunCount = 0,
+  pricedSince: string | null = null
 ): string => {
   if (reason === "no_traces") return `No traces in the last ${windowDays} days`;
   // The judge was called, but its model has no price, so there is no cost to average.
-  if (unpricedRunCount > 0) return `${unpricedRunCount} runs called the LLM in the last ${windowDays} days, but its model has no price`;
+  if (unpricedRunCount > 0) {
+    return `${unpricedRunCount} runs called the LLM ${pricedSince ? "since the evaluator changed" : `in the last ${windowDays} days`}, but its model has no price`;
+  }
+  // Only runs from the current evaluator are priced, so older runs don't count.
+  if (pricedSince) return "No runs since the evaluator changed";
   return `No runs that called the LLM in the last ${windowDays} days`;
 };
 

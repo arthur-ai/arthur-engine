@@ -87,6 +87,27 @@ describe("SpendCards", () => {
 
     expect(screen.getByText("3 runs called the LLM in the last 7 days, but its model has no price")).toBeTruthy();
   });
+
+  it("says there are no runs since the evaluator changed after a switch", () => {
+    render(
+      <SpendCards
+        spend={{
+          ...spend,
+          estimate: {
+            ...estimate,
+            run_count: 0,
+            average_run_cost: null,
+            estimated_daily_cost: null,
+            unavailable_reason: "no_runs",
+            priced_since: "2026-11-03T10:00:00",
+          },
+        }}
+        currency="USD"
+      />
+    );
+
+    expect(screen.getByText("No runs since the evaluator changed")).toBeTruthy();
+  });
 });
 
 describe("SpendEstimateText", () => {
@@ -117,7 +138,7 @@ describe("malformed spend responses", () => {
   });
 
   it("renders no estimate line", () => {
-    const { container } = render(<SpendEstimateLine taskId="task" llmEvalName="evaluator" samplePercent="50" />);
+    const { container } = render(<SpendEstimateLine taskId="task" llmEvalName="evaluator" llmEvalVersion="latest" samplePercent="50" />);
 
     expect(container.innerHTML).toBe("");
   });
