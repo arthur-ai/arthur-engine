@@ -1578,6 +1578,11 @@ export interface ConnectionCheckResult {
  */
 export interface ContinuousEvalCreateRequest {
   /**
+   * Daily Cost Cap Usd
+   * Most the eval may spend on judge calls per day. Once reached, new runs are skipped until midnight. Null means no cap.
+   */
+  daily_cost_cap_usd?: number | null;
+  /**
    * Description
    * Description of the continuous eval
    */
@@ -1609,11 +1614,6 @@ export interface ContinuousEvalCreateRequest {
    * Name of the continuous eval
    */
   name: string;
-  /**
-   * Daily Cost Cap Usd
-   * Most the eval may spend on judge calls per day. Once reached, new runs are skipped until midnight. Null means no cap.
-   */
-  daily_cost_cap_usd?: number | null;
   /**
    * Sample Rate
    * Fraction of traces to evaluate, in (0, 1]. Traces are picked by a hash of the trace ID, so evals with the same rate evaluate the same traces. Null evaluates every trace.
@@ -1722,6 +1722,11 @@ export interface ContinuousEvalResponse {
    */
   created_at: string;
   /**
+   * Daily Cost Cap Usd
+   * Most the eval may spend on judge calls per day. Once reached, new runs are skipped until midnight. Null means no cap.
+   */
+  daily_cost_cap_usd?: number | null;
+  /**
    * Description
    * Description of the continuous eval.
    */
@@ -1758,11 +1763,6 @@ export interface ContinuousEvalResponse {
    * Name of the continuous eval.
    */
   name: string;
-  /**
-   * Daily Cost Cap Usd
-   * Most the eval may spend on judge calls per day. Once reached, new runs are skipped until midnight. Null means no cap.
-   */
-  daily_cost_cap_usd?: number | null;
   /**
    * Sample Rate
    * Fraction of traces evaluated, in (0, 1]. Null evaluates every trace.
@@ -1816,11 +1816,21 @@ export interface ContinuousEvalSpendResponse {
    */
   last_24h_run_count: number;
   /**
+   * Cap Reached
+   * Whether today's spend has reached the cap, so new runs are skipped until midnight.
+   */
+  cap_reached: boolean;
+  /**
    * Continuous Eval Id
    * ID of the continuous eval.
    * @format uuid
    */
   continuous_eval_id: string;
+  /**
+   * Daily Cost Cap Usd
+   * The eval's daily spend cap. Null means no cap.
+   */
+  daily_cost_cap_usd?: number | null;
   /** Projected daily cost at the current sample rate. */
   estimate: ContinuousEvalDailySpendEstimate;
   /**
@@ -1828,16 +1838,6 @@ export interface ContinuousEvalSpendResponse {
    * Total cost of the live runs judged since midnight, counted against the daily cap.
    */
   spent_today: number;
-  /**
-   * Daily Cost Cap Usd
-   * The eval's daily spend cap. Null means no cap.
-   */
-  daily_cost_cap_usd?: number | null;
-  /**
-   * Cap Reached
-   * Whether today's spend has reached the cap, so new runs are skipped until midnight.
-   */
-  cap_reached: boolean;
 }
 
 /** ContinuousEvalTestRunResponse */
@@ -12801,6 +12801,11 @@ export type UpdateContinuousEvalApiV1ContinuousEvalsEvalIdPatchError = HTTPValid
  */
 export interface UpdateContinuousEvalRequest {
   /**
+   * Daily Cost Cap Usd
+   * Most the eval may spend on judge calls per day. Omit to leave it unchanged; send null to remove the cap.
+   */
+  daily_cost_cap_usd?: number | null;
+  /**
    * Description
    * Description of the continuous eval
    */
@@ -12825,11 +12830,6 @@ export interface UpdateContinuousEvalRequest {
    * Name of the continuous eval
    */
   name?: string | null;
-  /**
-   * Daily Cost Cap Usd
-   * Most the eval may spend on judge calls per day. Omit to leave it unchanged; send null to remove the cap.
-   */
-  daily_cost_cap_usd?: number | null;
   /**
    * Sample Rate
    * Fraction of traces to evaluate, in (0, 1]. Omit to leave it unchanged; send null to evaluate every trace.
