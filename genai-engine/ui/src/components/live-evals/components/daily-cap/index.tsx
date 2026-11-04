@@ -32,7 +32,7 @@ export const DailyCapField = ({ value, onChange, onBlur, errors }: Props) => {
       error={error !== undefined}
       helperText={
         error ??
-        "Most this eval may spend on judge calls per day. Once reached, new traces are skipped until midnight. Runs already calling the judge still finish, so spend can go slightly past the cap. Leave empty for no cap."
+        "Most this eval may spend on judge calls per day. Once reached, new traces are skipped until midnight (engine time, UTC by default). Runs already calling the judge still finish, so spend can go slightly past the cap. Leave empty for no cap."
       }
       slotProps={{
         htmlInput: { min: 0, step: "any" },

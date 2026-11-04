@@ -117,7 +117,7 @@ class DatabaseAgenticAnnotation(Base):
             "continuous_eval_id",
             "created_at",
         ),
-        # The daily spend cap sums each eval's runs finished since midnight.
+        # The daily spend cap sums each eval's runs judged since midnight.
         Index(
             "ix_agentic_annotations_continuous_eval_updated",
             "continuous_eval_id",

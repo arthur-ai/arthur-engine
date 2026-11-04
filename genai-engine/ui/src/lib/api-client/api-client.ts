@@ -1825,7 +1825,7 @@ export interface ContinuousEvalSpendResponse {
   estimate: ContinuousEvalDailySpendEstimate;
   /**
    * Spent Today
-   * Total cost of the live runs created since midnight, counted against the daily cap.
+   * Total cost of the live runs judged since midnight, counted against the daily cap.
    */
   spent_today: number;
   /**

@@ -21602,7 +21602,7 @@
                     "spent_today": {
                         "type": "number",
                         "title": "Spent Today",
-                        "description": "Total cost of the live runs created since midnight, counted against the daily cap."
+                        "description": "Total cost of the live runs judged since midnight, counted against the daily cap."
                     },
                     "daily_cost_cap_usd": {
                         "anyOf": [

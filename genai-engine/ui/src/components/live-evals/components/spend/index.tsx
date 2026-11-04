@@ -24,7 +24,8 @@ export const SpendCards = ({ spend, currency }: { spend: ContinuousEvalSpendResp
     <Stack sx={{ gap: 2 }}>
       {spend.cap_reached && cap != null && (
         <Alert severity="warning" icon={<PauseCircleOutlineOutlinedIcon />}>
-          Paused for today: the daily spend cap of {formatSpend(cap, currency)} is reached. New traces are skipped until midnight.
+          Paused for today: the daily spend cap of {formatSpend(cap, currency)} is reached. New traces are skipped until midnight (engine time, UTC by
+          default).
         </Alert>
       )}
       <Stack direction={{ xs: "column", md: "row" }} sx={{ gap: 2 }}>
@@ -49,7 +50,7 @@ export const SpendCards = ({ spend, currency }: { spend: ContinuousEvalSpendResp
             icon={<TodayOutlinedIcon />}
             label="Spent today"
             value={formatSpend(spend.spent_today, currency)}
-            subValue={`of ${formatSpend(cap, currency)} daily cap`}
+            subValue={`since midnight, of ${formatSpend(cap, currency)} daily cap`}
             color={spend.cap_reached ? "warning" : "default"}
           />
         )}

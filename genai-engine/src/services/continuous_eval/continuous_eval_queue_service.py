@@ -339,7 +339,8 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
             # Checked right before the judge call rather than when the run is queued:
             # a burst queues every trace before any of their costs exist, so only a
             # check here sees the spend of the runs that went before it. Runs already
-            # calling the judge can still finish past the cap, at most one per worker.
+            # calling the judge can still finish past the cap: at most one per worker
+            # thread, in every engine process.
             # Test runs are started by hand and don't count toward the cap, so they
             # aren't held back by it either.
             cap = db_continuous_eval.daily_cost_cap_usd
@@ -351,6 +352,10 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
                 )
                 >= cap
             ):
+                logger.info(
+                    f"Skipping run {job.annotation_id}: continuous eval "
+                    f"{db_continuous_eval.id} reached its daily spend cap of ${cap:g}",
+                )
                 # Only a still-pending run is skipped, so a worker that has already
                 # claimed this run keeps its result.
                 db_session.query(DatabaseAgenticAnnotation).filter(
@@ -361,7 +366,8 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
                     {
                         "run_status": ContinuousEvalRunStatus.SKIPPED.value,
                         "annotation_description": (
-                            f"Daily spend cap of ${cap:g} reached; runs resume at midnight."
+                            f"Daily spend cap of ${cap:g} reached; runs resume at midnight "
+                            "(engine clock, UTC by default)."
                         ),
                         "updated_at": datetime.now(),
                     },
