@@ -568,6 +568,11 @@ def primary(rows, rank, superseded=None, live=None):
                                   identifier that matched it belongs to a release the
                                   vendor has replaced (see build_index)
       then kind_rank
+      then the newest release     among rows still tied: five running versions of one
+                                  agent, or one extension in two editors. The newest is
+                                  the one an upgrade moves to, where evidence order is
+                                  whichever osquery listed first. A row with a release
+                                  speaks before one without (release_key)
 
     Ties keep evidence order, so one payload always gives one answer.
     """
@@ -575,6 +580,10 @@ def primary(rows, rank, superseded=None, live=None):
     # `live` is the registry's live kinds; absent, this repo's own registry's, as
     # classify() defaults its catalog and routes.
     live = Registry(load_routes()).live_kinds if live is None else live
+    releases = [release_key(row.get("ver")) for row in rows]
+    # Padded to one length and negated, so min() takes the newest: 2.1 and 2.1.0 tie, and
+    # 2.1.5 is newer than 2.1.
+    width = max(map(len, releases), default=0)
 
     def key(i):
         row = rows[i]
@@ -584,8 +593,22 @@ def primary(rows, rank, superseded=None, live=None):
                 kind not in INSTALL_KINDS,
                 bool(flags[i]),
                 rank.get(kind, len(rank)),
+                not releases[i],
+                tuple(-n for n in releases[i] + (0,) * (width - len(releases[i]))),
                 i)
     return min(range(len(rows)), key=key)
+
+
+def release_key(ver):
+    """`ver`'s leading dotted numbers, compared as numbers: (2, 1, 317) from `2.1.317`.
+
+    ONLY THE NUMBERS ARE READ, so 2.1.317 is newer than 2.1.99, and anything after them is
+    not compared: `2.1.292-1` is (2, 1, 292), and `2.0.0-beta2` ties `2.0.0` rather than
+    being called newer or older by a guess at its scheme. A version with no leading number,
+    or none at all, is ().
+    """
+    found = re.match(r"v?(\d+(?:\.\d+)*)", str(ver or ""))
+    return tuple(int(n) for n in found.group(1).split(".")) if found else ()
 
 
 def describe(rows, rank, superseded=None, live=None):

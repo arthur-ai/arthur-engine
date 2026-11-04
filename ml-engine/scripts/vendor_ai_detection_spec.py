@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """Re-vendor discovery/_vendor/ at the ai-detection-spec tag the endpoint vendors.
 
-    integrations/endpoint-ai-discovery/tools/vendor-queries.sh v0.16.2
+    integrations/endpoint-ai-discovery/tools/vendor-queries.sh v0.17.0
     cd ml-engine
     uv run python scripts/vendor_ai_detection_spec.py
 
