@@ -32,7 +32,7 @@ export const SpendCards = ({ spend, currency }: { spend: ContinuousEvalSpendResp
         subValue={
           estimate.estimated_daily_cost != null
             ? describeEstimateFormula(estimate, currency)
-            : describeUnavailableEstimate(estimate.unavailable_reason, estimate.window_days)
+            : describeUnavailableEstimate(estimate.unavailable_reason, estimate.window_days, estimate.unpriced_run_count)
         }
       />
     </Stack>
@@ -70,7 +70,7 @@ export const SpendEstimateText = ({ estimate, currency }: { estimate: Continuous
           : {describeEstimateFormula(estimate, currency)}
         </>
       ) : (
-        `No cost estimate yet. ${describeUnavailableEstimate(estimate.unavailable_reason, estimate.window_days)}${
+        `No cost estimate yet. ${describeUnavailableEstimate(estimate.unavailable_reason, estimate.window_days, estimate.unpriced_run_count)}${
           estimate.unavailable_reason === "no_runs" ? " for this evaluator on this task." : "."
         }`
       )}

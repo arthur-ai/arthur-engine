@@ -31,6 +31,8 @@ _FINISHED_RUN_STATUSES = (
     ContinuousEvalRunStatus.SKIPPED.value,
     ContinuousEvalRunStatus.ERROR.value,
 )
+# continuous_evals.eval_type of evals that call an LLM judge ("ml_eval" otherwise).
+_LLM_EVAL_TYPE = "llm_eval"
 
 
 class ContinuousEvalSpendRepository:
@@ -73,8 +75,16 @@ class ContinuousEvalSpendRepository:
         )
         priced = (
             self.db_session.query(*self._average_run_cost_columns())
+            .join(
+                DatabaseContinuousEval,
+                DatabaseAgenticAnnotation.continuous_eval_id
+                == DatabaseContinuousEval.id,
+            )
             .filter(
                 DatabaseAgenticAnnotation.continuous_eval_id == continuous_eval.id,
+                # ML evals finish runs without calling the LLM, so they have no cost
+                # to price and must not count as unpriced LLM calls.
+                DatabaseContinuousEval.eval_type == _LLM_EVAL_TYPE,
                 *self._live_runs_since(priced_since),
             )
             .one()
@@ -98,11 +108,13 @@ class ContinuousEvalSpendRepository:
         self,
         task_id: str,
         llm_eval_name: str,
+        llm_eval_version: int,
         sample_rate: Optional[float],
         now: Optional[datetime] = None,
     ) -> ContinuousEvalDailySpendEstimate:
         """Estimate for a continuous eval not created yet, priced from the live
-        runs of the task's existing continuous evals that use the same evaluator."""
+        runs of the task's existing continuous evals that use the same evaluator
+        version (each version can use a different judge model)."""
         now = now or datetime.now()
         window_start = now - timedelta(days=SPEND_ESTIMATE_WINDOW_DAYS)
 
@@ -116,6 +128,8 @@ class ContinuousEvalSpendRepository:
             .filter(
                 DatabaseContinuousEval.task_id == task_id,
                 DatabaseContinuousEval.llm_eval_name == llm_eval_name,
+                DatabaseContinuousEval.llm_eval_version == llm_eval_version,
+                DatabaseContinuousEval.eval_type == _LLM_EVAL_TYPE,
                 *self._live_runs_since(window_start),
                 # Each eval's runs from its current evaluator only.
                 or_(

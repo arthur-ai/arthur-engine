@@ -23,8 +23,14 @@ export const describeEstimateFormula = (estimate: ContinuousEvalDailySpendEstima
   return `${parts.join(" × ")} (last ${estimate.window_days} days${pricedFrom})`;
 };
 
-export const describeUnavailableEstimate = (reason: SpendEstimateUnavailableReason | null | undefined, windowDays: number): string => {
+export const describeUnavailableEstimate = (
+  reason: SpendEstimateUnavailableReason | null | undefined,
+  windowDays: number,
+  unpricedRunCount = 0
+): string => {
   if (reason === "no_traces") return `No traces in the last ${windowDays} days`;
+  // The judge was called, but its model has no price, so there is no cost to average.
+  if (unpricedRunCount > 0) return `${unpricedRunCount} runs called the LLM in the last ${windowDays} days, but its model has no price`;
   return `No runs that called the LLM in the last ${windowDays} days`;
 };
 

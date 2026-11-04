@@ -680,8 +680,8 @@ def get_continuous_eval_spend(
     "at the given sample rate: the task's traces per day over the last 7 days, times the sample "
     "rate, times the share of finished runs that reached the LLM, times the average cost of the "
     "live runs that called the LLM (passed or failed) and have a recorded cost over the last 7 "
-    "days of the task's continuous evals using that evaluator, counting each eval's runs since "
-    "its evaluator last changed.",
+    "days of the task's continuous evals using the evaluator's latest version, counting each "
+    "eval's runs since its evaluator last changed.",
     response_model=ContinuousEvalDailySpendEstimate,
     tags=["Continuous Evals"],
 )
@@ -707,10 +707,19 @@ def estimate_continuous_eval_spend(
 ) -> ContinuousEvalDailySpendEstimate:
     try:
         # 404 for an evaluator the task doesn't have
-        LLMEvalsRepository(db_session).get_llm_item(task.id, llm_eval_name, "latest")
+        llm_eval = LLMEvalsRepository(db_session).get_llm_item(
+            task.id,
+            llm_eval_name,
+            "latest",
+        )
         return ContinuousEvalSpendRepository(
             db_session,
-        ).estimate_daily_spend_for_llm_eval(task.id, llm_eval_name, sample_rate)
+        ).estimate_daily_spend_for_llm_eval(
+            task.id,
+            llm_eval_name,
+            llm_eval.version,
+            sample_rate,
+        )
     except HTTPException:
         raise
     except ValueError as e:

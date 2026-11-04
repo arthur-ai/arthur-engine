@@ -66,6 +66,27 @@ describe("SpendCards", () => {
     expect(screen.getByText("—")).toBeTruthy();
     expect(screen.getByText("No runs that called the LLM in the last 7 days")).toBeTruthy();
   });
+
+  it("says the judge was called but has no price when every run is unpriced", () => {
+    render(
+      <SpendCards
+        spend={{
+          ...spend,
+          estimate: {
+            ...estimate,
+            run_count: 0,
+            unpriced_run_count: 3,
+            average_run_cost: null,
+            estimated_daily_cost: null,
+            unavailable_reason: "no_runs",
+          },
+        }}
+        currency="USD"
+      />
+    );
+
+    expect(screen.getByText("3 runs called the LLM in the last 7 days, but its model has no price")).toBeTruthy();
+  });
 });
 
 describe("SpendEstimateText", () => {

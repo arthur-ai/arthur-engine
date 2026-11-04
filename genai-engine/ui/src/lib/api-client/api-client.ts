@@ -15099,7 +15099,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * @description Estimates the daily cost of a continuous eval that would run the given evaluator at the given sample rate: the task's traces per day over the last 7 days, times the sample rate, times the share of finished runs that reached the LLM, times the average cost of the live runs that called the LLM (passed or failed) and have a recorded cost over the last 7 days of the task's continuous evals using that evaluator, counting each eval's runs since its evaluator last changed.
+     * @description Estimates the daily cost of a continuous eval that would run the given evaluator at the given sample rate: the task's traces per day over the last 7 days, times the sample rate, times the share of finished runs that reached the LLM, times the average cost of the live runs that called the LLM (passed or failed) and have a recorded cost over the last 7 days of the task's continuous evals using the evaluator's latest version, counting each eval's runs since its evaluator last changed.
      *
      * @tags Continuous Evals
      * @name EstimateContinuousEvalSpendApiV1TasksTaskIdContinuousEvalsSpendEstimateGet

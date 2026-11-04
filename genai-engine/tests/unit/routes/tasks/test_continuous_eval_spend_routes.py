@@ -6,6 +6,7 @@ import pytest
 from arthur_common.models.enums import AgenticAnnotationType, ContinuousEvalRunStatus
 
 from db_models.agentic_annotation_models import DatabaseAgenticAnnotation
+from db_models.llm_eval_models import DatabaseContinuousEval
 from db_models.telemetry_models import DatabaseTraceMetadata
 from repositories.continuous_eval_spend_repository import (
     ContinuousEvalSpendRepository,
@@ -543,3 +544,80 @@ def test_spend_estimate_prices_only_the_current_evaluator(
         assert spend.estimate.run_count == 1
     finally:
         _cleanup(client, task.id, [continuous_eval.id])
+
+
+@pytest.mark.unit_tests
+def test_spend_estimate_ignores_other_versions_and_ml_evals(
+    client: GenaiEngineTestClientBase,
+):
+    """A new eval is priced from the evaluator's latest version only, and an ML
+    eval's runs (no LLM call, no cost) never count as unpriced LLM calls."""
+    status_code, task = client.create_task(
+        name="test_spend_estimate_versions",
+        is_agentic=True,
+    )
+    assert status_code == 200
+    status_code, llm_eval = create_test_llm_eval(client, task.id, "versioned_eval")
+    assert status_code == 200
+    old_version_eval, transform_id = _create_continuous_eval(
+        client, task.id, llm_eval.name, None
+    )
+    status_code, _ = client.save_llm_eval(
+        task_id=task.id,
+        llm_eval_name=llm_eval.name,
+        llm_eval_data={
+            "model_name": "gpt-4o-mini",
+            "model_provider": "openai",
+            "instructions": "Cheaper judge {{test_variable}}",
+        },
+    )
+    assert status_code == 200
+    latest_eval, _ = _create_continuous_eval(
+        client, task.id, llm_eval.name, None, transform_id
+    )
+    try:
+        now = datetime.now()
+        trace_ids = _add_traces(task.id, [now - timedelta(hours=3)] * 7)
+        recent = now - timedelta(hours=1)
+        # The eval still on version 1 is ten times pricier.
+        _add_run(
+            old_version_eval.id,
+            trace_ids[0],
+            ContinuousEvalRunStatus.PASSED,
+            0.10,
+            recent,
+        )
+        _add_run(
+            latest_eval.id, trace_ids[1], ContinuousEvalRunStatus.PASSED, 0.01, recent
+        )
+
+        status_code, estimate = client.estimate_continuous_eval_spend(
+            task.id,
+            llm_eval.name,
+        )
+        assert status_code == 200
+        assert estimate.run_count == 1
+        assert estimate.average_run_cost == pytest.approx(0.01)
+
+        # Turn the version 1 eval into an ML eval: its finished runs have no cost.
+        db_session = override_get_db_session()
+        db_session.query(DatabaseContinuousEval).filter(
+            DatabaseContinuousEval.id == old_version_eval.id,
+        ).update({"eval_type": "ml_eval"})
+        db_session.commit()
+        _add_run(
+            old_version_eval.id,
+            trace_ids[2],
+            ContinuousEvalRunStatus.PASSED,
+            None,
+            recent,
+        )
+        status_code, spend = client.get_continuous_eval_spend(str(old_version_eval.id))
+        assert status_code == 200
+        assert spend.estimate.unpriced_run_count == 0
+        assert spend.estimate.run_count == 0
+        assert (
+            spend.estimate.unavailable_reason == SpendEstimateUnavailableReason.NO_RUNS
+        )
+    finally:
+        _cleanup(client, task.id, [old_version_eval.id, latest_eval.id])
