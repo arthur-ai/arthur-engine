@@ -45,5 +45,11 @@ class TasksRulesRepository:
         result = self.db_session.execute(statement).unique().scalars().all()
         return [rule.rule_id for rule in result]
 
+    def rule_is_linked(self, rule_id: str) -> bool:
+        statement = select(DatabaseTaskToRules.task_id).where(
+            DatabaseTaskToRules.rule_id == rule_id,
+        )
+        return self.db_session.execute(statement).first() is not None
+
     def clear_cache(self) -> None:
         CACHED_TASK_RULES.clear()

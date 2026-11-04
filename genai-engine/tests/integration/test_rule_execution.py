@@ -27,7 +27,7 @@ def test_pii_results(
     expected_entities: set[PIIEntityTypes],
     client: GenaiEngineTestClientBase,
 ):
-    _, task = client.create_task(empty_rules=True)
+    _, task = client.create_task()
     task_id = task.id
 
     status_code, rule = client.create_rule(
@@ -85,7 +85,7 @@ def test_run_rule_types_check_response_model(
     rule_type: RuleType,
     client: GenaiEngineTestClientBase,
 ):
-    _, task = client.create_task(empty_rules=True)
+    _, task = client.create_task()
     task_id = task.id
 
     status_code, rule = client.create_rule(
@@ -203,7 +203,7 @@ def test_toxicity_skipped(
     expected_rule_results: list[RuleResultEnum],
     client: GenaiEngineTestClientBase,
 ):
-    _, task = client.create_task(empty_rules=True)
+    _, task = client.create_task()
     task_id = task.id
 
     status_code, rule = client.create_rule(
@@ -256,7 +256,7 @@ def test_toxicity_configs(
     expected_rule_results: list[RuleResultEnum],
     client: GenaiEngineTestClientBase,
 ):
-    _, task = client.create_task(empty_rules=True)
+    _, task = client.create_task()
     task_id = task.id
 
     status_code, rule = client.create_rule(
@@ -298,7 +298,7 @@ def test_toxicity_configs(
 
 @pytest.mark.integration_tests
 def test_rule_result_skipped(client: GenaiEngineTestClientBase):
-    status_code, task = client.create_task(empty_rules=True)
+    status_code, task = client.create_task()
     assert status_code == 200
 
     client.create_rule("hallv2", RuleType.MODEL_HALLUCINATION_V2)
@@ -334,7 +334,7 @@ def test_pii_results_with_model_name(
     expected_entities: set[PIIEntityTypes],
     client: GenaiEngineTestClientBase,
 ):
-    _, task = client.create_task(empty_rules=True)
+    _, task = client.create_task()
     task_id = task.id
 
     status_code, rule = client.create_rule(
@@ -380,7 +380,7 @@ def test_pii_results_with_model_name(
 @pytest.mark.integration_tests
 def test_response_validation_with_model_name(client: GenaiEngineTestClientBase):
     """Test that model_name is properly handled in response validation."""
-    _, task = client.create_task(empty_rules=True)
+    _, task = client.create_task()
     task_id = task.id
 
     status_code, rule = client.create_rule(

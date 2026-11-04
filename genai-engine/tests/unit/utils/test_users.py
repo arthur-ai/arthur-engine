@@ -34,7 +34,6 @@ TENANT_USER_ALLOWED = [
     PermissionLevelsEnum.INFERENCE_WRITE,
     PermissionLevelsEnum.FEEDBACK_READ,
     PermissionLevelsEnum.FEEDBACK_WRITE,
-    PermissionLevelsEnum.DEFAULT_RULES_READ,
     PermissionLevelsEnum.USAGE_READ,
     PermissionLevelsEnum.MODEL_PROVIDER_READ,
 ]
@@ -48,7 +47,6 @@ TENANT_USER_DISALLOWED = [
     PermissionLevelsEnum.USER_WRITE,
     PermissionLevelsEnum.MODEL_PROVIDER_WRITE,
     PermissionLevelsEnum.MODEL_PROVIDER_WHITELIST_READ,
-    PermissionLevelsEnum.DEFAULT_RULES_WRITE,
     PermissionLevelsEnum.APP_CONFIG_READ,
     PermissionLevelsEnum.APP_CONFIG_WRITE,
     PermissionLevelsEnum.ROTATE_SECRETS,
@@ -398,7 +396,9 @@ async def test_enforce_query_org_scope_admin_passthrough():
         return task_ids
 
     result = await handler(
-        task_ids=[T2A], db_session=MagicMock(), current_user=_admin()
+        task_ids=[T2A],
+        db_session=MagicMock(),
+        current_user=_admin(),
     )
     assert result == [T2A]
 
@@ -412,7 +412,9 @@ async def test_enforce_query_org_scope_tenant_match():
 
     session = _mock_session_with_task_org_map({T1A: O1, T1B: O1, T2A: O2})
     result = await handler(
-        task_ids=[T1A, T1B], db_session=session, current_user=_tenant(O1)
+        task_ids=[T1A, T1B],
+        db_session=session,
+        current_user=_tenant(O1),
     )
     assert {str(t) for t in result} == {str(T1A), str(T1B)}
 

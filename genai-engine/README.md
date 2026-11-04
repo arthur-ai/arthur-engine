@@ -50,8 +50,7 @@ Note: The GenAI Engine is currently limited to providing you with the guardrail 
 4. Provide `/docs` the access to use the API endpoints by entering your new API key, via the "Authorize" button, located at the top right of the page
 5. Create a new task (use case/LLM application) by expanding the `POST /api/v2/task` endpoint on the `/docs` page. Click on "Try it out", provide a task name, and click "Execute".
 6. Configure evaluation rules in the newly created task with the `POST /api/v2/tasks/{task_id}/rules` endpoint
-7. Run LLM prompt and generated response evaluations by using the "Task Based Validation" endpoints. For the response validation endpoint, "context" must be provided for the hallucination rule if it's enabled. Hallucinations are generated responses characterized as incorrect or unfaithful responses given a user input and source knowledge (context). The context is often the Retrieval-Augmented Generation(RAG) data from your LLM application.
-8. Try the default rules, which are global rules that are automatically applied to every task
+7. Run LLM prompt and generated response evaluations by using the task endpoints under the "Validation" section (`POST /api/v2/tasks/{task_id}/validate_prompt` and `POST /api/v2/tasks/{task_id}/validate_response/{inference_id}`). For the response validation endpoint, "context" must be provided for the hallucination rule if it's enabled. Hallucinations are generated responses characterized as incorrect or unfaithful responses given a user input and source knowledge (context). The context is often the Retrieval-Augmented Generation(RAG) data from your LLM application.
 
 ![Arthur GenAI Engine API](../docs/images/arthur-genai-api.png)
 

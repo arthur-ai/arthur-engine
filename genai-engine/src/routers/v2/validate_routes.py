@@ -42,91 +42,15 @@ validate_routes = APIRouter(
 
 
 @validate_routes.post(
-    "/validate_prompt",
-    description="[Deprecated] Validate a non-task related prompt based on the configured default rules.",
-    response_model=ValidationResult,
-    response_model_exclude_none=True,
-    tags=["Default Validation"],
-    deprecated=True,
-)
-@permission_checker(permissions=PermissionLevelsEnum.DEFAULT_VALIDATION_RUN.value)
-def default_validate_prompt(
-    body: PromptValidationRequest,
-    db_session: Session = Depends(get_db_session),
-    scorer_client: ScorerClient = Depends(get_scorer_client),
-    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-) -> ValidationResult:
-    try:
-        rules_repo = RuleRepository(db_session)
-        default_rules, _ = rules_repo.query_rules(
-            prompt_enabled=True,
-            rule_scopes=[RuleScope.DEFAULT],
-        )
-        if not body.user_id and current_user:
-            body.user_id = current_user.id
-        return validate_prompt(
-            body=body,
-            db_session=db_session,
-            scorer_client=scorer_client,
-            rules=default_rules,
-        )
-    finally:
-        db_session.close()
-
-
-@validate_routes.post(
-    "/validate_response/{inference_id}",
-    description="[Deprecated] Validate a non-task related generated response based on the configured default rules. "
-    "Inference ID corresponds to the previously validated associated prompt’s inference ID. Must provide "
-    "context if a Hallucination Rule is an enabled default rule.",
-    response_model=ValidationResult,
-    response_model_exclude_none=True,
-    tags=["Default Validation"],
-    deprecated=True,
-)
-@permission_checker(permissions=PermissionLevelsEnum.INFERENCE_WRITE.value)
-def default_validate_response(
-    inference_id: UUID,
-    body: ResponseValidationRequest,
-    db_session: Session = Depends(get_db_session),
-    scorer_client: ScorerClient = Depends(get_scorer_client),
-    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-    org_scope: UUID | None = Depends(get_org_scope),
-) -> ValidationResult:
-    try:
-        # Validate inference ownership for tenants before running rules / writes.
-        if org_scope is not None:
-            InferenceRepository(db_session).get_inference(
-                str(inference_id), org_scope=org_scope
-            )
-
-        rules_repo = RuleRepository(db_session)
-
-        default_rules, _ = rules_repo.query_rules(
-            response_enabled=True,
-            rule_scopes=[RuleScope.DEFAULT],
-        )
-
-        return validate_response(
-            inference_id=str(inference_id),
-            body=body,
-            db_session=db_session,
-            scorer_client=scorer_client,
-            rules=default_rules,
-        )
-    finally:
-        db_session.close()
-
-
-@validate_routes.post(
     "/tasks/{task_id}/validate_prompt",
+    summary="Validate a prompt against a task's rules",
     description="Validate a prompt based on the configured rules for this task. "
     "Note: Rules related to specific tasks are cached for {} seconds. ".format(
         cache_config.TASK_RULES_CACHE_TTL,
     ),
     responses={200: {"model": ValidationResult}, 400: {"model": HTTPError}},
     response_model_exclude_none=True,
-    tags=["Task Based Validation"],
+    tags=["Validation"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.INFERENCE_WRITE.value)
 @enforce_org_scope()
@@ -168,6 +92,7 @@ def validate_prompt_endpoint(
 
 @validate_routes.post(
     "/tasks/{task_id}/validate_response/{inference_id}",
+    summary="Validate a response against a task's rules",
     description="Validate a response based on the configured rules for this task. Inference ID corresponds "
     "to the previously validated associated prompt’s inference id. Must provide "
     "context if a Hallucination Rule is an enabled task rule. "
@@ -176,7 +101,7 @@ def validate_prompt_endpoint(
     ),
     responses={200: {"model": ValidationResult}, 400: {"model": HTTPError}},
     response_model_exclude_none=True,
-    tags=["Task Based Validation"],
+    tags=["Validation"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.INFERENCE_WRITE.value)
 @enforce_org_scope()
@@ -203,7 +128,8 @@ def validate_response_endpoint(
         # bind a foreign inference to their own task.
         if org_scope is not None:
             InferenceRepository(db_session).get_inference(
-                str(inference_id), org_scope=org_scope
+                str(inference_id),
+                org_scope=org_scope,
             )
         tasks_rules_repo = TasksRulesRepository(db_session)
         task_rules = tasks_rules_repo.get_task_rules_ids_cached(str(task_id))
@@ -228,6 +154,7 @@ def validate_response_endpoint(
 
 @validate_routes.post(
     "/validate",
+    summary="Validate text against inline rules without a task",
     description=(
         "Stateless validation of arbitrary input against inline rule specs. Does NOT "
         "persist results, does NOT create an inference, and is task-less. Intended for "
@@ -247,7 +174,7 @@ def validate_response_endpoint(
     ),
     response_model=BuiltinValidationResponse,
     response_model_exclude_none=True,
-    tags=["Stateless Validation"],
+    tags=["Validation"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.INFERENCE_WRITE.value)
 def stateless_validate(
