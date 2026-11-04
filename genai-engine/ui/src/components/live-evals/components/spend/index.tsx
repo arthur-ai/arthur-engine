@@ -1,6 +1,8 @@
 import PaidOutlinedIcon from "@mui/icons-material/PaidOutlined";
+import PauseCircleOutlineOutlinedIcon from "@mui/icons-material/PauseCircleOutlineOutlined";
+import TodayOutlinedIcon from "@mui/icons-material/TodayOutlined";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
-import { Skeleton, Stack, Typography } from "@mui/material";
+import { Alert, Skeleton, Stack, Typography } from "@mui/material";
 
 import { StatCard } from "../../[evalId]/StatCard";
 import { useContinuousEvalSpend, useContinuousEvalSpendEstimate } from "../../hooks/useContinuousEvalSpend";
@@ -17,24 +19,41 @@ export { describeEstimateFormula, describeUnavailableEstimate, formatSpend } fro
 export const SpendCards = ({ spend, currency }: { spend: ContinuousEvalSpendResponse; currency: string }) => {
   const { estimate } = spend;
   const runs = spend.last_24h_run_count;
+  const cap = spend.daily_cost_cap_usd;
   return (
-    <Stack direction={{ xs: "column", md: "row" }} sx={{ gap: 2 }}>
-      <StatCard
-        icon={<PaidOutlinedIcon />}
-        label="Last 24 hours"
-        value={formatSpend(spend.last_24h_cost, currency)}
-        subValue={`${runs.toLocaleString()} ${runs === 1 ? "run" : "runs"}`}
-      />
-      <StatCard
-        icon={<TrendingUpIcon />}
-        label="Estimated per day"
-        value={estimate.estimated_daily_cost != null ? formatSpend(estimate.estimated_daily_cost, currency) : "—"}
-        subValue={
-          estimate.estimated_daily_cost != null
-            ? describeEstimateFormula(estimate, currency)
-            : describeUnavailableEstimate(estimate.unavailable_reason, estimate.window_days)
-        }
-      />
+    <Stack sx={{ gap: 2 }}>
+      {spend.cap_reached && cap != null && (
+        <Alert severity="warning" icon={<PauseCircleOutlineOutlinedIcon />}>
+          Paused for today: the daily spend cap of {formatSpend(cap, currency)} is reached. New traces are skipped until midnight.
+        </Alert>
+      )}
+      <Stack direction={{ xs: "column", md: "row" }} sx={{ gap: 2 }}>
+        <StatCard
+          icon={<PaidOutlinedIcon />}
+          label="Last 24 hours"
+          value={formatSpend(spend.last_24h_cost, currency)}
+          subValue={`${runs.toLocaleString()} ${runs === 1 ? "run" : "runs"}`}
+        />
+        <StatCard
+          icon={<TrendingUpIcon />}
+          label="Estimated per day"
+          value={estimate.estimated_daily_cost != null ? formatSpend(estimate.estimated_daily_cost, currency) : "—"}
+          subValue={
+            estimate.estimated_daily_cost != null
+              ? describeEstimateFormula(estimate, currency)
+              : describeUnavailableEstimate(estimate.unavailable_reason, estimate.window_days)
+          }
+        />
+        {cap != null && (
+          <StatCard
+            icon={<TodayOutlinedIcon />}
+            label="Spent today"
+            value={formatSpend(spend.spent_today, currency)}
+            subValue={`of ${formatSpend(cap, currency)} daily cap`}
+            color={spend.cap_reached ? "warning" : "default"}
+          />
+        )}
+      </Stack>
     </Stack>
   );
 };

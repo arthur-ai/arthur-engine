@@ -1227,6 +1227,11 @@ class ContinuousEvalCreateRequest(BaseModel):
             "evaluates every trace."
         ),
     )
+    daily_cost_cap_usd: Optional[float] = Field(
+        default=None,
+        gt=0,
+        description="Most the eval may spend on judge calls per day. Once reached, new runs are skipped until midnight. Null means no cap.",
+    )
 
 
 class UpdateContinuousEvalRequest(BaseModel):
@@ -1270,6 +1275,11 @@ class UpdateContinuousEvalRequest(BaseModel):
             "Fraction of traces to evaluate, in (0, 1]. Omit to leave it unchanged; "
             "send null to evaluate every trace."
         ),
+    )
+    daily_cost_cap_usd: Optional[float] = Field(
+        default=None,
+        gt=0,
+        description="Most the eval may spend on judge calls per day. Omit to leave it unchanged; send null to remove the cap.",
     )
 
     @model_validator(mode="after")

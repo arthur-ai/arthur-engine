@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 from typing import Any, Optional
+from uuid import UUID
 
 from arthur_common.models.enums import AgenticAnnotationType, ContinuousEvalRunStatus
 from sqlalchemy import case, func, or_
@@ -60,10 +61,15 @@ class ContinuousEvalSpendRepository:
             .one()
         )
 
+        spent_today = self.spent_today(continuous_eval.id, now)
+        cap = continuous_eval.daily_cost_cap_usd
         return ContinuousEvalSpendResponse(
             continuous_eval_id=continuous_eval.id,
             last_24h_run_count=row.day_run_count,
             last_24h_cost=float(row.day_cost),
+            spent_today=spent_today,
+            daily_cost_cap_usd=cap,
+            cap_reached=cap is not None and spent_today >= cap,
             estimate=self._build_estimate(
                 task_id=continuous_eval.task_id,
                 sample_rate=continuous_eval.sample_rate,
@@ -72,6 +78,27 @@ class ContinuousEvalSpendRepository:
                 window_start=window_start,
                 now=now,
             ),
+        )
+
+    def spent_today(
+        self,
+        continuous_eval_id: UUID,
+        now: Optional[datetime] = None,
+    ) -> float:
+        """Cost of the eval's live runs created since midnight, which is what the
+        daily cap counts. Run timestamps come from the same clock (datetime.now),
+        so "today" is the engine's day."""
+        now = now or datetime.now()
+        midnight = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        return float(
+            self.db_session.query(
+                func.coalesce(func.sum(DatabaseAgenticAnnotation.cost), 0.0),
+            )
+            .filter(
+                DatabaseAgenticAnnotation.continuous_eval_id == continuous_eval_id,
+                *self._live_runs_since(midnight),
+            )
+            .scalar(),
         )
 
     def estimate_daily_spend_for_llm_eval(

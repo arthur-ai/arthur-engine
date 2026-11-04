@@ -21305,6 +21305,19 @@
                         ],
                         "title": "Sample Rate",
                         "description": "Fraction of traces to evaluate, in (0, 1]. Traces are picked by a hash of the trace ID, so evals with the same rate evaluate the same traces. Null evaluates every trace."
+                    },
+                    "daily_cost_cap_usd": {
+                        "anyOf": [
+                            {
+                                "type": "number",
+                                "exclusiveMinimum": 0.0
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Daily Cost Cap Usd",
+                        "description": "Most the eval may spend on judge calls per day. Once reached, new runs are skipped until midnight. Null means no cap."
                     }
                 },
                 "type": "object",
@@ -21527,6 +21540,18 @@
                         ],
                         "title": "Sample Rate",
                         "description": "Fraction of traces evaluated, in (0, 1]. Null evaluates every trace."
+                    },
+                    "daily_cost_cap_usd": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Daily Cost Cap Usd",
+                        "description": "Most the eval may spend on judge calls per day. Once reached, new runs are skipped until midnight. Null means no cap."
                     }
                 },
                 "type": "object",
@@ -21574,6 +21599,28 @@
                     "estimate": {
                         "$ref": "#/components/schemas/ContinuousEvalDailySpendEstimate",
                         "description": "Projected daily cost at the current sample rate."
+                    },
+                    "spent_today": {
+                        "type": "number",
+                        "title": "Spent Today",
+                        "description": "Total cost of the live runs created since midnight, counted against the daily cap."
+                    },
+                    "daily_cost_cap_usd": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Daily Cost Cap Usd",
+                        "description": "The eval's daily spend cap. Null means no cap."
+                    },
+                    "cap_reached": {
+                        "type": "boolean",
+                        "title": "Cap Reached",
+                        "description": "Whether today's spend has reached the cap, so new runs are skipped until midnight."
                     }
                 },
                 "type": "object",
@@ -21581,7 +21628,9 @@
                     "continuous_eval_id",
                     "last_24h_run_count",
                     "last_24h_cost",
-                    "estimate"
+                    "estimate",
+                    "spent_today",
+                    "cap_reached"
                 ],
                 "title": "ContinuousEvalSpendResponse",
                 "description": "Recent and projected spend of one continuous eval."
@@ -35607,6 +35656,19 @@
                         ],
                         "title": "Sample Rate",
                         "description": "Fraction of traces to evaluate, in (0, 1]. Omit to leave it unchanged; send null to evaluate every trace."
+                    },
+                    "daily_cost_cap_usd": {
+                        "anyOf": [
+                            {
+                                "type": "number",
+                                "exclusiveMinimum": 0.0
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Daily Cost Cap Usd",
+                        "description": "Most the eval may spend on judge calls per day. Omit to leave it unchanged; send null to remove the cap."
                     }
                 },
                 "type": "object",
