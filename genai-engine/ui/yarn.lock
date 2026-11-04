@@ -1688,98 +1688,98 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@napi-rs/canvas-android-arm64@npm:1.0.13":
-  version: 1.0.13
-  resolution: "@napi-rs/canvas-android-arm64@npm:1.0.13"
+"@napi-rs/canvas-android-arm64@npm:1.1.0":
+  version: 1.1.0
+  resolution: "@napi-rs/canvas-android-arm64@npm:1.1.0"
   conditions: os=android & cpu=arm64
   languageName: node
   linkType: hard
 
-"@napi-rs/canvas-darwin-arm64@npm:1.0.13":
-  version: 1.0.13
-  resolution: "@napi-rs/canvas-darwin-arm64@npm:1.0.13"
+"@napi-rs/canvas-darwin-arm64@npm:1.1.0":
+  version: 1.1.0
+  resolution: "@napi-rs/canvas-darwin-arm64@npm:1.1.0"
   conditions: os=darwin & cpu=arm64
   languageName: node
   linkType: hard
 
-"@napi-rs/canvas-darwin-x64@npm:1.0.13":
-  version: 1.0.13
-  resolution: "@napi-rs/canvas-darwin-x64@npm:1.0.13"
+"@napi-rs/canvas-darwin-x64@npm:1.1.0":
+  version: 1.1.0
+  resolution: "@napi-rs/canvas-darwin-x64@npm:1.1.0"
   conditions: os=darwin & cpu=x64
   languageName: node
   linkType: hard
 
-"@napi-rs/canvas-linux-arm-gnueabihf@npm:1.0.13":
-  version: 1.0.13
-  resolution: "@napi-rs/canvas-linux-arm-gnueabihf@npm:1.0.13"
+"@napi-rs/canvas-linux-arm-gnueabihf@npm:1.1.0":
+  version: 1.1.0
+  resolution: "@napi-rs/canvas-linux-arm-gnueabihf@npm:1.1.0"
   conditions: os=linux & cpu=arm
   languageName: node
   linkType: hard
 
-"@napi-rs/canvas-linux-arm64-gnu@npm:1.0.13":
-  version: 1.0.13
-  resolution: "@napi-rs/canvas-linux-arm64-gnu@npm:1.0.13"
+"@napi-rs/canvas-linux-arm64-gnu@npm:1.1.0":
+  version: 1.1.0
+  resolution: "@napi-rs/canvas-linux-arm64-gnu@npm:1.1.0"
   conditions: os=linux & cpu=arm64 & libc=glibc
   languageName: node
   linkType: hard
 
-"@napi-rs/canvas-linux-arm64-musl@npm:1.0.13":
-  version: 1.0.13
-  resolution: "@napi-rs/canvas-linux-arm64-musl@npm:1.0.13"
+"@napi-rs/canvas-linux-arm64-musl@npm:1.1.0":
+  version: 1.1.0
+  resolution: "@napi-rs/canvas-linux-arm64-musl@npm:1.1.0"
   conditions: os=linux & cpu=arm64 & libc=musl
   languageName: node
   linkType: hard
 
-"@napi-rs/canvas-linux-riscv64-gnu@npm:1.0.13":
-  version: 1.0.13
-  resolution: "@napi-rs/canvas-linux-riscv64-gnu@npm:1.0.13"
+"@napi-rs/canvas-linux-riscv64-gnu@npm:1.1.0":
+  version: 1.1.0
+  resolution: "@napi-rs/canvas-linux-riscv64-gnu@npm:1.1.0"
   conditions: os=linux & cpu=riscv64 & libc=glibc
   languageName: node
   linkType: hard
 
-"@napi-rs/canvas-linux-x64-gnu@npm:1.0.13":
-  version: 1.0.13
-  resolution: "@napi-rs/canvas-linux-x64-gnu@npm:1.0.13"
+"@napi-rs/canvas-linux-x64-gnu@npm:1.1.0":
+  version: 1.1.0
+  resolution: "@napi-rs/canvas-linux-x64-gnu@npm:1.1.0"
   conditions: os=linux & cpu=x64 & libc=glibc
   languageName: node
   linkType: hard
 
-"@napi-rs/canvas-linux-x64-musl@npm:1.0.13":
-  version: 1.0.13
-  resolution: "@napi-rs/canvas-linux-x64-musl@npm:1.0.13"
+"@napi-rs/canvas-linux-x64-musl@npm:1.1.0":
+  version: 1.1.0
+  resolution: "@napi-rs/canvas-linux-x64-musl@npm:1.1.0"
   conditions: os=linux & cpu=x64 & libc=musl
   languageName: node
   linkType: hard
 
-"@napi-rs/canvas-win32-arm64-msvc@npm:1.0.13":
-  version: 1.0.13
-  resolution: "@napi-rs/canvas-win32-arm64-msvc@npm:1.0.13"
+"@napi-rs/canvas-win32-arm64-msvc@npm:1.1.0":
+  version: 1.1.0
+  resolution: "@napi-rs/canvas-win32-arm64-msvc@npm:1.1.0"
   conditions: os=win32 & cpu=arm64
   languageName: node
   linkType: hard
 
-"@napi-rs/canvas-win32-x64-msvc@npm:1.0.13":
-  version: 1.0.13
-  resolution: "@napi-rs/canvas-win32-x64-msvc@npm:1.0.13"
+"@napi-rs/canvas-win32-x64-msvc@npm:1.1.0":
+  version: 1.1.0
+  resolution: "@napi-rs/canvas-win32-x64-msvc@npm:1.1.0"
   conditions: os=win32 & cpu=x64
   languageName: node
   linkType: hard
 
-"@napi-rs/canvas@npm:^1.0.10":
-  version: 1.0.13
-  resolution: "@napi-rs/canvas@npm:1.0.13"
+"@napi-rs/canvas@npm:^1.0.13":
+  version: 1.1.0
+  resolution: "@napi-rs/canvas@npm:1.1.0"
   dependencies:
-    "@napi-rs/canvas-android-arm64": "npm:1.0.13"
-    "@napi-rs/canvas-darwin-arm64": "npm:1.0.13"
-    "@napi-rs/canvas-darwin-x64": "npm:1.0.13"
-    "@napi-rs/canvas-linux-arm-gnueabihf": "npm:1.0.13"
-    "@napi-rs/canvas-linux-arm64-gnu": "npm:1.0.13"
-    "@napi-rs/canvas-linux-arm64-musl": "npm:1.0.13"
-    "@napi-rs/canvas-linux-riscv64-gnu": "npm:1.0.13"
-    "@napi-rs/canvas-linux-x64-gnu": "npm:1.0.13"
-    "@napi-rs/canvas-linux-x64-musl": "npm:1.0.13"
-    "@napi-rs/canvas-win32-arm64-msvc": "npm:1.0.13"
-    "@napi-rs/canvas-win32-x64-msvc": "npm:1.0.13"
+    "@napi-rs/canvas-android-arm64": "npm:1.1.0"
+    "@napi-rs/canvas-darwin-arm64": "npm:1.1.0"
+    "@napi-rs/canvas-darwin-x64": "npm:1.1.0"
+    "@napi-rs/canvas-linux-arm-gnueabihf": "npm:1.1.0"
+    "@napi-rs/canvas-linux-arm64-gnu": "npm:1.1.0"
+    "@napi-rs/canvas-linux-arm64-musl": "npm:1.1.0"
+    "@napi-rs/canvas-linux-riscv64-gnu": "npm:1.1.0"
+    "@napi-rs/canvas-linux-x64-gnu": "npm:1.1.0"
+    "@napi-rs/canvas-linux-x64-musl": "npm:1.1.0"
+    "@napi-rs/canvas-win32-arm64-msvc": "npm:1.1.0"
+    "@napi-rs/canvas-win32-x64-msvc": "npm:1.1.0"
   dependenciesMeta:
     "@napi-rs/canvas-android-arm64":
       optional: true
@@ -1805,7 +1805,7 @@ __metadata:
       optional: true
     canvas:
       built: true
-  checksum: 10c0/6c0144dfe1953a15882c84c04b2960bcac157c72de40d173be5da3abdbe50451d3136961826d9f14d005b857dc50f2ffc8c7baf37096fbbaac1f19983ca96e53
+  checksum: 10c0/3584621609cc1f2b4a0e5f8742b09370681a0597668fd9520923611aaf6a332a52949603d211c8155ddc470d338eea53b713c9c3c9f6883d3d74990683d7d684
   languageName: node
   linkType: hard
 
@@ -2334,9 +2334,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tanstack/eslint-plugin-query@npm:5.105.0":
-  version: 5.105.0
-  resolution: "@tanstack/eslint-plugin-query@npm:5.105.0"
+"@tanstack/eslint-plugin-query@npm:5.105.1":
+  version: 5.105.1
+  resolution: "@tanstack/eslint-plugin-query@npm:5.105.1"
   dependencies:
     "@typescript-eslint/utils": "npm:^8.71.0"
   peerDependencies:
@@ -2345,7 +2345,7 @@ __metadata:
   peerDependenciesMeta:
     typescript:
       optional: true
-  checksum: 10c0/009aa34de317547c47525c99995408dfdc2c868aba0ed552f19959dc612b79d1f2859ce7f6800d09d5ee17cefb56230331861f77b056e03acd3d50ef02b54e8f
+  checksum: 10c0/9e1201c9763e3bb92f19d1af879f7c6afa75743756a4d709bd983ed008bb9bd2a9953b5cd84a03f27d98f93a37ccbc779d814c42565d93c99799e552e405021c
   languageName: node
   linkType: hard
 
@@ -2402,10 +2402,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tanstack/query-core@npm:5.105.0":
-  version: 5.105.0
-  resolution: "@tanstack/query-core@npm:5.105.0"
-  checksum: 10c0/1b4baa128a95810b677d93f91156e3d32eb07dbe9e062fe0a2651089569f3fca275e43dc9fe569efd55b9e5a00d0d2e18b78de6fa9ed65b1ad54f24e5a90106e
+"@tanstack/query-core@npm:5.105.1":
+  version: 5.105.1
+  resolution: "@tanstack/query-core@npm:5.105.1"
+  checksum: 10c0/2e13312a127e82a54024230ccb3e3644141cebb51719443767de39e90188f9b235b87abd2c0074addd02bf226f9eebf0371fc3e39577bbfaa19545cd4402b5de
   languageName: node
   linkType: hard
 
@@ -2428,22 +2428,22 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tanstack/query-devtools@npm:5.105.0":
-  version: 5.105.0
-  resolution: "@tanstack/query-devtools@npm:5.105.0"
+"@tanstack/query-devtools@npm:5.105.1":
+  version: 5.105.1
+  resolution: "@tanstack/query-devtools@npm:5.105.1"
   dependencies:
     "@kobalte/core": "npm:^0.13.14"
     "@solid-primitives/keyed": "npm:^1.5.3"
     "@solid-primitives/resize-observer": "npm:^2.2.0"
     "@solid-primitives/storage": "npm:^1.3.11"
     "@tanstack/match-sorter-utils": "npm:^9.1.2"
-    "@tanstack/query-core": "npm:5.105.0"
+    "@tanstack/query-core": "npm:5.105.1"
     clsx: "npm:^2.1.1"
     goober: "npm:^2.1.19"
     solid-js: "npm:^1.9.15"
     solid-transition-group: "npm:^0.2.3"
     superjson: "npm:^2.2.6"
-  checksum: 10c0/cd3381ea1167570cbc6270fc1dc3e1b364085e012e53540f8803257c617a7a920e5362d4ef060a85789f47a52bc889aa17e93fd9812b7409c14816ae42f53da7
+  checksum: 10c0/3671e30a7da10f9e9e647df30ec895fbff321404f598e8518e91db093446783c5ffdbfc5ef0ce1de9fdf8975569586b401393516b6a787464d815776750421ee
   languageName: node
   linkType: hard
 
@@ -2491,19 +2491,19 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tanstack/react-query-devtools@npm:5.105.0":
-  version: 5.105.0
-  resolution: "@tanstack/react-query-devtools@npm:5.105.0"
+"@tanstack/react-query-devtools@npm:5.105.1":
+  version: 5.105.1
+  resolution: "@tanstack/react-query-devtools@npm:5.105.1"
   dependencies:
-    "@tanstack/query-devtools": "npm:5.105.0"
+    "@tanstack/query-devtools": "npm:5.105.1"
   peerDependencies:
-    "@tanstack/react-query": ^5.105.0
+    "@tanstack/react-query": ^5.105.1
     "@types/react": ^18 || ^19
     react: ^18 || ^19
   peerDependenciesMeta:
     "@types/react":
       optional: true
-  checksum: 10c0/a9564a298fe164e8d067fd8d409844b188babfa0a4f54e58674b13e9d606df81d7b557ea98b6af73ede71b3636f5ce6fbf06a7fb5ab1817e3ced0300348196a5
+  checksum: 10c0/39d6ba0435b0a2ee8fc5aa17be8363cf474ccba2fad8ee021c171f37309ffcca6966c87935347536cd913a5c17090613c76d820c9c623e54625cf69d83a7fb1e
   languageName: node
   linkType: hard
 
@@ -2522,18 +2522,18 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tanstack/react-query@npm:5.105.0":
-  version: 5.105.0
-  resolution: "@tanstack/react-query@npm:5.105.0"
+"@tanstack/react-query@npm:5.105.1":
+  version: 5.105.1
+  resolution: "@tanstack/react-query@npm:5.105.1"
   dependencies:
-    "@tanstack/query-core": "npm:5.105.0"
+    "@tanstack/query-core": "npm:5.105.1"
   peerDependencies:
     "@types/react": ^18 || ^19
     react: ^18 || ^19
   peerDependenciesMeta:
     "@types/react":
       optional: true
-  checksum: 10c0/7c9e8d073a0a9192937d0996b18ff6c27a769efb93a3a9cf6cf31c811c9187229573c0746849f1f99c0c96af63e7d738c475e445e53cea6c3a8b0718d8b16f7d
+  checksum: 10c0/2cb228aa68476e743b3a39fc6e657aa6f8f8226427f3d92940feda671b147cd5ac417477f48eba670a360f1c563dc1f51c6a5dc2e43203d5d47f2b299a432a0b
   languageName: node
   linkType: hard
 
@@ -5206,10 +5206,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"globals@npm:17.13.0":
-  version: 17.13.0
-  resolution: "globals@npm:17.13.0"
-  checksum: 10c0/8371d9e4e5581640141b5cce70a098edd765d2e3ab063b14998e590698071e0afb4a4a6739ccfbdcbdeb2565c5553697ba07d95703c51039912cf341a7dba7a7
+"globals@npm:17.14.0":
+  version: 17.14.0
+  resolution: "globals@npm:17.14.0"
+  checksum: 10c0/422d17c24e87170d4aa566b97a53339ae451c2f4d78512594a7ca951cdb939bc4a85c10071e6dcf77ca63de48713a77f2e71eb9214e44880233dff2090e92731
   languageName: node
   linkType: hard
 
@@ -7411,15 +7411,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"pdfjs-dist@npm:6.4.299":
-  version: 6.4.299
-  resolution: "pdfjs-dist@npm:6.4.299"
+"pdfjs-dist@npm:6.5.438":
+  version: 6.5.438
+  resolution: "pdfjs-dist@npm:6.5.438"
   dependencies:
-    "@napi-rs/canvas": "npm:^1.0.10"
+    "@napi-rs/canvas": "npm:^1.0.13"
   dependenciesMeta:
     "@napi-rs/canvas":
       optional: true
-  checksum: 10c0/f64c9bfda0838a2aba815b2083a1273df4611c749532a959296501270c589cb813c48429a8730a5ca033244d3dd8176c305c6241c8f6d9ebce069d9a9dba3e67
+  checksum: 10c0/5b8ed4ddaddb678297b11a9b8559d474d04aa5ef27847d3c9771af8cfef1d45a2f5f01154a683629b352d3f3a9f32059b2c29d30e7c91cdd1eca1e602fedb071
   languageName: node
   linkType: hard
 
@@ -8776,11 +8776,11 @@ __metadata:
     "@mui/x-date-pickers": "npm:9.15.0"
     "@rollup/rollup-linux-x64-gnu": "npm:4.67.4"
     "@tailwindcss/vite": "npm:4.3.3"
-    "@tanstack/eslint-plugin-query": "npm:5.105.0"
+    "@tanstack/eslint-plugin-query": "npm:5.105.1"
     "@tanstack/react-form": "npm:1.33.5"
     "@tanstack/react-pacer": "npm:0.24.1"
-    "@tanstack/react-query": "npm:5.105.0"
-    "@tanstack/react-query-devtools": "npm:5.105.0"
+    "@tanstack/react-query": "npm:5.105.1"
+    "@tanstack/react-query-devtools": "npm:5.105.1"
     "@tanstack/react-table": "npm:8.21.3"
     "@testing-library/dom": "npm:^10.4.1"
     "@testing-library/react": "npm:^16.3.2"
@@ -8797,7 +8797,7 @@ __metadata:
     eslint-plugin-import-x: "npm:4.17.1"
     eslint-plugin-react-hooks: "npm:7.1.1"
     eslint-plugin-react-refresh: "npm:0.5.7"
-    globals: "npm:17.13.0"
+    globals: "npm:17.14.0"
     html-to-image: "npm:^1.11.13"
     jsdom: "npm:^30.0.0"
     material-react-table: "npm:3.2.1"
