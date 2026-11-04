@@ -1063,7 +1063,7 @@ class AgenticAnnotationAnalyticsResponse(BaseModel):
 class ContinuousEvalDailySpendEstimate(BaseModel):
     """Projected daily cost of a continuous eval at the task's recent traffic.
 
-    estimated_daily_cost = traces_per_day * sample_rate * average_run_cost
+    estimated_daily_cost = traces_per_day * sample_rate * judged_share * average_run_cost
     """
 
     window_days: int = Field(
@@ -1077,7 +1077,19 @@ class ContinuousEvalDailySpendEstimate(BaseModel):
         description="Fraction of traces the eval runs on. 1.0 when the eval has no sample rate set.",
     )
     run_count: int = Field(
-        description="Live runs in the window that called the LLM (passed or failed), which the average is taken over.",
+        description="Live runs from the current evaluator that called the LLM (passed or failed) and have a cost, which the average is taken over.",
+    )
+    judged_share: float = Field(
+        default=1.0,
+        description="Share of finished runs that called the LLM rather than being skipped or erroring first. 1.0 with no finished runs.",
+    )
+    unpriced_run_count: int = Field(
+        default=0,
+        description="Runs that called the LLM but have no cost (a model without a price), left out of the average.",
+    )
+    priced_since: Optional[datetime] = Field(
+        default=None,
+        description="Set when the evaluator changed inside the window: the average only uses runs from this time on.",
     )
     average_run_cost: Optional[float] = Field(
         default=None,

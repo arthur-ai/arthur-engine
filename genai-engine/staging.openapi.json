@@ -21342,7 +21342,32 @@
                     "run_count": {
                         "type": "integer",
                         "title": "Run Count",
-                        "description": "Live runs in the window that called the LLM (passed or failed), which the average is taken over."
+                        "description": "Live runs from the current evaluator that called the LLM (passed or failed) and have a cost, which the average is taken over."
+                    },
+                    "judged_share": {
+                        "type": "number",
+                        "title": "Judged Share",
+                        "description": "Share of finished runs that called the LLM rather than being skipped or erroring first. 1.0 with no finished runs.",
+                        "default": 1.0
+                    },
+                    "unpriced_run_count": {
+                        "type": "integer",
+                        "title": "Unpriced Run Count",
+                        "description": "Runs that called the LLM but have no cost (a model without a price), left out of the average.",
+                        "default": 0
+                    },
+                    "priced_since": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Priced Since",
+                        "description": "Set when the evaluator changed inside the window: the average only uses runs from this time on."
                     },
                     "average_run_cost": {
                         "anyOf": [
@@ -21389,7 +21414,7 @@
                     "run_count"
                 ],
                 "title": "ContinuousEvalDailySpendEstimate",
-                "description": "Projected daily cost of a continuous eval at the task's recent traffic.\n\nestimated_daily_cost = traces_per_day * sample_rate * average_run_cost"
+                "description": "Projected daily cost of a continuous eval at the task's recent traffic.\n\nestimated_daily_cost = traces_per_day * sample_rate * judged_share * average_run_cost"
             },
             "ContinuousEvalRerunResponse": {
                 "properties": {

@@ -3,6 +3,14 @@ The intention of this changelog is to document API changes as they happen to eff
 ---
 
 # 11/03/2026
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}/spend  added the optional property `estimate/judged_share` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}/spend  added the optional property `estimate/priced_since` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}/spend  added the optional property `estimate/unpriced_run_count` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/spend_estimate  added the optional property `judged_share` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/spend_estimate  added the optional property `priced_since` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/spend_estimate  added the optional property `unpriced_run_count` to the response with the `200` status
+
+# 11/03/2026
 - **CHANGE** for **URL**: /api/v1/model_providers/{provider}/reasoning_options  endpoint added
 - **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}/spend  endpoint added
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/spend_estimate  endpoint added

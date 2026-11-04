@@ -1683,6 +1683,23 @@ export interface ContinuousEvalDailySpendEstimate {
    * Number of trailing days the traffic and the average run cost are measured over.
    */
   window_days: number;
+  /**
+   * Judged Share
+   * Share of finished runs that called the LLM rather than being skipped or erroring first. 1.0 with no finished runs.
+   * @default 1
+   */
+  judged_share?: number;
+  /**
+   * Unpriced Run Count
+   * Runs that called the LLM but have no cost (a model without a price), left out of the average.
+   * @default 0
+   */
+  unpriced_run_count?: number;
+  /**
+   * Priced Since
+   * Set when the evaluator changed inside the window: the average only uses runs from this time on.
+   */
+  priced_since?: string | null;
 }
 
 /** ContinuousEvalRerunResponse */

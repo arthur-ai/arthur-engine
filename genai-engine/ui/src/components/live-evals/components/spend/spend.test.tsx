@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import { ContinuousEvalSpendCards, SpendCards, SpendEstimateLine, SpendEstimateText } from ".";
+import { ContinuousEvalSpendCards, describeEstimateFormula, SpendCards, SpendEstimateLine, SpendEstimateText } from ".";
 
 import type { ContinuousEvalDailySpendEstimate, ContinuousEvalSpendResponse } from "@/lib/api-client/api-client";
 
@@ -99,5 +99,23 @@ describe("malformed spend responses", () => {
     const { container } = render(<SpendEstimateLine taskId="task" llmEvalName="evaluator" samplePercent="50" />);
 
     expect(container.innerHTML).toBe("");
+  });
+});
+
+describe("estimate accuracy notes", () => {
+  it("shows the share of traces that reach the judge when some are skipped", () => {
+    const text = describeEstimateFormula({ ...estimate, judged_share: 0.6 }, "USD");
+    expect(text).toContain("60% reach the judge");
+  });
+
+  it("says the price comes from the current evaluator after a switch", () => {
+    const text = describeEstimateFormula({ ...estimate, priced_since: "2026-11-03T10:00:00" }, "USD");
+    expect(text).toContain("runs since the evaluator changed");
+  });
+
+  it("leaves both out when every trace is judged and the evaluator never changed", () => {
+    const text = describeEstimateFormula({ ...estimate, judged_share: 1, priced_since: null }, "USD");
+    expect(text).not.toContain("reach the judge");
+    expect(text).not.toContain("evaluator changed");
   });
 });

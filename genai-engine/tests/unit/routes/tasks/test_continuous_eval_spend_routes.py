@@ -160,7 +160,8 @@ def test_continuous_eval_spend_last_24h_and_estimate(
             recent,
         )
         # Counted in the last 24h but not in the average: they never reached the LLM
-        # or have no cost yet.
+        # or have no cost yet. The errored and skipped runs also lower the share of
+        # sampled traces that reach the judge; the pending one isn't finished yet.
         _add_run(
             continuous_eval.id,
             trace_ids[2],
@@ -221,8 +222,10 @@ def test_continuous_eval_spend_last_24h_and_estimate(
         assert estimate.sample_rate == 0.5
         assert estimate.run_count == 3
         assert estimate.average_run_cost == pytest.approx(0.04)
-        # 2 traces/day * 0.5 * $0.04
-        assert estimate.estimated_daily_cost == pytest.approx(0.04)
+        # 3 of the 5 finished runs in the window reached the judge.
+        assert estimate.judged_share == pytest.approx(0.6)
+        # 2 traces/day * 0.5 sampled * 0.6 judged * $0.04
+        assert estimate.estimated_daily_cost == pytest.approx(0.024)
         assert estimate.unavailable_reason is None
 
         # The create form estimate prices from the same evaluator's live runs.
@@ -234,7 +237,8 @@ def test_continuous_eval_spend_last_24h_and_estimate(
         assert status_code == 200
         assert form_estimate.sample_rate == 0.25
         assert form_estimate.run_count == 3
-        assert form_estimate.estimated_daily_cost == pytest.approx(0.02)
+        # 2 traces/day * 0.25 * 0.6 judged * $0.04
+        assert form_estimate.estimated_daily_cost == pytest.approx(0.012)
 
         # No sample rate means every trace.
         status_code, form_estimate = client.estimate_continuous_eval_spend(
@@ -243,7 +247,7 @@ def test_continuous_eval_spend_last_24h_and_estimate(
         )
         assert status_code == 200
         assert form_estimate.sample_rate == 1.0
-        assert form_estimate.estimated_daily_cost == pytest.approx(0.08)
+        assert form_estimate.estimated_daily_cost == pytest.approx(0.048)
     finally:
         _cleanup(client, task.id, [continuous_eval.id])
 
@@ -294,7 +298,8 @@ def test_continuous_eval_spend_without_traces_or_runs(
             spend.estimate.unavailable_reason == SpendEstimateUnavailableReason.NO_RUNS
         )
 
-        # A passed run with no recorded cost prices at zero.
+        # A passed run with no recorded cost (a model without a price) is left out of
+        # the average rather than pricing it at zero.
         _add_run(
             continuous_eval.id,
             trace_ids[1],
@@ -304,10 +309,13 @@ def test_continuous_eval_spend_without_traces_or_runs(
         )
         status_code, spend = client.get_continuous_eval_spend(str(continuous_eval.id))
         assert status_code == 200
-        assert spend.estimate.run_count == 1
-        assert spend.estimate.average_run_cost == 0.0
-        assert spend.estimate.estimated_daily_cost == 0.0
-        assert spend.estimate.unavailable_reason is None
+        assert spend.estimate.run_count == 0
+        assert spend.estimate.unpriced_run_count == 1
+        assert spend.estimate.average_run_cost is None
+        assert spend.estimate.estimated_daily_cost is None
+        assert (
+            spend.estimate.unavailable_reason == SpendEstimateUnavailableReason.NO_RUNS
+        )
     finally:
         _cleanup(client, task.id, [continuous_eval.id])
 
@@ -443,5 +451,95 @@ def test_spend_windows_are_relative_to_now(client: GenaiEngineTestClientBase):
         assert spend.estimate.run_count == 1
         assert spend.estimate.average_run_cost == pytest.approx(0.7)
         assert spend.estimate.estimated_daily_cost == pytest.approx(2 / 7 * 0.7)
+    finally:
+        _cleanup(client, task.id, [continuous_eval.id])
+
+
+@pytest.mark.unit_tests
+def test_spend_estimate_prices_only_the_current_evaluator(
+    client: GenaiEngineTestClientBase,
+):
+    """After a judge switch the average uses only runs from the new evaluator, so an
+    eval moved from an expensive judge to a cheap one is priced at the cheap one."""
+    status_code, task = client.create_task(
+        name="test_spend_estimate_judge_switch",
+        is_agentic=True,
+    )
+    assert status_code == 200
+    status_code, llm_eval = create_test_llm_eval(client, task.id, "switch_eval")
+    assert status_code == 200
+    continuous_eval, _ = _create_continuous_eval(client, task.id, llm_eval.name, None)
+    try:
+        now = datetime.now()
+        trace_ids = _add_traces(
+            task.id, [now - timedelta(hours=h) for h in range(1, 8)]
+        )
+        # Three expensive runs from the original evaluator.
+        for i in range(3):
+            _add_run(
+                continuous_eval.id,
+                trace_ids[i],
+                ContinuousEvalRunStatus.PASSED,
+                0.10,
+                now - timedelta(hours=5),
+            )
+
+        # Switch to a new version of the evaluator.
+        status_code, _ = client.save_llm_eval(
+            task_id=task.id,
+            llm_eval_name=llm_eval.name,
+            llm_eval_data={
+                "model_name": "gpt-4o-mini",
+                "model_provider": "openai",
+                "instructions": "Cheaper judge {{test_variable}}",
+            },
+        )
+        assert status_code == 200
+        status_code, updated = client.update_continuous_eval(
+            continuous_eval_id=continuous_eval.id,
+            continuous_eval_data={
+                "llm_eval_name": llm_eval.name,
+                "llm_eval_version": 2,
+                "transform_variable_mapping": [
+                    {
+                        "transform_variable": "test_variable",
+                        "eval_variable": "test_variable",
+                    },
+                ],
+            },
+        )
+        assert status_code == 200
+
+        # Before any run from the new evaluator there is nothing to price it from.
+        status_code, spend = client.get_continuous_eval_spend(str(continuous_eval.id))
+        assert status_code == 200
+        assert spend.estimate.priced_since is not None
+        assert spend.estimate.run_count == 0
+        assert (
+            spend.estimate.unavailable_reason == SpendEstimateUnavailableReason.NO_RUNS
+        )
+
+        _add_run(
+            continuous_eval.id,
+            trace_ids[3],
+            ContinuousEvalRunStatus.PASSED,
+            0.01,
+            datetime.now(),
+        )
+        status_code, spend = client.get_continuous_eval_spend(str(continuous_eval.id))
+        assert status_code == 200
+        assert spend.estimate.run_count == 1
+        assert spend.estimate.average_run_cost == pytest.approx(0.01)
+        # 7 traces/7 days * 1.0 * 1.0 * $0.01, not the $0.0775 a mixed average gives.
+        assert spend.estimate.estimated_daily_cost == pytest.approx(0.01)
+
+        # Editing anything other than the evaluator keeps the pricing window.
+        status_code, _ = client.update_continuous_eval(
+            continuous_eval_id=continuous_eval.id,
+            continuous_eval_data={"description": "renamed only"},
+        )
+        assert status_code == 200
+        status_code, spend = client.get_continuous_eval_spend(str(continuous_eval.id))
+        assert spend.estimate.run_count == 1
     finally:
         _cleanup(client, task.id, [continuous_eval.id])
