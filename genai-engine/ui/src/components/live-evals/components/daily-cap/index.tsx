@@ -35,7 +35,7 @@ export const DailyCapField = ({ value, onChange, onBlur, errors }: Props) => {
         "Most this eval may spend on judge calls per day. Once reached, new traces are skipped until midnight. Runs already calling the judge still finish, so spend can go slightly past the cap. Leave empty for no cap."
       }
       slotProps={{
-        htmlInput: { min: 0, step: 0.01 },
+        htmlInput: { min: 0, step: "any" },
         input: { startAdornment: <InputAdornment position="start">$</InputAdornment> },
       }}
     />

@@ -1111,7 +1111,7 @@ class ContinuousEvalSpendResponse(BaseModel):
         description="Projected daily cost at the current sample rate.",
     )
     spent_today: float = Field(
-        description="Total cost of the live runs created since midnight, counted against the daily cap.",
+        description="Total cost of the live runs judged since midnight, counted against the daily cap.",
     )
     daily_cost_cap_usd: Optional[float] = Field(
         default=None,

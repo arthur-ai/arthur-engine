@@ -340,22 +340,34 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
             # a burst queues every trace before any of their costs exist, so only a
             # check here sees the spend of the runs that went before it. Runs already
             # calling the judge can still finish past the cap, at most one per worker.
+            # Test runs are started by hand and don't count toward the cap, so they
+            # aren't held back by it either.
             cap = db_continuous_eval.daily_cost_cap_usd
             if (
                 cap is not None
+                and annotation.test_run_id is None
                 and ContinuousEvalSpendRepository(db_session).spent_today(
                     db_continuous_eval.id,
                 )
                 >= cap
             ):
-                self._update_annotation_status(
-                    db_session,
-                    job.annotation_id,
-                    ContinuousEvalRunStatus.SKIPPED.value,
-                    annotation_description=(
-                        f"Daily spend cap of ${cap:g} reached; runs resume at midnight."
-                    ),
+                # Only a still-pending run is skipped, so a worker that has already
+                # claimed this run keeps its result.
+                db_session.query(DatabaseAgenticAnnotation).filter(
+                    DatabaseAgenticAnnotation.id == job.annotation_id,
+                    DatabaseAgenticAnnotation.run_status
+                    == ContinuousEvalRunStatus.PENDING.value,
+                ).update(
+                    {
+                        "run_status": ContinuousEvalRunStatus.SKIPPED.value,
+                        "annotation_description": (
+                            f"Daily spend cap of ${cap:g} reached; runs resume at midnight."
+                        ),
+                        "updated_at": datetime.now(),
+                    },
+                    synchronize_session=False,
                 )
+                db_session.commit()
                 return
 
             # Update annotation status to running

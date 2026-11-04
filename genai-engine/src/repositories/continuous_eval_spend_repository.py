@@ -85,9 +85,11 @@ class ContinuousEvalSpendRepository:
         continuous_eval_id: UUID,
         now: Optional[datetime] = None,
     ) -> float:
-        """Cost of the eval's live runs created since midnight, which is what the
-        daily cap counts. Run timestamps come from the same clock (datetime.now),
-        so "today" is the engine's day."""
+        """Cost of the eval's live runs judged since midnight, which is what the
+        daily cap counts. The worker sets updated_at when it records a run's cost,
+        so a run queued before midnight and judged after counts toward today. Run
+        timestamps come from the same clock (datetime.now), so "today" is the
+        engine's day."""
         now = now or datetime.now()
         midnight = now.replace(hour=0, minute=0, second=0, microsecond=0)
         return float(
@@ -96,7 +98,11 @@ class ContinuousEvalSpendRepository:
             )
             .filter(
                 DatabaseAgenticAnnotation.continuous_eval_id == continuous_eval_id,
-                *self._live_runs_since(midnight),
+                DatabaseAgenticAnnotation.annotation_type
+                == AgenticAnnotationType.CONTINUOUS_EVAL.value,
+                DatabaseAgenticAnnotation.test_run_id.is_(None),
+                DatabaseAgenticAnnotation.cost.is_not(None),
+                DatabaseAgenticAnnotation.updated_at >= midnight,
             )
             .scalar(),
         )
