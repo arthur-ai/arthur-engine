@@ -1101,7 +1101,7 @@ class ContinuousEvalDailySpendEstimate(BaseModel):
     )
     unavailable_reason: Optional[SpendEstimateUnavailableReason] = Field(
         default=None,
-        description="Set when estimated_daily_cost is null: no_traces when the task received no traces in the window, no_runs when the evaluator has no live runs that called the LLM in the window.",
+        description="Set when estimated_daily_cost is null: no_traces when the task received no traces in the window, no_runs when the evaluator has no live runs in the window that called the LLM and have a recorded cost (unpriced_run_count counts the ones without).",
     )
 
 

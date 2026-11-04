@@ -1687,7 +1687,7 @@ export interface ContinuousEvalDailySpendEstimate {
    * trace_count divided by window_days.
    */
   traces_per_day: number;
-  /** Set when estimated_daily_cost is null: no_traces when the task received no traces in the window, no_runs when the evaluator has no live runs that called the LLM in the window. */
+  /** Set when estimated_daily_cost is null: no_traces when the task received no traces in the window, no_runs when the evaluator has no live runs in the window that called the LLM and have a recorded cost (unpriced_run_count counts the ones without). */
   unavailable_reason?: SpendEstimateUnavailableReason | null;
   /**
    * Unpriced Run Count
@@ -15099,7 +15099,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * @description Estimates the daily cost of a continuous eval that would run the given evaluator at the given sample rate: the task's traces per day over the last 7 days, times the sample rate, times the average cost of the live runs that called the LLM (passed or failed) over the last 7 days of the task's continuous evals using that evaluator.
+     * @description Estimates the daily cost of a continuous eval that would run the given evaluator at the given sample rate: the task's traces per day over the last 7 days, times the sample rate, times the share of finished runs that reached the LLM, times the average cost of the live runs that called the LLM (passed or failed) and have a recorded cost over the last 7 days of the task's continuous evals using that evaluator, counting each eval's runs since its evaluator last changed.
      *
      * @tags Continuous Evals
      * @name EstimateContinuousEvalSpendApiV1TasksTaskIdContinuousEvalsSpendEstimateGet
@@ -15632,7 +15632,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * @description Returns the number and total cost of the eval's live runs in the last 24 hours, and an estimated daily cost: the task's traces per day over the last 7 days, times the eval's sample rate, times the average cost of its live runs that called the LLM (passed or failed) over the last 7 days. Test runs are not counted.
+     * @description Returns the number and total cost of the eval's live runs in the last 24 hours, and an estimated daily cost: the task's traces per day over the last 7 days, times the eval's sample rate, times the share of finished runs that reached the LLM, times the average cost of its live runs that called the LLM (passed or failed) and have a recorded cost over the last 7 days. Only runs since the evaluator last changed are averaged. Test runs are not counted.
      *
      * @tags Continuous Evals
      * @name GetContinuousEvalSpendApiV1ContinuousEvalsEvalIdSpendGet
