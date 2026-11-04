@@ -301,7 +301,12 @@ def test_rule_result_skipped(client: GenaiEngineTestClientBase):
     status_code, task = client.create_task()
     assert status_code == 200
 
-    client.create_rule("hallv2", RuleType.MODEL_HALLUCINATION_V2)
+    status_code, _ = client.create_rule(
+        "hallv2",
+        RuleType.MODEL_HALLUCINATION_V2,
+        task_id=task.id,
+    )
+    assert status_code == 200
 
     status_code, prompt = client.create_prompt(task_id=task.id)
     assert status_code == 200
