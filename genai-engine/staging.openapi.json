@@ -25656,7 +25656,7 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "Tool Choice",
+                        "title": "LLM Prompt Request Tool Choice",
                         "description": "Tool choice configuration ('auto', 'none', 'required', or a specific tool selection)"
                     },
                     "stream_options": {

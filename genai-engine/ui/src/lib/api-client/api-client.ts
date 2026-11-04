@@ -5154,7 +5154,7 @@ export interface LLMPromptRequestConfigSettings {
    */
   timeout?: number | null;
   /**
-   * Tool Choice
+   * LLM Prompt Request Tool Choice
    * Tool choice configuration ('auto', 'none', 'required', or a specific tool selection)
    */
   tool_choice?: ToolChoiceEnum | ToolChoice | null;

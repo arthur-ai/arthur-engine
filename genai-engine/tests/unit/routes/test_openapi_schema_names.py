@@ -13,11 +13,11 @@ import re
 
 import pytest
 
-# Same collision with the ToolChoice component, not yet fixed. Remove entries
-# from this set as they are given distinct titles; never add to it.
+# Same collision with the ToolChoice component. arthur-common has the fix; remove
+# this entry, and the set, when the arthur-common pin moves past 2.4.104. Never
+# add to it.
 _KNOWN_COLLISIONS = {
     "LLMConfigSettings.tool_choice",
-    "LLMPromptRequestConfigSettings.tool_choice",
 }
 
 
