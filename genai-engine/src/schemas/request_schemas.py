@@ -1,3 +1,4 @@
+import math
 from datetime import datetime
 from typing import Annotated, Any, Dict, List, Literal, Optional, Union
 from uuid import UUID
@@ -1186,8 +1187,8 @@ SampleRate = Annotated[Optional[float], AfterValidator(validate_sample_rate)]
 def validate_daily_cost_cap(value: Optional[float]) -> Optional[float]:
     # Same reason as validate_sample_rate: Field(gt=0) would render as an
     # exclusiveMinimum that oasdiff can't parse.
-    if value is not None and value <= 0.0:
-        raise ValueError("daily_cost_cap_usd must be greater than 0")
+    if value is not None and not (math.isfinite(value) and value > 0.0):
+        raise ValueError("daily_cost_cap_usd must be a finite number greater than 0")
     return value
 
 

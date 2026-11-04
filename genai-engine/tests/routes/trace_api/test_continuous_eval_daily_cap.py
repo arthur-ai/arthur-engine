@@ -233,11 +233,13 @@ def test_daily_cap_round_trips_and_shows_in_spend(client: GenaiEngineTestClientB
         )
         assert response.json()["cap_reached"] is False
 
-        status_code, _ = client.update_continuous_eval(
-            continuous_eval_id=continuous_eval.id,
-            continuous_eval_data={"daily_cost_cap_usd": 0},
-        )
-        assert status_code == 400
+        # NaN would never compare >= spend, so the cap would silently never trip.
+        for bad_cap in (0, "NaN", "Infinity"):
+            status_code, _ = client.update_continuous_eval(
+                continuous_eval_id=continuous_eval.id,
+                continuous_eval_data={"daily_cost_cap_usd": bad_cap},
+            )
+            assert status_code == 400, bad_cap
     finally:
         for r in created:
             delete_mock_annotation(r.id)
