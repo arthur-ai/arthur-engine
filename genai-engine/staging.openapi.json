@@ -21309,8 +21309,7 @@
                     "daily_cost_cap_usd": {
                         "anyOf": [
                             {
-                                "type": "number",
-                                "exclusiveMinimum": 0.0
+                                "type": "number"
                             },
                             {
                                 "type": "null"
@@ -35660,8 +35659,7 @@
                     "daily_cost_cap_usd": {
                         "anyOf": [
                             {
-                                "type": "number",
-                                "exclusiveMinimum": 0.0
+                                "type": "number"
                             },
                             {
                                 "type": "null"
