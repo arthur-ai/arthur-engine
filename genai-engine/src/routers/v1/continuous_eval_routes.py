@@ -644,8 +644,8 @@ def get_daily_annotation_analytics(
     "and an estimated daily cost: the task's traces per day over the last 7 days, times the "
     "eval's sample rate, times the share of finished runs that reached the LLM, times the "
     "average cost of its live runs that called the LLM (passed or failed) and have a recorded "
-    "cost over the last 7 days. Only runs since the evaluator last changed are averaged. Test "
-    "runs are not counted.",
+    "cost over the last 7 days. If the evaluator changed in that window, only runs since the "
+    "change are averaged; otherwise all of them are. Test runs are not counted.",
     response_model=ContinuousEvalSpendResponse,
     tags=["Continuous Evals"],
 )
@@ -681,7 +681,8 @@ def get_continuous_eval_spend(
     "rate, times the share of finished runs that reached the LLM, times the average cost of the "
     "live runs that called the LLM (passed or failed) and have a recorded cost over the last 7 "
     "days of the task's continuous evals using the evaluator's latest version, counting each "
-    "eval's runs since its evaluator last changed.",
+    "eval's runs since its evaluator last changed, or all its runs in the window if it never "
+    "changed.",
     response_model=ContinuousEvalDailySpendEstimate,
     tags=["Continuous Evals"],
 )
