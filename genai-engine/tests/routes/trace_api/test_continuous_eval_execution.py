@@ -1751,12 +1751,16 @@ def test_runs_often_enough_to_cache_counts_recent_runs_of_that_eval(
 
 
 def _wait_until_judged(annotation_id: uuid.UUID) -> DatabaseAgenticAnnotation:
-    """Polls until the queue worker has finished a rerun job."""
+    """Polls until the queue worker has finished a rerun job: the run has a final
+    status and the worker has released it, so a next rerun isn't deduplicated."""
     db_session = override_get_db_session()
+    queue_service = get_continuous_eval_queue_service()
     for _ in range(50):
         db_session.expire_all()
         annotation = db_session.get(DatabaseAgenticAnnotation, annotation_id)
-        if annotation.run_status not in (
+        with queue_service.active_jobs_lock:
+            released = annotation_id not in queue_service.active_jobs
+        if released and annotation.run_status not in (
             ContinuousEvalRunStatus.PENDING.value,
             ContinuousEvalRunStatus.RUNNING.value,
         ):
