@@ -75,7 +75,10 @@ exclude-newer = "3 days"
 # earlier release trusts (2026.10.18 removed too many roots, so floor at .19). certifi bypasses
 # the cooldown so the fix could land before 2026.10.19 was 3 days old.
 exclude-newer-package = { arthur-client = false, arthur-common = false, certifi = false }
-constraint-dependencies = ["certifi>=2026.10.19"]
+# grpcio's bundled roots.pem trusted the same root until 1.84.1 / 1.85.0; it is only a
+# transitive dependency here. litellm < 1.106.3 has the same problem in its Rust extension;
+# that bump waits on arthur-common, which pins litellm exactly.
+constraint-dependencies = ["certifi>=2026.10.19", "grpcio>=1.84.1"]
 
 [build-system]
 requires = ["hatchling"]
