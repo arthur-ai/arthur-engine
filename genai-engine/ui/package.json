@@ -44,8 +44,8 @@
     "@mui/x-date-pickers": "9.15.0",
     "@tanstack/react-form": "1.33.5",
     "@tanstack/react-pacer": "0.24.1",
-    "@tanstack/react-query": "5.105.1",
-    "@tanstack/react-query-devtools": "5.105.1",
+    "@tanstack/react-query": "5.105.2",
+    "@tanstack/react-query-devtools": "5.105.2",
     "@tanstack/react-table": "8.21.3",
     "axios": "1.21.0",
     "dayjs": "1.11.23",
@@ -76,7 +76,7 @@
   "devDependencies": {
     "@eslint/js": "10.0.1",
     "@tailwindcss/vite": "4.3.3",
-    "@tanstack/eslint-plugin-query": "5.105.1",
+    "@tanstack/eslint-plugin-query": "5.105.2",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/react": "^16.3.2",
     "@total-typescript/ts-reset": "0.6.1",
@@ -98,7 +98,7 @@
     "typescript-eslint": "8.72.1",
     "vite": "8.3.5",
     "vite-plugin-node-polyfills": "^0.28.0",
-    "vitest": "5.0.5"
+    "vitest": "5.1.0"
   },
   "optionalDependencies": {
     "@rollup/rollup-linux-x64-gnu": "4.67.4"
