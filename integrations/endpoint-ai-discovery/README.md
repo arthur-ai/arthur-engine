@@ -46,6 +46,7 @@ It cannot see:
 | [Jamf Pro](docs/mdm/jamf-pro.md), [Compute Engine](docs/mdm/gce.md), [EC2](docs/mdm/ec2.md) | deployment runbooks: prerequisites, rollout, reading the status, troubleshooting and rollback |
 | [Architecture](docs/architecture.md) | how the parts fit together, the contracts between them, the measured limits, and why it is built this way |
 | [Carrier requirements](docs/mdm/README.md) | what an MDM or cloud must provide to carry the payload |
+| [Cloud Run and ECS](docs/image-discovery.md) | a design, not yet built: the image is the disk. Where each platform records the image digest, what each registry gives, and what to measure before building |
 | [Tests](test/README.md) | what each test guards against |
 
 ## Development
