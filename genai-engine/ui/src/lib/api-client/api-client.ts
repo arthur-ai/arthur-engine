@@ -2797,7 +2797,7 @@ export interface EnrichedTaskResponse {
   is_autocreated?: boolean;
   /**
    * Last Fetched
-   * Last time traces were fetched for this task (from task_polling_state)
+   * End time of the newest trace GenAI Engine holds for this task; null if it has none
    */
   last_fetched?: string | null;
   /**
@@ -4990,7 +4990,7 @@ export interface LLMConfigSettings {
    */
   timeout?: number | null;
   /**
-   * Tool Choice
+   * LLM Config Tool Choice
    * Tool choice configuration ('auto', 'none', 'required', or a specific tool selection)
    */
   tool_choice?: ToolChoiceEnum | ToolChoice | null;

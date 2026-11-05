@@ -23178,7 +23178,7 @@
                             }
                         ],
                         "title": "Last Fetched",
-                        "description": "Last time traces were fetched for this task (from task_polling_state)"
+                        "description": "End time of the newest trace GenAI Engine holds for this task; null if it has none"
                     },
                     "tools": {
                         "anyOf": [
@@ -25304,7 +25304,7 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "Tool Choice",
+                        "title": "LLM Config Tool Choice",
                         "description": "Tool choice configuration ('auto', 'none', 'required', or a specific tool selection)"
                     },
                     "response_format": {
