@@ -1,3 +1,4 @@
+import time
 import uuid
 from datetime import datetime, timedelta
 from typing import Optional
@@ -1746,4 +1747,131 @@ def test_runs_often_enough_to_cache_counts_recent_runs_of_that_eval(
         for run in runs:
             delete_mock_annotation(run.id)
         assert client.delete_task(agentic_task.id) == 204
+        cleanup_test_data(test_data)
+
+
+def _wait_until_judged(annotation_id: uuid.UUID) -> DatabaseAgenticAnnotation:
+    """Polls until the queue worker has finished a rerun job."""
+    db_session = override_get_db_session()
+    for _ in range(50):
+        db_session.expire_all()
+        annotation = db_session.get(DatabaseAgenticAnnotation, annotation_id)
+        if annotation.run_status not in (
+            ContinuousEvalRunStatus.PENDING.value,
+            ContinuousEvalRunStatus.RUNNING.value,
+        ):
+            return annotation
+        time.sleep(0.1)
+    raise AssertionError(f"Run {annotation_id} was not judged in time")
+
+
+@pytest.mark.unit_tests
+@patch("clients.llm.llm_client.completion_cost")
+@patch("clients.llm.llm_client.litellm.completion")
+@patch(
+    "services.continuous_eval.continuous_eval_queue_service.get_db_session",
+    side_effect=mock_get_db_session_generator,
+)
+def test_rerun_keeps_the_cost_of_earlier_judge_calls(
+    mock_get_db_session,
+    mock_completion,
+    mock_completion_cost,
+    client: GenaiEngineTestClientBase,
+):
+    """A rerun judges the same run again, and each judge call is billed, so the
+    run's cost is the sum of every attempt. Spend totals read this column."""
+    test_data = setup_test_data()
+    mock_response = MagicMock(spec=ModelResponse)
+    mock_response.choices = [MagicMock()]
+    mock_response.choices[0].message = {
+        "content": '{"reason": "The model name is wrong.", "score": 0}',
+    }
+    mock_completion.return_value = mock_response
+    mock_completion_cost.return_value = 0.002
+    initialize_continuous_eval_queue_service(num_workers=1, override_execution_delay=0)
+
+    status_code, agentic_task = client.create_task(
+        name="test_rerun_keeps_the_cost_of_earlier_judge_calls",
+        is_agentic=True,
+    )
+    assert status_code == 200
+    response = client.base_client.put(
+        "/api/v1/model_providers/openai",
+        json={"api_key": "test-key"},
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 201
+    status_code, _ = client.save_llm_eval(
+        task_id=agentic_task.id,
+        llm_eval_name="test_llm_eval",
+        llm_eval_data={
+            "model_name": "gpt-4o",
+            "model_provider": "openai",
+            "instructions": "Test instructions {{model_name}}",
+        },
+    )
+    assert status_code == 200
+    status_code, transform = client.create_transform(
+        task_id=agentic_task.id,
+        name="test_transform",
+        description="Test transform description",
+        definition={
+            "variables": [
+                {
+                    "variable_name": "model_name",
+                    "span_name": "rag-retrieval-savedQueries",
+                    "attribute_path": "attributes.input.value.context",
+                },
+            ],
+        },
+    )
+    assert status_code == 200
+    status_code, continuous_eval = client.save_continuous_eval(
+        task_id=agentic_task.id,
+        continuous_eval_data={
+            "name": "test_continuous_eval",
+            "llm_eval_name": "test_llm_eval",
+            "llm_eval_version": 1,
+            "transform_id": str(transform.id),
+            "transform_variable_mapping": [
+                {"transform_variable": "model_name", "eval_variable": "model_name"},
+            ],
+        },
+    )
+    assert status_code == 200
+
+    # A run the judge already failed, after a $0.01 judge call.
+    annotation = create_mock_annotation(
+        trace_id=test_data["trace_id"],
+        annotation_type=AgenticAnnotationType.CONTINUOUS_EVAL,
+        continuous_eval_id=continuous_eval.id,
+        run_status=ContinuousEvalRunStatus.FAILED,
+    )
+    db_session = override_get_db_session()
+    db_session.get(DatabaseAgenticAnnotation, annotation.id).cost = 0.01
+    db_session.commit()
+
+    try:
+        # The rerun calls the judge again for $0.002: both calls count.
+        status_code, _ = client.rerun_continuous_eval(str(annotation.id))
+        assert status_code == 200
+        rerun = _wait_until_judged(annotation.id)
+        assert rerun.run_status == ContinuousEvalRunStatus.FAILED.value
+        assert rerun.cost == pytest.approx(0.012)
+        status_code, spend = client.get_continuous_eval_spend(str(continuous_eval.id))
+        assert status_code == 200
+        assert spend.last_24h_cost == pytest.approx(0.012)
+
+        # A rerun whose judge call errors records no new cost and keeps the old.
+        mock_completion.side_effect = Exception("provider unavailable")
+        status_code, _ = client.rerun_continuous_eval(str(annotation.id))
+        assert status_code == 200
+        errored = _wait_until_judged(annotation.id)
+        assert errored.run_status == ContinuousEvalRunStatus.ERROR.value
+        assert errored.cost == pytest.approx(0.012)
+    finally:
+        delete_mock_annotation(annotation.id)
+        client.delete_task(agentic_task.id)
+        shutdown_continuous_eval_queue_service()
+        cleanup_model_provider(client)
         cleanup_test_data(test_data)
