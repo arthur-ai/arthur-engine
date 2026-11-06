@@ -300,7 +300,10 @@ probes:
 ###################################
 ## Advanced - GCP Service Account
 ###################################
-gcpDiscoveryConfig:
+# Google credentials for a Vertex AI model provider saved without a key file: GenAI Engine
+# falls back to these default credentials. Replaces gcpDiscoveryConfig, which is
+# deprecated but still read when gcpCredentials is not set.
+gcpCredentials:
   isEnabled: false
   # Google Cloud project ID for Vertex AI integration
   # googleCloudProject: ""
