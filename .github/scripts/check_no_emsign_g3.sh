@@ -85,11 +85,13 @@ while IFS= read -r p; do
   check_bundle "$p" "$WORK/link.pem"
 done < "$WORK/links.list"
 
-# Binaries that compile in a root store (litellm's rust_bridge, Go's x509 bundles)
-# carry the certificate as DER, whose subject is readable as plain text. Any
-# non-PEM file containing the subject string is treated as trusting the root.
+# Binaries that compile in a root store (litellm's rust_bridge, uv, Go's x509
+# bundles) carry the certificate as DER. Match the DER encoding of its subject CN
+# (OID 2.5.4.3, PrintableString, length 23, then the name) rather than the bare
+# name, so source files and comments that merely mention the root do not match.
+DER_CN='\x06\x03\x55\x04\x03\x13\x17emSign ECC Root CA - G3'
 ( cd "$WORK/fs" && find . -type f ! -name '*.pem' ! -name '*.crt' -size +1k \
-    -exec grep -laF -- 'emSign ECC Root CA - G3' {} + ) | sed 's|^\.||' > "$WORK/embed.list" || true
+    -exec grep -laP -- "$DER_CN" {} + ) | sed 's|^\.||' > "$WORK/embed.list" || true
 while IFS= read -r p; do
   [ -n "$p" ] || continue
   printf 'FAIL: %s embeds emSign ECC Root CA - G3 (compiled-in root store)\n' "$p"
