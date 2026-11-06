@@ -8,7 +8,7 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "2026-11-07T02:00:12.227270686Z"
+exclude-newer = "0001-01-01T00:00:00Z" # This has no effect and is included for backwards compatibility when using relative exclude-newer values.
 exclude-newer-span = "P3D"
 
 [options.exclude-newer-package]
@@ -285,6 +285,23 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/c6/f9/742e1ec86d55869cf003f8bd058e559a9726a0afdf1d5664bbc8880cbb8d/autoflake-2.4.0.tar.gz", hash = "sha256:ef7c496d9bce9d2cef049f24e482d1d3090c37fbd44e5e85dfb00db3c78ee16c", size = 16994, upload-time = "2026-08-22T15:07:35.065Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/10/d9/b7c85bcbcf8a5c508d05785259b7b483aafdf5cb192512a146b7aa5ca123/autoflake-2.4.0-py3-none-any.whl", hash = "sha256:85df69176550d5e070bdf4a12a1bcdad062998ed458b20a605630e74b758c7ce", size = 18194, upload-time = "2026-08-22T15:07:33.739Z" },
+]
+
+[[package]]
+name = "azure-ai-projects"
+version = "2.4.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "azure-core" },
+    { name = "azure-identity" },
+    { name = "azure-storage-blob" },
+    { name = "isodate" },
+    { name = "openai" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/0c/dd/178a6a5b4098c3ef032ec5669f13b2c9ffbfd4b17092bcd1c34888fef7be/azure_ai_projects-2.4.0.tar.gz", hash = "sha256:121154f70cf7de350a38a75e1da710f4e98b7d8114bc3b1ea25124469e34186f", size = 39729773, upload-time = "2026-07-27T21:53:02.819Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ba/08/aec31cd86b458d5437aa7123b7b9609ceafd101fc4e13f3988c3867b424b/azure_ai_projects-2.4.0-py3-none-any.whl", hash = "sha256:d9a9504b3a498d7300d23411f09d49096e2a184473250d6070093828b7b67e49", size = 357441, upload-time = "2026-07-27T21:53:05.972Z" },
 ]
 
 [[package]]
@@ -1550,6 +1567,8 @@ dependencies = [
     { name = "adlfs" },
     { name = "arthur-client" },
     { name = "arthur-common" },
+    { name = "azure-ai-projects" },
+    { name = "azure-identity" },
     { name = "boto3" },
     { name = "croniter" },
     { name = "databricks-sdk" },
@@ -1609,6 +1628,8 @@ requires-dist = [
     { name = "adlfs", specifier = "==2026.8.0" },
     { name = "arthur-client", specifier = "==1.4.2971" },
     { name = "arthur-common", specifier = "==2.4.106" },
+    { name = "azure-ai-projects", specifier = "==2.4.0" },
+    { name = "azure-identity", specifier = "==1.25.3" },
     { name = "boto3", specifier = ">=1.43,<2" },
     { name = "croniter", specifier = "==6.2.4" },
     { name = "databricks-sdk", specifier = ">=0.84.0,<1" },

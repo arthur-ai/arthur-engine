@@ -27,6 +27,10 @@ dependencies = [
   # Ranged, not pinned: boto3 releases in lockstep with botocore, which aiobotocore (under
   # s3fs) caps, so the resolver picks the boto3 that matches it.
   "boto3>=1.43,<2",
+  # Azure AI Foundry discovery. Held at 2.4.0: every later
+  # azure-ai-projects requires openai>=3, and litellm (pinned by arthur-common) caps openai<3.
+  "azure-ai-projects==2.4.0",
+  "azure-identity==1.25.3",
   "regex==2026.9.29",
   "simple-settings==1.2.0",
   "httpx==0.28.1",
