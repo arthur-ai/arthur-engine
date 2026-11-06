@@ -1,11 +1,12 @@
 """One machine's inventory, read from a folder: standalone engines only.
 
 Arthur's endpoint collector (`integrations/endpoint-ai-discovery`, `dist/collect.sh` on a
-Mac, `dist/collect-linux.sh` on Linux) writes its scan into `$ARTHUR_OUT_DIR`. Every
-other endpoint source reads that scan after a carrier has brought it back -- a Jamf
-attribute, a guest attribute, SSM inventory. This one reads the folder itself, mounted
-into the engine, so a person can run the collector on their own machine and see what
-it finds without an MDM or a cloud. The rows go to `discovery.endpoint.records`, so
+Mac, `dist/collect-linux.sh` on Linux) writes its scan into `$ARTHUR_OUT_DIR`. On Windows,
+which has no collector, the same rows come from upstream's `dist/discovery-windows.sql`
+run through osqueryi. Every other endpoint source reads that scan after a carrier has
+brought it back -- a Jamf attribute, a guest attribute, SSM inventory. This one reads the
+folder itself, mounted into the engine, so a person can scan their own machine and see
+what it finds without an MDM or a cloud. The rows go to `discovery.endpoint.records`, so
 matching, dating and addressing are the same as for a Mac a Jamf scan read.
 
 THE FOLDER IS A CONTRACT WITH WHATEVER FILLS IT, and it holds two files:
