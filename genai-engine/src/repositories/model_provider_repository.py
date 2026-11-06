@@ -13,8 +13,12 @@ from clients.llm.llm_client import LLMClient, get_static_catalog
 from db_models.secret_storage_models import DatabaseSecretStorage
 from schemas.enums import SecretType
 from schemas.internal_schemas import AwsBedrockCredentials, GCPServiceAccountCredentials
-from schemas.request_schemas import PutModelProviderCredentials
-from schemas.response_schemas import ModelProviderResponse
+from schemas.request_schemas import (
+    PutModelProviderCredentials,
+    PutModelProviderEvalDefaults,
+)
+from schemas.response_schemas import ModelProviderEvalDefaults, ModelProviderResponse
+from services.prompt.provider_eval_defaults import apply_provider_eval_defaults
 from utils.constants import EMPTY_MODEL_PROVIDER
 
 logger = logging.getLogger(__name__)
@@ -350,6 +354,39 @@ class ModelProviderRepository:
         secret.model_whitelist = models
         secret.updated_at = datetime.now()
         self.db_session.commit()
+
+    def get_eval_defaults(self, provider: ModelProvider) -> ModelProviderEvalDefaults:
+        # Tolerates an unconfigured provider, which has no defaults.
+        secret = self._get_provider_secret(provider)
+        stored = secret.llm_eval_defaults if secret is not None else None
+        return ModelProviderEvalDefaults.model_validate(
+            {**(stored or {}), "provider": provider},
+        )
+
+    def set_eval_defaults(
+        self,
+        provider: ModelProvider,
+        defaults: PutModelProviderEvalDefaults,
+    ) -> None:
+        secret = self._require_provider_secret(provider)
+        stored = defaults.model_dump(mode="json", exclude_none=True)
+        secret.llm_eval_defaults = stored or None
+        secret.updated_at = datetime.now()
+        self.db_session.commit()
+
+    def apply_eval_defaults(
+        self,
+        provider: ModelProvider,
+        model_name: str,
+        config: dict[str, Any],
+    ) -> None:
+        """Fill the reasoning settings an eval's config leaves unset from the
+        provider's defaults. See services.prompt.provider_eval_defaults."""
+        apply_provider_eval_defaults(
+            config,
+            self.get_eval_defaults(provider),
+            model_name,
+        )
 
     def _catalog_via_client(self, provider: ModelProvider) -> List[str]:
         client = self.get_model_provider_client(provider)

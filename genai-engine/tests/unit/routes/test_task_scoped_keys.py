@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 
 import pytest
-from arthur_common.models.enums import APIKeysRolesEnum
+from arthur_common.models.enums import APIKeysRolesEnum, RuleType
 from fastapi import HTTPException
 
 from db_models import DatabaseSpan, DatabaseTraceMetadata
@@ -266,15 +266,27 @@ def test_scoped_key_query_routes_are_narrowed_to_its_task(created: _Created):
 
 @pytest.mark.unit_tests
 def test_scoped_key_is_refused_on_routes_without_a_task_check(created: _Created):
-    """Fail closed: TASK-ADMIN may read default rules, but that route does not
-    check a task, so a task-scoped TASK-ADMIN key is refused."""
+    """Fail closed: a validation key may call the task-less /validate route,
+    but that route does not check a task, so a task-scoped key is refused."""
     own, _ = _two_tasks(created)
-    headers = _scoped_headers(created, own, [constants.TASK_ADMIN])
+    headers = _scoped_headers(created, own, [constants.VALIDATION_USER])
+    checks = [
+        {
+            "name": "pi",
+            "type": RuleType.PROMPT_INJECTION.value,
+            "apply_to_prompt": True,
+            "apply_to_response": False,
+        },
+    ]
 
-    response = created.client.base_client.get("/api/v2/default_rules", headers=headers)
+    response = created.client.base_client.post(
+        "/api/v2/validate",
+        json={"prompt": "hello", "checks": checks},
+        headers=headers,
+    )
     assert response.status_code == 403
 
-    status_code, _ = created.client.get_default_rules()
+    status_code, _ = created.client.builtin_validate(checks=checks, prompt="hello")
     assert status_code == 200
 
 

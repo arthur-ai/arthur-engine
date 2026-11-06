@@ -19,6 +19,7 @@ from arthur_common.models.task_eval_schemas import TraceTransformDefinition
 from fastapi import HTTPException, Query
 from litellm.types.llms.anthropic import AnthropicThinkingParam
 from pydantic import (
+    AfterValidator,
     BaseModel,
     ConfigDict,
     Field,
@@ -50,6 +51,7 @@ from schemas.enums import (
     TaskAnalyticsBucketSize,
 )
 from utils.constants import ALLOWED_TRACE_RETENTION_DAYS
+from utils.reasoning_capabilities import reasoning_settings_error
 
 
 class DocumentStorageConfigurationUpdateRequest(BaseModel):
@@ -261,6 +263,45 @@ class PutModelProviderWhitelist(BaseModel):
             "An empty list is rejected — it would hide every model."
         ),
     )
+
+
+class PutModelProviderEvalDefaults(BaseModel):
+    reasoning_effort: Optional[ReasoningEffortEnum] = Field(
+        default=None,
+        description=(
+            "Reasoning effort sent on LLM eval calls whose eval config sets neither "
+            "reasoning_effort nor thinking. Skipped for models that don't accept the "
+            "value. Null sends nothing."
+        ),
+    )
+    thinking: Optional[AnthropicThinkingParam] = Field(
+        default=None,
+        description=(
+            "Thinking setting sent on LLM eval calls whose eval config sets neither "
+            "reasoning_effort nor thinking, e.g. {'type': 'disabled'} to turn Claude "
+            "thinking off. Skipped for models that don't accept it. Null sends nothing."
+        ),
+    )
+
+    @model_validator(mode="after")
+    def validate_defaults(self) -> "PutModelProviderEvalDefaults":
+        # litellm rejects "default" for Claude, and as a provider default it means
+        # the same thing as null.
+        if self.reasoning_effort == ReasoningEffortEnum.DEFAULT:
+            raise ValueError(
+                "reasoning_effort 'default' is not a valid provider default. "
+                "Send null to leave reasoning effort unset.",
+            )
+        if (
+            self.thinking is not None
+            and self.thinking.get("type") == "enabled"
+            and self.thinking.get("budget_tokens", 0) < 1024
+        ):
+            # Anthropic's minimum; a lower budget would fail every eval call.
+            raise ValueError(
+                "thinking of type 'enabled' requires budget_tokens of at least 1024.",
+            )
+        return self
 
 
 class ApiKeyRagAuthenticationConfigRequest(BaseModel):
@@ -852,6 +893,19 @@ class CreateEvalRequest(BaseModel):
         description="LLM configurations for this eval (e.g. temperature, max_tokens, etc.)",
     )
 
+    @model_validator(mode="after")
+    def validate_reasoning_takes_effect(self) -> "CreateEvalRequest":
+        if self.config is not None:
+            error = reasoning_settings_error(
+                self.model_provider,
+                self.model_name,
+                self.config.reasoning_effort,
+                self.config.thinking,
+            )
+            if error:
+                raise ValueError(error)
+        return self
+
 
 class PIIEvalConfig(BaseModel):
     """Configuration for PII detection evals."""
@@ -1118,6 +1172,17 @@ class ContinuousEvalTransformVariableMappingRequest(BaseModel):
     eval_variable: str = Field(description="Name of the eval variable")
 
 
+def validate_sample_rate(value: Optional[float]) -> Optional[float]:
+    # Checked here rather than with Field(gt=0): an exclusive bound renders as a
+    # numeric exclusiveMinimum, which oasdiff (generate_changelog) can't parse.
+    if value is not None and value <= 0.0:
+        raise ValueError("sample_rate must be greater than 0")
+    return value
+
+
+SampleRate = Annotated[Optional[float], AfterValidator(validate_sample_rate)]
+
+
 class ContinuousEvalCreateRequest(BaseModel):
     """Request schema for creating a continuous eval"""
 
@@ -1152,6 +1217,15 @@ class ContinuousEvalCreateRequest(BaseModel):
     enabled: bool = Field(
         default=True,
         description="Whether to enable or disable a continuous eval. Defaults to True.",
+    )
+    sample_rate: SampleRate = Field(
+        default=None,
+        le=1.0,
+        description=(
+            "Fraction of traces to evaluate, in (0, 1]. Traces are picked by a hash of "
+            "the trace ID, so evals with the same rate evaluate the same traces. Null "
+            "evaluates every trace."
+        ),
     )
 
 
@@ -1188,6 +1262,14 @@ class UpdateContinuousEvalRequest(BaseModel):
     enabled: Optional[bool] = Field(
         default=None,
         description="Whether to enable or disable a continuous eval.",
+    )
+    sample_rate: SampleRate = Field(
+        default=None,
+        le=1.0,
+        description=(
+            "Fraction of traces to evaluate, in (0, 1]. Omit to leave it unchanged; "
+            "send null to evaluate every trace."
+        ),
     )
 
     @model_validator(mode="after")

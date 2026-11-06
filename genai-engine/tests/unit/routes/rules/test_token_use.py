@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 
 import pytest
 from arthur_common.models.enums import RuleResultEnum, RuleType, TokenUsageScope
+
 from tests.clients.base_test_client import GenaiEngineTestClientBase
 from tests.mocks.mock_scorer_client import (
     MOCK_KEYWORD_PASSING_TEXT,
@@ -43,8 +44,8 @@ def test_get_token_usage_by_rule_type(
 
 @pytest.mark.unit_tests
 def test_get_token_usage_by_task(client: GenaiEngineTestClientBase):
-    _, task1 = client.create_task(empty_rules=True)
-    _, task2 = client.create_task(empty_rules=True)
+    _, task1 = client.create_task()
+    _, task2 = client.create_task()
     client.create_rule("", rule_type=RuleType.REGEX, task_id=task1.id)
     client.create_rule("", rule_type=RuleType.REGEX, task_id=task2.id)
 
@@ -65,8 +66,8 @@ def test_get_token_usage_by_task(client: GenaiEngineTestClientBase):
 
 @pytest.mark.unit_tests
 def test_get_token_usage_by_task_and_rules(client: GenaiEngineTestClientBase):
-    _, task1 = client.create_task(empty_rules=True)
-    _, task2 = client.create_task(empty_rules=True)
+    _, task1 = client.create_task()
+    _, task2 = client.create_task()
     client.create_rule("", rule_type=RuleType.REGEX, task_id=task1.id)
     client.create_rule("", rule_type=RuleType.KEYWORD, task_id=task2.id)
 
@@ -97,7 +98,7 @@ def test_get_token_usage_by_task_and_rules(client: GenaiEngineTestClientBase):
 )
 @pytest.mark.unit_tests
 def test_rate_limit_handled(rule_type: RuleType, client: GenaiEngineTestClientBase):
-    _, task = client.create_task(empty_rules=True)
+    _, task = client.create_task()
     task_id = task.id
 
     _, rule = client.create_rule("", rule_type=rule_type, task_id=task_id)

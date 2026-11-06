@@ -20,6 +20,7 @@ from typing import Any, Optional
 import pytest
 import requests
 from arthur_common.models.agent_governance_schemas import (
+    MAX_OCCURRENCES,
     AgentObservations,
     EndpointAgentCreationSource,
     Platform,
@@ -535,6 +536,111 @@ def test_an_identifier_whose_row_names_no_resource_is_left_out(
         "m1:claude-code",
         "m1:claude-code:binaries:~/.local/bin/claude",
     ]
+
+
+CLAUDE_CODE_VERSIONS = "/Users/n/.local/share/claude/versions/"
+
+
+def claude_code_process(version: str) -> dict[str, str]:
+    """A process_paths row as osquery/queries/running.sql writes it: the path twice."""
+    return row(
+        "proc",
+        CLAUDE_CODE_VERSIONS + version,
+        loc=CLAUDE_CODE_VERSIONS + version,
+    )
+
+
+def test_each_record_lists_every_place_its_rows_found_the_agent(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The case that asked for this: three Claude Code sessions running at once, where a
+    record's address and version name one. An old session still running after an upgrade
+    is the exposure a bad release creates.
+
+    The agent record lists every row; each entry lists its identifier's. An identifier
+    that one row matched lists none, because `install_path` already names that place.
+    """
+    extension = "/Users/n/.cursor/extensions/anthropic.claude-code-2.1.314"
+    records = scan_claude_code(
+        [
+            row("file", "/Users/n/.local/bin/claude", loc="/Users/n/.local/bin/claude"),
+            *(claude_code_process(v) for v in ("2.1.306", "2.1.312", "2.1.314")),
+            row(
+                "vscodeext",
+                "anthropic.claude-code",
+                ver="2.1.314",
+                loc=extension,
+                extra="cursor",
+            ),
+        ],
+        monkeypatch,
+    )
+
+    agent_record, *rest = records
+    running = [
+        ("proc", f"~/.local/share/claude/versions/{v}", None)
+        for v in ("2.1.306", "2.1.312", "2.1.314")
+    ]
+    assert [
+        (o.kind, o.path, o.version)
+        for o in agent_record.creation_source.observations.occurrences
+    ] == [
+        ("file", "~/.local/bin/claude", None),
+        *running,
+        ("vscodeext", "~/.cursor/extensions/anthropic.claude-code-2.1.314", "2.1.314"),
+    ]
+
+    observed = {
+        r.external_id.split(":")[2]: r.creation_source.observations for r in rest
+    }
+    assert [
+        (o.kind, o.path, o.version) for o in observed["process_paths"].occurrences
+    ] == running
+    assert observed["binaries"].occurrences == []
+    assert observed["vscode_extensions"].occurrences == []
+
+
+def test_two_users_copies_of_one_path_are_one_place(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Written as `~`, they are the same place, and one place is what `install_path`
+    already says. So the list is empty, and empty keeps meaning no more than one."""
+    records = scan_claude_code(
+        [
+            row(
+                "file",
+                "/Users/alice/.local/bin/claude",
+                loc="/Users/alice/.local/bin/claude",
+            ),
+            row(
+                "file",
+                "/Users/bob/.local/bin/claude",
+                loc="/Users/bob/.local/bin/claude",
+            ),
+        ],
+        monkeypatch,
+    )
+
+    assert [r.creation_source.observations.occurrences for r in records] == [[], []]
+
+
+def test_past_the_cap_a_record_keeps_the_first_places_and_says_so(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """The model refuses a list over the cap, and refusing it would drop the record.
+    The first are kept, in the order the payload listed them."""
+    found = MAX_OCCURRENCES + 5
+    with caplog.at_level(logging.WARNING):
+        records = scan_claude_code(
+            [claude_code_process(f"2.1.{i}") for i in range(found)],
+            monkeypatch,
+        )
+
+    occurrences = records[0].creation_source.observations.occurrences
+    assert len(occurrences) == MAX_OCCURRENCES
+    assert occurrences[0].path == "~/.local/share/claude/versions/2.1.0"
+    assert f"m1:claude-code: {found} places found the agent" in caplog.text
 
 
 def test_last_seen_is_the_scan_timestamp_not_the_poll(
@@ -1744,7 +1850,7 @@ def test_the_record_schema_has_no_field_for_what_is_never_collected() -> None:
         "install_path",
         # each row that proved the record, as its kind, path and version: what
         # `install_path` and `version` already carry for one row, with the home directory
-        # written as `~` the same way. Empty until the connector fills it.
+        # written as `~` the same way
         "occurrences",
         "version",
         # kept across reports by GenAI Engine; a connector never fills it

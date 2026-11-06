@@ -55,10 +55,8 @@ from arthur_common.models.response_schemas import (
     ValidationResult,
 )
 from arthur_common.models.task_eval_schemas import (
-    ContinuousEvalResponse,
     ContinuousEvalVariableMappingResponse,
     Eval,
-    ListContinuousEvalsResponse,
     ListTraceTransformsResponse,
     TraceTransformResponse,
 )
@@ -115,18 +113,23 @@ from schemas.response_schemas import (
     AgenticAnnotationAnalyticsResponse,
     BulkAddTracesToDatasetResponse,
     ConnectionCheckResult,
+    ContinuousEvalDailySpendEstimate,
     ContinuousEvalRerunResponse,
+    ContinuousEvalResponse,
+    ContinuousEvalSpendResponse,
     ContinuousEvalTestRunResponse,
     DatasetResponse,
     DatasetVersionResponse,
     DatasetVersionRowResponse,
     DemoTaskSignupResponse,
     InferenceOverviewListResponse,
+    ListContinuousEvalsResponse,
     ListContinuousEvalTestRunsResponse,
     ListDatasetVersionsResponse,
     ListRagSearchSettingConfigurationsResponse,
     ListRagSearchSettingConfigurationVersionsResponse,
     ListTraceTransformVersionsResponse,
+    ModelProviderEvalDefaults,
     ModelProviderModelList,
     ModelProviderWhitelist,
     RagProviderConfigurationResponse,
@@ -575,7 +578,6 @@ class GenaiEngineTestClientBase(httpx.Client):
         self,
         name: str = None,
         is_agentic: bool = False,
-        empty_rules: bool = False,
         user_id: str = None,
         agent_metadata: AgentMetadata = None,
     ) -> tuple[int, TaskResponse]:
@@ -593,14 +595,6 @@ class GenaiEngineTestClientBase(httpx.Client):
         )
 
         log_response(resp)
-
-        if resp.status_code == 200 and empty_rules:
-            task = TaskResponse.model_validate(resp.json())
-            _, task = self.get_task(task.id)
-            rule_ids = [r.id for r in task.rules]
-            for id in rule_ids:
-                s, _ = self.patch_rule(task.id, id, False)
-                assert s == 200
 
         return (
             resp.status_code,
@@ -802,13 +796,8 @@ class GenaiEngineTestClientBase(httpx.Client):
         headers_with_authorization = (self.authorized_user_api_key_headers,)
         if use_org_admin:
             headers_with_authorization = self.authorized_org_admin_api_key_headers
-        if not task_id:
-            url = "/api/v2/default_rules"
-        else:
-            url = f"/api/v2/tasks/{task_id}/rules"
-
         resp = self.base_client.post(
-            url,
+            f"/api/v2/tasks/{task_id}/rules",
             json=rule,
             headers=headers_with_authorization,
         )
@@ -958,9 +947,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         conversation_id: str = None,
         user_id: str = None,
     ) -> tuple[int, ValidationResult]:
-        uri = "/api/v2/validate_prompt"
-        if task_id != None:
-            uri = f"/api/v2/tasks/{task_id}/validate_prompt"
+        uri = f"/api/v2/tasks/{task_id}/validate_prompt"
         if prompt is None:
             prompt = random.choice(EXAMPLE_PROMPTS)
 
@@ -1016,9 +1003,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         context: str = None,
         model_name: str = None,
     ) -> tuple[int, ValidationResult]:
-        uri = "/api/v2/validate_response/"
-        if task_id != None:
-            uri = f"/api/v2/tasks/{task_id}/validate_response/"
+        uri = f"/api/v2/tasks/{task_id}/validate_response/"
 
         body = {"response": response if response else random.choice(EXAMPLE_RESPONSES)}
         if context:
@@ -1053,17 +1038,6 @@ class GenaiEngineTestClientBase(httpx.Client):
             f"/api/chat/feedback/{inference_id}",
             json=request.model_dump(),
             headers=self.authorized_chat_headers,
-        )
-
-        log_response(resp)
-
-        return resp.status_code
-
-    def delete_default_rule(self, rule_id: str) -> int:
-        path = f"api/v2/default_rules/{rule_id}"
-        resp = self.base_client.delete(
-            path,
-            headers=self.authorized_org_admin_api_key_headers,
         )
 
         log_response(resp)
@@ -1749,21 +1723,6 @@ class GenaiEngineTestClientBase(httpx.Client):
         )
 
         return resp.status_code, resp.json()
-
-    def get_default_rules(self) -> tuple[int, list[RuleResponse]]:
-        uri = "/api/v2/default_rules"
-        resp = self.base_client.get(
-            url=uri,
-            headers=self.authorized_user_api_key_headers,
-        )
-        log_response(resp)
-        data = resp.json()
-        if isinstance(data, list):
-            loaded_data = [RuleResponse(**x) for x in data]
-        else:
-            loaded_data = []
-
-        return (resp.status_code, loaded_data)
 
     def get_chat_default_task(
         self,
@@ -3414,6 +3373,48 @@ class GenaiEngineTestClientBase(httpx.Client):
             resp.json() if resp.status_code != 204 else {},
         )
 
+    def get_model_provider_eval_defaults(
+        self,
+        provider: str,
+        headers: dict | None = None,
+    ) -> tuple[int, ModelProviderEvalDefaults | None]:
+        """Read the provider's default reasoning settings for LLM evals."""
+        resp = self.base_client.get(
+            f"/api/v1/model_providers/{provider}/eval_defaults",
+            headers=headers or self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                ModelProviderEvalDefaults.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
+            ),
+        )
+
+    def set_model_provider_eval_defaults(
+        self,
+        provider: str,
+        defaults: dict[str, Any],
+        headers: dict | None = None,
+    ) -> tuple[int, dict]:
+        """Set the provider's default reasoning settings for LLM evals."""
+        resp = self.base_client.put(
+            f"/api/v1/model_providers/{provider}/eval_defaults",
+            json=defaults,
+            headers=headers or self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json() if resp.status_code != 204 else {},
+        )
+
     def create_rag_provider(
         self,
         task_id: str,
@@ -4462,6 +4463,54 @@ class GenaiEngineTestClientBase(httpx.Client):
             resp.status_code,
             (
                 AgenticAnnotationAnalyticsResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.json()
+            ),
+        )
+
+    def get_continuous_eval_spend(
+        self,
+        eval_id: str,
+    ) -> tuple[int, ContinuousEvalSpendResponse]:
+        """Get recent and estimated daily spend for a continuous eval."""
+        resp = self.base_client.get(
+            f"/api/v1/continuous_evals/{eval_id}/spend",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                ContinuousEvalSpendResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.json()
+            ),
+        )
+
+    def estimate_continuous_eval_spend(
+        self,
+        task_id: str,
+        llm_eval_name: str,
+        sample_rate: float | None = None,
+    ) -> tuple[int, ContinuousEvalDailySpendEstimate]:
+        """Estimate the daily spend of a new continuous eval."""
+        params: dict[str, str | float] = {"llm_eval_name": llm_eval_name}
+        if sample_rate is not None:
+            params["sample_rate"] = sample_rate
+        resp = self.base_client.get(
+            f"/api/v1/tasks/{task_id}/continuous_evals/spend_estimate",
+            params=params,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                ContinuousEvalDailySpendEstimate.model_validate(resp.json())
                 if resp.status_code == 200
                 else resp.json()
             ),

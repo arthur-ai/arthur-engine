@@ -1,6 +1,6 @@
 [project]
 name = "ml-engine"
-version = "2.1.1089"
+version = "2.1.1101"
 description = ""
 authors = [{ name = "Arthur", email = "engineering@arthur.ai" }]
 license = "MIT"
@@ -39,7 +39,7 @@ dependencies = [
   "types-requests==2.33.0.20261030",
   "psutil==7.2.2",
   "pyarrow==25.0.1",
-  "arthur-common==2.4.104",
+  "arthur-common==2.4.106",
   "gunicorn>=26,<27",
   # Held below 2.1: snowflake-sqlalchemy subclasses sqlalchemy.orm.context.ORMSelectCompileState,
   # which SQLAlchemy 2.1 made private, so it fails at import. See the sqlalchemy rule in /renovate.json.
@@ -47,7 +47,7 @@ dependencies = [
   "snowflake-sqlalchemy==1.11.1",
   "databricks-sqlalchemy>=2.0,<3",
   "databricks-sdk>=0.84.0,<1",
-  "arthur-client==1.4.2961",
+  "arthur-client==1.4.2971",
 ]
 
 [dependency-groups]
@@ -71,7 +71,14 @@ linters = [
 
 [tool.uv]
 exclude-newer = "3 days"
-exclude-newer-package = { arthur-client = false, arthur-common = false }
+# SOC-222: certifi 2026.10.19 drops the compromised "emSign ECC Root CA - G3" root, which every
+# earlier release trusts (2026.10.18 removed too many roots, so floor at .19). certifi bypasses
+# the cooldown so the fix could land before 2026.10.19 was 3 days old.
+exclude-newer-package = { arthur-client = false, arthur-common = false, certifi = false }
+# grpcio's bundled roots.pem trusted the same root until 1.84.1 / 1.85.0; it is only a
+# transitive dependency here. litellm < 1.106.3 has the same problem in its Rust extension;
+# that bump waits on arthur-common, which pins litellm exactly.
+constraint-dependencies = ["certifi>=2026.10.19", "grpcio>=1.84.1", "litellm>=1.106.3"]
 
 [build-system]
 requires = ["hatchling"]

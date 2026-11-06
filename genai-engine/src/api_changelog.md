@@ -9,6 +9,23 @@ The intention of this changelog is to document API changes as they happen to eff
 - **CHANGE** for **URL**: /auth/api_keys/deactivate/{api_key_id}  added the optional property `task_id` to the response with the `200` status
 - **CHANGE** for **URL**: /auth/api_keys/{api_key_id}  added the optional property `task_id` to the response with the `200` status
 # 11/03/2026
+- **BREAKING CHANGE** for **URL**: /api/v2/default_rules  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v2/default_rules  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v2/default_rules/{rule_id}  api path removed without deprecation
+- **CHANGE** on upgrade: every default rule linked to a task is copied into a task rule on that task, keeping the task's enabled setting, so existing tasks run the same checks. Each copy has a new rule ID; the original default rules are archived, and rule results recorded before the upgrade keep their IDs. New tasks no longer receive any rules.
+- **CHANGE** for **URL**: /api/v2/validate_prompt  api path removed with deprecation
+- **CHANGE** for **URL**: /api/v2/validate_response/{inference_id}  api path removed with deprecation
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/validate_prompt  api tag 'Validation' added
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/validate_prompt  api tag 'Task Based Validation' removed
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/validate_response/{inference_id}  api tag 'Validation' added
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/validate_response/{inference_id}  api tag 'Task Based Validation' removed
+- **CHANGE** for **URL**: /api/v2/validate  api tag 'Validation' added
+- **CHANGE** for **URL**: /api/v2/validate  api tag 'Stateless Validation' removed
+
+# 11/03/2026
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}/reasoning_options  endpoint added
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}/spend  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/spend_estimate  endpoint added
 - **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property '/items/creation_source/anyOf[subschema #1: AgentCreationSource]/oneOf[subschema #1: GCPAgentCreationSource]/observations/occurrences' to the response with the '200' status
 - **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property '/items/creation_source/anyOf[subschema #1: AgentCreationSource]/oneOf[subschema #2: OTELAgentCreationSource]/observations/occurrences' to the response with the '200' status
 - **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property '/items/creation_source/anyOf[subschema #1: AgentCreationSource]/oneOf[subschema #3: ManualAgentCreationSource]/observations/occurrences' to the response with the '200' status
@@ -21,6 +38,16 @@ The intention of this changelog is to document API changes as they happen to eff
 - **CHANGE** for **URL**: /api/v2/agent-tasks/resolve  added the new optional request property 'records/items/creation_source/oneOf[subschema #2: SIEMAgentCreationSource]/observations/occurrences'
 - **CHANGE** for **URL**: /api/v2/agent-tasks/resolve  added the new optional request property 'records/items/creation_source/oneOf[subschema #3: EndpointAgentCreationSource]/observations/occurrences'
 - **CHANGE** for **URL**: /api/v2/agent-tasks/resolve  added the new optional request property 'records/items/creation_source/oneOf[subschema #4: NetworkAgentCreationSource]/observations/occurrences'
+
+# 11/02/2026
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  added the optional property 'sample_rate' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  added the new optional request property 'sample_rate'
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  added the optional property 'sample_rate' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}/eval_defaults  endpoint added
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}/eval_defaults  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the optional property 'evals/items/sample_rate' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the new optional request property 'sample_rate'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the optional property 'sample_rate' to the response with the '200' status
 
 # 10/31/2026
 - **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property '/items/creation_source/anyOf[subschema #1: AgentCreationSource]/oneOf[subschema #1: GCPAgentCreationSource]/observations/previous_version' to the response with the '200' status

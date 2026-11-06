@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.1089"
+        "version": "2.1.1101"
     },
     "paths": {
         "/api/v2/engine-config": {
@@ -826,266 +826,13 @@
                 ]
             }
         },
-        "/api/v2/default_rules": {
-            "get": {
-                "tags": [
-                    "Rules"
-                ],
-                "summary": "Get Default Rules",
-                "description": "Get default rules.",
-                "operationId": "get_default_rules_api_v2_default_rules_get",
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "items": {
-                                        "$ref": "#/components/schemas/RuleResponse"
-                                    },
-                                    "type": "array",
-                                    "title": "Response Get Default Rules Api V2 Default Rules Get"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ]
-            },
-            "post": {
-                "tags": [
-                    "Rules"
-                ],
-                "summary": "Create Default Rule",
-                "description": "Create a default rule. Default rules are applied universally across existing tasks, subsequently created new tasks, and any non-task related requests. Once a rule is created, it is immutable. Available rules are 'KeywordRule', 'ModelHallucinationRuleV2', 'ModelSensitiveDataRule', 'PIIDataRule', 'PromptInjectionRule', 'RegexRule', 'ToxicityRule'. Note: The rules are cached by the validation endpoints for 60 seconds.",
-                "operationId": "create_default_rule_api_v2_default_rules_post",
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/NewRuleRequest"
-                            },
-                            "examples": {
-                                "example1": {
-                                    "summary": "Sensitive Data Example",
-                                    "description": "Sensitive Data Example with its required configuration",
-                                    "value": {
-                                        "name": "Sensitive Data Rule",
-                                        "type": "ModelSensitiveDataRule",
-                                        "apply_to_prompt": true,
-                                        "apply_to_response": false,
-                                        "config": {
-                                            "examples": [
-                                                {
-                                                    "example": "John has O negative blood group",
-                                                    "result": true
-                                                },
-                                                {
-                                                    "example": "Most of the people have A positive blood group",
-                                                    "result": false
-                                                }
-                                            ],
-                                            "hint": "specific individual's blood types"
-                                        }
-                                    }
-                                },
-                                "example2": {
-                                    "summary": "Regex Example",
-                                    "description": "Regex Example with its required configuration. Be sure to properly encode requests using JSON libraries. For example, the regex provided encodes to a different string when encoded to account for escape characters.",
-                                    "value": {
-                                        "name": "SSN Regex Rule",
-                                        "type": "RegexRule",
-                                        "apply_to_prompt": true,
-                                        "apply_to_response": true,
-                                        "config": {
-                                            "regex_patterns": [
-                                                "\\d{3}-\\d{2}-\\d{4}",
-                                                "\\d{5}-\\d{6}-\\d{7}"
-                                            ]
-                                        }
-                                    }
-                                },
-                                "example3": {
-                                    "summary": "Keywords Rule Example",
-                                    "description": "Keywords Rule Example with its required configuration",
-                                    "value": {
-                                        "name": "Blocked Keywords Rule",
-                                        "type": "KeywordRule",
-                                        "apply_to_prompt": true,
-                                        "apply_to_response": true,
-                                        "config": {
-                                            "keywords": [
-                                                "Blocked_Keyword_1",
-                                                "Blocked_Keyword_2"
-                                            ]
-                                        }
-                                    }
-                                },
-                                "example4": {
-                                    "summary": "Prompt Injection Rule Example",
-                                    "description": "Prompt Injection Rule Example, no configuration required",
-                                    "value": {
-                                        "name": "Prompt Injection Rule",
-                                        "type": "PromptInjectionRule",
-                                        "apply_to_prompt": true,
-                                        "apply_to_response": false
-                                    }
-                                },
-                                "example5": {
-                                    "summary": "Hallucination Rule V1 Example (Deprecated)",
-                                    "description": "Hallucination Rule Example, no configuration required (This rule is deprecated. Use ModelHallucinationRuleV2 instead.)",
-                                    "value": {
-                                        "name": "Hallucination Rule",
-                                        "type": "ModelHallucinationRule",
-                                        "apply_to_prompt": false,
-                                        "apply_to_response": true
-                                    }
-                                },
-                                "example6": {
-                                    "summary": "Hallucination Rule V2 Example",
-                                    "description": "Hallucination Rule Example, no configuration required",
-                                    "value": {
-                                        "name": "Hallucination Rule",
-                                        "type": "ModelHallucinationRuleV2",
-                                        "apply_to_prompt": false,
-                                        "apply_to_response": true
-                                    }
-                                },
-                                "example7": {
-                                    "summary": "Hallucination Rule V3 Example (Beta)",
-                                    "description": "Hallucination Rule Example, no configuration required. This rule is in beta and must be enabled by the system administrator.",
-                                    "value": {
-                                        "name": "Hallucination Rule",
-                                        "type": "ModelHallucinationRuleV3",
-                                        "apply_to_prompt": false,
-                                        "apply_to_response": true
-                                    }
-                                },
-                                "example8": {
-                                    "summary": "PII Rule Example",
-                                    "description": "PII Rule Example, no configuration required. \"disabled_pii_entities\", \"confidence_threshold\", and \"allow_list\" accepted. Valid value for \"confidence_threshold\" is 0.0-1.0. Valid values for \"disabled_pii_entities\" are CREDIT_CARD,CRYPTO,DATE_TIME,EMAIL_ADDRESS,IBAN_CODE,IP_ADDRESS,NRP,LOCATION,PERSON,PHONE_NUMBER,MEDICAL_LICENSE,URL,US_BANK_NUMBER,US_DRIVER_LICENSE,US_ITIN,US_PASSPORT,US_SSN",
-                                    "value": {
-                                        "name": "PII Rule",
-                                        "type": "PIIDataRule",
-                                        "apply_to_prompt": true,
-                                        "apply_to_response": true,
-                                        "config": {
-                                            "disabled_pii_entities": [
-                                                "EMAIL_ADDRESS",
-                                                "PHONE_NUMBER"
-                                            ],
-                                            "confidence_threshold": "0.5",
-                                            "allow_list": [
-                                                "arthur.ai",
-                                                "Arthur"
-                                            ]
-                                        }
-                                    }
-                                },
-                                "example9": {
-                                    "summary": "Toxicity Rule Example",
-                                    "description": "Toxicity Rule Example, no configuration required. Threshold accepted",
-                                    "value": {
-                                        "name": "Toxicity Rule",
-                                        "type": "ToxicityRule",
-                                        "apply_to_prompt": true,
-                                        "apply_to_response": true,
-                                        "config": {
-                                            "threshold": 0.5
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/RuleResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ]
-            }
-        },
-        "/api/v2/default_rules/{rule_id}": {
-            "delete": {
-                "tags": [
-                    "Rules"
-                ],
-                "summary": "Archive Default Rule",
-                "description": "Archive existing default rule.",
-                "operationId": "archive_default_rule_api_v2_default_rules__rule_id__delete",
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "rule_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Rule Id"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {}
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/api/v2/rules/search": {
             "post": {
                 "tags": [
                     "Rules"
                 ],
                 "summary": "Search Rules",
-                "description": "Search default and/or task rules.",
+                "description": "Search rules.",
                 "operationId": "search_rules_api_v2_rules_search_post",
                 "security": [
                     {
@@ -1199,7 +946,7 @@
                     "Tasks"
                 ],
                 "summary": "Create Task",
-                "description": "Register a new task. When a new task is created, all existing default rules will be auto-applied for this new task. Optionally specify if the task is agentic.",
+                "description": "Register a new task. Optionally specify if the task is agentic.",
                 "operationId": "create_task_api_v2_tasks_post",
                 "requestBody": {
                     "content": {
@@ -1246,7 +993,7 @@
                     "Tasks"
                 ],
                 "summary": "Archive Task",
-                "description": "Archive task. Also archives all task-scoped rules. Associated default rules are unaffected.",
+                "description": "Archive task. Also archives all task-scoped rules.",
                 "operationId": "archive_task_api_v2_tasks__task_id__delete",
                 "security": [
                     {
@@ -1909,7 +1656,7 @@
                     "Tasks"
                 ],
                 "summary": "Update Task Rules",
-                "description": "Enable or disable an existing rule for this task including the default rules.",
+                "description": "Enable or disable an existing rule for this task.",
                 "operationId": "update_task_rules_api_v2_tasks__task_id__rules__rule_id__patch",
                 "security": [
                     {
@@ -2233,120 +1980,12 @@
                 }
             }
         },
-        "/api/v2/validate_prompt": {
-            "post": {
-                "tags": [
-                    "Default Validation"
-                ],
-                "summary": "Default Validate Prompt",
-                "description": "[Deprecated] Validate a non-task related prompt based on the configured default rules.",
-                "operationId": "default_validate_prompt_api_v2_validate_prompt_post",
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/PromptValidationRequest"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ValidationResult"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                },
-                "deprecated": true,
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ]
-            }
-        },
-        "/api/v2/validate_response/{inference_id}": {
-            "post": {
-                "tags": [
-                    "Default Validation"
-                ],
-                "summary": "Default Validate Response",
-                "description": "[Deprecated] Validate a non-task related generated response based on the configured default rules. Inference ID corresponds to the previously validated associated prompt\u2019s inference ID. Must provide context if a Hallucination Rule is an enabled default rule.",
-                "operationId": "default_validate_response_api_v2_validate_response__inference_id__post",
-                "deprecated": true,
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "inference_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Inference Id"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/ResponseValidationRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ValidationResult"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/api/v2/tasks/{task_id}/validate_prompt": {
             "post": {
                 "tags": [
-                    "Task Based Validation"
+                    "Validation"
                 ],
-                "summary": "Validate Prompt Endpoint",
+                "summary": "Validate a prompt against a task's rules",
                 "description": "Validate a prompt based on the configured rules for this task. Note: Rules related to specific tasks are cached for 60 seconds.",
                 "operationId": "validate_prompt_endpoint_api_v2_tasks__task_id__validate_prompt_post",
                 "security": [
@@ -2431,9 +2070,9 @@
         "/api/v2/tasks/{task_id}/validate_response/{inference_id}": {
             "post": {
                 "tags": [
-                    "Task Based Validation"
+                    "Validation"
                 ],
-                "summary": "Validate Response Endpoint",
+                "summary": "Validate a response against a task's rules",
                 "description": "Validate a response based on the configured rules for this task. Inference ID corresponds to the previously validated associated prompt\u2019s inference id. Must provide context if a Hallucination Rule is an enabled task rule. Note: Rules related to specific tasks are cached for 60 seconds.",
                 "operationId": "validate_response_endpoint_api_v2_tasks__task_id__validate_response__inference_id__post",
                 "security": [
@@ -2528,10 +2167,10 @@
         "/api/v2/validate": {
             "post": {
                 "tags": [
-                    "Stateless Validation"
+                    "Validation"
                 ],
-                "summary": "Stateless Validate",
-                "description": "Stateless validation of arbitrary input against inline rule specs. Does NOT persist results, does NOT create an inference, and is task-less. Intended for ad-hoc checks such as validating tool-call output before passing it back to an LLM.\n\nEach entry in `checks` is a `NewRuleRequest` \u2014 the same shape accepted by the rule-management API. `type` is a `RuleType` enum value: `PromptInjectionRule`, `ToxicityRule`, `PIIDataRule`, `ModelHallucinationRuleV2`, `RegexRule`, `KeywordRule`, `ModelSensitiveDataRule`.\n\n`apply_to_prompt` and `apply_to_response` decide which of `prompt` and `response` a check scores; a check that applies to both fails if either one violates it.\n\nHallucination requires `response` + `context`; if `context` is missing the rule engine returns a `Skipped` result. A check may return result=`Model Not Available` if its underlying model has not finished loading; callers should treat this as transient and retry.",
+                "summary": "Validate text against inline rules without a task",
+                "description": "Stateless validation of arbitrary input against inline rule specs. Does NOT persist results, does NOT create an inference, and is task-less. Intended for ad-hoc checks such as validating tool-call output before passing it back to an LLM.\n\nEach entry in `checks` is a `NewRuleRequest` \u2014 the same shape accepted by the rule-management API. `type` is a `RuleType` enum value: `PromptInjectionRule`, `ToxicityRule`, `PIIDataRule`, `ModelHallucinationRuleV2`, `RegexRule`, `KeywordRule`, `ModelSensitiveDataRule`.\n\n`apply_to_prompt` and `apply_to_response` decide which of `prompt` and `response` a check scores; a check that applies to both fails if either one violates it.\n\nEach result's `id` is generated per request and its `scope` is always `default`, because an inline check belongs to no task.\n\nHallucination requires `response` + `context`; if `context` is missing the rule engine returns a `Skipped` result. A check may return result=`Model Not Available` if its underlying model has not finished loading; callers should treat this as transient and retry.",
                 "operationId": "stateless_validate_api_v2_validate_post",
                 "requestBody": {
                     "content": {
@@ -2606,7 +2245,7 @@
                     "API Keys"
                 ],
                 "summary": "Create Api Key",
-                "description": "Generates a new API key. Up to 1000 active keys can exist at the same time by default. Contact your system administrator if you need more. Allowed roles are: DEFAULT-RULE-ADMIN, TASK-ADMIN, VALIDATION-USER, ORG-AUDITOR, ORG-ADMIN.",
+                "description": "Generates a new API key. Up to 1000 active keys can exist at the same time by default. Contact your system administrator if you need more. Allowed roles are: TASK-ADMIN, VALIDATION-USER, ORG-AUDITOR, ORG-ADMIN.",
                 "operationId": "create_api_key_auth_api_keys__post",
                 "requestBody": {
                     "content": {
@@ -9764,6 +9403,159 @@
                 }
             }
         },
+        "/api/v1/model_providers/{provider}/eval_defaults": {
+            "get": {
+                "tags": [
+                    "Model Providers"
+                ],
+                "summary": "Get a provider's default reasoning settings for LLM evals.",
+                "description": "Returns the reasoning_effort and thinking settings sent on LLM eval calls to this provider when the eval's own config sets neither. Null fields send nothing.",
+                "operationId": "get_model_provider_eval_defaults_api_v1_model_providers__provider__eval_defaults_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "provider",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/ModelProvider"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ModelProviderEvalDefaults"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "Model Providers"
+                ],
+                "summary": "Set a provider's default reasoning settings for LLM evals.",
+                "description": "Sets the reasoning_effort and thinking settings sent on LLM eval calls to this provider when the eval's own config sets neither. An eval that sets either one gets neither default. A default is skipped for models that don't accept it, and thinking 'disabled' or reasoning_effort 'none' is skipped for models that always think (e.g. Claude Sonnet 5.5), where it would have no effect. Both defaults are skipped for models litellm doesn't know (e.g. Azure deployment names). Applies to LLM evals only, not to prompts. Send nulls to clear.",
+                "operationId": "set_model_provider_eval_defaults_api_v1_model_providers__provider__eval_defaults_put",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "provider",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/ModelProvider"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PutModelProviderEvalDefaults"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "204": {
+                        "description": "Eval defaults updated."
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/model_providers/{provider}/reasoning_options": {
+            "get": {
+                "tags": [
+                    "Model Providers"
+                ],
+                "summary": "Get the reasoning settings a model accepts.",
+                "description": "Returns the reasoning_effort values and thinking types litellm accepts for a model, the same rule LLM eval saves are checked against. Null fields mean litellm doesn't know the model, and any value is sent as is.",
+                "operationId": "get_model_reasoning_options_api_v1_model_providers__provider__reasoning_options_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "provider",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/ModelProvider"
+                        }
+                    },
+                    {
+                        "name": "model_name",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "Name of the model, as the eval stores it",
+                            "title": "Model Name"
+                        },
+                        "description": "Name of the model, as the eval stores it"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ModelReasoningOptions"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/secrets/rotation": {
             "post": {
                 "tags": [
@@ -16708,6 +16500,136 @@
                 }
             }
         },
+        "/api/v1/continuous_evals/{eval_id}/spend": {
+            "get": {
+                "tags": [
+                    "Continuous Evals"
+                ],
+                "summary": "Get recent and estimated daily spend for a continuous eval",
+                "description": "Returns the number and total cost of the eval's live runs in the last 24 hours, and an estimated daily cost: the task's traces per day over the last 7 days, times the eval's sample rate, times the average cost of its live runs that called the LLM (passed or failed) over the last 7 days. Test runs are not counted.",
+                "operationId": "get_continuous_eval_spend_api_v1_continuous_evals__eval_id__spend_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "eval_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Continuous Eval ID",
+                            "description": "The id of the continuous eval."
+                        },
+                        "description": "The id of the continuous eval."
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ContinuousEvalSpendResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/tasks/{task_id}/continuous_evals/spend_estimate": {
+            "get": {
+                "tags": [
+                    "Continuous Evals"
+                ],
+                "summary": "Estimate the daily spend of a new continuous eval",
+                "description": "Estimates the daily cost of a continuous eval that would run the given evaluator at the given sample rate: the task's traces per day over the last 7 days, times the sample rate, times the average cost of the live runs that called the LLM (passed or failed) over the last 7 days of the task's continuous evals using that evaluator.",
+                "operationId": "estimate_continuous_eval_spend_api_v1_tasks__task_id__continuous_evals_spend_estimate_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Task Id"
+                        }
+                    },
+                    {
+                        "name": "llm_eval_name",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "Name of the evaluator the continuous eval would run.",
+                            "title": "Llm Eval Name"
+                        },
+                        "description": "Name of the evaluator the continuous eval would run."
+                    },
+                    {
+                        "name": "sample_rate",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "number",
+                                    "maximum": 1.0
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Fraction of traces to evaluate, in (0, 1]. Omit to evaluate every trace.",
+                            "title": "Sample Rate"
+                        },
+                        "description": "Fraction of traces to evaluate, in (0, 1]. Omit to evaluate every trace."
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ContinuousEvalDailySpendEstimate"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/continuous_evals/{eval_id}/test_runs": {
             "post": {
                 "tags": [
@@ -21021,6 +20943,19 @@
                         "title": "Enabled",
                         "description": "Whether to enable or disable a continuous eval. Defaults to True.",
                         "default": true
+                    },
+                    "sample_rate": {
+                        "anyOf": [
+                            {
+                                "type": "number",
+                                "maximum": 1.0
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Sample Rate",
+                        "description": "Fraction of traces to evaluate, in (0, 1]. Traces are picked by a hash of the trace ID, so evals with the same rate evaluate the same traces. Null evaluates every trace."
                     }
                 },
                 "type": "object",
@@ -21032,6 +20967,80 @@
                 ],
                 "title": "ContinuousEvalCreateRequest",
                 "description": "Request schema for creating a continuous eval"
+            },
+            "ContinuousEvalDailySpendEstimate": {
+                "properties": {
+                    "window_days": {
+                        "type": "integer",
+                        "title": "Window Days",
+                        "description": "Number of trailing days the traffic and the average run cost are measured over."
+                    },
+                    "trace_count": {
+                        "type": "integer",
+                        "title": "Trace Count",
+                        "description": "Traces the task received in the window, not counting agent experiment traces."
+                    },
+                    "traces_per_day": {
+                        "type": "number",
+                        "title": "Traces Per Day",
+                        "description": "trace_count divided by window_days."
+                    },
+                    "sample_rate": {
+                        "type": "number",
+                        "title": "Sample Rate",
+                        "description": "Fraction of traces the eval runs on. 1.0 when the eval has no sample rate set."
+                    },
+                    "run_count": {
+                        "type": "integer",
+                        "title": "Run Count",
+                        "description": "Live runs in the window that called the LLM (passed or failed), which the average is taken over."
+                    },
+                    "average_run_cost": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Average Run Cost",
+                        "description": "Mean cost of those runs. Null when there are none."
+                    },
+                    "estimated_daily_cost": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Estimated Daily Cost",
+                        "description": "Projected cost per day. Null when it cannot be estimated; unavailable_reason says why."
+                    },
+                    "unavailable_reason": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/SpendEstimateUnavailableReason"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Set when estimated_daily_cost is null: no_traces when the task received no traces in the window, no_runs when the evaluator has no live runs that called the LLM in the window."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "window_days",
+                    "trace_count",
+                    "traces_per_day",
+                    "sample_rate",
+                    "run_count"
+                ],
+                "title": "ContinuousEvalDailySpendEstimate",
+                "description": "Projected daily cost of a continuous eval at the task's recent traffic.\n\nestimated_daily_cost = traces_per_day * sample_rate * average_run_cost"
             },
             "ContinuousEvalRerunResponse": {
                 "properties": {
@@ -21157,6 +21166,18 @@
                         "format": "date-time",
                         "title": "Updated At",
                         "description": "Timestamp representing the time the continuous eval was last updated."
+                    },
+                    "sample_rate": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Sample Rate",
+                        "description": "Fraction of traces evaluated, in (0, 1]. Null evaluates every trace."
                     }
                 },
                 "type": "object",
@@ -21168,7 +21189,8 @@
                     "created_at",
                     "updated_at"
                 ],
-                "title": "ContinuousEvalResponse"
+                "title": "ContinuousEvalResponse",
+                "description": "The continuous eval response, with its sample rate.\n\nExtends the shared model only until `arthur_common` carries `sample_rate` on\n`ContinuousEvalResponse` itself, at which point this subclass goes. Named the\nsame so the OpenAPI component, and the generated clients built from it, keep\ntheir name either way."
             },
             "ContinuousEvalRunStatus": {
                 "type": "string",
@@ -21181,6 +21203,39 @@
                     "error"
                 ],
                 "title": "ContinuousEvalRunStatus"
+            },
+            "ContinuousEvalSpendResponse": {
+                "properties": {
+                    "continuous_eval_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Continuous Eval Id",
+                        "description": "ID of the continuous eval."
+                    },
+                    "last_24h_run_count": {
+                        "type": "integer",
+                        "title": "Last 24H Run Count",
+                        "description": "Live runs created in the last 24 hours, in any status."
+                    },
+                    "last_24h_cost": {
+                        "type": "number",
+                        "title": "Last 24H Cost",
+                        "description": "Total cost of the live runs created in the last 24 hours."
+                    },
+                    "estimate": {
+                        "$ref": "#/components/schemas/ContinuousEvalDailySpendEstimate",
+                        "description": "Projected daily cost at the current sample rate."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "continuous_eval_id",
+                    "last_24h_run_count",
+                    "last_24h_cost",
+                    "estimate"
+                ],
+                "title": "ContinuousEvalSpendResponse",
+                "description": "Recent and projected spend of one continuous eval."
             },
             "ContinuousEvalTestRunResponse": {
                 "properties": {
@@ -26165,6 +26220,41 @@
                 ],
                 "title": "ModelProvider"
             },
+            "ModelProviderEvalDefaults": {
+                "properties": {
+                    "provider": {
+                        "$ref": "#/components/schemas/ModelProvider",
+                        "description": "Provider the defaults apply to"
+                    },
+                    "reasoning_effort": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ReasoningEffortEnum"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Reasoning effort sent on LLM eval calls whose eval config sets neither reasoning_effort nor thinking. Null sends nothing."
+                    },
+                    "thinking": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/AnthropicThinkingParam-Output"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Thinking setting sent on LLM eval calls whose eval config sets neither reasoning_effort nor thinking. Null sends nothing."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "provider"
+                ],
+                "title": "ModelProviderEvalDefaults"
+            },
             "ModelProviderList": {
                 "properties": {
                     "providers": {
@@ -26260,6 +26350,101 @@
                     "catalog"
                 ],
                 "title": "ModelProviderWhitelist"
+            },
+            "ModelReasoningOptions": {
+                "properties": {
+                    "provider": {
+                        "$ref": "#/components/schemas/ModelProvider",
+                        "description": "Provider of the model"
+                    },
+                    "model_name": {
+                        "type": "string",
+                        "title": "Model Name",
+                        "description": "Model the options apply to"
+                    },
+                    "reasoning_efforts": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/ReasoningEffortEnum"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Reasoning Efforts",
+                        "description": "reasoning_effort values the model accepts; empty when it takes none. Null when litellm doesn't know the model, in which case any value is sent as is."
+                    },
+                    "thinking": {
+                        "$ref": "#/components/schemas/ModelThinkingOptions",
+                        "description": "Thinking settings the model accepts"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "provider",
+                    "model_name",
+                    "reasoning_efforts",
+                    "thinking"
+                ],
+                "title": "ModelReasoningOptions"
+            },
+            "ModelThinkingOptions": {
+                "properties": {
+                    "supported": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Supported",
+                        "description": "Whether the model takes a thinking setting. Null when litellm doesn't know the model."
+                    },
+                    "can_disable": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Can Disable",
+                        "description": "Whether thinking type 'disabled' turns thinking off. False for models that always think and for non-Claude models. Null when litellm doesn't know the model."
+                    },
+                    "types": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string",
+                                    "enum": [
+                                        "enabled",
+                                        "adaptive",
+                                        "disabled"
+                                    ]
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Thinking Types",
+                        "description": "Thinking types the model accepts. Null when litellm doesn't know the model."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "supported",
+                    "can_disable",
+                    "types"
+                ],
+                "title": "ModelThinkingOptions"
             },
             "NestedSpanWithMetricsResponse": {
                 "properties": {
@@ -28997,6 +29182,34 @@
                 },
                 "type": "object",
                 "title": "PutModelProviderCredentials"
+            },
+            "PutModelProviderEvalDefaults": {
+                "properties": {
+                    "reasoning_effort": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ReasoningEffortEnum"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Reasoning effort sent on LLM eval calls whose eval config sets neither reasoning_effort nor thinking. Skipped for models that don't accept the value. Null sends nothing."
+                    },
+                    "thinking": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/AnthropicThinkingParam-Input"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Thinking setting sent on LLM eval calls whose eval config sets neither reasoning_effort nor thinking, e.g. {'type': 'disabled'} to turn Claude thinking off. Skipped for models that don't accept it. Null sends nothing."
+                    }
+                },
+                "type": "object",
+                "title": "PutModelProviderEvalDefaults"
             },
             "PutModelProviderWhitelist": {
                 "properties": {
@@ -32459,6 +32672,15 @@
                 ],
                 "title": "SpanWithMetricsResponse"
             },
+            "SpendEstimateUnavailableReason": {
+                "type": "string",
+                "enum": [
+                    "no_traces",
+                    "no_runs"
+                ],
+                "title": "SpendEstimateUnavailableReason",
+                "description": "Why a continuous eval daily spend estimate could not be computed."
+            },
             "StatusCodeEnum": {
                 "type": "string",
                 "enum": [
@@ -35036,6 +35258,19 @@
                         ],
                         "title": "Enabled",
                         "description": "Whether to enable or disable a continuous eval."
+                    },
+                    "sample_rate": {
+                        "anyOf": [
+                            {
+                                "type": "number",
+                                "maximum": 1.0
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Sample Rate",
+                        "description": "Fraction of traces to evaluate, in (0, 1]. Omit to leave it unchanged; send null to evaluate every trace."
                     }
                 },
                 "type": "object",

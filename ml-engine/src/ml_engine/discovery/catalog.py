@@ -22,6 +22,8 @@ from dataclasses import dataclass
 from types import ModuleType
 from typing import Any, Mapping, Optional, Sequence
 
+from arthur_common.models.agent_governance_schemas import AgentOccurrence
+
 from job_executors.discovery_scan import DiscoveryConfigurationError
 
 _VENDOR = pathlib.Path(__file__).resolve().parent / "_vendor"
@@ -71,6 +73,34 @@ def _load_matcher() -> ModuleType:
 _matcher = _load_matcher()
 
 
+def _occurrence(row: Mapping[str, Any]) -> AgentOccurrence:
+    """Where one row found the agent: its kind, and its path and version where it shows them.
+
+    THE PATH IS describe()'s, PLUS A PROCESS'S EXECUTABLE. describe() gives the record its
+    one `install_path`, and leaves `proc` out of it because an npm agent's process runs from
+    its interpreter, which is not where the agent is installed. An occurrence's path is the
+    install location or the executable a process runs from, and a process's `loc` is that
+    executable (osquery/queries/running*.sql): it is what tells five running versions of
+    Claude Code apart. A `loc` with no separator is not a place, though: a process whose
+    executable could not be read has argv[0] there instead, such as `node`.
+
+    THE VERSION IS `ver`, AND ONLY THAT. The inventory fills it where it can read one,
+    a process's from the `versions/<release>` its executable runs under
+    (osquery/queries/running.sql). Reading one out of a path here would be a second
+    guess about one vendor's layout.
+    """
+    kind = str(row.get("kind") or "")
+    loc = str(row.get("loc") or "")
+    ver = str(row.get("ver") or "")
+    if kind in _matcher.PATH_KINDS:
+        path = loc or None
+    elif kind == "proc" and ("/" in loc or "\\" in loc):
+        path = loc
+    else:
+        path = None
+    return AgentOccurrence(kind=kind or None, path=path, version=ver or None)
+
+
 @dataclass(frozen=True)
 class IdentifierMatch:
     """One catalog identifier that matched on a device, and the row that speaks for it.
@@ -79,6 +109,7 @@ class IdentifierMatch:
     several rows can share one: five versions of Claude Code running from
     ~/.local/share/claude/versions/, or one Chrome extension in four profiles. The
     speaking row is picked among them by the same rule that picks a finding's primary.
+    `occurrences` is every one of them, the speaking row included, in evidence order.
     """
 
     route: str
@@ -87,6 +118,7 @@ class IdentifierMatch:
     id: str
     version: Optional[str]
     path: Optional[str]
+    occurrences: tuple[AgentOccurrence, ...]
 
 
 @dataclass(frozen=True)
@@ -104,7 +136,7 @@ class Finding:
     yet.
 
     `identifiers` groups the same rows by the catalog identifier each matched, in the order
-    they first appear.
+    they first appear. `occurrences` is each row as a place, in evidence order.
     """
 
     agent_id: str
@@ -112,6 +144,7 @@ class Finding:
     classification: str
     evidence: tuple[dict[str, Any], ...]
     identifiers: tuple[IdentifierMatch, ...]
+    occurrences: tuple[AgentOccurrence, ...]
     primary_kind: str
     primary_id: str
     version: Optional[str]
@@ -325,6 +358,7 @@ class Matcher:
             classification=str(meta.get("classification") or ""),
             evidence=tuple(rows),
             identifiers=self._identifiers(evidence, flags),
+            occurrences=tuple(_occurrence(row) for row in rows),
             primary_kind=str(primary.get("kind") or ""),
             primary_id=str(primary.get("id") or ""),
             version=None if version is None else str(version),
@@ -367,6 +401,7 @@ class Matcher:
                     id=str(speaker.get("id") or ""),
                     version=None if version is None else str(version),
                     path=None if path is None else str(path),
+                    occurrences=tuple(_occurrence(row) for row in rows),
                 ),
             )
         return tuple(matches)

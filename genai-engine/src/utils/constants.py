@@ -138,7 +138,7 @@ ERROR_CANNOT_VALIDATE_INFERENCE_TWICE = (
     "This inference's response has already been validated. You cannot validate it again"
 )
 ERROR_INVALID_REGEX = "Invalid regex: %s"
-ERROR_TOO_MANY_LLM_RULES_PER_TASK = "Only %d LLM rules (i.e. hallucination, sensitive data) inluding the default rules are allowed to be enabled on a task at a time. Please review the rules already enabled for this task."
+ERROR_TOO_MANY_LLM_RULES_PER_TASK = "Only %d LLM rules (i.e. hallucination, sensitive data) are allowed to be enabled on a task at a time. Please review the rules already enabled for this task."
 ERROR_GENAI_ENGINE_RATE_LIMIT_EXCEEDED = "GenAI Engine rate limit exceeded"
 ERROR_DEFAULT_RULE_ENGINE = "This rule could not be evaluated"
 ERROR_TOKEN_LIMIT_EXCEEDED = (
@@ -163,10 +163,6 @@ ERROR_ROLE_DOESNT_EXIST = "Role %s does not exist."
 ERROR_USER_NOT_FOUND = "User %s not found."
 ERROR_ACTION_AND_RESOURCE_REQUIRED = "Both Action and Resource must be supplied."
 ERROR_AUTHENTICATION_REQUIRED = "User must be authenticated"
-ERROR_CANNOT_DELETE_DEFAULT_RULE = (
-    "Default rules cannot be deleted. To disable a default rule, use patch instead."
-)
-
 ERROR_PAGE_SIZE_TOO_LARGE = (
     f"Invalid page size, must be greater than 0 and less than {MAX_PAGE_SIZE}"
 )
