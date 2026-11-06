@@ -1,3 +1,4 @@
+import math
 from datetime import datetime
 from typing import Annotated, Any, Dict, List, Literal, Optional, Union
 from uuid import UUID
@@ -1183,6 +1184,17 @@ def validate_sample_rate(value: Optional[float]) -> Optional[float]:
 SampleRate = Annotated[Optional[float], AfterValidator(validate_sample_rate)]
 
 
+def validate_daily_cost_cap(value: Optional[float]) -> Optional[float]:
+    # Same reason as validate_sample_rate: Field(gt=0) would render as an
+    # exclusiveMinimum that oasdiff can't parse.
+    if value is not None and not (math.isfinite(value) and value > 0.0):
+        raise ValueError("daily_cost_cap_usd must be a finite number greater than 0")
+    return value
+
+
+DailyCostCap = Annotated[Optional[float], AfterValidator(validate_daily_cost_cap)]
+
+
 class ContinuousEvalCreateRequest(BaseModel):
     """Request schema for creating a continuous eval"""
 
@@ -1227,6 +1239,10 @@ class ContinuousEvalCreateRequest(BaseModel):
             "evaluates every trace."
         ),
     )
+    daily_cost_cap_usd: DailyCostCap = Field(
+        default=None,
+        description="Most the eval may spend on judge calls per day. Once reached, new runs are skipped until midnight. Null means no cap.",
+    )
 
 
 class UpdateContinuousEvalRequest(BaseModel):
@@ -1270,6 +1286,10 @@ class UpdateContinuousEvalRequest(BaseModel):
             "Fraction of traces to evaluate, in (0, 1]. Omit to leave it unchanged; "
             "send null to evaluate every trace."
         ),
+    )
+    daily_cost_cap_usd: DailyCostCap = Field(
+        default=None,
+        description="Most the eval may spend on judge calls per day. Omit to leave it unchanged; send null to remove the cap.",
     )
 
     @model_validator(mode="after")

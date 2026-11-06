@@ -21,6 +21,7 @@ import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import z from "zod";
 
+import { DailyCapField, dailyCapSchema, dailyCapToUsd } from "../components/daily-cap";
 import { percentToSampleRate, SampleRateField, samplePercentSchema } from "../components/sample-rate";
 import { SpendEstimateLine } from "../components/spend";
 import { VariableMappingSection } from "../components/variable-mapping";
@@ -98,6 +99,7 @@ const LiveEvalsNewForm = () => {
       description: "",
       enabled: true,
       samplePercent: "",
+      dailyCap: "",
       evaluator: initialEvaluator,
       transform: {
         transformId: null,
@@ -111,6 +113,7 @@ const LiveEvalsNewForm = () => {
         description: z.string(),
         enabled: z.boolean(),
         samplePercent: samplePercentSchema,
+        dailyCap: dailyCapSchema,
         evaluator: z.object({
           name: z.string().min(1, "Evaluator name is required"),
           version: z.string().min(1, "Evaluator version is required"),
@@ -132,6 +135,7 @@ const LiveEvalsNewForm = () => {
         description: z.string(),
         enabled: z.boolean(),
         samplePercent: samplePercentSchema,
+        dailyCap: dailyCapSchema,
         evaluator: z.object({
           name: z.string().min(1, "Evaluator name is required"),
           version: z.string().min(1, "Evaluator version is required"),
@@ -156,6 +160,7 @@ const LiveEvalsNewForm = () => {
         description: value.description?.trim() || undefined,
         enabled: value.enabled,
         sample_rate: percentToSampleRate(value.samplePercent),
+        daily_cost_cap_usd: dailyCapToUsd(value.dailyCap),
         eval_type: isML ? "ml_eval" : "llm_eval",
         llm_eval_name: value.evaluator.name!,
         llm_eval_version: value.evaluator.version ?? "latest",
@@ -303,6 +308,11 @@ const LiveEvalsNewForm = () => {
         <form.Field name="samplePercent">
           {(field) => (
             <SampleRateField value={field.state.value} onChange={field.handleChange} onBlur={field.handleBlur} errors={field.state.meta.errors} />
+          )}
+        </form.Field>
+        <form.Field name="dailyCap">
+          {(field) => (
+            <DailyCapField value={field.state.value} onChange={field.handleChange} onBlur={field.handleBlur} errors={field.state.meta.errors} />
           )}
         </form.Field>
 
