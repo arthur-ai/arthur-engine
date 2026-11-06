@@ -9,17 +9,17 @@ that existed when the rule was created, the system tasks included. The engine
 no longer creates them or attaches them to new tasks, but the rows from before
 are still linked and still run on those tasks.
 
-Each task now owns its rules. For every live default rule linked to a user
-task, this revision inserts a task-scoped copy (with its rule_data) and moves
-the task's link onto the copy, so the link keeps its enabled flag and the task
-keeps running the same check. A copy on an archived task is archived with it,
-the way archive_task archives a task's own rules, and comes back when the task
-is unarchived.
+Each task now owns its rules. For every live default rule linked to a task,
+this revision inserts a task-scoped copy (with its rule_data) and moves the
+task's link onto the copy, so the link keeps its enabled flag and the task
+keeps running the same check. That includes the system tasks: nothing stops
+the Arthur Chat task or a validate call from pointing at one. A copy on an
+archived task is archived with it, the way archive_task archives a task's own
+rules, and comes back when the task is unarchived.
 
-The links that remain are dropped: those on system tasks (nothing validates
-against them) and those to default rules already archived (they no longer
-ran). Every default rule is then archived. Rule results recorded before this
-revision keep pointing at the archived originals.
+The links that remain point at default rules already archived, which no
+longer ran; they are dropped. Every default rule is then archived. Rule
+results recorded before this revision keep pointing at the archived originals.
 
 Downgrade is a no-op: the copies are ordinary task rules to an older engine
 too, and with the originals archived it finds no default rules to attach to
@@ -47,7 +47,6 @@ def upgrade() -> None:
           JOIN tasks t ON t.id = l.task_id
          WHERE r.scope = 'default'
            AND r.archived = false
-           AND t.is_system_task = false
         """)
 
     op.execute("""
