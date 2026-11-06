@@ -38,7 +38,7 @@ dependencies = [
   "types-psutil==7.2.2.20260906",
   "types-requests==2.33.0.20261030",
   "psutil==7.2.2",
-  "pyarrow==25.0.1",
+  "pyarrow==26.0.1",
   "arthur-common==2.4.106",
   "gunicorn>=26,<27",
   # Held below 2.1: snowflake-sqlalchemy subclasses sqlalchemy.orm.context.ORMSelectCompileState,
