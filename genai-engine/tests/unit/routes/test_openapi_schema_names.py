@@ -13,13 +13,6 @@ import re
 
 import pytest
 
-# Same collision with the ToolChoice component, not yet fixed. Remove entries
-# from this set as they are given distinct titles; never add to it.
-_KNOWN_COLLISIONS = {
-    "LLMConfigSettings.tool_choice",
-    "LLMPromptRequestConfigSettings.tool_choice",
-}
-
 
 def _generated_model_name(title: str) -> str:
     return "".join(
@@ -47,8 +40,7 @@ def test_inline_schema_titles_do_not_collide_with_components():
         f"{schema_name}.{prop_name} (title {prop['title']!r})"
         for schema_name, schema in schemas.items()
         for prop_name, prop in schema.get("properties", {}).items()
-        if f"{schema_name}.{prop_name}" not in _KNOWN_COLLISIONS
-        and "title" in prop
+        if "title" in prop
         and _is_generated_as_model(prop)
         and _generated_model_name(prop["title"]) in schemas
     ]
