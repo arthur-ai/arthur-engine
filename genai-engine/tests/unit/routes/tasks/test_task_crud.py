@@ -14,13 +14,19 @@ from tests.clients.base_test_client import (
 @pytest.mark.unit_tests
 def test_user_story_create_task_get_task(client: GenaiEngineTestClientBase):
     task_name = str(random.random())
-    client.create_rule("", rule_type=RuleType.REGEX)
     status_code, task_response = client.create_task(task_name)
     assert status_code == 200
 
     assert task_response.name == task_name
     # Deprecated wire field: always True post-consolidation
     assert task_response.is_agentic == True
+
+    status_code, _ = client.create_rule(
+        "",
+        rule_type=RuleType.REGEX,
+        task_id=task_response.id,
+    )
+    assert status_code == 200
 
     status_code, task = client.get_task(task_response.id)
 
@@ -31,7 +37,7 @@ def test_user_story_create_task_get_task(client: GenaiEngineTestClientBase):
 @pytest.mark.unit_tests
 def test_user_story_create_task_rule_update_rule(client: GenaiEngineTestClientBase):
     task_name = str(random.random())
-    status_code, task_response = client.create_task(task_name, empty_rules=True)
+    status_code, task_response = client.create_task(task_name)
     assert status_code == 200
 
     assert task_response.name == task_name
