@@ -1,5 +1,5 @@
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutlineOutlined";
-import { Box, Card, CardContent, Chip, CircularProgress, IconButton, Stack, Switch, Tooltip, Typography } from "@mui/material";
+import { Box, Card, CardContent, CircularProgress, IconButton, Stack, Switch, Tooltip, Typography } from "@mui/material";
 import React from "react";
 
 import { RULE_TYPE_META } from "./ruleTypeConfig";
@@ -64,7 +64,6 @@ const summarizeConfig = (rule: RuleResponse): ConfigSummary | null => {
 
 export const RuleCard: React.FC<RuleCardProps> = ({ rule, onToggle, onDelete, isUpdating, isModified }) => {
   const meta = RULE_TYPE_META[rule.type];
-  const isDefault = rule.scope === "default";
   const enabled = rule.enabled ?? true;
   const summary = summarizeConfig(rule);
 
@@ -91,17 +90,6 @@ export const RuleCard: React.FC<RuleCardProps> = ({ rule, onToggle, onDelete, is
                 <Typography variant="subtitle2" sx={{ fontWeight: 600, color: "text.primary", flex: 1, minWidth: 0 }} noWrap>
                   {rule.name}
                 </Typography>
-              </Tooltip>
-              <Tooltip
-                title={isDefault ? "Built-in guardrail available to every task. Cannot be deleted or disabled here." : "Custom rule for this task."}
-              >
-                <Chip
-                  label={isDefault ? "Default" : "Task"}
-                  size="small"
-                  color={isDefault ? "default" : "primary"}
-                  variant={isDefault ? "outlined" : "filled"}
-                  sx={{ height: 20, fontSize: 11 }}
-                />
               </Tooltip>
               {isModified && (
                 <Tooltip title="Unsaved change">
@@ -147,22 +135,20 @@ export const RuleCard: React.FC<RuleCardProps> = ({ rule, onToggle, onDelete, is
           </Box>
 
           <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-            <Tooltip title={isDefault ? "Default rules cannot be toggled per task here" : enabled ? "Disable rule" : "Enable rule"}>
+            <Tooltip title={enabled ? "Disable rule" : "Enable rule"}>
               <span>
-                <Switch size="small" checked={enabled} disabled={isDefault || isUpdating} onChange={(e) => onToggle(rule, e.target.checked)} />
+                <Switch size="small" checked={enabled} disabled={isUpdating} onChange={(e) => onToggle(rule, e.target.checked)} />
               </span>
             </Tooltip>
           </Box>
 
-          {!isDefault && (
-            <Tooltip title="Delete rule">
-              <span>
-                <IconButton size="small" onClick={() => onDelete(rule)} disabled={isUpdating}>
-                  {isUpdating ? <CircularProgress size={16} /> : <DeleteOutlineIcon fontSize="small" />}
-                </IconButton>
-              </span>
-            </Tooltip>
-          )}
+          <Tooltip title="Delete rule">
+            <span>
+              <IconButton size="small" onClick={() => onDelete(rule)} disabled={isUpdating}>
+                {isUpdating ? <CircularProgress size={16} /> : <DeleteOutlineIcon fontSize="small" />}
+              </IconButton>
+            </span>
+          </Tooltip>
         </Stack>
       </CardContent>
     </Card>

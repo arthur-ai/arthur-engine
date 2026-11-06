@@ -109,13 +109,13 @@ def _short() -> str:
 def _make_task(tasks_repo: TaskRepository, name: str, org_id: uuid.UUID) -> Task:
     request = NewTaskRequest(name=name)
     task = Task._from_request_model(request, org_id=org_id)
-    # with_default_rules=False keeps the fixture light — isolation tests don't
-    # depend on default rules being attached.
-    return tasks_repo.create_task(task, with_default_rules=False)
+    return tasks_repo.create_task(task)
 
 
 def _seed_inference(
-    client: GenaiEngineTestClientBase, task_id: str, label: str
+    client: GenaiEngineTestClientBase,
+    task_id: str,
+    label: str,
 ) -> Optional[str]:
     """Seed one inference on `task_id` via the admin validate_prompt path.
 
@@ -137,7 +137,8 @@ def _seed_inference(
 
 
 def _seed_feedback(
-    client: GenaiEngineTestClientBase, inference_id: str
+    client: GenaiEngineTestClientBase,
+    inference_id: str,
 ) -> Optional[str]:
     resp = client.base_client.post(
         f"/api/v2/feedback/{inference_id}",
@@ -169,7 +170,7 @@ def _seed_trace(db, task_id: str, org_id: uuid.UUID) -> Optional[str]:
                 start_time=now,
                 end_time=now,
                 span_count=1,
-            )
+            ),
         )
         db.add(
             DatabaseSpan(
@@ -182,7 +183,7 @@ def _seed_trace(db, task_id: str, org_id: uuid.UUID) -> Optional[str]:
                 org_id=org_id,
                 raw_data={},
                 status_code="Unset",
-            )
+            ),
         )
         db.commit()
         return trace_id
@@ -235,7 +236,7 @@ def _seed_experiment(db, task_id: str, dataset_id: str) -> Optional[str]:
                 version_number=1,
                 dataset_id=uuid.UUID(dataset_id),
                 column_names=[],
-            )
+            ),
         )
         db.flush()  # surface FK problems before adding the experiment
 
@@ -255,7 +256,7 @@ def _seed_experiment(db, task_id: str, dataset_id: str) -> Optional[str]:
                 total_rows=0,
                 completed_rows=0,
                 failed_rows=0,
-            )
+            ),
         )
         db.commit()
         return experiment_id
