@@ -66,6 +66,7 @@ from genai_client.exceptions import (
 from genai_client.models import (
     ApiKeyResponse,
     APIKeysRolesEnum,
+    DisableTaskRequest,
     InferenceOverviewRequest,
     LLMGetAllMetadataListResponse,
     NewApiKeyRequest,
@@ -567,6 +568,21 @@ class ShieldBaseConnector(Connector, ABC):
 
     def read_task(self, task_id: str) -> TaskResponse:
         resp = self._tasks_client.get_task_api_v2_tasks_task_id_get_with_http_info(
+            task_id=task_id,
+        )
+        return TaskResponse.model_validate_json(resp.raw_data)
+
+    def disable_task(self, task_id: str, reason: str) -> TaskResponse:
+        """Refuse every validation request for the task from now on. Idempotent."""
+        resp = self._tasks_client.disable_task_api_v2_tasks_task_id_disable_post_with_http_info(
+            task_id=task_id,
+            disable_task_request=DisableTaskRequest(reason=reason),
+        )
+        return TaskResponse.model_validate_json(resp.raw_data)
+
+    def enable_task(self, task_id: str) -> TaskResponse:
+        """Undo `disable_task`. Idempotent."""
+        resp = self._tasks_client.enable_task_api_v2_tasks_task_id_enable_post_with_http_info(
             task_id=task_id,
         )
         return TaskResponse.model_validate_json(resp.raw_data)

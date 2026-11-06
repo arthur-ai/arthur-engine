@@ -1,4 +1,4 @@
-from typing import Optional, Union
+from typing import Any, Optional, Union
 
 from arthur_client.api_bindings import Config as RuleResponseConfig
 from arthur_client.api_bindings.models import ExampleConfig as ScopeExampleConfig
@@ -41,6 +41,9 @@ from genai_client.models import RegexConfig as ShieldRegexConfig
 from genai_client.models import RelevanceMetricConfig as ShieldRelevanceMetricConfig
 from genai_client.models import RuleType as ShieldRuleType
 from genai_client.models import ToxicityConfig as ShieldToxicityConfig
+
+# A task's kill switch state, carried to Scope's task cache.
+_TASK_DISABLED_FIELDS = ("is_disabled", "disabled_reason", "disabled_at")
 
 ApiConfigTypes = Optional[
     Union[
@@ -173,7 +176,21 @@ class ScopeClientTypeConverter:
                 if api.metrics
                 else []
             ),
+            **cls._task_disabled_state(api),
         )
+
+    @staticmethod
+    def _task_disabled_state(api: ApiTaskResponse) -> dict[str, Any]:
+        """The kill switch's disabled state, for whichever side's models have it.
+
+        Both arthur-common and arthur-client gain these fields in releases of their own,
+        so each is carried only when both the source and the Scope model know it.
+        """
+        return {
+            field: getattr(api, field)
+            for field in _TASK_DISABLED_FIELDS
+            if field in ScopeClientTaskResponse.model_fields and hasattr(api, field)
+        }
 
     @classmethod
     def metric_response_api_to_scope_client(

@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Any
+from typing import Any, TypeVar
 from uuid import uuid4
 
 from arthur_client.api_bindings import (
@@ -41,9 +41,13 @@ from arthur_common.models.task_job_specs import (
     FetchModelTaskJobSpec,
     UpdateModelTaskRulesJobSpec,
 )
-from pydantic import StrictBytes
+from pydantic import BaseModel, StrictBytes
 
 from arthur_client_support import (
+    KILL_AGENT_JOB_KIND,
+    KILL_SWITCH_SUPPORTED,
+    KILL_SWITCH_UNSUPPORTED_MESSAGE,
+    REENABLE_AGENT_JOB_KIND,
     TEST_DISCOVERY_SOURCE_JOB_KIND,
     TEST_DISCOVERY_SOURCE_SUPPORTED,
     TEST_DISCOVERY_SOURCE_UNSUPPORTED_MESSAGE,
@@ -90,7 +94,23 @@ if TEST_DISCOVERY_SOURCE_SUPPORTED:
         DiscoverySourceTestExecutor,
     )
 
+# Likewise for the kill switch, whose job specs and kinds only a newer arthur-common and
+# arthur-client have.
+if KILL_SWITCH_SUPPORTED:
+    # Ignored for mypy on the pinned arthur-common, which predates them.
+    from arthur_common.models.task_job_specs import (  # type: ignore[attr-defined,unused-ignore]
+        KillAgentJobSpec,
+        ReenableAgentJobSpec,
+    )
+
+    from job_executors.kill_switch_job_executors import (
+        KillAgentJobExecutor,
+        ReenableAgentJobExecutor,
+    )
+
 logging.basicConfig()
+
+JobSpecModel = TypeVar("JobSpecModel", bound=BaseModel)
 
 
 class JobSpecRawParser:
@@ -123,6 +143,10 @@ class JobSpecRawParser:
 
     def to_fetch_model_task_spec(self) -> FetchModelTaskJobSpec:
         return FetchModelTaskJobSpec.model_validate(self._parse_job_spec_field())
+
+    def to_spec(self, model: type[JobSpecModel]) -> JobSpecModel:
+        """The job spec as `model`, for specs only some installed versions define."""
+        return model.model_validate(self._parse_job_spec_field())
 
 
 class JobExecutor:
@@ -439,6 +463,37 @@ class JobExecutor:
                             self.discovery_sources_client,
                             self.logger,
                         ).execute(job, job_run.id, job.job_spec.actual_instance)
+                    # Matched by value for the same reason as TEST_DISCOVERY_SOURCE.
+                    case kind if kind == KILL_AGENT_JOB_KIND:
+                        if not KILL_SWITCH_SUPPORTED:
+                            raise NotImplementedError(KILL_SWITCH_UNSUPPORTED_MESSAGE)
+                        KillAgentJobExecutor(
+                            self.models_client,
+                            self.datasets_client,
+                            self.tasks_client,
+                            self.connector_constructor,
+                            self.logger,
+                            self.discovery_sources_client,
+                        ).execute(
+                            job_spec=JobSpecRawParser(job_resp.raw_data).to_spec(
+                                KillAgentJobSpec,
+                            ),
+                        )
+                    case kind if kind == REENABLE_AGENT_JOB_KIND:
+                        if not KILL_SWITCH_SUPPORTED:
+                            raise NotImplementedError(KILL_SWITCH_UNSUPPORTED_MESSAGE)
+                        ReenableAgentJobExecutor(
+                            self.models_client,
+                            self.datasets_client,
+                            self.tasks_client,
+                            self.connector_constructor,
+                            self.logger,
+                            self.discovery_sources_client,
+                        ).execute(
+                            job_spec=JobSpecRawParser(job_resp.raw_data).to_spec(
+                                ReenableAgentJobSpec,
+                            ),
+                        )
                     case JobKind.COMPLIANCE_POLICY_CHECK:
                         if not isinstance(
                             job.job_spec.actual_instance,
