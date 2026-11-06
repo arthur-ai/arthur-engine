@@ -1381,6 +1381,154 @@
                 }
             }
         },
+        "/api/v2/tasks/{task_id}/disable": {
+            "post": {
+                "tags": [
+                    "Tasks"
+                ],
+                "summary": "Disable Task",
+                "description": "Disable a task (kill switch). A disabled task rejects every task-scoped prompt and response validation with a 403 carrying the reason, until it is re-enabled. Disabling an already disabled task replaces the reason. Requires an admin role; tenant keys cannot disable or re-enable tasks.",
+                "operationId": "disable_task_api_v2_tasks__task_id__disable_post",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Task Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/DisableTaskRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TaskResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPError"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPError"
+                                }
+                            }
+                        },
+                        "description": "Not Found"
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v2/tasks/{task_id}/enable": {
+            "post": {
+                "tags": [
+                    "Tasks"
+                ],
+                "summary": "Enable Task",
+                "description": "Re-enable a disabled task so it accepts validation requests again. Enabling a task that is not disabled is a no-op. Requires an admin role; tenant keys cannot disable or re-enable tasks.",
+                "operationId": "enable_task_api_v2_tasks__task_id__enable_post",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Task Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TaskResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPError"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPError"
+                                }
+                            }
+                        },
+                        "description": "Not Found"
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v2/agent-tasks": {
             "get": {
                 "tags": [
@@ -2415,6 +2563,16 @@
                         },
                         "description": "Bad Request"
                     },
+                    "403": {
+                        "description": "The task is disabled.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPError"
+                                }
+                            }
+                        }
+                    },
                     "422": {
                         "description": "Validation Error",
                         "content": {
@@ -2511,6 +2669,16 @@
                             }
                         },
                         "description": "Bad Request"
+                    },
+                    "403": {
+                        "description": "The task is disabled.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPError"
+                                }
+                            }
+                        }
                     },
                     "422": {
                         "description": "Validation Error",
@@ -18096,6 +18264,16 @@
                             }
                         }
                     },
+                    "403": {
+                        "description": "The chat task is disabled.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPError"
+                                }
+                            }
+                        }
+                    },
                     "422": {
                         "description": "Validation Error",
                         "content": {
@@ -22783,6 +22961,25 @@
                     "api_key"
                 ],
                 "title": "DemoTaskSignupResponse"
+            },
+            "DisableTaskRequest": {
+                "properties": {
+                    "reason": {
+                        "type": "string",
+                        "maxLength": 1024,
+                        "minLength": 1,
+                        "title": "Reason",
+                        "description": "Why the task is being disabled. Returned to every caller whose validation request is rejected.",
+                        "examples": [
+                            "Kill switch: prompt injection policy violated"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "reason"
+                ],
+                "title": "DisableTaskRequest"
             },
             "DiscoveredAgentRecord": {
                 "properties": {
@@ -33421,6 +33618,43 @@
                         "title": "Is Archived",
                         "description": "Whether this task is archived",
                         "default": false
+                    },
+                    "is_disabled": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Is Disabled",
+                        "description": "Whether this task is disabled. A disabled task rejects every prompt and response validation request until it is re-enabled.",
+                        "default": false
+                    },
+                    "disabled_reason": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Disabled Reason",
+                        "description": "Why the task was disabled, when it is disabled."
+                    },
+                    "disabled_at": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Disabled At",
+                        "description": "Time the task was disabled in unix milliseconds, when it is disabled."
                     },
                     "agent_metadata": {
                         "anyOf": [

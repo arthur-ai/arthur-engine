@@ -13,6 +13,7 @@ from config.cache_config import cache_config
 from dependencies import get_db_session, get_org_scope, get_scorer_client
 from repositories.inference_repository import InferenceRepository
 from repositories.rules_repository import RuleRepository
+from repositories.tasks_repository import raise_if_task_disabled
 from repositories.tasks_rules_repository import TasksRulesRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
@@ -124,7 +125,11 @@ def default_validate_response(
     "Note: Rules related to specific tasks are cached for {} seconds. ".format(
         cache_config.TASK_RULES_CACHE_TTL,
     ),
-    responses={200: {"model": ValidationResult}, 400: {"model": HTTPError}},
+    responses={
+        200: {"model": ValidationResult},
+        400: {"model": HTTPError},
+        403: {"model": HTTPError, "description": "The task is disabled."},
+    },
     response_model_exclude_none=True,
     tags=["Task Based Validation"],
 )
@@ -145,6 +150,7 @@ def validate_prompt_endpoint(
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ) -> ValidationResult:
     try:
+        raise_if_task_disabled(db_session, str(task_id))
         trace_id, parent_span_id = parse_traceparent(traceparent)
         tasks_rules_repo = TasksRulesRepository(db_session)
         task_rules = tasks_rules_repo.get_task_rules_ids_cached(str(task_id))
@@ -174,7 +180,11 @@ def validate_prompt_endpoint(
     "Note: Rules related to specific tasks are cached for {} seconds. ".format(
         cache_config.TASK_RULES_CACHE_TTL,
     ),
-    responses={200: {"model": ValidationResult}, 400: {"model": HTTPError}},
+    responses={
+        200: {"model": ValidationResult},
+        400: {"model": HTTPError},
+        403: {"model": HTTPError, "description": "The task is disabled."},
+    },
     response_model_exclude_none=True,
     tags=["Task Based Validation"],
 )
@@ -197,6 +207,7 @@ def validate_response_endpoint(
     org_scope: UUID | None = Depends(get_org_scope),
 ) -> ValidationResult:
     try:
+        raise_if_task_disabled(db_session, str(task_id))
         trace_id, parent_span_id = parse_traceparent(traceparent)
         # @enforce_org_scope above validated the task_id; also validate the
         # inference belongs to a task in the caller's org so a tenant can't

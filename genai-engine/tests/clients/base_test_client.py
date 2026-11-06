@@ -27,6 +27,7 @@ from arthur_common.models.request_schemas import (
     AgentMetadata,
     ChatDefaultTaskRequest,
     CreateUserRequest,
+    DisableTaskRequest,
     FeedbackRequest,
     NewTaskRequest,
     PasswordResetRequest,
@@ -1187,6 +1188,50 @@ class GenaiEngineTestClientBase(httpx.Client):
         log_response(resp)
 
         return resp.status_code
+
+    def disable_task(
+        self,
+        task_id: str,
+        reason: str,
+        headers: dict | None = None,
+    ) -> tuple[int, TaskResponse | dict]:
+        resp = self.base_client.post(
+            f"/api/v2/tasks/{task_id}/disable",
+            json=DisableTaskRequest(reason=reason).model_dump(),
+            headers=headers or self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                TaskResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.json()
+            ),
+        )
+
+    def enable_task(
+        self,
+        task_id: str,
+        headers: dict | None = None,
+    ) -> tuple[int, TaskResponse | dict]:
+        resp = self.base_client.post(
+            f"/api/v2/tasks/{task_id}/enable",
+            headers=headers or self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                TaskResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.json()
+            ),
+        )
 
     def create_dataset(
         self,

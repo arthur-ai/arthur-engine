@@ -2,6 +2,31 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 11/06/2026
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/disable  endpoint added
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/enable  endpoint added
+- **CHANGE** for **URL**: /api/chat/  added the non-success response with the status `403`
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/validate_prompt  added the non-success response with the status `403`
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/validate_response/{inference_id}  added the non-success response with the status `403`
+- **CHANGE** for **URL**: /api/v2/tasks  added the optional property 'disabled_at' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks  added the optional property 'disabled_reason' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks  added the optional property 'is_disabled' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks  added the optional property '/items/disabled_at' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks  added the optional property '/items/disabled_reason' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks  added the optional property '/items/is_disabled' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/search  added the optional property 'tasks/items/disabled_at' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/search  added the optional property 'tasks/items/disabled_reason' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/search  added the optional property 'tasks/items/is_disabled' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}  added the optional property 'disabled_at' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}  added the optional property 'disabled_reason' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}  added the optional property 'is_disabled' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id}  added the optional property 'disabled_at' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id}  added the optional property 'disabled_reason' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id}  added the optional property 'is_disabled' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/rules/{rule_id}  added the optional property 'disabled_at' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/rules/{rule_id}  added the optional property 'disabled_reason' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/rules/{rule_id}  added the optional property 'is_disabled' to the response with the '200' status
+
 # 11/03/2026
 - **CHANGE** for **URL**: /api/v1/model_providers/{provider}/reasoning_options  endpoint added
 - **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}/spend  endpoint added

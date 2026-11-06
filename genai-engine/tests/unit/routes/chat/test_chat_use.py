@@ -52,6 +52,41 @@ def test_chat(execute, emb, client: GenaiEngineTestClientBase, clean_inference_t
     assert len(chat_response.retrieved_context) == 8
 
 
+@patch.object(EmbeddingModel, "__init__", lambda *args: None)
+@patch.object(EmbeddingModel, "embed_query", lambda *args: [1.0] * 1536)
+@patch.object(EmbeddingRepository, "get_embeddings", return_value=generate_embeddings())
+@patch("scorer.llm_client.LLMExecutor.execute")
+@pytest.mark.unit_tests
+def test_chat_rejected_when_chat_task_disabled(
+    execute,
+    emb,
+    client: GenaiEngineTestClientBase,
+    clean_inference_tables,
+):
+    execute.return_value = ("good! how are you", None)
+
+    status_code, task_response = client.create_task("ArthurChat")
+    assert status_code == 200
+    client.update_configs(
+        {"chat_task_id": task_response.id},
+        headers={"Authorization": "Bearer admin_0"},
+    )
+
+    status_code, _ = client.disable_task(task_response.id, "chat killed")
+    assert status_code == 200
+    resp = client.base_client.post(
+        "/api/chat/",
+        json={"user_prompt": "hello", "conversation_id": "1", "file_ids": []},
+        headers=client.authorized_chat_headers,
+    )
+    assert resp.status_code == 403
+    assert resp.json()["detail"] == f"Task {task_response.id} is disabled: chat killed"
+    execute.assert_not_called()
+
+    status_code, _ = client.enable_task(task_response.id)
+    assert status_code == 200
+
+
 @pytest.mark.unit_tests
 def test_context_returns_404(client: GenaiEngineTestClientBase, clean_inference_tables):
     not_existing_document_id = uuid4()

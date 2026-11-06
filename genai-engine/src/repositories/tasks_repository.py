@@ -31,7 +31,7 @@ from arthur_common.models.enums import (
 from fastapi import HTTPException
 from openinference.semconv.trace import OpenInferenceSpanKindValues
 from opentelemetry import trace
-from sqlalchemy import and_, asc, desc, func, or_
+from sqlalchemy import and_, asc, desc, func, or_, select
 from sqlalchemy.orm import Session
 
 from db_models import (
@@ -72,6 +72,26 @@ LLM_RULE_TYPES = set(
 # Task IDs per IN clause when reading spans in bulk. Smaller than the other bulk
 # lookups because each chunk also loads up to 30 days of those tasks' spans.
 _SPAN_LOOKUP_CHUNK_SIZE = 100
+
+
+def raise_if_task_disabled(db_session: Session, task_id: str) -> None:
+    """Reject validation against a disabled (kill-switched) task with a 403.
+
+    Deliberately uncached, unlike the task rules lookup, so a kill takes effect
+    on the very next request. Selects two columns by primary key. A missing task
+    is left to the caller's own not-found handling.
+    """
+    row = db_session.execute(
+        select(DatabaseTask.disabled, DatabaseTask.disabled_reason).where(
+            DatabaseTask.id == task_id,
+        ),
+    ).first()
+    if row is not None and row.disabled:
+        raise HTTPException(
+            status_code=403,
+            detail="Task %s is disabled: %s" % (task_id, row.disabled_reason),
+            headers={"full_stacktrace": "false"},
+        )
 
 
 class TaskRepository:
@@ -717,6 +737,41 @@ class TaskRepository:
 
         db_task.archived = False
         self.db_session.commit()
+
+    def disable_task(self, task_id: str, reason: str) -> Task:
+        db_task = self.get_db_task_by_id(task_id)
+        if db_task.is_system_task:
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot disable system tasks",
+                headers={"full_stacktrace": "false"},
+            )
+
+        # Idempotent: disabling an already disabled task replaces the reason
+        # but keeps the time it was first disabled.
+        if not db_task.disabled:
+            db_task.disabled = True
+            db_task.disabled_at = datetime.now(timezone.utc)
+        db_task.disabled_reason = reason
+        self.db_session.commit()
+        return self.get_task_by_id(task_id)
+
+    def enable_task(self, task_id: str) -> Task:
+        db_task = self.get_db_task_by_id(task_id)
+        if db_task.is_system_task:
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot enable system tasks",
+                headers={"full_stacktrace": "false"},
+            )
+
+        # Idempotent: enabling an enabled task is a no-op.
+        if db_task.disabled:
+            db_task.disabled = False
+            db_task.disabled_reason = None
+            db_task.disabled_at = None
+            self.db_session.commit()
+        return self.get_task_by_id(task_id)
 
     def create_task(
         self,

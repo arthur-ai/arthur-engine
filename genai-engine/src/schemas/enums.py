@@ -251,6 +251,13 @@ class PermissionLevelsEnum(Enum):
     AGENT_DISCOVERY_WRITE = frozenset(
         [constants.ORG_ADMIN, constants.TASK_ADMIN],
     )
+    # Disable (kill switch) or re-enable a task. Admin-only: the ML Engine flips
+    # this when the platform decides an agent must be turned off, and a tenant
+    # key must not be able to turn its own agent back on. TENANT_USER is
+    # deliberately excluded, unlike TASK_WRITE.
+    TASK_DISABLE_WRITE = frozenset(
+        [constants.ORG_ADMIN, constants.TASK_ADMIN],
+    )
     # Read of telemetry that isn't tied to any task (orphaned root spans,
     # cross-task debug views). Admin-only — tenants have no use for this
     # data and seeing it could expose other tenants' span names.

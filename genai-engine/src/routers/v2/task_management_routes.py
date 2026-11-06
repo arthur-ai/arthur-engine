@@ -5,6 +5,7 @@ from uuid import UUID
 from arthur_common.models.common_schemas import PaginationParameters
 from arthur_common.models.enums import PaginationSortMethod, RuleScope, RuleType
 from arthur_common.models.request_schemas import (
+    DisableTaskRequest,
     NewMetricRequest,
     NewRuleRequest,
     NewTaskRequest,
@@ -13,6 +14,7 @@ from arthur_common.models.request_schemas import (
     UpdateRuleRequest,
 )
 from arthur_common.models.response_schemas import (
+    HTTPError,
     MetricResponse,
     RuleResponse,
     SearchTasksResponse,
@@ -190,6 +192,62 @@ def unarchive_task(
     )
     tasks_repo.unarchive_task(str(task_id))
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@task_management_routes.post(
+    "/tasks/{task_id}/disable",
+    description="Disable a task (kill switch). A disabled task rejects every task-scoped prompt and "
+    "response validation with a 403 carrying the reason, until it is re-enabled. Disabling an "
+    "already disabled task replaces the reason. Requires an admin role; tenant keys cannot "
+    "disable or re-enable tasks.",
+    response_model=TaskResponse,
+    responses={400: {"model": HTTPError}, 404: {"model": HTTPError}},
+    tags=["Tasks"],
+)
+@permission_checker(permissions=PermissionLevelsEnum.TASK_DISABLE_WRITE.value)
+@enforce_org_scope()
+def disable_task(
+    task_id: UUID,
+    body: DisableTaskRequest,
+    db_session: Session = Depends(get_db_session),
+    application_config: ApplicationConfiguration = Depends(get_application_config),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> TaskResponse:
+    tasks_repo = TaskRepository(
+        db_session,
+        RuleRepository(db_session),
+        MetricRepository(db_session),
+        application_config,
+    )
+    task = tasks_repo.disable_task(str(task_id), body.reason)
+    return task._to_response_model()
+
+
+@task_management_routes.post(
+    "/tasks/{task_id}/enable",
+    description="Re-enable a disabled task so it accepts validation requests again. Enabling a task "
+    "that is not disabled is a no-op. Requires an admin role; tenant keys cannot disable or "
+    "re-enable tasks.",
+    response_model=TaskResponse,
+    responses={400: {"model": HTTPError}, 404: {"model": HTTPError}},
+    tags=["Tasks"],
+)
+@permission_checker(permissions=PermissionLevelsEnum.TASK_DISABLE_WRITE.value)
+@enforce_org_scope()
+def enable_task(
+    task_id: UUID,
+    db_session: Session = Depends(get_db_session),
+    application_config: ApplicationConfiguration = Depends(get_application_config),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> TaskResponse:
+    tasks_repo = TaskRepository(
+        db_session,
+        RuleRepository(db_session),
+        MetricRepository(db_session),
+        application_config,
+    )
+    task = tasks_repo.enable_task(str(task_id))
+    return task._to_response_model()
 
 
 @task_management_routes.get(

@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import JSON, TIMESTAMP, Boolean, ForeignKey, String, Uuid
+from sqlalchemy import JSON, TIMESTAMP, Boolean, ForeignKey, String, Text, Uuid, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from db_models.base import Base, IsArchivable
@@ -25,6 +25,18 @@ class DatabaseTask(Base, IsArchivable):
     is_agentic: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     is_autocreated: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     is_system_task: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # Kill switch: a disabled task rejects every task-scoped validation request.
+    disabled: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default=text("false"),
+    )
+    disabled_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    disabled_at: Mapped[datetime | None] = mapped_column(
+        TIMESTAMP(timezone=True),
+        nullable=True,
+    )
     org_id: Mapped[uuid.UUID] = mapped_column(
         Uuid(as_uuid=True),
         ForeignKey("organizations.id"),

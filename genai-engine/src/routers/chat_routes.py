@@ -16,6 +16,7 @@ from arthur_common.models.response_schemas import (
     ConversationBaseResponse,
     ExternalDocument,
     FileUploadResult,
+    HTTPError,
 )
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from fastapi_pagination import Page, Params
@@ -40,7 +41,7 @@ from repositories.feedback_repository import save_feedback
 from repositories.inference_repository import InferenceRepository
 from repositories.metrics_repository import MetricRepository
 from repositories.rules_repository import RuleRepository
-from repositories.tasks_repository import TaskRepository
+from repositories.tasks_repository import TaskRepository, raise_if_task_disabled
 from repositories.tasks_rules_repository import TasksRulesRepository
 from routers.route_handler import GenaiEngineRoute
 from schemas.custom_exceptions import LLMContentFilterException
@@ -165,6 +166,7 @@ def delete_file(
     description="Chat request for Arthur Chat",
     include_in_schema=True,
     response_model=ChatResponse,
+    responses={403: {"model": HTTPError, "description": "The chat task is disabled."}},
 )
 @permission_checker(permissions=PermissionLevelsEnum.CHAT_WRITE.value)
 def chat(
@@ -186,6 +188,7 @@ def chat(
                 400,
                 detail="Task ID is required",
             )
+        raise_if_task_disabled(db_session, task_id)
         task_rules = tasks_rules_repo.get_task_rules_ids_cached(task_id)
         rules_repo = RuleRepository(db_session)
         prompt_rules, _ = rules_repo.query_rules(

@@ -1,7 +1,7 @@
 import json
 import logging
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Literal, Optional, Union, cast
 
 from arthur_common.models.agent_governance_schemas import (
@@ -250,6 +250,14 @@ logger = logging.getLogger()
 def _serialize_datetime(dt: datetime) -> int:
     epoch = datetime.fromtimestamp(0)
     return int((dt - epoch).total_seconds() * 1000.0)
+
+
+def _serialize_utc_datetime(dt: datetime) -> int:
+    """Unix ms for a column stored as UTC. Postgres returns it timezone-aware;
+    SQLite drops the zone, so a naive value is read as UTC rather than local."""
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return int(dt.timestamp() * 1000)
 
 
 ############################################################
@@ -638,6 +646,10 @@ class Task(BaseModel):
     is_autocreated: bool = False
     is_system_task: bool = False
     is_archived: bool = False
+    # Kill switch state. A disabled task rejects task-scoped validation.
+    is_disabled: bool = False
+    disabled_reason: Optional[str] = None
+    disabled_at: Optional[datetime] = None
     # FK to organizations.id; required after multi-tenancy. Caller identity
     # determines the value at create time (admin -> default org, tenant ->
     # caller's org). Not user-settable via request bodies.
@@ -698,6 +710,9 @@ class Task(BaseModel):
             is_autocreated=x.is_autocreated,
             is_system_task=x.is_system_task,
             is_archived=x.archived,
+            is_disabled=x.disabled,
+            disabled_reason=x.disabled_reason,
+            disabled_at=x.disabled_at,
             org_id=x.org_id,
             task_metadata=(
                 TaskMetadata.model_validate(x.task_metadata)
@@ -721,6 +736,9 @@ class Task(BaseModel):
             is_agentic=self.is_agentic,
             is_autocreated=self.is_autocreated,
             is_system_task=self.is_system_task,
+            disabled=self.is_disabled,
+            disabled_reason=self.disabled_reason,
+            disabled_at=self.disabled_at,
             org_id=self.org_id,
             task_metadata=(
                 self.task_metadata.model_dump(exclude_none=True)
@@ -769,6 +787,11 @@ class Task(BaseModel):
             is_autocreated=self.is_autocreated,
             is_system_task=self.is_system_task,
             is_archived=self.is_archived,
+            is_disabled=self.is_disabled,
+            disabled_reason=self.disabled_reason,
+            disabled_at=(
+                _serialize_utc_datetime(self.disabled_at) if self.disabled_at else None
+            ),
             agent_metadata=agent_metadata_response,
             rules=response_rules,
             metrics=response_metrics,
