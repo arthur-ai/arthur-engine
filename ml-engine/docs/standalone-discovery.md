@@ -755,6 +755,32 @@ credential's. A refused AWS credential ends the scan, and so does a scan refused
 ECS and EKS listing, even when CloudTrail could be read: a source that listed no
 container reads as denied, not as an account without workloads.
 
+#### `azure_ai_foundry` — Azure AI Foundry agents
+
+Lists the Foundry Agent Service agents (prompt, hosted and workflow) in one Foundry
+project. Classic Assistants API agents are a different resource and are not listed.
+
+| Field | Secret | Required | Notes |
+|---|---|---|---|
+| `project_endpoint` | no | yes | The project endpoint from the project's overview page, `https://<resource>.services.ai.azure.com/api/projects/<project>` |
+| `tenant_id` | no | no | The service principal's Microsoft Entra tenant |
+| `client_id` | no | no | The service principal's application (client) ID |
+| `client_secret` | yes | no | The service principal's secret. Set all three of `tenant_id`, `client_id` and `client_secret`, or none; with none, the engine uses its `DefaultAzureCredential` (managed or workload identity, `az login`) only if `ARTHUR_ENGINE_AZURE_AI_FOUNDRY_ALLOW_DEFAULT_CREDENTIAL=true` is set |
+
+The principal needs a role on the project that can read its agents, such as `Azure AI
+User`; a kill switch that disables an agent also needs to write them. Use `query: ""`
+and `query_language: none`.
+
+Each agent is one record: `external_id` is `{project_endpoint}/agents/{agent name}`
+(lower-case host, no trailing slash), the address is the Foundry resource (`instance`),
+the project (`scope`) and the agent name (`resource_id`). `last_seen` is when the
+agent's latest version was created; the model deployment a prompt agent names and its
+tools are reported. A prompt agent's instructions and a hosted agent's environment
+variables arrive in the same listing and are never copied into the record or logged.
+
+The lookback window is not applied: the list is an inventory, so every scan reports
+every agent in the project.
+
 #### `splunk_enterprise` — Splunk Enterprise
 
 Runs the config's SPL as a search job over the lookback window.
