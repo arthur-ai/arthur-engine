@@ -2,7 +2,6 @@
 
 import random
 from datetime import datetime, timedelta
-from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
@@ -35,7 +34,8 @@ def test_get_agent_tasks_returns_all_tasks(
     assert status_code == 200
 
     status_code, non_agentic_task = client.create_task(
-        non_agentic_name, is_agentic=False
+        non_agentic_name,
+        is_agentic=False,
     )
     assert status_code == 200
 
@@ -353,7 +353,7 @@ def test_get_agent_tasks_includes_rules(client: GenaiEngineTestClientBase):
     enriched_task = next((t for t in enriched_tasks if t.id == task.id), None)
     assert enriched_task is not None
 
-    # Should have rules (default rules are auto-added)
+    # The rules list is always present, even when the task has none
     assert enriched_task.rules is not None
     assert isinstance(enriched_task.rules, list)
 

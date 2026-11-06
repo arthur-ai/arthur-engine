@@ -64,10 +64,10 @@ def matcher() -> Matcher:
 
 def test_floor_catalog_is_the_vendored_one() -> None:
     m = Matcher.from_source()
-    assert m.agent_count == 42
+    assert m.agent_count == 63
     # Upstream's own catalog_sha, computed over file bytes. If this changes, the vendor
     # tree moved and every record's recorded catalog version moved with it.
-    assert m.catalog_sha == "a71733f7afd7"
+    assert m.catalog_sha == "809c96703265"
 
 
 def test_a_catalog_built_from_a_mapping_marks_its_hash_as_not_upstreams() -> None:
@@ -156,9 +156,9 @@ def test_every_row_is_an_occurrence_and_a_process_is_where_it_runs_from() -> Non
 def test_an_occurrence_takes_ver_as_its_version_and_only_a_place_as_its_path(
     matcher: Matcher,
 ) -> None:
-    """A version is `ver` wherever it is set, and a process's is never. Its executable can be
-    the interpreter, which is still what it runs from; but argv[0], left where the
-    executable could not be read, is a name and not a place."""
+    """A version is `ver` wherever it is set, and never read out of a path. A process's
+    executable can be the interpreter, which is still what it runs from; but argv[0], left
+    where the executable could not be read, is a name and not a place."""
     result = matcher.match(
         [
             row(
@@ -364,6 +364,8 @@ def test_the_copy_the_browser_loads_speaks_before_a_leftover() -> None:
 
 
 def test_a_leftover_still_speaks_when_no_copy_is_loaded() -> None:
+    """Among rows still tied, the newest release speaks: it is the one an upgrade moves
+    to, where evidence order is whichever osquery listed first (classify.primary)."""
     ext = "fcoeoabgfenejglbffodgkkbkcdhcgfn"
     result = Matcher.from_source(catalog_json=_CLAUDE_IN_CHROME).match(
         [
@@ -371,7 +373,7 @@ def test_a_leftover_still_speaks_when_no_copy_is_loaded() -> None:
             row("ext", ext, ver="1.0.97", extra="chrome,unreferenced", perms="tabs"),
         ],
     )
-    assert result.findings[0].version == "1.0.94"
+    assert result.findings[0].version == "1.0.97"
 
 
 def test_permissions_split_into_a_tuple(matcher: Matcher) -> None:
@@ -634,7 +636,7 @@ class TestCatalogHashUsesFileBytes:
     number -- which is sha256 over the file's BYTES."""
 
     def test_the_floor_still_matches_upstreams_value(self) -> None:
-        assert Matcher.from_source().catalog_sha == "a71733f7afd7"
+        assert Matcher.from_source().catalog_sha == "809c96703265"
 
     def test_crlf_does_not_change_the_hash_the_way_read_text_would(
         self,

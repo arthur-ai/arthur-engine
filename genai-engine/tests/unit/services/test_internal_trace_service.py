@@ -220,7 +220,7 @@ def _rule(
         id=f"id-{name}",
         name=name,
         rule_type=RuleType.TOXICITY,
-        scope=RuleScope.DEFAULT,
+        scope=RuleScope.TASK,
         result=result,
         latency_ms=1,
         details=details,
@@ -237,7 +237,7 @@ def _engine_result(result: RuleResultEnum = RuleResultEnum.PASS) -> RuleEngineRe
             apply_to_response=True,
             config=KeywordsConfig(keywords=["x"]),
         ),
-        RuleScope.DEFAULT,
+        RuleScope.TASK,
     )
     return RuleEngineResult(
         rule_score_result=RuleScore(
