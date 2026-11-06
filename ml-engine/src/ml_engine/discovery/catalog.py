@@ -84,9 +84,10 @@ def _occurrence(row: Mapping[str, Any]) -> AgentOccurrence:
     Claude Code apart. A `loc` with no separator is not a place, though: a process whose
     executable could not be read has argv[0] there instead, such as `node`.
 
-    THE VERSION IS `ver`, AND ONLY THAT. A process row carries none, and Claude Code's
-    path already names it (~/.local/share/claude/versions/2.1.314). Reading one out of a
-    path would be a guess about one vendor's layout.
+    THE VERSION IS `ver`, AND ONLY THAT. The inventory fills it where it can read one,
+    a process's from the `versions/<release>` its executable runs under
+    (osquery/queries/running.sql). Reading one out of a path here would be a second
+    guess about one vendor's layout.
     """
     kind = str(row.get("kind") or "")
     loc = str(row.get("loc") or "")

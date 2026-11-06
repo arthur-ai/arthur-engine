@@ -16,6 +16,9 @@ from dependencies import (
     get_org_scope,
     get_validated_task,
 )
+from repositories.continuous_eval_spend_repository import (
+    ContinuousEvalSpendRepository,
+)
 from repositories.continuous_eval_test_run_repository import (
     ContinuousEvalTestRunRepository,
 )
@@ -32,11 +35,14 @@ from schemas.request_schemas import (
     ContinuousEvalRunResultsListFilterRequest,
     CreateTestRunRequest,
     UpdateContinuousEvalRequest,
+    validate_sample_rate,
 )
 from schemas.response_schemas import (
     AgenticAnnotationAnalyticsResponse,
+    ContinuousEvalDailySpendEstimate,
     ContinuousEvalRerunResponse,
     ContinuousEvalResponse,
+    ContinuousEvalSpendResponse,
     ContinuousEvalTestRunResponse,
     ListContinuousEvalsResponse,
     ListContinuousEvalTestRunsResponse,
@@ -627,6 +633,87 @@ def get_daily_annotation_analytics(
         )
     except HTTPException:
         raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@continuous_eval_routes.get(
+    "/continuous_evals/{eval_id}/spend",
+    summary="Get recent and estimated daily spend for a continuous eval",
+    description="Returns the number and total cost of the eval's live runs in the last 24 hours, "
+    "and an estimated daily cost: the task's traces per day over the last 7 days, times the "
+    "eval's sample rate, times the average cost of its live runs that called the LLM "
+    "(passed or failed) over the last 7 days. Test runs are not counted.",
+    response_model=ContinuousEvalSpendResponse,
+    tags=["Continuous Evals"],
+)
+@permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
+def get_continuous_eval_spend(
+    eval_id: UUID = Path(
+        ...,
+        description="The id of the continuous eval.",
+        title="Continuous Eval ID",
+    ),
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
+) -> ContinuousEvalSpendResponse:
+    try:
+        continuous_eval = ContinuousEvalsRepository(
+            db_session,
+        ).get_continuous_eval_by_id(eval_id, org_scope=org_scope)
+        return ContinuousEvalSpendRepository(db_session).get_continuous_eval_spend(
+            continuous_eval,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@continuous_eval_routes.get(
+    "/tasks/{task_id}/continuous_evals/spend_estimate",
+    summary="Estimate the daily spend of a new continuous eval",
+    description="Estimates the daily cost of a continuous eval that would run the given evaluator "
+    "at the given sample rate: the task's traces per day over the last 7 days, times the sample "
+    "rate, times the average cost of the live runs that called the LLM (passed or failed) over "
+    "the last 7 days of the task's continuous evals using that evaluator.",
+    response_model=ContinuousEvalDailySpendEstimate,
+    tags=["Continuous Evals"],
+)
+@permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
+@enforce_org_scope()
+def estimate_continuous_eval_spend(
+    llm_eval_name: Annotated[
+        str,
+        Query(description="Name of the evaluator the continuous eval would run."),
+    ],
+    sample_rate: Annotated[
+        Optional[float],
+        Query(
+            le=1.0,
+            description="Fraction of traces to evaluate, in (0, 1]. Omit to evaluate every trace.",
+        ),
+        # Not Query(gt=0): see validate_sample_rate.
+        AfterValidator(validate_sample_rate),
+    ] = None,
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    task: Task = Depends(get_validated_task),
+) -> ContinuousEvalDailySpendEstimate:
+    try:
+        # 404 for an evaluator the task doesn't have
+        LLMEvalsRepository(db_session).get_llm_item(task.id, llm_eval_name, "latest")
+        return ContinuousEvalSpendRepository(
+            db_session,
+        ).estimate_daily_spend_for_llm_eval(task.id, llm_eval_name, sample_rate)
+    except HTTPException:
+        raise
+    except ValueError as e:
+        if "not found" in str(e).lower():
+            raise HTTPException(status_code=404, detail=str(e))
+        else:
+            raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

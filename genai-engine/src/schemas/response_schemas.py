@@ -38,6 +38,7 @@ from schemas.enums import (
     RagProviderAuthenticationMethodEnum,
     RagProviderEnum,
     RagSearchKind,
+    SpendEstimateUnavailableReason,
     TestRunStatus,
 )
 
@@ -1057,6 +1058,54 @@ class AgenticAnnotationAnalyticsResponse(BaseModel):
         description="Daily statistics ordered by date descending",
     )
     count: int = Field(description="Number of days with data")
+
+
+class ContinuousEvalDailySpendEstimate(BaseModel):
+    """Projected daily cost of a continuous eval at the task's recent traffic.
+
+    estimated_daily_cost = traces_per_day * sample_rate * average_run_cost
+    """
+
+    window_days: int = Field(
+        description="Number of trailing days the traffic and the average run cost are measured over.",
+    )
+    trace_count: int = Field(
+        description="Traces the task received in the window, not counting agent experiment traces.",
+    )
+    traces_per_day: float = Field(description="trace_count divided by window_days.")
+    sample_rate: float = Field(
+        description="Fraction of traces the eval runs on. 1.0 when the eval has no sample rate set.",
+    )
+    run_count: int = Field(
+        description="Live runs in the window that called the LLM (passed or failed), which the average is taken over.",
+    )
+    average_run_cost: Optional[float] = Field(
+        default=None,
+        description="Mean cost of those runs. Null when there are none.",
+    )
+    estimated_daily_cost: Optional[float] = Field(
+        default=None,
+        description="Projected cost per day. Null when it cannot be estimated; unavailable_reason says why.",
+    )
+    unavailable_reason: Optional[SpendEstimateUnavailableReason] = Field(
+        default=None,
+        description="Set when estimated_daily_cost is null: no_traces when the task received no traces in the window, no_runs when the evaluator has no live runs that called the LLM in the window.",
+    )
+
+
+class ContinuousEvalSpendResponse(BaseModel):
+    """Recent and projected spend of one continuous eval."""
+
+    continuous_eval_id: UUID = Field(description="ID of the continuous eval.")
+    last_24h_run_count: int = Field(
+        description="Live runs created in the last 24 hours, in any status.",
+    )
+    last_24h_cost: float = Field(
+        description="Total cost of the live runs created in the last 24 hours.",
+    )
+    estimate: ContinuousEvalDailySpendEstimate = Field(
+        description="Projected daily cost at the current sample rate.",
+    )
 
 
 class TraceTransformVersionResponse(BaseModel):
