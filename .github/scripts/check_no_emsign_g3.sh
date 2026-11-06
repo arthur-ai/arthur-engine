@@ -13,6 +13,9 @@
 # looks at every PEM file rather than only certifi, and does not skip pip's
 # vendored certifi (the Dockerfiles filter that one too).
 #
+# Also flags any other file that embeds the root as DER (compiled-in root stores
+# such as litellm's Rust extension or Go binaries), matched by the subject string.
+#
 # Usage: .github/scripts/check_no_emsign_g3.sh <image>
 #   e.g. .github/scripts/check_no_emsign_g3.sh arthurplatform/genai-engine-cpu:2.1.1040
 # Needs: docker, awk, GNU tar, openssl.
@@ -34,18 +37,16 @@ fingerprints() {
   ' "$1" | sed 's/.*=//; s/://g' | tr 'a-f' 'A-F'
 }
 
-# Pull every *.pem / *.crt out of the image in one pass over its filesystem
-# (plain sh has no pipefail, so a failed export is recorded in a marker file).
+# Unpack the whole image filesystem in one pass (plain sh has no pipefail, so a
+# failed export is recorded in a marker file). Everything is needed: the PEM
+# bundles, and every other file, because compiled TLS stacks (litellm's Rust
+# extension, Go binaries) embed the root store as DER and no *.pem shows it.
 # Symlinks come out as links; they are read back through `docker cp -L` below
 # rather than followed here, where an absolute target would resolve on the host.
-# GNU tar also exits non-zero when one of the patterns matches nothing, which is
-# not an error here, so only other complaints fail the check.
 mkdir "$WORK/fs"
 { docker export "$CID" || touch "$WORK/export-failed"; } \
-  | tar -xf - -C "$WORK/fs" --no-same-owner --no-same-permissions --wildcards '*.pem' '*.crt' \
-      2> "$WORK/tar.err" \
-  || ! grep -vE 'Not found in archive$|Exiting with failure status due to previous errors$' "$WORK/tar.err" >&2 \
-  || { echo "ERROR: cannot read the filesystem of $IMAGE" >&2; exit 1; }
+  | tar -xf - -C "$WORK/fs" --no-same-owner --no-same-permissions 2> "$WORK/tar.err" \
+  || { cat "$WORK/tar.err" >&2; echo "ERROR: cannot read the filesystem of $IMAGE" >&2; exit 1; }
 if [ -e "$WORK/export-failed" ]; then
   echo "ERROR: cannot export $IMAGE" >&2
   exit 1
@@ -68,13 +69,13 @@ check_bundle() { # <path in image> <local copy>
   fi
 }
 
-( cd "$WORK/fs" && find . -type f ) | sed 's|^\.||' > "$WORK/files.list"
+( cd "$WORK/fs" && find . -type f \( -name '*.pem' -o -name '*.crt' \) ) | sed 's|^\.||' > "$WORK/files.list"
 while IFS= read -r p; do
   check_bundle "$p" "$WORK/fs$p"
 done < "$WORK/files.list"
 
 # A link that exists but can't be followed fails the check.
-( cd "$WORK/fs" && find . -type l ) | sed 's|^\.||' > "$WORK/links.list"
+( cd "$WORK/fs" && find . -type l \( -name '*.pem' -o -name '*.crt' \) ) | sed 's|^\.||' > "$WORK/links.list"
 while IFS= read -r p; do
   if ! docker cp -L "$CID:$p" - > "$WORK/link.tar" || ! tar -xOf "$WORK/link.tar" > "$WORK/link.pem"; then
     printf 'FAIL: %s exists in %s but could not be read\n' "$p" "$IMAGE"
@@ -83,6 +84,17 @@ while IFS= read -r p; do
   fi
   check_bundle "$p" "$WORK/link.pem"
 done < "$WORK/links.list"
+
+# Binaries that compile in a root store (litellm's rust_bridge, Go's x509 bundles)
+# carry the certificate as DER, whose subject is readable as plain text. Any
+# non-PEM file containing the subject string is treated as trusting the root.
+( cd "$WORK/fs" && find . -type f ! -name '*.pem' ! -name '*.crt' -size +1k \
+    -exec grep -laF -- 'emSign ECC Root CA - G3' {} + ) | sed 's|^\.||' > "$WORK/embed.list" || true
+while IFS= read -r p; do
+  [ -n "$p" ] || continue
+  printf 'FAIL: %s embeds emSign ECC Root CA - G3 (compiled-in root store)\n' "$p"
+  FOUND=1
+done < "$WORK/embed.list"
 
 if [ "$FOUND" -ne 0 ]; then
   echo "ERROR: $IMAGE still trusts emSign ECC Root CA - G3 or has an unreadable bundle (SOC-222)"
