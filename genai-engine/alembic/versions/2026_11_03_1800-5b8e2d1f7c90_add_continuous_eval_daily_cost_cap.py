@@ -1,7 +1,7 @@
 """add daily_cost_cap_usd to continuous_evals
 
 Revision ID: 5b8e2d1f7c90
-Revises: a7c4e2f9b851
+Revises: b1194cd9c938
 Create Date: 2026-11-03 18:00:00.000000
 
 continuous_evals.daily_cost_cap_usd is the most a continuous eval may spend on
@@ -15,7 +15,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "5b8e2d1f7c90"
-down_revision = "a7c4e2f9b851"
+down_revision = "b1194cd9c938"
 branch_labels = None
 depends_on = None
 
