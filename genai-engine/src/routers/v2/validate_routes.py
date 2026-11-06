@@ -167,6 +167,8 @@ def validate_response_endpoint(
         "`apply_to_prompt` and `apply_to_response` decide which of `prompt` and "
         "`response` a check scores; a check that applies to both fails if either "
         "one violates it.\n\n"
+        "Each result's `id` is generated per request and its `scope` is always "
+        "`default`, because an inline check belongs to no task.\n\n"
         "Hallucination requires `response` + `context`; if `context` is missing the rule "
         "engine returns a `Skipped` result. A check may return result=`Model Not "
         "Available` if its underlying model has not finished loading; callers should "

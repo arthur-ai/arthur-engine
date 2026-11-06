@@ -588,7 +588,8 @@ def archive_task_rule(
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ) -> Response:
     rule_repo = RuleRepository(db_session)
-    rule = rule_repo.get_rule_by_id(str(rule_id))
+    # 404 for a rule that does not exist, before the 400 for one on another task.
+    rule_repo.get_rule_by_id(str(rule_id))
 
     tasks_rules_repo = TasksRulesRepository(db_session)
     task_rules = tasks_rules_repo._get_task_rules_ids(
@@ -609,14 +610,7 @@ def archive_task_rule(
     )
 
     task_repo.delete_rule_link(str(task_id), str(rule_id))
-
-    # A task rule belongs to this task alone. A rule row from before default
-    # rules were removed is shared by every task it was attached to, so it is
-    # archived only once the last of those links is gone.
-    if rule.scope == RuleScope.TASK or not tasks_rules_repo.rule_is_linked(
-        str(rule_id),
-    ):
-        rule_repo.archive_rule(str(rule_id))
+    rule_repo.archive_rule(str(rule_id))
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
