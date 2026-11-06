@@ -4494,11 +4494,14 @@ class GenaiEngineTestClientBase(httpx.Client):
         task_id: str,
         llm_eval_name: str,
         sample_rate: float | None = None,
+        llm_eval_version: str | None = None,
     ) -> tuple[int, ContinuousEvalDailySpendEstimate]:
         """Estimate the daily spend of a new continuous eval."""
         params: dict[str, str | float] = {"llm_eval_name": llm_eval_name}
         if sample_rate is not None:
             params["sample_rate"] = sample_rate
+        if llm_eval_version is not None:
+            params["llm_eval_version"] = llm_eval_version
         resp = self.base_client.get(
             f"/api/v1/tasks/{task_id}/continuous_evals/spend_estimate",
             params=params,
