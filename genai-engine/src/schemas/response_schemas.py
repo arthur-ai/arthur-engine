@@ -31,6 +31,7 @@ from weaviate.collections.classes.grpc import (
 )
 from weaviate.types import INCLUDE_VECTOR
 
+from schemas.actor_schemas import Actor
 from schemas.enums import (
     ConnectionCheckOutcome,
     EvalKind,
@@ -857,6 +858,10 @@ class LLMVersionResponse(BaseModel):
         default_factory=list,
         description="List of tags for the llm asset",
     )
+    created_by: Optional[Actor] = Field(
+        default=None,
+        description="Who created this version. None when it was not recorded.",
+    )
 
 
 class AgenticPromptVersionResponse(LLMVersionResponse):
@@ -1116,6 +1121,10 @@ class TraceTransformVersionResponse(BaseModel):
         description="Snapshot of the transform definition at the time of this version.",
     )
     created_at: datetime = Field(description="Timestamp when this version was created.")
+    created_by: Optional[Actor] = Field(
+        default=None,
+        description="Who created this version. None when it was not recorded.",
+    )
 
 
 class ListTraceTransformVersionsResponse(BaseModel):

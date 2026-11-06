@@ -43,6 +43,7 @@ from arthur_common.models.task_job_specs import (
 )
 from pydantic import StrictBytes
 
+from acting_user import ACTING_USER, acting_user_of
 from arthur_client_support import (
     TEST_DISCOVERY_SOURCE_JOB_KIND,
     TEST_DISCOVERY_SOURCE_SUPPORTED,
@@ -161,6 +162,7 @@ class JobExecutor:
             job_run_id=job_run.id,
             jobs_client=self.jobs_client,
         )
+        acting_user_token = ACTING_USER.set(acting_user_of(job))
         with ExportContextedLogger(self.logger, scope_export_handler):
             self.logger.info(f"Starting job {job.id} - {job.kind}")
 
@@ -474,6 +476,8 @@ class JobExecutor:
                     exc_info=e,
                 )
                 return JobState.FAILED
+            finally:
+                ACTING_USER.reset(acting_user_token)
 
     def _genai_engine_config(self) -> tuple[str, str]:
         """The GenAI Engine a discovery job talks to, from this engine's environment."""

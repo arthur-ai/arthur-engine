@@ -12,7 +12,9 @@ from auth.authorization_header_elements import (
 from auth.jwk_client import JWKClient
 from auth.utils import http_bearer_scheme
 from dependencies import get_api_key_validator_client, get_db_session, get_jwk_client
+from schemas.enums import ActorKind
 from schemas.internal_schemas import User
+from utils.constants import ON_BEHALF_OF_HEADER
 
 logger = logging.getLogger(__name__)
 
@@ -54,8 +56,20 @@ class MultiMethodValidator:
                 token,
                 db_session,
             ):
+                # Only the admin key may name the person it acts for: it is held by
+                # the control plane, which already authenticated that person. The
+                # header is ignored for every other credential. Copy rather than
+                # mutate: validated users can be shared through the key cache.
+                if user.kind == ActorKind.MASTER_KEY:
+                    user = user.model_copy(
+                        update={
+                            "on_behalf_of": request.headers.get(ON_BEHALF_OF_HEADER)
+                            or None,
+                        },
+                    )
                 request.state.user_id = user.id
                 request.state.org_scope = user.org_scope
+                request.state.actor = user.to_actor()
                 return user
         except Exception as e:
             logger.warning(
@@ -70,6 +84,7 @@ class MultiMethodValidator:
             if jwk_client and (user := jwk_client.validate(token)):
                 request.state.user_id = user.id
                 request.state.org_scope = user.org_scope
+                request.state.actor = user.to_actor()
                 return user
         except Exception as oauth_error:
             raise oauth_error
