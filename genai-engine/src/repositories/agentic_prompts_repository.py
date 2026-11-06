@@ -238,6 +238,7 @@ class AgenticPromptRepository(
             config=prompt.config,
             created_at=prompt.created_at,
             deleted_at=prompt.deleted_at,
+            created_by=prompt.created_by,
         )
 
     def get_llm_item(

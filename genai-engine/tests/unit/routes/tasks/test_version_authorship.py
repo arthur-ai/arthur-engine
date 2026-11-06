@@ -67,6 +67,30 @@ def test_prompt_version_records_api_key_author(client: GenaiEngineTestClientBase
 
 
 @pytest.mark.unit_tests
+def test_rendered_prompt_keeps_its_author(client: GenaiEngineTestClientBase):
+    status_code, task = client.create_task(
+        f"authorship_{random.random()}",
+        is_agentic=True,
+    )
+    assert status_code == 200
+    headers = client.authorized_user_api_key_headers
+    saved = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/prompts/greeting",
+        json=PROMPT,
+        headers=headers,
+    )
+    assert saved.status_code == 200
+
+    rendered = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/prompts/greeting/versions/latest/renders",
+        json={},
+        headers=headers,
+    )
+    assert rendered.status_code == 200, rendered.text
+    assert rendered.json()["created_by"] == saved.json()["created_by"]
+
+
+@pytest.mark.unit_tests
 def test_on_behalf_of_header_is_ignored_for_api_keys(
     client: GenaiEngineTestClientBase,
 ):
