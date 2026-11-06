@@ -2,6 +2,12 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 10/30/2026
+- **CHANGE** for **URL**: /auth/api_keys/  added the optional property `items/task_id` to the response with the `200` status
+- **CHANGE** for **URL**: /auth/api_keys/  added the new optional request property `task_id`
+- **CHANGE** for **URL**: /auth/api_keys/  added the optional property `task_id` to the response with the `200` status
+- **CHANGE** for **URL**: /auth/api_keys/deactivate/{api_key_id}  added the optional property `task_id` to the response with the `200` status
+- **CHANGE** for **URL**: /auth/api_keys/{api_key_id}  added the optional property `task_id` to the response with the `200` status
 # 11/03/2026
 - **BREAKING CHANGE** for **URL**: /api/v2/default_rules  api path removed without deprecation
 - **BREAKING CHANGE** for **URL**: /api/v2/default_rules  api path removed without deprecation
