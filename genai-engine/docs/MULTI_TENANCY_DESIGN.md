@@ -72,7 +72,7 @@ Enforcement is API-layer only in v1. Postgres RLS is not used in this revision; 
 - **New permission framework.** Extend the existing `PermissionLevelsEnum`; do not introduce a new authz system.
 - **Documents and embeddings multi-tenancy.** Tenant keys receive 403 on `/documents/*` and embedding endpoints in v1. Owner-scoped today; the multi-tenant story requires schema work we're deferring.
 - **Admin endpoints for org management.** Provisioning is exclusively via the public signup endpoint. Admins inspecting orgs query the database directly in v1.
-- **Per-org default rules, model providers, or app configuration.** Defaults remain global. Per-org versions would be a v2 schema change.
+- **Per-org model providers or app configuration.** These remain global. Per-org versions would be a v2 schema change.
 - **Tenant-aware audit logging.** Existing audit logging is not extended to track org_scope in v1.
 
 ---
@@ -260,8 +260,7 @@ The signup flow runs in a single database transaction so partial state can never
 BEGIN TRANSACTION
   1. INSERT organizations (name = "demo-{short_uuid}", is_system = false)
   2. INSERT tasks (name = "demo-{short_uuid}", org_id = new_org.id)
-  3. Apply default rules to the new task (existing logic)
-  4. INSERT api_keys (
+  3. INSERT api_keys (
         key_hash = bcrypt(random_token),
         roles    = [TENANT-USER],
         org_id   = new_org.id
@@ -275,7 +274,6 @@ If any step fails (constraint violation, DB error), the entire transaction rolls
 
 - Reuse `tasks_repository.create_task()` and `api_key_repository.create_api_key()`. Add a new `organizations_repository.create_organization()`.
 - The org name and task name share the same 8-char hex suffix for readability (`demo-a3f9b2c1`). Suffix is generated via `secrets.token_hex(4)`. Collision probability is negligible; the unique constraint on `organizations.name` catches collisions and the handler retries once.
-- Default rule application reuses the existing logic from `POST /api/v2/tasks` so a freshly signed-up tenant inherits the same default rules a regular task would.
 
 ### What the tenant does next
 
@@ -283,7 +281,7 @@ After signup, the tenant:
 
 1. Captures the `api_key` from the response.
 2. Pastes it into the genai-engine UI's existing login form, or sends it as `Authorization: Bearer <token>` on API calls.
-3. Has full access to their one initial task (default rules applied). Can create more tasks within their org via `POST /api/v2/tasks` (section 8 covers the policy). Cannot reach any other org's data.
+3. Has full access to their one initial task. Can create more tasks within their org via `POST /api/v2/tasks` (section 8 covers the policy). Cannot reach any other org's data.
 
 ---
 
@@ -347,7 +345,6 @@ TASK_WRITE          = frozenset([ORG_ADMIN, TASK_ADMIN, TENANT_USER])    # creat
 INFERENCE_READ      = frozenset([..., TENANT_USER])
 INFERENCE_WRITE     = frozenset([..., TENANT_USER])
 FEEDBACK_WRITE      = frozenset([..., TENANT_USER])
-DEFAULT_RULES_READ  = frozenset([..., TENANT_USER])                      # tenants need to see what defaults apply
 USAGE_READ          = frozenset([..., TENANT_USER])                      # filtered to their org by section 7
 MODEL_PROVIDER_READ = frozenset([..., TENANT_USER])                      # response models contain no credentials
 ```
@@ -359,7 +356,6 @@ TRACES_WRITE          (POST /api/v1/traces stays admin-only; see section 8)
 API_KEY_*             (tenants cannot mint or read keys)
 USER_*                (no user-management surface for tenants)
 MODEL_PROVIDER_WRITE  (provider credentials are admin-only)
-DEFAULT_RULES_WRITE   (defaults are global)
 APP_CONFIG_*
 ROTATE_SECRETS
 PASSWORD_RESET
@@ -525,7 +521,7 @@ Applied to **11 endpoints** in `trace_api_routes`, `legacy_span_routes`, `query_
 
 ### Pattern E — Admin-only
 
-Endpoints that operate on platform-level resources or system-wide configuration: `POST /api/v1/traces`, `POST /api/v2/default_rules`, `PUT /api/v1/model_providers/{p}`, `POST /api/v1/secrets/rotation`, `POST /users`, `DELETE /auth/api_keys/{id}`, `POST /api/v2/configuration`, etc.
+Endpoints that operate on platform-level resources or system-wide configuration: `POST /api/v1/traces`, `PUT /api/v1/model_providers/{p}`, `POST /api/v1/secrets/rotation`, `POST /users`, `DELETE /auth/api_keys/{id}`, `POST /api/v2/configuration`, etc.
 
 No decorator change. These endpoints are gated by `@permission_checker` against frozensets that deliberately exclude `TENANT-USER` (section 6). Tenant keys hit `permission_checker` first and receive 403 before any handler logic runs.
 
@@ -582,9 +578,7 @@ Symbols: ✅ allowed for tenant keys · ❌ 403 or 404 · 🪟 allowed but filte
 | Agentic resources (prompts, experiments, notebooks; CRUD) | ✅ in caller's org (Patterns A and C) |
 | Continuous eval CRUD | ✅ in caller's org (Patterns A and C) |
 | Chat (conversations, messages, regenerate) | ✅ in caller's org (Patterns A and C) |
-| Default rules — read | ✅ (globals visible to tenants) |
-| Default rules — write (`POST/DELETE /api/v2/default_rules`) | ❌ admin-only |
-| Rules search (`POST /api/v2/rules/search`) | 🪟 defaults + caller's org rules |
+| Rules search (`POST /api/v2/rules/search`) | 🪟 caller's org rules |
 | Usage / metrics (`GET /api/v2/usage/tokens`) | 🪟 filtered to caller's org |
 | Model providers — read (`GET /api/v1/model_providers*`) | ✅ no credentials in response |
 | Model providers — write (`PUT/DELETE /api/v1/model_providers/{p}`, `POST /api/v1/secrets/rotation`) | ❌ admin-only |
@@ -641,12 +635,10 @@ If `isTenant` is true, the UI renders the tenant branch. Otherwise (admin key or
 |---|---|---|
 | Top nav: Users | shown | hidden |
 | Top nav: Model providers config | shown | hidden |
-| Top nav: Default rules (write) | shown | hidden |
 | Top nav: System configuration | shown | hidden |
 | Top nav: API keys management | shown | hidden |
 | Task switcher | all tasks | tasks in caller's org only (via server-filtered `GET /tasks`) |
 | Task dashboard | unchanged | unchanged |
-| Default rules viewer | unchanged | unchanged (read-only) |
 | Model registry dropdown | populated from `GET /model_providers*` | same response, same dropdown |
 | Login form | unchanged | unchanged |
 
@@ -753,7 +745,7 @@ Adds the public signup endpoint and the feature flag.
 
 1. New `POST /api/v2/tenant/signup` endpoint at `src/routers/v2/task_management_routes.py` (or a new `tenant_routes.py` for clarity).
 2. Add `GENAI_ENGINE_DEMO_MODE` boolean to `src/utils/config.py`, default `False`.
-3. Handler runs the four-step transaction (create org, create task, apply default rules, create API key) inside a single `db_session` transaction. Reuses the existing `tasks_repository.create_task()` and `api_key_repository.create_api_key()` plus the new `organizations_repository.create_organization()`.
+3. Handler runs the three-step transaction (create org, create task, create API key) inside a single `db_session` transaction. Reuses the existing `tasks_repository.create_task()` and `api_key_repository.create_api_key()` plus the new `organizations_repository.create_organization()`.
 
 **Estimated effort:** ~1-2 days human / ~30 min CC.
 
@@ -812,7 +804,7 @@ Seed two orgs (O1, O2), each with two tasks (O1 → {T1a, T1b}, O2 → {T2a, T2b
 - **Cross-org enumeration:** K1 calls `GET /api/v2/tasks`, expects {T1a, T1b}. K1 calls `GET /api/v2/tasks/search`, expects the same.
 - **Admin still works:** A calls every endpoint above; expects unchanged behavior (full visibility, no filtering).
 - **Aggregate filtering:** K1 calls `GET /api/v2/usage/tokens`; expects token usage summed across O1's tasks only.
-- **Admin-only blocks (Pattern E):** K1 calls `POST /api/v1/traces`, `POST /auth/api_keys/`, `GET /users`, `GET /api/v2/configuration`, `POST /api/v2/default_rules`, `POST /api/chat/default_task`, `PUT /api/v1/model_providers/anthropic`, `POST /api/v1/secrets/rotation`. Every response is 403.
+- **Admin-only blocks (Pattern E):** K1 calls `POST /api/v1/traces`, `POST /auth/api_keys/`, `GET /users`, `GET /api/v2/configuration`, `POST /api/chat/default_task`, `PUT /api/v1/model_providers/anthropic`, `POST /api/v1/secrets/rotation`. Every response is 403.
 - **Model provider reads (allowed):** K1 calls `GET /api/v1/model_providers`. Expect 200 with `[{provider, enabled}]` per provider. K1 calls `GET /api/v1/model_providers/anthropic/available_models`. Expect 200 with `{provider, available_models}`. Verify no credential fields in either response.
 - **System org isolation:** K1 attempts to read any task in the `system` org via every pattern. Every response is 404. A (admin) can read system tasks.
 - **API key tampering:** K1 calls `DELETE /auth/api_keys/deactivate/{A_key_id}`. Expect 403.
@@ -870,7 +862,7 @@ Items deferred from v1, with rationale and rough effort.
 - **Postgres Row-Level Security (RLS).** v1 enforces at the API layer only. A v2 hardening pass would add RLS policies on every task-scoped table so the database refuses cross-org rows even if a handler forgets to filter. Implementation: a per-request `SET LOCAL app.org_scope = ...` in session middleware, plus `CREATE POLICY ... USING (org_id = current_setting('app.org_scope'))` on each table. Requires migrating connection handling to set the variable on every checkout. Effort: ~1 week.
 - **Bring-Your-Own-Keys (BYOK) model providers.** Tenants configure their own provider credentials per-org. Schema: add `org_id UUID NULL` to `model_providers` and `secret_storage`. Endpoint behavior: `GET /api/v1/model_providers` returns globals merged with the caller's org-scoped providers. New writes via `POST /api/v2/organizations/{org_id}/model_providers`. Forward-compatible with v1's response shape — no breaking change. Effort: ~1-2 weeks.
 - **Tenant trace uploads.** `POST /api/v1/traces` is admin-only in v1. Re-enabling for tenants requires solving both the `arthur.task` attribute path (validate against caller's org) and the service-name fallback (per-org mappings). Options: a separate `POST /api/v2/tenant/traces` endpoint that takes only an org-scoped task_id, or tighten the resolver to validate the resolved task's org against `org_scope`. Effort: ~3-5 days.
-- **Per-org default rules and configuration.** v1 keeps default rules and app configuration global. v2 could scope them: `default_rules` gets an `org_id NULL` column (NULL = applies to all orgs), and per-org configuration lives in a new table. Effort: ~1 week, plus a careful migration of existing default rules into the "applies to all" case.
+- **Per-org configuration.** v1 keeps app configuration global. v2 could move it to a per-org table.
 - **Multi-key per org.** v1's signup flow mints one key per org. v2 could allow multiple keys per org (each independently revocable) by exposing a key-management surface to tenants (`POST /api/v2/tenant/api_keys` minting another key for the caller's org). Effort: ~2-3 days plus UI work.
 - **Tenant-admin role.** A new role between admin and `TENANT-USER` that can mint keys within their own org but cannot read across orgs. Useful for customer multi-user demo accounts. Schema-wise easy (another role plus frozenset entries). Effort: ~2-3 days.
 - **Documents and embeddings multi-tenancy.** Currently 403 for tenants. v2 would add `org_id` to `documents` (cascade to `embeddings`), then enable tenant access via Pattern C. The blocker isn't org scoping — it's the document model's existing owner-scoped semantics, which need a coherent migration to org-scoped semantics. Effort: ~1-2 weeks.

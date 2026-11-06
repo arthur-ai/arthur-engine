@@ -76,8 +76,7 @@ rules_types = [rule.value for rule in RuleType]
 
 @task_management_routes.post(
     "/tasks",
-    description="Register a new task. When a new task is created, all existing default rules will be "
-    "auto-applied for this new task. Optionally specify if the task is agentic.",
+    description="Register a new task. Optionally specify if the task is agentic.",
     response_model=TaskResponse,
     tags=["Tasks"],
 )
@@ -146,7 +145,7 @@ def get_all_tasks(
 
 @task_management_routes.delete(
     "/tasks/{task_id}",
-    description="Archive task. Also archives all task-scoped rules. Associated default rules are unaffected.",
+    description="Archive task. Also archives all task-scoped rules.",
     tags=["Tasks"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
@@ -549,7 +548,7 @@ def create_task_rule(
 
 @task_management_routes.patch(
     "/tasks/{task_id}/rules/{rule_id}",
-    description="Enable or disable an existing rule for this task including the default rules.",
+    description="Enable or disable an existing rule for this task.",
     response_model=TaskResponse,
     tags=["Tasks"],
 )
@@ -589,13 +588,8 @@ def archive_task_rule(
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ) -> Response:
     rule_repo = RuleRepository(db_session)
-    rule = rule_repo.get_rule_by_id(str(rule_id))
-
-    if rule.scope == RuleScope.DEFAULT:
-        raise HTTPException(
-            status_code=400,
-            detail=constants.ERROR_CANNOT_DELETE_DEFAULT_RULE,
-        )
+    # 404 for a rule that does not exist, before the 400 for one on another task.
+    rule_repo.get_rule_by_id(str(rule_id))
 
     tasks_rules_repo = TasksRulesRepository(db_session)
     task_rules = tasks_rules_repo._get_task_rules_ids(
@@ -616,11 +610,7 @@ def archive_task_rule(
     )
 
     task_repo.delete_rule_link(str(task_id), str(rule_id))
-
-    rules, _ = rule_repo.query_rules(rule_ids=[str(rule_id)])
-    rule = rules[0]
-    if rule.scope == RuleScope.TASK:
-        rule_repo.archive_rule(str(rule_id))
+    rule_repo.archive_rule(str(rule_id))
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
