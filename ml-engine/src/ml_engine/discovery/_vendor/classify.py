@@ -582,7 +582,8 @@ def primary(rows, rank, superseded=None, live=None):
     live = Registry(load_routes()).live_kinds if live is None else live
     releases = [release_key(row.get("ver")) for row in rows]
     # Padded to one length and negated, so min() takes the newest: 2.1 and 2.1.0 tie, and
-    # 2.1.5 is newer than 2.1.
+    # 2.1.5 is newer than 2.1. release_key bounds the length, so no row can widen every
+    # other row's key.
     width = max(map(len, releases), default=0)
 
     def key(i):
@@ -599,15 +600,24 @@ def primary(rows, rank, superseded=None, live=None):
     return min(range(len(rows)), key=key)
 
 
+# A release is a label a human wrote: 2.1.317, 26.820.60940, 2026.7.1. Sixteen components of
+# eighteen digits covers every scheme seen and bounds what release_key makes of `ver`, a
+# string the binding reports verbatim: int() refuses a number past 4,300 digits, and
+# primary() pads every row's key to the widest. A component ends where its digits end, or a
+# longer run would read as its first eighteen.
+_RELEASE = re.compile(r"v?(\d{1,18}(?!\d)(?:\.\d{1,18}(?!\d)){0,15})")
+
+
 def release_key(ver):
     """`ver`'s leading dotted numbers, compared as numbers: (2, 1, 317) from `2.1.317`.
 
     ONLY THE NUMBERS ARE READ, so 2.1.317 is newer than 2.1.99, and anything after them is
     not compared: `2.1.292-1` is (2, 1, 292), and `2.0.0-beta2` ties `2.0.0` rather than
     being called newer or older by a guess at its scheme. A version with no leading number,
-    or none at all, is ().
+    or none at all, is (), as is one whose first number is longer than _RELEASE reads; a
+    later one ends the numbers before it.
     """
-    found = re.match(r"v?(\d+(?:\.\d+)*)", str(ver or ""))
+    found = _RELEASE.match(str(ver or ""))
     return tuple(int(n) for n in found.group(1).split(".")) if found else ()
 
 
