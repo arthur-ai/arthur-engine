@@ -58,25 +58,6 @@ class TelemetryEventTypes(str, Enum):
     TASK_CREATE_INITIATED = "task_create_initiated"
     TASK_CREATE_COMPLETED = "task_create_completed"
 
-    DEFAULT_RULE_CREATE_INITIATED = "default_rule_create_initiated"
-    DEFAULT_RULE_FOR_REGEX_CREATE_COMPLETED = "default_rule_for_regex_create_completed"
-    DEFAULT_RULE_FOR_KEYWORD_CREATE_COMPLETED = (
-        "default_rule_for_keyword_create_completed"
-    )
-    DEFAULT_RULE_FOR_HALLUCINATION_V2_CREATE_COMPLETED = (
-        "default_rule_for_hallucination_v2_create_completed"
-    )
-    DEFAULT_RULE_FOR_PII_CREATE_COMPLETED = "default_rule_for_pii_create_completed"
-    DEFAULT_RULE_FOR_PROMPT_INJECTION_CREATE_COMPLETED = (
-        "default_rule_for_prompt_injection_create_completed"
-    )
-    DEFAULT_RULE_FOR_SENSITIVE_DATA_CREATE_COMPLETED = (
-        "default_rule_for_sensitive_data_create_completed"
-    )
-    DEFAULT_RULE_FOR_TOXICITY_CREATE_COMPLETED = (
-        "default_rule_for_toxicity_create_completed"
-    )
-
     TASK_RULE_CREATE_INITIATED = "task_rule_create_initiated"
     TASK_RULE_FOR_REGEX_CREATE_COMPLETED = "task_rule_for_regex_create_completed"
     TASK_RULE_FOR_KEYWORD_CREATE_COMPLETED = "task_rule_for_keyword_create_completed"
@@ -103,23 +84,6 @@ def send_telemetry_event_for_task_rule_create_completed(rule_type: RuleType) -> 
             RuleType.PROMPT_INJECTION: TelemetryEventTypes.TASK_RULE_FOR_PROMPT_INJECTION_CREATE_COMPLETED,
             RuleType.MODEL_SENSITIVE_DATA: TelemetryEventTypes.TASK_RULE_FOR_SENSITIVE_DATA_CREATE_COMPLETED,
             RuleType.TOXICITY: TelemetryEventTypes.TASK_RULE_FOR_TOXICITY_CREATE_COMPLETED,
-        }
-        if event_type := (event_type_map.get(rule_type)):
-            send_telemetry_event(event_type)
-    except Exception as e:
-        return
-
-
-def send_telemetry_event_for_default_rule_create_completed(rule_type: RuleType) -> None:
-    try:
-        event_type_map = {
-            RuleType.REGEX: TelemetryEventTypes.DEFAULT_RULE_FOR_REGEX_CREATE_COMPLETED,
-            RuleType.KEYWORD: TelemetryEventTypes.DEFAULT_RULE_FOR_KEYWORD_CREATE_COMPLETED,
-            RuleType.MODEL_HALLUCINATION_V2: TelemetryEventTypes.DEFAULT_RULE_FOR_HALLUCINATION_V2_CREATE_COMPLETED,
-            RuleType.PII_DATA: TelemetryEventTypes.DEFAULT_RULE_FOR_PII_CREATE_COMPLETED,
-            RuleType.PROMPT_INJECTION: TelemetryEventTypes.DEFAULT_RULE_FOR_PROMPT_INJECTION_CREATE_COMPLETED,
-            RuleType.MODEL_SENSITIVE_DATA: TelemetryEventTypes.DEFAULT_RULE_FOR_SENSITIVE_DATA_CREATE_COMPLETED,
-            RuleType.TOXICITY: TelemetryEventTypes.DEFAULT_RULE_FOR_TOXICITY_CREATE_COMPLETED,
         }
         if event_type := (event_type_map.get(rule_type)):
             send_telemetry_event(event_type)

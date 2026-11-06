@@ -517,6 +517,7 @@ const EvalDetailView = ({ evalData, isLoading, error, evalName, version, latestV
           initialInstructions={evalData.instructions ?? ""}
           initialModelProvider={evalData.model_provider ?? ("" as ModelProvider)}
           initialModelName={evalData.model_name ?? ""}
+          initialConfig={evalData.config}
         />
       )}
 

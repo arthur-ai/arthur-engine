@@ -76,7 +76,6 @@ from arthur_common.models.response_schemas import (
     UserResponse,
 )
 from arthur_common.models.task_eval_schemas import (
-    ContinuousEvalResponse,
     ContinuousEvalTransformVariableMappingResponse,
     TraceTransformDefinition,
     TraceTransformResponse,
@@ -212,6 +211,7 @@ from schemas.request_schemas import (
 from schemas.response_schemas import (
     ApiKeyRagAuthenticationConfigResponse,
     ApplicationConfigurationResponse,
+    ContinuousEvalResponse,
     DatasetResponse,
     DatasetVersionMetadataResponse,
     DatasetVersionResponse,
@@ -3990,6 +3990,10 @@ class ContinuousEval(BaseModel):
         default=True,
         description="Whether the continuous eval is enabled.",
     )
+    sample_rate: Optional[float] = Field(
+        default=None,
+        description="Fraction of traces evaluated, in (0, 1]. Null evaluates every trace.",
+    )
 
     @staticmethod
     def from_db_model(
@@ -4015,6 +4019,7 @@ class ContinuousEval(BaseModel):
             updated_at=db_eval.updated_at,
             transform_variable_mapping=transform_variable_mapping,
             enabled=db_eval.enabled,
+            sample_rate=db_eval.sample_rate,
         )
 
     def to_response_model(self) -> ContinuousEvalResponse:
@@ -4040,6 +4045,7 @@ class ContinuousEval(BaseModel):
             updated_at=self.updated_at,
             transform_variable_mapping=transform_variable_mapping,
             enabled=self.enabled,
+            sample_rate=self.sample_rate,
         )
 
 

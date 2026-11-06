@@ -144,9 +144,11 @@ class MLEvaluator(BaseEvaluator):
         variable_mapping: List[ContinuousEvalTransformVariableMapping],
         resolved_variables: dict[str, str],
         org_id: uuid.UUID,
+        add_cache_breakpoint: bool = True,
     ) -> EvalRunResponse:
-        # `org_id` is part of the BaseEvaluator contract for LLM billing
-        # (UP-4390). Model-based ML evals don't call the LLM, so it's unused.
+        # `org_id` and `add_cache_breakpoint` are part of the BaseEvaluator contract
+        # for LLM calls (UP-4390, UP-5353). Model-based ML evals don't call the LLM,
+        # so they're unused.
         ml_eval = self._repo.get_llm_item(task_id, eval_name, eval_version)
 
         if ml_eval.deleted_at is not None:

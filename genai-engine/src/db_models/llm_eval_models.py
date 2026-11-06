@@ -8,6 +8,7 @@ from sqlalchemy import (
     UUID,
     Boolean,
     Enum,
+    Float,
     ForeignKey,
     ForeignKeyConstraint,
     Integer,
@@ -178,6 +179,12 @@ class DatabaseContinuousEval(Base):
         nullable=False,
     )
     enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    # Fraction of traces to evaluate, in (0, 1]. NULL evaluates every trace.
+    sample_rate: Mapped[Optional[float]] = mapped_column(
+        Float,
+        default=None,
+        nullable=True,
+    )
 
     __table_args__ = (
         ForeignKeyConstraint(

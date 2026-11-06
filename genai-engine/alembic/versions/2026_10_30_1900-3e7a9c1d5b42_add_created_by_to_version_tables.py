@@ -1,7 +1,7 @@
 """add created_by to version tables
 
 Revision ID: 3e7a9c1d5b42
-Revises: e5a9c3b71f04
+Revises: b1194cd9c938
 Create Date: 2026-10-30 19:00:00.000000
 
 Records who created each prompt version, eval version, transform version and rule:
@@ -18,7 +18,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "3e7a9c1d5b42"
-down_revision = "e5a9c3b71f04"
+down_revision = "b1194cd9c938"
 branch_labels = None
 depends_on = None
 

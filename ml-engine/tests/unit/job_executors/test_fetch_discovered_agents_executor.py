@@ -503,7 +503,20 @@ def test_each_record_carries_what_its_latest_report_saw() -> None:
             _entry(
                 "t1",
                 external_id="splunk-t1",
-                observations={"version": "2.1.314", "previous_version": "2.1.312"},
+                observations={
+                    "version": "2.1.314",
+                    "previous_version": "2.1.312",
+                    "occurrences": [
+                        {
+                            "kind": "proc",
+                            "path": "~/.local/share/claude/versions/2.1.312",
+                        },
+                        {
+                            "kind": "proc",
+                            "path": "~/.local/share/claude/versions/2.1.314",
+                        },
+                    ],
+                },
             ),
             _entry(
                 "rec-2",
@@ -522,6 +535,11 @@ def test_each_record_carries_what_its_latest_report_saw() -> None:
     assert observed["splunk-t1"].version == "2.1.314"
     assert observed["splunk-t1"].previous_version == "2.1.312", "kept by GenAI Engine"
     assert observed["splunk-rec-2"].previous_version is None
+    assert [o.path for o in observed["splunk-t1"].occurrences] == [
+        "~/.local/share/claude/versions/2.1.312",
+        "~/.local/share/claude/versions/2.1.314",
+    ]
+    assert not observed["splunk-rec-2"].occurrences
     assert not observed["splunk-t1"].service_names, "not the creation source's"
     assert observed["splunk-rec-2"].version == "1.0"
 

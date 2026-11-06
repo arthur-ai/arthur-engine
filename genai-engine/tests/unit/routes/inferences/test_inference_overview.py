@@ -7,9 +7,9 @@ from tests.clients.base_test_client import GenaiEngineTestClientBase
 
 @pytest.mark.unit_tests
 def test_inference_overview_counts_per_task(client: GenaiEngineTestClientBase):
-    status_code, busy_task = client.create_task(empty_rules=True)
+    status_code, busy_task = client.create_task()
     assert status_code == 200
-    status_code, idle_task = client.create_task(empty_rules=True)
+    status_code, idle_task = client.create_task()
     assert status_code == 200
 
     before = datetime.now(timezone.utc)

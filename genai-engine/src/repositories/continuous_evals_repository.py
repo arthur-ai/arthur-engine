@@ -1,3 +1,4 @@
+import hashlib
 import logging
 import uuid
 from datetime import datetime
@@ -41,6 +42,18 @@ from services.continuous_eval import (
 from utils.constants import AGENT_EXPERIMENT_SESSION_PREFIX
 
 logger = logging.getLogger(__name__)
+
+
+def is_trace_sampled(trace_id: str, sample_rate: Optional[float]) -> bool:
+    """Whether a continuous eval with this sample rate runs on the trace.
+
+    Hashes the trace ID alone, so a trace is always in or out of the sample, and
+    every eval with the same rate picks the same traces and their results line up.
+    """
+    if sample_rate is None or sample_rate >= 1.0:
+        return True
+    digest = hashlib.sha256(trace_id.encode()).digest()
+    return int.from_bytes(digest[:8], "big") / 2**64 < sample_rate
 
 
 class ContinuousEvalsRepository:
@@ -160,6 +173,7 @@ class ContinuousEvalsRepository:
             updated_at=datetime.now(),
             transform_variable_mapping=transform_variable_mapping_dicts,
             enabled=continuous_eval_request.enabled,
+            sample_rate=continuous_eval_request.sample_rate,
         )
 
         try:
@@ -229,6 +243,9 @@ class ContinuousEvalsRepository:
             has_changes = True
         if update_continuous_eval.enabled is not None:
             db_continuous_eval.enabled = update_continuous_eval.enabled
+            has_changes = True
+        if "sample_rate" in update_continuous_eval.model_fields_set:
+            db_continuous_eval.sample_rate = update_continuous_eval.sample_rate
             has_changes = True
 
         if not has_changes:
@@ -499,7 +516,11 @@ class ContinuousEvalsRepository:
             )
 
             # Create pending annotations and enqueue jobs
+            enqueued = 0
             for continuous_eval in continuous_evals:
+                if not is_trace_sampled(trace_id, continuous_eval.sample_rate):
+                    continue
+
                 annotation = DatabaseAgenticAnnotation(
                     id=uuid.uuid4(),
                     annotation_type=AgenticAnnotationType.CONTINUOUS_EVAL,
@@ -526,9 +547,10 @@ class ContinuousEvalsRepository:
                     delay_seconds=delay_seconds,
                 )
                 queue_service.enqueue(job)  # Ignore return value
+                enqueued += 1
 
             logger.info(
-                f"Enqueued {len(continuous_evals)} continuous eval jobs for trace {trace_id}",
+                f"Enqueued {enqueued} continuous eval jobs for trace {trace_id}",
             )
         except Exception as e:
             logger.error(
