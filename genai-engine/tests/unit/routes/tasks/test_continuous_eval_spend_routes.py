@@ -405,10 +405,11 @@ def test_spend_estimate_scales_by_the_filter_match_share(
             trace_filter=paid_only,
         )
         assert status_code == 200
-        # The unreadable trace isn't checked, so 2 of 7 match.
-        assert filtered.filter_traces_checked == 7
-        assert filtered.filter_match_share == pytest.approx(2 / 7)
-        assert filtered.estimated_daily_cost == pytest.approx(0.08 * 2 / 7)
+        # The unreadable trace is checked but can't match: the worker can't load
+        # it, so it never reaches the judge. 2 of 8 match.
+        assert filtered.filter_traces_checked == 8
+        assert filtered.filter_match_share == pytest.approx(2 / 8)
+        assert filtered.estimated_daily_cost == pytest.approx(0.08 * 2 / 8)
 
         status_code, not_paid = client.estimate_continuous_eval_spend(
             task.id,
@@ -416,8 +417,8 @@ def test_spend_estimate_scales_by_the_filter_match_share(
             trace_filter=paid_only.replace('"equals"', '"not_equals"'),
         )
         assert status_code == 200
-        assert not_paid.filter_traces_checked == 7
-        assert not_paid.filter_match_share == pytest.approx(5 / 7)
+        assert not_paid.filter_traces_checked == 8
+        assert not_paid.filter_match_share == pytest.approx(5 / 8)
 
         status_code, _ = client.estimate_continuous_eval_spend(
             task.id,

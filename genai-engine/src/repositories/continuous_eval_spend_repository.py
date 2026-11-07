@@ -155,8 +155,10 @@ class ContinuousEvalSpendRepository:
             return 0, 0
 
         # Only the columns the matcher reads, not whole span rows. Spans of an
-        # unsupported version are dropped, as the worker's trace load drops them,
-        # and a trace left with none isn't counted: the worker can't judge it.
+        # unsupported version are dropped, as the worker's trace load drops them.
+        # A trace left with none still counts as checked, but never matches: the
+        # worker can't load it, so it never reaches the judge. That keeps the
+        # share over the same traces as trace_count, which it scales.
         spans_by_trace: dict[str, list[Any]] = {}
         for span in self.db_session.query(
             DatabaseSpan.trace_id,
@@ -171,7 +173,7 @@ class ContinuousEvalSpendRepository:
             for spans in spans_by_trace.values()
             if spans_match_filter(spans, trace_filter)
         )
-        return matched, len(spans_by_trace)
+        return matched, len(trace_ids)
 
     @staticmethod
     def _task_traces_in_window(
