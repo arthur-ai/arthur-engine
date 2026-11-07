@@ -16,7 +16,6 @@ from arthur_common.models.llm_model_providers import (
     ToolChoice,
     ToolChoiceEnum,
 )
-from arthur_common.models.task_eval_schemas import TraceTransformDefinition
 from fastapi import HTTPException, Query
 from litellm.types.llms.anthropic import AnthropicThinkingParam
 from pydantic import (
@@ -52,6 +51,7 @@ from schemas.enums import (
     RagSearchKind,
     TaskAnalyticsBucketSize,
 )
+from schemas.transform_schemas import TraceTransformDefinition
 from utils.constants import ALLOWED_TRACE_RETENTION_DAYS
 from utils.reasoning_capabilities import reasoning_settings_error
 

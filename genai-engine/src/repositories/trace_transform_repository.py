@@ -4,7 +4,6 @@ from uuid import UUID, uuid4
 
 from arthur_common.models.common_schemas import PaginationParameters
 from arthur_common.models.enums import PaginationSortMethod
-from arthur_common.models.task_eval_schemas import TraceTransformDefinition
 from fastapi import HTTPException
 from sqlalchemy import String, asc, cast, desc, func
 from sqlalchemy.exc import IntegrityError
@@ -31,6 +30,7 @@ from schemas.response_schemas import (
     TransformDependentRef,
     TransformDependents,
 )
+from schemas.transform_schemas import TraceTransformDefinition
 
 
 class TraceTransformRepository:

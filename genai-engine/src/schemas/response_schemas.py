@@ -19,7 +19,6 @@ from arthur_common.models.response_schemas import (
 from arthur_common.models.task_eval_schemas import (
     ContinuousEvalResponse as CommonContinuousEvalResponse,
 )
-from arthur_common.models.task_eval_schemas import TraceTransformDefinition
 from litellm.types.llms.anthropic import AnthropicThinkingParam
 from litellm.types.utils import ChatCompletionMessageToolCall
 from pydantic import BaseModel, Field
@@ -42,6 +41,7 @@ from schemas.enums import (
     SpendEstimateUnavailableReason,
     TestRunStatus,
 )
+from schemas.transform_schemas import TraceTransformDefinition
 
 
 class OrganizationResponse(BaseModel):

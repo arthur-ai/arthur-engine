@@ -5,6 +5,20 @@ import pytest
 from tests.clients.base_test_client import GenaiEngineTestClientBase
 
 
+def _without_default_selector(definition: dict) -> dict:
+    """Responses now carry each variable's span_selector; "first" is the default."""
+    return {
+        "variables": [
+            {
+                k: v
+                for k, v in variable.items()
+                if not (k == "span_selector" and v == "first")
+            }
+            for variable in definition["variables"]
+        ],
+    }
+
+
 @pytest.fixture
 def transform_definition() -> dict:
     return {
@@ -59,7 +73,10 @@ def test_create_transform_creates_initial_version(
         assert len(versions.versions) == 1
         assert versions.versions[0].version_number == 1
         assert versions.versions[0].transform_id == transform.id
-        assert versions.versions[0].definition.model_dump() == transform_definition
+        assert (
+            _without_default_selector(versions.versions[0].definition.model_dump())
+            == transform_definition
+        )
     finally:
         client.delete_task(task.id)
 
@@ -96,9 +113,15 @@ def test_update_transform_creates_new_version(
         assert versions.count == 2
         # Ordered descending by version_number
         assert versions.versions[0].version_number == 2
-        assert versions.versions[0].definition.model_dump() == updated_definition
+        assert (
+            _without_default_selector(versions.versions[0].definition.model_dump())
+            == updated_definition
+        )
         assert versions.versions[1].version_number == 1
-        assert versions.versions[1].definition.model_dump() == transform_definition
+        assert (
+            _without_default_selector(versions.versions[1].definition.model_dump())
+            == transform_definition
+        )
     finally:
         client.delete_task(task.id)
 
@@ -147,7 +170,10 @@ def test_get_transform_version_success(
         assert status_code == 200
         assert str(version.id) == version_id
         assert version.version_number == 1
-        assert version.definition.model_dump() == transform_definition
+        assert (
+            _without_default_selector(version.definition.model_dump())
+            == transform_definition
+        )
         assert version.transform_id == transform.id
     finally:
         client.delete_task(task.id)
@@ -255,7 +281,13 @@ def test_update_name_only_creates_new_version(
         assert status_code == 200
         assert versions.count == 2
         # Both versions should have same definition (definition unchanged)
-        assert versions.versions[0].definition.model_dump() == transform_definition
-        assert versions.versions[1].definition.model_dump() == transform_definition
+        assert (
+            _without_default_selector(versions.versions[0].definition.model_dump())
+            == transform_definition
+        )
+        assert (
+            _without_default_selector(versions.versions[1].definition.model_dump())
+            == transform_definition
+        )
     finally:
         client.delete_task(task.id)

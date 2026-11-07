@@ -77,8 +77,6 @@ from arthur_common.models.response_schemas import (
 )
 from arthur_common.models.task_eval_schemas import (
     ContinuousEvalTransformVariableMappingResponse,
-    TraceTransformDefinition,
-    TraceTransformResponse,
 )
 from fastapi import HTTPException
 from openinference.semconv.trace import SpanAttributes
@@ -241,6 +239,7 @@ from schemas.scorer_schemas import (
     ScorerRuleDetails,
     ScorerToxicityScore,
 )
+from schemas.transform_schemas import TraceTransformDefinition, TraceTransformResponse
 from utils import constants
 from utils import trace as trace_utils
 from utils.constants import MAX_DATASET_ROWS

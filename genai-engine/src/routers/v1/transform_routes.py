@@ -2,10 +2,6 @@ from typing import Annotated
 from uuid import UUID
 
 from arthur_common.models.common_schemas import PaginationParameters
-from arthur_common.models.task_eval_schemas import (
-    ListTraceTransformsResponse,
-    TraceTransformResponse,
-)
 from fastapi import APIRouter, Depends, HTTPException, Path
 from sqlalchemy.orm import Session
 from starlette.responses import Response
@@ -35,6 +31,10 @@ from schemas.response_schemas import (
     TraceTransformVersionResponse,
     TransformDependents,
     TransformExtractionResponseList,
+)
+from schemas.transform_schemas import (
+    ListTraceTransformsResponse,
+    TraceTransformResponse,
 )
 from utils.transform_executor import execute_transform
 from utils.users import enforce_org_scope, permission_checker

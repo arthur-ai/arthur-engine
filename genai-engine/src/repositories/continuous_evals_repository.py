@@ -10,7 +10,6 @@ from arthur_common.models.enums import (
     ContinuousEvalRunStatus,
     PaginationSortMethod,
 )
-from arthur_common.models.task_eval_schemas import TraceTransformDefinition
 from fastapi import HTTPException
 from sqlalchemy import asc, case, desc, func, select
 from sqlalchemy.exc import IntegrityError
@@ -36,6 +35,7 @@ from schemas.response_schemas import (
     ContinuousEvalRerunResponse,
     DailyAgenticAnnotationStats,
 )
+from schemas.transform_schemas import TraceTransformDefinition
 from services.continuous_eval import (
     ContinuousEvalJob,
     get_continuous_eval_queue_service,

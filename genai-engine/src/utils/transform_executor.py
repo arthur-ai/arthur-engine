@@ -13,13 +13,13 @@ from arthur_common.models.response_schemas import (
     NestedSpanWithMetricsResponse,
     TraceResponse,
 )
-from arthur_common.models.task_eval_schemas import TraceTransformDefinition
 
 from schemas.common_schemas import ContinuousEvalTraceFilterCondition
 from schemas.enums import ContinuousEvalTraceFilterOperator
 from schemas.response_schemas import (
     TransformExtractionResponseList,
 )
+from schemas.transform_schemas import TraceTransformDefinition, TransformSpanSelector
 from utils.trace import get_nested_value, get_nested_value_wildcard
 
 
@@ -61,6 +61,26 @@ def _flatten_spans(
     return result
 
 
+def _read_span(span: NestedSpanWithMetricsResponse, attribute_path: str) -> Any:
+    if "*" in attribute_path:
+        return get_nested_value_wildcard(span.raw_data, attribute_path)
+    return get_nested_value(span.raw_data, attribute_path)
+
+
+def _read_all_spans(
+    spans: List[NestedSpanWithMetricsResponse],
+    attribute_path: str,
+) -> Optional[str]:
+    """Every matching span's value in start-time order, each headed by its span id
+    so a judge can say which call it means. None when no span has the attribute."""
+    blocks = []
+    for span in sorted(spans, key=lambda s: s.start_time):
+        value = _read_span(span, attribute_path)
+        if value is not None:
+            blocks.append(f"[span {span.span_id}]\n{stringify_value(value)}")
+    return "\n\n".join(blocks) if blocks else None
+
+
 def execute_transform(
     trace: TraceResponse,
     transform_definition: TraceTransformDefinition,
@@ -70,8 +90,9 @@ def execute_transform(
     Base extraction function that returns raw variable names and values without
     formatting them into specific structures.
 
-    Uses first match if multiple spans found. This matches the behavior of the
-    frontend executeTransform function.
+    When several spans share a variable's span_name, its span_selector picks them:
+    the first match (the default, which matches the frontend executeTransform
+    function), the one that started last, or all of them in start-time order.
 
     Args:
         trace: TraceResponse object containing root_spans
@@ -100,6 +121,7 @@ def execute_transform(
         matching_spans = [span for span in flat_spans if span.span_name == span_name]
 
         is_missing = False
+        value: Any
         if not matching_spans:
             # No matching span found, use fallback
             if fallback is None:
@@ -108,12 +130,16 @@ def execute_transform(
             else:
                 value = fallback
         else:
-            # Use the first matching span
-            span = matching_spans[0]
-            if "*" in attribute_path:
-                value = get_nested_value_wildcard(span.raw_data, attribute_path)
+            selector = var_def.span_selector
+            if selector == TransformSpanSelector.ALL:
+                value = _read_all_spans(matching_spans, attribute_path)
             else:
-                value = get_nested_value(span.raw_data, attribute_path)
+                span = (
+                    max(matching_spans, key=lambda s: s.start_time)
+                    if selector == TransformSpanSelector.LAST
+                    else matching_spans[0]
+                )
+                value = _read_span(span, attribute_path)
 
             # Use value if found, otherwise use fallback
             if value is None:
