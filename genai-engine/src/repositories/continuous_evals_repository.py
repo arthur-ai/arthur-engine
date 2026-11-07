@@ -1,6 +1,8 @@
 import hashlib
+import json
 import logging
 import uuid
+from collections import defaultdict
 from datetime import datetime
 from typing import Any, List, Optional
 
@@ -41,8 +43,18 @@ from services.continuous_eval import (
     get_continuous_eval_queue_service,
 )
 from utils.constants import AGENT_EXPERIMENT_SESSION_PREFIX
+from utils.trace import get_nested_value
 
 logger = logging.getLogger(__name__)
+
+# Grouped analytics read each run's trace attribute in Python, so they cap how many
+# runs one request may group; narrow the time range past this.
+GROUPED_ANALYTICS_MAX_RUNS = 20_000
+_SPAN_READ_CHUNK = 500
+
+
+def _pass_rate(passed: int, failed: int) -> Optional[float]:
+    return passed / (passed + failed) if passed + failed else None
 
 
 def is_trace_sampled(trace_id: str, sample_rate: Optional[float]) -> bool:
@@ -734,11 +746,23 @@ class ContinuousEvalsRepository:
         task_id: str,
         start_time: datetime,
         end_time: datetime,
+        group_by: Optional[str] = None,
+        group_by_span_name: Optional[str] = None,
     ) -> List[DailyAgenticAnnotationStats]:
         """Get daily aggregated statistics for agentic annotations.
 
-        Includes both continuous eval annotations and human annotations.
+        Includes both continuous eval annotations and human annotations. With
+        group_by (an attribute path, as transforms use), each day is split by the
+        attribute's value on the run's trace, e.g. a prompt version.
         """
+        if group_by:
+            return self._grouped_daily_annotation_analytics(
+                task_id,
+                start_time,
+                end_time,
+                group_by,
+                group_by_span_name,
+            )
         # Use func.date() for database-agnostic date truncation
         date_col = func.date(DatabaseAgenticAnnotation.created_at)
 
@@ -798,6 +822,109 @@ class ContinuousEvalsRepository:
                 skipped_count=row.skipped_count,
                 total_cost=float(row.total_cost),
                 total_count=row.total_count,
+                pass_rate=_pass_rate(row.passed_count, row.failed_count),
             )
             for row in results
         ]
+
+    def _grouped_daily_annotation_analytics(
+        self,
+        task_id: str,
+        start_time: datetime,
+        end_time: datetime,
+        group_by: str,
+        group_by_span_name: Optional[str],
+    ) -> List[DailyAgenticAnnotationStats]:
+        runs = (
+            self.db_session.query(
+                DatabaseAgenticAnnotation.trace_id,
+                DatabaseAgenticAnnotation.created_at,
+                DatabaseAgenticAnnotation.annotation_score,
+                DatabaseAgenticAnnotation.run_status,
+                DatabaseAgenticAnnotation.cost,
+            )
+            .join(
+                DatabaseContinuousEval,
+                DatabaseAgenticAnnotation.continuous_eval_id
+                == DatabaseContinuousEval.id,
+            )
+            .filter(
+                DatabaseContinuousEval.task_id == task_id,
+                DatabaseAgenticAnnotation.created_at >= start_time,
+                DatabaseAgenticAnnotation.created_at < end_time,
+                DatabaseAgenticAnnotation.test_run_id.is_(None),
+            )
+            .limit(GROUPED_ANALYTICS_MAX_RUNS + 1)
+            .all()
+        )
+        if len(runs) > GROUPED_ANALYTICS_MAX_RUNS:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"More than {GROUPED_ANALYTICS_MAX_RUNS} runs in the time range to "
+                    "group; narrow start_time and end_time."
+                ),
+            )
+        groups = self._trace_attribute_values(
+            {run.trace_id for run in runs if run.trace_id},
+            group_by,
+            group_by_span_name,
+        )
+
+        totals: dict[tuple[str, Optional[str]], dict[str, float]] = defaultdict(
+            lambda: defaultdict(float),
+        )
+        for run in runs:
+            day = run.created_at.date().isoformat()
+            t = totals[(day, groups.get(run.trace_id) if run.trace_id else None)]
+            t["total"] += 1
+            t["passed"] += run.annotation_score == 1
+            t["failed"] += run.annotation_score == 0
+            t["error"] += run.run_status == "error"
+            t["skipped"] += run.run_status == "skipped"
+            t["cost"] += run.cost or 0.0
+
+        stats = [
+            DailyAgenticAnnotationStats(
+                date=day,
+                group=group,
+                passed_count=int(t["passed"]),
+                failed_count=int(t["failed"]),
+                error_count=int(t["error"]),
+                skipped_count=int(t["skipped"]),
+                total_cost=t["cost"],
+                total_count=int(t["total"]),
+                pass_rate=_pass_rate(int(t["passed"]), int(t["failed"])),
+            )
+            for (day, group), t in totals.items()
+        ]
+        stats.sort(key=lambda s: s.group or "")
+        stats.sort(key=lambda s: s.date, reverse=True)
+        return stats
+
+    def _trace_attribute_values(
+        self,
+        trace_ids: set[str],
+        attribute_path: str,
+        span_name: Optional[str],
+    ) -> dict[str, str]:
+        """Each trace's value at attribute_path, from the earliest span (named
+        span_name, if given) that has it."""
+        values: dict[str, str] = {}
+        ordered = sorted(trace_ids)
+        for i in range(0, len(ordered), _SPAN_READ_CHUNK):
+            query = self.db_session.query(
+                DatabaseSpan.trace_id,
+                DatabaseSpan.raw_data,
+            ).filter(DatabaseSpan.trace_id.in_(ordered[i : i + _SPAN_READ_CHUNK]))
+            if span_name:
+                query = query.filter(DatabaseSpan.span_name == span_name)
+            for trace_id, raw_data in query.order_by(DatabaseSpan.start_time):
+                if trace_id in values:
+                    continue
+                value = get_nested_value(raw_data, attribute_path)
+                if value is not None:
+                    values[trace_id] = (
+                        value if isinstance(value, str) else json.dumps(value)
+                    )
+        return values

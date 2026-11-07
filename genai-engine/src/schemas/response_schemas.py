@@ -1062,15 +1062,28 @@ class DailyAgenticAnnotationStats(BaseModel):
     )
     total_cost: float = Field(description="Total cost for the day")
     total_count: int = Field(description="Total annotations for the day")
+    pass_rate: Optional[float] = Field(
+        default=None,
+        description="passed_count / (passed_count + failed_count). Null with no passed or failed runs.",
+    )
+    group: Optional[str] = Field(
+        default=None,
+        description=(
+            "With group_by: the attribute's value on these runs' traces, such as a prompt "
+            "version. Null when not grouping or when the trace has no such attribute."
+        ),
+    )
 
 
 class AgenticAnnotationAnalyticsResponse(BaseModel):
     """Response containing daily aggregated statistics."""
 
     stats: List[DailyAgenticAnnotationStats] = Field(
-        description="Daily statistics ordered by date descending",
+        description="Daily statistics ordered by date descending (then by group)",
     )
-    count: int = Field(description="Number of days with data")
+    count: int = Field(
+        description="Number of rows: days, or day and group pairs with group_by"
+    )
 
 
 class ContinuousEvalDailySpendEstimate(BaseModel):

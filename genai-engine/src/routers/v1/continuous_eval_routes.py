@@ -604,6 +604,23 @@ def get_daily_annotation_analytics(
         Optional[datetime],
         Query(description="End time (exclusive). Defaults to now."),
     ] = None,
+    group_by: Annotated[
+        Optional[str],
+        Query(
+            max_length=500,
+            description=(
+                "Attribute path on the run's trace to split each day by, as transforms use, "
+                "e.g. 'attributes.metadata.prompt_version'. Rows then carry `group`."
+            ),
+        ),
+    ] = None,
+    group_by_span_name: Annotated[
+        Optional[str],
+        Query(
+            max_length=500,
+            description="Only read group_by from spans with this name. Defaults to the earliest span that has it.",
+        ),
+    ] = None,
     db_session: Session = Depends(get_db_session),
     current_user: User = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_task),
@@ -628,6 +645,8 @@ def get_daily_annotation_analytics(
             task.id,
             start_time,
             end_time,
+            group_by=group_by,
+            group_by_span_name=group_by_span_name,
         )
 
         return AgenticAnnotationAnalyticsResponse(
